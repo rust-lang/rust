@@ -11,7 +11,10 @@ use serde::{Serialize, de::DeserializeOwned};
 use crossbeam_channel::{bounded, Sender, Receiver};
 use languageserver_types::{NumberOrString};
 use libanalysis::{FileId, JobHandle, JobToken};
-use gen_lsp_server::{RawRequest, RawNotification, RawMessage, RawResponse, ErrorCode};
+use gen_lsp_server::{
+    RawRequest, RawNotification, RawMessage, RawResponse, ErrorCode,
+    handle_shutdown,
+};
 
 use {
     req,
@@ -21,6 +24,7 @@ use {
     main_loop::subscriptions::{Subscriptions},
 };
 
+#[derive(Debug)]
 enum Task {
     Respond(RawResponse),
     Notify(RawNotification),
@@ -40,7 +44,7 @@ pub fn main_loop(
 
     let mut pending_requests = HashMap::new();
     let mut subs = Subscriptions::new();
-    main_loop_inner(
+    let res = main_loop_inner(
         &pool,
         msg_receriver,
         msg_sender,
@@ -50,17 +54,19 @@ pub fn main_loop(
         &mut state,
         &mut pending_requests,
         &mut subs,
-    )?;
+    );
 
-    info!("waiting for background jobs to finish...");
+    info!("waiting for tasks to finish...");
     task_receiver.for_each(|task| on_task(task, msg_sender, &mut pending_requests));
+    info!("...tasks have finished");
+    info!("joining threadpool...");
     pool.join();
-    info!("...background jobs have finished");
+    info!("...threadpool has finished");
 
     info!("waiting for file watcher to finish...");
     watcher.stop()?;
     info!("...file watcher has finished");
-    Ok(())
+    res
 }
 
 fn main_loop_inner(
@@ -73,15 +79,17 @@ fn main_loop_inner(
     state: &mut ServerWorldState,
     pending_requests: &mut HashMap<u64, JobHandle>,
     subs: &mut Subscriptions,
-) -> Result<u64> {
+) -> Result<()> {
     let mut fs_receiver = Some(fs_receiver);
     loop {
+        #[derive(Debug)]
         enum Event {
             Msg(RawMessage),
             Task(Task),
             Fs(Vec<FileEvent>),
             FsWatcherDead,
         }
+        trace!("selecting");
         let event = select! {
             recv(msg_receiver, msg) => match msg {
                 Some(msg) => Event::Msg(msg),
@@ -93,6 +101,7 @@ fn main_loop_inner(
                 None => Event::FsWatcherDead,
             }
         };
+        trace!("selected {:?}", event);
         let mut state_changed = false;
         match event {
             Event::FsWatcherDead => fs_receiver = None,
@@ -105,9 +114,9 @@ fn main_loop_inner(
             Event::Msg(msg) => {
                 match msg {
                     RawMessage::Request(req) => {
-                        let req = match req.cast::<req::Shutdown>() {
-                            Ok((id, _params)) => return Ok(id),
-                            Err(req) => req,
+                        let req = match handle_shutdown(req, msg_sender) {
+                            Some(req) => req,
+                            None => return Ok(()),
                         };
                         match on_request(state, pending_requests, pool, &task_sender, req)? {
                             None => (),
@@ -290,7 +299,7 @@ impl<'a> PoolDispatcher<'a> {
                 let sender = self.sender.clone();
                 self.pool.execute(move || {
                     let resp = match f(world, params, token) {
-                        Ok(resp) => RawResponse::ok(id, resp),
+                        Ok(resp) => RawResponse::ok::<R>(id, resp),
                         Err(e) => RawResponse::err(id, ErrorCode::InternalError as i32, e.to_string()),
                     };
                     let task = Task::Respond(resp);

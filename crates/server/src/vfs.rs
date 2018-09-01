@@ -11,11 +11,13 @@ use walkdir::WalkDir;
 use Result;
 
 
+#[derive(Debug)]
 pub struct FileEvent {
     pub path: PathBuf,
     pub kind: FileEventKind,
 }
 
+#[derive(Debug)]
 pub enum FileEventKind {
     Add(String),
     #[allow(unused)]

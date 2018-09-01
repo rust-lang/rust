@@ -24,3 +24,6 @@ libsyntax2 = { path = "../libsyntax2" }
 libeditor = { path = "../libeditor" }
 libanalysis = { path = "../libanalysis" }
 gen_lsp_server = { path = "../gen_lsp_server" }
+
+[dev-dependencies]
+tempdir = "0.3.7"

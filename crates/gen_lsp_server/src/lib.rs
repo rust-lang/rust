@@ -15,7 +15,7 @@ mod stdio;
 use crossbeam_channel::{Sender, Receiver};
 use languageserver_types::{
     ServerCapabilities, InitializeResult,
-    request::{Initialize},
+    request::{Initialize, Shutdown},
     notification::{Initialized, Exit},
 };
 
@@ -48,6 +48,17 @@ pub fn run_server(
     Ok(())
 }
 
+pub fn handle_shutdown(req: RawRequest, sender: &Sender<RawMessage>) -> Option<RawRequest> {
+    match req.cast::<Shutdown>() {
+        Ok((id, ())) => {
+            let resp = RawResponse::ok::<Shutdown>(id, ());
+            sender.send(RawMessage::Response(resp));
+            None
+        }
+        Err(req) => Some(req),
+    }
+}
+
 fn initialize(
     receiver: &mut Receiver<RawMessage>,
     sender: &mut Sender<RawMessage>,
@@ -61,7 +72,7 @@ fn initialize(
         msg =>
             bail!("expected initialize request, got {:?}", msg),
     };
-    let resp = RawResponse::ok(id, InitializeResult { capabilities: caps });
+    let resp = RawResponse::ok::<Initialize>(id, InitializeResult { capabilities: caps });
     sender.send(RawMessage::Response(resp));
     match receiver.recv() {
         Some(RawMessage::Notification(n)) => {

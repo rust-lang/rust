@@ -87,6 +87,17 @@ impl RawMessage {
 }
 
 impl RawRequest {
+    pub fn new<R>(id: u64, params: R::Params) -> RawRequest
+    where
+        R: Request,
+        R::Params: Serialize,
+    {
+        RawRequest {
+            id: id,
+            method: R::METHOD.to_string(),
+            params: to_value(&params).unwrap(),
+        }
+    }
     pub fn cast<R>(self) -> ::std::result::Result<(u64, R::Params), RawRequest>
     where
         R: Request,
@@ -102,7 +113,10 @@ impl RawRequest {
 }
 
 impl RawResponse {
-    pub fn ok(id: u64, result: impl Serialize) -> RawResponse {
+    pub fn ok<R>(id: u64, result: R::Result) -> RawResponse
+    where R: Request,
+          R::Result: Serialize,
+    {
         RawResponse {
             id,
             result: Some(to_value(&result).unwrap()),

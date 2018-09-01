@@ -21,7 +21,7 @@ extern crate im;
 extern crate relative_path;
 
 mod caps;
-mod req;
+pub mod req;
 mod conv;
 mod main_loop;
 mod vfs;

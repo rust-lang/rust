@@ -127,7 +127,7 @@ impl Request for Runnables {
     const METHOD: &'static str = "m/runnables";
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RunnablesParams {
     pub text_document: TextDocumentIdentifier,
