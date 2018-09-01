@@ -173,6 +173,7 @@ const MIPS_WHITELIST: &[(&str, Option<&str>)] = &[
 
 const WASM_WHITELIST: &[(&str, Option<&str>)] = &[
     ("simd128", Some("wasm_target_feature")),
+    ("atomics", Some("wasm_target_feature")),
 ];
 
 /// When rustdoc is running, provide a list of all known features so that all their respective
