@@ -49,9 +49,10 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 ///
 /// The type `Arc<T>` provides shared ownership of a value of type `T`,
 /// allocated in the heap. Invoking [`clone`][clone] on `Arc` produces
-/// a new pointer to the same value in the heap. When the last `Arc`
-/// pointer to a given value is destroyed, the pointed-to value is
-/// also destroyed.
+/// a new `Arc` instance, which points to the same value on the heap as the
+/// source `Arc`, while increasing a reference count. When the last `Arc`
+/// pointer to a given value is destroyed, the pointed-to value is also
+/// destroyed.
 ///
 /// Shared references in Rust disallow mutation by default, and `Arc` is no
 /// exception: you cannot generally obtain a mutable reference to something
@@ -107,7 +108,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// // The two syntaxes below are equivalent.
 /// let a = foo.clone();
 /// let b = Arc::clone(&foo);
-/// // a and b both point to the same memory location as foo.
+/// // a, b, and foo are all Arcs that point to the same memory location
 /// ```
 ///
 /// The [`Arc::clone(&from)`] syntax is the most idiomatic because it conveys more explicitly
