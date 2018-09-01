@@ -106,27 +106,25 @@ The `#[doc(cfg(...))]` attribute has another effect: When Rustdoc renders docume
 item, it will be accompanied by a banner explaining that the item is only available on certain
 platforms.
 
-As mentioned earlier, getting the items to Rustdoc requires some extra preparation. The standard
-library adds a `--cfg dox` flag to every Rustdoc command, but the same thing can be accomplished by
-adding a feature to your Cargo.toml and adding `--feature dox` (or whatever you choose to name the
-feature) to your `cargo doc` calls.
+For Rustdoc to document an item, it needs to see it, regardless of what platform it's currently
+running on. To aid this, Rustdoc sets the flag `#[cfg(rustdoc)]` when running on your crate.
+Combining this with the target platform of a given item allows it to appear when building your crate
+normally on that platform, as well as when building documentation anywhere.
 
-Either way, once you create an environment for the documentation, you can start to augment your
-`#[cfg]` attributes to allow both the target platform *and* the documentation configuration to leave
-the item in. For example, `#[cfg(any(windows, feature = "dox"))]` will preserve the item either on
-Windows or during the documentation process. Then, adding a new attribute `#[doc(cfg(windows))]`
-will tell Rustdoc that the item is supposed to be used on Windows. For example:
+For example, `#[cfg(any(windows, rustdoc))]` will preserve the item either on Windows or during the
+documentation process. Then, adding a new attribute `#[doc(cfg(windows))]` will tell Rustdoc that
+the item is supposed to be used on Windows. For example:
 
 ```rust
 #![feature(doc_cfg)]
 
 /// Token struct that can only be used on Windows.
-#[cfg(any(windows, feature = "dox"))]
+#[cfg(any(windows, rustdoc))]
 #[doc(cfg(windows))]
 pub struct WindowsToken;
 
 /// Token struct that can only be used on Unix.
-#[cfg(any(unix, feature = "dox"))]
+#[cfg(any(unix, rustdoc))]
 #[doc(cfg(unix))]
 pub struct UnixToken;
 ```
