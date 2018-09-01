@@ -28,6 +28,12 @@
 //! * A [null] pointer is *never* valid, not even for accesses of [size zero][zst].
 //! * All pointers (except for the null pointer) are valid for all operations of
 //!   [size zero][zst].
+//! * All accesses performed by functions in this module are *non-atomic* in the sense
+//!   of [atomic operations] used to synchronize between threads. This means it is
+//!   undefined behavior to perform two concurrent accesses to the same location from different
+//!   threads unless both accesses only read from memory. Notice that this explicitly
+//!   includes [`read_volatile`] and [`write_volatile`]: Volatile accesses cannot
+//!   be used for inter-thread synchronization.
 //! * The result of casting a reference to a pointer is valid for as long as the
 //!   underlying object is live and no reference (just raw pointers) is used to
 //!   access the same memory.
@@ -56,10 +62,13 @@
 //! [ub]: ../../reference/behavior-considered-undefined.html
 //! [null]: ./fn.null.html
 //! [zst]: ../../nomicon/exotic-sizes.html#zero-sized-types-zsts
+//! [atomic operations]: ../../std/sync/atomic/index.html
 //! [`copy`]: ../../std/ptr/fn.copy.html
 //! [`offset`]: ../../std/primitive.pointer.html#method.offset
 //! [`read_unaligned`]: ./fn.read_unaligned.html
 //! [`write_unaligned`]: ./fn.write_unaligned.html
+//! [`read_volatile`]: ./fn.read_volatile.html
+//! [`write_volatile`]: ./fn.write_volatile.html
 //! [`NonNull::dangling`]: ./struct.NonNull.html#method.dangling
 
 #![stable(feature = "rust1", since = "1.0.0")]
