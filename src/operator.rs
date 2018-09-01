@@ -1,5 +1,4 @@
-use rustc::ty::{self, Ty};
-use rustc::ty::layout::{TyLayout, Primitive};
+use rustc::ty::{Ty, layout::TyLayout};
 use rustc::mir;
 
 use super::*;
@@ -12,7 +11,7 @@ pub trait EvalContextExt<'tcx> {
         left_layout: TyLayout<'tcx>,
         right: Scalar,
         right_layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, Option<(Scalar, bool)>>;
+    ) -> EvalResult<'tcx, (Scalar, bool)>;
 
     fn ptr_int_arithmetic(
         &self,
@@ -21,6 +20,13 @@ pub trait EvalContextExt<'tcx> {
         right: u128,
         signed: bool,
     ) -> EvalResult<'tcx, (Scalar, bool)>;
+
+    fn ptr_eq(
+        &self,
+        left: Scalar,
+        right: Scalar,
+        size: Size,
+    ) -> EvalResult<'tcx, bool>;
 
     fn pointer_offset_inbounds(
         &self,
@@ -38,38 +44,14 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
         left_layout: TyLayout<'tcx>,
         right: Scalar,
         right_layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, Option<(Scalar, bool)>> {
-        trace!("ptr_op: {:?} {:?} {:?}", left, bin_op, right);
-
+    ) -> EvalResult<'tcx, (Scalar, bool)> {
         use rustc::mir::BinOp::*;
-        use rustc::ty::layout::Integer::*;
-        let usize = Primitive::Int(match self.memory.pointer_size().bytes() {
-            1 => I8,
-            2 => I16,
-            4 => I32,
-            8 => I64,
-            16 => I128,
-            _ => unreachable!(),
-        }, /*signed*/ false);
-        let isize = Primitive::Int(match self.memory.pointer_size().bytes() {
-            1 => I8,
-            2 => I16,
-            4 => I32,
-            8 => I64,
-            16 => I128,
-            _ => unreachable!(),
-        }, /*signed*/ true);
-        let left_kind = match left_layout.abi {
-            ty::layout::Abi::Scalar(ref scalar) => scalar.value,
-            _ => Err(EvalErrorKind::TypeNotPrimitive(left_layout.ty))?,
-        };
-        let right_kind = match right_layout.abi {
-            ty::layout::Abi::Scalar(ref scalar) => scalar.value,
-            _ => Err(EvalErrorKind::TypeNotPrimitive(right_layout.ty))?,
-        };
+
+        trace!("ptr_op: {:?} {:?} {:?}", left, bin_op, right);
+        debug_assert!(left.is_ptr() || right.is_ptr() || bin_op == Offset);
+
         match bin_op {
             Offset => {
-                assert!(left_kind == Primitive::Pointer && right_kind == usize);
                 let pointee_ty = left_layout.ty
                     .builtin_deref(true)
                     .expect("Offset called on non-ptr type")
@@ -77,40 +59,19 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let ptr = self.pointer_offset_inbounds(
                     left,
                     pointee_ty,
-                    right.to_bits(self.memory.pointer_size())? as i64,
+                    right.to_isize(self)?,
                 )?;
-                Ok(Some((ptr, false)))
+                Ok((ptr, false))
             }
             // These work on anything
-            Eq if left_kind == right_kind => {
-                let result = match (left, right) {
-                    (Scalar::Bits { .. }, Scalar::Bits { .. }) => {
-                        left.to_bits(left_layout.size)? == right.to_bits(right_layout.size)?
-                    },
-                    // FIXME: Test if both allocations are still live *or* if they are in the same allocation? (same for Ne below)
-                    (Scalar::Ptr(left), Scalar::Ptr(right)) => left == right,
-                    // FIXME: We should probably error out when comparing anything but NULL with a pointer (same for Ne below)
-                    _ => false,
-                };
-                Ok(Some((Scalar::from_bool(result), false)))
-            }
-            Ne if left_kind == right_kind => {
-                let result = match (left, right) {
-                    (Scalar::Bits { .. }, Scalar::Bits { .. }) => {
-                        left.to_bits(left_layout.size)? != right.to_bits(right_layout.size)?
-                    },
-                    (Scalar::Ptr(left), Scalar::Ptr(right)) => left != right,
-                    _ => true,
-                };
-                Ok(Some((Scalar::from_bool(result), false)))
-            }
-            // These need both pointers to be in the same allocation
-            Lt | Le | Gt | Ge | Sub
-                if left_kind == right_kind &&
-                       (left_kind == Primitive::Pointer || left_kind == usize || left_kind == isize) &&
-                       left.is_ptr() && right.is_ptr() => {
-                let left = left.to_ptr()?;
-                let right = right.to_ptr()?;
+            Eq =>
+                Ok((Scalar::from_bool(self.ptr_eq(left, right, left_layout.size)?), false)),
+            Ne =>
+                Ok((Scalar::from_bool(!self.ptr_eq(left, right, left_layout.size)?), false)),
+            // These need both to be pointer, and fail if they are not in the same location
+            Lt | Le | Gt | Ge | Sub if left.is_ptr() && right.is_ptr() => {
+                let left = left.to_ptr().expect("we checked is_ptr");
+                let right = right.to_ptr().expect("we checked is_ptr");
                 if left.alloc_id == right.alloc_id {
                     let res = match bin_op {
                         Lt => left.offset < right.offset,
@@ -118,49 +79,93 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                         Gt => left.offset > right.offset,
                         Ge => left.offset >= right.offset,
                         Sub => {
+                            // subtract the offsets
                             let left_offset = Scalar::from_uint(left.offset.bytes(), self.memory.pointer_size());
                             let right_offset = Scalar::from_uint(right.offset.bytes(), self.memory.pointer_size());
                             let layout = self.layout_of(self.tcx.types.usize)?;
                             return self.binary_op(
                                 Sub,
-                                ValTy { value: Value::Scalar(left_offset.into()), layout },
-                                ValTy { value: Value::Scalar(right_offset.into()), layout },
-                            ).map(Some)
+                                left_offset, layout,
+                                right_offset, layout,
+                            )
                         }
                         _ => bug!("We already established it has to be one of these operators."),
                     };
-                    Ok(Some((Scalar::from_bool(res), false)))
+                    Ok((Scalar::from_bool(res), false))
                 } else {
                     // Both are pointers, but from different allocations.
                     err!(InvalidPointerMath)
                 }
             }
-            // These work if the left operand is a pointer, the right an integer
-            Add | BitAnd | Sub | Rem
-                if left_kind == right_kind && (left_kind == usize || left_kind == isize) &&
-                       left.is_ptr() && right.is_bits() => {
+            // These work if the left operand is a pointer, and the right an integer
+            Add | BitAnd | Sub | Rem if left.is_ptr() && right.is_bits() => {
                 // Cast to i128 is fine as we checked the kind to be ptr-sized
                 self.ptr_int_arithmetic(
                     bin_op,
-                    left.to_ptr()?,
-                    right.to_bits(self.memory.pointer_size())?,
-                    left_kind == isize,
-                ).map(Some)
+                    left.to_ptr().expect("we checked is_ptr"),
+                    right.to_bits(self.memory.pointer_size()).expect("we checked is_bits"),
+                    right_layout.abi.is_signed(),
+                )
             }
             // Commutative operators also work if the integer is on the left
-            Add | BitAnd
-                if left_kind == right_kind && (left_kind == usize || left_kind == isize) &&
-                       left.is_bits() && right.is_ptr() => {
+            Add | BitAnd if left.is_bits() && right.is_ptr() => {
                 // This is a commutative operation, just swap the operands
                 self.ptr_int_arithmetic(
                     bin_op,
-                    right.to_ptr()?,
-                    left.to_bits(self.memory.pointer_size())?,
-                    left_kind == isize,
-                ).map(Some)
+                    right.to_ptr().expect("we checked is_ptr"),
+                    left.to_bits(self.memory.pointer_size()).expect("we checked is_bits"),
+                    left_layout.abi.is_signed(),
+                )
             }
-            _ => Ok(None),
+            // Nothing else works
+            _ => err!(InvalidPointerMath),
         }
+    }
+
+    fn ptr_eq(
+        &self,
+        left: Scalar,
+        right: Scalar,
+        size: Size,
+    ) -> EvalResult<'tcx, bool> {
+        Ok(match (left, right) {
+            (Scalar::Bits { .. }, Scalar::Bits { .. }) =>
+                left.to_bits(size)? == right.to_bits(size)?,
+            (Scalar::Ptr(left), Scalar::Ptr(right)) => {
+                // Comparison illegal if one of them is out-of-bounds, *unless* they
+                // are in the same allocation.
+                if left.alloc_id == right.alloc_id {
+                    left.offset == right.offset
+                } else {
+                    // This accepts one-past-the end.  So technically there is still
+                    // some non-determinism that we do not fully rule out when two
+                    // allocations sit right next to each other.  The C/C++ standards are
+                    // somewhat fuzzy about this case, so I think for now this check is
+                    // "good enough".
+                    self.memory.check_bounds(left, false)?;
+                    self.memory.check_bounds(right, false)?;
+                    // Two live in-bounds pointers, we can compare across allocations
+                    left == right
+                }
+            }
+            // Comparing ptr and integer
+            (Scalar::Ptr(ptr), Scalar::Bits { bits, size }) |
+            (Scalar::Bits { bits, size }, Scalar::Ptr(ptr)) => {
+                assert_eq!(size as u64, self.pointer_size().bytes());
+
+                if bits == 0 {
+                    // Nothing equals 0, not even dangling pointers. Ideally we would
+                    // require them to be in-bounds of their (possilby dead) allocation,
+                    // but with the allocation gonew e cannot check that.
+                    false
+                } else {
+                    // Live pointers cannot equal an integer, but again do not
+                    // allow comparing dead pointers.
+                    self.memory.check_bounds(ptr, false)?;
+                    false
+                }
+            }
+        })
     }
 
     fn ptr_int_arithmetic(
