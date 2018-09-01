@@ -1,11 +1,11 @@
-
+#![feature(tool_lints)]
 
 
 const THREE_BITS : i64 = 7;
 const EVEN_MORE_REDIRECTION : i64 = THREE_BITS;
 
-#[warn(bad_bit_mask)]
-#[allow(ineffective_bit_mask, identity_op, no_effect, unnecessary_operation)]
+#[warn(clippy::bad_bit_mask)]
+#[allow(clippy::ineffective_bit_mask, clippy::identity_op, clippy::no_effect, clippy::unnecessary_operation)]
 fn main() {
     let x = 5;
 
@@ -44,8 +44,8 @@ fn main() {
     ineffective();
 }
 
-#[warn(ineffective_bit_mask)]
-#[allow(bad_bit_mask, no_effect, unnecessary_operation)]
+#[warn(clippy::ineffective_bit_mask)]
+#[allow(clippy::bad_bit_mask, clippy::no_effect, clippy::unnecessary_operation)]
 fn ineffective() {
     let x = 5;
 

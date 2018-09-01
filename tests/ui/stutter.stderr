@@ -4,7 +4,7 @@ error: item name starts with its containing module's name
 8 |     pub fn foo_bar() {}
   |     ^^^^^^^^^^^^^^^^^^^
   |
-  = note: `-D stutter` implied by `-D warnings`
+  = note: `-D clippy::stutter` implied by `-D warnings`
 
 error: item name ends with its containing module's name
  --> $DIR/stutter.rs:9:5

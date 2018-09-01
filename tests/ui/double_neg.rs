@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#[warn(double_neg)]
+#[warn(clippy::double_neg)]
 fn main() {
     let x = 1;
     -x;

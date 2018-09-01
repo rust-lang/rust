@@ -1,3 +1,5 @@
+#![feature(tool_lints)]
+
 use std::collections::HashSet;
 
 fn main() {
@@ -9,7 +11,7 @@ fn main() {
     let y = "x";
     x.split(y);
     // Not yet testing for multi-byte characters
-    // Changing `r.len() == 1` to `r.chars().count() == 1` in `lint_single_char_pattern`
+    // Changing `r.len() == 1` to `r.chars().count() == 1` in `lint_clippy::single_char_pattern`
     // should have done this but produced an ICE
     //
     // We may not want to suggest changing these anyway

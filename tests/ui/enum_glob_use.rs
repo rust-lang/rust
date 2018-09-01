@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
-
-#![warn(clippy, clippy_pedantic)]
-#![allow(unused_imports, dead_code, missing_docs_in_private_items)]
+#![warn(clippy::all, clippy::pedantic)]
+#![allow(unused_imports, dead_code, clippy::missing_docs_in_private_items)]
 
 use std::cmp::Ordering::*;
 

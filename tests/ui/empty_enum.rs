@@ -1,8 +1,8 @@
-
+#![feature(tool_lints)]
 
 
 #![allow(dead_code)]
-#![warn(empty_enum)]
+#![warn(clippy::empty_enum)]
 
 enum Empty {}
 

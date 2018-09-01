@@ -5,7 +5,7 @@ use rustc::hir::def::Def;
 use rustc::hir::def_id;
 use rustc::hir::intravisit::{walk_block, walk_decl, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use rustc::middle::region;
 // use rustc::middle::region::CodeExtent;

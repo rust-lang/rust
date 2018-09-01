@@ -4,7 +4,7 @@ error: boolean short circuit operator in statement may be clearer using an expli
 7 |     f() && g();
   |     ^^^^^^^^^^^ help: replace it with: `if f() { g(); }`
   |
-  = note: `-D short-circuit-statement` implied by `-D warnings`
+  = note: `-D clippy::short-circuit-statement` implied by `-D warnings`
 
 error: boolean short circuit operator in statement may be clearer using an explicit test
  --> $DIR/short_circuit_statement.rs:8:5

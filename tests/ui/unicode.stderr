@@ -4,7 +4,7 @@ error: zero-width space detected
 6 |     print!("Here >​< is a ZWS, and ​another");
   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
-  = note: `-D zero-width-space` implied by `-D warnings`
+  = note: `-D clippy::zero-width-space` implied by `-D warnings`
   = help: Consider replacing the string with:
           ""Here >/u{200B}< is a ZWS, and /u{200B}another""
 
@@ -14,7 +14,7 @@ error: non-nfc unicode sequence detected
 12 |     print!("̀àh?");
    |            ^^^^^
    |
-   = note: `-D unicode-not-nfc` implied by `-D warnings`
+   = note: `-D clippy::unicode-not-nfc` implied by `-D warnings`
    = help: Consider replacing the string with:
            ""̀àh?""
 
@@ -24,7 +24,7 @@ error: literal non-ASCII character detected
 18 |     print!("Üben!");
    |            ^^^^^^^
    |
-   = note: `-D non-ascii-literal` implied by `-D warnings`
+   = note: `-D clippy::non-ascii-literal` implied by `-D warnings`
    = help: Consider replacing the string with:
            ""/u{dc}ben!""
 

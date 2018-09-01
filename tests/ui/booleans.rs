@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
+#![warn(clippy::nonminimal_bool, clippy::logic_bug)]
 
-#![warn(nonminimal_bool, logic_bug)]
-
-#[allow(unused, many_single_char_names)]
+#[allow(unused, clippy::many_single_char_names)]
 fn main() {
     let a: bool = unimplemented!();
     let b: bool = unimplemented!();
@@ -23,7 +23,7 @@ fn main() {
     let _ = !(!a && b);
 }
 
-#[allow(unused, many_single_char_names)]
+#[allow(unused, clippy::many_single_char_names)]
 fn equality_stuff() {
     let a: i32 = unimplemented!();
     let b: i32 = unimplemented!();
@@ -39,7 +39,7 @@ fn equality_stuff() {
     let _ = a != b || !(a != b || c == d);
 }
 
-#[allow(unused, many_single_char_names)]
+#[allow(unused, clippy::many_single_char_names)]
 fn methods_with_negation() {
     let a: Option<i32> = unimplemented!();
     let b: Result<i32, i32> = unimplemented!();
@@ -59,7 +59,7 @@ fn methods_with_negation() {
 }
 
 // Simplified versions of https://github.com/rust-lang-nursery/rust-clippy/issues/2638
-// nonminimal_bool should only check the built-in Result and Some type, not
+// clippy::nonminimal_bool should only check the built-in Result and Some type, not
 // any other types like the following.
 enum CustomResultOk<E> { Ok, Err(E) }
 enum CustomResultErr<E> { Ok, Err(E) }
@@ -115,7 +115,7 @@ fn warn_for_built_in_methods_with_negation() {
     if !res.is_none() { }
 }
 
-#[allow(neg_cmp_op_on_partial_ord)]
+#[allow(clippy::neg_cmp_op_on_partial_ord)]
 fn dont_warn_for_negated_partial_ord_comparison() {
     let a: f64 = unimplemented!();
     let b: f64 = unimplemented!();

@@ -4,7 +4,7 @@ error: this if-then-else expression will always return true
 9 |     if x { true } else { true };
   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
-  = note: `-D needless-bool` implied by `-D warnings`
+  = note: `-D clippy::needless-bool` implied by `-D warnings`
 
 error: this if-then-else expression will always return false
   --> $DIR/needless_bool.rs:10:5

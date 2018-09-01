@@ -1,7 +1,7 @@
 //! lint on enum variants that are prefixed or suffixed by the same characters
 
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass, Lint};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use syntax::ast::*;
 use syntax::source_map::Span;
 use syntax::symbol::LocalInternedString;
@@ -147,7 +147,7 @@ fn partial_rmatch(post: &str, name: &str) -> usize {
 }
 
 // FIXME: #600
-#[allow(while_let_on_iterator)]
+#[allow(clippy::while_let_on_iterator)]
 fn check_variant(
     cx: &EarlyContext<'_>,
     threshold: u64,

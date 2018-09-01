@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
-
-#![allow(unused, dead_code, needless_lifetimes, needless_pass_by_value, trivially_copy_pass_by_ref)]
-#![warn(extra_unused_lifetimes)]
+#![allow(unused, dead_code, clippy::needless_lifetimes, clippy::needless_pass_by_value, clippy::trivially_copy_pass_by_ref)]
+#![warn(clippy::extra_unused_lifetimes)]
 
 fn empty() {
 

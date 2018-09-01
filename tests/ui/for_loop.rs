@@ -1,4 +1,4 @@
-
+#![feature(tool_lints)]
 
 
 use std::collections::*;
@@ -7,7 +7,7 @@ use std::rc::Rc;
 static STATIC: [usize; 4] = [0, 1, 8, 16];
 const CONST: [usize; 4] = [0, 1, 8, 16];
 
-#[warn(clippy)]
+#[warn(clippy::all)]
 fn for_loop_over_option_and_result() {
     let option = Some(1);
     let result = option.ok_or("x not found");
@@ -27,7 +27,7 @@ fn for_loop_over_option_and_result() {
         println!("{}", x);
     }
 
-    // make sure LOOP_OVER_NEXT lint takes precedence when next() is the last call
+    // make sure LOOP_OVER_NEXT lint takes clippy::precedence when next() is the last call
     // in the chain
     for x in v.iter().next() {
         println!("{}", x);
@@ -73,11 +73,11 @@ impl Unrelated {
     }
 }
 
-#[warn(needless_range_loop, explicit_iter_loop, explicit_into_iter_loop, iter_next_loop, reverse_range_loop,
-       explicit_counter_loop, for_kv_map)]
-#[warn(unused_collect)]
-#[allow(linkedlist, shadow_unrelated, unnecessary_mut_passed, cyclomatic_complexity, similar_names)]
-#[allow(many_single_char_names, unused_variables)]
+#[warn(clippy::needless_range_loop, clippy::explicit_iter_loop, clippy::explicit_into_iter_loop, clippy::iter_next_loop, clippy::reverse_range_loop,
+       clippy::explicit_counter_loop, clippy::for_kv_map)]
+#[warn(clippy::unused_collect)]
+#[allow(clippy::linkedlist, clippy::shadow_unrelated, clippy::unnecessary_mut_passed, clippy::cyclomatic_complexity, clippy::similar_names)]
+#[allow(clippy::many_single_char_names, unused_variables)]
 fn main() {
     const MAX_LEN: usize = 42;
 
@@ -429,7 +429,7 @@ fn main() {
     }
 }
 
-#[allow(used_underscore_binding)]
+#[allow(clippy::used_underscore_binding)]
 fn test_for_kv_map() {
     let m: HashMap<u64, u64> = HashMap::new();
 
@@ -456,7 +456,7 @@ fn partition<T: PartialOrd + Send>(v: &mut [T]) -> usize {
 
 const LOOP_OFFSET: usize = 5000;
 
-#[warn(needless_range_loop)]
+#[warn(clippy::needless_range_loop)]
 pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
     // plain manual memcpy
     for i in 0..src.len() {
@@ -542,14 +542,14 @@ pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
     }
 }
 
-#[warn(needless_range_loop)]
+#[warn(clippy::needless_range_loop)]
 pub fn manual_clone(src: &[String], dst: &mut [String]) {
     for i in 0..src.len() {
         dst[i] = src[i].clone();
     }
 }
 
-#[warn(needless_range_loop)]
+#[warn(clippy::needless_range_loop)]
 pub fn manual_copy_same_destination(dst: &mut [i32], d: usize, s: usize) {
     // Same source and destination - don't trigger lint
     for i in 0..dst.len() {

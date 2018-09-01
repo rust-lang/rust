@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#![allow(many_single_char_names)]
-#![warn(overflow_check_conditional)]
+#![allow(clippy::many_single_char_names)]
+#![warn(clippy::overflow_check_conditional)]
 
 fn main() {
 	let a: u32 = 1;

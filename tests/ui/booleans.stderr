@@ -4,7 +4,7 @@ error: this boolean expression contains a logic bug
 12 |     let _ = a && b || a;
    |             ^^^^^^^^^^^ help: it would look like the following: `a`
    |
-   = note: `-D logic-bug` implied by `-D warnings`
+   = note: `-D clippy::logic-bug` implied by `-D warnings`
 help: this expression can be optimized out by applying boolean operations to the outer expression
   --> $DIR/booleans.rs:12:18
    |
@@ -17,7 +17,7 @@ error: this boolean expression can be simplified
 14 |     let _ = !true;
    |             ^^^^^ help: try: `false`
    |
-   = note: `-D nonminimal-bool` implied by `-D warnings`
+   = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
 
 error: this boolean expression can be simplified
   --> $DIR/booleans.rs:15:13

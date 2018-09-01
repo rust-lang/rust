@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(clippy)]
-#![warn(mutex_integer)]
+#![warn(clippy::all)]
+#![warn(clippy::mutex_integer)]
 
 fn main() {
     use std::sync::Mutex;

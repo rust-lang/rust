@@ -3,7 +3,7 @@ use crate::utils::{higher, sugg};
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use syntax::ast;
 
@@ -108,7 +108,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
             },
             hir::ExprKind::Assign(ref assignee, ref e) => {
                 if let hir::ExprKind::Binary(op, ref l, ref r) = e.node {
-                    #[allow(cyclomatic_complexity)]
+                    #[allow(clippy::cyclomatic_complexity)]
                     let lint = |assignee: &hir::Expr, rhs: &hir::Expr| {
                         let ty = cx.tables.expr_ty(assignee);
                         let rty = cx.tables.expr_ty(rhs);

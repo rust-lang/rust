@@ -1,10 +1,12 @@
-#![deny(useless_asref)]
-#![allow(trivially_copy_pass_by_ref)]
+#![feature(tool_lints)]
+
+#![deny(clippy::useless_asref)]
+#![allow(clippy::trivially_copy_pass_by_ref)]
 use std::fmt::Debug;
 
 struct FakeAsRef;
 
-#[allow(should_implement_trait)]
+#[allow(clippy::should_implement_trait)]
 impl FakeAsRef {
     fn as_ref(&self) -> &Self { self }
 }

@@ -1,7 +1,7 @@
 use matches::matches;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, Lint, LintContext};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use rustc::ty::{self, Ty};
 use rustc::hir::def::Def;
@@ -714,7 +714,7 @@ impl LintPass for Pass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
-    #[allow(cyclomatic_complexity)]
+    #[allow(clippy::cyclomatic_complexity)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         if in_macro(expr.span) {
             return;
@@ -922,7 +922,7 @@ fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Spa
     }
 
     /// Check for `*or(foo())`.
-    #[allow(too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     fn check_general_case(
         cx: &LateContext<'_, '_>,
         name: &str,

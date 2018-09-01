@@ -1,3 +1,5 @@
+#![feature(tool_lints)]
+
 /* This file incorporates work covered by the following copyright and
  * permission notice:
  *   Copyright 2013 The Rust Project Developers. See the COPYRIGHT
@@ -13,7 +15,7 @@
 
 
 
-#![warn(missing_docs_in_private_items)]
+#![warn(clippy::missing_docs_in_private_items)]
 
 // When denying at the crate level, be sure to not get random warnings from the
 // injected intrinsics by the compiler.
@@ -36,7 +38,7 @@ pub struct PubFoo {
     b: isize,
 }
 
-#[allow(missing_docs_in_private_items)]
+#[allow(clippy::missing_docs_in_private_items)]
 pub struct PubFoo2 {
     pub a: isize,
     pub c: isize,
@@ -49,7 +51,7 @@ pub mod pub_module_no_dox {}
 pub fn foo() {}
 pub fn foo2() {}
 fn foo3() {}
-#[allow(missing_docs_in_private_items)] pub fn foo4() {}
+#[allow(clippy::missing_docs_in_private_items)] pub fn foo4() {}
 
 /// dox
 pub trait A {
@@ -59,7 +61,7 @@ pub trait A {
     fn foo_with_impl(&self) {}
 }
 
-#[allow(missing_docs_in_private_items)]
+#[allow(clippy::missing_docs_in_private_items)]
 trait B {
     fn foo(&self);
     fn foo_with_impl(&self) {}
@@ -70,7 +72,7 @@ pub trait C {
     fn foo_with_impl(&self) {}
 }
 
-#[allow(missing_docs_in_private_items)]
+#[allow(clippy::missing_docs_in_private_items)]
 pub trait D {
     fn dummy(&self) { }
 }
@@ -98,10 +100,10 @@ impl PubFoo {
     /// dox
     pub fn foo1() {}
     fn foo2() {}
-    #[allow(missing_docs_in_private_items)] pub fn foo3() {}
+    #[allow(clippy::missing_docs_in_private_items)] pub fn foo3() {}
 }
 
-#[allow(missing_docs_in_private_items)]
+#[allow(clippy::missing_docs_in_private_items)]
 trait F {
     fn a();
     fn b(&self);
@@ -146,7 +148,7 @@ pub enum PubBaz2 {
     },
 }
 
-#[allow(missing_docs_in_private_items)]
+#[allow(clippy::missing_docs_in_private_items)]
 pub enum PubBaz3 {
     PubBaz3A {
         b: isize
@@ -160,7 +162,7 @@ pub fn baz() {}
 const FOO: u32 = 0;
 /// dox
 pub const FOO1: u32 = 0;
-#[allow(missing_docs_in_private_items)]
+#[allow(clippy::missing_docs_in_private_items)]
 pub const FOO2: u32 = 0;
 #[doc(hidden)]
 pub const FOO3: u32 = 0;
@@ -170,7 +172,7 @@ pub const FOO4: u32 = 0;
 static BAR: u32 = 0;
 /// dox
 pub static BAR1: u32 = 0;
-#[allow(missing_docs_in_private_items)]
+#[allow(clippy::missing_docs_in_private_items)]
 pub static BAR2: u32 = 0;
 #[doc(hidden)]
 pub static BAR3: u32 = 0;

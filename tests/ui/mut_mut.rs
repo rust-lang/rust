@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#![allow(unused, no_effect, unnecessary_operation)]
-#![warn(mut_mut)]
+#![allow(unused, clippy::no_effect, clippy::unnecessary_operation)]
+#![warn(clippy::mut_mut)]
 
 
 

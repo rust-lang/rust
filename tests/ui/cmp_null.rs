@@ -1,6 +1,6 @@
+#![feature(tool_lints)]
 
-
-#![warn(cmp_null)]
+#![warn(clippy::cmp_null)]
 #![allow(unused_mut)]
 
 use std::ptr;

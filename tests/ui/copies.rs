@@ -1,5 +1,7 @@
-#![allow(blacklisted_name, collapsible_if, cyclomatic_complexity, eq_op, needless_continue,
-         needless_return, never_loop, no_effect, zero_divided_by_zero)]
+#![feature(tool_lints)]
+
+#![allow(clippy::blacklisted_name, clippy::collapsible_if, clippy::cyclomatic_complexity, clippy::eq_op, clippy::needless_continue,
+         clippy::needless_return, clippy::never_loop, clippy::no_effect, clippy::zero_divided_by_zero)]
 
 fn bar<T>(_: T) {}
 fn foo() -> bool { unimplemented!() }
@@ -14,8 +16,8 @@ pub enum Abc {
     C,
 }
 
-#[warn(if_same_then_else)]
-#[warn(match_same_arms)]
+#[warn(clippy::if_same_then_else)]
+#[warn(clippy::match_same_arms)]
 fn if_same_then_else() -> Result<&'static str, ()> {
     if true {
         Foo { bar: 42 };
@@ -340,8 +342,8 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 }
 
-#[warn(ifs_same_cond)]
-#[allow(if_same_then_else)] // all empty blocks
+#[warn(clippy::ifs_same_cond)]
+#[allow(clippy::if_same_then_else)] // all empty blocks
 fn ifs_same_cond() {
     let a = 0;
     let b = false;

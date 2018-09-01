@@ -5,7 +5,7 @@ use rustc::hir;
 use rustc::hir::*;
 use rustc::hir::intravisit::FnKind;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use rustc::ty::TyKind;
 use rustc::session::config::Config as SessionConfig;

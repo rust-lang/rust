@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(short_circuit_statement)]
+#![warn(clippy::short_circuit_statement)]
 
 fn main() {
     f() && g();

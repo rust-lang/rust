@@ -2,7 +2,7 @@
 
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use std::collections::HashMap;
 use std::default::Default;
 use syntax_pos::Span;

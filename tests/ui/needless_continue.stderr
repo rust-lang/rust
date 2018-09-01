@@ -8,7 +8,7 @@ error: This else block is redundant.
 28 | |         }
    | |_________^
    |
-   = note: `-D needless-continue` implied by `-D warnings`
+   = note: `-D clippy::needless-continue` implied by `-D warnings`
    = help: Consider dropping the else clause and merging the code that follows (in the loop) with the if block, like so:
            if i % 2 == 0 && i % 3 == 0 {
            println!("{}", i);

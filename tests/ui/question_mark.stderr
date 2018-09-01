@@ -7,7 +7,7 @@ error: this block may be rewritten with the `?` operator
 4 | |     }
   | |_____^ help: replace_it_with: `a?;`
   |
-  = note: `-D question-mark` implied by `-D warnings`
+  = note: `-D clippy::question-mark` implied by `-D warnings`
 
 error: this block may be rewritten with the `?` operator
   --> $DIR/question_mark.rs:37:3

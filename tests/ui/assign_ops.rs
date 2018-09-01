@@ -1,5 +1,7 @@
+#![feature(tool_lints)]
+
 #[allow(dead_code, unused_assignments)]
-#[warn(assign_op_pattern)]
+#[warn(clippy::assign_op_pattern)]
 fn main() {
     let mut a = 5;
     a = a + 1;

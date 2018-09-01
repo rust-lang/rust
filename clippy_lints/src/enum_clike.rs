@@ -2,7 +2,7 @@
 //! don't fit into an `i32`
 
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use rustc::hir::*;
 use rustc::ty;
 use rustc::ty::subst::Substs;
@@ -43,7 +43,7 @@ impl LintPass for UnportableVariant {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
-    #[allow(cast_possible_truncation, cast_sign_loss)]
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if cx.tcx.data_layout.pointer_size.bits() != 64 {
             return;

@@ -4,7 +4,7 @@ error: This binary expression can be simplified
 4 |     if x == y || x < y {
   |        ^^^^^^^^^^^^^^^ help: try: `x <= y`
   |
-  = note: `-D double-comparisons` implied by `-D warnings`
+  = note: `-D clippy::double-comparisons` implied by `-D warnings`
 
 error: This binary expression can be simplified
  --> $DIR/double_comparison.rs:7:8

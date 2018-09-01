@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#[allow(no_effect, unnecessary_operation)]
-#[warn(int_plus_one)]
+#[allow(clippy::no_effect, clippy::unnecessary_operation)]
+#[warn(clippy::int_plus_one)]
 fn main() {
     let x = 1i32;
     let y = 0i32;

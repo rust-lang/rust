@@ -1,4 +1,4 @@
-
+#![feature(tool_lints)]
 
 
 
@@ -8,8 +8,8 @@ use std::rc::Rc;
 use std::mem::forget as forgetSomething;
 use std::mem as memstuff;
 
-#[warn(mem_forget)]
-#[allow(forget_copy)]
+#[warn(clippy::mem_forget)]
+#[allow(clippy::forget_copy)]
 fn main() {
     let five: i32 = 5;
     forgetSomething(five);

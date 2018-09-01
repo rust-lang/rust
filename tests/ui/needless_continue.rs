@@ -1,4 +1,4 @@
-
+#![feature(tool_lints)]
 
 
 macro_rules! zero {
@@ -9,7 +9,7 @@ macro_rules! nonzero {
     ($x:expr) => (!zero!($x));
 }
 
-#[warn(needless_continue)]
+#[warn(clippy::needless_continue)]
 fn main() {
     let mut i = 1;
     while i < 10 {

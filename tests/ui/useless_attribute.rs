@@ -1,6 +1,6 @@
+#![feature(tool_lints)]
 
-
-#![warn(useless_attribute)]
+#![warn(clippy::useless_attribute)]
 
 #[allow(dead_code, unused_extern_crates)]
 #[cfg_attr(feature = "cargo-clippy", allow(dead_code, unused_extern_crates))]

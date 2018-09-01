@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use pulldown_cmark;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use syntax::ast;
 use syntax::source_map::{BytePos, Span};
 use syntax_pos::Pos;
@@ -86,7 +86,7 @@ impl<'a> Iterator for Parser<'a> {
 /// `syntax::parse::lexer::comments::strip_doc_comment_decoration` because we
 /// need to keep track of
 /// the spans but this function is inspired from the later.
-#[allow(cast_possible_truncation)]
+#[allow(clippy::cast_possible_truncation)]
 pub fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(usize, Span)>) {
     // one-line comments lose their prefix
     const ONELINERS: &[&str] = &["///!", "///", "//!", "//"];

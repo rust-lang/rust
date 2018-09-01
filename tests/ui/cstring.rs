@@ -1,6 +1,8 @@
+#![feature(tool_lints)]
+
 fn main() {}
 
-#[allow(result_unwrap_used)]
+#[allow(clippy::result_unwrap_used)]
 fn temporary_cstring() {
     use std::ffi::CString;
 

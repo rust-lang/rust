@@ -1,5 +1,7 @@
+#![feature(tool_lints)]
+
 #![feature(exhaustive_patterns, never_type)]
-#![allow(let_and_return)]
+#![allow(clippy::let_and_return)]
 
 enum SingleVariantEnum {
     Variant(i32),

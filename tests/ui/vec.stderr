@@ -4,7 +4,7 @@ error: useless use of `vec!`
 24 |     on_slice(&vec![]);
    |              ^^^^^^^ help: you can use a slice directly: `&[]`
    |
-   = note: `-D useless-vec` implied by `-D warnings`
+   = note: `-D clippy::useless-vec` implied by `-D warnings`
 
 error: useless use of `vec!`
   --> $DIR/vec.rs:27:14

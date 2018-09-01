@@ -10,7 +10,7 @@ error: this loop could be written as a `while let` loop
 15 | |     }
    | |_____^ help: try: `while let Some(_x) = y { .. }`
    |
-   = note: `-D while-let-loop` implied by `-D warnings`
+   = note: `-D clippy::while-let-loop` implied by `-D warnings`
 
 error: this loop could be written as a `while let` loop
   --> $DIR/while_loop.rs:22:5
@@ -65,7 +65,7 @@ error: this loop could be written as a `for` loop
 68 |     while let Option::Some(x) = iter.next() {
    |                                 ^^^^^^^^^^^ help: try: `for x in iter { .. }`
    |
-   = note: `-D while-let-on-iterator` implied by `-D warnings`
+   = note: `-D clippy::while-let-on-iterator` implied by `-D warnings`
 
 error: this loop could be written as a `for` loop
   --> $DIR/while_loop.rs:73:25
@@ -97,7 +97,7 @@ error: empty `loop {}` detected. You may want to either use `panic!()` or add `s
 123 |         loop {}
     |         ^^^^^^^
     |
-    = note: `-D empty-loop` implied by `-D warnings`
+    = note: `-D clippy::empty-loop` implied by `-D warnings`
 
 error: this loop could be written as a `for` loop
    --> $DIR/while_loop.rs:183:29

@@ -4,7 +4,7 @@ error: use of a blacklisted/placeholder name `toto`
 9 | fn test(toto: ()) {}
   |         ^^^^
   |
-  = note: `-D blacklisted-name` implied by `-D warnings`
+  = note: `-D clippy::blacklisted-name` implied by `-D warnings`
 
 error: use of a blacklisted/placeholder name `toto`
   --> $DIR/conf_french_blacklisted_name.rs:12:9

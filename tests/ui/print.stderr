@@ -4,7 +4,7 @@ error: use of `Debug`-based formatting
 13 |         write!(f, "{:?}", 43.1415)
    |                   ^^^^^^
    |
-   = note: `-D use-debug` implied by `-D warnings`
+   = note: `-D clippy::use-debug` implied by `-D warnings`
 
 error: use of `Debug`-based formatting
   --> $DIR/print.rs:20:19
@@ -18,7 +18,7 @@ error: use of `println!`
 25 |     println!("Hello");
    |     ^^^^^^^^^^^^^^^^^
    |
-   = note: `-D print-stdout` implied by `-D warnings`
+   = note: `-D clippy::print-stdout` implied by `-D warnings`
 
 error: use of `print!`
   --> $DIR/print.rs:26:5

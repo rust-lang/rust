@@ -4,7 +4,7 @@ error: redundant pattern matching, consider using `is_ok()`
 9 |     if let Ok(_) = Ok::<i32, i32>(42) {}
   |     -------^^^^^--------------------- help: try this: `if Ok::<i32, i32>(42).is_ok()`
   |
-  = note: `-D if-let-redundant-pattern-matching` implied by `-D warnings`
+  = note: `-D clippy::if-let-redundant-pattern-matching` implied by `-D warnings`
 
 error: redundant pattern matching, consider using `is_err()`
   --> $DIR/if_let_redundant_pattern_matching.rs:11:12

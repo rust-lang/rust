@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(integer_arithmetic, float_arithmetic)]
-#![allow(unused, shadow_reuse, shadow_unrelated, no_effect, unnecessary_operation)]
+#![warn(clippy::integer_arithmetic, clippy::float_arithmetic)]
+#![allow(unused, clippy::shadow_reuse, clippy::shadow_unrelated, clippy::no_effect, clippy::unnecessary_operation)]
 fn main() {
     let i = 1i32;
     1 + i;

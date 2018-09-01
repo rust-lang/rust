@@ -5,7 +5,7 @@ error: this function has too many arguments (8/7)
 12 | | }
    | |_^
    |
-   = note: `-D too-many-arguments` implied by `-D warnings`
+   = note: `-D clippy::too-many-arguments` implied by `-D warnings`
 
 error: this function has too many arguments (8/7)
   --> $DIR/functions.rs:19:5
@@ -25,7 +25,7 @@ error: this public function dereferences a raw pointer but is not marked `unsafe
 37 |         println!("{}", unsafe { *p });
    |                                  ^
    |
-   = note: `-D not-unsafe-ptr-arg-deref` implied by `-D warnings`
+   = note: `-D clippy::not-unsafe-ptr-arg-deref` implied by `-D warnings`
 
 error: this public function dereferences a raw pointer but is not marked `unsafe`
   --> $DIR/functions.rs:38:35

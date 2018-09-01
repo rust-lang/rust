@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#[warn(needless_borrowed_reference)]
+#[warn(clippy::needless_borrowed_reference)]
 #[allow(unused_variables)]
 fn main() {
     let mut v = Vec::<String>::new();

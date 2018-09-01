@@ -1,7 +1,7 @@
 //! This module contains functions for retrieve the original AST from lowered
 //! `hir`.
 
-#![deny(missing_docs_in_private_items)]
+#![deny(clippy::missing_docs_in_private_items)]
 
 use if_chain::if_chain;
 use rustc::{hir, ty};

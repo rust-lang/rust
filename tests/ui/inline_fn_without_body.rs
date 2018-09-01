@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(inline_fn_without_body)]
-#![allow(inline_always)]
+#![warn(clippy::inline_fn_without_body)]
+#![allow(clippy::inline_always)]
 
 trait Foo {
     #[inline]

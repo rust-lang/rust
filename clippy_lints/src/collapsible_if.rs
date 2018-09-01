@@ -13,7 +13,7 @@
 //! This lint is **warn** by default
 
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use syntax::ast;
 

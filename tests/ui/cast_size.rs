@@ -1,5 +1,7 @@
-#[warn(cast_precision_loss, cast_possible_truncation, cast_sign_loss, cast_possible_wrap, cast_lossless)]
-#[allow(no_effect, unnecessary_operation)]
+#![feature(tool_lints)]
+
+#[warn(clippy::cast_precision_loss, clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::cast_possible_wrap, clippy::cast_lossless)]
+#[allow(clippy::no_effect, clippy::unnecessary_operation)]
 fn main() {
     // Casting from *size
     1isize as i8;

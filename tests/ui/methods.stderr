@@ -4,7 +4,7 @@ error: defining a method called `add` on this type; consider implementing the `s
 21 |     pub fn add(self, other: T) -> T { self }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D should-implement-trait` implied by `-D warnings`
+   = note: `-D clippy::should-implement-trait` implied by `-D warnings`
 
 error: methods called `into_*` usually take self by value; consider choosing a less ambiguous name
   --> $DIR/methods.rs:32:17
@@ -12,7 +12,7 @@ error: methods called `into_*` usually take self by value; consider choosing a l
 32 |     fn into_u16(&self) -> u16 { 0 }
    |                 ^^^^^
    |
-   = note: `-D wrong-self-convention` implied by `-D warnings`
+   = note: `-D clippy::wrong-self-convention` implied by `-D warnings`
 
 error: methods called `to_*` usually take self by reference; consider choosing a less ambiguous name
   --> $DIR/methods.rs:34:21
@@ -32,7 +32,7 @@ error: methods called `new` usually return `Self`
 36 |     fn new(self) {}
    |     ^^^^^^^^^^^^^^^
    |
-   = note: `-D new-ret-no-self` implied by `-D warnings`
+   = note: `-D clippy::new-ret-no-self` implied by `-D warnings`
 
 error: called `map(f).unwrap_or(a)` on an Option value. This can be done more directly by calling `map_or(a, f)` instead
    --> $DIR/methods.rs:104:13
@@ -43,7 +43,7 @@ error: called `map(f).unwrap_or(a)` on an Option value. This can be done more di
 106 | |                .unwrap_or(0); // should lint even though this call is on a separate line
     | |____________________________^
     |
-    = note: `-D option-map-unwrap-or` implied by `-D warnings`
+    = note: `-D clippy::option-map-unwrap-or` implied by `-D warnings`
     = note: replace `map(|x| x + 1).unwrap_or(0)` with `map_or(0, |x| x + 1)`
 
 error: called `map(f).unwrap_or(a)` on an Option value. This can be done more directly by calling `map_or(a, f)` instead
@@ -104,7 +104,7 @@ error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done mo
 133 | |                .unwrap_or_else(|| 0); // should lint even though this call is on a separate line
     | |____________________________________^
     |
-    = note: `-D option-map-unwrap-or-else` implied by `-D warnings`
+    = note: `-D clippy::option-map-unwrap-or-else` implied by `-D warnings`
     = note: replace `map(|x| x + 1).unwrap_or_else(|| 0)` with `map_or_else(|| 0, |x| x + 1)`
 
 error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling `map_or_else(g, f)` instead
@@ -133,7 +133,7 @@ error: called `map_or(None, f)` on an Option value. This can be done more direct
 148 |     let _ = opt.map_or(None, |x| Some(x + 1));
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using and_then instead: `opt.and_then(|x| Some(x + 1))`
     |
-    = note: `-D option-map-or-none` implied by `-D warnings`
+    = note: `-D clippy::option-map-or-none` implied by `-D warnings`
 
 error: called `map_or(None, f)` on an Option value. This can be done more directly by calling `and_then(f)` instead
    --> $DIR/methods.rs:150:13
@@ -160,7 +160,7 @@ error: called `map(f).unwrap_or_else(g)` on a Result value. This can be done mor
 165 | |                .unwrap_or_else(|e| 0); // should lint even though this call is on a separate line
     | |_____________________________________^
     |
-    = note: `-D result-map-unwrap-or-else` implied by `-D warnings`
+    = note: `-D clippy::result-map-unwrap-or-else` implied by `-D warnings`
     = note: replace `map(|x| x + 1).unwrap_or_else(|e| 0)` with `ok().map_or_else(|e| 0, |x| x + 1)`
 
 error: called `map(f).unwrap_or_else(g)` on a Result value. This can be done more directly by calling `ok().map_or_else(g, f)` instead
@@ -189,7 +189,7 @@ error: called `filter(p).next()` on an `Iterator`. This is more succinctly expre
 234 |     let _ = v.iter().filter(|&x| *x < 0).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
-    = note: `-D filter-next` implied by `-D warnings`
+    = note: `-D clippy::filter-next` implied by `-D warnings`
     = note: replace `filter(|&x| *x < 0).next()` with `find(|&x| *x < 0)`
 
 error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
@@ -208,7 +208,7 @@ error: called `is_some()` after searching an `Iterator` with find. This is more 
 252 |     let _ = v.iter().find(|&x| *x < 0).is_some();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
-    = note: `-D search-is-some` implied by `-D warnings`
+    = note: `-D clippy::search-is-some` implied by `-D warnings`
     = note: replace `find(|&x| *x < 0).is_some()` with `any(|&x| *x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
@@ -263,7 +263,7 @@ error: use of `unwrap_or` followed by a function call
 308 |     with_constructor.unwrap_or(make());
     |                      ^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(make)`
     |
-    = note: `-D or-fun-call` implied by `-D warnings`
+    = note: `-D clippy::or-fun-call` implied by `-D warnings`
 
 error: use of `unwrap_or` followed by a call to `new`
    --> $DIR/methods.rs:311:5
@@ -337,7 +337,7 @@ error: `error_code` is shadowed by `123_i32`
 377 |     let error_code = 123_i32;
     |         ^^^^^^^^^^
     |
-    = note: `-D shadow-unrelated` implied by `-D warnings`
+    = note: `-D clippy::shadow-unrelated` implied by `-D warnings`
 note: initialization happens here
    --> $DIR/methods.rs:377:22
     |
@@ -355,7 +355,7 @@ error: use of `expect` followed by a function call
 366 |     with_none_and_format.expect(&format!("Error {}: fake error", error_code));
     |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!("Error {}: fake error", error_code))`
     |
-    = note: `-D expect-fun-call` implied by `-D warnings`
+    = note: `-D clippy::expect-fun-call` implied by `-D warnings`
 
 error: use of `expect` followed by a function call
    --> $DIR/methods.rs:369:26
@@ -381,7 +381,7 @@ error: called `.iter().nth()` on a Vec. Calling `.get()` is both faster and more
 406 |         let bad_vec = some_vec.iter().nth(3);
     |                       ^^^^^^^^^^^^^^^^^^^^^^
     |
-    = note: `-D iter-nth` implied by `-D warnings`
+    = note: `-D clippy::iter-nth` implied by `-D warnings`
 
 error: called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
    --> $DIR/methods.rs:407:26
@@ -425,7 +425,7 @@ error: called `skip(x).next()` on an iterator. This is more succinctly expressed
 432 |     let _ = some_vec.iter().skip(42).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
-    = note: `-D iter-skip-next` implied by `-D warnings`
+    = note: `-D clippy::iter-skip-next` implied by `-D warnings`
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
    --> $DIR/methods.rs:433:13
@@ -451,7 +451,7 @@ error: used unwrap() on an Option value. If you don't want to handle the None ca
 444 |     let _ = opt.unwrap();
     |             ^^^^^^^^^^^^
     |
-    = note: `-D option-unwrap-used` implied by `-D warnings`
+    = note: `-D clippy::option-unwrap-used` implied by `-D warnings`
 
 error: aborting due to 56 previous errors
 

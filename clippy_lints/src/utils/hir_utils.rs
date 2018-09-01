@@ -364,7 +364,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
         }.hash(&mut self.s);
     }
 
-    #[allow(many_single_char_names)]
+    #[allow(clippy::many_single_char_names)]
     pub fn hash_expr(&mut self, e: &Expr) {
         if let Some(e) = constant_simple(self.cx, self.tables, e) {
             return e.hash(&mut self.s);

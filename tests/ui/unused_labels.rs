@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#![allow(dead_code, items_after_statements, never_loop)]
-#![warn(unused_label)]
+#![allow(dead_code, clippy::items_after_statements, clippy::never_loop)]
+#![warn(clippy::unused_label)]
 
 fn unused_label() {
     'label: for i in 1..2 {

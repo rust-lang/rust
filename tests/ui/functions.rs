@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(clippy)]
+#![warn(clippy::all)]
 #![allow(dead_code)]
 #![allow(unused_unsafe)]
 
