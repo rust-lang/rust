@@ -7,8 +7,8 @@ error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
 note: lint level defined here
  --> $DIR/borrow_box.rs:4:9
   |
-4 | #![deny(borrowed_box)]
-  |         ^^^^^^^^^^^^
+4 | #![deny(clippy::borrowed_box)]
+  |         ^^^^^^^^^^^^^^^^^^^^
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
   --> $DIR/borrow_box.rs:14:14

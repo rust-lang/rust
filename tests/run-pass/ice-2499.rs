@@ -1,4 +1,6 @@
-#![allow(dead_code, char_lit_as_u8, needless_bool)]
+#![feature(tool_lints)]
+
+#![allow(dead_code, clippy::char_lit_as_u8, clippy::needless_bool)]
 
 /// Should not trigger an ICE in `SpanlessHash` / `consts::constant`
 ///

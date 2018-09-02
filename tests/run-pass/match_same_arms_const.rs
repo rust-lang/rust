@@ -1,4 +1,6 @@
-#![deny(match_same_arms)]
+#![feature(tool_lints)]
+
+#![deny(clippy::match_same_arms)]
 
 const PRICE_OF_SWEETS: u32 = 5;
 const PRICE_OF_KINDNESS: u32 = 0;

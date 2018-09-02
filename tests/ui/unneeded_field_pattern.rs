@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(unneeded_field_pattern)]
+#![warn(clippy::unneeded_field_pattern)]
 #[allow(dead_code, unused)]
 
 struct Foo {

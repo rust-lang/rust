@@ -4,7 +4,7 @@ error: calls to `std::mem::drop` with a value that implements Copy. Dropping a c
 33 |     drop(s1);
    |     ^^^^^^^^
    |
-   = note: `-D drop-copy` implied by `-D warnings`
+   = note: `-D clippy::drop-copy` implied by `-D warnings`
 note: argument has type SomeStruct
   --> $DIR/drop_forget_copy.rs:33:10
    |
@@ -41,7 +41,7 @@ error: calls to `std::mem::forget` with a value that implements Copy. Forgetting
 39 |     forget(s1);
    |     ^^^^^^^^^^
    |
-   = note: `-D forget-copy` implied by `-D warnings`
+   = note: `-D clippy::forget-copy` implied by `-D warnings`
 note: argument has type SomeStruct
   --> $DIR/drop_forget_copy.rs:39:12
    |

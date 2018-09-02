@@ -1,8 +1,8 @@
-
+#![feature(tool_lints)]
 
 
 #[allow(unused_assignments)]
-#[warn(misrefactored_assign_op, assign_op_pattern)]
+#[warn(clippy::misrefactored_assign_op, clippy::assign_op_pattern)]
 fn main() {
     let mut a = 5;
     a += a + 1;

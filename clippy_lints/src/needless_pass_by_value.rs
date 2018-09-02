@@ -1,9 +1,8 @@
 use matches::matches;
 use rustc::hir::*;
-use rustc::hir::map::*;
 use rustc::hir::intravisit::FnKind;
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use rustc::ty::{self, RegionKind, TypeFoldable};
 use rustc::traits;
@@ -90,7 +89,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         }
 
         // Exclude non-inherent impls
-        if let Some(NodeItem(item)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(node_id)) {
+        if let Some(Node::Item(item)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(node_id)) {
             if matches!(item.node, ItemKind::Impl(_, _, _, _, Some(_), _, _) |
                 ItemKind::Trait(..))
             {
@@ -340,7 +339,7 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
 
                 if let Some(node) = self.cx.tcx.hir.find(id) {
                     match node {
-                        map::Node::NodeExpr(e) => {
+                        Node::Expr(e) => {
                             // `match` and `if let`
                             if let ExprKind::Match(ref c, ..) = e.node {
                                 self.spans_need_deref
@@ -350,7 +349,7 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
                             }
                         },
 
-                        map::Node::NodeStmt(s) => {
+                        Node::Stmt(s) => {
                             // `let <pat> = x;`
                             if_chain! {
                                 if let StmtKind::Decl(ref decl, _) = s.node;

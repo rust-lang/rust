@@ -1,5 +1,7 @@
+#![feature(tool_lints)]
+
 #![allow(unused_must_use)]
-#![warn(writeln_empty_string)]
+#![warn(clippy::writeln_empty_string)]
 use std::io::Write;
 
 fn main() {

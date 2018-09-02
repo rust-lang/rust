@@ -7,8 +7,8 @@ error: You appear to be counting bytes the naive way
 note: lint level defined here
  --> $DIR/bytecount.rs:4:8
   |
-4 | #[deny(naive_bytecount)]
-  |        ^^^^^^^^^^^^^^^
+4 | #[deny(clippy::naive_bytecount)]
+  |        ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: You appear to be counting bytes the naive way
   --> $DIR/bytecount.rs:10:13

@@ -1,6 +1,6 @@
+#![feature(tool_lints)]
 
-
-#![warn(single_match_else)]
+#![warn(clippy::single_match_else)]
 
 fn main() {
     let n = match (42, 43) {

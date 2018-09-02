@@ -1,4 +1,6 @@
-#![warn(redundant_field_names)]
+#![feature(tool_lints)]
+
+#![warn(clippy::redundant_field_names)]
 #![allow(unused_variables)]
 #![feature(inclusive_range, inclusive_range_fields, inclusive_range_methods)]
 

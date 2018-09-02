@@ -3,7 +3,7 @@
 //! This lint is **deny** by default.
 
 use rustc::lint::{LateContext, LateLintPass, Lint, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use rustc::hir::*;
 use rustc::hir::def::Def;
 use rustc::ty::{self, TypeFlags};
@@ -212,7 +212,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
                 if parent_id == cur_expr.id {
                     break;
                 }
-                if let Some(map::NodeExpr(parent_expr)) = cx.tcx.hir.find(parent_id) {
+                if let Some(Node::Expr(parent_expr)) = cx.tcx.hir.find(parent_id) {
                     match &parent_expr.node {
                         ExprKind::AddrOf(..) => {
                             // `&e` => `e` must be referenced

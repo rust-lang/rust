@@ -1,6 +1,6 @@
+#![feature(tool_lints)]
 
-
-#![warn(items_after_statements)]
+#![warn(clippy::items_after_statements)]
 
 fn ok() {
     fn foo() { println!("foo"); }

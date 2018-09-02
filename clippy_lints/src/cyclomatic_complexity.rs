@@ -1,8 +1,8 @@
 //! calculate cyclomatic complexity and warn about overly complex functions
 
 use rustc::cfg::CFG;
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, LintContext};
+use rustc::{declare_tool_lint, lint_array};
 use rustc::hir::*;
 use rustc::ty;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
@@ -186,7 +186,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CCHelper<'a, 'tcx> {
 }
 
 #[cfg(feature = "debugging")]
-#[allow(too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 fn report_cc_bug(_: &LateContext<'_, '_>, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span, _: NodeId) {
     span_bug!(
         span,
@@ -200,7 +200,7 @@ fn report_cc_bug(_: &LateContext<'_, '_>, cc: u64, narms: u64, div: u64, shorts:
     );
 }
 #[cfg(not(feature = "debugging"))]
-#[allow(too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 fn report_cc_bug(cx: &LateContext<'_, '_>, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span, id: NodeId) {
     if !is_allowed(cx, CYCLOMATIC_COMPLEXITY, id) {
         cx.sess().span_note_without_error(

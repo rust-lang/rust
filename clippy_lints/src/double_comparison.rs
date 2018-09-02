@@ -1,8 +1,8 @@
 //! Lint on unnecessary double comparisons. Some examples:
 
 use rustc::hir::*;
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use syntax::source_map::Span;
 
 use crate::utils::{snippet, span_lint_and_sugg, SpanlessEq};

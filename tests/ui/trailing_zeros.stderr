@@ -4,7 +4,7 @@ error: bit mask could be simplified with a call to `trailing_zeros`
 7 |     let _ = #[clippy::author] (x & 0b1111 == 0);  // suggest trailing_zeros
   |                               ^^^^^^^^^^^^^^^^^ help: try: `x.trailing_zeros() >= 4`
   |
-  = note: `-D verbose-bit-mask` implied by `-D warnings`
+  = note: `-D clippy::verbose-bit-mask` implied by `-D warnings`
 
 error: bit mask could be simplified with a call to `trailing_zeros`
  --> $DIR/trailing_zeros.rs:8:13

@@ -7,7 +7,7 @@ error: called `filter(p).map(q)` on an `Iterator`. This is more succinctly expre
 10 | |                               .map(|x| x * 2)
    | |_____________________________________________^
    |
-   = note: `-D filter-map` implied by `-D warnings`
+   = note: `-D clippy::filter-map` implied by `-D warnings`
 
 error: called `filter(p).flat_map(q)` on an `Iterator`. This is more succinctly expressed by calling `.flat_map(..)` and filtering by returning an empty Iterator.
   --> $DIR/filter_methods.rs:13:21

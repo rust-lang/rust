@@ -1,9 +1,9 @@
-#![allow(print_stdout, use_debug)]
+#![allow(clippy::print_stdout, clippy::use_debug)]
 
 //! checks for attributes
 
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use rustc::hir;
 use rustc::hir::print;
 use syntax::ast::Attribute;
@@ -113,7 +113,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         }
         if let Some(ref guard) = arm.guard {
             println!("guard:");
-            print_expr(cx, guard, 1);
+            print_guard(cx, guard, 1);
         }
         println!("body:");
         print_expr(cx, &arm.body, 1);
@@ -513,5 +513,16 @@ fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat, indent: usize) {
                 print_pat(cx, pat, indent + 1);
             }
         },
+    }
+}
+
+fn print_guard(cx: &LateContext<'_, '_>, guard: &hir::Guard, indent: usize) {
+    let ind = "  ".repeat(indent);
+    println!("{}+", ind);
+    match guard {
+        hir::Guard::If(expr) => {
+            println!("{}If", ind);
+            print_expr(cx, expr, indent + 1);
+        }
     }
 }

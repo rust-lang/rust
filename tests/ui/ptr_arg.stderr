@@ -1,85 +1,85 @@
 error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices.
- --> $DIR/ptr_arg.rs:6:14
+ --> $DIR/ptr_arg.rs:8:14
   |
-6 | fn do_vec(x: &Vec<i64>) {
+8 | fn do_vec(x: &Vec<i64>) {
   |              ^^^^^^^^^ help: change this to: `&[i64]`
   |
-  = note: `-D ptr-arg` implied by `-D warnings`
+  = note: `-D clippy::ptr-arg` implied by `-D warnings`
 
 error: writing `&String` instead of `&str` involves a new object where a slice will do.
-  --> $DIR/ptr_arg.rs:14:14
+  --> $DIR/ptr_arg.rs:16:14
    |
-14 | fn do_str(x: &String) {
+16 | fn do_str(x: &String) {
    |              ^^^^^^^ help: change this to: `&str`
 
 error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices.
-  --> $DIR/ptr_arg.rs:27:18
+  --> $DIR/ptr_arg.rs:29:18
    |
-27 |     fn do_vec(x: &Vec<i64>);
+29 |     fn do_vec(x: &Vec<i64>);
    |                  ^^^^^^^^^ help: change this to: `&[i64]`
 
 error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices.
-  --> $DIR/ptr_arg.rs:40:14
+  --> $DIR/ptr_arg.rs:42:14
    |
-40 | fn cloned(x: &Vec<u8>) -> Vec<u8> {
+42 | fn cloned(x: &Vec<u8>) -> Vec<u8> {
    |              ^^^^^^^^
 help: change this to
    |
-40 | fn cloned(x: &[u8]) -> Vec<u8> {
+42 | fn cloned(x: &[u8]) -> Vec<u8> {
    |              ^^^^^
 help: change `x.clone()` to
    |
-41 |     let e = x.to_owned();
+43 |     let e = x.to_owned();
    |             ^^^^^^^^^^^^
 help: change `x.clone()` to
    |
-46 |     x.to_owned()
+48 |     x.to_owned()
    |
 
 error: writing `&String` instead of `&str` involves a new object where a slice will do.
-  --> $DIR/ptr_arg.rs:49:18
+  --> $DIR/ptr_arg.rs:51:18
    |
-49 | fn str_cloned(x: &String) -> String {
+51 | fn str_cloned(x: &String) -> String {
    |                  ^^^^^^^
 help: change this to
    |
-49 | fn str_cloned(x: &str) -> String {
+51 | fn str_cloned(x: &str) -> String {
    |                  ^^^^
 help: change `x.clone()` to
    |
-50 |     let a = x.to_string();
+52 |     let a = x.to_string();
    |             ^^^^^^^^^^^^^
 help: change `x.clone()` to
    |
-51 |     let b = x.to_string();
+53 |     let b = x.to_string();
    |             ^^^^^^^^^^^^^
 help: change `x.clone()` to
    |
-56 |     x.to_string()
+58 |     x.to_string()
    |
 
 error: writing `&String` instead of `&str` involves a new object where a slice will do.
-  --> $DIR/ptr_arg.rs:59:44
+  --> $DIR/ptr_arg.rs:61:44
    |
-59 | fn false_positive_capacity(x: &Vec<u8>, y: &String) {
+61 | fn false_positive_capacity(x: &Vec<u8>, y: &String) {
    |                                            ^^^^^^^
 help: change this to
    |
-59 | fn false_positive_capacity(x: &Vec<u8>, y: &str) {
+61 | fn false_positive_capacity(x: &Vec<u8>, y: &str) {
    |                                            ^^^^
 help: change `y.clone()` to
    |
-61 |     let b = y.to_string();
+63 |     let b = y.to_string();
    |             ^^^^^^^^^^^^^
 help: change `y.as_str()` to
    |
-62 |     let c = y;
+64 |     let c = y;
    |             ^
 
 error: using a reference to `Cow` is not recommended.
-  --> $DIR/ptr_arg.rs:71:25
+  --> $DIR/ptr_arg.rs:73:25
    |
-71 | fn test_cow_with_ref(c: &Cow<[i32]>) {
+73 | fn test_cow_with_ref(c: &Cow<[i32]>) {
    |                         ^^^^^^^^^^^ help: change this to: `&[i32]`
 
 error: aborting due to 7 previous errors

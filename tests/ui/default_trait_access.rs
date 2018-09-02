@@ -1,4 +1,6 @@
-#![warn(default_trait_access)]
+#![feature(tool_lints)]
+
+#![warn(clippy::default_trait_access)]
 
 use std::default::Default as D2;
 use std::string;

@@ -1,4 +1,6 @@
-#![deny(clippy)]
+#![feature(tool_lints)]
+
+#![deny(clippy::all)]
 
 #[allow(dead_code)]
 struct Foo;

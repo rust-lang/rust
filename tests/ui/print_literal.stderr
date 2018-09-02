@@ -4,7 +4,7 @@ error: literal with an empty format string
 24 |     println!("{} of {:b} people know binary, the other half doesn't", 1, 2);
    |                                                                       ^
    |
-   = note: `-D print-literal` implied by `-D warnings`
+   = note: `-D clippy::print-literal` implied by `-D warnings`
 
 error: literal with an empty format string
   --> $DIR/print_literal.rs:25:24

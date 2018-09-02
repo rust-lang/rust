@@ -1,5 +1,4 @@
-#![allow(cast_possible_truncation)]
-#![allow(float_cmp)]
+#![allow(clippy::float_cmp)]
 
 use rustc::lint::LateContext;
 use rustc::{span_bug, bug};
@@ -15,22 +14,6 @@ use std::rc::Rc;
 use syntax::ast::{FloatTy, LitKind};
 use syntax::ptr::P;
 use crate::utils::{sext, unsext, clip};
-
-#[derive(Debug, Copy, Clone)]
-pub enum FloatWidth {
-    F32,
-    F64,
-    Any,
-}
-
-impl From<FloatTy> for FloatWidth {
-    fn from(ty: FloatTy) -> Self {
-        match ty {
-            FloatTy::F32 => FloatWidth::F32,
-            FloatTy::F64 => FloatWidth::F64,
-        }
-    }
-}
 
 /// A `LitKind`-like enum to fold constant `Expr`s into.
 #[derive(Debug, Clone)]

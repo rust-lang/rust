@@ -1,6 +1,6 @@
+#![feature(tool_lints)]
 
-
-#![warn(module_inception)]
+#![warn(clippy::module_inception)]
 
 mod foo {
     mod bar {
@@ -16,7 +16,7 @@ mod foo {
 
 // No warning. See <https://github.com/rust-lang-nursery/rust-clippy/issues/1220>.
 mod bar {
-    #[allow(module_inception)]
+    #[allow(clippy::module_inception)]
     mod bar {
     }
 }

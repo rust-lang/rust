@@ -6,7 +6,7 @@ error: unused label `'label`
 10 | |     }
    | |_____^
    |
-   = note: `-D unused-label` implied by `-D warnings`
+   = note: `-D clippy::unused-label` implied by `-D warnings`
 
 error: unused label `'a`
   --> $DIR/unused_labels.rs:21:5

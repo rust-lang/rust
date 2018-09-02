@@ -1,5 +1,5 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use rustc::hir::*;
 use rustc::hir::intravisit::*;
 use syntax::ast::{LitKind, NodeId, DUMMY_NODE_ID};
@@ -118,7 +118,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
         }
         for (n, expr) in self.terminals.iter().enumerate() {
             if SpanlessEq::new(self.cx).ignore_fn().eq_expr(e, expr) {
-                #[allow(cast_possible_truncation)]
+                #[allow(clippy::cast_possible_truncation)]
                 return Ok(Bool::Term(n as u8));
             }
             let negated = match e.node {
@@ -150,14 +150,14 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                 _ => continue,
             };
             if SpanlessEq::new(self.cx).ignore_fn().eq_expr(&negated, expr) {
-                #[allow(cast_possible_truncation)]
+                #[allow(clippy::cast_possible_truncation)]
                 return Ok(Bool::Not(Box::new(Bool::Term(n as u8))));
             }
         }
         let n = self.terminals.len();
         self.terminals.push(e);
         if n < 32 {
-            #[allow(cast_possible_truncation)]
+            #[allow(clippy::cast_possible_truncation)]
             Ok(Bool::Term(n as u8))
         } else {
             Err("too many literals".to_owned())

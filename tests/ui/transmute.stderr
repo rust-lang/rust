@@ -4,7 +4,7 @@ error: transmute from a type (`&'a T`) to itself
 22 |     let _: &'a T = core::intrinsics::transmute(t);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D useless-transmute` implied by `-D warnings`
+   = note: `-D clippy::useless-transmute` implied by `-D warnings`
 
 error: transmute from a reference to a pointer
   --> $DIR/transmute.rs:26:23
@@ -30,7 +30,7 @@ error: transmute from a pointer type (`*const T`) to a reference type (`&T`)
 35 |     let _: &T = std::mem::transmute(p);
    |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*p`
    |
-   = note: `-D transmute-ptr-to-ref` implied by `-D warnings`
+   = note: `-D clippy::transmute-ptr-to-ref` implied by `-D warnings`
 
 error: transmute from a pointer type (`*mut T`) to a reference type (`&mut T`)
   --> $DIR/transmute.rs:38:21
@@ -134,7 +134,7 @@ error: transmute from a type (`*const Usize`) to the type that it points to (`Us
 111 |         let _: Usize = core::intrinsics::transmute(int_const_ptr);
     |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
-    = note: `-D crosspointer-transmute` implied by `-D warnings`
+    = note: `-D clippy::crosspointer-transmute` implied by `-D warnings`
 
 error: transmute from a type (`*mut Usize`) to the type that it points to (`Usize`)
    --> $DIR/transmute.rs:113:24
@@ -160,7 +160,7 @@ error: transmute from a `u32` to a `char`
 123 |     let _: char = unsafe { std::mem::transmute(0_u32) };
     |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::char::from_u32(0_u32).unwrap()`
     |
-    = note: `-D transmute-int-to-char` implied by `-D warnings`
+    = note: `-D clippy::transmute-int-to-char` implied by `-D warnings`
 
 error: transmute from a `i32` to a `char`
    --> $DIR/transmute.rs:124:28
@@ -174,7 +174,7 @@ error: transmute from a `u8` to a `bool`
 129 |     let _: bool = unsafe { std::mem::transmute(0_u8) };
     |                            ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `0_u8 != 0`
     |
-    = note: `-D transmute-int-to-bool` implied by `-D warnings`
+    = note: `-D clippy::transmute-int-to-bool` implied by `-D warnings`
 
 error: transmute from a `u32` to a `f32`
    --> $DIR/transmute.rs:134:27
@@ -182,7 +182,7 @@ error: transmute from a `u32` to a `f32`
 134 |     let _: f32 = unsafe { std::mem::transmute(0_u32) };
     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `f32::from_bits(0_u32)`
     |
-    = note: `-D transmute-int-to-float` implied by `-D warnings`
+    = note: `-D clippy::transmute-int-to-float` implied by `-D warnings`
 
 error: transmute from a `i32` to a `f32`
    --> $DIR/transmute.rs:135:27
@@ -196,7 +196,7 @@ error: transmute from a `&[u8]` to a `&str`
 139 |     let _: &str = unsafe { std::mem::transmute(b) };
     |                            ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::str::from_utf8(b).unwrap()`
     |
-    = note: `-D transmute-bytes-to-str` implied by `-D warnings`
+    = note: `-D clippy::transmute-bytes-to-str` implied by `-D warnings`
 
 error: transmute from a `&mut [u8]` to a `&mut str`
    --> $DIR/transmute.rs:140:32
@@ -210,7 +210,7 @@ error: transmute from a pointer to a pointer
 172 |         let _: *const f32 = std::mem::transmute(ptr);
     |                             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `ptr as *const f32`
     |
-    = note: `-D transmute-ptr-to-ptr` implied by `-D warnings`
+    = note: `-D clippy::transmute-ptr-to-ptr` implied by `-D warnings`
 
 error: transmute from a pointer to a pointer
    --> $DIR/transmute.rs:173:27

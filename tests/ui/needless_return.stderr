@@ -4,7 +4,7 @@ error: unneeded return statement
 11 |     return true;
    |     ^^^^^^^^^^^^ help: remove `return` as shown: `true`
    |
-   = note: `-D needless-return` implied by `-D warnings`
+   = note: `-D clippy::needless-return` implied by `-D warnings`
 
 error: unneeded return statement
   --> $DIR/needless_return.rs:15:5

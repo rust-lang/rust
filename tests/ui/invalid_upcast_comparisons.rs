@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(invalid_upcast_comparisons)]
-#![allow(unused, eq_op, no_effect, unnecessary_operation, cast_lossless)]
+#![warn(clippy::invalid_upcast_comparisons)]
+#![allow(unused, clippy::eq_op, clippy::no_effect, clippy::unnecessary_operation, clippy::cast_lossless)]
 
 fn mk_value<T>() -> T { unimplemented!() }
 

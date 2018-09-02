@@ -1,4 +1,4 @@
-use rustc::lint::*;
+use rustc::lint::LateContext;
 
 use rustc::hir::def::Def;
 use rustc::hir::*;

@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
-
-#![warn(clippy)]
-#![warn(if_not_else)]
+#![warn(clippy::all)]
+#![warn(clippy::if_not_else)]
 
 fn bla() -> bool { unimplemented!() }
 

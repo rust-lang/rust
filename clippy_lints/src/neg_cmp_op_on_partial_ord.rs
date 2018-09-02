@@ -1,6 +1,6 @@
 use rustc::hir::*;
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 
 use crate::utils::{self, paths, span_lint};
@@ -20,7 +20,7 @@ use crate::utils::{self, paths, span_lint};
 ///
 /// ```rust
 /// use std::cmp::Ordering;
-/// 
+///
 /// // Bad
 /// let a = 1.0;
 /// let b = std::f64::NAN;

@@ -4,7 +4,7 @@ error: this operation will always return zero. This is likely not the intended o
 9 |     x * 0;
   |     ^^^^^
   |
-  = note: `-D erasing-op` implied by `-D warnings`
+  = note: `-D clippy::erasing-op` implied by `-D warnings`
 
 error: this operation will always return zero. This is likely not the intended outcome
   --> $DIR/erasing_op.rs:10:5

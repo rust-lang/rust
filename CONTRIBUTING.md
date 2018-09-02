@@ -170,7 +170,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_early_lint_pass(box else_if_without_else::ElseIfWithoutElse);
     // ...
 
-    reg.register_lint_group("clippy_restriction", vec![
+    reg.register_lint_group("clippy::restriction", vec![
         // ...
         else_if_without_else::ELSE_IF_WITHOUT_ELSE,
         // ...
@@ -185,7 +185,7 @@ It's worth noting that the majority of `clippy_lints/src/lib.rs` is autogenerate
 ```rust
 // ./clippy_lints/src/else_if_without_else.rs
 
-use rustc::lint::*;
+use rustc::lint::{EarlyLintPass, LintArray, LintPass};
 
 // ...
 

@@ -4,7 +4,7 @@ error: redundant closure found
 7 |     let a = Some(1u8).map(|a| foo(a));
   |                           ^^^^^^^^^^ help: remove closure as shown: `foo`
   |
-  = note: `-D redundant-closure` implied by `-D warnings`
+  = note: `-D clippy::redundant-closure` implied by `-D warnings`
 
 error: redundant closure found
  --> $DIR/eta.rs:8:10
@@ -24,7 +24,7 @@ error: this expression borrows a reference that is immediately dereferenced by t
 11 |     all(&[1, 2, 3], &&2, |x, y| below(x, y)); //is adjusted
    |                     ^^^ help: change this to: `&2`
    |
-   = note: `-D needless-borrow` implied by `-D warnings`
+   = note: `-D clippy::needless-borrow` implied by `-D warnings`
 
 error: redundant closure found
   --> $DIR/eta.rs:18:27

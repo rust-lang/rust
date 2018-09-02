@@ -1,8 +1,7 @@
 use rustc::hir::*;
 use rustc::hir::intravisit as visit;
-use rustc::hir::map::Node::{NodeExpr, NodeStmt};
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use rustc::middle::expr_use_visitor::*;
 use rustc::middle::mem_categorization::{cmt_, Categorization};
 use rustc::ty::{self, Ty};
@@ -100,7 +99,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         let map = &self.cx.tcx.hir;
         if map.is_argument(consume_pat.id) {
             // Skip closure arguments
-            if let Some(NodeExpr(..)) = map.find(map.get_parent_node(consume_pat.id)) {
+            if let Some(Node::Expr(..)) = map.find(map.get_parent_node(consume_pat.id)) {
                 return;
             }
             if is_non_trait_box(cmt.ty) && !self.is_large_box(cmt.ty) {
@@ -110,7 +109,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         }
         if let Categorization::Rvalue(..) = cmt.cat {
             let id = map.hir_to_node_id(cmt.hir_id);
-            if let Some(NodeStmt(st)) = map.find(map.get_parent_node(id)) {
+            if let Some(Node::Stmt(st)) = map.find(map.get_parent_node(id)) {
                 if let StmtKind::Decl(ref decl, _) = st.node {
                     if let DeclKind::Local(ref loc) = decl.node {
                         if let Some(ref ex) = loc.init {

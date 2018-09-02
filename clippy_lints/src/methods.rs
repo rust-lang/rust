@@ -1,7 +1,7 @@
 use matches::matches;
 use rustc::hir;
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, Lint, LintContext};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use rustc::ty::{self, Ty};
 use rustc::hir::def::Def;
@@ -714,7 +714,7 @@ impl LintPass for Pass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
-    #[allow(cyclomatic_complexity)]
+    #[allow(clippy::cyclomatic_complexity)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         if in_macro(expr.span) {
             return;
@@ -922,7 +922,7 @@ fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Spa
     }
 
     /// Check for `*or(foo())`.
-    #[allow(too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     fn check_general_case(
         cx: &LateContext<'_, '_>,
         name: &str,
@@ -1145,14 +1145,14 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
             if let ty::Ref(..) = cx.tables.expr_ty(arg).sty {
                 let parent = cx.tcx.hir.get_parent_node(expr.id);
                 match cx.tcx.hir.get(parent) {
-                    hir::map::NodeExpr(parent) => match parent.node {
+                    hir::Node::Expr(parent) => match parent.node {
                         // &*x is a nop, &x.clone() is not
                         hir::ExprKind::AddrOf(..) |
                         // (*x).func() is useless, x.clone().func() can work in case func borrows mutably
                         hir::ExprKind::MethodCall(..) => return,
                         _ => {},
                     }
-                    hir::map::NodeStmt(stmt) => {
+                    hir::Node::Stmt(stmt) => {
                         if let hir::StmtKind::Decl(ref decl, _) = stmt.node {
                             if let hir::DeclKind::Local(ref loc) = decl.node {
                                 if let hir::PatKind::Ref(..) = loc.pat.node {

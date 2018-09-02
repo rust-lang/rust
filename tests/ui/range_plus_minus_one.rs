@@ -1,8 +1,10 @@
+#![feature(tool_lints)]
+
 fn f() -> usize {
     42
 }
 
-#[warn(range_plus_one)]
+#[warn(clippy::range_plus_one)]
 fn main() {
     for _ in 0..2 { }
     for _ in 0..=2 { }

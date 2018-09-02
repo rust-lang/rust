@@ -1,8 +1,8 @@
 //! Lints concerned with the grouping of digits with underscores in integral or
 //! floating-point literal expressions.
 
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass, in_external_macro, LintContext};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use syntax::ast::*;
 use syntax_pos;

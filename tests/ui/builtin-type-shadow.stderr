@@ -4,7 +4,7 @@ error: This generic shadows the built-in type `u32`
 5 | fn foo<u32>(a: u32) -> u32 {
   |        ^^^
   |
-  = note: `-D builtin-type-shadow` implied by `-D warnings`
+  = note: `-D clippy::builtin-type-shadow` implied by `-D warnings`
 
 error[E0308]: mismatched types
  --> $DIR/builtin-type-shadow.rs:6:5

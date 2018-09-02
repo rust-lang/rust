@@ -1,6 +1,8 @@
+#![feature(tool_lints)]
+
 #![feature(non_ascii_idents)]
 
-#![warn(clippy, pub_enum_variant_names)]
+#![warn(clippy::all, clippy::pub_enum_variant_names)]
 
 enum FakeCallType {
     CALL, CREATE
@@ -93,7 +95,7 @@ pub enum PubSeall {
     WithOut,
 }
 
-#[allow(pub_enum_variant_names)]
+#[allow(clippy::pub_enum_variant_names)]
 mod allowed {
     pub enum PubAllowed {
         SomeThis,

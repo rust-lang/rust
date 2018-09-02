@@ -1,3 +1,5 @@
+#![feature(tool_lints)]
+
 use std::collections::HashSet;
 
 // See https://github.com/rust-lang-nursery/rust-clippy/issues/2774
@@ -10,7 +12,7 @@ pub struct Bar {
 #[derive(Eq, PartialEq, Debug, Hash)]
 pub struct Foo {}
 
-#[allow(implicit_hasher)]
+#[allow(clippy::implicit_hasher)]
 // This should not cause a 'cannot relate bound region' ICE
 pub fn add_barfoos_to_foos<'a>(bars: &HashSet<&'a Bar>) {
     let mut foos = HashSet::new();
@@ -19,7 +21,7 @@ pub fn add_barfoos_to_foos<'a>(bars: &HashSet<&'a Bar>) {
     );
 }
 
-#[allow(implicit_hasher)]
+#[allow(clippy::implicit_hasher)]
 // Also this should not cause a 'cannot relate bound region' ICE
 pub fn add_barfoos_to_foos2(bars: &HashSet<&Bar>) {
     let mut foos = HashSet::new();

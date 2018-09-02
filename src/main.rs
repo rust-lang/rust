@@ -1,7 +1,8 @@
 // error-pattern:yummy
 #![feature(box_syntax)]
 #![feature(rustc_private)]
-#![allow(unknown_lints, missing_docs_in_private_items)]
+#![feature(tool_lints)]
+#![allow(unknown_lints, clippy::missing_docs_in_private_items)]
 
 const CARGO_CLIPPY_HELP: &str = r#"Checks a package to catch common mistakes and improve your Rust code.
 
@@ -28,12 +29,12 @@ it to allow or deny lints from the code, eg.:
     #[cfg_attr(feature = "cargo-clippy", allow(needless_lifetimes))]
 "#;
 
-#[allow(print_stdout)]
+#[allow(clippy::print_stdout)]
 fn show_help() {
     println!("{}", CARGO_CLIPPY_HELP);
 }
 
-#[allow(print_stdout)]
+#[allow(clippy::print_stdout)]
 fn show_version() {
     println!(env!("CARGO_PKG_VERSION"));
 }

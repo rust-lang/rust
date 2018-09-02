@@ -1,4 +1,6 @@
-#![warn(single_match)]
+#![feature(tool_lints)]
+
+#![warn(clippy::single_match)]
 
 fn dummy() {
 }

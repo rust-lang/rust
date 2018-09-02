@@ -13,14 +13,14 @@ A collection of lints to catch common mistakes and improve your [Rust](https://g
 
 We have a bunch of lint categories to allow you to choose how much Clippy is supposed to ~~annoy~~ help you:
 
-* `clippy` (everything that has no false positives)
-* `clippy_pedantic` (everything)
-* `clippy_nursery` (new lints that aren't quite ready yet)
-* `clippy_style` (code that should be written in a more idiomatic way)
-* `clippy_complexity` (code that does something simple but in a complex way)
-* `clippy_perf` (code that can be written in a faster way)
-* `clippy_cargo` (checks against the cargo manifest)
-* **`clippy_correctness`** (code that is just outright wrong or very very useless)
+* `clippy::all` (everything that has no false positives)
+* `clippy::pedantic` (everything)
+* `clippy::nursery` (new lints that aren't quite ready yet)
+* `clippy::style` (code that should be written in a more idiomatic way)
+* `clippy::complexity` (code that does something simple but in a complex way)
+* `clippy::perf` (code that can be written in a faster way)
+* `clippy::cargo` (checks against the cargo manifest)
+* **`clippy::correctness`** (code that is just outright wrong or very very useless)
 
 More to come, please [file an issue](https://github.com/rust-lang-nursery/rust-clippy/issues) if you have ideas!
 
@@ -106,25 +106,17 @@ define the `CLIPPY_DISABLE_DOCS_LINKS` environment variable.
 
 You can add options  to `allow`/`warn`/`deny`:
 
-*   the whole set of `Warn` lints using the `clippy` lint group (`#![deny(clippy)]`)
+*   the whole set of `Warn` lints using the `clippy` lint group (`#![deny(clippy::all)]`)
 
-*   all lints using both the `clippy` and `clippy_pedantic` lint groups (`#![deny(clippy)]`,
-    `#![deny(clippy_pedantic)]`). Note that `clippy_pedantic` contains some very aggressive
+*   all lints using both the `clippy` and `clippy::pedantic` lint groups (`#![deny(clippy::all)]`,
+    `#![deny(clippy::pedantic)]`). Note that `clippy::pedantic` contains some very aggressive
     lints prone to false positives.
 
-*   only some lints (`#![deny(single_match, box_vec)]`, etc)
+*   only some lints (`#![deny(clippy::single_match, clippy::box_vec)]`, etc)
 
 *   `allow`/`warn`/`deny` can be limited to a single function or module using `#[allow(...)]`, etc
 
 Note: `deny` produces errors instead of warnings.
-
-For convenience, `cargo clippy` automatically defines a `cargo-clippy`
-feature. This lets you set lint levels and compile with or without Clippy
-transparently:
-
-```rust
-#[cfg_attr(feature = "cargo-clippy", allow(needless_lifetimes))]
-```
 
 ## Updating rustc
 

@@ -1,5 +1,6 @@
+#![feature(tool_lints)]
 
-#![deny(needless_lifetimes)]
+#![deny(clippy::needless_lifetimes)]
 #![allow(dead_code)]
 
 trait Foo {}

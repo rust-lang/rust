@@ -4,7 +4,7 @@ error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more co
 27 |         let _ = boxed_slice.get(1).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&boxed_slice[1]`
    |
-   = note: `-D get-unwrap` implied by `-D warnings`
+   = note: `-D clippy::get-unwrap` implied by `-D warnings`
 
 error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
   --> $DIR/get_unwrap.rs:28:17

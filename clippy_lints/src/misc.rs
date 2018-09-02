@@ -2,8 +2,8 @@ use crate::reexport::*;
 use matches::matches;
 use rustc::hir::*;
 use rustc::hir::intravisit::FnKind;
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use rustc::ty;
 use syntax::source_map::{ExpnFormat, Span};
@@ -522,7 +522,7 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
             let parent_fn = cx.tcx.hir.get_parent(expr.id);
             let parent_impl = cx.tcx.hir.get_parent(parent_fn);
             if parent_impl != CRATE_NODE_ID {
-                if let map::NodeItem(item) = cx.tcx.hir.get(parent_impl) {
+                if let Node::Item(item) = cx.tcx.hir.get(parent_impl) {
                     if let ItemKind::Impl(.., Some(ref trait_ref), _, _) = item.node {
                         if trait_ref.path.def.def_id() == partial_eq_trait_id {
                             // we are implementing PartialEq, don't suggest not doing `to_owned`, otherwise

@@ -4,7 +4,7 @@ error: you seem to be using .map() to clone the contents of an iterator, conside
 12 |     x.iter().map(|y| y.clone());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D map-clone` implied by `-D warnings`
+   = note: `-D clippy::map-clone` implied by `-D warnings`
    = help: try
            x.iter().cloned()
 

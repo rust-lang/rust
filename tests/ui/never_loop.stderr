@@ -1,7 +1,7 @@
 error: this loop never actually loops
   --> $DIR/never_loop.rs:7:5
    |
-7  | /     loop { // never_loop
+7  | /     loop { // clippy::never_loop
 8  | |         x += 1;
 9  | |         if x == 1 {
 10 | |             return
@@ -10,7 +10,7 @@ error: this loop never actually loops
 13 | |     }
    | |_____^
    |
-   = note: #[deny(never_loop)] on by default
+   = note: #[deny(clippy::never_loop)] on by default
 
 error: this loop never actually loops
   --> $DIR/never_loop.rs:28:5

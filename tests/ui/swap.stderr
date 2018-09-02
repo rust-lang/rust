@@ -6,7 +6,7 @@ error: this looks like you are swapping elements of `foo` manually
 13 | |     foo[1] = temp;
    | |_________________^ help: try: `foo.swap(0, 1)`
    |
-   = note: `-D manual-swap` implied by `-D warnings`
+   = note: `-D clippy::manual-swap` implied by `-D warnings`
 
 error: this looks like you are swapping elements of `foo` manually
   --> $DIR/swap.rs:20:5
@@ -53,7 +53,7 @@ error: this looks like you are trying to swap `a` and `b`
 45 | |     b = a;
    | |_________^ help: try: `std::mem::swap(&mut a, &mut b)`
    |
-   = note: `-D almost-swapped` implied by `-D warnings`
+   = note: `-D clippy::almost-swapped` implied by `-D warnings`
    = note: or maybe you should use `std::mem::replace`?
 
 error: this looks like you are trying to swap `c.0` and `a`

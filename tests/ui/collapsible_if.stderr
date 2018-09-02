@@ -8,7 +8,7 @@ error: this if statement can be collapsed
 12 | |     }
    | |_____^
    |
-   = note: `-D collapsible-if` implied by `-D warnings`
+   = note: `-D clippy::collapsible-if` implied by `-D warnings`
 help: try
    |
 8  |     if x == "hello" && y == "world" {

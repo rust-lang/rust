@@ -4,7 +4,7 @@ error: attempt to mutate range bound within loop; note that the range of the loo
 18 |     for i in 0..m { m = 5; } // warning
    |                     ^^^^^
    |
-   = note: `-D mut-range-bound` implied by `-D warnings`
+   = note: `-D clippy::mut-range-bound` implied by `-D warnings`
 
 error: attempt to mutate range bound within loop; note that the range of the loop is unchanged
   --> $DIR/mut_range_bound.rs:23:22

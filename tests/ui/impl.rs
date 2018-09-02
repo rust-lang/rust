@@ -1,5 +1,7 @@
+#![feature(tool_lints)]
+
 #![allow(dead_code)]
-#![warn(multiple_inherent_impl)]
+#![warn(clippy::multiple_inherent_impl)]
 
 struct MyStruct;
 

@@ -4,7 +4,7 @@ error: ==-comparison of unit values detected. This will always be true
 16 |     if { true; } == { false; } {
    |        ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D unit-cmp` implied by `-D warnings`
+   = note: `-D clippy::unit-cmp` implied by `-D warnings`
 
 error: >-comparison of unit values detected. This will always be false
   --> $DIR/unit_cmp.rs:19:8

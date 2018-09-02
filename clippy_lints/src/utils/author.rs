@@ -1,10 +1,10 @@
 //! A group of attributes that can be attached to Rust code in order
 //! to generate a clippy lint detecting said code automatically.
 
-#![allow(print_stdout, use_debug)]
+#![allow(clippy::print_stdout, clippy::use_debug)]
 
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use rustc::hir;
 use rustc::hir::{Expr, ExprKind, QPath, TyKind, Pat, PatKind, BindingAnnotation, StmtKind, DeclKind, Stmt};
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
@@ -345,9 +345,15 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                     self.visit_expr(&arm.body);
                     if let Some(ref guard) = arm.guard {
                         let guard_pat = self.next("guard");
-                        println!("    if let Some(ref {}) = {}[{}].guard", guard_pat, arms_pat, i);
-                        self.current = guard_pat;
-                        self.visit_expr(guard);
+                        println!("    if let Some(ref {}) = {}[{}].guard;", guard_pat, arms_pat, i);
+                        match guard {
+                            hir::Guard::If(ref if_expr) => {
+                                let if_expr_pat = self.next("expr");
+                                println!("    if let Guard::If(ref {}) = {};", if_expr_pat, guard_pat);
+                                self.current = if_expr_pat;
+                                self.visit_expr(if_expr);
+                            }
+                        }
                     }
                     println!("    if {}[{}].pats.len() == {};", arms_pat, i, arm.pats.len());
                     for (j, pat) in arm.pats.iter().enumerate() {

@@ -1,6 +1,6 @@
+#![feature(tool_lints)]
 
-
-#![warn(serde_api_misuse)]
+#![warn(clippy::serde_api_misuse)]
 #![allow(dead_code)]
 
 extern crate serde;

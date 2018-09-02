@@ -1,8 +1,8 @@
-
-#[warn(cast_lossless)]
-#[allow(no_effect, unnecessary_operation)]
+#![feature(tool_lints)]
+#[warn(clippy::cast_lossless)]
+#[allow(clippy::no_effect, clippy::unnecessary_operation)]
 fn main() {
-    // Test cast_lossless with casts to integer types
+    // Test clippy::cast_lossless with casts to integer types
     1i8 as i16;
     1i8 as i32;
     1i8 as i64;

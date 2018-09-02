@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(float_cmp)]
-#![allow(unused, no_effect, unnecessary_operation, cast_lossless)]
+#![warn(clippy::float_cmp)]
+#![allow(unused, clippy::no_effect, clippy::unnecessary_operation, clippy::cast_lossless)]
 
 use std::ops::Add;
 

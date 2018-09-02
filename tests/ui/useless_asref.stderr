@@ -1,73 +1,73 @@
 error: this call to `as_ref` does nothing
-  --> $DIR/useless_asref.rs:31:18
+  --> $DIR/useless_asref.rs:33:18
    |
-31 |         foo_rstr(rstr.as_ref());
+33 |         foo_rstr(rstr.as_ref());
    |                  ^^^^^^^^^^^^^ help: try this: `rstr`
    |
 note: lint level defined here
-  --> $DIR/useless_asref.rs:1:9
+  --> $DIR/useless_asref.rs:3:9
    |
-1  | #![deny(useless_asref)]
-   |         ^^^^^^^^^^^^^
+3  | #![deny(clippy::useless_asref)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
 
 error: this call to `as_ref` does nothing
-  --> $DIR/useless_asref.rs:33:20
+  --> $DIR/useless_asref.rs:35:20
    |
-33 |         foo_rslice(rslice.as_ref());
+35 |         foo_rslice(rslice.as_ref());
    |                    ^^^^^^^^^^^^^^^ help: try this: `rslice`
 
 error: this call to `as_mut` does nothing
-  --> $DIR/useless_asref.rs:37:21
+  --> $DIR/useless_asref.rs:39:21
    |
-37 |         foo_mrslice(mrslice.as_mut());
+39 |         foo_mrslice(mrslice.as_mut());
    |                     ^^^^^^^^^^^^^^^^ help: try this: `mrslice`
 
 error: this call to `as_ref` does nothing
-  --> $DIR/useless_asref.rs:39:20
+  --> $DIR/useless_asref.rs:41:20
    |
-39 |         foo_rslice(mrslice.as_ref());
+41 |         foo_rslice(mrslice.as_ref());
    |                    ^^^^^^^^^^^^^^^^ help: try this: `mrslice`
 
 error: this call to `as_ref` does nothing
-  --> $DIR/useless_asref.rs:46:20
+  --> $DIR/useless_asref.rs:48:20
    |
-46 |         foo_rslice(rrrrrslice.as_ref());
+48 |         foo_rslice(rrrrrslice.as_ref());
    |                    ^^^^^^^^^^^^^^^^^^^ help: try this: `rrrrrslice`
 
 error: this call to `as_ref` does nothing
-  --> $DIR/useless_asref.rs:48:18
+  --> $DIR/useless_asref.rs:50:18
    |
-48 |         foo_rstr(rrrrrstr.as_ref());
+50 |         foo_rstr(rrrrrstr.as_ref());
    |                  ^^^^^^^^^^^^^^^^^ help: try this: `rrrrrstr`
 
 error: this call to `as_mut` does nothing
-  --> $DIR/useless_asref.rs:53:21
+  --> $DIR/useless_asref.rs:55:21
    |
-53 |         foo_mrslice(mrrrrrslice.as_mut());
+55 |         foo_mrslice(mrrrrrslice.as_mut());
    |                     ^^^^^^^^^^^^^^^^^^^^ help: try this: `mrrrrrslice`
 
 error: this call to `as_ref` does nothing
-  --> $DIR/useless_asref.rs:55:20
+  --> $DIR/useless_asref.rs:57:20
    |
-55 |         foo_rslice(mrrrrrslice.as_ref());
+57 |         foo_rslice(mrrrrrslice.as_ref());
    |                    ^^^^^^^^^^^^^^^^^^^^ help: try this: `mrrrrrslice`
 
 error: this call to `as_ref` does nothing
-  --> $DIR/useless_asref.rs:58:16
+  --> $DIR/useless_asref.rs:60:16
    |
-58 |     foo_rrrrmr((&&&&MoreRef).as_ref());
+60 |     foo_rrrrmr((&&&&MoreRef).as_ref());
    |                ^^^^^^^^^^^^^^^^^^^^^^ help: try this: `(&&&&MoreRef)`
 
 error: this call to `as_mut` does nothing
-   --> $DIR/useless_asref.rs:104:13
+   --> $DIR/useless_asref.rs:106:13
     |
-104 |     foo_mrt(mrt.as_mut());
+106 |     foo_mrt(mrt.as_mut());
     |             ^^^^^^^^^^^^ help: try this: `mrt`
 
 error: this call to `as_ref` does nothing
-   --> $DIR/useless_asref.rs:106:12
+   --> $DIR/useless_asref.rs:108:12
     |
-106 |     foo_rt(mrt.as_ref());
+108 |     foo_rt(mrt.as_ref());
     |            ^^^^^^^^^^^^ help: try this: `mrt`
 
 error: aborting due to 11 previous errors

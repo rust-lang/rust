@@ -1,9 +1,11 @@
+#![feature(tool_lints)]
+
 #![feature(never_type)]
 
-#![warn(diverging_sub_expression)]
-#![allow(match_same_arms, logic_bug)]
+#![warn(clippy::diverging_sub_expression)]
+#![allow(clippy::match_same_arms, clippy::logic_bug)]
 
-#[allow(empty_loop)]
+#[allow(clippy::empty_loop)]
 fn diverge() -> ! { loop {} }
 
 struct A;
@@ -12,7 +14,7 @@ impl A {
     fn foo(&self) -> ! { diverge() }
 }
 
-#[allow(unused_variables, unnecessary_operation, short_circuit_statement)]
+#[allow(unused_variables, clippy::unnecessary_operation, clippy::short_circuit_statement)]
 fn main() {
     let b = true;
     b || diverge();

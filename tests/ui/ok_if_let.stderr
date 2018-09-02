@@ -8,7 +8,7 @@ error: Matching on `Some` with `ok()` is redundant
 11 | |     }
    | |_____^
    |
-   = note: `-D if-let-some-result` implied by `-D warnings`
+   = note: `-D clippy::if-let-some-result` implied by `-D warnings`
    = help: Consider matching on `Ok(y)` and removing the call to `ok` instead
 
 error: aborting due to previous error

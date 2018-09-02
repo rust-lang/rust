@@ -1,5 +1,5 @@
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass, LintContext, in_external_macro};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use std::collections::HashMap;
 use std::char;

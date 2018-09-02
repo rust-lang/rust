@@ -1,11 +1,11 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(clippy)]
+#![warn(clippy::all)]
 #![allow(unused_variables)]
 #![allow(unused_assignments)]
-#![allow(if_same_then_else)]
-#![allow(deref_addrof)]
+#![allow(clippy::if_same_then_else)]
+#![allow(clippy::deref_addrof)]
 
 fn foo() -> bool { true }
 

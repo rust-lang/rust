@@ -1,6 +1,6 @@
 use rustc::hir::*;
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use syntax::source_map::Spanned;
 use crate::utils::SpanlessEq;
 use crate::utils::{get_parent_expr, is_allowed, match_type, paths, span_lint, span_lint_and_sugg, walk_ptrs_ty};
@@ -9,8 +9,7 @@ use crate::utils::{get_parent_expr, is_allowed, match_type, paths, span_lint, sp
 /// `let`!).
 ///
 /// **Why is this bad?** It's not really bad, but some people think that the
-/// `.push_str(_)` method is more readable. Also creates a new heap allocation and throws
-/// away the old one.
+/// `.push_str(_)` method is more readable.
 ///
 /// **Known problems:** None.
 ///

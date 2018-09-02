@@ -1,4 +1,6 @@
-#![allow(many_single_char_names, blacklisted_name, redundant_field_names)]
+#![feature(tool_lints)]
+
+#![allow(clippy::many_single_char_names, clippy::blacklisted_name, clippy::redundant_field_names)]
 
 #[derive(Copy, Clone)]
 struct Foo(u32);
@@ -19,7 +21,7 @@ fn good_return_implicit_lt_ref(foo: &Foo) -> &u32 {
     &foo.0
 }
 
-#[allow(needless_lifetimes)]
+#[allow(clippy::needless_lifetimes)]
 fn good_return_explicit_lt_ref<'a>(foo: &'a Foo) -> &'a u32 {
     &foo.0
 }
@@ -30,7 +32,7 @@ fn good_return_implicit_lt_struct(foo: &Foo) -> FooRef {
     }
 }
 
-#[allow(needless_lifetimes)]
+#[allow(clippy::needless_lifetimes)]
 fn good_return_explicit_lt_struct<'a>(foo: &'a Foo) -> FooRef<'a> {
     FooRef {
         foo,

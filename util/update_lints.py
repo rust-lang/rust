@@ -218,16 +218,16 @@ def main(print_only=False, check=False):
         lambda: gen_mods(all_lints),
         replace_start=False, write_back=not check)
 
-    # same for "clippy_*" lint collections
+    # same for "clippy::*" lint collections
     changed |= replace_region(
-        'clippy_lints/src/lib.rs', r'reg.register_lint_group\("clippy"', r'\]\);',
+        'clippy_lints/src/lib.rs', r'reg.register_lint_group\("clippy::all"', r'\]\);',
         lambda: gen_group(clippy_lint_list),
         replace_start=False, write_back=not check)
 
     for key, value in clippy_lints.iteritems():
-        # same for "clippy_*" lint collections
+        # same for "clippy::*" lint collections
         changed |= replace_region(
-            'clippy_lints/src/lib.rs', r'reg.register_lint_group\("clippy_' + key + r'"', r'\]\);',
+            'clippy_lints/src/lib.rs', r'reg.register_lint_group\("clippy::' + key + r'"', r'\]\);',
             lambda: gen_group(value),
             replace_start=False, write_back=not check)
 

@@ -1,5 +1,7 @@
-#![warn(unit_arg)]
-#![allow(no_effect)]
+#![feature(tool_lints)]
+
+#![warn(clippy::unit_arg)]
+#![allow(clippy::no_effect)]
 
 use std::fmt::Debug;
 

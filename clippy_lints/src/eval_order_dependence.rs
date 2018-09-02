@@ -1,8 +1,8 @@
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::ty;
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use syntax::ast;
 use crate::utils::{get_parent_expr, span_lint, span_note_and_lint};
@@ -109,7 +109,9 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
                 self.visit_expr(e);
                 for arm in arms {
                     if let Some(ref guard) = arm.guard {
-                        self.visit_expr(guard);
+                        match guard {
+                            Guard::If(if_expr) => self.visit_expr(if_expr),
+                        }
                     }
                     // make sure top level arm expressions aren't linted
                     self.maybe_walk_expr(&*arm.body);
@@ -189,9 +191,9 @@ fn check_for_unsequenced_reads(vis: &mut ReadVisitor<'_, '_>) {
         };
 
         let stop_early = match parent_node {
-            map::Node::NodeExpr(expr) => check_expr(vis, expr),
-            map::Node::NodeStmt(stmt) => check_stmt(vis, stmt),
-            map::Node::NodeItem(_) => {
+            Node::Expr(expr) => check_expr(vis, expr),
+            Node::Stmt(stmt) => check_stmt(vis, stmt),
+            Node::Item(_) => {
                 // We reached the top of the function, stop.
                 break;
             },

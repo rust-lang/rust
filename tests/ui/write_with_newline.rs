@@ -1,5 +1,7 @@
-#![allow(write_literal)]
-#![warn(write_with_newline)]
+#![feature(tool_lints)]
+
+#![allow(clippy::write_literal)]
+#![warn(clippy::write_with_newline)]
 
 use std::io::Write;
 
