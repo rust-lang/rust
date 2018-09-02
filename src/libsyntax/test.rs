@@ -433,7 +433,7 @@ fn visible_path(cx: &TestCtxt, path: &[Ident]) -> Vec<Ident>{
 }
 
 fn is_test_case(i: &ast::Item) -> bool {
-    attr::contains_name(&i.attrs, "test_case")
+    attr::contains_name(&i.attrs, "rustc_test_marker")
 }
 
 fn get_test_runner(sd: &errors::Handler, krate: &ast::Crate) -> Option<ast::Path> {

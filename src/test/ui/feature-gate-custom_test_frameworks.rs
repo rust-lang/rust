@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![test_runner(main)] //~ ERROR Custom Test Frameworks is an unstable feature
+#![test_runner(main)] //~ ERROR custom test frameworks are an unstable feature
 
 fn main() {}

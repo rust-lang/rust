@@ -450,14 +450,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let (fragment_with_placeholders, invocations) = {
             let mut collector = InvocationCollector {
                 cfg: StripUnconfigured {
-                    should_test: self.cx.ecfg.should_test,
                     sess: self.cx.parse_sess,
                     features: self.cx.ecfg.features,
                 },
                 cx: self.cx,
                 invocations: Vec::new(),
                 monotonic: self.monotonic,
-                tests_nameable: true,
             };
             (fragment.fold_with(&mut collector), collector.invocations)
         };
@@ -475,7 +473,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
     fn fully_configure(&mut self, item: Annotatable) -> Annotatable {
         let mut cfg = StripUnconfigured {
-            should_test: self.cx.ecfg.should_test,
             sess: self.cx.parse_sess,
             features: self.cx.ecfg.features,
         };
@@ -1047,11 +1044,6 @@ struct InvocationCollector<'a, 'b: 'a> {
     cfg: StripUnconfigured<'a>,
     invocations: Vec<Invocation>,
     monotonic: bool,
-
-    /// Test functions need to be nameable. Tests inside functions or in other
-    /// unnameable locations need to be ignored. `tests_nameable` tracks whether
-    /// any test functions found in the current context would be nameable.
-    tests_nameable: bool,
 }
 
 impl<'a, 'b> InvocationCollector<'a, 'b> {
@@ -1067,20 +1059,6 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             },
         });
         placeholder(fragment_kind, NodeId::placeholder_from_mark(mark))
-    }
-
-    /// Folds the item allowing tests to be expanded because they are still nameable.
-    /// This should probably only be called with module items
-    fn fold_nameable(&mut self, item: P<ast::Item>) -> OneVector<P<ast::Item>> {
-        fold::noop_fold_item(item, self)
-    }
-
-    /// Folds the item but doesn't allow tests to occur within it
-    fn fold_unnameable(&mut self, item: P<ast::Item>) -> OneVector<P<ast::Item>> {
-        let was_nameable = mem::replace(&mut self.tests_nameable, false);
-        let items = fold::noop_fold_item(item, self);
-        self.tests_nameable = was_nameable;
-        items
     }
 
     fn collect_bang(&mut self, mac: ast::Mac, span: Span, kind: AstFragmentKind) -> AstFragment {
@@ -1297,7 +1275,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     fn fold_item(&mut self, item: P<ast::Item>) -> OneVector<P<ast::Item>> {
         let item = configure!(self, item);
 
-        let (attr, traits, mut item) = self.classify_item(item);
+        let (attr, traits, item) = self.classify_item(item);
         if attr.is_some() || !traits.is_empty() {
             let item = Annotatable::Item(item);
             return self.collect_attr(attr, traits, item, AstFragmentKind::Items).make_items();
@@ -1319,7 +1297,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
             }
             ast::ItemKind::Mod(ast::Mod { inner, .. }) => {
                 if item.ident == keywords::Invalid.ident() {
-                    return self.fold_nameable(item);
+                    return noop_fold_item(item, self);
                 }
 
                 let orig_directory_ownership = self.cx.current_expansion.directory_ownership;
@@ -1359,32 +1337,13 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
                 let orig_module =
                     mem::replace(&mut self.cx.current_expansion.module, Rc::new(module));
-                let result = self.fold_nameable(item);
+                let result = noop_fold_item(item, self);
                 self.cx.current_expansion.module = orig_module;
                 self.cx.current_expansion.directory_ownership = orig_directory_ownership;
                 result
             }
 
-            // Ensure that test items can be exported by the harness generator.
-            // #[test] fn foo() {}
-            // becomes:
-            // #[test] pub fn foo_gensym(){}
-              ast::ItemKind::Const(..)
-            | ast::ItemKind::Static(..)
-            | ast::ItemKind::Fn(..) if self.cx.ecfg.should_test => {
-                if self.tests_nameable && attr::contains_name(&item.attrs, "test_case") {
-                    // Publicize the item under gensymed name to avoid pollution
-                    // This means #[test_case] items can't be referenced by user code
-                    item = item.map(|mut item| {
-                        item.vis = respan(item.vis.span, ast::VisibilityKind::Public);
-                        item.ident = item.ident.gensym();
-                        item
-                    });
-                }
-
-                self.fold_unnameable(item)
-            }
-            _ => self.fold_unnameable(item),
+            _ => noop_fold_item(item, self),
         }
     }
 
@@ -1609,6 +1568,7 @@ impl<'feat> ExpansionConfig<'feat> {
     feature_tests! {
         fn enable_quotes = quote,
         fn enable_asm = asm,
+        fn enable_custom_test_frameworks = custom_test_frameworks,
         fn enable_global_asm = global_asm,
         fn enable_log_syntax = log_syntax,
         fn enable_concat_idents = concat_idents,

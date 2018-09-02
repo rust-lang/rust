@@ -1872,7 +1872,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestItems {
             return;
         }
 
-        if let Some(attr) = attr::find_by_name(&it.attrs, "test_case") {
+        if let Some(attr) = attr::find_by_name(&it.attrs, "rustc_test_marker") {
             cx.struct_span_lint(
                 UNNAMEABLE_TEST_ITEMS,
                 attr.span,

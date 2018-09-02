@@ -479,7 +479,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             return def;
         }
 
-        if kind == MacroKind::Attr && path.len() == 1 {
+        if kind == MacroKind::Attr {
             if let Some(ext) = self.unshadowable_attrs.get(&path[0].name) {
                 return Ok(ext.def());
             }

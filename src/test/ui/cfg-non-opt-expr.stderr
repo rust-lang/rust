@@ -16,11 +16,5 @@ error: removing an expression is not supported in this position
 LL |     let _ = [1, 2, 3][#[cfg(unset)] 1];
    |                       ^^^^^^^^^^^^^
 
-error: removing an expression is not supported in this position
-  --> $DIR/cfg-non-opt-expr.rs:21:13
-   |
-LL |     let _ = #[test_case] ();
-   |             ^^^^^^^^^^^^
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 

@@ -777,10 +777,6 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
     ("no_link", Normal, Ungated),
     ("derive", Normal, Ungated),
     ("should_panic", Normal, Ungated),
-    ("test_case", Normal, Gated(Stability::Unstable,
-                                "custom_test_frameworks",
-                                "Custom test frameworks are experimental",
-                                cfg_fn!(custom_test_frameworks))),
     ("ignore", Normal, Ungated),
     ("no_implicit_prelude", Normal, Ungated),
     ("reexport_test_harness_main", Normal, Ungated),
@@ -965,6 +961,11 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                                       attribute is just used for rustc unit \
                                                       tests and will never be stable",
                                                      cfg_fn!(rustc_attrs))),
+    ("rustc_test_marker", Normal, Gated(Stability::Unstable,
+                                     "rustc_attrs",
+                                     "the `#[rustc_test_marker]` attribute \
+                                      is used internally to track tests",
+                                     cfg_fn!(rustc_attrs))),
 
     // RFC #2094
     ("nll", Whitelisted, Gated(Stability::Unstable,
@@ -1164,7 +1165,7 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
     ("type_length_limit", CrateLevel, Ungated),
     ("test_runner", CrateLevel, Gated(Stability::Unstable,
                     "custom_test_frameworks",
-                    "Custom Test Frameworks is an unstable feature",
+                    EXPLAIN_CUSTOM_TEST_FRAMEWORKS,
                     cfg_fn!(custom_test_frameworks))),
 ];
 
@@ -1381,6 +1382,9 @@ pub const EXPLAIN_ASM: &'static str =
 
 pub const EXPLAIN_GLOBAL_ASM: &'static str =
     "`global_asm!` is not stable enough for use and is subject to change";
+
+pub const EXPLAIN_CUSTOM_TEST_FRAMEWORKS: &'static str =
+    "custom test frameworks are an unstable feature";
 
 pub const EXPLAIN_LOG_SYNTAX: &'static str =
     "`log_syntax!` is not stable enough for use and is subject to change";

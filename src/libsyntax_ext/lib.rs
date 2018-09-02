@@ -54,6 +54,7 @@ mod global_asm;
 mod log_syntax;
 mod trace_macros;
 mod test;
+mod test_case;
 
 pub mod proc_macro_registrar;
 
@@ -145,6 +146,7 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
         assert: assert::expand_assert,
     }
 
+    register(Symbol::intern("test_case"), MultiModifier(Box::new(test_case::expand)));
 
     // format_args uses `unstable` things internally.
     register(Symbol::intern("format_args"),
