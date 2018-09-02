@@ -130,7 +130,7 @@ fn check_cfgs(contents: &mut String, file: &Path,
         tidy_error!(bad, "{}:{}: platform-specific cfg: {}", file.display(), line, cfg);
     };
 
-    for (idx, cfg) in cfgs.into_iter() {
+    for (idx, cfg) in cfgs {
         // Sanity check that the parsing here works
         if !*saw_target_arch && cfg.contains("target_arch") { *saw_target_arch = true }
         if !*saw_cfg_bang && cfg.contains("cfg!") { *saw_cfg_bang = true }
