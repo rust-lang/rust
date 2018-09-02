@@ -39,6 +39,7 @@ use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
+use syntax::feature_gate::is_builtin_attr;
 use syntax::parse::token::{self, Token};
 use syntax::std_inject::injected_crate_name;
 use syntax::symbol::keywords;
@@ -1056,5 +1057,14 @@ impl<'a, 'b, 'cl> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b, 'cl> {
                 _ => {}
             }
         }
+    }
+
+    fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
+        if !attr.is_sugared_doc && is_builtin_attr(attr) {
+            self.resolver.current_module.builtin_attrs.borrow_mut().push((
+                attr.path.segments[0].ident, self.expansion, self.current_legacy_scope
+            ));
+        }
+        visit::walk_attribute(self, attr);
     }
 }

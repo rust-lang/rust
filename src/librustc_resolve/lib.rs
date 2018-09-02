@@ -1012,6 +1012,7 @@ pub struct ModuleData<'a> {
     resolutions: RefCell<FxHashMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>,
     legacy_macro_resolutions: RefCell<Vec<(Ident, MacroKind, Mark, LegacyScope<'a>, Option<Def>)>>,
     macro_resolutions: RefCell<Vec<(Box<[Ident]>, Span)>>,
+    builtin_attrs: RefCell<Vec<(Ident, Mark, LegacyScope<'a>)>>,
 
     // Macro invocations that can expand into items in this module.
     unresolved_invocations: RefCell<FxHashSet<Mark>>,
@@ -1050,6 +1051,7 @@ impl<'a> ModuleData<'a> {
             resolutions: RefCell::new(FxHashMap()),
             legacy_macro_resolutions: RefCell::new(Vec::new()),
             macro_resolutions: RefCell::new(Vec::new()),
+            builtin_attrs: RefCell::new(Vec::new()),
             unresolved_invocations: RefCell::new(FxHashSet()),
             no_implicit_prelude: false,
             glob_importers: RefCell::new(Vec::new()),

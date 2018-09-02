@@ -956,6 +956,26 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 }
             };
         }
+
+        for &(ident, parent_expansion, parent_legacy_scope)
+                in module.builtin_attrs.borrow().iter() {
+            let resolve_legacy = |this: &mut Self| this.resolve_legacy_scope(
+                ident, parent_expansion, parent_legacy_scope, true, true
+            );
+            let resolve_modern = |this: &mut Self| this.resolve_lexical_macro_path_segment(
+                ident, MacroNS, parent_expansion, true, true, true, ident.span
+            ).map(|(binding, _)| binding).ok();
+
+            if let Some(binding) = resolve_legacy(self).or_else(|| resolve_modern(self)) {
+                if binding.def_ignoring_ambiguity() !=
+                        Def::NonMacroAttr(NonMacroAttrKind::Builtin) {
+                    let builtin_binding = (Def::NonMacroAttr(NonMacroAttrKind::Builtin),
+                                           ty::Visibility::Public, ident.span, Mark::root())
+                                           .to_name_binding(self.arenas);
+                    self.report_ambiguity_error(ident, binding, builtin_binding);
+                }
+            }
+        }
     }
 
     fn suggest_macro_name(&mut self, name: &str, kind: MacroKind,
