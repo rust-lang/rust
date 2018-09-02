@@ -13,7 +13,8 @@
 //! object if all of their methods meet certain criteria. In particular,
 //! they must:
 //!
-//!   - have a suitable receiver from which we can extract a vtable;
+//!   - have a suitable receiver from which we can extract a vtable and coerce to a "thin" version
+//!     that doesn't contain the vtable;
 //!   - not reference the erased type `Self` except for in this receiver;
 //!   - not have generic type parameters
 
