@@ -333,7 +333,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
     /// checks the method's receiver (the `self` argument) can be coerced from
     /// a fat pointer, including the trait object vtable, to a thin pointer.
-    /// e.g. from `Rc<dyn Trait>` to `Rc<T>`, where `T` is the erased type of the underlying value.
+    /// e.g. from `Rc<dyn Trait>` to `Rc<T>`, where `T` is the erased type of the underlying object.
     /// More formally:
     /// - let `Receiver` be the type of the `self` argument, i.e `Self`, `&Self`, `Rc<Self>`
     /// - require the following bound:
@@ -344,13 +344,15 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     ///   (substitution notation).
     ///
     /// some examples of receiver types and their required obligation
-    /// - `self` => `dyn Trait: CoerceSized<T>`
-    /// - `&'a mut self` => `&'a mut dyn Trait: CoerceSized<&'a mut T>`
-    /// - `self: Rc<Self>` => `Rc<dyn Trait>: CoerceSized<Rc<T>>`
+    /// - `self` requires `dyn Trait: CoerceSized<T>`
+    /// - `&'a mut self` requires `&'a mut dyn Trait: CoerceSized<&'a mut T>`
+    /// - `self: Rc<Self>` requires `Rc<dyn Trait>: CoerceSized<Rc<T>>`
     ///
-    /// examples where this does *not* hold, and the receiver is not object safe:
-    /// - `self: &&Self`. There is no way to turn an `&&dyn Trait` into an `&&T`. To do so, you
-    ///   would need to change the inner `&` from a fat pointer to a thin pointer... TODO
+    /// The only case where the receiver is not coercible, but is still a valid receiver
+    /// type (just not object-safe), is when there is more than one level of pointer indirection.
+    /// e.g. `self: &&Self`, `self: &Rc<Self>`, `self: Box<Box<Self>>`. In these cases, there
+    /// is no way, or at least no inexpensive way, to coerce the receiver, because the object that
+    /// needs to be coerced is behind a pointer.
     ///
     /// In practice, there are issues with the above bound: `where` clauses that apply to `Self`
     /// would have to apply to `T`, and trait object types have a lot of parameters that need to

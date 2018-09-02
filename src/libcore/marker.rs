@@ -138,7 +138,9 @@ pub trait Unsize<T: ?Sized> {
 
 /// Pointers to unsized types that can be coerced to a pointer to a sized type,
 /// as long as pointee is actually a value of that sized type. This is used for
-/// object safety, to check that a method's receiver type can be coerced from the version where Self is dyn Trait to the version where Self is the erased sized type T that implements Trait.
+/// object safety, to check that a method's receiver type can be coerced from the version
+///  where `Self = dyn Trait` to the version where `Self = T`, the erased, sized type
+/// of the underlying object.
 ///
 /// CoerceSized is implemented for:
 /// - &[T] is CoerceSized<&[T; N]> for any N
