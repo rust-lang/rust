@@ -339,9 +339,9 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     /// - let `Receiver` be the type of the `self` argument, i.e `Self`, `&Self`, `Rc<Self>`
     /// - require the following bound:
     ///       forall(T: Trait) {
-    ///           Receiver[Self -> dyn Trait]: CoerceSized<Receiver[Self -> T]>
+    ///           Receiver[Self => dyn Trait]: CoerceSized<Receiver[Self => T]>
     ///       }
-    ///   where `Foo[X -> Y]` means "the same type as `Foo`, but with `X` replaced with `Y`"
+    ///   where `Foo[X => Y]` means "the same type as `Foo`, but with `X` replaced with `Y`"
     ///   (substitution notation).
     ///
     /// some examples of receiver types and their required obligation
@@ -361,7 +361,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     /// the implementation, we use the following, more general bound:
     ///     forall (U: ?Sized) {
     ///         if (Self: Unsize<U>) {
-    ///             Receiver[Self -> U]: CoerceSized<Receiver>
+    ///             Receiver[Self => U]: CoerceSized<Receiver>
     ///         }
     ///     }
     ///
@@ -420,10 +420,10 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
                 self.mk_param_from_def(param)
             }
         });
-        // the type `Receiver[Self -> U]` in the query
+        // the type `Receiver[Self => U]` in the query
         let unsized_receiver_ty = receiver_ty.subst(self, receiver_substs);
 
-        // Receiver[Self -> U]: CoerceSized<Receiver>
+        // Receiver[Self => U]: CoerceSized<Receiver>
         let obligation = {
             let predicate = ty::TraitRef {
                 def_id: coerce_sized_did,
