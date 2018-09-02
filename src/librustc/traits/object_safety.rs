@@ -373,8 +373,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         self,
         method: &ty::AssociatedItem,
         receiver_ty: Ty<'tcx>,
-    ) -> bool
-    {
+    ) -> bool {
         debug!("receiver_is_coercible: method = {:?}, receiver_ty = {:?}", method, receiver_ty);
 
         let traits = (self.lang_items().unsize_trait(),
