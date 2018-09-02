@@ -1,7 +1,7 @@
 use std::{
     fs,
     thread,
-    cell::Cell,
+    cell::{Cell, RefCell},
     path::PathBuf,
 };
 
@@ -56,6 +56,7 @@ pub fn project(fixture: &str) -> Server {
 
 pub struct Server {
     req_id: Cell<u64>,
+    messages: RefCell<Vec<RawMessage>>,
     dir: TempDir,
     sender: Option<Sender<RawMessage>>,
     receiver: Receiver<RawMessage>,
@@ -71,6 +72,7 @@ impl Server {
         let res = Server {
             req_id: Cell::new(1),
             dir,
+            messages: Default::default(),
             sender: Some(client_sender),
             receiver: client_receiver,
             server: Some(server),
@@ -129,7 +131,7 @@ impl Server {
             .unwrap()
             .send(RawMessage::Request(r));
 
-        while let Some(msg) = self.receiver.recv() {
+        while let Some(msg) = self.recv() {
             match msg {
                 RawMessage::Request(req) => panic!("unexpected request: {:?}", req),
                 RawMessage::Notification(_) => (),
@@ -143,6 +145,13 @@ impl Server {
             }
         }
         panic!("no response");
+    }
+    fn recv(&self) -> Option<RawMessage> {
+        self.receiver.recv()
+            .map(|msg| {
+                self.messages.borrow_mut().push(msg.clone());
+                msg
+            })
     }
     fn send_notification(&self, not: RawNotification) {
 

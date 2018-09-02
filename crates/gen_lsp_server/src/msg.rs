@@ -9,7 +9,7 @@ use languageserver_types::{
 
 use Result;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum RawMessage {
     Request(RawRequest),
@@ -17,14 +17,14 @@ pub enum RawMessage {
     Response(RawResponse),
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RawRequest {
     pub id: u64,
     pub method: String,
     pub params: Value,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RawResponse {
     // JSON RPC allows this to be null if it was impossible
     // to decode the request's id. Ignore this special case
@@ -36,7 +36,7 @@ pub struct RawResponse {
     pub error: Option<RawResponseError>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RawResponseError {
     pub code: i32,
     pub message: String,
@@ -44,6 +44,7 @@ pub struct RawResponseError {
     pub data: Option<Value>,
 }
 
+#[derive(Clone, Copy, Debug)]
 #[allow(unused)]
 pub enum ErrorCode {
     ParseError = -32700,
@@ -58,7 +59,7 @@ pub enum ErrorCode {
     RequestCancelled = -32800,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RawNotification {
     pub method: String,
     pub params: Value,
