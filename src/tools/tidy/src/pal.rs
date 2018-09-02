@@ -216,7 +216,7 @@ fn parse_cfgs<'a>(contents: &'a str) -> Vec<(usize, &'a str)> {
                 b')' => {
                     depth -= 1;
                     if depth == 0 {
-                        return (i, &contents_from[.. j + 1]);
+                        return (i, &contents_from[..=j]);
                     }
                 }
                 _ => { }
