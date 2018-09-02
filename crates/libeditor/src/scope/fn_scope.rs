@@ -261,11 +261,11 @@ mod tests {
     fn test_lambda_scope() {
         do_check(r"
             fn quux(foo: i32) {
-                let f = |bar| {
+                let f = |bar, baz: i32| {
                     <|>
                 };
             }",
-            &["bar", "foo"],
+            &["bar", "baz", "foo"],
         );
     }
 
