@@ -171,5 +171,8 @@ pub use self::c_str::{FromBytesWithNulError};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::os_str::{OsString, OsStr};
 
+#[stable(feature = "raw_os", since = "1.1.0")]
+pub use core::ffi::c_void;
+
 mod c_str;
 mod os_str;
