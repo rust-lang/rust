@@ -18,7 +18,7 @@ use {
 
 #[derive(Clone, Default, Debug)]
 pub(crate) struct SourceRoot {
-    file_map: HashMap<FileId, Arc<FileData>>,
+    file_map: HashMap<FileId, Arc<(FileData, OnceCell<FileSymbols>)>>,
     module_map: ModuleMap,
 }
 
@@ -37,9 +37,7 @@ impl SourceRoot {
         self.file_map.remove(&file_id);
         if let Some(text) = text {
             let file_data = FileData::new(text);
-            self.file_map.insert(file_id, Arc::new(file_data));
-        } else {
-            self.file_map.remove(&file_id);
+            self.file_map.insert(file_id, Arc::new((file_data, Default::default())));
         }
     }
     pub fn module_map(&self) -> &ModuleMap {
@@ -64,7 +62,7 @@ impl SourceRoot {
     pub(crate) fn symbols(&self) -> Vec<(FileId, &FileSymbols)> {
         self.file_map
             .iter()
-            .map(|(&file_id, data)| (file_id, data.symbols()))
+            .map(|(&file_id, data)| (file_id, symbols(data)))
             .collect()
     }
     pub fn reindex(&self) {
@@ -72,17 +70,22 @@ impl SourceRoot {
         self.file_map
             .par_iter()
             .for_each(|(_, data)| {
-                data.symbols();
+                symbols(data);
             });
         info!("parallel indexing took {:?}", now.elapsed());
 
     }
     fn data(&self, file_id: FileId) -> &FileData {
         match self.file_map.get(&file_id) {
-            Some(data) => data,
+            Some(data) => &data.0,
             None => panic!("unknown file: {:?}", file_id),
         }
     }
+}
+
+fn symbols((data, symbols): &(FileData, OnceCell<FileSymbols>)) -> &FileSymbols {
+    let syntax = data.syntax_transient();
+    symbols.get_or_init(|| FileSymbols::new(&syntax))
 }
 
 #[derive(Debug)]
@@ -90,14 +93,12 @@ struct FileData {
     text: String,
     lines: OnceCell<LineIndex>,
     syntax: OnceCell<File>,
-    symbols: OnceCell<FileSymbols>,
 }
 
 impl FileData {
     fn new(text: String) -> FileData {
         FileData {
             text,
-            symbols: OnceCell::new(),
             syntax: OnceCell::new(),
             lines: OnceCell::new(),
         }
@@ -105,9 +106,5 @@ impl FileData {
     fn syntax_transient(&self) -> File {
         self.syntax.get().map(|s| s.clone())
             .unwrap_or_else(|| File::parse(&self.text))
-    }
-    fn symbols(&self) -> &FileSymbols {
-        let syntax = self.syntax_transient();
-        self.symbols.get_or_init(|| FileSymbols::new(&syntax))
     }
 }
