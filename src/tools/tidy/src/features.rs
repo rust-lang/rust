@@ -94,7 +94,7 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
 
             let feature_name = match line.find(gate_test_str) {
                 Some(i) => {
-                    &line[i+gate_test_str.len()..line[i+1..].find(' ').unwrap_or(line.len())]
+                    line[i+gate_test_str.len()..].splitn(2, ' ').next().unwrap()
                 },
                 None => continue,
             };
