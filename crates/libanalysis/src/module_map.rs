@@ -8,7 +8,7 @@ use libsyntax2::{
 };
 use {FileId, FileResolver};
 
-type SyntaxProvider<'a> = dyn Fn(FileId) -> File + 'a;
+type SyntaxProvider<'a> = dyn Fn(FileId) -> &'a File + 'a;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct ModuleId(FileId);

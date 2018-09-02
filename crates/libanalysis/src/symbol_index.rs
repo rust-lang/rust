@@ -3,8 +3,8 @@ use libsyntax2::{
     File,
     SyntaxKind::{self, *},
 };
-use fst::{self, IntoStreamer, Streamer};
-use Query;
+use fst::{self, Streamer};
+use {Query, FileId, JobToken};
 
 #[derive(Debug)]
 pub(crate) struct FileSymbols {
@@ -32,35 +32,45 @@ impl FileSymbols {
 }
 
 impl Query {
-    pub(crate) fn process(
-        &mut self,
-        file: &FileSymbols,
-    ) -> Vec<FileSymbol> {
-        fn is_type(kind: SyntaxKind) -> bool {
-            match kind {
-                STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_DEF => true,
-                _ => false,
-            }
+    pub(crate) fn search(
+        mut self,
+        indices: &[(FileId, &FileSymbols)],
+        token: &JobToken,
+    ) -> Vec<(FileId, FileSymbol)> {
+
+        let mut op = fst::map::OpBuilder::new();
+        for (_, file_symbols) in indices.iter() {
+            let automaton = fst::automaton::Subsequence::new(&self.lowercased);
+            op = op.add(file_symbols.map.search(automaton))
         }
-        let automaton = fst::automaton::Subsequence::new(&self.lowercased);
-        let mut stream = file.map.search(automaton).into_stream();
+        let mut stream = op.union();
         let mut res = Vec::new();
-        while let Some((_, idx)) = stream.next() {
-            if self.limit == 0 {
+        while let Some((_, indexed_values)) = stream.next() {
+            if self.limit == 0 || token.is_canceled() {
                 break;
             }
-            let idx = idx as usize;
-            let symbol = &file.symbols[idx];
-            if self.only_types && !is_type(symbol.kind) {
-                continue;
+            for indexed_value in indexed_values {
+                let (file_id, file_symbols) = &indices[indexed_value.index];
+                let idx = indexed_value.value as usize;
+
+                let symbol = &file_symbols.symbols[idx];
+                if self.only_types && !is_type(symbol.kind) {
+                    continue;
+                }
+                if self.exact && symbol.name != self.query {
+                    continue;
+                }
+                res.push((*file_id, symbol.clone()));
+                self.limit -= 1;
             }
-            if self.exact && symbol.name != self.query {
-                continue;
-            }
-            res.push(symbol.clone());
-            self.limit -= 1;
         }
         res
     }
 }
 
+fn is_type(kind: SyntaxKind) -> bool {
+    match kind {
+        STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_DEF => true,
+        _ => false,
+    }
+}

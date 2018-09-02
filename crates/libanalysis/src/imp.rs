@@ -4,13 +4,9 @@ use std::{
         atomic::{AtomicBool, Ordering::SeqCst},
     },
     fmt,
-    time::Instant,
-    collections::{HashMap, HashSet, VecDeque},
-    panic,
+    collections::{HashSet, VecDeque},
 };
 
-use rayon::prelude::*;
-use once_cell::sync::OnceCell;
 use libeditor::{self, FileSymbol, LineIndex, find_node_at_offset, LocalEdit};
 use libsyntax2::{
     TextUnit, TextRange, SmolStr, File, AstNode,
@@ -20,10 +16,9 @@ use libsyntax2::{
 
 use {
     FileId, FileResolver, Query, Diagnostic, SourceChange, SourceFileEdit, Position, FileSystemEdit,
-    module_map::Problem,
-    symbol_index::FileSymbols,
-    module_map::{ModuleMap, ChangeKind},
     JobToken, CrateGraph, CrateId,
+    module_map::Problem,
+    roots::SourceRoot,
 };
 
 #[derive(Debug)]
@@ -50,23 +45,7 @@ impl AnalysisHostImpl {
     pub fn change_files(&mut self, changes: &mut dyn Iterator<Item=(FileId, Option<String>)>) {
         let data = self.data_mut();
         for (file_id, text) in changes {
-            let change_kind = if data.file_map.remove(&file_id).is_some() {
-                if text.is_some() {
-                    ChangeKind::Update
-                } else {
-                    ChangeKind::Delete
-                }
-            } else {
-                ChangeKind::Insert
-            };
-            data.module_map.update_file(file_id, change_kind);
-            data.file_map.remove(&file_id);
-            if let Some(text) = text {
-                let file_data = FileData::new(text);
-                data.file_map.insert(file_id, Arc::new(file_data));
-            } else {
-                data.file_map.remove(&file_id);
-            }
+            data.root.update(file_id, text);
         }
     }
     pub fn set_crate_graph(&mut self, graph: CrateGraph) {
@@ -106,31 +85,18 @@ impl Clone for AnalysisImpl {
 }
 
 impl AnalysisImpl {
-    pub fn file_syntax(&self, file_id: FileId) -> File {
-        self.file_data(file_id).syntax().clone()
+    pub fn file_syntax(&self, file_id: FileId) -> &File {
+        self.data.root.syntax(file_id)
     }
-
-    pub fn file_line_index(&self, id: FileId) -> LineIndex {
-        let data = self.file_data(id);
-        data
-            .lines
-            .get_or_init(|| LineIndex::new(&data.text))
-            .clone()
+    pub fn file_line_index(&self, file_id: FileId) -> &LineIndex {
+        self.data.root.lines(file_id)
     }
-
-    pub fn world_symbols(&self, mut query: Query, token: &JobToken) -> Vec<(FileId, FileSymbol)> {
+    pub fn world_symbols(&self,  query: Query, token: &JobToken) -> Vec<(FileId, FileSymbol)> {
         self.reindex();
-        self.data.file_map.iter()
-            .take_while(move |_| !token.is_canceled())
-            .flat_map(move |(id, data)| {
-                let symbols = data.symbols();
-                query.process(symbols).into_iter().map(move |s| (*id, s))
-            })
-            .collect()
+        query.search(&self.data.root.symbols(), token)
     }
-
     pub fn parent_module(&self, id: FileId) -> Vec<(FileId, FileSymbol)> {
-        let module_map = &self.data.module_map;
+        let module_map = self.data.root.module_map();
         let id = module_map.file2module(id);
         module_map
             .parent_modules(
@@ -152,7 +118,7 @@ impl AnalysisImpl {
     }
 
     pub fn crate_for(&self, id: FileId) -> Vec<CrateId> {
-        let module_map = &self.data.module_map;
+        let module_map = self.data.root.module_map();
         let crate_graph = &self.data.crate_graph;
         let mut res = Vec::new();
         let mut work = VecDeque::new();
@@ -222,7 +188,7 @@ impl AnalysisImpl {
             .map(|d| Diagnostic { range: d.range, message: d.msg, fix: None })
             .collect::<Vec<_>>();
 
-        self.data.module_map.problems(
+        self.data.root.module_map().problems(
             file_id,
             &*self.file_resolver,
             &|file_id| self.file_syntax(file_id),
@@ -296,7 +262,7 @@ impl AnalysisImpl {
             Some(name) => name.text(),
             None => return Vec::new(),
         };
-        let module_map = &self.data.module_map;
+        let module_map = self.data.root.module_map();
         let id = module_map.file2module(id);
         module_map
             .child_module_by_name(
@@ -311,19 +277,7 @@ impl AnalysisImpl {
 
     fn reindex(&self) {
         if self.needs_reindex.compare_and_swap(true, false, SeqCst) {
-            let now = Instant::now();
-            let data = &*self.data;
-            data.file_map
-                .par_iter()
-                .for_each(|(_, data)| drop(data.symbols()));
-            info!("parallel indexing took {:?}", now.elapsed());
-        }
-    }
-
-    fn file_data(&self, file_id: FileId) -> Arc<FileData> {
-        match self.data.file_map.get(&file_id) {
-            Some(data) => data.clone(),
-            None => panic!("unknown file: {:?}", file_id),
+            self.data.root.reindex();
         }
     }
 }
@@ -331,50 +285,7 @@ impl AnalysisImpl {
 #[derive(Clone, Default, Debug)]
 struct WorldData {
     crate_graph: CrateGraph,
-    file_map: HashMap<FileId, Arc<FileData>>,
-    module_map: ModuleMap,
-}
-
-#[derive(Debug)]
-struct FileData {
-    text: String,
-    symbols: OnceCell<FileSymbols>,
-    syntax: OnceCell<File>,
-    lines: OnceCell<LineIndex>,
-}
-
-impl FileData {
-    fn new(text: String) -> FileData {
-        FileData {
-            text,
-            symbols: OnceCell::new(),
-            syntax: OnceCell::new(),
-            lines: OnceCell::new(),
-        }
-    }
-
-    fn syntax(&self) -> &File {
-        let text = &self.text;
-        let syntax = &self.syntax;
-        match panic::catch_unwind(panic::AssertUnwindSafe(|| syntax.get_or_init(|| File::parse(text)))) {
-            Ok(file) => file,
-            Err(err) => {
-                error!("Parser paniced on:\n------\n{}\n------\n", &self.text);
-                panic::resume_unwind(err)
-            }
-        }
-    }
-
-    fn syntax_transient(&self) -> File {
-        self.syntax.get().map(|s| s.clone())
-            .unwrap_or_else(|| File::parse(&self.text))
-    }
-
-    fn symbols(&self) -> &FileSymbols {
-        let syntax = self.syntax_transient();
-        self.symbols
-            .get_or_init(|| FileSymbols::new(&syntax))
-    }
+    root: SourceRoot,
 }
 
 impl SourceChange {

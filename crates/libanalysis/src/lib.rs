@@ -14,6 +14,7 @@ mod symbol_index;
 mod module_map;
 mod imp;
 mod job;
+mod roots;
 
 use std::{
     sync::Arc,
@@ -146,10 +147,10 @@ pub struct Analysis {
 
 impl Analysis {
     pub fn file_syntax(&self, file_id: FileId) -> File {
-        self.imp.file_syntax(file_id)
+        self.imp.file_syntax(file_id).clone()
     }
     pub fn file_line_index(&self, file_id: FileId) -> LineIndex {
-        self.imp.file_line_index(file_id)
+        self.imp.file_line_index(file_id).clone()
     }
     pub fn extend_selection(&self, file: &File, range: TextRange) -> TextRange {
         libeditor::extend_selection(file, range).unwrap_or(range)
