@@ -13,12 +13,14 @@ extern crate log;
 extern crate drop_bomb;
 extern crate url_serde;
 extern crate walkdir;
+extern crate im;
+extern crate relative_path;
+extern crate cargo_metadata;
+
+extern crate gen_lsp_server;
 extern crate libeditor;
 extern crate libanalysis;
 extern crate libsyntax2;
-extern crate gen_lsp_server;
-extern crate im;
-extern crate relative_path;
 
 mod caps;
 pub mod req;
@@ -27,6 +29,7 @@ mod main_loop;
 mod vfs;
 mod path_map;
 mod server_world;
+mod project_model;
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 pub use caps::server_capabilities;

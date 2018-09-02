@@ -19,6 +19,7 @@ languageserver-types = "0.49.0"
 walkdir = "2.2.0"
 im = { version = "11.0.1", features = ["arc"] }
 text_unit = { version = "0.1.2", features = ["serde"] }
+cargo_metadata = "0.6.0"
 
 libsyntax2 = { path = "../libsyntax2" }
 libeditor = { path = "../libeditor" }
