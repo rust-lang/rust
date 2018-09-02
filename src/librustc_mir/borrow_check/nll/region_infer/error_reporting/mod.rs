@@ -15,7 +15,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc::infer::InferCtxt;
 use rustc::mir::{self, Location, Mir, Place, Rvalue, StatementKind, TerminatorKind};
-use rustc::ty::{TyCtxt, RegionVid};
+use rustc::ty::{TyCtxt, Ty, TyS, TyKind, Region, RegionKind, RegionVid};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_errors::Diagnostic;
 use std::collections::VecDeque;
@@ -344,7 +344,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         );
 
         // Check if we can use one of the "nice region errors".
-        if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
+        let fr_region = self.to_error_region(fr);
+        let outlived_fr_region = self.to_error_region(outlived_fr);
+        if let (Some(f), Some(o)) = (fr_region, outlived_fr_region) {
             let tables = infcx.tcx.typeck_tables_of(mir_def_id);
             let nice = NiceRegionError::new_from_span(infcx.tcx, span, o, f, Some(tables));
             if let Some(_error_reported) = nice.try_report_from_nll() {
@@ -356,17 +358,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.universal_regions.is_local_free_region(fr),
             self.universal_regions.is_local_free_region(outlived_fr),
         );
-        debug!("report_error: fr_is_local={:?} outlived_fr_is_local={:?} category={:?}",
-               fr_is_local, outlived_fr_is_local, category);
 
+        debug!("report_error: fr_is_local={:?} outlived_fr_is_local={:?} fr_region={:?} \
+                outlived_fr_region={:?} category={:?}",
+               fr_is_local, outlived_fr_is_local, fr_region, outlived_fr_region, category);
         match (category, fr_is_local, outlived_fr_is_local) {
             (ConstraintCategory::Assignment, true, false) |
             (ConstraintCategory::CallArgument, true, false) =>
-                self.report_escaping_data_error(mir, infcx, mir_def_id, fr, outlived_fr,
-                                                category, span, errors_buffer),
+                self.report_escaping_data_error(mir, infcx, mir_def_id, fr, fr_region, outlived_fr,
+                                                outlived_fr_region, category, span, errors_buffer),
             _ =>
-                self.report_general_error(mir, infcx, mir_def_id, fr, fr_is_local,
-                                          outlived_fr, outlived_fr_is_local,
+                self.report_general_error(mir, infcx, mir_def_id, fr, fr_is_local, fr_region,
+                                          outlived_fr, outlived_fr_is_local, outlived_fr_region,
                                           category, span, errors_buffer),
         };
     }
@@ -377,7 +380,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         infcx: &InferCtxt<'_, '_, 'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
+        fr_region: Option<Region<'tcx>>,
         outlived_fr: RegionVid,
+        outlived_fr_region: Option<Region<'tcx>>,
         category: ConstraintCategory,
         span: Span,
         errors_buffer: &mut Vec<Diagnostic>,
@@ -390,7 +395,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         if fr_name_and_span.is_none() && outlived_fr_name_and_span.is_none() {
             return self.report_general_error(mir, infcx, mir_def_id,
-                                             fr, true, outlived_fr, false,
+                                             fr, true, fr_region,
+                                             outlived_fr, false, outlived_fr_region,
                                              category, span, errors_buffer);
         }
 
@@ -430,8 +436,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         mir_def_id: DefId,
         fr: RegionVid,
         fr_is_local: bool,
+        fr_region: Option<Region<'tcx>>,
         outlived_fr: RegionVid,
         outlived_fr_is_local: bool,
+        outlived_fr_region: Option<Region<'tcx>>,
         category: ConstraintCategory,
         span: Span,
         errors_buffer: &mut Vec<Diagnostic>,
@@ -465,6 +473,26 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             },
         }
 
+        if let (Some(f), Some(RegionKind::ReStatic)) = (fr_region, outlived_fr_region) {
+            if let Some(TyS {
+                sty: TyKind::Anon(did, _),
+                ..
+            }) = self.return_type_impl_trait(infcx, f) {
+                let span = infcx.tcx.def_span(*did);
+                if let Ok(snippet) = infcx.tcx.sess.source_map().span_to_snippet(span) {
+                    diag.span_suggestion(
+                        span,
+                        &format!(
+                            "you can add a constraint to the return type to make it last \
+                             less than `'static` and match {}",
+                            fr_name,
+                        ),
+                        format!("{} + {}", snippet, fr_name),
+                    );
+                }
+            }
+        }
+
         diag.buffer(errors_buffer);
     }
 
@@ -489,5 +517,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> Span {
         let (_, span, _) = self.best_blame_constraint(mir, tcx, fr1, |r| r == fr2);
         span
+    }
+
+    fn return_type_impl_trait<'cx>(
+        &self,
+        infcx: &'cx InferCtxt<'_, '_, 'tcx>,
+        outlived_fr_region: Region<'tcx>,
+    ) -> Option<Ty<'cx>> {
+        infcx.tcx.is_suitable_region(outlived_fr_region)
+            .map(|r| r.def_id)
+            .map(|id| infcx.tcx.return_type_impl_trait(id))
+            .unwrap_or(None)
     }
 }

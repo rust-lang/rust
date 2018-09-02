@@ -1587,20 +1587,23 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         });
     }
 
-    pub fn is_return_type_impl_trait(
+    pub fn return_type_impl_trait(
         &self,
         scope_def_id: DefId,
-    ) -> bool {
+    ) -> Option<Ty> {
         let ret_ty = self.type_of(scope_def_id);
         match ret_ty.sty {
             ty::FnDef(_, _) => {
                 let sig = ret_ty.fn_sig(*self);
                 let output = self.erase_late_bound_regions(&sig.output());
-                return output.is_impl_trait();
+                if output.is_impl_trait() {
+                    Some(output)
+                } else {
+                    None
+                }
             }
-            _ => {}
+            _ => None
         }
-        false
     }
 
     // Here we check if the bound region is in Impl Item.

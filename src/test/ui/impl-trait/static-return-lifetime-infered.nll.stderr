@@ -5,6 +5,10 @@ LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
    |                         - let's call the lifetime of this reference `'1`
 LL |         self.x.iter().map(|a| a.0)
    |         ^^^^^^ cast requires that `'1` must outlive `'static`
+help: you can add a constraint to the return type to make it last less than `'static` and match '1
+   |
+LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> + '1 {
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unsatisfied lifetime constraints
   --> $DIR/static-return-lifetime-infered.rs:21:9
@@ -13,6 +17,10 @@ LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
    |                    -- lifetime `'a` defined here
 LL |         self.x.iter().map(|a| a.0)
    |         ^^^^^^ cast requires that `'a` must outlive `'static`
+help: you can add a constraint to the return type to make it last less than `'static` and match 'a
+   |
+LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> + 'a {
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

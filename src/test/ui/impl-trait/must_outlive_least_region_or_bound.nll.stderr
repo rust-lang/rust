@@ -11,12 +11,20 @@ error: unsatisfied lifetime constraints
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
    |             -- lifetime `'a` defined here  ^ returning this value requires that `'a` must outlive `'static`
+help: you can add a constraint to the return type to make it last less than `'static` and match 'a
+   |
+LL | fn explicit<'a>(x: &'a i32) -> impl Copy + 'a { x }
+   |                                ^^^^^^^^^^^^^^
 
 error: unsatisfied lifetime constraints
   --> $DIR/must_outlive_least_region_or_bound.rs:22:69
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
    |               -- lifetime `'a` defined here                         ^ returning this value requires that `'a` must outlive `'static`
+help: you can add a constraint to the return type to make it last less than `'static` and match 'a
+   |
+LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static + 'a { x }
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unsatisfied lifetime constraints
   --> $DIR/must_outlive_least_region_or_bound.rs:29:5
