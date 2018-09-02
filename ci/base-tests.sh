@@ -19,6 +19,7 @@ cd clippy_workspace_tests && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clip
 cd clippy_workspace_tests/src && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy::all && cd ../..
 cd clippy_workspace_tests/subcrate && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy::all && cd ../..
 cd clippy_workspace_tests/subcrate/src && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy::all && cd ../../..
+cd clippy_dev && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy::all && cd ..
 # test --manifest-path
 PATH=$PATH:~/rust/cargo/bin cargo clippy --manifest-path=clippy_workspace_tests/Cargo.toml -- -D clippy::all
 cd clippy_workspace_tests/subcrate && PATH=$PATH:~/rust/cargo/bin cargo clippy --manifest-path=../Cargo.toml -- -D clippy::all && cd ../..
