@@ -246,7 +246,7 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
             };
 
             let reloc_offset = {
-                let endianness = memory.endianness();
+                let endianness = tcx.data_layout.endian;
                 let offset = offset.bytes() as usize;
                 let ptr_size = tcx.data_layout.pointer_size;
                 let bytes = &alloc.bytes[offset..offset + ptr_size.bytes() as usize];
