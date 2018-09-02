@@ -379,7 +379,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         let (unsize_did, coerce_sized_did) = if let (Some(u), Some(cu)) = traits {
             (u, cu)
         } else {
-            debug!("receiver_is_coercible: Missing Unsize or CoerceUnsized traits");
+            debug!("receiver_is_coercible: Missing Unsize or CoerceSized traits");
             return false;
         };
 
@@ -435,6 +435,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         };
 
         self.infer_ctxt().enter(|ref infcx| {
+            // the receiver is coercible iff the obligation holds
             infcx.predicate_must_hold(&obligation)
         })
     }
