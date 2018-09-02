@@ -345,9 +345,15 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                     self.visit_expr(&arm.body);
                     if let Some(ref guard) = arm.guard {
                         let guard_pat = self.next("guard");
-                        println!("    if let Some(ref {}) = {}[{}].guard", guard_pat, arms_pat, i);
-                        self.current = guard_pat;
-                        self.visit_expr(guard);
+                        println!("    if let Some(ref {}) = {}[{}].guard;", guard_pat, arms_pat, i);
+                        match guard {
+                            hir::Guard::If(ref if_expr) => {
+                                let if_expr_pat = self.next("expr");
+                                println!("    if let Guard::If(ref {}) = {};", if_expr_pat, guard_pat);
+                                self.current = if_expr_pat;
+                                self.visit_expr(if_expr);
+                            }
+                        }
                     }
                     println!("    if {}[{}].pats.len() == {};", arms_pat, i, arm.pats.len());
                     for (j, pat) in arm.pats.iter().enumerate() {
