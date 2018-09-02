@@ -313,7 +313,7 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
         None
     }
 
-    fn resolve_macro_invocation(&mut self, invoc: &Invocation, scope: Mark, force: bool)
+    fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: Mark, force: bool)
                                 -> Result<Option<Lrc<SyntaxExtension>>, Determinacy> {
         let (path, kind, derives_in_scope) = match invoc.kind {
             InvocationKind::Attr { attr: None, .. } =>
@@ -326,7 +326,7 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
                 (path, MacroKind::Derive, &[][..]),
         };
 
-        let (def, ext) = self.resolve_macro_to_def(path, kind, scope, derives_in_scope, force)?;
+        let (def, ext) = self.resolve_macro_to_def(path, kind, invoc_id, derives_in_scope, force)?;
 
         if let Def::Macro(def_id, _) = def {
             self.macro_defs.insert(invoc.expansion_data.mark, def_id);
@@ -341,10 +341,10 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
         Ok(Some(ext))
     }
 
-    fn resolve_macro_path(&mut self, path: &ast::Path, kind: MacroKind, scope: Mark,
+    fn resolve_macro_path(&mut self, path: &ast::Path, kind: MacroKind, invoc_id: Mark,
                           derives_in_scope: &[ast::Path], force: bool)
                           -> Result<Lrc<SyntaxExtension>, Determinacy> {
-        Ok(self.resolve_macro_to_def(path, kind, scope, derives_in_scope, force)?.1)
+        Ok(self.resolve_macro_to_def(path, kind, invoc_id, derives_in_scope, force)?.1)
     }
 
     fn check_unused_macros(&self) {
@@ -366,10 +366,10 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
 }
 
 impl<'a, 'cl> Resolver<'a, 'cl> {
-    fn resolve_macro_to_def(&mut self, path: &ast::Path, kind: MacroKind, scope: Mark,
+    fn resolve_macro_to_def(&mut self, path: &ast::Path, kind: MacroKind, invoc_id: Mark,
                             derives_in_scope: &[ast::Path], force: bool)
                             -> Result<(Def, Lrc<SyntaxExtension>), Determinacy> {
-        let def = self.resolve_macro_to_def_inner(path, kind, scope, derives_in_scope, force);
+        let def = self.resolve_macro_to_def_inner(path, kind, invoc_id, derives_in_scope, force);
 
         // Report errors and enforce feature gates for the resolved macro.
         if def != Err(Determinacy::Undetermined) {
@@ -439,8 +439,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         let ast::Path { ref segments, span } = *path;
         let mut path: Vec<_> = segments.iter().map(|seg| seg.ident).collect();
         let invocation = self.invocations[&invoc_id];
-        let module = invocation.module.get();
-        self.current_module = if module.is_trait() { module.parent.unwrap() } else { module };
+        let parent_expansion = invoc_id.parent();
+        let parent_legacy_scope = invocation.parent_legacy_scope.get();
+        self.current_module = invocation.module.get().nearest_item_scope();
 
         // Possibly apply the macro helper hack
         if kind == MacroKind::Bang && path.len() == 1 &&
@@ -450,8 +451,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         }
 
         if path.len() > 1 {
-            let def = match self.resolve_path_with_invoc_id(None, &path, Some(MacroNS), invoc_id,
-                                                            false, span, CrateLint::No) {
+            let def = match self.resolve_path_with_parent_expansion(None, &path, Some(MacroNS),
+                                                                    parent_expansion, false, span,
+                                                                    CrateLint::No) {
                 PathResult::NonModule(path_res) => match path_res.base_def() {
                     Def::Err => Err(Determinacy::Determined),
                     def @ _ => {
@@ -471,19 +473,19 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     Err(Determinacy::Determined)
                 },
             };
-            self.current_module.nearest_item_scope().macro_resolutions.borrow_mut()
+            self.current_module.macro_resolutions.borrow_mut()
                 .push((path.into_boxed_slice(), span));
             return def;
         }
 
         let legacy_resolution = self.resolve_legacy_scope(
-            path[0], invoc_id, invocation.parent_legacy_scope.get(), false, kind == MacroKind::Attr
+            path[0], parent_expansion, parent_legacy_scope, false, kind == MacroKind::Attr
         );
         let result = if let Some(legacy_binding) = legacy_resolution {
             Ok(legacy_binding.def())
         } else {
-            match self.resolve_lexical_macro_path_segment(path[0], MacroNS, invoc_id, false, force,
-                                                          kind == MacroKind::Attr, span) {
+            match self.resolve_lexical_macro_path_segment(path[0], MacroNS, parent_expansion, false,
+                                                          force, kind == MacroKind::Attr, span) {
                 Ok((binding, _)) => Ok(binding.def_ignoring_ambiguity()),
                 Err(Determinacy::Undetermined) => return Err(Determinacy::Undetermined),
                 Err(Determinacy::Determined) => {
@@ -493,8 +495,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             }
         };
 
-        self.current_module.nearest_item_scope().legacy_macro_resolutions.borrow_mut()
-            .push((invoc_id, path[0], kind, result.ok()));
+        self.current_module.legacy_macro_resolutions.borrow_mut()
+            .push((path[0], kind, parent_expansion, parent_legacy_scope, result.ok()));
 
         if let Ok(Def::NonMacroAttr(NonMacroAttrKind::Custom)) = result {} else {
             return result;
@@ -541,7 +543,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         &mut self,
         mut ident: Ident,
         ns: Namespace,
-        invoc_id: Mark,
+        parent_expansion: Mark,
         record_used: bool,
         force: bool,
         is_attr: bool,
@@ -754,7 +756,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         // Found another solution, if the first one was "weak", report an error.
                         if result.0.def() != innermost_result.0.def() &&
                            (innermost_result.0.is_glob_import() ||
-                            innermost_result.0.may_appear_after(invoc_id, result.0)) {
+                            innermost_result.0.may_appear_after(parent_expansion, result.0)) {
                             self.ambiguity_errors.push(AmbiguityError {
                                 ident,
                                 b1: innermost_result.0,
@@ -798,8 +800,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
     fn resolve_legacy_scope(&mut self,
                             ident: Ident,
-                            invoc_id: Mark,
-                            invoc_parent_legacy_scope: LegacyScope<'a>,
+                            parent_expansion: Mark,
+                            parent_legacy_scope: LegacyScope<'a>,
                             record_used: bool,
                             is_attr: bool)
                             -> Option<&'a NameBinding<'a>> {
@@ -826,7 +828,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         let mut innermost_result: Option<&NameBinding> = None;
 
         // Go through all the scopes and try to resolve the name.
-        let mut where_to_resolve = invoc_parent_legacy_scope;
+        let mut where_to_resolve = parent_legacy_scope;
         loop {
             let result = match where_to_resolve {
                 LegacyScope::Binding(legacy_binding) if ident == legacy_binding.ident =>
@@ -854,7 +856,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     if let Some(innermost_result) = innermost_result {
                         // Found another solution, if the first one was "weak", report an error.
                         if result.def() != innermost_result.def() &&
-                           innermost_result.may_appear_after(invoc_id, result) {
+                           innermost_result.may_appear_after(parent_expansion, result) {
                             self.ambiguity_errors.push(AmbiguityError {
                                 ident,
                                 b1: innermost_result,
@@ -891,14 +893,14 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             }
         }
 
-        for &(invoc_id, ident, kind, def) in module.legacy_macro_resolutions.borrow().iter() {
+        for &(ident, kind, parent_expansion, parent_legacy_scope, def)
+                in module.legacy_macro_resolutions.borrow().iter() {
             let span = ident.span;
-            let invocation = self.invocations[&invoc_id];
             let legacy_resolution = self.resolve_legacy_scope(
-                ident, invoc_id, invocation.parent_legacy_scope.get(), true, kind == MacroKind::Attr
+                ident, parent_expansion, parent_legacy_scope, true, kind == MacroKind::Attr
             );
             let resolution = self.resolve_lexical_macro_path_segment(
-                ident, MacroNS, invoc_id, true, true, kind == MacroKind::Attr, span
+                ident, MacroNS, parent_expansion, true, true, kind == MacroKind::Attr, span
             );
 
             let check_consistency = |this: &Self, new_def: Def| {
@@ -932,12 +934,13 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     err.emit();
                 },
                 (Some(legacy_binding), Ok((binding, FromPrelude(from_prelude))))
-                        if !from_prelude || legacy_binding.may_appear_after(invoc_id, binding) => {
-                    if legacy_binding.def_ignoring_ambiguity() != binding.def_ignoring_ambiguity() {
-                        self.report_ambiguity_error(ident, legacy_binding, binding);
-                    }
+                        if legacy_binding.def() != binding.def_ignoring_ambiguity() &&
+                           (!from_prelude ||
+                            legacy_binding.may_appear_after(parent_expansion, binding)) => {
+                    self.report_ambiguity_error(ident, legacy_binding, binding);
                 },
                 // OK, non-macro-expanded legacy wins over prelude even if defs are different
+                // Also, legacy and modern can co-exist if their defs are same
                 (Some(legacy_binding), Ok(_)) |
                 // OK, unambiguous resolution
                 (Some(legacy_binding), Err(_)) => {
