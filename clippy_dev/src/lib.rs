@@ -1,8 +1,11 @@
 extern crate regex;
 #[macro_use]
 extern crate lazy_static;
+extern crate itertools;
 
 use regex::Regex;
+use itertools::Itertools;
+use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
 use std::io::prelude::*;
@@ -47,8 +50,9 @@ impl Lint {
         lints.iter().filter(|l| l.deprecation.is_none()).cloned().collect::<Vec<Lint>>()
     }
 
-    pub fn in_lint_group(group: &str, lints: &[Lint]) -> Vec<Lint> {
-        lints.iter().filter(|l| l.group == group).cloned().collect::<Vec<Lint>>()
+    /// Returns the lints in a HashMap, grouped by the different lint groups
+    pub fn by_lint_group(lints: &[Lint]) -> HashMap<String, Vec<Lint>> {
+        lints.iter().map(|lint| (lint.group.to_string(), lint.clone())).into_group_map()
     }
 }
 
@@ -141,13 +145,19 @@ fn test_active_lints() {
 }
 
 #[test]
-fn test_in_lint_group() {
+fn test_by_lint_group() {
     let lints = vec![
-        Lint::new("ptr_arg", "style", "really long text", None, "module_name"),
-        Lint::new("doc_markdown", "pedantic", "single line", None, "module_name"),
+        Lint::new("should_assert_eq", "group1", "abc", None, "module_name"),
+        Lint::new("should_assert_eq2", "group2", "abc", None, "module_name"),
+        Lint::new("incorrect_match", "group1", "abc", None, "module_name"),
     ];
-    let expected = vec![
-        Lint::new("ptr_arg", "style", "really long text", None, "module_name")
-    ];
-    assert_eq!(expected, Lint::in_lint_group("style", &lints));
+    let mut expected: HashMap<String, Vec<Lint>> = HashMap::new();
+    expected.insert("group1".to_string(), vec![
+        Lint::new("should_assert_eq", "group1", "abc", None, "module_name"),
+        Lint::new("incorrect_match", "group1", "abc", None, "module_name"),
+    ]);
+    expected.insert("group2".to_string(), vec![
+        Lint::new("should_assert_eq2", "group2", "abc", None, "module_name")
+    ]);
+    assert_eq!(expected, Lint::by_lint_group(&lints));
 }

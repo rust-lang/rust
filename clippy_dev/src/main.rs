@@ -28,26 +28,18 @@ fn main() {
 
 fn print_lints() {
     let lint_list = collect_all();
-    let print_clippy_lint_groups: [&str; 7] = [
-        "correctness",
-        "style",
-        "complexity",
-        "perf",
-        "pedantic",
-        "nursery",
-        "restriction"
-    ];
-    // We could use itertools' group_by to make this much more concise:
-    for group in &print_clippy_lint_groups {
-        println!("\n## {}", group);
+    let grouped_by_lint_group = Lint::by_lint_group(&lint_list);
 
-        let mut group_lints = Lint::in_lint_group(group, &lint_list);
-        group_lints.sort_by(|a, b| a.name.cmp(&b.name));
+    for (lint_group, mut lints) in grouped_by_lint_group {
+        if lint_group == "Deprecated" { continue; }
+        println!("\n## {}", lint_group);
 
-        for lint in group_lints {
-            if lint.deprecation.is_some() { continue; }
+        lints.sort_by(|a, b| a.name.cmp(&b.name));
+
+        for lint in lints {
             println!("* [{}]({}#{}) ({})", lint.name, clippy_dev::DOCS_LINK.clone(), lint.name, lint.desc);
         }
     }
+
     println!("there are {} lints", Lint::active_lints(&lint_list).len());
 }
