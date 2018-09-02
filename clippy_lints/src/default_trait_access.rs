@@ -48,12 +48,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DefaultTraitAccess {
             then {
                 match qpath {
                     QPath::Resolved(..) => {
-                        if let ExprKind::Call(ref method, ref _args) = expr.node {
-                            if format!("{:?}", method).contains(" as Default>") {
-                                return
+                        if_chain! {
+                            // Detect and ignore <Foo as Default>::default() because these calls do
+                            // explicitly name the type.
+                            if let ExprKind::Call(ref method, ref _args) = expr.node;
+                            if let ExprKind::Path(ref p) = method.node;
+                            if let QPath::Resolved(ref ty, ref _path) = p;
+                            if ty.is_some();
+                            then {
+                                return;
                             }
                         }
-
 
                         // TODO: Work out a way to put "whatever the imported way of referencing
                         // this type in this file" rather than a fully-qualified type.
