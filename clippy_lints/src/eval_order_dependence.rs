@@ -109,7 +109,9 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
                 self.visit_expr(e);
                 for arm in arms {
                     if let Some(ref guard) = arm.guard {
-                        self.visit_expr(guard);
+                        match guard {
+                            Guard::If(if_expr) => self.visit_expr(if_expr),
+                        }
                     }
                     // make sure top level arm expressions aren't linted
                     self.maybe_walk_expr(&*arm.body);
