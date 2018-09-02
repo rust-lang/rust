@@ -46,7 +46,7 @@ regex = "1"
 semver = "0.9"
 
 [dev-dependencies]
-cargo_metadata = "0.5"
+cargo_metadata = "0.6"
 compiletest_rs = "0.3.7"
 lazy_static = "1.0"
 serde_derive = "1.0"
@@ -58,10 +58,6 @@ derive-new = "0.5"
 # See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
 # for more information.
 rustc-workspace-hack = "1.0.0"
-
-[build-dependencies]
-rustc_version = "0.2.2"
-ansi_term = "0.11"
 
 [features]
 debugging = []

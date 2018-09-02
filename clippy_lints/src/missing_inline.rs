@@ -10,10 +10,11 @@
 //
 
 use rustc::hir;
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use syntax::ast;
 use syntax::source_map::Span;
+use crate::utils::span_lint;
 
 /// **What it does:** it lints if an exported function, method, trait method with default impl,
 /// or trait method impl is not `#[inline]`.
@@ -74,7 +75,8 @@ fn check_missing_inline_attrs(cx: &LateContext<'_, '_>,
         .iter()
         .any(|a| a.name() == "inline" );
     if !has_inline {
-        cx.span_lint(
+        span_lint(
+            cx,
             MISSING_INLINE_IN_PUBLIC_ITEMS,
             sp,
             &format!("missing `#[inline]` for {}", desc),

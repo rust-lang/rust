@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(suspicious_arithmetic_impl)]
+#![warn(clippy::suspicious_arithmetic_impl)]
 use std::ops::{Add, AddAssign, Mul, Sub, Div};
 
 #[derive(Copy, Clone)]

@@ -2,8 +2,8 @@
 //!
 //! This lint is **warn** by default
 
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use rustc::hir::*;
 use syntax::ast::LitKind;
 use syntax::source_map::Spanned;

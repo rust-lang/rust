@@ -4,7 +4,7 @@ error: casting i8 to i16 may become silently lossy if types change
 6 |     1i8 as i16;
   |     ^^^^^^^^^^ help: try: `i16::from(1i8)`
   |
-  = note: `-D cast-lossless` implied by `-D warnings`
+  = note: `-D clippy::cast-lossless` implied by `-D warnings`
 
 error: casting i8 to i32 may become silently lossy if types change
  --> $DIR/cast_lossless_integer.rs:7:5

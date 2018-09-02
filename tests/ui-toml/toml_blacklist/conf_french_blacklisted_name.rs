@@ -1,10 +1,10 @@
-
+#![feature(tool_lints)]
 
 
 #![allow(dead_code)]
-#![allow(single_match)]
+#![allow(clippy::single_match)]
 #![allow(unused_variables)]
-#![warn(blacklisted_name)]
+#![warn(clippy::blacklisted_name)]
 
 fn test(toto: ()) {}
 

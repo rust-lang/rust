@@ -1,5 +1,5 @@
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use rustc::hir::*;
 use crate::utils::{match_type, method_chain_args, paths, snippet, span_help_and_lint};

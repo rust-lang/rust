@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#[warn(collapsible_if)]
+#[warn(clippy::collapsible_if)]
 fn main() {
     let x = "hello";
     let y = "world";

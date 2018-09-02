@@ -1,4 +1,4 @@
-#![feature(tool_attributes)]
+
 
 fn main() {
     #[clippy::author]

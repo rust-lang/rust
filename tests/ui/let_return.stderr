@@ -4,7 +4,7 @@ error: returning the result of a let binding from a block. Consider returning th
 10 |     x
    |     ^
    |
-   = note: `-D let-and-return` implied by `-D warnings`
+   = note: `-D clippy::let-and-return` implied by `-D warnings`
 note: this expression can be directly returned
   --> $DIR/let_return.rs:9:13
    |

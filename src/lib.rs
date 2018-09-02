@@ -1,9 +1,9 @@
 // error-pattern:cargo-clippy
 #![feature(plugin_registrar)]
 #![feature(rustc_private)]
-#![feature(macro_vis_matcher)]
+#![feature(tool_lints)]
 #![allow(unknown_lints)]
-#![allow(missing_docs_in_private_items)]
+#![allow(clippy::missing_docs_in_private_items)]
 #![warn(rust_2018_idioms)]
 
 use rustc_plugin::Registry;

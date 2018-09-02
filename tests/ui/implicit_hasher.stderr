@@ -4,7 +4,7 @@ error: impl for `HashMap` should be generalized over different hashers
 11 | impl<K: Hash + Eq, V> Foo<i8> for HashMap<K, V> {
    |                                   ^^^^^^^^^^^^^
    |
-   = note: `-D implicit-hasher` implied by `-D warnings`
+   = note: `-D clippy::implicit-hasher` implied by `-D warnings`
 help: consider adding a type parameter
    |
 11 | impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<i8> for HashMap<K, V, S> {

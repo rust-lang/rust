@@ -1,6 +1,6 @@
 use crate::reexport::*;
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
+use rustc::{declare_tool_lint, lint_array};
 use rustc::hir::*;
 use rustc::hir::intravisit::FnKind;
 use rustc::ty;
@@ -155,7 +155,7 @@ fn check_decl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx Decl, bindings: 
 fn is_binding(cx: &LateContext<'_, '_>, pat_id: HirId) -> bool {
     let var_ty = cx.tables.node_id_to_type(pat_id);
     match var_ty.sty {
-        ty::TyAdt(..) => false,
+        ty::Adt(..) => false,
         _ => true,
     }
 }
@@ -339,7 +339,9 @@ fn check_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, bindings: 
                     check_pat(cx, pat, Some(&**init), pat.span, bindings);
                     // This is ugly, but needed to get the right type
                     if let Some(ref guard) = arm.guard {
-                        check_expr(cx, guard, bindings);
+                        match guard {
+                            Guard::If(if_expr) => check_expr(cx, if_expr, bindings),
+                        }
                     }
                     check_expr(cx, &arm.body, bindings);
                     bindings.truncate(len);

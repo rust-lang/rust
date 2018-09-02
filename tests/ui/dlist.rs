@@ -1,9 +1,11 @@
+#![feature(tool_lints)]
+
 #![feature(alloc)]
 #![feature(associated_type_defaults)]
 
 
-#![warn(linkedlist)]
-#![allow(dead_code, needless_pass_by_value)]
+#![warn(clippy::linkedlist)]
+#![allow(dead_code, clippy::needless_pass_by_value)]
 
 extern crate alloc;
 use alloc::collections::linked_list::LinkedList;

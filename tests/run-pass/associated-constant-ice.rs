@@ -1,6 +1,3 @@
-
-
-
 pub trait Trait {
     const CONSTANT: u8;
 }

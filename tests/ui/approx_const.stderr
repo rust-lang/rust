@@ -4,7 +4,7 @@ error: approximate value of `f{32, 64}::consts::E` found. Consider using it dire
 7 |     let my_e = 2.7182;
   |                ^^^^^^
   |
-  = note: `-D approx-constant` implied by `-D warnings`
+  = note: `-D clippy::approx-constant` implied by `-D warnings`
 
 error: approximate value of `f{32, 64}::consts::E` found. Consider using it directly
  --> $DIR/approx_const.rs:8:20

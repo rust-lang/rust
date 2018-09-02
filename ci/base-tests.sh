@@ -7,6 +7,7 @@ remark -f *.md > /dev/null
 # build clippy in debug mode and run tests
 cargo build --features debugging
 cargo test --features debugging
+cd clippy_lints && cargo test && cd ..
 mkdir -p ~/rust/cargo/bin
 cp target/debug/cargo-clippy ~/rust/cargo/bin/cargo-clippy
 cp target/debug/clippy-driver ~/rust/cargo/bin/clippy-driver

@@ -1,15 +1,15 @@
 error: this argument is passed by reference, but would be more efficient if passed by value
-  --> $DIR/test.rs:12:11
+  --> $DIR/test.rs:13:11
    |
-12 | fn bad(x: &u16, y: &Foo) {
+13 | fn bad(x: &u16, y: &Foo) {
    |           ^^^^ help: consider passing by value instead: `u16`
    |
-   = note: `-D trivially-copy-pass-by-ref` implied by `-D warnings`
+   = note: `-D clippy::trivially-copy-pass-by-ref` implied by `-D warnings`
 
 error: this argument is passed by reference, but would be more efficient if passed by value
-  --> $DIR/test.rs:12:20
+  --> $DIR/test.rs:13:20
    |
-12 | fn bad(x: &u16, y: &Foo) {
+13 | fn bad(x: &u16, y: &Foo) {
    |                    ^^^^ help: consider passing by value instead: `Foo`
 
 error: aborting due to 2 previous errors

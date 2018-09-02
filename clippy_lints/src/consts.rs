@@ -1,5 +1,4 @@
-#![allow(cast_possible_truncation)]
-#![allow(float_cmp)]
+#![allow(clippy::float_cmp)]
 
 use rustc::lint::LateContext;
 use rustc::{span_bug, bug};
@@ -15,22 +14,6 @@ use std::rc::Rc;
 use syntax::ast::{FloatTy, LitKind};
 use syntax::ptr::P;
 use crate::utils::{sext, unsext, clip};
-
-#[derive(Debug, Copy, Clone)]
-pub enum FloatWidth {
-    F32,
-    F64,
-    Any,
-}
-
-impl From<FloatTy> for FloatWidth {
-    fn from(ty: FloatTy) -> Self {
-        match ty {
-            FloatTy::F32 => FloatWidth::F32,
-            FloatTy::F64 => FloatWidth::F64,
-        }
-    }
-}
 
 /// A `LitKind`-like enum to fold constant `Expr`s into.
 #[derive(Debug, Clone)]
@@ -123,12 +106,12 @@ impl Hash for Constant {
 }
 
 impl Constant {
-    pub fn partial_cmp(tcx: TyCtxt<'_, '_, '_>, cmp_type: &ty::TypeVariants<'_>, left: &Self, right: &Self) -> Option<Ordering> {
+    pub fn partial_cmp(tcx: TyCtxt<'_, '_, '_>, cmp_type: &ty::TyKind<'_>, left: &Self, right: &Self) -> Option<Ordering> {
         match (left, right) {
             (&Constant::Str(ref ls), &Constant::Str(ref rs)) => Some(ls.cmp(rs)),
             (&Constant::Char(ref l), &Constant::Char(ref r)) => Some(l.cmp(r)),
             (&Constant::Int(l), &Constant::Int(r)) => {
-                if let ty::TyInt(int_ty) = *cmp_type {
+                if let ty::Int(int_ty) = *cmp_type {
                     Some(sext(tcx, l, int_ty).cmp(&sext(tcx, r, int_ty)))
                 } else {
                     Some(l.cmp(&r))
@@ -166,8 +149,8 @@ pub fn lit_to_constant<'tcx>(lit: &LitKind, ty: Ty<'tcx>) -> Constant {
         LitKind::Int(n, _) => Constant::Int(n),
         LitKind::Float(ref is, _) |
         LitKind::FloatUnsuffixed(ref is) => match ty.sty {
-            ty::TyFloat(FloatTy::F32) => Constant::F32(is.as_str().parse().unwrap()),
-            ty::TyFloat(FloatTy::F64) => Constant::F64(is.as_str().parse().unwrap()),
+            ty::Float(FloatTy::F32) => Constant::F32(is.as_str().parse().unwrap()),
+            ty::Float(FloatTy::F64) => Constant::F64(is.as_str().parse().unwrap()),
             _ => bug!(),
         },
         LitKind::Bool(b) => Constant::Bool(b),
@@ -220,7 +203,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             ExprKind::Tup(ref tup) => self.multi(tup).map(Constant::Tuple),
             ExprKind::Repeat(ref value, _) => {
                 let n = match self.tables.expr_ty(e).sty {
-                    ty::TyArray(_, n) => n.assert_usize(self.tcx).expect("array length"),
+                    ty::Array(_, n) => n.assert_usize(self.tcx).expect("array length"),
                     _ => span_bug!(e.span, "typeck error"),
                 };
                 self.expr(value).map(|v| Constant::Repeat(Box::new(v), n as u64))
@@ -243,8 +226,8 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             Int(value) => {
                 let value = !value;
                 match ty.sty {
-                    ty::TyInt(ity) => Some(Int(unsext(self.tcx, value as i128, ity))),
-                    ty::TyUint(ity) => Some(Int(clip(self.tcx, value, ity))),
+                    ty::Int(ity) => Some(Int(unsext(self.tcx, value as i128, ity))),
+                    ty::Uint(ity) => Some(Int(clip(self.tcx, value, ity))),
                     _ => None,
                 }
             },
@@ -257,7 +240,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
         match *o {
             Int(value) => {
                 let ity = match ty.sty {
-                    ty::TyInt(ity) => ity,
+                    ty::Int(ity) => ity,
                     _ => return None,
                 };
                 // sign extend
@@ -336,7 +319,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
         match (l, r) {
             (Constant::Int(l), Some(Constant::Int(r))) => {
                 match self.tables.expr_ty(left).sty {
-                    ty::TyInt(ity) => {
+                    ty::Int(ity) => {
                         let l = sext(self.tcx, l, ity);
                         let r = sext(self.tcx, r, ity);
                         let zext = |n: i128| Constant::Int(unsext(self.tcx, n, ity));
@@ -360,7 +343,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                             _ => None,
                         }
                     }
-                    ty::TyUint(_) => {
+                    ty::Uint(_) => {
                         match op.node {
                             BinOpKind::Add => l.checked_add(r).map(Constant::Int),
                             BinOpKind::Sub => l.checked_sub(r).map(Constant::Int),
@@ -429,18 +412,18 @@ pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'
     use rustc::mir::interpret::{Scalar, ScalarMaybeUndef, ConstValue};
     match result.val {
         ConstValue::Scalar(Scalar::Bits{ bits: b, ..}) => match result.ty.sty {
-            ty::TyBool => Some(Constant::Bool(b == 1)),
-            ty::TyUint(_) | ty::TyInt(_) => Some(Constant::Int(b)),
-            ty::TyFloat(FloatTy::F32) => Some(Constant::F32(f32::from_bits(b as u32))),
-            ty::TyFloat(FloatTy::F64) => Some(Constant::F64(f64::from_bits(b as u64))),
+            ty::Bool => Some(Constant::Bool(b == 1)),
+            ty::Uint(_) | ty::Int(_) => Some(Constant::Int(b)),
+            ty::Float(FloatTy::F32) => Some(Constant::F32(f32::from_bits(b as u32))),
+            ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(b as u64))),
             // FIXME: implement other conversion
             _ => None,
         },
         ConstValue::ScalarPair(Scalar::Ptr(ptr),
                                ScalarMaybeUndef::Scalar(
                                 Scalar::Bits { bits: n, .. })) => match result.ty.sty {
-            ty::TyRef(_, tam, _) => match tam.sty {
-                ty::TyStr => {
+            ty::Ref(_, tam, _) => match tam.sty {
+                ty::Str => {
                     let alloc = tcx
                         .alloc_map
                         .lock()

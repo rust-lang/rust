@@ -1,11 +1,11 @@
-
+#![feature(tool_lints)]
 
 struct NotARange;
 impl NotARange {
     fn step_by(&self, _: u32) {}
 }
 
-#[warn(iterator_step_by_zero, range_zip_with_len)]
+#[warn(clippy::iterator_step_by_zero, clippy::range_zip_with_len)]
 fn main() {
     let _ = (0..1).step_by(0);
     // No warning for non-zero step

@@ -4,7 +4,7 @@ error: you are collect()ing an iterator and throwing away the result. Consider u
 10 |     repeat(0_u8).collect::<Vec<_>>(); // infinite iter
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D unused-collect` implied by `-D warnings`
+   = note: `-D clippy::unused-collect` implied by `-D warnings`
 
 error: infinite iteration detected
   --> $DIR/infinite_iter.rs:10:5
@@ -15,8 +15,8 @@ error: infinite iteration detected
 note: lint level defined here
   --> $DIR/infinite_iter.rs:8:8
    |
-8  | #[deny(infinite_iter)]
-   |        ^^^^^^^^^^^^^
+8  | #[deny(clippy::infinite_iter)]
+   |        ^^^^^^^^^^^^^^^^^^^^^
 
 error: infinite iteration detected
   --> $DIR/infinite_iter.rs:11:5
@@ -57,8 +57,8 @@ error: possible infinite iteration detected
 note: lint level defined here
   --> $DIR/infinite_iter.rs:22:8
    |
-22 | #[deny(maybe_infinite_iter)]
-   |        ^^^^^^^^^^^^^^^^^^^
+22 | #[deny(clippy::maybe_infinite_iter)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: possible infinite iteration detected
   --> $DIR/infinite_iter.rs:25:5

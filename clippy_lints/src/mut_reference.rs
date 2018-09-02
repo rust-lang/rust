@@ -1,5 +1,5 @@
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use rustc::ty::{self, Ty};
 use rustc::ty::subst::Subst;
 use rustc::hir::*;
@@ -58,16 +58,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnecessaryMutPassed {
 
 fn check_arguments<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arguments: &[Expr], type_definition: Ty<'tcx>, name: &str) {
     match type_definition.sty {
-        ty::TyFnDef(..) | ty::TyFnPtr(_) => {
+        ty::FnDef(..) | ty::FnPtr(_) => {
             let parameters = type_definition.fn_sig(cx.tcx).skip_binder().inputs();
             for (argument, parameter) in arguments.iter().zip(parameters.iter()) {
                 match parameter.sty {
-                    ty::TyRef(
+                    ty::Ref(
                         _,
                         _,
                         MutImmutable,
                     ) |
-                    ty::TyRawPtr(ty::TypeAndMut {
+                    ty::RawPtr(ty::TypeAndMut {
                         mutbl: MutImmutable,
                         ..
                     }) => if let ExprKind::AddrOf(MutMutable, _) = argument.node {

@@ -1,8 +1,8 @@
 use rustc::hir;
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use rustc::ty::TypeVariants;
+use rustc::ty::TyKind;
 use std::f32;
 use std::f64;
 use std::fmt;
@@ -46,7 +46,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExcessivePrecision {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         if_chain! {
             let ty = cx.tables.expr_ty(expr);
-            if let TypeVariants::TyFloat(fty) = ty.sty;
+            if let TyKind::Float(fty) = ty.sty;
             if let hir::ExprKind::Lit(ref lit) = expr.node;
             if let LitKind::Float(sym, _) | LitKind::FloatUnsuffixed(sym) = lit.node;
             if let Some(sugg) = self.check(sym, fty);

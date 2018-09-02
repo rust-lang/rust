@@ -1,9 +1,9 @@
+#![feature(tool_lints)]
 
 
+#![warn(clippy::map_clone)]
 
-#![warn(map_clone)]
-
-#![allow(clone_on_copy, unused)]
+#![allow(clippy::clone_on_copy, unused)]
 
 use std::ops::Deref;
 

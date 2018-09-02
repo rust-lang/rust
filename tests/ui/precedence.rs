@@ -1,9 +1,9 @@
+#![feature(tool_lints)]
 
 
-
-#[warn(precedence)]
-#[allow(identity_op)]
-#[allow(eq_op)]
+#[warn(clippy::precedence)]
+#[allow(clippy::identity_op)]
+#[allow(clippy::eq_op)]
 
 macro_rules! trip {
    ($a:expr) => {

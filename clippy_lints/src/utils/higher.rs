@@ -1,7 +1,7 @@
 //! This module contains functions for retrieve the original AST from lowered
 //! `hir`.
 
-#![deny(missing_docs_in_private_items)]
+#![deny(clippy::missing_docs_in_private_items)]
 
 use if_chain::if_chain;
 use rustc::{hir, ty};
@@ -48,7 +48,7 @@ pub struct Range<'a> {
 pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> Option<Range<'b>> {
 
     let def_path = match cx.tables.expr_ty(expr).sty {
-        ty::TyAdt(def, _) => cx.tcx.def_path(def.did),
+        ty::Adt(def, _) => cx.tcx.def_path(def.did),
         _ => return None,
     };
 

@@ -1,8 +1,8 @@
 //! lint on C-like enums that are `repr(isize/usize)` and have values that
 //! don't fit into an `i32`
 
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use rustc::hir::*;
 use rustc::ty;
 use rustc::ty::subst::Substs;
@@ -43,7 +43,7 @@ impl LintPass for UnportableVariant {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
-    #[allow(cast_possible_truncation, cast_sign_loss)]
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if cx.tcx.data_layout.pointer_size.bits() != 64 {
             return;
@@ -63,19 +63,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
                     let constant = cx.tcx.const_eval(param_env.and(cid)).ok();
                     if let Some(Constant::Int(val)) = constant.and_then(|c| miri_to_const(cx.tcx, c)) {
                         let mut ty = cx.tcx.type_of(did);
-                        if let ty::TyAdt(adt, _) = ty.sty {
+                        if let ty::Adt(adt, _) = ty.sty {
                             if adt.is_enum() {
                                 ty = adt.repr.discr_type().to_ty(cx.tcx);
                             }
                         }
                         match ty.sty {
-                            ty::TyInt(IntTy::Isize) => {
+                            ty::Int(IntTy::Isize) => {
                                 let val = ((val as i128) << 64) >> 64;
                                 if val <= i128::from(i32::max_value()) && val >= i128::from(i32::min_value()) {
                                     continue;
                                 }
                             }
-                            ty::TyUint(UintTy::Usize) if val > u128::from(u32::max_value()) => {},
+                            ty::Uint(UintTy::Usize) if val > u128::from(u32::max_value()) => {},
                             _ => continue,
                         }
                         span_lint(

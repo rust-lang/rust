@@ -1,5 +1,5 @@
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LintArray, LintPass, EarlyContext, EarlyLintPass};
+use rustc::{declare_tool_lint, lint_array};
 use syntax::source_map::Span;
 use syntax::symbol::LocalInternedString;
 use syntax::ast::*;
@@ -113,6 +113,9 @@ impl<'a, 'tcx: 'a, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             },
             _ => walk_pat(self, pat),
         }
+    }
+    fn visit_mac(&mut self, _mac: &Mac) {
+        // do not check macs
     }
 }
 

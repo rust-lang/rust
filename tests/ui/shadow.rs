@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(clippy, clippy_pedantic, shadow_same, shadow_reuse, shadow_unrelated)]
-#![allow(unused_parens, unused_variables, missing_docs_in_private_items)]
+#![warn(clippy::all, clippy::pedantic, clippy::shadow_same, clippy::shadow_reuse, clippy::shadow_unrelated)]
+#![allow(unused_parens, unused_variables, clippy::missing_docs_in_private_items)]
 
 fn id<T>(x: T) -> T { x }
 

@@ -1,7 +1,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::hir;
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use rustc::ty::{self, Ty};
 use syntax::source_map::Span;
@@ -21,7 +21,7 @@ use crate::utils::sugg::DiagnosticBuilderExt;
 ///
 /// **Example:**
 ///
-/// ```rust,ignore
+/// ```rust
 /// struct Foo(Bar);
 ///
 /// impl Foo {
@@ -63,7 +63,7 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 ///
-/// ```rust,ignore
+/// ```rust
 /// struct Foo;
 ///
 /// impl Foo {
@@ -169,7 +169,7 @@ fn create_new_without_default_suggest_msg(ty: Ty<'_>) -> String {
 
 fn can_derive_default<'t, 'c>(ty: Ty<'t>, cx: &LateContext<'c, 't>, default_trait_id: DefId) -> Option<Span> {
     match ty.sty {
-        ty::TyAdt(adt_def, substs) if adt_def.is_struct() => {
+        ty::Adt(adt_def, substs) if adt_def.is_struct() => {
             for field in adt_def.all_fields() {
                 let f_ty = field.ty(cx.tcx, substs);
                 if !implements_trait(cx, f_ty, default_trait_id, &[]) {

@@ -1,11 +1,13 @@
+#![feature(tool_lints)]
+
 use std::borrow::Cow;
 
-#[allow(trivially_copy_pass_by_ref)]
+#[allow(clippy::trivially_copy_pass_by_ref)]
 fn x(y: &i32) -> i32 {
     *y
 }
 
-#[warn(clippy, needless_borrow)]
+#[warn(clippy::all, clippy::needless_borrow)]
 #[allow(unused_variables)]
 fn main() {
     let a = 5;
@@ -42,7 +44,7 @@ trait Trait {}
 impl<'a> Trait for &'a str {}
 
 fn h(_: &Trait) {}
-#[warn(needless_borrow)]
+#[warn(clippy::needless_borrow)]
 #[allow(dead_code)]
 fn issue_1432() {
     let mut v = Vec::<String>::new();

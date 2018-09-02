@@ -4,7 +4,7 @@ error: used binding `_foo` which is prefixed with an underscore. A leading under
 17 |     _foo + 1
    |     ^^^^
    |
-   = note: `-D used-underscore-binding` implied by `-D warnings`
+   = note: `-D clippy::used-underscore-binding` implied by `-D warnings`
 
 error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
   --> $DIR/used_underscore_binding.rs:22:20

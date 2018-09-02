@@ -1,5 +1,5 @@
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, EarlyContext, EarlyLintPass};
+use rustc::{declare_tool_lint, lint_array};
 use rustc::hir::*;
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
@@ -149,13 +149,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
 
     fn check_crate_post(&mut self, cx: &LateContext<'a, 'tcx>, _: &'tcx Crate) {
         for (lint_name, &lint_span) in &self.declared_lints {
-            // When using the `declare_lint!` macro, the original `lint_span`'s
+            // When using the `declare_tool_lint!` macro, the original `lint_span`'s
             // file points to "<rustc macros>".
             // `compiletest-rs` thinks that's an error in a different file and
             // just ignores it. This causes the test in compile-fail/lint_pass
             // not able to capture the error.
             // Therefore, we need to climb the macro expansion tree and find the
-            // actual span that invoked `declare_lint!`:
+            // actual span that invoked `declare_tool_lint!`:
             let lint_span = lint_span
                 .ctxt()
                 .outer()

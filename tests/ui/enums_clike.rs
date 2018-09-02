@@ -1,7 +1,9 @@
+#![feature(tool_lints)]
+
 // ignore-x86
 
 
-#![warn(clippy)]
+#![warn(clippy::all)]
 
 #![allow(unused)]
 

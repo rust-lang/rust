@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(unit_cmp)]
-#![allow(no_effect, unnecessary_operation)]
+#![warn(clippy::unit_cmp)]
+#![allow(clippy::no_effect, clippy::unnecessary_operation)]
 
 #[derive(PartialEq)]
 pub struct ContainsUnit(()); // should be fine

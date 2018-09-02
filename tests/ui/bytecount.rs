@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#[deny(naive_bytecount)]
+#[deny(clippy::naive_bytecount)]
 fn main() {
     let x = vec![0_u8; 16];
 

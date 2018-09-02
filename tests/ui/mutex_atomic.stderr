@@ -4,7 +4,7 @@ error: Consider using an AtomicBool instead of a Mutex here. If you just want th
 9 |     Mutex::new(true);
   |     ^^^^^^^^^^^^^^^^
   |
-  = note: `-D mutex-atomic` implied by `-D warnings`
+  = note: `-D clippy::mutex-atomic` implied by `-D warnings`
 
 error: Consider using an AtomicUsize instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
   --> $DIR/mutex_atomic.rs:10:5
@@ -36,7 +36,7 @@ error: Consider using an AtomicUsize instead of a Mutex here. If you just want t
 15 |     Mutex::new(0u32);
    |     ^^^^^^^^^^^^^^^^
    |
-   = note: `-D mutex-integer` implied by `-D warnings`
+   = note: `-D clippy::mutex-integer` implied by `-D warnings`
 
 error: Consider using an AtomicIsize instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
   --> $DIR/mutex_atomic.rs:16:5

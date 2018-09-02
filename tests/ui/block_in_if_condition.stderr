@@ -8,7 +8,7 @@ error: in an 'if' condition, avoid complex blocks or closures with blocks; inste
 33 | |     } {
    | |_____^
    |
-   = note: `-D block-in-if-condition-stmt` implied by `-D warnings`
+   = note: `-D clippy::block-in-if-condition-stmt` implied by `-D warnings`
    = help: try
            let res = {
                let x = 3;
@@ -24,7 +24,7 @@ error: omit braces around single expression condition
 41 |     if { true } {
    |        ^^^^^^^^
    |
-   = note: `-D block-in-if-condition-expr` implied by `-D warnings`
+   = note: `-D clippy::block-in-if-condition-expr` implied by `-D warnings`
    = help: try
            if true {
                6
@@ -48,7 +48,7 @@ error: this boolean expression can be simplified
 67 |     if true && x == 3 {
    |        ^^^^^^^^^^^^^^ help: try: `x == 3`
    |
-   = note: `-D nonminimal-bool` implied by `-D warnings`
+   = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
 
 error: aborting due to 5 previous errors
 

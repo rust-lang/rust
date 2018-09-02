@@ -1,6 +1,6 @@
 //! Read configurations files.
 
-#![deny(missing_docs_in_private_items)]
+#![deny(clippy::missing_docs_in_private_items)]
 
 use lazy_static::lazy_static;
 use std::{env, fmt, fs, io, path};
@@ -38,17 +38,6 @@ pub enum Error {
     Io(io::Error),
     /// Not valid toml or doesn't fit the expected conf format
     Toml(String),
-    /// Type error.
-    Type(
-        /// The name of the key.
-        &'static str,
-        /// The expected type.
-        &'static str,
-        /// The type we got instead.
-        &'static str,
-    ),
-    /// There is an unknown key is the file.
-    UnknownKey(String),
 }
 
 impl fmt::Display for Error {
@@ -56,10 +45,6 @@ impl fmt::Display for Error {
         match *self {
             Error::Io(ref err) => err.fmt(f),
             Error::Toml(ref err) => err.fmt(f),
-            Error::Type(key, expected, got) => {
-                write!(f, "`{}` is expected to be a `{}` but is a `{}`", key, expected, got)
-            },
-            Error::UnknownKey(ref key) => write!(f, "unknown key `{}`", key),
         }
     }
 }

@@ -1,7 +1,7 @@
 use matches::matches;
 use rustc::hir;
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, Lint, LintContext};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use rustc::ty::{self, Ty};
 use rustc::hir::def::Def;
@@ -714,7 +714,7 @@ impl LintPass for Pass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
-    #[allow(cyclomatic_complexity)]
+    #[allow(clippy::cyclomatic_complexity)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         if in_macro(expr.span) {
             return;
@@ -784,7 +784,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 }
 
                 match self_ty.sty {
-                    ty::TyRef(_, ty, _) if ty.sty == ty::TyStr => for &(method, pos) in &PATTERN_METHODS {
+                    ty::Ref(_, ty, _) if ty.sty == ty::Str => for &(method, pos) in &PATTERN_METHODS {
                         if method_call.ident.name == method && args.len() > pos {
                             lint_single_char_pattern(cx, expr, &args[pos]);
                         }
@@ -922,7 +922,7 @@ fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Spa
     }
 
     /// Check for `*or(foo())`.
-    #[allow(too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     fn check_general_case(
         cx: &LateContext<'_, '_>,
         name: &str,
@@ -1113,8 +1113,8 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
 /// Checks for the `CLONE_ON_COPY` lint.
 fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Expr, arg_ty: Ty<'_>) {
     let ty = cx.tables.expr_ty(expr);
-    if let ty::TyRef(_, inner, _) = arg_ty.sty {
-        if let ty::TyRef(_, innermost, _) = inner.sty {
+    if let ty::Ref(_, inner, _) = arg_ty.sty {
+        if let ty::Ref(_, innermost, _) = inner.sty {
             span_lint_and_then(
                 cx,
                 CLONE_DOUBLE_REF,
@@ -1124,7 +1124,7 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
                 |db| if let Some(snip) = sugg::Sugg::hir_opt(cx, arg) {
                     let mut ty = innermost;
                     let mut n = 0;
-                    while let ty::TyRef(_, inner, _) = ty.sty {
+                    while let ty::Ref(_, inner, _) = ty.sty {
                         ty = inner;
                         n += 1;
                     }
@@ -1142,17 +1142,17 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
     if is_copy(cx, ty) {
         let snip;
         if let Some(snippet) = sugg::Sugg::hir_opt(cx, arg) {
-            if let ty::TyRef(..) = cx.tables.expr_ty(arg).sty {
+            if let ty::Ref(..) = cx.tables.expr_ty(arg).sty {
                 let parent = cx.tcx.hir.get_parent_node(expr.id);
                 match cx.tcx.hir.get(parent) {
-                    hir::map::NodeExpr(parent) => match parent.node {
+                    hir::Node::Expr(parent) => match parent.node {
                         // &*x is a nop, &x.clone() is not
                         hir::ExprKind::AddrOf(..) |
                         // (*x).func() is useless, x.clone().func() can work in case func borrows mutably
                         hir::ExprKind::MethodCall(..) => return,
                         _ => {},
                     }
-                    hir::map::NodeStmt(stmt) => {
+                    hir::Node::Stmt(stmt) => {
                         if let hir::StmtKind::Decl(ref decl, _) = stmt.node {
                             if let hir::DeclKind::Local(ref loc) = decl.node {
                                 if let hir::PatKind::Ref(..) = loc.pat.node {
@@ -1182,7 +1182,7 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
 fn lint_clone_on_ref_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Expr) {
     let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(arg));
 
-    if let ty::TyAdt(_, subst) = obj_ty.sty {
+    if let ty::Adt(_, subst) = obj_ty.sty {
         let caller_type = if match_type(cx, obj_ty, &paths::RC) {
             "Rc"
         } else if match_type(cx, obj_ty, &paths::ARC) {
@@ -1210,7 +1210,7 @@ fn lint_string_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::E
     if let Some(arglists) = method_chain_args(arg, &["chars"]) {
         let target = &arglists[0][0];
         let self_ty = walk_ptrs_ty(cx.tables.expr_ty(target));
-        let ref_str = if self_ty.sty == ty::TyStr {
+        let ref_str = if self_ty.sty == ty::Str {
             ""
         } else if match_type(cx, self_ty, &paths::STRING) {
             "&"
@@ -1442,11 +1442,11 @@ fn lint_iter_skip_next(cx: &LateContext<'_, '_>, expr: &hir::Expr) {
 fn derefs_to_slice(cx: &LateContext<'_, '_>, expr: &hir::Expr, ty: Ty<'_>) -> Option<sugg::Sugg<'static>> {
     fn may_slice(cx: &LateContext<'_, '_>, ty: Ty<'_>) -> bool {
         match ty.sty {
-            ty::TySlice(_) => true,
-            ty::TyAdt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
-            ty::TyAdt(..) => match_type(cx, ty, &paths::VEC),
-            ty::TyArray(_, size) => size.assert_usize(cx.tcx).expect("array length") < 32,
-            ty::TyRef(_, inner, _) => may_slice(cx, inner),
+            ty::Slice(_) => true,
+            ty::Adt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
+            ty::Adt(..) => match_type(cx, ty, &paths::VEC),
+            ty::Array(_, size) => size.assert_usize(cx.tcx).expect("array length") < 32,
+            ty::Ref(_, inner, _) => may_slice(cx, inner),
             _ => false,
         }
     }
@@ -1459,9 +1459,9 @@ fn derefs_to_slice(cx: &LateContext<'_, '_>, expr: &hir::Expr, ty: Ty<'_>) -> Op
         }
     } else {
         match ty.sty {
-            ty::TySlice(_) => sugg::Sugg::hir_opt(cx, expr),
-            ty::TyAdt(def, _) if def.is_box() && may_slice(cx, ty.boxed_ty()) => sugg::Sugg::hir_opt(cx, expr),
-            ty::TyRef(_, inner, _) => if may_slice(cx, inner) {
+            ty::Slice(_) => sugg::Sugg::hir_opt(cx, expr),
+            ty::Adt(def, _) if def.is_box() && may_slice(cx, ty.boxed_ty()) => sugg::Sugg::hir_opt(cx, expr),
+            ty::Ref(_, inner, _) => if may_slice(cx, inner) {
                 sugg::Sugg::hir_opt(cx, expr)
             } else {
                 None
@@ -1812,7 +1812,7 @@ fn lint_chars_cmp(
         then {
             let self_ty = walk_ptrs_ty(cx.tables.expr_ty_adjusted(&args[0][0]));
 
-            if self_ty.sty != ty::TyStr {
+            if self_ty.sty != ty::Str {
                 return false;
             }
 
@@ -1939,7 +1939,7 @@ fn lint_asref(cx: &LateContext<'_, '_>, expr: &hir::Expr, call_name: &str, as_re
 
 /// Given a `Result<T, E>` type, return its error type (`E`).
 fn get_error_type<'a>(cx: &LateContext<'_, '_>, ty: Ty<'a>) -> Option<Ty<'a>> {
-    if let ty::TyAdt(_, substs) = ty.sty {
+    if let ty::Adt(_, substs) = ty.sty {
         if match_type(cx, ty, &paths::RESULT) {
             substs.types().nth(1)
         } else {

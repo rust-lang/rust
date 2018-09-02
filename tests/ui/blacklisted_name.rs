@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#![allow(dead_code, similar_names, single_match, toplevel_ref_arg, unused_mut, unused_variables)]
-#![warn(blacklisted_name)]
+#![allow(dead_code, clippy::similar_names, clippy::single_match, clippy::toplevel_ref_arg, unused_mut, unused_variables)]
+#![warn(clippy::blacklisted_name)]
 
 fn test(foo: ()) {}
 

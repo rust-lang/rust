@@ -4,9 +4,8 @@ use rustc::hir::*;
 use rustc::hir::def::Def;
 use rustc::hir::def_id;
 use rustc::hir::intravisit::{walk_block, walk_decl, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
-use rustc::hir::map::Node::{NodeBlock, NodeExpr, NodeStmt};
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use rustc::middle::region;
 // use rustc::middle::region::CodeExtent;
@@ -759,8 +758,8 @@ struct FixedOffsetVar {
 
 fn is_slice_like<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'_>) -> bool {
     let is_slice = match ty.sty {
-        ty::TyRef(_, subty, _) => is_slice_like(cx, subty),
-        ty::TySlice(..) | ty::TyArray(..) => true,
+        ty::Ref(_, subty, _) => is_slice_like(cx, subty),
+        ty::Slice(..) | ty::Array(..) => true,
         _ => false,
     };
 
@@ -1149,8 +1148,8 @@ fn check_for_loop_reverse_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx
                         Constant::Int(start_idx),
                         Constant::Int(end_idx),
                     ) => (match ty.sty {
-                        ty::TyInt(ity) => sext(cx.tcx, start_idx, ity) > sext(cx.tcx, end_idx, ity),
-                        ty::TyUint(_) => start_idx > end_idx,
+                        ty::Int(ity) => sext(cx.tcx, start_idx, ity) > sext(cx.tcx, end_idx, ity),
+                        ty::Uint(_) => start_idx > end_idx,
                         _ => false,
                     }, start_idx == end_idx),
                     _ => (false, false),
@@ -1239,7 +1238,7 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr, expr: &Ex
                     match cx.tables.expr_ty(&args[0]).sty {
                         // If the length is greater than 32 no traits are implemented for array and
                         // therefore we cannot use `&`.
-                        ty::TypeVariants::TyArray(_, size) if size.assert_usize(cx.tcx).expect("array size") > 32 => (),
+                        ty::TyKind::Array(_, size) if size.assert_usize(cx.tcx).expect("array size") > 32 => (),
                         _ => lint_iter_method(cx, args, arg, method_name),
                     };
                 } else {
@@ -1330,7 +1329,7 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
     let parent_scope = map.get_enclosing_scope(expr.id)
         .and_then(|id| map.get_enclosing_scope(id));
     if let Some(parent_id) = parent_scope {
-        if let NodeBlock(block) = map.get(parent_id) {
+        if let Node::Block(block) = map.get(parent_id) {
             for (id, _) in visitor
                 .states
                 .iter()
@@ -1381,7 +1380,7 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
         if pat.len() == 2 {
             let arg_span = arg.span;
             let (new_pat_span, kind, ty, mutbl) = match cx.tables.expr_ty(arg).sty {
-                ty::TyRef(_, ty, mutbl) => match (&pat[0].node, &pat[1].node) {
+                ty::Ref(_, ty, mutbl) => match (&pat[0].node, &pat[1].node) {
                     (key, _) if pat_is_wild(key, body) => (pat[1].span, "value", ty, mutbl),
                     (_, value) if pat_is_wild(value, body) => (pat[0].span, "key", ty, MutImmutable),
                     _ => return,
@@ -1506,7 +1505,7 @@ fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr) -> Option<NodeId
             if let Def::Local(node_id) = def {
                 let node_str = cx.tcx.hir.get(node_id);
                 if_chain! {
-                    if let map::Node::NodeBinding(pat) = node_str;
+                    if let Node::Binding(pat) = node_str;
                     if let PatKind::Binding(bind_ann, _, _, _) = pat.node;
                     if let BindingAnnotation::Mutable = bind_ann;
                     then {
@@ -1721,7 +1720,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 for expr in args {
                     let ty = self.cx.tables.expr_ty_adjusted(expr);
                     self.prefer_mutable = false;
-                    if let ty::TyRef(_, _, mutbl) = ty.sty {
+                    if let ty::Ref(_, _, mutbl) = ty.sty {
                         if mutbl == MutMutable {
                             self.prefer_mutable = true;
                         }
@@ -1733,7 +1732,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 let def_id = self.cx.tables.type_dependent_defs()[expr.hir_id].def_id();
                 for (ty, expr) in self.cx.tcx.fn_sig(def_id).inputs().skip_binder().iter().zip(args) {
                     self.prefer_mutable = false;
-                    if let ty::TyRef(_, _, mutbl) = ty.sty {
+                    if let ty::Ref(_, _, mutbl) = ty.sty {
                         if mutbl == MutMutable {
                             self.prefer_mutable = true;
                         }
@@ -1814,7 +1813,7 @@ fn is_ref_iterable_type(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
 fn is_iterable_array(ty: Ty<'_>, cx: &LateContext<'_, '_>) -> bool {
     // IntoIterator is currently only implemented for array sizes <= 32 in rustc
     match ty.sty {
-        ty::TyArray(_, n) => (0..=32).contains(&n.assert_usize(cx.tcx).expect("array length")),
+        ty::Array(_, n) => (0..=32).contains(&n.assert_usize(cx.tcx).expect("array length")),
         _ => false,
     }
 }
@@ -2047,7 +2046,7 @@ fn is_conditional(expr: &Expr) -> bool {
 fn is_nested(cx: &LateContext<'_, '_>, match_expr: &Expr, iter_expr: &Expr) -> bool {
     if_chain! {
         if let Some(loop_block) = get_enclosing_block(cx, match_expr.id);
-        if let Some(map::Node::NodeExpr(loop_expr)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(loop_block.id));
+        if let Some(Node::Expr(loop_expr)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(loop_block.id));
         then {
             return is_loop_nested(cx, loop_expr, iter_expr)
         }
@@ -2068,13 +2067,13 @@ fn is_loop_nested(cx: &LateContext<'_, '_>, loop_expr: &Expr, iter_expr: &Expr) 
             return false;
         }
         match cx.tcx.hir.find(parent) {
-            Some(NodeExpr(expr)) => match expr.node {
+            Some(Node::Expr(expr)) => match expr.node {
                 ExprKind::Loop(..) | ExprKind::While(..) => {
                     return true;
                 },
                 _ => (),
             },
-            Some(NodeBlock(block)) => {
+            Some(Node::Block(block)) => {
                 let mut block_visitor = LoopNestVisitor {
                     id,
                     iterator: iter_name,
@@ -2085,7 +2084,7 @@ fn is_loop_nested(cx: &LateContext<'_, '_>, loop_expr: &Expr, iter_expr: &Expr) 
                     return false;
                 }
             },
-            Some(NodeStmt(_)) => (),
+            Some(Node::Stmt(_)) => (),
             _ => {
                 return false;
             },

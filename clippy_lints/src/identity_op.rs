@@ -1,7 +1,7 @@
 use crate::consts::{constant_simple, Constant};
 use rustc::hir::*;
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use syntax::source_map::Span;
 use crate::utils::{in_macro, snippet, span_lint, unsext, clip};
 use rustc::ty;
@@ -59,12 +59,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityOp {
     }
 }
 
-#[allow(cast_possible_wrap)]
+#[allow(clippy::cast_possible_wrap)]
 fn check(cx: &LateContext<'_, '_>, e: &Expr, m: i8, span: Span, arg: Span) {
     if let Some(Constant::Int(v)) = constant_simple(cx, cx.tables, e) {
         let check = match cx.tables.expr_ty(e).sty {
-            ty::TyInt(ity) => unsext(cx.tcx, -1_i128, ity),
-            ty::TyUint(uty) => clip(cx.tcx, !0, uty),
+            ty::Int(ity) => unsext(cx.tcx, -1_i128, ity),
+            ty::Uint(uty) => clip(cx.tcx, !0, uty),
             _ => return,
         };
         if match m {

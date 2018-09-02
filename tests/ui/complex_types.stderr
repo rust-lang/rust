@@ -4,7 +4,7 @@ error: very complex type used. Consider factoring parts into `type` definitions
 9 | const CST: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0))));
   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
-  = note: `-D type-complexity` implied by `-D warnings`
+  = note: `-D clippy::type-complexity` implied by `-D warnings`
 
 error: very complex type used. Consider factoring parts into `type` definitions
   --> $DIR/complex_types.rs:10:12

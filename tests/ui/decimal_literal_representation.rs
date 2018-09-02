@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#[warn(decimal_literal_representation)]
+#[warn(clippy::decimal_literal_representation)]
 #[allow(unused_variables)]
 fn main() {
     let good = (        // Hex:

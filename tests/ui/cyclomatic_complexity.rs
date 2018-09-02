@@ -1,7 +1,7 @@
-#![feature(tool_attributes)]
+#![feature(tool_lints)]
 
-#![allow(clippy)]
-#![warn(cyclomatic_complexity)]
+#![allow(clippy::all)]
+#![warn(clippy::cyclomatic_complexity)]
 #![allow(unused)]
 
 fn main() {
@@ -172,7 +172,7 @@ fn bar() {
 
 #[test]
 #[clippy::cyclomatic_complexity = "0"]
-/// Tests are usually complex but simple at the same time. `cyclomatic_complexity` used to give
+/// Tests are usually complex but simple at the same time. `clippy::cyclomatic_complexity` used to give
 /// lots of false-positives in tests.
 fn dont_warn_on_tests() {
     match 99 {

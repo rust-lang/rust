@@ -4,7 +4,7 @@ error: usage of mem::forget on Drop type
 18 |     memstuff::forget(six);
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D mem-forget` implied by `-D warnings`
+   = note: `-D clippy::mem-forget` implied by `-D warnings`
 
 error: usage of mem::forget on Drop type
   --> $DIR/mem_forget.rs:21:5

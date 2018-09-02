@@ -2,8 +2,8 @@
 //!
 //! This lint is **warn** by default
 
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use rustc::hir::{BindingAnnotation, Expr, ExprKind, MutImmutable, Pat, PatKind};
 use rustc::ty;
@@ -54,7 +54,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
             return;
         }
         if let ExprKind::AddrOf(MutImmutable, ref inner) = e.node {
-            if let ty::TyRef(..) = cx.tables.expr_ty(inner).sty {
+            if let ty::Ref(..) = cx.tables.expr_ty(inner).sty {
                 for adj3 in cx.tables.expr_adjustments(e).windows(3) {
                     if let [Adjustment {
                         kind: Adjust::Deref(_),
@@ -90,9 +90,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
         }
         if_chain! {
             if let PatKind::Binding(BindingAnnotation::Ref, _, name, _) = pat.node;
-            if let ty::TyRef(_, tam, mutbl) = cx.tables.pat_ty(pat).sty;
+            if let ty::Ref(_, tam, mutbl) = cx.tables.pat_ty(pat).sty;
             if mutbl == MutImmutable;
-            if let ty::TyRef(_, _, mutbl) = tam.sty;
+            if let ty::Ref(_, _, mutbl) = tam.sty;
             // only lint immutable refs, because borrowed `&mut T` cannot be moved out
             if mutbl == MutImmutable;
             then {

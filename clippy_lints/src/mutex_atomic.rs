@@ -3,7 +3,7 @@
 //! This lint is **warn** by default
 
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use rustc::ty::{self, Ty};
 use rustc::hir::Expr;
 use syntax::ast;
@@ -60,7 +60,7 @@ pub struct MutexAtomic;
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutexAtomic {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         let ty = cx.tables.expr_ty(expr);
-        if let ty::TyAdt(_, subst) = ty.sty {
+        if let ty::Adt(_, subst) = ty.sty {
             if match_type(cx, ty, &paths::MUTEX) {
                 let mutex_param = subst.type_at(0);
                 if let Some(atomic_name) = get_atomic_name(mutex_param) {
@@ -70,8 +70,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutexAtomic {
                         atomic_name
                     );
                     match mutex_param.sty {
-                        ty::TyUint(t) if t != ast::UintTy::Usize => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
-                        ty::TyInt(t) if t != ast::IntTy::Isize => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
+                        ty::Uint(t) if t != ast::UintTy::Usize => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
+                        ty::Int(t) if t != ast::IntTy::Isize => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
                         _ => span_lint(cx, MUTEX_ATOMIC, expr.span, &msg),
                     };
                 }
@@ -82,10 +82,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutexAtomic {
 
 fn get_atomic_name(ty: Ty<'_>) -> Option<(&'static str)> {
     match ty.sty {
-        ty::TyBool => Some("AtomicBool"),
-        ty::TyUint(_) => Some("AtomicUsize"),
-        ty::TyInt(_) => Some("AtomicIsize"),
-        ty::TyRawPtr(_) => Some("AtomicPtr"),
+        ty::Bool => Some("AtomicBool"),
+        ty::Uint(_) => Some("AtomicUsize"),
+        ty::Int(_) => Some("AtomicIsize"),
+        ty::RawPtr(_) => Some("AtomicPtr"),
         _ => None,
     }
 }

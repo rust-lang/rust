@@ -1,8 +1,8 @@
-
+#![feature(tool_lints)]
 
 
 #![allow(unused)]
-#![warn(invalid_regex, trivial_regex, regex_macro)]
+#![warn(clippy::invalid_regex, clippy::trivial_regex, clippy::regex_macro)]
 
 extern crate regex;
 

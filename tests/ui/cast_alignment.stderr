@@ -1,15 +1,15 @@
 error: casting from `*const u8` to a more-strictly-aligned pointer (`*const u16`)
-  --> $DIR/cast_alignment.rs:13:5
+  --> $DIR/cast_alignment.rs:15:5
    |
-13 |     (&1u8 as *const u8) as *const u16;
+15 |     (&1u8 as *const u8) as *const u16;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D cast-ptr-alignment` implied by `-D warnings`
+   = note: `-D clippy::cast-ptr-alignment` implied by `-D warnings`
 
 error: casting from `*mut u8` to a more-strictly-aligned pointer (`*mut u16`)
-  --> $DIR/cast_alignment.rs:14:5
+  --> $DIR/cast_alignment.rs:16:5
    |
-14 |     (&mut 1u8 as *mut u8) as *mut u16;
+16 |     (&mut 1u8 as *mut u8) as *mut u16;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

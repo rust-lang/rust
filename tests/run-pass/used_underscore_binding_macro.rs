@@ -1,12 +1,13 @@
+#![feature(tool_lints)]
 
-
+#![allow(clippy::useless_attribute)] //issue #2910
 
 #[macro_use]
 extern crate serde_derive;
 
 /// Test that we do not lint for unused underscores in a `MacroAttribute`
 /// expansion
-#[deny(used_underscore_binding)]
+#[deny(clippy::used_underscore_binding)]
 #[derive(Deserialize)]
 struct MacroAttributesTest {
     _foo: u32,

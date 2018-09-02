@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(redundant_closure_call)]
+#![warn(clippy::redundant_closure_call)]
 
 fn main() {
 	let a = (|| 42)();

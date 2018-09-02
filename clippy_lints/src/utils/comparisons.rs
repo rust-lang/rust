@@ -1,6 +1,6 @@
 //! Utility functions about comparison operators.
 
-#![deny(missing_docs_in_private_items)]
+#![deny(clippy::missing_docs_in_private_items)]
 
 use rustc::hir::{BinOpKind, Expr};
 

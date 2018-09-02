@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(drop_ref, forget_ref)]
-#![allow(toplevel_ref_arg, similar_names, needless_pass_by_value)]
+#![warn(clippy::drop_ref, clippy::forget_ref)]
+#![allow(clippy::toplevel_ref_arg, clippy::similar_names, clippy::needless_pass_by_value)]
 
 use std::mem::{drop, forget};
 

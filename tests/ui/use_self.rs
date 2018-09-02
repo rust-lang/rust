@@ -1,6 +1,8 @@
-#![warn(use_self)]
+#![feature(tool_lints)]
+
+#![warn(clippy::use_self)]
 #![allow(dead_code)]
-#![allow(should_implement_trait)]
+#![allow(clippy::should_implement_trait)]
 
 fn main() {}
 
@@ -64,7 +66,7 @@ mod lifetimes {
     }
 }
 
-#[allow(boxed_local)]
+#[allow(clippy::boxed_local)]
 mod traits {
 
     use std::ops::Mul;

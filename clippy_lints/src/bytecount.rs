@@ -1,6 +1,6 @@
 use rustc::hir::*;
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use rustc::ty;
 use syntax::ast::{Name, UintTy};
@@ -65,7 +65,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
                                 _ => { return; }
                             }
                         };
-                        if ty::TyUint(UintTy::U8) != walk_ptrs_ty(cx.tables.expr_ty(needle)).sty {
+                        if ty::Uint(UintTy::U8) != walk_ptrs_ty(cx.tables.expr_ty(needle)).sty {
                             return;
                         }
                         let haystack = if let ExprKind::MethodCall(ref path, _, ref args) =

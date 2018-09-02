@@ -1,11 +1,12 @@
 //! lint on inherent implementations
 
 use rustc::hir::*;
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use std::collections::HashMap;
 use std::default::Default;
 use syntax_pos::Span;
+use crate::utils::span_lint_and_then;
 
 /// **What it does:** Checks for multiple inherent implementations of a struct
 ///
@@ -81,12 +82,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     .map(|(span, _)| span);
                 if let Some(initial_span) = impl_spans.nth(0) {
                     impl_spans.for_each(|additional_span| {
-                        cx.span_lint_note(
+                        span_lint_and_then(
+                            cx,
                             MULTIPLE_INHERENT_IMPL,
                             *additional_span,
                             "Multiple implementations of this structure",
-                            *initial_span,
-                            "First implementation here",
+                            |db| {
+                                db.span_note(
+                                    *initial_span,
+                                    "First implementation here",
+                                );
+                            },
                         )
                     })
                 }

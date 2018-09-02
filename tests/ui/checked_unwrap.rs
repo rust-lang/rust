@@ -1,5 +1,7 @@
-#![deny(panicking_unwrap, unnecessary_unwrap)]
-#![allow(if_same_then_else)]
+#![feature(tool_lints)]
+
+#![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
+#![allow(clippy::if_same_then_else)]
 
 fn main() {
     let x = Some(());

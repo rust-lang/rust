@@ -1,10 +1,10 @@
-
+#![feature(tool_lints)]
 #![feature(const_fn)]
 
-#![warn(clippy, clippy_pedantic, option_unwrap_used)]
-#![allow(blacklisted_name, unused, print_stdout, non_ascii_literal, new_without_default,
-    new_without_default_derive, missing_docs_in_private_items, needless_pass_by_value,
-    default_trait_access, use_self)]
+#![warn(clippy::all, clippy::pedantic, clippy::option_unwrap_used)]
+#![allow(clippy::blacklisted_name, unused, clippy::print_stdout, clippy::non_ascii_literal, clippy::new_without_default,
+    clippy::new_without_default_derive, clippy::missing_docs_in_private_items, clippy::needless_pass_by_value,
+    clippy::default_trait_access, clippy::use_self)]
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -42,7 +42,7 @@ struct Lt<'a> {
 
 impl<'a> Lt<'a> {
     // The lifetime is different, but that’s irrelevant, see #734
-    #[allow(needless_lifetimes)]
+    #[allow(clippy::needless_lifetimes)]
     pub fn new<'b>(s: &'b str) -> Lt<'b> { unimplemented!() }
 }
 
@@ -438,7 +438,7 @@ fn iter_skip_next() {
     let _ = foo.filter().skip(42).next();
 }
 
-#[allow(similar_names)]
+#[allow(clippy::similar_names)]
 fn main() {
     let opt = Some(0);
     let _ = opt.unwrap();

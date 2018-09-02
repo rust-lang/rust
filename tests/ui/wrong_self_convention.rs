@@ -1,9 +1,9 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(wrong_self_convention)]
-#![warn(wrong_pub_self_convention)]
-#![allow(dead_code, trivially_copy_pass_by_ref)]
+#![warn(clippy::wrong_self_convention)]
+#![warn(clippy::wrong_pub_self_convention)]
+#![allow(dead_code, clippy::trivially_copy_pass_by_ref)]
 
 fn main() {}
 
@@ -26,7 +26,7 @@ impl Foo {
     pub fn to_i64(self) {}
     pub fn from_i64(self) {}
     // check whether the lint can be allowed at the function level
-    #[allow(wrong_self_convention)]
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_cake(self) {}
 
     fn as_x<F: AsRef<Self>>(_: F) { }

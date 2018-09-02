@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#[warn(cmp_owned)]
-#[allow(unnecessary_operation)]
+#[warn(clippy::cmp_owned)]
+#[allow(clippy::unnecessary_operation)]
 fn main() {
     fn with_to_string(x : &str) {
         x != "foo".to_string();

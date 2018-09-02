@@ -2,10 +2,9 @@
 
 use std::borrow::Cow;
 use rustc::hir::*;
-use rustc::hir::map::NodeItem;
 use rustc::hir::QPath;
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use rustc::ty;
 use syntax::ast::NodeId;
@@ -112,7 +111,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         if let ImplItemKind::Method(ref sig, body_id) = item.node {
-            if let Some(NodeItem(it)) = cx.tcx.hir.find(cx.tcx.hir.get_parent(item.id)) {
+            if let Some(Node::Item(it)) = cx.tcx.hir.find(cx.tcx.hir.get_parent(item.id)) {
                 if let ItemKind::Impl(_, _, _, _, Some(_), _, _) = it.node {
                     return; // ignore trait impls
                 }
@@ -152,7 +151,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: NodeId, opt_body_id:
     let fn_ty = sig.skip_binder();
 
     for (idx, (arg, ty)) in decl.inputs.iter().zip(fn_ty.inputs()).enumerate() {
-        if let ty::TyRef(
+        if let ty::Ref(
             _,
             ty,
             MutImmutable

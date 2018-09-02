@@ -4,7 +4,7 @@ error: any number modulo 1 will be 0
 7 |     10 % 1;
   |     ^^^^^^
   |
-  = note: `-D modulo-one` implied by `-D warnings`
+  = note: `-D clippy::modulo-one` implied by `-D warnings`
 
 error: aborting due to previous error
 

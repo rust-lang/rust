@@ -2,8 +2,8 @@ use crate::reexport::*;
 use rustc::hir;
 use rustc::hir::*;
 use rustc::hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use rustc::ty::{self, Ty, TyCtxt, TypeckTables};
 use rustc::ty::layout::LayoutOf;
@@ -140,7 +140,7 @@ impl LintPass for TypePass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
     fn check_fn(&mut self, cx: &LateContext<'_, '_>, _: FnKind<'_>, decl: &FnDecl, _: &Body, _: Span, id: NodeId) {
         // skip trait implementations, see #605
-        if let Some(map::NodeItem(item)) = cx.tcx.hir.find(cx.tcx.hir.get_parent(id)) {
+        if let Some(hir::Node::Item(item)) = cx.tcx.hir.find(cx.tcx.hir.get_parent(id)) {
             if let ItemKind::Impl(_, _, _, _, Some(..), _, _) = item.node {
                 return;
             }
@@ -514,7 +514,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
                         if !is_questionmark_desugar_marked_call(expr) {
                             if_chain!{
                                 let opt_parent_node = map.find(map.get_parent_node(expr.id));
-                                if let Some(hir::map::NodeExpr(parent_expr)) = opt_parent_node;
+                                if let Some(hir::Node::Expr(parent_expr)) = opt_parent_node;
                                 if is_questionmark_desugar_marked_call(parent_expr);
                                 then {}
                                 else {
@@ -550,7 +550,7 @@ fn is_questionmark_desugar_marked_call(expr: &Expr) -> bool {
 
 fn is_unit(ty: Ty<'_>) -> bool {
     match ty.sty {
-        ty::TyTuple(slice) if slice.is_empty() => true,
+        ty::Tuple(slice) if slice.is_empty() => true,
         _ => false,
     }
 }
@@ -755,7 +755,7 @@ declare_clippy_lint! {
 /// Will return 0 if the type is not an int or uint variant
 fn int_ty_to_nbits(typ: Ty<'_>, tcx: TyCtxt<'_, '_, '_>) -> u64 {
     match typ.sty {
-        ty::TyInt(i) => match i {
+        ty::Int(i) => match i {
             IntTy::Isize => tcx.data_layout.pointer_size.bits(),
             IntTy::I8 => 8,
             IntTy::I16 => 16,
@@ -763,7 +763,7 @@ fn int_ty_to_nbits(typ: Ty<'_>, tcx: TyCtxt<'_, '_, '_>) -> u64 {
             IntTy::I64 => 64,
             IntTy::I128 => 128,
         },
-        ty::TyUint(i) => match i {
+        ty::Uint(i) => match i {
             UintTy::Usize => tcx.data_layout.pointer_size.bits(),
             UintTy::U8 => 8,
             UintTy::U16 => 16,
@@ -777,7 +777,7 @@ fn int_ty_to_nbits(typ: Ty<'_>, tcx: TyCtxt<'_, '_, '_>) -> u64 {
 
 fn is_isize_or_usize(typ: Ty<'_>) -> bool {
     match typ.sty {
-        ty::TyInt(IntTy::Isize) | ty::TyUint(UintTy::Usize) => true,
+        ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize) => true,
         _ => false,
     }
 }
@@ -973,7 +973,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                 match (cast_from.is_integral(), cast_to.is_integral()) {
                     (true, false) => {
                         let from_nbits = int_ty_to_nbits(cast_from, cx.tcx);
-                        let to_nbits = if let ty::TyFloat(FloatTy::F32) = cast_to.sty {
+                        let to_nbits = if let ty::Float(FloatTy::F32) = cast_to.sty {
                             32
                         } else {
                             64
@@ -1014,7 +1014,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                         check_lossless(cx, expr, ex, cast_from, cast_to);
                     },
                     (false, false) => {
-                        if let (&ty::TyFloat(FloatTy::F64), &ty::TyFloat(FloatTy::F32)) = (&cast_from.sty, &cast_to.sty)
+                        if let (&ty::Float(FloatTy::F64), &ty::Float(FloatTy::F32)) = (&cast_from.sty, &cast_to.sty)
                         {
                             span_lint(
                                 cx,
@@ -1023,7 +1023,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                                 "casting f64 to f32 may truncate the value",
                             );
                         }
-                        if let (&ty::TyFloat(FloatTy::F32), &ty::TyFloat(FloatTy::F64)) = (&cast_from.sty, &cast_to.sty)
+                        if let (&ty::Float(FloatTy::F32), &ty::Float(FloatTy::F64)) = (&cast_from.sty, &cast_to.sty)
                         {
                             span_lossless_lint(cx, expr, ex, cast_from, cast_to);
                         }
@@ -1032,9 +1032,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
             }
 
             match &cast_from.sty {
-                ty::TyFnDef(..) |
-                ty::TyFnPtr(..) => {
-                    if cast_to.is_numeric() && cast_to.sty != ty::TyUint(UintTy::Usize){
+                ty::FnDef(..) |
+                ty::FnPtr(..) => {
+                    if cast_to.is_numeric() && cast_to.sty != ty::Uint(UintTy::Usize){
                         let to_nbits = int_ty_to_nbits(cast_to, cx.tcx);
                         let pointer_nbits = cx.tcx.data_layout.pointer_size.bits();
                         if to_nbits < pointer_nbits || (to_nbits == pointer_nbits && cast_to.is_signed()) {
@@ -1063,8 +1063,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
             }
 
             if_chain!{
-                if let ty::TyRawPtr(from_ptr_ty) = &cast_from.sty;
-                if let ty::TyRawPtr(to_ptr_ty) = &cast_to.sty;
+                if let ty::RawPtr(from_ptr_ty) = &cast_from.sty;
+                if let ty::RawPtr(to_ptr_ty) = &cast_to.sty;
                 if let Some(from_align) = cx.layout_of(from_ptr_ty.ty).ok().map(|a| a.align.abi());
                 if let Some(to_align) = cx.layout_of(to_ptr_ty.ty).ok().map(|a| a.align.abi());
                 if from_align < to_align;
@@ -1294,7 +1294,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CharLitAsU8 {
         if let ExprKind::Cast(ref e, _) = expr.node {
             if let ExprKind::Lit(ref l) = e.node {
                 if let LitKind::Char(_) = l.node {
-                    if ty::TyUint(UintTy::U8) == cx.tables.expr_ty(expr).sty && !in_macro(expr.span) {
+                    if ty::Uint(UintTy::U8) == cx.tables.expr_ty(expr).sty && !in_macro(expr.span) {
                         let msg = "casting character literal to u8. `char`s \
                                    are 4 bytes wide in rust, so casting to u8 \
                                    truncates them";
@@ -1434,13 +1434,13 @@ fn detect_extreme_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -
     let cv = constant(cx, cx.tables, expr)?.0;
 
     let which = match (&ty.sty, cv) {
-        (&ty::TyBool, Constant::Bool(false)) |
-        (&ty::TyUint(_), Constant::Int(0)) => Minimum,
-        (&ty::TyInt(ity), Constant::Int(i)) if i == unsext(cx.tcx, i128::min_value() >> (128 - int_bits(cx.tcx, ity)), ity) => Minimum,
+        (&ty::Bool, Constant::Bool(false)) |
+        (&ty::Uint(_), Constant::Int(0)) => Minimum,
+        (&ty::Int(ity), Constant::Int(i)) if i == unsext(cx.tcx, i128::min_value() >> (128 - int_bits(cx.tcx, ity)), ity) => Minimum,
 
-        (&ty::TyBool, Constant::Bool(true)) => Maximum,
-        (&ty::TyInt(ity), Constant::Int(i)) if i == unsext(cx.tcx, i128::max_value() >> (128 - int_bits(cx.tcx, ity)), ity) => Maximum,
-        (&ty::TyUint(uty), Constant::Int(i)) if clip(cx.tcx, u128::max_value(), uty) == i => Maximum,
+        (&ty::Bool, Constant::Bool(true)) => Maximum,
+        (&ty::Int(ity), Constant::Int(i)) if i == unsext(cx.tcx, i128::max_value() >> (128 - int_bits(cx.tcx, ity)), ity) => Maximum,
+        (&ty::Uint(uty), Constant::Int(i)) if clip(cx.tcx, u128::max_value(), uty) == i => Maximum,
 
         _ => return None,
     };
@@ -1525,7 +1525,7 @@ enum FullInt {
 }
 
 impl FullInt {
-    #[allow(cast_sign_loss)]
+    #[allow(clippy::cast_sign_loss)]
     fn cmp_s_u(s: i128, u: u128) -> Ordering {
         if s < 0 {
             Ordering::Less
@@ -1574,7 +1574,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> 
             return None;
         }
         match pre_cast_ty.sty {
-            ty::TyInt(int_ty) => Some(match int_ty {
+            ty::Int(int_ty) => Some(match int_ty {
                 IntTy::I8 => (FullInt::S(i128::from(i8::min_value())), FullInt::S(i128::from(i8::max_value()))),
                 IntTy::I16 => (
                     FullInt::S(i128::from(i16::min_value())),
@@ -1591,7 +1591,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> 
                 IntTy::I128 => (FullInt::S(i128::min_value() as i128), FullInt::S(i128::max_value() as i128)),
                 IntTy::Isize => (FullInt::S(isize::min_value() as i128), FullInt::S(isize::max_value() as i128)),
             }),
-            ty::TyUint(uint_ty) => Some(match uint_ty {
+            ty::Uint(uint_ty) => Some(match uint_ty {
                 UintTy::U8 => (FullInt::U(u128::from(u8::min_value())), FullInt::U(u128::from(u8::max_value()))),
                 UintTy::U16 => (
                     FullInt::U(u128::from(u16::min_value())),
@@ -1619,8 +1619,8 @@ fn node_as_const_fullint<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr)
     let val = constant(cx, cx.tables, expr)?.0;
     if let Constant::Int(const_int) = val {
         match cx.tables.expr_ty(expr).sty {
-            ty::TyInt(ity) => Some(FullInt::S(sext(cx.tcx, const_int, ity))),
-            ty::TyUint(_) => Some(FullInt::U(const_int)),
+            ty::Int(ity) => Some(FullInt::S(sext(cx.tcx, const_int, ity))),
+            ty::Uint(_) => Some(FullInt::U(const_int)),
             _ => None,
         }
     } else {
@@ -1744,7 +1744,7 @@ impl LintPass for ImplicitHasher {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
-    #[allow(cast_possible_truncation)]
+    #[allow(clippy::cast_possible_truncation)]
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         use syntax_pos::BytePos;
 

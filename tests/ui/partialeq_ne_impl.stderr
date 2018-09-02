@@ -4,7 +4,7 @@ error: re-implementing `PartialEq::ne` is unnecessary
 10 |     fn ne(&self, _: &Foo) -> bool { false }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D partialeq-ne-impl` implied by `-D warnings`
+   = note: `-D clippy::partialeq-ne-impl` implied by `-D warnings`
 
 error: aborting due to previous error
 

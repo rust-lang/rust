@@ -1,5 +1,5 @@
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use rustc::ty;
 use rustc::hir::*;
 use crate::utils::{is_adjusted, iter_input_pats, snippet_opt, span_lint_and_then};
@@ -67,9 +67,9 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr) {
             let fn_ty = cx.tables.expr_ty(caller);
             match fn_ty.sty {
                 // Is it an unsafe function? They don't implement the closure traits
-                ty::TyFnDef(..) | ty::TyFnPtr(_) => {
+                ty::FnDef(..) | ty::FnPtr(_) => {
                     let sig = fn_ty.fn_sig(cx.tcx);
-                    if sig.skip_binder().unsafety == Unsafety::Unsafe || sig.skip_binder().output().sty == ty::TyNever {
+                    if sig.skip_binder().unsafety == Unsafety::Unsafe || sig.skip_binder().output().sty == ty::Never {
                         return;
                     }
                 },

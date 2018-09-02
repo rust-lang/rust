@@ -1,8 +1,10 @@
+#![feature(tool_lints)]
+
 #![feature(const_fn)]
 
 
 #![allow(dead_code)]
-#![warn(new_without_default, new_without_default_derive)]
+#![warn(clippy::new_without_default, clippy::new_without_default_derive)]
 
 pub struct Foo;
 

@@ -1,8 +1,8 @@
-
+#![feature(tool_lints)]
 
 
 #![allow(dead_code)]
-#![warn(unused_io_amount)]
+#![warn(clippy::unused_io_amount)]
 
 use std::io;
 

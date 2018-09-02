@@ -1,7 +1,7 @@
 use regex_syntax;
 use rustc::hir::*;
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use std::collections::HashSet;
 use syntax::ast::{LitKind, NodeId, StrStyle};

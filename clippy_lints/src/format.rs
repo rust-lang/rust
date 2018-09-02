@@ -1,6 +1,6 @@
 use rustc::hir::*;
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use rustc::ty;
 use syntax::ast::LitKind;
@@ -122,7 +122,7 @@ fn get_single_string_arg(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<Span> 
         if match_def_path(cx.tcx, fun_def_id, &paths::DISPLAY_FMT_METHOD);
         then {
             let ty = walk_ptrs_ty(cx.tables.pat_ty(&pat[0]));
-            if ty.sty == ty::TyStr || match_type(cx, ty, &paths::STRING) {
+            if ty.sty == ty::Str || match_type(cx, ty, &paths::STRING) {
                 if let ExprKind::Tup(ref values) = match_expr.node {
                     return Some(values[0].span);
                 }

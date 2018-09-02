@@ -4,7 +4,7 @@ error: removed "unsafe" from the name of `UnsafeCell` in use as `TotallySafeCell
 7 | use std::cell::{UnsafeCell as TotallySafeCell};
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
-  = note: `-D unsafe-removed-from-name` implied by `-D warnings`
+  = note: `-D clippy::unsafe-removed-from-name` implied by `-D warnings`
 
 error: removed "unsafe" from the name of `UnsafeCell` in use as `TotallySafeCellAgain`
  --> $DIR/unsafe_removed_from_name.rs:9:1

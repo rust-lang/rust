@@ -1,8 +1,8 @@
 use rustc::hir::*;
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use rustc::ty::TypeVariants;
+use rustc::ty::TyKind;
 
 use crate::utils::{any_parent_is_automatically_derived, match_def_path, opt_def_id, paths, span_lint_and_sugg};
 
@@ -51,7 +51,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DefaultTraitAccess {
                         // TODO: Work out a way to put "whatever the imported way of referencing
                         // this type in this file" rather than a fully-qualified type.
                         let expr_ty = cx.tables.expr_ty(expr);
-                        if let TypeVariants::TyAdt(..) = expr_ty.sty {
+                        if let TyKind::Adt(..) = expr_ty.sty {
                             let replacement = format!("{}::default()", expr_ty);
                             span_lint_and_sugg(
                                 cx,

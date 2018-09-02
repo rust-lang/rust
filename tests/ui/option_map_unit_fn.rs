@@ -1,4 +1,6 @@
-#![warn(option_map_unit_fn)]
+#![feature(tool_lints)]
+
+#![warn(clippy::option_map_unit_fn)]
 #![allow(unused)]
 
 fn do_nothing<T>(_: T) {}

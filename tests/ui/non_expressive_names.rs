@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
-
-#![warn(clippy,similar_names)]
-#![allow(unused, println_empty_string)]
+#![warn(clippy::all,clippy::similar_names)]
+#![allow(unused, clippy::println_empty_string)]
 
 
 struct Foo {
@@ -145,6 +145,13 @@ fn underscores_and_numbers() {
 fn issue2927() {
   let args = 1;
   format!("{:?}", 2);
+}
+
+fn issue3078() {
+    match "a" {
+        stringify!(a) => {},
+        _ => {}
+    }
 }
 
 struct Bar;

@@ -2,29 +2,10 @@ use crate::utils::{get_trait_def_id, implements_trait, snippet_opt, span_lint_an
 use crate::utils::{higher, sugg};
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use syntax::ast;
-
-/// **What it does:** Checks for compound assignment operations (`+=` and
-/// similar).
-///
-/// **Why is this bad?** Projects with many developers from languages without
-/// those operations may find them unreadable and not worth their weight.
-///
-/// **Known problems:** Types implementing `OpAssign` don't necessarily
-/// implement `Op`.
-///
-/// **Example:**
-/// ```rust
-/// a += 1;
-/// ```
-declare_clippy_lint! {
-    pub ASSIGN_OPS,
-    restriction,
-    "any compound assignment operation"
-}
 
 /// **What it does:** Checks for `a = a op b` or `a = b commutative_op a`
 /// patterns.
@@ -73,7 +54,7 @@ pub struct AssignOps;
 
 impl LintPass for AssignOps {
     fn get_lints(&self) -> LintArray {
-        lint_array!(ASSIGN_OPS, ASSIGN_OP_PATTERN, MISREFACTORED_ASSIGN_OP)
+        lint_array!(ASSIGN_OP_PATTERN, MISREFACTORED_ASSIGN_OP)
     }
 }
 
@@ -81,16 +62,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprKind::AssignOp(op, ref lhs, ref rhs) => {
-                span_lint_and_then(cx, ASSIGN_OPS, expr.span, "assign operation detected", |db| {
-                    let lhs = &sugg::Sugg::hir(cx, lhs, "..");
-                    let rhs = &sugg::Sugg::hir(cx, rhs, "..");
-
-                    db.span_suggestion(
-                        expr.span,
-                        "replace it with",
-                        format!("{} = {}", lhs, sugg::make_binop(higher::binop(op.node), lhs, rhs)),
-                    );
-                });
                 if let hir::ExprKind::Binary(binop, ref l, ref r) = rhs.node {
                     if op.node == binop.node {
                         let lint = |assignee: &hir::Expr, rhs_other: &hir::Expr| {
@@ -137,7 +108,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
             },
             hir::ExprKind::Assign(ref assignee, ref e) => {
                 if let hir::ExprKind::Binary(op, ref l, ref r) = e.node {
-                    #[allow(cyclomatic_complexity)]
+                    #[allow(clippy::cyclomatic_complexity)]
                     let lint = |assignee: &hir::Expr, rhs: &hir::Expr| {
                         let ty = cx.tables.expr_ty(assignee);
                         let rty = cx.tables.expr_ty(rhs);
@@ -162,7 +133,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                         // the crate node is the only one that is not in the map
                                         if_chain! {
                                             if parent_impl != ast::CRATE_NODE_ID;
-                                            if let hir::map::Node::NodeItem(item) = cx.tcx.hir.get(parent_impl);
+                                            if let hir::Node::Item(item) = cx.tcx.hir.get(parent_impl);
                                             if let hir::ItemKind::Impl(_, _, _, _, Some(ref trait_ref), _, _) =
                                                 item.node;
                                             if trait_ref.path.def.def_id() == trait_id;

@@ -1,4 +1,4 @@
-#![feature(stmt_expr_attributes, tool_attributes)]
+#![feature(stmt_expr_attributes)]
 
 #![allow(unused_parens)]
 

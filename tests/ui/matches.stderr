@@ -7,7 +7,7 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
 24 | |     }
    | |_____^ help: try this: `if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else { let x = 5; None }`
    |
-   = note: `-D single-match-else` implied by `-D warnings`
+   = note: `-D clippy::single-match-else` implied by `-D warnings`
 
 error: you don't need to add `&` to all patterns
   --> $DIR/matches.rs:30:9
@@ -18,7 +18,7 @@ error: you don't need to add `&` to all patterns
 33 | |         }
    | |_________^
    |
-   = note: `-D match-ref-pats` implied by `-D warnings`
+   = note: `-D clippy::match-ref-pats` implied by `-D warnings`
 help: instead of prefixing all patterns with `&`, you can dereference the expression
    |
 30 |         match *v {
@@ -94,7 +94,7 @@ error: some ranges overlap
 71 |         0 ... 10 => println!("0 ... 10"),
    |         ^^^^^^^^
    |
-   = note: `-D match-overlapping-arm` implied by `-D warnings`
+   = note: `-D clippy::match-overlapping-arm` implied by `-D warnings`
 note: overlaps with this
   --> $DIR/matches.rs:72:9
    |
@@ -155,7 +155,7 @@ error: Err(_) will match all errors, maybe not a good idea
 132 |         Err(_) => panic!("err")
     |         ^^^^^^
     |
-    = note: `-D match-wild-err-arm` implied by `-D warnings`
+    = note: `-D clippy::match-wild-err-arm` implied by `-D warnings`
     = note: to remove this warning, match each error separately or use unreachable macro
 
 error: this `match` has identical arm bodies
@@ -164,7 +164,7 @@ error: this `match` has identical arm bodies
 131 |         Ok(_) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
     |
-    = note: `-D match-same-arms` implied by `-D warnings`
+    = note: `-D clippy::match-same-arms` implied by `-D warnings`
 note: same as this
    --> $DIR/matches.rs:130:18
     |
@@ -347,7 +347,7 @@ error: use as_ref() instead
 215 | |     };
     | |_____^ help: try this: `owned.as_ref()`
     |
-    = note: `-D match-as-ref` implied by `-D warnings`
+    = note: `-D clippy::match-as-ref` implied by `-D warnings`
 
 error: use as_mut() instead
    --> $DIR/matches.rs:218:39

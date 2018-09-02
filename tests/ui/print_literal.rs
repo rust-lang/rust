@@ -1,6 +1,6 @@
+#![feature(tool_lints)]
 
-
-#![warn(print_literal)]
+#![warn(clippy::print_literal)]
 
 fn main() {
     // these should be fine

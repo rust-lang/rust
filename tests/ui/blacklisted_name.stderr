@@ -4,7 +4,7 @@ error: use of a blacklisted/placeholder name `foo`
 7 | fn test(foo: ()) {}
   |         ^^^
   |
-  = note: `-D blacklisted-name` implied by `-D warnings`
+  = note: `-D clippy::blacklisted-name` implied by `-D warnings`
 
 error: use of a blacklisted/placeholder name `foo`
   --> $DIR/blacklisted_name.rs:10:9

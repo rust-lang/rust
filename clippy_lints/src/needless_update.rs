@@ -1,5 +1,5 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use rustc::ty;
 use rustc::hir::{Expr, ExprKind};
 use crate::utils::span_lint;
@@ -35,7 +35,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprKind::Struct(_, ref fields, Some(ref base)) = expr.node {
             let ty = cx.tables.expr_ty(expr);
-            if let ty::TyAdt(def, _) = ty.sty {
+            if let ty::Adt(def, _) = ty.sty {
                 if fields.len() == def.non_enum_variant().fields.len() {
                     span_lint(
                         cx,

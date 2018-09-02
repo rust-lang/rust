@@ -1,6 +1,6 @@
-#![feature(tool_attributes)]
+#![feature(tool_lints)]
 
-#![warn(cyclomatic_complexity)]
+#![warn(clippy::cyclomatic_complexity)]
 #![warn(unused)]
 
 fn main() {

@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
-
-#![allow(unused, trivially_copy_pass_by_ref)]
-#![warn(mut_from_ref)]
+#![allow(unused, clippy::trivially_copy_pass_by_ref)]
+#![warn(clippy::mut_from_ref)]
 
 struct Foo;
 

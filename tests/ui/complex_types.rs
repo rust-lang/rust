@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
-
-#![warn(clippy)]
-#![allow(unused, needless_pass_by_value)]
+#![warn(clippy::all)]
+#![allow(unused, clippy::needless_pass_by_value)]
 #![feature(associated_type_defaults)]
 
 type Alias = Vec<Vec<Box<(u32, u32, u32, u32)>>>; // no warning here

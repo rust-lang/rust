@@ -1,4 +1,6 @@
-#![deny(mut_mut, zero_ptr, cmp_nan)]
+#![feature(tool_lints)]
+
+#![deny(clippy::mut_mut, clippy::zero_ptr, clippy::cmp_nan)]
 #![allow(dead_code)]
 
 // compiletest + extern crates doesn't work together

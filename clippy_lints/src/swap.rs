@@ -1,7 +1,7 @@
 use matches::matches;
 use rustc::hir::*;
-use rustc::lint::*;
-use rustc::{declare_lint, lint_array};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use rustc::ty;
 use crate::utils::{differing_macro_contexts, match_type, paths, snippet, span_lint_and_then, walk_ptrs_ty, SpanlessEq};
@@ -19,6 +19,10 @@ use crate::utils::sugg::Sugg;
 /// let t = b;
 /// b = a;
 /// a = t;
+/// ```
+/// Use std::mem::swap():
+/// ```rust
+/// std::mem::swap(&mut a, &mut b);
 /// ```
 declare_clippy_lint! {
     pub MANUAL_SWAP,
@@ -93,8 +97,8 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
                             if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs1, lhs2) {
                                 let ty = walk_ptrs_ty(cx.tables.expr_ty(lhs1));
 
-                                if matches!(ty.sty, ty::TySlice(_)) ||
-                                    matches!(ty.sty, ty::TyArray(_, _)) ||
+                                if matches!(ty.sty, ty::Slice(_)) ||
+                                    matches!(ty.sty, ty::Array(_, _)) ||
                                     match_type(cx, ty, &paths::VEC) ||
                                     match_type(cx, ty, &paths::VEC_DEQUE) {
                                         return Some((lhs1, idx1, idx2));
