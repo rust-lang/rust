@@ -88,10 +88,6 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
 
             let gate_test_str = "gate-test-";
 
-            if !line.contains(gate_test_str) {
-                continue;
-            }
-
             let feature_name = match line.find(gate_test_str) {
                 Some(i) => {
                     line[i+gate_test_str.len()..].splitn(2, ' ').next().unwrap()
