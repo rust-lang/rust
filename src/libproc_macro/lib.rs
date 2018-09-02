@@ -64,7 +64,7 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::parse::{self, token};
 use syntax::symbol::Symbol;
 use syntax::tokenstream;
-use syntax_pos::{Pos, FileName};
+use syntax_pos::{BytePos, Pos, FileName};
 
 /// The main type provided by this crate, representing an abstract stream of
 /// tokens, or, more specifically, a sequence of token trees.
@@ -671,9 +671,50 @@ impl Group {
 
     /// Returns the span for the delimiters of this token stream, spanning the
     /// entire `Group`.
+    ///
+    /// ```text
+    /// pub fn span(&self) -> Span {
+    ///            ^^^^^^^
+    /// ```
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn span(&self) -> Span {
         self.span
+    }
+
+    /// Returns the span pointing to the opening delimiter of this group, or the
+    /// span of the entire group if this is a None-delimited group.
+    ///
+    /// ```text
+    /// pub fn span_open(&self) -> Span {
+    ///                 ^
+    /// ```
+    #[unstable(feature = "proc_macro_span", issue = "38356")]
+    pub fn span_open(&self) -> Span {
+        if self.delimiter == Delimiter::None {
+            self.span
+        } else {
+            let lo = self.span.0.lo();
+            let new_hi = BytePos::from_usize(lo.to_usize() + 1);
+            Span(self.span.0.with_hi(new_hi))
+        }
+    }
+
+    /// Returns the span pointing to the closing delimiter of this group, or the
+    /// span of the entire group if this is a None-delimited group.
+    ///
+    /// ```text
+    /// pub fn span_close(&self) -> Span {
+    ///                        ^
+    /// ```
+    #[unstable(feature = "proc_macro_span", issue = "38356")]
+    pub fn span_close(&self) -> Span {
+        let hi = self.span.0.hi();
+        if self.delimiter == Delimiter::None || hi.to_usize() == 0 {
+            self.span
+        } else {
+            let new_lo = BytePos::from_usize(hi.to_usize() - 1);
+            Span(self.span.0.with_lo(new_lo))
+        }
     }
 
     /// Configures the span for this `Group`'s delimiters, but not its internal
