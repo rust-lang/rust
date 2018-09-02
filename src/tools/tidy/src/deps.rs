@@ -205,12 +205,13 @@ pub fn check(path: &Path, bad: &mut bool) {
         let dir = t!(dir);
 
         // skip our exceptions
-        if EXCEPTIONS.iter().any(|exception| {
+        let is_exception = EXCEPTIONS.iter().any(|exception| {
             dir.path()
                 .to_str()
                 .unwrap()
                 .contains(&format!("src/vendor/{}", exception))
-        }) {
+        });
+        if is_exception {
             continue;
         }
 
