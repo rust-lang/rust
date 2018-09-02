@@ -120,5 +120,63 @@ error: digit groups should be smaller
    |
    = note: `-D clippy::large-digit-groups` implied by `-D warnings`
 
-error: aborting due to 16 previous errors
+error: mistyped literal suffix
+  --> $DIR/literals.rs:47:18
+   |
+47 |     let fail14 = 2_32;
+   |                  ^^^^ help: did you mean to write: `2_i32`
+   |
+   = note: #[deny(clippy::mistyped_literal_suffixes)] on by default
+
+error: mistyped literal suffix
+  --> $DIR/literals.rs:48:18
+   |
+48 |     let fail15 = 4_64;
+   |                  ^^^^ help: did you mean to write: `4_i64`
+
+error: mistyped literal suffix
+  --> $DIR/literals.rs:49:18
+   |
+49 |     let fail16 = 7_8;
+   |                  ^^^ help: did you mean to write: `7_i8`
+
+error: mistyped literal suffix
+  --> $DIR/literals.rs:50:18
+   |
+50 |     let fail17 = 23_16;
+   |                  ^^^^^ help: did you mean to write: `23_i16`
+
+error: digits grouped inconsistently by underscores
+  --> $DIR/literals.rs:52:18
+   |
+52 |     let fail19 = 12_3456_21;
+   |                  ^^^^^^^^^^ help: consider: `12_345_621`
+   |
+   = note: `-D clippy::inconsistent-digit-grouping` implied by `-D warnings`
+
+error: mistyped literal suffix
+  --> $DIR/literals.rs:53:18
+   |
+53 |     let fail20 = 2__8;
+   |                  ^^^^ help: did you mean to write: `2_i8`
+
+error: mistyped literal suffix
+  --> $DIR/literals.rs:54:18
+   |
+54 |     let fail21 = 4___16;
+   |                  ^^^^^^ help: did you mean to write: `4_i16`
+
+error: digits grouped inconsistently by underscores
+  --> $DIR/literals.rs:55:18
+   |
+55 |     let fail22 = 3__4___23;
+   |                  ^^^^^^^^^ help: consider: `3_423`
+
+error: digits grouped inconsistently by underscores
+  --> $DIR/literals.rs:56:18
+   |
+56 |     let fail23 = 3__16___23;
+   |                  ^^^^^^^^^^ help: consider: `31_623`
+
+error: aborting due to 25 previous errors
 
