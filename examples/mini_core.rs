@@ -168,7 +168,9 @@ pub trait FnMut<Args>: FnOnce<Args> {
 
 #[lang = "panic"]
 pub fn panic(_expr_file_line_col: &(&'static str, &'static str, u32, u32)) -> ! {
-    loop {}
+    unsafe {
+        intrinsics::abort();
+    }
 }
 
 #[lang = "eh_personality"]
@@ -186,6 +188,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 
 pub mod intrinsics {
     extern "rust-intrinsic" {
+        pub fn abort() -> !;
         pub fn size_of<T>() -> usize;
         pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
         pub fn transmute<T, U>(e: T) -> U;
