@@ -183,3 +183,24 @@ impl Repr {
         }
     }
 }
+
+#[cfg(feature = "serde")]
+mod serde {
+    extern crate serde;
+
+    use SmolStr;
+
+    impl serde::Serialize for SmolStr {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer
+        { self.as_str().serialize(serializer) }
+    }
+
+    impl<'de> serde::Deserialize<'de> for SmolStr {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: serde::Deserializer<'de>
+        { <&'de str>::deserialize(deserializer).map(SmolStr::from) }
+    }
+}

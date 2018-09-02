@@ -1,4 +1,5 @@
 extern crate smol_str;
+extern crate serde_json;
 #[macro_use]
 extern crate proptest;
 
@@ -43,4 +44,13 @@ proptest! {
         let smol = SmolStr::new(s.as_str());
         prop_assert_eq!(smol.as_str(), s.as_str());
     }
+}
+
+#[test]
+fn test_serde() {
+    let s = SmolStr::new("Hello, World");
+    let s = serde_json::to_string(&s).unwrap();
+    assert_eq!(s, "\"Hello, World\"");
+    let s: SmolStr = serde_json::from_str(&s).unwrap();
+    assert_eq!(s, "Hello, World");
 }

@@ -1,4 +1,4 @@
 language: rust
 
 script:
-  - cargo test
+  - cargo test --all-features
