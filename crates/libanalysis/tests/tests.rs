@@ -126,7 +126,7 @@ fn test_resolve_crate_root() {
         (1, "/lib.rs"),
         (2, "/foo.rs"),
     ]));
-    assert!(snap.crate_root(FileId(2)).is_empty());
+    assert!(snap.crate_for(FileId(2)).is_empty());
 
     let crate_graph = CrateGraph {
         crate_roots: {
@@ -142,7 +142,7 @@ fn test_resolve_crate_root() {
         (2, "/foo.rs"),
     ]));
     assert_eq!(
-        snap.crate_root(FileId(2)),
+        snap.crate_for(FileId(2)),
         vec![CrateId(1)],
     );
 }

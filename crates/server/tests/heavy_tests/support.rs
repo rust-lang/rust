@@ -134,7 +134,7 @@ impl Server {
     {
         let expected = expected.replace("$PROJECT_ROOT$", &self.dir.path().display().to_string());
         let expected: Value = from_str(&expected).unwrap();
-        let actual = self.wait_for_notification(N::METHOD);
+        let actual = self.wait_for_notification::<N>();
         assert_eq!(
             expected, actual,
             "Expected:\n{}\n\
@@ -150,6 +150,11 @@ impl Server {
         R::Params: Serialize,
     {
         let r = RawRequest::new::<R>(id, &params);
+        self.send_request_(r)
+    }
+    fn send_request_(&self, r: RawRequest) -> Value
+    {
+        let id = r.id;
         self.sender.as_ref()
             .unwrap()
             .send(RawMessage::Request(r));
@@ -168,7 +173,10 @@ impl Server {
         }
         panic!("no response");
     }
-    fn wait_for_notification(&self, method: &str) -> Value {
+    pub fn wait_for_notification<N: Notification>(&self) -> Value {
+        self.wait_for_notification_(N::METHOD)
+    }
+    fn wait_for_notification_(&self, method: &str) -> Value {
         let f = |msg: &RawMessage| match msg {
                 RawMessage::Notification(n) if n.method == method => {
                     Some(n.params.clone())
@@ -215,7 +223,6 @@ impl Drop for Server {
                 drop(msg);
             }
         }
-        eprintln!("joining server");
         self.server.take()
             .unwrap()
             .join().unwrap().unwrap();

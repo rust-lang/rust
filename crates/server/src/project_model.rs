@@ -56,7 +56,7 @@ impl Package {
 }
 
 impl Target {
-    pub fn pkg(self, ws: &CargoWorkspace) -> Package {
+    pub fn package(self, ws: &CargoWorkspace) -> Package {
         ws.tgt(self).pkg
     }
     pub fn name(self, ws: &CargoWorkspace) -> &str {
@@ -114,7 +114,7 @@ impl CargoWorkspace {
     pub fn ws_members<'a>(&'a self) -> impl Iterator<Item=Package> + 'a {
         self.ws_members.iter().cloned()
     }
-    pub fn target_by_roo(&self, root: &Path) -> Option<Target> {
+    pub fn target_by_root(&self, root: &Path) -> Option<Target> {
         self.packages()
             .filter_map(|pkg| pkg.targets(self).find(|it| it.root(self) == root))
             .next()

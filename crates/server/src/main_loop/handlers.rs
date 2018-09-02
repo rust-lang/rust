@@ -16,6 +16,7 @@ use ::{
     req::{self, Decoration}, Result,
     conv::{Conv, ConvWith, TryConvWith, MapConvWith, to_location},
     server_world::ServerWorld,
+    project_model::TargetKind,
 };
 
 pub fn handle_syntax_tree(
@@ -233,6 +234,8 @@ pub fn handle_runnables(
             }
         }
 
+        let args = runnable_args(&world, file_id, &runnable.kind);
+
         let r = req::Runnable {
             range: runnable.range.conv_with(&line_index),
             label: match &runnable.kind {
@@ -242,17 +245,7 @@ pub fn handle_runnables(
                     "run binary".to_string(),
             },
             bin: "cargo".to_string(),
-            args: match runnable.kind {
-                RunnableKind::Test { name } => {
-                    vec![
-                        "test".to_string(),
-                        "--".to_string(),
-                        name,
-                        "--nocapture".to_string(),
-                    ]
-                }
-                RunnableKind::Bin => vec!["run".to_string()]
-            },
+            args,
             env: {
                 let mut m = HashMap::new();
                 m.insert(
@@ -265,6 +258,67 @@ pub fn handle_runnables(
         res.push(r);
     }
     return Ok(res);
+
+    fn runnable_args(world: &ServerWorld, file_id: FileId, kind: &RunnableKind) -> Vec<String> {
+        let spec = if let Some(&crate_id) = world.analysis().crate_for(file_id).first() {
+            let file_id = world.analysis().crate_root(crate_id);
+            let path = world.path_map.get_path(file_id);
+            world.workspaces.iter()
+                .filter_map(|ws| {
+                    let tgt = ws.target_by_root(path)?;
+                    Some((tgt.package(ws).name(ws).clone(), tgt.name(ws).clone(), tgt.kind(ws)))
+                })
+                .next()
+        } else {
+            None
+        };
+        let mut res = Vec::new();
+        match kind {
+                RunnableKind::Test { name } => {
+                    res.push("test".to_string());
+                    if let Some((pkg_name, tgt_name, tgt_kind)) = spec {
+                        spec_args(pkg_name, tgt_name, tgt_kind, &mut res);
+                    }
+                    res.push("--".to_string());
+                    res.push(name.to_string());
+                    res.push("--nocapture".to_string());
+                }
+                RunnableKind::Bin => {
+                    res.push("run".to_string());
+                    if let Some((pkg_name, tgt_name, tgt_kind)) = spec {
+                        spec_args(pkg_name, tgt_name, tgt_kind, &mut res);
+                    }
+                }
+            }
+        res
+    }
+
+    fn spec_args(pkg_name: &str, tgt_name: &str, tgt_kind: TargetKind, buf: &mut Vec<String>) {
+        buf.push("--package".to_string());
+        buf.push(pkg_name.to_string());
+        match tgt_kind {
+            TargetKind::Bin => {
+                buf.push("--bin".to_string());
+                buf.push(tgt_name.to_string());
+            }
+            TargetKind::Test => {
+                buf.push("--test".to_string());
+                buf.push(tgt_name.to_string());
+            }
+            TargetKind::Bench => {
+                buf.push("--bench".to_string());
+                buf.push(tgt_name.to_string());
+            }
+            TargetKind::Example => {
+                buf.push("--example".to_string());
+                buf.push(tgt_name.to_string());
+            }
+            TargetKind::Lib => {
+                buf.push("--lib".to_string());
+            }
+            TargetKind::Other => (),
+        }
+    }
 }
 
 pub fn handle_decorations(

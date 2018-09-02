@@ -151,7 +151,7 @@ impl AnalysisImpl {
             .collect()
     }
 
-    pub fn crate_root(&self, id: FileId) -> Vec<CrateId> {
+    pub fn crate_for(&self, id: FileId) -> Vec<CrateId> {
         let module_map = &self.data.module_map;
         let crate_graph = &self.data.crate_graph;
         let mut res = Vec::new();
@@ -177,7 +177,9 @@ impl AnalysisImpl {
         }
         res
     }
-
+    pub fn crate_root(&self, crate_id: CrateId) -> FileId {
+        self.data.crate_graph.crate_roots[&crate_id]
+    }
     pub fn approximately_resolve_symbol(
         &self,
         id: FileId,

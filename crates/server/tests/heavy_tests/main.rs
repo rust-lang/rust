@@ -14,10 +14,10 @@ use m::req::{Runnables, RunnablesParams, DidReloadWorkspace};
 
 use support::project;
 
-const LOG: &'static str = "WARN";
+const LOG: &'static str = "";
 
 #[test]
-fn test_runnables() {
+fn test_runnables_no_project() {
     let server = project(r"
 //- lib.rs
 #[test]
@@ -37,6 +37,42 @@ fn foo() {
             "label": "test foo",
             "range": {
               "end": { "character": 1, "line": 2 },
+              "start": { "character": 0, "line": 0 }
+            }
+          }
+        ]"#
+    );
+}
+
+#[test]
+fn test_runnables_project() {
+    let server = project(r#"
+//- Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- src/lib.rs
+pub fn foo() {}
+
+//- tests/spam.rs
+#[test]
+fn test_eggs() {}
+"#);
+    server.wait_for_notification::<DidReloadWorkspace>();
+    server.request::<Runnables>(
+        RunnablesParams {
+            text_document: server.doc_id("tests/spam.rs"),
+            position: None,
+        },
+        r#"[
+          {
+            "args": [ "test", "--package", "foo", "--test", "spam", "--", "test_eggs", "--nocapture" ],
+            "bin": "cargo",
+            "env": { "RUST_BACKTRACE": "short" },
+            "label": "test test_eggs",
+            "range": {
+              "end": { "character": 17, "line": 1 },
               "start": { "character": 0, "line": 0 }
             }
           }

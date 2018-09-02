@@ -6,7 +6,7 @@ use std::{
 };
 
 use languageserver_types::Url;
-use libanalysis::{FileId, AnalysisHost, Analysis};
+use libanalysis::{FileId, AnalysisHost, Analysis, CrateGraph, CrateId};
 
 use {
     Result,
@@ -95,7 +95,22 @@ impl ServerWorldState {
         Ok(file_id)
     }
     pub fn set_workspaces(&mut self, ws: Vec<CargoWorkspace>) {
+        let mut crate_roots = HashMap::new();
+        ws.iter()
+          .flat_map(|ws| {
+              ws.packages()
+                .flat_map(move |pkg| pkg.targets(ws))
+                .map(move |tgt| tgt.root(ws))
+          })
+          .for_each(|root| {
+              if let Some(file_id) = self.path_map.get_id(root) {
+                  let crate_id = CrateId(crate_roots.len() as u32);
+                  crate_roots.insert(crate_id, file_id);
+              }
+          });
+        let crate_graph = CrateGraph { crate_roots };
         self.workspaces = Arc::new(ws);
+        self.analysis_host.set_crate_graph(crate_graph);
     }
     pub fn snapshot(&self) -> ServerWorld {
         ServerWorld {

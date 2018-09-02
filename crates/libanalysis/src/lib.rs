@@ -182,8 +182,11 @@ impl Analysis {
     pub fn parent_module(&self, file_id: FileId) -> Vec<(FileId, FileSymbol)> {
         self.imp.parent_module(file_id)
     }
-    pub fn crate_root(&self, file_id: FileId) -> Vec<CrateId> {
-        self.imp.crate_root(file_id)
+    pub fn crate_for(&self, file_id: FileId) -> Vec<CrateId> {
+        self.imp.crate_for(file_id)
+    }
+    pub fn crate_root(&self, crate_id: CrateId) -> FileId {
+        self.imp.crate_root(crate_id)
     }
     pub fn runnables(&self, file_id: FileId) -> Vec<Runnable> {
         let file = self.file_syntax(file_id);
