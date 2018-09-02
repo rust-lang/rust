@@ -189,7 +189,20 @@ fn compute_expr_scopes(expr: ast::Expr, scopes: &mut FnScopes, scope: ScopeId) {
                 .chain(e.expr())
                 .for_each(|expr| compute_expr_scopes(expr, scopes, scope));
         }
-
+        ast::Expr::MatchExpr(e) => {
+            if let Some(expr) = e.expr() {
+                compute_expr_scopes(expr, scopes, scope);
+            }
+            for arm in e.match_arm_list().into_iter().flat_map(|it| it.arms()) {
+                let scope = scopes.new_scope(scope);
+                for pat in arm.pats() {
+                    scopes.add_bindings(scope, pat);
+                }
+                if let Some(expr) = arm.expr() {
+                    compute_expr_scopes(expr, scopes, scope);
+                }
+            }
+        }
         _ => {
             expr.syntax().children()
                 .filter_map(ast::Expr::cast)
@@ -279,17 +292,17 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn test_match() {
-    //     do_check(r"
-    //         fn quux() {
-    //             match () {
-    //                 Some(x) => {
-    //                     <|>
-    //                 }
-    //             };
-    //         }",
-    //         &["x"],
-    //     );
-    // }
+    #[test]
+    fn test_match() {
+        do_check(r"
+            fn quux() {
+                match () {
+                    Some(x) => {
+                        <|>
+                    }
+                };
+            }",
+            &["x"],
+        );
+    }
 }

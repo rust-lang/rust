@@ -370,9 +370,19 @@ Grammar(
             options: [ "Block" ]
         ),
         "ReturnExpr": (),
-        "MatchExpr": (),
-        "MatchArmList": (),
-        "MatchArm": (),
+        "MatchExpr": (
+            options: [ "Expr", "MatchArmList" ],
+        ),
+        "MatchArmList": (
+            collections: [ ["arms", "MatchArm"] ],
+        ),
+        "MatchArm": (
+            options: [
+                [ "guard", "MatchGuard" ],
+                "Expr",
+            ],
+            collections: [ [ "pats", "Pat" ] ]
+        ),
         "MatchGuard": (),
         "StructLit": (),
         "NamedFieldList": (),

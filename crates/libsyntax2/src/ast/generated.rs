@@ -842,7 +842,17 @@ impl<'a> AstNode<'a> for MatchArm<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> MatchArm<'a> {}
+impl<'a> MatchArm<'a> {
+    pub fn pats(self) -> impl Iterator<Item = Pat<'a>> + 'a {
+        super::children(self)
+    }
+pub fn guard(self) -> Option<MatchGuard<'a>> {
+        super::child_opt(self)
+    }
+pub fn expr(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // MatchArmList
 #[derive(Debug, Clone, Copy)]
@@ -860,7 +870,11 @@ impl<'a> AstNode<'a> for MatchArmList<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> MatchArmList<'a> {}
+impl<'a> MatchArmList<'a> {
+    pub fn arms(self) -> impl Iterator<Item = MatchArm<'a>> + 'a {
+        super::children(self)
+    }
+}
 
 // MatchExpr
 #[derive(Debug, Clone, Copy)]
@@ -878,7 +892,13 @@ impl<'a> AstNode<'a> for MatchExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> MatchExpr<'a> {}
+impl<'a> MatchExpr<'a> {pub fn expr(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+pub fn match_arm_list(self) -> Option<MatchArmList<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // MatchGuard
 #[derive(Debug, Clone, Copy)]
