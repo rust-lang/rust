@@ -1602,7 +1602,7 @@ impl<'test> TestCx<'test> {
             status,
             stdout,
             stderr,
-        } = read2_abbreviated(child).expect("failed to read output");
+        } = read2_full(child).expect("failed to read output");
 
         let result = ProcRes {
             status,
@@ -3232,6 +3232,30 @@ fn nocomment_mir_line(line: &str) -> &str {
     } else {
         line
     }
+}
+
+fn read2_full(mut child: Child) -> io::Result<Output> {
+    use read2::read2;
+
+    let mut stdout: Vec<u8> = Vec::new();
+    let mut stderr: Vec<u8> = Vec::new();
+
+    drop(child.stdin.take());
+    read2(
+        child.stdout.take().unwrap(),
+        child.stderr.take().unwrap(),
+        &mut |is_stdout, data, _| {
+            if is_stdout { &mut stdout } else { &mut stderr }.extend(&data[..]);
+            data.clear();
+        },
+    )?;
+    let status = child.wait()?;
+
+    Ok(Output {
+        status,
+        stdout,
+        stderr,
+    })
 }
 
 fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
