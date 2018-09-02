@@ -640,16 +640,23 @@ impl UndefMask {
     }
 
     /// Check whether the range `start..end` (end-exclusive) is entirely defined.
-    pub fn is_range_defined(&self, start: Size, end: Size) -> bool {
+    ///
+    /// Returns `Ok(())` if it's defined. Otherwise returns the index of the byte
+    /// at which the first undefined access begins.
+    #[inline]
+    pub fn is_range_defined(&self, start: Size, end: Size) -> Result<(), Size> {
         if end > self.len {
-            return false;
+            return Err(self.len);
         }
-        for i in start.bytes()..end.bytes() {
-            if !self.get(Size::from_bytes(i)) {
-                return false;
-            }
+
+        let idx = (start.bytes()..end.bytes())
+            .map(|i| Size::from_bytes(i))
+            .find(|&i| !self.get(i));
+
+        match idx {
+            Some(idx) => Err(idx),
+            None => Ok(())
         }
-        true
     }
 
     pub fn set_range(&mut self, start: Size, end: Size, new_state: bool) {

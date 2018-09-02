@@ -205,7 +205,7 @@ pub enum EvalErrorKind<'tcx, O> {
     ReadBytesAsPointer,
     ReadForeignStatic,
     InvalidPointerMath,
-    ReadUndefBytes,
+    ReadUndefBytes(Size),
     DeadLocal,
     InvalidBoolOp(mir::BinOp),
     Unimplemented(String),
@@ -331,7 +331,7 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
             InvalidPointerMath =>
                 "attempted to do invalid arithmetic on pointers that would leak base addresses, \
                 e.g. comparing pointers into different allocations",
-            ReadUndefBytes =>
+            ReadUndefBytes(_) =>
                 "attempted to read undefined bytes",
             DeadLocal =>
                 "tried to access a dead local variable",
