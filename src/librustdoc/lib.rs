@@ -50,6 +50,7 @@ extern crate rustc_errors as errors;
 extern crate pulldown_cmark;
 extern crate tempfile;
 extern crate minifier;
+extern crate parking_lot;
 
 extern crate serialize as rustc_serialize; // used by deriving
 

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::mem;
-
 use clean::*;
 
 pub struct StripItem(pub Item);
@@ -116,11 +114,14 @@ pub trait DocFolder : Sized {
     fn fold_crate(&mut self, mut c: Crate) -> Crate {
         c.module = c.module.take().and_then(|module| self.fold_item(module));
 
-        let traits = mem::replace(&mut c.external_traits, Default::default());
-        c.external_traits.extend(traits.into_iter().map(|(k, mut v)| {
-            v.items = v.items.into_iter().filter_map(|i| self.fold_item(i)).collect();
-            (k, v)
-        }));
+        {
+            let guard = c.external_traits.lock();
+            let traits = guard.replace(Default::default());
+            guard.borrow_mut().extend(traits.into_iter().map(|(k, mut v)| {
+                v.items = v.items.into_iter().filter_map(|i| self.fold_item(i)).collect();
+                (k, v)
+            }));
+        }
         c
     }
 }

@@ -55,6 +55,8 @@ use std::cell::RefCell;
 use std::sync::Arc;
 use std::u32;
 
+use parking_lot::ReentrantMutex;
+
 use core::{self, DocContext};
 use doctree;
 use visit_ast;
@@ -136,7 +138,7 @@ pub struct Crate {
     pub primitives: Vec<(DefId, PrimitiveType, Attributes)>,
     // These are later on moved into `CACHEKEY`, leaving the map empty.
     // Only here so that they can be filtered through the rustdoc passes.
-    pub external_traits: FxHashMap<DefId, Trait>,
+    pub external_traits: Arc<ReentrantMutex<RefCell<FxHashMap<DefId, Trait>>>>,
     pub masked_crates: FxHashSet<CrateNum>,
 }
 
@@ -214,7 +216,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tc
             module: Some(module),
             externs,
             primitives,
-            external_traits: Default::default(),
+            external_traits: cx.external_traits.clone(),
             masked_crates,
         }
     }

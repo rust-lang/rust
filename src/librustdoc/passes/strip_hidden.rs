@@ -24,12 +24,8 @@ pub const STRIP_HIDDEN: Pass =
                 "strips all doc(hidden) items from the output");
 
 /// Strip items marked `#[doc(hidden)]`
-pub fn strip_hidden(mut krate: clean::Crate, cx: &DocContext) -> clean::Crate {
+pub fn strip_hidden(krate: clean::Crate, _: &DocContext) -> clean::Crate {
     let mut retained = DefIdSet();
-
-    // as an early pass, the external traits haven't been swapped in, so we need to do that ahead
-    // of time
-    mem::swap(&mut krate.external_traits, &mut cx.external_traits.borrow_mut());
 
     // strip all #[doc(hidden)] items
     let krate = {
@@ -39,8 +35,7 @@ pub fn strip_hidden(mut krate: clean::Crate, cx: &DocContext) -> clean::Crate {
 
     // strip all impls referencing stripped items
     let mut stripper = ImplStripper { retained: &retained };
-    let mut krate = stripper.fold_crate(krate);
-    mem::swap(&mut krate.external_traits, &mut cx.external_traits.borrow_mut());
+    let krate = stripper.fold_crate(krate);
 
     krate
 }
