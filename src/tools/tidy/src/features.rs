@@ -259,14 +259,11 @@ pub fn collect_lib_features(base_src_path: &Path) -> Features {
 
     map_lib_features(base_src_path,
                      &mut |res, _, _| {
-        match res {
-            Ok((name, feature)) => {
-                if lib_features.get(name).is_some() {
-                    return;
-                }
-                lib_features.insert(name.to_owned(), feature);
-            },
-            Err(_) => (),
+        if let Ok((name, feature)) = res {
+            if lib_features.contains_key(name) {
+                return;
+            }
+            lib_features.insert(name.to_owned(), feature);
         }
     });
    lib_features
