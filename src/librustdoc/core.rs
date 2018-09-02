@@ -36,11 +36,13 @@ use syntax::symbol::keywords;
 use syntax_pos::DUMMY_SP;
 use errors;
 use errors::emitter::{Emitter, EmitterWriter};
+use parking_lot::ReentrantMutex;
 
 use std::cell::RefCell;
 use std::mem;
 use rustc_data_structures::sync::{self, Lrc};
 use std::rc::Rc;
+use std::sync::Arc;
 use std::path::PathBuf;
 
 use visit_ast::RustdocVisitor;
@@ -66,7 +68,7 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
     /// Later on moved into `html::render::CACHE_KEY`
     pub renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
-    pub external_traits: RefCell<FxHashMap<DefId, clean::Trait>>,
+    pub external_traits: Arc<ReentrantMutex<RefCell<FxHashMap<DefId, clean::Trait>>>>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
     pub active_extern_traits: RefCell<Vec<DefId>>,
@@ -598,8 +600,6 @@ pub fn run_core(search_paths: SearchPaths,
             }
 
             ctxt.sess().abort_if_errors();
-
-            krate.external_traits = ctxt.external_traits.into_inner();
 
             (krate, ctxt.renderinfo.into_inner(), passes)
         }), &sess)
