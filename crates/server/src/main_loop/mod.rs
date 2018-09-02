@@ -130,7 +130,7 @@ fn main_loop_inner(
             Event::Ws(ws) => {
                 match ws {
                     Ok(ws) => {
-                        let not = RawNotification::new::<req::DidReloadWorkspace>(vec![ws.clone()]);
+                        let not = RawNotification::new::<req::DidReloadWorkspace>(&vec![ws.clone()]);
                         msg_sender.send(RawMessage::Notification(not));
                         state.set_workspaces(vec![ws]);
                         state_changed = true;
@@ -288,7 +288,7 @@ fn on_notification(
             let file_id = state.remove_mem_file(path.as_path())?;
             subs.remove_sub(file_id);
             let params = req::PublishDiagnosticsParams { uri, diagnostics: Vec::new() };
-            let not = RawNotification::new::<req::PublishDiagnostics>(params);
+            let not = RawNotification::new::<req::PublishDiagnostics>(&params);
             msg_sender.send(RawMessage::Notification(not));
             return Ok(())
         }
@@ -326,7 +326,7 @@ impl<'a> PoolDispatcher<'a> {
                 let sender = self.sender.clone();
                 self.pool.execute(move || {
                     let resp = match f(world, params, token) {
-                        Ok(resp) => RawResponse::ok::<R>(id, resp),
+                        Ok(resp) => RawResponse::ok::<R>(id, &resp),
                         Err(e) => RawResponse::err(id, ErrorCode::InternalError as i32, e.to_string()),
                     };
                     let task = Task::Respond(resp);
@@ -363,7 +363,7 @@ fn update_file_notifications_on_threadpool(
                     error!("failed to compute diagnostics: {:?}", e)
                 }
                 Ok(params) => {
-                    let not = RawNotification::new::<req::PublishDiagnostics>(params);
+                    let not = RawNotification::new::<req::PublishDiagnostics>(&params);
                     sender.send(Task::Notify(not));
                 }
             }
@@ -372,7 +372,7 @@ fn update_file_notifications_on_threadpool(
                     error!("failed to compute decorations: {:?}", e)
                 }
                 Ok(params) => {
-                    let not = RawNotification::new::<req::PublishDecorations>(params);
+                    let not = RawNotification::new::<req::PublishDecorations>(&params);
                     sender.send(Task::Notify(not))
                 }
             }

@@ -51,7 +51,7 @@ pub fn run_server(
 pub fn handle_shutdown(req: RawRequest, sender: &Sender<RawMessage>) -> Option<RawRequest> {
     match req.cast::<Shutdown>() {
         Ok((id, ())) => {
-            let resp = RawResponse::ok::<Shutdown>(id, ());
+            let resp = RawResponse::ok::<Shutdown>(id, &());
             sender.send(RawMessage::Response(resp));
             None
         }
@@ -72,7 +72,7 @@ fn initialize(
         msg =>
             bail!("expected initialize request, got {:?}", msg),
     };
-    let resp = RawResponse::ok::<Initialize>(id, InitializeResult { capabilities: caps });
+    let resp = RawResponse::ok::<Initialize>(id, &InitializeResult { capabilities: caps });
     sender.send(RawMessage::Response(resp));
     match receiver.recv() {
         Some(RawMessage::Notification(n)) => {

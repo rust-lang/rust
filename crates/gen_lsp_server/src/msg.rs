@@ -88,7 +88,7 @@ impl RawMessage {
 }
 
 impl RawRequest {
-    pub fn new<R>(id: u64, params: R::Params) -> RawRequest
+    pub fn new<R>(id: u64, params: &R::Params) -> RawRequest
     where
         R: Request,
         R::Params: Serialize,
@@ -96,7 +96,7 @@ impl RawRequest {
         RawRequest {
             id: id,
             method: R::METHOD.to_string(),
-            params: to_value(&params).unwrap(),
+            params: to_value(params).unwrap(),
         }
     }
     pub fn cast<R>(self) -> ::std::result::Result<(u64, R::Params), RawRequest>
@@ -114,7 +114,7 @@ impl RawRequest {
 }
 
 impl RawResponse {
-    pub fn ok<R>(id: u64, result: R::Result) -> RawResponse
+    pub fn ok<R>(id: u64, result: &R::Result) -> RawResponse
     where R: Request,
           R::Result: Serialize,
     {
@@ -135,14 +135,14 @@ impl RawResponse {
 }
 
 impl RawNotification {
-    pub fn new<N>(params: N::Params) -> RawNotification
+    pub fn new<N>(params: &N::Params) -> RawNotification
     where
         N: Notification,
         N::Params: Serialize,
     {
         RawNotification {
             method: N::METHOD.to_string(),
-            params: to_value(&params).unwrap(),
+            params: to_value(params).unwrap(),
         }
     }
     pub fn cast<N>(self) -> ::std::result::Result<N::Params, RawNotification>

@@ -83,7 +83,7 @@ impl Server {
         };
         for (path, text) in files {
             res.send_notification(RawNotification::new::<DidOpenTextDocument>(
-                DidOpenTextDocumentParams {
+                &DidOpenTextDocumentParams {
                     text_document: TextDocumentItem {
                         uri: Url::from_file_path(path).unwrap(),
                         language_id: "rust".to_string(),
@@ -149,7 +149,7 @@ impl Server {
         R: Request,
         R::Params: Serialize,
     {
-        let r = RawRequest::new::<R>(id, params);
+        let r = RawRequest::new::<R>(id, &params);
         self.sender.as_ref()
             .unwrap()
             .send(RawMessage::Request(r));
