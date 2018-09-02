@@ -62,16 +62,16 @@ fn is_single_segment(name_ref: ast::NameRef) -> bool {
 }
 
 fn complete_expr_keywords(file: &File, fn_def: ast::FnDef, name_ref: ast::NameRef, acc: &mut Vec<CompletionItem>) {
-    acc.push(keyword("if", "if $0 { }"));
-    acc.push(keyword("match", "match $0 { }"));
-    acc.push(keyword("while", "while $0 { }"));
+    acc.push(keyword("if", "if $0 {}"));
+    acc.push(keyword("match", "match $0 {}"));
+    acc.push(keyword("while", "while $0 {}"));
     acc.push(keyword("loop", "loop {$0}"));
 
     if let Some(off) = name_ref.syntax().range().start().checked_sub(2.into()) {
         if let Some(if_expr) = find_node_at_offset::<ast::IfExpr>(file.syntax(), off) {
             if if_expr.syntax().range().end() < name_ref.syntax().range().start() {
                 acc.push(keyword("else", "else {$0}"));
-                acc.push(keyword("else if", "else if $0 { }"));
+                acc.push(keyword("else if", "else if $0 {}"));
             }
         }
     }
@@ -276,9 +276,9 @@ mod tests {
             fn quux() {
                 <|>
             }
-            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 { }") },
-                   CompletionItem { name: "match", snippet: Some("match $0 { }") },
-                   CompletionItem { name: "while", snippet: Some("while $0 { }") },
+            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 {}") },
+                   CompletionItem { name: "match", snippet: Some("match $0 {}") },
+                   CompletionItem { name: "while", snippet: Some("while $0 {}") },
                    CompletionItem { name: "loop", snippet: Some("loop {$0}") },
                    CompletionItem { name: "return", snippet: Some("return") }]"#);
     }
@@ -291,12 +291,12 @@ mod tests {
                     ()
                 } <|>
             }
-            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 { }") },
-                   CompletionItem { name: "match", snippet: Some("match $0 { }") },
-                   CompletionItem { name: "while", snippet: Some("while $0 { }") },
+            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 {}") },
+                   CompletionItem { name: "match", snippet: Some("match $0 {}") },
+                   CompletionItem { name: "while", snippet: Some("while $0 {}") },
                    CompletionItem { name: "loop", snippet: Some("loop {$0}") },
                    CompletionItem { name: "else", snippet: Some("else {$0}") },
-                   CompletionItem { name: "else if", snippet: Some("else if $0 { }") },
+                   CompletionItem { name: "else if", snippet: Some("else if $0 {}") },
                    CompletionItem { name: "return", snippet: Some("return") }]"#);
     }
 
@@ -307,9 +307,9 @@ mod tests {
                 <|>
                 92
             }
-            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 { }") },
-                   CompletionItem { name: "match", snippet: Some("match $0 { }") },
-                   CompletionItem { name: "while", snippet: Some("while $0 { }") },
+            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 {}") },
+                   CompletionItem { name: "match", snippet: Some("match $0 {}") },
+                   CompletionItem { name: "while", snippet: Some("while $0 {}") },
                    CompletionItem { name: "loop", snippet: Some("loop {$0}") },
                    CompletionItem { name: "return", snippet: Some("return $0;") }]"#);
         check_snippet_completion(r"
@@ -317,9 +317,9 @@ mod tests {
                 <|>
                 92
             }
-            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 { }") },
-                   CompletionItem { name: "match", snippet: Some("match $0 { }") },
-                   CompletionItem { name: "while", snippet: Some("while $0 { }") },
+            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 {}") },
+                   CompletionItem { name: "match", snippet: Some("match $0 {}") },
+                   CompletionItem { name: "while", snippet: Some("while $0 {}") },
                    CompletionItem { name: "loop", snippet: Some("loop {$0}") },
                    CompletionItem { name: "return", snippet: Some("return;") }]"#);
     }
@@ -332,9 +332,9 @@ mod tests {
                     () => <|>
                 }
             }
-            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 { }") },
-                   CompletionItem { name: "match", snippet: Some("match $0 { }") },
-                   CompletionItem { name: "while", snippet: Some("while $0 { }") },
+            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 {}") },
+                   CompletionItem { name: "match", snippet: Some("match $0 {}") },
+                   CompletionItem { name: "while", snippet: Some("while $0 {}") },
                    CompletionItem { name: "loop", snippet: Some("loop {$0}") },
                    CompletionItem { name: "return", snippet: Some("return $0") }]"#);
     }
@@ -345,9 +345,9 @@ mod tests {
             fn quux() -> i32 {
                 loop { <|> }
             }
-            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 { }") },
-                   CompletionItem { name: "match", snippet: Some("match $0 { }") },
-                   CompletionItem { name: "while", snippet: Some("while $0 { }") },
+            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 {}") },
+                   CompletionItem { name: "match", snippet: Some("match $0 {}") },
+                   CompletionItem { name: "while", snippet: Some("while $0 {}") },
                    CompletionItem { name: "loop", snippet: Some("loop {$0}") },
                    CompletionItem { name: "continue", snippet: Some("continue") },
                    CompletionItem { name: "break", snippet: Some("break") },
@@ -356,9 +356,9 @@ mod tests {
             fn quux() -> i32 {
                 loop { || { <|> } }
             }
-            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 { }") },
-                   CompletionItem { name: "match", snippet: Some("match $0 { }") },
-                   CompletionItem { name: "while", snippet: Some("while $0 { }") },
+            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 {}") },
+                   CompletionItem { name: "match", snippet: Some("match $0 {}") },
+                   CompletionItem { name: "while", snippet: Some("while $0 {}") },
                    CompletionItem { name: "loop", snippet: Some("loop {$0}") },
                    CompletionItem { name: "return", snippet: Some("return $0") }]"#);
     }

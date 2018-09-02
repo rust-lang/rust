@@ -1,14 +1,14 @@
 use std::{
     path::PathBuf,
-    thread,
     fs,
 };
 
 use crossbeam_channel::{Sender, Receiver, bounded};
-use drop_bomb::DropBomb;
 use walkdir::WalkDir;
 
-use Result;
+use {
+    thread_watcher::ThreadWatcher,
+};
 
 
 #[derive(Debug)]
@@ -24,26 +24,10 @@ pub enum FileEventKind {
     Remove,
 }
 
-pub struct Watcher {
-    thread: thread::JoinHandle<()>,
-    bomb: DropBomb,
-}
-
-impl Watcher {
-    pub fn stop(mut self) -> Result<()> {
-        self.bomb.defuse();
-        self.thread.join()
-            .map_err(|_| format_err!("file watcher died"))
-    }
-}
-
-pub fn watch(roots: Vec<PathBuf>) -> (Receiver<Vec<FileEvent>>, Watcher) {
+pub fn watch(roots: Vec<PathBuf>) -> (Receiver<Vec<FileEvent>>, ThreadWatcher) {
     let (sender, receiver) = bounded(16);
-    let thread = thread::spawn(move || run(roots, sender));
-    (receiver, Watcher {
-        thread,
-        bomb: DropBomb::new("Watcher should be stopped explicitly"),
-    })
+    let watcher = ThreadWatcher::spawn("vfs", move || run(roots, sender));
+    (receiver, watcher)
 }
 
 fn run(roots: Vec<PathBuf>, sender: Sender<Vec<FileEvent>>) {

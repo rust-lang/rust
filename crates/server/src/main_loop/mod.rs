@@ -22,6 +22,7 @@ use {
     vfs::{self, FileEvent},
     server_world::{ServerWorldState, ServerWorld},
     main_loop::subscriptions::{Subscriptions},
+    project_model::{CargoWorkspace, workspace_loader},
 };
 
 #[derive(Debug)]
@@ -37,20 +38,24 @@ pub fn main_loop(
 ) -> Result<()> {
     let pool = ThreadPool::new(4);
     let (task_sender, task_receiver) = bounded::<Task>(16);
-    let (fs_events_receiver, watcher) = vfs::watch(vec![root]);
+    let (fs_events_receiver, watcher) = vfs::watch(vec![root.clone()]);
+    let (ws_root_sender, ws_receiver, ws_watcher) = workspace_loader();
+    ws_root_sender.send(root);
 
     info!("server initialized, serving requests");
     let mut state = ServerWorldState::new();
 
     let mut pending_requests = HashMap::new();
     let mut subs = Subscriptions::new();
-    let res = main_loop_inner(
+    let main_res = main_loop_inner(
         &pool,
         msg_receriver,
         msg_sender,
         task_receiver.clone(),
         task_sender,
         fs_events_receiver,
+        ws_root_sender,
+        ws_receiver,
         &mut state,
         &mut pending_requests,
         &mut subs,
@@ -63,10 +68,14 @@ pub fn main_loop(
     pool.join();
     info!("...threadpool has finished");
 
-    info!("waiting for file watcher to finish...");
-    watcher.stop()?;
-    info!("...file watcher has finished");
-    res
+    let vfs_res = watcher.stop();
+    let ws_res = ws_watcher.stop();
+
+    main_res?;
+    vfs_res?;
+    ws_res?;
+
+    Ok(())
 }
 
 fn main_loop_inner(
@@ -76,6 +85,8 @@ fn main_loop_inner(
     task_receiver: Receiver<Task>,
     task_sender: Sender<Task>,
     fs_receiver: Receiver<Vec<FileEvent>>,
+    _ws_roots_sender: Sender<PathBuf>,
+    ws_receiver: Receiver<Result<CargoWorkspace>>,
     state: &mut ServerWorldState,
     pending_requests: &mut HashMap<u64, JobHandle>,
     subs: &mut Subscriptions,
@@ -87,6 +98,7 @@ fn main_loop_inner(
             Msg(RawMessage),
             Task(Task),
             Fs(Vec<FileEvent>),
+            Ws(Result<CargoWorkspace>),
             FsWatcherDead,
         }
         trace!("selecting");
@@ -100,6 +112,10 @@ fn main_loop_inner(
                 Some(events) => Event::Fs(events),
                 None => Event::FsWatcherDead,
             }
+            recv(ws_receiver, ws) => match ws {
+                None => bail!("workspace watcher died"),
+                Some(ws) => Event::Ws(ws),
+            }
         };
         trace!("selected {:?}", event);
         let mut state_changed = false;
@@ -110,6 +126,17 @@ fn main_loop_inner(
                 trace!("fs change, {} events", events.len());
                 state.apply_fs_changes(events);
                 state_changed = true;
+            }
+            Event::Ws(ws) => {
+                match ws {
+                    Ok(ws) => {
+                        let not = RawNotification::new::<req::DidReloadWorkspace>(vec![ws.clone()]);
+                        msg_sender.send(RawMessage::Notification(not));
+                        state.set_workspaces(vec![ws]);
+                        state_changed = true;
+                    }
+                    Err(e) => warn!("loading workspace failed: {}", e),
+                }
             }
             Event::Msg(msg) => {
                 match msg {

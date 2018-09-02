@@ -1,5 +1,6 @@
-extern crate tempdir;
+#[macro_use]
 extern crate crossbeam_channel;
+extern crate tempdir;
 extern crate languageserver_types;
 extern crate serde;
 extern crate serde_json;
@@ -9,9 +10,11 @@ extern crate m;
 
 mod support;
 
-use m::req::{Runnables, RunnablesParams};
+use m::req::{Runnables, RunnablesParams, DidReloadWorkspace};
 
 use support::project;
+
+const LOG: &'static str = "WARN";
 
 #[test]
 fn test_runnables() {
@@ -38,5 +41,34 @@ fn foo() {
             }
           }
         ]"#
+    );
+}
+
+#[test]
+fn test_project_model() {
+    let server = project(r#"
+//- Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- src/lib.rs
+pub fn foo() {}
+"#);
+    server.notification::<DidReloadWorkspace>(r#"[
+  {
+    "packages": [
+      {
+        "manifest": "$PROJECT_ROOT$/Cargo.toml",
+        "name": "foo",
+        "targets": [ 0 ]
+      }
+    ],
+    "targets": [
+      { "kind": "Lib", "name": "foo", "pkg": 0, "root": "$PROJECT_ROOT$/src/lib.rs" }
+    ],
+    "ws_members": [ 0 ]
+  }
+]"#
     );
 }

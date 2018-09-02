@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use languageserver_types::{TextDocumentIdentifier, Range, Url, Position, Location};
 use url_serde;
+use project_model::CargoWorkspace;
 
 pub use languageserver_types::{
     request::*, notification::*,
@@ -166,4 +167,11 @@ pub enum FileSystemEdit {
         #[serde(with = "url_serde")]
         dst: Url,
     }
+}
+
+pub enum DidReloadWorkspace {}
+
+impl Notification for DidReloadWorkspace {
+    const METHOD: &'static str = "m/didReloadWorkspace";
+    type Params = Vec<CargoWorkspace>;
 }

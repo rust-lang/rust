@@ -2,30 +2,35 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
 };
-use libsyntax2::SmolStr;
 use cargo_metadata::{metadata_run, CargoOpt};
-use Result;
+use crossbeam_channel::{bounded, Sender, Receiver};
+use libsyntax2::SmolStr;
 
-#[derive(Debug)]
+use {
+    Result,
+    thread_watcher::ThreadWatcher,
+};
+
+#[derive(Debug, Serialize, Clone)]
 pub struct CargoWorkspace {
     ws_members: Vec<Package>,
     packages: Vec<PackageData>,
     targets: Vec<TargetData>,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub struct Package(usize);
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub struct Target(usize);
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Clone)]
 struct PackageData {
     name: SmolStr,
     manifest: PathBuf,
     targets: Vec<Target>
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Clone)]
 struct TargetData {
     pkg: Package,
     name: SmolStr,
@@ -33,7 +38,7 @@ struct TargetData {
     kind: TargetKind,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq)]
 pub enum TargetKind {
     Bin, Lib, Example, Test, Bench, Other,
 }
@@ -66,9 +71,10 @@ impl Target {
 }
 
 impl CargoWorkspace {
-    pub fn from_path(path: &Path) -> Result<CargoWorkspace> {
+    pub fn from_cargo_metadata(path: &Path) -> Result<CargoWorkspace> {
+        let cargo_toml = find_cargo_toml(path)?;
         let meta = metadata_run(
-            Some(path),
+            Some(cargo_toml.as_path()),
             true,
             Some(CargoOpt::AllFeatures)
         ).map_err(|e| format_err!("cargo metadata failed: {}", e))?;
@@ -121,6 +127,21 @@ impl CargoWorkspace {
     }
 }
 
+fn find_cargo_toml(path: &Path) -> Result<PathBuf> {
+    if path.ends_with("Cargo.toml") {
+        return Ok(path.to_path_buf());
+    }
+    let mut curr = Some(path);
+    while let Some(path) = curr {
+        let candidate = path.join("Cargo.toml");
+        if candidate.exists() {
+            return Ok(candidate);
+        }
+        curr = path.parent();
+    }
+    bail!("can't find Cargo.toml at {}", path.display())
+}
+
 impl TargetKind {
     fn new(kinds: &[String]) -> TargetKind {
         for kind in kinds {
@@ -135,4 +156,17 @@ impl TargetKind {
         }
         TargetKind::Other
     }
+}
+
+pub fn workspace_loader() -> (Sender<PathBuf>, Receiver<Result<CargoWorkspace>>, ThreadWatcher) {
+    let (path_sender, path_receiver) = bounded::<PathBuf>(16);
+    let (ws_sender, ws_receiver) = bounded::<Result<CargoWorkspace>>(1);
+    let thread = ThreadWatcher::spawn("workspace loader", move || {
+        path_receiver
+            .into_iter()
+            .map(|path| CargoWorkspace::from_cargo_metadata(path.as_path()))
+            .for_each(|it| ws_sender.send(it))
+    });
+
+    (path_sender, ws_receiver, thread)
 }

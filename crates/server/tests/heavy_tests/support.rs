@@ -3,16 +3,18 @@ use std::{
     thread,
     cell::{Cell, RefCell},
     path::PathBuf,
+    time::Duration,
+    sync::Once,
 };
 
 use tempdir::TempDir;
-use crossbeam_channel::{bounded, Sender, Receiver};
+use crossbeam_channel::{bounded, after, Sender, Receiver};
 use flexi_logger::Logger;
 use languageserver_types::{
     Url,
     TextDocumentIdentifier,
     request::{Request, Shutdown},
-    notification::DidOpenTextDocument,
+    notification::{Notification, DidOpenTextDocument},
     DidOpenTextDocumentParams,
     TextDocumentItem,
 };
@@ -23,7 +25,8 @@ use gen_lsp_server::{RawMessage, RawRequest, RawNotification};
 use m::{Result, main_loop};
 
 pub fn project(fixture: &str) -> Server {
-    Logger::with_env_or_str("").start().unwrap();
+    static INIT: Once = Once::new();
+    INIT.call_once(|| Logger::with_env_or_str(::LOG).start().unwrap());
 
     let tmp_dir = TempDir::new("test-project")
         .unwrap();
@@ -34,6 +37,7 @@ pub fn project(fixture: &str) -> Server {
         () => {
             if let Some(file_name) = file_name {
                 let path = tmp_dir.path().join(file_name);
+                fs::create_dir_all(path.parent().unwrap()).unwrap();
                 fs::write(path.as_path(), buf.as_bytes()).unwrap();
                 paths.push((path, buf.clone()));
             }
@@ -121,6 +125,25 @@ impl Server {
         );
     }
 
+    pub fn notification<N>(
+        &self,
+        expected: &str,
+    )
+    where
+        N: Notification,
+    {
+        let expected = expected.replace("$PROJECT_ROOT$", &self.dir.path().display().to_string());
+        let expected: Value = from_str(&expected).unwrap();
+        let actual = self.wait_for_notification(N::METHOD);
+        assert_eq!(
+            expected, actual,
+            "Expected:\n{}\n\
+             Actual:\n{}\n",
+            to_string_pretty(&expected).unwrap(),
+            to_string_pretty(&actual).unwrap(),
+        );
+    }
+
     fn send_request<R>(&self, id: u64, params: R::Params) -> Value
     where
         R: Request,
@@ -130,7 +153,6 @@ impl Server {
         self.sender.as_ref()
             .unwrap()
             .send(RawMessage::Request(r));
-
         while let Some(msg) = self.recv() {
             match msg {
                 RawMessage::Request(req) => panic!("unexpected request: {:?}", req),
@@ -146,15 +168,38 @@ impl Server {
         }
         panic!("no response");
     }
+    fn wait_for_notification(&self, method: &str) -> Value {
+        let f = |msg: &RawMessage| match msg {
+                RawMessage::Notification(n) if n.method == method => {
+                    Some(n.params.clone())
+                }
+                _ => None,
+        };
+
+        for msg in self.messages.borrow().iter() {
+            if let Some(res) = f(msg) {
+                return res;
+            }
+        }
+        while let Some(msg) = self.recv() {
+            if let Some(res) = f(&msg) {
+                return res;
+            }
+        }
+        panic!("no response")
+    }
     fn recv(&self) -> Option<RawMessage> {
-        self.receiver.recv()
-            .map(|msg| {
-                self.messages.borrow_mut().push(msg.clone());
-                msg
-            })
+        let timeout = Duration::from_secs(5);
+        let msg = select! {
+            recv(&self.receiver, msg) => msg,
+            recv(after(timeout)) => panic!("timed out"),
+        };
+        msg.map(|msg| {
+            self.messages.borrow_mut().push(msg.clone());
+            msg
+        })
     }
     fn send_notification(&self, not: RawNotification) {
-
         self.sender.as_ref()
             .unwrap()
             .send(RawMessage::Notification(not));

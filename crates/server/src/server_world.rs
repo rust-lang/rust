@@ -2,6 +2,7 @@ use std::{
     fs,
     path::{PathBuf, Path},
     collections::HashMap,
+    sync::Arc,
 };
 
 use languageserver_types::Url;
@@ -11,10 +12,12 @@ use {
     Result,
     path_map::PathMap,
     vfs::{FileEvent, FileEventKind},
+    project_model::CargoWorkspace,
 };
 
 #[derive(Debug)]
 pub struct ServerWorldState {
+    pub workspaces: Arc<Vec<CargoWorkspace>>,
     pub analysis_host: AnalysisHost,
     pub path_map: PathMap,
     pub mem_map: HashMap<FileId, Option<String>>,
@@ -22,6 +25,7 @@ pub struct ServerWorldState {
 
 #[derive(Clone)]
 pub struct ServerWorld {
+    pub workspaces: Arc<Vec<CargoWorkspace>>,
     pub analysis: Analysis,
     pub path_map: PathMap,
 }
@@ -29,6 +33,7 @@ pub struct ServerWorld {
 impl ServerWorldState {
     pub fn new() -> ServerWorldState {
         ServerWorldState {
+            workspaces: Arc::new(Vec::new()),
             analysis_host: AnalysisHost::new(),
             path_map: PathMap::new(),
             mem_map: HashMap::new(),
@@ -89,9 +94,12 @@ impl ServerWorldState {
         self.analysis_host.change_file(file_id, text);
         Ok(file_id)
     }
-
+    pub fn set_workspaces(&mut self, ws: Vec<CargoWorkspace>) {
+        self.workspaces = Arc::new(ws);
+    }
     pub fn snapshot(&self) -> ServerWorld {
         ServerWorld {
+            workspaces: Arc::clone(&self.workspaces),
             analysis: self.analysis_host.analysis(self.path_map.clone()),
             path_map: self.path_map.clone()
         }

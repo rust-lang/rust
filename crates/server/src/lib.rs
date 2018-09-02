@@ -30,6 +30,7 @@ mod vfs;
 mod path_map;
 mod server_world;
 mod project_model;
+mod thread_watcher;
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 pub use caps::server_capabilities;
