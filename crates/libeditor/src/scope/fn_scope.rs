@@ -5,7 +5,7 @@ use std::{
 
 use libsyntax2::{
     SyntaxNodeRef, SyntaxNode, SmolStr, AstNode,
-    ast::{self, NameOwner, LoopBodyOwner},
+    ast::{self, NameOwner, LoopBodyOwner, ArgListOwner},
     algo::{ancestors, generate, walk::preorder}
 };
 
@@ -184,10 +184,10 @@ fn compute_expr_scopes(expr: ast::Expr, scopes: &mut FnScopes, scope: ScopeId) {
             }
         }
         ast::Expr::CallExpr(e) => {
-            e.arg_list().into_iter()
-                .flat_map(|it| it.args())
-                .chain(e.expr())
-                .for_each(|expr| compute_expr_scopes(expr, scopes, scope));
+            compute_call_scopes(e.expr(), e.arg_list(), scopes, scope);
+        }
+        ast::Expr::MethodCallExpr(e) => {
+            compute_call_scopes(e.expr(), e.arg_list(), scopes, scope);
         }
         ast::Expr::MatchExpr(e) => {
             if let Some(expr) = e.expr() {
@@ -209,6 +209,17 @@ fn compute_expr_scopes(expr: ast::Expr, scopes: &mut FnScopes, scope: ScopeId) {
                 .for_each(|expr| compute_expr_scopes(expr, scopes, scope))
         }
     };
+
+    fn compute_call_scopes(
+        receiver: Option<ast::Expr>,
+        arg_list: Option<ast::ArgList>,
+        scopes: &mut FnScopes, scope: ScopeId,
+    ) {
+        arg_list.into_iter()
+            .flat_map(|it| it.args())
+            .chain(receiver)
+            .for_each(|expr| compute_expr_scopes(expr, scopes, scope));
+    }
 
     fn compute_cond_scopes(cond: ast::Condition, scopes: &mut FnScopes, scope: ScopeId) -> Option<ScopeId> {
         if let Some(expr) = cond.expr() {
@@ -274,6 +285,16 @@ mod tests {
         do_check(r"
             fn quux() {
                 f(|x| <|> );
+            }",
+            &["x"],
+        );
+    }
+
+    #[test]
+    fn test_metod_call_scope() {
+        do_check(r"
+            fn quux() {
+                z.f(|x| <|> );
             }",
             &["x"],
         );

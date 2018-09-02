@@ -200,10 +200,8 @@ impl<'a> AstNode<'a> for CallExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<'a> ast::ArgListOwner<'a> for CallExpr<'a> {}
 impl<'a> CallExpr<'a> {pub fn expr(self) -> Option<Expr<'a>> {
-        super::child_opt(self)
-    }
-pub fn arg_list(self) -> Option<ArgList<'a>> {
         super::child_opt(self)
     }
 }
@@ -934,7 +932,11 @@ impl<'a> AstNode<'a> for MethodCallExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> MethodCallExpr<'a> {}
+impl<'a> ast::ArgListOwner<'a> for MethodCallExpr<'a> {}
+impl<'a> MethodCallExpr<'a> {pub fn expr(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // Module
 #[derive(Debug, Clone, Copy)]

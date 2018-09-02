@@ -388,10 +388,14 @@ Grammar(
         "NamedFieldList": (),
         "NamedField": (),
         "CallExpr": (
-            options: [ "Expr", "ArgList" ]
+            traits: ["ArgListOwner"],
+            options: [ "Expr" ],
+        ),
+        "MethodCallExpr": (
+            traits: ["ArgListOwner"],
+            options: [ "Expr" ],
         ),
         "IndexExpr": (),
-        "MethodCallExpr": (),
         "FieldExpr": (),
         "TryExpr": (),
         "CastExpr": (),
