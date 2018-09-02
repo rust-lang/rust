@@ -53,8 +53,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DefaultTraitAccess {
                             // explicitly name the type.
                             if let ExprKind::Call(ref method, ref _args) = expr.node;
                             if let ExprKind::Path(ref p) = method.node;
-                            if let QPath::Resolved(ref ty, ref _path) = p;
-                            if ty.is_some();
+                            if let QPath::Resolved(Some(_ty), _path) = p;
                             then {
                                 return;
                             }
