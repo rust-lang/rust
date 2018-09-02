@@ -59,18 +59,18 @@ impl SourceRoot {
             }
         }
     }
-    pub(crate) fn symbols(&self) -> Vec<(FileId, &FileSymbols)> {
+    pub(crate) fn symbols(&self) -> Vec<&FileSymbols> {
         self.file_map
             .iter()
-            .map(|(&file_id, data)| (file_id, symbols(data)))
+            .map(|(&file_id, data)| symbols(file_id, data))
             .collect()
     }
     pub fn reindex(&self) {
         let now = Instant::now();
         self.file_map
             .par_iter()
-            .for_each(|(_, data)| {
-                symbols(data);
+            .for_each(|(&file_id, data)| {
+                symbols(file_id, data);
             });
         info!("parallel indexing took {:?}", now.elapsed());
 
@@ -83,9 +83,9 @@ impl SourceRoot {
     }
 }
 
-fn symbols((data, symbols): &(FileData, OnceCell<FileSymbols>)) -> &FileSymbols {
+fn symbols(file_id: FileId, (data, symbols): &(FileData, OnceCell<FileSymbols>)) -> &FileSymbols {
     let syntax = data.syntax_transient();
-    symbols.get_or_init(|| FileSymbols::new(&syntax))
+    symbols.get_or_init(|| FileSymbols::new(file_id, &syntax))
 }
 
 #[derive(Debug)]
@@ -108,3 +108,14 @@ impl FileData {
             .unwrap_or_else(|| File::parse(&self.text))
     }
 }
+
+// #[derive(Clone, Default, Debug)]
+// pub(crate) struct ReadonlySourceRoot {
+//     data: Arc<ReadonlySourceRoot>
+// }
+
+// #[derive(Clone, Default, Debug)]
+// pub(crate) struct ReadonlySourceRootInner {
+//     file_map: HashMap<FileId, FileData>,
+//     module_map: ModuleMap,
+// }

@@ -8,12 +8,12 @@ use {Query, FileId, JobToken};
 
 #[derive(Debug)]
 pub(crate) struct FileSymbols {
-    symbols: Vec<FileSymbol>,
+    symbols: Vec<(FileId, FileSymbol)>,
     map: fst::Map,
 }
 
 impl FileSymbols {
-    pub(crate) fn new(file: &File) -> FileSymbols {
+    pub(crate) fn new(file_id: FileId, file: &File) -> FileSymbols {
         let mut symbols = file_symbols(file)
             .into_iter()
             .map(|s| (s.name.as_str().to_lowercase(), s))
@@ -21,8 +21,10 @@ impl FileSymbols {
 
         symbols.sort_by(|s1, s2| s1.0.cmp(&s2.0));
         symbols.dedup_by(|s1, s2| s1.0 == s2.0);
-        let (names, symbols): (Vec<String>, Vec<FileSymbol>) =
-            symbols.into_iter().unzip();
+        let (names, symbols): (Vec<String>, Vec<(FileId, FileSymbol)>) =
+            symbols.into_iter()
+                .map(|(name, symbol)| (name, (file_id, symbol)))
+                .unzip();
 
         let map = fst::Map::from_iter(
             names.into_iter().zip(0u64..)
@@ -34,12 +36,12 @@ impl FileSymbols {
 impl Query {
     pub(crate) fn search(
         mut self,
-        indices: &[(FileId, &FileSymbols)],
+        indices: &[&FileSymbols],
         token: &JobToken,
     ) -> Vec<(FileId, FileSymbol)> {
 
         let mut op = fst::map::OpBuilder::new();
-        for (_, file_symbols) in indices.iter() {
+        for file_symbols in indices.iter() {
             let automaton = fst::automaton::Subsequence::new(&self.lowercased);
             op = op.add(file_symbols.map.search(automaton))
         }
@@ -50,10 +52,10 @@ impl Query {
                 break;
             }
             for indexed_value in indexed_values {
-                let (file_id, file_symbols) = &indices[indexed_value.index];
+                let file_symbols = &indices[indexed_value.index];
                 let idx = indexed_value.value as usize;
 
-                let symbol = &file_symbols.symbols[idx];
+                let (file_id, symbol) = &file_symbols.symbols[idx];
                 if self.only_types && !is_type(symbol.kind) {
                     continue;
                 }
