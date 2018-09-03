@@ -95,6 +95,12 @@ pub use self::dsp::*;
 ))]
 mod simd32;
 
+#[cfg(any(
+    target_feature = "rclass",
+    all(target_feature = "mclass", target_feature = "dsp")
+))]
+pub use self::simd32::*;
+
 mod sealed {
     pub trait Dmb {
         unsafe fn __dmb(&self);
