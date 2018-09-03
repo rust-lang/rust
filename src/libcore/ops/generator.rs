@@ -124,7 +124,7 @@ pub trait Generator {
 }
 
 #[unstable(feature = "generator_trait", issue = "43122")]
-impl<'a, T> Generator for &'a mut T
+impl<T> Generator for &mut T
     where T: Generator + ?Sized
 {
     type Yield = T::Yield;

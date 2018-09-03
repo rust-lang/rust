@@ -407,7 +407,7 @@ pub trait TryFrom<T>: Sized {
 
 // As lifts over &
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a T where T: AsRef<U>
+impl<T: ?Sized, U: ?Sized> AsRef<U> for &T where T: AsRef<U>
 {
     fn as_ref(&self) -> &U {
         <T as AsRef<U>>::as_ref(*self)
@@ -416,7 +416,7 @@ impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a T where T: AsRef<U>
 
 // As lifts over &mut
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a mut T where T: AsRef<U>
+impl<T: ?Sized, U: ?Sized> AsRef<U> for &mut T where T: AsRef<U>
 {
     fn as_ref(&self) -> &U {
         <T as AsRef<U>>::as_ref(*self)
@@ -433,7 +433,7 @@ impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a mut T where T: AsRef<U>
 
 // AsMut lifts over &mut
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized, U: ?Sized> AsMut<U> for &'a mut T where T: AsMut<U>
+impl<T: ?Sized, U: ?Sized> AsMut<U> for &mut T where T: AsMut<U>
 {
     fn as_mut(&mut self) -> &mut U {
         (*self).as_mut()

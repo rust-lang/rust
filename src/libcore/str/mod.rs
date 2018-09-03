@@ -617,7 +617,7 @@ impl<'a> DoubleEndedIterator for Chars<'a> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a> FusedIterator for Chars<'a> {}
+impl FusedIterator for Chars<'_> {}
 
 impl<'a> Chars<'a> {
     /// View the underlying data as a subslice of the original data.
@@ -707,7 +707,7 @@ impl<'a> DoubleEndedIterator for CharIndices<'a> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a> FusedIterator for CharIndices<'a> {}
+impl FusedIterator for CharIndices<'_> {}
 
 impl<'a> CharIndices<'a> {
     /// View the underlying data as a subslice of the original data.
@@ -733,7 +733,7 @@ impl<'a> CharIndices<'a> {
 pub struct Bytes<'a>(Cloned<slice::Iter<'a, u8>>);
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Iterator for Bytes<'a> {
+impl Iterator for Bytes<'_> {
     type Item = u8;
 
     #[inline]
@@ -794,7 +794,7 @@ impl<'a> Iterator for Bytes<'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> DoubleEndedIterator for Bytes<'a> {
+impl DoubleEndedIterator for Bytes<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<u8> {
         self.0.next_back()
@@ -809,7 +809,7 @@ impl<'a> DoubleEndedIterator for Bytes<'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> ExactSizeIterator for Bytes<'a> {
+impl ExactSizeIterator for Bytes<'_> {
     #[inline]
     fn len(&self) -> usize {
         self.0.len()
@@ -822,10 +822,10 @@ impl<'a> ExactSizeIterator for Bytes<'a> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a> FusedIterator for Bytes<'a> {}
+impl FusedIterator for Bytes<'_> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a> TrustedLen for Bytes<'a> {}
+unsafe impl TrustedLen for Bytes<'_> {}
 
 #[doc(hidden)]
 unsafe impl<'a> TrustedRandomAccess for Bytes<'a> {
@@ -1342,7 +1342,7 @@ impl<'a> DoubleEndedIterator for Lines<'a> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a> FusedIterator for Lines<'a> {}
+impl FusedIterator for Lines<'_> {}
 
 /// Created with the method [`lines_any`].
 ///
@@ -1409,7 +1409,7 @@ impl<'a> DoubleEndedIterator for LinesAny<'a> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 #[allow(deprecated)]
-impl<'a> FusedIterator for LinesAny<'a> {}
+impl FusedIterator for LinesAny<'_> {}
 
 /*
 Section: UTF-8 validation
@@ -4033,15 +4033,15 @@ impl AsRef<[u8]> for str {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Default for &'a str {
+impl Default for &str {
     /// Creates an empty str
-    fn default() -> &'a str { "" }
+    fn default() -> Self { "" }
 }
 
 #[stable(feature = "default_mut_str", since = "1.28.0")]
-impl<'a> Default for &'a mut str {
+impl Default for &mut str {
     /// Creates an empty mutable str
-    fn default() -> &'a mut str { unsafe { from_utf8_unchecked_mut(&mut []) } }
+    fn default() -> Self { unsafe { from_utf8_unchecked_mut(&mut []) } }
 }
 
 /// An iterator over the non-whitespace substrings of a string,
@@ -4189,7 +4189,7 @@ impl<'a> DoubleEndedIterator for SplitWhitespace<'a> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a> FusedIterator for SplitWhitespace<'a> {}
+impl FusedIterator for SplitWhitespace<'_> {}
 
 #[unstable(feature = "split_ascii_whitespace", issue = "48656")]
 impl<'a> Iterator for SplitAsciiWhitespace<'a> {
@@ -4215,7 +4215,7 @@ impl<'a> DoubleEndedIterator for SplitAsciiWhitespace<'a> {
 }
 
 #[unstable(feature = "split_ascii_whitespace", issue = "48656")]
-impl<'a> FusedIterator for SplitAsciiWhitespace<'a> {}
+impl FusedIterator for SplitAsciiWhitespace<'_> {}
 
 /// An iterator of [`u16`] over the string encoded as UTF-16.
 ///
@@ -4234,7 +4234,7 @@ pub struct EncodeUtf16<'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a> fmt::Debug for EncodeUtf16<'a> {
+impl fmt::Debug for EncodeUtf16<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("EncodeUtf16 { .. }")
     }
@@ -4273,4 +4273,4 @@ impl<'a> Iterator for EncodeUtf16<'a> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a> FusedIterator for EncodeUtf16<'a> {}
+impl FusedIterator for EncodeUtf16<'_> {}

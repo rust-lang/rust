@@ -226,16 +226,16 @@ impl<T: ?Sized> BorrowMut<T> for T {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> Borrow<T> for &'a T {
+impl<T: ?Sized> Borrow<T> for &T {
     fn borrow(&self) -> &T { &**self }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> Borrow<T> for &'a mut T {
+impl<T: ?Sized> Borrow<T> for &mut T {
     fn borrow(&self) -> &T { &**self }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> BorrowMut<T> for &'a mut T {
+impl<T: ?Sized> BorrowMut<T> for &mut T {
     fn borrow_mut(&mut self) -> &mut T { &mut **self }
 }

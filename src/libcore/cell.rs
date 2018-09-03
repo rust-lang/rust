@@ -1092,7 +1092,7 @@ impl<'b> BorrowRef<'b> {
     }
 }
 
-impl<'b> Drop for BorrowRef<'b> {
+impl Drop for BorrowRef<'_> {
     #[inline]
     fn drop(&mut self) {
         let borrow = self.borrow.get();
@@ -1101,9 +1101,9 @@ impl<'b> Drop for BorrowRef<'b> {
     }
 }
 
-impl<'b> Clone for BorrowRef<'b> {
+impl Clone for BorrowRef<'_> {
     #[inline]
-    fn clone(&self) -> BorrowRef<'b> {
+    fn clone(&self) -> Self {
         // Since this Ref exists, we know the borrow flag
         // is a reading borrow.
         let borrow = self.borrow.get();
@@ -1127,7 +1127,7 @@ pub struct Ref<'b, T: ?Sized + 'b> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, T: ?Sized> Deref for Ref<'b, T> {
+impl<T: ?Sized> Deref for Ref<'_, T> {
     type Target = T;
 
     #[inline]
@@ -1219,7 +1219,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
 impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Ref<'b, U>> for Ref<'b, T> {}
 
 #[stable(feature = "std_guard_impls", since = "1.20.0")]
-impl<'a, T: ?Sized + fmt::Display> fmt::Display for Ref<'a, T> {
+impl<T: ?Sized + fmt::Display> fmt::Display for Ref<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.value.fmt(f)
     }
@@ -1305,7 +1305,7 @@ struct BorrowRefMut<'b> {
     borrow: &'b Cell<BorrowFlag>,
 }
 
-impl<'b> Drop for BorrowRefMut<'b> {
+impl Drop for BorrowRefMut<'_> {
     #[inline]
     fn drop(&mut self) {
         let borrow = self.borrow.get();
@@ -1356,7 +1356,7 @@ pub struct RefMut<'b, T: ?Sized + 'b> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, T: ?Sized> Deref for RefMut<'b, T> {
+impl<T: ?Sized> Deref for RefMut<'_, T> {
     type Target = T;
 
     #[inline]
@@ -1366,7 +1366,7 @@ impl<'b, T: ?Sized> Deref for RefMut<'b, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, T: ?Sized> DerefMut for RefMut<'b, T> {
+impl<T: ?Sized> DerefMut for RefMut<'_, T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut T {
         self.value
@@ -1377,7 +1377,7 @@ impl<'b, T: ?Sized> DerefMut for RefMut<'b, T> {
 impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<RefMut<'b, U>> for RefMut<'b, T> {}
 
 #[stable(feature = "std_guard_impls", since = "1.20.0")]
-impl<'a, T: ?Sized + fmt::Display> fmt::Display for RefMut<'a, T> {
+impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.value.fmt(f)
     }

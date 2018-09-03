@@ -584,9 +584,9 @@ impls! { PhantomData }
 
 mod impls {
     #[stable(feature = "rust1", since = "1.0.0")]
-    unsafe impl<'a, T: Sync + ?Sized> Send for &'a T {}
+    unsafe impl<T: Sync + ?Sized> Send for &T {}
     #[stable(feature = "rust1", since = "1.0.0")]
-    unsafe impl<'a, T: Send + ?Sized> Send for &'a mut T {}
+    unsafe impl<T: Send + ?Sized> Send for &mut T {}
 }
 
 /// Compiler-internal trait used to determine whether a type contains
@@ -600,8 +600,8 @@ impl<T: ?Sized> !Freeze for UnsafeCell<T> {}
 unsafe impl<T: ?Sized> Freeze for PhantomData<T> {}
 unsafe impl<T: ?Sized> Freeze for *const T {}
 unsafe impl<T: ?Sized> Freeze for *mut T {}
-unsafe impl<'a, T: ?Sized> Freeze for &'a T {}
-unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
+unsafe impl<T: ?Sized> Freeze for &T {}
+unsafe impl<T: ?Sized> Freeze for &mut T {}
 
 /// Types which can be safely moved after being pinned.
 ///
@@ -689,6 +689,6 @@ mod copy_impls {
 
     // Shared references can be copied, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, T: ?Sized> Copy for &'a T {}
+    impl<T: ?Sized> Copy for &T {}
 
 }

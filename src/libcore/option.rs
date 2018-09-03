@@ -1153,18 +1153,18 @@ impl<'a, A> DoubleEndedIterator for Iter<'a, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, A> ExactSizeIterator for Iter<'a, A> {}
+impl<A> ExactSizeIterator for Iter<'_, A> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, A> FusedIterator for Iter<'a, A> {}
+impl<A> FusedIterator for Iter<'_, A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, A> TrustedLen for Iter<'a, A> {}
+unsafe impl<A> TrustedLen for Iter<'_, A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, A> Clone for Iter<'a, A> {
+impl<A> Clone for Iter<'_, A> {
     #[inline]
-    fn clone(&self) -> Iter<'a, A> {
+    fn clone(&self) -> Self {
         Iter { inner: self.inner.clone() }
     }
 }
@@ -1199,12 +1199,12 @@ impl<'a, A> DoubleEndedIterator for IterMut<'a, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, A> ExactSizeIterator for IterMut<'a, A> {}
+impl<A> ExactSizeIterator for IterMut<'_, A> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, A> FusedIterator for IterMut<'a, A> {}
+impl<A> FusedIterator for IterMut<'_, A> {}
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, A> TrustedLen for IterMut<'a, A> {}
+unsafe impl<A> TrustedLen for IterMut<'_, A> {}
 
 /// An iterator over the value in [`Some`] variant of an [`Option`].
 ///

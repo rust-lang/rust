@@ -229,7 +229,7 @@ fn test_iterator_step_by_nth_overflow() {
 
     #[derive(Clone)]
     struct Test(Bigger);
-    impl<'a> Iterator for &'a mut Test {
+    impl Iterator for &mut Test {
         type Item = i32;
         fn next(&mut self) -> Option<Self::Item> { Some(21) }
         fn nth(&mut self, n: usize) -> Option<Self::Item> {

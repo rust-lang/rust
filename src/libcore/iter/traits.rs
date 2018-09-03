@@ -724,7 +724,7 @@ pub trait ExactSizeIterator: Iterator {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, I: ExactSizeIterator + ?Sized> ExactSizeIterator for &'a mut I {
+impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for &mut I {
     fn len(&self) -> usize {
         (**self).len()
     }
@@ -974,7 +974,7 @@ impl<T, U, E> Product<Result<U, E>> for Result<T, E>
 pub trait FusedIterator: Iterator {}
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, I: FusedIterator + ?Sized> FusedIterator for &'a mut I {}
+impl<I: FusedIterator + ?Sized> FusedIterator for &mut I {}
 
 /// An iterator that reports an accurate length using size_hint.
 ///
@@ -999,4 +999,4 @@ impl<'a, I: FusedIterator + ?Sized> FusedIterator for &'a mut I {}
 pub unsafe trait TrustedLen : Iterator {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, I: TrustedLen + ?Sized> TrustedLen for &'a mut I {}
+unsafe impl<I: TrustedLen + ?Sized> TrustedLen for &mut I {}

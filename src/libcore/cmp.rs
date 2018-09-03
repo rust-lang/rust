@@ -1033,12 +1033,12 @@ mod impls {
         fn gt(&self, other: & &'b B) -> bool { PartialOrd::gt(*self, *other) }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, A: ?Sized> Ord for &'a A where A: Ord {
+    impl<A: ?Sized> Ord for &A where A: Ord {
         #[inline]
-        fn cmp(&self, other: & &'a A) -> Ordering { Ord::cmp(*self, *other) }
+        fn cmp(&self, other: &Self) -> Ordering { Ord::cmp(*self, *other) }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, A: ?Sized> Eq for &'a A where A: Eq {}
+    impl<A: ?Sized> Eq for &A where A: Eq {}
 
     // &mut pointers
 
@@ -1065,12 +1065,12 @@ mod impls {
         fn gt(&self, other: &&'b mut B) -> bool { PartialOrd::gt(*self, *other) }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, A: ?Sized> Ord for &'a mut A where A: Ord {
+    impl<A: ?Sized> Ord for &mut A where A: Ord {
         #[inline]
-        fn cmp(&self, other: &&'a mut A) -> Ordering { Ord::cmp(*self, *other) }
+        fn cmp(&self, other: &Self) -> Ordering { Ord::cmp(*self, *other) }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, A: ?Sized> Eq for &'a mut A where A: Eq {}
+    impl<A: ?Sized> Eq for &mut A where A: Eq {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<'a, 'b, A: ?Sized, B: ?Sized> PartialEq<&'b mut B> for &'a A where A: PartialEq<B> {
