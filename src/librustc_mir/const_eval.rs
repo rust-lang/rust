@@ -577,6 +577,7 @@ pub fn const_eval_provider<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
+    // see comment in const_eval_provider for what we're doing here
     if key.param_env.reveal == Reveal::All {
         let mut key = key.clone();
         key.param_env.reveal = Reveal::UserFacing;
@@ -596,6 +597,12 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
+    // so we do a small trick here. We check whether we can evaluate the constant in the more
+    // restrictive `Reveal::UserFacing`, which most likely already was computed. In a large
+    // percentage of constants that will already have succeeded. Only associated constants of
+    // generic functions will fail due to not enough monomorphization information being available
+
+    // in case we fail in the `UserFacing` variant, we just do the real computation.
     if key.param_env.reveal == Reveal::All {
         let mut key = key.clone();
         key.param_env.reveal = Reveal::UserFacing;
