@@ -1,0 +1,35 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/const-int-overflowing.rs:12:36
+   |
+LL |     let x: &'static (i32, bool) = &(5_i32.overflowing_add(3)); //~ ERROR does not live long enough
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
+...
+LL | }
+   | - temporary value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/const-int-overflowing.rs:13:36
+   |
+LL |     let y: &'static (i32, bool) = &(5_i32.overflowing_sub(3)); //~ ERROR does not live long enough
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
+LL |     let z: &'static (i32, bool) = &(5_i32.overflowing_mul(3)); //~ ERROR does not live long enough
+LL | }
+   | - temporary value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/const-int-overflowing.rs:14:36
+   |
+LL |     let z: &'static (i32, bool) = &(5_i32.overflowing_mul(3)); //~ ERROR does not live long enough
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
+LL | }
+   | - temporary value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

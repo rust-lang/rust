@@ -15,6 +15,7 @@
 use syntax::symbol::Symbol;
 use rustc::ty;
 use rustc::ty::layout::{LayoutOf, Primitive};
+use rustc::mir::BinOp;
 use rustc::mir::interpret::{
     EvalResult, EvalErrorKind, Scalar,
 };
@@ -39,6 +40,7 @@ fn numeric_intrinsic<'tcx>(
         "ctlz" => bits.leading_zeros() as u128 - extra,
         "cttz" => (bits << extra).trailing_zeros() as u128 - extra,
         "bswap" => (bits << extra).swap_bytes(),
+        "bitreverse" => (bits << extra).reverse_bits(),
         _ => bug!("not a numeric intrinsic: {}", name),
     };
     Ok(Scalar::from_uint(bits_out, size))
@@ -76,7 +78,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let id_val = Scalar::from_uint(type_id, dest.layout.size);
                 self.write_scalar(id_val, dest)?;
             }
-            "ctpop" | "cttz" | "cttz_nonzero" | "ctlz" | "ctlz_nonzero" | "bswap" => {
+            | "ctpop"
+            | "cttz"
+            | "cttz_nonzero"
+            | "ctlz"
+            | "ctlz_nonzero"
+            | "bswap"
+            | "bitreverse" => {
                 let ty = substs.type_at(0);
                 let layout_of = self.layout_of(ty)?;
                 let bits = self.read_scalar(args[0])?.to_bits(layout_of.size)?;
@@ -93,6 +101,33 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     numeric_intrinsic(intrinsic_name, bits, kind)?
                 };
                 self.write_scalar(out_val, dest)?;
+            }
+            | "overflowing_add"
+            | "overflowing_sub"
+            | "overflowing_mul"
+            | "unchecked_shl"
+            | "unchecked_shr"
+            | "add_with_overflow"
+            | "sub_with_overflow"
+            | "mul_with_overflow" => {
+                let lhs = self.read_value(args[0])?;
+                let rhs = self.read_value(args[1])?;
+                let (bin_op, ignore_overflow) = match intrinsic_name {
+                    "overflowing_add" => (BinOp::Add, true),
+                    "overflowing_sub" => (BinOp::Sub, true),
+                    "overflowing_mul" => (BinOp::Mul, true),
+                    "unchecked_shl" => (BinOp::Shl, true),
+                    "unchecked_shr" => (BinOp::Shr, true),
+                    "add_with_overflow" => (BinOp::Add, false),
+                    "sub_with_overflow" => (BinOp::Sub, false),
+                    "mul_with_overflow" => (BinOp::Mul, false),
+                    _ => bug!("Already checked for int ops")
+                };
+                if ignore_overflow {
+                    self.binop_ignore_overflow(bin_op, lhs, rhs, dest)?;
+                } else {
+                    self.binop_with_overflow(bin_op, lhs, rhs, dest)?;
+                }
             }
             "transmute" => {
                 // Go through an allocation, to make sure the completely different layouts
