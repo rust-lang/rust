@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::fmt::{self, Display};
 use borrow_check::nll::region_infer::RegionInferenceContext;
 use borrow_check::nll::universal_regions::DefiningTy;
 use borrow_check::nll::ToRegionVid;
@@ -22,6 +23,24 @@ use rustc_errors::DiagnosticBuilder;
 use syntax::ast::{Name, DUMMY_NODE_ID};
 use syntax::symbol::keywords;
 use syntax_pos::symbol::InternedString;
+
+/// Name of a region used in error reporting. Variants denote the source of the region name -
+/// whether it was synthesized for the error message and therefore should not be used in
+/// suggestions; or whether it was found from the region.
+#[derive(Debug)]
+pub(crate) enum RegionName {
+    Named(InternedString),
+    Synthesized(InternedString),
+}
+
+impl Display for RegionName {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            RegionName::Named(name) | RegionName::Synthesized(name) =>
+                write!(f, "{}", name),
+        }
+    }
+}
 
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Maps from an internal MIR region vid to something that we can
@@ -57,7 +76,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         fr: RegionVid,
         counter: &mut usize,
         diag: &mut DiagnosticBuilder,
-    ) -> InternedString {
+    ) -> RegionName {
         debug!("give_region_a_name(fr={:?}, counter={})", fr, counter);
 
         assert!(self.universal_regions.is_universal_region(fr));
@@ -95,7 +114,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         fr: RegionVid,
         counter: &mut usize,
         diag: &mut DiagnosticBuilder<'_>,
-    ) -> Option<InternedString> {
+    ) -> Option<RegionName> {
         let error_region = self.to_error_region(fr)?;
 
         debug!("give_region_a_name: error_region = {:?}", error_region);
@@ -103,19 +122,21 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             ty::ReEarlyBound(ebr) => {
                 if ebr.has_name() {
                     self.highlight_named_span(tcx, error_region, &ebr.name, diag);
-                    Some(ebr.name)
+                    Some(RegionName::Named(ebr.name))
                 } else {
                     None
                 }
             }
 
-            ty::ReStatic => Some(keywords::StaticLifetime.name().as_interned_str()),
+            ty::ReStatic => Some(RegionName::Named(
+                keywords::StaticLifetime.name().as_interned_str()
+            )),
 
             ty::ReFree(free_region) => match free_region.bound_region {
                 ty::BoundRegion::BrNamed(_, name) => {
                     self.highlight_named_span(tcx, error_region, &name, diag);
-                    Some(name)
-                }
+                    Some(RegionName::Named(name))
+                },
 
                 ty::BoundRegion::BrEnv => {
                     let mir_node_id = tcx.hir.as_local_node_id(mir_def_id).expect("non-local mir");
@@ -132,7 +153,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         let region_name = self.synthesize_region_name(counter);
                         diag.span_label(
                             args_span,
-                            format!("lifetime `{}` represents this closure's body", region_name),
+                            format!(
+                                "lifetime `{}` represents this closure's body",
+                                region_name
+                            ),
                         );
 
                         let closure_kind_ty = substs.closure_kind_ty(def_id, tcx);
@@ -227,7 +251,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         fr: RegionVid,
         counter: &mut usize,
         diag: &mut DiagnosticBuilder<'_>,
-    ) -> Option<InternedString> {
+    ) -> Option<RegionName> {
         let implicit_inputs = self.universal_regions.defining_ty.implicit_inputs();
         let argument_index = self.get_argument_index_for_region(infcx.tcx, fr)?;
 
@@ -259,7 +283,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         argument_index: usize,
         counter: &mut usize,
         diag: &mut DiagnosticBuilder<'_>,
-    ) -> Option<InternedString> {
+    ) -> Option<RegionName> {
         let mir_node_id = infcx.tcx.hir.as_local_node_id(mir_def_id)?;
         let fn_decl = infcx.tcx.hir.fn_decl(mir_node_id)?;
         let argument_hir_ty: &hir::Ty = &fn_decl.inputs[argument_index];
@@ -306,7 +330,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         argument_ty: Ty<'tcx>,
         counter: &mut usize,
         diag: &mut DiagnosticBuilder<'_>,
-    ) -> Option<InternedString> {
+    ) -> Option<RegionName> {
         let type_name = with_highlight_region(needle_fr, *counter, || {
             infcx.extract_type_name(&argument_ty)
         });
@@ -361,7 +385,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         argument_hir_ty: &hir::Ty,
         counter: &mut usize,
         diag: &mut DiagnosticBuilder<'_>,
-    ) -> Option<InternedString> {
+    ) -> Option<RegionName> {
         let search_stack: &mut Vec<(Ty<'tcx>, &hir::Ty)> = &mut Vec::new();
 
         search_stack.push((argument_ty, argument_hir_ty));
@@ -457,7 +481,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         counter: &mut usize,
         diag: &mut DiagnosticBuilder<'_>,
         search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty)>,
-    ) -> Option<InternedString> {
+    ) -> Option<RegionName> {
         // Did the user give explicit arguments? (e.g., `Foo<..>`)
         let args = last_segment.args.as_ref()?;
         let lifetime = self.try_match_adt_and_generic_args(substs, needle_fr, args, search_stack)?;
@@ -467,7 +491,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             | hir::LifetimeName::Underscore => {
                 let region_name = self.synthesize_region_name(counter);
                 let ampersand_span = lifetime.span;
-                diag.span_label(ampersand_span, format!("let's call this `{}`", region_name));
+                diag.span_label(
+                    ampersand_span,
+                    format!("let's call this `{}`", region_name)
+                );
                 return Some(region_name);
             }
 
@@ -544,7 +571,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         fr: RegionVid,
         counter: &mut usize,
         diag: &mut DiagnosticBuilder<'_>,
-    ) -> Option<InternedString> {
+    ) -> Option<RegionName> {
         let upvar_index = self.get_upvar_index_for_region(tcx, fr)?;
         let (upvar_name, upvar_span) =
             self.get_upvar_name_and_span_for_region(tcx, mir, upvar_index);
@@ -573,7 +600,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         fr: RegionVid,
         counter: &mut usize,
         diag: &mut DiagnosticBuilder<'_>,
-    ) -> Option<InternedString> {
+    ) -> Option<RegionName> {
         let tcx = infcx.tcx;
 
         let return_ty = self.universal_regions.unnormalized_output_ty;
@@ -622,10 +649,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     /// Create a synthetic region named `'1`, incrementing the
     /// counter.
-    fn synthesize_region_name(&self, counter: &mut usize) -> InternedString {
+    fn synthesize_region_name(&self, counter: &mut usize) -> RegionName {
         let c = *counter;
         *counter += 1;
 
-        Name::intern(&format!("'{:?}", c)).as_interned_str()
+        RegionName::Synthesized(Name::intern(&format!("'{:?}", c)).as_interned_str())
     }
 }

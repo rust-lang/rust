@@ -17,13 +17,16 @@ use rustc::infer::InferCtxt;
 use rustc::mir::{self, Location, Mir, Place, Rvalue, StatementKind, TerminatorKind};
 use rustc::ty::{TyCtxt, Ty, TyS, TyKind, Region, RegionKind, RegionVid};
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_errors::Diagnostic;
+use rustc_errors::{Diagnostic, DiagnosticBuilder};
 use std::collections::VecDeque;
 use std::fmt;
+use syntax::symbol::keywords;
 use syntax_pos::Span;
 
 mod region_name;
 mod var_name;
+
+use self::region_name::RegionName;
 
 /// Constraints that are considered interesting can be categorized to
 /// determine why they are interesting. Order of variants indicates
@@ -473,27 +476,44 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             },
         }
 
+        self.add_static_impl_trait_suggestion(
+            infcx, &mut diag, fr_name, fr_region, outlived_fr_region
+        );
+
+        diag.buffer(errors_buffer);
+    }
+
+    fn add_static_impl_trait_suggestion(
+        &self,
+        infcx: &InferCtxt<'_, '_, 'tcx>,
+        diag: &mut DiagnosticBuilder<'_>,
+        fr_name: RegionName,
+        fr_region: Option<Region<'tcx>>,
+        outlived_fr_region: Option<Region<'tcx>>,
+    ) {
         if let (Some(f), Some(RegionKind::ReStatic)) = (fr_region, outlived_fr_region) {
             if let Some(TyS {
                 sty: TyKind::Anon(did, _),
                 ..
             }) = self.return_type_impl_trait(infcx, f) {
+                let static_str = keywords::StaticLifetime.name();
                 let span = infcx.tcx.def_span(*did);
                 if let Ok(snippet) = infcx.tcx.sess.source_map().span_to_snippet(span) {
                     diag.span_suggestion(
                         span,
                         &format!(
                             "you can add a constraint to the return type to make it last \
-                             less than `'static` and match {}",
-                            fr_name,
+                             less than `{}` and match `{}`",
+                            static_str, fr_name,
                         ),
-                        format!("{} + {}", snippet, fr_name),
+                        match fr_name {
+                            RegionName::Named(name) => format!("{} + {}", snippet, name),
+                            RegionName::Synthesized(_) => format!("{} + '_", snippet),
+                        },
                     );
                 }
             }
         }
-
-        diag.buffer(errors_buffer);
     }
 
     // Finds some region R such that `fr1: R` and `R` is live at
