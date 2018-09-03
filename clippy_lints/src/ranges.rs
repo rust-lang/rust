@@ -52,7 +52,7 @@ declare_clippy_lint! {
 /// **Known problems:** Will add unnecessary pair of parentheses when the
 /// expression is not wrapped in a pair but starts with a opening parenthesis
 /// and ends with a closing one.
-/// I.e: let _ = (f()+1)..(f()+1) results in let _ = ((f()+1)..(f()+1)).
+/// I.e: `let _ = (f()+1)..(f()+1)` results in `let _ = ((f()+1)..(f()+1))`.
 ///
 /// **Example:**
 /// ```rust
