@@ -547,7 +547,10 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx>
 
             // Reset ambient variance to contravariance. See the
             // covariant case above for an explanation.
-            let variance = ::std::mem::replace(&mut self.ambient_variance, ty::Variance::Contravariant);
+            let variance = ::std::mem::replace(
+                &mut self.ambient_variance,
+                ty::Variance::Contravariant,
+            );
 
             self.relate(a.skip_binder(), b.skip_binder())?;
 
@@ -629,7 +632,7 @@ impl<'cx, 'gcx, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'cx, 'gcx, 'tcx> {
 /// so that the resulting generalized type is independent from the
 /// scopes.
 ///
-/// [blog post]: http://smallcultfollowing.com/babysteps/blog/2014/07/09/an-experimental-new-type-inference-scheme-for-rust/
+/// [blog post]: https://is.gd/0hKvIr
 struct TypeGeneralizer<'me, 'bccx: 'me, 'gcx: 'tcx, 'tcx: 'bccx> {
     type_rel: &'me TypeRelating<'me, 'bccx, 'gcx, 'tcx>,
 

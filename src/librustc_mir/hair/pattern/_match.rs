@@ -1235,7 +1235,8 @@ fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt,
                           -> Option<Vec<Constructor<'tcx>>>
 {
     match *pat.kind {
-        PatternKind::AscribeUserType { ref subpattern, .. } => pat_constructors(cx, subpattern, pcx),
+        PatternKind::AscribeUserType { ref subpattern, .. } =>
+            pat_constructors(cx, subpattern, pcx),
         PatternKind::Binding { .. } | PatternKind::Wild => None,
         PatternKind::Leaf { .. } | PatternKind::Deref { .. } => Some(vec![Single]),
         PatternKind::Variant { adt_def, variant_index, .. } => {
