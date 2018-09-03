@@ -74,8 +74,8 @@ use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use source_map::SpanUtils;
 use utils::{
-    first_line_width, last_line_extendable, last_line_width, mk_sp, trimmed_last_line_width,
-    wrap_str,
+    first_line_width, last_line_extendable, last_line_width, mk_sp, rewrite_ident,
+    trimmed_last_line_width, wrap_str,
 };
 
 use std::borrow::Cow;
@@ -190,10 +190,12 @@ impl Rewrite for ChainItem {
             ChainItemKind::MethodCall(ref segment, ref types, ref exprs) => {
                 Self::rewrite_method_call(segment.ident, types, exprs, self.span, context, shape)?
             }
-            ChainItemKind::StructField(ident) => format!(".{}", ident.name),
-            ChainItemKind::TupleField(ident, nested) => {
-                format!("{}.{}", if nested { " " } else { "" }, ident.name)
-            }
+            ChainItemKind::StructField(ident) => format!(".{}", rewrite_ident(context, ident)),
+            ChainItemKind::TupleField(ident, nested) => format!(
+                "{}.{}",
+                if nested { " " } else { "" },
+                rewrite_ident(context, ident)
+            ),
             ChainItemKind::Comment(ref comment, _) => {
                 rewrite_comment(comment, false, shape, context.config)?
             }
@@ -241,7 +243,7 @@ impl ChainItem {
 
             format!("::<{}>", type_list.join(", "))
         };
-        let callee_str = format!(".{}{}", method_name, type_str);
+        let callee_str = format!(".{}{}", rewrite_ident(context, method_name), type_str);
         rewrite_call(context, &callee_str, &args[1..], span, shape)
     }
 }
