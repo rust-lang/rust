@@ -83,7 +83,7 @@ mod dsp;
     ),
     all(target_feature = "mclass", target_feature = "dsp"),
 ))]
-pub use dsp::*;
+pub use self::dsp::*;
 
 // Deprecated in ACLE 2.0 for the A profile but fully supported on the M and R profiles, says
 // Section 5.4.9 of ACLE.
