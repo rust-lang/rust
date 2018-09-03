@@ -10,7 +10,7 @@
 
 #[doc(keyword = "as")]
 //
-/// The type coercion keyword
+/// The type coercion keyword.
 ///
 /// `as` is most commonly used to turn primitive types into other primitive types, but it has other
 /// uses that include turning pointers into addresses, addresses into pointers, and pointers into
@@ -34,6 +34,61 @@
 ///
 /// [Reference]: https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions
 mod as_keyword { }
+
+#[doc(keyword = "const")]
+//
+/// The keyword for defining constants.
+///
+/// Sometimes a certain value is used many times throughout a program, and it can become
+/// inconvenient to copy it over and over. What's more, it's not always possible or desirable to
+/// make it a variable that gets carried around to each function that needs it. In these cases, the
+/// `const` keyword provides a convenient alternative to code duplication.
+///
+/// ```rust
+/// const THING: u32 = 0xABAD1DEA;
+///
+/// let foo = 123 + THING;
+/// ```
+///
+/// Constants must be explicitly typed, unlike with `let` you can't ignore its type and let the
+/// compiler figure it out. Any constant value can be defined in a const, which in practice happens
+/// to be most things that would be reasonable to have a constant. For example, you can't have a
+/// File as a const.
+///
+/// The only lifetime allowed in a constant is 'static, which is the lifetime that encompasses all
+/// others in a Rust program. For example, if you wanted to define a constant string, it would look
+/// like this:
+///
+/// ```rust
+/// const WORDS: &'static str = "hello rust!";
+/// ```
+///
+/// Thanks to static lifetime elision, you usually don't have to explicitly use 'static:
+///
+/// ```rust
+/// const WORDS: &str = "hello convenience!";
+/// ```
+///
+/// `const` items looks remarkably similar to [`static`] items, which introduces some confusion as
+/// to which one should be used at which times. To put it simply, constants are inlined wherever
+/// they're used, making using them identical to simply replacing the name of the const with its
+/// value. Static variables on the other hand point to a single location in memory, which all
+/// accesses share. This means that, unlike with constants, they can't have destructors, but it
+/// also means that (via unsafe code) they can be mutable, which is useful for the rare situations
+/// in which you can't avoid using global state.
+///
+/// Constants, as with statics, should always be in SCREAMING_SNAKE_CASE.
+///
+/// The `const` keyword is also used in raw pointers in combination with `mut`, as seen in `*const
+/// T` and `*mut T`. More about that can be read at the [pointer] primitive part of the Rust docs.
+///
+/// For more detail on `const`, see the [Rust Book] or the [Reference]
+///
+/// [`static`]: keyword.static.html
+/// [pointer]: primitive.pointer.html
+/// [Rust Book]: https://doc.rust-lang.org/stable/book/2018-edition/ch03-01-variables-and-mutability.html#differences-between-variables-and-constants
+/// [Reference]: https://doc.rust-lang.org/reference/items/constant-items.html
+mod const_keyword { }
 
 #[doc(keyword = "fn")]
 //
