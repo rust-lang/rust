@@ -57,9 +57,8 @@ impl AnalysisHostImpl {
         }
         self.data_mut().crate_graph = graph;
     }
-    pub fn add_library(&mut self, files: impl Iterator<Item=(FileId, String)>) {
-        let libs = ReadonlySourceRoot::new(files);
-        self.data_mut().libs.push(Arc::new(libs));
+    pub fn add_library(&mut self, root: ReadonlySourceRoot) {
+        self.data_mut().libs.push(Arc::new(root));
     }
     fn data_mut(&mut self) -> &mut WorldData {
         Arc::make_mut(&mut self.data)

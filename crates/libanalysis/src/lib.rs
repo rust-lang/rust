@@ -68,8 +68,8 @@ impl AnalysisHost {
     pub fn set_crate_graph(&mut self, graph: CrateGraph) {
         self.imp.set_crate_graph(graph)
     }
-    pub fn add_library(&mut self, files: impl Iterator<Item=(FileId, String)>) {
-        self.imp.add_library(files)
+    pub fn add_library(&mut self, data: LibraryData) {
+        self.imp.add_library(data.root)
     }
 }
 
@@ -214,5 +214,17 @@ impl Analysis {
     }
     pub fn diagnostics(&self, file_id: FileId) -> Vec<Diagnostic> {
         self.imp.diagnostics(file_id)
+    }
+}
+
+#[derive(Debug)]
+pub struct LibraryData {
+    root: roots::ReadonlySourceRoot
+}
+
+impl LibraryData {
+    pub fn prepare(files: Vec<(FileId, String)>) -> LibraryData {
+        let root = roots::ReadonlySourceRoot::new(files);
+        LibraryData { root }
     }
 }

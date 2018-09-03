@@ -136,9 +136,10 @@ pub(crate) struct ReadonlySourceRoot {
 }
 
 impl ReadonlySourceRoot {
-    pub fn new(files: impl Iterator<Item=(FileId, String)>) -> ReadonlySourceRoot {
+    pub fn new(files: Vec<(FileId, String)>) -> ReadonlySourceRoot {
         let mut module_map = ModuleMap::new();
         let file_map: HashMap<FileId, FileData> = files
+            .into_iter()
             .map(|(id, text)| {
                 module_map.update_file(id, ChangeKind::Insert);
                 (id, FileData::new(text))
