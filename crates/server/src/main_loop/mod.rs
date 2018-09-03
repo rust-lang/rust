@@ -126,7 +126,6 @@ fn main_loop_inner(
             }
             recv(libdata_receiver, data) => Event::Lib(data.unwrap())
         };
-        trace!("selected {:?}", event);
         let mut state_changed = false;
         match event {
             Event::Task(task) => on_task(task, msg_sender, pending_requests),
@@ -163,6 +162,7 @@ fn main_loop_inner(
                 }
             }
             Event::Lib(lib) => {
+                feedback(internal_mode, "library loaded", msg_sender);
                 state.add_lib(lib);
             }
             Event::Msg(msg) => {

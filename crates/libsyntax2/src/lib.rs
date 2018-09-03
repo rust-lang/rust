@@ -127,7 +127,8 @@ fn validate_block_structure(root: SyntaxNodeRef) {
                     assert_eq!(
                         node.parent(),
                         pair.parent(),
-                        "\nunpaired curleys:\n{}",
+                        "\nunpaired curleys:\n{}\n{}\n",
+                        root.text(),
                         utils::dump_tree(root),
                     );
                     assert!(

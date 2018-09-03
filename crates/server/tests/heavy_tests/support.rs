@@ -155,6 +155,9 @@ impl Server {
         panic!("no response");
     }
     pub fn wait_for_feedback(&self, feedback: &str) {
+        self.wait_for_feedback_n(feedback, 1)
+    }
+    pub fn wait_for_feedback_n(&self, feedback: &str, n: usize) {
         let f = |msg: &RawMessage| match msg {
                 RawMessage::Notification(n) if n.method == "internalFeedback" => {
                     return n.clone().cast::<req::InternalFeedback>()
@@ -162,18 +165,18 @@ impl Server {
                 }
                 _ => false,
         };
-
+        let mut total = 0;
         for msg in self.messages.borrow().iter() {
             if f(msg) {
-                return;
+                total += 1
             }
         }
-        while let Some(msg) = self.recv() {
+        while total < n {
+            let msg = self.recv().expect("no response");
             if f(&msg) {
-                return;
+                total += 1;
             }
         }
-        panic!("no response")
     }
     fn recv(&self) -> Option<RawMessage> {
         let timeout = Duration::from_secs(5);

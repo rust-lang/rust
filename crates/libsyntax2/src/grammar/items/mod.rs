@@ -227,6 +227,7 @@ fn extern_item_list(p: &mut Parser) {
     assert!(p.at(L_CURLY));
     let m = p.start();
     p.bump();
+    mod_contents(p, true);
     p.expect(R_CURLY);
     m.complete(p, EXTERN_ITEM_LIST);
 }

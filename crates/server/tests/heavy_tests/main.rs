@@ -14,6 +14,7 @@ use m::req::{Runnables, RunnablesParams};
 
 use support::project;
 
+
 const LOG: &'static str = "";
 
 #[test]
@@ -79,3 +80,20 @@ fn test_eggs() {}
         ]"#
     );
 }
+
+// #[test]
+// fn test_deps() {
+//     let server = project(r#"
+// //- Cargo.toml
+// [package]
+// name = "foo"
+// version = "0.0.0"
+// [dependencies]
+// regex = "=1.0.4"
+
+// //- src/lib.rs
+// extern crate regex;
+// "#);
+//     server.wait_for_feedback("workspace loaded");
+//     server.wait_for_feedback_n("library loaded", 1);
+// }
