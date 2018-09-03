@@ -103,7 +103,7 @@
 //! inlining, even when they are not marked #[inline].
 
 use monomorphize::collector::InliningMap;
-use rustc::dep_graph::WorkProductId;
+use rustc::dep_graph::{WorkProductId, WorkProduct, DepNode, DepConstructor};
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
 use rustc::hir::map::DefPathData;
@@ -150,6 +150,15 @@ pub trait CodegenUnitExt<'tcx> {
         WorkProductId::from_cgu_name(&self.name().as_str())
     }
 
+    fn work_product(&self, tcx: TyCtxt) -> WorkProduct {
+        let work_product_id = self.work_product_id();
+        tcx.dep_graph
+           .previous_work_product(&work_product_id)
+           .unwrap_or_else(|| {
+                panic!("Could not find work-product for CGU `{}`", self.name())
+            })
+    }
+
     fn items_in_deterministic_order<'a>(&self,
                                         tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                         -> Vec<(MonoItem<'tcx>,
@@ -193,6 +202,10 @@ pub trait CodegenUnitExt<'tcx> {
         let mut items: Vec<_> = self.items().iter().map(|(&i, &l)| (i, l)).collect();
         items.sort_by_cached_key(|&(i, _)| item_sort_key(tcx, i));
         items
+    }
+
+    fn codegen_dep_node(&self, tcx: TyCtxt<'_, 'tcx, 'tcx>) -> DepNode {
+        DepNode::new(tcx, DepConstructor::CompileCodegenUnit(self.name().clone()))
     }
 }
 

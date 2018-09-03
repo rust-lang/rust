@@ -878,7 +878,7 @@ pub struct WorkProduct {
     pub saved_files: Vec<(WorkProductFileKind, String)>,
 }
 
-#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable, PartialEq)]
 pub enum WorkProductFileKind {
     Object,
     Bytecode,

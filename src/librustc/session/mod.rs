@@ -580,11 +580,6 @@ impl Session {
             return config::Lto::No;
         }
 
-        // Right now ThinLTO isn't compatible with incremental compilation.
-        if self.opts.incremental.is_some() {
-            return config::Lto::No;
-        }
-
         // Now we're in "defaults" territory. By default we enable ThinLTO for
         // optimized compiles (anything greater than O0).
         match self.opts.optimize {
@@ -1177,8 +1172,18 @@ pub fn build_session_(
 // commandline argument, you can do so here.
 fn validate_commandline_args_with_session_available(sess: &Session) {
 
-    if sess.lto() != Lto::No && sess.opts.incremental.is_some() {
-        sess.err("can't perform LTO when compiling incrementally");
+    if sess.opts.incremental.is_some() {
+        match sess.lto() {
+            Lto::Yes |
+            Lto::Thin |
+            Lto::Fat => {
+                sess.err("can't perform LTO when compiling incrementally");
+            }
+            Lto::ThinLocal |
+            Lto::No => {
+                // This is fine
+            }
+        }
     }
 
     // Since we don't know if code in an rlib will be linked to statically or
