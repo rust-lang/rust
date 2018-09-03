@@ -194,11 +194,11 @@ impl<'b, T: Write + 'b> FormatHandler for Session<'b, T> {
     fn handle_formatted_file(
         &mut self,
         path: FileName,
-        mut result: String,
+        result: String,
         report: &mut FormatReport,
     ) -> Result<(), ErrorKind> {
         if let Some(ref mut out) = self.out {
-            match source_file::write_file(&mut result, &path, out, &self.config) {
+            match source_file::write_file(&result, &path, out, &self.config) {
                 Ok(b) if b => report.add_diff(),
                 Err(e) => {
                     // Create a new error with path_str to help users see which files failed
@@ -224,7 +224,7 @@ pub(crate) struct FormattingError {
 
 impl FormattingError {
     pub(crate) fn from_span(
-        span: &Span,
+        span: Span,
         source_map: &SourceMap,
         kind: ErrorKind,
     ) -> FormattingError {
@@ -234,13 +234,13 @@ impl FormattingError {
             kind,
             is_string: false,
             line_buffer: source_map
-                .span_to_lines(*span)
+                .span_to_lines(span)
                 .ok()
                 .and_then(|fl| {
                     fl.file
                         .get_line(fl.lines[0].line_index)
                         .map(|l| l.into_owned())
-                }).unwrap_or_else(|| String::new()),
+                }).unwrap_or_else(String::new),
         }
     }
 

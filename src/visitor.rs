@@ -621,7 +621,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 self.report.append(
                     file_name,
                     vec![FormattingError::from_span(
-                        &attr.span,
+                        attr.span,
                         &self.source_map,
                         ErrorKind::DeprecatedAttr,
                     )],
@@ -634,7 +634,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     self.report.append(
                         file_name,
                         vec![FormattingError::from_span(
-                            &attr.span,
+                            attr.span,
                             &self.source_map,
                             ErrorKind::BadAttr,
                         )],

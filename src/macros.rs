@@ -524,12 +524,12 @@ enum MacroArgKind {
 
 fn delim_token_to_str(
     context: &RewriteContext,
-    delim_token: &DelimToken,
+    delim_token: DelimToken,
     shape: Shape,
     use_multiple_lines: bool,
     inner_is_empty: bool,
 ) -> (String, String) {
-    let (lhs, rhs) = match *delim_token {
+    let (lhs, rhs) = match delim_token {
         DelimToken::Paren => ("(", ")"),
         DelimToken::Bracket => ("[", "]"),
         DelimToken::Brace => {
@@ -612,7 +612,7 @@ impl MacroArgKind {
             MacroArgKind::MetaVariable(ty, ref name) => {
                 Some(format!("${}:{}", name, ty.name.as_str()))
             }
-            MacroArgKind::Repeat(ref delim_tok, ref args, ref another, ref tok) => {
+            MacroArgKind::Repeat(delim_tok, ref args, ref another, ref tok) => {
                 let (lhs, inner, rhs) = rewrite_delimited_inner(delim_tok, args)?;
                 let another = another
                     .as_ref()
@@ -622,7 +622,7 @@ impl MacroArgKind {
 
                 Some(format!("${}{}{}{}{}", lhs, inner, rhs, another, repeat_tok))
             }
-            MacroArgKind::Delimited(ref delim_tok, ref args) => {
+            MacroArgKind::Delimited(delim_tok, ref args) => {
                 rewrite_delimited_inner(delim_tok, args)
                     .map(|(lhs, inner, rhs)| format!("{}{}{}", lhs, inner, rhs))
             }
@@ -755,8 +755,8 @@ impl MacroArgParser {
         let mut hi = span.hi();
 
         // Parse '*', '+' or '?.
-        for ref tok in iter {
-            self.set_last_tok(tok);
+        for tok in iter {
+            self.set_last_tok(&tok);
             if first {
                 first = false;
                 lo = tok.span().lo();
@@ -977,7 +977,7 @@ enum SpaceState {
 fn force_space_before(tok: &Token) -> bool {
     debug!("tok: force_space_before {:?}", tok);
 
-    match *tok {
+    match tok {
         Token::Eq
         | Token::Lt
         | Token::Le
@@ -1002,7 +1002,7 @@ fn force_space_before(tok: &Token) -> bool {
 }
 
 fn ident_like(tok: &Token) -> bool {
-    match *tok {
+    match tok {
         Token::Ident(..) | Token::Literal(..) | Token::Lifetime(_) => true,
         _ => false,
     }
@@ -1011,7 +1011,7 @@ fn ident_like(tok: &Token) -> bool {
 fn next_space(tok: &Token) -> SpaceState {
     debug!("next_space: {:?}", tok);
 
-    match *tok {
+    match tok {
         Token::Not
         | Token::BinOp(BinOpToken::And)
         | Token::Tilde

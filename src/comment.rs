@@ -47,7 +47,7 @@ fn custom_opener(s: &str) -> &str {
     s.lines().next().map_or("", |first_line| {
         first_line
             .find(' ')
-            .map_or(first_line, |space_index| &first_line[0..space_index + 1])
+            .map_or(first_line, |space_index| &first_line[0..=space_index])
     })
 }
 
@@ -1151,7 +1151,7 @@ pub fn recover_comment_removed(
             context.report.append(
                 context.source_map.span_to_filename(span).into(),
                 vec![FormattingError::from_span(
-                    &span,
+                    span,
                     &context.source_map,
                     ErrorKind::LostComment,
                 )],
@@ -1428,7 +1428,7 @@ mod test {
 
     #[test]
     fn test_remove_trailing_white_spaces() {
-        let s = format!("    r#\"\n        test\n    \"#");
+        let s = "    r#\"\n        test\n    \"#";
         assert_eq!(remove_trailing_white_spaces(&s), s);
     }
 

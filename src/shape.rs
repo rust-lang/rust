@@ -91,7 +91,7 @@ impl Indent {
         };
         let num_chars = num_tabs + num_spaces;
         if num_tabs == 0 && num_chars + offset <= INDENT_BUFFER_LEN {
-            Cow::from(&INDENT_BUFFER[offset..num_chars + 1])
+            Cow::from(&INDENT_BUFFER[offset..=num_chars])
         } else {
             let mut indent = String::with_capacity(num_chars + if offset == 0 { 1 } else { 0 });
             if offset == 0 {
