@@ -1,25 +1,14 @@
-error[E0382]: use of moved value: `a.y`
-  --> $DIR/borrowck-box-insensitivity.rs:46:14
+error: compilation successful
+  --> $DIR/borrowck-box-insensitivity.rs:160:1
    |
-LL |     let _x = a.x;
-   |              --- value moved here
-LL |     //~^ value moved here
-LL |     let _y = a.y; //~ ERROR use of moved
-   |              ^^^ value used here after move
-   |
-   = note: move occurs because `a.x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+LL | / fn main() {
+LL | |     copy_after_move();
+LL | |     move_after_move();
+LL | |     borrow_after_move();
+...  |
+LL | |     mut_borrow_after_borrow_nested();
+LL | | }
+   | |_^
 
-error[E0382]: use of moved value: `a.y`
-  --> $DIR/borrowck-box-insensitivity.rs:108:14
-   |
-LL |     let _x = a.x.x;
-   |              ----- value moved here
-LL |     //~^ value moved here
-LL |     let _y = a.y; //~ ERROR use of collaterally moved
-   |              ^^^ value used here after move
-   |
-   = note: move occurs because `a.x.x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0382`.
