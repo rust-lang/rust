@@ -1362,6 +1362,14 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             }
         }
     }
+
+    fn process_bounds(&mut self, bounds: &'l ast::GenericBounds) {
+        for bound in bounds {
+            if let ast::GenericBound::Trait(ref trait_ref, _) = *bound {
+                self.process_path(trait_ref.trait_ref.ref_id, &trait_ref.trait_ref.path)
+            }
+        }
+    }
 }
 
 impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll, O> {
@@ -1527,18 +1535,17 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
 
     fn visit_generics(&mut self, generics: &'l ast::Generics) {
         for param in &generics.params {
-            match param.kind {
-                ast::GenericParamKind::Lifetime { .. } => {}
-                ast::GenericParamKind::Type { ref default, .. } => {
-                    for bound in &param.bounds {
-                        if let ast::GenericBound::Trait(ref trait_ref, _) = *bound {
-                            self.process_path(trait_ref.trait_ref.ref_id, &trait_ref.trait_ref.path)
-                        }
-                    }
-                    if let Some(ref ty) = default {
-                        self.visit_ty(&ty);
-                    }
+            if let ast::GenericParamKind::Type { ref default, .. } = param.kind {
+                self.process_bounds(&param.bounds);
+                if let Some(ref ty) = default {
+                    self.visit_ty(&ty);
                 }
+            }
+        }
+        for pred in &generics.where_clause.predicates {
+            if let ast::WherePredicate::BoundPredicate(ref wbp) = *pred {
+                self.process_bounds(&wbp.bounds);
+                self.visit_ty(&wbp.bounded_ty);
             }
         }
     }
