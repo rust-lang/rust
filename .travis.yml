@@ -51,13 +51,12 @@ matrix:
 
 script:
   - |
-    if [ -n "$GITHUB_TOKEN" ]; then
       rm rust-toolchain
       cargo install rustup-toolchain-install-master || echo "rustup-toolchain-install-master already installed"
-      travis_retry rustup-toolchain-install-master -f -n master --github-token $GITHUB_TOKEN
+      RUSTC_HASH=$(git ls-remote https://github.com/rust-lang/rust.git master | awk '{print $1}')
+      travis_retry rustup-toolchain-install-master -f -n master $RUSTC_HASH
       rustup default master
       export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib
-    fi
   - |
     if [ -z ${INTEGRATION} ]; then
       ./ci/base-tests.sh
