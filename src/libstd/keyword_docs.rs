@@ -53,7 +53,7 @@ mod as_keyword { }
 /// Constants must be explicitly typed, unlike with `let` you can't ignore its type and let the
 /// compiler figure it out. Any constant value can be defined in a const, which in practice happens
 /// to be most things that would be reasonable to have a constant. For example, you can't have a
-/// File as a const.
+/// File as a `const`.
 ///
 /// The only lifetime allowed in a constant is 'static, which is the lifetime that encompasses all
 /// others in a Rust program. For example, if you wanted to define a constant string, it would look
@@ -214,8 +214,9 @@ mod let_keyword { }
 /// }
 /// ```
 ///
-/// Another shortcut for struct instantiation is available when you need to make a new struct that
-/// shares most of a previous struct's values called struct update syntax:
+/// Another shortcut for struct instantiation is available, used when you need to make a new
+/// struct that has the same values as most of a previous struct of the same type, called struct
+/// update syntax:
 ///
 /// ```rust
 /// # struct Foo { field1: String, field2: () }
@@ -229,9 +230,8 @@ mod let_keyword { }
 /// Tuple structs are instantiated in the same way as tuples themselves, except with the struct's
 /// name as a prefix: `Foo(123, false, 0.1)`.
 ///
-/// Empty structs are instantiated with just their name and nothing else. `let thing =
+/// Empty structs are instantiated with just their name, and don't need anything else. `let thing =
 /// EmptyStruct;`
-///
 ///
 /// # Style conventions
 ///
@@ -245,5 +245,4 @@ mod let_keyword { }
 /// [`PhantomData`]: marker/struct.PhantomData.html
 /// [book]: https://doc.rust-lang.org/book/second-edition/ch05-01-defining-structs.html
 /// [reference]: https://doc.rust-lang.org/reference/items/structs.html
-
 mod struct_keyword { }
