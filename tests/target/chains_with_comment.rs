@@ -31,8 +31,7 @@ fn main() {
             )
         });
 
-    let y = expr
-        /* comment */
+    let y = expr /* comment */
         .kaas()?
         // comment
         .test();
@@ -50,11 +49,9 @@ fn main() {
 
     let y = a
         .very
-        .loooooooooooooooooooooooooooooooooooooong()
-        /* comment */
+        .loooooooooooooooooooooooooooooooooooooong() /* comment */
         .chain()
-        .inside()
-        /* comment */
+        .inside() /* comment */
         .weeeeeeeeeeeeeee()?
         .test()
         .0
@@ -115,4 +112,26 @@ impl Foo {
                 )
             })
     }
+}
+
+// #2907
+fn foo() {
+    let x = foo
+        .bar??? // comment
+        .baz;
+    let x = foo
+        .bar???
+        // comment
+        .baz;
+    let x = foo
+        .bar??? // comment
+        // comment
+        .baz;
+    let x = foo
+        .bar??????????????? // comment
+        // comment
+        // comment
+        // comment
+        // comment
+        .baz;
 }

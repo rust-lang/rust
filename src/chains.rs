@@ -65,10 +65,10 @@
 //!            .qux
 //! ```
 
-use comment::rewrite_comment;
+use comment::{rewrite_comment, CharClasses, FullCodeCharKind, RichChar};
 use config::IndentStyle;
 use expr::rewrite_call;
-use lists::{extract_post_comment, extract_pre_comment, get_comment_end};
+use lists::extract_pre_comment;
 use macros::convert_try_mac;
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
@@ -275,6 +275,20 @@ impl Chain {
             s.chars().all(|c| c == '?')
         }
 
+        fn is_post_comment(s: &str) -> bool {
+            let comment_start_index = s.chars().position(|c| c == '/');
+            if comment_start_index.is_none() {
+                return false;
+            }
+
+            let newline_index = s.chars().position(|c| c == '\n');
+            if newline_index.is_none() {
+                return true;
+            }
+
+            comment_start_index.unwrap() < newline_index.unwrap()
+        }
+
         fn handle_post_comment(
             post_comment_span: Span,
             post_comment_snippet: &str,
@@ -289,25 +303,14 @@ impl Chain {
                 // No post comment.
                 return;
             }
-            // HACK: Treat `?`s as separators.
-            let trimmed_snippet = post_comment_snippet.trim_matches('?');
-            let comment_end = get_comment_end(trimmed_snippet, "?", "", false);
-            let maybe_post_comment = extract_post_comment(trimmed_snippet, comment_end, "?")
-                .and_then(|comment| {
-                    if comment.is_empty() {
-                        None
-                    } else {
-                        Some((comment, comment_end))
-                    }
-                });
-
-            if let Some((post_comment, comment_end)) = maybe_post_comment {
+            let trimmed_snippet = trim_tries(post_comment_snippet);
+            if is_post_comment(&trimmed_snippet) {
                 children.push(ChainItem::comment(
                     post_comment_span,
-                    post_comment,
+                    trimmed_snippet.trim().to_owned(),
                     CommentPosition::Back,
                 ));
-                *prev_span_end = *prev_span_end + BytePos(comment_end as u32);
+                *prev_span_end = post_comment_span.hi();
             }
         }
 
@@ -336,9 +339,8 @@ impl Chain {
             // Pre-comment
             if handle_comment {
                 let pre_comment_span = mk_sp(prev_span_end, chain_item.span.lo());
-                let pre_comment_snippet = context.snippet(pre_comment_span);
-                let pre_comment_snippet = pre_comment_snippet.trim().trim_matches('?');
-                let (pre_comment, _) = extract_pre_comment(pre_comment_snippet);
+                let pre_comment_snippet = trim_tries(context.snippet(pre_comment_span));
+                let (pre_comment, _) = extract_pre_comment(&pre_comment_snippet);
                 match pre_comment {
                     Some(ref comment) if !comment.is_empty() => {
                         children.push(ChainItem::comment(
@@ -871,4 +873,29 @@ fn is_block_expr(context: &RewriteContext, expr: &ast::Expr, repr: &str) -> bool
         }
         _ => false,
     }
+}
+
+/// Remove try operators (`?`s) that appear in the given string. If removing
+/// them leaves an empty line, remove that line as well unless it is the first
+/// line (we need the first newline for detecting pre/post comment).
+fn trim_tries(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut line_buffer = String::with_capacity(s.len());
+    for (kind, rich_char) in CharClasses::new(s.chars()) {
+        match rich_char.get_char() {
+            '\n' => {
+                if result.is_empty() || !line_buffer.trim().is_empty() {
+                    result.push_str(&line_buffer);
+                    result.push('\n')
+                }
+                line_buffer.clear();
+            }
+            '?' if kind == FullCodeCharKind::Normal => continue,
+            c => line_buffer.push(c),
+        }
+    }
+    if !line_buffer.trim().is_empty() {
+        result.push_str(&line_buffer);
+    }
+    result
 }
