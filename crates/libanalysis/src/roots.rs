@@ -13,16 +13,24 @@ use libsyntax2::File;
 use {
     FileId,
     module_map::{ModuleMap, ChangeKind},
-    symbol_index::FileSymbols,
+    symbol_index::SymbolIndex,
 };
 
+pub(crate) trait SourceRoot {
+    fn contains(&self, file_id: FileId) -> bool;
+    fn module_map(&self) -> &ModuleMap;
+    fn lines(&self, file_id: FileId) -> &LineIndex;
+    fn syntax(&self, file_id: FileId) -> &File;
+    fn symbols<'a>(&'a self, acc: &mut Vec<&'a SymbolIndex>);
+}
+
 #[derive(Clone, Default, Debug)]
-pub(crate) struct SourceRoot {
-    file_map: HashMap<FileId, Arc<(FileData, OnceCell<FileSymbols>)>>,
+pub(crate) struct WritableSourceRoot {
+    file_map: HashMap<FileId, Arc<(FileData, OnceCell<SymbolIndex>)>>,
     module_map: ModuleMap,
 }
 
-impl SourceRoot {
+impl WritableSourceRoot {
     pub fn update(&mut self, file_id: FileId, text: Option<String>) {
         let change_kind = if self.file_map.remove(&file_id).is_some() {
             if text.is_some() {
@@ -39,31 +47,6 @@ impl SourceRoot {
             let file_data = FileData::new(text);
             self.file_map.insert(file_id, Arc::new((file_data, Default::default())));
         }
-    }
-    pub fn module_map(&self) -> &ModuleMap {
-        &self.module_map
-    }
-    pub fn lines(&self, file_id: FileId) -> &LineIndex {
-        let data = self.data(file_id);
-        data.lines.get_or_init(|| LineIndex::new(&data.text))
-    }
-    pub fn syntax(&self, file_id: FileId) -> &File {
-        let data = self.data(file_id);
-        let text = &data.text;
-        let syntax = &data.syntax;
-        match panic::catch_unwind(panic::AssertUnwindSafe(|| syntax.get_or_init(|| File::parse(text)))) {
-            Ok(file) => file,
-            Err(err) => {
-                error!("Parser paniced on:\n------\n{}\n------\n", &data.text);
-                panic::resume_unwind(err)
-            }
-        }
-    }
-    pub(crate) fn symbols(&self) -> Vec<&FileSymbols> {
-        self.file_map
-            .iter()
-            .map(|(&file_id, data)| symbols(file_id, data))
-            .collect()
     }
     pub fn reindex(&self) {
         let now = Instant::now();
@@ -83,9 +66,31 @@ impl SourceRoot {
     }
 }
 
-fn symbols(file_id: FileId, (data, symbols): &(FileData, OnceCell<FileSymbols>)) -> &FileSymbols {
+impl SourceRoot for WritableSourceRoot {
+    fn contains(&self, file_id: FileId) -> bool {
+        self.file_map.contains_key(&file_id)
+    }
+    fn module_map(&self) -> &ModuleMap {
+        &self.module_map
+    }
+    fn lines(&self, file_id: FileId) -> &LineIndex {
+        self.data(file_id).lines()
+    }
+    fn syntax(&self, file_id: FileId) -> &File {
+        self.data(file_id).syntax()
+    }
+    fn symbols<'a>(&'a self, acc: &mut Vec<&'a SymbolIndex>) {
+        acc.extend(
+            self.file_map
+                .iter()
+                .map(|(&file_id, data)| symbols(file_id, data))
+        )
+    }
+}
+
+fn symbols(file_id: FileId, (data, symbols): &(FileData, OnceCell<SymbolIndex>)) -> &SymbolIndex {
     let syntax = data.syntax_transient();
-    symbols.get_or_init(|| FileSymbols::new(file_id, &syntax))
+    symbols.get_or_init(|| SymbolIndex::for_file(file_id, syntax))
 }
 
 #[derive(Debug)]
@@ -103,19 +108,77 @@ impl FileData {
             lines: OnceCell::new(),
         }
     }
+    fn lines(&self) -> &LineIndex {
+        self.lines.get_or_init(|| LineIndex::new(&self.text))
+    }
+    fn syntax(&self) -> &File {
+        let text = &self.text;
+        let syntax = &self.syntax;
+        match panic::catch_unwind(panic::AssertUnwindSafe(|| syntax.get_or_init(|| File::parse(text)))) {
+            Ok(file) => file,
+            Err(err) => {
+                error!("Parser paniced on:\n------\n{}\n------\n", text);
+                panic::resume_unwind(err)
+            }
+        }
+    }
     fn syntax_transient(&self) -> File {
         self.syntax.get().map(|s| s.clone())
             .unwrap_or_else(|| File::parse(&self.text))
     }
 }
 
-// #[derive(Clone, Default, Debug)]
-// pub(crate) struct ReadonlySourceRoot {
-//     data: Arc<ReadonlySourceRoot>
-// }
+#[derive(Debug)]
+pub(crate) struct ReadonlySourceRoot {
+    symbol_index: SymbolIndex,
+    file_map: HashMap<FileId, FileData>,
+    module_map: ModuleMap,
+}
 
-// #[derive(Clone, Default, Debug)]
-// pub(crate) struct ReadonlySourceRootInner {
-//     file_map: HashMap<FileId, FileData>,
-//     module_map: ModuleMap,
-// }
+impl ReadonlySourceRoot {
+    pub fn new(files: impl Iterator<Item=(FileId, String)>) -> ReadonlySourceRoot {
+        let mut module_map = ModuleMap::new();
+        let file_map: HashMap<FileId, FileData> = files
+            .map(|(id, text)| {
+                module_map.update_file(id, ChangeKind::Insert);
+                (id, FileData::new(text))
+            })
+            .collect();
+        let symbol_index = SymbolIndex::for_files(
+            file_map.par_iter().map(|(&file_id, file_data)| {
+                (file_id, file_data.syntax_transient())
+            })
+        );
+
+        ReadonlySourceRoot {
+            symbol_index,
+            file_map,
+            module_map,
+        }
+    }
+
+    fn data(&self, file_id: FileId) -> &FileData {
+        match self.file_map.get(&file_id) {
+            Some(data) => data,
+            None => panic!("unknown file: {:?}", file_id),
+        }
+    }
+}
+
+impl SourceRoot for ReadonlySourceRoot {
+    fn contains(&self, file_id: FileId) -> bool {
+        self.file_map.contains_key(&file_id)
+    }
+    fn module_map(&self) -> &ModuleMap {
+        &self.module_map
+    }
+    fn lines(&self, file_id: FileId) -> &LineIndex {
+        self.data(file_id).lines()
+    }
+    fn syntax(&self, file_id: FileId) -> &File {
+        self.data(file_id).syntax()
+    }
+    fn symbols<'a>(&'a self, acc: &mut Vec<&'a SymbolIndex>) {
+        acc.push(&self.symbol_index)
+    }
+}

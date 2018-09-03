@@ -56,6 +56,10 @@ pub enum Problem {
 }
 
 impl ModuleMap {
+    pub fn new() -> ModuleMap {
+        Default::default()
+    }
+
     pub fn update_file(&mut self, file: FileId, change_kind: ChangeKind) {
         self.state.get_mut().changes.push((file, change_kind));
     }

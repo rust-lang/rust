@@ -68,6 +68,9 @@ impl AnalysisHost {
     pub fn set_crate_graph(&mut self, graph: CrateGraph) {
         self.imp.set_crate_graph(graph)
     }
+    pub fn set_libraries(&mut self, libs: impl Iterator<Item=impl Iterator<Item=(FileId, String)>>) {
+        self.imp.set_libraries(libs)
+    }
 }
 
 #[derive(Debug)]
@@ -114,6 +117,7 @@ pub struct Query {
     query: String,
     lowercased: String,
     only_types: bool,
+    libs: bool,
     exact: bool,
     limit: usize,
 }
@@ -125,12 +129,16 @@ impl Query {
             query,
             lowercased,
             only_types: false,
+            libs: false,
             exact: false,
             limit: usize::max_value()
         }
     }
     pub fn only_types(&mut self) {
         self.only_types = true;
+    }
+    pub fn libs(&mut self) {
+        self.libs = true;
     }
     pub fn exact(&mut self) {
         self.exact = true;

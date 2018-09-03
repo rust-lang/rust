@@ -4,39 +4,46 @@ use libsyntax2::{
     SyntaxKind::{self, *},
 };
 use fst::{self, Streamer};
+use rayon::prelude::*;
 use {Query, FileId, JobToken};
 
 #[derive(Debug)]
-pub(crate) struct FileSymbols {
+pub(crate) struct SymbolIndex {
     symbols: Vec<(FileId, FileSymbol)>,
     map: fst::Map,
 }
 
-impl FileSymbols {
-    pub(crate) fn new(file_id: FileId, file: &File) -> FileSymbols {
-        let mut symbols = file_symbols(file)
-            .into_iter()
-            .map(|s| (s.name.as_str().to_lowercase(), s))
+impl SymbolIndex {
+    pub(crate) fn for_files(files: impl ParallelIterator<Item=(FileId, File)>) -> SymbolIndex {
+        let mut symbols = files
+            .flat_map(|(file_id, file)| {
+                file_symbols(&file)
+                    .into_iter()
+                    .map(move |symbol| {
+                        (symbol.name.as_str().to_lowercase(), (file_id, symbol))
+                    })
+                    .collect::<Vec<_>>()
+            })
             .collect::<Vec<_>>();
-
-        symbols.sort_by(|s1, s2| s1.0.cmp(&s2.0));
+        symbols.par_sort_by(|s1, s2| s1.0.cmp(&s2.0));
         symbols.dedup_by(|s1, s2| s1.0 == s2.0);
         let (names, symbols): (Vec<String>, Vec<(FileId, FileSymbol)>) =
-            symbols.into_iter()
-                .map(|(name, symbol)| (name, (file_id, symbol)))
-                .unzip();
-
+            symbols.into_iter().unzip();
         let map = fst::Map::from_iter(
             names.into_iter().zip(0u64..)
         ).unwrap();
-        FileSymbols { symbols, map }
+        SymbolIndex { symbols, map }
+    }
+
+    pub(crate) fn for_file(file_id: FileId, file: File) -> SymbolIndex {
+        SymbolIndex::for_files(::rayon::iter::once((file_id, file)))
     }
 }
 
 impl Query {
     pub(crate) fn search(
         mut self,
-        indices: &[&FileSymbols],
+        indices: &[&SymbolIndex],
         token: &JobToken,
     ) -> Vec<(FileId, FileSymbol)> {
 

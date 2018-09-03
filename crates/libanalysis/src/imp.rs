@@ -17,8 +17,8 @@ use libsyntax2::{
 use {
     FileId, FileResolver, Query, Diagnostic, SourceChange, SourceFileEdit, Position, FileSystemEdit,
     JobToken, CrateGraph, CrateId,
-    module_map::Problem,
-    roots::SourceRoot,
+    module_map::{ModuleMap, Problem},
+    roots::{SourceRoot, ReadonlySourceRoot, WritableSourceRoot},
 };
 
 #[derive(Debug)]
@@ -57,6 +57,10 @@ impl AnalysisHostImpl {
         }
         self.data_mut().crate_graph = graph;
     }
+    pub fn set_libraries(&mut self, libs: impl Iterator<Item=impl Iterator<Item=(FileId, String)>>) {
+        let libs = libs.map(ReadonlySourceRoot::new).collect::<Vec<_>>();
+        self.data_mut().libs = Arc::new(libs);
+    }
     fn data_mut(&mut self) -> &mut WorldData {
         Arc::make_mut(&mut self.data)
     }
@@ -85,19 +89,33 @@ impl Clone for AnalysisImpl {
 }
 
 impl AnalysisImpl {
+    fn root(&self, file_id: FileId) -> &SourceRoot {
+        if self.data.root.contains(file_id) {
+            return &self.data.root;
+        }
+        self.data.libs.iter().find(|it| it.contains(file_id)).unwrap()
+    }
     pub fn file_syntax(&self, file_id: FileId) -> &File {
-        self.data.root.syntax(file_id)
+        self.root(file_id).syntax(file_id)
     }
     pub fn file_line_index(&self, file_id: FileId) -> &LineIndex {
-        self.data.root.lines(file_id)
+        self.root(file_id).lines(file_id)
     }
-    pub fn world_symbols(&self,  query: Query, token: &JobToken) -> Vec<(FileId, FileSymbol)> {
+    pub fn world_symbols(&self, query: Query, token: &JobToken) -> Vec<(FileId, FileSymbol)> {
         self.reindex();
-        query.search(&self.data.root.symbols(), token)
+        let mut buf = Vec::new();
+        if query.libs {
+            self.data.libs.iter()
+                .for_each(|it| it.symbols(&mut buf));
+        } else {
+            self.data.root.symbols(&mut buf);
+        }
+        query.search(&buf, token)
+
     }
-    pub fn parent_module(&self, id: FileId) -> Vec<(FileId, FileSymbol)> {
-        let module_map = self.data.root.module_map();
-        let id = module_map.file2module(id);
+    pub fn parent_module(&self, file_id: FileId) -> Vec<(FileId, FileSymbol)> {
+        let module_map = self.root(file_id).module_map();
+        let id = module_map.file2module(file_id);
         module_map
             .parent_modules(
                 id,
@@ -117,12 +135,12 @@ impl AnalysisImpl {
             .collect()
     }
 
-    pub fn crate_for(&self, id: FileId) -> Vec<CrateId> {
-        let module_map = self.data.root.module_map();
+    pub fn crate_for(&self, file_id: FileId) -> Vec<CrateId> {
+        let module_map = self.root(file_id).module_map();
         let crate_graph = &self.data.crate_graph;
         let mut res = Vec::new();
         let mut work = VecDeque::new();
-        work.push_back(id);
+        work.push_back(file_id);
         let mut visited = HashSet::new();
         while let Some(id) = work.pop_front() {
             if let Some(crate_id) = crate_graph.crate_id_for_crate_root(id) {
@@ -148,11 +166,13 @@ impl AnalysisImpl {
     }
     pub fn approximately_resolve_symbol(
         &self,
-        id: FileId,
+        file_id: FileId,
         offset: TextUnit,
         token: &JobToken,
     ) -> Vec<(FileId, FileSymbol)> {
-        let file = self.file_syntax(id);
+        let root = self.root(file_id);
+        let module_map = root.module_map();
+        let file = root.syntax(file_id);
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, offset) {
             return self.index_resolve(name_ref, token);
@@ -160,7 +180,7 @@ impl AnalysisImpl {
         if let Some(name) = find_node_at_offset::<ast::Name>(syntax, offset) {
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
                 if module.has_semi() {
-                    let file_ids = self.resolve_module(id, module);
+                    let file_ids = self.resolve_module(module_map, file_id, module);
 
                     let res = file_ids.into_iter().map(|id| {
                         let name = module.name()
@@ -182,13 +202,16 @@ impl AnalysisImpl {
     }
 
     pub fn diagnostics(&self, file_id: FileId) -> Vec<Diagnostic> {
-        let syntax = self.file_syntax(file_id);
+        let root = self.root(file_id);
+        let module_map = root.module_map();
+        let syntax = root.syntax(file_id);
+
         let mut res = libeditor::diagnostics(&syntax)
             .into_iter()
             .map(|d| Diagnostic { range: d.range, message: d.msg, fix: None })
             .collect::<Vec<_>>();
 
-        self.data.root.module_map().problems(
+        module_map.problems(
             file_id,
             &*self.file_resolver,
             &|file_id| self.file_syntax(file_id),
@@ -257,13 +280,12 @@ impl AnalysisImpl {
         self.world_symbols(query, token)
     }
 
-    fn resolve_module(&self, id: FileId, module: ast::Module) -> Vec<FileId> {
+    fn resolve_module(&self, module_map: &ModuleMap, file_id: FileId, module: ast::Module) -> Vec<FileId> {
         let name = match module.name() {
             Some(name) => name.text(),
             None => return Vec::new(),
         };
-        let module_map = self.data.root.module_map();
-        let id = module_map.file2module(id);
+        let id = module_map.file2module(file_id);
         module_map
             .child_module_by_name(
                 id, name.as_str(),
@@ -285,7 +307,8 @@ impl AnalysisImpl {
 #[derive(Clone, Default, Debug)]
 struct WorldData {
     crate_graph: CrateGraph,
-    root: SourceRoot,
+    root: WritableSourceRoot,
+    libs: Arc<Vec<ReadonlySourceRoot>>,
 }
 
 impl SourceChange {
