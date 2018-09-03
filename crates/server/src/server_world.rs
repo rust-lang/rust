@@ -47,7 +47,6 @@ impl ServerWorldState {
             .map(|event| {
                 let text = match event.kind {
                     FileEventKind::Add(text) => Some(text),
-                    FileEventKind::Remove => None,
                 };
                 (event.path, text)
             })
@@ -64,6 +63,18 @@ impl ServerWorldState {
             });
 
         self.analysis_host.change_files(changes);
+    }
+    pub fn add_library(&mut self, events: Vec<FileEvent>) {
+        let pm = &mut self.path_map;
+        let files = events.into_iter()
+            .map(|event| {
+                let text = match event.kind {
+                    FileEventKind::Add(text) => text,
+                };
+                (event.path, text)
+            })
+            .map(|(path, text)| (pm.get_or_insert(path), text));
+        self.analysis_host.add_library(files);
     }
 
     pub fn add_mem_file(&mut self, path: PathBuf, text: String) -> FileId {

@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
 };
 use cargo_metadata::{metadata_run, CargoOpt};
@@ -13,7 +13,6 @@ use {
 
 #[derive(Debug, Serialize, Clone)]
 pub struct CargoWorkspace {
-    ws_members: Vec<Package>,
     packages: Vec<PackageData>,
     targets: Vec<TargetData>,
 }
@@ -27,7 +26,8 @@ pub struct Target(usize);
 struct PackageData {
     name: SmolStr,
     manifest: PathBuf,
-    targets: Vec<Target>
+    targets: Vec<Target>,
+    is_member: bool,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -50,8 +50,14 @@ impl Package {
     pub fn manifest(self, ws: &CargoWorkspace) -> &Path {
         ws.pkg(self).manifest.as_path()
     }
+    pub fn root(self, ws: &CargoWorkspace) -> &Path {
+        ws.pkg(self).manifest.parent().unwrap()
+    }
     pub fn targets<'a>(self, ws: &'a CargoWorkspace) -> impl Iterator<Item=Target> + 'a {
         ws.pkg(self).targets.iter().cloned()
+    }
+    pub fn is_member(self, ws: &CargoWorkspace) -> bool {
+        ws.pkg(self).is_member
     }
 }
 
@@ -81,13 +87,21 @@ impl CargoWorkspace {
         let mut pkg_by_id = HashMap::new();
         let mut packages = Vec::new();
         let mut targets = Vec::new();
+
+        let ws_members: HashSet<String> = meta.workspace_members
+            .into_iter()
+            .map(|it| it.raw)
+            .collect();
+
         for meta_pkg in meta.packages {
             let pkg = Package(packages.len());
+            let is_member = ws_members.contains(&meta_pkg.id);
             pkg_by_id.insert(meta_pkg.id.clone(), pkg);
             let mut pkg_data = PackageData {
                 name: meta_pkg.name.into(),
                 manifest: PathBuf::from(meta_pkg.manifest_path),
                 targets: Vec::new(),
+                is_member,
             };
             for meta_tgt in meta_pkg.targets {
                 let tgt = Target(targets.len());
@@ -101,18 +115,11 @@ impl CargoWorkspace {
             }
             packages.push(pkg_data)
         }
-        let ws_members = meta.workspace_members
-            .iter()
-            .map(|it| pkg_by_id[&it.raw])
-            .collect();
 
-        Ok(CargoWorkspace { packages, targets, ws_members })
+        Ok(CargoWorkspace { packages, targets })
     }
     pub fn packages<'a>(&'a self) -> impl Iterator<Item=Package> + 'a {
         (0..self.packages.len()).map(Package)
-    }
-    pub fn ws_members<'a>(&'a self) -> impl Iterator<Item=Package> + 'a {
-        self.ws_members.iter().cloned()
     }
     pub fn target_by_root(&self, root: &Path) -> Option<Target> {
         self.packages()

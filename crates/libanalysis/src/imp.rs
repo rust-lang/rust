@@ -57,9 +57,9 @@ impl AnalysisHostImpl {
         }
         self.data_mut().crate_graph = graph;
     }
-    pub fn set_libraries(&mut self, libs: impl Iterator<Item=impl Iterator<Item=(FileId, String)>>) {
-        let libs = libs.map(ReadonlySourceRoot::new).collect::<Vec<_>>();
-        self.data_mut().libs = Arc::new(libs);
+    pub fn add_library(&mut self, files: impl Iterator<Item=(FileId, String)>) {
+        let libs = ReadonlySourceRoot::new(files);
+        self.data_mut().libs.push(Arc::new(libs));
     }
     fn data_mut(&mut self) -> &mut WorldData {
         Arc::make_mut(&mut self.data)
@@ -93,7 +93,7 @@ impl AnalysisImpl {
         if self.data.root.contains(file_id) {
             return &self.data.root;
         }
-        self.data.libs.iter().find(|it| it.contains(file_id)).unwrap()
+        &**self.data.libs.iter().find(|it| it.contains(file_id)).unwrap()
     }
     pub fn file_syntax(&self, file_id: FileId) -> &File {
         self.root(file_id).syntax(file_id)
@@ -308,7 +308,7 @@ impl AnalysisImpl {
 struct WorldData {
     crate_graph: CrateGraph,
     root: WritableSourceRoot,
-    libs: Arc<Vec<ReadonlySourceRoot>>,
+    libs: Vec<Arc<ReadonlySourceRoot>>,
 }
 
 impl SourceChange {

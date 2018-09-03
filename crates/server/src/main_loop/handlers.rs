@@ -141,13 +141,17 @@ pub fn handle_workspace_symbol(
     token: JobToken,
 ) -> Result<Option<Vec<SymbolInformation>>> {
     let all_symbols = params.query.contains("#");
+    let libs = params.query.contains("*");
     let query = {
         let query: String = params.query.chars()
-            .filter(|&c| c != '#')
+            .filter(|&c| c != '#' && c != '*')
             .collect();
         let mut q = Query::new(query);
         if !all_symbols {
             q.only_types();
+        }
+        if libs {
+            q.libs();
         }
         q.limit(128);
         q

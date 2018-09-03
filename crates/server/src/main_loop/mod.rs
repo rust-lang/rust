@@ -38,9 +38,8 @@ pub fn main_loop(
 ) -> Result<()> {
     let pool = ThreadPool::new(4);
     let (task_sender, task_receiver) = bounded::<Task>(16);
-    let (fs_events_receiver, watcher) = vfs::watch(vec![root.clone()]);
-    let (ws_root_sender, ws_receiver, ws_watcher) = workspace_loader();
-    ws_root_sender.send(root);
+    let (fs_sender, fs_receiver, fs_watcher) = vfs::roots_loader();
+    let (ws_sender, ws_receiver, ws_watcher) = workspace_loader();
 
     info!("server initialized, serving requests");
     let mut state = ServerWorldState::new();
@@ -48,13 +47,15 @@ pub fn main_loop(
     let mut pending_requests = HashMap::new();
     let mut subs = Subscriptions::new();
     let main_res = main_loop_inner(
+        root,
         &pool,
-        msg_receriver,
         msg_sender,
-        task_receiver.clone(),
+        msg_receriver,
         task_sender,
-        fs_events_receiver,
-        ws_root_sender,
+        task_receiver.clone(),
+        fs_sender,
+        fs_receiver,
+        ws_sender,
         ws_receiver,
         &mut state,
         &mut pending_requests,
@@ -68,38 +69,40 @@ pub fn main_loop(
     pool.join();
     info!("...threadpool has finished");
 
-    let vfs_res = watcher.stop();
+    let fs_res = fs_watcher.stop();
     let ws_res = ws_watcher.stop();
 
     main_res?;
-    vfs_res?;
+    fs_res?;
     ws_res?;
 
     Ok(())
 }
 
 fn main_loop_inner(
+    ws_root: PathBuf,
     pool: &ThreadPool,
-    msg_receiver: &mut Receiver<RawMessage>,
     msg_sender: &mut Sender<RawMessage>,
-    task_receiver: Receiver<Task>,
+    msg_receiver: &mut Receiver<RawMessage>,
     task_sender: Sender<Task>,
-    fs_receiver: Receiver<Vec<FileEvent>>,
-    _ws_roots_sender: Sender<PathBuf>,
+    task_receiver: Receiver<Task>,
+    fs_sender: Sender<PathBuf>,
+    fs_receiver: Receiver<(PathBuf, Vec<FileEvent>)>,
+    ws_sender: Sender<PathBuf>,
     ws_receiver: Receiver<Result<CargoWorkspace>>,
     state: &mut ServerWorldState,
     pending_requests: &mut HashMap<u64, JobHandle>,
     subs: &mut Subscriptions,
 ) -> Result<()> {
-    let mut fs_receiver = Some(fs_receiver);
+    ws_sender.send(ws_root.clone());
+    fs_sender.send(ws_root.clone());
     loop {
         #[derive(Debug)]
         enum Event {
             Msg(RawMessage),
             Task(Task),
-            Fs(Vec<FileEvent>),
+            Fs(PathBuf, Vec<FileEvent>),
             Ws(Result<CargoWorkspace>),
-            FsWatcherDead,
         }
         trace!("selecting");
         let event = select! {
@@ -109,8 +112,8 @@ fn main_loop_inner(
             },
             recv(task_receiver, task) => Event::Task(task.unwrap()),
             recv(fs_receiver, events) => match events {
-                Some(events) => Event::Fs(events),
-                None => Event::FsWatcherDead,
+                None => bail!("roots watcher died"),
+                Some((pb, events)) => Event::Fs(pb, events),
             }
             recv(ws_receiver, ws) => match ws {
                 None => bail!("workspace watcher died"),
@@ -120,19 +123,30 @@ fn main_loop_inner(
         trace!("selected {:?}", event);
         let mut state_changed = false;
         match event {
-            Event::FsWatcherDead => fs_receiver = None,
             Event::Task(task) => on_task(task, msg_sender, pending_requests),
-            Event::Fs(events) => {
-                trace!("fs change, {} events", events.len());
-                state.apply_fs_changes(events);
+            Event::Fs(root, events) => {
+                info!("fs change, {}, {} events", root.display(), events.len());
+                if root == ws_root {
+                    state.apply_fs_changes(events);
+                } else {
+                    state.add_library(events);
+                }
                 state_changed = true;
             }
             Event::Ws(ws) => {
                 match ws {
                     Ok(ws) => {
-                        let not = RawNotification::new::<req::DidReloadWorkspace>(&vec![ws.clone()]);
+                        let workspaces = vec![ws];
+                        let not = RawNotification::new::<req::DidReloadWorkspace>(&workspaces);
                         msg_sender.send(RawMessage::Notification(not));
-                        state.set_workspaces(vec![ws]);
+                        for ws in workspaces.iter() {
+                            for pkg in ws.packages().filter(|pkg| !pkg.is_member(ws)) {
+                                debug!("sending root, {}", pkg.root(ws).to_path_buf().display());
+                                // deadlocky :-(
+                                fs_sender.send(pkg.root(ws).to_path_buf());
+                            }
+                        }
+                        state.set_workspaces(workspaces);
                         state_changed = true;
                     }
                     Err(e) => warn!("loading workspace failed: {}", e),

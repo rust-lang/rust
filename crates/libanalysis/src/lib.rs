@@ -68,8 +68,8 @@ impl AnalysisHost {
     pub fn set_crate_graph(&mut self, graph: CrateGraph) {
         self.imp.set_crate_graph(graph)
     }
-    pub fn set_libraries(&mut self, libs: impl Iterator<Item=impl Iterator<Item=(FileId, String)>>) {
-        self.imp.set_libraries(libs)
+    pub fn add_library(&mut self, files: impl Iterator<Item=(FileId, String)>) {
+        self.imp.add_library(files)
     }
 }
 
