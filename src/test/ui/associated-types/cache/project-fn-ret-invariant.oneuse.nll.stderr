@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/project-fn-ret-invariant.rs:47:12
-   |
-LL |    let f = foo; // <-- No consistent type can be inferred for `f` here.
-   |            ^^^
-
 error: unsatisfied lifetime constraints
   --> $DIR/project-fn-ret-invariant.rs:48:12
    |

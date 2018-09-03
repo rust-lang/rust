@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/propagate-approximated-shorter-to-static-no-bound.rs:49:9
-   |
-LL |         demand_y(x, y, x.get()) //~ WARNING not reporting region error due to nll
-   |         ^^^^^^^^^^^^^^^^^^^^^^^
-
 note: External requirements
   --> $DIR/propagate-approximated-shorter-to-static-no-bound.rs:45:47
    |
@@ -12,7 +6,7 @@ LL |       establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
 LL | |         //~^ ERROR
 LL | |
 LL | |         // Only works if 'x: 'y:
-LL | |         demand_y(x, y, x.get()) //~ WARNING not reporting region error due to nll
+LL | |         demand_y(x, y, x.get())
 LL | |     });
    | |_____^
    |
@@ -46,7 +40,7 @@ LL | /     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
 LL | |         //~^ ERROR
 LL | |
 LL | |         // Only works if 'x: 'y:
-LL | |         demand_y(x, y, x.get()) //~ WARNING not reporting region error due to nll
+LL | |         demand_y(x, y, x.get())
 LL | |     });
    | |______^ `cell_a` escapes the function body here
 

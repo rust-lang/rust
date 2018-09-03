@@ -53,8 +53,7 @@ where
     T: Anything<'b>,
 {
     with_signature(cell, t, |cell, t| require(cell, t));
-    //~^ WARNING not reporting region error due to nll
-    //~| ERROR the parameter type `T` may not live long enough
+    //~^ ERROR the parameter type `T` may not live long enough
     //~| ERROR
 }
 
@@ -65,8 +64,7 @@ where
     'a: 'a,
 {
     with_signature(cell, t, |cell, t| require(cell, t));
-    //~^ WARNING not reporting region error due to nll
-    //~| ERROR the parameter type `T` may not live long enough
+    //~^ ERROR the parameter type `T` may not live long enough
     //~| ERROR
 }
 
@@ -87,8 +85,7 @@ where
     // can do better here with a more involved verification step.
 
     with_signature(cell, t, |cell, t| require(cell, t));
-    //~^ WARNING not reporting region error due to nll
-    //~| ERROR the parameter type `T` may not live long enough
+    //~^ ERROR the parameter type `T` may not live long enough
     //~| ERROR
 }
 

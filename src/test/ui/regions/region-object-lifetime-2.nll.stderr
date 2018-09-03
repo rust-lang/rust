@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/region-object-lifetime-2.rs:20:7
-   |
-LL |     x.borrowed() //~ ERROR cannot infer
-   |       ^^^^^^^^
-
 error: unsatisfied lifetime constraints
   --> $DIR/region-object-lifetime-2.rs:20:5
    |

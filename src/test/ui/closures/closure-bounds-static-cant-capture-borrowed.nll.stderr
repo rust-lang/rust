@@ -1,13 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:15:9
-   |
-LL |       bar(|| {
-   |  _________^
-LL | |         //~^ ERROR explicit lifetime required in the type of `x` [E0621]
-LL | |         let _ = x;
-LL | |     })
-   | |_____^
-
 error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:15:5
    |

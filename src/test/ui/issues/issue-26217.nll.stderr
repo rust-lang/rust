@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/issue-26217.rs:14:5
-   |
-LL |     foo::<&'a i32>();
-   |     ^^^^^^^^^^^^^^
-
 error[E0131]: `main` function is not allowed to have generic parameters
   --> $DIR/issue-26217.rs:13:8
    |

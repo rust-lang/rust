@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/regions-close-object-into-object-2.rs:20:11
-   |
-LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
-   |           ^^^
-
 error: unsatisfied lifetime constraints
   --> $DIR/regions-close-object-into-object-2.rs:20:5
    |

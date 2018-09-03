@@ -15,7 +15,6 @@
 use std::fmt::Debug;
 
 fn no_region<'a, T>(x: Box<T>) -> impl Debug + 'a
-    //~^ WARNING not reporting region error due to nll
 where
     T: Debug,
 {
@@ -31,7 +30,6 @@ where
 }
 
 fn wrong_region<'a, 'b, T>(x: Box<T>) -> impl Debug + 'a
-    //~^ WARNING not reporting region error due to nll
 where
     T: 'b + Debug,
 {

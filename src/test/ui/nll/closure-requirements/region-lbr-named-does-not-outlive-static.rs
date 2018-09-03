@@ -17,8 +17,7 @@
 
 fn foo<'a>(x: &'a u32) -> &'static u32 {
     &*x
-        //~^ WARN not reporting region error due to nll
-        //~| ERROR
+        //~^ ERROR
 }
 
 fn main() { }

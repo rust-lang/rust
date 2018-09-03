@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/issue-10291.rs:13:9
-   |
-LL |         x //~ ERROR E0312
-   |         ^
-
 error: unsatisfied lifetime constraints
   --> $DIR/issue-10291.rs:12:5
    |

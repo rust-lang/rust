@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/ex2a-push-one-existing-name-early-bound.rs:17:12
-   |
-LL |     x.push(y); //~ ERROR explicit lifetime required
-   |            ^
-
 error[E0621]: explicit lifetime required in the type of `y`
   --> $DIR/ex2a-push-one-existing-name-early-bound.rs:17:5
    |

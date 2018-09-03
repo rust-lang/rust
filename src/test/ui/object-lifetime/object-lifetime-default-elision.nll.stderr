@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/object-lifetime-default-elision.rs:81:5
-   |
-LL |     ss
-   |     ^^
-
 error: unsatisfied lifetime constraints
   --> $DIR/object-lifetime-default-elision.rs:81:5
    |

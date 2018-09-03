@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/E0621-does-not-trigger-for-closures.rs:25:5
-   |
-LL |     invoke(&x, |a, b| if a > b { a } else { b }); //~ ERROR E0495
-   |     ^^^^^^
-
 error: unsatisfied lifetime constraints
   --> $DIR/E0621-does-not-trigger-for-closures.rs:25:45
    |

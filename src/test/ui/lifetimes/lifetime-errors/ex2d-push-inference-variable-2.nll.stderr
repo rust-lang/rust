@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/ex2d-push-inference-variable-2.rs:17:13
-   |
-LL |     let b = Ref { data: y.data };
-   |             ^^^
-
 error: unsatisfied lifetime constraints
   --> $DIR/ex2d-push-inference-variable-2.rs:18:5
    |

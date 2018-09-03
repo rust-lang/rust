@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/mir_check_cast_unsize.rs:18:5
-   |
-LL |     x
-   |     ^
-
 error: unsatisfied lifetime constraints
   --> $DIR/mir_check_cast_unsize.rs:18:5
    |

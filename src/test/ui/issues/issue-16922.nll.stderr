@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/issue-16922.rs:14:14
-   |
-LL |     Box::new(value) as Box<Any>
-   |              ^^^^^
-
 error[E0621]: explicit lifetime required in the type of `value`
   --> $DIR/issue-16922.rs:14:5
    |

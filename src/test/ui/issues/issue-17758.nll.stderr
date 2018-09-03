@@ -1,15 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/issue-17758.rs:17:9
-   |
-LL |         self.foo();
-   |         ^^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/issue-17758.rs:17:14
-   |
-LL |         self.foo();
-   |              ^^^
-
 error: borrowed data escapes outside of function
   --> $DIR/issue-17758.rs:17:9
    |

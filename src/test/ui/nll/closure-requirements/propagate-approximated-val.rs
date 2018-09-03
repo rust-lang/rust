@@ -47,7 +47,7 @@ fn test<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
         //~^ ERROR unsatisfied lifetime constraints
 
         // Only works if 'x: 'y:
-        demand_y(outlives1, outlives2, x.get()) //~ WARNING not reporting region error due to nll
+        demand_y(outlives1, outlives2, x.get())
     });
 }
 

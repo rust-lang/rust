@@ -21,8 +21,7 @@ where
     T: Iterator,
 {
     Box::new(x.next())
-    //~^ WARNING not reporting region error due to nll
-    //~| the associated type `<T as std::iter::Iterator>::Item` may not live long enough
+    //~^ ERROR the associated type `<T as std::iter::Iterator>::Item` may not live long enough
 }
 
 fn correct_region<'a, T>(mut x: T) -> Box<dyn Anything + 'a>
@@ -37,8 +36,7 @@ where
     T: 'b + Iterator,
 {
     Box::new(x.next())
-    //~^ WARNING not reporting region error due to nll
-    //~| the associated type `<T as std::iter::Iterator>::Item` may not live long enough
+    //~^ ERROR the associated type `<T as std::iter::Iterator>::Item` may not live long enough
 }
 
 fn outlives_region<'a, 'b, T>(mut x: T) -> Box<dyn Anything + 'a>

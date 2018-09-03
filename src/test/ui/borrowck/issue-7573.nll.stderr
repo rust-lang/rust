@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/issue-7573.rs:27:31
-   |
-LL |     let mut lines_to_use: Vec<&CrateId> = Vec::new();
-   |                               ^
-
 error: borrowed data escapes outside of closure
   --> $DIR/issue-7573.rs:32:9
    |

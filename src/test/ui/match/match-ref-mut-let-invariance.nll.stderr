@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/match-ref-mut-let-invariance.rs:21:9
-   |
-LL |         x //~ ERROR mismatched types
-   |         ^
-
 error: unsatisfied lifetime constraints
   --> $DIR/match-ref-mut-let-invariance.rs:21:9
    |

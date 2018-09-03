@@ -1,15 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/variance-invariant-arg-object.rs:21:5
-   |
-LL |     v //~ ERROR mismatched types
-   |     ^
-
-warning: not reporting region error due to nll
-  --> $DIR/variance-invariant-arg-object.rs:28:5
-   |
-LL |     v //~ ERROR mismatched types
-   |     ^
-
 error: unsatisfied lifetime constraints
   --> $DIR/variance-invariant-arg-object.rs:21:5
    |

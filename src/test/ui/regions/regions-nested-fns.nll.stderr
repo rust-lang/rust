@@ -1,15 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/regions-nested-fns.rs:24:27
-   |
-LL |         if false { return x; } //~ ERROR E0312
-   |                           ^
-
-warning: not reporting region error due to nll
-  --> $DIR/regions-nested-fns.rs:15:18
-   |
-LL |     let mut ay = &y; //~ ERROR E0495
-   |                  ^^
-
 error: unsatisfied lifetime constraints
   --> $DIR/regions-nested-fns.rs:20:9
    |

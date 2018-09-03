@@ -45,8 +45,7 @@ where
     T: Anything<'b>,
 {
     with_signature(cell, t, |cell, t| require(cell, t));
-    //~^ WARNING not reporting region error due to nll
-    //~| ERROR
+    //~^ ERROR
 }
 
 #[rustc_regions]
@@ -56,8 +55,7 @@ where
     'a: 'a,
 {
     with_signature(cell, t, |cell, t| require(cell, t));
-    //~^ WARNING not reporting region error due to nll
-    //~| ERROR
+    //~^ ERROR
 }
 
 #[rustc_regions]
@@ -77,8 +75,7 @@ where
     // can do better here with a more involved verification step.
 
     with_signature(cell, t, |cell, t| require(cell, t));
-    //~^ WARNING not reporting region error due to nll
-    //~| ERROR
+    //~^ ERROR
 }
 
 #[rustc_regions]

@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/regions-reborrow-from-shorter-mut-ref.rs:16:5
-   |
-LL |     &mut **p //~ ERROR 16:5: 16:13: lifetime mismatch [E0623]
-   |     ^^^^^^^^
-
 error: unsatisfied lifetime constraints
   --> $DIR/regions-reborrow-from-shorter-mut-ref.rs:16:5
    |

@@ -68,6 +68,7 @@ use middle::region;
 use traits::{ObligationCause, ObligationCauseCode};
 use ty::{self, subst::Subst, Region, Ty, TyCtxt, TypeFoldable, TyKind};
 use ty::error::TypeError;
+use session::config::BorrowckMode;
 use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
@@ -303,40 +304,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ) {
         debug!("report_region_errors(): {} errors to start", errors.len());
 
-        if will_later_be_reported_by_nll &&
-            // FIXME: `use_mir_borrowck` seems wrong here...
-            self.tcx.use_mir_borrowck() &&
-            // ... this is a band-aid; may be better to explicitly
-            // match on every borrowck_mode variant to guide decision
-            // here.
-            !self.tcx.migrate_borrowck() {
-
-            // With `#![feature(nll)]`, we want to present a nice user
-            // experience, so don't even mention the errors from the
-            // AST checker.
-            if self.tcx.features().nll {
-                return;
+        // If the errors will later be reported by NLL, choose wether to display them or not based
+        // on the borrowck mode
+        if will_later_be_reported_by_nll {
+            match self.tcx.borrowck_mode() {
+                // If we're on AST or Migrate mode, report AST region errors
+                BorrowckMode::Ast | BorrowckMode::Migrate => {},
+                // If we're on MIR or Compare mode, don't report AST region errors as they should
+                // be reported by NLL
+                BorrowckMode::Compare | BorrowckMode::Mir => return,
             }
-
-            // But with nll, it's nice to have some note for later.
-            for error in errors {
-                match *error {
-                    RegionResolutionError::ConcreteFailure(ref origin, ..)
-                    | RegionResolutionError::GenericBoundFailure(ref origin, ..) => {
-                        self.tcx
-                            .sess
-                            .span_warn(origin.span(), "not reporting region error due to nll");
-                    }
-
-                    RegionResolutionError::SubSupConflict(ref rvo, ..) => {
-                        self.tcx
-                            .sess
-                            .span_warn(rvo.span(), "not reporting region error due to nll");
-                    }
-                }
-            }
-
-            return;
         }
 
         // try to pre-process the errors, which will group some of them

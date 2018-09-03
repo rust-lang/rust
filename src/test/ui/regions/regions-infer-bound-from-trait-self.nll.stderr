@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/regions-infer-bound-from-trait-self.rs:56:9
-   |
-LL |         check_bound(x, self)
-   |         ^^^^^^^^^^^
-
 error[E0309]: the parameter type `Self` may not live long enough
   --> $DIR/regions-infer-bound-from-trait-self.rs:56:9
    |

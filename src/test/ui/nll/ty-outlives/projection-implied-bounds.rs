@@ -43,8 +43,7 @@ where
 #[rustc_errors]
 fn generic2<T: Iterator>(value: T) {
     twice(value, |value_ref, item| invoke2(value_ref, item));
-    //~^ WARNING not reporting region error due to nll
-    //~| ERROR the parameter type `T` may not live long enough
+    //~^ ERROR the parameter type `T` may not live long enough
 }
 
 fn invoke2<'a, T, U>(a: &T, b: Cell<&'a Option<U>>)

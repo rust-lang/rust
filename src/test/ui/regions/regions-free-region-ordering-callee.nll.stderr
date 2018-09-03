@@ -1,15 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/regions-free-region-ordering-callee.rs:23:5
-   |
-LL |     &*y //~ ERROR 23:5: 23:8: lifetime mismatch [E0623]
-   |     ^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/regions-free-region-ordering-callee.rs:28:24
-   |
-LL |     let z: &'b usize = &*x;
-   |                        ^^^
-
 error: unsatisfied lifetime constraints
   --> $DIR/regions-free-region-ordering-callee.rs:23:5
    |

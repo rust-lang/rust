@@ -1,9 +1,3 @@
-warning: not reporting region error due to nll
-  --> $DIR/ex3-both-anon-regions-using-trait-objects.rs:11:10
-   |
-LL |   y.push(z); //~ ERROR lifetime mismatch
-   |          ^
-
 error[E0596]: cannot borrow `y` as mutable, as it is not declared as mutable
   --> $DIR/ex3-both-anon-regions-using-trait-objects.rs:11:3
    |
