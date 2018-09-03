@@ -94,6 +94,7 @@ static WHITELIST: &'static [Crate] = &[
     Crate("log"),
     Crate("log_settings"),
     Crate("memchr"),
+    Crate("memmap"),
     Crate("memoffset"),
     Crate("miniz-sys"),
     Crate("nodrop"),
