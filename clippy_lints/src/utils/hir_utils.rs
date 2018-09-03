@@ -113,7 +113,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             },
             (&ExprKind::Match(ref le, ref la, ref ls), &ExprKind::Match(ref re, ref ra, ref rs)) => {
                 ls == rs && self.eq_expr(le, re) && over(la, ra, |l, r| {
-                    self.eq_expr(&l.body, &r.body) && both(&l.guard, &r.guard, |l, r| self.eq_expr(l, r))
+                    self.eq_expr(&l.body, &r.body) && both(&l.guard, &r.guard, |l, r| self.eq_guard(l, r))
                         && over(&l.pats, &r.pats, |l, r| self.eq_pat(l, r))
                 })
             },
@@ -150,6 +150,12 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
 
     fn eq_field(&mut self, left: &Field, right: &Field) -> bool {
         left.ident.name == right.ident.name && self.eq_expr(&left.expr, &right.expr)
+    }
+
+    fn eq_guard(&mut self, left: &Guard, right: &Guard) -> bool {
+        match (left, right) {
+            (Guard::If(l), Guard::If(r)) => self.eq_expr(l, r),
+        }
     }
 
     fn eq_generic_arg(&mut self, left: &GenericArg, right: &GenericArg) -> bool {
@@ -497,7 +503,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 for arm in arms {
                     // TODO: arm.pat?
                     if let Some(ref e) = arm.guard {
-                        self.hash_expr(e);
+                        self.hash_guard(e);
                     }
                     self.hash_expr(&arm.body);
                 }
@@ -635,6 +641,16 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 c.hash(&mut self.s);
                 self.hash_expr(expr);
             },
+        }
+    }
+
+    pub fn hash_guard(&mut self, g: &Guard) {
+        match g {
+            Guard::If(ref expr) => {
+                let c: fn(_) -> _ = Guard::If;
+                c.hash(&mut self.s);
+                self.hash_expr(expr);
+            }
         }
     }
 }

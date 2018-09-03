@@ -171,7 +171,7 @@ pub mod write;
 pub mod zero_div_zero;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
-use crate::utils::conf::Conf;
+pub use crate::utils::conf::Conf;
 
 mod reexport {
     crate use syntax::ast::{Name, NodeId};
@@ -449,6 +449,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         if_not_else::IF_NOT_ELSE,
         infinite_iter::MAYBE_INFINITE_ITER,
         items_after_statements::ITEMS_AFTER_STATEMENTS,
+        loops::EXPLICIT_INTO_ITER_LOOP,
+        loops::EXPLICIT_ITER_LOOP,
         matches::SINGLE_MATCH_ELSE,
         methods::FILTER_MAP,
         methods::OPTION_MAP_UNWRAP_OR,
@@ -546,8 +548,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         literal_representation::UNREADABLE_LITERAL,
         loops::EMPTY_LOOP,
         loops::EXPLICIT_COUNTER_LOOP,
-        loops::EXPLICIT_INTO_ITER_LOOP,
-        loops::EXPLICIT_ITER_LOOP,
         loops::FOR_KV_MAP,
         loops::FOR_LOOP_OVER_OPTION,
         loops::FOR_LOOP_OVER_RESULT,
@@ -718,8 +718,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         literal_representation::LARGE_DIGIT_GROUPS,
         literal_representation::UNREADABLE_LITERAL,
         loops::EMPTY_LOOP,
-        loops::EXPLICIT_INTO_ITER_LOOP,
-        loops::EXPLICIT_ITER_LOOP,
         loops::FOR_KV_MAP,
         loops::NEEDLESS_RANGE_LOOP,
         loops::WHILE_LET_ON_ITERATOR,

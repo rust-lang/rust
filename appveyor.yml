@@ -3,20 +3,21 @@ environment:
         PROJECT_NAME: rust-clippy
     matrix:
         #- TARGET: i686-pc-windows-gnu
-        #  MSYS2_BITS: 32
         #- TARGET: i686-pc-windows-msvc
-        #  MSYS2_BITS: 32
         #- TARGET: x86_64-pc-windows-gnu
-        #  MSYS2_BITS: 64
         - TARGET: x86_64-pc-windows-msvc
-          MSYS2_BITS: 64
 
 install:
-    - set PATH=C:\Program Files\Git\mingw64\bin;%PATH%
     - curl -sSf -o rustup-init.exe https://win.rustup.rs/
     - rustup-init.exe -y --default-host %TARGET% --default-toolchain nightly
-    - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin;C:\Users\appveyor\.rustup\toolchains\nightly-%TARGET%\bin
-    - if defined MSYS2_BITS set PATH=%PATH%;C:\msys64\mingw%MSYS2_BITS%\bin
+    - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
+    - git ls-remote https://github.com/rust-lang/rust.git master | awk '{print $1}' >rustc-hash.txt
+    - set /p RUSTC_HASH=<rustc-hash.txt
+    - del rust-toolchain
+    - cargo install rustup-toolchain-install-master || echo "rustup-toolchain-install-master already installed"
+    - rustup-toolchain-install-master %RUSTC_HASH% -f -n master
+    - rustup default master
+    - set PATH=%PATH%;C:\Users\appveyor\.rustup\toolchains\master\bin
     - rustc -V
     - cargo -V
 
@@ -26,9 +27,6 @@ test_script:
     - set RUST_BACKTRACE=1
     - cargo build --features debugging
     - cargo test --features debugging
-    #- copy target\debug\cargo-clippy.exe C:\Users\appveyor\.cargo\bin\
-    #- cargo clippy -- -D clippy
-    #- cd clippy_lints && cargo clippy -- -D clippy && cd ..
 
 notifications:
     - provider: Email

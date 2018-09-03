@@ -9,7 +9,7 @@ cd checkout
 
 function check() {
 # run clippy on a project, try to be verbose and trigger as many warnings as possible for greater coverage
-  RUST_BACKTRACE=full cargo clippy --all-targets --all-features -- --cap-lints warn -W clippy_pedantic -W clippy_nursery  &> clippy_output
+  RUST_BACKTRACE=full cargo clippy --all-targets --all-features -- --cap-lints warn -W clippy::pedantic -W clippy::nursery  &> clippy_output
   cat clippy_output
   ! cat clippy_output | grep -q "internal compiler error\|query stack during panic"
   if [[ $? != 0 ]]; then

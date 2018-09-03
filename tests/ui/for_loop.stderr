@@ -264,7 +264,7 @@ error: this range is empty so this for loop will never run
 193 |     for i in (5 + 2)..(8 - 1) {
     |              ^^^^^^^^^^^^^^^^
 
-error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
    --> $DIR/for_loop.rs:215:15
     |
 215 |     for _v in vec.iter() {}
@@ -272,13 +272,13 @@ error: it is more idiomatic to loop over references to containers instead of usi
     |
     = note: `-D clippy::explicit-iter-loop` implied by `-D warnings`
 
-error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
    --> $DIR/for_loop.rs:217:15
     |
 217 |     for _v in vec.iter_mut() {}
     |               ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&mut vec`
 
-error: it is more idiomatic to loop over containers instead of using explicit iteration methods`
+error: it is more concise to loop over containers instead of using explicit iteration methods`
    --> $DIR/for_loop.rs:220:15
     |
 220 |     for _v in out_vec.into_iter() {}
@@ -286,61 +286,61 @@ error: it is more idiomatic to loop over containers instead of using explicit it
     |
     = note: `-D clippy::explicit-into-iter-loop` implied by `-D warnings`
 
-error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
    --> $DIR/for_loop.rs:223:15
     |
 223 |     for _v in array.into_iter() {}
     |               ^^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `&array`
 
-error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
    --> $DIR/for_loop.rs:228:15
     |
 228 |     for _v in [1, 2, 3].iter() {}
     |               ^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `&[1, 2, 3]`
 
-error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
    --> $DIR/for_loop.rs:232:15
     |
 232 |     for _v in [0; 32].iter() {}
     |               ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&[0; 32]`
 
-error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
    --> $DIR/for_loop.rs:237:15
     |
 237 |     for _v in ll.iter() {}
     |               ^^^^^^^^^ help: to write this more concisely, try: `&ll`
 
-error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
    --> $DIR/for_loop.rs:240:15
     |
 240 |     for _v in vd.iter() {}
     |               ^^^^^^^^^ help: to write this more concisely, try: `&vd`
 
-error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
    --> $DIR/for_loop.rs:243:15
     |
 243 |     for _v in bh.iter() {}
     |               ^^^^^^^^^ help: to write this more concisely, try: `&bh`
 
-error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
    --> $DIR/for_loop.rs:246:15
     |
 246 |     for _v in hm.iter() {}
     |               ^^^^^^^^^ help: to write this more concisely, try: `&hm`
 
-error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
    --> $DIR/for_loop.rs:249:15
     |
 249 |     for _v in bt.iter() {}
     |               ^^^^^^^^^ help: to write this more concisely, try: `&bt`
 
-error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
    --> $DIR/for_loop.rs:252:15
     |
 252 |     for _v in hs.iter() {}
     |               ^^^^^^^^^ help: to write this more concisely, try: `&hs`
 
-error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
    --> $DIR/for_loop.rs:255:15
     |
 255 |     for _v in bs.iter() {}

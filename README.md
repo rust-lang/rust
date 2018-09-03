@@ -89,7 +89,7 @@ Be sure that Clippy was compiled with the same version of rustc that cargo invok
 
 ## Configuration
 
-Some lints can be configured in a TOML file named with `clippy.toml` or `.clippy.toml`. It contains basic `variable = value` mapping eg.
+Some lints can be configured in a TOML file named `clippy.toml` or `.clippy.toml`. It contains a basic `variable = value` mapping eg.
 
 ```toml
 blacklisted-names = ["toto", "tata", "titi"]
