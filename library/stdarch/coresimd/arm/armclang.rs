@@ -13,10 +13,9 @@
 /// - `0...65535` if you are compiling source as A32 code.
 /// - `0...255` if you are compiling source as T32 code.
 ///
+/// [ARM's documentation](https://developer.arm.com/docs/100067/latest/compiler-specific-intrinsics/__breakpoint-intrinsic)
+///
 /// **NOTE** Due compiler limitations this function only supports the range `0...255` in A32 mode.
-// TODO support the extended range `0...65535` when compiling as A32 code (`cfg(not(target_feature =
-// "thumb-mode"))`). T32 mode (`cfg(target_feature = "thumb-mode")`) should continue to support the
-// range `0...255`.
 #[cfg_attr(test, assert_instr(bkpt))]
 #[inline(always)]
 #[rustc_args_required_const(0)]
