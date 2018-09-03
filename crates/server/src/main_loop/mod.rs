@@ -32,6 +32,7 @@ enum Task {
 }
 
 pub fn main_loop(
+    internal_mode: bool,
     root: PathBuf,
     msg_receriver: &mut Receiver<RawMessage>,
     msg_sender: &mut Sender<RawMessage>,
@@ -47,6 +48,7 @@ pub fn main_loop(
     let mut pending_requests = HashMap::new();
     let mut subs = Subscriptions::new();
     let main_res = main_loop_inner(
+        internal_mode,
         root,
         &pool,
         msg_sender,
@@ -80,6 +82,7 @@ pub fn main_loop(
 }
 
 fn main_loop_inner(
+    internal_mode: bool,
     ws_root: PathBuf,
     pool: &ThreadPool,
     msg_sender: &mut Sender<RawMessage>,
@@ -145,8 +148,7 @@ fn main_loop_inner(
                 match ws {
                     Ok(ws) => {
                         let workspaces = vec![ws];
-                        let not = RawNotification::new::<req::DidReloadWorkspace>(&workspaces);
-                        msg_sender.send(RawMessage::Notification(not));
+                        feedback(internal_mode, "workspace loaded", msg_sender);
                         for ws in workspaces.iter() {
                             for pkg in ws.packages().filter(|pkg| !pkg.is_member(ws)) {
                                 debug!("sending root, {}", pkg.root(ws).to_path_buf().display());
@@ -403,4 +405,12 @@ fn update_file_notifications_on_threadpool(
             }
         }
     });
+}
+
+fn feedback(intrnal_mode: bool, msg: &str, sender: &Sender<RawMessage>) {
+    if !intrnal_mode {
+        return;
+    }
+    let not = RawNotification::new::<req::InternalFeedback>(&msg.to_string());
+    sender.send(RawMessage::Notification(not));
 }

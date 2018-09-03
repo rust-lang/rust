@@ -34,7 +34,7 @@ fn main_inner() -> Result<()> {
     let root = ::std::env::current_dir()?;
     run_server(
         m::server_capabilities(),
-        |r, s| m::main_loop(root, r, s),
+        |r, s| m::main_loop(false, root, r, s),
         receiver,
         sender,
     )?;

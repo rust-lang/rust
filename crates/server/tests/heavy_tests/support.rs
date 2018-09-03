@@ -14,7 +14,7 @@ use languageserver_types::{
     Url,
     TextDocumentIdentifier,
     request::{Request, Shutdown},
-    notification::{Notification, DidOpenTextDocument},
+    notification::DidOpenTextDocument,
     DidOpenTextDocumentParams,
     TextDocumentItem,
 };
@@ -22,7 +22,7 @@ use serde::Serialize;
 use serde_json::{Value, from_str, to_string_pretty};
 use gen_lsp_server::{RawMessage, RawRequest, RawNotification};
 
-use m::{Result, main_loop};
+use m::{Result, main_loop, req};
 
 pub fn project(fixture: &str) -> Server {
     static INIT: Once = Once::new();
@@ -72,7 +72,7 @@ impl Server {
         let path = dir.path().to_path_buf();
         let (client_sender, mut server_receiver) = bounded(1);
         let (mut server_sender, client_receiver) = bounded(1);
-        let server = thread::spawn(move || main_loop(path, &mut server_receiver, &mut server_sender));
+        let server = thread::spawn(move || main_loop(true, path, &mut server_receiver, &mut server_sender));
         let res = Server {
             req_id: Cell::new(1),
             dir,
@@ -125,25 +125,6 @@ impl Server {
         );
     }
 
-    pub fn notification<N>(
-        &self,
-        expected: &str,
-    )
-    where
-        N: Notification,
-    {
-        let expected = expected.replace("$PROJECT_ROOT$", &self.dir.path().display().to_string());
-        let expected: Value = from_str(&expected).unwrap();
-        let actual = self.wait_for_notification::<N>();
-        assert_eq!(
-            expected, actual,
-            "Expected:\n{}\n\
-             Actual:\n{}\n",
-            to_string_pretty(&expected).unwrap(),
-            to_string_pretty(&actual).unwrap(),
-        );
-    }
-
     fn send_request<R>(&self, id: u64, params: R::Params) -> Value
     where
         R: Request,
@@ -173,25 +154,23 @@ impl Server {
         }
         panic!("no response");
     }
-    pub fn wait_for_notification<N: Notification>(&self) -> Value {
-        self.wait_for_notification_(N::METHOD)
-    }
-    fn wait_for_notification_(&self, method: &str) -> Value {
+    pub fn wait_for_feedback(&self, feedback: &str) {
         let f = |msg: &RawMessage| match msg {
-                RawMessage::Notification(n) if n.method == method => {
-                    Some(n.params.clone())
+                RawMessage::Notification(n) if n.method == "internalFeedback" => {
+                    return n.clone().cast::<req::InternalFeedback>()
+                        .unwrap() == feedback
                 }
-                _ => None,
+                _ => false,
         };
 
         for msg in self.messages.borrow().iter() {
-            if let Some(res) = f(msg) {
-                return res;
+            if f(msg) {
+                return;
             }
         }
         while let Some(msg) = self.recv() {
-            if let Some(res) = f(&msg) {
-                return res;
+            if f(&msg) {
+                return;
             }
         }
         panic!("no response")

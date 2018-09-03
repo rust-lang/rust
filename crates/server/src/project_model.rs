@@ -11,7 +11,7 @@ use {
     thread_watcher::ThreadWatcher,
 };
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Clone)]
 pub struct CargoWorkspace {
     packages: Vec<PackageData>,
     targets: Vec<TargetData>,
@@ -22,7 +22,7 @@ pub struct Package(usize);
 #[derive(Clone, Copy, Debug, Serialize)]
 pub struct Target(usize);
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Clone)]
 struct PackageData {
     name: SmolStr,
     manifest: PathBuf,
@@ -30,7 +30,7 @@ struct PackageData {
     is_member: bool,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Clone)]
 struct TargetData {
     pkg: Package,
     name: SmolStr,
@@ -38,7 +38,7 @@ struct TargetData {
     kind: TargetKind,
 }
 
-#[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TargetKind {
     Bin, Lib, Example, Test, Bench, Other,
 }
@@ -46,9 +46,6 @@ pub enum TargetKind {
 impl Package {
     pub fn name(self, ws: &CargoWorkspace) -> &str {
         ws.pkg(self).name.as_str()
-    }
-    pub fn manifest(self, ws: &CargoWorkspace) -> &Path {
-        ws.pkg(self).manifest.as_path()
     }
     pub fn root(self, ws: &CargoWorkspace) -> &Path {
         ws.pkg(self).manifest.parent().unwrap()

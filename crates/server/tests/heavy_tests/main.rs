@@ -10,7 +10,7 @@ extern crate m;
 
 mod support;
 
-use m::req::{Runnables, RunnablesParams, DidReloadWorkspace};
+use m::req::{Runnables, RunnablesParams};
 
 use support::project;
 
@@ -59,7 +59,7 @@ pub fn foo() {}
 #[test]
 fn test_eggs() {}
 "#);
-    server.wait_for_notification::<DidReloadWorkspace>();
+    server.wait_for_feedback("workspace loaded");
     server.request::<Runnables>(
         RunnablesParams {
             text_document: server.doc_id("tests/spam.rs"),
@@ -77,34 +77,5 @@ fn test_eggs() {}
             }
           }
         ]"#
-    );
-}
-
-#[test]
-fn test_project_model() {
-    let server = project(r#"
-//- Cargo.toml
-[package]
-name = "foo"
-version = "0.0.0"
-
-//- src/lib.rs
-pub fn foo() {}
-"#);
-    server.notification::<DidReloadWorkspace>(r#"[
-  {
-    "packages": [
-      {
-        "is_member": true,
-        "manifest": "$PROJECT_ROOT$/Cargo.toml",
-        "name": "foo",
-        "targets": [ 0 ]
-      }
-    ],
-    "targets": [
-      { "kind": "Lib", "name": "foo", "pkg": 0, "root": "$PROJECT_ROOT$/src/lib.rs" }
-    ]
-  }
-]"#
     );
 }
