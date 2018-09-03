@@ -18,7 +18,8 @@ use stdsimd_test::assert_instr;
 ///
 /// [ARM's documentation](https://developer.arm.com/docs/100067/latest/compiler-specific-intrinsics/__breakpoint-intrinsic)
 ///
-/// **NOTE** Due compiler limitations this function only supports the range `0...255` in A32 mode.
+/// **NOTE**: Due to compiler limitations this function only supports the range `0...255` in A32
+/// mode.
 #[cfg_attr(test, assert_instr(bkpt, val = 0))]
 #[inline(always)]
 #[rustc_args_required_const(0)]
