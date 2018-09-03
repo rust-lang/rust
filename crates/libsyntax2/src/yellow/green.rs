@@ -31,7 +31,7 @@ impl GreenNode {
 
     pub fn text_len(&self) -> TextUnit {
         match self {
-            GreenNode::Leaf { text, .. } => TextUnit::of_str(text.as_str()),
+            GreenNode::Leaf { text, .. } => TextUnit::from(text.len() as u32),
             GreenNode::Branch(b) => b.text_len(),
         }
     }
