@@ -11,12 +11,13 @@ install:
     - curl -sSf -o rustup-init.exe https://win.rustup.rs/
     - rustup-init.exe -y --default-host %TARGET% --default-toolchain nightly
     - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
-    # https://support.microsoft.com/en-us/help/2524009/error-running-command-shell-scripts-that-include-parentheses
-    - if defined GITHUB_TOKEN del rust-toolchain
-    - if defined GITHUB_TOKEN (cargo install rustup-toolchain-install-master || echo "rustup-toolchain-install-master already installed")
-    - if defined GITHUB_TOKEN rustup-toolchain-install-master -f -n master --github-token %GITHUB_TOKEN%
-    - if defined GITHUB_TOKEN rustup default master
-    - if defined GITHUB_TOKEN set PATH=%PATH%;C:\Users\appveyor\.rustup\toolchains\master\bin
+    - git ls-remote https://github.com/rust-lang/rust.git master | awk '{print $1}' >rustc-hash.txt
+    - set /p RUSTC_HASH=<rustc-hash.txt
+    - del rust-toolchain
+    - cargo install rustup-toolchain-install-master || echo "rustup-toolchain-install-master already installed"
+    - rustup-toolchain-install-master %RUSTC_HASH% -f -n master
+    - rustup default master
+    - set PATH=%PATH%;C:\Users\appveyor\.rustup\toolchains\master\bin
     - rustc -V
     - cargo -V
 
