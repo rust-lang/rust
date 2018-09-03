@@ -8,6 +8,33 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[doc(keyword = "as")]
+//
+/// The type coercion keyword
+///
+/// `as` is most commonly used to turn primitive types into other primitive types, but it has other
+/// uses that include turning pointers into addresses, addresses into pointers, and pointers into
+/// other pointers.
+///
+/// ```rust
+/// let thing1: u8 = 89.0 as u8;
+/// assert_eq!('B' as u32, 66);
+/// assert_eq!(thing1 as char, 'Y');
+/// let thing2: f32 = thing1 as f32 + 10.5;
+/// assert_eq!(true as u8 + thing2 as u8, 100);
+/// ```
+///
+/// In general, any coercion that can be performed via writing out type hints can also be done
+/// using `as`, so instead of writing `let x: u32 = 123`, you can write `let x = 123 as u32` (Note:
+/// `let x = 123u32` would be best in that situation). The same is not true in the other direction,
+/// however, explicitly using `as` allows a few more coercions that aren't allowed implicitly, such
+/// as changing the type of a raw pointer or turning closures into raw pointers.
+///
+/// For more information on what `as` is capable of, see the [Reference]
+///
+/// [Reference]: https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions
+mod as_keyword { }
+
 #[doc(keyword = "fn")]
 //
 /// The `fn` keyword.
