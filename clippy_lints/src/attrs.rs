@@ -12,13 +12,13 @@
 
 use crate::reexport::*;
 use crate::utils::{
-    in_macro, last_line_of_span, match_def_path, opt_def_id, paths, snippet_opt, span_lint,
+    in_macro, last_line_of_span, match_def_path, opt_def_id, paths, snippet_opt, span_lint, span_lint_and_sugg,
     span_lint_and_then, without_block_comments,
 };
 use if_chain::if_chain;
 use crate::rustc::hir::*;
 use crate::rustc::lint::{
-    CheckLintNameResult, LateContext, LateLintPass, LintArray, LintContext, LintPass,
+    CheckLintNameResult, EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintContext, LintPass,
 };
 use crate::rustc::ty::{self, TyCtxt};
 use crate::rustc::{declare_tool_lint, lint_array};
@@ -167,6 +167,35 @@ declare_clippy_lint! {
     pub UNKNOWN_CLIPPY_LINTS,
     style,
     "unknown_lints for scoped Clippy lints"
+}
+
+/// **What it does:** Checks for `#[cfg_attr(rustfmt, rustfmt_skip)]` and suggests to replace it
+/// with `#[rustfmt::skip]`.
+///
+/// **Why is this bad?** Since tool_attributes (rust-lang/rust#44690) are stable now, they should
+/// be used instead of the old `cfg_attr(rustfmt)` attribute.
+///
+/// **Known problems:** It currently only detects outer attributes. But since it does not really
+/// makes sense to have `#![cfg_attr(rustfmt, rustfmt_skip)]` as an inner attribute, this should be
+/// ok.
+///
+/// **Example:**
+///
+/// Bad:
+/// ```rust
+/// #[cfg_attr(rustfmt, rustfmt_skip)]
+/// fn main() { }
+/// ```
+///
+/// Good:
+/// ```rust
+/// #[rustfmt::skip]
+/// fn main() { }
+/// ```
+declare_clippy_lint! {
+    pub DEPRECATED_CFG_ATTR,
+    complexity,
+    "usage of `cfg_attr(rustfmt)` instead of `tool_attributes`"
 }
 
 #[derive(Copy, Clone)]
