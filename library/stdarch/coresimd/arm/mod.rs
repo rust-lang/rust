@@ -7,6 +7,10 @@
 //! [arm_dat]: https://developer.arm.com/technologies/neon/intrinsics
 #![allow(non_camel_case_types)]
 
+mod armclang;
+
+pub use self::armclang::*;
+
 #[cfg(any(target_feature = "mclass", dox))]
 mod cmsis;
 #[cfg(any(target_feature = "mclass", dox))]
