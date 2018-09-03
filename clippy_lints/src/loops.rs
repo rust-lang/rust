@@ -85,7 +85,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub EXPLICIT_ITER_LOOP,
-    style,
+    pedantic,
     "for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do"
 }
 
@@ -107,7 +107,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub EXPLICIT_INTO_ITER_LOOP,
-    style,
+    pedantic,
     "for-looping over `_.into_iter()` when `_` would do"
 }
 
@@ -1209,7 +1209,7 @@ fn lint_iter_method(cx: &LateContext<'_, '_>, args: &[Expr], arg: &Expr, method_
         cx,
         EXPLICIT_ITER_LOOP,
         arg.span,
-        "it is more idiomatic to loop over references to containers instead of using explicit \
+        "it is more concise to loop over references to containers instead of using explicit \
          iteration methods",
         "to write this more concisely, try",
         format!("&{}{}", muta, object),
@@ -1247,7 +1247,7 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr, expr: &Ex
                         cx,
                         EXPLICIT_INTO_ITER_LOOP,
                         arg.span,
-                        "it is more idiomatic to loop over containers instead of using explicit \
+                        "it is more concise to loop over containers instead of using explicit \
                          iteration methods`",
                         "to write this more concisely, try",
                         object.to_string(),
