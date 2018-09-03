@@ -25,7 +25,8 @@ link_and_run() {
     shift
     pushd target/out
     gcc $@ -o $target
-    ./$target
+    sh -c ./$target || true
+    popd
 }
 
 build_lib() {
