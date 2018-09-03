@@ -3,20 +3,20 @@ environment:
         PROJECT_NAME: rust-clippy
     matrix:
         #- TARGET: i686-pc-windows-gnu
-        #  MSYS2_BITS: 32
         #- TARGET: i686-pc-windows-msvc
-        #  MSYS2_BITS: 32
         #- TARGET: x86_64-pc-windows-gnu
-        #  MSYS2_BITS: 64
         - TARGET: x86_64-pc-windows-msvc
-          MSYS2_BITS: 64
 
 install:
-    - set PATH=C:\Program Files\Git\mingw64\bin;%PATH%
     - curl -sSf -o rustup-init.exe https://win.rustup.rs/
     - rustup-init.exe -y --default-host %TARGET% --default-toolchain nightly
-    - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin;C:\Users\appveyor\.rustup\toolchains\nightly-%TARGET%\bin
-    - if defined MSYS2_BITS set PATH=%PATH%;C:\msys64\mingw%MSYS2_BITS%\bin
+    - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
+    # https://support.microsoft.com/en-us/help/2524009/error-running-command-shell-scripts-that-include-parentheses
+    - if defined GITHUB_TOKEN del rust-toolchain
+    - if defined GITHUB_TOKEN (cargo install rustup-toolchain-install-master || echo "rustup-toolchain-install-master already installed")
+    - if defined GITHUB_TOKEN rustup-toolchain-install-master -f -n master --github-token %GITHUB_TOKEN%
+    - if defined GITHUB_TOKEN rustup default master
+    - if defined GITHUB_TOKEN set PATH=%PATH%;C:\Users\appveyor\.rustup\toolchains\master\bin
     - rustc -V
     - cargo -V
 
@@ -26,9 +26,6 @@ test_script:
     - set RUST_BACKTRACE=1
     - cargo build --features debugging
     - cargo test --features debugging
-    #- copy target\debug\cargo-clippy.exe C:\Users\appveyor\.cargo\bin\
-    #- cargo clippy -- -D clippy
-    #- cd clippy_lints && cargo clippy -- -D clippy && cd ..
 
 notifications:
     - provider: Email
