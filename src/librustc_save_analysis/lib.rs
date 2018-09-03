@@ -101,7 +101,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let end = cm.lookup_char_pos(span.hi());
 
         SpanData {
-            file_name: start.file.name.clone().to_string().into(),
+            file_name: start.file.name.to_string().into(),
             byte_start: span.lo().0,
             byte_end: span.hi().0,
             line_start: Row::new_one_indexed(start.line as u32),
@@ -113,7 +113,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     // List external crates used by the current crate.
     pub fn get_external_crates(&self) -> Vec<ExternalCrateData> {
-        let mut result = Vec::new();
+        let mut result = Vec::with_capacity(self.tcx.crates().len());
 
         for &n in self.tcx.crates().iter() {
             let span = match *self.tcx.extern_crate(n.as_def_id()) {
@@ -321,7 +321,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     decl_id: None,
                     docs: self.docs_for_attrs(&item.attrs),
                     sig: sig::item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_owned(), self),
+                    attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
             ast::ItemKind::Impl(.., ref trait_ref, ref typ, ref impls) => {

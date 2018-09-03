@@ -147,9 +147,9 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         let crate_root = source_file.map(|source_file| {
             let source_file = Path::new(source_file);
             match source_file.file_name() {
-                Some(_) => source_file.parent().unwrap().display().to_string(),
-                None => source_file.display().to_string(),
-            }
+                Some(_) => source_file.parent().unwrap().display(),
+                None => source_file.display(),
+            }.to_string()
         });
 
         let data = CratePreludeData {
@@ -176,8 +176,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         let segments = &path.segments[if path.is_global() { 1 } else { 0 }..];
 
         let mut result = Vec::with_capacity(segments.len());
+        let mut segs = Vec::with_capacity(segments.len());
 
-        let mut segs = vec![];
         for (i, seg) in segments.iter().enumerate() {
             segs.push(seg.clone());
             let sub_path = ast::Path {
@@ -591,9 +591,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
         for variant in &enum_definition.variants {
             let name = variant.node.ident.name.to_string();
-            let mut qualname = enum_data.qualname.clone();
-            qualname.push_str("::");
-            qualname.push_str(&name);
+            let qualname = format!("{}::{}", enum_data.qualname, name);
 
             match variant.node.data {
                 ast::VariantData::Struct(ref fields, _) => {
@@ -973,9 +971,9 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             match self.save_ctxt.get_path_def(id) {
                 HirDef::Local(id) => {
                     let mut value = if immut == ast::Mutability::Immutable {
-                        self.span.snippet(ident.span).to_string()
+                        self.span.snippet(ident.span)
                     } else {
-                        "<mutable>".to_string()
+                        "<mutable>".to_owned()
                     };
                     let hir_id = self.tcx.hir.node_to_hir_id(id);
                     let typ = self.save_ctxt
@@ -1103,10 +1101,9 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     /// mac_uses and mac_defs sets to prevent multiples.
     fn process_macro_use(&mut self, span: Span) {
         let source_span = span.source_callsite();
-        if self.macro_calls.contains(&source_span) {
+        if !self.macro_calls.insert(source_span) {
             return;
         }
-        self.macro_calls.insert(source_span);
 
         let data = match self.save_ctxt.get_macro_use_data(span) {
             None => return,
@@ -1608,8 +1605,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                 }
             }
             ast::ExprKind::Closure(_, _, _, ref decl, ref body, _fn_decl_span) => {
-                let mut id = String::from("$");
-                id.push_str(&ex.id.to_string());
+                let id = format!("${}", ex.id);
 
                 // walk arg and return types
                 for arg in &decl.inputs {

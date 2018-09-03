@@ -435,7 +435,7 @@ impl Sig for ast::Item {
                     },
                 ];
                 text.push_str(&name);
-                // Could be either `mod foo;` or `mod foo { ... }`, but we'll just puck one.
+                // Could be either `mod foo;` or `mod foo { ... }`, but we'll just pick one.
                 text.push(';');
 
                 Ok(Signature {
@@ -630,7 +630,7 @@ impl Sig for ast::Generics {
 
         let mut text = "<".to_owned();
 
-        let mut defs = vec![];
+        let mut defs = Vec::with_capacity(self.params.len());
         for param in &self.params {
             let mut param_text = param.ident.to_string();
             defs.push(SigElement {
