@@ -64,7 +64,7 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::parse::{self, token};
 use syntax::symbol::Symbol;
 use syntax::tokenstream;
-use syntax_pos::{Pos, FileName};
+use syntax_pos::{BytePos, Pos, FileName};
 
 /// The main type provided by this crate, representing an abstract stream of
 /// tokens, or, more specifically, a sequence of token trees.
@@ -345,6 +345,46 @@ impl Span {
         LineColumn {
             line: loc.line,
             column: loc.col.to_usize()
+        }
+    }
+
+    /// Produces a span pointing to the first byte of this span.
+    ///
+    /// When used on the span of a [`Group`], the first byte is the opening
+    /// delimiter of the group. If we have a span pointing to the `(self)`
+    /// argument list in the line below, the span produced by `at_start()` would
+    /// be:
+    ///
+    /// ```text
+    /// pub fn at_start(self) -> Span {
+    ///                ^
+    /// ```
+    #[stable(feature = "proc_macro_span_start_end", since = "1.30.0")]
+    pub fn at_start(self) -> Span {
+        let lo = self.0.lo();
+        let new_hi = BytePos::from_usize(lo.to_usize() + 1);
+        Span(self.0.with_hi(new_hi))
+    }
+
+    /// Produces a span pointing to the last byte of this span.
+    ///
+    /// When used on the span of a [`Group`], the last byte is the closing
+    /// delimiter of the group. If we have a span pointing to the `(self)`
+    /// argument list in the line below, the span produced by `at_end()` would
+    /// be:
+    ///
+    /// ```text
+    /// pub fn at_end(self) -> Span {
+    ///                   ^
+    /// ```
+    #[stable(feature = "proc_macro_span_start_end", since = "1.30.0")]
+    pub fn at_end(self) -> Span {
+        let hi = self.0.hi();
+        if hi.to_usize() == 0 {
+            self
+        } else {
+            let new_lo = BytePos::from_usize(hi.to_usize() - 1);
+            Span(self.0.with_lo(new_lo))
         }
     }
 
