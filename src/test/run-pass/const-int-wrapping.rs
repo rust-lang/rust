@@ -42,6 +42,6 @@ fn main() {
     assert_eq!(SHL_A, ident(128));
     assert_eq!(SHL_B, ident(1));
 
-    assert_eq!(SHR_A, ident(1);
+    assert_eq!(SHR_A, ident(1));
     assert_eq!(SHR_B, ident(128));
 }
