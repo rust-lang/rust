@@ -304,6 +304,17 @@ fn check_type_defn<'a, 'tcx, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn check_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &hir::Item) {
     let trait_def_id = tcx.hir.local_def_id(item.id);
+
+    let trait_def = tcx.trait_def(trait_def_id);
+    if trait_def.is_marker {
+        for associated_def_id in &*tcx.associated_item_def_ids(trait_def_id) {
+            tcx.sess.struct_span_err(
+                    tcx.def_span(*associated_def_id),
+                    "marker traits cannot have associated items",
+                ).emit();
+        }
+    }
+
     for_item(tcx, item).with_fcx(|fcx, _| {
         check_where_clauses(tcx, fcx, item.span, trait_def_id, None);
         vec![]
