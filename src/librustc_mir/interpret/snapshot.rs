@@ -1,3 +1,7 @@
+//! This module contains the machinery necessary to detect infinite loops
+//! during const-evaluation by taking snapshots of the state of the interpreter
+//! at regular intervals.
+
 use std::hash::{Hash, Hasher};
 
 use rustc::ich::{StableHashingContext, StableHashingContextProvider};
@@ -89,6 +93,8 @@ trait SnapshotContext<'a> {
     fn resolve(&'a self, id: &AllocId) -> Option<&'a Allocation>;
 }
 
+/// Taking a snapshot of the evaluation context produces a view of
+/// the state of the interpreter that is invariant to `AllocId`s.
 trait Snapshot<'a, Ctx: SnapshotContext<'a>> {
     type Item;
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item;

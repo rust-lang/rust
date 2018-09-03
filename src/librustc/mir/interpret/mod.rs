@@ -133,6 +133,11 @@ pub trait PointerArithmetic: layout::HasDataLayout {
 impl<T: layout::HasDataLayout> PointerArithmetic for T {}
 
 
+/// Pointer is generic over the type that represents a reference to Allocations,
+/// thus making it possible for the most convenient representation to be used in
+/// each context.
+///
+/// Defaults to the index based and loosely coupled AllocId.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
 pub struct Pointer<Id=AllocId> {
     pub alloc_id: Id,
