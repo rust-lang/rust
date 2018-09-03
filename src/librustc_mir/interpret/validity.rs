@@ -118,6 +118,24 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 bits
             },
             Scalar::Ptr(_) => {
+                match ty.sty {
+                    ty::Bool |
+                    ty::Char |
+                    ty::Float(_) |
+                    ty::Int(_) |
+                    ty::Uint(_) => {
+                        return validation_failure!(
+                                "a pointer",
+                                path,
+                                format!("the type {}", ty.sty)
+                            );
+                    }
+                    ty::RawPtr(_) |
+                    ty::Ref(_, _, _) |
+                    ty::FnPtr(_) => {}
+                    _ => { unreachable!(); }
+                }
+
                 let ptr_size = self.pointer_size();
                 let ptr_max = u128::max_value() >> (128 - ptr_size.bits());
                 return if lo > hi {
