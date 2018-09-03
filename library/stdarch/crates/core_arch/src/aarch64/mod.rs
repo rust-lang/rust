@@ -18,6 +18,8 @@ pub use self::crypto::*;
 mod crc;
 pub use self::crc::*;
 
+pub use super::acle::*;
+
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 

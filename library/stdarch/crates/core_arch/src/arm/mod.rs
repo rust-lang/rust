@@ -11,11 +11,6 @@ mod armclang;
 
 pub use self::armclang::*;
 
-#[cfg(any(target_feature = "mclass", dox))]
-mod cmsis;
-#[cfg(any(target_feature = "mclass", dox))]
-pub use self::cmsis::*;
-
 mod v6;
 pub use self::v6::*;
 
@@ -24,6 +19,7 @@ mod v7;
 #[cfg(any(target_arch = "aarch64", target_feature = "v7"))]
 pub use self::v7::*;
 
+// TODO move into the `acle::{dsp,simd32}` modules
 #[cfg(any(all(target_feature = "v7", not(target_feature = "mclass")), dox))]
 mod dsp;
 #[cfg(any(all(target_feature = "v7", not(target_feature = "mclass")), dox))]
@@ -43,6 +39,8 @@ mod neon;
     dox
 ))]
 pub use self::neon::*;
+
+pub use super::acle::*;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
