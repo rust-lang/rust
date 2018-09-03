@@ -31,7 +31,7 @@ use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::ext::hygiene::Mark;
 use syntax::symbol::keywords;
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax_pos::Span;
+use syntax_pos::{MultiSpan, Span};
 
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
@@ -635,6 +635,8 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
 
         let mut errors = false;
         let mut seen_spans = FxHashSet();
+        let mut error_vec = Vec::new();
+        let mut prev_root_id: NodeId = NodeId::new(0);
         for i in 0 .. self.determined_imports.len() {
             let import = self.determined_imports[i];
             let error = self.finalize_import(import);
@@ -689,13 +691,22 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 // If the error is a single failed import then create a "fake" import
                 // resolution for it so that later resolve stages won't complain.
                 self.import_dummy_binding(import);
+                if prev_root_id.as_u32() != 0 &&
+                    prev_root_id.as_u32() != import.root_id.as_u32() &&
+                    !error_vec.is_empty(){
+                    // in case of new import line, throw diagnostic message
+                    // for previous line.
+                    let mut empty_vec = vec![];
+                    mem::swap(&mut empty_vec, &mut error_vec);
+                    self.throw_unresolved_import_error(empty_vec, None);
+                }
                 if !seen_spans.contains(&span) {
                     let path = import_path_to_string(&import.module_path[..],
                                                      &import.subclass,
                                                      span);
-                    let error = ResolutionError::UnresolvedImport(Some((span, &path, &err)));
-                    resolve_error(self.resolver, span, error);
+                    error_vec.push((span, path, err));
                     seen_spans.insert(span);
+                    prev_root_id = import.root_id;
                 }
             }
         }
@@ -760,6 +771,10 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             });
         }
 
+        if !error_vec.is_empty() {
+            self.throw_unresolved_import_error(error_vec.clone(), None);
+        }
+
         // Report unresolved imports only if no hard error was already reported
         // to avoid generating multiple errors on the same import.
         if !errors {
@@ -767,12 +782,35 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 if import.is_uniform_paths_canary {
                     continue;
                 }
-
-                let error = ResolutionError::UnresolvedImport(None);
-                resolve_error(self.resolver, import.span, error);
+                self.throw_unresolved_import_error(error_vec, Some(MultiSpan::from(import.span)));
                 break;
             }
         }
+    }
+
+    fn throw_unresolved_import_error(&self, error_vec: Vec<(Span, String, String)>,
+                                     span: Option<MultiSpan>) {
+        let max_span_label_msg_count = 10;  // upper limit on number of span_label message.
+        let (span,msg) = match error_vec.is_empty() {
+            true => (span.unwrap(), "unresolved import".to_string()),
+            false => {
+                let span = MultiSpan::from_spans(error_vec.clone().into_iter()
+                                    .map(|elem: (Span, String, String)| { elem.0 }
+                                    ).collect());
+                let path_vec: Vec<String> = error_vec.clone().into_iter()
+                                .map(|elem: (Span, String, String)| { format!("`{}`", elem.1) }
+                                ).collect();
+                let path = path_vec.join(", ");
+                let msg = format!("unresolved import{} {}",
+                                if path_vec.len() > 1 { "s" } else { "" },  path);
+                (span, msg)
+            }
+        };
+        let mut err = struct_span_err!(self.resolver.session, span, E0432, "{}", &msg);
+        for span_error in error_vec.into_iter().take(max_span_label_msg_count) {
+            err.span_label(span_error.0, span_error.2);
+        }
+        err.emit();
     }
 
     /// Attempts to resolve the given import, returning true if its resolution is determined.

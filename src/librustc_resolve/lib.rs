@@ -160,8 +160,6 @@ enum ResolutionError<'a> {
     SelfImportCanOnlyAppearOnceInTheList,
     /// error E0431: `self` import can only appear in an import list with a non-empty prefix
     SelfImportOnlyInImportListWithNonEmptyPrefix,
-    /// error E0432: unresolved import
-    UnresolvedImport(Option<(Span, &'a str, &'a str)>),
     /// error E0433: failed to resolve
     FailedToResolve(&'a str),
     /// error E0434: can't capture dynamic environment in a fn item
@@ -355,17 +353,6 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                                            "`self` import can only appear in an import list with \
                                             a non-empty prefix");
             err.span_label(span, "can only appear in an import list with a non-empty prefix");
-            err
-        }
-        ResolutionError::UnresolvedImport(name) => {
-            let (span, msg) = match name {
-                Some((sp, n, _)) => (sp, format!("unresolved import `{}`", n)),
-                None => (span, "unresolved import".to_owned()),
-            };
-            let mut err = struct_span_err!(resolver.session, span, E0432, "{}", msg);
-            if let Some((_, _, p)) = name {
-                err.span_label(span, p);
-            }
             err
         }
         ResolutionError::FailedToResolve(msg) => {
