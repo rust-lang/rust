@@ -29,7 +29,7 @@ use {ModuleCodegen, ModuleLlvm, ModuleKind};
 use libc;
 
 use std::ffi::{CStr, CString};
-use std::fs::File;
+use std::fs::{self, File};
 use std::ptr;
 use std::slice;
 use std::sync::Arc;
@@ -423,16 +423,10 @@ fn thin_lto(cgcx: &CodegenContext,
             // because only then it will contain the ThinLTO module summary.
             if let Some(ref incr_comp_session_dir) = cgcx.incr_comp_session_dir {
                 if cgcx.config(module.kind).emit_pre_thin_lto_bc {
-                    use std::io::Write;
-
                     let path = incr_comp_session_dir
                         .join(pre_lto_bitcode_filename(&module.name));
-                    let mut file = File::create(&path).unwrap_or_else(|e| {
-                        panic!("Failed to create pre-lto-bitcode file `{}`: {}",
-                               path.display(),
-                               e);
-                    });
-                    file.write_all(buffer.data()).unwrap_or_else(|e| {
+
+                    fs::write(&path, buffer.data()).unwrap_or_else(|e| {
                         panic!("Error writing pre-lto-bitcode file `{}`: {}",
                                path.display(),
                                e);
@@ -499,11 +493,21 @@ fn thin_lto(cgcx: &CodegenContext,
             write::llvm_err(&diag_handler, "failed to prepare thin LTO context".to_string())
         })?;
 
-        let import_map = ThinLTOImports::from_thin_lto_data(data);
-
-        let data = ThinData(data);
         info!("thin LTO data created");
         timeline.record("data");
+
+        let import_map = if cgcx.incr_comp_session_dir.is_some() {
+            ThinLTOImports::from_thin_lto_data(data)
+        } else {
+            // If we don't compile incrementally, we don't need to load the
+            // import data from LLVM.
+            assert!(green_modules.is_empty());
+            ThinLTOImports::new()
+        };
+        info!("thin LTO import map loaded");
+        timeline.record("import-map-loaded");
+
+        let data = ThinData(data);
 
         // Throw our data in an `Arc` as we'll be sharing it across threads. We
         // also put all memory referenced by the C++ data (buffers, ids, etc)
@@ -519,25 +523,27 @@ fn thin_lto(cgcx: &CodegenContext,
         let mut copy_jobs = vec![];
         let mut opt_jobs = vec![];
 
+        info!("checking which modules can be-reused and which have to be re-optimized.");
         for (module_index, module_name) in shared.module_names.iter().enumerate() {
             let module_name = module_name_to_str(module_name);
 
+            // If the module hasn't changed and none of the modules it imports
+            // from has changed, we can re-use the post-ThinLTO version of the
+            // module.
             if green_modules.contains_key(module_name) {
-                let mut imports_all_green = true;
-                for imported_module in import_map.modules_imported_by(module_name) {
-                    if !green_modules.contains_key(imported_module) {
-                        imports_all_green = false;
-                        break
-                    }
-                }
+                let imports_all_green = import_map.modules_imported_by(module_name)
+                    .iter()
+                    .all(|imported_module| green_modules.contains_key(imported_module));
 
                 if imports_all_green {
                     let work_product = green_modules[module_name].clone();
                     copy_jobs.push(work_product);
+                    info!(" - {}: re-used", module_name);
                     continue
                 }
             }
 
+            info!(" - {}: re-compiled", module_name);
             opt_jobs.push(LtoModuleCodegen::Thin(ThinModule {
                 shared: shared.clone(),
                 idx: module_index,
@@ -872,7 +878,13 @@ pub struct ThinLTOImports {
 }
 
 impl ThinLTOImports {
-    pub fn modules_imported_by(&self, llvm_module_name: &str) -> &[String] {
+    fn new() -> ThinLTOImports {
+        ThinLTOImports {
+            imports: FxHashMap(),
+        }
+    }
+
+    fn modules_imported_by(&self, llvm_module_name: &str) -> &[String] {
         self.imports.get(llvm_module_name).map(|v| &v[..]).unwrap_or(&[])
     }
 

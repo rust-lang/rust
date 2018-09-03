@@ -1311,36 +1311,31 @@ fn execute_work_item(cgcx: &CodegenContext,
                      timeline: &mut Timeline)
     -> Result<WorkItemResult, FatalError>
 {
+    let module_config = cgcx.config(work_item.module_kind());
+
     match work_item {
-        work_item @ WorkItem::Optimize(_) => {
-            execute_optimize_work_item(cgcx, work_item, timeline)
+        WorkItem::Optimize(module) => {
+            execute_optimize_work_item(cgcx, module, module_config, timeline)
         }
-        work_item @ WorkItem::CopyPostLtoArtifacts(_) => {
-            execute_copy_from_cache_work_item(cgcx, work_item, timeline)
+        WorkItem::CopyPostLtoArtifacts(module) => {
+            execute_copy_from_cache_work_item(cgcx, module, module_config, timeline)
         }
-        work_item @ WorkItem::LTO(_) => {
-            execute_lto_work_item(cgcx, work_item, timeline)
+        WorkItem::LTO(module) => {
+            execute_lto_work_item(cgcx, module, module_config, timeline)
         }
     }
 }
 
 fn execute_optimize_work_item(cgcx: &CodegenContext,
-                              work_item: WorkItem,
+                              module: ModuleCodegen,
+                              module_config: &ModuleConfig,
                               timeline: &mut Timeline)
     -> Result<WorkItemResult, FatalError>
 {
-    let config = cgcx.config(work_item.module_kind());
-
-    let module = if let WorkItem::Optimize(module) = work_item {
-        module
-    } else {
-        bug!("execute_optimize_work_item() called with non-WorkItem::Optimize");
-    };
-
     let diag_handler = cgcx.create_diag_handler();
 
     unsafe {
-        optimize(cgcx, &diag_handler, &module, config, timeline)?;
+        optimize(cgcx, &diag_handler, &module, module_config, timeline)?;
     }
 
     let linker_does_lto = cgcx.opts.debugging_opts.cross_lang_lto.enabled();
@@ -1394,25 +1389,18 @@ fn execute_optimize_work_item(cgcx: &CodegenContext,
         Ok(WorkItemResult::NeedsLTO(module))
     } else {
         let module = unsafe {
-            codegen(cgcx, &diag_handler, module, config, timeline)?
+            codegen(cgcx, &diag_handler, module, module_config, timeline)?
         };
         Ok(WorkItemResult::Compiled(module))
     }
 }
 
 fn execute_copy_from_cache_work_item(cgcx: &CodegenContext,
-                                     work_item: WorkItem,
+                                     module: CachedModuleCodegen,
+                                     module_config: &ModuleConfig,
                                      _: &mut Timeline)
     -> Result<WorkItemResult, FatalError>
 {
-    let config = cgcx.config(work_item.module_kind());
-
-    let module = if let WorkItem::CopyPostLtoArtifacts(module) = work_item {
-        module
-    } else {
-        bug!("execute_copy_from_cache_work_item() called with wrong WorkItem kind.")
-    };
-
     let incr_comp_session_dir = cgcx.incr_comp_session_dir
                                     .as_ref()
                                     .unwrap();
@@ -1459,9 +1447,9 @@ fn execute_copy_from_cache_work_item(cgcx: &CodegenContext,
         }
     }
 
-    assert_eq!(object.is_some(), config.emit_obj);
-    assert_eq!(bytecode.is_some(), config.emit_bc);
-    assert_eq!(bytecode_compressed.is_some(), config.emit_bc_compressed);
+    assert_eq!(object.is_some(), module_config.emit_obj);
+    assert_eq!(bytecode.is_some(), module_config.emit_bc);
+    assert_eq!(bytecode_compressed.is_some(), module_config.emit_bc_compressed);
 
     Ok(WorkItemResult::Compiled(CompiledModule {
         name: module.name,
@@ -1473,22 +1461,17 @@ fn execute_copy_from_cache_work_item(cgcx: &CodegenContext,
 }
 
 fn execute_lto_work_item(cgcx: &CodegenContext,
-                         work_item: WorkItem,
+                         mut module: lto::LtoModuleCodegen,
+                         module_config: &ModuleConfig,
                          timeline: &mut Timeline)
     -> Result<WorkItemResult, FatalError>
 {
-    let config = cgcx.config(work_item.module_kind());
+    let diag_handler = cgcx.create_diag_handler();
 
-    if let WorkItem::LTO(mut lto) = work_item {
-        let diag_handler = cgcx.create_diag_handler();
-
-        unsafe {
-            let module = lto.optimize(cgcx, timeline)?;
-            let module = codegen(cgcx, &diag_handler, module, config, timeline)?;
-            Ok(WorkItemResult::Compiled(module))
-        }
-    } else {
-        bug!("execute_lto_work_item() called with wrong WorkItem kind.")
+    unsafe {
+        let module = module.optimize(cgcx, timeline)?;
+        let module = codegen(cgcx, &diag_handler, module, module_config, timeline)?;
+        Ok(WorkItemResult::Compiled(module))
     }
 }
 
