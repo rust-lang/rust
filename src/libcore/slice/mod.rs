@@ -1339,6 +1339,13 @@ impl<T> [T] {
     /// This sort is unstable (i.e. may reorder equal elements), in-place (i.e. does not allocate),
     /// and `O(n log n)` worst-case.
     ///
+    /// The comparator function must define a total ordering for the elements in the slice. If
+    /// the ordering is not total, the order of the elements is unspecified. An order is a
+    /// total order if it is (for all a, b and c):
+    ///
+    /// * total and antisymmetric: exactly one of a < b, a == b or a > b is true; and
+    /// * transitive, a < b and b < c implies a < c. The same must hold for both == and >.
+    ///
     /// # Current implementation
     ///
     /// The current algorithm is based on [pattern-defeating quicksort][pdqsort] by Orson Peters,
