@@ -95,6 +95,7 @@ pub fn foo() {}
   {
     "packages": [
       {
+        "is_member": true,
         "manifest": "$PROJECT_ROOT$/Cargo.toml",
         "name": "foo",
         "targets": [ 0 ]
@@ -102,8 +103,7 @@ pub fn foo() {}
     ],
     "targets": [
       { "kind": "Lib", "name": "foo", "pkg": 0, "root": "$PROJECT_ROOT$/src/lib.rs" }
-    ],
-    "ws_members": [ 0 ]
+    ]
   }
 ]"#
     );
