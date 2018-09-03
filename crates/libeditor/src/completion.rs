@@ -35,11 +35,17 @@ pub fn scope_completion(file: &File, offset: TextUnit) -> Option<Vec<CompletionI
     let mut res = Vec::new();
     if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(file.syntax(), offset) {
         has_completions = true;
-        complete_name_ref(&file, name_ref, &mut res)
+        complete_name_ref(&file, name_ref, &mut res);
+        // special case, `trait T { fn foo(i_am_a_name_ref) {} }`
+        if is_node::<ast::Param>(name_ref.syntax()) {
+            param_completions(name_ref.syntax(), &mut res);
+        }
     }
     if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), offset) {
-        has_completions = true;
-        complete_name(&file, name, &mut res)
+        if is_node::<ast::Param>(name.syntax()) {
+            has_completions = true;
+            param_completions(name.syntax(), &mut res);
+        }
     }
     if has_completions {
         Some(res)
@@ -71,15 +77,12 @@ fn complete_name_ref(file: &File, name_ref: ast::NameRef, acc: &mut Vec<Completi
     }
 }
 
-fn complete_name(_file: &File, name: ast::Name, acc: &mut Vec<CompletionItem>) {
-    if !is_node::<ast::Param>(name.syntax()) {
-        return;
-    }
-
+fn param_completions(ctx: SyntaxNodeRef, acc: &mut Vec<CompletionItem>) {
     let mut params = HashMap::new();
-    for node in ancestors(name.syntax()) {
+    for node in ancestors(ctx) {
         let _ = visitor_ctx(&mut params)
             .visit::<ast::Root, _>(process)
+            .visit::<ast::ItemList, _>(process)
             .accept(node);
     }
     params.into_iter()
@@ -420,16 +423,34 @@ mod tests {
     }
 
     #[test]
-    fn test_param_completion() {
+    fn test_param_completion_last_param() {
         check_scope_completion(r"
             fn foo(file_id: FileId) {}
             fn bar(file_id: FileId) {}
             fn baz(file<|>) {}
         ", r#"[CompletionItem { label: "file_id: FileId", lookup: Some("file_id"), snippet: None }]"#);
+    }
+
+    #[test]
+    fn test_param_completion_nth_param() {
         check_scope_completion(r"
             fn foo(file_id: FileId) {}
             fn bar(file_id: FileId) {}
             fn baz(file<|>, x: i32) {}
         ", r#"[CompletionItem { label: "file_id: FileId", lookup: Some("file_id"), snippet: None }]"#);
+    }
+
+    #[test]
+    fn test_param_completion_trait_param() {
+        check_scope_completion(r"
+            pub(crate) trait SourceRoot {
+                pub fn contains(&self, file_id: FileId) -> bool;
+                pub fn module_map(&self) -> &ModuleMap;
+                pub fn lines(&self, file_id: FileId) -> &LineIndex;
+                pub fn syntax(&self, file<|>)
+            }
+        ", r#"[CompletionItem { label: "self", lookup: None, snippet: None },
+               CompletionItem { label: "SourceRoot", lookup: None, snippet: None },
+               CompletionItem { label: "file_id: FileId", lookup: Some("file_id"), snippet: None }]"#);
     }
 }

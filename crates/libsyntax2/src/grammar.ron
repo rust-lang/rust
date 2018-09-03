@@ -275,6 +275,7 @@ Grammar(
             options: [ "ItemList" ]
         ),
         "ItemList": (
+            traits: [ "FnDefOwner" ],
             collections: [ ["items", "ModuleItem"] ]
         ),
         "ConstDef": ( traits: [

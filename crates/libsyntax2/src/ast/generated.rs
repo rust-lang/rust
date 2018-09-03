@@ -698,6 +698,7 @@ impl<'a> AstNode<'a> for ItemList<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<'a> ast::FnDefOwner<'a> for ItemList<'a> {}
 impl<'a> ItemList<'a> {
     pub fn items(self) -> impl Iterator<Item = ModuleItem<'a>> + 'a {
         super::children(self)
