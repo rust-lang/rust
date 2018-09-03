@@ -8,6 +8,9 @@ pub(super) const TYPE_FIRST: TokenSet =
         paths::PATH_FIRST,
     ];
 
+const TYPE_RECOVERY_SET: TokenSet =
+    token_set![R_PAREN, COMMA];
+
 pub(super) fn type_(p: &mut Parser) {
     match p.current() {
         L_PAREN => paren_or_tuple_type(p),
@@ -23,7 +26,7 @@ pub(super) fn type_(p: &mut Parser) {
         L_ANGLE => path_type(p),
         _ if paths::is_path_start(p) => path_type(p),
         _ => {
-            p.err_and_bump("expected type");
+            p.err_recover("expected type", TYPE_RECOVERY_SET);
         }
     }
 }

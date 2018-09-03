@@ -345,7 +345,8 @@ pub fn handle_completion(
     let items = items.into_iter()
         .map(|item| {
             let mut res = CompletionItem {
-                label: item.name,
+                label: item.label,
+                filter_text: item.lookup,
                 .. Default::default()
             };
             if let Some(snip) = item.snippet {

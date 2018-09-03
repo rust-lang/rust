@@ -32,6 +32,12 @@ pub trait ArgListOwner<'a>: AstNode<'a> {
     }
 }
 
+pub trait FnDefOwner<'a>: AstNode<'a> {
+    fn functions(self) -> Box<Iterator<Item=FnDef<'a>> + 'a> {
+        Box::new(children(self))
+    }
+}
+
 pub trait TypeParamsOwner<'a>: AstNode<'a> {
     fn type_param_list(self) -> Option<TypeParamList<'a>> {
         child_opt(self)

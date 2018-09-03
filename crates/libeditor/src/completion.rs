@@ -1,11 +1,11 @@
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 
 use libsyntax2::{
-    File, TextUnit, AstNode, SyntaxKind::*,
+    File, TextUnit, AstNode, SyntaxNodeRef, SyntaxKind::*,
     ast::{self, LoopBodyOwner},
     algo::{
         ancestors,
-        visit::{visitor, Visitor},
+        visit::{visitor, Visitor, visitor_ctx, VisitorCtx},
     },
     text_utils::is_subrange,
 };
@@ -17,7 +17,11 @@ use {
 
 #[derive(Debug)]
 pub struct CompletionItem {
-    pub name: String,
+    /// What user sees in pop-up
+    pub label: String,
+    /// What string is used for filtering, defaults to label
+    pub lookup: Option<String>,
+    /// What is inserted, defaults to label
     pub snippet: Option<String>
 }
 
@@ -27,39 +31,88 @@ pub fn scope_completion(file: &File, offset: TextUnit) -> Option<Vec<CompletionI
         let edit = AtomEdit::insert(offset, "intellijRulezz".to_string());
         file.reparse(&edit)
     };
-    let name_ref = find_node_at_offset::<ast::NameRef>(file.syntax(), offset)?;
-    if !is_single_segment(name_ref) {
-        return None;
-    }
-
+    let mut has_completions = false;
     let mut res = Vec::new();
+    if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(file.syntax(), offset) {
+        has_completions = true;
+        complete_name_ref(&file, name_ref, &mut res)
+    }
+    if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), offset) {
+        has_completions = true;
+        complete_name(&file, name, &mut res)
+    }
+    if has_completions {
+        Some(res)
+    } else {
+        None
+    }
+}
+
+fn complete_name_ref(file: &File, name_ref: ast::NameRef, acc: &mut Vec<CompletionItem>) {
+    if !is_node::<ast::Path>(name_ref.syntax()) {
+        return;
+    }
     if let Some(fn_def) = ancestors(name_ref.syntax()).filter_map(ast::FnDef::cast).next() {
-        complete_expr_keywords(&file, fn_def, name_ref, &mut res);
+        complete_expr_keywords(&file, fn_def, name_ref, acc);
         let scopes = FnScopes::new(fn_def);
-        complete_fn(name_ref, &scopes, &mut res);
+        complete_fn(name_ref, &scopes, acc);
     }
     if let Some(root) = ancestors(name_ref.syntax()).filter_map(ast::Root::cast).next() {
         let scope = ModuleScope::new(root);
-        res.extend(
+        acc.extend(
             scope.entries().iter()
                 .filter(|entry| entry.syntax() != name_ref.syntax())
                 .map(|entry| CompletionItem {
-                    name: entry.name().to_string(),
+                    label: entry.name().to_string(),
+                    lookup: None,
                     snippet: None,
                 })
         );
     }
-    Some(res)
 }
 
-fn is_single_segment(name_ref: ast::NameRef) -> bool {
-    match ancestors(name_ref.syntax()).filter_map(ast::Path::cast).next() {
-        None => false,
-        Some(path) => {
-            path.syntax().range() == name_ref.syntax().range()
-        }
+fn complete_name(_file: &File, name: ast::Name, acc: &mut Vec<CompletionItem>) {
+    if !is_node::<ast::Param>(name.syntax()) {
+        return;
+    }
+
+    let mut params = HashMap::new();
+    for node in ancestors(name.syntax()) {
+        let _ = visitor_ctx(&mut params)
+            .visit::<ast::Root, _>(process)
+            .accept(node);
+    }
+    params.into_iter()
+        .filter_map(|(label, (count, param))| {
+            let lookup = param.pat()?.syntax().text().to_string();
+            if count < 2 { None } else { Some((label, lookup)) }
+        })
+        .for_each(|(label, lookup)| {
+            acc.push(CompletionItem {
+                label, lookup: Some(lookup), snippet: None
+            })
+        });
+
+    fn process<'a, N: ast::FnDefOwner<'a>>(node: N, params: &mut HashMap<String, (u32, ast::Param<'a>)>) {
+        node.functions()
+            .filter_map(|it| it.param_list())
+            .flat_map(|it| it.params())
+            .for_each(|param| {
+                let text = param.syntax().text().to_string();
+                params.entry(text)
+                      .or_insert((0, param))
+                      .0 += 1;
+            })
     }
 }
+
+fn is_node<'a, N: AstNode<'a>>(node: SyntaxNodeRef<'a>) -> bool {
+    match ancestors(node).filter_map(N::cast).next() {
+        None => false,
+        Some(n) => n.syntax().range() == node.range(),
+    }
+}
+
 
 fn complete_expr_keywords(file: &File, fn_def: ast::FnDef, name_ref: ast::NameRef, acc: &mut Vec<CompletionItem>) {
     acc.push(keyword("if", "if $0 {}"));
@@ -127,7 +180,8 @@ fn complete_return(fn_def: ast::FnDef, name_ref: ast::NameRef) -> Option<Complet
 
 fn keyword(kw: &str, snip: &str) -> CompletionItem {
     CompletionItem {
-        name: kw.to_string(),
+        label: kw.to_string(),
+        lookup: None,
         snippet: Some(snip.to_string()),
     }
 }
@@ -139,13 +193,15 @@ fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<Completi
             .flat_map(|scope| scopes.entries(scope).iter())
             .filter(|entry| shadowed.insert(entry.name()))
             .map(|entry| CompletionItem {
-                name: entry.name().to_string(),
+                label: entry.name().to_string(),
+                lookup: None,
                 snippet: None,
             })
     );
     if scopes.self_param.is_some() {
         acc.push(CompletionItem {
-            name: "self".to_string(),
+            label: "self".to_string(),
+            lookup: None,
             snippet: None,
         })
     }
@@ -186,9 +242,9 @@ mod tests {
                 1 + <|>;
                 let z = ();
             }
-            ", r#"[CompletionItem { name: "y", snippet: None },
-                   CompletionItem { name: "x", snippet: None },
-                   CompletionItem { name: "quux", snippet: None }]"#);
+            ", r#"[CompletionItem { label: "y", lookup: None, snippet: None },
+                   CompletionItem { label: "x", lookup: None, snippet: None },
+                   CompletionItem { label: "quux", lookup: None, snippet: None }]"#);
     }
 
     #[test]
@@ -203,9 +259,9 @@ mod tests {
                     1 + <|>
                 }
             }
-            ", r#"[CompletionItem { name: "b", snippet: None },
-                   CompletionItem { name: "a", snippet: None },
-                   CompletionItem { name: "quux", snippet: None }]"#);
+            ", r#"[CompletionItem { label: "b", lookup: None, snippet: None },
+                   CompletionItem { label: "a", lookup: None, snippet: None },
+                   CompletionItem { label: "quux", lookup: None, snippet: None }]"#);
     }
 
     #[test]
@@ -216,8 +272,8 @@ mod tests {
                     <|>
                 }
             }
-            ", r#"[CompletionItem { name: "x", snippet: None },
-                   CompletionItem { name: "quux", snippet: None }]"#);
+            ", r#"[CompletionItem { label: "x", lookup: None, snippet: None },
+                   CompletionItem { label: "quux", lookup: None, snippet: None }]"#);
     }
 
     #[test]
@@ -228,9 +284,9 @@ mod tests {
             fn quux() {
                 <|>
             }
-            ", r#"[CompletionItem { name: "Foo", snippet: None },
-                   CompletionItem { name: "Baz", snippet: None },
-                   CompletionItem { name: "quux", snippet: None }]"#);
+            ", r#"[CompletionItem { label: "Foo", lookup: None, snippet: None },
+                   CompletionItem { label: "Baz", lookup: None, snippet: None },
+                   CompletionItem { label: "quux", lookup: None, snippet: None }]"#);
     }
 
     #[test]
@@ -245,8 +301,8 @@ mod tests {
         check_scope_completion(r"
             struct Foo;
             fn x() -> <|>
-        ", r#"[CompletionItem { name: "Foo", snippet: None },
-               CompletionItem { name: "x", snippet: None }]"#)
+        ", r#"[CompletionItem { label: "Foo", lookup: None, snippet: None },
+               CompletionItem { label: "x", lookup: None, snippet: None }]"#)
     }
 
     #[test]
@@ -259,15 +315,15 @@ mod tests {
                     <|>
                 }
             }
-        ", r#"[CompletionItem { name: "bar", snippet: None },
-               CompletionItem { name: "foo", snippet: None }]"#)
+        ", r#"[CompletionItem { label: "bar", lookup: None, snippet: None },
+               CompletionItem { label: "foo", lookup: None, snippet: None }]"#)
     }
 
     #[test]
     fn test_complete_self() {
         check_scope_completion(r"
             impl S { fn foo(&self) { <|> } }
-        ", r#"[CompletionItem { name: "self", snippet: None }]"#)
+        ", r#"[CompletionItem { label: "self", lookup: None, snippet: None }]"#)
     }
 
     #[test]
@@ -276,11 +332,11 @@ mod tests {
             fn quux() {
                 <|>
             }
-            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 {}") },
-                   CompletionItem { name: "match", snippet: Some("match $0 {}") },
-                   CompletionItem { name: "while", snippet: Some("while $0 {}") },
-                   CompletionItem { name: "loop", snippet: Some("loop {$0}") },
-                   CompletionItem { name: "return", snippet: Some("return") }]"#);
+            ", r#"[CompletionItem { label: "if", lookup: None, snippet: Some("if $0 {}") },
+                   CompletionItem { label: "match", lookup: None, snippet: Some("match $0 {}") },
+                   CompletionItem { label: "while", lookup: None, snippet: Some("while $0 {}") },
+                   CompletionItem { label: "loop", lookup: None, snippet: Some("loop {$0}") },
+                   CompletionItem { label: "return", lookup: None, snippet: Some("return") }]"#);
     }
 
     #[test]
@@ -291,13 +347,13 @@ mod tests {
                     ()
                 } <|>
             }
-            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 {}") },
-                   CompletionItem { name: "match", snippet: Some("match $0 {}") },
-                   CompletionItem { name: "while", snippet: Some("while $0 {}") },
-                   CompletionItem { name: "loop", snippet: Some("loop {$0}") },
-                   CompletionItem { name: "else", snippet: Some("else {$0}") },
-                   CompletionItem { name: "else if", snippet: Some("else if $0 {}") },
-                   CompletionItem { name: "return", snippet: Some("return") }]"#);
+            ", r#"[CompletionItem { label: "if", lookup: None, snippet: Some("if $0 {}") },
+                   CompletionItem { label: "match", lookup: None, snippet: Some("match $0 {}") },
+                   CompletionItem { label: "while", lookup: None, snippet: Some("while $0 {}") },
+                   CompletionItem { label: "loop", lookup: None, snippet: Some("loop {$0}") },
+                   CompletionItem { label: "else", lookup: None, snippet: Some("else {$0}") },
+                   CompletionItem { label: "else if", lookup: None, snippet: Some("else if $0 {}") },
+                   CompletionItem { label: "return", lookup: None, snippet: Some("return") }]"#);
     }
 
     #[test]
@@ -307,21 +363,21 @@ mod tests {
                 <|>
                 92
             }
-            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 {}") },
-                   CompletionItem { name: "match", snippet: Some("match $0 {}") },
-                   CompletionItem { name: "while", snippet: Some("while $0 {}") },
-                   CompletionItem { name: "loop", snippet: Some("loop {$0}") },
-                   CompletionItem { name: "return", snippet: Some("return $0;") }]"#);
+            ", r#"[CompletionItem { label: "if", lookup: None, snippet: Some("if $0 {}") },
+                   CompletionItem { label: "match", lookup: None, snippet: Some("match $0 {}") },
+                   CompletionItem { label: "while", lookup: None, snippet: Some("while $0 {}") },
+                   CompletionItem { label: "loop", lookup: None, snippet: Some("loop {$0}") },
+                   CompletionItem { label: "return", lookup: None, snippet: Some("return $0;") }]"#);
         check_snippet_completion(r"
             fn quux() {
                 <|>
                 92
             }
-            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 {}") },
-                   CompletionItem { name: "match", snippet: Some("match $0 {}") },
-                   CompletionItem { name: "while", snippet: Some("while $0 {}") },
-                   CompletionItem { name: "loop", snippet: Some("loop {$0}") },
-                   CompletionItem { name: "return", snippet: Some("return;") }]"#);
+            ", r#"[CompletionItem { label: "if", lookup: None, snippet: Some("if $0 {}") },
+                   CompletionItem { label: "match", lookup: None, snippet: Some("match $0 {}") },
+                   CompletionItem { label: "while", lookup: None, snippet: Some("while $0 {}") },
+                   CompletionItem { label: "loop", lookup: None, snippet: Some("loop {$0}") },
+                   CompletionItem { label: "return", lookup: None, snippet: Some("return;") }]"#);
     }
 
     #[test]
@@ -332,11 +388,11 @@ mod tests {
                     () => <|>
                 }
             }
-            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 {}") },
-                   CompletionItem { name: "match", snippet: Some("match $0 {}") },
-                   CompletionItem { name: "while", snippet: Some("while $0 {}") },
-                   CompletionItem { name: "loop", snippet: Some("loop {$0}") },
-                   CompletionItem { name: "return", snippet: Some("return $0") }]"#);
+            ", r#"[CompletionItem { label: "if", lookup: None, snippet: Some("if $0 {}") },
+                   CompletionItem { label: "match", lookup: None, snippet: Some("match $0 {}") },
+                   CompletionItem { label: "while", lookup: None, snippet: Some("while $0 {}") },
+                   CompletionItem { label: "loop", lookup: None, snippet: Some("loop {$0}") },
+                   CompletionItem { label: "return", lookup: None, snippet: Some("return $0") }]"#);
     }
 
     #[test]
@@ -345,21 +401,35 @@ mod tests {
             fn quux() -> i32 {
                 loop { <|> }
             }
-            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 {}") },
-                   CompletionItem { name: "match", snippet: Some("match $0 {}") },
-                   CompletionItem { name: "while", snippet: Some("while $0 {}") },
-                   CompletionItem { name: "loop", snippet: Some("loop {$0}") },
-                   CompletionItem { name: "continue", snippet: Some("continue") },
-                   CompletionItem { name: "break", snippet: Some("break") },
-                   CompletionItem { name: "return", snippet: Some("return $0") }]"#);
+            ", r#"[CompletionItem { label: "if", lookup: None, snippet: Some("if $0 {}") },
+                   CompletionItem { label: "match", lookup: None, snippet: Some("match $0 {}") },
+                   CompletionItem { label: "while", lookup: None, snippet: Some("while $0 {}") },
+                   CompletionItem { label: "loop", lookup: None, snippet: Some("loop {$0}") },
+                   CompletionItem { label: "continue", lookup: None, snippet: Some("continue") },
+                   CompletionItem { label: "break", lookup: None, snippet: Some("break") },
+                   CompletionItem { label: "return", lookup: None, snippet: Some("return $0") }]"#);
         check_snippet_completion(r"
             fn quux() -> i32 {
                 loop { || { <|> } }
             }
-            ", r#"[CompletionItem { name: "if", snippet: Some("if $0 {}") },
-                   CompletionItem { name: "match", snippet: Some("match $0 {}") },
-                   CompletionItem { name: "while", snippet: Some("while $0 {}") },
-                   CompletionItem { name: "loop", snippet: Some("loop {$0}") },
-                   CompletionItem { name: "return", snippet: Some("return $0") }]"#);
+            ", r#"[CompletionItem { label: "if", lookup: None, snippet: Some("if $0 {}") },
+                   CompletionItem { label: "match", lookup: None, snippet: Some("match $0 {}") },
+                   CompletionItem { label: "while", lookup: None, snippet: Some("while $0 {}") },
+                   CompletionItem { label: "loop", lookup: None, snippet: Some("loop {$0}") },
+                   CompletionItem { label: "return", lookup: None, snippet: Some("return $0") }]"#);
+    }
+
+    #[test]
+    fn test_param_completion() {
+        check_scope_completion(r"
+            fn foo(file_id: FileId) {}
+            fn bar(file_id: FileId) {}
+            fn baz(file<|>) {}
+        ", r#"[CompletionItem { label: "file_id: FileId", lookup: Some("file_id"), snippet: None }]"#);
+        check_scope_completion(r"
+            fn foo(file_id: FileId) {}
+            fn bar(file_id: FileId) {}
+            fn baz(file<|>, x: i32) {}
+        ", r#"[CompletionItem { label: "file_id: FileId", lookup: Some("file_id"), snippet: None }]"#);
     }
 }

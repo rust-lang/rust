@@ -682,6 +682,28 @@ impl<'a> AstNode<'a> for IndexExpr<'a> {
 
 impl<'a> IndexExpr<'a> {}
 
+// ItemList
+#[derive(Debug, Clone, Copy)]
+pub struct ItemList<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for ItemList<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            ITEM_LIST => Some(ItemList { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> ItemList<'a> {
+    pub fn items(self) -> impl Iterator<Item = ModuleItem<'a>> + 'a {
+        super::children(self)
+    }
+}
+
 // Label
 #[derive(Debug, Clone, Copy)]
 pub struct Label<'a> {
@@ -956,9 +978,9 @@ impl<'a> AstNode<'a> for Module<'a> {
 
 impl<'a> ast::NameOwner<'a> for Module<'a> {}
 impl<'a> ast::AttrsOwner<'a> for Module<'a> {}
-impl<'a> Module<'a> {
-    pub fn items(self) -> impl Iterator<Item = ModuleItem<'a>> + 'a {
-        super::children(self)
+impl<'a> ast::FnDefOwner<'a> for Module<'a> {}
+impl<'a> Module<'a> {pub fn item_list(self) -> Option<ItemList<'a>> {
+        super::child_opt(self)
     }
 }
 
@@ -1593,12 +1615,9 @@ impl<'a> AstNode<'a> for Root<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<'a> ast::FnDefOwner<'a> for Root<'a> {}
 impl<'a> Root<'a> {
     pub fn items(self) -> impl Iterator<Item = ModuleItem<'a>> + 'a {
-        super::children(self)
-    }
-
-    pub fn functions(self) -> impl Iterator<Item = FnDef<'a>> + 'a {
         super::children(self)
     }
 

@@ -23,7 +23,7 @@ pub(super) fn pattern(p: &mut Parser) {
 }
 
 const PAT_RECOVERY_SET: TokenSet =
-    token_set![LET_KW, IF_KW, WHILE_KW, LOOP_KW, MATCH_KW];
+    token_set![LET_KW, IF_KW, WHILE_KW, LOOP_KW, MATCH_KW, R_PAREN, COMMA];
 
 
 fn atom_pat(p: &mut Parser) -> Option<CompletedMarker> {
