@@ -30,6 +30,11 @@ impl SmolStr {
     pub fn to_string(&self) -> String {
         self.as_str().to_string()
     }
+
+    #[inline(always)]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
 }
 
 impl Deref for SmolStr {
@@ -163,6 +168,20 @@ impl Repr {
         }
 
         Repr::Heap(text.into().into_boxed_str().into())
+    }
+
+    fn len(&self) -> usize {
+        match self {
+            Repr::Heap(data) => data.len(),
+            Repr::Inline { len, buf } => {
+                if *len == WS_TAG {
+                    let newlines = buf[0] as usize;
+                    let spaces = buf[1] as usize;
+                    return newlines + spaces;
+                }
+                *len as usize
+            }
+        }
     }
 
     fn as_str(&self) -> &str {

@@ -20,29 +20,32 @@ fn assert_traits() {
     f::<SmolStr>();
 }
 
+fn check_props(s: &str) -> Result<(), proptest::test_runner::TestCaseError> {
+    let smol = SmolStr::new(s);
+    prop_assert_eq!(smol.as_str(), s);
+    prop_assert_eq!(smol.len(), s.len());
+    Ok(())
+}
+
 proptest! {
     #[test]
     fn roundtrip(s: String) {
-        let smol = SmolStr::new(s.as_str());
-        prop_assert_eq!(smol.as_str(), s.as_str());
+        check_props(s.as_str())?;
     }
 
     #[test]
     fn roundtrip_spaces(s in r"( )*") {
-        let smol = SmolStr::new(s.as_str());
-        prop_assert_eq!(smol.as_str(), s.as_str());
+        check_props(s.as_str())?;
     }
 
     #[test]
     fn roundtrip_newlines(s in r"\n*") {
-        let smol = SmolStr::new(s.as_str());
-        prop_assert_eq!(smol.as_str(), s.as_str());
+        check_props(s.as_str())?;
     }
 
     #[test]
     fn roundtrip_ws(s in r"( |\n)*") {
-        let smol = SmolStr::new(s.as_str());
-        prop_assert_eq!(smol.as_str(), s.as_str());
+        check_props(s.as_str())?;
     }
 }
 
