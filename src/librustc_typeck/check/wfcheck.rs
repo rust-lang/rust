@@ -308,10 +308,12 @@ fn check_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &hir::Item) {
     let trait_def = tcx.trait_def(trait_def_id);
     if trait_def.is_marker {
         for associated_def_id in &*tcx.associated_item_def_ids(trait_def_id) {
-            tcx.sess.struct_span_err(
-                    tcx.def_span(*associated_def_id),
-                    "marker traits cannot have associated items",
-                ).emit();
+            struct_span_err!(
+                tcx.sess,
+                tcx.def_span(*associated_def_id),
+                E0714,
+                "marker traits cannot have associated items",
+            ).emit();
         }
     }
 

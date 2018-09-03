@@ -123,22 +123,17 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         match target {
             Target::Trait => { /* Valid */ },
             _ => {
-                struct_span_err!(self.tcx.sess,
-                                 attr.span,
-                                 E0713,
-                                 "attribute can only be applied to a trait")
+                self.tcx.sess
+                    .struct_span_err(attr.span, "attribute can only be applied to a trait")
                     .span_label(item.span, "not a trait")
                     .emit();
                 return;
             }
         }
 
-        if attr.meta_item_list().is_some() || attr.value_str().is_some() {
-            struct_span_err!(self.tcx.sess,
-                             attr.span,
-                             E0714,
-                             "attribute should be empty")
-                .span_label(item.span, "not empty")
+        if !attr.is_word() {
+            self.tcx.sess
+                .struct_span_err(attr.span, "attribute should be empty")
                 .emit();
         }
     }

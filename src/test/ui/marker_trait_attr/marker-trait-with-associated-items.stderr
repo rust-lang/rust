@@ -1,34 +1,34 @@
-error: marker traits cannot have associated items
+error[E0714]: marker traits cannot have associated items
   --> $DIR/marker-trait-with-associated-items.rs:16:5
    |
 LL |     const N: usize;
    |     ^^^^^^^^^^^^^^^
 
-error: marker traits cannot have associated items
+error[E0714]: marker traits cannot have associated items
   --> $DIR/marker-trait-with-associated-items.rs:22:5
    |
 LL |     type Output;
    |     ^^^^^^^^^^^^
 
-error: marker traits cannot have associated items
+error[E0714]: marker traits cannot have associated items
   --> $DIR/marker-trait-with-associated-items.rs:28:5
    |
 LL |     fn foo();
    |     ^^^^^^^^^
 
-error: marker traits cannot have associated items
+error[E0714]: marker traits cannot have associated items
   --> $DIR/marker-trait-with-associated-items.rs:34:5
    |
 LL |     const N: usize = 43;
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: marker traits cannot have associated items
+error[E0714]: marker traits cannot have associated items
   --> $DIR/marker-trait-with-associated-items.rs:40:5
    |
 LL |     type Output = ();
    |     ^^^^^^^^^^^^^^^^^
 
-error: marker traits cannot have associated items
+error[E0714]: marker traits cannot have associated items
   --> $DIR/marker-trait-with-associated-items.rs:46:5
    |
 LL |     fn foo() {}
@@ -36,3 +36,4 @@ LL |     fn foo() {}
 
 error: aborting due to 6 previous errors
 
+For more information about this error, try `rustc --explain E0714`.

@@ -4750,6 +4750,22 @@ ambiguity for some types, we disallow calling methods on raw pointers when
 the type is unknown.
 "##,
 
+E0714: r##"
+A `#[marker]` trait contained an associated item.
+
+The items of marker traits cannot be overridden, so there's no need to have them
+when they cannot be changed per-type anyway.  If you wanted them for ergonomic
+reasons, consider making an extension trait instead.
+"##,
+
+E0715: r##"
+An `impl` for a `#[marker]` trait tried to override an associated item.
+
+Because marker traits are allowed to have multiple implementations for the same
+type, it's not allowed to override anything in those implementations, as it
+would be ambiguous which override should actually be used.
+"##,
+
 }
 
 register_diagnostics! {
@@ -4833,5 +4849,4 @@ register_diagnostics! {
     E0641, // cannot cast to/from a pointer with an unknown kind
     E0645, // trait aliases not finished
     E0698, // type inside generator must be known in this context
-    E0715, // impls for marker traits cannot contain items
 }
