@@ -3707,6 +3707,7 @@ Basic usage
 assert_eq!(0x10", stringify!($SelfT), ".overflowing_shr(132), (0x1, true));", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_int_overflowing")]
             #[inline]
             #[cfg(not(stage0))]
             pub const fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
