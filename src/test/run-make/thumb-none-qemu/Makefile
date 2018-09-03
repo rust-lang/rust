@@ -11,14 +11,16 @@ RUSTC := $(RUSTC_ORIGINAL)
 LD_LIBRARY_PATH := $(HOST_RPATH_DIR)
 # We need to be outside of 'src' dir in order to run cargo
 WORK_DIR := $(TMPDIR)
-
 HERE := $(shell pwd)
 
+
+# hint: we could set variables per $(TARGET) basis in order to support other targets.
 CRATE := lm3s6965evb
 CRATE_URL := https://github.com/japaric/lm3s6965evb
 CRATE_SHA1 := 9eeea58826438e84d89e9691a1bb0f85b03d377c
 QEMU_CPU := cortex-m3
 QEMU_MACHINE := lm3s6965evb
+QEMU_OUTPUT_TEXT := "x = 42"
 
 all:
 	env
@@ -32,7 +34,7 @@ all:
        	-semihosting-config enable=on,target=native \
        	-nographic \
        	-kernel target/$(TARGET)/debug/$(CRATE) > out.txt
-	cd $(WORK_DIR)/$(CRATE) && grep "x = 42" out.txt	
+	cd $(WORK_DIR)/$(CRATE) && grep $(QEMU_OUTPUT_TEXT) out.txt	
 else
 
 all:
