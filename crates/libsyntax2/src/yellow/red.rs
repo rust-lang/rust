@@ -5,7 +5,28 @@ use {yellow::{GreenNode, RedPtr}, TextUnit};
 pub(crate) struct RedNode {
     green: GreenNode,
     parent: Option<ParentData>,
-    children: RwLock<Box<[Option<RedNode>]>>,
+    children: RwLock<Box<[RedChild]>>,
+}
+
+#[derive(Debug)]
+enum RedChild {
+    Zigot(TextUnit),
+    Child(RedNode)
+}
+
+impl RedChild {
+    fn set(&mut self, node: RedNode) -> &RedNode {
+        match self {
+            RedChild::Child(node) => return node,
+            RedChild::Zigot(_) => {
+                *self = RedChild::Child(node);
+                match self {
+                    RedChild::Child(node) => return node,
+                    RedChild::Zigot(_) => unreachable!()
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -35,9 +56,14 @@ impl RedNode {
     }
 
     fn new(green: GreenNode, parent: Option<ParentData>) -> RedNode {
-        let n_children = green.children().len();
-        let children = (0..n_children)
-            .map(|_| None)
+        let start_offset = parent.as_ref().map(|it| it.start_offset).unwrap_or(0.into());
+        let children = green.children()
+            .iter()
+            .scan(start_offset, |start_offset, child| {
+                let res = RedChild::Zigot(*start_offset);
+                *start_offset += child.text_len();
+                Some(res)
+            })
             .collect::<Vec<_>>()
             .into_boxed_slice();
         RedNode {
@@ -66,23 +92,16 @@ impl RedNode {
         if idx >= self.n_children() {
             return None;
         }
-        match &self.children.read()[idx] {
-            Some(child) => return Some(RedPtr::new(child)),
-            None => (),
+        let start_offset = match &self.children.read()[idx] {
+            RedChild::Child(child) => return Some(RedPtr::new(child)),
+            RedChild::Zigot(start_offset) => *start_offset,
         };
         let green_children = self.green.children();
-        let start_offset = self.start_offset()
-            + green_children[..idx]
-            .iter()
-            .map(|x| x.text_len())
-            .sum::<TextUnit>();
         let child =
             RedNode::new_child(green_children[idx].clone(), RedPtr::new(self), start_offset, idx);
         let mut children = self.children.write();
-        if children[idx].is_none() {
-            children[idx] = Some(child)
-        }
-        Some(RedPtr::new(children[idx].as_ref().unwrap()))
+        let child = children[idx].set(child);
+        Some(RedPtr::new(child))
     }
 
     pub(crate) fn parent(&self) -> Option<RedPtr> {
