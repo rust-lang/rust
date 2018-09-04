@@ -1,6 +1,8 @@
 error: incorrect close delimiter: `}`
   --> $DIR/token-error-correct-3.rs:30:9
    |
+LL |         if !is_directory(path.as_ref()) { //~ ERROR: cannot find function `is_directory`
+   |                                         - close delimiter possibly meant for this
 LL |             callback(path.as_ref(); //~ ERROR expected one of
    |                     - un-closed delimiter
 ...

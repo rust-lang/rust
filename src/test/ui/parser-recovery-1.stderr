@@ -3,6 +3,11 @@ error: this file contains an un-closed delimiter
    |
 LL | trait Foo {
    |           - un-closed delimiter
+LL |     fn bar() {
+   |              - this might be the culprit...
+...
+LL | }
+   | - ...as it matches this but it has different indentation
 ...
 LL | } //~ ERROR this file contains an un-closed delimiter
    |                                                       ^

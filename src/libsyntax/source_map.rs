@@ -251,17 +251,18 @@ impl SourceMap {
     /// crate. The source code of such an "imported source_file" is not available,
     /// but we still know enough to generate accurate debuginfo location
     /// information for things inlined from other crates.
-    pub fn new_imported_source_file(&self,
-                                filename: FileName,
-                                name_was_remapped: bool,
-                                crate_of_origin: u32,
-                                src_hash: u128,
-                                name_hash: u128,
-                                source_len: usize,
-                                mut file_local_lines: Vec<BytePos>,
-                                mut file_local_multibyte_chars: Vec<MultiByteChar>,
-                                mut file_local_non_narrow_chars: Vec<NonNarrowChar>)
-                                -> Lrc<SourceFile> {
+    pub fn new_imported_source_file(
+        &self,
+        filename: FileName,
+        name_was_remapped: bool,
+        crate_of_origin: u32,
+        src_hash: u128,
+        name_hash: u128,
+        source_len: usize,
+        mut file_local_lines: Vec<BytePos>,
+        mut file_local_multibyte_chars: Vec<MultiByteChar>,
+        mut file_local_non_narrow_chars: Vec<NonNarrowChar>,
+    ) -> Lrc<SourceFile> {
         let start_pos = self.next_start_pos();
 
         let end_pos = Pos::from_usize(start_pos + source_len);
@@ -576,6 +577,15 @@ impl SourceMap {
     pub fn span_to_snippet(&self, sp: Span) -> Result<String, SpanSnippetError> {
         self.span_to_source(sp, |src, start_index, end_index| src[start_index..end_index]
                                                                 .to_string())
+    }
+
+    pub fn span_to_margin(&self, sp: Span) -> Option<usize> {
+        match self.span_to_prev_source(sp) {
+            Err(_) => None,
+            Ok(source) => source.split('\n').last().map(|last_line| {
+                last_line.len() - last_line.trim_left().len()
+            })
+        }
     }
 
     /// Return the source snippet as `String` before the given `Span`

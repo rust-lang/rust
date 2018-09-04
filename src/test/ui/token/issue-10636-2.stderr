@@ -1,6 +1,8 @@
 error: incorrect close delimiter: `}`
   --> $DIR/issue-10636-2.rs:18:1
    |
+LL | pub fn trace_option(option: Option<isize>) {
+   |                                            - close delimiter possibly meant for this
 LL |     option.map(|some| 42;
    |               - un-closed delimiter
 ...

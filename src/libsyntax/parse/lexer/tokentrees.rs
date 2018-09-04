@@ -52,6 +52,20 @@ impl<'a> StringReader<'a> {
                     err.span_label(sp, "un-closed delimiter");
                 }
 
+                if let Some((delim, _)) = self.open_braces.last() {
+                    if let Some((d, open_sp, close_sp)) = self.suspicious_open_spans.iter()
+                        .filter(|(d, _, _)| delim == d)
+                        .next()  // these are in reverse order as they get inserted on close, but
+                    {            // we want the last open/first close
+                        if d == delim {
+                            err.span_label(*open_sp, "this might be the culprit...");
+                            err.span_label(
+                                *close_sp,
+                                "...as it matches this but it has different indentation",
+                            );
+                        }
+                    }
+                }
                 Err(err)
             },
             token::OpenDelim(delim) => {
@@ -70,11 +84,20 @@ impl<'a> StringReader<'a> {
                 // Expand to cover the entire delimited token tree
                 let span = pre_span.with_hi(self.span.hi());
 
+                let sm = self.sess.source_map();
                 match self.token {
                     // Correct delimiter.
                     token::CloseDelim(d) if d == delim => {
-                        self.open_braces.pop().unwrap();
-
+                        let (open_brace, open_brace_span) = self.open_braces.pop().unwrap();
+                        if let Some(current_padding) = sm.span_to_margin(self.span) {
+                            if let Some(padding) = sm.span_to_margin(open_brace_span) {
+                                if current_padding != padding {
+                                    self.suspicious_open_spans.push(
+                                        (open_brace, open_brace_span, self.span),
+                                    );
+                                }
+                            }
+                        }
                         // Parse the close delimiter.
                         self.real_token();
                     }
@@ -96,6 +119,19 @@ impl<'a> StringReader<'a> {
                             if let Some(&(_, sp)) = self.open_braces.last() {
                                 err.span_label(sp, "un-closed delimiter");
                             };
+                            if let Some(current_padding) = sm.span_to_margin(self.span) {
+                                for (brace, brace_span) in &self.open_braces {
+                                    if let Some(padding) = sm.span_to_margin(*brace_span) {
+                                        // high likelihood of these two corresponding
+                                        if current_padding == padding && brace == &other {
+                                            err.span_label(
+                                                *brace_span,
+                                                "close delimiter possibly meant for this",
+                                            );
+                                        }
+                                    }
+                                }
+                            }
                             err.emit();
                         }
                         self.open_braces.pop().unwrap();
