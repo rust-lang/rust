@@ -56,13 +56,13 @@ impl RedNode {
     }
 
     fn new(green: GreenNode, parent: Option<ParentData>) -> RedNode {
-        let start_offset = parent.as_ref().map(|it| it.start_offset).unwrap_or(0.into());
+        let mut start_offset = parent.as_ref().map(|it| it.start_offset).unwrap_or(0.into());
         let children = green.children()
             .iter()
-            .scan(start_offset, |start_offset, child| {
-                let res = RedChild::Zigot(*start_offset);
-                *start_offset += child.text_len();
-                Some(res)
+            .map(|child| {
+                let off = start_offset;
+                start_offset += child.text_len();
+                RedChild::Zigot(off)
             })
             .collect::<Vec<_>>()
             .into_boxed_slice();
