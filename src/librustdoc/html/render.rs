@@ -2300,17 +2300,21 @@ fn document_non_exhaustive(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::R
 }
 
 fn name_key(name: &str) -> (&str, u64, usize) {
+    let end = name.bytes()
+        .rposition(|b| b.is_ascii_digit()).map_or(name.len(), |i| i + 1);
+
     // find number at end
-    let split = name.bytes().rposition(|b| b < b'0' || b'9' < b).map_or(0, |s| s + 1);
+    let split = name[0..end].bytes()
+        .rposition(|b| !b.is_ascii_digit()).map_or(0, |i| i + 1);
 
     // count leading zeroes
     let after_zeroes =
-        name[split..].bytes().position(|b| b != b'0').map_or(name.len(), |extra| split + extra);
+        name[split..end].bytes().position(|b| b != b'0').map_or(name.len(), |extra| split + extra);
 
     // sort leading zeroes last
     let num_zeroes = after_zeroes - split;
 
-    match name[split..].parse() {
+    match name[split..end].parse() {
         Ok(n) => (&name[..split], n, num_zeroes),
         Err(_) => (name, 0, num_zeroes),
     }
@@ -2701,6 +2705,14 @@ fn bounds(t_bounds: &[clean::GenericBound]) -> String {
     bounds
 }
 
+fn compare_impl<'a, 'b>(lhs: &'a &&Impl, rhs: &'b &&Impl) -> Ordering {
+    let lhs = format!("{}", lhs.inner_impl());
+    let rhs = format!("{}", rhs.inner_impl());
+
+    // lhs and rhs are formatted as HTML, which may be unnecessary
+    name_key(&lhs).cmp(&name_key(&rhs))
+}
+
 fn item_trait(
     w: &mut fmt::Formatter,
     cx: &Context,
@@ -2904,8 +2916,11 @@ fn item_trait(
                                          .map_or(true, |d| cache.paths.contains_key(&d)));
 
 
-        let (synthetic, concrete): (Vec<&&Impl>, Vec<&&Impl>) = local.iter()
+        let (mut synthetic, mut concrete): (Vec<&&Impl>, Vec<&&Impl>) = local.iter()
             .partition(|i| i.inner_impl().synthetic);
+
+        synthetic.sort_by(compare_impl);
+        concrete.sort_by(compare_impl);
 
         if !foreign.is_empty() {
             write!(w, "
@@ -4715,6 +4730,7 @@ fn test_name_sorting() {
                  "Fruit1", "Fruit01",
                  "Fruit2", "Fruit02",
                  "Fruit20",
+                 "Fruit30x",
                  "Fruit100",
                  "Pear"];
     let mut sorted = names.to_owned();
