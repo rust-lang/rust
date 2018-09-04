@@ -86,8 +86,9 @@ assert_eq!(size_of::<Option<std::num::", stringify!($Ty), ">>(), size_of::<", st
 
                 /// Returns the value as a primitive type.
                 #[stable(feature = "nonzero", since = "1.28.0")]
+                #[rustc_const_unstable(feature = "const_non_zero_get")]
                 #[inline]
-                pub fn get(self) -> $Int {
+                pub const fn get(self) -> $Int {
                     self.0 .0
                 }
 
