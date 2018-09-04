@@ -21,7 +21,7 @@ use rustc::ty::{RegionKind, RegionVid};
 use rustc::ty::RegionKind::ReScope;
 
 use rustc_data_structures::bitslice::{BitwiseOperator, Word};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_set::IdxSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
@@ -53,6 +53,13 @@ pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     _nonlexical_regioncx: Rc<RegionInferenceContext<'tcx>>,
 }
 
+struct StackEntry {
+    bb: mir::BasicBlock,
+    lo: usize,
+    hi: usize,
+    first_part_only: bool
+}
+
 fn precompute_borrows_out_of_scope<'tcx>(
     mir: &Mir<'tcx>,
     regioncx: &Rc<RegionInferenceContext<'tcx>>,
@@ -61,48 +68,79 @@ fn precompute_borrows_out_of_scope<'tcx>(
     borrow_region: RegionVid,
     location: Location,
 ) {
-    // Keep track of places we've locations to check and locations that we have checked.
-    let mut stack = vec![ location ];
-    let mut visited = FxHashSet();
-    visited.insert(location);
+    // We visit one BB at a time. The complication is that we may start in the
+    // middle of the first BB visited (the one containing `location`), in which
+    // case we may have to later on process the first part of that BB if there
+    // is a path back to its start.
 
-    debug!(
-        "borrow {:?} has region {:?} with value {:?}",
-        borrow_index,
-        borrow_region,
-        regioncx.region_value_str(borrow_region),
-    );
-    debug!("borrow {:?} starts at {:?}", borrow_index, location);
-    while let Some(location) = stack.pop() {
-        // If region does not contain a point at the location, then add to list and skip
-        // successor locations.
-        if !regioncx.region_contains(borrow_region, location) {
-            debug!("borrow {:?} gets killed at {:?}", borrow_index, location);
-            borrows_out_of_scope_at_location
-                .entry(location)
-                .or_default()
-                .push(borrow_index);
-            continue;
+    // For visited BBs, we record the index of the first statement processed.
+    // (In fully processed BBs this index is 0.) Note also that we add BBs to
+    // `visited` once they are added to `stack`, before they are actually
+    // processed, because this avoids the need to look them up again on
+    // completion.
+    let mut visited = FxHashMap();
+    visited.insert(location.block, location.statement_index);
+
+    let mut stack = vec![];
+    stack.push(StackEntry {
+        bb: location.block,
+        lo: location.statement_index,
+        hi: mir[location.block].statements.len(),
+        first_part_only: false,
+    });
+
+    while let Some(StackEntry { bb, lo, hi, first_part_only }) = stack.pop() {
+        let mut finished_early = first_part_only;
+        for i in lo ..= hi {
+            let location = Location { block: bb, statement_index: i };
+            // If region does not contain a point at the location, then add to list and skip
+            // successor locations.
+            if !regioncx.region_contains(borrow_region, location) {
+                debug!("borrow {:?} gets killed at {:?}", borrow_index, location);
+                borrows_out_of_scope_at_location
+                    .entry(location)
+                    .or_default()
+                    .push(borrow_index);
+                finished_early = true;
+                break;
+            }
         }
 
-        let bb_data = &mir[location.block];
-        // If this is the last statement in the block, then add the
-        // terminator successors next.
-        if location.statement_index == bb_data.statements.len() {
-            // Add successors to locations to visit, if not visited before.
-            if let Some(ref terminator) = bb_data.terminator {
-                for block in terminator.successors() {
-                    let loc = block.start_location();
-                    if visited.insert(loc) {
-                        stack.push(loc);
-                    }
-                }
-            }
-        } else {
-            // Visit next statement in block.
-            let loc = location.successor_within_block();
-            if visited.insert(loc) {
-                stack.push(loc);
+        if !finished_early {
+            // Add successor BBs to the work list, if necessary.
+            let bb_data = &mir[bb];
+            assert!(hi == bb_data.statements.len());
+            for &succ_bb in bb_data.terminator.as_ref().unwrap().successors() {
+                visited.entry(succ_bb)
+                    .and_modify(|lo| {
+                        // `succ_bb` has been seen before. If it wasn't
+                        // fully processed, add its first part to `stack`
+                        // for processing.
+                        if *lo > 0 {
+                            stack.push(StackEntry {
+                                bb: succ_bb,
+                                lo: 0,
+                                hi: *lo - 1,
+                                first_part_only: true,
+                            });
+                        }
+                        // And update this entry with 0, to represent the
+                        // whole BB being processed.
+                        *lo = 0;
+                    })
+                    .or_insert_with(|| {
+                        // succ_bb hasn't been seen before. Add it to
+                        // `stack` for processing.
+                        stack.push(StackEntry {
+                            bb: succ_bb,
+                            lo: 0,
+                            hi: mir[succ_bb].statements.len(),
+                            first_part_only: false,
+                        });
+                        // Insert 0 for this BB, to represent the whole BB
+                        // being processed.
+                        0
+                    });
             }
         }
     }
