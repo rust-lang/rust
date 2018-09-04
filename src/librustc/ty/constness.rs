@@ -89,7 +89,10 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
             Some(stab) => stab.promotable,
             // const fns without the promotable attribute may still be promoted if they have no
             // arguments, as in that case they are semantically equivalent to constants.
-            None => tcx.fn_sig(def_id).skip_binder().inputs().is_empty(),
+            // also only promote such const fns if they are defined in the standard library
+            None => {
+                tcx.fn_sig(def_id).skip_binder().inputs().is_empty() && tcx.features().staged_api
+            },
         }
     }
 

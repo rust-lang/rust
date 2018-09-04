@@ -13,7 +13,8 @@
 
 // compile-flags: -C debug_assertions=yes
 
-#![feature(const_fn, libc)]
+#![stable(feature = "rustc", since = "1.0.0")]
+#![feature(const_fn, libc, staged_api)]
 #![allow(const_err)]
 
 extern crate libc;
