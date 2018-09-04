@@ -41,8 +41,14 @@ error: an exclusive range would be more readable
 error: an inclusive range would be more readable
   --> $DIR/range_plus_minus_one.rs:30:13
    |
-30 |     let _ = (f()+1)..(f()+1);
-   |             ^^^^^^^^^^^^^^^^ help: use: `(f()+1)..=f()`
+30 |     let _ = (1..11+1);
+   |             ^^^^^^^^^ help: use: `(1..=11)`
 
-error: aborting due to 7 previous errors
+error: an inclusive range would be more readable
+  --> $DIR/range_plus_minus_one.rs:31:13
+   |
+31 |     let _ = (f()+1)..(f()+1);
+   |             ^^^^^^^^^^^^^^^^ help: use: `((f()+1)..=f())`
+
+error: aborting due to 8 previous errors
 

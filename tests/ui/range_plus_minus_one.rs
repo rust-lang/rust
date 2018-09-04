@@ -27,6 +27,7 @@ fn main() {
     let _ = ..11-1;
     let _ = ..=11-1;
     let _ = ..=(11-1);
+    let _ = (1..11+1);
     let _ = (f()+1)..(f()+1);
 
     let mut vec: Vec<()> = std::vec::Vec::new();
