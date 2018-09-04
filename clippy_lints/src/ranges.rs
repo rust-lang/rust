@@ -149,7 +149,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         let start = start.map_or("".to_owned(), |x| Sugg::hir(cx, x, "x").to_string());
                         let end = Sugg::hir(cx, y, "y");
                         if let Some(is_wrapped) = &snippet_opt(cx, expr.span) {
-                            if is_wrapped.starts_with("(") && is_wrapped.ends_with(")") {
+                            if is_wrapped.starts_with('(') && is_wrapped.ends_with(')') {
                                 db.span_suggestion(expr.span,
                                            "use",
                                            format!("({}..={})", start, end));
