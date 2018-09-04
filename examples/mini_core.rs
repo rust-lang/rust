@@ -45,6 +45,7 @@ unsafe impl Sync for i32 {}
 unsafe impl Sync for isize {}
 unsafe impl Sync for char {}
 unsafe impl<'a, T: ?Sized> Sync for &'a T {}
+unsafe impl Sync for [u8; 16] {}
 
 #[lang = "freeze"]
 trait Freeze {}
@@ -184,6 +185,16 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     // Code here does not matter - this is replaced by the
     // real drop glue by the compiler.
     drop_in_place(to_drop);
+}
+
+#[lang = "owned_box"]
+pub struct Box<T>(*mut T);
+
+static mut MY_TINY_HEAP: [u8; 16] = [0; 16];
+
+#[lang = "exchange_malloc"]
+unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
+     &mut MY_TINY_HEAP as *mut [u8; 16] as *mut u8
 }
 
 pub mod intrinsics {

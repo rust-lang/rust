@@ -488,7 +488,28 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let usize_layout = fx.layout_of(fx.tcx.types.usize);
                     lval.write_cvalue(fx, CValue::ByVal(size, usize_layout));
                 }
-                Rvalue::NullaryOp(NullOp::Box, ty) => unimplemented!("rval box {:?}", ty),
+                Rvalue::NullaryOp(NullOp::Box, content_ty) => {
+                    use rustc::middle::lang_items::ExchangeMallocFnLangItem;
+
+                    let usize_type = fx.cton_type(fx.tcx.types.usize).unwrap();
+                    let (size, align) = fx.layout_of(content_ty).size_and_align();
+                    let llsize = fx.bcx.ins().iconst(usize_type, size.bytes() as i64);
+                    let llalign = fx.bcx.ins().iconst(usize_type, align.abi() as i64);
+                    let box_layout = fx.layout_of(fx.tcx.mk_box(content_ty));
+
+                    // Allocate space:
+                    let def_id = match fx.tcx.lang_items().require(ExchangeMallocFnLangItem) {
+                        Ok(id) => id,
+                        Err(s) => {
+                            fx.tcx.sess.fatal(&format!("allocation of `{}` {}", box_layout.ty, s));
+                        }
+                    };
+                    let instance = ty::Instance::mono(fx.tcx, def_id);
+                    let func_ref = fx.get_function_ref(instance);
+                    let call = fx.bcx.ins().call(func_ref, &[llsize, llalign]);
+                    let ptr = fx.bcx.inst_results(call)[0];
+                    lval.write_cvalue(fx, CValue::ByVal(ptr, box_layout));
+                },
                 Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
                     assert!(
                         lval.layout()

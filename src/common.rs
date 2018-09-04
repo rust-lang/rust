@@ -29,14 +29,6 @@ fn scalar_to_cton_type(tcx: TyCtxt, scalar: &Scalar) -> Type {
     }
 }
 
-fn ptr_referee<'tcx>(ty: Ty<'tcx>) -> Ty<'tcx> {
-    match ty.sty {
-        ty::Ref(_, ty, _) => ty,
-        ty::RawPtr(TypeAndMut { ty, mutbl: _ }) => ty,
-        _ => bug!("{:?}", ty),
-    }
-}
-
 pub fn cton_type_from_ty<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ty: Ty<'tcx>,
@@ -153,7 +145,14 @@ impl<'tcx> CValue<'tcx> {
             CValue::ByRef(addr, layout) => {
                 let cton_ty = fx
                     .cton_type(layout.ty)
-                    .expect(&format!("load_value of type {:?}", layout.ty));
+                    .unwrap_or_else(|| {
+                        if layout.ty.is_box() && !fx.layout_of(layout.ty.builtin_deref(true).unwrap().ty).is_unsized() {
+                            // Consider sized box to be a ptr
+                            pointer_ty(fx.tcx)
+                        } else {
+                            panic!("load_value of type {:?}", layout.ty);
+                        }
+                    });
                 fx.bcx.ins().load(cton_ty, MemFlags::new(), addr, 0)
             }
             CValue::ByVal(value, _layout) => value,
@@ -223,7 +222,7 @@ impl<'tcx> CValue<'tcx> {
         }
         match &self.layout().ty.sty {
             ty::Ref(_, ty, _) | ty::RawPtr(TypeAndMut { ty, mutbl: _ }) => {
-                let (ptr, extra) = match ptr_referee(dest.layout().ty).sty {
+                let (ptr, extra) = match dest.layout().ty.builtin_deref(true).unwrap().ty.sty {
                     ty::Slice(slice_elem_ty) => match ty.sty {
                         ty::Array(array_elem_ty, size) => {
                             assert_eq!(slice_elem_ty, array_elem_ty);
@@ -453,7 +452,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
     }
 
     pub fn place_deref(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> CPlace<'tcx> {
-        let inner_layout = fx.layout_of(ptr_referee(self.layout().ty));
+        let inner_layout = fx.layout_of(self.layout().ty.builtin_deref(true).unwrap().ty);
         if !inner_layout.is_unsized() {
             CPlace::Addr(self.to_cvalue(fx).load_value(fx), None, inner_layout)
         } else {

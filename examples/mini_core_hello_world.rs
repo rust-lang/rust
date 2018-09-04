@@ -1,6 +1,6 @@
 // Adapted from https://github.com/sunfishcode/mir2cranelift/blob/master/rust-examples/nocore-hello-world.rs
 
-#![feature(no_core, unboxed_closures, start, lang_items)]
+#![feature(no_core, unboxed_closures, start, lang_items, box_syntax)]
 #![no_core]
 #![allow(dead_code)]
 
@@ -43,9 +43,11 @@ static NUM_REF: &'static u8 = unsafe { &NUM };
 
 fn main() {
     unsafe {
-        let slice: &[u8] = b"Hello!\0" as &[u8; 7];
+        let slice: &[u8] = b"Hello\0" as &[u8; 6];
         let ptr: *const u8 = slice as *const [u8] as *const u8;
+        let world = box "World!\0";
         puts(ptr);
+        puts(*world as *const str as *const u8);
     }
 
     //panic(&("panic msg", "abc.rs", 0, 43));

@@ -40,7 +40,6 @@ $ ./build.sh
 * Unsized types
 * Slice indexing
 * Sub slice
-* Some rvalue's
 
 * Inline assembly
 * Custom sections
