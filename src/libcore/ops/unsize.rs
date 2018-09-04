@@ -77,3 +77,34 @@ impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *mut T {}
 // *const T -> *const U
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
+
+
+/// Pointers to unsized types that can be coerced to a pointer to a sized type,
+/// as long as pointee is actually a value of that sized type. This is used for
+/// object safety, to check that a method's receiver type can be coerced from the version
+///  where `Self = dyn Trait` to the version where `Self = T`, the erased, sized type
+/// of the underlying object.
+///
+/// CoerceSized is implemented for:
+/// - &[T] is CoerceSized<&[T; N]> for any N
+/// - &Trait is CoerceSized<&T> for any T: Trait
+/// - and similarly for &mut T, *const T, *mut T, Box<T>, Rc<T>, Arc<T>
+#[unstable(feature = "coerce_sized", issue = "0")]
+#[cfg_attr(not(stage0), lang = "coerce_sized")]
+pub trait CoerceSized<T> where T: CoerceUnsized<Self> {
+    // Empty.
+}
+
+// &U -> &T
+#[unstable(feature = "coerce_sized", issue = "0")]
+impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceSized<&'a T> for &'a U {}
+// &mut U -> &mut T
+#[unstable(feature = "coerce_sized", issue = "0")]
+impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceSized<&'a mut T> for &'a mut U {}
+// *const U -> *const T
+#[unstable(feature = "coerce_sized", issue = "0")]
+impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceSized<*const T> for *const U {}
+// *mut U -> *mut T
+#[unstable(feature = "coerce_sized", issue = "0")]
+impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceSized<*mut T> for *mut U {}
+

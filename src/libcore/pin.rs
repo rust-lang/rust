@@ -8,9 +8,9 @@
 
 use fmt;
 use future::{Future, UnsafeFutureObj};
-use marker::{Sized, Unpin, Unsize, CoerceSized};
+use marker::{Sized, Unpin, Unsize};
 use task::{Context, Poll};
-use ops::{Deref, DerefMut, CoerceUnsized};
+use ops::{Deref, DerefMut, CoerceUnsized, CoerceSized};
 
 /// A pinned reference.
 ///

@@ -91,8 +91,8 @@ pub use core::marker::Unpin;
 use core::convert::From;
 use core::fmt;
 use core::future::{Future, FutureObj, LocalFutureObj, UnsafeFutureObj};
-use core::marker::{Unsize, CoerceSized};
-use core::ops::{CoerceUnsized, Deref, DerefMut};
+use core::marker::Unsize;
+use core::ops::{CoerceUnsized, CoerceSized, Deref, DerefMut};
 use core::task::{Context, Poll};
 
 use boxed::Box;

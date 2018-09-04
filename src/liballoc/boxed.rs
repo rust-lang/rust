@@ -63,10 +63,10 @@ use core::fmt;
 use core::future::{Future, FutureObj, LocalFutureObj, UnsafeFutureObj};
 use core::hash::{Hash, Hasher};
 use core::iter::FusedIterator;
-use core::marker::{Unpin, Unsize, CoerceSized};
+use core::marker::{Unpin, Unsize};
 use core::mem;
 use core::pin::PinMut;
-use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
+use core::ops::{CoerceUnsized, CoerceSized, Deref, DerefMut, Generator, GeneratorState};
 use core::ptr::{self, NonNull, Unique};
 use core::task::{Context, Poll, Spawn, SpawnErrorKind, SpawnObjError};
 
