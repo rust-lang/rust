@@ -113,13 +113,14 @@ impl AnalysisImpl {
 
     }
     pub fn parent_module(&self, file_id: FileId) -> Vec<(FileId, FileSymbol)> {
-        let module_map = self.root(file_id).module_map();
+        let root = self.root(file_id);
+        let module_map = root.module_map();
         let id = module_map.file2module(file_id);
         module_map
             .parent_modules(
                 id,
                 &*self.file_resolver,
-                &|file_id| self.file_syntax(file_id),
+                &|file_id| root.syntax(file_id),
             )
             .into_iter()
             .map(|(id, name, node)| {
