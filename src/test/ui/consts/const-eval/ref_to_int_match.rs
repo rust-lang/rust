@@ -14,7 +14,7 @@ fn main() {
     let n: Int = 40;
     match n {
         0..=10 => {},
-        10..=BAR => {}, //~ ERROR lower range bound must be less than or equal to upper
+        10..=BAR => {}, //~ ERROR could not evaluate constant pattern
         _ => {},
     }
 }
@@ -30,4 +30,4 @@ type Int = u64;
 #[cfg(target_pointer_width="32")]
 type Int = u32;
 
-const BAR: Int = unsafe { Foo { r: &42 }.f };
+const BAR: Int = unsafe { Foo { r: &42 }.f }; //~ ERROR it is undefined behavior to use this value

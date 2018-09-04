@@ -1,5 +1,5 @@
 error[E0391]: cycle detected when const-evaluating + checking `Foo::bytes::{{constant}}`
-  --> $DIR/const-size_of-cycle.rs:16:17
+  --> $DIR/const-size_of-cycle.rs:14:17
    |
 LL |     bytes: [u8; std::mem::size_of::<Foo>()]
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,18 +7,18 @@ LL |     bytes: [u8; std::mem::size_of::<Foo>()]
 note: ...which requires const-evaluating `Foo::bytes::{{constant}}`...
   --> $SRC_DIR/libcore/mem.rs:LL:COL
    |
-LL |     unsafe { intrinsics::size_of::<T>() }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     intrinsics::size_of::<T>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires computing layout of `Foo`...
 note: ...which requires normalizing `ParamEnvAnd { param_env: ParamEnv { caller_bounds: [], reveal: All }, value: [u8; _] }`...
 note: ...which requires const-evaluating + checking `Foo::bytes::{{constant}}`...
-  --> $DIR/const-size_of-cycle.rs:16:17
+  --> $DIR/const-size_of-cycle.rs:14:17
    |
 LL |     bytes: [u8; std::mem::size_of::<Foo>()]
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires const-evaluating + checking `Foo::bytes::{{constant}}`, completing the cycle
 note: cycle used when processing `Foo`
-  --> $DIR/const-size_of-cycle.rs:15:1
+  --> $DIR/const-size_of-cycle.rs:13:1
    |
 LL | struct Foo {
    | ^^^^^^^^^^
