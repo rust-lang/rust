@@ -1,7 +1,7 @@
 use libsyntax2::{
     File, TextRange, SyntaxNodeRef, TextUnit,
     SyntaxKind::*,
-    algo::{find_leaf_at_offset, find_covering_node, ancestors, Direction, siblings},
+    algo::{find_leaf_at_offset, LeafAtOffset, find_covering_node, ancestors, Direction, siblings},
 };
 
 pub fn extend_selection(file: &File, range: TextRange) -> Option<TextRange> {
@@ -13,30 +13,15 @@ pub(crate) fn extend(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange>
     if range.is_empty() {
         let offset = range.start();
         let mut leaves = find_leaf_at_offset(root, offset);
-        if let Some(leaf) = leaves.clone().find(|node| node.kind() != WHITESPACE) {
-            return Some(leaf.range());
+        if leaves.clone().all(|it| it.kind() == WHITESPACE) {
+            return Some(extend_ws(root, leaves.next()?, offset));
         }
-        let ws = leaves.next()?;
-        let ws_text = ws.leaf_text().unwrap();
-        let suffix = TextRange::from_to(offset, ws.range().end()) - ws.range().start();
-        let prefix = TextRange::from_to(ws.range().start(), offset) - ws.range().start();
-        let ws_suffix = &ws_text.as_str()[suffix];
-        let ws_prefix = &ws_text.as_str()[prefix];
-        if ws_text.contains("\n") && !ws_suffix.contains("\n") {
-            if let Some(node) = ws.next_sibling() {
-                let start = match ws_prefix.rfind('\n') {
-                    Some(idx) => ws.range().start() + TextUnit::from((idx + 1) as u32),
-                    None => node.range().start()
-                };
-                let end = if root.text().char_at(node.range().end()) == Some('\n') {
-                    node.range().end() + TextUnit::of_char('\n')
-                } else {
-                    node.range().end()
-                };
-                return Some(TextRange::from_to(start, end));
-            }
-        }
-        return Some(ws.range());
+        let leaf = match leaves {
+            LeafAtOffset::None => return None,
+            LeafAtOffset::Single(l) => l,
+            LeafAtOffset::Between(l, r) => pick_best(l, r),
+        };
+        return Some(leaf.range());
     };
     let node = find_covering_node(root, range);
     if node.kind() == COMMENT && range == node.range() {
@@ -48,6 +33,40 @@ pub(crate) fn extend(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange>
     match ancestors(node).skip_while(|n| n.range() == range).next() {
         None => None,
         Some(parent) => Some(parent.range()),
+    }
+}
+
+fn extend_ws(root: SyntaxNodeRef, ws: SyntaxNodeRef, offset: TextUnit) -> TextRange {
+    let ws_text = ws.leaf_text().unwrap();
+    let suffix = TextRange::from_to(offset, ws.range().end()) - ws.range().start();
+    let prefix = TextRange::from_to(ws.range().start(), offset) - ws.range().start();
+    let ws_suffix = &ws_text.as_str()[suffix];
+    let ws_prefix = &ws_text.as_str()[prefix];
+    if ws_text.contains("\n") && !ws_suffix.contains("\n") {
+        if let Some(node) = ws.next_sibling() {
+            let start = match ws_prefix.rfind('\n') {
+                Some(idx) => ws.range().start() + TextUnit::from((idx + 1) as u32),
+                None => node.range().start()
+            };
+            let end = if root.text().char_at(node.range().end()) == Some('\n') {
+                node.range().end() + TextUnit::of_char('\n')
+            } else {
+                node.range().end()
+            };
+            return TextRange::from_to(start, end);
+        }
+    }
+    ws.range()
+}
+
+fn pick_best<'a>(l: SyntaxNodeRef<'a>, r: SyntaxNodeRef<'a>) -> SyntaxNodeRef<'a> {
+    return if priority(r) > priority(l) { r } else { l };
+    fn priority(n: SyntaxNodeRef) -> usize {
+        match n.kind() {
+            WHITESPACE => 0,
+            IDENT | SELF_KW | SUPER_KW | CRATE_KW => 2,
+            _ => 1,
+        }
     }
 }
 
@@ -127,6 +146,22 @@ fn bar(){}
 // fn foo(){}
     "#,
             &["// 1 + 1", "// fn foo() {\n// 1 + 1\n// }"]
+        );
+    }
+
+    #[test]
+    fn test_extend_selection_prefer_idents() {
+        do_check(
+            r#"
+fn main() { foo<|>+bar;}
+    "#,
+            &["foo", "foo+bar"]
+        );
+        do_check(
+            r#"
+fn main() { foo+<|>bar;}
+    "#,
+            &["bar", "foo+bar"]
         );
     }
 }
