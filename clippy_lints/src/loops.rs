@@ -14,10 +14,12 @@ use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::mem_categorization::cmt_;
 use rustc::ty::{self, Ty};
 use rustc::ty::subst::Subst;
+use rustc_errors::Applicability;
 use std::collections::{HashMap, HashSet};
 use std::iter::{once, Iterator};
 use syntax::ast;
 use syntax::source_map::Span;
+use syntax_pos::BytePos;
 use crate::utils::{sugg, sext};
 use crate::utils::usage::mutated_variables;
 use crate::consts::{constant, Constant};
@@ -223,6 +225,27 @@ declare_clippy_lint! {
      written as a for loop"
 }
 
+/// **What it does:** Checks for functions collecting an iterator when collect
+/// is not needed.
+///
+/// **Why is this bad?** `collect` causes the allocation of a new data structure,
+/// when this allocation may not be needed.
+///
+/// **Known problems:**
+/// None
+///
+/// **Example:**
+/// ```rust
+/// let len = iterator.collect::<Vec<_>>().len();
+/// // should be
+/// let len = iterator.count();
+/// ```
+declare_clippy_lint! {
+    pub NEEDLESS_COLLECT,
+    perf,
+    "collecting an iterator when collect is not needed"
+}
+
 /// **What it does:** Checks for loops over ranges `x..y` where both `x` and `y`
 /// are constant and `x` is greater or equal to `y`, unless the range is
 /// reversed or has a negative `.step_by(_)`.
@@ -400,6 +423,7 @@ impl LintPass for Pass {
             FOR_LOOP_OVER_OPTION,
             WHILE_LET_LOOP,
             UNUSED_COLLECT,
+            NEEDLESS_COLLECT,
             REVERSE_RANGE_LOOP,
             EXPLICIT_COUNTER_LOOP,
             EMPTY_LOOP,
@@ -523,6 +547,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if let ExprKind::While(ref cond, _, _) = expr.node {
             check_infinite_loop(cx, cond, expr);
         }
+
+        check_needless_collect(expr, cx);
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
@@ -2240,4 +2266,72 @@ impl<'a, 'tcx> Visitor<'tcx> for VarCollectorVisitor<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
     }
+}
+
+const NEEDLESS_COLLECT_MSG: &str = "avoid using `collect()` when not needed";
+
+fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr, cx: &LateContext<'a, 'tcx>) {
+    if_chain! {
+        if let ExprKind::MethodCall(ref method, _, ref args) = expr.node;
+        if let ExprKind::MethodCall(ref chain_method, _, _) = args[0].node;
+        if chain_method.ident.name == "collect" && match_trait_method(cx, &args[0], &paths::ITERATOR);
+        if let Some(ref generic_args) = chain_method.args;
+        if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
+        then {
+            let ty = cx.tables.node_id_to_type(ty.hir_id);
+            if match_type(cx, ty, &paths::VEC) ||
+                match_type(cx, ty, &paths::VEC_DEQUE) ||
+                match_type(cx, ty, &paths::BTREEMAP) ||
+                match_type(cx, ty, &paths::HASHMAP) {
+                if method.ident.name == "len" {
+                    let span = shorten_needless_collect_span(expr);
+                    span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {
+                        db.span_suggestion_with_applicability(
+                            span,
+                            "replace with",
+                            ".count()".to_string(),
+                            Applicability::MachineApplicable,
+                        );
+                    });
+                }
+                if method.ident.name == "is_empty" {
+                    let span = shorten_needless_collect_span(expr);
+                    span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {
+                        db.span_suggestion_with_applicability(
+                            span,
+                            "replace with",
+                            ".next().is_none()".to_string(),
+                            Applicability::MachineApplicable,
+                        );
+                    });
+                }
+                if method.ident.name == "contains" {
+                    let contains_arg = snippet(cx, args[1].span, "??");
+                    let span = shorten_needless_collect_span(expr);
+                    span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {
+                        db.span_suggestion_with_applicability(
+                            span,
+                            "replace with",
+                            format!(
+                                ".any(|&x| x == {})",
+                                if contains_arg.starts_with('&') { &contains_arg[1..] } else { &contains_arg }
+                            ),
+                            Applicability::MachineApplicable,
+                        );
+                    });
+                }
+            }
+        }
+    }
+}
+
+fn shorten_needless_collect_span(expr: &Expr) -> Span {
+    if_chain! {
+        if let ExprKind::MethodCall(_, _, ref args) = expr.node;
+        if let ExprKind::MethodCall(_, ref span, _) = args[0].node;
+        then {
+            return expr.span.with_lo(span.lo() - BytePos(1));
+        }
+    }
+    unreachable!()
 }

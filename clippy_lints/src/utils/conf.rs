@@ -3,6 +3,7 @@
 #![deny(clippy::missing_docs_in_private_items)]
 
 use lazy_static::lazy_static;
+use std::default::Default;
 use std::{env, fmt, fs, io, path};
 use std::io::Read;
 use syntax::{ast, source_map};
@@ -65,7 +66,7 @@ macro_rules! define_Conf {
         mod helpers {
             use serde_derive::Deserialize;
             /// Type used to store lint configuration.
-            #[derive(Default, Deserialize)]
+            #[derive(Deserialize)]
             #[serde(rename_all="kebab-case", deny_unknown_fields)]
             pub struct Conf {
                 $(#[$doc] #[serde(default=$rust_name_str)] #[serde(with=$rust_name_str)]
@@ -146,6 +147,12 @@ define_Conf! {
     (trivial_copy_size_limit, "trivial_copy_size_limit", None => Option<u64>),
 }
 
+impl Default for Conf {
+    fn default() -> Conf {
+        toml::from_str("").expect("we never error on empty config files")
+    }
+}
+
 /// Search for the configuration file.
 pub fn lookup_conf_file() -> io::Result<Option<path::PathBuf>> {
     /// Possible filename to search for.
@@ -180,7 +187,7 @@ pub fn lookup_conf_file() -> io::Result<Option<path::PathBuf>> {
 ///
 /// Used internally for convenience
 fn default(errors: Vec<Error>) -> (Conf, Vec<Error>) {
-    (toml::from_str("").expect("we never error on empty config files"), errors)
+    (Conf::default(), errors)
 }
 
 /// Read the `toml` configuration file.
