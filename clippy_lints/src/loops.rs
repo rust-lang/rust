@@ -2271,56 +2271,54 @@ impl<'a, 'tcx> Visitor<'tcx> for VarCollectorVisitor<'a, 'tcx> {
 const NEEDLESS_COLLECT_MSG: &str = "avoid using `collect()` when not needed";
 
 fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr, cx: &LateContext<'a, 'tcx>) {
-    if let ExprKind::MethodCall(ref method, _, ref args) = expr.node {
-        if let ExprKind::MethodCall(ref chain_method, _, _) = args[0].node {
-            if chain_method.ident.name == "collect" &&
-                match_trait_method(cx, &args[0], &paths::ITERATOR) &&
-                chain_method.args.is_some() {
-                let generic_args = chain_method.args.as_ref().unwrap();
-                if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0) {
-                    let ty = cx.tables.node_id_to_type(ty.hir_id);
-                    if match_type(cx, ty, &paths::VEC) ||
-                        match_type(cx, ty, &paths::VEC_DEQUE) ||
-                        match_type(cx, ty, &paths::BTREEMAP) ||
-                        match_type(cx, ty, &paths::HASHMAP) {
-                        if method.ident.name == "len" {
-                            let span = shorten_needless_collect_span(expr);
-                            span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {
-                                db.span_suggestion_with_applicability(
-                                    span,
-                                    "replace with",
-                                    ".count()".to_string(),
-                                    Applicability::MachineApplicable,
-                                );
-                            });
-                        }
-                        if method.ident.name == "is_empty" {
-                            let span = shorten_needless_collect_span(expr);
-                            span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {
-                                db.span_suggestion_with_applicability(
-                                    span,
-                                    "replace with",
-                                    ".next().is_none()".to_string(),
-                                    Applicability::MachineApplicable,
-                                );
-                            });
-                        }
-                        if method.ident.name == "contains" {
-                            let contains_arg = snippet(cx, args[1].span, "??");
-                            let span = shorten_needless_collect_span(expr);
-                            span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {
-                                db.span_suggestion_with_applicability(
-                                    span,
-                                    "replace with",
-                                    format!(
-                                        ".any(|&x| x == {})",
-                                        if contains_arg.starts_with('&') { &contains_arg[1..] } else { &contains_arg }
-                                    ),
-                                    Applicability::MachineApplicable,
-                                );
-                            });
-                        }
-                    }
+    if_chain! {
+        if let ExprKind::MethodCall(ref method, _, ref args) = expr.node;
+        if let ExprKind::MethodCall(ref chain_method, _, _) = args[0].node;
+        if chain_method.ident.name == "collect" && match_trait_method(cx, &args[0], &paths::ITERATOR);
+        if let Some(ref generic_args) = chain_method.args;
+        if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
+        then {
+            let ty = cx.tables.node_id_to_type(ty.hir_id);
+            if match_type(cx, ty, &paths::VEC) ||
+                match_type(cx, ty, &paths::VEC_DEQUE) ||
+                match_type(cx, ty, &paths::BTREEMAP) ||
+                match_type(cx, ty, &paths::HASHMAP) {
+                if method.ident.name == "len" {
+                    let span = shorten_needless_collect_span(expr);
+                    span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {
+                        db.span_suggestion_with_applicability(
+                            span,
+                            "replace with",
+                            ".count()".to_string(),
+                            Applicability::MachineApplicable,
+                        );
+                    });
+                }
+                if method.ident.name == "is_empty" {
+                    let span = shorten_needless_collect_span(expr);
+                    span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {
+                        db.span_suggestion_with_applicability(
+                            span,
+                            "replace with",
+                            ".next().is_none()".to_string(),
+                            Applicability::MachineApplicable,
+                        );
+                    });
+                }
+                if method.ident.name == "contains" {
+                    let contains_arg = snippet(cx, args[1].span, "??");
+                    let span = shorten_needless_collect_span(expr);
+                    span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {
+                        db.span_suggestion_with_applicability(
+                            span,
+                            "replace with",
+                            format!(
+                                ".any(|&x| x == {})",
+                                if contains_arg.starts_with('&') { &contains_arg[1..] } else { &contains_arg }
+                            ),
+                            Applicability::MachineApplicable,
+                        );
+                    });
                 }
             }
         }
