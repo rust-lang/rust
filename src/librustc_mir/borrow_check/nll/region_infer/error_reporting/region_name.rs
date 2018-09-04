@@ -22,6 +22,7 @@ use rustc::util::ppaux::with_highlight_region;
 use rustc_errors::DiagnosticBuilder;
 use syntax::ast::{Name, DUMMY_NODE_ID};
 use syntax::symbol::keywords;
+use syntax_pos::Span;
 use syntax_pos::symbol::InternedString;
 
 /// Name of a region used in error reporting. Variants denote the source of the region name -
@@ -31,6 +32,14 @@ use syntax_pos::symbol::InternedString;
 pub(crate) enum RegionName {
     Named(InternedString),
     Synthesized(InternedString),
+}
+
+impl RegionName {
+    fn as_interned_string(&self) -> &InternedString {
+        match self {
+            RegionName::Named(name) | RegionName::Synthesized(name) => name,
+        }
+    }
 }
 
 impl Display for RegionName {
@@ -121,8 +130,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         match error_region {
             ty::ReEarlyBound(ebr) => {
                 if ebr.has_name() {
-                    self.highlight_named_span(tcx, error_region, &ebr.name, diag);
-                    Some(RegionName::Named(ebr.name))
+                    let name = RegionName::Named(ebr.name);
+                    self.highlight_named_span(tcx, error_region, &name, diag);
+                    Some(name)
                 } else {
                     None
                 }
@@ -134,8 +144,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             ty::ReFree(free_region) => match free_region.bound_region {
                 ty::BoundRegion::BrNamed(_, name) => {
+                    let name = RegionName::Named(name);
                     self.highlight_named_span(tcx, error_region, &name, diag);
-                    Some(RegionName::Named(name))
+                    Some(name)
                 },
 
                 ty::BoundRegion::BrEnv => {
@@ -198,6 +209,26 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
     }
 
+    /// Get the span of a named region.
+    pub(super) fn get_span_of_named_region(
+        &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        error_region: &RegionKind,
+        name: &RegionName,
+    ) -> Span {
+        let scope = error_region.free_region_binding_scope(tcx);
+        let node = tcx.hir.as_local_node_id(scope).unwrap_or(DUMMY_NODE_ID);
+
+        let span = tcx.sess.source_map().def_span(tcx.hir.span(node));
+        if let Some(param) = tcx.hir.get_generics(scope).and_then(|generics| {
+            generics.get_named(name.as_interned_string())
+        }) {
+            param.span
+        } else {
+            span
+        }
+    }
+
     /// Highlight a named span to provide context for error messages that
     /// mention that span, for example:
     ///
@@ -216,23 +247,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         tcx: TyCtxt<'_, '_, 'tcx>,
         error_region: &RegionKind,
-        name: &InternedString,
+        name: &RegionName,
         diag: &mut DiagnosticBuilder<'_>,
     ) {
-        let cm = tcx.sess.source_map();
+        let span = self.get_span_of_named_region(tcx, error_region, name);
 
-        let scope = error_region.free_region_binding_scope(tcx);
-        let node = tcx.hir.as_local_node_id(scope).unwrap_or(DUMMY_NODE_ID);
-
-        let mut sp = cm.def_span(tcx.hir.span(node));
-        if let Some(param) = tcx.hir
-            .get_generics(scope)
-            .and_then(|generics| generics.get_named(name))
-        {
-            sp = param.span;
-        }
-
-        diag.span_label(sp, format!("lifetime `{}` defined here", name));
+        diag.span_label(
+            span,
+            format!("lifetime `{}` defined here", name),
+        );
     }
 
     /// Find an argument that contains `fr` and label it with a fully

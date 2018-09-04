@@ -15,7 +15,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc::infer::InferCtxt;
 use rustc::mir::{self, Location, Mir, Place, Rvalue, StatementKind, TerminatorKind};
-use rustc::ty::{TyCtxt, Ty, TyS, TyKind, Region, RegionKind, RegionVid};
+use rustc::ty::{self, TyCtxt, Region, RegionKind, RegionVid};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_errors::{Diagnostic, DiagnosticBuilder};
 use std::collections::VecDeque;
@@ -491,26 +491,67 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         fr_region: Option<Region<'tcx>>,
         outlived_fr_region: Option<Region<'tcx>>,
     ) {
-        if let (Some(f), Some(RegionKind::ReStatic)) = (fr_region, outlived_fr_region) {
-            if let Some(TyS {
-                sty: TyKind::Anon(did, _),
+        if let (Some(f), Some(ty::RegionKind::ReStatic)) = (fr_region, outlived_fr_region) {
+            if let Some(ty::TyS {
+                sty: ty::TyKind::Anon(did, substs),
                 ..
-            }) = self.return_type_impl_trait(infcx, f) {
+            }) = infcx.tcx.is_suitable_region(f)
+                    .map(|r| r.def_id)
+                    .map(|id| infcx.tcx.return_type_impl_trait(id))
+                    .unwrap_or(None)
+            {
+                let has_static_predicate = {
+                    let predicates_of = infcx.tcx.predicates_of(*did);
+                    let bounds = predicates_of.instantiate(infcx.tcx, substs);
+
+                    let mut found = false;
+                    for predicate in bounds.predicates {
+                        if let ty::Predicate::TypeOutlives(binder) = predicate {
+                            if let ty::OutlivesPredicate(
+                                _,
+                                RegionKind::ReStatic
+                            ) = binder.skip_binder() {
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    found
+                };
+
+                debug!("add_static_impl_trait_suggestion: has_static_predicate={:?}",
+                       has_static_predicate);
                 let static_str = keywords::StaticLifetime.name();
-                let span = infcx.tcx.def_span(*did);
-                if let Ok(snippet) = infcx.tcx.sess.source_map().span_to_snippet(span) {
-                    diag.span_suggestion(
-                        span,
-                        &format!(
-                            "you can add a constraint to the return type to make it last \
-                             less than `{}` and match `{}`",
-                            static_str, fr_name,
-                        ),
-                        match fr_name {
-                            RegionName::Named(name) => format!("{} + {}", snippet, name),
-                            RegionName::Synthesized(_) => format!("{} + '_", snippet),
-                        },
-                    );
+                if has_static_predicate {
+                    let span = self.get_span_of_named_region(infcx.tcx, f, &fr_name);
+                    if let Ok(snippet) = infcx.tcx.sess.source_map().span_to_snippet(span) {
+                        diag.span_suggestion(
+                            span,
+                            &format!(
+                                "you can add a constraint to the definition of `{}` to require it \
+                                 outlive `{}`",
+                                fr_name, static_str,
+                            ),
+                            format!("{}: {}", snippet, static_str),
+                        );
+                    }
+                } else {
+                    let span = infcx.tcx.def_span(*did);
+                    if let Ok(snippet) = infcx.tcx.sess.source_map().span_to_snippet(span) {
+                        diag.span_suggestion(
+                            span,
+                            &format!(
+                                "you can add a constraint to the return type to make it last \
+                                 less than `{}` and match `{}`",
+                                static_str, fr_name,
+                            ),
+                            match fr_name {
+                                RegionName::Named(name) => format!("{} + {}", snippet, name),
+                                RegionName::Synthesized(_) => format!("{} + '_", snippet),
+                            },
+                        );
+                    }
                 }
             }
         }
@@ -537,16 +578,5 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> Span {
         let (_, span, _) = self.best_blame_constraint(mir, tcx, fr1, |r| r == fr2);
         span
-    }
-
-    fn return_type_impl_trait<'cx>(
-        &self,
-        infcx: &'cx InferCtxt<'_, '_, 'tcx>,
-        outlived_fr_region: Region<'tcx>,
-    ) -> Option<Ty<'cx>> {
-        infcx.tcx.is_suitable_region(outlived_fr_region)
-            .map(|r| r.def_id)
-            .map(|id| infcx.tcx.return_type_impl_trait(id))
-            .unwrap_or(None)
     }
 }

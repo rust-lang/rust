@@ -1590,7 +1590,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn return_type_impl_trait(
         &self,
         scope_def_id: DefId,
-    ) -> Option<Ty> {
+    ) -> Option<Ty<'tcx>> {
         let ret_ty = self.type_of(scope_def_id);
         match ret_ty.sty {
             ty::FnDef(_, _) => {
