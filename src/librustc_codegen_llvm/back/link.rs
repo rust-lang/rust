@@ -1666,7 +1666,6 @@ fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
 
 fn are_upstream_rust_objects_already_included(sess: &Session) -> bool {
     match sess.lto() {
-        Lto::Yes |
         Lto::Fat => true,
         Lto::Thin => {
             // If we defer LTO to the linker, we haven't run LTO ourselves, so
