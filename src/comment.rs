@@ -785,6 +785,9 @@ enum CharClassesStatus {
     Normal,
     LitString,
     LitStringEscape,
+    LitRawString(u32),
+    RawStringPrefix(u32),
+    RawStringSuffix(u32),
     LitChar,
     LitCharEscape,
     // The u32 is the nesting deepness of the comment
@@ -858,6 +861,20 @@ where
     }
 }
 
+fn is_raw_string_suffix<T>(iter: &mut MultiPeek<T>, count: u32) -> bool
+where
+    T: Iterator,
+    T::Item: RichChar,
+{
+    for _ in 0..count {
+        match iter.peek() {
+            Some(c) if c.get_char() == '#' => continue,
+            _ => return false,
+        }
+    }
+    true
+}
+
 impl<T> Iterator for CharClasses<T>
 where
     T: Iterator,
@@ -870,6 +887,43 @@ where
         let chr = item.get_char();
         let mut char_kind = FullCodeCharKind::Normal;
         self.status = match self.status {
+            CharClassesStatus::LitRawString(sharps) => {
+                char_kind = FullCodeCharKind::InString;
+                match chr {
+                    '"' => {
+                        if sharps == 0 {
+                            char_kind = FullCodeCharKind::Normal;
+                            CharClassesStatus::Normal
+                        } else if is_raw_string_suffix(&mut self.base, sharps) {
+                            CharClassesStatus::RawStringSuffix(sharps)
+                        } else {
+                            CharClassesStatus::LitRawString(sharps)
+                        }
+                    }
+                    _ => CharClassesStatus::LitRawString(sharps),
+                }
+            }
+            CharClassesStatus::RawStringPrefix(sharps) => {
+                char_kind = FullCodeCharKind::InString;
+                match chr {
+                    '#' => CharClassesStatus::RawStringPrefix(sharps + 1),
+                    '"' => CharClassesStatus::LitRawString(sharps),
+                    _ => CharClassesStatus::Normal, // Unreachable.
+                }
+            }
+            CharClassesStatus::RawStringSuffix(sharps) => {
+                match chr {
+                    '#' => {
+                        if sharps == 1 {
+                            CharClassesStatus::Normal
+                        } else {
+                            char_kind = FullCodeCharKind::InString;
+                            CharClassesStatus::RawStringSuffix(sharps - 1)
+                        }
+                    }
+                    _ => CharClassesStatus::Normal, // Unreachable
+                }
+            }
             CharClassesStatus::LitString => match chr {
                 '"' => CharClassesStatus::Normal,
                 '\\' => {
@@ -892,6 +946,13 @@ where
             },
             CharClassesStatus::LitCharEscape => CharClassesStatus::LitChar,
             CharClassesStatus::Normal => match chr {
+                'r' => match self.base.peek().map(|c| c.get_char()) {
+                    Some('#') | Some('"') => {
+                        char_kind = FullCodeCharKind::InString;
+                        CharClassesStatus::RawStringPrefix(0)
+                    }
+                    _ => CharClassesStatus::Normal,
+                },
                 '"' => {
                     char_kind = FullCodeCharKind::InString;
                     CharClassesStatus::LitString

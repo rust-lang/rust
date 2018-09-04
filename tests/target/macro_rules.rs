@@ -333,3 +333,28 @@ fn foo() {
         }
     }
 }
+
+// #2642
+macro_rules! template {
+    ($name:expr) => {
+        format_args!(
+            r##"
+"http://example.com"
+
+# test
+"##,
+            $name
+        )
+    };
+}
+
+macro_rules! template {
+    () => {
+        format_args!(
+            r"
+//
+
+"
+        )
+    };
+}
