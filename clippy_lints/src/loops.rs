@@ -2328,8 +2328,10 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr, cx: &LateContext<'a, 'tcx>
 }
 
 fn shorten_needless_collect_span(expr: &Expr) -> Span {
-    if let ExprKind::MethodCall(_, _, ref args) = expr.node {
-        if let ExprKind::MethodCall(_, ref span, _) = args[0].node {
+    if_chain! {
+        if let ExprKind::MethodCall(_, _, ref args) = expr.node;
+        if let ExprKind::MethodCall(_, ref span, _) = args[0].node;
+        then {
             return expr.span.with_lo(span.lo() - BytePos(1));
         }
     }

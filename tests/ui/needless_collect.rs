@@ -1,7 +1,9 @@
+#![feature(tool_lints)]
+
 use std::collections::{HashMap, HashSet, BTreeSet};
 
-#[warn(clippy, needless_collect)]
-#[allow(unused_variables, iter_cloned_collect)]
+#[warn(clippy::needless_collect)]
+#[allow(unused_variables, clippy::iter_cloned_collect)]
 fn main() {
     let sample = [1; 5];
     let len = sample.iter().collect::<Vec<_>>().len();
