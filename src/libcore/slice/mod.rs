@@ -34,6 +34,7 @@ use cmp::Ordering::{self, Less, Equal, Greater};
 use cmp;
 use fmt;
 use intrinsics::assume;
+use isize;
 use iter::*;
 use ops::{FnMut, Try, self};
 use option::Option;
@@ -3880,6 +3881,8 @@ unsafe impl<'a, T> TrustedRandomAccess for ExactChunksMut<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
     debug_assert!(data as usize % mem::align_of::<T>() == 0, "attempt to create unaligned slice");
+    debug_assert!(len * mem::size_of::<T>() <= isize::MAX as usize,
+                  "attempt to create slice covering half the address space");
     Repr { raw: FatPtr { data, len } }.rust
 }
 
@@ -3889,14 +3892,20 @@ pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
 /// This function is unsafe for the same reasons as [`from_raw_parts`], as well
 /// as not being able to provide a non-aliasing guarantee of the returned
 /// mutable slice. `data` must be non-null and aligned even for zero-length
-/// slices as with [`from_raw_parts`]. See the documentation of
-/// [`from_raw_parts`] for more details.
+/// slices as with [`from_raw_parts`]. The total size of the slice must be no
+/// larger than `isize::MAX` **bytes** in memory. See the safety documentation
+/// of [`pointer::offset`].
+///
+/// See the documentation of [`from_raw_parts`] for more details.
 ///
 /// [`from_raw_parts`]: ../../std/slice/fn.from_raw_parts.html
+/// [`pointer::offset`]: ../../std/primitive.pointer.html#method.offset
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
     debug_assert!(data as usize % mem::align_of::<T>() == 0, "attempt to create unaligned slice");
+    debug_assert!(len * mem::size_of::<T>() <= isize::MAX as usize,
+                  "attempt to create slice covering half the address space");
     Repr { raw: FatPtr { data, len} }.rust_mut
 }
 
