@@ -242,6 +242,12 @@ impl<T> [T] {
     /// // reverse sorting
     /// v.sort_by(|a, b| b.cmp(a));
     /// assert!(v == [5, 4, 3, 2, 1]);
+    ///
+    /// // While f64 doesn't implement Ord because NaN != NaN, we can use
+    /// // partial_cmp here because we know none of the elements are NaN.
+    /// let mut floats = [5f64, 4.0, 1.0, 3.0, 2.0];
+    /// floats.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    /// assert_eq!(floats, [1.0, 2.0, 3.0, 4.0, 5.0]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
