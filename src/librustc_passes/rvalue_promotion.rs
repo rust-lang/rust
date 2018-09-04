@@ -189,9 +189,6 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
                     .iter()
                     .any(|&(ref sym, _)| sym == feature_name) ||
 
-                    // this comes from a crate with the feature-gate enabled,
-                    !def_id.is_local() ||
-
                     // this comes from a macro that has #[allow_internal_unstable]
                     span.allows_unstable();
             if !stable_check {
