@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Check that we do not ICE when compiling this
 // macro, which reuses the expression `$id`
 

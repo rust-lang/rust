@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // revisions: lxl nll
 //[lxl]compile-flags: -Z borrowck=mir -Z two-phase-borrows
 

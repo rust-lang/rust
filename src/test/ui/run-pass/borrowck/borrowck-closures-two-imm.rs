@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Tests that two closures can simultaneously have immutable
 // access to the variable, whether that immutable access be used
 // for direct reads or for taking immutable ref. Also check

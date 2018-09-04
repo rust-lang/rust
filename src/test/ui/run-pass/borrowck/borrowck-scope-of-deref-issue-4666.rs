@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // Tests that the scope of the pointer returned from `get()` is
 // limited to the deref operation itself, and does not infect the
 // block as a whole.
