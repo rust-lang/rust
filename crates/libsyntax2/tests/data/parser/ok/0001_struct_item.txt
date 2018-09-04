@@ -11,10 +11,11 @@ ROOT@[0; 32)
           IDENT@[9; 10) "T"
         COLON@[10; 11)
         WHITESPACE@[11; 12)
-        PATH@[12; 16)
-          PATH_SEGMENT@[12; 16)
-            NAME_REF@[12; 16)
-              IDENT@[12; 16) "Copy"
+        PATH_TYPE@[12; 16)
+          PATH@[12; 16)
+            PATH_SEGMENT@[12; 16)
+              NAME_REF@[12; 16)
+                IDENT@[12; 16) "Copy"
       R_ANGLE@[16; 17)
     WHITESPACE@[17; 18)
     NAMED_FIELD_DEF_LIST@[18; 31)

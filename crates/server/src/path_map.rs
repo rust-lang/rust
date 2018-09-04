@@ -99,8 +99,8 @@ mod test {
     #[test]
     fn test_resolve() {
         let mut m = PathMap::new();
-        let id1 = m.get_or_insert(PathBuf::from("/foo"));
-        let id2 = m.get_or_insert(PathBuf::from("/foo/bar.rs"));
+        let id1 = m.get_or_insert(PathBuf::from("/foo"), Root::Workspace);
+        let id2 = m.get_or_insert(PathBuf::from("/foo/bar.rs"), Root::Workspace);
         assert_eq!(
             m.resolve(id1, &RelativePath::new("bar.rs")),
             Some(id2),

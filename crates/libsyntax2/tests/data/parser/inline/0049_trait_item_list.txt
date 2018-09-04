@@ -18,10 +18,11 @@ ROOT@[0; 83)
           IDENT@[18; 19) "A"
         COLON@[19; 20)
         WHITESPACE@[20; 21)
-        PATH@[21; 26)
-          PATH_SEGMENT@[21; 26)
-            NAME_REF@[21; 26)
-              IDENT@[21; 26) "Clone"
+        PATH_TYPE@[21; 26)
+          PATH@[21; 26)
+            PATH_SEGMENT@[21; 26)
+              NAME_REF@[21; 26)
+                IDENT@[21; 26) "Clone"
         SEMI@[26; 27)
       WHITESPACE@[27; 32)
       CONST_DEF@[32; 45)

@@ -70,15 +70,15 @@ pub(super) fn bounds_without_colon(p: &mut Parser) {
     loop {
         let has_paren = p.eat(L_PAREN);
         p.eat(QUESTION);
-        if p.at(FOR_KW) {
-            //TODO
-        }
-        if p.at(LIFETIME) {
-            p.bump();
-        } else if paths::is_path_start(p) {
-            paths::type_path(p);
-        } else {
-            break;
+        match p.current() {
+            LIFETIME => p.bump(),
+            FOR_KW => {
+                types::for_type(p)
+            }
+            _ if paths::is_path_start(p) => {
+                types::path_type(p)
+            }
+            _ => break,
         }
         if has_paren {
             p.expect(R_PAREN);

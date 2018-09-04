@@ -191,12 +191,17 @@ fn fn_pointer_type(p: &mut Parser) {
 
 // test for_type
 // type A = for<'a> fn() -> ();
-fn for_type(p: &mut Parser) {
+pub(super) fn for_type(p: &mut Parser) {
     assert!(p.at(FOR_KW));
     let m = p.start();
     p.bump();
     type_params::opt_type_param_list(p);
-    type_(p);
+    match p.current() {
+        FN_KW | UNSAFE_KW | EXTERN_KW => fn_pointer_type(p),
+        _ if paths::is_path_start(p) => path_type_(p, false),
+        _ => p.error("expected a path"),
+
+    }
     m.complete(p, FOR_TYPE);
 }
 
@@ -226,12 +231,16 @@ fn dyn_trait_type(p: &mut Parser) {
 // type C = self::Foo;
 // type D = super::Foo;
 pub(super) fn path_type(p: &mut Parser) {
+    path_type_(p, true)
+}
+
+pub(super) fn path_type_(p: &mut Parser, allow_bounds: bool) {
     assert!(paths::is_path_start(p) || p.at(L_ANGLE));
     let m = p.start();
     paths::type_path(p);
     // test path_type_with_bounds
     // fn foo() -> Box<T + 'f> {}
-    if p.eat(PLUS) {
+    if allow_bounds && p.eat(PLUS) {
         type_params::bounds_without_colon(p);
     }
     m.complete(p, PATH_TYPE);

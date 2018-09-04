@@ -30,21 +30,23 @@ ROOT@[0; 87)
                 IDENT@[34; 35) "T"
         COLON@[35; 36)
         WHITESPACE@[36; 37)
-        PATH@[37; 42)
-          PATH_SEGMENT@[37; 42)
-            NAME_REF@[37; 42)
-              IDENT@[37; 42) "Clone"
-        WHITESPACE@[42; 43)
-        PLUS@[43; 44)
-        WHITESPACE@[44; 45)
-        PATH@[45; 49)
-          PATH_SEGMENT@[45; 49)
-            NAME_REF@[45; 49)
-              IDENT@[45; 49) "Copy"
-        WHITESPACE@[49; 50)
-        PLUS@[50; 51)
-        WHITESPACE@[51; 52)
-        LIFETIME@[52; 59) "'static"
+        PATH_TYPE@[37; 59)
+          PATH@[37; 42)
+            PATH_SEGMENT@[37; 42)
+              NAME_REF@[37; 42)
+                IDENT@[37; 42) "Clone"
+          WHITESPACE@[42; 43)
+          PLUS@[43; 44)
+          WHITESPACE@[44; 45)
+          PATH_TYPE@[45; 59)
+            PATH@[45; 49)
+              PATH_SEGMENT@[45; 49)
+                NAME_REF@[45; 49)
+                  IDENT@[45; 49) "Copy"
+            WHITESPACE@[49; 50)
+            PLUS@[50; 51)
+            WHITESPACE@[51; 52)
+            LIFETIME@[52; 59) "'static"
       COMMA@[59; 60)
       WHITESPACE@[60; 64)
       WHERE_PRED@[64; 82)
