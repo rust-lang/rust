@@ -3,7 +3,7 @@ use std::{
     fs,
 };
 
-use crossbeam_channel::{Sender, Receiver, bounded};
+use crossbeam_channel::{Sender, Receiver, unbounded};
 use walkdir::WalkDir;
 
 use {
@@ -23,8 +23,8 @@ pub enum FileEventKind {
 }
 
 pub fn roots_loader() -> (Sender<PathBuf>, Receiver<(PathBuf, Vec<FileEvent>)>, ThreadWatcher) {
-    let (path_sender, path_receiver) = bounded::<PathBuf>(2048);
-    let (event_sender, event_receiver) = bounded::<(PathBuf, Vec<FileEvent>)>(1);
+    let (path_sender, path_receiver) = unbounded::<PathBuf>();
+    let (event_sender, event_receiver) = unbounded::<(PathBuf, Vec<FileEvent>)>();
     let thread = ThreadWatcher::spawn("roots loader", move || {
         path_receiver
             .into_iter()

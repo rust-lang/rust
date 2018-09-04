@@ -95,5 +95,5 @@ fn test_eggs() {}
 // extern crate regex;
 // "#);
 //     server.wait_for_feedback("workspace loaded");
-//     server.wait_for_feedback_n("library loaded", 1);
+//     server.wait_for_feedback_n("library loaded", 9);
 // }

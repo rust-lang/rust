@@ -8,7 +8,7 @@ use std::{
 
 use threadpool::ThreadPool;
 use serde::{Serialize, de::DeserializeOwned};
-use crossbeam_channel::{bounded, Sender, Receiver};
+use crossbeam_channel::{unbounded, Sender, Receiver};
 use languageserver_types::{NumberOrString};
 use libanalysis::{FileId, JobHandle, JobToken, LibraryData};
 use gen_lsp_server::{
@@ -38,7 +38,7 @@ pub fn main_loop(
     msg_sender: &mut Sender<RawMessage>,
 ) -> Result<()> {
     let pool = ThreadPool::new(4);
-    let (task_sender, task_receiver) = bounded::<Task>(16);
+    let (task_sender, task_receiver) = unbounded::<Task>();
     let (fs_sender, fs_receiver, fs_watcher) = vfs::roots_loader();
     let (ws_sender, ws_receiver, ws_watcher) = workspace_loader();
 
@@ -97,7 +97,7 @@ fn main_loop_inner(
     pending_requests: &mut HashMap<u64, JobHandle>,
     subs: &mut Subscriptions,
 ) -> Result<()> {
-    let (libdata_sender, libdata_receiver) = bounded(1024);
+    let (libdata_sender, libdata_receiver) = unbounded();
     ws_sender.send(ws_root.clone());
     fs_sender.send(ws_root.clone());
     loop {
@@ -137,7 +137,10 @@ fn main_loop_inner(
                     let files = state.events_to_files(events);
                     let sender = libdata_sender.clone();
                     pool.execute(move || {
+                        let start = ::std::time::Instant::now();
+                        info!("indexing {} ... ", root.display());
                         let data = LibraryData::prepare(files);
+                        info!("indexed {:?} {}", start.elapsed(), root.display());
                         sender.send(data);
                     });
                 }

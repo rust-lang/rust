@@ -138,6 +138,11 @@ pub(crate) struct ReadonlySourceRoot {
 impl ReadonlySourceRoot {
     pub fn new(files: Vec<(FileId, String)>) -> ReadonlySourceRoot {
         let mut module_map = ModuleMap::new();
+        let symbol_index = SymbolIndex::for_files(
+            files.par_iter().map(|(file_id, text)| {
+                (*file_id, File::parse(text))
+            })
+        );
         let file_map: HashMap<FileId, FileData> = files
             .into_iter()
             .map(|(id, text)| {
@@ -145,11 +150,6 @@ impl ReadonlySourceRoot {
                 (id, FileData::new(text))
             })
             .collect();
-        let symbol_index = SymbolIndex::for_files(
-            file_map.par_iter().map(|(&file_id, file_data)| {
-                (file_id, file_data.syntax_transient())
-            })
-        );
 
         ReadonlySourceRoot {
             symbol_index,
