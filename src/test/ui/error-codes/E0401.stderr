@@ -27,9 +27,10 @@ LL | impl<T> Iterator for A<T> {
    | ---- `Self` type implicitly declared here, on the `impl`
 ...
 LL |         fn helper(sel: &Self) -> u8 { //~ ERROR E0401
-   |            ------       ^^^^ use of type variable from outer function
-   |            |
-   |            help: try using a local type parameter instead: `helper<Self>`
+   |                         ^^^^
+   |                         |
+   |                         use of type variable from outer function
+   |                         use a materialized type here instead
 
 error: aborting due to 3 previous errors
 

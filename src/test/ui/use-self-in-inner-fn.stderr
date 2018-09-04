@@ -1,0 +1,15 @@
+error[E0401]: can't use type parameters from outer function
+  --> $DIR/use-self-in-inner-fn.rs:16:25
+   |
+LL | impl A {
+   | ---- `Self` type implicitly declared here, on the `impl`
+...
+LL |         fn peach(this: &Self) {
+   |                         ^^^^
+   |                         |
+   |                         use of type variable from outer function
+   |                         use a materialized type here instead
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0401`.
