@@ -17,6 +17,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use cmp;
 use mem;
 use num::FpCategory;
 
@@ -486,5 +487,136 @@ impl f64 {
     pub fn from_bits(v: u64) -> Self {
         // It turns out the safety issues with sNaN were overblown! Hooray!
         unsafe { mem::transmute(v) }
+    }
+
+    /// A 3-way version of the IEEE `totalOrder` predicate.
+    ///
+    /// This is most commonly used with `cmp::Total`, not directly.
+    ///
+    /// This is useful in situations where you run into the fact that `f64` is
+    /// `PartialOrd`, but not `Ord`, like sorting.  If you need a total order
+    /// on arbitrary floating-point numbers you should use this -- or one of
+    /// the related `total_*` methods -- they're implemented efficiently using
+    /// just a few bitwise operations.
+    ///
+    /// This function mostly agrees with `PartialOrd` and the usual comparison
+    /// operators in how it orders floating point numbers, but it additionally
+    /// distinguishes negative from positive zero (it considers -0 as less than
+    /// +0, whereas `==` considers them equal) and it orders Not-a-Number values
+    /// relative to the numbers and distinguishes NaNs with different bit patterns.
+    ///
+    /// NaNs with positive sign are ordered greater than all other floating-point
+    /// values including positive infinity, while NaNs with negative sign are
+    /// ordered the least, below negative infinity. Two different NaNs with the
+    /// same sign are ordered first by whether the are signaling (signaling is
+    /// less than quiet if the sign is positive, reverse if negative) and second
+    /// by their payload interpreted as integer (reversed order if the sign is negative).
+    ///
+    /// This means all different (canonical) floating point bit patterns are
+    /// placed in a linear order, given below in ascending order:
+    ///
+    /// - Quiet Not-a-Number with negative sign (ordered by payload, descending)
+    /// - Signaling Not-a-Number with negative sign (ordered by payload, descending)
+    /// - Negative infinity
+    /// - Negative finite non-zero numbers (ordered in the usual way)
+    /// - Negative zero
+    /// - Positive zero
+    /// - Positive finite non-zero numbers (ordered in the usual way)
+    /// - Positive infinity
+    /// - Signaling Not-a-Number with positive sign (ordered by payload, ascending)
+    /// - Quiet Not-a-Number with positive sign (ordered by payload, ascending)
+    ///
+    /// # Examples
+    ///
+    /// Most follow the normal ordering:
+    /// ```
+    /// #![feature(float_total_cmp)]
+    /// use std::cmp::Ordering::*;
+    ///
+    /// assert_eq!(f64::total_cmp(1.0, 2.0), Less);
+    /// assert_eq!(f64::total_cmp(1.0, 1.0), Equal);
+    /// assert_eq!(f64::total_cmp(2.0, 1.0), Greater);
+    /// assert_eq!(f64::total_cmp(-1.0, 1.0), Less);
+    /// assert_eq!(f64::total_cmp(1.0, -1.0), Greater);
+    /// assert_eq!(f64::total_cmp(-1.0, -2.0), Greater);
+    /// assert_eq!(f64::total_cmp(-1.0, -1.0), Equal);
+    /// assert_eq!(f64::total_cmp(-2.0, -1.0), Less);
+    /// assert_eq!(f64::total_cmp(-std::f64::MAX, -1.0e9), Less);
+    /// assert_eq!(f64::total_cmp(std::f64::MAX, 1.0e9), Greater);
+    /// ```
+    ///
+    /// Zeros and NaNs:
+    /// ```
+    /// #![feature(float_total_cmp)]
+    /// use std::cmp::Ordering::*;
+    ///
+    /// assert_eq!(f64::partial_cmp(&0.0, &-0.0), Some(Equal));
+    /// assert_eq!(f64::total_cmp(-0.0, 0.0), Less);
+    /// assert_eq!(f64::total_cmp(0.0, -0.0), Greater);
+    ///
+    /// assert_eq!(f64::partial_cmp(&std::f64::NAN, &std::f64::NAN), None);
+    /// assert_eq!(f64::total_cmp(-std::f64::NAN, std::f64::NAN), Less);
+    /// assert_eq!(f64::total_cmp(std::f64::NAN, std::f64::NAN), Equal);
+    /// assert_eq!(f64::total_cmp(std::f64::NAN, -std::f64::NAN), Greater);
+    /// assert_eq!(f64::total_cmp(std::f64::NAN, std::f64::INFINITY), Greater);
+    /// assert_eq!(f64::total_cmp(-std::f64::NAN, -std::f64::INFINITY), Less);
+    /// ```
+    #[unstable(feature = "float_total_cmp", issue = "55339")]
+    #[inline]
+    pub fn total_cmp(self, other: f64) -> cmp::Ordering {
+        self.total_cmp_key().cmp(&other.total_cmp_key())
+    }
+
+    #[inline]
+    fn total_cmp_key(self) -> i64 {
+        let x = self.to_bits() as i64;
+        // Flip the bottom 31 bits if the high bit is set
+        x ^ ((x >> 31) as u64 >> 1) as i64
+    }
+}
+
+#[unstable(feature = "float_total_cmp", issue = "55339")]
+impl PartialEq for cmp::Total<f64> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.to_bits() == other.0.to_bits()
+    }
+}
+
+#[unstable(feature = "float_total_cmp", issue = "55339")]
+impl Eq for cmp::Total<f64> {}
+
+#[unstable(feature = "float_total_cmp", issue = "55339")]
+impl PartialOrd for cmp::Total<f64> {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+/// See `f64::total_cmp` for details.
+///
+/// Using this to sort floats:
+/// ```
+/// #![feature(float_total_cmp)]
+///
+/// let mut a = [
+///     1.0,
+///     -1.0,
+///     0.0,
+///     -0.0,
+///     std::f64::NAN,
+///     -std::f64::NAN,
+///     std::f64::INFINITY,
+///     std::f64::NEG_INFINITY,
+/// ];
+/// a.sort_by_key(|x| std::cmp::Total(*x));
+/// assert_eq!(
+///     format!("{:?}", a),
+///     "[NaN, -inf, -1.0, -0.0, 0.0, 1.0, inf, NaN]"
+/// );
+/// ```
+#[unstable(feature = "float_total_cmp", issue = "55339")]
+impl Ord for cmp::Total<f64> {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.0.total_cmp(other.0)
     }
 }

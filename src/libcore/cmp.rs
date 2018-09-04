@@ -462,6 +462,40 @@ impl<T: Ord> Ord for Reverse<T> {
     }
 }
 
+/// A wrapper newtype for providing a total order on a type that's normally partial.
+///
+/// This is most commonly used for floating-point:
+///
+/// ```rust
+/// #![feature(float_total_cmp)]
+///
+/// use std::cmp::Total;
+///
+/// assert!(-0.0 == 0.0);
+/// assert!(Total(-0.0) < Total(0.0));
+/// assert_eq!(std::f32::NAN.partial_cmp(&0.0), None);
+/// assert_eq!(Total(std::f32::NAN).partial_cmp(&Total(0.0)), Some(std::cmp::Ordering::Greater));
+///
+/// let mut a = [3.0, 1.0, 2.0];
+/// // a.sort(); // ERROR, because floats are !Ord
+/// a.sort_by_key(|x| std::cmp::Total(*x)); // But this works!
+/// assert_eq!(a, [1.0, 2.0, 3.0]);
+///
+/// // By using `Total`, the struct can derive `Eq` and `Ord`.
+/// #[derive(PartialEq, Eq, PartialOrd, Ord)]
+/// struct MyData {
+///     foo: Total<f32>,
+///     bar: Total<f64>,
+/// }
+/// ```
+///
+/// It can also be used to provide both partial and total order implementations
+/// for an enum, if orders between variant don't make sense conceptually but
+/// are still desired for use as a `BTreeMap` key or similar.
+#[derive(Debug, Copy, Clone)]
+#[unstable(feature = "float_total_cmp", issue = "55339")]
+pub struct Total<T>(#[unstable(feature = "float_total_cmp", issue = "55339")] pub T);
+
 /// Trait for types that form a [total order](https://en.wikipedia.org/wiki/Total_order).
 ///
 /// An order is a total order if it is (for all `a`, `b` and `c`):
