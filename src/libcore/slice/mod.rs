@@ -3879,13 +3879,16 @@ pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
     Repr { raw: FatPtr { data, len } }.rust
 }
 
-/// Performs the same functionality as `from_raw_parts`, except that a mutable
-/// slice is returned.
+/// Performs the same functionality as [`from_raw_parts`], except that a
+/// mutable slice is returned.
 ///
-/// This function is unsafe for the same reasons as `from_raw_parts`, as well
+/// This function is unsafe for the same reasons as [`from_raw_parts`], as well
 /// as not being able to provide a non-aliasing guarantee of the returned
 /// mutable slice. `data` must be non-null and aligned even for zero-length
-/// slices as with `from_raw_parts`.
+/// slices as with [`from_raw_parts`]. See the documentation of
+/// [`from_raw_parts`] for more details.
+///
+/// [`from_raw_parts`]: ../../std/slice/fn.from_raw_parts.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
