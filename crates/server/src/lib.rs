@@ -7,7 +7,7 @@ extern crate serde_json;
 extern crate languageserver_types;
 #[macro_use]
 extern crate crossbeam_channel;
-extern crate threadpool;
+extern crate rayon;
 #[macro_use]
 extern crate log;
 extern crate drop_bomb;

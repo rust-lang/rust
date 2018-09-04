@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 
 [dependencies]
+rayon = "1.0.2"
 relative-path = "0.3.7"
 failure = "0.1.2"
 serde_json = "1.0.24"
@@ -11,7 +12,6 @@ serde = "1.0.71"
 serde_derive = "1.0.71"
 drop_bomb = "0.1.0"
 crossbeam-channel = "0.2.4"
-threadpool = "1.7.1"
 flexi_logger = "0.9.1"
 log = "0.4.3"
 url_serde = "0.2.0"

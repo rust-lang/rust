@@ -6,9 +6,9 @@ use std::{
     collections::{HashMap},
 };
 
-use threadpool::ThreadPool;
 use serde::{Serialize, de::DeserializeOwned};
 use crossbeam_channel::{unbounded, Sender, Receiver};
+use rayon::{self, ThreadPool};
 use languageserver_types::{NumberOrString};
 use libanalysis::{FileId, JobHandle, JobToken, LibraryData};
 use gen_lsp_server::{
@@ -37,7 +37,9 @@ pub fn main_loop(
     msg_receriver: &mut Receiver<RawMessage>,
     msg_sender: &mut Sender<RawMessage>,
 ) -> Result<()> {
-    let pool = ThreadPool::new(4);
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(4).build()
+        .unwrap();
     let (task_sender, task_receiver) = unbounded::<Task>();
     let (fs_sender, fs_receiver, fs_watcher) = vfs::roots_loader();
     let (ws_sender, ws_receiver, ws_watcher) = workspace_loader();
@@ -68,7 +70,7 @@ pub fn main_loop(
     task_receiver.for_each(|task| on_task(task, msg_sender, &mut pending_requests));
     info!("...tasks have finished");
     info!("joining threadpool...");
-    pool.join();
+    drop(pool);
     info!("...threadpool has finished");
 
     let fs_res = fs_watcher.stop();
@@ -136,7 +138,7 @@ fn main_loop_inner(
                 } else {
                     let files = state.events_to_files(events);
                     let sender = libdata_sender.clone();
-                    pool.execute(move || {
+                    pool.spawn(move || {
                         let start = ::std::time::Instant::now();
                         info!("indexing {} ... ", root.display());
                         let data = LibraryData::prepare(files);
@@ -354,7 +356,7 @@ impl<'a> PoolDispatcher<'a> {
                 let (handle, token) = JobHandle::new();
                 let world = self.world.snapshot();
                 let sender = self.sender.clone();
-                self.pool.execute(move || {
+                self.pool.spawn(move || {
                     let resp = match f(world, params, token) {
                         Ok(resp) => RawResponse::ok::<R>(id, &resp),
                         Err(e) => RawResponse::err(id, ErrorCode::InternalError as i32, e.to_string()),
@@ -386,7 +388,7 @@ fn update_file_notifications_on_threadpool(
     sender: Sender<Task>,
     subscriptions: Vec<FileId>,
 ) {
-    pool.execute(move || {
+    pool.spawn(move || {
         for file_id in subscriptions {
             match handlers::publish_diagnostics(world.clone(), file_id) {
                 Err(e) => {
