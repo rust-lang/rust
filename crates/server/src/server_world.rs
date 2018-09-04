@@ -10,7 +10,7 @@ use libanalysis::{FileId, AnalysisHost, Analysis, CrateGraph, CrateId, LibraryDa
 
 use {
     Result,
-    path_map::PathMap,
+    path_map::{PathMap, Root},
     vfs::{FileEvent, FileEventKind},
     project_model::CargoWorkspace,
 };
@@ -51,7 +51,7 @@ impl ServerWorldState {
                 (event.path, text)
             })
             .map(|(path, text)| {
-                (pm.get_or_insert(path), text)
+                (pm.get_or_insert(path, Root::Workspace), text)
             })
             .filter_map(|(id, text)| {
                 if mm.contains_key(&id) {
@@ -73,7 +73,7 @@ impl ServerWorldState {
                 };
                 (event.path, text)
             })
-            .map(|(path, text)| (pm.get_or_insert(path), text))
+            .map(|(path, text)| (pm.get_or_insert(path, Root::Lib), text))
             .collect()
     }
     pub fn add_lib(&mut self, data: LibraryData) {
@@ -81,9 +81,11 @@ impl ServerWorldState {
     }
 
     pub fn add_mem_file(&mut self, path: PathBuf, text: String) -> FileId {
-        let file_id = self.path_map.get_or_insert(path);
+        let file_id = self.path_map.get_or_insert(path, Root::Workspace);
         self.mem_map.insert(file_id, None);
-        self.analysis_host.change_file(file_id, Some(text));
+        if self.path_map.get_root(file_id) != Root::Lib {
+            self.analysis_host.change_file(file_id, Some(text));
+        }
         file_id
     }
 
@@ -91,7 +93,9 @@ impl ServerWorldState {
         let file_id = self.path_map.get_id(path).ok_or_else(|| {
             format_err!("change to unknown file: {}", path.display())
         })?;
-        self.analysis_host.change_file(file_id, Some(text));
+        if self.path_map.get_root(file_id) != Root::Lib {
+            self.analysis_host.change_file(file_id, Some(text));
+        }
         Ok(())
     }
 
@@ -105,7 +109,9 @@ impl ServerWorldState {
         };
         // Do this via file watcher ideally.
         let text = fs::read_to_string(path).ok();
-        self.analysis_host.change_file(file_id, text);
+        if self.path_map.get_root(file_id) != Root::Lib {
+            self.analysis_host.change_file(file_id, text);
+        }
         Ok(file_id)
     }
     pub fn set_workspaces(&mut self, ws: Vec<CargoWorkspace>) {
