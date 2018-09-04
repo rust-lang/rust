@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // run-pass
+#![allow(overflowing_literals)]
+#![allow(dead_code)]
+
 macro_rules! check {
     ($m:ident, $t:ty, $v:expr) => {{
         mod $m {

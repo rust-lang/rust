@@ -12,6 +12,7 @@
 #![allow(deprecated)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
+#![allow(overflowing_literals)]
 
 use std::hash::{Hash, SipHasher, Hasher};
 use std::mem::size_of;

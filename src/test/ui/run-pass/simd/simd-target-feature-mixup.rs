@@ -10,6 +10,7 @@
 
 // run-pass
 #![allow(stable_features)]
+#![allow(overflowing_literals)]
 
 // ignore-emscripten
 

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(overflowing_literals)]
 
 // ignore-emscripten no threads support
 

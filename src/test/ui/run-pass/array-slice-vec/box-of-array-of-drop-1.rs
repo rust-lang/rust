@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(overflowing_literals)]
 
 // Test that we cleanup a fixed size Box<[D; k]> properly when D has a
 // destructor.

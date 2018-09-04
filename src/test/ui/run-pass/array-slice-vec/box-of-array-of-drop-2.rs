@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(overflowing_literals)]
 
 // Test that we cleanup dynamic sized Box<[D]> properly when D has a
 // destructor.

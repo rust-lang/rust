@@ -10,6 +10,7 @@
 
 // run-pass
 #![allow(non_upper_case_globals)]
+#![allow(overflowing_literals)]
 
 fn foo() -> isize {
     return 0xca7f000d;
