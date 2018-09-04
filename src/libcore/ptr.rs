@@ -74,7 +74,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const fn null<T>() -> *const T { 0 as *const T }
+pub const fn null<T: ?Sized>() -> *const T { 0 as *const T }
 
 /// Creates a null mutable raw pointer.
 ///
@@ -88,7 +88,7 @@ pub const fn null<T>() -> *const T { 0 as *const T }
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
+pub const fn null_mut<T: ?Sized>() -> *mut T { 0 as *mut T }
 
 /// Swaps the values at two mutable locations of the same type, without
 /// deinitializing either.
