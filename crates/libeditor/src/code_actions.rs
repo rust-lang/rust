@@ -109,17 +109,22 @@ pub fn introduce_variable<'a>(file: &'a File, range: TextRange) -> Option<impl F
     }
     Some(move || {
         let mut buf = String::new();
+        let mut edit = EditBuilder::new();
+
         buf.push_str("let var_name = ");
         expr.syntax().text().push_to(&mut buf);
-        buf.push_str(";");
-        indent.text().push_to(&mut buf);
-
-        let mut edit = EditBuilder::new();
-        edit.replace(expr.syntax().range(), "var_name".to_string());
-        edit.insert(anchor_stmt.syntax().range().start(), buf);
+        if expr.syntax().range().start() == anchor_stmt.syntax().range().start() {
+            edit.replace(expr.syntax().range(), buf);
+        } else {
+            buf.push_str(";");
+            indent.text().push_to(&mut buf);
+            edit.replace(expr.syntax().range(), "var_name".to_string());
+            edit.insert(anchor_stmt.syntax().range().start(), buf);
+        }
+        let cursor_position = anchor_stmt.syntax().range().start() + TextUnit::of_str("let ");
         LocalEdit {
             edit: edit.finish(),
-            cursor_position: Some(anchor_stmt.syntax().range().start() + TextUnit::of_str("let ")),
+            cursor_position: Some(cursor_position),
         }
     })
 }
@@ -183,7 +188,7 @@ mod tests {
     }
 
     #[test]
-    fn test_intrdoduce_var() {
+    fn test_intrdoduce_var_simple() {
         check_action_range(
             "
 fn foo() {
@@ -192,6 +197,19 @@ fn foo() {
 fn foo() {
     let <|>var_name = 1 + 1;
     foo(var_name);
+}",
+            |file, range| introduce_variable(file, range).map(|f| f()),
+        );
+    }
+    #[test]
+    fn test_intrdoduce_var_expr_stmt() {
+check_action_range(
+            "
+fn foo() {
+    <|>1 + 1<|>;
+}", "
+fn foo() {
+    let <|>var_name = 1 + 1;
 }",
             |file, range| introduce_variable(file, range).map(|f| f()),
         );
