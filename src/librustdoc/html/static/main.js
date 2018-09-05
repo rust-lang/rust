@@ -1957,7 +1957,9 @@
             var implItems = document.getElementsByClassName('impl-items');
 
             if (implItems && implItems.length > 0) {
-                onEach(implItems[0].getElementsByClassName("collapse-toggle"), collapser);
+                onEach(implItems, function(elem) {
+                    onEach(elem.getElementsByClassName("collapse-toggle"), collapser);
+                });
             }
         }
     }
