@@ -15,11 +15,11 @@ pub(crate) fn is_string_literal_start(c: char, c1: Option<char>, c2: Option<char
 }
 
 pub(crate) fn scan_char(ptr: &mut Ptr) {
-    while let Some(c) = ptr.next() {
+    while let Some(c) = ptr.current() {
         match c {
             '\\' => {
                 ptr.bump();
-                if ptr.next_is('\\') || ptr.next_is('\'') {
+                if ptr.at('\\') || ptr.at('\'') {
                     ptr.bump();
                 }
             }
@@ -57,11 +57,11 @@ pub(crate) fn scan_byte_char_or_string(ptr: &mut Ptr) -> SyntaxKind {
 }
 
 pub(crate) fn scan_string(ptr: &mut Ptr) {
-    while let Some(c) = ptr.next() {
+    while let Some(c) = ptr.current() {
         match c {
             '\\' => {
                 ptr.bump();
-                if ptr.next_is('\\') || ptr.next_is('"') {
+                if ptr.at('\\') || ptr.at('"') {
                     ptr.bump();
                 }
             }
@@ -78,11 +78,11 @@ pub(crate) fn scan_string(ptr: &mut Ptr) {
 
 pub(crate) fn scan_raw_string(ptr: &mut Ptr) {
     let mut hashes = 0;
-    while ptr.next_is('#') {
+    while ptr.at('#') {
         hashes += 1;
         ptr.bump();
     }
-    if !ptr.next_is('"') {
+    if !ptr.at('"') {
         return;
     }
     ptr.bump();
@@ -90,7 +90,7 @@ pub(crate) fn scan_raw_string(ptr: &mut Ptr) {
     while let Some(c) = ptr.bump() {
         if c == '"' {
             let mut hashes_left = hashes;
-            while ptr.next_is('#') && hashes_left > 0{
+            while ptr.at('#') && hashes_left > 0{
                 hashes_left -= 1;
                 ptr.bump();
             }
@@ -110,7 +110,7 @@ fn scan_byte_string(ptr: &mut Ptr) {
 }
 
 fn scan_raw_byte_string(ptr: &mut Ptr) {
-    if !ptr.next_is('"') {
+    if !ptr.at('"') {
         return;
     }
     ptr.bump();
