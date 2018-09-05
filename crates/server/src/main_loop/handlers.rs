@@ -372,12 +372,12 @@ pub fn handle_code_action(
 ) -> Result<Option<Vec<Command>>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
-    let offset = params.range.conv_with(&line_index).start();
+    let range = params.range.conv_with(&line_index);
 
-    let assists = world.analysis().assists(file_id, offset).into_iter();
+    let assists = world.analysis().assists(file_id, range).into_iter();
     let fixes = world.analysis().diagnostics(file_id).into_iter()
         .filter_map(|d| Some((d.range, d.fix?)))
-        .filter(|(range, _fix)| contains_offset_nonstrict(*range, offset))
+        .filter(|(range, _fix)| contains_offset_nonstrict(*range, range.start()))
         .map(|(_range, fix)| fix);
 
     let mut res = Vec::new();

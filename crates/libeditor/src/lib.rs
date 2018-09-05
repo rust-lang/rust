@@ -32,6 +32,7 @@ pub use self::{
     code_actions::{
         LocalEdit,
         flip_comma, add_derive, add_impl,
+        introduce_variable,
     },
     typing::{join_lines, on_eq_typed},
     completion::{scope_completion, CompletionItem},

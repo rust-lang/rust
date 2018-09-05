@@ -209,8 +209,8 @@ impl Analysis {
         let file = self.file_syntax(file_id);
         libeditor::scope_completion(&file, offset)
     }
-    pub fn assists(&self, file_id: FileId, offset: TextUnit) -> Vec<SourceChange> {
-        self.imp.assists(file_id, offset)
+    pub fn assists(&self, file_id: FileId, range: TextRange) -> Vec<SourceChange> {
+        self.imp.assists(file_id, range)
     }
     pub fn diagnostics(&self, file_id: FileId) -> Vec<Diagnostic> {
         self.imp.diagnostics(file_id)

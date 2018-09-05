@@ -256,12 +256,14 @@ impl AnalysisImpl {
         res
     }
 
-    pub fn assists(&self, file_id: FileId, offset: TextUnit) -> Vec<SourceChange> {
+    pub fn assists(&self, file_id: FileId, range: TextRange) -> Vec<SourceChange> {
         let file = self.file_syntax(file_id);
+        let offset = range.start();
         let actions = vec![
             ("flip comma", libeditor::flip_comma(&file, offset).map(|f| f())),
             ("add `#[derive]`", libeditor::add_derive(&file, offset).map(|f| f())),
             ("add impl", libeditor::add_impl(&file, offset).map(|f| f())),
+            ("introduce variable", libeditor::introduce_variable(&file, range).map(|f| f())),
         ];
         actions.into_iter()
             .filter_map(|(name, local_edit)| {

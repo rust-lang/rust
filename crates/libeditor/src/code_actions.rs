@@ -1,13 +1,15 @@
 use join_to_string::join;
 
 use libsyntax2::{
-    File, TextUnit,
+    File, TextUnit, TextRange,
     ast::{self, AstNode, AttrsOwner, TypeParamsOwner, NameOwner},
-    SyntaxKind::COMMA,
+    SyntaxKind::{COMMA, WHITESPACE},
     SyntaxNodeRef,
     algo::{
         Direction, siblings,
         find_leaf_at_offset,
+        find_covering_node,
+        ancestors,
     },
 };
 
@@ -97,6 +99,31 @@ pub fn add_impl<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() ->
     })
 }
 
+pub fn introduce_variable<'a>(file: &'a File, range: TextRange) -> Option<impl FnOnce() -> LocalEdit + 'a> {
+    let node = find_covering_node(file.syntax(), range);
+    let expr = ancestors(node).filter_map(ast::Expr::cast).next()?;
+    let anchor_stmt = ancestors(expr.syntax()).filter_map(ast::Stmt::cast).next()?;
+    let indent = anchor_stmt.syntax().prev_sibling()?;
+    if indent.kind() != WHITESPACE {
+        return None;
+    }
+    Some(move || {
+        let mut buf = String::new();
+        buf.push_str("let var_name = ");
+        expr.syntax().text().push_to(&mut buf);
+        buf.push_str(";");
+        indent.text().push_to(&mut buf);
+
+        let mut edit = EditBuilder::new();
+        edit.replace(expr.syntax().range(), "var_name".to_string());
+        edit.insert(anchor_stmt.syntax().range().start(), buf);
+        LocalEdit {
+            edit: edit.finish(),
+            cursor_position: Some(anchor_stmt.syntax().range().start() + TextUnit::of_str("let ")),
+        }
+    })
+}
+
 fn non_trivia_sibling(node: SyntaxNodeRef, direction: Direction) -> Option<SyntaxNodeRef> {
     siblings(node, direction)
         .skip(1)
@@ -106,7 +133,7 @@ fn non_trivia_sibling(node: SyntaxNodeRef, direction: Direction) -> Option<Synta
 #[cfg(test)]
 mod tests {
     use super::*;
-    use test_utils::check_action;
+    use test_utils::{check_action, check_action_range};
 
     #[test]
     fn test_swap_comma() {
@@ -152,6 +179,21 @@ mod tests {
             "struct Foo<'a, T: Foo<'a>> {<|>}",
             "struct Foo<'a, T: Foo<'a>> {}\n\nimpl<'a, T: Foo<'a>> Foo<'a, T> {\n<|>\n}",
             |file, off| add_impl(file, off).map(|f| f()),
+        );
+    }
+
+    #[test]
+    fn test_intrdoduce_var() {
+        check_action_range(
+            "
+fn foo() {
+    foo(<|>1 + 1<|>);
+}", "
+fn foo() {
+    let <|>var_name = 1 + 1;
+    foo(var_name);
+}",
+            |file, range| introduce_variable(file, range).map(|f| f()),
         );
     }
 
