@@ -16,7 +16,7 @@ impl A {
         fn peach(this: &Self) {
         //~^ ERROR can't use type parameters from outer function
         //~| NOTE use of type variable from outer function
-        //~| NOTE use a materialized type here instead
+        //~| NOTE use a type here instead
         }
     }
 }

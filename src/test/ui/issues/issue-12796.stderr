@@ -5,7 +5,7 @@ LL |         fn inner(_: &Self) {
    |                      ^^^^
    |                      |
    |                      use of type variable from outer function
-   |                      use a materialized type here instead
+   |                      can't use `Self` here
 
 error: aborting due to previous error
 

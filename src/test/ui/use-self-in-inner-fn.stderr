@@ -8,7 +8,7 @@ LL |         fn peach(this: &Self) {
    |                         ^^^^
    |                         |
    |                         use of type variable from outer function
-   |                         use a materialized type here instead
+   |                         use a type here instead
 
 error: aborting due to previous error
 

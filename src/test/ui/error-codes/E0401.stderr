@@ -30,7 +30,7 @@ LL |         fn helper(sel: &Self) -> u8 { //~ ERROR E0401
    |                         ^^^^
    |                         |
    |                         use of type variable from outer function
-   |                         use a materialized type here instead
+   |                         use a type here instead
 
 error: aborting due to 3 previous errors
 

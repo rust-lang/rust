@@ -197,15 +197,26 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             err.span_label(span, "use of type variable from outer function");
 
             let cm = resolver.session.source_map();
-            let mut is_self = false;
             match outer_def {
-                Def::SelfTy(_, maybe_impl_defid) => {
-                    if let Some(impl_span) = maybe_impl_defid.map_or(None,
-                            |def_id| resolver.definitions.opt_span(def_id)) {
-                        err.span_label(reduce_impl_span_to_impl_keyword(cm, impl_span),
-                                    "`Self` type implicitly declared here, on the `impl`");
+                Def::SelfTy(maybe_trait_defid, maybe_impl_defid) => {
+                    if let Some(impl_span) = maybe_impl_defid.and_then(|def_id| {
+                        resolver.definitions.opt_span(def_id)
+                    }) {
+                        err.span_label(
+                            reduce_impl_span_to_impl_keyword(cm, impl_span),
+                            "`Self` type implicitly declared here, on the `impl`",
+                        );
                     }
-                    is_self = true;
+                    match (maybe_trait_defid, maybe_impl_defid) {
+                        (Some(_), None) => {
+                            err.span_label(span, "can't use `Self` here");
+                        }
+                        (_, Some(_)) => {
+                            err.span_label(span, "use a type here instead");
+                        }
+                        (None, None) => bug!("`impl` without trait nor type?"),
+                    }
+                    return err;
                 },
                 Def::TyParam(typaram_defid) => {
                     if let Some(typaram_span) = resolver.definitions.opt_span(typaram_defid) {
@@ -221,12 +232,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             // Try to retrieve the span of the function signature and generate a new message with
             // a local type parameter
             let sugg_msg = "try using a local type parameter instead";
-            if is_self {
-                // Suggest using the actual type
-                err.span_label(span, "use a materialized type here instead");
-            } else if let Some(
-                (sugg_span, new_snippet),
-            ) = cm.generate_local_type_param_snippet(span) {
+            if let Some((sugg_span, new_snippet)) = cm.generate_local_type_param_snippet(span) {
                 // Suggest the modification to the user
                 err.span_suggestion_with_applicability(
                     sugg_span,
