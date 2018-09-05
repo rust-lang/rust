@@ -27,7 +27,7 @@ fn main() {
 }
 
 fn print_lints() {
-    let lint_list = collect_all();
+    let lint_list = gather_all().collect::<Vec<Lint>>();
     let grouped_by_lint_group = Lint::by_lint_group(&lint_list);
 
     for (lint_group, mut lints) in grouped_by_lint_group {
@@ -41,5 +41,5 @@ fn print_lints() {
         }
     }
 
-    println!("there are {} lints", Lint::active_lints(&lint_list).len());
+    println!("there are {} lints", Lint::active_lints(&lint_list).count());
 }

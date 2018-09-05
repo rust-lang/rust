@@ -46,8 +46,9 @@ impl Lint {
         }
     }
 
-    pub fn active_lints(lints: &[Lint]) -> Vec<Lint> {
-        lints.iter().filter(|l| l.deprecation.is_none()).cloned().collect::<Vec<Lint>>()
+    /// Returns all non-deprecated lints
+    pub fn active_lints(lints: &[Lint]) -> impl Iterator<Item=&Lint> {
+        lints.iter().filter(|l| l.deprecation.is_none())
     }
 
     /// Returns the lints in a HashMap, grouped by the different lint groups
@@ -56,22 +57,22 @@ impl Lint {
     }
 }
 
-pub fn collect_all() -> Vec<Lint> {
+pub fn gather_all() -> impl Iterator<Item=Lint> {
     let mut lints = vec![];
     for dir_entry in lint_files() {
-        lints.append(&mut collect_from_file(&dir_entry));
+        lints.append(&mut gather_from_file(&dir_entry).collect());
     }
-    lints
+    lints.into_iter()
 }
 
-fn collect_from_file(dir_entry: &fs::DirEntry) -> Vec<Lint> {
+fn gather_from_file(dir_entry: &fs::DirEntry) -> impl Iterator<Item=Lint> {
     let mut file = fs::File::open(dir_entry.path()).unwrap();
     let mut content = String::new();
     file.read_to_string(&mut content).unwrap();
     parse_contents(&content, dir_entry.path().file_stem().unwrap().to_str().unwrap())
 }
 
-fn parse_contents(content: &str, filename: &str) -> Vec<Lint> {
+fn parse_contents(content: &str, filename: &str) -> impl Iterator<Item=Lint> {
     let mut lints: Vec<Lint> = DEC_CLIPPY_LINT_RE
         .captures_iter(&content)
         .map(|m| Lint::new(&m["name"], &m["cat"], &m["desc"], None, filename))
@@ -81,21 +82,20 @@ fn parse_contents(content: &str, filename: &str) -> Vec<Lint> {
         .map(|m| Lint::new( &m["name"], "Deprecated", &m["desc"], Some(&m["desc"]), filename))
         .collect();
     lints.append(&mut deprecated);
-    lints
+    lints.into_iter()
 }
 
 /// Collects all .rs files in the `clippy_lints/src` directory
-fn lint_files() -> Vec<fs::DirEntry> {
+fn lint_files() -> impl Iterator<Item=fs::DirEntry> {
     let paths = fs::read_dir("../clippy_lints/src").unwrap();
     paths
         .filter_map(|f| f.ok())
         .filter(|f| f.path().extension() == Some(OsStr::new("rs")))
-        .collect::<Vec<fs::DirEntry>>()
 }
 
 #[test]
 fn test_parse_contents() {
-    let result = parse_contents(
+    let result: Vec<Lint> = parse_contents(
         r#"
 declare_clippy_lint! {
     pub PTR_ARG,
@@ -116,7 +116,7 @@ declare_deprecated_lint! {
     "`assert!()` will be more flexible with RFC 2011"
 }
     "#,
-    "module_name");
+    "module_name").collect();
 
     let expected = vec![
         Lint::new("ptr_arg", "style", "really long text", None, "module_name"),
@@ -141,7 +141,7 @@ fn test_active_lints() {
     let expected = vec![
         Lint::new("should_assert_eq2", "Not Deprecated", "abc", None, "module_name")
     ];
-    assert_eq!(expected, Lint::active_lints(&lints));
+    assert_eq!(expected, Lint::active_lints(&lints).cloned().collect::<Vec<Lint>>());
 }
 
 #[test]
