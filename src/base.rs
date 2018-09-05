@@ -254,8 +254,13 @@ fn trans_stmt<'a, 'tcx: 'a>(
 ) {
     let _print_guard = PrintOnPanic(|| format!("stmt {:?}", stmt));
 
-    let inst = fx.bcx.func.layout.last_inst(cur_ebb).unwrap();
-    fx.add_comment(inst, format!("{:?}", stmt));
+    match &stmt.kind {
+        StatementKind::StorageLive(..) | StatementKind::StorageDead(..) => {} // Those are not very useful
+        _ => {
+            let inst = fx.bcx.func.layout.last_inst(cur_ebb).unwrap();
+            fx.add_comment(inst, format!("{:?}", stmt));
+        }
+    }
 
     match &stmt.kind {
         StatementKind::SetDiscriminant {
