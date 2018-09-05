@@ -207,6 +207,7 @@ $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
+            #[cfg_attr(not(stage0), rustc_promotable)]
             pub const fn min_value() -> Self {
                 !0 ^ ((!0 as $UnsignedT) >> 1) as Self
             }
@@ -225,6 +226,7 @@ $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
+            #[cfg_attr(not(stage0), rustc_promotable)]
             pub const fn max_value() -> Self {
                 !Self::min_value()
             }

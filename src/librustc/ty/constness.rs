@@ -87,12 +87,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
     fn is_promotable_const_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
         tcx.is_const_fn(def_id) && match tcx.lookup_stability(def_id) {
             Some(stab) => stab.promotable,
-            // const fns without the promotable attribute may still be promoted if they have no
-            // arguments, as in that case they are semantically equivalent to constants.
-            // also only promote such const fns if they are defined in the standard library
-            None => {
-                tcx.fn_sig(def_id).skip_binder().inputs().is_empty() && tcx.features().staged_api
-            },
+            None => false,
         }
     }
 
