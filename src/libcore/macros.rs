@@ -355,20 +355,19 @@ macro_rules! try {
 /// implementation details of the components.
 ///
 /// ```no_run
-///  # extern crate core;
-///  use core::fmt::Write;
+/// # extern crate core;
+/// use core::fmt::Write;
 ///
-///  struct Example{
-///  }
+/// struct Example;
 ///
-///  impl Write for Example{
-///      fn write_str(&mut self, _s: &str) -> core::fmt::Result {
-///           unimplemented!();
-///      }
-///  }
+/// impl Write for Example {
+///     fn write_str(&mut self, _s: &str) -> core::fmt::Result {
+///          unimplemented!();
+///     }
+/// }
 ///
-///  let mut m = Example{};
-///  write!(&mut m, "Hello World").expect("Not written");
+/// let mut m = Example{};
+/// write!(&mut m, "Hello World").expect("Not written");
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
