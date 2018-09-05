@@ -24,7 +24,7 @@ use declare;
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
-use interfaces::{Backend, CommonMethods, CommonWriteMethods};
+use interfaces::{Backend, CommonMethods, CommonWriteMethods, TypeMethods};
 
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{HasDataLayout, LayoutOf};
@@ -236,19 +236,19 @@ impl<'ll, 'tcx: 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
     }
 
     fn c_bool(&self, val: bool) -> &'ll Value {
-        &self.c_uint(Type::i1(&self), val as u64)
+        &self.c_uint(&self.i1(), val as u64)
     }
 
     fn c_i32(&self, i: i32) -> &'ll Value {
-        &self.c_int(Type::i32(&self), i as i64)
+        &self.c_int(&self.i32(), i as i64)
     }
 
     fn c_u32(&self, i: u32) -> &'ll Value {
-        &self.c_uint(Type::i32(&self), i as u64)
+        &self.c_uint(&self.i32(), i as u64)
     }
 
     fn c_u64(&self, i: u64) -> &'ll Value {
-        &self.c_uint(Type::i64(&self), i)
+        &self.c_uint(&self.i64(), i)
     }
 
     fn c_usize(&self, i: u64) -> &'ll Value {
@@ -262,7 +262,7 @@ impl<'ll, 'tcx: 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
     }
 
     fn c_u8(&self, i: u8) -> &'ll Value {
-        &self.c_uint(Type::i8(&self), i as u64)
+        &self.c_uint(&self.i8(), i as u64)
     }
 
 
@@ -300,7 +300,7 @@ impl<'ll, 'tcx: 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
     fn c_str_slice(&self, s: LocalInternedString) -> &'ll Value {
         let len = s.len();
         let cs = consts::ptrcast(&self.c_cstr(s, false),
-            &self.layout_of(&self.tcx.mk_str()).llvm_type(&self).ptr_to());
+            &self.ptr_to(&self.layout_of(&self.tcx.mk_str()).llvm_type(&self)));
         &self.c_fat_ptr(cs, &self.c_usize(len as u64))
     }
 
@@ -505,11 +505,11 @@ pub fn shift_mask_val(
     mask_llty: &'ll Type,
     invert: bool
 ) -> &'ll Value {
-    let kind = llty.kind();
+    let kind = bx.cx().kind(llty);
     match kind {
         TypeKind::Integer => {
             // i8/u8 can shift by at most 7, i16/u16 by at most 15, etc.
-            let val = llty.int_width() - 1;
+            let val = bx.cx().int_width(llty) - 1;
             if invert {
                 bx.cx.c_int(mask_llty, !val as i64)
             } else {
@@ -517,8 +517,13 @@ pub fn shift_mask_val(
             }
         },
         TypeKind::Vector => {
-            let mask = shift_mask_val(bx, llty.element_type(), mask_llty.element_type(), invert);
-            bx.vector_splat(mask_llty.vector_length(), mask)
+            let mask = shift_mask_val(
+                bx,
+                bx.cx().element_type(llty),
+                bx.cx().element_type(mask_llty),
+                invert
+            );
+            bx.vector_splat(bx.cx().vector_length(mask_llty), mask)
         },
         _ => bug!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
     }

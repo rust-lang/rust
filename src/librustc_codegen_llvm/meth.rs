@@ -14,10 +14,9 @@ use context::CodegenCx;
 use builder::Builder;
 use consts;
 use monomorphize;
-use type_::Type;
 use value::Value;
 
-use interfaces::{BuilderMethods, CommonMethods};
+use interfaces::{BuilderMethods, CommonMethods, TypeMethods};
 
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::HasDataLayout;
@@ -41,7 +40,10 @@ impl<'a, 'tcx> VirtualIndex {
         // Load the data pointer from the object.
         debug!("get_fn({:?}, {:?})", llvtable, self);
 
-        let llvtable = bx.pointercast(llvtable, fn_ty.ptr_to_llvm_type(bx.cx()).ptr_to());
+        let llvtable = bx.pointercast(
+            llvtable,
+            bx.cx().ptr_to(fn_ty.ptr_to_llvm_type(bx.cx()))
+        );
         let ptr_align = bx.tcx().data_layout.pointer_align;
         let ptr = bx.load(
             bx.inbounds_gep(llvtable, &[bx.cx().c_usize(self.0)]),
@@ -61,7 +63,7 @@ impl<'a, 'tcx> VirtualIndex {
         // Load the data pointer from the object.
         debug!("get_int({:?}, {:?})", llvtable, self);
 
-        let llvtable = bx.pointercast(llvtable, Type::isize(bx.cx()).ptr_to());
+        let llvtable = bx.pointercast(llvtable, bx.cx().ptr_to(bx.cx().isize()));
         let usize_align = bx.tcx().data_layout.pointer_align;
         let ptr = bx.load(
             bx.inbounds_gep(llvtable, &[bx.cx().c_usize(self.0)]),
@@ -96,7 +98,7 @@ pub fn get_vtable(
     }
 
     // Not in the cache. Build it.
-    let nullptr = cx.c_null(Type::i8p(cx));
+    let nullptr = cx.c_null(cx.i8p());
 
     let methods = tcx.vtable_methods(trait_ref.with_self_ty(tcx, ty));
     let methods = methods.iter().cloned().map(|opt_mth| {

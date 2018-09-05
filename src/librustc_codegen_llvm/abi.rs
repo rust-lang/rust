@@ -18,7 +18,7 @@ use type_::Type;
 use type_of::{LayoutLlvmExt, PointerKind};
 use value::Value;
 
-use interfaces::{BuilderMethods, CommonMethods};
+use interfaces::{BuilderMethods, CommonMethods, TypeMethods};
 
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TyLayout, Abi as LayoutAbi};
 use rustc::ty::{self, Ty};
@@ -111,16 +111,16 @@ pub trait LlvmType {
 impl LlvmType for Reg {
     fn llvm_type(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type {
         match self.kind {
-            RegKind::Integer => Type::ix(cx, self.size.bits()),
+            RegKind::Integer => cx.ix(self.size.bits()),
             RegKind::Float => {
                 match self.size.bits() {
-                    32 => Type::f32(cx),
-                    64 => Type::f64(cx),
+                    32 => cx.f32(),
+                    64 => cx.f64(),
                     _ => bug!("unsupported float: {:?}", self)
                 }
             }
             RegKind::Vector => {
-                Type::vector(Type::i8(cx), self.size.bytes())
+                cx.vector(cx.i8(), self.size.bytes())
             }
         }
     }
@@ -144,7 +144,7 @@ impl LlvmType for CastTarget {
 
             // Simplify to array when all chunks are the same size and type
             if rem_bytes == 0 {
-                return Type::array(rest_ll_unit, rest_count);
+                return cx.array(rest_ll_unit, rest_count);
             }
         }
 
@@ -159,10 +159,10 @@ impl LlvmType for CastTarget {
         if rem_bytes != 0 {
             // Only integers can be really split further.
             assert_eq!(self.rest.unit.kind, RegKind::Integer);
-            args.push(Type::ix(cx, rem_bytes * 8));
+            args.push(cx.ix(rem_bytes * 8));
         }
 
-        Type::struct_(cx, &args, false)
+        cx.struct_(&args, false)
     }
 }
 
@@ -212,7 +212,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
             // uses it for i16 -> {i8, i8}, but not for i24 -> {i8, i8, i8}.
             let can_store_through_cast_ptr = false;
             if can_store_through_cast_ptr {
-                let cast_dst = bx.pointercast(dst.llval, cast.llvm_type(cx).ptr_to());
+                let cast_dst = bx.pointercast(dst.llval, cx.ptr_to(cast.llvm_type(cx)));
                 bx.store(val, cast_dst, self.layout.align);
             } else {
                 // The actual return type is a struct, but the ABI
@@ -240,9 +240,9 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
 
                 // ...and then memcpy it to the intended destination.
                 base::call_memcpy(bx,
-                                  bx.pointercast(dst.llval, Type::i8p(cx)),
+                                  bx.pointercast(dst.llval, cx.i8p()),
                                   self.layout.align,
-                                  bx.pointercast(llscratch, Type::i8p(cx)),
+                                  bx.pointercast(llscratch, cx.i8p()),
                                   scratch_align,
                                   cx.c_usize(self.layout.size.bytes()),
                                   MemFlags::empty());
@@ -635,14 +635,14 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         );
 
         let llreturn_ty = match self.ret.mode {
-            PassMode::Ignore => Type::void(cx),
+            PassMode::Ignore => cx.void(),
             PassMode::Direct(_) | PassMode::Pair(..) => {
                 self.ret.layout.immediate_llvm_type(cx)
             }
             PassMode::Cast(cast) => cast.llvm_type(cx),
             PassMode::Indirect(..) => {
-                llargument_tys.push(self.ret.memory_ty(cx).ptr_to());
-                Type::void(cx)
+                llargument_tys.push(cx.ptr_to(self.ret.memory_ty(cx)));
+                cx.void()
             }
         };
 
@@ -668,15 +668,15 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                     continue;
                 }
                 PassMode::Cast(cast) => cast.llvm_type(cx),
-                PassMode::Indirect(_, None) => arg.memory_ty(cx).ptr_to(),
+                PassMode::Indirect(_, None) => cx.ptr_to(arg.memory_ty(cx)),
             };
             llargument_tys.push(llarg_ty);
         }
 
         if self.variadic {
-            Type::variadic_func(&llargument_tys, llreturn_ty)
+            cx.variadic_func(&llargument_tys, llreturn_ty)
         } else {
-            Type::func(&llargument_tys, llreturn_ty)
+            cx.func(&llargument_tys, llreturn_ty)
         }
     }
 

@@ -26,7 +26,7 @@ use type_of::LayoutLlvmExt;
 use type_::Type;
 use value::Value;
 
-use interfaces::{BuilderMethods, CommonMethods};
+use interfaces::{BuilderMethods, CommonMethods, TypeMethods};
 
 use syntax::symbol::Symbol;
 use syntax_pos::Pos;
@@ -268,7 +268,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                             }
                         };
                         bx.load(
-                            bx.pointercast(llslot, cast_ty.llvm_type(bx.cx()).ptr_to()),
+                            bx.pointercast(llslot, bx.cx().ptr_to(cast_ty.llvm_type(bx.cx()))),
                             self.fn_ty.ret.layout.align)
                     }
                 };
@@ -560,7 +560,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                     let dest = match ret_dest {
                         _ if fn_ty.ret.is_indirect() => llargs[0],
                         ReturnDest::Nothing => {
-                            bx.cx().c_undef(fn_ty.ret.memory_ty(bx.cx()).ptr_to())
+                            bx.cx().c_undef(bx.cx().ptr_to(fn_ty.ret.memory_ty(bx.cx())))
                         }
                         ReturnDest::IndirectOperand(dst, _) |
                         ReturnDest::Store(dst) => dst.llval,
@@ -801,7 +801,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
         if by_ref && !arg.is_indirect() {
             // Have to load the argument, maybe while casting it.
             if let PassMode::Cast(ty) = arg.mode {
-                llval = bx.load(bx.pointercast(llval, ty.llvm_type(bx.cx()).ptr_to()),
+                llval = bx.load(bx.pointercast(llval, bx.cx().ptr_to(ty.llvm_type(bx.cx()))),
                                 align.min(arg.layout.align));
             } else {
                 // We can't use `PlaceRef::load` here because the argument
@@ -902,7 +902,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
 
     fn landing_pad_type(&self) -> &'ll Type {
         let cx = self.cx;
-        Type::struct_(cx, &[Type::i8p(cx), Type::i32(cx)], false)
+        cx.struct_( &[cx.i8p(), cx.i32()], false)
     }
 
     fn unreachable_block(&mut self) -> &'ll BasicBlock {
@@ -1014,7 +1014,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                               dst: PlaceRef<'tcx, &'ll Value>) {
         let src = self.codegen_operand(bx, src);
         let llty = src.layout.llvm_type(bx.cx());
-        let cast_ptr = bx.pointercast(dst.llval, llty.ptr_to());
+        let cast_ptr = bx.pointercast(dst.llval, bx.cx().ptr_to(llty));
         let align = src.layout.align.min(dst.layout.align);
         src.val.store(bx, PlaceRef::new_sized(cast_ptr, src.layout, align));
     }

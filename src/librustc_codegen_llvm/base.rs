@@ -74,7 +74,7 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::indexed_vec::Idx;
 
-use interfaces::{BuilderMethods, CommonMethods, CommonWriteMethods};
+use interfaces::{BuilderMethods, CommonMethods, CommonWriteMethods, TypeMethods};
 
 use std::any::Any;
 use std::cmp;
@@ -234,13 +234,13 @@ pub fn unsize_thin_ptr(
         (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }),
          &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
             assert!(bx.cx().type_is_sized(a));
-            let ptr_ty = bx.cx().layout_of(b).llvm_type(bx.cx()).ptr_to();
+            let ptr_ty = bx.cx().ptr_to(bx.cx().layout_of(b).llvm_type(bx.cx()));
             (bx.pointercast(src, ptr_ty), unsized_info(bx.cx(), a, b, None))
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             let (a, b) = (src_ty.boxed_ty(), dst_ty.boxed_ty());
             assert!(bx.cx().type_is_sized(a));
-            let ptr_ty = bx.cx().layout_of(b).llvm_type(bx.cx()).ptr_to();
+            let ptr_ty = bx.cx().ptr_to(bx.cx().layout_of(b).llvm_type(bx.cx()));
             (bx.pointercast(src, ptr_ty), unsized_info(bx.cx(), a, b, None))
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
@@ -353,14 +353,14 @@ fn cast_shift_rhs<'ll, F, G>(bx: &Builder<'_, 'll, '_>,
     if op.is_shift() {
         let mut rhs_llty = bx.cx().val_ty(rhs);
         let mut lhs_llty = bx.cx().val_ty(lhs);
-        if rhs_llty.kind() == TypeKind::Vector {
-            rhs_llty = rhs_llty.element_type()
+        if bx.cx().kind(rhs_llty) == TypeKind::Vector {
+            rhs_llty = bx.cx().element_type(rhs_llty)
         }
-        if lhs_llty.kind() == TypeKind::Vector {
-            lhs_llty = lhs_llty.element_type()
+        if bx.cx().kind(lhs_llty) == TypeKind::Vector {
+            lhs_llty = bx.cx().element_type(lhs_llty)
         }
-        let rhs_sz = rhs_llty.int_width();
-        let lhs_sz = lhs_llty.int_width();
+        let rhs_sz = bx.cx().int_width(rhs_llty);
+        let lhs_sz = bx.cx().int_width(lhs_llty);
         if lhs_sz < rhs_sz {
             trunc(rhs, lhs_llty)
         } else if lhs_sz > rhs_sz {
@@ -393,8 +393,8 @@ pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll>(
     bx: &Builder<'_ ,'ll, '_, &'ll Value>,
     val: &'ll Value
 ) -> &'ll Value {
-    if bx.cx().val_ty(val) == Type::i1(bx.cx()) {
-        bx.zext(val, Type::i8(bx.cx()))
+    if bx.cx().val_ty(val) == bx.cx().i1() {
+        bx.zext(val, bx.cx().i8())
     } else {
         val
     }
@@ -417,7 +417,7 @@ pub fn to_immediate_scalar(
     scalar: &layout::Scalar,
 ) -> &'ll Value {
     if scalar.is_bool() {
-        return bx.trunc(val, Type::i1(bx.cx()));
+        return bx.trunc(val, bx.cx().i1());
     }
     val
 }
@@ -434,13 +434,13 @@ pub fn call_memcpy<'a, 'll: 'a, 'tcx: 'll>(
     if flags.contains(MemFlags::NONTEMPORAL) {
         // HACK(nox): This is inefficient but there is no nontemporal memcpy.
         let val = bx.load(src, src_align);
-        let ptr = bx.pointercast(dst, bx.cx().val_ty(val).ptr_to());
+        let ptr = bx.pointercast(dst, bx.cx().ptr_to(bx.cx().val_ty(val)));
         bx.store_with_flags(val, ptr, dst_align, flags);
         return;
     }
     let cx = bx.cx();
-    let src_ptr = bx.pointercast(src, Type::i8p(cx));
-    let dst_ptr = bx.pointercast(dst, Type::i8p(cx));
+    let src_ptr = bx.pointercast(src, cx.i8p());
+    let dst_ptr = bx.pointercast(dst, cx.i8p());
     let size = bx.intcast(n_bytes, cx.isize_ty, false);
     let volatile = flags.contains(MemFlags::VOLATILE);
     bx.memcpy(dst_ptr, dst_align.abi(), src_ptr, src_align.abi(), size, volatile);
@@ -551,7 +551,7 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
         use_start_lang_item: bool,
     ) {
         let llfty =
-            Type::func(&[Type::c_int(cx), Type::i8p(cx).ptr_to()], Type::c_int(cx));
+            cx.func(&[cx.t_int(), cx.ptr_to(cx.i8p())], cx.t_int());
 
         let main_ret_ty = cx.tcx.fn_sig(rust_main_def_id).output();
         // Given that `main()` has no arguments,
@@ -594,7 +594,7 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
                 start_def_id,
                 cx.tcx.intern_substs(&[main_ret_ty.into()]),
             );
-            (start_fn, vec![bx.pointercast(rust_main, Type::i8p(cx).ptr_to()),
+            (start_fn, vec![bx.pointercast(rust_main, cx.ptr_to(cx.i8p())),
                             arg_argc, arg_argv])
         } else {
             debug!("using user-defined start fn");
@@ -602,7 +602,7 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
         };
 
         let result = bx.call(start_fn, &args, None);
-        bx.ret(bx.intcast(result, Type::c_int(cx), true));
+        bx.ret(bx.intcast(result, cx.t_int(), true));
     }
 }
 
@@ -1151,7 +1151,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             if !cx.used_statics.borrow().is_empty() {
                 let name = const_cstr!("llvm.used");
                 let section = const_cstr!("llvm.metadata");
-                let array = cx.c_array(Type::i8(&cx).ptr_to(), &*cx.used_statics.borrow());
+                let array = cx.c_array(&cx.ptr_to(cx.i8()), &*cx.used_statics.borrow());
 
                 unsafe {
                     let g = llvm::LLVMAddGlobal(cx.llmod,

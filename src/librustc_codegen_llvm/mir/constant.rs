@@ -25,7 +25,7 @@ use type_::Type;
 use syntax::ast::Mutability;
 use syntax::source_map::Span;
 use value::Value;
-use interfaces::{BuilderMethods, CommonMethods};
+use interfaces::{BuilderMethods, CommonMethods, TypeMethods};
 
 use super::super::callee;
 use super::FunctionCx;
@@ -40,11 +40,11 @@ pub fn scalar_to_llvm(
     match cv {
         Scalar::Bits { size: 0, .. } => {
             assert_eq!(0, layout.value.size(cx).bytes());
-            cx.c_undef(Type::ix(cx, 0))
+            cx.c_undef(cx.ix(0))
         },
         Scalar::Bits { bits, size } => {
             assert_eq!(size as u64, layout.value.size(cx).bytes());
-            let llval = cx.c_uint_big(Type::ix(cx, bitsize), bits);
+            let llval = cx.c_uint_big(cx.ix(bitsize), bits);
             if layout.value == layout::Pointer {
                 unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
             } else {
@@ -72,7 +72,7 @@ pub fn scalar_to_llvm(
                 None => bug!("missing allocation {:?}", ptr.alloc_id),
             };
             let llval = unsafe { llvm::LLVMConstInBoundsGEP(
-                consts::bitcast(base_addr, Type::i8p(cx)),
+                consts::bitcast(base_addr, cx.i8p()),
                 &cx.c_usize(ptr.offset.bytes()),
                 1,
             ) };
@@ -109,7 +109,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll 
                 value: layout::Primitive::Pointer,
                 valid_range: 0..=!0
             },
-            Type::i8p(cx)
+            cx.i8p()
         ));
         next_offset = offset + pointer_size;
     }
