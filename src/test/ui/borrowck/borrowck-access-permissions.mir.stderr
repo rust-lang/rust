@@ -35,7 +35,7 @@ error[E0596]: cannot borrow `*ptr_x` as mutable, as it is behind a `*const` poin
   --> $DIR/borrowck-access-permissions.rs:56:23
    |
 LL |         let ptr_x : *const _ = &x;
-   |             ----- help: consider changing this to be a mutable pointer: `*mut i32`
+   |                                -- help: consider changing this to be a mutable pointer: `&mut x`
 ...
 LL |             let _y1 = &mut *ptr_x; //[ast]~ ERROR [E0596]
    |                       ^^^^^^^^^^^ `ptr_x` is a `*const` pointer, so the data it refers to cannot be borrowed as mutable

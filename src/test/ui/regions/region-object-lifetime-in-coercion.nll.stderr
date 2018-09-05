@@ -1,11 +1,10 @@
 error[E0621]: explicit lifetime required in the type of `v`
-  --> $DIR/region-object-lifetime-in-coercion.rs:20:5
+  --> $DIR/region-object-lifetime-in-coercion.rs:18:33
    |
 LL | fn a(v: &[u8]) -> Box<Foo + 'static> {
    |         ----- help: add explicit lifetime `'static` to the type of `v`: `&'static [u8]`
-...
-LL |     x
-   |     ^ lifetime `'static` required
+LL |     let x: Box<Foo + 'static> = Box::new(v);
+   |                                 ^^^^^^^^^^^ lifetime `'static` required
 
 error[E0621]: explicit lifetime required in the type of `v`
   --> $DIR/region-object-lifetime-in-coercion.rs:24:5

@@ -253,8 +253,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         irrefutable_pat: Pattern<'tcx>,
         initializer: ExprRef<'tcx>,
     ) -> BlockAnd<()> {
-        // optimize the case of `let x = ...`
         match *irrefutable_pat.kind {
+            // Optimize the case of `let x = ...` to write directly into `x`
             PatternKind::Binding {
                 mode: BindingMode::ByValue,
                 var,
@@ -264,6 +264,47 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard);
                 unpack!(block = self.into(&place, block, initializer));
+                self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
+                block.unit()
+            }
+
+            // Optimize the case of `let x: T = ...` to write directly
+            // into `x` and then require that `T == typeof(x)`.
+            //
+            // Weirdly, this is needed to prevent the
+            // `intrinsic-move-val.rs` test case from crashing. That
+            // test works with uninitialized values in a rather
+            // dubious way, so it may be that the test is kind of
+            // broken.
+            PatternKind::AscribeUserType {
+                subpattern: Pattern {
+                    kind: box PatternKind::Binding {
+                        mode: BindingMode::ByValue,
+                        var,
+                        subpattern: None,
+                        ..
+                    },
+                    ..
+                },
+                user_ty: ascription_user_ty,
+            } => {
+                let place =
+                    self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard);
+                unpack!(block = self.into(&place, block, initializer));
+
+                let source_info = self.source_info(irrefutable_pat.span);
+                self.cfg.push(
+                    block,
+                    Statement {
+                        source_info,
+                        kind: StatementKind::AscribeUserType(
+                            place.clone(),
+                            ty::Variance::Invariant,
+                            ascription_user_ty,
+                        ),
+                    },
+                );
+
                 self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
                 block.unit()
             }
