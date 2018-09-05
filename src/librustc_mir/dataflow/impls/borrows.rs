@@ -168,9 +168,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
         // region, then setting that gen-bit will override any
         // potential kill introduced here.
         if let Some(indices) = self.borrows_out_of_scope_at_location.get(&location) {
-            for index in indices {
-                sets.kill(&index);
-            }
+            sets.kill_all(indices);
         }
     }
 
