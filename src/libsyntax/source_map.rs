@@ -24,7 +24,7 @@ pub use self::ExpnFormat::*;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_data_structures::sync::{Lrc, Lock, LockGuard};
+use rustc_data_structures::sync::{Lrc, Lock, LockGuard, MappedLockGuard};
 use std::cmp;
 use std::hash::Hash;
 use std::path::{Path, PathBuf};
@@ -194,7 +194,7 @@ impl SourceMap {
         Ok(self.new_source_file(filename, src))
     }
 
-    pub fn files(&self) -> LockGuard<Vec<Lrc<SourceFile>>> {
+    pub fn files(&self) -> MappedLockGuard<Vec<Lrc<SourceFile>>> {
         LockGuard::map(self.files.borrow(), |files| &mut files.file_maps)
     }
 

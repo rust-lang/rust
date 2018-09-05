@@ -20,4 +20,4 @@ name = "corebenches"
 path = "../libcore/benches/lib.rs"
 
 [dev-dependencies]
-rand = "0.4"
+rand = "0.5"

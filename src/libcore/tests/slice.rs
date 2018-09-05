@@ -802,11 +802,11 @@ fn test_rotate_right() {
 fn sort_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
     use core::slice::heapsort;
-    use rand::{Rng, XorShiftRng};
+    use rand::{FromEntropy, Rng, XorShiftRng};
 
     let mut v = [0; 600];
     let mut tmp = [0; 600];
-    let mut rng = XorShiftRng::new_unseeded();
+    let mut rng = XorShiftRng::from_entropy();
 
     for len in (2..25).chain(500..510) {
         let v = &mut v[0..len];

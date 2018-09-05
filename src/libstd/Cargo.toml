@@ -25,7 +25,7 @@ profiler_builtins = { path = "../libprofiler_builtins", optional = true }
 unwind = { path = "../libunwind" }
 
 [dev-dependencies]
-rand = "0.4"
+rand = "0.5"
 
 [target.x86_64-apple-darwin.dependencies]
 rustc_asan = { path = "../librustc_asan" }

@@ -1222,7 +1222,7 @@ mod tests {
     use std::thread;
     use std::vec::Vec;
 
-    use rand::{thread_rng, Rng};
+    use rand::{thread_rng, RngCore};
 
     use super::{LinkedList, Node};
 
