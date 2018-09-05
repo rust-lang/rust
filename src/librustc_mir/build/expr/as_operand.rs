@@ -73,7 +73,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             Category::Place |
             Category::Rvalue(..) => {
                 let operand =
-                    unpack!(block = this.as_temp(block, scope, expr));
+                    unpack!(block = this.as_temp(block, scope, expr, Mutability::Mut));
                 block.and(Operand::Move(Place::Local(operand)))
             }
         }

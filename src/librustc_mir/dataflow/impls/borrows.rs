@@ -115,7 +115,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
         nonlexical_regioncx: Rc<RegionInferenceContext<'tcx>>,
         def_id: DefId,
         body_id: Option<hir::BodyId>,
-        borrow_set: &Rc<BorrowSet<'tcx>>
+        borrow_set: &Rc<BorrowSet<'tcx>>,
     ) -> Self {
         let scope_tree = tcx.region_scope_tree(def_id);
         let root_scope = body_id.map(|body_id| {
@@ -233,7 +233,13 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                 // propagate_call_return method.
 
                 if let mir::Rvalue::Ref(region, _, ref place) = *rhs {
-                    if place.ignore_borrow(self.tcx, self.mir) { return; }
+                    if place.ignore_borrow(
+                        self.tcx,
+                        self.mir,
+                        &self.borrow_set.locals_state_at_exit,
+                    ) {
+                        return;
+                    }
                     let index = self.borrow_set.location_map.get(&location).unwrap_or_else(|| {
                         panic!("could not find BorrowIndex for location {:?}", location);
                     });

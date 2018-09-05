@@ -21,33 +21,39 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn as_temp<M>(&mut self,
                       block: BasicBlock,
                       temp_lifetime: Option<region::Scope>,
-                      expr: M)
+                      expr: M,
+                      mutability: Mutability)
                       -> BlockAnd<Local>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
         let expr = self.hir.mirror(expr);
-        self.expr_as_temp(block, temp_lifetime, expr)
+        self.expr_as_temp(block, temp_lifetime, expr, mutability)
     }
 
     fn expr_as_temp(&mut self,
                     mut block: BasicBlock,
                     temp_lifetime: Option<region::Scope>,
-                    expr: Expr<'tcx>)
+                    expr: Expr<'tcx>,
+                    mutability: Mutability)
                     -> BlockAnd<Local> {
-        debug!("expr_as_temp(block={:?}, temp_lifetime={:?}, expr={:?})",
-               block, temp_lifetime, expr);
+        debug!("expr_as_temp(block={:?}, temp_lifetime={:?}, expr={:?}, mutability={:?})",
+               block, temp_lifetime, expr, mutability);
         let this = self;
 
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
         if let ExprKind::Scope { region_scope, lint_level, value } = expr.kind {
             return this.in_scope((region_scope, source_info), lint_level, block, |this| {
-                this.as_temp(block, temp_lifetime, value)
+                this.as_temp(block, temp_lifetime, value, mutability)
             });
         }
 
         let expr_ty = expr.ty;
-        let temp = this.local_decls.push(LocalDecl::new_temp(expr_ty, expr_span));
+        let temp = if mutability == Mutability::Not {
+            this.local_decls.push(LocalDecl::new_immutable_temp(expr_ty, expr_span))
+        } else {
+            this.local_decls.push(LocalDecl::new_temp(expr_ty, expr_span))
+        };
 
         if !expr_ty.is_never() {
             this.cfg.push(block, Statement {

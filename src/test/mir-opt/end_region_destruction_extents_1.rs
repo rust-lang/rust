@@ -70,10 +70,10 @@ unsafe impl<'a, #[may_dangle] 'b> Drop for D1<'a, 'b> {
 //     let mut _2: D1<'12ds, '10s>;
 //     let mut _3: &'12ds S1;
 //     let mut _4: &'12ds S1;
-//     let mut _5: S1;
+//     let _5: S1;
 //     let mut _6: &'10s S1;
 //     let mut _7: &'10s S1;
-//     let mut _8: S1;
+//     let _8: S1;
 //     bb0: {
 //         StorageLive(_2);
 //         StorageLive(_3);
@@ -118,10 +118,10 @@ unsafe impl<'a, #[may_dangle] 'b> Drop for D1<'a, 'b> {
 //     let mut _2: D1<'12ds, '10s>;
 //     let mut _3: &'12ds S1;
 //     let mut _4: &'12ds S1;
-//     let mut _5: S1;
+//     let _5: S1;
 //     let mut _6: &'10s S1;
 //     let mut _7: &'10s S1;
-//     let mut _8: S1;
+//     let _8: S1;
 //     bb0: {
 //         StorageLive(_2);
 //         StorageLive(_3);

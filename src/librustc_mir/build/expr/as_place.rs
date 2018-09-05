@@ -28,14 +28,30 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         where M: Mirror<'tcx, Output=Expr<'tcx>>
     {
         let expr = self.hir.mirror(expr);
-        self.expr_as_place(block, expr)
+        self.expr_as_place(block, expr, Mutability::Mut)
+    }
+
+    /// Compile `expr`, yielding a place that we can move from etc.
+    /// Mutability note: The caller of this method promises only to read from the resulting
+    /// place. The place itself may or may not be mutable:
+    /// * If this expr is a place expr like a.b, then we will return that place.
+    /// * Otherwise, a temporary is created: in that event, it will be an immutable temporary.
+    pub fn as_read_only_place<M>(&mut self,
+                        block: BasicBlock,
+                        expr: M)
+                        -> BlockAnd<Place<'tcx>>
+        where M: Mirror<'tcx, Output=Expr<'tcx>>
+    {
+        let expr = self.hir.mirror(expr);
+        self.expr_as_place(block, expr, Mutability::Not)
     }
 
     fn expr_as_place(&mut self,
                       mut block: BasicBlock,
-                      expr: Expr<'tcx>)
+                      expr: Expr<'tcx>,
+                      mutability: Mutability)
                       -> BlockAnd<Place<'tcx>> {
-        debug!("expr_as_place(block={:?}, expr={:?})", block, expr);
+        debug!("expr_as_place(block={:?}, expr={:?}, mutability={:?})", block, expr, mutability);
 
         let this = self;
         let expr_span = expr.span;
@@ -43,7 +59,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         match expr.kind {
             ExprKind::Scope { region_scope, lint_level, value } => {
                 this.in_scope((region_scope, source_info), lint_level, block, |this| {
-                    this.as_place(block, value)
+                    if mutability == Mutability::Not {
+                        this.as_read_only_place(block, value)
+                    } else {
+                        this.as_place(block, value)
+                    }
                 })
             }
             ExprKind::Field { lhs, name } => {
@@ -63,7 +83,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // region_scope=None so place indexes live forever. They are scalars so they
                 // do not need storage annotations, and they are often copied between
                 // places.
-                let idx = unpack!(block = this.as_temp(block, None, index));
+                let idx = unpack!(block = this.as_temp(block, None, index, Mutability::Mut));
 
                 // bounds check:
                 let (len, lt) = (this.temp(usize_ty.clone(), expr_span),
@@ -137,7 +157,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     Some(Category::Place) => false,
                     _ => true,
                 });
-                let temp = unpack!(block = this.as_temp(block, expr.temp_lifetime, expr));
+                let temp = unpack!(
+                    block = this.as_temp(block, expr.temp_lifetime, expr, mutability));
                 block.and(Place::Local(temp))
             }
         }
