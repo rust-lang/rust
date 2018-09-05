@@ -2494,7 +2494,7 @@ pub(crate) fn submit_pre_lto_module_to_llvm(tcx: TyCtxt,
 
     // Schedule the module to be loaded
     drop(tcx.tx_to_llvm_workers.lock().send(Box::new(Message::AddImportOnlyModule {
-        module_data: SerializedModule::FromUncompressedFile(mmap, file),
+        module_data: SerializedModule::FromUncompressedFile(mmap),
         work_product: module.source,
     })));
 }
