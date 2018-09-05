@@ -18,6 +18,7 @@ use os::raw::c_char;
 use sync::atomic::{AtomicBool, Ordering};
 
 pub mod abi;
+mod waitqueue;
 
 pub mod alloc;
 pub mod args;

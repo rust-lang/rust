@@ -16,8 +16,20 @@ mod alloc;
 #[macro_use]
 mod raw;
 
+pub fn launch_thread() -> IoResult<()> {
+    unsafe { raw::launch_thread().from_sgx_result() }
+}
+
 pub fn exit(panic: bool) -> ! {
     unsafe { raw::exit(panic) }
+}
+
+pub fn wait(event_mask: u64, timeout: u64) -> IoResult<u64> {
+    unsafe { raw::wait(event_mask, timeout).from_sgx_result() }
+}
+
+pub fn send(event_set: u64, tcs: Option<Tcs>) -> IoResult<()> {
+    unsafe { raw::send(event_set, tcs).from_sgx_result() }
 }
 
 pub fn alloc(size: usize, alignment: usize) -> IoResult<*mut u8> {

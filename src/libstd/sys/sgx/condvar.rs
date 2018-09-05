@@ -11,11 +11,16 @@
 use sys::mutex::Mutex;
 use time::Duration;
 
-pub struct Condvar { }
+use super::waitqueue::{WaitVariable, WaitQueue, SpinMutex};
+
+pub struct Condvar {
+    inner: SpinMutex<WaitVariable<()>>,
+}
 
 impl Condvar {
+    #[unstable(feature = "sgx_internals", issue = "0")] // FIXME: min_const_fn
     pub const fn new() -> Condvar {
-        Condvar { }
+        Condvar { inner: SpinMutex::new(WaitVariable::new(())) }
     }
 
     #[inline]
@@ -23,21 +28,25 @@ impl Condvar {
 
     #[inline]
     pub unsafe fn notify_one(&self) {
+        let _ = WaitQueue::notify_one(self.inner.lock());
     }
 
     #[inline]
     pub unsafe fn notify_all(&self) {
+        let _ = WaitQueue::notify_all(self.inner.lock());
     }
 
-    pub unsafe fn wait(&self, _mutex: &Mutex) {
-        panic!("can't block with web assembly")
+    pub unsafe fn wait(&self, mutex: &Mutex) {
+        let guard = self.inner.lock();
+        mutex.unlock();
+        WaitQueue::wait(guard);
+        mutex.lock()
     }
 
     pub unsafe fn wait_timeout(&self, _mutex: &Mutex, _dur: Duration) -> bool {
-        panic!("can't block with web assembly");
+        panic!("timeout not supported in SGX");
     }
 
     #[inline]
-    pub unsafe fn destroy(&self) {
-    }
+    pub unsafe fn destroy(&self) {}
 }

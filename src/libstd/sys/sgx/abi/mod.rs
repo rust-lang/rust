@@ -20,7 +20,7 @@ pub(super) mod panic;
 pub mod thread;
 pub mod tls;
 #[macro_use]
-mod usercalls;
+pub mod usercalls;
 
 global_asm!(concat!(usercalls_asm!(), include_str!("entry.S")));
 
@@ -59,14 +59,13 @@ unsafe extern "C" fn tcs_init(secondary: bool) {
 // (main function exists). If this is a library, the crate author should be
 // able to specify this
 #[no_mangle]
-#[allow(unreachable_code)]
 extern "C" fn entry(p1: u64, p2: u64, p3: u64, secondary: bool, p4: u64, p5: u64) -> (u64, u64) {
     // FIXME: how to support TLS in library mode?
     let tls = Box::new(tls::Tls::new());
     let _tls_guard = unsafe { tls.activate() };
 
     if secondary {
-        unimplemented!("thread entrypoint");
+        super::thread::Thread::entry();
 
         (0, 0)
     } else {

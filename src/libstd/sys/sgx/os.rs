@@ -92,7 +92,7 @@ pub fn env() -> Env {
 }
 
 pub fn getenv(_k: &OsStr) -> io::Result<Option<OsString>> {
-    unsupported()
+    Ok(None)
 }
 
 pub fn setenv(_k: &OsStr, _v: &OsStr) -> io::Result<()> {
