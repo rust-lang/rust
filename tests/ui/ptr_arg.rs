@@ -77,3 +77,10 @@ fn test_cow_with_ref(c: &Cow<[i32]>) {
 fn test_cow(c: Cow<[i32]>) {
     let _c = c;
 }
+
+trait Foo2 {
+    fn do_string(&self);
+}
+
+// no error for &self references where self is of type String (#2293)
+impl Foo2 for String { fn do_string(&self) {} }
