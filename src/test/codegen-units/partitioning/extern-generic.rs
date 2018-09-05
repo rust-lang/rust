@@ -58,5 +58,5 @@ mod mod3 {
 
 // Make sure the two generic functions from the extern crate get instantiated
 // once for the current crate
-//~ MONO_ITEM fn cgu_generic_function::foo[0]<&str> @@ cgu_generic_function.volatile[External]
-//~ MONO_ITEM fn cgu_generic_function::bar[0]<&str> @@ cgu_generic_function.volatile[External]
+//~ MONO_ITEM fn cgu_generic_function::foo[0]<&str> @@ cgu_generic_function[External]
+//~ MONO_ITEM fn cgu_generic_function::bar[0]<&str> @@ cgu_generic_function[External]

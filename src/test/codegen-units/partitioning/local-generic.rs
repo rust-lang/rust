@@ -16,10 +16,10 @@
 #![allow(dead_code)]
 #![crate_type="lib"]
 
-//~ MONO_ITEM fn local_generic::generic[0]<u32> @@ local_generic.volatile[External]
-//~ MONO_ITEM fn local_generic::generic[0]<u64> @@ local_generic.volatile[External]
-//~ MONO_ITEM fn local_generic::generic[0]<char> @@ local_generic.volatile[External]
-//~ MONO_ITEM fn local_generic::generic[0]<&str> @@ local_generic.volatile[External]
+//~ MONO_ITEM fn local_generic::generic[0]<u32> @@ local_generic[External]
+//~ MONO_ITEM fn local_generic::generic[0]<u64> @@ local_generic[External]
+//~ MONO_ITEM fn local_generic::generic[0]<char> @@ local_generic[External]
+//~ MONO_ITEM fn local_generic::generic[0]<&str> @@ local_generic[External]
 pub fn generic<T>(x: T) -> T { x }
 
 //~ MONO_ITEM fn local_generic::user[0] @@ local_generic[Internal]
