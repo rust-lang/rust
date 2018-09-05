@@ -165,7 +165,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
             Promotable
         } else {
             NotPromotable
-            }
+        }
     }
 
     /// While the `ExprUseVisitor` walks, we will identify which
