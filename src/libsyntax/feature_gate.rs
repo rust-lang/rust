@@ -515,6 +515,10 @@ declare_features! (
 
     // unsized rvalues at arguments and parameters
     (active, unsized_locals, "1.30.0", Some(48055), None),
+
+    // #![test_runner]
+    // #[test_case]
+    (active, custom_test_frameworks, "1.30.0", Some(50297), None),
 );
 
 declare_features! (
@@ -765,8 +769,6 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
     ("cfg_attr", Normal, Ungated),
     ("main", Normal, Ungated),
     ("start", Normal, Ungated),
-    ("test", Normal, Ungated),
-    ("bench", Normal, Ungated),
     ("repr", Normal, Ungated),
     ("path", Normal, Ungated),
     ("abi", Normal, Ungated),
@@ -959,6 +961,11 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                                       attribute is just used for rustc unit \
                                                       tests and will never be stable",
                                                      cfg_fn!(rustc_attrs))),
+    ("rustc_test_marker", Normal, Gated(Stability::Unstable,
+                                     "rustc_attrs",
+                                     "the `#[rustc_test_marker]` attribute \
+                                      is used internally to track tests",
+                                     cfg_fn!(rustc_attrs))),
 
     // RFC #2094
     ("nll", Whitelisted, Gated(Stability::Unstable,
@@ -1156,6 +1163,10 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
     ("no_builtins", CrateLevel, Ungated),
     ("recursion_limit", CrateLevel, Ungated),
     ("type_length_limit", CrateLevel, Ungated),
+    ("test_runner", CrateLevel, Gated(Stability::Unstable,
+                    "custom_test_frameworks",
+                    EXPLAIN_CUSTOM_TEST_FRAMEWORKS,
+                    cfg_fn!(custom_test_frameworks))),
 ];
 
 // cfg(...)'s that are feature gated
@@ -1371,6 +1382,9 @@ pub const EXPLAIN_ASM: &'static str =
 
 pub const EXPLAIN_GLOBAL_ASM: &'static str =
     "`global_asm!` is not stable enough for use and is subject to change";
+
+pub const EXPLAIN_CUSTOM_TEST_FRAMEWORKS: &'static str =
+    "custom test frameworks are an unstable feature";
 
 pub const EXPLAIN_LOG_SYNTAX: &'static str =
     "`log_syntax!` is not stable enough for use and is subject to change";

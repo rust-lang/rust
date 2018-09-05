@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    concat!(test!());
-    //~^ error: cannot find macro `test!` in this scope
+pub trait Testable {
+    fn name(&self) -> String;
+    fn run(&self) -> Option<String>; // None will be success, Some is the error message
+}
+
+pub fn runner(tests: &[&dyn Testable]) {
+    for t in tests {
+        print!("{}........{}", t.name(), t.run().unwrap_or_else(|| "SUCCESS".to_string()));
+    }
 }

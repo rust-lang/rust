@@ -21,18 +21,16 @@ use ptr::P;
 
 /// A folder that strips out items that do not belong in the current configuration.
 pub struct StripUnconfigured<'a> {
-    pub should_test: bool,
     pub sess: &'a ParseSess,
     pub features: Option<&'a Features>,
 }
 
 // `cfg_attr`-process the crate's attributes and compute the crate's features.
-pub fn features(mut krate: ast::Crate, sess: &ParseSess, should_test: bool, edition: Edition)
+pub fn features(mut krate: ast::Crate, sess: &ParseSess, edition: Edition)
                 -> (ast::Crate, Features) {
     let features;
     {
         let mut strip_unconfigured = StripUnconfigured {
-            should_test,
             sess,
             features: None,
         };
@@ -118,11 +116,6 @@ impl<'a> StripUnconfigured<'a> {
     // Determine if a node with the given attributes should be included in this configuration.
     pub fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool {
         attrs.iter().all(|attr| {
-            // When not compiling with --test we should not compile the #[test] functions
-            if !self.should_test && is_test_or_bench(attr) {
-                return false;
-            }
-
             let mis = if !is_cfg(attr) {
                 return true;
             } else if let Some(mis) = attr.meta_item_list() {
@@ -249,7 +242,7 @@ impl<'a> StripUnconfigured<'a> {
         //
         // NB: This is intentionally not part of the fold_expr() function
         //     in order for fold_opt_expr() to be able to avoid this check
-        if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(a) || is_test_or_bench(a)) {
+        if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(a)) {
             let msg = "removing an expression is not supported in this position";
             self.sess.span_diagnostic.span_err(attr.span, msg);
         }
@@ -351,8 +344,4 @@ impl<'a> fold::Folder for StripUnconfigured<'a> {
 
 fn is_cfg(attr: &ast::Attribute) -> bool {
     attr.check_name("cfg")
-}
-
-pub fn is_test_or_bench(attr: &ast::Attribute) -> bool {
-    attr.check_name("test") || attr.check_name("bench")
 }

@@ -828,7 +828,6 @@ where
     let (mut krate, features) = syntax::config::features(
         krate,
         &sess.parse_sess,
-        sess.opts.test,
         sess.edition(),
     );
     // these need to be set "early" so that expansion sees `quote` if enabled.

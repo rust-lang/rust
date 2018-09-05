@@ -2739,6 +2739,7 @@ name = "syntax_ext"
 version = "0.0.0"
 dependencies = [
  "fmt_macros 0.0.0",
+ "log 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "proc_macro 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",

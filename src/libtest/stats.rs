@@ -907,7 +907,8 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
-    use Bencher;
+    extern crate test;
+    use self::test::Bencher;
     use stats::Stats;
 
     #[bench]
