@@ -83,7 +83,7 @@ mod prelude {
     pub use cranelift::codegen::Context;
     pub use cranelift::prelude::*;
     pub use cranelift_module::{
-        Backend, DataContext, DataId, FuncId, Linkage, Module, Writability,
+        Backend, DataContext, DataId, FuncId, Linkage, Module,
     };
     pub use cranelift_simplejit::{SimpleJITBackend, SimpleJITBuilder};
 
@@ -239,7 +239,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 ],
                 returns: vec![AbiParam::new(jit_module.pointer_type() /*isize*/)],
                 call_conv: CallConv::SystemV,
-                argument_bytes: None,
             };
             let main_func_id = jit_module
                 .declare_function("main", Linkage::Import, &sig)
@@ -307,7 +306,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 &metadata_name,
                 faerie::artifact::Decl::Data {
                     global: true,
-                    writeable: false,
+                    writable: false,
                 },
                 metadata.clone(),
             ).unwrap();
@@ -442,7 +441,6 @@ fn maybe_create_entry_wrapper<'a, 'tcx: 'a>(
             ],
             returns: vec![AbiParam::new(m.pointer_type() /*isize*/)],
             call_conv: CallConv::SystemV,
-            argument_bytes: None,
         };
 
         let cmain_func_id = m

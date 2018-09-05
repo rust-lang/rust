@@ -103,7 +103,6 @@ pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(
         params,
         returns,
         call_conv,
-        argument_bytes: None,
     }
 }
 
@@ -183,9 +182,8 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
     ) -> Option<Value> {
         let sig = Signature {
             params: input_tys.iter().cloned().map(AbiParam::new).collect(),
-            returns: vec![AbiParam::new(output_ty.unwrap_or(types::VOID))],
+            returns: output_ty.map(|output_ty| vec![AbiParam::new(output_ty)]).unwrap_or(Vec::new()),
             call_conv: CallConv::SystemV,
-            argument_bytes: None,
         };
         let func_id = self
             .module

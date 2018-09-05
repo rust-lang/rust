@@ -5,7 +5,6 @@ use rustc::mir::interpret::{
 };
 use rustc::ty::Const;
 use rustc_mir::interpret::{CompileTimeEvaluator, EvalContext, Memory, MemoryKind};
-use syntax::ast::Mutability as AstMutability;
 
 #[derive(Default)]
 pub struct ConstantCx {
@@ -224,13 +223,7 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
 
         let mut data_ctx = DataContext::new();
 
-        data_ctx.define(
-            alloc.bytes.to_vec().into_boxed_slice(),
-            match alloc.mutability {
-                AstMutability::Mutable => Writability::Writable,
-                AstMutability::Immutable => Writability::Readonly,
-            },
-        );
+        data_ctx.define(alloc.bytes.to_vec().into_boxed_slice());
 
         for &(offset, reloc) in alloc.relocations.iter() {
             let data_id = match tcx.alloc_map.lock().get(reloc).unwrap() {

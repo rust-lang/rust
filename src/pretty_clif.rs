@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
 
+use cranelift::codegen::entity::EntityMap;
 use cranelift::codegen::write::{FuncWriter, PlainWriter};
 
 use crate::prelude::*;
@@ -13,11 +14,12 @@ impl FuncWriter for CommentWriter {
         &mut self,
         w: &mut dyn fmt::Write,
         func: &Function,
+        aliases: &EntityMap<Value, Vec<Value>>,
         isa: Option<&dyn isa::TargetIsa>,
         inst: Inst,
         indent: usize,
     ) -> fmt::Result {
-        PlainWriter.write_instruction(w, func, isa, inst, indent)?;
+        PlainWriter.write_instruction(w, func, aliases, isa, inst, indent)?;
         if let Some(comment) = self.0.get(&inst) {
             writeln!(w, "; {}", comment.replace('\n', "\n; "))?;
         }
