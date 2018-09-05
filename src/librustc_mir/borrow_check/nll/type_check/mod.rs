@@ -17,7 +17,9 @@ use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
 use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::values::{LivenessValues, RegionValueElements};
 use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
-use borrow_check::nll::type_check::free_region_relations::{CreateResult, UniversalRegionRelations};
+use borrow_check::nll::type_check::free_region_relations::{
+    CreateResult, UniversalRegionRelations,
+};
 use borrow_check::nll::universal_regions::UniversalRegions;
 use borrow_check::nll::ToRegionVid;
 use dataflow::move_paths::MoveData;
@@ -246,10 +248,12 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         self.sanitize_type(constant, constant.ty);
 
         if let Some(user_ty) = constant.user_ty {
-            if let Err(terr) =
-                self.cx
-                    .eq_user_type_and_type(user_ty, constant.ty, location.boring())
-            {
+            if let Err(terr) = self.cx.relate_type_and_user_type(
+                constant.ty,
+                ty::Variance::Invariant,
+                user_ty,
+                location.boring(),
+            ) {
                 span_mirbug!(
                     self,
                     constant,
@@ -850,30 +854,17 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         )
     }
 
-    fn sub_type_and_user_type(
+    fn relate_type_and_user_type(
         &mut self,
         a: Ty<'tcx>,
+        v: ty::Variance,
         b: CanonicalTy<'tcx>,
         locations: Locations,
     ) -> Fallible<()> {
-        relate_tys::sub_type_and_user_type(
+        relate_tys::relate_type_and_user_type(
             self.infcx,
             a,
-            b,
-            locations,
-            self.borrowck_context.as_mut().map(|x| &mut **x),
-        )
-    }
-
-    fn eq_user_type_and_type(
-        &mut self,
-        a: CanonicalTy<'tcx>,
-        b: Ty<'tcx>,
-        locations: Locations,
-    ) -> Fallible<()> {
-        relate_tys::eq_user_type_and_type(
-            self.infcx,
-            a,
+            v,
             b,
             locations,
             self.borrowck_context.as_mut().map(|x| &mut **x),
@@ -894,8 +885,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 // of lowering. Assignments to other sorts of places *are* interesting
                 // though.
                 let is_temp = if let Place::Local(l) = *place {
-                    l != RETURN_PLACE &&
-                    !mir.local_decls[l].is_user_variable.is_some()
+                    l != RETURN_PLACE && !mir.local_decls[l].is_user_variable.is_some()
                 } else {
                     false
                 };
@@ -920,9 +910,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
 
                 if let Some(user_ty) = self.rvalue_user_ty(rv) {
-                    if let Err(terr) = self.eq_user_type_and_type(
-                        user_ty,
+                    if let Err(terr) = self.relate_type_and_user_type(
                         rv_ty,
+                        ty::Variance::Invariant,
+                        user_ty,
                         location.boring(),
                     ) {
                         span_mirbug!(
@@ -970,9 +961,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     );
                 };
             }
-            StatementKind::AscribeUserType(ref place, c_ty) => {
+            StatementKind::AscribeUserType(ref place, variance, c_ty) => {
                 let place_ty = place.ty(mir, tcx).to_ty(tcx);
-                if let Err(terr) = self.sub_type_and_user_type(place_ty, c_ty, Locations::All) {
+                if let Err(terr) =
+                    self.relate_type_and_user_type(place_ty, variance, c_ty, Locations::All)
+                {
                     span_mirbug!(
                         self,
                         stmt,
@@ -1157,8 +1150,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             Some((ref dest, _target_block)) => {
                 let dest_ty = dest.ty(mir, tcx).to_ty(tcx);
                 let is_temp = if let Place::Local(l) = *dest {
-                    l != RETURN_PLACE &&
-                    !mir.local_decls[l].is_user_variable.is_some()
+                    l != RETURN_PLACE && !mir.local_decls[l].is_user_variable.is_some()
                 } else {
                     false
                 };
@@ -1577,22 +1569,18 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     /// If this rvalue supports a user-given type annotation, then
     /// extract and return it. This represents the final type of the
     /// rvalue and will be unified with the inferred type.
-    fn rvalue_user_ty(
-        &self,
-        rvalue: &Rvalue<'tcx>,
-    ) -> Option<CanonicalTy<'tcx>> {
+    fn rvalue_user_ty(&self, rvalue: &Rvalue<'tcx>) -> Option<CanonicalTy<'tcx>> {
         match rvalue {
-            Rvalue::Use(_) |
-            Rvalue::Repeat(..) |
-            Rvalue::Ref(..) |
-            Rvalue::Len(..) |
-            Rvalue::Cast(..) |
-            Rvalue::BinaryOp(..) |
-            Rvalue::CheckedBinaryOp(..) |
-            Rvalue::NullaryOp(..) |
-            Rvalue::UnaryOp(..) |
-            Rvalue::Discriminant(..) =>
-                None,
+            Rvalue::Use(_)
+            | Rvalue::Repeat(..)
+            | Rvalue::Ref(..)
+            | Rvalue::Len(..)
+            | Rvalue::Cast(..)
+            | Rvalue::BinaryOp(..)
+            | Rvalue::CheckedBinaryOp(..)
+            | Rvalue::NullaryOp(..)
+            | Rvalue::UnaryOp(..)
+            | Rvalue::Discriminant(..) => None,
 
             Rvalue::Aggregate(aggregate, _) => match **aggregate {
                 AggregateKind::Adt(_, _, _, user_ty, _) => user_ty,
@@ -1600,7 +1588,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 AggregateKind::Tuple => None,
                 AggregateKind::Closure(_, _) => None,
                 AggregateKind::Generator(_, _, _) => None,
-            }
+            },
         }
     }
 

@@ -255,8 +255,9 @@ for mir::StatementKind<'gcx> {
                 op.hash_stable(hcx, hasher);
                 places.hash_stable(hcx, hasher);
             }
-            mir::StatementKind::AscribeUserType(ref place, ref c_ty) => {
+            mir::StatementKind::AscribeUserType(ref place, ref variance, ref c_ty) => {
                 place.hash_stable(hcx, hasher);
+                variance.hash_stable(hcx, hasher);
                 c_ty.hash_stable(hcx, hasher);
             }
             mir::StatementKind::Nop => {}

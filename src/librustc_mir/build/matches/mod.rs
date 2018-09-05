@@ -1188,6 +1188,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     source_info,
                     kind: StatementKind::AscribeUserType(
                         ascription.source.clone(),
+                        ty::Variance::Covariant,
                         ascription.user_ty,
                     ),
                 },

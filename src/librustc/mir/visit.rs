@@ -146,9 +146,10 @@ macro_rules! make_mir_visitor {
 
             fn visit_ascribe_user_ty(&mut self,
                                      place: & $($mutability)* Place<'tcx>,
+                                     variance: & $($mutability)* ty::Variance,
                                      c_ty: & $($mutability)* CanonicalTy<'tcx>,
                                      location: Location) {
-                self.super_ascribe_user_ty(place, c_ty, location);
+                self.super_ascribe_user_ty(place, variance, c_ty, location);
             }
 
             fn visit_place(&mut self,
@@ -388,9 +389,10 @@ macro_rules! make_mir_visitor {
                     }
                     StatementKind::AscribeUserType(
                         ref $($mutability)* place,
+                        ref $($mutability)* variance,
                         ref $($mutability)* c_ty,
                     ) => {
-                        self.visit_ascribe_user_ty(place, c_ty, location);
+                        self.visit_ascribe_user_ty(place, variance, c_ty, location);
                     }
                     StatementKind::Nop => {}
                 }
@@ -633,6 +635,7 @@ macro_rules! make_mir_visitor {
 
             fn super_ascribe_user_ty(&mut self,
                                      place: & $($mutability)* Place<'tcx>,
+                                     _variance: & $($mutability)* ty::Variance,
                                      c_ty: & $($mutability)* CanonicalTy<'tcx>,
                                      location: Location) {
                 self.visit_place(place, PlaceContext::Validate, location);

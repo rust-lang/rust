@@ -115,6 +115,7 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
     fn visit_ascribe_user_ty(
         &mut self,
         _place: &mut Place<'tcx>,
+        _variance: &mut ty::Variance,
         _c_ty: &mut CanonicalTy<'tcx>,
         _location: Location,
     ) {

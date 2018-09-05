@@ -1641,9 +1641,14 @@ pub enum StatementKind<'tcx> {
     ///
     ///     let a: T = y;
     ///
-    /// Here we would insert a `AscribeUserType` that ensures that the
-    /// type `Y` of `y` is a subtype of `T` (`Y <: T`).
-    AscribeUserType(Place<'tcx>, CanonicalTy<'tcx>),
+    /// The effect of this annotation is to relate the type `T_y` of the place `y`
+    /// to the user-given type `T`. The effect depends on the specified variance:
+    ///
+    /// - `Covariant` -- requires that `T_y <: T`
+    /// - `Contravariant` -- requires that `T_y :> T`
+    /// - `Invariant` -- requires that `T_y == T`
+    /// - `Bivariant` -- no effect
+    AscribeUserType(Place<'tcx>, ty::Variance, CanonicalTy<'tcx>),
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
@@ -1720,8 +1725,8 @@ impl<'tcx> Debug for Statement<'tcx> {
                 ref outputs,
                 ref inputs,
             } => write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs),
-            AscribeUserType(ref place, ref c_ty) => {
-                write!(fmt, "AscribeUserType({:?}, {:?})", place, c_ty)
+            AscribeUserType(ref place, ref variance, ref c_ty) => {
+                write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
             }
             Nop => write!(fmt, "nop"),
         }
@@ -2644,7 +2649,7 @@ EnumTypeFoldableImpl! {
         (StatementKind::InlineAsm) { asm, outputs, inputs },
         (StatementKind::Validate)(a, b),
         (StatementKind::EndRegion)(a),
-        (StatementKind::AscribeUserType)(a, b),
+        (StatementKind::AscribeUserType)(a, v, b),
         (StatementKind::Nop),
     }
 }

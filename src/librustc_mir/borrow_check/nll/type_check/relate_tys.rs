@@ -63,9 +63,10 @@ pub(super) fn eq_types<'tcx>(
 /// Adds sufficient constraints to ensure that `a <: b`, where `b` is
 /// a user-given type (which means it may have canonical variables
 /// encoding things like `_`).
-pub(super) fn sub_type_and_user_type<'tcx>(
+pub(super) fn relate_type_and_user_type<'tcx>(
     infcx: &InferCtxt<'_, '_, 'tcx>,
     a: Ty<'tcx>,
+    v: ty::Variance,
     b: CanonicalTy<'tcx>,
     locations: Locations,
     borrowck_context: Option<&mut BorrowCheckContext<'_, 'tcx>>,
@@ -79,50 +80,18 @@ pub(super) fn sub_type_and_user_type<'tcx>(
         value: b_value,
     } = b;
 
-    // (*) The `TypeRelating` code assumes that the "canonical variables"
-    // appear in the "a" side, so start with `Contravariant` ambient
+    // The `TypeRelating` code assumes that the "canonical variables"
+    // appear in the "a" side, so flip `Contravariant` ambient
     // variance to get the right relationship.
+    let v1 = ty::Contravariant.xform(v);
 
     TypeRelating::new(
         infcx,
-        ty::Variance::Contravariant, // (*)
+        v1,
         locations,
         borrowck_context,
         b_variables,
     ).relate(&b_value, &a)?;
-    Ok(())
-}
-
-/// Adds sufficient constraints to ensure that `a <: b`, where `b` is
-/// a user-given type (which means it may have canonical variables
-/// encoding things like `_`).
-pub(super) fn eq_user_type_and_type<'tcx>(
-    infcx: &InferCtxt<'_, '_, 'tcx>,
-    a: CanonicalTy<'tcx>,
-    b: Ty<'tcx>,
-    locations: Locations,
-    borrowck_context: Option<&mut BorrowCheckContext<'_, 'tcx>>,
-) -> Fallible<()> {
-    debug!(
-        "eq_user_type_and_type(a={:?}, b={:?}, locations={:?})",
-        a, b, locations
-    );
-    let Canonical {
-        variables: a_variables,
-        value: a_value,
-    } = a;
-
-    // (*) The `TypeRelating` code assumes that the "canonical variables"
-    // appear in the "a" side, so start with `Contravariant` ambient
-    // variance to get the right relationship.
-
-    TypeRelating::new(
-        infcx,
-        ty::Variance::Invariant, // (*)
-        locations,
-        borrowck_context,
-        a_variables,
-    ).relate(&a_value, &b)?;
     Ok(())
 }
 
