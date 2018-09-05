@@ -5,7 +5,7 @@ use SyntaxKind::{self, *};
 
 pub(crate) fn scan_number(c: char, ptr: &mut Ptr) -> SyntaxKind {
     if c == '0' {
-        match ptr.next().unwrap_or('\0') {
+        match ptr.current().unwrap_or('\0') {
             'b' | 'o' => {
                 ptr.bump();
                 scan_digits(ptr, false);
@@ -26,7 +26,7 @@ pub(crate) fn scan_number(c: char, ptr: &mut Ptr) -> SyntaxKind {
     // might be a float, but don't be greedy if this is actually an
     // integer literal followed by field/method access or a range pattern
     // (`0..2` and `12.foo()`)
-    if ptr.next_is('.') && !(ptr.nnext_is('.') || ptr.nnext_is_p(is_ident_start)) {
+    if ptr.at('.') && !(ptr.at_str("..") || ptr.nth_is_p(1, is_ident_start)) {
         // might have stuff after the ., and if it does, it needs to start
         // with a number
         ptr.bump();
@@ -35,7 +35,7 @@ pub(crate) fn scan_number(c: char, ptr: &mut Ptr) -> SyntaxKind {
         return FLOAT_NUMBER;
     }
     // it might be a float if it has an exponent
-    if ptr.next_is('e') || ptr.next_is('E') {
+    if ptr.at('e') || ptr.at('E') {
         scan_float_exponent(ptr);
         return FLOAT_NUMBER;
     }
@@ -43,7 +43,7 @@ pub(crate) fn scan_number(c: char, ptr: &mut Ptr) -> SyntaxKind {
 }
 
 fn scan_digits(ptr: &mut Ptr, allow_hex: bool) {
-    while let Some(c) = ptr.next() {
+    while let Some(c) = ptr.current() {
         match c {
             '_' | '0'...'9' => {
                 ptr.bump();
@@ -57,9 +57,9 @@ fn scan_digits(ptr: &mut Ptr, allow_hex: bool) {
 }
 
 fn scan_float_exponent(ptr: &mut Ptr) {
-    if ptr.next_is('e') || ptr.next_is('E') {
+    if ptr.at('e') || ptr.at('E') {
         ptr.bump();
-        if ptr.next_is('-') || ptr.next_is('+') {
+        if ptr.at('-') || ptr.at('+') {
             ptr.bump();
         }
         scan_digits(ptr, false);

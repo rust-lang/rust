@@ -67,7 +67,7 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
         _ => (),
     }
 
-    let ident_start = is_ident_start(c) && !is_string_literal_start(c, ptr.next(), ptr.nnext());
+    let ident_start = is_ident_start(c) && !is_string_literal_start(c, ptr.current(), ptr.nth(1));
     if ident_start {
         return scan_ident(c, ptr);
     }
@@ -86,7 +86,7 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
     match c {
         // Multi-byte tokens.
         '.' => {
-            return match (ptr.next(), ptr.nnext()) {
+            return match (ptr.current(), ptr.nth(1)) {
                 (Some('.'), Some('.')) => {
                     ptr.bump();
                     ptr.bump();
@@ -105,7 +105,7 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
             };
         }
         ':' => {
-            return match ptr.next() {
+            return match ptr.current() {
                 Some(':') => {
                     ptr.bump();
                     COLONCOLON
@@ -114,7 +114,7 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
             };
         }
         '=' => {
-            return match ptr.next() {
+            return match ptr.current() {
                 Some('=') => {
                     ptr.bump();
                     EQEQ
@@ -127,7 +127,7 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
             };
         }
         '!' => {
-            return match ptr.next() {
+            return match ptr.current() {
                 Some('=') => {
                     ptr.bump();
                     NEQ
@@ -136,7 +136,7 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
             };
         }
         '-' => {
-            return if ptr.next_is('>') {
+            return if ptr.at('>') {
                 ptr.bump();
                 THIN_ARROW
             } else {
@@ -147,14 +147,14 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
         // If the character is an ident start not followed by another single
         // quote, then this is a lifetime name:
         '\'' => {
-            return if ptr.next_is_p(is_ident_start) && !ptr.nnext_is('\'') {
+            return if ptr.at_p(is_ident_start) && !ptr.at_str("''") {
                 ptr.bump();
-                while ptr.next_is_p(is_ident_continue) {
+                while ptr.at_p(is_ident_continue) {
                     ptr.bump();
                 }
                 // lifetimes shouldn't end with a single quote
                 // if we find one, then this is an invalid character literal
-                if ptr.next_is('\'') {
+                if ptr.at('\'') {
                     ptr.bump();
                     return CHAR; // TODO: error reporting
                 }
@@ -186,7 +186,7 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
 }
 
 fn scan_ident(c: char, ptr: &mut Ptr) -> SyntaxKind {
-    let is_single_letter = match ptr.next() {
+    let is_single_letter = match ptr.current() {
         None => true,
         Some(c) if !is_ident_continue(c) => true,
         _ => false,
@@ -202,7 +202,7 @@ fn scan_ident(c: char, ptr: &mut Ptr) -> SyntaxKind {
 }
 
 fn scan_literal_suffix(ptr: &mut Ptr) {
-    if ptr.next_is_p(is_ident_start) {
+    if ptr.at_p(is_ident_start) {
         ptr.bump();
     }
     ptr.bump_while(is_ident_continue);

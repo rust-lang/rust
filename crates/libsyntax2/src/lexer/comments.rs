@@ -3,7 +3,7 @@ use lexer::ptr::Ptr;
 use SyntaxKind::{self, *};
 
 pub(crate) fn scan_shebang(ptr: &mut Ptr) -> bool {
-    if ptr.next_is('!') && ptr.nnext_is('/') {
+    if ptr.at_str("!/") {
         ptr.bump();
         ptr.bump();
         bump_until_eol(ptr);
@@ -14,15 +14,15 @@ pub(crate) fn scan_shebang(ptr: &mut Ptr) -> bool {
 }
 
 fn scan_block_comment(ptr: &mut Ptr) -> Option<SyntaxKind> {
-    if ptr.next_is('*') {
+    if ptr.at('*') {
         ptr.bump();
         let mut depth: u32 = 1;
         while depth > 0 {
-            if ptr.next_is('*') && ptr.nnext_is('/') {
+            if ptr.at_str("*/") {
                 depth -= 1;
                 ptr.bump();
                 ptr.bump();
-            } else if ptr.next_is('/') && ptr.nnext_is('*') {
+            } else if ptr.at_str("/*") {
                 depth += 1;
                 ptr.bump();
                 ptr.bump();
@@ -37,7 +37,7 @@ fn scan_block_comment(ptr: &mut Ptr) -> Option<SyntaxKind> {
 }
 
 pub(crate) fn scan_comment(ptr: &mut Ptr) -> Option<SyntaxKind> {
-    if ptr.next_is('/') {
+    if ptr.at('/') {
         bump_until_eol(ptr);
         Some(COMMENT)
     } else {
@@ -47,7 +47,7 @@ pub(crate) fn scan_comment(ptr: &mut Ptr) -> Option<SyntaxKind> {
 
 fn bump_until_eol(ptr: &mut Ptr) {
     loop {
-        if ptr.next_is('\n') || ptr.next_is('\r') && ptr.nnext_is('\n') {
+        if ptr.at('\n') || ptr.at_str("\r\n") {
             return;
         }
         if ptr.bump().is_none() {
