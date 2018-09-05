@@ -58,14 +58,10 @@ impl Lint {
 }
 
 pub fn gather_all() -> impl Iterator<Item=Lint> {
-    let mut lints = vec![];
-    for dir_entry in lint_files() {
-        lints.append(&mut gather_from_file(&dir_entry).collect());
-    }
-    lints.into_iter()
+    lint_files().flat_map(gather_from_file)
 }
 
-fn gather_from_file(dir_entry: &fs::DirEntry) -> impl Iterator<Item=Lint> {
+fn gather_from_file(dir_entry: fs::DirEntry) -> impl Iterator<Item=Lint> {
     let mut file = fs::File::open(dir_entry.path()).unwrap();
     let mut content = String::new();
     file.read_to_string(&mut content).unwrap();
@@ -73,22 +69,20 @@ fn gather_from_file(dir_entry: &fs::DirEntry) -> impl Iterator<Item=Lint> {
 }
 
 fn parse_contents(content: &str, filename: &str) -> impl Iterator<Item=Lint> {
-    let mut lints: Vec<Lint> = DEC_CLIPPY_LINT_RE
-        .captures_iter(&content)
-        .map(|m| Lint::new(&m["name"], &m["cat"], &m["desc"], None, filename))
-        .collect();
-    let mut deprecated = DEC_DEPRECATED_LINT_RE
-        .captures_iter(&content)
-        .map(|m| Lint::new( &m["name"], "Deprecated", &m["desc"], Some(&m["desc"]), filename))
-        .collect();
-    lints.append(&mut deprecated);
-    lints.into_iter()
+    let lints = DEC_CLIPPY_LINT_RE
+        .captures_iter(content)
+        .map(|m| Lint::new(&m["name"], &m["cat"], &m["desc"], None, filename));
+    let deprecated = DEC_DEPRECATED_LINT_RE
+        .captures_iter(content)
+        .map(|m| Lint::new( &m["name"], "Deprecated", &m["desc"], Some(&m["desc"]), filename));
+    // Removing the `.collect::<Vec<Lint>>().into_iter()` causes some lifetime issues due to the map
+    lints.chain(deprecated).collect::<Vec<Lint>>().into_iter()
 }
 
 /// Collects all .rs files in the `clippy_lints/src` directory
 fn lint_files() -> impl Iterator<Item=fs::DirEntry> {
-    let paths = fs::read_dir("../clippy_lints/src").unwrap();
-    paths
+    fs::read_dir("../clippy_lints/src")
+        .unwrap()
         .filter_map(|f| f.ok())
         .filter(|f| f.path().extension() == Some(OsStr::new("rs")))
 }
