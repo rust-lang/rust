@@ -15,7 +15,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc::infer::InferCtxt;
 use rustc::mir::{self, Location, Mir, Place, Rvalue, StatementKind, TerminatorKind};
-use rustc::ty::{self, TyCtxt, Region, RegionKind, RegionVid};
+use rustc::ty::{self, TyCtxt, RegionVid};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_errors::{Diagnostic, DiagnosticBuilder};
 use std::collections::VecDeque;
@@ -347,9 +347,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         );
 
         // Check if we can use one of the "nice region errors".
-        let fr_region = self.to_error_region(fr);
-        let outlived_fr_region = self.to_error_region(outlived_fr);
-        if let (Some(f), Some(o)) = (fr_region, outlived_fr_region) {
+        if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
             let tables = infcx.tcx.typeck_tables_of(mir_def_id);
             let nice = NiceRegionError::new_from_span(infcx.tcx, span, o, f, Some(tables));
             if let Some(_error_reported) = nice.try_report_from_nll() {
@@ -362,17 +360,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.universal_regions.is_local_free_region(outlived_fr),
         );
 
-        debug!("report_error: fr_is_local={:?} outlived_fr_is_local={:?} fr_region={:?} \
-                outlived_fr_region={:?} category={:?}",
-               fr_is_local, outlived_fr_is_local, fr_region, outlived_fr_region, category);
+        debug!("report_error: fr_is_local={:?} outlived_fr_is_local={:?} category={:?}",
+               fr_is_local, outlived_fr_is_local, category);
         match (category, fr_is_local, outlived_fr_is_local) {
             (ConstraintCategory::Assignment, true, false) |
             (ConstraintCategory::CallArgument, true, false) =>
-                self.report_escaping_data_error(mir, infcx, mir_def_id, fr, fr_region, outlived_fr,
-                                                outlived_fr_region, category, span, errors_buffer),
+                self.report_escaping_data_error(mir, infcx, mir_def_id, fr, outlived_fr,
+                                                category, span, errors_buffer),
             _ =>
-                self.report_general_error(mir, infcx, mir_def_id, fr, fr_is_local, fr_region,
-                                          outlived_fr, outlived_fr_is_local, outlived_fr_region,
+                self.report_general_error(mir, infcx, mir_def_id, fr, fr_is_local,
+                                          outlived_fr, outlived_fr_is_local,
                                           category, span, errors_buffer),
         };
     }
@@ -383,9 +380,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         infcx: &InferCtxt<'_, '_, 'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
-        fr_region: Option<Region<'tcx>>,
         outlived_fr: RegionVid,
-        outlived_fr_region: Option<Region<'tcx>>,
         category: ConstraintCategory,
         span: Span,
         errors_buffer: &mut Vec<Diagnostic>,
@@ -398,8 +393,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         if fr_name_and_span.is_none() && outlived_fr_name_and_span.is_none() {
             return self.report_general_error(mir, infcx, mir_def_id,
-                                             fr, true, fr_region,
-                                             outlived_fr, false, outlived_fr_region,
+                                             fr, true, outlived_fr, false,
                                              category, span, errors_buffer);
         }
 
@@ -439,10 +433,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         mir_def_id: DefId,
         fr: RegionVid,
         fr_is_local: bool,
-        fr_region: Option<Region<'tcx>>,
         outlived_fr: RegionVid,
         outlived_fr_is_local: bool,
-        outlived_fr_region: Option<Region<'tcx>>,
         category: ConstraintCategory,
         span: Span,
         errors_buffer: &mut Vec<Diagnostic>,
@@ -477,7 +469,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         self.add_static_impl_trait_suggestion(
-            infcx, &mut diag, fr_name, fr_region, outlived_fr_region
+            infcx, &mut diag, fr, fr_name, outlived_fr,
         );
 
         diag.buffer(errors_buffer);
@@ -487,11 +479,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
         diag: &mut DiagnosticBuilder<'_>,
+        fr: RegionVid,
+        // We need to pass `fr_name` - computing it again will label it twice.
         fr_name: RegionName,
-        fr_region: Option<Region<'tcx>>,
-        outlived_fr_region: Option<Region<'tcx>>,
+        outlived_fr: RegionVid,
     ) {
-        if let (Some(f), Some(ty::RegionKind::ReStatic)) = (fr_region, outlived_fr_region) {
+        if let (
+            Some(f),
+            Some(ty::RegionKind::ReStatic)
+        ) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
             if let Some(ty::TyS {
                 sty: ty::TyKind::Anon(did, substs),
                 ..
@@ -500,6 +496,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     .map(|id| infcx.tcx.return_type_impl_trait(id))
                     .unwrap_or(None)
             {
+                // Check whether or not the impl trait return type is intended to capture
+                // data with the static lifetime.
+                //
+                // eg. check for `impl Trait + 'static` instead of `impl Trait`.
                 let has_static_predicate = {
                     let predicates_of = infcx.tcx.predicates_of(*did);
                     let bounds = predicates_of.instantiate(infcx.tcx, substs);
@@ -509,7 +509,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         if let ty::Predicate::TypeOutlives(binder) = predicate {
                             if let ty::OutlivesPredicate(
                                 _,
-                                RegionKind::ReStatic
+                                ty::RegionKind::ReStatic
                             ) = binder.skip_binder() {
                                 found = true;
                                 break;
@@ -523,33 +523,31 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 debug!("add_static_impl_trait_suggestion: has_static_predicate={:?}",
                        has_static_predicate);
                 let static_str = keywords::StaticLifetime.name();
+                // If there is a static predicate, then the only sensible suggestion is to replace
+                // fr with `'static`.
                 if has_static_predicate {
-                    let span = self.get_span_of_named_region(infcx.tcx, f, &fr_name);
-                    if let Ok(snippet) = infcx.tcx.sess.source_map().span_to_snippet(span) {
-                        diag.span_suggestion(
-                            span,
-                            &format!(
-                                "you can add a constraint to the definition of `{}` to require it \
-                                 outlive `{}`",
-                                fr_name, static_str,
-                            ),
-                            format!("{}: {}", snippet, static_str),
-                        );
-                    }
+                    diag.help(
+                        &format!(
+                            "consider replacing `{}` with `{}`",
+                            fr_name, static_str,
+                        ),
+                    );
                 } else {
+                    // Otherwise, we should suggest adding a constraint on the return type.
                     let span = infcx.tcx.def_span(*did);
                     if let Ok(snippet) = infcx.tcx.sess.source_map().span_to_snippet(span) {
+                        let suggestable_fr_name = match fr_name {
+                            RegionName::Named(name) => format!("{}", name),
+                            RegionName::Synthesized(_) => "'_".to_string(),
+                        };
                         diag.span_suggestion(
                             span,
                             &format!(
-                                "you can add a constraint to the return type to make it last \
-                                 less than `{}` and match `{}`",
-                                static_str, fr_name,
+                                "to allow this impl Trait to capture borrowed data with lifetime \
+                                 `{}`, add `{}` as a constraint",
+                                fr_name, suggestable_fr_name,
                             ),
-                            match fr_name {
-                                RegionName::Named(name) => format!("{} + {}", snippet, name),
-                                RegionName::Synthesized(_) => format!("{} + '_", snippet),
-                            },
+                            format!("{} + {}", snippet, suggestable_fr_name),
                         );
                     }
                 }
