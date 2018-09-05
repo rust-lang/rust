@@ -176,13 +176,22 @@ pub fn target_machine_factory(sess: &Session, find_features: bool)
         None => llvm::CodeModel::None,
     };
 
-    let singlethread = sess.target.target.options.singlethread;
+    let features = attributes::llvm_target_features(sess).collect::<Vec<_>>();
+    let mut singlethread = sess.target.target.options.singlethread;
+
+    // On the wasm target once the `atomics` feature is enabled that means that
+    // we're no longer single-threaded, or otherwise we don't want LLVM to
+    // lower atomic operations to single-threaded operations.
+    if singlethread &&
+        sess.target.target.llvm_target.contains("wasm32") &&
+        features.iter().any(|s| *s == "+atomics")
+    {
+        singlethread = false;
+    }
 
     let triple = SmallCStr::new(&sess.target.target.llvm_target);
     let cpu = SmallCStr::new(llvm_util::target_cpu(sess));
-    let features = attributes::llvm_target_features(sess)
-        .collect::<Vec<_>>()
-        .join(",");
+    let features = features.join(",");
     let features = CString::new(features).unwrap();
     let is_pie_binary = !find_features && is_pie_binary(sess);
     let trap_unreachable = sess.target.target.options.trap_unreachable;
