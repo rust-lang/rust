@@ -14,7 +14,7 @@ mod stdio;
 
 use crossbeam_channel::{Sender, Receiver};
 use languageserver_types::{
-    ServerCapabilities, InitializeResult,
+    ServerCapabilities, InitializeResult, InitializeParams,
     request::{Initialize, Shutdown},
     notification::{Initialized, Exit},
 };
@@ -27,14 +27,18 @@ pub use {
 
 pub fn run_server(
     caps: ServerCapabilities,
-    server: impl FnOnce(&mut Receiver<RawMessage>, &mut Sender<RawMessage>) -> Result<()>,
+    server: impl FnOnce(
+        InitializeParams,
+        &mut Receiver<RawMessage>,
+        &mut Sender<RawMessage>,
+    ) -> Result<()>,
     mut receiver: Receiver<RawMessage>,
     mut sender: Sender<RawMessage>,
 ) -> Result<()> {
     info!("lsp server initializes");
-    initialize(&mut receiver, &mut sender, caps)?;
+    let params = initialize(&mut receiver, &mut sender, caps)?;
     info!("lsp server initialized, serving requests");
-    server(&mut receiver, &mut sender)?;
+    server(params, &mut receiver, &mut sender)?;
     info!("lsp server waiting for exit notification");
     match receiver.recv() {
         Some(RawMessage::Notification(n)) => {
@@ -63,11 +67,11 @@ fn initialize(
     receiver: &mut Receiver<RawMessage>,
     sender: &mut Sender<RawMessage>,
     caps: ServerCapabilities,
-) -> Result<()> {
-    let id = match receiver.recv() {
+) -> Result<InitializeParams> {
+    let (id, params) = match receiver.recv() {
         Some(RawMessage::Request(req)) => match req.cast::<Initialize>() {
             Err(req) => bail!("expected initialize request, got {:?}", req),
-            Ok(req) => req.0,
+            Ok(req) => req,
         }
         msg =>
             bail!("expected initialize request, got {:?}", msg),
@@ -82,5 +86,5 @@ fn initialize(
         }
         _ => bail!("expected initialized notification"),
     }
-    Ok(())
+    Ok(params)
 }

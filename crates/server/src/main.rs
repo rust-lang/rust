@@ -31,10 +31,15 @@ fn main() -> Result<()> {
 
 fn main_inner() -> Result<()> {
     let (receiver, sender, threads) = stdio_transport();
-    let root = ::std::env::current_dir()?;
+    let cwd = ::std::env::current_dir()?;
     run_server(
         m::server_capabilities(),
-        |r, s| m::main_loop(false, root, r, s),
+        |params, r, s| {
+            let root = params.root_uri
+                .and_then(|it| it.to_file_path().ok())
+                .unwrap_or(cwd);
+            m::main_loop(false, root, r, s)
+        },
         receiver,
         sender,
     )?;
