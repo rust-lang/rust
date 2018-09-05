@@ -31,7 +31,7 @@ use syntax::symbol::Symbol;
 use builder::Builder;
 use value::Value;
 
-use interfaces::{BuilderMethods, CommonMethods};
+use interfaces::{BuilderMethods, CommonMethods, TypeMethods};
 
 use rustc::session::Session;
 use syntax_pos::Span;
@@ -251,7 +251,7 @@ pub fn codegen_intrinsic_call(
             let tp_ty = substs.type_at(0);
             let mut ptr = args[0].immediate();
             if let PassMode::Cast(ty) = fn_ty.ret.mode {
-                ptr = bx.pointercast(ptr, ty.llvm_type(cx).ptr_to());
+                ptr = bx.pointercast(ptr, bx.cx().ptr_to(ty.llvm_type(cx)));
             }
             let load = bx.volatile_load(ptr);
             let align = if name == "unaligned_volatile_load" {
@@ -336,7 +336,7 @@ pub fn codegen_intrinsic_call(
                                 args[1].immediate()
                             ], None);
                             let val = bx.extract_value(pair, 0);
-                            let overflow = bx.zext(bx.extract_value(pair, 1), Type::bool(cx));
+                            let overflow = bx.zext(bx.extract_value(pair, 1), cx.bool());
 
                             let dest = result.project_field(bx, 0);
                             bx.store(val, dest.llval, dest.align);
@@ -472,7 +472,7 @@ pub fn codegen_intrinsic_call(
                             failorder,
                             weak);
                         let val = bx.extract_value(pair, 0);
-                        let success = bx.zext(bx.extract_value(pair, 1), Type::bool(bx.cx()));
+                        let success = bx.zext(bx.extract_value(pair, 1), bx.cx().bool());
 
                         let dest = result.project_field(bx, 0);
                         bx.store(val, dest.llval, dest.align);
@@ -562,32 +562,32 @@ pub fn codegen_intrinsic_call(
              ) -> Vec<&'ll Type> {
                 use intrinsics::Type::*;
                 match *t {
-                    Void => vec![Type::void(cx)],
+                    Void => vec![cx.void()],
                     Integer(_signed, _width, llvm_width) => {
-                        vec![Type::ix(cx, llvm_width as u64)]
+                        vec![cx.ix( llvm_width as u64)]
                     }
                     Float(x) => {
                         match x {
-                            32 => vec![Type::f32(cx)],
-                            64 => vec![Type::f64(cx)],
+                            32 => vec![cx.f32()],
+                            64 => vec![cx.f64()],
                             _ => bug!()
                         }
                     }
                     Pointer(ref t, ref llvm_elem, _const) => {
                         let t = llvm_elem.as_ref().unwrap_or(t);
                         let elem = one(ty_to_type(cx, t));
-                        vec![elem.ptr_to()]
+                        vec![cx.ptr_to(elem)]
                     }
                     Vector(ref t, ref llvm_elem, length) => {
                         let t = llvm_elem.as_ref().unwrap_or(t);
                         let elem = one(ty_to_type(cx, t));
-                        vec![Type::vector(elem, length as u64)]
+                        vec![cx.vector(elem, length as u64)]
                     }
                     Aggregate(false, ref contents) => {
                         let elems = contents.iter()
                                             .map(|t| one(ty_to_type(cx, t)))
                                             .collect::<Vec<_>>();
-                        vec![Type::struct_(cx, &elems, false)]
+                        vec![cx.struct_( &elems, false)]
                     }
                     Aggregate(true, ref contents) => {
                         contents.iter()
@@ -626,20 +626,20 @@ pub fn codegen_intrinsic_call(
                     }
                     intrinsics::Type::Pointer(_, Some(ref llvm_elem), _) => {
                         let llvm_elem = one(ty_to_type(bx.cx(), llvm_elem));
-                        vec![bx.pointercast(arg.immediate(), llvm_elem.ptr_to())]
+                        vec![bx.pointercast(arg.immediate(), bx.cx().ptr_to(llvm_elem))]
                     }
                     intrinsics::Type::Vector(_, Some(ref llvm_elem), length) => {
                         let llvm_elem = one(ty_to_type(bx.cx(), llvm_elem));
                         vec![
                             bx.bitcast(arg.immediate(),
-                            Type::vector(llvm_elem, length as u64))
+                            bx.cx().vector(llvm_elem, length as u64))
                         ]
                     }
                     intrinsics::Type::Integer(_, width, llvm_width) if width != llvm_width => {
                         // the LLVM intrinsic uses a smaller integer
                         // size than the C intrinsic's signature, so
                         // we have to trim it down here.
-                        vec![bx.trunc(arg.immediate(), Type::ix(bx.cx(), llvm_width as u64))]
+                        vec![bx.trunc(arg.immediate(), bx.cx().ix(llvm_width as u64))]
                     }
                     _ => vec![arg.immediate()],
                 }
@@ -661,7 +661,7 @@ pub fn codegen_intrinsic_call(
                 intrinsics::IntrinsicDef::Named(name) => {
                     let f = declare::declare_cfn(cx,
                                                  name,
-                                                 Type::func(&inputs, outputs));
+                                                 cx.func(&inputs, outputs));
                     bx.call(f, &llargs, None)
                 }
             };
@@ -685,7 +685,7 @@ pub fn codegen_intrinsic_call(
 
     if !fn_ty.ret.is_ignore() {
         if let PassMode::Cast(ty) = fn_ty.ret.mode {
-            let ptr = bx.pointercast(result.llval, ty.llvm_type(cx).ptr_to());
+            let ptr = bx.pointercast(result.llval, cx.ptr_to(ty.llvm_type(cx)));
             bx.store(llval, ptr, result.align);
         } else {
             OperandRef::from_immediate_or_packed_pair(bx, llval, result.layout)
@@ -717,8 +717,8 @@ fn copy_intrinsic(
     let name = format!("llvm.{}.p0i8.p0i8.i{}", operation,
                        cx.data_layout().pointer_size.bits());
 
-    let dst_ptr = bx.pointercast(dst, Type::i8p(cx));
-    let src_ptr = bx.pointercast(src, Type::i8p(cx));
+    let dst_ptr = bx.pointercast(dst, cx.i8p());
+    let src_ptr = bx.pointercast(src, cx.i8p());
     let llfn = cx.get_intrinsic(&name);
 
     bx.call(llfn,
@@ -742,7 +742,7 @@ fn memset_intrinsic(
     let (size, align) = cx.size_and_align_of(ty);
     let size = cx.c_usize(size.bytes());
     let align = cx.c_i32(align.abi() as i32);
-    let dst = bx.pointercast(dst, Type::i8p(cx));
+    let dst = bx.pointercast(dst, cx.i8p());
     call_memset(bx, dst, val, bx.mul(size, count), align, volatile)
 }
 
@@ -757,7 +757,7 @@ fn try_intrinsic(
     if bx.sess().no_landing_pads() {
         bx.call(func, &[data], None);
         let ptr_align = bx.tcx().data_layout.pointer_align;
-        bx.store(bx.cx().c_null(Type::i8p(&bx.cx())), dest, ptr_align);
+        bx.store(cx.c_null(cx.i8p()), dest, ptr_align);
     } else if wants_msvc_seh(bx.sess()) {
         codegen_msvc_try(bx, cx, func, data, local_ptr, dest);
     } else {
@@ -833,7 +833,7 @@ fn codegen_msvc_try(
         //      }
         //
         // More information can be found in libstd's seh.rs implementation.
-        let i64p = Type::i64(cx).ptr_to();
+        let i64p = cx.ptr_to(cx.i64());
         let ptr_align = bx.tcx().data_layout.pointer_align;
         let slot = bx.alloca(i64p, "slot", ptr_align);
         bx.invoke(func, &[data], normal.llbb(), catchswitch.llbb(), None);
@@ -924,12 +924,12 @@ fn codegen_gnu_try(
         // being thrown.  The second value is a "selector" indicating which of
         // the landing pad clauses the exception's type had been matched to.
         // rust_try ignores the selector.
-        let lpad_ty = Type::struct_(cx, &[Type::i8p(cx), Type::i32(cx)], false);
+        let lpad_ty = cx.struct_(&[cx.i8p(), cx.i32()], false);
         let vals = catch.landing_pad(lpad_ty, bx.cx().eh_personality(), 1);
-        catch.add_clause(vals, bx.cx().c_null(Type::i8p(cx)));
+        catch.add_clause(vals, bx.cx().c_null(cx.i8p()));
         let ptr = catch.extract_value(vals, 0);
         let ptr_align = bx.tcx().data_layout.pointer_align;
-        catch.store(ptr, catch.bitcast(local_ptr, Type::i8p(cx).ptr_to()), ptr_align);
+        catch.store(ptr, catch.bitcast(local_ptr, cx.ptr_to(cx.i8p())), ptr_align);
         catch.ret(cx.c_i32(1));
     });
 
@@ -1072,7 +1072,7 @@ fn generic_simd_intrinsic(
                   found `{}` with length {}",
                  in_len, in_ty,
                  ret_ty, out_len);
-        require!(llret_ty.element_type().kind() == TypeKind::Integer,
+        require!(bx.cx().kind(bx.cx().element_type(llret_ty)) == TypeKind::Integer,
                  "expected return type with integer elements, found `{}` with non-integer `{}`",
                  ret_ty,
                  ret_ty.simd_type(tcx));
@@ -1161,8 +1161,8 @@ fn generic_simd_intrinsic(
             _ => return_error!("mask element type is `{}`, expected `i_`", m_elem_ty)
         }
         // truncate the mask to a vector of i1s
-        let i1 = Type::i1(bx.cx());
-        let i1xn = Type::vector(i1, m_len as u64);
+        let i1 = bx.cx().i1();
+        let i1xn = bx.cx().vector(i1, m_len as u64);
         let m_i1s = bx.trunc(args[0].immediate(), i1xn);
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
     }
@@ -1294,16 +1294,16 @@ fn generic_simd_intrinsic(
                       mut no_pointers: usize) -> &'ll Type {
         // FIXME: use cx.layout_of(ty).llvm_type() ?
         let mut elem_ty = match elem_ty.sty {
-            ty::Int(v) => Type::int_from_ty(cx, v),
-            ty::Uint(v) => Type::uint_from_ty(cx, v),
-            ty::Float(v) => Type::float_from_ty(cx, v),
+            ty::Int(v) => cx.int_from_ty( v),
+            ty::Uint(v) => cx.uint_from_ty( v),
+            ty::Float(v) => cx.float_from_ty( v),
             _ => unreachable!(),
         };
         while no_pointers > 0 {
-            elem_ty = elem_ty.ptr_to();
+            elem_ty = cx.ptr_to(elem_ty);
             no_pointers -= 1;
         }
-        Type::vector(elem_ty, vec_len as u64)
+        cx.vector(elem_ty, vec_len as u64)
     }
 
 
@@ -1380,13 +1380,13 @@ fn generic_simd_intrinsic(
         }
 
         // Alignment of T, must be a constant integer value:
-        let alignment_ty = Type::i32(bx.cx());
+        let alignment_ty = bx.cx().i32();
         let alignment = bx.cx().c_i32(bx.cx().align_of(in_elem).abi() as i32);
 
         // Truncate the mask vector to a vector of i1s:
         let (mask, mask_ty) = {
-            let i1 = Type::i1(bx.cx());
-            let i1xn = Type::vector(i1, in_len as u64);
+            let i1 = bx.cx().i1();
+            let i1xn = bx.cx().vector(i1, in_len as u64);
             (bx.trunc(args[2].immediate(), i1xn), i1xn)
         };
 
@@ -1401,7 +1401,7 @@ fn generic_simd_intrinsic(
         let llvm_intrinsic = format!("llvm.masked.gather.{}.{}",
                                      llvm_elem_vec_str, llvm_pointer_vec_str);
         let f = declare::declare_cfn(bx.cx(), &llvm_intrinsic,
-                                     Type::func(&[
+                                     bx.cx().func(&[
                                          llvm_pointer_vec_ty,
                                          alignment_ty,
                                          mask_ty,
@@ -1480,17 +1480,17 @@ fn generic_simd_intrinsic(
         }
 
         // Alignment of T, must be a constant integer value:
-        let alignment_ty = Type::i32(bx.cx());
+        let alignment_ty = bx.cx().i32();
         let alignment = bx.cx().c_i32(bx.cx().align_of(in_elem).abi() as i32);
 
         // Truncate the mask vector to a vector of i1s:
         let (mask, mask_ty) = {
-            let i1 = Type::i1(bx.cx());
-            let i1xn = Type::vector(i1, in_len as u64);
+            let i1 = bx.cx().i1();
+            let i1xn = bx.cx().vector(i1, in_len as u64);
             (bx.trunc(args[2].immediate(), i1xn), i1xn)
         };
 
-        let ret_t = Type::void(bx.cx());
+        let ret_t = bx.cx().void();
 
         // Type of the vector of pointers:
         let llvm_pointer_vec_ty = llvm_vector_ty(bx.cx(), underlying_ty, in_len, pointer_count);
@@ -1503,7 +1503,7 @@ fn generic_simd_intrinsic(
         let llvm_intrinsic = format!("llvm.masked.scatter.{}.{}",
                                      llvm_elem_vec_str, llvm_pointer_vec_str);
         let f = declare::declare_cfn(bx.cx(), &llvm_intrinsic,
-                                     Type::func(&[llvm_elem_vec_ty,
+                                     bx.cx().func(&[llvm_elem_vec_ty,
                                                   llvm_pointer_vec_ty,
                                                   alignment_ty,
                                                   mask_ty], ret_t));
@@ -1559,8 +1559,8 @@ fn generic_simd_intrinsic(
                         } else {
                             // unordered arithmetic reductions do not:
                             match f.bit_width() {
-                                32 => bx.cx().c_undef(Type::f32(bx.cx())),
-                                64 => bx.cx().c_undef(Type::f64(bx.cx())),
+                                32 => bx.cx().c_undef(bx.cx().f32()),
+                                64 => bx.cx().c_undef(bx.cx().f64()),
                                 v => {
                                     return_error!(r#"
 unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
@@ -1637,8 +1637,8 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                     }
 
                     // boolean reductions operate on vectors of i1s:
-                    let i1 = Type::i1(bx.cx());
-                    let i1xn = Type::vector(i1, in_len as u64);
+                    let i1 = bx.cx().i1();
+                    let i1xn = bx.cx().vector(i1, in_len as u64);
                     bx.trunc(args[0].immediate(), i1xn)
                 };
                 return match in_elem.sty {
@@ -1648,7 +1648,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                             if !$boolean {
                                 r
                             } else {
-                                bx.zext(r, Type::bool(bx.cx()))
+                                bx.zext(r, bx.cx().bool())
                             }
                         )
                     },

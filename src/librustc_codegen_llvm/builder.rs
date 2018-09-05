@@ -19,7 +19,7 @@ use rustc::ty::TyCtxt;
 use rustc::ty::layout::{Align, Size};
 use rustc::session::{config, Session};
 use rustc_data_structures::small_c_str::SmallCStr;
-use interfaces::{BuilderMethods, Backend, CommonMethods, CommonWriteMethods};
+use interfaces::{BuilderMethods, Backend, CommonMethods, CommonWriteMethods, TypeMethods};
 use syntax;
 
 use std::borrow::Cow;
@@ -786,7 +786,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
         }).collect::<Vec<_>>();
 
         debug!("Asm Output Type: {:?}", output);
-        let fty = type_::Type::func(&argtys[..], output);
+        let fty = &self.cx().func(&argtys[..], output);
         unsafe {
             // Ask LLVM to verify that the constraints are well-formed.
             let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons);
@@ -864,10 +864,10 @@ impl BuilderMethods<'a, 'll, 'tcx>
     fn vector_splat(&self, num_elts: usize, elt: &'ll Value) -> &'ll Value {
         unsafe {
             let elt_ty = self.cx.val_ty(elt);
-            let undef = llvm::LLVMGetUndef(type_::Type::vector(elt_ty, num_elts as u64));
+            let undef = llvm::LLVMGetUndef(&self.cx().vector(elt_ty, num_elts as u64));
             let vec = self.insert_element(undef, elt, self.cx.c_i32(0));
-            let vec_i32_ty = type_::Type::vector(type_::Type::i32(self.cx), num_elts as u64);
-            self.shuffle_vector(vec, undef, self.cx.c_null(vec_i32_ty))
+            let vec_i32_ty = &self.cx().vector(&self.cx().i32(), num_elts as u64);
+            self.shuffle_vector(vec, undef, self.cx().c_null(vec_i32_ty))
         }
     }
 
@@ -1176,9 +1176,9 @@ impl BuilderMethods<'a, 'll, 'tcx>
                        ptr: &'ll Value) -> &'ll Value {
         let dest_ptr_ty = self.cx.val_ty(ptr);
         let stored_ty = self.cx.val_ty(val);
-        let stored_ptr_ty = stored_ty.ptr_to();
+        let stored_ptr_ty = self.cx.ptr_to(stored_ty);
 
-        assert_eq!(dest_ptr_ty.kind(), llvm::TypeKind::Pointer);
+        assert_eq!(self.cx.kind(dest_ptr_ty), llvm::TypeKind::Pointer);
 
         if dest_ptr_ty == stored_ptr_ty {
             ptr
@@ -1197,14 +1197,14 @@ impl BuilderMethods<'a, 'll, 'tcx>
                       args: &'b [&'ll Value]) -> Cow<'b, [&'ll Value]> {
         let mut fn_ty = self.cx.val_ty(llfn);
         // Strip off pointers
-        while fn_ty.kind() == llvm::TypeKind::Pointer {
-            fn_ty = fn_ty.element_type();
+        while self.cx.kind(fn_ty) == llvm::TypeKind::Pointer {
+            fn_ty = self.cx.element_type(fn_ty);
         }
 
-        assert!(fn_ty.kind() == llvm::TypeKind::Function,
+        assert!(self.cx.kind(fn_ty) == llvm::TypeKind::Function,
                 "builder::{} not passed a function, but {:?}", typ, fn_ty);
 
-        let param_tys = fn_ty.func_params();
+        let param_tys = self.cx.func_params(fn_ty);
 
         let all_args_match = param_tys.iter()
             .zip(args.iter().map(|&v| self.cx().val_ty(v)))
@@ -1261,7 +1261,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
 
         let lifetime_intrinsic = self.cx.get_intrinsic(intrinsic);
 
-        let ptr = self.pointercast(ptr, type_::Type::i8p(self.cx));
+        let ptr = self.pointercast(ptr, self.cx.i8p());
         self.call(lifetime_intrinsic, &[self.cx.c_u64(size), ptr], None);
     }
 

@@ -26,7 +26,7 @@ use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
 
-use interfaces::{BuilderMethods, CommonMethods, CommonWriteMethods};
+use interfaces::{BuilderMethods, CommonMethods, CommonWriteMethods, TypeMethods};
 
 use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
@@ -117,7 +117,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
 
                     // Use llvm.memset.p0i8.* to initialize byte arrays
                     let v = base::from_immediate(&bx, v);
-                    if bx.cx().val_ty(v) == Type::i8(bx.cx()) {
+                    if bx.cx().val_ty(v) == bx.cx().i8() {
                         base::call_memset(&bx, start, v, size, align, false);
                         return bx;
                     }
@@ -349,8 +349,8 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                                 bx.intcast(llval, ll_t_out, signed)
                             }
                             (CastTy::Float, CastTy::Float) => {
-                                let srcsz = ll_t_in.float_width();
-                                let dstsz = ll_t_out.float_width();
+                                let srcsz = bx.cx().float_width(ll_t_in);
+                                let dstsz = bx.cx().float_width(ll_t_out);
                                 if dstsz > srcsz {
                                     bx.fpext(llval, ll_t_out)
                                 } else if srcsz > dstsz {
@@ -828,7 +828,9 @@ fn cast_int_to_float(bx: &Builder<'_, 'll, '_, &'ll Value>,
     // Most integer types, even i128, fit into [-f32::MAX, f32::MAX] after rounding.
     // It's only u128 -> f32 that can cause overflows (i.e., should yield infinity).
     // LLVM's uitofp produces undef in those cases, so we manually check for that case.
-    let is_u128_to_f32 = !signed && int_ty.int_width() == 128 && float_ty.float_width() == 32;
+    let is_u128_to_f32 = !signed &&
+        bx.cx().int_width(int_ty) == 128 &&
+        bx.cx().float_width(float_ty) == 32;
     if is_u128_to_f32 {
         // All inputs greater or equal to (f32::MAX + 0.5 ULP) are rounded to infinity,
         // and for everything else LLVM's uitofp works just fine.
@@ -883,39 +885,48 @@ fn cast_float_to_int(bx: &Builder<'_, 'll, '_, &'ll Value>,
     // On the other hand, f_max works even if int_ty::MAX is greater than float_ty::MAX. Because
     // we're rounding towards zero, we just get float_ty::MAX (which is always an integer).
     // This already happens today with u128::MAX = 2^128 - 1 > f32::MAX.
-    fn compute_clamp_bounds<F: Float>(signed: bool, int_ty: &Type) -> (u128, u128) {
-        let rounded_min = F::from_i128_r(int_min(signed, int_ty), Round::TowardZero);
-        assert_eq!(rounded_min.status, Status::OK);
-        let rounded_max = F::from_u128_r(int_max(signed, int_ty), Round::TowardZero);
-        assert!(rounded_max.value.is_finite());
-        (rounded_min.value.to_bits(), rounded_max.value.to_bits())
-    }
-    fn int_max(signed: bool, int_ty: &Type) -> u128 {
-        let shift_amount = 128 - int_ty.int_width();
+    let int_max = |signed: bool, int_ty: &'ll Type| -> u128 {
+        let shift_amount = 128 - bx.cx().int_width(int_ty);
         if signed {
             i128::MAX as u128 >> shift_amount
         } else {
             u128::MAX >> shift_amount
         }
-    }
-    fn int_min(signed: bool, int_ty: &Type) -> i128 {
+    };
+    let int_min = |signed: bool, int_ty: &'ll Type| -> i128 {
         if signed {
-            i128::MIN >> (128 - int_ty.int_width())
+            i128::MIN >> (128 - bx.cx().int_width(int_ty))
         } else {
             0
         }
-    }
+    };
+
+    let compute_clamp_bounds_single = |signed: bool, int_ty: &'ll Type| -> (u128, u128) {
+        let rounded_min = ieee::Single::from_i128_r(int_min(signed, int_ty), Round::TowardZero);
+        assert_eq!(rounded_min.status, Status::OK);
+        let rounded_max = ieee::Single::from_u128_r(int_max(signed, int_ty), Round::TowardZero);
+        assert!(rounded_max.value.is_finite());
+        (rounded_min.value.to_bits(), rounded_max.value.to_bits())
+    };
+    let compute_clamp_bounds_double = |signed: bool, int_ty: &'ll Type| -> (u128, u128) {
+        let rounded_min = ieee::Double::from_i128_r(int_min(signed, int_ty), Round::TowardZero);
+        assert_eq!(rounded_min.status, Status::OK);
+        let rounded_max = ieee::Double::from_u128_r(int_max(signed, int_ty), Round::TowardZero);
+        assert!(rounded_max.value.is_finite());
+        (rounded_min.value.to_bits(), rounded_max.value.to_bits())
+    };
+
     let float_bits_to_llval = |bits| {
-        let bits_llval = match float_ty.float_width() {
+        let bits_llval = match bx.cx().float_width(float_ty) {
             32 => bx.cx().c_u32(bits as u32),
             64 => bx.cx().c_u64(bits as u64),
             n => bug!("unsupported float width {}", n),
         };
         consts::bitcast(bits_llval, float_ty)
     };
-    let (f_min, f_max) = match float_ty.float_width() {
-        32 => compute_clamp_bounds::<ieee::Single>(signed, int_ty),
-        64 => compute_clamp_bounds::<ieee::Double>(signed, int_ty),
+    let (f_min, f_max) = match bx.cx().float_width(float_ty) {
+        32 => compute_clamp_bounds_single(signed, int_ty),
+        64 => compute_clamp_bounds_double(signed, int_ty),
         n => bug!("unsupported float width {}", n),
     };
     let f_min = float_bits_to_llval(f_min);

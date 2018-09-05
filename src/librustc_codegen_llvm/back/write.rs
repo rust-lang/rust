@@ -452,6 +452,14 @@ impl CommonWriteMethods for CodegenContext<'ll> {
     }
 }
 
+impl CodegenContext<'ll> {
+    pub fn ptr_to(&self, ty: &'ll Type) -> &'ll Type {
+        unsafe {
+            llvm::LLVMPointerType(ty, 0)
+        }
+    }
+}
+
 
 pub struct DiagnosticHandlers<'a> {
     data: *mut (&'a CodegenContext<'a>, &'a Handler),
@@ -2577,7 +2585,7 @@ fn create_msvc_imps(cgcx: &CodegenContext, llcx: &llvm::Context, llmod: &llvm::M
         "\x01__imp_"
     };
     unsafe {
-        let i8p_ty = Type::i8p_llcx(llcx);
+        let i8p_ty = Type::i8p_llcx(cgcx, llcx);
         let globals = base::iter_globals(llmod)
             .filter(|&val| {
                 llvm::LLVMRustGetLinkage(val) == llvm::Linkage::ExternalLinkage &&

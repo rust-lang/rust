@@ -22,22 +22,20 @@ pub trait TypeMethods : Backend {
     fn ix(&self, num_bites: u64) -> Self::Type;
     fn f32(&self) -> Self::Type;
     fn f64(&self) -> Self::Type;
-    fn bool(&self) -> Self::Type;
-    fn char(&self) -> Self::Type;
-    fn i8p(&self) -> Self::Type;
+    fn x86_mmx(&self) -> Self::Type;
 
     fn func(&self, args: &[Self::Type], ret: Self::Type) -> Self::Type;
-    fn variadic_func(&self, args: &[Self::Type]) -> Self::Type;
+    fn variadic_func(&self, args: &[Self::Type], ret: Self::Type) -> Self::Type;
     fn struct_(&self, els: &[Self::Type], packed: bool) -> Self::Type;
     fn named_struct(&self, name: &str) -> Self::Type;
     fn array(&self, ty: Self::Type, len: u64) -> Self::Type;
     fn vector(&self, ty: Self::Type, len: u64) -> Self::Type;
     fn kind(&self, ty: Self::Type) -> Self::TypeKind;
-    fn set_struct_body(&self, els: &[Self::Type], packed: bool);
+    fn set_struct_body(&self, ty: Self::Type, els: &[Self::Type], packed: bool);
     fn ptr_to(&self, ty: Self::Type) -> Self::Type;
     fn element_type(&self, ty: Self::Type) -> Self::Type;
     fn vector_length(&self, ty: Self::Type) -> usize;
     fn func_params(&self, ty: Self::Type) -> Vec<Self::Type>;
     fn float_width(&self, ty: Self::Type) -> usize;
-    fn int_width(&self, ty: Self::Type) -> usize;
+    fn int_width(&self, ty: Self::Type) -> u64;
 }

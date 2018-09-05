@@ -19,10 +19,9 @@ use common::CodegenCx;
 use builder::{Builder, MemFlags};
 use value::Value;
 use type_of::LayoutLlvmExt;
-use type_::Type;
 use glue;
 
-use interfaces::{BuilderMethods, CommonMethods};
+use interfaces::{BuilderMethods, CommonMethods, TypeMethods};
 
 use std::fmt;
 
@@ -349,7 +348,7 @@ impl OperandValue<&'ll Value> {
 
         // Allocate an appropriate region on the stack, and copy the value into it
         let (llsize, _) = glue::size_and_align_of_dst(bx, unsized_ty, Some(llextra));
-        let lldst = bx.array_alloca(Type::i8(bx.cx()), llsize, "unsized_tmp", max_align);
+        let lldst = bx.array_alloca(bx.cx().i8(), llsize, "unsized_tmp", max_align);
         base::call_memcpy(bx, lldst, llptr, llsize, min_align, flags);
 
         // Store the allocated region and the extra to the indirect place.
@@ -460,7 +459,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                         // We've errored, so we don't have to produce working code.
                         let layout = bx.cx().layout_of(ty);
                         PlaceRef::new_sized(
-                            bx.cx().c_undef(layout.llvm_type(bx.cx()).ptr_to()),
+                            bx.cx().c_undef(bx.cx().ptr_to(layout.llvm_type(bx.cx()))),
                             layout,
                             layout.align,
                         ).load(bx)

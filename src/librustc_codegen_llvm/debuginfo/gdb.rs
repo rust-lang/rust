@@ -16,9 +16,8 @@ use common::CodegenCx;
 use builder::Builder;
 use declare;
 use rustc::session::config::DebugInfo;
-use type_::Type;
 use value::Value;
-use interfaces::{BuilderMethods, CommonMethods};
+use interfaces::{BuilderMethods, CommonMethods, TypeMethods};
 
 use syntax::attr;
 
@@ -56,7 +55,7 @@ pub fn get_or_insert_gdb_debug_scripts_section_global(cx: &CodegenCx<'ll, '_, &'
         let section_contents = b"\x01gdb_load_rust_pretty_printers.py\0";
 
         unsafe {
-            let llvm_type = Type::array(Type::i8(cx),
+            let llvm_type = cx.array(cx.i8(),
                                         section_contents.len() as u64);
 
             let section_var = declare::define_global(cx, section_var_name,

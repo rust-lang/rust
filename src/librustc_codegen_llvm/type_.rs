@@ -17,10 +17,12 @@ use llvm::{Bool, False, True, TypeKind};
 
 use context::CodegenCx;
 use value::Value;
+use interfaces::TypeMethods;
 
 use syntax::ast;
 use rustc::ty::layout::{self, Align, Size};
 use rustc_data_structures::small_c_str::SmallCStr;
+use back::write;
 
 use std::fmt;
 
@@ -40,84 +42,201 @@ impl fmt::Debug for Type {
     }
 }
 
-impl Type {
-    pub fn void(
-        cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type {
+impl TypeMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
+
+    fn void(&self) -> &'ll Type {
         unsafe {
-            llvm::LLVMVoidTypeInContext(cx.llcx)
+            llvm::LLVMVoidTypeInContext(&self.llcx)
         }
     }
 
-    pub fn metadata(
-        cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type {
+    fn metadata(&self) -> &'ll Type {
         unsafe {
-            llvm::LLVMRustMetadataTypeInContext(cx.llcx)
+            llvm::LLVMRustMetadataTypeInContext(self.llcx)
         }
     }
 
-    pub fn i1(
-        cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type {
+    fn i1(&self) -> &'ll Type {
         unsafe {
-            llvm::LLVMInt1TypeInContext(cx.llcx)
+            llvm::LLVMInt1TypeInContext(&self.llcx)
         }
     }
 
-    pub fn i8(
-        cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type {
+    fn i8(&self) -> &'ll Type {
         unsafe {
-            llvm::LLVMInt8TypeInContext(cx.llcx)
+            llvm::LLVMInt8TypeInContext(&self.llcx)
         }
     }
 
-    pub fn i8_llcx(llcx: &llvm::Context) -> &Type {
+
+    fn i16(&self) -> &'ll Type {
         unsafe {
-            llvm::LLVMInt8TypeInContext(llcx)
+
+            llvm::LLVMInt16TypeInContext(&self.llcx)
         }
     }
 
-    pub fn i16(
-        cx: &CodegenCx<'ll, '_, &'ll Value>) -> &'ll Type {
+    fn i32(&self) -> &'ll Type {
         unsafe {
-
-            llvm::LLVMInt16TypeInContext(cx.llcx)
+            llvm::LLVMInt32TypeInContext(&self.llcx)
         }
     }
 
-    pub fn i32(
-        cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type {
+    fn i64(&self) -> &'ll Type {
         unsafe {
-            llvm::LLVMInt32TypeInContext(cx.llcx)
+            llvm::LLVMInt64TypeInContext(&self.llcx)
         }
     }
 
-    pub fn i64(
-        cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type {
+    fn i128(&self) -> &'ll Type {
         unsafe {
-            llvm::LLVMInt64TypeInContext(cx.llcx)
-        }
-    }
-
-    pub fn i128(
-        cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type {
-        unsafe {
-            llvm::LLVMIntTypeInContext(cx.llcx, 128)
+            llvm::LLVMIntTypeInContext(&self.llcx, 128)
         }
     }
 
     // Creates an integer type with the given number of bits, e.g. i24
-    pub fn ix(
-        cx: &CodegenCx<'ll, '_, &'ll Value>,
-        num_bits: u64
+    fn ix(&self, num_bits: u64) -> &'ll Type {
+        unsafe {
+            llvm::LLVMIntTypeInContext(&self.llcx, num_bits as c_uint)
+        }
+    }
+
+    fn f32(&self) -> &'ll Type {
+        unsafe {
+            llvm::LLVMFloatTypeInContext(&self.llcx)
+        }
+    }
+
+    fn f64(&self) -> &'ll Type {
+        unsafe {
+            llvm::LLVMDoubleTypeInContext(&self.llcx)
+        }
+    }
+
+    fn x86_mmx(&self) -> &'ll Type {
+        unsafe {
+            llvm::LLVMX86MMXTypeInContext(&self.llcx)
+        }
+    }
+
+    fn func(
+        &self,
+        args: &[&'ll Type],
+        ret: &'ll Type
     ) -> &'ll Type {
         unsafe {
-            llvm::LLVMIntTypeInContext(cx.llcx, num_bits as c_uint)
+            llvm::LLVMFunctionType(ret, args.as_ptr(),
+                                   args.len() as c_uint, False)
+        }
+    }
+
+    fn variadic_func(
+        &self,
+        args: &[&'ll Type],
+        ret: &'ll Type
+    ) -> &'ll Type {
+        unsafe {
+            llvm::LLVMFunctionType(ret, args.as_ptr(),
+                                   args.len() as c_uint, True)
+        }
+    }
+
+    fn struct_(
+        &self,
+        els: &[&'ll Type],
+        packed: bool
+    ) -> &'ll Type {
+        unsafe {
+            llvm::LLVMStructTypeInContext(&self.llcx, els.as_ptr(),
+                                          els.len() as c_uint,
+                                          packed as Bool)
+        }
+    }
+
+    fn named_struct(&self, name: &str) -> &'ll Type {
+        let name = SmallCStr::new(name);
+        unsafe {
+            llvm::LLVMStructCreateNamed(&self.llcx, name.as_ptr())
+        }
+    }
+
+
+    fn array(&self, ty: &'ll Type, len: u64) -> &'ll Type {
+        unsafe {
+            llvm::LLVMRustArrayType(ty, len)
+        }
+    }
+
+    fn vector(&self, ty: &'ll Type, len: u64) -> &'ll Type {
+        unsafe {
+            llvm::LLVMVectorType(ty, len as c_uint)
+        }
+    }
+
+    fn kind(&self, ty: &'ll Type) -> TypeKind {
+        unsafe {
+            llvm::LLVMRustGetTypeKind(ty)
+        }
+    }
+
+    fn set_struct_body(&self, ty: &'ll Type, els: &[&'ll Type], packed: bool) {
+        unsafe {
+            llvm::LLVMStructSetBody(ty, els.as_ptr(),
+                                    els.len() as c_uint, packed as Bool)
+        }
+    }
+
+    fn ptr_to(&self, ty: &'ll Type) -> &'ll Type {
+        unsafe {
+            llvm::LLVMPointerType(ty, 0)
+        }
+    }
+
+    fn element_type(&self, ty: &'ll Type) -> &'ll Type {
+        unsafe {
+            llvm::LLVMGetElementType(ty)
+        }
+    }
+
+    /// Return the number of elements in `self` if it is a LLVM vector type.
+    fn vector_length(&self, ty: &'ll Type) -> usize {
+        unsafe {
+            llvm::LLVMGetVectorSize(ty) as usize
+        }
+    }
+
+    fn func_params(&self, ty: &'ll Type) -> Vec<&'ll Type> {
+        unsafe {
+            let n_args = llvm::LLVMCountParamTypes(ty) as usize;
+            let mut args = Vec::with_capacity(n_args);
+            llvm::LLVMGetParamTypes(ty, args.as_mut_ptr());
+            args.set_len(n_args);
+            args
+        }
+    }
+
+    fn float_width(&self, ty : &'ll Type) -> usize {
+        match &self.kind(ty) {
+            TypeKind::Float => 32,
+            TypeKind::Double => 64,
+            TypeKind::X86_FP80 => 80,
+            TypeKind::FP128 | TypeKind::PPc_FP128 => 128,
+            _ => bug!("llvm_float_width called on a non-float type")
+        }
+    }
+
+    /// Retrieve the bit width of the integer type `self`.
+    fn int_width(&self, ty: &'ll Type) -> u64 {
+        unsafe {
+            llvm::LLVMGetIntTypeWidth(ty) as u64
+        }
+    }
+}
+
+impl Type {
+    pub fn i8_llcx(llcx: &llvm::Context) -> &Type {
+        unsafe {
+            llvm::LLVMInt8TypeInContext(llcx)
         }
     }
 
@@ -131,246 +250,106 @@ impl Type {
         }
     }
 
-    pub fn f32(
-        cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type {
-        unsafe {
-            llvm::LLVMFloatTypeInContext(cx.llcx)
-        }
+    pub fn i8p_llcx(cx : &write::CodegenContext<'ll>, llcx: &'ll llvm::Context) -> &'ll Type {
+        cx.ptr_to(Type::i8_llcx(llcx))
+    }
+}
+
+impl CodegenCx<'ll, 'tcx, &'ll Value> {
+
+    pub fn bool(&self) -> &'ll Type {
+        &self.i8()
     }
 
-    pub fn f64(
-        cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type {
-        unsafe {
-            llvm::LLVMDoubleTypeInContext(cx.llcx)
-        }
+    pub fn char(&self) -> &'ll Type {
+        &self.i32()
     }
 
-    pub fn bool(
-        cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type {
-        Type::i8(cx)
+    pub fn i8p(&self) -> &'ll Type {
+        &self.ptr_to(&self.i8())
     }
 
-    pub fn char(
-        cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type {
-        Type::i32(cx)
+    pub fn isize(&self) -> &'ll Type {
+        &self.isize_ty
     }
 
-    pub fn i8p(
-        cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type {
-        Type::i8(cx).ptr_to()
-    }
-
-    pub fn i8p_llcx(llcx: &llvm::Context) -> &Type {
-        Type::i8_llcx(llcx).ptr_to()
-    }
-
-    pub fn isize(
-        cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type {
-        cx.isize_ty
-    }
-
-    pub fn c_int(
-        cx: &CodegenCx<'ll, '_, &'ll Value>
-    ) -> &'ll Type {
-        match &cx.tcx.sess.target.target.target_c_int_width[..] {
-            "16" => Type::i16(cx),
-            "32" => Type::i32(cx),
-            "64" => Type::i64(cx),
+    pub fn t_int(&self) -> &'ll Type {
+        match &self.sess().target.target.target_c_int_width[..] {
+            "16" => &self.i16(),
+            "32" => &self.i32(),
+            "64" => &self.i64(),
             width => bug!("Unsupported target_c_int_width: {}", width),
         }
     }
 
     pub fn int_from_ty(
-        cx: &CodegenCx<'ll, '_, &'ll Value>,
+        &self,
         t: ast::IntTy
     ) -> &'ll Type {
         match t {
-            ast::IntTy::Isize => cx.isize_ty,
-            ast::IntTy::I8 => Type::i8(cx),
-            ast::IntTy::I16 => Type::i16(cx),
-            ast::IntTy::I32 => Type::i32(cx),
-            ast::IntTy::I64 => Type::i64(cx),
-            ast::IntTy::I128 => Type::i128(cx),
+            ast::IntTy::Isize => &self.isize_ty,
+            ast::IntTy::I8 => &self.i8(),
+            ast::IntTy::I16 => &self.i16(),
+            ast::IntTy::I32 => &self.i32(),
+            ast::IntTy::I64 => &self.i64(),
+            ast::IntTy::I128 => &self.i128(),
         }
     }
 
     pub fn uint_from_ty(
-        cx: &CodegenCx<'ll, '_, &'ll Value>,
+        &self,
         t: ast::UintTy
     ) -> &'ll Type {
         match t {
-            ast::UintTy::Usize => cx.isize_ty,
-            ast::UintTy::U8 => Type::i8(cx),
-            ast::UintTy::U16 => Type::i16(cx),
-            ast::UintTy::U32 => Type::i32(cx),
-            ast::UintTy::U64 => Type::i64(cx),
-            ast::UintTy::U128 => Type::i128(cx),
+            ast::UintTy::Usize => &self.isize_ty,
+            ast::UintTy::U8 => &self.i8(),
+            ast::UintTy::U16 => &self.i16(),
+            ast::UintTy::U32 => &self.i32(),
+            ast::UintTy::U64 => &self.i64(),
+            ast::UintTy::U128 => &self.i128(),
         }
     }
 
     pub fn float_from_ty(
-        cx: &CodegenCx<'ll, '_, &'ll Value>,
+        &self,
         t: ast::FloatTy
     ) -> &'ll Type {
         match t {
-            ast::FloatTy::F32 => Type::f32(cx),
-            ast::FloatTy::F64 => Type::f64(cx),
+            ast::FloatTy::F32 => &self.f32(),
+            ast::FloatTy::F64 => &self.f64(),
         }
     }
 
-    pub fn func(
-        args: &[&'ll Type],
-        ret: &'ll Type
-    ) -> &'ll Type {
-        unsafe {
-            llvm::LLVMFunctionType(ret, args.as_ptr(),
-                                   args.len() as c_uint, False)
-        }
-    }
-
-    pub fn variadic_func(
-        args: &[&'ll Type],
-        ret: &'ll Type
-    ) -> &'ll Type {
-        unsafe {
-            llvm::LLVMFunctionType(ret, args.as_ptr(),
-                                   args.len() as c_uint, True)
-        }
-    }
-
-    pub fn struct_(
-        cx: &CodegenCx<'ll, '_, &'ll Value>,
-        els: &[&'ll Type],
-        packed: bool
-    ) -> &'ll Type {
-        unsafe {
-            llvm::LLVMStructTypeInContext(cx.llcx, els.as_ptr(),
-                                          els.len() as c_uint,
-                                          packed as Bool)
-        }
-    }
-
-    pub fn named_struct(cx: &CodegenCx<'ll, '_, &'ll Value>, name: &str) -> &'ll Type {
-        let name = SmallCStr::new(name);
-        unsafe {
-            llvm::LLVMStructCreateNamed(cx.llcx, name.as_ptr())
-        }
-    }
-
-
-    pub fn array(ty: &Type, len: u64) -> &Type {
-        unsafe {
-            llvm::LLVMRustArrayType(ty, len)
-        }
-    }
-
-    pub fn vector(ty: &Type, len: u64) -> &Type {
-        unsafe {
-            llvm::LLVMVectorType(ty, len as c_uint)
-        }
-    }
-
-    pub fn kind(&self) -> TypeKind {
-        unsafe {
-            llvm::LLVMRustGetTypeKind(self)
-        }
-    }
-
-    pub fn set_struct_body(&'ll self, els: &[&'ll Type], packed: bool) {
-        unsafe {
-            llvm::LLVMStructSetBody(self, els.as_ptr(),
-                                    els.len() as c_uint, packed as Bool)
-        }
-    }
-
-    pub fn ptr_to(&self) -> &Type {
-        unsafe {
-            llvm::LLVMPointerType(self, 0)
-        }
-    }
-
-    pub fn element_type(&self) -> &Type {
-        unsafe {
-            llvm::LLVMGetElementType(self)
-        }
-    }
-
-    /// Return the number of elements in `self` if it is a LLVM vector type.
-    pub fn vector_length(&self) -> usize {
-        unsafe {
-            llvm::LLVMGetVectorSize(self) as usize
-        }
-    }
-
-    pub fn func_params(&self) -> Vec<&Type> {
-        unsafe {
-            let n_args = llvm::LLVMCountParamTypes(self) as usize;
-            let mut args = Vec::with_capacity(n_args);
-            llvm::LLVMGetParamTypes(self, args.as_mut_ptr());
-            args.set_len(n_args);
-            args
-        }
-    }
-
-    pub fn float_width(&self) -> usize {
-        match self.kind() {
-            TypeKind::Float => 32,
-            TypeKind::Double => 64,
-            TypeKind::X86_FP80 => 80,
-            TypeKind::FP128 | TypeKind::PPc_FP128 => 128,
-            _ => bug!("llvm_float_width called on a non-float type")
-        }
-    }
-
-    /// Retrieve the bit width of the integer type `self`.
-    pub fn int_width(&self) -> u64 {
-        unsafe {
-            llvm::LLVMGetIntTypeWidth(self) as u64
-        }
-    }
-
-    pub fn from_integer(cx: &CodegenCx<'ll, '_, &'ll Value>, i: layout::Integer) -> &'ll Type {
+    pub fn from_integer(&self, i: layout::Integer) -> &'ll Type {
         use rustc::ty::layout::Integer::*;
         match i {
-            I8 => Type::i8(cx),
-            I16 => Type::i16(cx),
-            I32 => Type::i32(cx),
-            I64 => Type::i64(cx),
-            I128 => Type::i128(cx),
+            I8 => &self.i8(),
+            I16 => &self.i16(),
+            I32 => &self.i32(),
+            I64 => &self.i64(),
+            I128 => &self.i128(),
         }
     }
 
     /// Return a LLVM type that has at most the required alignment,
     /// as a conservative approximation for unknown pointee types.
-    pub fn pointee_for_abi_align(cx: &CodegenCx<'ll, '_, &'ll Value>, align: Align) -> &'ll Type {
+    pub fn pointee_for_abi_align(&self, align: Align) -> &'ll Type {
         // FIXME(eddyb) We could find a better approximation if ity.align < align.
-        let ity = layout::Integer::approximate_abi_align(cx, align);
-        Type::from_integer(cx, ity)
+        let ity = layout::Integer::approximate_abi_align(self, align);
+        &self.from_integer(ity)
     }
 
     /// Return a LLVM type that has at most the required alignment,
     /// and exactly the required size, as a best-effort padding array.
     pub fn padding_filler(
-        cx: &CodegenCx<'ll, '_, &'ll Value>,
+        &self,
         size: Size,
         align: Align
     ) -> &'ll Type {
-        let unit = layout::Integer::approximate_abi_align(cx, align);
+        let unit = layout::Integer::approximate_abi_align(self, align);
         let size = size.bytes();
         let unit_size = unit.size().bytes();
         assert_eq!(size % unit_size, 0);
-        Type::array(Type::from_integer(cx, unit), size / unit_size)
-    }
-
-    pub fn x86_mmx(cx: &CodegenCx<'ll, '_, &'ll Value>) -> &'ll Type {
-        unsafe {
-            llvm::LLVMX86MMXTypeInContext(cx.llcx)
-        }
+        &self.array(&self.from_integer(unit), size / unit_size)
     }
 }
