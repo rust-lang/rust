@@ -221,13 +221,9 @@ impl Once {
     /// [poison]: struct.Mutex.html#poisoning
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn call_once<F>(&self, f: F) where F: FnOnce() {
-        // Fast path, just see if we've completed initialization.
-        // An `Acquire` load is enough because that makes all the initialization
-        // operations visible to us. The cold path uses SeqCst consistently
-        // because the performance difference really does not matter there,
-        // and SeqCst minimizes the chances of something going wrong.
-        if self.state.load(Ordering::Acquire) == COMPLETE {
-            return
+        // Fast path check
+        if self.is_completed() {
+            return;
         }
 
         let mut f = Some(f);
@@ -282,19 +278,64 @@ impl Once {
     /// ```
     #[unstable(feature = "once_poison", issue = "33577")]
     pub fn call_once_force<F>(&self, f: F) where F: FnOnce(&OnceState) {
-        // same as above, just with a different parameter to `call_inner`.
-        // An `Acquire` load is enough because that makes all the initialization
-        // operations visible to us. The cold path uses SeqCst consistently
-        // because the performance difference really does not matter there,
-        // and SeqCst minimizes the chances of something going wrong.
-        if self.state.load(Ordering::Acquire) == COMPLETE {
-            return
+        // Fast path check
+        if self.is_completed() {
+            return;
         }
 
         let mut f = Some(f);
         self.call_inner(true, &mut |p| {
             f.take().unwrap()(&OnceState { poisoned: p })
         });
+    }
+
+    /// Returns true if some `call_once` call has completed
+    /// successfuly. Specifically, `is_completed` will return false in
+    /// the following situtations:
+    ///   * `call_once` was not called at all,
+    ///   * `call_once` was called, but has not yet completed,
+    ///   * the `Once` instance is poisoned
+    ///
+    /// It is also possible that immediately after `is_completed`
+    /// returns false, some other thread finishes executing
+    /// `call_once`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_is_completed)]
+    /// use std::sync::Once;
+    ///
+    /// static INIT: Once = Once::new();
+    ///
+    /// assert_eq!(INIT.is_completed(), false);
+    /// INIT.call_once(|| {
+    ///     assert_eq!(INIT.is_completed(), false);
+    /// });
+    /// assert_eq!(INIT.is_completed(), true);
+    /// ```
+    ///
+    /// ```
+    /// #![feature(once_is_completed)]
+    /// use std::sync::Once;
+    /// use std::thread;
+    ///
+    /// static INIT: Once = Once::new();
+    ///
+    /// assert_eq!(INIT.is_completed(), false);
+    /// let handle = thread::spawn(|| {
+    ///     INIT.call_once(|| panic!());
+    /// });
+    /// assert!(handle.join().is_err());
+    /// assert_eq!(INIT.is_completed(), false);
+    /// ```
+    #[unstable(feature = "once_is_completed", issue = "42")]
+    pub fn is_completed(&self) -> bool {
+        // An `Acquire` load is enough because that makes all the initialization
+        // operations visible to us, and, this being a fast path, weaker
+        // ordering helps with performance. This `Acquire` synchronizes with
+        // `SeqCst` operations on the slow path.
+        self.state.load(Ordering::Acquire) == COMPLETE
     }
 
     // This is a non-generic function to reduce the monomorphization cost of
@@ -312,6 +353,10 @@ impl Once {
     fn call_inner(&self,
                   ignore_poisoning: bool,
                   init: &mut dyn FnMut(bool)) {
+
+        // This cold path uses SeqCst consistently because the
+        // performance difference really does not matter there, and
+        // SeqCst minimizes the chances of something going wrong.
         let mut state = self.state.load(Ordering::SeqCst);
 
         'outer: loop {
