@@ -10,11 +10,13 @@
 
 // compile-flags: -Z parse-only
 
-fn foo() { //~ HELP did you mean to close this delimiter?
+fn foo() { //~ NOTE un-closed delimiter
   match Some(x) {
+  //~^ NOTE this might be the culprit...
       Some(y) => { panic!(); }
       None => { panic!(); }
 }
+//~^ NOTE ...as it matches this but it has different indentation
 
 fn bar() {
     let mut i = 0;
