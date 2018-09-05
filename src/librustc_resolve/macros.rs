@@ -220,23 +220,6 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
         }
     }
 
-    fn add_unshadowable_attr(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>) {
-        let def_id = DefId {
-            krate: BUILTIN_MACROS_CRATE,
-            index: DefIndex::from_array_index(self.macro_map.len(),
-                                              DefIndexAddressSpace::Low),
-        };
-        let kind = ext.kind();
-        self.macro_map.insert(def_id, ext);
-        let binding = self.arenas.alloc_name_binding(NameBinding {
-            kind: NameBindingKind::Def(Def::Macro(def_id, kind), false),
-            span: DUMMY_SP,
-            vis: ty::Visibility::Invisible,
-            expansion: Mark::root(),
-        });
-        self.unshadowable_attrs.insert(ident.name, binding);
-    }
-
     fn resolve_imports(&mut self) {
         ImportResolver { resolver: self }.resolve_imports()
     }
@@ -493,14 +476,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             return def;
         }
 
-        if kind == MacroKind::Attr {
-            if let Some(ext) = self.unshadowable_attrs.get(&path[0].name) {
-                return Ok(ext.def());
-            }
-        }
-
         let legacy_resolution = self.resolve_legacy_scope(
-            path[0], invoc_id, invocation.parent_legacy_scope.get(), false
+            path[0], invoc_id, invocation.parent_legacy_scope.get(), false, kind == MacroKind::Attr
         );
         let result = if let Some(legacy_binding) = legacy_resolution {
             Ok(legacy_binding.def())
@@ -643,7 +620,19 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 }
                 WhereToResolve::MacroUsePrelude => {
                     match self.macro_use_prelude.get(&ident.name).cloned() {
-                        Some(binding) => Ok((binding, FromPrelude(true))),
+                        Some(binding) => {
+                            let mut result = Ok((binding, FromPrelude(true)));
+                            // FIXME: Keep some built-in macros working even if they are
+                            // shadowed by non-attribute macros imported with `macro_use`.
+                            // We need to come up with some more principled approach instead.
+                            if is_attr && (ident.name == "test" || ident.name == "bench") {
+                                if let Def::Macro(_, MacroKind::Bang) =
+                                        binding.def_ignoring_ambiguity() {
+                                    result = Err(Determinacy::Determined);
+                                }
+                            }
+                            result
+                        }
                         None => Err(Determinacy::Determined),
                     }
                 }
@@ -811,8 +800,16 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                             ident: Ident,
                             invoc_id: Mark,
                             invoc_parent_legacy_scope: LegacyScope<'a>,
-                            record_used: bool)
+                            record_used: bool,
+                            is_attr: bool)
                             -> Option<&'a NameBinding<'a>> {
+        if is_attr && (ident.name == "test" || ident.name == "bench") {
+            // FIXME: Keep some built-in macros working even if they are
+            // shadowed by user-defined `macro_rules`.
+            // We need to come up with some more principled approach instead.
+            return None;
+        }
+
         let ident = ident.modern();
 
         // This is *the* result, resolution from the scope closest to the resolved identifier.
@@ -898,7 +895,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             let span = ident.span;
             let invocation = self.invocations[&invoc_id];
             let legacy_resolution = self.resolve_legacy_scope(
-                ident, invoc_id, invocation.parent_legacy_scope.get(), true
+                ident, invoc_id, invocation.parent_legacy_scope.get(), true, kind == MacroKind::Attr
             );
             let resolution = self.resolve_lexical_macro_path_segment(
                 ident, MacroNS, invoc_id, true, true, kind == MacroKind::Attr, span
