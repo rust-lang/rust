@@ -7,7 +7,7 @@ use std::{
     path::{Path},
 };
 
-use relative_path::RelativePath;
+use relative_path::{RelativePath, RelativePathBuf};
 use libanalysis::{AnalysisHost, FileId, FileResolver, JobHandle, CrateGraph, CrateId};
 use test_utils::assert_eq_dbg;
 
@@ -28,18 +28,15 @@ impl FileResolver for FileMap {
         self.path(id).file_stem().unwrap().to_str().unwrap().to_string()
     }
     fn resolve(&self, id: FileId, rel: &RelativePath) -> Option<FileId> {
-        let path = {
-            if rel.starts_with("..") {
-                rel.strip_prefix("..").unwrap()
-                    .to_path(&self.path(id).parent().unwrap())
-            } else {
-                rel.to_path(self.path(id))
-            }
-        };
-        let path = &path.to_str().unwrap()[1..];
-        let path = RelativePath::new(&path[0..]).normalize();
+        let path = rel.to_path(self.path(id));
+        let path = path.strip_prefix("/").unwrap();
+        let path = RelativePathBuf::from_path(&path).unwrap().normalize();
         let &(id, _) = self.0.iter()
-            .find(|it| path == RelativePath::new(&it.1[0..]).normalize())?;
+            .find(|it| {
+                let p = Path::new(it.1).strip_prefix("/").unwrap();
+                let p = RelativePathBuf::from_path(p).unwrap();
+                path == p
+            })?;
         Some(FileId(id))
     }
 }
