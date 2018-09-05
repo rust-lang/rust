@@ -86,3 +86,81 @@ impl<'s> Ptr<'s> {
         self.text[len as usize..].chars()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_current() {
+        let ptr = Ptr::new("test");
+        assert_eq!(ptr.current(), Some('t'));
+    }
+
+    #[test]
+    fn test_nth() {
+        let ptr = Ptr::new("test");
+        assert_eq!(ptr.nth(0), Some('t'));
+        assert_eq!(ptr.nth(1), Some('e'));
+        assert_eq!(ptr.nth(2), Some('s'));
+        assert_eq!(ptr.nth(3), Some('t'));
+        assert_eq!(ptr.nth(4), None);
+    }
+
+    #[test]
+    fn test_at() {
+        let ptr = Ptr::new("test");
+        assert!(ptr.at('t'));
+        assert!(!ptr.at('a'));
+    }
+
+    #[test]
+    fn test_at_str() {
+        let ptr = Ptr::new("test");
+        assert!(ptr.at_str("t"));
+        assert!(ptr.at_str("te"));
+        assert!(ptr.at_str("test"));
+        assert!(!ptr.at_str("tests"));
+        assert!(!ptr.at_str("rust"));
+    }
+
+    #[test]
+    fn test_at_p() {
+        let ptr = Ptr::new("test");
+        assert!(ptr.at_p(|c| c == 't'));
+        assert!(!ptr.at_p(|c| c == 'e'));
+    }
+
+    #[test]
+    fn test_nth_is_p() {
+        let ptr = Ptr::new("test");
+        assert!(ptr.nth_is_p(0,|c| c == 't'));
+        assert!(!ptr.nth_is_p(1,|c| c == 't'));
+        assert!(ptr.nth_is_p(3,|c| c == 't'));
+        assert!(!ptr.nth_is_p(150,|c| c == 't'));
+    }
+
+    #[test]
+    fn test_bump() {
+        let mut ptr = Ptr::new("test");
+        assert_eq!(ptr.current(), Some('t'));
+        ptr.bump();
+        assert_eq!(ptr.current(), Some('e'));
+        ptr.bump();
+        assert_eq!(ptr.current(), Some('s'));
+        ptr.bump();
+        assert_eq!(ptr.current(), Some('t'));
+        ptr.bump();
+        assert_eq!(ptr.current(), None);
+        ptr.bump();
+        assert_eq!(ptr.current(), None);
+    }
+
+    #[test]
+    fn test_bump_while() {
+        let mut ptr = Ptr::new("test");
+        assert_eq!(ptr.current(), Some('t'));
+        ptr.bump_while(|c| c != 's');
+        assert_eq!(ptr.current(), Some('s'));
+    }
+}
