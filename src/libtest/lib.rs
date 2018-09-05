@@ -398,7 +398,7 @@ pub type OptRes = Result<TestOpts, String>;
 
 fn optgroups() -> getopts::Options {
     let mut opts = getopts::Options::new();
-    opts.optflag("", "all", "Run ignored and not ignored tests")
+    opts.optflag("", "include-ignored", "Run ignored and not ignored tests")
         .optflag("", "ignored", "Run only ignored tests")
         .optflag("", "test", "Run tests and not benchmarks")
         .optflag("", "bench", "Run benchmarks instead of tests")
@@ -498,7 +498,7 @@ Test Attributes:
                      contain: #[should_panic(expected = "foo")].
     #[ignore]      - When applied to a function which is already attributed as a
                      test, then the test runner will ignore these tests during
-                     normal test runs. Running with --ignored or --all will run
+                     normal test runs. Running with --ignored or --include-ignored will run
                      these tests."#,
         usage = options.usage(&message)
     );
@@ -552,9 +552,16 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         None
     };
 
-    let run_ignored = match (matches.opt_present("all"), matches.opt_present("ignored")) {
+    let include_ignored = matches.opt_present("include-ignored");
+    if !allow_unstable && include_ignored {
+        return Some(Err(
+            "The \"include-ignored\" flag is only accepted on the nightly compiler".into()
+        ));
+    }
+
+    let run_ignored = match (include_ignored, matches.opt_present("ignored")) {
         (true, true) => return Some(Err(
-            "the options --all and --ignored are mutually exclusive".into()
+            "the options --include-ignored and --ignored are mutually exclusive".into()
         )),
         (true, false) => RunIgnored::Yes,
         (false, true) => RunIgnored::Only,
@@ -1890,11 +1897,12 @@ mod tests {
     }
 
     #[test]
-    fn parse_all_flag() {
+    fn parse_include_ignored_flag() {
         let args = vec![
             "progname".to_string(),
             "filter".to_string(),
-            "--all".to_string(),
+            "-Zunstable-options".to_string(),
+            "--include-ignored".to_string(),
         ];
         let opts = parse_opts(&args).unwrap().unwrap();
         assert_eq!(opts.run_ignored, RunIgnored::Yes);
@@ -1918,8 +1926,8 @@ mod tests {
     }
 
     #[test]
-    pub fn run_all_option() {
-        // When we run "--all" tests, the ignore flag should be set to false on
+    pub fn run_include_ignored_option() {
+        // When we "--include-ignored" tests, the ignore flag should be set to false on
         // all tests and no test filtered out
 
         let mut opts = TestOpts::new();
@@ -2041,9 +2049,9 @@ mod tests {
             "test::ignored_tests_result_in_ignored".to_string(),
             "test::first_free_arg_should_be_a_filter".to_string(),
             "test::parse_ignored_flag".to_string(),
-            "test::parse_all_flag".to_string(),
+            "test::parse_include_ignored_flag".to_string(),
             "test::filter_for_ignored_option".to_string(),
-            "test::run_all_option".to_string(),
+            "test::run_include_ignored_option".to_string(),
             "test::sort_tests".to_string(),
         ];
         let tests = {
@@ -2073,9 +2081,9 @@ mod tests {
             "test::filter_for_ignored_option".to_string(),
             "test::first_free_arg_should_be_a_filter".to_string(),
             "test::ignored_tests_result_in_ignored".to_string(),
-            "test::parse_all_flag".to_string(),
             "test::parse_ignored_flag".to_string(),
-            "test::run_all_option".to_string(),
+            "test::parse_include_ignored_flag".to_string(),
+            "test::run_include_ignored_option".to_string(),
             "test::sort_tests".to_string(),
         ];
 
