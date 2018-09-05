@@ -2,7 +2,7 @@ error[E0401]: can't use type parameters from outer function
   --> $DIR/use-self-in-inner-fn.rs:16:25
    |
 LL | impl A {
-   | ---- `Self` type implicitly declared here, on the `impl`
+   | ---- `Self` type implicitly declared here, by this `impl`
 ...
 LL |         fn peach(this: &Self) {
    |                         ^^^^

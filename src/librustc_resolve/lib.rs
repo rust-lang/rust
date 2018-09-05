@@ -204,7 +204,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                     }) {
                         err.span_label(
                             reduce_impl_span_to_impl_keyword(cm, impl_span),
-                            "`Self` type implicitly declared here, on the `impl`",
+                            "`Self` type implicitly declared here, by this `impl`",
                         );
                     }
                     match (maybe_trait_defid, maybe_impl_defid) {
