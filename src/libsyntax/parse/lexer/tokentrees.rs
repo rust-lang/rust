@@ -58,7 +58,10 @@ impl<'a> StringReader<'a> {
                         .next()  // these are in reverse order as they get inserted on close, but
                     {            // we want the last open/first close
                         if d == delim {
-                            err.span_label(*open_sp, "this might be the culprit...");
+                            err.span_label(
+                                *open_sp,
+                                "this delimiter might not be properly closed...",
+                            );
                             err.span_label(
                                 *close_sp,
                                 "...as it matches this but it has different indentation",

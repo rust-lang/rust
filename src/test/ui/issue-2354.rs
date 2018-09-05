@@ -12,7 +12,7 @@
 
 fn foo() { //~ NOTE un-closed delimiter
   match Some(x) {
-  //~^ NOTE this might be the culprit...
+  //~^ NOTE this delimiter might not be properly closed...
       Some(y) => { panic!(); }
       None => { panic!(); }
 }

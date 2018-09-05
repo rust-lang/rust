@@ -24,7 +24,7 @@ fn main() {
 //~^ NOTE un-closed delimiter
     {
         {
-        //~^ NOTE this might be the culprit...
+        //~^ NOTE this delimiter might not be properly closed...
             foo();
     }
     //~^ NOTE ...as it matches this but it has different indentation
