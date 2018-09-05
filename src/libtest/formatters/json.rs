@@ -50,7 +50,7 @@ impl<T: Write> JsonFormatter<T> {
 impl<T: Write> OutputFormatter for JsonFormatter<T> {
     fn write_run_start(&mut self, test_count: usize) -> io::Result<()> {
         self.write_message(&*format!(
-            r#"{{ "type": "suite", "event": "started", "test_count": "{}" }}"#,
+            r#"{{ "type": "suite", "event": "started", "test_count": {} }}"#,
             test_count
         ))
     }
@@ -136,7 +136,7 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
              \"allowed_fail\": {}, \
              \"ignored\": {}, \
              \"measured\": {}, \
-             \"filtered_out\": \"{}\" }}",
+             \"filtered_out\": {} }}",
             if state.failed == 0 { "ok" } else { "failed" },
             state.passed,
             state.failed + state.allowed_fail,
