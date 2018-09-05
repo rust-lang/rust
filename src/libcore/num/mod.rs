@@ -69,7 +69,6 @@ assert_eq!(size_of::<Option<std::num::", stringify!($Ty), ">>(), size_of::<", st
                 /// The value must not be zero.
                 #[stable(feature = "nonzero", since = "1.28.0")]
                 #[inline]
-                #[cfg_attr(not(stage0), rustc_promotable)]
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
                     $Ty(NonZero(n))
                 }
