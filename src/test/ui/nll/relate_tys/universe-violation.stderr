@@ -1,0 +1,14 @@
+error: higher-ranked subtype error
+  --> $DIR/universe-violation.rs:14:9
+   |
+LL |     let a: fn(_) -> _ = make_it();
+   |         ^
+
+error: higher-ranked subtype error
+  --> $DIR/universe-violation.rs:15:9
+   |
+LL |     let b: fn(&u32) -> &u32 = a;
+   |         ^
+
+error: aborting due to 2 previous errors
+

@@ -319,23 +319,34 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         for variable in self.definitions.indices() {
+            let scc = self.constraint_sccs.scc(variable);
+
             match self.definitions[variable].origin {
                 NLLRegionVariableOrigin::FreeRegion => {
                     // For each free, universally quantified region X:
 
                     // Add all nodes in the CFG to liveness constraints
-                    let variable_scc = self.constraint_sccs.scc(variable);
                     self.liveness_constraints.add_all_points(variable);
-                    self.scc_values.add_all_points(variable_scc);
+                    self.scc_values.add_all_points(scc);
 
                     // Add `end(X)` into the set for X.
-                    self.add_element_to_scc_of(variable, variable);
+                    self.scc_values.add_element(scc, variable);
                 }
 
                 NLLRegionVariableOrigin::BoundRegion(ui) => {
                     // Each placeholder region X outlives its
-                    // associated universe but nothing else.
-                    self.add_element_to_scc_of(variable, ui);
+                    // associated universe but nothing else. Every
+                    // placeholder region is always in a universe that
+                    // contains `ui` -- but when placeholder regions
+                    // are placed into an SCC, that SCC may include
+                    // things from other universes that do not include
+                    // `ui`.
+                    let scc_universe = self.scc_universes[scc];
+                    if ui.is_subset_of(scc_universe) {
+                        self.scc_values.add_element(scc, ui);
+                    } else {
+                        self.add_incompatible_universe(scc);
+                    }
                 }
 
                 NLLRegionVariableOrigin::Existential => {
@@ -381,13 +392,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     crate fn region_universe(&self, r: RegionVid) -> ty::UniverseIndex {
         let scc = self.constraint_sccs.scc(r.to_region_vid());
         self.scc_universes[scc]
-    }
-
-    /// Adds `elem` to the value of the SCC in which `v` appears.
-    fn add_element_to_scc_of(&mut self, v: RegionVid, elem: impl ToElementIndex) {
-        debug!("add_live_element({:?}, {:?})", v, elem);
-        let scc = self.constraint_sccs.scc(v);
-        self.scc_values.add_element(scc, elem);
     }
 
     /// Perform region inference and report errors if we see any
@@ -516,22 +520,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // merge the bits.
                 self.scc_values.add_region(scc_a, scc_b);
             } else {
-                // Otherwise, the only way for `A` to outlive `B`
-                // is for it to outlive static. This is actually stricter
-                // than necessary: ideally, we'd support bounds like `for<'a: 'b`>`
-                // that might then allow us to approximate `'a` with `'b` and not
-                // `'static`. But it will have to do for now.
-                //
-                // The code here is a bit hacky: we grab the current
-                // value of the SCC in which `'static` appears, but
-                // this value may not be fully computed yet. That's ok
-                // though: it will contain the base liveness values,
-                // which include (a) the static free region element
-                // and (b) all the points in the CFG, so it is "good
-                // enough" to bring it in here for our purposes.
-                let fr_static = self.universal_regions.fr_static;
-                let scc_static = constraint_sccs.scc(fr_static);
-                self.scc_values.add_region(scc_a, scc_static);
+                self.add_incompatible_universe(scc_a);
             }
         }
 
@@ -561,6 +550,19 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.scc_values
             .subuniverses_contained_in(scc_b)
             .all(|u| u.is_subset_of(universe_a))
+    }
+
+    /// Extend `scc` so that it can outlive some placeholder region
+    /// from a universe it can't name; at present, the only way for
+    /// this to be true is if `scc` outlives `'static`. This is
+    /// actually stricter than necessary: ideally, we'd support bounds
+    /// like `for<'a: 'b`>` that might then allow us to approximate
+    /// `'a` with `'b` and not `'static`. But it will have to do for
+    /// now.
+    fn add_incompatible_universe(&mut self, scc: ConstraintSccIndex) {
+        let fr_static = self.universal_regions.fr_static;
+        self.scc_values.add_all_points(scc);
+        self.scc_values.add_element(scc, fr_static);
     }
 
     /// Once regions have been propagated, this method is used to see
