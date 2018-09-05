@@ -4,40 +4,38 @@ extern crate test_utils;
 
 use std::{
     collections::HashMap,
-    path::{Path},
 };
 
-use relative_path::{RelativePath, RelativePathBuf};
+use relative_path::{RelativePath};
 use libanalysis::{AnalysisHost, FileId, FileResolver, JobHandle, CrateGraph, CrateId};
 use test_utils::assert_eq_dbg;
 
 struct FileMap(&'static [(u32, &'static str)]);
 
 impl FileMap {
-    fn path(&self, id: FileId) -> &'static Path {
-        let s = self.0.iter()
-            .find(|it| it.0 == id.0)
+    fn iter<'a>(&'a self) -> impl Iterator<Item=(FileId, &'a RelativePath)> + 'a {
+        self.0.iter().map(|&(id, path)| {
+            assert!(path.starts_with('/'));
+            (FileId(id), RelativePath::new(&path[1..]))
+        })
+    }
+
+    fn path(&self, id: FileId) -> &RelativePath {
+        self.iter()
+            .find(|&(it, _)| it == id)
             .unwrap()
-            .1;
-        Path::new(s)
+            .1
     }
 }
 
 impl FileResolver for FileMap {
     fn file_stem(&self, id: FileId) -> String {
-        self.path(id).file_stem().unwrap().to_str().unwrap().to_string()
+        self.path(id).file_stem().unwrap().to_string()
     }
     fn resolve(&self, id: FileId, rel: &RelativePath) -> Option<FileId> {
-        let path = rel.to_path(self.path(id));
-        let path = path.strip_prefix("/").unwrap();
-        let path = RelativePathBuf::from_path(&path).unwrap().normalize();
-        let &(id, _) = self.0.iter()
-            .find(|it| {
-                let p = Path::new(it.1).strip_prefix("/").unwrap();
-                let p = RelativePathBuf::from_path(p).unwrap();
-                path == p
-            })?;
-        Some(FileId(id))
+        let path = self.path(id).join(rel).normalize();
+        let id = self.iter().find(|&(_, p)| path == p)?.0;
+        Some(id)
     }
 }
 
