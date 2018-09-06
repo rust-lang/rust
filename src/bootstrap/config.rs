@@ -86,6 +86,7 @@ pub struct Config {
     pub llvm_targets: Option<String>,
     pub llvm_experimental_targets: String,
     pub llvm_link_jobs: Option<u32>,
+    pub llvm_version_suffix: Option<String>,
 
     pub lld_enabled: bool,
     pub lldb_enabled: bool,
@@ -256,6 +257,7 @@ struct Llvm {
     experimental_targets: Option<String>,
     link_jobs: Option<u32>,
     link_shared: Option<bool>,
+    version_suffix: Option<String>,
     clang_cl: Option<String>
 }
 
@@ -516,6 +518,7 @@ impl Config {
             config.llvm_experimental_targets = llvm.experimental_targets.clone()
                 .unwrap_or("WebAssembly;RISCV".to_string());
             config.llvm_link_jobs = llvm.link_jobs;
+            config.llvm_version_suffix = llvm.version_suffix.clone();
             config.llvm_clang_cl = llvm.clang_cl.clone();
         }
 
