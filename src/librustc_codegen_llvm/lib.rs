@@ -73,7 +73,6 @@ pub use llvm_util::target_features;
 use std::any::Any;
 use std::path::{PathBuf};
 use std::sync::mpsc;
-use std::marker::PhantomData;
 use rustc_data_structures::sync::Lrc;
 
 use rustc::dep_graph::DepGraph;
@@ -278,7 +277,7 @@ struct ModuleCodegen {
     /// as the crate name and disambiguator.
     /// We currently generate these names via CodegenUnit::build_cgu_name().
     name: String,
-    module_llvm: ModuleLlvm<'static>,
+    module_llvm: ModuleLlvm,
     kind: ModuleKind,
 }
 
@@ -336,17 +335,16 @@ struct CompiledModule {
     bytecode_compressed: Option<PathBuf>,
 }
 
-struct ModuleLlvm<'ll> {
+struct ModuleLlvm {
     llcx: &'static mut llvm::Context,
     llmod_raw: *const llvm::Module,
     tm: &'static mut llvm::TargetMachine,
-    phantom: PhantomData<&'ll ()>
 }
 
-unsafe impl Send for ModuleLlvm<'ll> { }
-unsafe impl Sync for ModuleLlvm<'ll> { }
+unsafe impl Send for ModuleLlvm { }
+unsafe impl Sync for ModuleLlvm { }
 
-impl ModuleLlvm<'ll> {
+impl ModuleLlvm {
     fn new(sess: &Session, mod_name: &str) -> Self {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(sess.fewer_names());
@@ -356,7 +354,6 @@ impl ModuleLlvm<'ll> {
                 llmod_raw,
                 llcx,
                 tm: create_target_machine(sess, false),
-                phantom: PhantomData
             }
         }
     }
@@ -368,7 +365,7 @@ impl ModuleLlvm<'ll> {
     }
 }
 
-impl Drop for ModuleLlvm<'ll> {
+impl Drop for ModuleLlvm {
     fn drop(&mut self) {
         unsafe {
             llvm::LLVMContextDispose(&mut *(self.llcx as *mut _));
