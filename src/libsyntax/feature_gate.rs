@@ -389,7 +389,7 @@ declare_features! (
     (active, non_exhaustive, "1.22.0", Some(44109), None),
 
     // `crate` as visibility modifier, synonymous to `pub(crate)`
-    (active, crate_visibility_modifier, "1.23.0", Some(45388), Some(Edition::Edition2018)),
+    (active, crate_visibility_modifier, "1.23.0", Some(45388), None),
 
     // extern types
     (active, extern_types, "1.23.0", Some(43467), None),

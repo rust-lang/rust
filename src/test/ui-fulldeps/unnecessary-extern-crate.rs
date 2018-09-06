@@ -11,7 +11,7 @@
 // edition:2018
 
 #![deny(unused_extern_crates)]
-#![feature(alloc, test, libc)]
+#![feature(alloc, test, libc, crate_visibility_modifier)]
 
 extern crate alloc;
 //~^ ERROR unused extern crate
