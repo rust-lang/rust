@@ -1,0 +1,20 @@
+error: this constant cannot be used
+  --> $DIR/const-int-unchecked.rs:15:1
+   |
+LL | const SHR: u8 = unsafe { intrinsics::unchecked_shr(5_u8, 8) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^----------------------------------^^^
+   |                          |
+   |                          Overflowing shift by 8 in unchecked_shr
+   |
+   = note: #[deny(const_err)] on by default
+
+error: this constant cannot be used
+  --> $DIR/const-int-unchecked.rs:17:1
+   |
+LL | const SHL: u8 = unsafe { intrinsics::unchecked_shl(5_u8, 8) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^----------------------------------^^^
+   |                          |
+   |                          Overflowing shift by 8 in unchecked_shl
+
+error: aborting due to 2 previous errors
+
