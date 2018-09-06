@@ -49,7 +49,6 @@ use context::{is_pie_binary, get_reloc_model};
 use common;
 use jobserver::{Client, Acquired};
 use rustc_demangle;
-use std::marker::PhantomData;
 
 use std::any::Any;
 use std::ffi::{CString, CStr};
@@ -352,7 +351,7 @@ struct AssemblerCommand {
 
 /// Additional resources used by optimize_and_codegen (not module specific)
 #[derive(Clone)]
-pub struct CodegenContext<'ll> {
+pub struct CodegenContext {
     // Resources needed when running LTO
     pub time_passes: bool,
     pub lto: Lto,
@@ -393,13 +392,10 @@ pub struct CodegenContext<'ll> {
     // measuring is disabled.
     time_graph: Option<TimeGraph>,
     // The assembler command if no_integrated_as option is enabled, None otherwise
-    assembler_cmd: Option<Arc<AssemblerCommand>>,
-    // This field is used to give a lifetime parameter to the struct so that it can implement
-    // the Backend trait.
-    phantom: PhantomData<&'ll ()>
+    assembler_cmd: Option<Arc<AssemblerCommand>>
 }
 
-impl CodegenContext<'ll> {
+impl CodegenContext {
     pub fn create_diag_handler(&self) -> Handler {
         Handler::with_emitter(true, false, Box::new(self.diag_emitter.clone()))
     }
@@ -428,12 +424,12 @@ impl CodegenContext<'ll> {
 }
 
 pub struct DiagnosticHandlers<'a> {
-    data: *mut (&'a CodegenContext<'a>, &'a Handler),
+    data: *mut (&'a CodegenContext, &'a Handler),
     llcx: &'a llvm::Context,
 }
 
 impl<'a> DiagnosticHandlers<'a> {
-    pub fn new(cgcx: &'a CodegenContext<'a>,
+    pub fn new(cgcx: &'a CodegenContext,
                handler: &'a Handler,
                llcx: &'a llvm::Context) -> Self {
         let data = Box::into_raw(Box::new((cgcx, handler)));
@@ -1618,7 +1614,6 @@ fn start_executing_work(tcx: TyCtxt,
         target_pointer_width: tcx.sess.target.target.target_pointer_width.clone(),
         debuginfo: tcx.sess.opts.debuginfo,
         assembler_cmd,
-        phantom: PhantomData
     };
 
     // This is the "main loop" of parallel work happening for parallel codegen.
@@ -2113,7 +2108,7 @@ pub const CODEGEN_WORK_PACKAGE_KIND: time_graph::WorkPackageKind =
 const LLVM_WORK_PACKAGE_KIND: time_graph::WorkPackageKind =
     time_graph::WorkPackageKind(&["#7DB67A", "#C6EEC4", "#ACDAAA", "#579354", "#3E6F3C"]);
 
-fn spawn_work(cgcx: CodegenContext<'static>, work: WorkItem) {
+fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
     let depth = time_depth();
 
     thread::spawn(move || {
