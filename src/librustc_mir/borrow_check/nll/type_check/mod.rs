@@ -415,10 +415,9 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             if let PlaceTy::Ty { ty } = place_ty {
                 if ty.references_error() {
                     assert!(self.errors_reported);
-                    place_ty = PlaceTy::Ty {
+                    return PlaceTy::Ty {
                         ty: self.tcx().types.err,
                     };
-                    break;
                 }
             }
             place_ty = self.sanitize_projection(place_ty, elem, place, location);
