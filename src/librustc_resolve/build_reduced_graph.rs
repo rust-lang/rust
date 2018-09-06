@@ -194,7 +194,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         // ergonomically unacceptable.
         let emit_uniform_paths_canary =
             !uniform_paths_canary_emitted &&
-            uniform_paths &&
+            self.session.rust_2018() &&
             starts_with_non_keyword;
         if emit_uniform_paths_canary {
             let source = prefix_start.unwrap();
