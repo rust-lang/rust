@@ -815,6 +815,29 @@ fn test_parse_name_value_directive() {
     assert_eq!(None, internal_parse_name_value_directive("faux-build:foo.rs", "aux-build"));
 }
 
+#[derive(Debug, PartialEq)]
+struct KeyValue {
+    key: String,
+    value: String,
+}
+
+#[test]
+fn test_parse_name_kv_directive() {
+    let value = internal_parse_name_kv_directive("crate-aux-build:baz=foo.rs", "crate-aux-build");
+    assert_eq!(Some(KeyValue{key:"baz".to_owned(), value:"foo.rs".to_owned()}), value);
+}
+
+fn internal_parse_name_kv_directive(line: &str, directive: &str) -> Option<KeyValue> {
+    if let Some(value) = internal_parse_name_value_directive(line, directive) {
+        let parts = value.split("=").collect::<Vec<&str>>();
+        if parts.len() == 2 {
+            let (k,v) = (parts[0], parts[1]);
+            return Some(KeyValue{key:k.to_string(),value:v.to_string()});
+        }
+    }
+    None
+}
+
 fn internal_parse_name_value_directive(line: &str, directive: &str) -> Option<String> {
     let colon = directive.len();
     if line.starts_with(directive) && line.as_bytes().get(colon) == Some(&b':') {
