@@ -30,4 +30,33 @@ fn main() {
     match enum_unit {
         _ => "no error with only wildcard"
     };
+
+
+    // issue #53549 - check that variant constructors can still be called normally.
+
+    match NonExhaustiveEnum::Unit {
+        NonExhaustiveEnum::Unit => {},
+        _ => {}
+    };
+
+    match NonExhaustiveEnum::Tuple(2) {
+        NonExhaustiveEnum::Tuple(2) => {},
+        _ => {}
+    };
+
+    match (NonExhaustiveEnum::Unit {}) {
+        NonExhaustiveEnum::Unit {} => {},
+        _ => {}
+    };
+
+    match (NonExhaustiveEnum::Tuple { 0: 2 }) {
+        NonExhaustiveEnum::Tuple { 0: 2 } => {},
+        _ => {}
+    };
+
+    match (NonExhaustiveEnum::Struct { field: 2 }) {
+        NonExhaustiveEnum::Struct { field: 2 } => {},
+        _ => {}
+    };
+
 }

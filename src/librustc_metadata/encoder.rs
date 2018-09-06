@@ -740,7 +740,9 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
         // If the structure is marked as non_exhaustive then lower the visibility
         // to within the crate.
-        if adt_def.is_non_exhaustive() && ctor_vis == ty::Visibility::Public {
+        if adt_def.non_enum_variant().is_field_list_non_exhaustive() &&
+            ctor_vis == ty::Visibility::Public
+        {
             ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
         }
 

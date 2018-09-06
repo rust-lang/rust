@@ -542,7 +542,13 @@ impl<'a, 'tcx> CrateMetadata {
                           self.def_path_table.def_path_hash(item_id))
     }
 
-    fn get_variant(&self, item: &Entry, index: DefIndex) -> ty::VariantDef {
+    fn get_variant(&self,
+                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                   item: &Entry,
+                   index: DefIndex,
+                   adt_kind: ty::AdtKind)
+                   -> ty::VariantDef
+    {
         let data = match item.kind {
             EntryKind::Variant(data) |
             EntryKind::Struct(data, _) |
@@ -550,10 +556,12 @@ impl<'a, 'tcx> CrateMetadata {
             _ => bug!(),
         };
 
-        ty::VariantDef {
-            did: self.local_def_id(data.struct_ctor.unwrap_or(index)),
-            name: self.item_name(index).as_symbol(),
-            fields: item.children.decode(self).map(|index| {
+        ty::VariantDef::new(
+            tcx,
+            self.local_def_id(data.struct_ctor.unwrap_or(index)),
+            self.item_name(index).as_symbol(),
+            data.discr,
+            item.children.decode(self).map(|index| {
                 let f = self.entry(index);
                 ty::FieldDef {
                     did: self.local_def_id(index),
@@ -561,9 +569,9 @@ impl<'a, 'tcx> CrateMetadata {
                     vis: f.visibility.decode(self)
                 }
             }).collect(),
-            discr: data.discr,
-            ctor_kind: data.ctor_kind,
-        }
+            adt_kind,
+            data.ctor_kind
+        )
     }
 
     pub fn get_adt_def(&self,
@@ -584,11 +592,11 @@ impl<'a, 'tcx> CrateMetadata {
             item.children
                 .decode(self)
                 .map(|index| {
-                    self.get_variant(&self.entry(index), index)
+                    self.get_variant(tcx, &self.entry(index), index, kind)
                 })
                 .collect()
         } else {
-            vec![self.get_variant(&item, item_id)]
+            vec![self.get_variant(tcx, &item, item_id, kind)]
         };
 
         tcx.alloc_adt_def(did, kind, variants, repr)

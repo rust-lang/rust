@@ -344,13 +344,13 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::AdtFlags {
     }
 }
 
-impl_stable_hash_for!(struct ty::VariantDef {
-    did,
-    name,
-    discr,
-    fields,
-    ctor_kind
-});
+impl<'a> HashStable<StableHashingContext<'a>> for ty::VariantFlags {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          _: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        std_hash::Hash::hash(self, hasher);
+    }
+}
 
 impl_stable_hash_for!(enum ty::VariantDiscr {
     Explicit(def_id),
