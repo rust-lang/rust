@@ -1588,7 +1588,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> 
                     FullInt::S(i128::from(i64::min_value())),
                     FullInt::S(i128::from(i64::max_value())),
                 ),
-                IntTy::I128 => (FullInt::S(i128::min_value() as i128), FullInt::S(i128::max_value() as i128)),
+                IntTy::I128 => (FullInt::S(i128::min_value()), FullInt::S(i128::max_value())),
                 IntTy::Isize => (FullInt::S(isize::min_value() as i128), FullInt::S(isize::max_value() as i128)),
             }),
             ty::Uint(uint_ty) => Some(match uint_ty {
@@ -1605,7 +1605,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> 
                     FullInt::U(u128::from(u64::min_value())),
                     FullInt::U(u128::from(u64::max_value())),
                 ),
-                UintTy::U128 => (FullInt::U(u128::min_value() as u128), FullInt::U(u128::max_value() as u128)),
+                UintTy::U128 => (FullInt::U(u128::min_value()), FullInt::U(u128::max_value())),
                 UintTy::Usize => (FullInt::U(usize::min_value() as u128), FullInt::U(usize::max_value() as u128)),
             }),
             _ => None,
