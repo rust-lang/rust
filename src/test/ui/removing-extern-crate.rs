@@ -16,12 +16,12 @@
 #![warn(rust_2018_idioms)]
 #![allow(unused_imports)]
 
-extern crate std as foo;
+extern crate removing_extern_crate as foo;
 extern crate core;
 
 mod another {
-    extern crate std as foo;
-    extern crate std;
+    extern crate removing_extern_crate as foo;
+    extern crate core;
 }
 
 fn main() {}
