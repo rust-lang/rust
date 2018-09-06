@@ -619,6 +619,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'gcx, 'tcx> {
             value, all_outlive_scope,
         );
         let (value, _map) = self.tcx.replace_late_bound_regions(value, |br| {
+            debug!("replace_bound_regions_with_nll_infer_vars: br={:?}", br);
             let liberated_region = self.tcx.mk_region(ty::ReFree(ty::FreeRegion {
                 scope: all_outlive_scope,
                 bound_region: br,
@@ -626,7 +627,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'gcx, 'tcx> {
             let region_vid = self.next_nll_region_var(origin);
             indices.insert_late_bound_region(liberated_region, region_vid.to_region_vid());
             debug!(
-                "liberated_region={:?} => {:?}",
+                "replace_bound_regions_with_nll_infer_vars: liberated_region={:?} => {:?}",
                 liberated_region, region_vid
             );
             region_vid
@@ -648,12 +649,18 @@ impl<'cx, 'gcx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'gcx, 'tcx> {
         mir_def_id: DefId,
         indices: &mut UniversalRegionIndices<'tcx>,
     ) {
+        debug!(
+            "replace_late_bound_regions_with_nll_infer_vars(mir_def_id={:?})",
+            mir_def_id
+        );
         let closure_base_def_id = self.tcx.closure_base_def_id(mir_def_id);
         for_each_late_bound_region_defined_on(self.tcx, closure_base_def_id, |r| {
+            debug!("replace_late_bound_regions_with_nll_infer_vars: r={:?}", r);
             if !indices.indices.contains_key(&r) {
                 let region_vid = self.next_nll_region_var(FR);
                 indices.insert_late_bound_region(r, region_vid.to_region_vid());
-            }});
+            }
+        });
     }
 }
 
