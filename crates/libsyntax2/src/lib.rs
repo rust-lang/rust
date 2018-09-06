@@ -31,6 +31,7 @@ pub mod algo;
 pub mod ast;
 mod lexer;
 #[macro_use]
+mod token_set;
 mod parser_api;
 mod grammar;
 mod parser_impl;
