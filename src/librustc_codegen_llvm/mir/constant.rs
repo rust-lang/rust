@@ -41,11 +41,11 @@ pub fn scalar_to_llvm(
     match cv {
         Scalar::Bits { size: 0, .. } => {
             assert_eq!(0, layout.value.size(cx).bytes());
-            cx.c_undef(cx.ix(0))
+            cx.const_undef(cx.ix(0))
         },
         Scalar::Bits { bits, size } => {
             assert_eq!(size as u64, layout.value.size(cx).bytes());
-            let llval = cx.c_uint_big(cx.ix(bitsize), bits);
+            let llval = cx.const_uint_big(cx.ix(bitsize), bits);
             if layout.value == layout::Pointer {
                 unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
             } else {
@@ -74,7 +74,7 @@ pub fn scalar_to_llvm(
             };
             let llval = unsafe { llvm::LLVMConstInBoundsGEP(
                 consts::bitcast(base_addr, cx.i8p()),
-                &cx.c_usize(ptr.offset.bytes()),
+                &cx.const_usize(ptr.offset.bytes()),
                 1,
             ) };
             if layout.value != layout::Pointer {
@@ -97,7 +97,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_, &'ll Value>, alloc: &Allocati
         assert_eq!(offset as usize as u64, offset);
         let offset = offset as usize;
         if offset > next_offset {
-            llvals.push(cx.c_bytes(&alloc.bytes[next_offset..offset]));
+            llvals.push(cx.const_bytes(&alloc.bytes[next_offset..offset]));
         }
         let ptr_offset = read_target_uint(
             layout.endian,
@@ -115,10 +115,10 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_, &'ll Value>, alloc: &Allocati
         next_offset = offset + pointer_size;
     }
     if alloc.bytes.len() >= next_offset {
-        llvals.push(cx.c_bytes(&alloc.bytes[next_offset ..]));
+        llvals.push(cx.const_bytes(&alloc.bytes[next_offset ..]));
     }
 
-    cx.c_struct(&llvals, true)
+    cx.const_struct(&llvals, true)
 }
 
 pub fn codegen_static_initializer(
@@ -208,7 +208,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                         bug!("simd shuffle field {:?}", field)
                     }
                 }).collect();
-                let llval = bx.cx().c_struct(&values?, false);
+                let llval = bx.cx().const_struct(&values?, false);
                 Ok((llval, c.ty))
             })
             .unwrap_or_else(|e| {
@@ -219,7 +219,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                 // We've errored, so we don't have to produce working code.
                 let ty = self.monomorphize(&ty);
                 let llty = bx.cx().layout_of(ty).llvm_type(bx.cx());
-                (bx.cx().c_undef(llty), ty)
+                (bx.cx().const_undef(llty), ty)
             })
     }
 }

@@ -550,8 +550,8 @@ impl BuilderMethods<'a, 'll, 'tcx>
         unsafe {
             let llty = self.cx.val_ty(load);
             let v = [
-                self.cx.c_uint_big(llty, range.start),
-                self.cx.c_uint_big(llty, range.end)
+                self.cx.const_uint_big(llty, range.start),
+                self.cx.const_uint_big(llty, range.end)
             ];
 
             llvm::LLVMSetMetadata(load, llvm::MD_range as c_uint,
@@ -616,7 +616,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
                 // *always* point to a metadata value of the integer 1.
                 //
                 // [1]: http://llvm.org/docs/LangRef.html#store-instruction
-                let one = self.cx.c_i32(1);
+                let one = self.cx.const_i32(1);
                 let node = llvm::LLVMMDNodeInContext(self.cx.llcx, &one, 1);
                 llvm::LLVMSetMetadata(store, llvm::MD_nontemporal as c_uint, node);
             }
@@ -865,9 +865,9 @@ impl BuilderMethods<'a, 'll, 'tcx>
         unsafe {
             let elt_ty = self.cx.val_ty(elt);
             let undef = llvm::LLVMGetUndef(&self.cx().vector(elt_ty, num_elts as u64));
-            let vec = self.insert_element(undef, elt, self.cx.c_i32(0));
+            let vec = self.insert_element(undef, elt, self.cx.const_i32(0));
             let vec_i32_ty = &self.cx().vector(&self.cx().i32(), num_elts as u64);
-            self.shuffle_vector(vec, undef, self.cx().c_null(vec_i32_ty))
+            self.shuffle_vector(vec, undef, self.cx().const_null(vec_i32_ty))
         }
     }
 
@@ -1262,7 +1262,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
         let lifetime_intrinsic = self.cx.get_intrinsic(intrinsic);
 
         let ptr = self.pointercast(ptr, self.cx.i8p());
-        self.call(lifetime_intrinsic, &[self.cx.c_u64(size), ptr], None);
+        self.call(lifetime_intrinsic, &[self.cx.const_u64(size), ptr], None);
     }
 
     fn call(&self, llfn: &'ll Value, args: &[&'ll Value],

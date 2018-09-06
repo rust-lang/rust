@@ -384,17 +384,17 @@ impl CommonWriteMethods for ModuleLlvm<'ll> {
         common::val_ty(v)
     }
 
-    fn c_bytes_in_context(&self, llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
-        common::c_bytes_in_context(llcx, bytes)
+    fn const_bytes_in_context(&self, llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
+        common::const_bytes_in_context(llcx, bytes)
     }
 
-    fn c_struct_in_context(
+    fn const_struct_in_context(
         &self,
         llcx: &'a llvm::Context,
         elts: &[&'a Value],
         packed: bool,
     ) -> &'a Value {
-        common::c_struct_in_context(llcx, elts, packed)
+        common::const_struct_in_context(llcx, elts, packed)
     }
 }
 

@@ -29,7 +29,7 @@ pub fn insert_reference_to_gdb_debug_scripts_section_global(bx: &Builder<'_, 'll
         let gdb_debug_scripts_section = get_or_insert_gdb_debug_scripts_section_global(bx.cx());
         // Load just the first byte as that's all that's necessary to force
         // LLVM to keep around the reference to the global.
-        let indices = [bx.cx().c_i32(0), bx.cx().c_i32(0)];
+        let indices = [bx.cx().const_i32(0), bx.cx().const_i32(0)];
         let element = bx.inbounds_gep(gdb_debug_scripts_section, &indices);
         let volative_load_instruction = bx.volatile_load(element);
         unsafe {
@@ -63,7 +63,7 @@ pub fn get_or_insert_gdb_debug_scripts_section_global(cx: &CodegenCx<'ll, '_, &'
                 bug!("symbol `{}` is already defined", section_var_name)
             });
             llvm::LLVMSetSection(section_var, section_name.as_ptr() as *const _);
-            llvm::LLVMSetInitializer(section_var, cx.c_bytes(section_contents));
+            llvm::LLVMSetInitializer(section_var, cx.const_bytes(section_contents));
             llvm::LLVMSetGlobalConstant(section_var, llvm::True);
             llvm::LLVMSetUnnamedAddr(section_var, llvm::True);
             llvm::LLVMRustSetLinkage(section_var, llvm::Linkage::LinkOnceODRLinkage);

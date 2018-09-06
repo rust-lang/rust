@@ -438,17 +438,17 @@ impl CommonWriteMethods for CodegenContext<'ll> {
         common::val_ty(v)
     }
 
-    fn c_bytes_in_context(&self, llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
-        common::c_bytes_in_context(llcx, bytes)
+    fn const_bytes_in_context(&self, llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
+        common::const_bytes_in_context(llcx, bytes)
     }
 
-    fn c_struct_in_context(
+    fn const_struct_in_context(
         &self,
         llcx: &'a llvm::Context,
         elts: &[&'a Value],
         packed: bool,
     ) -> &'a Value {
-        common::c_struct_in_context(llcx, elts, packed)
+        common::const_struct_in_context(llcx, elts, packed)
     }
 }
 
@@ -931,7 +931,7 @@ unsafe fn embed_bitcode(cgcx: &CodegenContext,
                         llcx: &llvm::Context,
                         llmod: &llvm::Module,
                         bitcode: Option<&[u8]>) {
-    let llconst = cgcx.c_bytes_in_context(llcx, bitcode.unwrap_or(&[]));
+    let llconst = cgcx.const_bytes_in_context(llcx, bitcode.unwrap_or(&[]));
     let llglobal = llvm::LLVMAddGlobal(
         llmod,
         cgcx.val_ty(llconst),
@@ -951,7 +951,7 @@ unsafe fn embed_bitcode(cgcx: &CodegenContext,
     llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
     llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
 
-    let llconst = cgcx.c_bytes_in_context(llcx, &[]);
+    let llconst = cgcx.const_bytes_in_context(llcx, &[]);
     let llglobal = llvm::LLVMAddGlobal(
         llmod,
         cgcx.val_ty(llconst),

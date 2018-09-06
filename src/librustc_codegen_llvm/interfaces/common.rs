@@ -13,36 +13,36 @@ use syntax::symbol::LocalInternedString;
 
 pub trait CommonMethods : Backend + CommonWriteMethods {
     // Constant constructors
-    fn c_null(&self, t: Self::Type) -> Self::Value;
-    fn c_undef(&self, t: Self::Type) -> Self::Value;
-    fn c_int(&self, t: Self::Type, i: i64) -> Self::Value;
-    fn c_uint(&self, t: Self::Type, i: u64) -> Self::Value;
-    fn c_uint_big(&self, t: Self::Type, u: u128) -> Self::Value;
-    fn c_bool(&self, val: bool) -> Self::Value;
-    fn c_i32(&self, i: i32) -> Self::Value;
-    fn c_u32(&self, i: u32) -> Self::Value;
-    fn c_u64(&self, i: u64) -> Self::Value;
-    fn c_usize(&self, i: u64) -> Self::Value;
-    fn c_u8(&self, i: u8) -> Self::Value;
-    fn c_cstr(
+    fn const_null(&self, t: Self::Type) -> Self::Value;
+    fn const_undef(&self, t: Self::Type) -> Self::Value;
+    fn const_int(&self, t: Self::Type, i: i64) -> Self::Value;
+    fn const_uint(&self, t: Self::Type, i: u64) -> Self::Value;
+    fn const_uint_big(&self, t: Self::Type, u: u128) -> Self::Value;
+    fn const_bool(&self, val: bool) -> Self::Value;
+    fn const_i32(&self, i: i32) -> Self::Value;
+    fn const_u32(&self, i: u32) -> Self::Value;
+    fn const_u64(&self, i: u64) -> Self::Value;
+    fn const_usize(&self, i: u64) -> Self::Value;
+    fn const_u8(&self, i: u8) -> Self::Value;
+    fn const_cstr(
         &self,
         s: LocalInternedString,
         null_terminated: bool,
     ) -> Self::Value;
-    fn c_str_slice(&self, s: LocalInternedString) -> Self::Value;
-    fn c_fat_ptr(
+    fn const_str_slice(&self, s: LocalInternedString) -> Self::Value;
+    fn const_fat_ptr(
         &self,
         ptr: Self::Value,
         meta: Self::Value
     ) -> Self::Value;
-    fn c_struct(
+    fn const_struct(
         &self,
         elts: &[Self::Value],
         packed: bool
     ) -> Self::Value;
-    fn c_array(&self, ty: Self::Type, elts: &[Self::Value]) -> Self::Value;
-    fn c_vector(&self, elts: &[Self::Value]) -> Self::Value;
-    fn c_bytes(&self, bytes: &[u8]) -> Self::Value;
+    fn const_array(&self, ty: Self::Type, elts: &[Self::Value]) -> Self::Value;
+    fn const_vector(&self, elts: &[Self::Value]) -> Self::Value;
+    fn const_bytes(&self, bytes: &[u8]) -> Self::Value;
 
     fn const_get_elt(&self, v: Self::Value, idx: u64) -> Self::Value;
     fn const_get_real(&self, v: Self::Value) -> Option<(f64, bool)>;
@@ -55,8 +55,8 @@ pub trait CommonMethods : Backend + CommonWriteMethods {
 
 pub trait CommonWriteMethods : Backend {
         fn val_ty(&self, v: Self::Value) -> Self::Type;
-        fn c_bytes_in_context(&self, llcx: Self::Context, bytes: &[u8]) -> Self::Value;
-        fn c_struct_in_context(
+        fn const_bytes_in_context(&self, llcx: Self::Context, bytes: &[u8]) -> Self::Value;
+        fn const_struct_in_context(
             &self,
             llcx: Self::Context,
             elts: &[Self::Value],
