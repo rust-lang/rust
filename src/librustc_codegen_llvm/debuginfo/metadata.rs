@@ -1811,7 +1811,7 @@ fn set_members_of_composite_type(cx: &CodegenCx<'ll, '_>,
                     member_description.offset.bits(),
                     match member_description.discriminant {
                         None => None,
-                        Some(value) => Some(cx.c_u64(value)),
+                        Some(value) => Some(cx.const_u64(value)),
                     },
                     member_description.flags,
                     member_description.type_metadata))

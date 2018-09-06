@@ -171,7 +171,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                     slot.storage_dead(&bx);
 
                     if !bx.sess().target.target.options.custom_unwind_resume {
-                        let mut lp = bx.cx().c_undef(self.landing_pad_type());
+                        let mut lp = bx.cx().const_undef(self.landing_pad_type());
                         lp = bx.insert_value(lp, lp0, 0);
                         lp = bx.insert_value(lp, lp1, 1);
                         bx.resume(lp);
@@ -209,7 +209,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                         }
                     } else {
                         let switch_llty = bx.cx().layout_of(switch_ty).immediate_llvm_type(bx.cx());
-                        let llval = bx.cx().c_uint_big(switch_llty, values[0]);
+                        let llval = bx.cx().const_uint_big(switch_llty, values[0]);
                         let cmp = bx.icmp(IntPredicate::IntEQ, discr.immediate(), llval);
                         bx.cond_br(cmp, lltrue, llfalse);
                     }
@@ -220,7 +220,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                                            values.len());
                     let switch_llty = bx.cx().layout_of(switch_ty).immediate_llvm_type(bx.cx());
                     for (&value, target) in values.iter().zip(targets) {
-                        let llval =bx.cx().c_uint_big(switch_llty, value);
+                        let llval =bx.cx().const_uint_big(switch_llty, value);
                         let llbb = llblock(self, *target);
                         bx.add_case(switch, llval, llbb)
                     }
@@ -346,7 +346,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
 
                 // Pass the condition through llvm.expect for branch hinting.
                 let expect = bx.cx().get_intrinsic(&"llvm.expect.i1");
-                let cond = bx.call(expect, &[cond, bx.cx().c_bool(expected)], None);
+                let cond = bx.call(expect, &[cond, bx.cx().const_bool(expected)], None);
 
                 // Create the failure block and the conditional branch to it.
                 let lltarget = llblock(self, target);
@@ -364,9 +364,9 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                 // Get the location information.
                 let loc = bx.sess().source_map().lookup_char_pos(span.lo());
                 let filename = Symbol::intern(&loc.file.name.to_string()).as_str();
-                let filename = bx.cx().c_str_slice(filename);
-                let line = bx.cx().c_u32(loc.line as u32);
-                let col = bx.cx().c_u32(loc.col.to_usize() as u32 + 1);
+                let filename = bx.cx().const_str_slice(filename);
+                let line = bx.cx().const_u32(loc.line as u32);
+                let col = bx.cx().const_u32(loc.col.to_usize() as u32 + 1);
                 let align = tcx.data_layout.aggregate_align
                     .max(tcx.data_layout.i32_align)
                     .max(tcx.data_layout.pointer_align);
@@ -377,7 +377,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                         let len = self.codegen_operand(&mut bx, len).immediate();
                         let index = self.codegen_operand(&mut bx, index).immediate();
 
-                        let file_line_col = bx.cx().c_struct(&[filename, line, col], false);
+                        let file_line_col = bx.cx().const_struct(&[filename, line, col], false);
                         let file_line_col = consts::addr_of(bx.cx(),
                                                             file_line_col,
                                                             align,
@@ -388,8 +388,8 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                     _ => {
                         let str = msg.description();
                         let msg_str = Symbol::intern(str).as_str();
-                        let msg_str = bx.cx().c_str_slice(msg_str);
-                        let msg_file_line_col = bx.cx().c_struct(
+                        let msg_str = bx.cx().const_str_slice(msg_str);
+                        let msg_file_line_col = bx.cx().const_struct(
                             &[msg_str, filename, line, col],
                             false
                         );
@@ -498,9 +498,9 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                 {
                     let loc = bx.sess().source_map().lookup_char_pos(span.lo());
                     let filename = Symbol::intern(&loc.file.name.to_string()).as_str();
-                    let filename = bx.cx.c_str_slice(filename);
-                    let line = bx.cx.c_u32(loc.line as u32);
-                    let col = bx.cx.c_u32(loc.col.to_usize() as u32 + 1);
+                    let filename = bx.cx.const_str_slice(filename);
+                    let line = bx.cx.const_u32(loc.line as u32);
+                    let col = bx.cx.const_u32(loc.col.to_usize() as u32 + 1);
                     let align = tcx.data_layout.aggregate_align
                         .max(tcx.data_layout.i32_align)
                         .max(tcx.data_layout.pointer_align);
@@ -511,8 +511,8 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                         if intrinsic == Some("init") { "zeroed" } else { "uninitialized" }
                     );
                     let msg_str = Symbol::intern(&str).as_str();
-                    let msg_str = bx.cx.c_str_slice(msg_str);
-                    let msg_file_line_col = bx.cx.c_struct(
+                    let msg_str = bx.cx.const_str_slice(msg_str);
+                    let msg_file_line_col = bx.cx.const_struct(
                         &[msg_str, filename, line, col],
                         false,
                     );
@@ -560,7 +560,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                     let dest = match ret_dest {
                         _ if fn_ty.ret.is_indirect() => llargs[0],
                         ReturnDest::Nothing => {
-                            bx.cx().c_undef(bx.cx().ptr_to(fn_ty.ret.memory_ty(bx.cx())))
+                            bx.cx().const_undef(bx.cx().ptr_to(fn_ty.ret.memory_ty(bx.cx())))
                         }
                         ReturnDest::IndirectOperand(dst, _) |
                         ReturnDest::Store(dst) => dst.llval,
@@ -741,7 +741,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                       arg: &ArgType<'tcx, Ty<'tcx>>) {
         // Fill padding with undef value, where applicable.
         if let Some(ty) = arg.pad {
-            llargs.push(bx.cx().c_undef(ty.llvm_type(bx.cx())));
+            llargs.push(bx.cx().const_undef(ty.llvm_type(bx.cx())));
         }
 
         if arg.is_ignore() {

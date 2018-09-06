@@ -198,7 +198,7 @@ pub fn unsized_info(
     let (source, target) = cx.tcx.struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
         (&ty::Array(_, len), &ty::Slice(_)) => {
-            cx.c_usize(len.unwrap_usize(cx.tcx))
+            cx.const_usize(len.unwrap_usize(cx.tcx))
         }
         (&ty::Dynamic(..), &ty::Dynamic(..)) => {
             // For now, upcasts are limited to changes in marker
@@ -460,7 +460,7 @@ pub fn memcpy_ty<'a, 'll: 'a, 'tcx: 'll>(
         return;
     }
 
-    call_memcpy(bx, dst, dst_align, src, src_align, bx.cx().c_usize(size), flags);
+    call_memcpy(bx, dst, dst_align, src, src_align, bx.cx().const_usize(size), flags);
 }
 
 pub fn call_memset(
@@ -474,7 +474,7 @@ pub fn call_memset(
     let ptr_width = &bx.cx().sess().target.target.target_pointer_width;
     let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
     let llintrinsicfn = bx.cx().get_intrinsic(&intrinsic_key);
-    let volatile = bx.cx().c_bool(volatile);
+    let volatile = bx.cx().const_bool(volatile);
     bx.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None)
 }
 
@@ -649,8 +649,8 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     DeflateEncoder::new(&mut compressed, Compression::fast())
         .write_all(&metadata.raw_data).unwrap();
 
-    let llmeta = llvm_module.c_bytes_in_context(metadata_llcx, &compressed);
-    let llconst = llvm_module.c_struct_in_context(metadata_llcx, &[llmeta], false);
+    let llmeta = llvm_module.const_bytes_in_context(metadata_llcx, &compressed);
+    let llconst = llvm_module.const_struct_in_context(metadata_llcx, &[llmeta], false);
     let name = exported_symbols::metadata_symbol_name(tcx);
     let buf = CString::new(name).unwrap();
     let llglobal = unsafe {
@@ -1151,7 +1151,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             if !cx.used_statics.borrow().is_empty() {
                 let name = const_cstr!("llvm.used");
                 let section = const_cstr!("llvm.metadata");
-                let array = cx.c_array(&cx.ptr_to(cx.i8()), &*cx.used_statics.borrow());
+                let array = cx.const_array(&cx.ptr_to(cx.i8()), &*cx.used_statics.borrow());
 
                 unsafe {
                     let g = llvm::LLVMAddGlobal(cx.llmod,

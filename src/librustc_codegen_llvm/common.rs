@@ -204,71 +204,71 @@ impl Backend for CodegenCx<'ll, 'tcx> {
 impl<'ll, 'tcx: 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
 
     // LLVM constant constructors.
-    fn c_null(&self, t: &'ll Type) -> &'ll Value {
+    fn const_null(&self, t: &'ll Type) -> &'ll Value {
         unsafe {
             llvm::LLVMConstNull(t)
         }
     }
 
-    fn c_undef(&self, t: &'ll Type) -> &'ll Value {
+    fn const_undef(&self, t: &'ll Type) -> &'ll Value {
         unsafe {
             llvm::LLVMGetUndef(t)
         }
     }
 
-    fn c_int(&self, t: &'ll Type, i: i64) -> &'ll Value {
+    fn const_int(&self, t: &'ll Type, i: i64) -> &'ll Value {
         unsafe {
             llvm::LLVMConstInt(t, i as u64, True)
         }
     }
 
-    fn c_uint(&self, t: &'ll Type, i: u64) -> &'ll Value {
+    fn const_uint(&self, t: &'ll Type, i: u64) -> &'ll Value {
         unsafe {
             llvm::LLVMConstInt(t, i, False)
         }
     }
 
-    fn c_uint_big(&self, t: &'ll Type, u: u128) -> &'ll Value {
+    fn const_uint_big(&self, t: &'ll Type, u: u128) -> &'ll Value {
         unsafe {
             let words = [u as u64, (u >> 64) as u64];
             llvm::LLVMConstIntOfArbitraryPrecision(t, 2, words.as_ptr())
         }
     }
 
-    fn c_bool(&self, val: bool) -> &'ll Value {
-        &self.c_uint(&self.i1(), val as u64)
+    fn const_bool(&self, val: bool) -> &'ll Value {
+        &self.const_uint(&self.i1(), val as u64)
     }
 
-    fn c_i32(&self, i: i32) -> &'ll Value {
-        &self.c_int(&self.i32(), i as i64)
+    fn const_i32(&self, i: i32) -> &'ll Value {
+        &self.const_int(&self.i32(), i as i64)
     }
 
-    fn c_u32(&self, i: u32) -> &'ll Value {
-        &self.c_uint(&self.i32(), i as u64)
+    fn const_u32(&self, i: u32) -> &'ll Value {
+        &self.const_uint(&self.i32(), i as u64)
     }
 
-    fn c_u64(&self, i: u64) -> &'ll Value {
-        &self.c_uint(&self.i64(), i)
+    fn const_u64(&self, i: u64) -> &'ll Value {
+        &self.const_uint(&self.i64(), i)
     }
 
-    fn c_usize(&self, i: u64) -> &'ll Value {
+    fn const_usize(&self, i: u64) -> &'ll Value {
         let bit_size = self.data_layout().pointer_size.bits();
         if bit_size < 64 {
             // make sure it doesn't overflow
             assert!(i < (1<<bit_size));
         }
 
-        &self.c_uint(&self.isize_ty, i)
+        &self.const_uint(&self.isize_ty, i)
     }
 
-    fn c_u8(&self, i: u8) -> &'ll Value {
-        &self.c_uint(&self.i8(), i as u64)
+    fn const_u8(&self, i: u8) -> &'ll Value {
+        &self.const_uint(&self.i8(), i as u64)
     }
 
 
     // This is a 'c-like' raw string, which differs from
     // our boxed-and-length-annotated strings.
-    fn c_cstr(
+    fn const_cstr(
         &self,
         s: LocalInternedString,
         null_terminated: bool,
@@ -297,45 +297,45 @@ impl<'ll, 'tcx: 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
 
     // NB: Do not use `do_spill_noroot` to make this into a constant string, or
     // you will be kicked off fast isel. See issue #4352 for an example of this.
-    fn c_str_slice(&self, s: LocalInternedString) -> &'ll Value {
+    fn const_str_slice(&self, s: LocalInternedString) -> &'ll Value {
         let len = s.len();
-        let cs = consts::ptrcast(&self.c_cstr(s, false),
+        let cs = consts::ptrcast(&self.const_cstr(s, false),
             &self.ptr_to(&self.layout_of(&self.tcx.mk_str()).llvm_type(&self)));
-        &self.c_fat_ptr(cs, &self.c_usize(len as u64))
+        &self.const_fat_ptr(cs, &self.const_usize(len as u64))
     }
 
-    fn c_fat_ptr(
+    fn const_fat_ptr(
         &self,
         ptr: &'ll Value,
         meta: &'ll Value
     ) -> &'ll Value {
         assert_eq!(abi::FAT_PTR_ADDR, 0);
         assert_eq!(abi::FAT_PTR_EXTRA, 1);
-        &self.c_struct(&[ptr, meta], false)
+        &self.const_struct(&[ptr, meta], false)
     }
 
-    fn c_struct(
+    fn const_struct(
         &self,
         elts: &[&'ll Value],
         packed: bool
     ) -> &'ll Value {
-        &self.c_struct_in_context(&self.llcx, elts, packed)
+        &self.const_struct_in_context(&self.llcx, elts, packed)
     }
 
-    fn c_array(&self, ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
+    fn const_array(&self, ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
         unsafe {
             return llvm::LLVMConstArray(ty, elts.as_ptr(), elts.len() as c_uint);
         }
     }
 
-    fn c_vector(&self, elts: &[&'ll Value]) -> &'ll Value {
+    fn const_vector(&self, elts: &[&'ll Value]) -> &'ll Value {
         unsafe {
             return llvm::LLVMConstVector(elts.as_ptr(), elts.len() as c_uint);
         }
     }
 
-    fn c_bytes(&self, bytes: &[u8]) -> &'ll Value {
-        &self.c_bytes_in_context(&self.llcx, bytes)
+    fn const_bytes(&self, bytes: &[u8]) -> &'ll Value {
+        &self.const_bytes_in_context(&self.llcx, bytes)
     }
 
     fn const_get_elt(&self, v: &'ll Value, idx: u64) -> &'ll Value {
@@ -406,14 +406,14 @@ pub fn val_ty(v: &'ll Value) -> &'ll Type {
     }
 }
 
-pub fn c_bytes_in_context(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
+pub fn const_bytes_in_context(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
     unsafe {
         let ptr = bytes.as_ptr() as *const c_char;
         return llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True);
     }
 }
 
-pub fn c_struct_in_context(
+pub fn const_struct_in_context(
     llcx: &'a llvm::Context,
     elts: &[&'a Value],
     packed: bool,
@@ -430,17 +430,17 @@ impl<'ll, 'tcx: 'll> CommonWriteMethods for CodegenCx<'ll, 'tcx> {
         val_ty(v)
     }
 
-    fn c_bytes_in_context(&self, llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
-        c_bytes_in_context(llcx, bytes)
+    fn const_bytes_in_context(&self, llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
+        const_bytes_in_context(llcx, bytes)
     }
 
-    fn c_struct_in_context(
+    fn const_struct_in_context(
         &self,
         llcx: &'a llvm::Context,
         elts: &[&'a Value],
         packed: bool,
     ) -> &'a Value {
-        c_struct_in_context(llcx, elts, packed)
+        const_struct_in_context(llcx, elts, packed)
     }
 }
 
@@ -511,9 +511,9 @@ pub fn shift_mask_val(
             // i8/u8 can shift by at most 7, i16/u16 by at most 15, etc.
             let val = bx.cx().int_width(llty) - 1;
             if invert {
-                bx.cx.c_int(mask_llty, !val as i64)
+                bx.cx.const_int(mask_llty, !val as i64)
             } else {
-                bx.cx.c_uint(mask_llty, val)
+                bx.cx.const_uint(mask_llty, val)
             }
         },
         TypeKind::Vector => {

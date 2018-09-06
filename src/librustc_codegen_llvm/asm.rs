@@ -110,7 +110,7 @@ pub fn codegen_inline_asm(
         let kind = llvm::LLVMGetMDKindIDInContext(bx.cx().llcx,
             key.as_ptr() as *const c_char, key.len() as c_uint);
 
-        let val: &'ll Value = bx.cx().c_i32(ia.ctxt.outer().as_u32() as i32);
+        let val: &'ll Value = bx.cx().const_i32(ia.ctxt.outer().as_u32() as i32);
 
         llvm::LLVMSetMetadata(r, kind,
             llvm::LLVMMDNodeInContext(bx.cx().llcx, &val, 1));

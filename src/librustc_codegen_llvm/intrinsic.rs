@@ -127,11 +127,11 @@ pub fn codegen_intrinsic_call(
         },
         "likely" => {
             let expect = cx.get_intrinsic(&("llvm.expect.i1"));
-            bx.call(expect, &[args[0].immediate(), bx.cx().c_bool(true)], None)
+            bx.call(expect, &[args[0].immediate(), bx.cx().const_bool(true)], None)
         }
         "unlikely" => {
             let expect = cx.get_intrinsic(&("llvm.expect.i1"));
-            bx.call(expect, &[args[0].immediate(), bx.cx().c_bool(false)], None)
+            bx.call(expect, &[args[0].immediate(), bx.cx().const_bool(false)], None)
         }
         "try" => {
             try_intrinsic(bx, cx,
@@ -147,7 +147,7 @@ pub fn codegen_intrinsic_call(
         }
         "size_of" => {
             let tp_ty = substs.type_at(0);
-            cx.c_usize(cx.size_of(tp_ty).bytes())
+            cx.const_usize(cx.size_of(tp_ty).bytes())
         }
         "size_of_val" => {
             let tp_ty = substs.type_at(0);
@@ -156,12 +156,12 @@ pub fn codegen_intrinsic_call(
                     glue::size_and_align_of_dst(bx, tp_ty, Some(meta));
                 llsize
             } else {
-                cx.c_usize(cx.size_of(tp_ty).bytes())
+                cx.const_usize(cx.size_of(tp_ty).bytes())
             }
         }
         "min_align_of" => {
             let tp_ty = substs.type_at(0);
-            cx.c_usize(cx.align_of(tp_ty).abi())
+            cx.const_usize(cx.align_of(tp_ty).abi())
         }
         "min_align_of_val" => {
             let tp_ty = substs.type_at(0);
@@ -170,20 +170,20 @@ pub fn codegen_intrinsic_call(
                     glue::size_and_align_of_dst(bx, tp_ty, Some(meta));
                 llalign
             } else {
-                cx.c_usize(cx.align_of(tp_ty).abi())
+                cx.const_usize(cx.align_of(tp_ty).abi())
             }
         }
         "pref_align_of" => {
             let tp_ty = substs.type_at(0);
-            cx.c_usize(cx.align_of(tp_ty).pref())
+            cx.const_usize(cx.align_of(tp_ty).pref())
         }
         "type_name" => {
             let tp_ty = substs.type_at(0);
             let ty_name = Symbol::intern(&tp_ty.to_string()).as_str();
-            cx.c_str_slice(ty_name)
+            cx.const_str_slice(ty_name)
         }
         "type_id" => {
-            cx.c_u64(cx.tcx.type_id_hash(substs.type_at(0)))
+            cx.const_u64(cx.tcx.type_id_hash(substs.type_at(0)))
         }
         "init" => {
             let ty = substs.type_at(0);
@@ -197,8 +197,8 @@ pub fn codegen_intrinsic_call(
                     false,
                     ty,
                     llresult,
-                    cx.c_u8(0),
-                    cx.c_usize(1)
+                    cx.const_u8(0),
+                    cx.const_usize(1)
                 );
             }
             return;
@@ -210,7 +210,7 @@ pub fn codegen_intrinsic_call(
         "needs_drop" => {
             let tp_ty = substs.type_at(0);
 
-            cx.c_bool(bx.cx().type_needs_drop(tp_ty))
+            cx.const_bool(bx.cx().type_needs_drop(tp_ty))
         }
         "offset" => {
             let ptr = args[0].immediate();
@@ -287,9 +287,9 @@ pub fn codegen_intrinsic_call(
             };
             bx.call(expect, &[
                 args[0].immediate(),
-                cx.c_i32(rw),
+                cx.const_i32(rw),
                 args[1].immediate(),
-                cx.c_i32(cache_type)
+                cx.const_i32(cache_type)
             ], None)
         },
         "ctlz" | "ctlz_nonzero" | "cttz" | "cttz_nonzero" | "ctpop" | "bswap" |
@@ -302,12 +302,12 @@ pub fn codegen_intrinsic_call(
                 Some((width, signed)) =>
                     match name {
                         "ctlz" | "cttz" => {
-                            let y = cx.c_bool(false);
+                            let y = cx.const_bool(false);
                             let llfn = cx.get_intrinsic(&format!("llvm.{}.i{}", name, width));
                             bx.call(llfn, &[args[0].immediate(), y], None)
                         }
                         "ctlz_nonzero" | "cttz_nonzero" => {
-                            let y = cx.c_bool(true);
+                            let y = cx.const_bool(true);
                             let llvm_name = &format!("llvm.{}.i{}", &name[..4], width);
                             let llfn = cx.get_intrinsic(llvm_name);
                             bx.call(llfn, &[args[0].immediate(), y], None)
@@ -388,7 +388,7 @@ pub fn codegen_intrinsic_call(
                             } else {
                                 // rotate_left: (X << (S % BW)) | (X >> ((BW - S) % BW))
                                 // rotate_right: (X << ((BW - S) % BW)) | (X >> (S % BW))
-                                let width = cx.c_uint(cx.ix(width), width);
+                                let width = cx.const_uint(cx.ix(width), width);
                                 let shift = bx.urem(raw_shift, width);
                                 let inv_shift = bx.urem(bx.sub(width, raw_shift), width);
                                 let shift1 = bx.shl(val, if is_left { shift } else { inv_shift });
@@ -725,7 +725,7 @@ fn copy_intrinsic(
 ) -> &'ll Value {
     let cx = bx.cx();
     let (size, align) = cx.size_and_align_of(ty);
-    let size = cx.c_usize(size.bytes());
+    let size = cx.const_usize(size.bytes());
     let align = align.abi();
     let dst_ptr = bx.pointercast(dst, cx.i8p());
     let src_ptr = bx.pointercast(src, cx.i8p());
@@ -746,8 +746,8 @@ fn memset_intrinsic(
 ) -> &'ll Value {
     let cx = bx.cx();
     let (size, align) = cx.size_and_align_of(ty);
-    let size = cx.c_usize(size.bytes());
-    let align = cx.c_i32(align.abi() as i32);
+    let size = cx.const_usize(size.bytes());
+    let align = cx.const_i32(align.abi() as i32);
     let dst = bx.pointercast(dst, cx.i8p());
     call_memset(bx, dst, val, bx.mul(size, count), align, volatile)
 }
@@ -763,7 +763,7 @@ fn try_intrinsic(
     if bx.sess().no_landing_pads() {
         bx.call(func, &[data], None);
         let ptr_align = bx.tcx().data_layout.pointer_align;
-        bx.store(cx.c_null(cx.i8p()), dest, ptr_align);
+        bx.store(cx.const_null(cx.i8p()), dest, ptr_align);
     } else if wants_msvc_seh(bx.sess()) {
         codegen_msvc_try(bx, cx, func, data, local_ptr, dest);
     } else {
@@ -844,7 +844,7 @@ fn codegen_msvc_try(
         let slot = bx.alloca(i64p, "slot", ptr_align);
         bx.invoke(func, &[data], normal.llbb(), catchswitch.llbb(), None);
 
-        normal.ret(cx.c_i32(0));
+        normal.ret(cx.const_i32(0));
 
         let cs = catchswitch.catch_switch(None, None, 1);
         catchswitch.add_handler(cs, catchpad.llbb());
@@ -854,19 +854,19 @@ fn codegen_msvc_try(
             Some(did) => ::consts::get_static(cx, did),
             None => bug!("msvc_try_filter not defined"),
         };
-        let tok = catchpad.catch_pad(cs, &[tydesc, cx.c_i32(0), slot]);
+        let tok = catchpad.catch_pad(cs, &[tydesc, cx.const_i32(0), slot]);
         let addr = catchpad.load(slot, ptr_align);
 
         let i64_align = bx.tcx().data_layout.i64_align;
         let arg1 = catchpad.load(addr, i64_align);
-        let val1 = cx.c_i32(1);
+        let val1 = cx.const_i32(1);
         let arg2 = catchpad.load(catchpad.inbounds_gep(addr, &[val1]), i64_align);
         let local_ptr = catchpad.bitcast(local_ptr, i64p);
         catchpad.store(arg1, local_ptr, i64_align);
         catchpad.store(arg2, catchpad.inbounds_gep(local_ptr, &[val1]), i64_align);
         catchpad.catch_ret(tok, caught.llbb());
 
-        caught.ret(cx.c_i32(1));
+        caught.ret(cx.const_i32(1));
     });
 
     // Note that no invoke is used here because by definition this function
@@ -922,7 +922,7 @@ fn codegen_gnu_try(
         let data = llvm::get_param(bx.llfn(), 1);
         let local_ptr = llvm::get_param(bx.llfn(), 2);
         bx.invoke(func, &[data], then.llbb(), catch.llbb(), None);
-        then.ret(cx.c_i32(0));
+        then.ret(cx.const_i32(0));
 
         // Type indicator for the exception being thrown.
         //
@@ -932,11 +932,11 @@ fn codegen_gnu_try(
         // rust_try ignores the selector.
         let lpad_ty = cx.struct_(&[cx.i8p(), cx.i32()], false);
         let vals = catch.landing_pad(lpad_ty, bx.cx().eh_personality(), 1);
-        catch.add_clause(vals, bx.cx().c_null(cx.i8p()));
+        catch.add_clause(vals, bx.cx().const_null(cx.i8p()));
         let ptr = catch.extract_value(vals, 0);
         let ptr_align = bx.tcx().data_layout.pointer_align;
         catch.store(ptr, catch.bitcast(local_ptr, cx.ptr_to(cx.i8p())), ptr_align);
-        catch.ret(cx.c_i32(1));
+        catch.ret(cx.const_i32(1));
     });
 
     // Note that no invoke is used here because by definition this function
@@ -1125,18 +1125,18 @@ fn generic_simd_intrinsic(
                                     arg_idx, total_len);
                         None
                     }
-                    Some(idx) => Some(bx.cx().c_i32(idx as i32)),
+                    Some(idx) => Some(bx.cx().const_i32(idx as i32)),
                 }
             })
             .collect();
         let indices = match indices {
             Some(i) => i,
-            None => return Ok(bx.cx().c_null(llret_ty))
+            None => return Ok(bx.cx().const_null(llret_ty))
         };
 
         return Ok(bx.shuffle_vector(args[0].immediate(),
                                     args[1].immediate(),
-                                    bx.cx().c_vector(&indices)))
+                                    bx.cx().const_vector(&indices)))
     }
 
     if name == "simd_insert" {
@@ -1387,7 +1387,7 @@ fn generic_simd_intrinsic(
 
         // Alignment of T, must be a constant integer value:
         let alignment_ty = bx.cx().i32();
-        let alignment = bx.cx().c_i32(bx.cx().align_of(in_elem).abi() as i32);
+        let alignment = bx.cx().const_i32(bx.cx().align_of(in_elem).abi() as i32);
 
         // Truncate the mask vector to a vector of i1s:
         let (mask, mask_ty) = {
@@ -1487,7 +1487,7 @@ fn generic_simd_intrinsic(
 
         // Alignment of T, must be a constant integer value:
         let alignment_ty = bx.cx().i32();
-        let alignment = bx.cx().c_i32(bx.cx().align_of(in_elem).abi() as i32);
+        let alignment = bx.cx().const_i32(bx.cx().align_of(in_elem).abi() as i32);
 
         // Truncate the mask vector to a vector of i1s:
         let (mask, mask_ty) = {
@@ -1565,8 +1565,8 @@ fn generic_simd_intrinsic(
                         } else {
                             // unordered arithmetic reductions do not:
                             match f.bit_width() {
-                                32 => bx.cx().c_undef(bx.cx().f32()),
-                                64 => bx.cx().c_undef(bx.cx().f64()),
+                                32 => bx.cx().const_undef(bx.cx().f32()),
+                                64 => bx.cx().const_undef(bx.cx().f64()),
                                 v => {
                                     return_error!(r#"
 unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
