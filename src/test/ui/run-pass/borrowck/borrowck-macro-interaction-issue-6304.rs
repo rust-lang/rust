@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unconditional_recursion)]
+
 // Check that we do not ICE when compiling this
 // macro, which reuses the expression `$id`
 
