@@ -47,3 +47,5 @@ pub unsafe fn current_memory() -> i32 {
 pub unsafe fn grow_memory(delta: i32) -> i32 {
     llvm_grow_memory(delta)
 }
+
+pub mod atomic;
