@@ -27,7 +27,7 @@ use rustc::ty::{self, ParamEnv, TyCtxt, Ty};
 
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, Level};
 use rustc_data_structures::bit_set::BitSet;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::indexed_vec::Idx;
 use smallvec::SmallVec;
@@ -38,6 +38,7 @@ use syntax_pos::Span;
 
 use dataflow::indexes::BorrowIndex;
 use dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MoveError, MovePathIndex};
+use dataflow::move_paths::indexes::MoveOutIndex;
 use dataflow::Borrows;
 use dataflow::DataflowResultsConsumer;
 use dataflow::FlowAtLocation;
@@ -255,7 +256,8 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         locals_are_invalidated_at_exit,
         access_place_error_reported: FxHashSet(),
         reservation_error_reported: FxHashSet(),
-        moved_error_reported: FxHashSet(),
+        move_error_reported: FxHashMap(),
+        uninitialized_error_reported: FxHashSet(),
         errors_buffer,
         nonlexical_regioncx: regioncx,
         used_mut: FxHashSet(),
@@ -333,6 +335,11 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         }
     }
 
+    // Buffer any move errors that we collected and de-duplicated.
+    for (_, (_, diag)) in mbcx.move_error_reported.drain() {
+        diag.buffer(&mut mbcx.errors_buffer);
+    }
+
     if mbcx.errors_buffer.len() > 0 {
         mbcx.errors_buffer.sort_by_key(|diag| diag.span.primary_span());
 
@@ -408,9 +415,20 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     /// but it is currently inconvenient to track down the BorrowIndex
     /// at the time we detect and report a reservation error.
     reservation_error_reported: FxHashSet<Place<'tcx>>,
-    /// This field keeps track of errors reported in the checking of moved variables,
+    /// This field keeps track of move errors that are to be reported for given move indicies.
+    ///
+    /// There are situations where many errors can be reported for a single move out (see #53807)
+    /// and we want only the best of those errors.
+    ///
+    /// The `report_use_of_moved_or_uninitialized` function checks this map and replaces the
+    /// diagnostic (if there is one) if the `Place` of the error being reported is a prefix of the
+    /// `Place` of the previous most diagnostic. This happens instead of buffering the error. Once
+    /// all move errors have been reported, any diagnostics in this map are added to the buffer
+    /// to be emitted.
+    move_error_reported: FxHashMap<Vec<MoveOutIndex>, (Place<'tcx>, DiagnosticBuilder<'cx>)>,
+    /// This field keeps track of errors reported in the checking of uninitialized variables,
     /// so that we don't report seemingly duplicate errors.
-    moved_error_reported: FxHashSet<Place<'tcx>>,
+    uninitialized_error_reported: FxHashSet<Place<'tcx>>,
     /// Errors to be reported buffer
     errors_buffer: Vec<Diagnostic>,
     /// This field keeps track of all the local variables that are declared mut and are mutated.
@@ -801,7 +819,7 @@ enum LocalMutationIsAllowed {
     No,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum InitializationRequiringAction {
     Update,
     Borrow,
