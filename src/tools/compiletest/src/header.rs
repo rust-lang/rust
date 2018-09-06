@@ -772,14 +772,7 @@ impl Config {
     }
 
     pub fn parse_name_value_directive(&self, line: &str, directive: &str) -> Option<String> {
-        let colon = directive.len();
-        if line.starts_with(directive) && line.as_bytes().get(colon) == Some(&b':') {
-            let value = line[(colon + 1)..].to_owned();
-            debug!("{}: {}", directive, value);
-            Some(expand_variables(value, self))
-        } else {
-            None
-        }
+        internal_parse_name_value_directive(self, line, directive)
     }
 
     pub fn find_rust_src_root(&self) -> Option<PathBuf> {
@@ -814,6 +807,17 @@ pub fn lldb_version_to_int(version_string: &str) -> isize {
         version_string
     );
     version_string.parse().expect(&error_string)
+}
+
+fn internal_parse_name_value_directive(config: &Config, line: &str, directive: &str) -> Option<String> {
+    let colon = directive.len();
+    if line.starts_with(directive) && line.as_bytes().get(colon) == Some(&b':') {
+        let value = line[(colon + 1)..].to_owned();
+        debug!("{}: {}", directive, value);
+        Some(expand_variables(value, config))
+    } else {
+        None
+    }
 }
 
 fn expand_variables(mut value: String, config: &Config) -> String {
