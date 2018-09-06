@@ -45,53 +45,51 @@ impl Category {
         match *ek {
             ExprKind::Scope { .. } => None,
 
-            ExprKind::Field { .. } |
-            ExprKind::Deref { .. } |
-            ExprKind::Index { .. } |
-            ExprKind::SelfRef |
-            ExprKind::VarRef { .. } |
-            ExprKind::StaticRef { .. } =>
-                Some(Category::Place),
+            ExprKind::Field { .. }
+            | ExprKind::Deref { .. }
+            | ExprKind::Index { .. }
+            | ExprKind::SelfRef
+            | ExprKind::VarRef { .. }
+            | ExprKind::StaticRef { .. } => Some(Category::Place),
 
-            ExprKind::LogicalOp { .. } |
-            ExprKind::If { .. } |
-            ExprKind::Match { .. } |
-            ExprKind::NeverToAny { .. } |
-            ExprKind::Call { .. } =>
-                Some(Category::Rvalue(RvalueFunc::Into)),
+            ExprKind::LogicalOp { .. }
+            | ExprKind::If { .. }
+            | ExprKind::Match { .. }
+            | ExprKind::NeverToAny { .. }
+            | ExprKind::Call { .. } => Some(Category::Rvalue(RvalueFunc::Into)),
 
-            ExprKind::Array { .. } |
-            ExprKind::Tuple { .. } |
-            ExprKind::Adt { .. } |
-            ExprKind::Closure { .. } |
-            ExprKind::Unary { .. } |
-            ExprKind::Binary { .. } |
-            ExprKind::Box { .. } |
-            ExprKind::Cast { .. } |
-            ExprKind::Use { .. } |
-            ExprKind::ReifyFnPointer { .. } |
-            ExprKind::ClosureFnPointer { .. } |
-            ExprKind::UnsafeFnPointer { .. } |
-            ExprKind::Unsize { .. } |
-            ExprKind::Repeat { .. } |
-            ExprKind::Borrow { .. } |
-            ExprKind::Assign { .. } |
-            ExprKind::AssignOp { .. } |
-            ExprKind::Yield { .. } |
-            ExprKind::InlineAsm { .. } =>
-                Some(Category::Rvalue(RvalueFunc::AsRvalue)),
+            ExprKind::Array { .. }
+            | ExprKind::Tuple { .. }
+            | ExprKind::Adt { .. }
+            | ExprKind::Closure { .. }
+            | ExprKind::Unary { .. }
+            | ExprKind::Binary { .. }
+            | ExprKind::Box { .. }
+            | ExprKind::Cast { .. }
+            | ExprKind::Use { .. }
+            | ExprKind::ReifyFnPointer { .. }
+            | ExprKind::ClosureFnPointer { .. }
+            | ExprKind::UnsafeFnPointer { .. }
+            | ExprKind::Unsize { .. }
+            | ExprKind::Repeat { .. }
+            | ExprKind::Borrow { .. }
+            | ExprKind::Assign { .. }
+            | ExprKind::AssignOp { .. }
+            | ExprKind::Yield { .. }
+            | ExprKind::InlineAsm { .. } => Some(Category::Rvalue(RvalueFunc::AsRvalue)),
 
-            ExprKind::Literal { .. } =>
-                Some(Category::Constant),
+            ExprKind::Literal { .. } => Some(Category::Constant),
 
-            ExprKind::Loop { .. } |
-            ExprKind::Block { .. } |
-            ExprKind::Break { .. } |
-            ExprKind::Continue { .. } |
-            ExprKind::Return { .. } =>
-                // FIXME(#27840) these probably want their own
-                // category, like "nonterminating"
-                Some(Category::Rvalue(RvalueFunc::Into)),
+            ExprKind::Loop { .. }
+            | ExprKind::Block { .. }
+            | ExprKind::Break { .. }
+            | ExprKind::Continue { .. }
+            | ExprKind::Return { .. } =>
+            // FIXME(#27840) these probably want their own
+            // category, like "nonterminating"
+            {
+                Some(Category::Rvalue(RvalueFunc::Into))
+            }
         }
     }
 }

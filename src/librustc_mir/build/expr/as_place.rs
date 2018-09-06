@@ -10,22 +10,20 @@
 
 //! See docs in build/expr/mod.rs
 
-use build::{BlockAnd, BlockAndExtension, Builder};
-use build::ForGuard::{OutsideGuard, RefWithinGuard};
 use build::expr::category::Category;
+use build::ForGuard::{OutsideGuard, RefWithinGuard};
+use build::{BlockAnd, BlockAndExtension, Builder};
 use hair::*;
-use rustc::mir::*;
 use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
+use rustc::mir::*;
 
 use rustc_data_structures::indexed_vec::Idx;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr`, yielding a place that we can move from etc.
-    pub fn as_place<M>(&mut self,
-                        block: BasicBlock,
-                        expr: M)
-                        -> BlockAnd<Place<'tcx>>
-        where M: Mirror<'tcx, Output=Expr<'tcx>>
+    pub fn as_place<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<Place<'tcx>>
+    where
+        M: Mirror<'tcx, Output = Expr<'tcx>>,
     {
         let expr = self.hir.mirror(expr);
         self.expr_as_place(block, expr, Mutability::Mut)
@@ -36,36 +34,40 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// place. The place itself may or may not be mutable:
     /// * If this expr is a place expr like a.b, then we will return that place.
     /// * Otherwise, a temporary is created: in that event, it will be an immutable temporary.
-    pub fn as_read_only_place<M>(&mut self,
-                        block: BasicBlock,
-                        expr: M)
-                        -> BlockAnd<Place<'tcx>>
-        where M: Mirror<'tcx, Output=Expr<'tcx>>
+    pub fn as_read_only_place<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<Place<'tcx>>
+    where
+        M: Mirror<'tcx, Output = Expr<'tcx>>,
     {
         let expr = self.hir.mirror(expr);
         self.expr_as_place(block, expr, Mutability::Not)
     }
 
-    fn expr_as_place(&mut self,
-                      mut block: BasicBlock,
-                      expr: Expr<'tcx>,
-                      mutability: Mutability)
-                      -> BlockAnd<Place<'tcx>> {
-        debug!("expr_as_place(block={:?}, expr={:?}, mutability={:?})", block, expr, mutability);
+    fn expr_as_place(
+        &mut self,
+        mut block: BasicBlock,
+        expr: Expr<'tcx>,
+        mutability: Mutability,
+    ) -> BlockAnd<Place<'tcx>> {
+        debug!(
+            "expr_as_place(block={:?}, expr={:?}, mutability={:?})",
+            block, expr, mutability
+        );
 
         let this = self;
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
         match expr.kind {
-            ExprKind::Scope { region_scope, lint_level, value } => {
-                this.in_scope((region_scope, source_info), lint_level, block, |this| {
-                    if mutability == Mutability::Not {
-                        this.as_read_only_place(block, value)
-                    } else {
-                        this.as_place(block, value)
-                    }
-                })
-            }
+            ExprKind::Scope {
+                region_scope,
+                lint_level,
+                value,
+            } => this.in_scope((region_scope, source_info), lint_level, block, |this| {
+                if mutability == Mutability::Not {
+                    this.as_read_only_place(block, value)
+                } else {
+                    this.as_place(block, value)
+                }
+            }),
             ExprKind::Field { lhs, name } => {
                 let place = unpack!(block = this.as_place(block, lhs));
                 let place = place.field(name, expr.ty);
@@ -86,29 +88,40 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let idx = unpack!(block = this.as_temp(block, None, index, Mutability::Mut));
 
                 // bounds check:
-                let (len, lt) = (this.temp(usize_ty.clone(), expr_span),
-                                 this.temp(bool_ty, expr_span));
-                this.cfg.push_assign(block, source_info, // len = len(slice)
-                                     &len, Rvalue::Len(slice.clone()));
-                this.cfg.push_assign(block, source_info, // lt = idx < len
-                                     &lt, Rvalue::BinaryOp(BinOp::Lt,
-                                                           Operand::Copy(Place::Local(idx)),
-                                                           Operand::Copy(len.clone())));
+                let (len, lt) = (
+                    this.temp(usize_ty.clone(), expr_span),
+                    this.temp(bool_ty, expr_span),
+                );
+                this.cfg.push_assign(
+                    block,
+                    source_info, // len = len(slice)
+                    &len,
+                    Rvalue::Len(slice.clone()),
+                );
+                this.cfg.push_assign(
+                    block,
+                    source_info, // lt = idx < len
+                    &lt,
+                    Rvalue::BinaryOp(
+                        BinOp::Lt,
+                        Operand::Copy(Place::Local(idx)),
+                        Operand::Copy(len.clone()),
+                    ),
+                );
 
                 let msg = BoundsCheck {
                     len: Operand::Move(len),
-                    index: Operand::Copy(Place::Local(idx))
+                    index: Operand::Copy(Place::Local(idx)),
                 };
-                let success = this.assert(block, Operand::Move(lt), true,
-                                          msg, expr_span);
+                let success = this.assert(block, Operand::Move(lt), true, msg, expr_span);
                 success.and(slice.index(idx))
             }
-            ExprKind::SelfRef => {
-                block.and(Place::Local(Local::new(1)))
-            }
+            ExprKind::SelfRef => block.and(Place::Local(Local::new(1))),
             ExprKind::VarRef { id } => {
-                let place = if this.is_bound_var_in_guard(id) &&
-                    this.hir.tcx().all_pat_vars_are_implicit_refs_within_guards()
+                let place = if this.is_bound_var_in_guard(id) && this
+                    .hir
+                    .tcx()
+                    .all_pat_vars_are_implicit_refs_within_guards()
                 {
                     let index = this.var_local_id(id, RefWithinGuard);
                     Place::Local(index).deref()
@@ -118,47 +131,48 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 };
                 block.and(place)
             }
-            ExprKind::StaticRef { id } => {
-                block.and(Place::Static(Box::new(Static { def_id: id, ty: expr.ty })))
-            }
+            ExprKind::StaticRef { id } => block.and(Place::Static(Box::new(Static {
+                def_id: id,
+                ty: expr.ty,
+            }))),
 
-            ExprKind::Array { .. } |
-            ExprKind::Tuple { .. } |
-            ExprKind::Adt { .. } |
-            ExprKind::Closure { .. } |
-            ExprKind::Unary { .. } |
-            ExprKind::Binary { .. } |
-            ExprKind::LogicalOp { .. } |
-            ExprKind::Box { .. } |
-            ExprKind::Cast { .. } |
-            ExprKind::Use { .. } |
-            ExprKind::NeverToAny { .. } |
-            ExprKind::ReifyFnPointer { .. } |
-            ExprKind::ClosureFnPointer { .. } |
-            ExprKind::UnsafeFnPointer { .. } |
-            ExprKind::Unsize { .. } |
-            ExprKind::Repeat { .. } |
-            ExprKind::Borrow { .. } |
-            ExprKind::If { .. } |
-            ExprKind::Match { .. } |
-            ExprKind::Loop { .. } |
-            ExprKind::Block { .. } |
-            ExprKind::Assign { .. } |
-            ExprKind::AssignOp { .. } |
-            ExprKind::Break { .. } |
-            ExprKind::Continue { .. } |
-            ExprKind::Return { .. } |
-            ExprKind::Literal { .. } |
-            ExprKind::InlineAsm { .. } |
-            ExprKind::Yield { .. } |
-            ExprKind::Call { .. } => {
+            ExprKind::Array { .. }
+            | ExprKind::Tuple { .. }
+            | ExprKind::Adt { .. }
+            | ExprKind::Closure { .. }
+            | ExprKind::Unary { .. }
+            | ExprKind::Binary { .. }
+            | ExprKind::LogicalOp { .. }
+            | ExprKind::Box { .. }
+            | ExprKind::Cast { .. }
+            | ExprKind::Use { .. }
+            | ExprKind::NeverToAny { .. }
+            | ExprKind::ReifyFnPointer { .. }
+            | ExprKind::ClosureFnPointer { .. }
+            | ExprKind::UnsafeFnPointer { .. }
+            | ExprKind::Unsize { .. }
+            | ExprKind::Repeat { .. }
+            | ExprKind::Borrow { .. }
+            | ExprKind::If { .. }
+            | ExprKind::Match { .. }
+            | ExprKind::Loop { .. }
+            | ExprKind::Block { .. }
+            | ExprKind::Assign { .. }
+            | ExprKind::AssignOp { .. }
+            | ExprKind::Break { .. }
+            | ExprKind::Continue { .. }
+            | ExprKind::Return { .. }
+            | ExprKind::Literal { .. }
+            | ExprKind::InlineAsm { .. }
+            | ExprKind::Yield { .. }
+            | ExprKind::Call { .. } => {
                 // these are not places, so we need to make a temporary.
                 debug_assert!(match Category::of(&expr.kind) {
                     Some(Category::Place) => false,
                     _ => true,
                 });
-                let temp = unpack!(
-                    block = this.as_temp(block, expr.temp_lifetime, expr, mutability));
+                let temp =
+                    unpack!(block = this.as_temp(block, expr.temp_lifetime, expr, mutability));
                 block.and(Place::Local(temp))
             }
         }
