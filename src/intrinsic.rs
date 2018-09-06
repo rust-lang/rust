@@ -443,42 +443,6 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 self.write_value(value, dest)?;
             }
 
-            "unchecked_shl" => {
-                let bits = dest.layout.size.bytes() as u128 * 8;
-                let l = self.read_value(args[0])?;
-                let r = self.read_value(args[1])?;
-                let rval = r.to_scalar()?.to_bytes()?;
-                if rval >= bits {
-                    return err!(Intrinsic(
-                        format!("Overflowing shift by {} in unchecked_shl", rval),
-                    ));
-                }
-                self.binop_ignore_overflow(
-                    mir::BinOp::Shl,
-                    l,
-                    r,
-                    dest,
-                )?;
-            }
-
-            "unchecked_shr" => {
-                let bits = dest.layout.size.bytes() as u128 * 8;
-                let l = self.read_value(args[0])?;
-                let r = self.read_value(args[1])?;
-                let rval = r.to_scalar()?.to_bytes()?;
-                if rval >= bits {
-                    return err!(Intrinsic(
-                        format!("Overflowing shift by {} in unchecked_shr", rval),
-                    ));
-                }
-                self.binop_ignore_overflow(
-                    mir::BinOp::Shr,
-                    l,
-                    r,
-                    dest,
-                )?;
-            }
-
             "unchecked_div" => {
                 let l = self.read_value(args[0])?;
                 let r = self.read_value(args[1])?;
