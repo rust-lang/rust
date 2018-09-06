@@ -3403,13 +3403,14 @@ fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
 
 const ATTRIBUTE_WHITELIST: &'static [&'static str] = &[
     "export_name",
+    "inline",
     "lang",
     "link_section",
     "must_use",
     "no_mangle",
     "repr",
     "unsafe_destructor_blind_to_params",
-    "non_exhaustive"
+    "non_exhaustive",
 ];
 
 fn render_attributes(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
