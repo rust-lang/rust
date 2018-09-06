@@ -86,7 +86,18 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
 
     fn is_promotable_const_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
         tcx.is_const_fn(def_id) && match tcx.lookup_stability(def_id) {
-            Some(stab) => stab.promotable,
+            Some(stab) => {
+                if cfg!(debug_assertions) && stab.promotable {
+                    let sig = tcx.fn_sig(def_id);
+                    assert_eq!(
+                        sig.unsafety(),
+                        hir::Unsafety::Normal,
+                        "don't mark const unsafe fns as promotable",
+                        // https://github.com/rust-lang/rust/pull/53851#issuecomment-418760682
+                    );
+                }
+                stab.promotable
+            },
             None => false,
         }
     }
