@@ -32,7 +32,8 @@ mod type_params;
 mod types;
 
 use {
-    parser_api::{Marker, CompletedMarker, Parser, TokenSet},
+    token_set::TokenSet,
+    parser_api::{Marker, CompletedMarker, Parser},
     SyntaxKind::{self, *},
 };
 pub(crate) use self::{
