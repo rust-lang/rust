@@ -180,6 +180,9 @@ impl<'a> AstValidator<'a> {
             err.note(
                 "this will be a error until the `let_chains` feature is stabilized"
             );
+            err.note(
+                "see rust-lang/rust#53668 for more information"
+            );
 
             if let Ok(snippet) = self.session.source_map().span_to_snippet(span) {
                 err.span_suggestion(

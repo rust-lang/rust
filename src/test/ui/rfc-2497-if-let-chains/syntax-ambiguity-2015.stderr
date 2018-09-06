@@ -5,6 +5,7 @@ LL |     if let Range { start: _, end: _ } = true..true && false { }
    |                                               ^^^^^^^^^^^^^ help: consider adding parentheses: `(true && false)`
    |
    = note: this will be a error until the `let_chains` feature is stabilized
+   = note: see rust-lang/rust#53668 for more information
 
 error: ambigious use of `||`
   --> $DIR/syntax-ambiguity-2015.rs:24:47
@@ -13,6 +14,7 @@ LL |     if let Range { start: _, end: _ } = true..true || false { }
    |                                               ^^^^^^^^^^^^^ help: consider adding parentheses: `(true || false)`
    |
    = note: this will be a error until the `let_chains` feature is stabilized
+   = note: see rust-lang/rust#53668 for more information
 
 error: ambigious use of `&&`
   --> $DIR/syntax-ambiguity-2015.rs:27:50
@@ -21,6 +23,7 @@ LL |     while let Range { start: _, end: _ } = true..true && false { }
    |                                                  ^^^^^^^^^^^^^ help: consider adding parentheses: `(true && false)`
    |
    = note: this will be a error until the `let_chains` feature is stabilized
+   = note: see rust-lang/rust#53668 for more information
 
 error: ambigious use of `||`
   --> $DIR/syntax-ambiguity-2015.rs:30:50
@@ -29,6 +32,7 @@ LL |     while let Range { start: _, end: _ } = true..true || false { }
    |                                                  ^^^^^^^^^^^^^ help: consider adding parentheses: `(true || false)`
    |
    = note: this will be a error until the `let_chains` feature is stabilized
+   = note: see rust-lang/rust#53668 for more information
 
 error: ambigious use of `&&`
   --> $DIR/syntax-ambiguity-2015.rs:33:19
@@ -37,6 +41,7 @@ LL |     if let true = false && false { }
    |                   ^^^^^^^^^^^^^^ help: consider adding parentheses: `(false && false)`
    |
    = note: this will be a error until the `let_chains` feature is stabilized
+   = note: see rust-lang/rust#53668 for more information
 
 error: ambigious use of `&&`
   --> $DIR/syntax-ambiguity-2015.rs:36:22
@@ -45,6 +50,7 @@ LL |     while let true = (1 == 2) && false { }
    |                      ^^^^^^^^^^^^^^^^^ help: consider adding parentheses: `((1 == 2) && false)`
    |
    = note: this will be a error until the `let_chains` feature is stabilized
+   = note: see rust-lang/rust#53668 for more information
 
 error: aborting due to 6 previous errors
 
