@@ -14,4 +14,16 @@
 
 use std;
 
-fn main() {}
+mod foo {
+    pub use std as my_std;
+}
+
+mod bar {
+    pub use std::{self};
+}
+
+fn main() {
+    self::std::io::stdout();
+    foo::my_std::io::stdout();
+    bar::std::io::stdout();
+}

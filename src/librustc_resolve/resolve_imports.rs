@@ -664,6 +664,14 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
 
                 self.per_ns(|_, ns| {
                     if let Some(result) = result[ns].get().ok() {
+                        if let NameBindingKind::Import { directive, .. } = result.kind {
+                            // Skip canaries that resolve to the import itself.
+                            // These come from `use crate_name;`, which isn't really
+                            // ambiguous, as the import can't actually shadow itself.
+                            if directive.id == import.id {
+                                return;
+                            }
+                        }
                         if has_explicit_self {
                             // There should only be one `self::x` (module-scoped) canary.
                             assert_eq!(canary_results[ns].module_scope, None);
@@ -717,22 +725,6 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 }
 
                 errors = true;
-
-                // Special-case the error when `self::x` finds its own `use x;`.
-                if has_external_crate &&
-                   results.module_scope == Some(span) &&
-                   results.block_scopes.is_empty() {
-                    let msg = format!("`{}` import is redundant", name);
-                    this.session.struct_span_err(span, &msg)
-                        .span_label(span,
-                            format!("refers to external crate `::{}`", name))
-                        .span_label(span,
-                            format!("defines `self::{}`, shadowing itself", name))
-                        .help(&format!("remove or write `::{}` explicitly instead", name))
-                        .note("relative `use` paths enabled by `#![feature(uniform_paths)]`")
-                        .emit();
-                    return;
-                }
 
                 let msg = format!("`{}` import is ambiguous", name);
                 let mut err = this.session.struct_span_err(span, &msg);
