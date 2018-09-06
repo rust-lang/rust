@@ -62,20 +62,26 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         assert!(self.universal_regions.is_universal_region(fr));
 
-        self.give_name_from_error_region(infcx.tcx, mir_def_id, fr, counter, diag)
+        let value = self.give_name_from_error_region(infcx.tcx, mir_def_id, fr, counter, diag)
             .or_else(|| {
                 self.give_name_if_anonymous_region_appears_in_arguments(
-                    infcx, mir, mir_def_id, fr, counter, diag)
+                    infcx, mir, mir_def_id, fr, counter, diag,
+                )
             })
             .or_else(|| {
                 self.give_name_if_anonymous_region_appears_in_upvars(
-                    infcx.tcx, mir, fr, counter, diag)
+                    infcx.tcx, mir, fr, counter, diag,
+                )
             })
             .or_else(|| {
                 self.give_name_if_anonymous_region_appears_in_output(
-                    infcx, mir, mir_def_id, fr, counter, diag)
+                    infcx, mir, mir_def_id, fr, counter, diag,
+                )
             })
-            .unwrap_or_else(|| span_bug!(mir.span, "can't make a name for free region {:?}", fr))
+            .unwrap_or_else(|| span_bug!(mir.span, "can't make a name for free region {:?}", fr));
+
+        debug!("give_region_a_name: gave name {:?}", value);
+        value
     }
 
     /// Check for the case where `fr` maps to something that the
