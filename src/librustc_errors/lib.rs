@@ -24,6 +24,8 @@ extern crate atty;
 extern crate termcolor;
 #[cfg(unix)]
 extern crate libc;
+#[macro_use]
+extern crate log;
 extern crate rustc_data_structures;
 extern crate serialize as rustc_serialize;
 extern crate syntax_pos;
