@@ -1913,7 +1913,7 @@ fn maybe_install_llvm_dylib(builder: &Builder,
                    llvm_dylib_path.display(), e);
         });
 
-        let dst_libdir = image.join("lib");
+        let dst_libdir = image.join("lib/rustlib").join(&*target).join("lib");
         t!(fs::create_dir_all(&dst_libdir));
 
         builder.install(&llvm_dylib_path, &dst_libdir, 0o644);
@@ -1967,7 +1967,9 @@ impl Step for LlvmTools {
         let src_bindir = builder
             .llvm_out(target)
             .join("bin");
-        let dst_bindir = image.join("bin");
+        let dst_bindir = image.join("lib/rustlib")
+            .join(&*target)
+            .join("bin");
         t!(fs::create_dir_all(&dst_bindir));
         for tool in LLVM_TOOLS {
             let exe = src_bindir.join(exe(tool, &target));

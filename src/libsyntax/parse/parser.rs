@@ -6272,7 +6272,6 @@ impl<'a> Parser<'a> {
         let (in_cfg, outer_attrs) = {
             let mut strip_unconfigured = ::config::StripUnconfigured {
                 sess: self.sess,
-                should_test: false, // irrelevant
                 features: None, // don't perform gated feature checking
             };
             let outer_attrs = strip_unconfigured.process_cfg_attrs(outer_attrs.to_owned());

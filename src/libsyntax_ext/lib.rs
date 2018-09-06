@@ -19,7 +19,7 @@
 #![cfg_attr(not(stage0), feature(nll))]
 #![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 #![feature(str_escape)]
-
+#![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 
 extern crate fmt_macros;
@@ -32,6 +32,8 @@ extern crate rustc_errors as errors;
 extern crate rustc_target;
 #[macro_use]
 extern crate smallvec;
+#[macro_use]
+extern crate log;
 
 mod diagnostics;
 
@@ -51,6 +53,8 @@ mod format_foreign;
 mod global_asm;
 mod log_syntax;
 mod trace_macros;
+mod test;
+mod test_case;
 
 pub mod proc_macro_registrar;
 
@@ -59,7 +63,7 @@ pub mod proc_macro_impl;
 
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
-use syntax::ext::base::{MacroExpanderFn, NormalTT, NamedSyntaxExtension};
+use syntax::ext::base::{MacroExpanderFn, NormalTT, NamedSyntaxExtension, MultiModifier};
 use syntax::ext::hygiene;
 use syntax::symbol::Symbol;
 
@@ -67,6 +71,18 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
                          user_exts: Vec<NamedSyntaxExtension>,
                          enable_quotes: bool) {
     deriving::register_builtin_derives(resolver);
+
+    {
+        let mut register_unshadowable = |name, ext| {
+            resolver.add_unshadowable_attr(ast::Ident::with_empty_ctxt(name), Lrc::new(ext));
+        };
+
+        register_unshadowable(Symbol::intern("test"),
+            MultiModifier(Box::new(test::expand_test)));
+
+        register_unshadowable(Symbol::intern("bench"),
+            MultiModifier(Box::new(test::expand_bench)));
+    }
 
     let mut register = |name, ext| {
         resolver.add_builtin(ast::Ident::with_empty_ctxt(name), Lrc::new(ext));
@@ -129,6 +145,8 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
         compile_error: compile_error::expand_compile_error,
         assert: assert::expand_assert,
     }
+
+    register(Symbol::intern("test_case"), MultiModifier(Box::new(test_case::expand)));
 
     // format_args uses `unstable` things internally.
     register(Symbol::intern("format_args"),

@@ -721,6 +721,7 @@ pub trait Resolver {
     fn visit_ast_fragment_with_placeholders(&mut self, mark: Mark, fragment: &AstFragment,
                                             derives: &[Mark]);
     fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>);
+    fn add_unshadowable_attr(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>);
 
     fn resolve_imports(&mut self);
     // Resolves attribute and derive legacy macros from `#![plugin(..)]`.
@@ -729,6 +730,7 @@ pub trait Resolver {
 
     fn resolve_macro_invocation(&mut self, invoc: &Invocation, scope: Mark, force: bool)
                                 -> Result<Option<Lrc<SyntaxExtension>>, Determinacy>;
+
     fn resolve_macro_path(&mut self, path: &ast::Path, kind: MacroKind, scope: Mark,
                           derives_in_scope: &[ast::Path], force: bool)
                           -> Result<Lrc<SyntaxExtension>, Determinacy>;
@@ -759,6 +761,7 @@ impl Resolver for DummyResolver {
     fn visit_ast_fragment_with_placeholders(&mut self, _invoc: Mark, _fragment: &AstFragment,
                                             _derives: &[Mark]) {}
     fn add_builtin(&mut self, _ident: ast::Ident, _ext: Lrc<SyntaxExtension>) {}
+    fn add_unshadowable_attr(&mut self, _ident: ast::Ident, _ext: Lrc<SyntaxExtension>) {}
 
     fn resolve_imports(&mut self) {}
     fn find_legacy_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>, _allow_derive: bool)

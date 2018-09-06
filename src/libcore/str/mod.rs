@@ -3570,6 +3570,76 @@ impl str {
     ///
     /// # Text directionality
     ///
+    /// A string is a sequence of bytes. `start` in this context means the first
+    /// position of that byte string; for a left-to-right language like English or
+    /// Russian, this will be left side; and for right-to-left languages like
+    /// like Arabic or Hebrew, this will be the right side.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let s = " Hello\tworld\t";
+    /// assert_eq!("Hello\tworld\t", s.trim_start());
+    /// ```
+    ///
+    /// Directionality:
+    ///
+    /// ```
+    /// let s = "  English  ";
+    /// assert!(Some('E') == s.trim_start().chars().next());
+    ///
+    /// let s = "  עברית  ";
+    /// assert!(Some('ע') == s.trim_start().chars().next());
+    /// ```
+    #[stable(feature = "trim_direction", since = "1.30.0")]
+    pub fn trim_start(&self) -> &str {
+        self.trim_start_matches(|c: char| c.is_whitespace())
+    }
+
+    /// Returns a string slice with trailing whitespace removed.
+    ///
+    /// 'Whitespace' is defined according to the terms of the Unicode Derived
+    /// Core Property `White_Space`.
+    ///
+    /// # Text directionality
+    ///
+    /// A string is a sequence of bytes. `end` in this context means the last
+    /// position of that byte string; for a left-to-right language like English or
+    /// Russian, this will be right side; and for right-to-left languages like
+    /// like Arabic or Hebrew, this will be the left side.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let s = " Hello\tworld\t";
+    /// assert_eq!(" Hello\tworld", s.trim_end());
+    /// ```
+    ///
+    /// Directionality:
+    ///
+    /// ```
+    /// let s = "  English  ";
+    /// assert!(Some('h') == s.trim_end().chars().rev().next());
+    ///
+    /// let s = "  עברית  ";
+    /// assert!(Some('ת') == s.trim_end().chars().rev().next());
+    /// ```
+    #[stable(feature = "trim_direction", since = "1.30.0")]
+    pub fn trim_end(&self) -> &str {
+        self.trim_end_matches(|c: char| c.is_whitespace())
+    }
+
+    /// Returns a string slice with leading whitespace removed.
+    ///
+    /// 'Whitespace' is defined according to the terms of the Unicode Derived
+    /// Core Property `White_Space`.
+    ///
+    /// # Text directionality
+    ///
     /// A string is a sequence of bytes. 'Left' in this context means the first
     /// position of that byte string; for a language like Arabic or Hebrew
     /// which are 'right to left' rather than 'left to right', this will be
@@ -3595,8 +3665,9 @@ impl str {
     /// assert!(Some('ע') == s.trim_left().chars().next());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(reason = "superseded by `trim_start`", since = "1.33.0")]
     pub fn trim_left(&self) -> &str {
-        self.trim_left_matches(|c: char| c.is_whitespace())
+        self.trim_start()
     }
 
     /// Returns a string slice with trailing whitespace removed.
@@ -3631,8 +3702,9 @@ impl str {
     /// assert!(Some('ת') == s.trim_right().chars().rev().next());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(reason = "superseded by `trim_end`", since = "1.33.0")]
     pub fn trim_right(&self) -> &str {
-        self.trim_right_matches(|c: char| c.is_whitespace())
+        self.trim_end()
     }
 
     /// Returns a string slice with all prefixes and suffixes that match a
@@ -3697,14 +3769,14 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// assert_eq!("11foo1bar11".trim_left_matches('1'), "foo1bar11");
-    /// assert_eq!("123foo1bar123".trim_left_matches(char::is_numeric), "foo1bar123");
+    /// assert_eq!("11foo1bar11".trim_start_matches('1'), "foo1bar11");
+    /// assert_eq!("123foo1bar123".trim_start_matches(char::is_numeric), "foo1bar123");
     ///
     /// let x: &[_] = &['1', '2'];
-    /// assert_eq!("12foo1bar12".trim_left_matches(x), "foo1bar12");
+    /// assert_eq!("12foo1bar12".trim_start_matches(x), "foo1bar12");
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn trim_left_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str {
+    #[stable(feature = "trim_direction", since = "1.30.0")]
+    pub fn trim_start_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str {
         let mut i = self.len();
         let mut matcher = pat.into_searcher(self);
         if let Some((a, _)) = matcher.next_reject() {
@@ -3734,6 +3806,85 @@ impl str {
     /// Simple patterns:
     ///
     /// ```
+    /// assert_eq!("11foo1bar11".trim_end_matches('1'), "11foo1bar");
+    /// assert_eq!("123foo1bar123".trim_end_matches(char::is_numeric), "123foo1bar");
+    ///
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!("12foo1bar12".trim_end_matches(x), "12foo1bar");
+    /// ```
+    ///
+    /// A more complex pattern, using a closure:
+    ///
+    /// ```
+    /// assert_eq!("1fooX".trim_end_matches(|c| c == '1' || c == 'X'), "1foo");
+    /// ```
+    #[stable(feature = "trim_direction", since = "1.30.0")]
+    pub fn trim_end_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        let mut j = 0;
+        let mut matcher = pat.into_searcher(self);
+        if let Some((_, b)) = matcher.next_reject_back() {
+            j = b;
+        }
+        unsafe {
+            // Searcher is known to return valid indices
+            self.get_unchecked(0..j)
+        }
+    }
+
+    /// Returns a string slice with all prefixes that match a pattern
+    /// repeatedly removed.
+    ///
+    /// The pattern can be a `&str`, [`char`], or a closure that determines if
+    /// a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    ///
+    /// # Text directionality
+    ///
+    /// A string is a sequence of bytes. 'Left' in this context means the first
+    /// position of that byte string; for a language like Arabic or Hebrew
+    /// which are 'right to left' rather than 'left to right', this will be
+    /// the _right_ side, not the left.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// assert_eq!("11foo1bar11".trim_left_matches('1'), "foo1bar11");
+    /// assert_eq!("123foo1bar123".trim_left_matches(char::is_numeric), "foo1bar123");
+    ///
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!("12foo1bar12".trim_left_matches(x), "foo1bar12");
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(reason = "superseded by `trim_start_matches`", since = "1.33.0")]
+    pub fn trim_left_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str {
+        self.trim_start_matches(pat)
+    }
+
+    /// Returns a string slice with all suffixes that match a pattern
+    /// repeatedly removed.
+    ///
+    /// The pattern can be a `&str`, [`char`], or a closure that
+    /// determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    ///
+    /// # Text directionality
+    ///
+    /// A string is a sequence of bytes. 'Right' in this context means the last
+    /// position of that byte string; for a language like Arabic or Hebrew
+    /// which are 'right to left' rather than 'left to right', this will be
+    /// the _left_ side, not the right.
+    ///
+    /// # Examples
+    ///
+    /// Simple patterns:
+    ///
+    /// ```
     /// assert_eq!("11foo1bar11".trim_right_matches('1'), "11foo1bar");
     /// assert_eq!("123foo1bar123".trim_right_matches(char::is_numeric), "123foo1bar");
     ///
@@ -3747,18 +3898,11 @@ impl str {
     /// assert_eq!("1fooX".trim_right_matches(|c| c == '1' || c == 'X'), "1foo");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(reason = "superseded by `trim_end_matches`", since = "1.33.0")]
     pub fn trim_right_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
         where P::Searcher: ReverseSearcher<'a>
     {
-        let mut j = 0;
-        let mut matcher = pat.into_searcher(self);
-        if let Some((_, b)) = matcher.next_reject_back() {
-            j = b;
-        }
-        unsafe {
-            // Searcher is known to return valid indices
-            self.get_unchecked(0..j)
-        }
+        self.trim_end_matches(pat)
     }
 
     /// Parses this string slice into another type.

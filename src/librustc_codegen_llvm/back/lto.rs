@@ -29,7 +29,7 @@ use {ModuleCodegen, ModuleLlvm, ModuleKind};
 use libc;
 
 use std::ffi::{CStr, CString};
-use std::fs::{self, File};
+use std::fs;
 use std::ptr;
 use std::slice;
 use std::sync::Arc;
@@ -619,7 +619,7 @@ fn run_pass_manager(cgcx: &CodegenContext,
 pub enum SerializedModule {
     Local(ModuleBuffer),
     FromRlib(Vec<u8>),
-    FromUncompressedFile(memmap::Mmap, File),
+    FromUncompressedFile(memmap::Mmap),
 }
 
 impl SerializedModule {
@@ -627,7 +627,7 @@ impl SerializedModule {
         match *self {
             SerializedModule::Local(ref m) => m.data(),
             SerializedModule::FromRlib(ref m) => m,
-            SerializedModule::FromUncompressedFile(ref m, _) => m,
+            SerializedModule::FromUncompressedFile(ref m) => m,
         }
     }
 }
