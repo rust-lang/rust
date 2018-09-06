@@ -574,6 +574,7 @@ define_dep_nodes!( <'tcx>
     [] IsPanicRuntime(CrateNum),
     [] IsCompilerBuiltins(CrateNum),
     [] HasGlobalAllocator(CrateNum),
+    [] HasPanicHandler(CrateNum),
     [input] ExternCrate(DefId),
     [eval_always] LintLevels,
     [] Specializes { impl1: DefId, impl2: DefId },
