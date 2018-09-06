@@ -44,6 +44,7 @@ clippy_lints = { version = "0.0.212", path = "clippy_lints" }
 # end automatic update
 regex = "1"
 semver = "0.9"
+rustc_tools_util = { version = "0.1.0", path = "rustc_tools_util"}
 
 [dev-dependencies]
 clippy_dev = { version = "0.0.1", path = "clippy_dev" }
@@ -59,6 +60,9 @@ derive-new = "0.5"
 # See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
 # for more information.
 rustc-workspace-hack = "1.0.0"
+
+[build-dependencies]
+rustc_tools_util = { version = "0.1.0", path = "rustc_tools_util"}
 
 [features]
 debugging = []
