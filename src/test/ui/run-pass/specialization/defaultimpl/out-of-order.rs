@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test that you can list the more specific impl before the more general one.
 
 #![feature(specialization)]

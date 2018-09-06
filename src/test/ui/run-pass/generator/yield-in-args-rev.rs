@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test that a borrow that occurs after a yield in the same
 // argument list is not treated as live across the yield by
 // type-checking.

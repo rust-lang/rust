@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 #![feature(specialization)]
 
 // Ensure that specialization works for impls defined directly on a projection

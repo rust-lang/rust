@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // https://github.com/rust-lang/rust/issues/45044
 
 const X: [u8; 1] = [0; 1];

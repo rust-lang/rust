@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test that box-statements with yields in them work.
 
 #![feature(generators, box_syntax)]

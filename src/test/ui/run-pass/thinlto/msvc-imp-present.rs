@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // aux-build:msvc-imp-present.rs
 // compile-flags: -Z thinlto -C codegen-units=8
 // no-prefer-dynamic

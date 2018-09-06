@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // compile-flags: -C codegen-units=8 -O -C lto=thin
 // aux-build:thin-lto-inlines-aux.rs
 // no-prefer-dynamic

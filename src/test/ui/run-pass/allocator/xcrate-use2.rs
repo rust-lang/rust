@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // aux-build:custom.rs
 // aux-build:custom-as-global.rs
 // aux-build:helper.rs

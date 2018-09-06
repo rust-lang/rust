@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 #![feature(const_fn)]
 
 type Field1 = (i32, u32);

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 struct CustomAutoRooterVFTable {
     trace: unsafe extern "C" fn(this: *mut i32, trc: *mut u32),
 }

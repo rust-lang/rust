@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 const FOO: &[u8] = b"foo";
 const BAR: &[u8] = &[1, 2, 3];
 

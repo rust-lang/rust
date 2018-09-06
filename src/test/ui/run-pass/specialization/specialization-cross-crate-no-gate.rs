@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test that specialization works even if only the upstream crate enables it
 
 // aux-build:specialization_cross_crate.rs

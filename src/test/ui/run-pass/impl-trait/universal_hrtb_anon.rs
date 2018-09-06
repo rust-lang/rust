@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 fn hrtb(f: impl Fn(&u32) -> u32) -> u32 {
     f(&22) + f(&44)
 }
