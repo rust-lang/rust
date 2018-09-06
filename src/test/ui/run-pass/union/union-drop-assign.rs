@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unions_with_drop_fields)]
 
 // Drop works for union itself.
 
