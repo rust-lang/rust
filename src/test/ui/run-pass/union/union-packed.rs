@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_snake_case)]
 
 #![feature(untagged_unions)]
 #![feature(repr_packed)]
