@@ -42,7 +42,7 @@ impl<'a, 'tcx> VirtualIndex {
 
         let llvtable = bx.pointercast(
             llvtable,
-            bx.cx().ptr_to(fn_ty.ptr_to_llvm_type(bx.cx()))
+            bx.cx().type_ptr_to(fn_ty.ptr_to_llvm_type(bx.cx()))
         );
         let ptr_align = bx.tcx().data_layout.pointer_align;
         let ptr = bx.load(
@@ -63,7 +63,7 @@ impl<'a, 'tcx> VirtualIndex {
         // Load the data pointer from the object.
         debug!("get_int({:?}, {:?})", llvtable, self);
 
-        let llvtable = bx.pointercast(llvtable, bx.cx().ptr_to(bx.cx().isize()));
+        let llvtable = bx.pointercast(llvtable, bx.cx().type_ptr_to(bx.cx().type_isize()));
         let usize_align = bx.tcx().data_layout.pointer_align;
         let ptr = bx.load(
             bx.inbounds_gep(llvtable, &[bx.cx().const_usize(self.0)]),
@@ -98,7 +98,7 @@ pub fn get_vtable(
     }
 
     // Not in the cache. Build it.
-    let nullptr = cx.const_null(cx.i8p());
+    let nullptr = cx.const_null(cx.type_i8p());
 
     let methods = tcx.vtable_methods(trait_ref.with_self_ty(tcx, ty));
     let methods = methods.iter().cloned().map(|opt_mth| {

@@ -117,7 +117,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
 
                     // Use llvm.memset.p0i8.* to initialize byte arrays
                     let v = base::from_immediate(&bx, v);
-                    if bx.cx().val_ty(v) == bx.cx().i8() {
+                    if bx.cx().val_ty(v) == bx.cx().type_i8() {
                         base::call_memset(&bx, start, v, size, align, false);
                         return bx;
                     }

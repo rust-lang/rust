@@ -313,8 +313,8 @@ pub fn codegen_static<'a, 'tcx>(
         // boolean SSA values are i1, but they have to be stored in i8 slots,
         // otherwise some LLVM optimization passes don't work as expected
         let mut val_llty = cx.val_ty(v);
-        let v = if val_llty == cx.i1() {
-            val_llty = cx.i8();
+        let v = if val_llty == cx.type_i1() {
+            val_llty = cx.type_i8();
             llvm::LLVMConstZExt(v, val_llty)
         } else {
             v
@@ -432,7 +432,7 @@ pub fn codegen_static<'a, 'tcx>(
 
         if attrs.flags.contains(CodegenFnAttrFlags::USED) {
             // This static will be stored in the llvm.used variable which is an array of i8*
-            let cast = llvm::LLVMConstPointerCast(g, cx.i8p());
+            let cast = llvm::LLVMConstPointerCast(g, cx.type_i8p());
             cx.used_statics.borrow_mut().push(cast);
         }
     }

@@ -236,19 +236,19 @@ impl<'ll, 'tcx: 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
     }
 
     fn const_bool(&self, val: bool) -> &'ll Value {
-        &self.const_uint(&self.i1(), val as u64)
+        &self.const_uint(&self.type_i1(), val as u64)
     }
 
     fn const_i32(&self, i: i32) -> &'ll Value {
-        &self.const_int(&self.i32(), i as i64)
+        &self.const_int(&self.type_i32(), i as i64)
     }
 
     fn const_u32(&self, i: u32) -> &'ll Value {
-        &self.const_uint(&self.i32(), i as u64)
+        &self.const_uint(&self.type_i32(), i as u64)
     }
 
     fn const_u64(&self, i: u64) -> &'ll Value {
-        &self.const_uint(&self.i64(), i)
+        &self.const_uint(&self.type_i64(), i)
     }
 
     fn const_usize(&self, i: u64) -> &'ll Value {
@@ -262,7 +262,7 @@ impl<'ll, 'tcx: 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
     }
 
     fn const_u8(&self, i: u8) -> &'ll Value {
-        &self.const_uint(&self.i8(), i as u64)
+        &self.const_uint(&self.type_i8(), i as u64)
     }
 
 
@@ -300,7 +300,7 @@ impl<'ll, 'tcx: 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
     fn const_str_slice(&self, s: LocalInternedString) -> &'ll Value {
         let len = s.len();
         let cs = consts::ptrcast(&self.const_cstr(s, false),
-            &self.ptr_to(&self.layout_of(&self.tcx.mk_str()).llvm_type(&self)));
+            &self.type_ptr_to(&self.layout_of(&self.tcx.mk_str()).llvm_type(&self)));
         &self.const_fat_ptr(cs, &self.const_usize(len as u64))
     }
 
@@ -505,7 +505,7 @@ pub fn shift_mask_val(
     mask_llty: &'ll Type,
     invert: bool
 ) -> &'ll Value {
-    let kind = bx.cx().kind(llty);
+    let kind = bx.cx().type_kind(llty);
     match kind {
         TypeKind::Integer => {
             // i8/u8 can shift by at most 7, i16/u16 by at most 15, etc.

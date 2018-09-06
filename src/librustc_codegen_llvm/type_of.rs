@@ -38,14 +38,14 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                 (cx.sess().target.target.arch == "x86" ||
                  cx.sess().target.target.arch == "x86_64");
             if use_x86_mmx {
-                return cx.x86_mmx()
+                return cx.type_x86_mmx()
             } else {
                 let element = layout.scalar_llvm_type_at(cx, element, Size::ZERO);
-                return cx.vector(element, count);
+                return cx.type_vector(element, count);
             }
         }
         layout::Abi::ScalarPair(..) => {
-            return cx.struct_( &[
+            return cx.type_struct( &[
                 layout.scalar_pair_element_llvm_type(cx, 0, false),
                 layout.scalar_pair_element_llvm_type(cx, 1, false),
             ], false);
@@ -80,30 +80,30 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
     match layout.fields {
         layout::FieldPlacement::Union(_) => {
-            let fill = cx.padding_filler( layout.size, layout.align);
+            let fill = cx.type_padding_filler( layout.size, layout.align);
             let packed = false;
             match name {
                 None => {
-                    cx.struct_( &[fill], packed)
+                    cx.type_struct( &[fill], packed)
                 }
                 Some(ref name) => {
-                    let llty = cx.named_struct( name);
+                    let llty = cx.type_named_struct( name);
                     cx.set_struct_body(llty, &[fill], packed);
                     llty
                 }
             }
         }
         layout::FieldPlacement::Array { count, .. } => {
-            cx.array(layout.field(cx, 0).llvm_type(cx), count)
+            cx.type_array(layout.field(cx, 0).llvm_type(cx), count)
         }
         layout::FieldPlacement::Arbitrary { .. } => {
             match name {
                 None => {
                     let (llfields, packed) = struct_llfields(cx, layout);
-                    cx.struct_( &llfields, packed)
+                    cx.type_struct( &llfields, packed)
                 }
                 Some(ref name) => {
-                    let llty = cx.named_struct( name);
+                    let llty = cx.type_named_struct( name);
                     *defer = Some((llty, layout));
                     llty
                 }
@@ -137,7 +137,7 @@ fn struct_llfields<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         let padding = target_offset - offset;
         let padding_align = prev_effective_align.min(effective_field_align);
         assert_eq!(offset.abi_align(padding_align) + padding, target_offset);
-        result.push(cx.padding_filler( padding, padding_align));
+        result.push(cx.type_padding_filler( padding, padding_align));
         debug!("    padding before: {:?}", padding);
 
         result.push(field.llvm_type(cx));
@@ -154,7 +154,7 @@ fn struct_llfields<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         assert_eq!(offset.abi_align(padding_align) + padding, layout.size);
         debug!("struct_llfields: pad_bytes: {:?} offset: {:?} stride: {:?}",
                padding, offset, layout.size);
-        result.push(cx.padding_filler(padding, padding_align));
+        result.push(cx.type_padding_filler(padding, padding_align));
         assert_eq!(result.len(), 1 + field_count * 2);
     } else {
         debug!("struct_llfields: offset: {:?} stride: {:?}",
@@ -256,10 +256,10 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
             let llty = match self.ty.sty {
                 ty::Ref(_, ty, _) |
                 ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
-                    cx.ptr_to(cx.layout_of(ty).llvm_type(cx))
+                    cx.type_ptr_to(cx.layout_of(ty).llvm_type(cx))
                 }
                 ty::Adt(def, _) if def.is_box() => {
-                    cx.ptr_to(cx.layout_of(self.ty.boxed_ty()).llvm_type(cx))
+                    cx.type_ptr_to(cx.layout_of(self.ty.boxed_ty()).llvm_type(cx))
                 }
                 ty::FnPtr(sig) => {
                     let sig = cx.tcx.normalize_erasing_late_bound_regions(
@@ -317,7 +317,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
     fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type {
         if let layout::Abi::Scalar(ref scalar) = self.abi {
             if scalar.is_bool() {
-                return cx.i1();
+                return cx.type_i1();
             }
         }
         self.llvm_type(cx)
@@ -326,17 +326,17 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
     fn scalar_llvm_type_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>,
                                scalar: &layout::Scalar, offset: Size) -> &'a Type {
         match scalar.value {
-            layout::Int(i, _) => cx.from_integer( i),
-            layout::Float(FloatTy::F32) => cx.f32(),
-            layout::Float(FloatTy::F64) => cx.f64(),
+            layout::Int(i, _) => cx.type_from_integer( i),
+            layout::Float(FloatTy::F32) => cx.type_f32(),
+            layout::Float(FloatTy::F64) => cx.type_f64(),
             layout::Pointer => {
                 // If we know the alignment, pick something better than i8.
                 let pointee = if let Some(pointee) = self.pointee_info_at(cx, offset) {
-                    cx.pointee_for_abi_align( pointee.align)
+                    cx.type_pointee_for_abi_align( pointee.align)
                 } else {
-                    cx.i8()
+                    cx.type_i8()
                 };
-                cx.ptr_to(pointee)
+                cx.type_ptr_to(pointee)
             }
         }
     }
@@ -370,7 +370,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         // when immediate.  We need to load/store `bool` as `i8` to avoid
         // crippling LLVM optimizations or triggering other LLVM bugs with `i1`.
         if immediate && scalar.is_bool() {
-            return cx.i1();
+            return cx.type_i1();
         }
 
         let offset = if index == 0 {

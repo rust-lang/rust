@@ -380,7 +380,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
                 } else {
                     "rust_eh_personality"
                 };
-                let fty = &self.variadic_func(&[], &self.i32());
+                let fty = &self.type_variadic_func(&[], &self.type_i32());
                 declare::declare_cfn(self, name, fty)
             }
         };
@@ -488,7 +488,7 @@ fn declare_intrinsic(
     macro_rules! ifn {
         ($name:expr, fn() -> $ret:expr) => (
             if key == $name {
-                let f = declare::declare_cfn(cx, $name, cx.func(&[], $ret));
+                let f = declare::declare_cfn(cx, $name, cx.type_func(&[], $ret));
                 llvm::SetUnnamedAddr(f, false);
                 cx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
@@ -496,7 +496,7 @@ fn declare_intrinsic(
         );
         ($name:expr, fn(...) -> $ret:expr) => (
             if key == $name {
-                let f = declare::declare_cfn(cx, $name, cx.variadic_func(&[], $ret));
+                let f = declare::declare_cfn(cx, $name, cx.type_variadic_func(&[], $ret));
                 llvm::SetUnnamedAddr(f, false);
                 cx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
@@ -504,7 +504,7 @@ fn declare_intrinsic(
         );
         ($name:expr, fn($($arg:expr),*) -> $ret:expr) => (
             if key == $name {
-                let f = declare::declare_cfn(cx, $name, cx.func(&[$($arg),*], $ret));
+                let f = declare::declare_cfn(cx, $name, cx.type_func(&[$($arg),*], $ret));
                 llvm::SetUnnamedAddr(f, false);
                 cx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
@@ -512,28 +512,28 @@ fn declare_intrinsic(
         );
     }
     macro_rules! mk_struct {
-        ($($field_ty:expr),*) => (cx.struct_( &[$($field_ty),*], false))
+        ($($field_ty:expr),*) => (cx.type_struct( &[$($field_ty),*], false))
     }
 
-    let i8p = cx.i8p();
-    let void = cx.void();
-    let i1 = cx.i1();
-    let t_i8 = cx.i8();
-    let t_i16 = cx.i16();
-    let t_i32 = cx.i32();
-    let t_i64 = cx.i64();
-    let t_i128 = cx.i128();
-    let t_f32 = cx.f32();
-    let t_f64 = cx.f64();
+    let i8p = cx.type_i8p();
+    let void = cx.type_void();
+    let i1 = cx.type_i1();
+    let t_i8 = cx.type_i8();
+    let t_i16 = cx.type_i16();
+    let t_i32 = cx.type_i32();
+    let t_i64 = cx.type_i64();
+    let t_i128 = cx.type_i128();
+    let t_f32 = cx.type_f32();
+    let t_f64 = cx.type_f64();
 
-    let t_v2f32 = cx.vector(t_f32, 2);
-    let t_v4f32 = cx.vector(t_f32, 4);
-    let t_v8f32 = cx.vector(t_f32, 8);
-    let t_v16f32 = cx.vector(t_f32, 16);
+    let t_v2f32 = cx.type_vector(t_f32, 2);
+    let t_v4f32 = cx.type_vector(t_f32, 4);
+    let t_v8f32 = cx.type_vector(t_f32, 8);
+    let t_v16f32 = cx.type_vector(t_f32, 16);
 
-    let t_v2f64 = cx.vector(t_f64, 2);
-    let t_v4f64 = cx.vector(t_f64, 4);
-    let t_v8f64 = cx.vector(t_f64, 8);
+    let t_v2f64 = cx.type_vector(t_f64, 2);
+    let t_v4f64 = cx.type_vector(t_f64, 4);
+    let t_v8f64 = cx.type_vector(t_f64, 8);
 
     ifn!("llvm.memset.p0i8.i16", fn(i8p, t_i8, t_i16, t_i32, i1) -> void);
     ifn!("llvm.memset.p0i8.i32", fn(i8p, t_i8, t_i32, t_i32, i1) -> void);
@@ -786,8 +786,8 @@ fn declare_intrinsic(
     ifn!("llvm.prefetch", fn(i8p, t_i32, t_i32, t_i32) -> void);
 
     if cx.sess().opts.debuginfo != DebugInfo::None {
-        ifn!("llvm.dbg.declare", fn(cx.metadata(), cx.metadata()) -> void);
-        ifn!("llvm.dbg.value", fn(cx.metadata(), t_i64, cx.metadata()) -> void);
+        ifn!("llvm.dbg.declare", fn(cx.type_metadata(), cx.type_metadata()) -> void);
+        ifn!("llvm.dbg.value", fn(cx.type_metadata(), t_i64, cx.type_metadata()) -> void);
     }
 
     None

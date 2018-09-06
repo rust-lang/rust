@@ -75,9 +75,9 @@ pub fn codegen_inline_asm(
     // Depending on how many outputs we have, the return type is different
     let num_outputs = output_types.len();
     let output_type = match num_outputs {
-        0 => bx.cx().void(),
+        0 => bx.cx().type_void(),
         1 => output_types[0],
-        _ => bx.cx().struct_(&output_types, false)
+        _ => bx.cx().type_struct(&output_types, false)
     };
 
     let asm = CString::new(ia.asm.as_str().as_bytes()).unwrap();
