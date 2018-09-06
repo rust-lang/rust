@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use borrow_check::nll::region_infer::RegionInferenceContext;
-use borrow_check::nll::ToRegionVid;
 use borrow_check::nll::universal_regions::DefiningTy;
+use borrow_check::nll::ToRegionVid;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
@@ -107,7 +107,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 } else {
                     None
                 }
-            },
+            }
 
             ty::ReStatic => Some(keywords::StaticLifetime.name().as_interned_str()),
 
@@ -115,15 +115,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 ty::BoundRegion::BrNamed(_, name) => {
                     self.highlight_named_span(tcx, error_region, &name, diag);
                     Some(name)
-                },
+                }
 
                 ty::BoundRegion::BrEnv => {
                     let mir_node_id = tcx.hir.as_local_node_id(mir_def_id).expect("non-local mir");
                     let def_ty = self.universal_regions.defining_ty;
 
                     if let DefiningTy::Closure(def_id, substs) = def_ty {
-                        let args_span = if let hir::ExprKind::Closure(_, _, _, span, _)
-                            = tcx.hir.expect_expr(mir_node_id).node
+                        let args_span = if let hir::ExprKind::Closure(_, _, _, span, _) =
+                            tcx.hir.expect_expr(mir_node_id).node
                         {
                             span
                         } else {
@@ -201,16 +201,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let node = tcx.hir.as_local_node_id(scope).unwrap_or(DUMMY_NODE_ID);
 
         let mut sp = cm.def_span(tcx.hir.span(node));
-        if let Some(param) = tcx.hir.get_generics(scope).and_then(|generics| {
-            generics.get_named(name)
-        }) {
+        if let Some(param) = tcx.hir
+            .get_generics(scope)
+            .and_then(|generics| generics.get_named(name))
+        {
             sp = param.span;
         }
 
-        diag.span_label(
-            sp,
-            format!("lifetime `{}` defined here", name),
-        );
+        diag.span_label(sp, format!("lifetime `{}` defined here", name));
     }
 
     /// Find an argument that contains `fr` and label it with a fully
@@ -248,14 +246,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return Some(region_name);
         }
 
-        self.give_name_if_we_cannot_match_hir_ty(
-            infcx,
-            mir,
-            fr,
-            arg_ty,
-            counter,
-            diag,
-        )
+        self.give_name_if_we_cannot_match_hir_ty(infcx, mir, fr, arg_ty, counter, diag)
     }
 
     fn give_name_if_we_can_match_hir_ty_from_argument(
@@ -320,8 +311,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             infcx.extract_type_name(&argument_ty)
         });
 
-        debug!("give_name_if_we_cannot_match_hir_ty: type_name={:?} needle_fr={:?}",
-               type_name, needle_fr);
+        debug!(
+            "give_name_if_we_cannot_match_hir_ty: type_name={:?} needle_fr={:?}",
+            type_name, needle_fr
+        );
         let assigned_region_name = if type_name.find(&format!("'{}", counter)).is_some() {
             // Only add a label if we can confirm that a region was labelled.
             let argument_index = self.get_argument_index_for_region(infcx.tcx, needle_fr)?;
@@ -553,13 +546,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         diag: &mut DiagnosticBuilder<'_>,
     ) -> Option<InternedString> {
         let upvar_index = self.get_upvar_index_for_region(tcx, fr)?;
-        let (upvar_name, upvar_span) = self.get_upvar_name_and_span_for_region(tcx, mir,
-                                                                               upvar_index);
+        let (upvar_name, upvar_span) =
+            self.get_upvar_name_and_span_for_region(tcx, mir, upvar_index);
         let region_name = self.synthesize_region_name(counter);
 
         diag.span_label(
             upvar_span,
-            format!("lifetime `{}` appears in the type of `{}`", region_name, upvar_name),
+            format!(
+                "lifetime `{}` appears in the type of `{}`",
+                region_name, upvar_name
+            ),
         );
 
         Some(region_name)
@@ -585,27 +581,33 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             "give_name_if_anonymous_region_appears_in_output: return_ty = {:?}",
             return_ty
         );
-        if !infcx.tcx.any_free_region_meets(&return_ty, |r| r.to_region_vid() == fr) {
+        if !infcx
+            .tcx
+            .any_free_region_meets(&return_ty, |r| r.to_region_vid() == fr)
+        {
             return None;
         }
 
-        let type_name = with_highlight_region(fr, *counter, || {
-            infcx.extract_type_name(&return_ty)
-        });
+        let type_name = with_highlight_region(fr, *counter, || infcx.extract_type_name(&return_ty));
 
         let mir_node_id = tcx.hir.as_local_node_id(mir_def_id).expect("non-local mir");
 
-        let (return_span, mir_description) = if let hir::ExprKind::Closure(_, _, _, span, gen_move)
-            = tcx.hir.expect_expr(mir_node_id).node
-        {
-            (
-                tcx.sess.source_map().end_point(span),
-                if gen_move.is_some() { " of generator" } else { " of closure" }
-            )
-        } else {
-            // unreachable?
-            (mir.span, "")
-        };
+        let (return_span, mir_description) =
+            if let hir::ExprKind::Closure(_, _, _, span, gen_move) =
+                tcx.hir.expect_expr(mir_node_id).node
+            {
+                (
+                    tcx.sess.source_map().end_point(span),
+                    if gen_move.is_some() {
+                        " of generator"
+                    } else {
+                        " of closure"
+                    },
+                )
+            } else {
+                // unreachable?
+                (mir.span, "")
+            };
 
         diag.span_label(
             return_span,
