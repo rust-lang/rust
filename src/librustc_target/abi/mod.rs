@@ -416,6 +416,24 @@ impl Align {
             pref_pow2: cmp::max(self.pref_pow2, other.pref_pow2),
         }
     }
+
+    /// Compute the best alignment possible for the given offset
+    /// (the largest power of two that the offset is a multiple of).
+    ///
+    /// NB: for an offset of `0`, this happens to return `2^64`.
+    pub fn max_for_offset(offset: Size) -> Align {
+        let pow2 = offset.bytes().trailing_zeros() as u8;
+        Align {
+            abi_pow2: pow2,
+            pref_pow2: pow2,
+        }
+    }
+
+    /// Lower the alignment, if necessary, such that the given offset
+    /// is aligned to it (the offset is a multiple of the aligment).
+    pub fn restrict_for_offset(self, offset: Size) -> Align {
+        self.min(Align::max_for_offset(offset))
+    }
 }
 
 /// Integers, also used for enum discriminants.

@@ -174,7 +174,10 @@ impl PlaceRef<'ll, 'tcx> {
         let cx = bx.cx;
         let field = self.layout.field(cx, ix);
         let offset = self.layout.fields.offset(ix);
-        let align = self.align.min(self.layout.align).min(field.align);
+        let effective_field_align = self.align
+            .min(self.layout.align)
+            .min(field.align)
+            .restrict_for_offset(offset);
 
         let simple = || {
             // Unions and newtypes only use an offset of 0.
@@ -196,7 +199,7 @@ impl PlaceRef<'ll, 'tcx> {
                     None
                 },
                 layout: field,
-                align,
+                align: effective_field_align,
             }
         };
 
@@ -269,7 +272,7 @@ impl PlaceRef<'ll, 'tcx> {
             llval: bx.pointercast(byte_ptr, ll_fty.ptr_to()),
             llextra: self.llextra,
             layout: field,
-            align,
+            align: effective_field_align,
         }
     }
 
