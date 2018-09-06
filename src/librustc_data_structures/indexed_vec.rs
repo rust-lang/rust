@@ -136,7 +136,7 @@ macro_rules! newtype_index {
                 ];
 
                 unsafe {
-                    $type::from_u32_unchecked(value)
+                    $type { private: value }
                 }
             }
 
@@ -153,13 +153,13 @@ macro_rules! newtype_index {
 
             /// Extract value of this index as a usize.
             #[inline]
-            $v const fn as_u32(self) -> u32 {
+            $v fn as_u32(self) -> u32 {
                 self.private
             }
 
             /// Extract value of this index as a u32.
             #[inline]
-            $v const fn as_usize(self) -> usize {
+            $v fn as_usize(self) -> usize {
                 self.as_u32() as usize
             }
         }
