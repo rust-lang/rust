@@ -423,16 +423,16 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                                       derives_in_scope: &[ast::Path], force: bool)
                                       -> Result<Def, Determinacy> {
         let ast::Path { ref segments, span } = *path;
-        let mut path: Vec<_> = segments.iter().map(|seg| seg.ident).collect();
+        let mut path: Vec<_> = segments.iter().map(|seg| (seg.ident, Some(seg.id))).collect();
         let invocation = self.invocations[&scope];
         let module = invocation.module.get();
         self.current_module = if module.is_trait() { module.parent.unwrap() } else { module };
 
         // Possibly apply the macro helper hack
         if kind == MacroKind::Bang && path.len() == 1 &&
-           path[0].span.ctxt().outer().expn_info().map_or(false, |info| info.local_inner_macros) {
-            let root = Ident::new(keywords::DollarCrate.name(), path[0].span);
-            path.insert(0, root);
+           path[0].0.span.ctxt().outer().expn_info().map_or(false, |info| info.local_inner_macros) {
+            let root = Ident::new(keywords::DollarCrate.name(), path[0].0.span);
+            path.insert(0, (root, None));
         }
 
         if path.len() > 1 {
@@ -457,16 +457,24 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     Err(Determinacy::Determined)
                 },
             };
-            self.current_module.nearest_item_scope().macro_resolutions.borrow_mut()
-                .push((path.into_boxed_slice(), span));
+            self.current_module
+                .nearest_item_scope()
+                .macro_resolutions
+                .borrow_mut()
+                .push((path
+                    .iter()
+                    .map(|(ident, _)| *ident)
+                    .collect::<Vec<Ident>>()
+                    .into_boxed_slice(), span));
             return def;
         }
 
-        let legacy_resolution = self.resolve_legacy_scope(&invocation.legacy_scope, path[0], false);
+        let legacy_resolution =
+            self.resolve_legacy_scope(&invocation.legacy_scope, path[0].0, false);
         let result = if let Some((legacy_binding, _)) = legacy_resolution {
             Ok(legacy_binding.def())
         } else {
-            match self.resolve_lexical_macro_path_segment(path[0], MacroNS, false, force,
+            match self.resolve_lexical_macro_path_segment(path[0].0, MacroNS, false, force,
                                                           kind == MacroKind::Attr, span) {
                 Ok((binding, _)) => Ok(binding.def_ignoring_ambiguity()),
                 Err(Determinacy::Undetermined) => return Err(Determinacy::Undetermined),
@@ -478,7 +486,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         };
 
         self.current_module.nearest_item_scope().legacy_macro_resolutions.borrow_mut()
-            .push((scope, path[0], kind, result.ok()));
+            .push((scope, path[0].0, kind, result.ok()));
 
         if let Ok(Def::NonMacroAttr(NonMacroAttrKind::Custom)) = result {} else {
             return result;
@@ -499,7 +507,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         for derive in derives_in_scope {
             match self.resolve_macro_path(derive, MacroKind::Derive, scope, &[], force) {
                 Ok(ext) => if let SyntaxExtension::ProcMacroDerive(_, ref inert_attrs, _) = *ext {
-                    if inert_attrs.contains(&path[0].name) {
+                    if inert_attrs.contains(&path[0].0.name) {
                         convert_to_derive_helper = ConvertToDeriveHelper::Yes;
                         break
                     }
@@ -811,6 +819,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     pub fn finalize_current_module_macro_resolutions(&mut self) {
         let module = self.current_module;
         for &(ref path, span) in module.macro_resolutions.borrow().iter() {
+            let path = path
+                .iter()
+                .map(|ident| (*ident, None))
+                .collect::<Vec<(Ident, Option<ast::NodeId>)>>();
             match self.resolve_path(None, &path, Some(MacroNS), true, span, CrateLint::No) {
                 PathResult::NonModule(_) => {},
                 PathResult::Failed(span, msg, _) => {
@@ -919,7 +931,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 }
             };
             let ident = Ident::new(Symbol::intern(name), span);
-            self.lookup_typo_candidate(&[ident], MacroNS, is_macro, span)
+            self.lookup_typo_candidate(&[(ident, None)], MacroNS, is_macro, span)
         });
 
         if let Some(suggestion) = suggestion {
