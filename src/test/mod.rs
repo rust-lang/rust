@@ -944,10 +944,21 @@ fn rustfmt() -> PathBuf {
     let mut me = env::current_exe().expect("failed to get current executable");
     me.pop(); // chop of the test name
     me.pop(); // chop off `deps`
+
+    // if we run `cargo test --release` we might only have a release build
+    if cfg!(release) {
+        // ../release/
+        me.pop();
+        me.push("release");
+    }
     me.push("rustfmt");
     assert!(
         me.is_file() || me.with_extension("exe").is_file(),
-        "no rustfmt bin, try running `cargo build` before testing"
+        if cfg!(release) {
+            "no rustfmt bin, try running `cargo build --release` before testing"
+        } else {
+            "no rustfmt bin, try running `cargo build` before testing"
+        }
     );
     me
 }
