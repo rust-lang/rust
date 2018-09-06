@@ -65,7 +65,7 @@ impl Edition {
     pub fn is_stable(&self) -> bool {
         match *self {
             Edition::Edition2015 => true,
-            Edition::Edition2018 => false,
+            Edition::Edition2018 => true,
         }
     }
 }
