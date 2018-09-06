@@ -2134,7 +2134,8 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         match def {
             Def::Variant(vid) | Def::VariantCtor(vid, ..) => self.variant_with_id(vid),
             Def::Struct(..) | Def::StructCtor(..) | Def::Union(..) |
-            Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) => self.non_enum_variant(),
+            Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) |
+            Def::SelfCtor(..) => self.non_enum_variant(),
             _ => bug!("unexpected def {:?} in variant_of_def", def)
         }
     }

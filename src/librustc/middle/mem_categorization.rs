@@ -708,7 +708,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         match def {
           Def::StructCtor(..) | Def::VariantCtor(..) | Def::Const(..) |
-          Def::AssociatedConst(..) | Def::Fn(..) | Def::Method(..) => {
+          Def::AssociatedConst(..) | Def::Fn(..) | Def::Method(..) | Def::SelfCtor(..) => {
                 Ok(self.cat_rvalue_node(hir_id, span, expr_ty))
           }
 
@@ -1288,7 +1288,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                     (self.cat_downcast_if_needed(pat, cmt, def_id),
                      self.tcx.adt_def(enum_def).variant_with_id(def_id).fields.len())
                 }
-                Def::StructCtor(_, CtorKind::Fn) => {
+                Def::StructCtor(_, CtorKind::Fn) | Def::SelfCtor(..) => {
                     match self.pat_ty_unadjusted(&pat)?.sty {
                         ty::Adt(adt_def, _) => {
                             (cmt, adt_def.non_enum_variant().fields.len())

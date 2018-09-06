@@ -93,7 +93,8 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name, visited: &mut FxHa
         // Assume that enum variants and struct types are re-exported next to
         // their constructors.
         Def::VariantCtor(..) |
-        Def::StructCtor(..) => return Some(Vec::new()),
+        Def::StructCtor(..) |
+        Def::SelfCtor(..) => return Some(Vec::new()),
         Def::Mod(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Module);
             clean::ModuleItem(build_module(cx, did, visited))

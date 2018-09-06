@@ -273,7 +273,8 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                             Def::VariantCtor(variant_id, CtorKind::Fn) => {
                                 Some((adt_def, adt_def.variant_index_with_id(variant_id)))
                             }
-                            Def::StructCtor(_, CtorKind::Fn) => Some((adt_def, 0)),
+                            Def::StructCtor(_, CtorKind::Fn) |
+                            Def::SelfCtor(..) => Some((adt_def, 0)),
                             _ => None,
                         }
                     })
@@ -759,6 +760,25 @@ fn user_annotated_ty_for_def(
                 sty => bug!("unexpected sty: {:?}", sty),
             },
 
+        // `Self` is used in expression as a tuple struct constructor or an unit struct constructor
+        Def::SelfCtor(_) => {
+            let sty = &cx.tables().node_id_to_type(hir_id).sty;
+            match sty {
+                ty::FnDef(ref def_id, _) => {
+                    Some(cx.tables().user_substs(hir_id)?.unchecked_map(|user_substs| {
+                        // Here, we just pair a `DefId` with the
+                        // `user_substs`, so no new types etc are introduced.
+                        cx.tcx().mk_fn_def(*def_id, user_substs)
+                    }))
+                }
+                ty::Adt(ref adt_def, _) => {
+                    user_annotated_ty_for_adt(cx, hir_id, adt_def)
+                }
+                _ => {
+                    bug!("unexpected sty: {:?}", sty)
+                }
+            }
+        }
         _ =>
             bug!("user_annotated_ty_for_def: unexpected def {:?} at {:?}", def, hir_id)
     }
@@ -857,7 +877,8 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         Def::Fn(_) |
         Def::Method(_) |
         Def::StructCtor(_, CtorKind::Fn) |
-        Def::VariantCtor(_, CtorKind::Fn) => {
+        Def::VariantCtor(_, CtorKind::Fn) |
+        Def::SelfCtor(..) => {
             let user_ty = user_annotated_ty_for_def(cx, expr.hir_id, &def);
             ExprKind::Literal {
                 literal: ty::Const::zero_sized(

@@ -585,7 +585,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                                                    CtorKind::from_ast(struct_def));
                     self.define(parent, ident, ValueNS, (ctor_def, ctor_vis, sp, expansion));
                     self.struct_constructors.insert(def.def_id(), (ctor_def, ctor_vis));
-                    self.tuple_structs.insert(def.def_id(), ctor_def);
                 }
             }
 
@@ -704,7 +703,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         self.cstore.def_key(def_id).parent
                             .map(|index| DefId { krate: def_id.krate, index: index }) {
                     self.struct_constructors.insert(struct_def_id, (def, vis));
-                    self.tuple_structs.insert(struct_def_id, def);
                 }
             }
             Def::Trait(..) => {

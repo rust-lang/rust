@@ -1,17 +1,17 @@
-# `tuple_struct_self_ctor`
+# `self_struct_ctor`
 
 The tracking issue for this feature is: [#51994]
 [#51994]: https://github.com/rust-lang/rust/issues/51994
 
 ------------------------
 
-The `tuple_struct_self_ctor` feature gate lets you use the special `Self`
+The `self_struct_ctor` feature gate lets you use the special `Self`
 identifier as a constructor and a pattern.
 
 A simple example is:
 
 ```rust
-#![feature(tuple_struct_self_ctor)]
+#![feature(self_struct_ctor)]
 
 struct ST(i32, i32);
 

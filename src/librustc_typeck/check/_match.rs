@@ -756,12 +756,13 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             }
             Def::VariantCtor(_, CtorKind::Const) |
             Def::StructCtor(_, CtorKind::Const) |
+            Def::SelfCtor(..) |
             Def::Const(..) | Def::AssociatedConst(..) => {} // OK
             _ => bug!("unexpected pattern definition: {:?}", def)
         }
 
         // Type check the path.
-        let pat_ty = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.id);
+        let pat_ty = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.id).0;
         self.demand_suptype(pat.span, expected, pat_ty);
         pat_ty
     }
@@ -791,6 +792,24 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
 
         // Resolve the path and check the definition for errors.
         let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(qpath, pat.id, pat.span);
+        if def == Def::Err {
+            self.set_tainted_by_errors();
+            on_error();
+            return self.tcx.types.err;
+        }
+
+        // Type check the path.
+        let (pat_ty, def) = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.id);
+        if !pat_ty.is_fn() {
+            report_unexpected_def(def);
+            return self.tcx.types.err;
+        }
+        // Replace constructor type with constructed type for tuple struct patterns.
+        let pat_ty = pat_ty.fn_sig(tcx).output();
+        let pat_ty = pat_ty.no_late_bound_regions().expect("expected fn type");
+
+        self.demand_eqtype(pat.span, expected, pat_ty);
+
         let variant = match def {
             Def::Err => {
                 self.set_tainted_by_errors();
@@ -807,15 +826,6 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             }
             _ => bug!("unexpected pattern definition: {:?}", def)
         };
-
-        // Type check the path.
-        let pat_ty = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.id);
-        // Replace constructor type with constructed type for tuple struct patterns.
-        let pat_ty = pat_ty.fn_sig(tcx).output();
-        let pat_ty = pat_ty.no_late_bound_regions().expect("expected fn type");
-
-        self.demand_eqtype(pat.span, expected, pat_ty);
-
         // Type check subpatterns.
         if subpats.len() == variant.fields.len() ||
                 subpats.len() < variant.fields.len() && ddpos.is_some() {

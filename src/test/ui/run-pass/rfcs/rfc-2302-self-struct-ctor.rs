@@ -1,14 +1,6 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+// run-pass
 
-#![feature(tuple_struct_self_ctor)]
+#![feature(self_struct_ctor)]
 
 #![allow(dead_code)]
 
@@ -83,6 +75,34 @@ impl ST5 {
     }
 }
 
+struct ST6(i32);
+type T = ST6;
+impl T {
+    fn ctor() -> Self {
+        ST6(1)
+    }
+
+    fn type_alias(self) {
+        let Self(_x) = match self { Self(x) => Self(x) };
+        let _opt: Option<Self> = Some(0).map(Self);
+    }
+}
+
+struct ST7<T1, T2>(T1, T2);
+
+impl ST7<i32, usize> {
+
+    fn ctor() -> Self {
+        Self(1, 2)
+    }
+
+    fn pattern(self) -> Self {
+        match self {
+            Self(x, y) => Self(x, y),
+        }
+    }
+}
+
 fn main() {
     let v1 = ST1::ctor();
     v1.pattern();
@@ -99,4 +119,11 @@ fn main() {
 
     let v5 = ST5::ctor();
     v5.pattern();
+
+    let v6 = ST6::ctor();
+    v6.type_alias();
+
+    let v7 = ST7::<i32, usize>::ctor();
+    let r = v7.pattern();
+    println!("{} {}", r.0, r.1)
 }

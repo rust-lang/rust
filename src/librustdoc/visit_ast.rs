@@ -371,7 +371,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
                 // struct and variant constructors always show up alongside their definitions, we've
                 // already processed them so just discard these.
                 match path.def {
-                    Def::StructCtor(..) | Def::VariantCtor(..) => return,
+                    Def::StructCtor(..) | Def::VariantCtor(..) | Def::SelfCtor(..) => return,
                     _ => {}
                 }
 
