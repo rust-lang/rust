@@ -573,16 +573,45 @@ mod issue_2496 {
 }
 
 mod issue_1219 {
-    // potential false positive for explicit_counter_loop
+    #[warn(clippy::explicit_counter_loop)]
     pub fn test() {
-        let thing = 5;
+        // should not trigger the lint, because of the continue statement
         let text = "banana";
         let mut count = 0;
         for ch in text.chars() {
             if ch == 'a' {
                 continue;
             }
-            count += 1
+            count += 1;
+        }
+        println!("{}", count);
+
+        // should trigger the lint
+        let text = "banana";
+        let mut count = 0;
+        for ch in text.chars() {
+            if ch == 'a' {
+                println!("abc")
+            }
+            count += 1;
+        }
+        println!("{}", count);
+
+        // should not trigger the lint
+        let text = "banana";
+        let mut count = 0;
+        for ch in text.chars() {
+            if ch == 'a' {
+                count += 1;
+            }
+        }
+        println!("{}", count);
+
+        // should trigger the lint
+        let text = "banana";
+        let mut count = 0;
+        for _ch in text.chars() {
+            count += 1;
         }
         println!("{}", count);
     }
