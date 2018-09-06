@@ -499,7 +499,7 @@ impl<'a> DiagnosticWrapper<'a> {
             self.0.help(&format!(
                 "for further information visit https://rust-lang-nursery.github.io/rust-clippy/v{}/index.html#{}",
                 env!("CARGO_PKG_VERSION"),
-                lint.name_lower()
+                lint.name_lower().replacen("clippy::", "", 1)
             ));
         }
     }
