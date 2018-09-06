@@ -45,7 +45,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             match projection {
                 ProjectionElem::Deref => {
                     if base_place.base == PlaceBase::Local(Local::new(1))
-                        && !self.mir.upvar_decls.is_empty() {
+                        && !self.mir.upvar_decls.is_empty()
+                    {
                         item_msg = format!("`{}`", access_place_desc.unwrap());
                         debug_assert!(self.mir.local_decls[Local::new(1)].ty.is_region_ptr());
                         debug_assert!(is_closure_or_generator(
@@ -59,8 +60,9 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         }
                     } else if {
                         if let PlaceBase::Local(local) = base_place.base {
-                            if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard))
-                            = self.mir.local_decls[local].is_user_variable {
+                            if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard)) =
+                                self.mir.local_decls[local].is_user_variable
+                            {
                                 true
                             } else {
                                 false
@@ -72,18 +74,21 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         item_msg = format!("`{}`", access_place_desc.unwrap());
                         reason = ", as it is immutable for the pattern guard".to_string();
                     } else {
-                        let pointer_type =
-                            if base_place.ty(self.mir, self.tcx).to_ty(self.tcx).is_region_ptr() {
-                                "`&` reference"
-                            } else {
-                                "`*const` pointer"
-                            };
+                        let pointer_type = if base_place
+                            .ty(self.mir, self.tcx)
+                            .to_ty(self.tcx)
+                            .is_region_ptr()
+                        {
+                            "`&` reference"
+                        } else {
+                            "`*const` pointer"
+                        };
                         if let Some(desc) = access_place_desc {
                             item_msg = format!("`{}`", desc);
                             reason = match error_access {
-                                AccessKind::Move |
-                                AccessKind::Mutate =>
-                                    format!(" which is behind a {}", pointer_type),
+                                AccessKind::Move | AccessKind::Mutate => {
+                                    format!(" which is behind a {}", pointer_type)
+                                }
                                 AccessKind::MutableBorrow => {
                                     format!(", as it is behind a {}", pointer_type)
                                 }
@@ -93,7 +98,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                             reason = "".to_string();
                         }
                     }
-                },
+                }
                 ProjectionElem::Field(upvar_index, _) => {
                     debug_assert!(is_closure_or_generator(
                         base_place.ty(self.mir, self.tcx).to_ty(self.tcx)
@@ -110,9 +115,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 ProjectionElem::Subslice { .. }
                 | ProjectionElem::Downcast(..)
                 | ProjectionElem::ConstantIndex { .. }
-                | ProjectionElem::Index(_) => {
-                    bug!("Unexpected immutable place.")
-                }
+                | ProjectionElem::Index(_) => bug!("Unexpected immutable place."),
             }
         } else {
             match the_place_err.base {
@@ -129,10 +132,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 }
                 PlaceBase::Static(box Static { def_id, ty: _ }) => {
                     if let PlaceBase::Static(_) = access_place.base {
-                        item_msg = format!(
-                            "immutable static item `{}`",
-                            access_place_desc.unwrap()
-                        );
+                        item_msg =
+                            format!("immutable static item `{}`", access_place_desc.unwrap());
                         reason = "".to_string();
                     } else {
                         item_msg = format!("`{}`", access_place_desc.unwrap());
@@ -151,14 +152,16 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
 
         let span = match error_access {
             AccessKind::Move => {
-                err = self.tcx
+                err = self
+                    .tcx
                     .cannot_move_out_of(span, &(item_msg + &reason), Origin::Mir);
                 act = "move";
                 acted_on = "moved";
                 span
             }
             AccessKind::Mutate => {
-                err = self.tcx
+                err = self
+                    .tcx
                     .cannot_assign(span, &(item_msg + &reason), Origin::Mir);
                 act = "assign";
                 acted_on = "written";
@@ -182,7 +185,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         "mutable borrow occurs due to use of `{}` in closure",
                         // always Some() if the message is printed.
                         self.describe_place(access_place).unwrap_or(String::new()),
-                    )
+                    ),
                 );
                 borrow_span
             }
@@ -197,9 +200,9 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                 err.span_label(span, format!("cannot {ACT}", ACT = act));
                                 err.note(
                                     "variables bound in patterns are \
-                                    immutable until the end of the pattern guard",
+                                     immutable until the end of the pattern guard",
                                 );
-                            },
+                            }
                             Some(_) => {
                                 // We want to point out when a `&` can be readily replaced
                                 // with an `&mut`.
@@ -207,19 +210,19 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                 // FIXME: can this case be generalized to work for an
                                 // arbitrary base for the projection?
                                 let local_decl = &self.mir.local_decls[local];
-                                let suggestion =
-                                    match local_decl.is_user_variable.as_ref().unwrap() {
+                                let suggestion = match local_decl.is_user_variable.as_ref().unwrap()
+                                {
                                     ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf) => {
                                         Some(suggest_ampmut_self(self.tcx, local_decl))
                                     }
 
-                                    ClearCrossCrate::Set(
-                                        mir::BindingForm::Var(
-                                            mir::VarBindingForm {
-                                                binding_mode: ty::BindingMode::BindByValue(_),
-                                                opt_ty_info,
-                                                ..
-                                            })) => Some(suggest_ampmut(
+                                    ClearCrossCrate::Set(mir::BindingForm::Var(
+                                        mir::VarBindingForm {
+                                            binding_mode: ty::BindingMode::BindByValue(_),
+                                            opt_ty_info,
+                                            ..
+                                        },
+                                    )) => Some(suggest_ampmut(
                                         self.tcx,
                                         self.mir,
                                         local,
@@ -227,23 +230,22 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                         *opt_ty_info,
                                     )),
 
-                                    ClearCrossCrate::Set(
-                                        mir::BindingForm::Var(
-                                            mir::VarBindingForm {
-                                                binding_mode: ty::BindingMode::BindByReference(_),
-                                                ..
-                                            })
-                                    ) => suggest_ref_mut(self.tcx, local_decl.source_info.span),
+                                    ClearCrossCrate::Set(mir::BindingForm::Var(
+                                        mir::VarBindingForm {
+                                            binding_mode: ty::BindingMode::BindByReference(_),
+                                            ..
+                                        },
+                                    )) => suggest_ref_mut(self.tcx, local_decl.source_info.span),
 
-                                    ClearCrossCrate::Set(
-                                        mir::BindingForm::RefForGuard
-                                    ) => unreachable!(),
+                                    ClearCrossCrate::Set(mir::BindingForm::RefForGuard) => {
+                                        unreachable!()
+                                    }
 
                                     ClearCrossCrate::Clear => bug!("saw cleared local state"),
                                 };
 
-                                let (pointer_sigil, pointer_desc) =
-                                    if local_decl.ty.is_region_ptr() {
+                                let (pointer_sigil, pointer_desc) = if local_decl.ty.is_region_ptr()
+                                {
                                     ("&", "reference")
                                 } else {
                                     ("*const", "pointer")
@@ -265,7 +267,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                         span,
                                         format!(
                                             "`{NAME}` is a `{SIGIL}` {DESC}, \
-                             so the data it refers to cannot be {ACTED_ON}",
+                                             so the data it refers to cannot be {ACTED_ON}",
                                             NAME = name,
                                             SIGIL = pointer_sigil,
                                             DESC = pointer_desc,
@@ -284,17 +286,17 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                     );
                                 }
                             }
-                            _ => {},
+                            _ => {}
                         }
                         if local == Local::new(1) && !self.mir.upvar_decls.is_empty() {
                             err.span_label(span, format!("cannot {ACT}", ACT = act));
                             err.span_help(
                                 self.mir.span,
-                                "consider changing this to accept closures that implement `FnMut`"
+                                "consider changing this to accept closures that implement `FnMut`",
                             );
                         }
                     }
-                },
+                }
                 ProjectionElem::Field(upvar_index, _) => {
                     // Suggest adding mut for upvars
                     debug_assert!(is_closure_or_generator(
@@ -314,16 +316,16 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                             upvar_ident,
                             _,
                         ) = pat.node
-                            {
-                                err.span_suggestion(
-                                    upvar_ident.span,
-                                    "consider changing this to be mutable",
-                                    format!("mut {}", upvar_ident.name),
-                                );
-                            }
+                        {
+                            err.span_suggestion(
+                                upvar_ident.span,
+                                "consider changing this to be mutable",
+                                format!("mut {}", upvar_ident.name),
+                            );
+                        }
                     }
                 }
-                _ => {},
+                _ => {}
             }
         } else if let PlaceBase::Local(local) = the_place_err.base {
             if self.mir.local_decls[local].can_be_made_mutable() {
@@ -367,10 +369,9 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     is_closure_or_generator(base_ty)
                 }
                 ProjectionElem::Deref => {
-                    if let (
-                        ref base_place,
-                        Some(ProjectionElem::Field(upvar_index, _)),
-                    ) = base_place.split_projection(self.tcx) {
+                    if let (ref base_place, Some(ProjectionElem::Field(upvar_index, _))) =
+                        base_place.split_projection(self.tcx)
+                    {
                         let base_ty = base_place.ty(self.mir, self.tcx).to_ty(self.tcx);
                         is_closure_or_generator(base_ty)
                             && self.mir.upvar_decls[upvar_index.index()].by_ref
@@ -391,17 +392,20 @@ fn suggest_ampmut_self<'cx, 'gcx, 'tcx>(
     local_decl: &mir::LocalDecl<'tcx>,
 ) -> (Span, String) {
     let sp = local_decl.source_info.span;
-    (sp, match tcx.sess.codemap().span_to_snippet(sp) {
-        Ok(snippet) => {
-            let lt_pos = snippet.find('\'');
-            if let Some(lt_pos) = lt_pos {
-                format!("&{}mut self", &snippet[lt_pos..snippet.len() - 4])
-            } else {
-                "&mut self".to_string()
+    (
+        sp,
+        match tcx.sess.codemap().span_to_snippet(sp) {
+            Ok(snippet) => {
+                let lt_pos = snippet.find('\'');
+                if let Some(lt_pos) = lt_pos {
+                    format!("&{}mut self", &snippet[lt_pos..snippet.len() - 4])
+                } else {
+                    "&mut self".to_string()
+                }
             }
-        }
-        _ => "&mut self".to_string()
-    })
+            _ => "&mut self".to_string(),
+        },
+    )
 }
 
 // When we want to suggest a user change a local variable to be a `&mut`, there
@@ -467,12 +471,14 @@ fn suggest_ampmut<'cx, 'gcx, 'tcx>(
 
     let ty_mut = local_decl.ty.builtin_deref(true).unwrap();
     assert_eq!(ty_mut.mutbl, hir::MutImmutable);
-    (highlight_span,
-     if local_decl.ty.is_region_ptr() {
-         format!("&mut {}", ty_mut.ty)
-     } else {
-         format!("*mut {}", ty_mut.ty)
-     })
+    (
+        highlight_span,
+        if local_decl.ty.is_region_ptr() {
+            format!("&mut {}", ty_mut.ty)
+        } else {
+            format!("*mut {}", ty_mut.ty)
+        },
+    )
 }
 
 fn is_closure_or_generator(ty: ty::Ty) -> bool {
