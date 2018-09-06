@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use test::Bencher;
+#![cfg(test)]
+ #![feature(test)] 
+extern crate test;
+use self::test::Bencher;
 
 // Static/dynamic method dispatch
 
@@ -29,7 +32,7 @@ impl Trait for Struct {
 #[bench]
 fn trait_vtable_method_call(b: &mut Bencher) {
     let s = Struct { field: 10 };
-    let t = &s as &Trait;
+    let t = &s as &dyn Trait;
     b.iter(|| {
         t.method()
     });

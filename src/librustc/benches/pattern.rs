@@ -8,7 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use test::Bencher;
+#![cfg(test)]
+#![feature(test)]
+#![feature(slice_patterns)]
+extern crate test;
+use self::test::Bencher;
 
 // Overhead of various match forms
 
