@@ -409,9 +409,6 @@ declare_features! (
     // Resolve absolute paths as paths from other crates
     (active, extern_absolute_paths, "1.24.0", Some(44660), Some(Edition::Edition2018)),
 
-    // `foo.rs` as an alternative to `foo/mod.rs`
-    (active, non_modrs_mods, "1.24.0", Some(44660), Some(Edition::Edition2018)),
-
     // `extern` in paths
     (active, extern_in_paths, "1.23.0", Some(44660), None),
 
@@ -661,6 +658,8 @@ declare_features! (
     (accepted, repr_transparent, "1.28.0", Some(43036), None),
     // Defining procedural macros in `proc-macro` crates
     (accepted, proc_macro, "1.29.0", Some(38356), None),
+    // `foo.rs` as an alternative to `foo/mod.rs`
+    (accepted, non_modrs_mods, "1.29.0", Some(44660), None),
     // Allows use of the :vis macro fragment specifier
     (accepted, macro_vis_matcher, "1.30.0", Some(41022), None),
     // Allows importing and reexporting macros with `use`,
