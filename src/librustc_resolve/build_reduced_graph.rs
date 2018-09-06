@@ -141,7 +141,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         let prefix_iter = || parent_prefix.iter().cloned()
             .chain(use_tree.prefix.segments.iter().map(|seg| seg.ident));
         let prefix_start = prefix_iter().next();
-        let starts_with_non_keyword = prefix_start.map_or(false, |ident| {
+        let starts_with_non_keyword = prefix_start.map_or(false, |(ident, _)| {
             !ident.is_path_segment_keyword()
         });
 
@@ -202,13 +202,13 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             let source = prefix_start.unwrap();
 
             // Helper closure to emit a canary with the given base path.
-            let emit = |this: &mut Self, base: Option<Ident>| {
+            let emit = |this: &mut Self, base: Option<(Ident, Option<NodeId>)>| {
                 let subclass = SingleImport {
                     target: Ident {
                         name: keywords::Underscore.name().gensymed(),
-                        span: source.span,
+                        span: source.0.span,
                     },
-                    source,
+                    source: source.0,
                     result: PerNS {
                         type_ns: Cell::new(Err(Undetermined)),
                         value_ns: Cell::new(Err(Undetermined)),
@@ -219,7 +219,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 this.add_import_directive(
                     base.into_iter().collect(),
                     subclass.clone(),
-                    source.span,
+                    source.0.span,
                     id,
                     root_use_tree.span,
                     root_id,
@@ -230,15 +230,15 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             };
 
             // A single simple `self::x` canary.
-            emit(self, Some(Ident {
+            emit(self, Some((Ident {
                 name: keywords::SelfValue.name(),
-                span: source.span,
-            }));
+                span: source.0.span,
+            }, source.1)));
 
             // One special unprefixed canary per block scope around
             // the import, to detect items unreachable by `self::x`.
             let orig_current_module = self.current_module;
-            let mut span = source.span.modern();
+            let mut span = source.0.span.modern();
             loop {
                 match self.current_module.kind {
                     ModuleKind::Block(..) => emit(self, None),
@@ -265,10 +265,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
                 if nested {
                     // Correctly handle `self`
-                    if source.name == keywords::SelfValue.name() {
+                    if source.0.name == keywords::SelfValue.name() {
                         type_ns_only = true;
 
-                        let empty_prefix = module_path.last().map_or(true, |ident| {
+                        let empty_prefix = module_path.last().map_or(true, |(ident, _)| {
                             ident.name == keywords::CrateRoot.name()
                         });
                         if empty_prefix {
@@ -284,20 +284,20 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         // Replace `use foo::self;` with `use foo;`
                         source = module_path.pop().unwrap();
                         if rename.is_none() {
-                            ident = source;
+                            ident = source.0;
                         }
                     }
                 } else {
                     // Disallow `self`
-                    if source.name == keywords::SelfValue.name() {
+                    if source.0.name == keywords::SelfValue.name() {
                         resolve_error(self,
                                       use_tree.span,
                                       ResolutionError::SelfImportsOnlyAllowedWithin);
                     }
 
                     // Disallow `use $crate;`
-                    if source.name == keywords::DollarCrate.name() && module_path.is_empty() {
-                        let crate_root = self.resolve_crate_root(source);
+                    if source.0.name == keywords::DollarCrate.name() && module_path.is_empty() {
+                        let crate_root = self.resolve_crate_root(source.0);
                         let crate_name = match crate_root.kind {
                             ModuleKind::Def(_, name) => name,
                             ModuleKind::Block(..) => unreachable!(),
@@ -307,11 +307,11 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         // while the current crate doesn't have a valid `crate_name`.
                         if crate_name != keywords::Invalid.name() {
                             // `crate_name` should not be interpreted as relative.
-                            module_path.push(Ident {
+                            module_path.push((Ident {
                                 name: keywords::CrateRoot.name(),
-                                span: source.span,
-                            });
-                            source.name = crate_name;
+                                span: source.0.span,
+                            }, Some(self.session.next_node_id())));
+                            source.0.name = crate_name;
                         }
                         if rename.is_none() {
                             ident.name = crate_name;
@@ -332,7 +332,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
                 let subclass = SingleImport {
                     target: ident,
-                    source,
+                    source: source.0,
                     result: PerNS {
                         type_ns: Cell::new(Err(Undetermined)),
                         value_ns: Cell::new(Err(Undetermined)),
@@ -393,6 +393,17 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 }
 
                 for &(ref tree, id) in items {
+                    let prefix = ast::Path {
+                        segments: module_path.iter()
+                            .map(|ident| {
+                                let mut seg = ast::PathSegment::from_ident(ident.0);
+                                seg.id = self.session.next_node_id();
+                                seg
+                            })
+                            .collect(),
+                        span: path.span,
+                    };
+
                     self.build_reduced_graph_for_use_tree(
                         root_use_tree,
                         root_id,

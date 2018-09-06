@@ -147,7 +147,7 @@ impl PathSegment {
     pub fn crate_root(span: Span) -> Self {
         PathSegment {
             ident: Ident::new(keywords::CrateRoot.name(), span),
-            id: CRATE_NODE_ID,
+            id: DUMMY_NODE_ID,
             args: None,
         }
     }
