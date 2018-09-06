@@ -68,9 +68,6 @@ extern crate tempfile;
 extern crate memmap;
 
 use back::bytecode::RLIB_BYTECODE_EXTENSION;
-use interfaces::{Backend, CommonWriteMethods};
-use value::Value;
-use type_::Type;
 
 pub use llvm_util::target_features;
 use std::any::Any;
@@ -346,14 +343,6 @@ struct ModuleLlvm<'ll> {
     phantom: PhantomData<&'ll ()>
 }
 
-impl<'ll> Backend for ModuleLlvm<'ll> {
-    type Value = &'ll Value;
-    type BasicBlock = &'ll llvm::BasicBlock;
-    type Type = &'ll Type;
-    type TypeKind = llvm::TypeKind;
-    type Context = &'ll llvm::Context;
-}
-
 unsafe impl Send for ModuleLlvm<'ll> { }
 unsafe impl Sync for ModuleLlvm<'ll> { }
 
@@ -376,25 +365,6 @@ impl ModuleLlvm<'ll> {
         unsafe {
             &*self.llmod_raw
         }
-    }
-}
-
-impl CommonWriteMethods for ModuleLlvm<'ll> {
-    fn val_ty(&self, v: &'ll Value) -> &'ll Type {
-        common::val_ty(v)
-    }
-
-    fn const_bytes_in_context(&self, llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
-        common::const_bytes_in_context(llcx, bytes)
-    }
-
-    fn const_struct_in_context(
-        &self,
-        llcx: &'a llvm::Context,
-        elts: &[&'a Value],
-        packed: bool,
-    ) -> &'a Value {
-        common::const_struct_in_context(llcx, elts, packed)
     }
 }
 

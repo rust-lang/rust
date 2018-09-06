@@ -74,7 +74,7 @@ use CrateInfo;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::sync::Lrc;
 
-use interfaces::{BuilderMethods, CommonMethods, CommonWriteMethods, TypeMethods};
+use interfaces::{BuilderMethods, ConstMethods, TypeMethods};
 
 use std::any::Any;
 use std::ffi::CString;
@@ -653,12 +653,12 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     DeflateEncoder::new(&mut compressed, Compression::fast())
         .write_all(&metadata.raw_data).unwrap();
 
-    let llmeta = llvm_module.const_bytes_in_context(metadata_llcx, &compressed);
-    let llconst = llvm_module.const_struct_in_context(metadata_llcx, &[llmeta], false);
+    let llmeta = common::bytes_in_context(metadata_llcx, &compressed);
+    let llconst = common::struct_in_context(metadata_llcx, &[llmeta], false);
     let name = exported_symbols::metadata_symbol_name(tcx);
     let buf = CString::new(name).unwrap();
     let llglobal = unsafe {
-        llvm::LLVMAddGlobal(metadata_llmod, llvm_module.val_ty(llconst), buf.as_ptr())
+        llvm::LLVMAddGlobal(metadata_llmod, common::val_ty(llconst), buf.as_ptr())
     };
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);

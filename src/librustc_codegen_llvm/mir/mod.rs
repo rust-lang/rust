@@ -23,7 +23,7 @@ use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebug
 use monomorphize::Instance;
 use abi::{ArgTypeExt, FnType, FnTypeExt, PassMode};
 use value::Value;
-use interfaces::{BuilderMethods, CommonMethods};
+use interfaces::{BuilderMethods, ConstMethods};
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
 use syntax::symbol::keywords;

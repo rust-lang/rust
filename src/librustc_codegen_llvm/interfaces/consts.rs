@@ -11,7 +11,7 @@
 use super::Backend;
 use syntax::symbol::LocalInternedString;
 
-pub trait CommonMethods : Backend + CommonWriteMethods {
+pub trait ConstMethods : Backend {
     // Constant constructors
     fn const_null(&self, t: Self::Type) -> Self::Value;
     fn const_undef(&self, t: Self::Type) -> Self::Value;
@@ -51,15 +51,4 @@ pub trait CommonMethods : Backend + CommonWriteMethods {
 
     fn is_const_integral(&self, v: Self::Value) -> bool;
     fn is_const_real(&self, v: Self::Value) -> bool;
-}
-
-pub trait CommonWriteMethods : Backend {
-        fn val_ty(&self, v: Self::Value) -> Self::Type;
-        fn const_bytes_in_context(&self, llcx: Self::Context, bytes: &[u8]) -> Self::Value;
-        fn const_struct_in_context(
-            &self,
-            llcx: Self::Context,
-            elts: &[Self::Value],
-            packed: bool,
-        ) -> Self::Value;
 }

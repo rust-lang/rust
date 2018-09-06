@@ -15,7 +15,7 @@ use builder::Builder;
 use value::Value;
 
 use rustc::hir;
-use interfaces::{BuilderMethods, CommonMethods, TypeMethods};
+use interfaces::{BuilderMethods, ConstMethods, TypeMethods};
 
 use mir::place::PlaceRef;
 use mir::operand::OperandValue;

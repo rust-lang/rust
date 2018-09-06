@@ -38,4 +38,6 @@ pub trait TypeMethods : Backend {
     fn func_params_types(&self, ty: Self::Type) -> Vec<Self::Type>;
     fn float_width(&self, ty: Self::Type) -> usize;
     fn int_width(&self, ty: Self::Type) -> u64;
+
+    fn val_ty(&self, v: Self::Value) -> Self::Type;
 }

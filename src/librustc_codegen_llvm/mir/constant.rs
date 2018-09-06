@@ -26,7 +26,7 @@ use type_::Type;
 use syntax::ast::Mutability;
 use syntax::source_map::Span;
 use value::Value;
-use interfaces::{BuilderMethods, CommonMethods, TypeMethods};
+use interfaces::{BuilderMethods, ConstMethods, TypeMethods};
 
 use super::super::callee;
 use super::FunctionCx;

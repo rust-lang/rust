@@ -19,7 +19,7 @@ use rustc::ty::TyCtxt;
 use rustc::ty::layout::{Align, Size};
 use rustc::session::{config, Session};
 use rustc_data_structures::small_c_str::SmallCStr;
-use interfaces::{BuilderMethods, Backend, CommonMethods, CommonWriteMethods, TypeMethods};
+use interfaces::{BuilderMethods, Backend, ConstMethods, TypeMethods};
 use syntax;
 
 use std::borrow::Cow;

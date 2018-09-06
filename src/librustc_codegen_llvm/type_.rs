@@ -22,7 +22,7 @@ use interfaces::TypeMethods;
 use syntax::ast;
 use rustc::ty::layout::{self, Align, Size};
 use rustc_data_structures::small_c_str::SmallCStr;
-use back::write;
+use common;
 
 use std::fmt;
 
@@ -187,9 +187,7 @@ impl TypeMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
     }
 
     fn type_ptr_to(&self, ty: &'ll Type) -> &'ll Type {
-        unsafe {
-            llvm::LLVMPointerType(ty, 0)
-        }
+        ty.ptr_to()
     }
 
     fn element_type(&self, ty: &'ll Type) -> &'ll Type {
@@ -231,6 +229,10 @@ impl TypeMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
             llvm::LLVMGetIntTypeWidth(ty) as u64
         }
     }
+
+    fn val_ty(&self, v: &'ll Value) -> &'ll Type {
+        common::val_ty(v)
+    }
 }
 
 impl Type {
@@ -250,8 +252,14 @@ impl Type {
         }
     }
 
-    pub fn i8p_llcx(cx : &write::CodegenContext<'ll>, llcx: &'ll llvm::Context) -> &'ll Type {
-        cx.type_ptr_to(Type::i8_llcx(llcx))
+    pub fn i8p_llcx(llcx: &'ll llvm::Context) -> &'ll Type {
+        Type::i8_llcx(llcx).ptr_to()
+    }
+
+    pub fn ptr_to(&self) -> &Type {
+        unsafe {
+            llvm::LLVMPointerType(&self, 0)
+        }
     }
 }
 
