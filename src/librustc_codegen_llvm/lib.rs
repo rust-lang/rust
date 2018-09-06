@@ -126,7 +126,10 @@ mod debuginfo;
 mod declare;
 mod glue;
 mod intrinsic;
-pub mod llvm;
+
+// The following is a work around that replaces `pub mod llvm;` and that fixes issue 53912.
+#[path = "llvm/mod.rs"] mod llvm_; pub mod llvm { pub use super::llvm_::*; }
+
 mod llvm_util;
 mod metadata;
 mod meth;
