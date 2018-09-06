@@ -26,4 +26,6 @@ fn main() {
     write!(&mut v, "\n\n");
     write!(&mut v, "like eof\n\n");
     write!(&mut v, "Hello {} {}\n\n", "world", "#2");
+    writeln!(&mut v, "\ndon't\nwarn\nfor\nmultiple\nnewlines\n"); // #3126
+    writeln!(&mut v, "\nbla\n\n"); // #3126
 }
