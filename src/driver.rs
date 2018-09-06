@@ -6,6 +6,7 @@
 
 use rustc_driver::{self, driver::CompileController, Compilation};
 use rustc_plugin;
+use std::path::Path;
 use std::process::{exit, Command};
 
 #[allow(clippy::print_stdout)]
@@ -47,7 +48,7 @@ pub fn main() {
         if orig_args.len() <= 1 {
             std::process::exit(1);
         }
-        if orig_args[1] == "rustc" {
+        if Path::new(&orig_args[1]).file_stem() == Some("rustc".as_ref()) {
             // we still want to be able to invoke it normally though
             orig_args.remove(1);
         }
