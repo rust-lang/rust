@@ -751,7 +751,7 @@ impl<T: ?Sized> AsMut<T> for Box<T> {
 
 /* Nota bene
  *
- *  We could have chosen not to add this impl, and instead have written a 
+ *  We could have chosen not to add this impl, and instead have written a
  *  function of Pin<Box<T>> to Pin<T>. Such a function would not be sound,
  *  because Box<T> implements Unpin even when T does not, as a result of
  *  this impl.
@@ -762,7 +762,7 @@ impl<T: ?Sized> AsMut<T> for Box<T> {
  *        standard library pointer types support projecting through a pin
  *        (Box<T> is the only pointer type in std for which this would be
  *        safe.)
- *      - It is in practive very useful to have Box<T> be unconditionally
+ *      - It is in practice very useful to have Box<T> be unconditionally
  *        Unpin because of trait objects, for which the structural auto
  *        trait functionality does not apply (e.g. Box<dyn Foo> would
  *        otherwise not be Unpin).
