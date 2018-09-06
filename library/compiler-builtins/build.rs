@@ -348,7 +348,7 @@ mod c {
             }
         }
 
-        if llvm_target[0] == "armv7" && target_env != "msvc" {
+        if llvm_target[0] == "armv7" /* XXX && target_env != "msvc" */ {
             sources.extend(
                 &[
                     "arm/sync_fetch_and_add_4.S",
