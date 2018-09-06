@@ -236,7 +236,8 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         if self.mode == Mode::Fn {
             if let PlaceBase::Local(index) = dest.base {
                 if self.mir.local_kind(index) == LocalKind::Temp
-                && self.temp_promotion_state[index].is_promotable() {
+                    && self.temp_promotion_state[index].is_promotable()
+                    && dest.has_no_projection() {
                     debug!("store to promotable temp {:?} ({:?})", index, qualif);
                     store(&mut self.local_qualif[index]);
                 }
@@ -249,6 +250,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                if let PlaceBase::Local(index) = dest.base {
                    if self.mir.local_kind(index) == LocalKind::Temp
                        && self.mir.local_decls[index].ty.is_box()
+                       && dest.elems.len() == 1
                        && self.local_qualif[index].map_or(false, |qualif| {
                        qualif.contains(Qualif::NOT_CONST)
                    }) {
@@ -717,9 +719,21 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 } else {
                     // We might have a candidate for promotion.
                     let candidate = Candidate::Ref(location);
+                    let mut tmp_place = place.clone();
+                    for (i, elem) in place.elems.iter().cloned().enumerate() {
+                        match elem {
+                            ProjectionElem::Deref => {
+                                break;
+                            }
+                            _ => {
+                                tmp_place = place.elem_base(self.tcx, i);
+                            }
+                        }
+                    }
 
-                    if let PlaceBase::Local(local) = place.base {
-                        if self.mir.local_kind(local) == LocalKind::Temp {
+                    if let PlaceBase::Local(local) = tmp_place.base {
+                        if self.mir.local_kind(local) == LocalKind::Temp
+                            && tmp_place.has_no_projection() {
                             if let Some(qualif) = self.local_qualif[local] {
                                 // `forbidden_mut` is false, so we can safely ignore
                                 // `MUTABLE_INTERIOR` from the local's qualifications.
@@ -729,18 +743,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                 if (qualif - Qualif::MUTABLE_INTERIOR).is_empty() {
                                     self.promotion_candidates.push(candidate);
                                 }
-                            }
-                        }
-                    }
-
-                    // We can only promote interior borrows of promotable temps.
-                    let mut place = place.clone();
-                    for (i, elem) in place.elems.iter().cloned().enumerate().rev() {
-                        match elem {
-                            ProjectionElem::Deref => break,
-                            _ => {
-                                place = place.elem_base(self.tcx, i);
-                                continue;
                             }
                         }
                     }
