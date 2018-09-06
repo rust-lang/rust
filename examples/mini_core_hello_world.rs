@@ -44,6 +44,9 @@ static NUM_REF: &'static u8 = unsafe { &NUM };
 fn main() {
     unsafe {
         let slice: &[u8] = b"Hello\0" as &[u8; 6];
+        if intrinsics::size_of_val(slice) as u8 != 0 {
+            panic(&("eji", "frjio", 0, 0));
+        };
         let ptr: *const u8 = slice as *const [u8] as *const u8;
         let world = box "World!\0";
         puts(ptr);

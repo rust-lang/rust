@@ -604,6 +604,18 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                     let size_of = CValue::const_val(fx, usize_layout.ty, size_of as i64);
                     ret.write_cvalue(fx, size_of);
                 }
+                "size_of_val" => {
+                    assert_eq!(args.len(), 1);
+                    let size = match &substs.type_at(0).sty {
+                        ty::Slice(elem) => {
+                            let len = args[0].load_value_pair(fx).1;
+                            let elem_size = fx.layout_of(elem).size.bytes();
+                            fx.bcx.ins().imul_imm(len, elem_size as i64)
+                        },
+                        ty => unimplemented!("size_of_val for {:?}", ty),
+                    };
+                    ret.write_cvalue(fx, CValue::ByVal(size, usize_layout));
+                }
                 "type_id" => {
                     assert_eq!(args.len(), 0);
                     let type_id = fx.tcx.type_id_hash(substs.type_at(0));
