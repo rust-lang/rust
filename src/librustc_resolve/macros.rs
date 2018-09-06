@@ -621,6 +621,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     );
                     self.current_module = orig_current_module;
                     binding.map(|binding| (binding, FromPrelude(false)))
+                        .map_err(|d| Determinacy::determined(d == Determinacy::Determined || force))
                 }
                 WhereToResolve::MacroPrelude => {
                     match self.macro_prelude.get(&ident.name).cloned() {
@@ -766,7 +767,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 Err(Determinacy::Determined) => {
                     continue_search!();
                 }
-                Err(Determinacy::Undetermined) => return Err(Determinacy::determined(force)),
+                Err(Determinacy::Undetermined) => return Err(Determinacy::Undetermined),
             }
         }
 
