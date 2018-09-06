@@ -24,7 +24,7 @@ use declare;
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
-use interfaces::{Backend, CommonMethods, CommonWriteMethods, TypeMethods};
+use interfaces::{Backend, ConstMethods, TypeMethods};
 
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{HasDataLayout, LayoutOf};
@@ -201,7 +201,7 @@ impl Backend for CodegenCx<'ll, 'tcx> {
     type Context = &'ll llvm::Context;
 }
 
-impl<'ll, 'tcx: 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx: 'll> ConstMethods for CodegenCx<'ll, 'tcx> {
 
     // LLVM constant constructors.
     fn const_null(&self, t: &'ll Type) -> &'ll Value {
@@ -319,7 +319,7 @@ impl<'ll, 'tcx: 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
         elts: &[&'ll Value],
         packed: bool
     ) -> &'ll Value {
-        &self.const_struct_in_context(&self.llcx, elts, packed)
+        struct_in_context(&self.llcx, elts, packed)
     }
 
     fn const_array(&self, ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
@@ -335,7 +335,7 @@ impl<'ll, 'tcx: 'll> CommonMethods for CodegenCx<'ll, 'tcx> {
     }
 
     fn const_bytes(&self, bytes: &[u8]) -> &'ll Value {
-        &self.const_bytes_in_context(&self.llcx, bytes)
+        bytes_in_context(&self.llcx, bytes)
     }
 
     fn const_get_elt(&self, v: &'ll Value, idx: u64) -> &'ll Value {
@@ -406,14 +406,14 @@ pub fn val_ty(v: &'ll Value) -> &'ll Type {
     }
 }
 
-pub fn const_bytes_in_context(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
+pub fn bytes_in_context(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
     unsafe {
         let ptr = bytes.as_ptr() as *const c_char;
         return llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True);
     }
 }
 
-pub fn const_struct_in_context(
+pub fn struct_in_context(
     llcx: &'a llvm::Context,
     elts: &[&'a Value],
     packed: bool,
@@ -424,26 +424,6 @@ pub fn const_struct_in_context(
                                        packed as Bool)
     }
 }
-
-impl<'ll, 'tcx: 'll> CommonWriteMethods for CodegenCx<'ll, 'tcx> {
-    fn val_ty(&self, v: &'ll Value) -> &'ll Type {
-        val_ty(v)
-    }
-
-    fn const_bytes_in_context(&self, llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
-        const_bytes_in_context(llcx, bytes)
-    }
-
-    fn const_struct_in_context(
-        &self,
-        llcx: &'a llvm::Context,
-        elts: &[&'a Value],
-        packed: bool,
-    ) -> &'a Value {
-        const_struct_in_context(llcx, elts, packed)
-    }
-}
-
 
 #[inline]
 fn hi_lo_to_u128(lo: u64, hi: u64) -> u128 {

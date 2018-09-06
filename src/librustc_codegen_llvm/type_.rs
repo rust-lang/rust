@@ -17,11 +17,12 @@ use llvm::{Bool, False, True, TypeKind};
 
 use context::CodegenCx;
 use interfaces::TypeMethods;
+use value::Value;
 
 use syntax::ast;
 use rustc::ty::layout::{self, Align, Size};
 use rustc_data_structures::small_c_str::SmallCStr;
-use back::write;
+use common;
 
 use std::fmt;
 
@@ -188,9 +189,7 @@ impl TypeMethods for CodegenCx<'ll, 'tcx> {
     fn type_ptr_to(&self, ty: &'ll Type) -> &'ll Type {
         assert_ne!(self.type_kind(ty), TypeKind::Function,
                    "don't call ptr_to on function types, use ptr_to_llvm_type on FnType instead");
-        unsafe {
-            llvm::LLVMPointerType(ty, 0)
-        }
+        ty.ptr_to()
     }
 
     fn element_type(&self, ty: &'ll Type) -> &'ll Type {
@@ -216,7 +215,7 @@ impl TypeMethods for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn float_width(&self, ty : &'ll Type) -> usize {
+    fn float_width(&self, ty: &'ll Type) -> usize {
         match self.type_kind(ty) {
             TypeKind::Float => 32,
             TypeKind::Double => 64,
@@ -231,6 +230,10 @@ impl TypeMethods for CodegenCx<'ll, 'tcx> {
         unsafe {
             llvm::LLVMGetIntTypeWidth(ty) as u64
         }
+    }
+
+    fn val_ty(&self, v: &'ll Value) -> &'ll Type {
+        common::val_ty(v)
     }
 }
 
@@ -251,8 +254,14 @@ impl Type {
         }
     }
 
-    pub fn i8p_llcx(cx : &write::CodegenContext<'ll>, llcx: &'ll llvm::Context) -> &'ll Type {
-        cx.type_ptr_to(Type::i8_llcx(llcx))
+    pub fn i8p_llcx(llcx: &'ll llvm::Context) -> &'ll Type {
+        Type::i8_llcx(llcx).ptr_to()
+    }
+
+    fn ptr_to(&self) -> &Type {
+        unsafe {
+            llvm::LLVMPointerType(&self, 0)
+        }
     }
 }
 

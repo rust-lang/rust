@@ -18,7 +18,7 @@ use super::namespace::mangled_name_of_instance;
 use super::type_names::compute_debuginfo_type_name;
 use super::{CrateDebugContext};
 use abi;
-use interfaces::CommonMethods;
+use interfaces::ConstMethods;
 use value::Value;
 
 use llvm;

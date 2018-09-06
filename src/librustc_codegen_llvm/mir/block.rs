@@ -26,7 +26,7 @@ use type_of::LayoutLlvmExt;
 use type_::Type;
 use value::Value;
 
-use interfaces::{BuilderMethods, CommonMethods, TypeMethods};
+use interfaces::{BuilderMethods, ConstMethods, TypeMethods};
 
 use syntax::symbol::Symbol;
 use syntax_pos::Pos;

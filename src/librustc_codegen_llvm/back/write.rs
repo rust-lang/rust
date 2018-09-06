@@ -49,7 +49,6 @@ use context::{is_pie_binary, get_reloc_model};
 use common;
 use jobserver::{Client, Acquired};
 use rustc_demangle;
-use value::Value;
 use std::marker::PhantomData;
 
 use std::any::Any;
@@ -427,24 +426,6 @@ impl CodegenContext<'ll> {
         }
     }
 }
-
-
-impl CodegenContext<'ll> {
-    fn val_ty(&self, v: &'ll Value) -> &'ll Type {
-        common::val_ty(v)
-    }
-
-    fn const_bytes_in_context(&self, llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
-        common::const_bytes_in_context(llcx, bytes)
-    }
-
-    pub fn type_ptr_to(&self, ty: &'ll Type) -> &'ll Type {
-        unsafe {
-            llvm::LLVMPointerType(ty, 0)
-        }
-    }
-}
-
 
 pub struct DiagnosticHandlers<'a> {
     data: *mut (&'a CodegenContext<'a>, &'a Handler),
@@ -907,10 +888,10 @@ unsafe fn embed_bitcode(cgcx: &CodegenContext,
                         llcx: &llvm::Context,
                         llmod: &llvm::Module,
                         bitcode: Option<&[u8]>) {
-    let llconst = cgcx.const_bytes_in_context(llcx, bitcode.unwrap_or(&[]));
+    let llconst = common::bytes_in_context(llcx, bitcode.unwrap_or(&[]));
     let llglobal = llvm::LLVMAddGlobal(
         llmod,
-        cgcx.val_ty(llconst),
+        common::val_ty(llconst),
         "rustc.embedded.module\0".as_ptr() as *const _,
     );
     llvm::LLVMSetInitializer(llglobal, llconst);
@@ -927,10 +908,10 @@ unsafe fn embed_bitcode(cgcx: &CodegenContext,
     llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
     llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
 
-    let llconst = cgcx.const_bytes_in_context(llcx, &[]);
+    let llconst = common::bytes_in_context(llcx, &[]);
     let llglobal = llvm::LLVMAddGlobal(
         llmod,
-        cgcx.val_ty(llconst),
+        common::val_ty(llconst),
         "rustc.embedded.cmdline\0".as_ptr() as *const _,
     );
     llvm::LLVMSetInitializer(llglobal, llconst);
@@ -2598,7 +2579,7 @@ fn create_msvc_imps(cgcx: &CodegenContext, llcx: &llvm::Context, llmod: &llvm::M
         "\x01__imp_"
     };
     unsafe {
-        let i8p_ty = Type::i8p_llcx(cgcx, llcx);
+        let i8p_ty = Type::i8p_llcx(llcx);
         let globals = base::iter_globals(llmod)
             .filter(|&val| {
                 llvm::LLVMRustGetLinkage(val) == llvm::Linkage::ExternalLinkage &&

@@ -10,7 +10,7 @@
 
 use super::backend::Backend;
 
-pub trait TypeMethods : Backend {
+pub trait TypeMethods: Backend {
     fn type_void(&self) -> Self::Type;
     fn type_metadata(&self) -> Self::Type;
     fn type_i1(&self) -> Self::Type;
@@ -38,4 +38,6 @@ pub trait TypeMethods : Backend {
     fn func_params_types(&self, ty: Self::Type) -> Vec<Self::Type>;
     fn float_width(&self, ty: Self::Type) -> usize;
     fn int_width(&self, ty: Self::Type) -> u64;
+
+    fn val_ty(&self, v: Self::Value) -> Self::Type;
 }

@@ -13,7 +13,7 @@ use std::fmt::Debug;
 pub trait Backend {
     type Value: Debug + PartialEq;
     type BasicBlock;
-    type Type : Debug + PartialEq;
+    type Type: Debug + PartialEq;
     type TypeKind;
     type Context;
 }
