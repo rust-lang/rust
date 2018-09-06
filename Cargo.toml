@@ -38,11 +38,6 @@ name = "clippy-driver"
 test = false
 path = "src/driver.rs"
 
-[[bin]]
-name = "clippy-dev"
-test = false
-path = "src/main.rs"
-
 [dependencies]
 # begin automatic update
 clippy_lints = { version = "0.0.212", path = "clippy_lints" }
