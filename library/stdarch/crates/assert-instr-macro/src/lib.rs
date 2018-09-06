@@ -12,7 +12,6 @@ extern crate proc_macro;
 extern crate proc_macro2;
 #[macro_use]
 extern crate quote;
-#[macro_use]
 extern crate syn;
 
 use proc_macro2::TokenStream;
@@ -150,25 +149,23 @@ struct Invoc {
     args: Vec<(syn::Ident, syn::Expr)>,
 }
 
-impl syn::synom::Synom for Invoc {
-    named!(parse -> Self, do_parse!(
-        instr: alt!(
-            map!(syn!(syn::Ident), |s| s.to_string())
-            |
-            map!(syn!(syn::LitStr), |s| s.value())
-        ) >>
-        args: many0!(do_parse!(
-            syn!(syn::token::Comma) >>
-            name: syn!(syn::Ident) >>
-            syn!(syn::token::Eq) >>
-            expr: syn!(syn::Expr) >>
-            (name, expr)
-        )) >>
-        (Invoc {
-            instr,
-            args,
-        })
-    ));
+impl syn::parse::Parse for Invoc {
+    fn parse(input: syn::parse::ParseStream) -> syn::parse::Result<Self> {
+        use syn::Token;
+
+        let instr = match input.parse::<syn::Ident>() {
+            Ok(s) => s.to_string(),
+            Err(_) => input.parse::<syn::LitStr>()?.value(),
+        };
+        let mut args = Vec::new();
+        while input.parse::<Token![,]>().is_ok() {
+            let name = input.parse::<syn::Ident>()?;
+            input.parse::<Token![=]>()?;
+            let expr = input.parse::<syn::Expr>()?;
+            args.push((name, expr));
+        }
+        Ok(Invoc { instr, args })
+    }
 }
 
 struct Append<T>(T);

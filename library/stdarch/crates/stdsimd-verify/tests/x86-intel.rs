@@ -1,4 +1,3 @@
-#![feature(use_extern_macros)]
 #![allow(bad_style)]
 #![cfg_attr(
     feature = "cargo-clippy",

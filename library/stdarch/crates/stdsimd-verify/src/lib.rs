@@ -242,15 +242,16 @@ struct RustcArgsRequiredConst {
     args: Vec<usize>,
 }
 
-impl syn::synom::Synom for RustcArgsRequiredConst {
-    named!(parse -> Self, do_parse!(
-        items: parens!(
-            call!(syn::punctuated::Punctuated::<syn::LitInt, syn::token::Comma>::parse_terminated)
-        ) >>
-        (RustcArgsRequiredConst {
-            args: items.1.into_iter()
+impl syn::parse::Parse for RustcArgsRequiredConst {
+    fn parse(input: syn::parse::ParseStream) -> syn::parse::Result<Self> {
+        let content;
+        parenthesized!(content in input);
+        let list = syn::punctuated::Punctuated::<syn::LitInt, Token![,]>
+            ::parse_terminated(&content)?;
+        Ok(RustcArgsRequiredConst {
+            args: list.into_iter()
                 .map(|a| a.value() as usize)
                 .collect(),
         })
-    ));
+    }
 }
