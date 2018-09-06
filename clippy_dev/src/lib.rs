@@ -58,10 +58,10 @@ impl Lint {
 }
 
 pub fn gather_all() -> impl Iterator<Item=Lint> {
-    lint_files().flat_map(gather_from_file)
+    lint_files().flat_map(|f| gather_from_file(&f))
 }
 
-fn gather_from_file(dir_entry: fs::DirEntry) -> impl Iterator<Item=Lint> {
+fn gather_from_file(dir_entry: &fs::DirEntry) -> impl Iterator<Item=Lint> {
     let mut file = fs::File::open(dir_entry.path()).unwrap();
     let mut content = String::new();
     file.read_to_string(&mut content).unwrap();
