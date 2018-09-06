@@ -210,17 +210,19 @@ impl MirPass for RestoreSubsliceArrayMoveOut {
                         let items : Vec<_> = items.iter().map(|item| {
                             if let Operand::Move(place) = item {
                                 if let PlaceBase::Local(local) = place.base {
-                                    let local_use = &visitor.locals_use[local];
-                                    let opt_index_and_place = Self::try_get_item_source(
-                                        tcx,
-                                        local_use,
-                                        mir
-                                    );
-                                    // each local should be used twice:
-                                    //  in assign and in aggregate statments
-                                    if local_use.use_count == 2 && opt_index_and_place.is_some() {
-                                        let (index, src_place) = opt_index_and_place.unwrap();
-                                        return Some((local_use, index, src_place));
+                                    if place.has_no_projection() {
+                                        let local_use = &visitor.locals_use[local];
+                                        let opt_index_and_place = Self::try_get_item_source(
+                                            tcx,
+                                            local_use,
+                                            mir
+                                        );
+                                        // each local should be used twice:
+                                        //  in assign and in aggregate statments
+                                        if local_use.use_count == 2 && opt_index_and_place.is_some() {
+                                            let (index, src_place) = opt_index_and_place.unwrap();
+                                            return Some((local_use, index, src_place));
+                                        }
                                     }
                                 }
                             }
