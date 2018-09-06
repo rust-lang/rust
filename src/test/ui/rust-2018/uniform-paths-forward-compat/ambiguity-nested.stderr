@@ -1,0 +1,16 @@
+error: `std` import is ambiguous
+  --> $DIR/ambiguity-nested.rs:16:13
+   |
+LL |       pub use std::io;
+   |               ^^^ can refer to external crate `::std`
+...
+LL | /     mod std {
+LL | |         pub struct io;
+LL | |     }
+   | |_____- may refer to `self::std` in the future
+   |
+   = help: write `::std` or `self::std` explicitly instead
+   = note: in the future, `#![feature(uniform_paths)]` may become the default
+
+error: aborting due to previous error
+
