@@ -132,23 +132,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let r_ty = substs.type_at(0);
                 let r_layout_of = self.layout_of(r_ty)?;
                 let r_val =  r.to_scalar()?.to_bits(r_layout_of.size)?;
+                if r_val >= bits {
+                    return err!(Intrinsic(
+                        format!("Overflowing shift by {} in {}", r_val, intrinsic_name),
+                    ));
+                }
                 let bin_op = match intrinsic_name {
-                    "unchecked_shl" => {
-                        if r_val >= bits {
-                            return err!(Intrinsic(
-                                format!("Overflowing shift by {} in unchecked_shl", r_val),
-                            ));
-                        }
-                        BinOp::Shl
-                    },
-                    "unchecked_shr" => {
-                        if r_val >= bits {
-                            return err!(Intrinsic(
-                                format!("Overflowing shift by {} in unchecked_shr", r_val),
-                            ));
-                        }
-                        BinOp::Shr
-                    },
+                    "unchecked_shl" => BinOp::Shl,
+                    "unchecked_shr" => BinOp::Shr,
                     _ => bug!("Already checked for int ops")
                 };
                 self.binop_ignore_overflow(bin_op, l, r, dest)?;
