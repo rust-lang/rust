@@ -1,10 +1,10 @@
+use crate::utils::{snippet, span_lint, span_lint_and_sugg};
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
-use syntax::ast::*;
-use syntax::tokenstream::{ThinTokenStream, TokenStream};
-use syntax::parse::{token, parser};
 use std::borrow::Cow;
-use crate::utils::{span_lint, span_lint_and_sugg, snippet};
+use syntax::ast::*;
+use syntax::parse::{parser, token};
+use syntax::tokenstream::{ThinTokenStream, TokenStream};
 
 /// **What it does:** This lint warns when you use `println!("")` to
 /// print a newline.
@@ -196,24 +196,34 @@ impl EarlyLintPass for Pass {
             span_lint(cx, PRINT_STDOUT, mac.span, "use of `print!`");
             if let Some(fmtstr) = check_tts(cx, &mac.node.tts, false).0 {
                 if fmtstr.ends_with("\\n") && !fmtstr.ends_with("\\n\\n") {
-                    span_lint(cx, PRINT_WITH_NEWLINE, mac.span,
-                            "using `print!()` with a format string that ends in a \
-                            single newline, consider using `println!()` instead");
+                    span_lint(
+                        cx,
+                        PRINT_WITH_NEWLINE,
+                        mac.span,
+                        "using `print!()` with a format string that ends in a \
+                         single newline, consider using `println!()` instead",
+                    );
                 }
             }
         } else if mac.node.path == "write" {
             if let Some(fmtstr) = check_tts(cx, &mac.node.tts, true).0 {
                 if fmtstr.ends_with("\\n") && !fmtstr.ends_with("\\n\\n") {
-                    span_lint(cx, WRITE_WITH_NEWLINE, mac.span,
-                            "using `write!()` with a format string that ends in a \
-                            single newline, consider using `writeln!()` instead");
+                    span_lint(
+                        cx,
+                        WRITE_WITH_NEWLINE,
+                        mac.span,
+                        "using `write!()` with a format string that ends in a \
+                         single newline, consider using `writeln!()` instead",
+                    );
                 }
             }
         } else if mac.node.path == "writeln" {
             let check_tts = check_tts(cx, &mac.node.tts, true);
             if let Some(fmtstr) = check_tts.0 {
                 if fmtstr == "" {
-                    let suggestion = check_tts.1.map_or(Cow::Borrowed("v"), |expr| snippet(cx, expr.span, "v"));
+                    let suggestion = check_tts
+                        .1
+                        .map_or(Cow::Borrowed("v"), |expr| snippet(cx, expr.span, "v"));
 
                     span_lint_and_sugg(
                         cx,
@@ -231,13 +241,7 @@ impl EarlyLintPass for Pass {
 
 fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -> (Option<String>, Option<Expr>) {
     let tts = TokenStream::from(tts.clone());
-    let mut parser = parser::Parser::new(
-        &cx.sess.parse_sess,
-        tts,
-        None,
-        false,
-        false,
-    );
+    let mut parser = parser::Parser::new(&cx.sess.parse_sess, tts, None, false, false);
     let mut expr: Option<Expr> = None;
     if is_write {
         expr = match parser.parse_expr().map_err(|mut err| err.cancel()) {
@@ -270,11 +274,7 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
             args.push(arg);
         }
     }
-    let lint = if is_write {
-        WRITE_LITERAL
-    } else {
-        PRINT_LITERAL
-    };
+    let lint = if is_write { WRITE_LITERAL } else { PRINT_LITERAL };
     let mut idx = 0;
     loop {
         if !parser.eat(&token::Comma) {
@@ -299,9 +299,7 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
                 let mut seen = false;
                 for arg in &args {
                     match arg.position {
-                        | ArgumentImplicitlyIs(n)
-                        | ArgumentIs(n)
-                        => if n == idx {
+                        ArgumentImplicitlyIs(n) | ArgumentIs(n) => if n == idx {
                             all_simple &= arg.format == SIMPLE;
                             seen = true;
                         },
@@ -320,9 +318,7 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
                         let mut seen = false;
                         for arg in &args {
                             match arg.position {
-                                | ArgumentImplicitlyIs(_)
-                                | ArgumentIs(_)
-                                => {},
+                                ArgumentImplicitlyIs(_) | ArgumentIs(_) => {},
                                 ArgumentNamed(name) => if *p == name {
                                     seen = true;
                                     all_simple &= arg.format == SIMPLE;
