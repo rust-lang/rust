@@ -155,6 +155,7 @@ impl<'a> DigitInfo<'a> {
             (Some(p), s)
         };
 
+        let len = sans_prefix.len();
         let mut last_d = '\0';
         for (d_idx, d) in sans_prefix.char_indices() {
             let suffix_start = if last_d == '_' {
@@ -162,10 +163,10 @@ impl<'a> DigitInfo<'a> {
             } else {
                 d_idx
             };
-            let (digits, suffix) = sans_prefix.split_at(suffix_start);
             if !float && (d == 'i' || d == 'u') ||
                 float && (d == 'f' || d == 'e' || d == 'E') ||
-                !float && is_mistyped_suffix(suffix) {
+                !float && is_possible_suffix_index(&sans_prefix, suffix_start, len) {
+                    let (digits, suffix) = sans_prefix.split_at(suffix_start);
                     return Self {
                         digits,
                         radix,
@@ -556,4 +557,9 @@ impl LiteralRepresentation {
 
 fn is_mistyped_suffix(suffix: &str) -> bool {
     ["_8", "_16", "_32", "_64"].contains(&suffix)
+}
+
+fn is_possible_suffix_index(lit: &str, idx: usize, len: usize) -> bool {
+    ((len > 3 && idx == len - 3) || (len > 2 && idx == len - 2)) &&
+        is_mistyped_suffix(lit.split_at(idx).1)
 }
