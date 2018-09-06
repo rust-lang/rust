@@ -112,16 +112,16 @@ pub trait LlvmType {
 impl LlvmType for Reg {
     fn llvm_type(&self, cx: &CodegenCx<'ll, '_, &'ll Value>) -> &'ll Type {
         match self.kind {
-            RegKind::Integer => cx.ix(self.size.bits()),
+            RegKind::Integer => cx.type_ix(self.size.bits()),
             RegKind::Float => {
                 match self.size.bits() {
-                    32 => cx.f32(),
-                    64 => cx.f64(),
+                    32 => cx.type_f32(),
+                    64 => cx.type_f64(),
                     _ => bug!("unsupported float: {:?}", self)
                 }
             }
             RegKind::Vector => {
-                cx.vector(cx.i8(), self.size.bytes())
+                cx.type_vector(cx.type_i8(), self.size.bytes())
             }
         }
     }
@@ -145,7 +145,7 @@ impl LlvmType for CastTarget {
 
             // Simplify to array when all chunks are the same size and type
             if rem_bytes == 0 {
-                return cx.array(rest_ll_unit, rest_count);
+                return cx.type_array(rest_ll_unit, rest_count);
             }
         }
 
@@ -160,10 +160,10 @@ impl LlvmType for CastTarget {
         if rem_bytes != 0 {
             // Only integers can be really split further.
             assert_eq!(self.rest.unit.kind, RegKind::Integer);
-            args.push(cx.ix(rem_bytes * 8));
+            args.push(cx.type_ix(rem_bytes * 8));
         }
 
-        cx.struct_(&args, false)
+        cx.type_struct(&args, false)
     }
 }
 
@@ -212,7 +212,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
             // uses it for i16 -> {i8, i8}, but not for i24 -> {i8, i8, i8}.
             let can_store_through_cast_ptr = false;
             if can_store_through_cast_ptr {
-                let cast_dst = bx.pointercast(dst.llval, cx.ptr_to(cast.llvm_type(cx)));
+                let cast_dst = bx.pointercast(dst.llval, cx.type_ptr_to(cast.llvm_type(cx)));
                 bx.store(val, cast_dst, self.layout.align);
             } else {
                 // The actual return type is a struct, but the ABI
@@ -240,8 +240,8 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
 
                 // ...and then memcpy it to the intended destination.
                 base::call_memcpy(bx,
-                                  bx.pointercast(dst.llval, cx.i8p()),
-                                  bx.pointercast(llscratch, cx.i8p()),
+                                  bx.pointercast(dst.llval, cx.type_i8p()),
+                                  bx.pointercast(llscratch, cx.type_i8p()),
                                   cx.const_usize(self.layout.size.bytes()),
                                   self.layout.align.min(scratch_align),
                                   MemFlags::empty());
@@ -606,14 +606,14 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         );
 
         let llreturn_ty = match self.ret.mode {
-            PassMode::Ignore => cx.void(),
+            PassMode::Ignore => cx.type_void(),
             PassMode::Direct(_) | PassMode::Pair(..) => {
                 self.ret.layout.immediate_llvm_type(cx)
             }
             PassMode::Cast(cast) => cast.llvm_type(cx),
             PassMode::Indirect(..) => {
-                llargument_tys.push(cx.ptr_to(self.ret.memory_ty(cx)));
-                cx.void()
+                llargument_tys.push(cx.type_ptr_to(self.ret.memory_ty(cx)));
+                cx.type_void()
             }
         };
 
@@ -639,15 +639,15 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                     continue;
                 }
                 PassMode::Cast(cast) => cast.llvm_type(cx),
-                PassMode::Indirect(_, None) => cx.ptr_to(arg.memory_ty(cx)),
+                PassMode::Indirect(_, None) => cx.type_ptr_to(arg.memory_ty(cx)),
             };
             llargument_tys.push(llarg_ty);
         }
 
         if self.variadic {
-            cx.variadic_func(&llargument_tys, llreturn_ty)
+            cx.type_variadic_func(&llargument_tys, llreturn_ty)
         } else {
-            cx.func(&llargument_tys, llreturn_ty)
+            cx.type_func(&llargument_tys, llreturn_ty)
         }
     }
 

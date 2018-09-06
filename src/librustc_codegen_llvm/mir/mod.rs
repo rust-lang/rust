@@ -418,7 +418,7 @@ fn create_funclets(
                 // C++ personality function, but `catch (...)` has no type so
                 // it's null. The 64 here is actually a bitfield which
                 // represents that this is a catch-all block.
-                let null = bx.cx().const_null(bx.cx().i8p());
+                let null = bx.cx().const_null(bx.cx().type_i8p());
                 let sixty_four = bx.cx().const_i32(64);
                 cleanup = cp_bx.catch_pad(cs, &[null, sixty_four, null]);
                 cp_bx.br(llbb);

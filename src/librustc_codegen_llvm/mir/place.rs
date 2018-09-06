@@ -67,11 +67,11 @@ impl PlaceRef<'tcx, &'ll Value> {
         let base_addr = consts::addr_of(bx.cx(), init, layout.align, None);
 
         let llval = unsafe { LLVMConstInBoundsGEP(
-            consts::bitcast(base_addr, bx.cx().i8p()),
+            consts::bitcast(base_addr, bx.cx().type_i8p()),
             &bx.cx().const_usize(offset.bytes()),
             1,
         )};
-        let llval = consts::bitcast(llval, bx.cx().ptr_to(layout.llvm_type(bx.cx())));
+        let llval = consts::bitcast(llval, bx.cx().type_ptr_to(layout.llvm_type(bx.cx())));
         PlaceRef::new_sized(llval, layout, alloc.align)
     }
 
@@ -159,7 +159,7 @@ impl PlaceRef<'tcx, &'ll Value> {
                 let load = bx.load(llptr, self.align);
                 scalar_load_metadata(load, scalar);
                 if scalar.is_bool() {
-                    bx.trunc(load, bx.cx().i1())
+                    bx.trunc(load, bx.cx().type_i1())
                 } else {
                     load
                 }
@@ -195,7 +195,7 @@ impl PlaceRef<'tcx, &'ll Value> {
             };
             PlaceRef {
                 // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-                llval: bx.pointercast(llval, cx.ptr_to(field.llvm_type(cx))),
+                llval: bx.pointercast(llval, cx.type_ptr_to(field.llvm_type(cx))),
                 llextra: if cx.type_has_metadata(field.ty) {
                     self.llextra
                 } else {
@@ -264,7 +264,7 @@ impl PlaceRef<'tcx, &'ll Value> {
         debug!("struct_field_ptr: DST field offset: {:?}", offset);
 
         // Cast and adjust pointer
-        let byte_ptr = bx.pointercast(self.llval, cx.i8p());
+        let byte_ptr = bx.pointercast(self.llval, cx.type_i8p());
         let byte_ptr = bx.gep(byte_ptr, &[offset]);
 
         // Finally, cast back to the type expected
@@ -272,7 +272,7 @@ impl PlaceRef<'tcx, &'ll Value> {
         debug!("struct_field_ptr: Field type is {:?}", ll_fty);
 
         PlaceRef {
-            llval: bx.pointercast(byte_ptr, bx.cx().ptr_to(ll_fty)),
+            llval: bx.pointercast(byte_ptr, bx.cx().type_ptr_to(ll_fty)),
             llextra: self.llextra,
             layout: field,
             align: effective_field_align,
@@ -377,7 +377,10 @@ impl PlaceRef<'tcx, &'ll Value> {
                        bx.sess().target.target.arch == "aarch64" {
                         // Issue #34427: As workaround for LLVM bug on ARM,
                         // use memset of 0 before assigning niche value.
-                        let llptr = bx.pointercast(self.llval, bx.cx().ptr_to(bx.cx().i8()));
+                        let llptr = bx.pointercast(
+                            self.llval,
+                            bx.cx().type_ptr_to(bx.cx().type_i8())
+                        );
                         let fill_byte = bx.cx().const_u8(0);
                         let (size, align) = self.layout.size_and_align();
                         let size = bx.cx().const_usize(size.bytes());
@@ -419,7 +422,7 @@ impl PlaceRef<'tcx, &'ll Value> {
 
         // Cast to the appropriate variant struct type.
         let variant_ty = downcast.layout.llvm_type(bx.cx());
-        downcast.llval = bx.pointercast(downcast.llval, bx.cx().ptr_to(variant_ty));
+        downcast.llval = bx.pointercast(downcast.llval, bx.cx().type_ptr_to(variant_ty));
 
         downcast
     }
@@ -480,7 +483,9 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                         // so we generate an abort
                         let fnname = bx.cx().get_intrinsic(&("llvm.trap"));
                         bx.call(fnname, &[], None);
-                        let llval = bx.cx().const_undef(bx.cx().ptr_to(layout.llvm_type(bx.cx())));
+                        let llval = bx.cx().const_undef(
+                            bx.cx().type_ptr_to(layout.llvm_type(bx.cx()))
+                        );
                         PlaceRef::new_sized(llval, layout, layout.align)
                     }
                 }
@@ -539,7 +544,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                         // Cast the place pointer type to the new
                         // array or slice type (*[%_; new_len]).
                         subslice.llval = bx.pointercast(subslice.llval,
-                            bx.cx().ptr_to(subslice.layout.llvm_type(bx.cx())));
+                            bx.cx().type_ptr_to(subslice.layout.llvm_type(bx.cx())));
 
                         subslice
                     }

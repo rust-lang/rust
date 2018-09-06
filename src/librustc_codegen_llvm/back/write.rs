@@ -27,7 +27,7 @@ use rustc::session::config::{self, OutputFilenames, OutputType, Passes, Sanitize
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
 use time_graph::{self, TimeGraph, Timeline};
-use llvm::{self, DiagnosticInfo, PassManager, SMDiagnostic, BasicBlock};
+use llvm::{self, DiagnosticInfo, PassManager, SMDiagnostic};
 use llvm_util;
 use {CodegenResults, ModuleCodegen, CompiledModule, ModuleKind, // ModuleLlvm,
      CachedModuleCodegen};
@@ -46,7 +46,6 @@ use syntax_pos::MultiSpan;
 use syntax_pos::symbol::Symbol;
 use type_::Type;
 use context::{is_pie_binary, get_reloc_model};
-use interfaces::{Backend, CommonWriteMethods};
 use common;
 use jobserver::{Client, Acquired};
 use rustc_demangle;
@@ -425,15 +424,8 @@ impl CodegenContext<'ll> {
     }
 }
 
-impl<'ll> Backend for CodegenContext<'ll> {
-    type Value = &'ll Value;
-    type BasicBlock = &'ll BasicBlock;
-    type Type = &'ll Type;
-    type Context = &'ll llvm::Context;
-    type TypeKind = llvm::TypeKind;
-}
 
-impl CommonWriteMethods for CodegenContext<'ll> {
+impl CodegenContext<'ll> {
     fn val_ty(&self, v: &'ll Value) -> &'ll Type {
         common::val_ty(v)
     }
@@ -442,18 +434,7 @@ impl CommonWriteMethods for CodegenContext<'ll> {
         common::const_bytes_in_context(llcx, bytes)
     }
 
-    fn const_struct_in_context(
-        &self,
-        llcx: &'a llvm::Context,
-        elts: &[&'a Value],
-        packed: bool,
-    ) -> &'a Value {
-        common::const_struct_in_context(llcx, elts, packed)
-    }
-}
-
-impl CodegenContext<'ll> {
-    pub fn ptr_to(&self, ty: &'ll Type) -> &'ll Type {
+    pub fn type_ptr_to(&self, ty: &'ll Type) -> &'ll Type {
         unsafe {
             llvm::LLVMPointerType(ty, 0)
         }
