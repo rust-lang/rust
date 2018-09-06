@@ -571,3 +571,19 @@ mod issue_2496 {
         unimplemented!()
     }
 }
+
+mod issue_1219 {
+    // potential false positive for explicit_counter_loop
+    pub fn test() {
+        let thing = 5;
+        let text = "banana";
+        let mut count = 0;
+        for ch in text.chars() {
+            if ch == 'a' {
+                continue;
+            }
+            count += 1
+        }
+        println!("{}", count);
+    }
+}
