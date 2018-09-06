@@ -17,6 +17,7 @@ mod operand;
 mod machine;
 mod memory;
 mod operator;
+mod snapshot;
 mod step;
 mod terminator;
 mod traits;

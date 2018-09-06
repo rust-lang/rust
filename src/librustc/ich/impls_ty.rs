@@ -412,7 +412,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
         ty::tls::with_opt(|tcx| {
             trace!("hashing {:?}", *self);
             let tcx = tcx.expect("can't hash AllocIds during hir lowering");
-            let alloc_kind = tcx.alloc_map.lock().get(*self).expect("no value for AllocId");
+            let alloc_kind = tcx.alloc_map.lock().get(*self);
             alloc_kind.hash_stable(hcx, hasher);
         });
     }

@@ -17,7 +17,6 @@
 //! short-circuiting the empty case!
 
 use std::collections::VecDeque;
-use std::hash::{Hash, Hasher};
 use std::ptr;
 
 use rustc::ty::{self, Instance, query::TyCtxtAt};
@@ -26,7 +25,7 @@ use rustc::mir::interpret::{Pointer, AllocId, Allocation, ConstValue, ScalarMayb
                             EvalResult, Scalar, EvalErrorKind, AllocType, PointerArithmetic,
                             truncate};
 pub use rustc::mir::interpret::{write_target_uint, read_target_uint};
-use rustc_data_structures::fx::{FxHashSet, FxHashMap, FxHasher};
+use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 
 use syntax::ast::Mutability;
 
@@ -67,58 +66,6 @@ impl<'a, 'b, 'c, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         &self.tcx.data_layout
-    }
-}
-
-impl<'a, 'mir, 'tcx, M> Eq for Memory<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>,
-          'tcx: 'a + 'mir,
-{}
-
-impl<'a, 'mir, 'tcx, M> PartialEq for Memory<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>,
-          'tcx: 'a + 'mir,
-{
-    fn eq(&self, other: &Self) -> bool {
-        let Memory {
-            data,
-            alloc_map,
-            tcx: _,
-        } = self;
-
-        *data == other.data
-            && *alloc_map == other.alloc_map
-    }
-}
-
-impl<'a, 'mir, 'tcx, M> Hash for Memory<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>,
-          'tcx: 'a + 'mir,
-{
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        let Memory {
-            data,
-            alloc_map: _,
-            tcx: _,
-        } = self;
-
-        data.hash(state);
-
-        // We ignore some fields which don't change between evaluation steps.
-
-        // Since HashMaps which contain the same items may have different
-        // iteration orders, we use a commutative operation (in this case
-        // addition, but XOR would also work), to combine the hash of each
-        // `Allocation`.
-        self.alloc_map.iter()
-            .map(|(&id, alloc)| {
-                let mut h = FxHasher::default();
-                id.hash(&mut h);
-                alloc.hash(&mut h);
-                h.finish()
-            })
-            .fold(0u64, |hash, x| hash.wrapping_add(x))
-            .hash(state);
     }
 }
 

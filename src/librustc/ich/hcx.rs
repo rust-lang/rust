@@ -15,7 +15,6 @@ use hir::map::definitions::Definitions;
 use ich::{self, CachingSourceMapView, Fingerprint};
 use middle::cstore::CrateStore;
 use ty::{TyCtxt, fast_reject};
-use mir::interpret::AllocId;
 use session::Session;
 
 use std::cmp::Ord;
@@ -60,8 +59,6 @@ pub struct StableHashingContext<'a> {
     // CachingSourceMapView, so we initialize it lazily.
     raw_source_map: &'a SourceMap,
     caching_source_map: Option<CachingSourceMapView<'a>>,
-
-    pub(super) alloc_id_recursion_tracker: FxHashSet<AllocId>,
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -105,7 +102,6 @@ impl<'a> StableHashingContext<'a> {
             hash_spans: hash_spans_initial,
             hash_bodies: true,
             node_id_hashing_mode: NodeIdHashingMode::HashDefPath,
-            alloc_id_recursion_tracker: Default::default(),
         }
     }
 

@@ -9,12 +9,12 @@
 // except according to those terms.
 
 use std::fmt::Write;
-use std::hash::{Hash, Hasher};
 use std::mem;
 
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
 use rustc::hir::map::definitions::DefPathData;
+use rustc::ich::StableHashingContext;
 use rustc::mir;
 use rustc::ty::layout::{
     self, Size, Align, HasDataLayout, LayoutOf, TyLayout
@@ -22,10 +22,10 @@ use rustc::ty::layout::{
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::query::TyCtxtAt;
-use rustc_data_structures::fx::{FxHashSet, FxHasher};
 use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 use rustc::mir::interpret::{
-    GlobalId, Scalar, FrameInfo,
+    GlobalId, Scalar, FrameInfo, AllocId,
     EvalResult, EvalErrorKind,
     ScalarMaybeUndef,
     truncate, sign_extend,
@@ -37,6 +37,8 @@ use super::{
     Value, Operand, MemPlace, MPlaceTy, Place,
     Memory, Machine
 };
+
+use super::snapshot::InfiniteLoopDetector;
 
 pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// Stores the `Machine` instance.
@@ -95,7 +97,7 @@ pub struct Frame<'mir, 'tcx: 'mir> {
     /// The locals are stored as `Option<Value>`s.
     /// `None` represents a local that is currently dead, while a live local
     /// can either directly contain `Scalar` or refer to some part of an `Allocation`.
-    pub locals: IndexVec<mir::Local, LocalValue>,
+    pub locals: IndexVec<mir::Local, LocalValue<AllocId>>,
 
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
@@ -108,14 +110,16 @@ pub struct Frame<'mir, 'tcx: 'mir> {
     pub stmt: usize,
 }
 
-impl<'mir, 'tcx: 'mir> Eq for Frame<'mir, 'tcx> {}
+impl<'a, 'mir, 'tcx: 'mir> HashStable<StableHashingContext<'a>> for Frame<'mir, 'tcx> {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>) {
 
-impl<'mir, 'tcx: 'mir> PartialEq for Frame<'mir, 'tcx> {
-    fn eq(&self, other: &Self) -> bool {
         let Frame {
-            mir: _,
+            mir,
             instance,
-            span: _,
+            span,
             return_to_block,
             return_place,
             locals,
@@ -123,36 +127,8 @@ impl<'mir, 'tcx: 'mir> PartialEq for Frame<'mir, 'tcx> {
             stmt,
         } = self;
 
-        // Some of these are constant during evaluation, but are included
-        // anyways for correctness.
-        *instance == other.instance
-            && *return_to_block == other.return_to_block
-            && *return_place == other.return_place
-            && *locals == other.locals
-            && *block == other.block
-            && *stmt == other.stmt
-    }
-}
-
-impl<'mir, 'tcx: 'mir> Hash for Frame<'mir, 'tcx> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        let Frame {
-            mir: _,
-            instance,
-            span: _,
-            return_to_block,
-            return_place,
-            locals,
-            block,
-            stmt,
-        } = self;
-
-        instance.hash(state);
-        return_to_block.hash(state);
-        return_place.hash(state);
-        locals.hash(state);
-        block.hash(state);
-        stmt.hash(state);
+        (mir, instance, span, return_to_block).hash_stable(hcx, hasher);
+        (return_place, locals, block, stmt).hash_stable(hcx, hasher);
     }
 }
 
@@ -168,15 +144,27 @@ pub enum StackPopCleanup {
     None { cleanup: bool },
 }
 
+impl<'a> HashStable<StableHashingContext<'a>> for StackPopCleanup {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>) {
+        match self {
+            StackPopCleanup::Goto(ref block) => block.hash_stable(hcx, hasher),
+            StackPopCleanup::None { cleanup } => cleanup.hash_stable(hcx, hasher),
+        }
+    }
+}
+
 // State of a local variable
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub enum LocalValue {
+pub enum LocalValue<Id=AllocId> {
     Dead,
     // Mostly for convenience, we re-use the `Operand` type here.
     // This is an optimization over just always having a pointer here;
     // we can thus avoid doing an allocation when the local just stores
     // immediate values *and* never has its address taken.
-    Live(Operand),
+    Live(Operand<Id>),
 }
 
 impl<'tcx> LocalValue {
@@ -195,72 +183,10 @@ impl<'tcx> LocalValue {
     }
 }
 
-/// The virtual machine state during const-evaluation at a given point in time.
-type EvalSnapshot<'a, 'mir, 'tcx, M>
-    = (M, Vec<Frame<'mir, 'tcx>>, Memory<'a, 'mir, 'tcx, M>);
-
-pub(super) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
-    /// The set of all `EvalSnapshot` *hashes* observed by this detector.
-    ///
-    /// When a collision occurs in this table, we store the full snapshot in
-    /// `snapshots`.
-    hashes: FxHashSet<u64>,
-
-    /// The set of all `EvalSnapshot`s observed by this detector.
-    ///
-    /// An `EvalSnapshot` will only be fully cloned once it has caused a
-    /// collision in `hashes`. As a result, the detector must observe at least
-    /// *two* full cycles of an infinite loop before it triggers.
-    snapshots: FxHashSet<EvalSnapshot<'a, 'mir, 'tcx, M>>,
-}
-
-impl<'a, 'mir, 'tcx, M> Default for InfiniteLoopDetector<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>,
-          'tcx: 'a + 'mir,
-{
-    fn default() -> Self {
-        InfiniteLoopDetector {
-            hashes: FxHashSet::default(),
-            snapshots: FxHashSet::default(),
-        }
-    }
-}
-
-impl<'a, 'mir, 'tcx, M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>,
-          'tcx: 'a + 'mir,
-{
-    /// Returns `true` if the loop detector has not yet observed a snapshot.
-    pub fn is_empty(&self) -> bool {
-        self.hashes.is_empty()
-    }
-
-    pub fn observe_and_analyze(
-        &mut self,
-        machine: &M,
-        stack: &Vec<Frame<'mir, 'tcx>>,
-        memory: &Memory<'a, 'mir, 'tcx, M>,
-    ) -> EvalResult<'tcx, ()> {
-        let snapshot = (machine, stack, memory);
-
-        let mut fx = FxHasher::default();
-        snapshot.hash(&mut fx);
-        let hash = fx.finish();
-
-        if self.hashes.insert(hash) {
-            // No collision
-            return Ok(())
-        }
-
-        if self.snapshots.insert((machine.clone(), stack.clone(), memory.clone())) {
-            // Spurious collision or first cycle
-            return Ok(())
-        }
-
-        // Second cycle
-        Err(EvalErrorKind::InfiniteLoop.into())
-    }
-}
+impl_stable_hash_for!(enum self::LocalValue {
+    Dead,
+    Live(x),
+});
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for &'a EvalContext<'a, 'mir, 'tcx, M> {
     #[inline]
