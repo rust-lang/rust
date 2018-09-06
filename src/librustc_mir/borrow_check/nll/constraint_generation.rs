@@ -139,10 +139,12 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
         // `(*X).foo` and so forth.
         if let Some(all_facts) = self.all_facts {
             if let PlaceBase::Local(temp) = place.base {
-                if let Some(borrow_indices) = self.borrow_set.local_map.get(&temp) {
-                    for &borrow_index in borrow_indices {
-                        let location_index = self.location_table.mid_index(location);
-                        all_facts.killed.push((borrow_index, location_index));
+                if place.has_no_projection() {
+                    if let Some(borrow_indices) = self.borrow_set.local_map.get(&temp) {
+                        for &borrow_index in borrow_indices {
+                            let location_index = self.location_table.mid_index(location);
+                            all_facts.killed.push((borrow_index, location_index));
+                        }
                     }
                 }
             }
