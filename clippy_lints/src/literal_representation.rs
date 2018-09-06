@@ -163,9 +163,8 @@ impl<'a> DigitInfo<'a> {
             } else {
                 d_idx
             };
-            if !float && (d == 'i' || d == 'u') ||
-                float && (d == 'f' || d == 'e' || d == 'E') ||
-                !float && is_possible_suffix_index(&sans_prefix, suffix_start, len) {
+            if float && (d == 'f' || d == 'e' || d == 'E') ||
+                !float && (d == 'i' || d == 'u' || is_possible_suffix_index(&sans_prefix, suffix_start, len)) {
                     let (digits, suffix) = sans_prefix.split_at(suffix_start);
                     return Self {
                         digits,
