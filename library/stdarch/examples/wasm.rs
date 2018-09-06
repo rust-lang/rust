@@ -20,7 +20,7 @@ pub unsafe extern "C" fn page_alloc() -> *mut u8 {
         return ret as *mut u8;
     }
 
-    let ret = grow_memory(1);
+    let ret = memory::grow(0, 1);
 
     // if we failed to allocate a page then return null
     if ret == -1 {
@@ -39,7 +39,7 @@ pub unsafe extern "C" fn page_free(page: *mut u8) {
 
 #[no_mangle]
 pub unsafe extern "C" fn memory_used() -> usize {
-    (page_size() * (current_memory() as u32)) as usize
+    (page_size() * (memory::size(0) as u32)) as usize
 }
 
 fn page_size() -> u32 {

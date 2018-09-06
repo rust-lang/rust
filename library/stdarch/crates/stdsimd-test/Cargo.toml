@@ -10,7 +10,7 @@ backtrace = "0.3"
 cc = "1.0"
 lazy_static = "1.0"
 rustc-demangle = "0.1.8"
-wasm-bindgen = "0.2.16"
+wasm-bindgen = "0.2.19"
 
 [features]
 default = []

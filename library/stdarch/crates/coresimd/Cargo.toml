@@ -23,7 +23,7 @@ stdsimd-test = { version = "0.*", path = "../stdsimd-test" }
 stdsimd = { version = "0.0.3", path = "../stdsimd" }
 
 [target.wasm32-unknown-unknown.dev-dependencies]
-wasm-bindgen-test = "0.2.16"
+wasm-bindgen-test = "0.2.19"
 
 [features]
 # Internal-usage only: denies all warnings.
