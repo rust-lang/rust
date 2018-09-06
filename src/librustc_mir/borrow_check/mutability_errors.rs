@@ -195,98 +195,100 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             match projection {
                 ProjectionElem::Deref => {
                     if let PlaceBase::Local(local) = base_place.base {
-                        match self.mir.local_decls[local].is_user_variable {
-                            Some(ClearCrossCrate::Set(BindingForm::RefForGuard)) => {
-                                err.span_label(span, format!("cannot {ACT}", ACT = act));
-                                err.note(
-                                    "variables bound in patterns are \
-                                     immutable until the end of the pattern guard",
-                                );
-                            }
-                            Some(_) => {
-                                // We want to point out when a `&` can be readily replaced
-                                // with an `&mut`.
-                                //
-                                // FIXME: can this case be generalized to work for an
-                                // arbitrary base for the projection?
-                                let local_decl = &self.mir.local_decls[local];
-                                let suggestion = match local_decl.is_user_variable.as_ref().unwrap()
-                                {
-                                    ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf) => {
-                                        Some(suggest_ampmut_self(self.tcx, local_decl))
-                                    }
-
-                                    ClearCrossCrate::Set(mir::BindingForm::Var(
-                                        mir::VarBindingForm {
-                                            binding_mode: ty::BindingMode::BindByValue(_),
-                                            opt_ty_info,
-                                            ..
-                                        },
-                                    )) => Some(suggest_ampmut(
-                                        self.tcx,
-                                        self.mir,
-                                        local,
-                                        local_decl,
-                                        *opt_ty_info,
-                                    )),
-
-                                    ClearCrossCrate::Set(mir::BindingForm::Var(
-                                        mir::VarBindingForm {
-                                            binding_mode: ty::BindingMode::BindByReference(_),
-                                            ..
-                                        },
-                                    )) => suggest_ref_mut(self.tcx, local_decl.source_info.span),
-
-                                    ClearCrossCrate::Set(mir::BindingForm::RefForGuard) => {
-                                        unreachable!()
-                                    }
-
-                                    ClearCrossCrate::Clear => bug!("saw cleared local state"),
-                                };
-
-                                let (pointer_sigil, pointer_desc) = if local_decl.ty.is_region_ptr()
-                                {
-                                    ("&", "reference")
-                                } else {
-                                    ("*const", "pointer")
-                                };
-
-                                if let Some((err_help_span, suggested_code)) = suggestion {
-                                    err.span_suggestion(
-                                        err_help_span,
-                                        &format!(
-                                            "consider changing this to be a mutable {}",
-                                            pointer_desc
-                                        ),
-                                        suggested_code,
+                        if base_place.has_no_projection() {
+                            match self.mir.local_decls[local].is_user_variable {
+                                Some(ClearCrossCrate::Set(BindingForm::RefForGuard)) => {
+                                    err.span_label(span, format!("cannot {ACT}", ACT = act));
+                                    err.note(
+                                        "variables bound in patterns are \
+                                         immutable until the end of the pattern guard",
                                     );
                                 }
+                                Some(_) => {
+                                    // We want to point out when a `&` can be readily replaced
+                                    // with an `&mut`.
+                                    //
+                                    // FIXME: can this case be generalized to work for an
+                                    // arbitrary base for the projection?
+                                    let local_decl = &self.mir.local_decls[local];
+                                    let suggestion = match local_decl.is_user_variable.as_ref().unwrap()
+                                    {
+                                        ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf) => {
+                                            Some(suggest_ampmut_self(self.tcx, local_decl))
+                                        }
 
-                                if let Some(name) = local_decl.name {
-                                    err.span_label(
-                                        span,
-                                        format!(
-                                            "`{NAME}` is a `{SIGIL}` {DESC}, \
-                                             so the data it refers to cannot be {ACTED_ON}",
-                                            NAME = name,
-                                            SIGIL = pointer_sigil,
-                                            DESC = pointer_desc,
-                                            ACTED_ON = acted_on
-                                        ),
-                                    );
-                                } else {
-                                    err.span_label(
-                                        span,
-                                        format!(
-                                            "cannot {ACT} through `{SIGIL}` {DESC}",
-                                            ACT = act,
-                                            SIGIL = pointer_sigil,
-                                            DESC = pointer_desc
-                                        ),
-                                    );
+                                        ClearCrossCrate::Set(mir::BindingForm::Var(
+                                            mir::VarBindingForm {
+                                                binding_mode: ty::BindingMode::BindByValue(_),
+                                                opt_ty_info,
+                                                ..
+                                            },
+                                        )) => Some(suggest_ampmut(
+                                            self.tcx,
+                                            self.mir,
+                                            local,
+                                            local_decl,
+                                            *opt_ty_info,
+                                        )),
+
+                                        ClearCrossCrate::Set(mir::BindingForm::Var(
+                                            mir::VarBindingForm {
+                                                binding_mode: ty::BindingMode::BindByReference(_),
+                                                ..
+                                            },
+                                        )) => suggest_ref_mut(self.tcx, local_decl.source_info.span),
+
+                                        ClearCrossCrate::Set(mir::BindingForm::RefForGuard) => {
+                                            unreachable!()
+                                        }
+
+                                        ClearCrossCrate::Clear => bug!("saw cleared local state"),
+                                    };
+
+                                    let (pointer_sigil, pointer_desc) = if local_decl.ty.is_region_ptr()
+                                    {
+                                        ("&", "reference")
+                                    } else {
+                                        ("*const", "pointer")
+                                    };
+
+                                    if let Some((err_help_span, suggested_code)) = suggestion {
+                                        err.span_suggestion(
+                                            err_help_span,
+                                            &format!(
+                                                "consider changing this to be a mutable {}",
+                                                pointer_desc
+                                            ),
+                                            suggested_code,
+                                        );
+                                    }
+
+                                    if let Some(name) = local_decl.name {
+                                        err.span_label(
+                                            span,
+                                            format!(
+                                                "`{NAME}` is a `{SIGIL}` {DESC}, \
+                                                 so the data it refers to cannot be {ACTED_ON}",
+                                                NAME = name,
+                                                SIGIL = pointer_sigil,
+                                                DESC = pointer_desc,
+                                                ACTED_ON = acted_on
+                                            ),
+                                        );
+                                    } else {
+                                        err.span_label(
+                                            span,
+                                            format!(
+                                                "cannot {ACT} through `{SIGIL}` {DESC}",
+                                                ACT = act,
+                                                SIGIL = pointer_sigil,
+                                                DESC = pointer_desc
+                                            ),
+                                        );
+                                    }
                                 }
+                                _ => {}
                             }
-                            _ => {}
                         }
                         if local == Local::new(1) && !self.mir.upvar_decls.is_empty() {
                             err.span_label(span, format!("cannot {ACT}", ACT = act));
