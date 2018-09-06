@@ -21,4 +21,6 @@ fn main() {
     print!("\n\n");
     print!("like eof\n\n");
     print!("Hello {} {}\n\n", "world", "#2");
+    println!("\ndon't\nwarn\nfor\nmultiple\nnewlines\n"); // #3126
+    println!("\nbla\n\n"); // #3126
 }
