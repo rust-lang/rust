@@ -1,0 +1,10 @@
+[package]
+name = "clippy_dev"
+version = "0.0.1"
+authors = ["Philipp Hansch <dev@phansch.net>"]
+
+[dependencies]
+clap = "~2.32"
+itertools = "0.7"
+regex = "1"
+lazy_static = "1.0"
