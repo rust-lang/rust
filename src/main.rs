@@ -4,6 +4,8 @@
 #![feature(tool_lints)]
 #![allow(unknown_lints, clippy::missing_docs_in_private_items)]
 
+use rustc_tools_util::*;
+
 const CARGO_CLIPPY_HELP: &str = r#"Checks a package to catch common mistakes and improve your Rust code.
 
 Usage:
@@ -36,7 +38,8 @@ fn show_help() {
 
 #[allow(clippy::print_stdout)]
 fn show_version() {
-    println!(env!("CARGO_PKG_VERSION"));
+    let version_info = rustc_tools_util::get_version_info!();
+    println!("{}", version_info);
 }
 
 pub fn main() {
@@ -45,6 +48,7 @@ pub fn main() {
         show_help();
         return;
     }
+
     if std::env::args().any(|a| a == "--version" || a == "-V") {
         show_version();
         return;
@@ -94,8 +98,7 @@ where
                         .into_os_string()
                 },
             )
-        })
-        .map(|p| ("CARGO_TARGET_DIR", p));
+        }).map(|p| ("CARGO_TARGET_DIR", p));
 
     let exit_status = std::process::Command::new("cargo")
         .args(&args)
