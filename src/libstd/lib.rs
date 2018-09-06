@@ -295,6 +295,7 @@
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
 #![feature(str_internals)]
+#![feature(system_time_display_iso_8601)]
 #![feature(rustc_private)]
 #![feature(thread_local)]
 #![feature(toowned_clone_into)]
