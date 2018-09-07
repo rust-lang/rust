@@ -239,6 +239,10 @@ impl Step for Llvm {
             cfg.define("LLVM_NATIVE_BUILD", builder.llvm_out(builder.config.build).join("build"));
         }
 
+        if let Some(ref python) = builder.config.python {
+            cfg.define("PYTHON_EXECUTABLE", python);
+        }
+
         configure_cmake(builder, target, &mut cfg, false);
 
         // FIXME: we don't actually need to build all LLVM tools and all LLVM
