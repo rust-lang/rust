@@ -1571,6 +1571,11 @@ impl<'test> TestCx<'test> {
         }
 
         rustc.envs(self.props.rustc_env.clone());
+
+        for aux_crate in &self.props.aux_crates {
+            rustc.arg(format!("--extern {}={}", aux_crate.key, aux_crate.value));
+        }
+
         self.compose_and_run(
             rustc,
             self.config.compile_lib_path.to_str().unwrap(),
