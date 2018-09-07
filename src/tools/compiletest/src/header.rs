@@ -77,6 +77,7 @@ pub struct EarlyProps {
     pub ignore: Ignore,
     pub should_fail: bool,
     pub aux: Vec<String>,
+    pub aux_crate: Vec<KeyValue>,
     pub revisions: Vec<String>,
 }
 
@@ -86,6 +87,7 @@ impl EarlyProps {
             ignore: Ignore::Run,
             should_fail: false,
             aux: Vec::new(),
+            aux_crate: Vec::new(),
             revisions: vec![],
         };
 
@@ -135,6 +137,10 @@ impl EarlyProps {
 
             if let Some(s) = config.parse_aux_build(ln) {
                 props.aux.push(s);
+            }
+
+            if let Some(s) = config.parse_aux_crate(ln) {
+                props.aux_crate.push(s);
             }
 
             if let Some(r) = config.parse_revisions(ln) {
@@ -268,6 +274,8 @@ pub struct TestProps {
     // directory as the test, but for backwards compatibility reasons
     // we also check the auxiliary directory)
     pub aux_builds: Vec<String>,
+    // crates that should be compiled and exposed as the given alias
+    pub aux_crates: Vec<KeyValue>,
     // Environment settings to use for compiling
     pub rustc_env: Vec<(String, String)>,
     // Environment settings to use during execution
@@ -327,6 +335,7 @@ impl TestProps {
             run_flags: None,
             pp_exact: None,
             aux_builds: vec![],
+            aux_crates: vec![],
             revisions: vec![],
             rustc_env: vec![],
             exec_env: vec![],
@@ -440,6 +449,10 @@ impl TestProps {
 
             if let Some(ab) = config.parse_aux_build(ln) {
                 self.aux_builds.push(ab);
+            }
+
+            if let Some(ab) = config.parse_aux_crate(ln) {
+                self.aux_crates.push(ab);
             }
 
             if let Some(ee) = config.parse_env(ln, "exec-env") {
@@ -574,6 +587,10 @@ impl Config {
 
     fn parse_aux_build(&self, line: &str) -> Option<String> {
         self.parse_name_value_directive(line, "aux-build")
+    }
+
+    fn parse_aux_crate(&self, line: &str) -> Option<KeyValue> {
+        self.parse_name_kv_directive(line, "aux-crate")
     }
 
     fn parse_compile_flags(&self, line: &str) -> Option<String> {
@@ -775,6 +792,10 @@ impl Config {
         internal_parse_name_value_directive(line, directive).map(|v| expand_variables(v, self))
     }
 
+    pub fn parse_name_kv_directive(&self, line: &str, directive: &str) -> Option<KeyValue> {
+        internal_parse_name_kv_directive(line, directive)
+    }
+
     pub fn find_rust_src_root(&self) -> Option<PathBuf> {
         let mut path = self.src_base.clone();
         let path_postfix = Path::new("src/etc/lldb_batchmode.py");
@@ -815,8 +836,8 @@ fn test_parse_name_value_directive() {
     assert_eq!(None, internal_parse_name_value_directive("faux-build:foo.rs", "aux-build"));
 }
 
-#[derive(Debug, PartialEq)]
-struct KeyValue {
+#[derive(Clone, Debug, PartialEq)]
+pub struct KeyValue {
     key: String,
     value: String,
 }
