@@ -2,7 +2,7 @@ error[E0659]: `panic` is ambiguous
   --> $DIR/shadow_builtin_macros.rs:43:5
    |
 LL |     panic!(); //~ ERROR `panic` is ambiguous
-   |     ^^^^^
+   |     ^^^^^ ambiguous name
    |
 note: `panic` could refer to the name defined here
   --> $DIR/shadow_builtin_macros.rs:40:9
@@ -19,7 +19,7 @@ error[E0659]: `panic` is ambiguous
   --> $DIR/shadow_builtin_macros.rs:25:14
    |
 LL |     fn f() { panic!(); } //~ ERROR ambiguous
-   |              ^^^^^
+   |              ^^^^^ ambiguous name
    |
 note: `panic` could refer to the name imported here
   --> $DIR/shadow_builtin_macros.rs:24:9
@@ -33,7 +33,7 @@ error[E0659]: `panic` is ambiguous
   --> $DIR/shadow_builtin_macros.rs:30:14
    |
 LL |     fn f() { panic!(); } //~ ERROR ambiguous
-   |              ^^^^^
+   |              ^^^^^ ambiguous name
    |
 note: `panic` could refer to the name imported here
   --> $DIR/shadow_builtin_macros.rs:29:26
@@ -47,7 +47,7 @@ error[E0659]: `n` is ambiguous
   --> $DIR/shadow_builtin_macros.rs:59:5
    |
 LL |     n!(); //~ ERROR ambiguous
-   |     ^
+   |     ^ ambiguous name
    |
 note: `n` could refer to the name imported here
   --> $DIR/shadow_builtin_macros.rs:58:9

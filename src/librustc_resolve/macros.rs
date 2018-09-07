@@ -757,8 +757,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                            (innermost_result.0.is_glob_import() ||
                             innermost_result.0.may_appear_after(invoc_id, result.0)) {
                             self.ambiguity_errors.push(AmbiguityError {
-                                span: path_span,
-                                name: ident.name,
+                                ident,
                                 b1: innermost_result.0,
                                 b2: result.0,
                             });
@@ -850,8 +849,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         if result.def() != innermost_result.def() &&
                            innermost_result.may_appear_after(invoc_id, result) {
                             self.ambiguity_errors.push(AmbiguityError {
-                                span: ident.span,
-                                name: ident.name,
+                                ident,
                                 b1: innermost_result,
                                 b2: result,
                             });
@@ -929,7 +927,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 (Some(legacy_binding), Ok((binding, FromPrelude(from_prelude))))
                         if !from_prelude || legacy_binding.may_appear_after(invoc_id, binding) => {
                     if legacy_binding.def_ignoring_ambiguity() != binding.def_ignoring_ambiguity() {
-                        self.report_ambiguity_error(ident.name, span, legacy_binding, binding);
+                        self.report_ambiguity_error(ident, legacy_binding, binding);
                     }
                 },
                 // OK, non-macro-expanded legacy wins over prelude even if defs are different
@@ -942,7 +940,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 (None, Ok((binding, FromPrelude(from_prelude)))) => {
                     check_consistency(self, binding.def_ignoring_ambiguity());
                     if from_prelude {
-                        self.record_use(ident, MacroNS, binding, span);
+                        self.record_use(ident, MacroNS, binding);
                         self.err_if_macro_use_proc_macro(ident.name, span, binding);
                     }
                 }

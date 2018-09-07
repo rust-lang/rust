@@ -2,7 +2,7 @@ error[E0659]: `env` is ambiguous
   --> $DIR/glob-shadowing.rs:21:17
    |
 LL |         let x = env!("PATH"); //~ ERROR `env` is ambiguous
-   |                 ^^^
+   |                 ^^^ ambiguous name
    |
 note: `env` could refer to the name imported here
   --> $DIR/glob-shadowing.rs:19:9
@@ -16,7 +16,7 @@ error[E0659]: `env` is ambiguous
   --> $DIR/glob-shadowing.rs:29:21
    |
 LL |             let x = env!("PATH"); //~ ERROR `env` is ambiguous
-   |                     ^^^
+   |                     ^^^ ambiguous name
    |
 note: `env` could refer to the name imported here
   --> $DIR/glob-shadowing.rs:27:13
@@ -30,7 +30,7 @@ error[E0659]: `fenv` is ambiguous
   --> $DIR/glob-shadowing.rs:39:21
    |
 LL |             let x = fenv!(); //~ ERROR `fenv` is ambiguous
-   |                     ^^^^
+   |                     ^^^^ ambiguous name
    |
 note: `fenv` could refer to the name imported here
   --> $DIR/glob-shadowing.rs:37:13

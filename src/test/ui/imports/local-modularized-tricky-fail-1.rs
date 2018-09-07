@@ -43,7 +43,6 @@ mod inner2 {
 
 fn main() {
     panic!(); //~ ERROR `panic` is ambiguous
-              //~^ ERROR `panic` is ambiguous
 }
 
 mod inner3 {

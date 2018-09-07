@@ -2,10 +2,7 @@ error[E0659]: `m` is ambiguous
   --> $DIR/restricted-shadowing-modern.rs:106:17
    |
 LL |                 m!(); //~ ERROR `m` is ambiguous
-   |                 ^
-...
-LL | include!();
-   | ----------- in this macro invocation
+   |                 ^ ambiguous name
    |
 note: `m` could refer to the name defined here
   --> $DIR/restricted-shadowing-modern.rs:91:9
@@ -29,10 +26,7 @@ error[E0659]: `m` is ambiguous
   --> $DIR/restricted-shadowing-modern.rs:149:33
    |
 LL |             macro gen_invoc() { m!() } //~ ERROR `m` is ambiguous
-   |                                 ^
-...
-LL | include!();
-   | ----------- in this macro invocation
+   |                                 ^ ambiguous name
    |
 note: `m` could refer to the name defined here
   --> $DIR/restricted-shadowing-modern.rs:91:9
@@ -56,10 +50,7 @@ error[E0659]: `m` is ambiguous
   --> $DIR/restricted-shadowing-modern.rs:158:13
    |
 LL |             m!(); //~ ERROR `m` is ambiguous
-   |             ^
-...
-LL | include!();
-   | ----------- in this macro invocation
+   |             ^ ambiguous name
    |
 note: `m` could refer to the name defined here
   --> $DIR/restricted-shadowing-modern.rs:91:9
@@ -83,10 +74,7 @@ error[E0659]: `m` is ambiguous
   --> $DIR/restricted-shadowing-modern.rs:174:13
    |
 LL |             m!(); //~ ERROR `m` is ambiguous
-   |             ^
-...
-LL | include!();
-   | ----------- in this macro invocation
+   |             ^ ambiguous name
    |
 note: `m` could refer to the name defined here
   --> $DIR/restricted-shadowing-modern.rs:91:9
@@ -110,10 +98,7 @@ error[E0659]: `m` is ambiguous
   --> $DIR/restricted-shadowing-modern.rs:192:17
    |
 LL |                 m!(); //~ ERROR `m` is ambiguous
-   |                 ^
-...
-LL | include!();
-   | ----------- in this macro invocation
+   |                 ^ ambiguous name
    |
 note: `m` could refer to the name defined here
   --> $DIR/restricted-shadowing-modern.rs:91:9
@@ -137,10 +122,7 @@ error[E0659]: `m` is ambiguous
   --> $DIR/restricted-shadowing-modern.rs:235:33
    |
 LL |             macro gen_invoc() { m!() } //~ ERROR `m` is ambiguous
-   |                                 ^
-...
-LL | include!();
-   | ----------- in this macro invocation
+   |                                 ^ ambiguous name
    |
 note: `m` could refer to the name defined here
   --> $DIR/restricted-shadowing-modern.rs:91:9

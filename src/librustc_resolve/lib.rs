@@ -1164,8 +1164,7 @@ struct UseError<'a> {
 }
 
 struct AmbiguityError<'a> {
-    span: Span,
-    name: Name,
+    ident: Ident,
     b1: &'a NameBinding<'a>,
     b2: &'a NameBinding<'a>,
 }
@@ -1818,7 +1817,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         self.arenas.alloc_module(module)
     }
 
-    fn record_use(&mut self, ident: Ident, ns: Namespace, binding: &'a NameBinding<'a>, span: Span)
+    fn record_use(&mut self, ident: Ident, ns: Namespace, binding: &'a NameBinding<'a>)
                   -> bool /* true if an error was reported */ {
         match binding.kind {
             NameBindingKind::Import { directive, binding, ref used }
@@ -1827,13 +1826,11 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 directive.used.set(true);
                 self.used_imports.insert((directive.id, ns));
                 self.add_to_glob_map(directive.id, ident);
-                self.record_use(ident, ns, binding, span)
+                self.record_use(ident, ns, binding)
             }
             NameBindingKind::Import { .. } => false,
             NameBindingKind::Ambiguity { b1, b2 } => {
-                self.ambiguity_errors.push(AmbiguityError {
-                    span, name: ident.name, b1, b2,
-                });
+                self.ambiguity_errors.push(AmbiguityError { ident, b1, b2 });
                 true
             }
             _ => false
@@ -2853,7 +2850,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             Def::Const(..) if is_syntactic_ambiguity => {
                                 // Disambiguate in favor of a unit struct/variant
                                 // or constant pattern.
-                                self.record_use(ident, ValueNS, binding.unwrap(), ident.span);
+                                self.record_use(ident, ValueNS, binding.unwrap());
                                 Some(PathResolution::new(def))
                             }
                             Def::StructCtor(..) | Def::VariantCtor(..) |
@@ -4532,12 +4529,12 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         vis.is_accessible_from(module.normal_ancestor_id, self)
     }
 
-    fn report_ambiguity_error(&self, name: Name, span: Span, b1: &NameBinding, b2: &NameBinding) {
+    fn report_ambiguity_error(&self, ident: Ident, b1: &NameBinding, b2: &NameBinding) {
         let participle = |is_import: bool| if is_import { "imported" } else { "defined" };
         let msg1 =
-            format!("`{}` could refer to the name {} here", name, participle(b1.is_import()));
+            format!("`{}` could refer to the name {} here", ident, participle(b1.is_import()));
         let msg2 =
-            format!("`{}` could also refer to the name {} here", name, participle(b2.is_import()));
+            format!("`{}` could also refer to the name {} here", ident, participle(b2.is_import()));
         let note = if b1.expansion != Mark::root() {
             Some(if let Def::Macro(..) = b1.def() {
                 format!("macro-expanded {} do not shadow",
@@ -4547,16 +4544,17 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                         if b1.is_import() { "imports" } else { "items" })
             })
         } else if b1.is_glob_import() {
-            Some(format!("consider adding an explicit import of `{}` to disambiguate", name))
+            Some(format!("consider adding an explicit import of `{}` to disambiguate", ident))
         } else {
             None
         };
 
-        let mut err = struct_span_err!(self.session, span, E0659, "`{}` is ambiguous", name);
+        let mut err = struct_span_err!(self.session, ident.span, E0659, "`{}` is ambiguous", ident);
+        err.span_label(ident.span, "ambiguous name");
         err.span_note(b1.span, &msg1);
         match b2.def() {
             Def::Macro(..) if b2.span.is_dummy() =>
-                err.note(&format!("`{}` is also a builtin macro", name)),
+                err.note(&format!("`{}` is also a builtin macro", ident)),
             _ => err.span_note(b2.span, &msg2),
         };
         if let Some(note) = note {
@@ -4581,9 +4579,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             );
         }
 
-        for &AmbiguityError { span, name, b1, b2 } in &self.ambiguity_errors {
-            if reported_spans.insert(span) {
-                self.report_ambiguity_error(name, span, b1, b2);
+        for &AmbiguityError { ident, b1, b2 } in &self.ambiguity_errors {
+            if reported_spans.insert(ident.span) {
+                self.report_ambiguity_error(ident, b1, b2);
             }
         }
 

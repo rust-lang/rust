@@ -2,7 +2,7 @@ error[E0659]: `m` is ambiguous
   --> $DIR/macros.rs:48:5
    |
 LL |     m!(); //~ ERROR ambiguous
-   |     ^
+   |     ^ ambiguous name
    |
 note: `m` could refer to the name defined here
   --> $DIR/macros.rs:46:5
@@ -19,7 +19,7 @@ error[E0659]: `m` is ambiguous
   --> $DIR/macros.rs:26:5
    |
 LL |     m! { //~ ERROR ambiguous
-   |     ^
+   |     ^ ambiguous name
    |
 note: `m` could refer to the name imported here
   --> $DIR/macros.rs:27:13
@@ -37,7 +37,7 @@ error[E0659]: `m` is ambiguous
   --> $DIR/macros.rs:39:9
    |
 LL |         m! { //~ ERROR ambiguous
-   |         ^
+   |         ^ ambiguous name
    |
 note: `m` could refer to the name imported here
   --> $DIR/macros.rs:40:17

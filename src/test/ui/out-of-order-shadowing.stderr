@@ -2,7 +2,7 @@ error[E0659]: `bar` is ambiguous
   --> $DIR/out-of-order-shadowing.rs:15:1
    |
 LL | bar!(); //~ ERROR `bar` is ambiguous
-   | ^^^
+   | ^^^ ambiguous name
    |
 note: `bar` could refer to the name defined here
   --> $DIR/out-of-order-shadowing.rs:14:1

@@ -13,7 +13,7 @@ error[E0659]: `foo` is ambiguous
   --> $DIR/macro-shadowing.rs:27:1
    |
 LL | foo!(); //~ ERROR `foo` is ambiguous
-   | ^^^
+   | ^^^ ambiguous name
    |
 note: `foo` could refer to the name defined here
   --> $DIR/macro-shadowing.rs:20:5
