@@ -1902,6 +1902,16 @@ fn maybe_install_llvm_dylib(builder: &Builder,
     let src_libdir = builder
         .llvm_out(target)
         .join("lib");
+    let dst_libdir = image.join("lib/rustlib").join(&*target).join("lib");
+    t!(fs::create_dir_all(&dst_libdir));
+
+    if target.contains("apple-darwin") {
+        let llvm_dylib_path = src_libdir.join("libLLVM.dylib");
+        if llvm_dylib_path.exists() {
+            builder.install(&llvm_dylib_path, &dst_libdir, 0o644);
+        }
+        return
+    }
 
     // Usually libLLVM.so is a symlink to something like libLLVM-6.0.so.
     // Since tools link to the latter rather than the former, we have to
@@ -1913,8 +1923,6 @@ fn maybe_install_llvm_dylib(builder: &Builder,
                    llvm_dylib_path.display(), e);
         });
 
-        let dst_libdir = image.join("lib/rustlib").join(&*target).join("lib");
-        t!(fs::create_dir_all(&dst_libdir));
 
         builder.install(&llvm_dylib_path, &dst_libdir, 0o644);
     }
