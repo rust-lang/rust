@@ -72,7 +72,7 @@ macro_rules! newtype_index {
         newtype_index!(
             // Leave out derives marker so we can use its absence to ensure it comes first
             @type         [$name]
-            @max          [::std::u32::MAX - 1]
+            @max          [0xFFFF_FFFE]
             @vis          [$v]
             @debug_format ["{}"]);
     );
@@ -82,7 +82,7 @@ macro_rules! newtype_index {
         newtype_index!(
             // Leave out derives marker so we can use its absence to ensure it comes first
             @type         [$name]
-            @max          [::std::u32::MAX - 1]
+            @max          [0xFFFF_FFFE]
             @vis          [$v]
             @debug_format ["{}"]
                           $($tokens)+);
@@ -97,6 +97,7 @@ macro_rules! newtype_index {
      @vis          [$v:vis]
      @debug_format [$debug_format:tt]) => (
         #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, $($derives),*)]
+        #[rustc_layout_scalar_range_end($max)]
         $v struct $type {
             private: u32
         }

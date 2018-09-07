@@ -114,7 +114,7 @@ const SCOPE_DATA_NODE: u32 = !0;
 const SCOPE_DATA_CALLSITE: u32 = !1;
 const SCOPE_DATA_ARGUMENTS: u32 = !2;
 const SCOPE_DATA_DESTRUCTION: u32 = !3;
-const SCOPE_DATA_REMAINDER_MAX: u32 = !4;
+// be sure to add the MAX of FirstStatementIndex if you add more constants here
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Debug, Copy, RustcEncodable, RustcDecodable)]
 pub enum ScopeData {
@@ -160,9 +160,7 @@ pub struct BlockRemainder {
 }
 
 newtype_index! {
-    pub struct FirstStatementIndex {
-        MAX = SCOPE_DATA_REMAINDER_MAX
-    }
+    pub struct FirstStatementIndex;
 }
 
 impl_stable_hash_for!(struct ::middle::region::FirstStatementIndex { private });
