@@ -12,8 +12,6 @@ use rustc::mir::interpret::{ConstValue, ErrorHandled};
 use rustc::mir;
 use rustc::ty;
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
-use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::indexed_vec::Idx;
 
 use base;
 use common::{CodegenCx, C_undef, C_usize};
