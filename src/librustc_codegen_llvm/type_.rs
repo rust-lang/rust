@@ -16,7 +16,7 @@ use llvm;
 use llvm::{Bool, False, True};
 use context::CodegenCx;
 use value::Value;
-use interfaces::TypeMethods;
+use interfaces::{BaseTypeMethods, DerivedTypeMethods, TypeMethods};
 
 
 use syntax::ast;
@@ -42,7 +42,7 @@ impl fmt::Debug for Type {
     }
 }
 
-impl TypeMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
+impl BaseTypeMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
 
     fn type_void(&self) -> &'ll Type {
         unsafe {
@@ -263,25 +263,25 @@ impl Type {
     }
 }
 
-impl CodegenCx<'ll, 'tcx, &'ll Value> {
+impl DerivedTypeMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
 
-    pub fn type_bool(&self) -> &'ll Type {
+    fn type_bool(&self) -> &'ll Type {
         &self.type_i8()
     }
 
-    pub fn type_char(&self) -> &'ll Type {
+    fn type_char(&self) -> &'ll Type {
         &self.type_i32()
     }
 
-    pub fn type_i8p(&self) -> &'ll Type {
+    fn type_i8p(&self) -> &'ll Type {
         &self.type_ptr_to(&self.type_i8())
     }
 
-    pub fn type_isize(&self) -> &'ll Type {
+    fn type_isize(&self) -> &'ll Type {
         &self.isize_ty
     }
 
-    pub fn type_int(&self) -> &'ll Type {
+    fn type_int(&self) -> &'ll Type {
         match &self.sess().target.target.target_c_int_width[..] {
             "16" => &self.type_i16(),
             "32" => &self.type_i32(),
@@ -290,7 +290,7 @@ impl CodegenCx<'ll, 'tcx, &'ll Value> {
         }
     }
 
-    pub fn type_int_from_ty(
+    fn type_int_from_ty(
         &self,
         t: ast::IntTy
     ) -> &'ll Type {
@@ -304,7 +304,7 @@ impl CodegenCx<'ll, 'tcx, &'ll Value> {
         }
     }
 
-    pub fn type_uint_from_ty(
+    fn type_uint_from_ty(
         &self,
         t: ast::UintTy
     ) -> &'ll Type {
@@ -318,7 +318,7 @@ impl CodegenCx<'ll, 'tcx, &'ll Value> {
         }
     }
 
-    pub fn type_float_from_ty(
+    fn type_float_from_ty(
         &self,
         t: ast::FloatTy
     ) -> &'ll Type {
@@ -328,7 +328,7 @@ impl CodegenCx<'ll, 'tcx, &'ll Value> {
         }
     }
 
-    pub fn type_from_integer(&self, i: layout::Integer) -> &'ll Type {
+    fn type_from_integer(&self, i: layout::Integer) -> &'ll Type {
         use rustc::ty::layout::Integer::*;
         match i {
             I8 => &self.type_i8(),
@@ -341,7 +341,7 @@ impl CodegenCx<'ll, 'tcx, &'ll Value> {
 
     /// Return a LLVM type that has at most the required alignment,
     /// as a conservative approximation for unknown pointee types.
-    pub fn type_pointee_for_abi_align(&self, align: Align) -> &'ll Type {
+    fn type_pointee_for_abi_align(&self, align: Align) -> &'ll Type {
         // FIXME(eddyb) We could find a better approximation if ity.align < align.
         let ity = layout::Integer::approximate_abi_align(self, align);
         &self.type_from_integer(ity)
@@ -349,7 +349,7 @@ impl CodegenCx<'ll, 'tcx, &'ll Value> {
 
     /// Return a LLVM type that has at most the required alignment,
     /// and exactly the required size, as a best-effort padding array.
-    pub fn type_padding_filler(
+    fn type_padding_filler(
         &self,
         size: Size,
         align: Align
@@ -361,3 +361,5 @@ impl CodegenCx<'ll, 'tcx, &'ll Value> {
         &self.type_array(&self.type_from_integer(unit), size / unit_size)
     }
 }
+
+impl TypeMethods for CodegenCx<'ll, 'tcx, &'ll Value> {}

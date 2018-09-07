@@ -8,14 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod builder;
-mod backend;
-mod consts;
-mod type_;
-mod intrinsic;
+use super::backend::Backend;
 
-pub use self::builder::BuilderMethods;
-pub use self::backend::Backend;
-pub use self::consts::ConstMethods;
-pub use self::type_::{TypeMethods, BaseTypeMethods, DerivedTypeMethods};
-pub use self::intrinsic::{IntrinsicMethods, BaseIntrinsicMethods, DerivedIntrinsicMethods};
+pub trait BaseIntrinsicMethods : Backend {
+
+}
+
+pub trait DerivedIntrinsicMethods : Backend {
+    fn get_intrinsic(&self, key: &str) -> Self::Value;
+    fn declare_intrinsic(
+        &self,
+        key: &str
+    ) -> Option<Self::Value>;
+}
+
+pub trait IntrinsicMethods : BaseIntrinsicMethods + DerivedIntrinsicMethods {}

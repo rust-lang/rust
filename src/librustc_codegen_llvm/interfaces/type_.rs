@@ -10,8 +10,10 @@
 
 use super::backend::Backend;
 use common::TypeKind;
+use syntax::ast;
+use rustc::ty::layout::{self, Align, Size};
 
-pub trait TypeMethods : Backend {
+pub trait BaseTypeMethods : Backend {
     fn type_void(&self) -> Self::Type;
     fn type_metadata(&self) -> Self::Type;
     fn type_i1(&self) -> Self::Type;
@@ -42,3 +44,32 @@ pub trait TypeMethods : Backend {
 
     fn val_ty(&self, v: Self::Value) -> Self::Type;
 }
+
+pub trait DerivedTypeMethods : Backend {
+    fn type_bool(&self) -> Self::Type;
+    fn type_char(&self) -> Self::Type;
+    fn type_i8p(&self) -> Self::Type;
+    fn type_isize(&self) -> Self::Type;
+    fn type_int(&self) -> Self::Type;
+    fn type_int_from_ty(
+        &self,
+        t: ast::IntTy
+    ) -> Self::Type;
+    fn type_uint_from_ty(
+        &self,
+        t: ast::UintTy
+    ) -> Self::Type;
+    fn type_float_from_ty(
+        &self,
+        t: ast::FloatTy
+    ) -> Self::Type;
+    fn type_from_integer(&self, i: layout::Integer) -> Self::Type;
+    fn type_pointee_for_abi_align(&self, align: Align) -> Self::Type;
+    fn type_padding_filler(
+        &self,
+        size: Size,
+        align: Align
+    ) -> Self::Type;
+}
+
+pub trait TypeMethods : BaseTypeMethods + DerivedTypeMethods {}

@@ -21,7 +21,7 @@ use value::Value;
 use type_of::LayoutLlvmExt;
 use glue;
 
-use interfaces::{BuilderMethods, ConstMethods, TypeMethods};
+use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods, DerivedIntrinsicMethods};
 
 use std::fmt;
 

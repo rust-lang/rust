@@ -24,7 +24,7 @@ use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
 use rustc::ty::{self, Ty};
-use interfaces::TypeMethods;
+use interfaces::{BaseTypeMethods, DerivedTypeMethods};
 
 use rustc::ty::layout::{Align, LayoutOf};
 

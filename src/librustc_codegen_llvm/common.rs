@@ -23,7 +23,7 @@ use declare;
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
-use interfaces::{Backend, ConstMethods, TypeMethods};
+use interfaces::{Backend, ConstMethods, BaseTypeMethods};
 
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{HasDataLayout, LayoutOf};
@@ -51,7 +51,7 @@ pub fn type_is_freeze<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bo
     ty.is_freeze(tcx, ty::ParamEnv::reveal_all(), DUMMY_SP)
 }
 
-pub struct OperandBundleDef<'a, Value : 'a> {
+pub struct OperandBundleDef<'a, Value> {
     pub name: &'a str,
     pub val: Value
 }

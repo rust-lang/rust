@@ -31,7 +31,7 @@ use syntax::symbol::Symbol;
 use builder::Builder;
 use value::Value;
 
-use interfaces::{BuilderMethods, ConstMethods, TypeMethods};
+use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods, DerivedTypeMethods, DerivedIntrinsicMethods};
 
 use rustc::session::Session;
 use syntax_pos::Span;

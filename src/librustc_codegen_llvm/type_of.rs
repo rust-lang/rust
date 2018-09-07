@@ -17,7 +17,7 @@ use rustc_target::abi::FloatTy;
 use rustc_mir::monomorphize::item::DefPathBasedNames;
 use type_::Type;
 use value::Value;
-use interfaces::TypeMethods;
+use interfaces::{BaseTypeMethods, DerivedTypeMethods};
 
 use std::fmt::Write;
 

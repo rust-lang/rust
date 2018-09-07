@@ -22,7 +22,7 @@ use value::Value;
 use glue;
 use mir::constant::const_alloc_to_llvm;
 
-use interfaces::{BuilderMethods, ConstMethods, TypeMethods};
+use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods, DerivedTypeMethods, DerivedIntrinsicMethods};
 
 use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
