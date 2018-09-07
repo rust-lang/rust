@@ -35,7 +35,9 @@ pub fn strip_hidden(krate: clean::Crate, _: &DocContext) -> clean::Crate {
 
     // strip all impls referencing stripped items
     let mut stripper = ImplStripper { retained: &retained };
-    stripper.fold_crate(krate)
+    let krate = stripper.fold_crate(krate);
+
+    krate
 }
 
 struct Stripper<'a> {
@@ -46,7 +48,7 @@ struct Stripper<'a> {
 impl<'a> fold::DocFolder for Stripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if i.attrs.lists("doc").has_word("hidden") {
-            debug!("found one in strip_hidden; removing");
+            debug!("strip_hidden: stripping {} {:?}", i.type_(), i.name);
             // use a dedicated hidden item for given item type if any
             match i.inner {
                 clean::StructFieldItem(..) | clean::ModuleItem(..) => {

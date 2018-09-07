@@ -36,11 +36,13 @@ use syntax::symbol::keywords;
 use syntax_pos::DUMMY_SP;
 use errors;
 use errors::emitter::{Emitter, EmitterWriter};
+use parking_lot::ReentrantMutex;
 
-use std::cell::{RefCell, Cell};
+use std::cell::RefCell;
 use std::mem;
 use rustc_data_structures::sync::{self, Lrc};
 use std::rc::Rc;
+use std::sync::Arc;
 use std::path::PathBuf;
 
 use visit_ast::RustdocVisitor;
@@ -60,16 +62,13 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
     /// The stack of module NodeIds up till this point
     pub crate_name: Option<String>,
     pub cstore: Rc<CStore>,
-    pub populated_all_crate_impls: Cell<bool>,
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
     // the access levels from crateanalysis.
-    /// Later on moved into `clean::Crate`
-    pub access_levels: RefCell<AccessLevels<DefId>>,
     /// Later on moved into `html::render::CACHE_KEY`
     pub renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
-    pub external_traits: RefCell<FxHashMap<DefId, clean::Trait>>,
+    pub external_traits: Arc<ReentrantMutex<RefCell<FxHashMap<DefId, clean::Trait>>>>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
     pub active_extern_traits: RefCell<Vec<DefId>>,
@@ -506,16 +505,17 @@ pub fn run_core(search_paths: SearchPaths,
                 clean::path_to_def(&tcx, &["core", "marker", "Send"])
             };
 
+            let mut renderinfo = RenderInfo::default();
+            renderinfo.access_levels = access_levels;
+
             let ctxt = DocContext {
                 tcx,
                 resolver: &resolver,
                 crate_name,
                 cstore: cstore.clone(),
-                populated_all_crate_impls: Cell::new(false),
-                access_levels: RefCell::new(access_levels),
                 external_traits: Default::default(),
                 active_extern_traits: Default::default(),
-                renderinfo: Default::default(),
+                renderinfo: RefCell::new(renderinfo),
                 ty_substs: Default::default(),
                 lt_substs: Default::default(),
                 impl_trait_bounds: Default::default(),
