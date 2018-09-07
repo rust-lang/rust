@@ -1,4 +1,9 @@
 // Legend:
+// `N` - number of combination, from 0 to 4*4*4=64
+// `Outer < Invoc` means that expansion that produced macro definition `Outer`
+// is a strict ancestor of expansion that produced macro definition `Inner`.
+// `>`, `=` and `Unordered` mean "strict descendant", "same" and
+// "not in ordering relation" for parent expansions.
 // `+` - possible configuration
 // `-` - configuration impossible due to properties of partial ordering
 // `-?` - configuration impossible due to block/scope syntax
@@ -72,15 +77,18 @@
 
 #![feature(decl_macro, rustc_attrs)]
 
+struct Right;
+// struct Wrong; // not defined
+
 #[rustc_transparent_macro]
 macro include() {
     #[rustc_transparent_macro]
     macro gen_outer() {
-        macro m() {}
+        macro m() { Wrong }
     }
     #[rustc_transparent_macro]
     macro gen_inner() {
-        macro m() {}
+        macro m() { Right }
     }
     #[rustc_transparent_macro]
     macro gen_invoc() {
@@ -102,11 +110,11 @@ macro include() {
     }
 
     fn check5() {
-        macro m() {}
+        macro m() { Wrong }
         {
             #[rustc_transparent_macro]
             macro gen_inner_invoc() {
-                macro m() {}
+                macro m() { Right }
                 m!(); // OK
             }
             gen_inner_invoc!();
@@ -114,11 +122,11 @@ macro include() {
     }
 
     fn check9() {
-        macro m() {}
+        macro m() { Wrong }
         {
             #[rustc_transparent_macro]
             macro gen_inner_gen_invoc() {
-                macro m() {}
+                macro m() { Right }
                 gen_invoc!(); // OK
             }
             gen_inner_gen_invoc!();
@@ -126,9 +134,9 @@ macro include() {
     }
 
     fn check10() {
-        macro m() {}
+        macro m() { Wrong }
         {
-            macro m() {}
+            macro m() { Right }
             gen_invoc!(); // OK
         }
     }
@@ -152,9 +160,9 @@ macro include() {
     }
 
     fn check22() {
-        macro m() {}
+        macro m() { Wrong }
         {
-            macro m() {}
+            macro m() { Right }
             m!(); // OK
         }
     }
@@ -170,7 +178,7 @@ macro include() {
     fn check39() {
         gen_outer!();
         {
-            macro m() {}
+            macro m() { Right }
             m!(); // OK
         }
     }
@@ -192,7 +200,7 @@ macro include() {
         {
             #[rustc_transparent_macro]
             macro gen_inner_invoc() {
-                macro m() {}
+                macro m() { Right }
                 m!(); // OK
             }
             gen_inner_invoc!();
@@ -202,7 +210,7 @@ macro include() {
     fn check59() {
         gen_outer!();
         {
-            macro m() {}
+            macro m() { Right }
             gen_invoc!(); // OK
         }
     }
@@ -212,7 +220,7 @@ macro include() {
         {
             #[rustc_transparent_macro]
             macro gen_inner_gen_invoc() {
-                macro m() {}
+                macro m() { Right }
                 gen_invoc!(); // OK
             }
             gen_inner_gen_invoc!();

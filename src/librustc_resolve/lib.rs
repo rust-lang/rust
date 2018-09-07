@@ -1274,6 +1274,8 @@ impl<'a> NameBinding<'a> {
     // expansion round `max(invoc_id, binding)` when they both emerged from macros.
     // Then this function returns `true` if `self` may emerge from a macro *after* that
     // in some later round and screw up our previously found resolution.
+    // See more detailed explanation in
+    // https://github.com/rust-lang/rust/pull/53778#issuecomment-419224049
     fn may_appear_after(&self, invoc_id: Mark, binding: &NameBinding) -> bool {
         // self > max(invoc_id, binding) => !(self <= invoc_id || self <= binding)
         // Expansions are partially ordered, so "may appear after" is an inversion of

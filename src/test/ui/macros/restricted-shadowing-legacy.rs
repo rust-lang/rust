@@ -1,4 +1,9 @@
 // Legend:
+// `N` - number of combination, from 0 to 4*4*4=64
+// `Outer < Invoc` means that expansion that produced macro definition `Outer`
+// is a strict ancestor of expansion that produced macro definition `Inner`.
+// `>`, `=` and `Unordered` mean "strict descendant", "same" and
+// "not in ordering relation" for parent expansions.
 // `+` - possible configuration
 // `-` - configuration impossible due to properties of partial ordering
 // `-?` - configuration impossible due to block/scope syntax
@@ -72,12 +77,15 @@
 
 #![feature(decl_macro, rustc_attrs)]
 
+struct Right;
+// struct Wrong; // not defined
+
 macro_rules! include { () => {
     macro_rules! gen_outer { () => {
-        macro_rules! m { () => {} }
+        macro_rules! m { () => { Wrong } }
     }}
     macro_rules! gen_inner { () => {
-        macro_rules! m { () => {} }
+        macro_rules! m { () => { Right } }
     }}
     macro_rules! gen_invoc { () => {
         m!()
@@ -96,29 +104,29 @@ macro_rules! include { () => {
     }
 
     fn check5() {
-        macro_rules! m { () => {} }
+        macro_rules! m { () => { Wrong } }
 
         macro_rules! gen_inner_invoc { () => {
-            macro_rules! m { () => {} }
+            macro_rules! m { () => { Right } }
             m!(); // OK
         }}
         gen_inner_invoc!();
     }
 
     fn check9() {
-        macro_rules! m { () => {} }
+        macro_rules! m { () => { Wrong } }
 
         macro_rules! gen_inner_gen_invoc { () => {
-            macro_rules! m { () => {} }
+            macro_rules! m { () => { Right } }
             gen_invoc!(); // OK
         }}
         gen_inner_gen_invoc!();
     }
 
     fn check10() {
-        macro_rules! m { () => {} }
+        macro_rules! m { () => { Wrong } }
 
-        macro_rules! m { () => {} }
+        macro_rules! m { () => { Right } }
 
         gen_invoc!(); // OK
     }
@@ -141,9 +149,9 @@ macro_rules! include { () => {
     }
 
     fn check22() {
-        macro_rules! m { () => {} }
+        macro_rules! m { () => { Wrong } }
 
-        macro_rules! m { () => {} }
+        macro_rules! m { () => { Right } }
 
         m!(); // OK
     }
@@ -159,7 +167,7 @@ macro_rules! include { () => {
     fn check39() {
         gen_outer!();
 
-        macro_rules! m { () => {} }
+        macro_rules! m { () => { Right } }
 
         m!(); // OK
     }
@@ -178,7 +186,7 @@ macro_rules! include { () => {
         gen_outer!();
 
         macro_rules! gen_inner_invoc { () => {
-            macro_rules! m { () => {} }
+            macro_rules! m { () => { Right } }
             m!(); // OK
         }}
         gen_inner_invoc!();
@@ -187,7 +195,7 @@ macro_rules! include { () => {
     fn check59() {
         gen_outer!();
 
-        macro_rules! m { () => {} }
+        macro_rules! m { () => { Right } }
 
         gen_invoc!(); // OK
     }
@@ -196,7 +204,7 @@ macro_rules! include { () => {
         gen_outer!();
 
         macro_rules! gen_inner_gen_invoc { () => {
-            macro_rules! m { () => {} }
+            macro_rules! m { () => { Right } }
             gen_invoc!(); // OK
         }}
         gen_inner_gen_invoc!();
@@ -226,8 +234,8 @@ macro_rules! include { () => {
 
     fn check34() {
         macro_rules! gen_outer_inner { () => {
-            macro_rules! m { () => {} }
-            macro_rules! m { () => {} }
+            macro_rules! m { () => { Wrong } }
+            macro_rules! m { () => { Right } }
         }}
         gen_outer_inner!();
 
@@ -237,7 +245,7 @@ macro_rules! include { () => {
     fn check35() {
         macro_rules! gen_gen_outer_inner { () => {
             gen_outer!();
-            macro_rules! m { () => {} }
+            macro_rules! m { () => { Right } }
         }}
         gen_gen_outer_inner!();
 
@@ -257,8 +265,8 @@ macro_rules! include { () => {
 
     fn check62() {
         macro_rules! gen_outer_inner { () => {
-            macro_rules! m { () => {} }
-            macro_rules! m { () => {} }
+            macro_rules! m { () => { Wrong } }
+            macro_rules! m { () => { Right } }
         }}
         gen_outer_inner!();
 
@@ -268,7 +276,7 @@ macro_rules! include { () => {
     fn check63() {
         macro_rules! gen_gen_outer_inner { () => {
             gen_outer!();
-            macro_rules! m { () => {} }
+            macro_rules! m { () => { Right } }
         }}
         gen_gen_outer_inner!();
 
