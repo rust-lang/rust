@@ -167,20 +167,20 @@ impl Analysis {
         libeditor::matching_brace(file, offset)
     }
     pub fn syntax_tree(&self, file_id: FileId) -> String {
-        let file = self.file_syntax(file_id);
-        libeditor::syntax_tree(&file)
+        let file = self.imp.file_syntax(file_id);
+        libeditor::syntax_tree(file)
     }
     pub fn join_lines(&self, file_id: FileId, range: TextRange) -> SourceChange {
-        let file = self.file_syntax(file_id);
-        SourceChange::from_local_edit(file_id, "join lines", libeditor::join_lines(&file, range))
+        let file = self.imp.file_syntax(file_id);
+        SourceChange::from_local_edit(file_id, "join lines", libeditor::join_lines(file, range))
     }
     pub fn on_eq_typed(&self, file_id: FileId, offset: TextUnit) -> Option<SourceChange> {
-        let file = self.file_syntax(file_id);
-        Some(SourceChange::from_local_edit(file_id, "add semicolon", libeditor::on_eq_typed(&file, offset)?))
+        let file = self.imp.file_syntax(file_id);
+        Some(SourceChange::from_local_edit(file_id, "add semicolon", libeditor::on_eq_typed(file, offset)?))
     }
     pub fn file_structure(&self, file_id: FileId) -> Vec<StructureNode> {
-        let file = self.file_syntax(file_id);
-        libeditor::file_structure(&file)
+        let file = self.imp.file_syntax(file_id);
+        libeditor::file_structure(file)
     }
     pub fn symbol_search(&self, query: Query, token: &JobToken) -> Vec<(FileId, FileSymbol)> {
         self.imp.world_symbols(query, token)
@@ -198,16 +198,16 @@ impl Analysis {
         self.imp.crate_root(crate_id)
     }
     pub fn runnables(&self, file_id: FileId) -> Vec<Runnable> {
-        let file = self.file_syntax(file_id);
-        libeditor::runnables(&file)
+        let file = self.imp.file_syntax(file_id);
+        libeditor::runnables(file)
     }
     pub fn highlight(&self, file_id: FileId) -> Vec<HighlightedRange> {
-        let file = self.file_syntax(file_id);
-        libeditor::highlight(&file)
+        let file = self.imp.file_syntax(file_id);
+        libeditor::highlight(file)
     }
     pub fn completions(&self, file_id: FileId, offset: TextUnit) -> Option<Vec<CompletionItem>> {
-        let file = self.file_syntax(file_id);
-        libeditor::scope_completion(&file, offset)
+        let file = self.imp.file_syntax(file_id);
+        libeditor::scope_completion(file, offset)
     }
     pub fn assists(&self, file_id: FileId, range: TextRange) -> Vec<SourceChange> {
         self.imp.assists(file_id, range)
