@@ -11,7 +11,7 @@ This is a guide for how to profile rustc with [perf](https://perf.wiki.kernel.or
   - `use-jemalloc = false` — lets you do memory use profiling with valgrind 
   - leave everything else the defaults
 - Run `./x.py build` to get a full build
-- Make a rustup toolchain (let's call it `rust-prof`) pointing to that result
+- Make a rustup toolchain pointing to that result
   - see [the "build and run" section for instructions](../how-to-build-and-run.html#toolchain)
   
 ## Gathering a perf profile
@@ -37,10 +37,11 @@ to get call-graph information from debuginfo, which is accurate. The
 do:
 
 ```
-perf record -F99 --call-graph dwarf cargo +rust-prof rustc
+perf record -F99 --call-graph dwarf cargo +<toolchain> rustc
 ```
 
-to run `cargo`. But there are some things to be aware of:
+to run `cargo` -- here `<toolchain>` should be the name of the toolchain
+you made in the beginning. But there are some things to be aware of:
 
 - You probably don't want to profile the time spend building
   dependencies. So something like `cargo build; cargo clean -p $C` may
@@ -77,9 +78,12 @@ build the dependencies:
 
 ```bash
 # Setup: first clean out any old results and build the dependencies:
-> cargo +rust-prof clean
-> CARGO_INCREMENTAL=0 cargo +rust-prof check
+> cargo +<toolchain> clean
+> CARGO_INCREMENTAL=0 cargo +<toolchain> check
 ```
+
+(Again, `<toolchain>` should be replaced with the name of the
+toolchain we made in the first step.)
 
 Next: we want record the execution time for *just* the clap-rs crate,
 running cargo check. I tend to use `cargo rustc` for this, since it
