@@ -74,7 +74,7 @@ use CrateInfo;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::sync::Lrc;
 
-use interfaces::{BuilderMethods, ConstMethods, TypeMethods};
+use interfaces::{BuilderMethods, ConstMethods, TypeMethods, Backend};
 
 use std::any::Any;
 use std::ffi::CString;
@@ -160,12 +160,12 @@ pub fn bin_op_to_fcmp_predicate(op: hir::BinOpKind) -> RealPredicate {
 
 pub fn compare_simd_types<'a, 'll:'a, 'tcx:'ll, Builder : BuilderMethods<'a, 'll, 'tcx>>(
     bx: &Builder,
-    lhs: Builder::Value,
-    rhs: Builder::Value,
+    lhs: <Builder::CodegenCx as Backend>::Value,
+    rhs: <Builder::CodegenCx as Backend>::Value,
     t: Ty<'tcx>,
-    ret_ty: Builder::Type,
+    ret_ty: <Builder::CodegenCx as Backend>::Type,
     op: hir::BinOpKind
-) -> Builder::Value {
+) -> <Builder::CodegenCx as Backend>::Value {
     let signed = match t.sty {
         ty::Float(_) => {
             let cmp = bin_op_to_fcmp_predicate(op);

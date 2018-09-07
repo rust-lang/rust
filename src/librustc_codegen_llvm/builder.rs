@@ -12,7 +12,7 @@ use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
 use llvm::{self, False, OperandBundleDef, BasicBlock};
 use common::{self, *};
 use context::CodegenCx;
-use type_;
+use type_::Type;
 use value::Value;
 use libc::{c_uint, c_char};
 use rustc::ty::TyCtxt;
@@ -59,13 +59,15 @@ bitflags! {
 impl Backend for Builder<'a, 'll, 'tcx, &'ll Value>  {
         type Value = &'ll Value;
         type BasicBlock = &'ll BasicBlock;
-        type Type = &'ll type_::Type;
+        type Type = &'ll Type;
         type TypeKind = llvm::TypeKind;
         type Context = &'ll llvm::Context;
 }
 
 impl BuilderMethods<'a, 'll, 'tcx>
     for Builder<'a, 'll, 'tcx, &'ll Value> {
+
+    type CodegenCx = CodegenCx<'ll, 'tcx, &'ll Value>;
 
     fn new_block<'b>(
         cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>,
@@ -455,7 +457,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
         }
     }
 
-    fn alloca(&self, ty: Self::Type, name: &str, align: Align) -> &'ll Value {
+    fn alloca(&self, ty: &'ll Type, name: &str, align: Align) -> &'ll Value {
         let bx = Builder::with_cx(self.cx);
         bx.position_at_start(unsafe {
             llvm::LLVMGetFirstBasicBlock(self.llfn())
@@ -463,7 +465,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
         bx.dynamic_alloca(ty, name, align)
     }
 
-    fn dynamic_alloca(&self, ty: Self::Type, name: &str, align: Align) -> &'ll Value {
+    fn dynamic_alloca(&self, ty: &'ll Type, name: &str, align: Align) -> &'ll Value {
         self.count_insn("alloca");
         unsafe {
             let alloca = if name.is_empty() {
@@ -479,7 +481,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
     }
 
     fn array_alloca(&self,
-                        ty: Self::Type,
+                        ty: &'ll Type,
                         len: &'ll Value,
                         name: &str,
                         align: Align) -> &'ll Value {
@@ -641,77 +643,77 @@ impl BuilderMethods<'a, 'll, 'tcx>
     }
 
     /* Casts */
-    fn trunc(&self, val: &'ll Value, dest_ty: Self::Type) -> &'ll Value {
+    fn trunc(&self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         self.count_insn("trunc");
         unsafe {
             llvm::LLVMBuildTrunc(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    fn sext(&self, val: &'ll Value, dest_ty: Self::Type) -> &'ll Value {
+    fn sext(&self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         self.count_insn("sext");
         unsafe {
             llvm::LLVMBuildSExt(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    fn fptoui(&self, val: &'ll Value, dest_ty: Self::Type) -> &'ll Value {
+    fn fptoui(&self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         self.count_insn("fptoui");
         unsafe {
             llvm::LLVMBuildFPToUI(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    fn fptosi(&self, val: &'ll Value, dest_ty: Self::Type) -> &'ll Value {
+    fn fptosi(&self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         self.count_insn("fptosi");
         unsafe {
             llvm::LLVMBuildFPToSI(self.llbuilder, val, dest_ty,noname())
         }
     }
 
-    fn uitofp(&self, val: &'ll Value, dest_ty: Self::Type) -> &'ll Value {
+    fn uitofp(&self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         self.count_insn("uitofp");
         unsafe {
             llvm::LLVMBuildUIToFP(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    fn sitofp(&self, val: &'ll Value, dest_ty: Self::Type) -> &'ll Value {
+    fn sitofp(&self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         self.count_insn("sitofp");
         unsafe {
             llvm::LLVMBuildSIToFP(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    fn fptrunc(&self, val: &'ll Value, dest_ty: Self::Type) -> &'ll Value {
+    fn fptrunc(&self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         self.count_insn("fptrunc");
         unsafe {
             llvm::LLVMBuildFPTrunc(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    fn fpext(&self, val: &'ll Value, dest_ty: Self::Type) -> &'ll Value {
+    fn fpext(&self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         self.count_insn("fpext");
         unsafe {
             llvm::LLVMBuildFPExt(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    fn ptrtoint(&self, val: &'ll Value, dest_ty: Self::Type) -> &'ll Value {
+    fn ptrtoint(&self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         self.count_insn("ptrtoint");
         unsafe {
             llvm::LLVMBuildPtrToInt(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    fn inttoptr(&self, val: &'ll Value, dest_ty: Self::Type) -> &'ll Value {
+    fn inttoptr(&self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         self.count_insn("inttoptr");
         unsafe {
             llvm::LLVMBuildIntToPtr(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    fn bitcast(&self, val: &'ll Value, dest_ty: Self::Type) -> &'ll Value {
+    fn bitcast(&self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         self.count_insn("bitcast");
         unsafe {
             llvm::LLVMBuildBitCast(self.llbuilder, val, dest_ty, noname())
@@ -719,14 +721,14 @@ impl BuilderMethods<'a, 'll, 'tcx>
     }
 
 
-    fn intcast(&self, val: &'ll Value, dest_ty: Self::Type, is_signed: bool) -> &'ll Value {
+    fn intcast(&self, val: &'ll Value, dest_ty: &'ll Type, is_signed: bool) -> &'ll Value {
         self.count_insn("intcast");
         unsafe {
             llvm::LLVMRustBuildIntCast(self.llbuilder, val, dest_ty, is_signed)
         }
     }
 
-    fn pointercast(&self, val: &'ll Value, dest_ty: Self::Type) -> &'ll Value {
+    fn pointercast(&self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         self.count_insn("pointercast");
         unsafe {
             llvm::LLVMBuildPointerCast(self.llbuilder, val, dest_ty, noname())
@@ -750,14 +752,14 @@ impl BuilderMethods<'a, 'll, 'tcx>
     }
 
     /* Miscellaneous instructions */
-    fn empty_phi(&self, ty: Self::Type) -> &'ll Value {
+    fn empty_phi(&self, ty: &'ll Type) -> &'ll Value {
         self.count_insn("emptyphi");
         unsafe {
             llvm::LLVMBuildPhi(self.llbuilder, ty, noname())
         }
     }
 
-    fn phi(&self, ty: Self::Type, vals: &[&'ll Value], bbs: &[&'ll BasicBlock]) -> &'ll Value {
+    fn phi(&self, ty: &'ll Type, vals: &[&'ll Value], bbs: &[&'ll BasicBlock]) -> &'ll Value {
         assert_eq!(vals.len(), bbs.len());
         let phi = self.empty_phi(ty);
         self.count_insn("addincoming");
@@ -770,7 +772,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
     }
 
     fn inline_asm_call(&self, asm: *const c_char, cons: *const c_char,
-                       inputs: &[&'ll Value], output: Self::Type,
+                       inputs: &[&'ll Value], output: &'ll Type,
                        volatile: bool, alignstack: bool,
                        dia: syntax::ast::AsmDialect) -> Option<&'ll Value> {
         self.count_insn("inlineasm");
@@ -829,7 +831,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
     }
 
     #[allow(dead_code)]
-    fn va_arg(&self, list: &'ll Value, ty: Self::Type) -> &'ll Value {
+    fn va_arg(&self, list: &'ll Value, ty: &'ll Type) -> &'ll Value {
         self.count_insn("vaarg");
         unsafe {
             llvm::LLVMBuildVAArg(self.llbuilder, list, ty, noname())
@@ -995,7 +997,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
         }
     }
 
-    fn landing_pad(&self, ty: Self::Type, pers_fn: &'ll Value,
+    fn landing_pad(&self, ty: &'ll Type, pers_fn: &'ll Value,
                        num_clauses: usize) -> &'ll Value {
         self.count_insn("landingpad");
         unsafe {
@@ -1299,7 +1301,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
         }
     }
 
-    fn zext(&self, val: &'ll Value, dest_ty: Self::Type) -> &'ll Value {
+    fn zext(&self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         self.count_insn("zext");
         unsafe {
             llvm::LLVMBuildZExt(self.llbuilder, val, dest_ty, noname())
