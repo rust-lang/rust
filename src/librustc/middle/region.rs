@@ -110,10 +110,10 @@ pub struct Scope {
     pub(crate) code: u32
 }
 
-const SCOPE_DATA_NODE: u32 = !0;
-const SCOPE_DATA_CALLSITE: u32 = !1;
-const SCOPE_DATA_ARGUMENTS: u32 = !2;
-const SCOPE_DATA_DESTRUCTION: u32 = !3;
+const SCOPE_DATA_NODE: u32 = 0xFFFF_FFFF;
+const SCOPE_DATA_CALLSITE: u32 = 0xFFFF_FFFE;
+const SCOPE_DATA_ARGUMENTS: u32 = 0xFFFF_FFFD;
+const SCOPE_DATA_DESTRUCTION: u32 = 0xFFFF_FFFC;
 // be sure to add the MAX of FirstStatementIndex if you add more constants here
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Debug, Copy, RustcEncodable, RustcDecodable)]
