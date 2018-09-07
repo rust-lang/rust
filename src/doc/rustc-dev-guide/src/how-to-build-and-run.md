@@ -223,7 +223,8 @@ using `--keep-stage 1`** -- for example, strange [ICEs](appendix/glossary.html) 
 panics. In that case, you should simply remove the `--keep-stage 1`
 from the command and rebuild.  That ought to fix the problem.
 
-Note: you can also use `--keep-stage 1` when running tests. Something like this:
+You can also use `--keep-stage 1` when running tests. Something like
+this:
 
 - Initial test run: `./x.py test -i --stage 1 src/test/ui`
 - Subsequent test run: `./x.py test -i --stage 1 src/test/ui --keep-stage 1`
