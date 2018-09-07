@@ -1,53 +1,53 @@
 error: `cfg` is not followed by parentheses
-  --> $DIR/cfg-attr-syntax-validation.rs:1:1
+  --> $DIR/cfg-attr-syntax-validation.rs:11:1
    |
 LL | #[cfg] //~ ERROR `cfg` is not followed by parentheses
    | ^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
 
 error: `cfg` is not followed by parentheses
-  --> $DIR/cfg-attr-syntax-validation.rs:4:1
+  --> $DIR/cfg-attr-syntax-validation.rs:14:1
    |
 LL | #[cfg = 10] //~ ERROR `cfg` is not followed by parentheses
    | ^^^^^^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
 
 error: `cfg` predicate is not specified
-  --> $DIR/cfg-attr-syntax-validation.rs:7:1
+  --> $DIR/cfg-attr-syntax-validation.rs:17:1
    |
 LL | #[cfg()] //~ ERROR `cfg` predicate is not specified
    | ^^^^^^^^
 
 error: multiple `cfg` predicates are specified
-  --> $DIR/cfg-attr-syntax-validation.rs:10:10
+  --> $DIR/cfg-attr-syntax-validation.rs:20:10
    |
 LL | #[cfg(a, b)] //~ ERROR multiple `cfg` predicates are specified
    |          ^
 
 error: `cfg` predicate key cannot be a literal
-  --> $DIR/cfg-attr-syntax-validation.rs:13:7
+  --> $DIR/cfg-attr-syntax-validation.rs:23:7
    |
 LL | #[cfg("str")] //~ ERROR `cfg` predicate key cannot be a literal
    |       ^^^^^
 
 error: `cfg` predicate key must be an identifier
-  --> $DIR/cfg-attr-syntax-validation.rs:16:7
+  --> $DIR/cfg-attr-syntax-validation.rs:26:7
    |
 LL | #[cfg(a::b)] //~ ERROR `cfg` predicate key must be an identifier
    |       ^^^^
 
 error[E0537]: invalid predicate `a`
-  --> $DIR/cfg-attr-syntax-validation.rs:19:7
+  --> $DIR/cfg-attr-syntax-validation.rs:29:7
    |
 LL | #[cfg(a())] //~ ERROR invalid predicate `a`
    |       ^^^
 
 error: literal in `cfg` predicate value must be a string
-  --> $DIR/cfg-attr-syntax-validation.rs:22:11
+  --> $DIR/cfg-attr-syntax-validation.rs:32:11
    |
 LL | #[cfg(a = 10)] //~ ERROR literal in `cfg` predicate value must be a string
    |           ^^
 
 error: `cfg` is not a well-formed meta-item
-  --> $DIR/cfg-attr-syntax-validation.rs:27:9
+  --> $DIR/cfg-attr-syntax-validation.rs:37:9
    |
 LL |         #[cfg(feature = $expr)] //~ ERROR `cfg` is not a well-formed meta-item
    |         ^^^^^^^^^^^^^^^^^^^^^^^ help: expected syntax is: `#[cfg(/* predicate */)]`
