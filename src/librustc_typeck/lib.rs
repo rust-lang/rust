@@ -172,7 +172,7 @@ fn require_same_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         match fulfill_cx.select_all_or_error(infcx) {
             Ok(()) => true,
             Err(errors) => {
-                infcx.report_fulfillment_errors(&errors, None, false);
+                infcx.report_fulfillment_errors(&errors, false);
                 false
             }
         }

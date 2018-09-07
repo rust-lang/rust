@@ -386,7 +386,7 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
 
         // Check that all transitive obligations are satisfied.
         if let Err(errors) = fulfill_cx.select_all_or_error(&infcx) {
-            infcx.report_fulfillment_errors(&errors, None, false);
+            infcx.report_fulfillment_errors(&errors, false);
         }
 
         // Finally, resolve all regions.

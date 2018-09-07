@@ -1424,8 +1424,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// new obligations that must further be processed.
     pub fn partially_normalize_associated_types_in<T>(
         &self,
-        span: Span,
-        body_id: ast::NodeId,
+        cause: ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         value: &T,
     ) -> InferOk<'tcx, T>
@@ -1434,7 +1433,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         debug!("partially_normalize_associated_types_in(value={:?})", value);
         let mut selcx = traits::SelectionContext::new(self);
-        let cause = ObligationCause::misc(span, body_id);
         let traits::Normalized { value, obligations } =
             traits::normalize(&mut selcx, param_env, cause, value);
         debug!(

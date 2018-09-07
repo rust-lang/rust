@@ -17,7 +17,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::{InferOk, InferResult};
 use rustc::infer::LateBoundRegionConversionTime;
 use rustc::infer::type_variable::TypeVariableOrigin;
-use rustc::traits::error_reporting::ArgKind;
+use rustc::traits::{self, error_reporting::ArgKind};
 use rustc::ty::{self, ToPolyTraitRef, Ty, GenericParamDefKind};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Substs;
@@ -667,8 +667,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let liberated_sig = self.tcx()
             .liberate_late_bound_regions(expr_def_id, &bound_sig);
         let liberated_sig = self.inh.normalize_associated_types_in(
-            body.value.span,
-            body.value.id,
+            traits::ObligationCause::misc(body.value.span, body.value.id),
             self.param_env,
             &liberated_sig,
         );

@@ -8,70 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use hir::{self, Local, Pat, Body, HirId};
-use hir::intravisit::{self, Visitor, NestedVisitorMap};
+use hir::{self, HirId};
 use infer::InferCtxt;
 use infer::type_variable::TypeVariableOrigin;
+use traits;
 use ty::{self, Ty, Infer, TyVar};
 use syntax::source_map::CompilerDesugaringKind;
-use syntax_pos::Span;
 use errors::DiagnosticBuilder;
-
-struct FindLocalByTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    target_ty: &'a Ty<'tcx>,
-    hir_map: &'a hir::map::Map<'gcx>,
-    found_local_pattern: Option<&'gcx Pat>,
-    found_arg_pattern: Option<&'gcx Pat>,
-}
-
-impl<'a, 'gcx, 'tcx> FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
-    fn node_matches_type(&mut self, node_id: HirId) -> bool {
-        let ty_opt = self.infcx.in_progress_tables.and_then(|tables| {
-            tables.borrow().node_id_to_type_opt(node_id)
-        });
-        match ty_opt {
-            Some(ty) => {
-                let ty = self.infcx.resolve_type_vars_if_possible(&ty);
-                ty.walk().any(|inner_ty| {
-                    inner_ty == *self.target_ty || match (&inner_ty.sty, &self.target_ty.sty) {
-                        (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => {
-                            self.infcx
-                                .type_variables
-                                .borrow_mut()
-                                .sub_unified(a_vid, b_vid)
-                        }
-                        _ => false,
-                    }
-                })
-            }
-            None => false,
-        }
-    }
-}
-
-impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
-        NestedVisitorMap::OnlyBodies(&self.hir_map)
-    }
-
-    fn visit_local(&mut self, local: &'gcx Local) {
-        if self.found_local_pattern.is_none() && self.node_matches_type(local.hir_id) {
-            self.found_local_pattern = Some(&*local.pat);
-        }
-        intravisit::walk_local(self, local);
-    }
-
-    fn visit_body(&mut self, body: &'gcx Body) {
-        for argument in &body.arguments {
-            if self.found_arg_pattern.is_none() && self.node_matches_type(argument.hir_id) {
-                self.found_arg_pattern = Some(&*argument.pat);
-            }
-        }
-        intravisit::walk_body(self, body);
-    }
-}
-
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn extract_type_name(&self, ty: &'a Ty<'tcx>) -> String {
@@ -89,38 +32,85 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn need_type_info_err(&self,
-                            body_id: Option<hir::BodyId>,
-                            span: Span,
-                            ty: Ty<'tcx>)
-                            -> DiagnosticBuilder<'gcx> {
+                              cause: &traits::ObligationCause<'tcx>,
+                              ty: Ty<'tcx>)
+                              -> DiagnosticBuilder<'gcx> {
         let ty = self.resolve_type_vars_if_possible(&ty);
         let name = self.extract_type_name(&ty);
 
-        let mut err_span = span;
         let mut labels = vec![(
-            span,
+            cause.span,
             if &name == "_" {
                 "cannot infer type".to_string()
             } else {
                 format!("cannot infer type for `{}`", name)
             },
         )];
+        let mut span = cause.span;
 
-        let mut local_visitor = FindLocalByTypeVisitor {
-            infcx: &self,
-            target_ty: &ty,
-            hir_map: &self.tcx.hir,
-            found_local_pattern: None,
-            found_arg_pattern: None,
-        };
-
-        if let Some(body_id) = body_id {
-            let expr = self.tcx.hir.expect_expr(body_id.node_id);
-            local_visitor.visit_expr(expr);
+        // NB. Lower values are more preferred.
+        #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+        enum LocalKind {
+            ClosureArg,
+            Let,
         }
 
-        if let Some(pattern) = local_visitor.found_arg_pattern {
-            err_span = pattern.span;
+        let found_local = self.in_progress_tables.and_then(|tables| {
+            let tables = tables.borrow();
+            let local_id_root = tables.local_id_root?;
+            assert!(local_id_root.is_local());
+
+            tables.node_types().iter().filter_map(|(&local_id, &node_ty)| {
+                let node_id = self.tcx.hir.hir_to_node_id(HirId {
+                    owner: local_id_root.index,
+                    local_id,
+                });
+
+                let (kind, pattern) = match self.tcx.hir.find(node_id) {
+                    Some(hir::Node::Local(local)) => {
+                        (LocalKind::Let, &*local.pat)
+                    }
+
+                    Some(hir::Node::Binding(pat)) |
+                    Some(hir::Node::Pat(pat)) => {
+                        let parent_id = self.tcx.hir.get_parent_node(node_id);
+                        match self.tcx.hir.find(parent_id) {
+                            Some(hir::Node::Expr(e)) => {
+                                match e.node {
+                                    hir::ExprKind::Closure(..) => {}
+                                    _ => return None,
+                                }
+                            }
+                            _ => return None,
+                        }
+
+                        (LocalKind::ClosureArg, pat)
+                    }
+
+                    _ => return None
+                };
+
+                let node_ty = self.resolve_type_vars_if_possible(&node_ty);
+                let matches_type = node_ty.walk().any(|inner_ty| {
+                    inner_ty == ty || match (&inner_ty.sty, &ty.sty) {
+                        (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => {
+                            self.type_variables
+                                .borrow_mut()
+                                .sub_unified(a_vid, b_vid)
+                        }
+                        _ => false,
+                    }
+                });
+                if !matches_type {
+                    return None;
+                }
+
+                Some((kind, pattern))
+            }).min_by_key(|&(kind, pattern)| (kind, pattern.hir_id.local_id))
+        });
+
+        if let Some((LocalKind::ClosureArg, pattern)) = found_local {
+            span = pattern.span;
             // We don't want to show the default label for closures.
             //
             // So, before clearing, the output would look something like this:
@@ -139,7 +129,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             labels.clear();
             labels.push(
                 (pattern.span, "consider giving this closure parameter a type".to_string()));
-        } else if let Some(pattern) = local_visitor.found_local_pattern {
+        } else if let Some((LocalKind::Let, pattern)) = found_local {
             if let Some(simple_ident) = pattern.simple_ident() {
                 match pattern.span.compiler_desugaring_kind() {
                     None => labels.push((pattern.span,
@@ -155,10 +145,22 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        let mut err = struct_span_err!(self.tcx.sess,
-                                       err_span,
-                                       E0282,
-                                       "type annotations needed");
+        let lint = self.get_lint_from_cause_code(&cause.code);
+        macro_rules! struct_span_err_or_lint {
+            ($code:ident, $($message:tt)*) => {
+                match lint {
+                    Some((lint, id)) => {
+                        let message = format!($($message)*);
+                        self.tcx.struct_span_lint_node(lint, id, span, &message)
+                    }
+                    None => {
+                        struct_span_err!(self.tcx.sess, span, $code, $($message)*)
+                    }
+                }
+            }
+        }
+
+        let mut err = struct_span_err_or_lint!(E0282, "type annotations needed");
 
         for (target_span, label_message) in labels {
             err.span_label(target_span, label_message);

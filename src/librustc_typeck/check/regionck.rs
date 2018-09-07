@@ -88,6 +88,7 @@ use middle::mem_categorization as mc;
 use middle::mem_categorization::Categorization;
 use middle::region;
 use rustc::hir::def_id::DefId;
+use rustc::traits;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
 use rustc::infer;
@@ -139,6 +140,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn regionck_item(&self,
                          item_id: ast::NodeId,
                          span: Span,
+                         code: traits::ObligationCauseCode<'tcx>,
                          wf_tys: &[Ty<'tcx>]) {
         debug!("regionck_item(item.id={:?}, wf_tys={:?})", item_id, wf_tys);
         let subject = self.tcx.hir.local_def_id(item_id);
@@ -147,7 +149,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                       item_id,
                                       Subject(subject),
                                       self.param_env);
-        rcx.outlives_environment.add_implied_bounds(self, wf_tys, item_id, span);
+        let cause = traits::ObligationCause::new(span, item_id, code);
+        rcx.outlives_environment.add_implied_bounds(self, wf_tys, &cause);
         rcx.visit_region_obligations(item_id);
         rcx.resolve_regions_and_report_errors();
     }
@@ -334,8 +337,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         self.outlives_environment.add_implied_bounds(
             self.fcx,
             &fn_sig_tys[..],
-            body_id.node_id,
-            span);
+            &traits::ObligationCause::misc(span, body_id.node_id),
+        );
         self.link_fn_args(
             region::Scope {
                 id: body.value.hir_id.local_id,

@@ -267,8 +267,8 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                             infer::HigherRankedType,
                                                             &tcx.fn_sig(impl_m.def_id));
         let impl_sig =
-            inh.normalize_associated_types_in(impl_m_span,
-                                              impl_m_node_id,
+            inh.normalize_associated_types_in(ObligationCause::misc(impl_m_span,
+                                                                    impl_m_node_id),
                                               param_env,
                                               &impl_sig);
         let impl_fty = tcx.mk_fn_ptr(ty::Binder::bind(impl_sig));
@@ -280,8 +280,8 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let trait_sig =
             trait_sig.subst(tcx, trait_to_skol_substs);
         let trait_sig =
-            inh.normalize_associated_types_in(impl_m_span,
-                                              impl_m_node_id,
+            inh.normalize_associated_types_in(ObligationCause::misc(impl_m_span,
+                                                                    impl_m_node_id),
                                               param_env,
                                               &trait_sig);
         let trait_fty = tcx.mk_fn_ptr(ty::Binder::bind(trait_sig));
@@ -347,14 +347,15 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Check that all obligations are satisfied by the implementation's
         // version.
         if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
-            infcx.report_fulfillment_errors(errors, None, false);
+            infcx.report_fulfillment_errors(errors, false);
             return Err(ErrorReported);
         }
 
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
         let fcx = FnCtxt::new(&inh, param_env, impl_m_node_id);
-        fcx.regionck_item(impl_m_node_id, impl_m_span, &[]);
+        fcx.regionck_item(impl_m_node_id, impl_m_span,
+            ObligationCauseCode::MiscObligation, &[]);
 
         Ok(())
     })
@@ -928,15 +929,15 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let mut cause = ObligationCause::misc(impl_c_span, impl_c_node_id);
 
         // There is no "body" here, so just pass dummy id.
-        let impl_ty = inh.normalize_associated_types_in(impl_c_span,
-                                                        impl_c_node_id,
+        let impl_ty = inh.normalize_associated_types_in(ObligationCause::misc(impl_c_span,
+                                                                              impl_c_node_id),
                                                         param_env,
                                                         &impl_ty);
 
         debug!("compare_const_impl: impl_ty={:?}", impl_ty);
 
-        let trait_ty = inh.normalize_associated_types_in(impl_c_span,
-                                                         impl_c_node_id,
+        let trait_ty = inh.normalize_associated_types_in(ObligationCause::misc(impl_c_span,
+                                                                               impl_c_node_id),
                                                          param_env,
                                                          &trait_ty);
 
@@ -987,11 +988,12 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Check that all obligations are satisfied by the implementation's
         // version.
         if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
-            infcx.report_fulfillment_errors(errors, None, false);
+            infcx.report_fulfillment_errors(errors, false);
             return;
         }
 
         let fcx = FnCtxt::new(&inh, param_env, impl_c_node_id);
-        fcx.regionck_item(impl_c_node_id, impl_c_span, &[]);
+        fcx.regionck_item(impl_c_node_id, impl_c_span,
+            ObligationCauseCode::MiscObligation, &[]);
     });
 }

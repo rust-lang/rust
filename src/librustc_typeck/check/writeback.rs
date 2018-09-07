@@ -17,6 +17,7 @@ use rustc::hir;
 use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::infer::InferCtxt;
+use rustc::traits;
 use rustc::ty::adjustment::{Adjust, Adjustment};
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
 use rustc::ty::subst::UnpackedKind;
@@ -738,8 +739,13 @@ impl<'cx, 'gcx, 'tcx> Resolver<'cx, 'gcx, 'tcx> {
 
     fn report_error(&self, t: Ty<'tcx>) {
         if !self.tcx.sess.has_errors() {
-            self.infcx
-                .need_type_info_err(Some(self.body.id()), self.span.to_span(&self.tcx), t)
+            self.infcx.need_type_info_err(
+                &traits::ObligationCause::misc(
+                    self.span.to_span(&self.tcx),
+                    self.body.id().node_id,
+                ),
+                t,
+            )
                 .emit();
         }
     }

@@ -440,8 +440,8 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
             ty::Predicate::WellFormed(ty) => {
                 match ty::wf::obligations(self.selcx.infcx(),
                                           obligation.param_env,
-                                          obligation.cause.body_id,
-                                          ty, obligation.cause.span) {
+                                          &obligation.cause,
+                                          ty) {
                     None => {
                         pending_obligation.stalled_on = vec![ty];
                         ProcessResult::Unchanged

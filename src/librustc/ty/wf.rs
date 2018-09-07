@@ -15,8 +15,6 @@ use ty::subst::Substs;
 use traits;
 use ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use std::iter::once;
-use syntax::ast;
-use syntax_pos::Span;
 use middle::lang_items;
 
 /// Returns the set of obligations needed to make `ty` well-formed.
@@ -27,20 +25,15 @@ use middle::lang_items;
 /// say "$0 is WF if $0 is WF".
 pub fn obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                    param_env: ty::ParamEnv<'tcx>,
-                                   body_id: ast::NodeId,
-                                   ty: Ty<'tcx>,
-                                   span: Span)
+                                   parent_cause: &traits::ObligationCause<'tcx>,
+                                   ty: Ty<'tcx>)
                                    -> Option<Vec<traits::PredicateObligation<'tcx>>>
 {
-    let mut wf = WfPredicates { infcx,
-                                param_env,
-                                body_id,
-                                span,
-                                out: vec![] };
+    let mut wf = WfPredicates { infcx, param_env, parent_cause, out: vec![] };
     if wf.compute(ty) {
-        debug!("wf::obligations({:?}, body_id={:?}) = {:?}", ty, body_id, wf.out);
+        debug!("wf::obligations({:?}, parent_cause={:?}) = {:?}", ty, parent_cause, wf.out);
         let result = wf.normalize();
-        debug!("wf::obligations({:?}, body_id={:?}) ~~> {:?}", ty, body_id, result);
+        debug!("wf::obligations({:?}, parent_cause={:?}) ~~> {:?}", ty, parent_cause, result);
         Some(result)
     } else {
         None // no progress made, return None
@@ -53,24 +46,22 @@ pub fn obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 /// if `Bar: Eq`.
 pub fn trait_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                          param_env: ty::ParamEnv<'tcx>,
-                                         body_id: ast::NodeId,
-                                         trait_ref: &ty::TraitRef<'tcx>,
-                                         span: Span)
+                                         parent_cause: &traits::ObligationCause<'tcx>,
+                                         trait_ref: &ty::TraitRef<'tcx>)
                                          -> Vec<traits::PredicateObligation<'tcx>>
 {
-    let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![] };
+    let mut wf = WfPredicates { infcx, param_env, parent_cause, out: vec![] };
     wf.compute_trait_ref(trait_ref, Elaborate::All);
     wf.normalize()
 }
 
 pub fn predicate_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                              param_env: ty::ParamEnv<'tcx>,
-                                             body_id: ast::NodeId,
-                                             predicate: &ty::Predicate<'tcx>,
-                                             span: Span)
+                                             parent_cause: &traits::ObligationCause<'tcx>,
+                                             predicate: &ty::Predicate<'tcx>)
                                              -> Vec<traits::PredicateObligation<'tcx>>
 {
-    let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![] };
+    let mut wf = WfPredicates { infcx, param_env, parent_cause, out: vec![] };
 
     // (*) ok to skip binders, because wf code is prepared for it
     match *predicate {
@@ -114,8 +105,7 @@ pub fn predicate_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 struct WfPredicates<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: ast::NodeId,
-    span: Span,
+    parent_cause: &'a traits::ObligationCause<'tcx>,
     out: Vec<traits::PredicateObligation<'tcx>>,
 }
 
@@ -150,7 +140,7 @@ enum Elaborate {
 
 impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
     fn cause(&mut self, code: traits::ObligationCauseCode<'tcx>) -> traits::ObligationCause<'tcx> {
-        traits::ObligationCause::new(self.span, self.body_id, code)
+        traits::ObligationCause::new(self.parent_cause.span, self.parent_cause.body_id, code)
     }
 
     fn normalize(&mut self) -> Vec<traits::PredicateObligation<'tcx>> {
