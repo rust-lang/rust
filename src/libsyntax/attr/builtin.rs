@@ -433,7 +433,21 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
         if let (Some(feats), Some(gated_cfg)) = (features, GatedCfg::gate(cfg)) {
             gated_cfg.check_and_emit(sess, feats);
         }
-        sess.config.contains(&(cfg.name(), cfg.value_str()))
+        let error = |span, msg| { sess.span_diagnostic.span_err(span, msg); true };
+        if cfg.ident.segments.len() != 1 {
+            return error(cfg.ident.span, "`cfg` predicate key must be an identifier");
+        }
+        match &cfg.node {
+            MetaItemKind::List(..) => {
+                error(cfg.span, "unexpected parentheses after `cfg` predicate key")
+            }
+            MetaItemKind::NameValue(lit) if !lit.node.is_str() => {
+                error(lit.span, "literal in `cfg` predicate value must be a string")
+            }
+            MetaItemKind::NameValue(..) | MetaItemKind::Word => {
+                sess.config.contains(&(cfg.name(), cfg.value_str()))
+            }
+        }
     })
 }
 
