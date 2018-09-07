@@ -1,11 +1,11 @@
 error: unsatisfied lifetime constraints
-  --> $DIR/mir_check_cast_unsafe_fn.rs:19:14
+  --> $DIR/mir_check_cast_unsafe_fn.rs:18:32
    |
 LL | fn bar<'a>(input: &'a u32, f: fn(&'a u32) -> &'a u32) -> &'static u32 {
    |        -- lifetime `'a` defined here
 ...
-LL |     unsafe { g(input) }
-   |              ^^^^^^^^ returning this value requires that `'a` must outlive `'static`
+LL |     let g: unsafe fn(_) -> _ = f;
+   |                                ^ cast requires that `'a` must outlive `'static`
 
 error: aborting due to previous error
 

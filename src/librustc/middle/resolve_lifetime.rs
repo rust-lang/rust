@@ -2567,6 +2567,13 @@ fn insert_late_bound_lifetimes(
     // - do not appear in the where-clauses
     // - are not implicitly captured by `impl Trait`
     for param in &generics.params {
+        match param.kind {
+            hir::GenericParamKind::Lifetime { .. } => { /* fall through */ }
+
+            // Types are not late-bound.
+            hir::GenericParamKind::Type { .. } => continue,
+        }
+
         let lt_name = hir::LifetimeName::Param(param.name.modern());
         // appears in the where clauses? early-bound.
         if appears_in_where_clause.regions.contains(&lt_name) {
