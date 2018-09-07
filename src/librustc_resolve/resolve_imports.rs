@@ -1147,7 +1147,15 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 None => continue,
             };
 
-            if binding.is_import() || binding.is_macro_def() {
+            // Don't reexport `uniform_path` canaries.
+            let non_canary_import = match binding.kind {
+                NameBindingKind::Import { directive, .. } => {
+                    !directive.is_uniform_paths_canary
+                }
+                _ => false,
+            };
+
+            if non_canary_import || binding.is_macro_def() {
                 let def = binding.def();
                 if def != Def::Err {
                     if !def.def_id().is_local() {
