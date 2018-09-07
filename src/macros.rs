@@ -69,6 +69,9 @@ impl Rewrite for ast::Item {
         visitor.block_indent = shape.indent;
         visitor.last_pos = self.span().lo();
         visitor.visit_item(self);
+        if visitor.macro_rewrite_failure {
+            context.macro_rewrite_failure.replace(true);
+        }
         Some(visitor.buffer)
     }
 }
@@ -406,7 +409,15 @@ pub fn rewrite_macro_def(
         ";",
         |branch| branch.span.lo(),
         |branch| branch.span.hi(),
-        |branch| branch.rewrite(context, arm_shape, multi_branch_style),
+        |branch| match branch.rewrite(context, arm_shape, multi_branch_style) {
+            Some(v) => Some(v),
+            // if the rewrite returned None because a macro could not be rewritten, then return the
+            // original body
+            None if *context.macro_rewrite_failure.borrow() == true => {
+                Some(context.snippet(branch.body).trim().to_string())
+            }
+            None => None,
+        },
         context.snippet_provider.span_after(span, "{"),
         span.hi(),
         false,

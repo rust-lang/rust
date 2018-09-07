@@ -522,6 +522,9 @@ pub fn rewrite_block_with_visitor(
     let inner_attrs = attrs.map(inner_attributes);
     let label_str = rewrite_label(label);
     visitor.visit_block(block, inner_attrs.as_ref().map(|a| &**a), has_braces);
+    if visitor.macro_rewrite_failure {
+        context.macro_rewrite_failure.replace(true);
+    }
     Some(format!("{}{}{}", prefix, label_str, visitor.buffer))
 }
 

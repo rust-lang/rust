@@ -747,6 +747,10 @@ pub fn format_impl(
 
             visitor.format_missing(item.span.hi() - BytePos(1));
 
+            if visitor.macro_rewrite_failure {
+                context.macro_rewrite_failure.replace(true);
+            }
+
             let inner_indent_str = visitor.block_indent.to_string_with_newline(context.config);
             let outer_indent_str = offset.block_only().to_string_with_newline(context.config);
 
@@ -1105,6 +1109,10 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             }
 
             visitor.format_missing(item.span.hi() - BytePos(1));
+
+            if visitor.macro_rewrite_failure {
+                context.macro_rewrite_failure.replace(true);
+            }
 
             let inner_indent_str = visitor.block_indent.to_string_with_newline(context.config);
             let outer_indent_str = offset.block_only().to_string_with_newline(context.config);

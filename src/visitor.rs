@@ -97,7 +97,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 if contains_skip(get_attrs_from_stmt(stmt)) {
                     self.push_skipped_with_span(stmt.span());
                 } else {
-                    let rewrite = stmt.rewrite(&self.get_context(), self.shape());
+                    let shape = self.shape().clone();
+                    let rewrite = self.with_context(|ctx| stmt.rewrite(&ctx, shape));
                     self.push_rewrite(stmt.span(), rewrite)
                 }
             }
@@ -350,11 +351,14 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 let where_span_end = snippet
                     .find_uncommented("{")
                     .map(|x| BytePos(x as u32) + source!(self, item.span).lo());
-                let rw = format_impl(&self.get_context(), item, self.block_indent, where_span_end);
+                let block_indent = self.block_indent.clone();
+                let rw =
+                    self.with_context(|ctx| format_impl(&ctx, item, block_indent, where_span_end));
                 self.push_rewrite(item.span, rw);
             }
             ast::ItemKind::Trait(..) => {
-                let rw = format_trait(&self.get_context(), item, self.block_indent);
+                let block_indent = self.block_indent.clone();
+                let rw = self.with_context(|ctx| format_trait(&ctx, item, block_indent));
                 self.push_rewrite(item.span, rw);
             }
             ast::ItemKind::TraitAlias(ref generics, ref generic_bounds) => {
