@@ -575,7 +575,13 @@ mod issue_2496 {
 mod issue_1219 {
     #[warn(clippy::explicit_counter_loop)]
     pub fn test() {
-        // should not trigger the lint, because of the continue statement
+        // should not trigger the lint because variable is used after the loop #473
+        let vec = vec![1,2,3];
+        let mut index = 0;
+        for _v in &vec { index += 1 }
+        println!("index: {}", index);
+
+        // should not trigger the lint because the count is conditional #1219
         let text = "banana";
         let mut count = 0;
         for ch in text.chars() {
@@ -583,36 +589,17 @@ mod issue_1219 {
                 continue;
             }
             count += 1;
+            println!("{}", count);
         }
-        println!("{}", count);
 
-        // should trigger the lint
-        let text = "banana";
-        let mut count = 0;
-        for ch in text.chars() {
-            if ch == 'a' {
-                println!("abc")
-            }
-            count += 1;
-        }
-        println!("{}", count);
-
-        // should not trigger the lint
+        // should not trigger the lint because the count is conditional
         let text = "banana";
         let mut count = 0;
         for ch in text.chars() {
             if ch == 'a' {
                 count += 1;
             }
+            println!("{}", count);
         }
-        println!("{}", count);
-
-        // should trigger the lint
-        let text = "banana";
-        let mut count = 0;
-        for _ch in text.chars() {
-            count += 1;
-        }
-        println!("{}", count);
     }
 }
