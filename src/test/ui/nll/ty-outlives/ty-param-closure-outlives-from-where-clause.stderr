@@ -16,7 +16,7 @@ LL | |     })
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#1r ()>, T))
            ]
-   = note: number of external vids: 4
+   = note: number of external vids: 3
    = note: where T: '_#1r
 
 note: No external requirements
@@ -69,7 +69,7 @@ LL | |     })
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T))
            ]
-   = note: number of external vids: 4
+   = note: number of external vids: 3
    = note: where T: '_#2r
 
 note: No external requirements
@@ -106,7 +106,7 @@ LL | |     })
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T))
            ]
-   = note: number of external vids: 5
+   = note: number of external vids: 4
    = note: where T: '_#2r
 
 note: No external requirements
@@ -156,7 +156,7 @@ LL | |     })
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
            ]
-   = note: number of external vids: 5
+   = note: number of external vids: 4
    = note: where T: '_#3r
 
 note: No external requirements

@@ -10,7 +10,7 @@ LL |     with_signature(x, |y| y)
                i32,
                extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn std::fmt::Debug + '_#2r)>
            ]
-   = note: number of external vids: 4
+   = note: number of external vids: 3
    = note: where T: '_#2r
 
 note: No external requirements

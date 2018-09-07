@@ -6,14 +6,6 @@ LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
    |
    = help: consider adding an explicit lifetime bound `U: 'static`...
 
-error: unsatisfied lifetime constraints
-  --> $DIR/regions-close-object-into-object-4.rs:20:5
-   |
-LL | fn i<'a, T, U>(v: Box<A<U>+'a>) -> Box<X+'static> {
-   |      -- lifetime `'a` defined here
-LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
-   |     ^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
-
 error[E0310]: the parameter type `U` may not live long enough
   --> $DIR/regions-close-object-into-object-4.rs:20:9
    |
@@ -21,6 +13,14 @@ LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
    |         ^^^^^^
    |
    = help: consider adding an explicit lifetime bound `U: 'static`...
+
+error: unsatisfied lifetime constraints
+  --> $DIR/regions-close-object-into-object-4.rs:20:11
+   |
+LL | fn i<'a, T, U>(v: Box<A<U>+'a>) -> Box<X+'static> {
+   |      -- lifetime `'a` defined here
+LL |     box B(&*v) as Box<X> //~ ERROR cannot infer
+   |           ^^^ cast requires that `'a` must outlive `'static`
 
 error[E0597]: `*v` does not live long enough
   --> $DIR/regions-close-object-into-object-4.rs:20:11

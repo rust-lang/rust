@@ -1,10 +1,22 @@
 error: unsatisfied lifetime constraints
-  --> $DIR/regions-addr-of-upvar-self.rs:20:41
+  --> $DIR/regions-addr-of-upvar-self.rs:20:17
    |
 LL |         let _f = || {
    |                  -- lifetime `'1` represents this closure's body
 LL |             let p: &'static mut usize = &mut self.food; //~ ERROR cannot infer
-   |                                         ^^^^^^^^^^^^^^ requires that `'1` must outlive `'static`
+   |                 ^ requires that `'1` must outlive `'static`
+   |
+   = note: closure implements `FnMut`, so references to captured variables can't escape the closure
+
+error: unsatisfied lifetime constraints
+  --> $DIR/regions-addr-of-upvar-self.rs:20:17
+   |
+LL |     pub fn chase_cat(&mut self) {
+   |                      --------- lifetime `'2` appears in the type of `self`
+LL |         let _f = || {
+   |                  -- lifetime `'1` represents this closure's body
+LL |             let p: &'static mut usize = &mut self.food; //~ ERROR cannot infer
+   |                 ^ requires that `'1` must outlive `'2`
    |
    = note: closure implements `FnMut`, so references to captured variables can't escape the closure
 
@@ -29,6 +41,6 @@ LL |     }
    |
    = note: borrowed value must be valid for the static lifetime...
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0597`.
