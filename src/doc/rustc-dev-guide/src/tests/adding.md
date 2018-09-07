@@ -9,7 +9,6 @@ To add a new test, the first thing you generally do is to create a
 file, typically a Rust source file. Test files have a particular
 structure:
 
-- They always begin with the [copyright notice](./conventions.html#copyright);
 - then they should have some kind of
   [comment explaining what the test is about](#explanatory_comment);
 - next, they can have one or more [header commands](#header_commands), which
