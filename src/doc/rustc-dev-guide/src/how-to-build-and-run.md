@@ -209,13 +209,14 @@ The sequence of commands you want is as follows:
 - Subsequent builds: `./x.py build -i --stage 1 src/libstd --keep-stage 1`
   - Note that we added the `--keep-stage 1` flag here
   
-The effect of `--keep-stage1` is that we just *assume* that the old
+The effect of `--keep-stage 1` is that we just *assume* that the old
 standard library can be re-used. If you are editing the compiler, this
 is almost always true: you haven't changed the standard library, after
 all.  But sometimes, it's not true: for example, if you are editing
 the "metadata" part of the compiler, which controls how the compiler
-encodes types and other states into the `rlib` files, or if you are editing
-things that wind up in the metadata (such as the definition of the MIR).
+encodes types and other states into the `rlib` files, or if you are
+editing things that wind up in the metadata (such as the definition of
+the MIR).
 
 **The TL;DR is that you might get weird behavior from a compile when
 using `--keep-stage 1`** -- for example, strange [ICEs](appendix/glossary.html) or other
