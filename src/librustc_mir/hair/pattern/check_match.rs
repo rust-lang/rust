@@ -537,7 +537,7 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
                              "cannot bind by-move with sub-bindings")
                 .span_label(p.span, "binds an already bound by-move value by moving it")
                 .emit();
-        } else if has_guard {
+        } else if has_guard && !cx.tcx.allow_bind_by_move_patterns_with_guards() {
             struct_span_err!(cx.tcx.sess, p.span, E0008,
                       "cannot bind by-move into a pattern guard")
                 .span_label(p.span, "moves value into pattern guard")

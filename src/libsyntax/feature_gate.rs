@@ -515,6 +515,12 @@ declare_features! (
 
     // Self struct constructor  (RFC 2302)
     (active, self_struct_ctor, "1.31.0", Some(51994), None),
+
+    // allow mixing of bind-by-move in patterns and references to
+    // those identifiers in guards, *if* we are using MIR-borrowck
+    // (aka NLL). Essentially this means you need to be on
+    // edition:2018 or later.
+    (active, bind_by_move_pattern_guards, "1.30.0", Some(15287), None),
 );
 
 declare_features! (
