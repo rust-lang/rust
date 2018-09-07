@@ -22,7 +22,7 @@ use rustc::ty::query::Providers;
 use rustc::ty::wf;
 use syntax::ast::DUMMY_NODE_ID;
 use syntax::source_map::DUMMY_SP;
-use rustc::traits::FulfillmentContext;
+use rustc::traits::{self, FulfillmentContext};
 
 use rustc_data_structures::sync::Lrc;
 
@@ -73,8 +73,8 @@ fn compute_implied_outlives_bounds<'tcx>(
         // than the ultimate set. (Note: normally there won't be
         // unresolved inference variables here anyway, but there might be
         // during typeck under some circumstances.)
-        let obligations =
-            wf::obligations(infcx, param_env, DUMMY_NODE_ID, ty, DUMMY_SP).unwrap_or(vec![]);
+        let cause = traits::ObligationCause::new(DUMMY_SP, DUMMY_NODE_ID, traits::MiscObligation);
+        let obligations = wf::obligations(infcx, param_env, &cause, ty).unwrap_or(vec![]);
 
         // NB: All of these predicates *ought* to be easily proven
         // true. In fact, their correctness is (mostly) implied by

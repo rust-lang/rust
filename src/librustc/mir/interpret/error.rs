@@ -55,6 +55,16 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         self.struct_generic(tcx, message, None)
     }
 
+    pub fn struct_lint(&self,
+        tcx: TyCtxtAt<'a, 'gcx, 'tcx>,
+        message: &str,
+        lint_root: ast::NodeId,
+        lint: Option<&'static ::lint::Lint>)
+        -> Option<DiagnosticBuilder<'tcx>>
+    {
+        self.struct_generic(tcx, message, Some((lint_root, lint)))
+    }
+
     pub fn report_as_error(&self,
         tcx: TyCtxtAt<'a, 'gcx, 'tcx>,
         message: &str
@@ -73,7 +83,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         let lint = self.struct_generic(
             tcx,
             message,
-            Some(lint_root),
+            Some((lint_root, None)),
         );
         if let Some(mut lint) = lint {
             lint.emit();
@@ -84,7 +94,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         &self,
         tcx: TyCtxtAt<'a, 'gcx, 'tcx>,
         message: &str,
-        lint_root: Option<ast::NodeId>,
+        lint_root: Option<(ast::NodeId, Option<&'static ::lint::Lint>)>,
     ) -> Option<DiagnosticBuilder<'tcx>> {
         match self.error.kind {
             ::mir::interpret::EvalErrorKind::TypeckError |
@@ -97,7 +107,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
             _ => {},
         }
         trace!("reporting const eval failure at {:?}", self.span);
-        let mut err = if let Some(lint_root) = lint_root {
+        let mut err = if let Some((lint_root, lint)) = lint_root {
             let node_id = self.stacktrace
                 .iter()
                 .rev()
@@ -105,7 +115,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
                 .next()
                 .unwrap_or(lint_root);
             tcx.struct_span_lint_node(
-                ::rustc::lint::builtin::CONST_ERR,
+                lint.unwrap_or(::rustc::lint::builtin::CONST_ERR),
                 node_id,
                 tcx.span,
                 message,

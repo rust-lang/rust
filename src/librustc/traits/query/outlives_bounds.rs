@@ -9,8 +9,6 @@
 // except according to those terms.
 
 use infer::InferCtxt;
-use syntax::ast;
-use syntax::source_map::Span;
 use smallvec::SmallVec;
 use traits::{FulfillmentContext, ObligationCause, TraitEngine, TraitEngineExt};
 use traits::query::NoSolution;
@@ -99,36 +97,54 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     pub fn implied_outlives_bounds(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        body_id: ast::NodeId,
+        cause: &ObligationCause<'tcx>,
         ty: Ty<'tcx>,
-        span: Span,
     ) -> Vec<OutlivesBound<'tcx>> {
         debug!("implied_outlives_bounds(ty = {:?})", ty);
+
+        let mut skip_delay_bug = false;
+
+        // Avoid ICE-ing from unsolved inference variables in lint mode.
+        if let Some((lint, id)) = self.get_lint_from_cause_code(&cause.code) {
+            match self.tcx.lint_level_at_node(lint, id).0 {
+                // These are the only cases in which we can't detect whether
+                // a diagnostic was emitted (as it likely wasn't an error).
+                ::lint::Level::Allow |
+                ::lint::Level::Warn => skip_delay_bug = true,
+
+                ::lint::Level::Deny |
+                ::lint::Level::Forbid => {}
+            }
+        }
 
         let mut orig_values = SmallVec::new();
         let key = self.canonicalize_query(&param_env.and(ty), &mut orig_values);
         let result = match self.tcx.global_tcx().implied_outlives_bounds(key) {
             Ok(r) => r,
             Err(NoSolution) => {
-                self.tcx.sess.delay_span_bug(
-                    span,
-                    "implied_outlives_bounds failed to solve all obligations"
-                );
+                if !skip_delay_bug {
+                    self.tcx.sess.delay_span_bug(
+                        cause.span,
+                        "implied_outlives_bounds failed to solve all obligations"
+                    );
+                }
                 return vec![];
             }
         };
         assert!(result.value.is_proven());
 
         let result = self.instantiate_query_result_and_region_obligations(
-            &ObligationCause::misc(span, body_id), param_env, &orig_values, &result);
+            cause, param_env, &orig_values, &result);
         debug!("implied_outlives_bounds for {:?}: {:#?}", ty, result);
         let result = match result {
             Ok(v) => v,
             Err(_) => {
-                self.tcx.sess.delay_span_bug(
-                    span,
-                    "implied_outlives_bounds failed to instantiate"
-                );
+                if !skip_delay_bug {
+                    self.tcx.sess.delay_span_bug(
+                        cause.span,
+                        "implied_outlives_bounds failed to instantiate"
+                    );
+                }
                 return vec![];
             }
         };
@@ -138,10 +154,12 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         let mut fulfill_cx = FulfillmentContext::new();
         fulfill_cx.register_predicate_obligations(self, result.obligations);
         if fulfill_cx.select_all_or_error(self).is_err() {
-            self.tcx.sess.delay_span_bug(
-                span,
-                "implied_outlives_bounds failed to solve obligations from instantiation"
-            );
+            if !skip_delay_bug {
+                self.tcx.sess.delay_span_bug(
+                    cause.span,
+                    "implied_outlives_bounds failed to solve obligations from instantiation"
+                );
+            }
         }
 
         result.value

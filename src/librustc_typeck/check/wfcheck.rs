@@ -36,9 +36,15 @@ struct CheckWfFcxBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     id: ast::NodeId,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
+    cause_code: ObligationCauseCode<'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
+    fn with_cause_code(&mut self, cause_code: ObligationCauseCode<'tcx>) -> &mut Self {
+        self.cause_code = cause_code;
+        self
+    }
+
     fn with_fcx<F>(&'tcx mut self, f: F) where
         F: for<'b> FnOnce(&FnCtxt<'b, 'gcx, 'tcx>,
                          TyCtxt<'b, 'gcx, 'gcx>) -> Vec<Ty<'tcx>>
@@ -46,6 +52,7 @@ impl<'a, 'gcx, 'tcx> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
         let id = self.id;
         let span = self.span;
         let param_env = self.param_env;
+        let cause_code = self.cause_code.clone();
         self.inherited.enter(|inh| {
             let fcx = FnCtxt::new(&inh, param_env, id);
             if !inh.tcx.features().trivial_bounds {
@@ -56,7 +63,7 @@ impl<'a, 'gcx, 'tcx> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
             }
             let wf_tys = f(&fcx, fcx.tcx.global_tcx());
             fcx.select_all_obligations_or_error();
-            fcx.regionck_item(id, span, &wf_tys);
+            fcx.regionck_item(id, span, cause_code, &wf_tys);
         });
     }
 }
@@ -118,11 +125,16 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
         hir::ItemKind::Fn(..) => {
             check_item_fn(tcx, item);
         }
-        hir::ItemKind::Static(..) => {
-            check_item_type(tcx, item);
-        }
+        hir::ItemKind::Static(..) |
         hir::ItemKind::Const(..) => {
-            check_item_type(tcx, item);
+            for_item(tcx, item).with_fcx(|fcx, _this| {
+                let ty = fcx.tcx.type_of(fcx.tcx.hir.local_def_id(item.id));
+                let item_ty = fcx.normalize_associated_types_in(item.span, &ty);
+
+                fcx.register_wf_obligation(item_ty, item.span, ObligationCauseCode::MiscObligation);
+
+                vec![] // no implied bounds in a static/const
+            });
         }
         hir::ItemKind::Struct(ref struct_def, ref ast_generics) => {
             check_type_defn(tcx, item, false, |fcx| {
@@ -232,6 +244,7 @@ fn for_id<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>, id: ast::NodeId, span: Sp
         id,
         span,
         param_env: tcx.param_env(def_id),
+        cause_code: ObligationCauseCode::MiscObligation,
     }
 }
 
@@ -296,7 +309,8 @@ fn check_type_defn<'a, 'tcx, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         }
 
-        check_where_clauses(tcx, fcx, item.span, def_id, None);
+        check_where_clauses(tcx, fcx, item.span, def_id, None,
+            traits::ItemObligation(def_id));
 
         vec![] // no implied bounds in a struct def'n
     });
@@ -305,7 +319,8 @@ fn check_type_defn<'a, 'tcx, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn check_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &hir::Item) {
     let trait_def_id = tcx.hir.local_def_id(item.id);
     for_item(tcx, item).with_fcx(|fcx, _| {
-        check_where_clauses(tcx, fcx, item.span, trait_def_id, None);
+        check_where_clauses(tcx, fcx, item.span, trait_def_id, None,
+            traits::ItemObligation(trait_def_id));
         vec![]
     });
 }
@@ -320,21 +335,6 @@ fn check_item_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &hir::Item) {
                                 def_id, &mut implied_bounds);
         implied_bounds
     })
-}
-
-fn check_item_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    item: &hir::Item)
-{
-    debug!("check_item_type: {:?}", item);
-
-    for_item(tcx, item).with_fcx(|fcx, _this| {
-        let ty = fcx.tcx.type_of(fcx.tcx.hir.local_def_id(item.id));
-        let item_ty = fcx.normalize_associated_types_in(item.span, &ty);
-
-        fcx.register_wf_obligation(item_ty, item.span, ObligationCauseCode::MiscObligation);
-
-        vec![] // no implied bounds in a const etc
-    });
 }
 
 fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -353,12 +353,16 @@ fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 let trait_ref =
                     fcx.normalize_associated_types_in(
                         ast_trait_ref.path.span, &trait_ref);
+                let cause = traits::ObligationCause::new(
+                    ast_trait_ref.path.span,
+                    fcx.body_id,
+                    ObligationCauseCode::MiscObligation,
+                );
                 let obligations =
                     ty::wf::trait_obligations(fcx,
                                                 fcx.param_env,
-                                                fcx.body_id,
-                                                &trait_ref,
-                                                ast_trait_ref.path.span);
+                                                &cause,
+                                                &trait_ref);
                 for obligation in obligations {
                     fcx.register_predicate(obligation);
                 }
@@ -371,7 +375,8 @@ fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         }
 
-        check_where_clauses(tcx, fcx, item.span, item_def_id, None);
+        check_where_clauses(tcx, fcx, item.span, item_def_id, None,
+            traits::ItemObligation(item_def_id));
 
         fcx.impl_implied_bounds(item_def_id, item.span)
     });
@@ -384,6 +389,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
     span: Span,
     def_id: DefId,
     return_ty: Option<Ty<'tcx>>,
+    code: traits::ObligationCauseCode<'tcx>,
 ) {
     use ty::subst::Subst;
     use rustc::ty::TypeFoldable;
@@ -448,6 +454,9 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
             }
         }
     });
+
+    let cause = traits::ObligationCause::new(span, fcx.body_id, code);
+
     // Now we build the substituted predicates.
     let default_obligations = predicates.predicates.iter().flat_map(|&pred| {
         struct CountParams { params: FxHashSet<u32> }
@@ -493,8 +502,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
         // below: there, we are not trying to prove those predicates
         // to be *true* but merely *well-formed*.
         let pred = fcx.normalize_associated_types_in(span, &pred);
-        let cause = traits::ObligationCause::new(span, fcx.body_id, traits::ItemObligation(def_id));
-        traits::Obligation::new(cause, fcx.param_env, pred)
+        traits::Obligation::new(cause.clone(), fcx.param_env, pred)
     });
 
     let mut predicates = predicates.instantiate_identity(fcx.tcx);
@@ -511,9 +519,8 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
                     .iter()
                     .flat_map(|p| ty::wf::predicate_obligations(fcx,
                                                                 fcx.param_env,
-                                                                fcx.body_id,
-                                                                p,
-                                                                span));
+                                                                &cause,
+                                                                p));
 
     for obligation in wf_obligations.chain(default_obligations) {
         debug!("next obligation cause: {:?}", obligation.cause);
@@ -541,7 +548,8 @@ fn check_fn_or_method<'a, 'fcx, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     // FIXME(#25759) return types should not be implied bounds
     implied_bounds.push(sig.output());
 
-    check_where_clauses(tcx, fcx, span, def_id, Some(sig.output()));
+    check_where_clauses(tcx, fcx, span, def_id, Some(sig.output()),
+        traits::ItemObligation(def_id));
 }
 
 /// Checks "defining uses" of existential types to ensure that they meet the restrictions laid for

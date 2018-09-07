@@ -2824,7 +2824,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                                     hir_id: HirId,
                                                     span: S,
                                                     msg: &str)
-        -> DiagnosticBuilder<'tcx>
+        -> DiagnosticBuilder<'gcx>
     {
         let node_id = self.hir.hir_to_node_id(hir_id);
         let (level, src) = self.lint_level_at_node(lint, node_id);
@@ -2836,14 +2836,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                                      id: NodeId,
                                                      span: S,
                                                      msg: &str)
-        -> DiagnosticBuilder<'tcx>
+        -> DiagnosticBuilder<'gcx>
     {
         let (level, src) = self.lint_level_at_node(lint, id);
         lint::struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg)
     }
 
     pub fn struct_lint_node(self, lint: &'static Lint, id: NodeId, msg: &str)
-        -> DiagnosticBuilder<'tcx>
+        -> DiagnosticBuilder<'gcx>
     {
         let (level, src) = self.lint_level_at_node(lint, id);
         lint::struct_lint_level(self.sess, lint, level, src, None, msg)

@@ -50,7 +50,6 @@ use syntax_pos::{DUMMY_SP, Span};
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn report_fulfillment_errors(&self,
                                      errors: &[FulfillmentError<'tcx>],
-                                     body_id: Option<hir::BodyId>,
                                      fallback_has_occurred: bool) {
         #[derive(Debug)]
         struct ErrorDescriptor<'tcx> {
@@ -111,7 +110,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         for (error, suppressed) in errors.iter().zip(is_suppressed) {
             if !suppressed {
-                self.report_fulfillment_error(error, body_id, fallback_has_occurred);
+                self.report_fulfillment_error(error, fallback_has_occurred);
             }
         }
     }
@@ -155,7 +154,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn report_fulfillment_error(&self, error: &FulfillmentError<'tcx>,
-                                body_id: Option<hir::BodyId>,
                                 fallback_has_occurred: bool) {
         debug!("report_fulfillment_errors({:?})", error);
         match error.code {
@@ -166,7 +164,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 self.report_projection_error(&error.obligation, e);
             }
             FulfillmentErrorCode::CodeAmbiguity => {
-                self.maybe_report_ambiguity(&error.obligation, body_id);
+                self.maybe_report_ambiguity(&error.obligation);
             }
             FulfillmentErrorCode::CodeSubtypeError(ref expected_found, ref err) => {
                 self.report_mismatched_types(&error.obligation.cause,
@@ -224,13 +222,30 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
+
+            let span = obligation.cause.span;
+            let lint = self.get_lint_from_cause_code(&obligation.cause.code);
+            macro_rules! struct_span_err_or_lint {
+                ($code:ident, $($message:tt)*) => {
+                    match lint {
+                        Some((lint, id)) => {
+                            let message = format!($($message)*);
+                            self.tcx.struct_span_lint_node(lint, id, span, &message)
+                        }
+                        None => {
+                            struct_span_err!(self.tcx.sess, span, $code, $($message)*)
+                        }
+                    }
+                }
+            }
+
             let msg = format!("type mismatch resolving `{}`", predicate);
             let error_id = (DiagnosticMessageId::ErrorId(271),
                             Some(obligation.cause.span), msg.clone());
             let fresh = self.tcx.sess.one_time_diagnostics.borrow_mut().insert(error_id);
             if fresh {
-                let mut diag = struct_span_err!(
-                    self.tcx.sess, obligation.cause.span, E0271,
+                let mut diag = struct_span_err_or_lint!(
+                    E0271,
                     "type mismatch resolving `{}`", predicate
                 );
                 self.note_type_err(&mut diag, &obligation.cause, None, values, err);
@@ -559,12 +574,41 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    /// Get the lint and `NodeId` it applies to, if any exist.
+    pub fn get_lint_from_cause_code(
+        &self,
+        code: &ObligationCauseCode<'tcx>,
+    ) -> Option<(&'static ::lint::Lint, ast::NodeId)> {
+        match code {
+            ObligationCauseCode::BuiltinDerivedObligation(data) |
+            ObligationCauseCode::ImplDerivedObligation(data) => {
+                self.get_lint_from_cause_code(&data.parent_code)
+            }
+            _ => None,
+        }
+    }
+
     pub fn report_selection_error(&self,
                                   obligation: &PredicateObligation<'tcx>,
                                   error: &SelectionError<'tcx>,
                                   fallback_has_occurred: bool)
     {
         let span = obligation.cause.span;
+
+        let lint = self.get_lint_from_cause_code(&obligation.cause.code);
+        macro_rules! struct_span_err_or_lint {
+            ($code:ident, $($message:tt)*) => {
+                match lint {
+                    Some((lint, id)) => {
+                        let message = format!($($message)*);
+                        self.tcx.struct_span_lint_node(lint, id, span, &message)
+                    }
+                    None => {
+                        struct_span_err!(self.tcx.sess, span, $code, $($message)*)
+                    }
+                }
+            }
+        }
 
         let mut err = match *error {
             SelectionError::Unimplemented => {
@@ -580,6 +624,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         .emit();
                     return;
                 }
+
                 match obligation.predicate {
                     ty::Predicate::Trait(ref trait_predicate) => {
                         let trait_predicate =
@@ -598,9 +643,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             = self.on_unimplemented_note(trait_ref, obligation);
                         let have_alt_message = message.is_some() || label.is_some();
 
-                        let mut err = struct_span_err!(
-                            self.tcx.sess,
-                            span,
+                        let mut err = struct_span_err_or_lint!(
                             E0277,
                             "{}",
                             message.unwrap_or_else(|| {
@@ -694,7 +737,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         let predicate = self.resolve_type_vars_if_possible(predicate);
                         let err = self.region_outlives_predicate(&obligation.cause,
                                                                     &predicate).err().unwrap();
-                        struct_span_err!(self.tcx.sess, span, E0279,
+                        struct_span_err_or_lint!(E0279,
                             "the requirement `{}` is not satisfied (`{}`)",
                             predicate, err)
                     }
@@ -702,7 +745,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     ty::Predicate::Projection(..) | ty::Predicate::TypeOutlives(..) => {
                         let predicate =
                             self.resolve_type_vars_if_possible(&obligation.predicate);
-                        struct_span_err!(self.tcx.sess, span, E0280,
+                        struct_span_err_or_lint!(E0280,
                             "the requirement `{}` is not satisfied",
                             predicate)
                     }
@@ -841,10 +884,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
 
             ConstEvalFailure(ref err) => {
-                match err.struct_error(
-                    self.tcx.at(span),
-                    "could not evaluate constant expression",
-                ) {
+                let err = if let Some((lint, id)) = lint {
+                    err.struct_lint(
+                        self.tcx.at(span),
+                        "could not evaluate constant expression",
+                        id,
+                        Some(lint),
+                    )
+                } else {
+                    err.struct_error(
+                        self.tcx.at(span),
+                        "could not evaluate constant expression",
+                    )
+                };
+                match err {
                     Some(err) => err,
                     None => return,
                 }
@@ -1230,8 +1283,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
-    fn maybe_report_ambiguity(&self, obligation: &PredicateObligation<'tcx>,
-                              body_id: Option<hir::BodyId>) {
+    fn maybe_report_ambiguity(&self, obligation: &PredicateObligation<'tcx>) {
         // Unable to successfully determine, probably means
         // insufficient type information, but could mean
         // ambiguous impls. The latter *ought* to be a
@@ -1248,6 +1300,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // errors. So just ignore them if this infcx is tainted.
         if self.is_tainted_by_errors() {
             return;
+        }
+
+        // Avoid erroring about inference variables in lint mode.
+        if let Some((lint, id)) = self.get_lint_from_cause_code(&obligation.cause.code) {
+            match self.tcx.lint_level_at_node(lint, id).0 {
+                // These are the only cases in which we can't detect whether
+                // a diagnostic was emitted (as it likely wasn't an error).
+                ::lint::Level::Allow |
+                ::lint::Level::Warn => return,
+
+                ::lint::Level::Deny |
+                ::lint::Level::Forbid => {}
+            }
         }
 
         match predicate {
@@ -1286,7 +1351,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         self.tcx.lang_items().sized_trait()
                         .map_or(false, |sized_id| sized_id == trait_ref.def_id())
                     {
-                        self.need_type_info_err(body_id, span, self_ty).emit();
+                        self.need_type_info_err(&obligation.cause, self_ty).emit();
                     } else {
                         let mut err = struct_span_err!(self.tcx.sess,
                                                         span, E0283,
@@ -1303,7 +1368,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // Same hacky approach as above to avoid deluging user
                 // with error messages.
                 if !ty.references_error() && !self.tcx.sess.has_errors() {
-                    self.need_type_info_err(body_id, span, ty).emit();
+                    self.need_type_info_err(&obligation.cause, ty).emit();
                 }
             }
 
@@ -1314,9 +1379,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     let &SubtypePredicate { a_is_expected: _, a, b } = data.skip_binder();
                     // both must be type variables, or the other would've been instantiated
                     assert!(a.is_ty_var() && b.is_ty_var());
-                    self.need_type_info_err(body_id,
-                                            obligation.cause.span,
-                                            a).emit();
+                    self.need_type_info_err(&obligation.cause, a).emit();
                 }
             }
 

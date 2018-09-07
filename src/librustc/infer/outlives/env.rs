@@ -10,11 +10,8 @@
 
 use infer::{GenericKind, InferCtxt};
 use infer::outlives::free_region_map::FreeRegionMap;
-use traits::query::outlives_bounds::{self, OutlivesBound};
+use traits::{self, query::outlives_bounds::{self, OutlivesBound}};
 use ty::{self, Ty};
-
-use syntax::ast;
-use syntax_pos::Span;
 
 /// The `OutlivesEnvironment` collects information about what outlives
 /// what in a given type-checking setting. For example, if we have a
@@ -136,15 +133,14 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
         &mut self,
         infcx: &InferCtxt<'a, 'gcx, 'tcx>,
         fn_sig_tys: &[Ty<'tcx>],
-        body_id: ast::NodeId,
-        span: Span,
+        cause: &traits::ObligationCause<'tcx>,
     ) {
         debug!("add_implied_bounds()");
 
         for &ty in fn_sig_tys {
             let ty = infcx.resolve_type_vars_if_possible(&ty);
             debug!("add_implied_bounds: ty = {}", ty);
-            let implied_bounds = infcx.implied_outlives_bounds(self.param_env, body_id, ty, span);
+            let implied_bounds = infcx.implied_outlives_bounds(self.param_env, cause, ty);
             self.add_outlives_bounds(Some(infcx), implied_bounds)
         }
     }

@@ -682,8 +682,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::Predicate::WellFormed(ty) => {
                 match ty::wf::obligations(self.infcx,
                                           obligation.param_env,
-                                          obligation.cause.body_id,
-                                          ty, obligation.cause.span) {
+                                          &obligation.cause,
+                                          ty) {
                     Some(obligations) =>
                         self.evaluate_predicates_recursively(previous_stack, obligations.iter()),
                     None =>

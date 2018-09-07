@@ -225,8 +225,6 @@ pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// environment is for an item or something where the "callee" is
     /// not clear.
     implicit_region_bound: Option<ty::Region<'tcx>>,
-
-    body_id: Option<hir::BodyId>,
 }
 
 impl<'a, 'gcx, 'tcx> Deref for Inherited<'a, 'gcx, 'tcx> {
@@ -637,7 +635,6 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
             deferred_generator_interiors: RefCell::new(Vec::new()),
             opaque_types: RefCell::new(DefIdMap()),
             implicit_region_bound,
-            body_id,
         }
     }
 
@@ -665,13 +662,12 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
     }
 
     fn normalize_associated_types_in<T>(&self,
-                                        span: Span,
-                                        body_id: ast::NodeId,
+                                        cause: ObligationCause<'tcx>,
                                         param_env: ty::ParamEnv<'tcx>,
                                         value: &T) -> T
         where T : TypeFoldable<'tcx>
     {
-        let ok = self.partially_normalize_associated_types_in(span, body_id, param_env, value);
+        let ok = self.partially_normalize_associated_types_in(cause, param_env, value);
         self.register_infer_ok_obligations(ok)
     }
 }
@@ -847,8 +843,8 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let fn_sig =
                 tcx.liberate_late_bound_regions(def_id, &fn_sig);
             let fn_sig =
-                inh.normalize_associated_types_in(body.value.span,
-                                                  body_id.node_id,
+                inh.normalize_associated_types_in(ObligationCause::misc(body.value.span,
+                                                                        body_id.node_id),
                                                   param_env,
                                                   &fn_sig);
 
@@ -2259,17 +2255,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn normalize_associated_types_in<T>(&self, span: Span, value: &T) -> T
         where T : TypeFoldable<'tcx>
     {
-        self.inh.normalize_associated_types_in(span, self.body_id, self.param_env, value)
+        self.inh.normalize_associated_types_in(
+            ObligationCause::misc(span, self.body_id),
+            self.param_env,
+            value,
+        )
     }
 
     fn normalize_associated_types_in_as_infer_ok<T>(&self, span: Span, value: &T)
                                                     -> InferOk<'tcx, T>
         where T : TypeFoldable<'tcx>
     {
-        self.inh.partially_normalize_associated_types_in(span,
-                                                         self.body_id,
-                                                         self.param_env,
-                                                         value)
+        self.inh.partially_normalize_associated_types_in(
+            ObligationCause::misc(span, self.body_id),
+            self.param_env,
+            value,
+        )
     }
 
     pub fn require_type_meets(&self,
@@ -2430,7 +2431,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn select_all_obligations_or_error(&self) {
         debug!("select_all_obligations_or_error");
         if let Err(errors) = self.fulfillment_cx.borrow_mut().select_all_or_error(&self) {
-            self.report_fulfillment_errors(&errors, self.inh.body_id, false);
+            self.report_fulfillment_errors(&errors, false);
         }
     }
 
@@ -2439,7 +2440,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match self.fulfillment_cx.borrow_mut().select_where_possible(self) {
             Ok(()) => { }
             Err(errors) => {
-                self.report_fulfillment_errors(&errors, self.inh.body_id, fallback_has_occurred);
+                self.report_fulfillment_errors(&errors, fallback_has_occurred);
             },
         }
     }
@@ -5244,7 +5245,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ty
         } else {
             if !self.is_tainted_by_errors() {
-                self.need_type_info_err((**self).body_id, sp, ty)
+                self.need_type_info_err(
+                    &ObligationCause::misc(sp, self.body_id),
+                    ty,
+                )
                     .note("type must be known at this point")
                     .emit();
             }

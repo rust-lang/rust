@@ -217,7 +217,7 @@ impl<'tcx> ty::ParamEnv<'tcx> {
                             infringing.push(field);
                         }
                         Err(errors) => {
-                            infcx.report_fulfillment_errors(&errors, None, false);
+                            infcx.report_fulfillment_errors(&errors, false);
                         }
                     };
                 }
