@@ -62,9 +62,35 @@ do that, the first step is to clone
 
 [rustc-perf-gh]: https://github.com/rust-lang-nursery/rustc-perf
 
-This repo contains a bunch of stuff, but the sources for the tests are
-found in [the `collector/benchmarks` directory][dir]. So let's go into
-the directory of a specific test; we'll use `clap-rs` as an example:
+#### Doing it the easy way
+
+Once you've cloned the repo, you can use the `collector` executable to
+do profiling for you! You can find
+[instructions in the rustc-perf readme][rustc-perf-readme].
+
+[rustc-perf-readme]: https://github.com/rust-lang-nursery/rustc-perf/blob/master/collector/README.md#profiling
+
+For example, to measure the clap-rs test, you might do:
+
+```
+> ./target/release/collector \
+    --output-repo /path/to/place/output \
+    profile perf-record
+    --rustc /path/to/rustc/executable/from/your/build/directory
+    --cargo `which cargo`
+    --filter clap-rs
+    --builds Check
+```
+
+You can also use that same command to use cachegrind or other profiling tools.
+
+#### Doing it the hard way
+
+If you prefer to run things manually, that is also possible. You first
+need to find the source for the test you want. Sources for the tests
+are found in [the `collector/benchmarks` directory][dir]. So let's go
+into the directory of a specific test; we'll use `clap-rs` as an
+example:
 
 [dir]: https://github.com/rust-lang-nursery/rustc-perf/tree/master/collector/benchmarks
 
