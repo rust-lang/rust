@@ -761,16 +761,19 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
                     let mut st = univariant_uninterned(&variants[v], &def.repr, kind)?;
                     st.variants = Variants::Single { index: v };
-                    // Exclude 0 from the range of a newtype ABI NonZero<T>.
-                    if Some(def.did) == self.tcx.lang_items().non_zero() {
+                    if let Some((start, end)) = self.tcx.layout_scalar_range(def.did) {
                         match st.abi {
                             Abi::Scalar(ref mut scalar) |
                             Abi::ScalarPair(ref mut scalar, _) => {
-                                if *scalar.valid_range.start() == 0 {
-                                    scalar.valid_range = 1..=*scalar.valid_range.end();
-                                }
+                                let start = start.unwrap_or(*scalar.valid_range.start());
+                                let end = end.unwrap_or(*scalar.valid_range.end());
+                                scalar.valid_range = start..=end;
                             }
-                            _ => {}
+                            _ => bug!(
+                                "nonscalar layout for rustc_layout_scalar_range type {:?}: {:#?}",
+                                def,
+                                st,
+                            ),
                         }
                     }
                     return Ok(tcx.intern_layout(st));
@@ -1351,7 +1354,12 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
                     if let Some(SizeSkeleton::Pointer { non_zero, tail }) = v0 {
                         return Ok(SizeSkeleton::Pointer {
                             non_zero: non_zero ||
-                                Some(def.did) == tcx.lang_items().non_zero(),
+                                tcx.layout_scalar_range(def.did).map_or(false, |(start, end)| {
+                                    // `n..` for `n > 0` or `n..m` for `n > 0 && m > n`
+                                    start.map_or(true, |start| start > 0 && end.map_or(true, |end| {
+                                        end > start
+                                    }))
+                                }),
                             tail,
                         });
                     } else {

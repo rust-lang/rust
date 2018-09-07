@@ -1083,6 +1083,29 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         interned
     }
 
+    /// Returns a range of the start/end indices specified with the `rustc_layout_scalar_range`
+    /// attribute. Missing range ends may be denoted by `None` and will just use the max/min of
+    /// the type.
+    pub fn layout_scalar_range(self, def_id: DefId) -> Option<(Option<u128>, Option<u128>)> {
+        let attrs = self.get_attrs(def_id);
+        let get = |name| -> Option<u128> {
+            let attr = attrs.iter().find(|a| a.check_name(name))?;
+            for meta in attr.meta_item_list().expect("rustc_layout_scalar_range takes args") {
+                match meta.literal().expect("rustc_layout_scalar_range attribute takes lit").node {
+                    ast::LitKind::Int(a, _) => return Some(a),
+                    _ => span_bug!(attr.span, "rustc_layout_scalar_range expects integer arg"),
+                }
+            }
+            bug!("no arguments to `rustc_layout_scalar_range` attribute");
+        };
+        let start = get("rustc_layout_scalar_range_start");
+        let end = get("rustc_layout_scalar_range_end");
+        if start.is_none() && end.is_none() {
+            return None;
+        }
+        Some((start, end))
+    }
+
     pub fn lift<T: ?Sized + Lift<'tcx>>(self, value: &T) -> Option<T::Lifted> {
         value.lift_to_tcx(self)
     }
