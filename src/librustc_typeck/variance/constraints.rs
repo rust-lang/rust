@@ -302,7 +302,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_trait_ref(current, data.trait_ref(tcx), variance);
             }
 
-            ty::Anon(_, substs) => {
+            ty::Opaque(_, substs) => {
                 self.add_constraints_from_invariant_substs(current, substs, variance);
             }
 

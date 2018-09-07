@@ -490,7 +490,7 @@ impl<'b, 'a, 'tcx> TypeVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'b
             ty::FnDef(def_id, ..) |
             ty::Closure(def_id, ..) |
             ty::Generator(def_id, ..) |
-            ty::Anon(def_id, _) => Some(def_id),
+            ty::Opaque(def_id, _) => Some(def_id),
             _ => None
         };
 
@@ -652,7 +652,7 @@ struct TypePrivacyVisitor<'a, 'tcx: 'a> {
     in_body: bool,
     span: Span,
     empty_tables: &'a ty::TypeckTables<'tcx>,
-    visited_anon_tys: FxHashSet<DefId>
+    visited_opaque_tys: FxHashSet<DefId>
 }
 
 impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
@@ -956,7 +956,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                     return true;
                 }
             }
-            ty::Anon(def_id, ..) => {
+            ty::Opaque(def_id, ..) => {
                 for predicate in &self.tcx.predicates_of(def_id).predicates {
                     let trait_ref = match *predicate {
                         ty::Predicate::Trait(ref poly_trait_predicate) => {
@@ -979,10 +979,10 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                             return true;
                         }
                         for subst in trait_ref.substs.iter() {
-                            // Skip repeated `Anon`s to avoid infinite recursion.
+                            // Skip repeated `Opaque`s to avoid infinite recursion.
                             if let UnpackedKind::Type(ty) = subst.unpack() {
-                                if let ty::Anon(def_id, ..) = ty.sty {
-                                    if !self.visited_anon_tys.insert(def_id) {
+                                if let ty::Opaque(def_id, ..) = ty.sty {
+                                    if !self.visited_opaque_tys.insert(def_id) {
                                         continue;
                                     }
                                 }
@@ -1728,7 +1728,7 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         in_body: false,
         span: krate.span,
         empty_tables: &empty_tables,
-        visited_anon_tys: FxHashSet()
+        visited_opaque_tys: FxHashSet()
     };
     intravisit::walk_crate(&mut visitor, krate);
 

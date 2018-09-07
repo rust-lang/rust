@@ -347,8 +347,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                                        body_hir_id,
                                        call_site_region);
 
-        self.constrain_anon_types(
-            &self.fcx.anon_types.borrow(),
+        self.constrain_opaque_types(
+            &self.fcx.opaque_types.borrow(),
             self.outlives_environment.free_region_map(),
         );
     }

@@ -174,7 +174,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         ty::Error |
         ty::Infer(_) |
         ty::Projection(..) |
-        ty::Anon(..) |
+        ty::Opaque(..) |
         ty::GeneratorWitness(..) |
         ty::Param(_) => {
             bug!("debuginfo: Trying to create type name for \

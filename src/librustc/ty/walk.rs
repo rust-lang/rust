@@ -114,7 +114,7 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
                 substs.types().rev().chain(opt_ty)
             }));
         }
-        ty::Adt(_, substs) | ty::Anon(_, substs) => {
+        ty::Adt(_, substs) | ty::Opaque(_, substs) => {
             stack.extend(substs.types().rev());
         }
         ty::Closure(_, ref substs) => {
