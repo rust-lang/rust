@@ -17,7 +17,7 @@ use builder::Builder;
 use declare;
 use rustc::session::config::DebugInfo;
 use value::Value;
-use interfaces::{BuilderMethods, ConstMethods, TypeMethods};
+use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods};
 
 use syntax::attr;
 

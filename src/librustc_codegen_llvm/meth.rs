@@ -16,7 +16,7 @@ use consts;
 use monomorphize;
 use value::Value;
 
-use interfaces::{BuilderMethods, ConstMethods, TypeMethods};
+use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods, DerivedTypeMethods};
 
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::HasDataLayout;

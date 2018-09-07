@@ -73,7 +73,9 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::indexed_vec::Idx;
 
-use interfaces::{BuilderMethods, ConstMethods, TypeMethods};
+use interfaces::{
+    BuilderMethods, ConstMethods, BaseTypeMethods, DerivedTypeMethods, DerivedIntrinsicMethods,
+};
 
 use std::any::Any;
 use std::cmp;
@@ -431,13 +433,13 @@ pub fn to_immediate_scalar<'a, 'tcx: 'a, Builder: BuilderMethods<'a, 'tcx>>(
     val
 }
 
-pub fn call_memcpy(
-    bx: &Builder<'_, 'll, '_>,
-    dst: &'ll Value,
+pub fn call_memcpy<'a, 'tcx: 'a, Builder: BuilderMethods<'a, 'tcx>>(
+    bx: &Builder,
+    dst: Builder::Value,
     dst_align: Align,
-    src: &'ll Value,
+    src: Builder::Value,
     src_align: Align,
-    n_bytes: &'ll Value,
+    n_bytes: Builder::Value,
     flags: MemFlags,
 ) {
     if flags.contains(MemFlags::NONTEMPORAL) {
@@ -450,16 +452,16 @@ pub fn call_memcpy(
     let cx = bx.cx();
     let src_ptr = bx.pointercast(src, cx.type_i8p());
     let dst_ptr = bx.pointercast(dst, cx.type_i8p());
-    let size = bx.intcast(n_bytes, cx.isize_ty, false);
+    let size = bx.intcast(n_bytes, cx.type_isize(), false);
     let volatile = flags.contains(MemFlags::VOLATILE);
     bx.memcpy(dst_ptr, dst_align.abi(), src_ptr, src_align.abi(), size, volatile);
 }
 
-pub fn memcpy_ty(
-    bx: &Builder<'_, 'll, '_>,
-    dst: &'ll Value,
+pub fn memcpy_ty<'a, 'tcx: 'a, Builder: BuilderMethods<'a, 'tcx>>(
+    bx: &Builder,
+    dst: Builder::Value,
     dst_align: Align,
-    src: &'ll Value,
+    src: Builder::Value,
     src_align: Align,
     layout: TyLayout<'tcx>,
     flags: MemFlags,
@@ -472,15 +474,15 @@ pub fn memcpy_ty(
     call_memcpy(bx, dst, dst_align, src, src_align, bx.cx().const_usize(size), flags);
 }
 
-pub fn call_memset(
-    bx: &Builder<'_, 'll, '_>,
-    ptr: &'ll Value,
-    fill_byte: &'ll Value,
-    size: &'ll Value,
-    align: &'ll Value,
+pub fn call_memset<'a, 'tcx: 'a, Builder: BuilderMethods<'a, 'tcx>>(
+    bx: &Builder,
+    ptr: Builder::Value,
+    fill_byte: Builder::Value,
+    size: Builder::Value,
+    align: Builder::Value,
     volatile: bool,
-) -> &'ll Value {
-    let ptr_width = &bx.cx().sess().target.target.target_pointer_width;
+) -> Builder::Value {
+    let ptr_width = &bx.sess().target.target.target_pointer_width;
     let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
     let llintrinsicfn = bx.cx().get_intrinsic(&intrinsic_key);
     let volatile = bx.cx().const_bool(volatile);

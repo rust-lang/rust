@@ -23,7 +23,7 @@ use declare;
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
-use interfaces::{Backend, ConstMethods, TypeMethods};
+use interfaces::{Backend, ConstMethods, BaseTypeMethods};
 
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{HasDataLayout, LayoutOf};

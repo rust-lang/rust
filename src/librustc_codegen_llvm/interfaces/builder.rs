@@ -17,6 +17,7 @@ use builder::MemFlags;
 use super::backend::Backend;
 use super::type_::TypeMethods;
 use super::consts::ConstMethods;
+use super::intrinsic::IntrinsicMethods;
 
 use std::borrow::Cow;
 use std::ops::Range;
@@ -24,7 +25,7 @@ use syntax::ast::AsmDialect;
 
 
 pub trait BuilderMethods<'a, 'tcx: 'a>: Backend {
-    type CodegenCx: 'a + TypeMethods + ConstMethods + Backend<
+    type CodegenCx: 'a + TypeMethods + ConstMethods + IntrinsicMethods + Backend<
         Value = Self::Value,
         BasicBlock = Self::BasicBlock,
         Type = Self::Type,

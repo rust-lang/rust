@@ -22,7 +22,7 @@ use llvm;
 use monomorphize::Instance;
 use type_of::LayoutLlvmExt;
 use value::Value;
-use interfaces::TypeMethods;
+use interfaces::BaseTypeMethods;
 
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TypeFoldable};
