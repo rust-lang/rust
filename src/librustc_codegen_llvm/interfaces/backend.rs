@@ -11,9 +11,8 @@
 use std::fmt::Debug;
 
 pub trait Backend {
-    type Value : Debug + PartialEq;
+    type Value : Debug + PartialEq + Copy;
     type BasicBlock;
-    type Type : Debug + PartialEq;
-    type TypeKind;
+    type Type : Debug + PartialEq + Copy;
     type Context;
 }

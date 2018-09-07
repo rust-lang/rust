@@ -12,8 +12,7 @@
 
 //! Code that is useful in various codegen modules.
 
-use llvm::{self, TypeKind};
-use llvm::{True, False, Bool, BasicBlock};
+use llvm::{self, True, False, Bool, BasicBlock};
 use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::LangItem;
 use abi;
@@ -133,6 +132,27 @@ pub enum SynchronizationScope {
     CrossThread,
 }
 
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum TypeKind {
+    Void,
+    Half,
+    Float,
+    Double,
+    X86_FP80,
+    FP128,
+    PPc_FP128,
+    Label,
+    Integer,
+    Function,
+    Struct,
+    Array,
+    Pointer,
+    Vector,
+    Metadata,
+    X86_MMX,
+    Token,
+}
+
 /*
 * A note on nomenclature of linking: "extern", "foreign", and "upcall".
 *
@@ -199,7 +219,6 @@ impl Backend for CodegenCx<'ll, 'tcx, &'ll Value> {
     type Value = &'ll Value;
     type BasicBlock = &'ll BasicBlock;
     type Type = &'ll Type;
-    type TypeKind = llvm::TypeKind;
     type Context = &'ll llvm::Context;
 }
 

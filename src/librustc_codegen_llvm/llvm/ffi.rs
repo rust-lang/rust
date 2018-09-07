@@ -228,6 +228,30 @@ pub enum TypeKind {
     Token = 16,
 }
 
+impl TypeKind {
+    pub fn to_generic(self) -> common::TypeKind {
+        match self {
+            TypeKind::Void => common::TypeKind::Void,
+            TypeKind::Half => common::TypeKind::Half,
+            TypeKind::Float => common::TypeKind::Float,
+            TypeKind::Double => common::TypeKind::Double,
+            TypeKind::X86_FP80 => common::TypeKind::X86_FP80,
+            TypeKind::FP128 => common::TypeKind::FP128,
+            TypeKind::PPc_FP128 => common::TypeKind::PPc_FP128,
+            TypeKind::Label => common::TypeKind::Label,
+            TypeKind::Integer => common::TypeKind::Integer,
+            TypeKind::Function => common::TypeKind::Function,
+            TypeKind::Struct => common::TypeKind::Struct,
+            TypeKind::Array => common::TypeKind::Array,
+            TypeKind::Pointer => common::TypeKind::Pointer,
+            TypeKind::Vector => common::TypeKind::Vector,
+            TypeKind::Metadata => common::TypeKind::Metadata,
+            TypeKind::X86_MMX => common::TypeKind::X86_MMX,
+            TypeKind::Token => common::TypeKind::Token,
+        }
+    }
+}
+
 /// LLVMAtomicRmwBinOp
 #[derive(Copy, Clone)]
 #[repr(C)]

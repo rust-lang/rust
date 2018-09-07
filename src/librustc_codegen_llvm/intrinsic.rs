@@ -12,7 +12,7 @@
 
 use attributes;
 use intrinsics::{self, Intrinsic};
-use llvm::{self, TypeKind};
+use llvm;
 use abi::{Abi, FnType, LlvmType, PassMode};
 use mir::place::PlaceRef;
 use mir::operand::{OperandRef, OperandValue};

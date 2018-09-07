@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use super::backend::Backend;
+use common::TypeKind;
 
 pub trait TypeMethods : Backend {
     fn type_void(&self) -> Self::Type;
@@ -30,7 +31,7 @@ pub trait TypeMethods : Backend {
     fn type_named_struct(&self, name: &str) -> Self::Type;
     fn type_array(&self, ty: Self::Type, len: u64) -> Self::Type;
     fn type_vector(&self, ty: Self::Type, len: u64) -> Self::Type;
-    fn type_kind(&self, ty: Self::Type) -> Self::TypeKind;
+    fn type_kind(&self, ty: Self::Type) -> TypeKind;
     fn set_struct_body(&self, ty: Self::Type, els: &[Self::Type], packed: bool);
     fn type_ptr_to(&self, ty: Self::Type) -> Self::Type;
     fn element_type(&self, ty: Self::Type) -> Self::Type;

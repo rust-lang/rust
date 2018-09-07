@@ -13,16 +13,16 @@
 pub use llvm::Type;
 
 use llvm;
-use llvm::{Bool, False, True, TypeKind};
-
+use llvm::{Bool, False, True};
 use context::CodegenCx;
 use value::Value;
 use interfaces::TypeMethods;
 
+
 use syntax::ast;
 use rustc::ty::layout::{self, Align, Size};
 use rustc_data_structures::small_c_str::SmallCStr;
-use common;
+use common::{self, TypeKind};
 
 use std::fmt;
 
@@ -175,7 +175,7 @@ impl TypeMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
 
     fn type_kind(&self, ty: &'ll Type) -> TypeKind {
         unsafe {
-            llvm::LLVMRustGetTypeKind(ty)
+            llvm::LLVMRustGetTypeKind(ty).to_generic()
         }
     }
 

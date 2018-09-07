@@ -30,7 +30,7 @@ use super::CachedModuleCodegen;
 
 use abi;
 use back::write::{self, OngoingCodegen};
-use llvm::{self, TypeKind, get_param};
+use llvm::{self, get_param};
 use metadata;
 use rustc::dep_graph::cgu_reuse_tracker::CguReuse;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -55,7 +55,7 @@ use builder::{Builder, MemFlags};
 use callee;
 use rustc_mir::monomorphize::collector::{self, MonoItemCollectionMode};
 use rustc_mir::monomorphize::item::DefPathBasedNames;
-use common::{self, IntPredicate, RealPredicate};
+use common::{self, IntPredicate, RealPredicate, TypeKind};
 use consts;
 use context::CodegenCx;
 use debuginfo;
@@ -67,7 +67,6 @@ use monomorphize::partitioning::{self, PartitioningStrategy, CodegenUnit, Codege
 use rustc_codegen_utils::symbol_names_test;
 use time_graph;
 use mono_item::{MonoItem, BaseMonoItemExt, MonoItemExt};
-use type_::Type;
 use type_of::LayoutLlvmExt;
 use rustc::util::nodemap::{FxHashMap, DefIdSet};
 use CrateInfo;
@@ -334,21 +333,31 @@ pub fn coerce_unsized_into(
     }
 }
 
-pub fn cast_shift_expr_rhs(
-    bx: &Builder<'_, 'll, '_, &'ll Value>, op: hir::BinOpKind, lhs: &'ll Value, rhs: &'ll Value
-) -> &'ll Value {
+pub fn cast_shift_expr_rhs<'a, 'll: 'a, 'tcx: 'll, Builder : BuilderMethods<'a, 'll, 'tcx>>(
+    bx: &Builder,
+    op: hir::BinOpKind,
+    lhs: <Builder::CodegenCx as Backend>::Value,
+    rhs: <Builder::CodegenCx as Backend>::Value
+) -> <Builder::CodegenCx as Backend>::Value {
     cast_shift_rhs(bx, op, lhs, rhs, |a, b| bx.trunc(a, b), |a, b| bx.zext(a, b))
 }
 
-fn cast_shift_rhs<'ll, F, G>(bx: &Builder<'_, 'll, '_, &'ll Value>,
-                             op: hir::BinOpKind,
-                             lhs: &'ll Value,
-                             rhs: &'ll Value,
-                             trunc: F,
-                             zext: G)
-                             -> &'ll Value
-    where F: FnOnce(&'ll Value, &'ll Type) -> &'ll Value,
-          G: FnOnce(&'ll Value, &'ll Type) -> &'ll Value
+fn cast_shift_rhs<'a, 'll :'a, 'tcx : 'll, F, G, Builder : BuilderMethods<'a, 'll, 'tcx>>(
+    bx: &Builder,
+    op: hir::BinOpKind,
+    lhs: <Builder::CodegenCx as Backend>::Value,
+    rhs: <Builder::CodegenCx as Backend>::Value,
+    trunc: F,
+    zext: G
+) -> <Builder::CodegenCx as Backend>::Value
+    where F: FnOnce(
+        <Builder::CodegenCx as Backend>::Value,
+        <Builder::CodegenCx as Backend>::Type
+    ) -> <Builder::CodegenCx as Backend>::Value,
+    G: FnOnce(
+        <Builder::CodegenCx as Backend>::Value,
+        <Builder::CodegenCx as Backend>::Type
+    ) -> <Builder::CodegenCx as Backend>::Value
 {
     // Shifts may have any size int on the rhs
     if op.is_shift() {
@@ -390,10 +399,10 @@ pub fn call_assume(bx: &Builder<'_, 'll, '_, &'ll Value>, val: &'ll Value) {
     bx.call(assume_intrinsic, &[val], None);
 }
 
-pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll>(
-    bx: &Builder<'_ ,'ll, '_, &'ll Value>,
-    val: &'ll Value
-) -> &'ll Value {
+pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll, Builder : BuilderMethods<'a, 'll ,'tcx>>(
+    bx: &Builder,
+    val: <Builder::CodegenCx as Backend>::Value
+) -> <Builder::CodegenCx as Backend>::Value {
     if bx.cx().val_ty(val) == bx.cx().type_i1() {
         bx.zext(val, bx.cx().type_i8())
     } else {
@@ -401,22 +410,22 @@ pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll>(
     }
 }
 
-pub fn to_immediate(
-    bx: &Builder<'_, 'll, '_, &'ll Value>,
-    val: &'ll Value,
+pub fn to_immediate<'a, 'll, 'tcx, Builder : BuilderMethods<'a, 'll, 'tcx>>(
+    bx: &Builder,
+    val: <Builder::CodegenCx as Backend>::Value,
     layout: layout::TyLayout,
-) -> &'ll Value {
+) -> <Builder::CodegenCx as Backend>::Value {
     if let layout::Abi::Scalar(ref scalar) = layout.abi {
         return to_immediate_scalar(bx, val, scalar);
     }
     val
 }
 
-pub fn to_immediate_scalar(
-    bx: &Builder<'_, 'll, '_, &'ll Value>,
-    val: &'ll Value,
+pub fn to_immediate_scalar<'a, 'll, 'tcx, Builder : BuilderMethods<'a, 'll, 'tcx>>(
+    bx: &Builder,
+    val: <Builder::CodegenCx as Backend>::Value,
     scalar: &layout::Scalar,
-) -> &'ll Value {
+) -> <Builder::CodegenCx as Backend>::Value {
     if scalar.is_bool() {
         return bx.trunc(val, bx.cx().type_i1());
     }
