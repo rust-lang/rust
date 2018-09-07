@@ -1563,63 +1563,7 @@ impl<'test> TestCx<'test> {
         }
 
         for rel_ab in &self.props.aux_builds {
-            let aux_testpaths = self.compute_aux_test_paths(rel_ab);
-            let aux_props =
-                self.props
-                    .from_aux_file(&aux_testpaths.file, self.revision, self.config);
-            let aux_output = TargetLocation::ThisDirectory(self.aux_output_dir_name());
-            let aux_cx = TestCx {
-                config: self.config,
-                props: &aux_props,
-                testpaths: &aux_testpaths,
-                revision: self.revision,
-            };
-            // Create the directory for the stdout/stderr files.
-            create_dir_all(aux_cx.output_base_dir()).unwrap();
-            let mut aux_rustc = aux_cx.make_compile_args(&aux_testpaths.file, aux_output);
-
-            let crate_type = if aux_props.no_prefer_dynamic {
-                None
-            } else if self.config.target.contains("cloudabi")
-                || self.config.target.contains("emscripten")
-                || (self.config.target.contains("musl") && !aux_props.force_host)
-                || self.config.target.contains("wasm32")
-            {
-                // We primarily compile all auxiliary libraries as dynamic libraries
-                // to avoid code size bloat and large binaries as much as possible
-                // for the test suite (otherwise including libstd statically in all
-                // executables takes up quite a bit of space).
-                //
-                // For targets like MUSL or Emscripten, however, there is no support for
-                // dynamic libraries so we just go back to building a normal library. Note,
-                // however, that for MUSL if the library is built with `force_host` then
-                // it's ok to be a dylib as the host should always support dylibs.
-                Some("lib")
-            } else {
-                Some("dylib")
-            };
-
-            if let Some(crate_type) = crate_type {
-                aux_rustc.args(&["--crate-type", crate_type]);
-            }
-
-            aux_rustc.arg("-L").arg(&aux_dir);
-
-            let auxres = aux_cx.compose_and_run(
-                aux_rustc,
-                aux_cx.config.compile_lib_path.to_str().unwrap(),
-                Some(aux_dir.to_str().unwrap()),
-                None,
-            );
-            if !auxres.status.success() {
-                self.fatal_proc_rec(
-                    &format!(
-                        "auxiliary build of {:?} failed to compile: ",
-                        aux_testpaths.file.display()
-                    ),
-                    &auxres,
-                );
-            }
+            build_auxiliary(self, rel_ab, &aux_dir);
         }
 
         rustc.envs(self.props.rustc_env.clone());
@@ -3246,6 +3190,66 @@ impl<'test> TestCx<'test> {
         let mut f = File::create(::stamp(&self.config, self.testpaths, self.revision)).unwrap();
         f.write_all(compute_stamp_hash(&self.config).as_bytes())
             .unwrap();
+    }
+}
+
+fn build_auxiliary(test_cx: &TestCx, rel_ab: &str, aux_dir: &Path) {
+    let aux_testpaths = test_cx.compute_aux_test_paths(rel_ab);
+    let aux_props =
+        test_cx.props
+        .from_aux_file(&aux_testpaths.file, test_cx.revision, test_cx.config);
+    let aux_output = TargetLocation::ThisDirectory(test_cx.aux_output_dir_name());
+    let aux_cx = TestCx {
+        config: test_cx.config,
+        props: &aux_props,
+        testpaths: &aux_testpaths,
+        revision: test_cx.revision,
+    };
+    // Create the directory for the stdout/stderr files.
+    create_dir_all(aux_cx.output_base_dir()).unwrap();
+    let mut aux_rustc = aux_cx.make_compile_args(&aux_testpaths.file, aux_output);
+
+    let crate_type = if aux_props.no_prefer_dynamic {
+        None
+    } else if test_cx.config.target.contains("cloudabi")
+        || test_cx.config.target.contains("emscripten")
+            || (test_cx.config.target.contains("musl") && !aux_props.force_host)
+            || test_cx.config.target.contains("wasm32")
+            {
+                // We primarily compile all auxiliary libraries as dynamic libraries
+                // to avoid code size bloat and large binaries as much as possible
+                // for the test suite (otherwise including libstd statically in all
+                // executables takes up quite a bit of space).
+                //
+                // For targets like MUSL or Emscripten, however, there is no support for
+                // dynamic libraries so we just go back to building a normal library. Note,
+                // however, that for MUSL if the library is built with `force_host` then
+                // it's ok to be a dylib as the host should always support dylibs.
+                Some("lib")
+            } else {
+                Some("dylib")
+            };
+
+    if let Some(crate_type) = crate_type {
+        aux_rustc.args(&["--crate-type", crate_type]);
+    }
+
+    aux_rustc.arg("-L").arg(&aux_dir);
+
+    let auxres = aux_cx.compose_and_run(
+        aux_rustc,
+        aux_cx.config.compile_lib_path.to_str().unwrap(),
+        Some(aux_dir.to_str().unwrap()),
+        None,
+        );
+    if !auxres.status.success() {
+        test_cx.fatal_proc_rec(
+            &format!(
+                "auxiliary build of {:?} failed to compile: ",
+                aux_testpaths.file.display()
+            ),
+            &auxres,
+            );
     }
 }
 
