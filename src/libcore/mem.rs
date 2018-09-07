@@ -971,14 +971,16 @@ impl<T> ManuallyDrop<T> {
         ManuallyDrop { value }
     }
 
-    /// Extract the value from the ManuallyDrop container.
+    /// Extract the value from the `ManuallyDrop` container.
+    ///
+    /// This allows the value to be dropped again.
     ///
     /// # Examples
     ///
     /// ```rust
     /// use std::mem::ManuallyDrop;
     /// let x = ManuallyDrop::new(Box::new(()));
-    /// let _: Box<()> = ManuallyDrop::into_inner(x);
+    /// let _: Box<()> = ManuallyDrop::into_inner(x); // This drops the `Box`.
     /// ```
     #[stable(feature = "manually_drop", since = "1.20.0")]
     #[inline]
@@ -990,11 +992,15 @@ impl<T> ManuallyDrop<T> {
 impl<T: ?Sized> ManuallyDrop<T> {
     /// Manually drops the contained value.
     ///
+    /// If you have ownership of the value, you can use [`ManuallyDrop::into_inner`] instead.
+    ///
     /// # Safety
     ///
     /// This function runs the destructor of the contained value and thus the wrapped value
     /// now represents uninitialized data. It is up to the user of this method to ensure the
     /// uninitialized data is not actually used.
+    ///
+    /// [`ManuallyDrop::into_inner`]: #method.into_inner
     #[stable(feature = "manually_drop", since = "1.20.0")]
     #[inline]
     pub unsafe fn drop(slot: &mut ManuallyDrop<T>) {
