@@ -110,6 +110,8 @@ This is just a subset of the full rustc build. The **full** rustc build
 - Build libstd with stage2 compiler.
 - Build librustdoc and a bunch of other things.
 
+<a name=toolchain></a>
+
 ### Creating a rustup toolchain
 
 Once you have successfully built rustc, you will have created a bunch
@@ -124,6 +126,12 @@ to run the entire test suite).
 > rustup toolchain link stage1 build/<host-triple>/stage1
 > rustup toolchain link stage2 build/<host-triple>/stage2
 ```
+
+The `<host-triple>` would typically be one of the following:
+
+- Linux: `x86_64-unknown-linux-gnu`
+- Mac: `x86_64-apple-darwin`
+- Windows: `x86_64-pc-windows-msvc`
 
 Now you can run the rustc you built with. If you run with `-vV`, you
 should see a version number ending in `-dev`, indicating a build from

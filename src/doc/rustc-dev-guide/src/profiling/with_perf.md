@@ -12,7 +12,7 @@ This is a guide for how to profile rustc with [perf](https://perf.wiki.kernel.or
   - leave everything else the defaults
 - Run `./x.py build` to get a full build
 - Make a rustup toolchain (let's call it `rust-prof`) pointing to that result
-  - `rustup toolchain link <path-to-toolchain>`
+  - see [the "build and run" section for instructions](../how-to-build-and-run.html#toolchain)
   
 ## Gathering a perf profile
 
@@ -118,7 +118,7 @@ the `cargo rustc` command, like so:
 
 ```bash
 > touch src/lib.rs
-> CARGO_INCREMENTAL=0 perf record -F99 --call-graph dwarf cargo rustc --profile check --lib — -Zborrowck=mir
+> CARGO_INCREMENTAL=0 perf record -F99 --call-graph dwarf cargo rustc --profile check --lib -- -Zborrowck=mir
 ```
 
 [pf]: https://github.com/nikomatsakis/perf-focus
