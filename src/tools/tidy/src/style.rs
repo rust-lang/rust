@@ -69,7 +69,7 @@ fn line_is_url(line: &str) -> bool {
             (EXP_COMMENT_START, "//!") => state = EXP_LINK_LABEL_OR_URL,
 
             (EXP_LINK_LABEL_OR_URL, w)
-                if w.len() >= 4 && w.starts_with("[") && w.ends_with("]:")
+                if w.len() >= 4 && w.starts_with('[') && w.ends_with("]:")
                 => state = EXP_URL,
 
             (EXP_LINK_LABEL_OR_URL, w)
@@ -128,13 +128,13 @@ pub fn check(path: &Path, bad: &mut bool) {
                 && !long_line_is_ok(line) {
                     err(&format!("line longer than {} chars", COLS));
             }
-            if line.contains("\t") && !skip_tab {
+            if line.contains('\t') && !skip_tab {
                 err("tab character");
             }
-            if !skip_end_whitespace && (line.ends_with(" ") || line.ends_with("\t")) {
+            if !skip_end_whitespace && (line.ends_with(' ') || line.ends_with('\t')) {
                 err("trailing whitespace");
             }
-            if line.contains("\r") && !skip_cr {
+            if line.contains('\r') && !skip_cr {
                 err("CR character");
             }
             if filename != "style.rs" {

@@ -15,7 +15,7 @@ use std::io::Read;
 use std::path::Path;
 
 /// List of whitelisted sources for packages
-static WHITELISTED_SOURCES: &'static [&'static str] = &[
+const WHITELISTED_SOURCES: &[&str] = &[
     "\"registry+https://github.com/rust-lang/crates.io-index\"",
 ];
 
@@ -29,8 +29,7 @@ pub fn check(path: &Path, bad: &mut bool) {
     t!(t!(File::open(path)).read_to_string(&mut cargo_lock));
 
     // process each line
-    let mut lines = cargo_lock.lines();
-    while let Some(line) = lines.next() {
+    for line in cargo_lock.lines() {
 
         // consider only source entries
         if ! line.starts_with("source = ") {
@@ -38,8 +37,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         }
 
         // extract source value
-        let parts: Vec<&str> = line.splitn(2, "=").collect();
-        let source = parts[1].trim();
+        let source = line.splitn(2, '=').nth(1).unwrap().trim();
 
         // ensure source is whitelisted
         if !WHITELISTED_SOURCES.contains(&&*source) {

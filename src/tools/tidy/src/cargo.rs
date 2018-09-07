@@ -65,9 +65,8 @@ fn verify(tomlfile: &Path, libfile: &Path, bad: &mut bool) {
         Some(i) => &toml[i+1..],
         None => return,
     };
-    let mut lines = deps.lines().peekable();
-    while let Some(line) = lines.next() {
-        if line.starts_with("[") {
+    for line in deps.lines() {
+        if line.starts_with('[') {
             break
         }
 
