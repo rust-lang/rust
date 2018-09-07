@@ -838,8 +838,8 @@ fn test_parse_name_value_directive() {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct KeyValue {
-    key: String,
-    value: String,
+    pub key: String,
+    pub value: String,
 }
 
 #[test]
