@@ -33,7 +33,8 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc::ty::Instance;
 use common::{CodegenCx, C_u64};
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
-use rustc::ty::layout::{self, Align, Integer, IntegerExt, LayoutOf, PrimitiveExt, Size, TyLayout};
+use rustc::ty::layout::{self, Align, HasDataLayout, Integer, IntegerExt, LayoutOf,
+                        PrimitiveExt, Size, TyLayout};
 use rustc::session::config;
 use rustc::util::nodemap::FxHashMap;
 use rustc_fs_util::path2cstr;
@@ -1635,16 +1636,15 @@ fn prepare_enum_metadata(
 
         &layout::Variants::NicheFilling { ref niche, .. } => {
             // Find the integer type of the correct size.
-            let discr_type = niche.value.to_ty(cx.tcx);
-            let (size, align) = cx.size_and_align_of(discr_type);
+            let size = niche.value.size(cx);
+            let align = niche.value.align(cx);
 
-            let discr_type = (match size.bits() {
-                8 => Integer::I8,
-                16 => Integer::I16,
-                32 => Integer::I32,
-                64 => Integer::I64,
-                bits => bug!("prepare_enum_metadata: unknown niche bit size {}", bits),
-            }).to_ty(cx.tcx, false);
+            let discr_type = match niche.value {
+                layout::Int(t, _) => t,
+                layout::Float(layout::FloatTy::F32) => Integer::I32,
+                layout::Float(layout::FloatTy::F64) => Integer::I64,
+                layout::Pointer => cx.data_layout().ptr_sized_integer(),
+            }.to_ty(cx.tcx, false);
 
             let discr_metadata = basic_type_metadata(cx, discr_type);
             unsafe {
