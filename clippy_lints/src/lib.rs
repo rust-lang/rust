@@ -10,6 +10,7 @@
 #![feature(macro_at_most_once_rep)]
 #![feature(tool_lints)]
 #![warn(rust_2018_idioms)]
+#![feature(crate_visibility_modifier)]
 
 use toml;
 use rustc_plugin;
