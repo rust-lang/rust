@@ -8,7 +8,7 @@ use std::{
     sync::Arc,
     ptr,
 };
-pub use self::syntax::{SyntaxNode, SyntaxNodeRef, SyntaxError};
+pub use self::syntax::{SyntaxNode, SyntaxNodeRef, SyntaxError, SyntaxNodeChildren};
 pub(crate) use self::{
     builder::GreenBuilder,
     green::GreenNode,

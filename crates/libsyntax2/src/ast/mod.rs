@@ -1,10 +1,13 @@
 mod generated;
 
+use std::marker::PhantomData;
+
 use itertools::Itertools;
 use smol_str::SmolStr;
 
 use {
     SyntaxNodeRef, SyntaxKind::*,
+    yellow::{RefRoot, SyntaxNodeChildren},
 };
 pub use self::generated::*;
 
@@ -33,8 +36,8 @@ pub trait ArgListOwner<'a>: AstNode<'a> {
 }
 
 pub trait FnDefOwner<'a>: AstNode<'a> {
-    fn functions(self) -> Box<Iterator<Item=FnDef<'a>> + 'a> {
-        Box::new(children(self))
+    fn functions(self) -> AstNodeChildren<'a, FnDef<'a>> {
+        children(self)
     }
 }
 
@@ -49,8 +52,8 @@ pub trait TypeParamsOwner<'a>: AstNode<'a> {
 }
 
 pub trait AttrsOwner<'a>: AstNode<'a> {
-    fn attrs(self) -> Box<Iterator<Item=Attr<'a>> + 'a> {
-        Box::new(children(self))
+    fn attrs(self) -> AstNodeChildren<'a, Attr<'a>> {
+        children(self)
     }
 }
 
@@ -155,7 +158,7 @@ impl<'a> IfExpr<'a> {
     pub fn else_branch(self) -> Option<Block<'a>> {
         self.blocks().nth(1)
     }
-    fn blocks(self) -> impl Iterator<Item=Block<'a>> {
+    fn blocks(self) -> AstNodeChildren<'a, Block<'a>> {
         children(self)
     }
 }
@@ -164,8 +167,34 @@ fn child_opt<'a, P: AstNode<'a>, C: AstNode<'a>>(parent: P) -> Option<C> {
     children(parent).next()
 }
 
-fn children<'a, P: AstNode<'a>, C: AstNode<'a>>(parent: P) -> impl Iterator<Item=C> + 'a {
-    parent.syntax()
-        .children()
-        .filter_map(C::cast)
+fn children<'a, P: AstNode<'a>, C: AstNode<'a>>(parent: P) -> AstNodeChildren<'a, C> {
+    AstNodeChildren::new(parent.syntax())
+}
+
+
+#[derive(Debug)]
+pub struct AstNodeChildren<'a, N> {
+    inner: SyntaxNodeChildren<RefRoot<'a>>,
+    ph: PhantomData<N>,
+}
+
+impl<'a, N> AstNodeChildren<'a, N> {
+    fn new(parent: SyntaxNodeRef<'a>) -> Self {
+        AstNodeChildren {
+            inner: parent.children(),
+            ph: PhantomData,
+        }
+    }
+}
+
+impl<'a, N: AstNode<'a>> Iterator for AstNodeChildren<'a, N> {
+    type Item = N;
+    fn next(&mut self) -> Option<N> {
+        loop {
+            match N::cast(self.inner.next()?) {
+                Some(n) => return Some(n),
+                None => (),
+            }
+        }
+    }
 }

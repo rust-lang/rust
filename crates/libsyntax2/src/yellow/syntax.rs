@@ -1,6 +1,7 @@
 use std::{
     fmt, sync::Arc,
     hash::{Hasher, Hash},
+    ops::Range,
 };
 
 use smol_str::SmolStr;
@@ -93,17 +94,11 @@ impl<R: TreeRoot> SyntaxNode<R> {
         SyntaxText::new(self.borrowed())
     }
 
-    pub fn children(&self) -> impl Iterator<Item = SyntaxNode<R>> {
-        let red = self.red;
-        let n_children = self.red().n_children();
-        let root = self.root.clone();
-        (0..n_children).map(move |i| {
-            let red = unsafe { red.get(root.syntax_root()) };
-            SyntaxNode {
-                root: root.clone(),
-                red: red.get_child(i).unwrap(),
-            }
-        })
+    pub fn children(&self) -> SyntaxNodeChildren<R> {
+        SyntaxNodeChildren {
+            parent: self.clone(),
+            iter: (0..self.red().n_children())
+        }
     }
 
     pub fn parent(&self) -> Option<SyntaxNode<R>> {
@@ -189,6 +184,26 @@ impl<R: TreeRoot> fmt::Debug for SyntaxNode<R> {
             write!(fmt, " \"{}\"", self.text())?;
         }
         Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct SyntaxNodeChildren<R: TreeRoot> {
+    parent: SyntaxNode<R>,
+    iter: Range<usize>,
+}
+
+impl<R: TreeRoot> Iterator for SyntaxNodeChildren<R> {
+    type Item = SyntaxNode<R>;
+
+    fn next(&mut self) -> Option<SyntaxNode<R>> {
+        self.iter.next().map(|i| {
+            let red = self.parent.red();
+            SyntaxNode {
+                root: self.parent.root.clone(),
+                red: red.get_child(i).unwrap(),
+            }
+        })
     }
 }
 
