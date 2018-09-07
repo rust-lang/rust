@@ -73,7 +73,8 @@ intrinsics! {
     }
 
     #[use_c_shim_if(all(target_arch = "arm",
-                    not(target_os = "ios")),
+                    not(target_os = "ios"),
+                    not(target_env = "msvc")),
                     not(thumbv6m))]
     pub extern "C" fn __modsi3(a: i32, b: i32) -> i32 {
         a.mod_(b)
@@ -89,7 +90,7 @@ intrinsics! {
         a.mod_(b)
     }
 
-    #[use_c_shim_if(all(target_arch = "arm",
+    #[use_c_shim_if(all(target_arch = "arm", not(target_env = "msvc"),
                     not(target_os = "ios"), not(thumbv6m)))]
     pub extern "C" fn __divmodsi4(a: i32, b: i32, rem: &mut i32) -> i32 {
         a.divmod(b, rem, |a, b| __divsi3(a, b))

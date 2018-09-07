@@ -299,7 +299,7 @@ mod c {
             }
         }
 
-        if target_arch == "arm" && target_os != "ios" {
+        if target_arch == "arm" && target_os != "ios" && target_env != "msvc" {
             sources.extend(
                 &[
                     "arm/aeabi_div0.c",
