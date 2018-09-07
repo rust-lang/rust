@@ -345,3 +345,17 @@ $ rustdoc src/lib.rs --sysroot /path/to/sysroot
 
 Similar to `rustc --sysroot`, this lets you change the sysroot `rustdoc` uses
 when compiling your code.
+
+### `--edition`: control the edition of docs and doctests
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs --edition 2018
+$ rustdoc --test src/lib.rs --edition 2018
+```
+
+This flag allows rustdoc to treat your rust code as the given edition. It will compile doctests with
+the given edition as well. As with `rustc`, the default edition that `rustdoc` will use is `2015`
+(the first edition).
+
