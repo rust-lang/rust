@@ -2056,7 +2056,8 @@ impl Step for Lldb {
         drop(fs::remove_dir_all(&image));
 
         // Prepare the image directory
-        let dst = image.join("bin");
+        let root = image.join("lib/rustlib").join(&*target);
+        let dst = root.join("bin");
         t!(fs::create_dir_all(&dst));
         for program in &["lldb", "lldb-argdumper", "lldb-mi", "lldb-server"] {
             let exe = bindir.join(exe(program, &target));
@@ -2065,7 +2066,7 @@ impl Step for Lldb {
 
         // The libraries.
         let libdir = builder.llvm_out(target).join("lib");
-        let dst = image.join("lib");
+        let dst = root.join("lib");
         t!(fs::create_dir_all(&dst));
         for entry in t!(fs::read_dir(&libdir)) {
             let entry = entry.unwrap();
@@ -2093,7 +2094,7 @@ impl Step for Lldb {
             let entry = t!(entry);
             if let Ok(name) = entry.file_name().into_string() {
                 if name.starts_with("python") {
-                    let dst = image.join(libdir_name)
+                    let dst = root.join(libdir_name)
                         .join(entry.file_name());
                     t!(fs::create_dir_all(&dst));
                     builder.cp_r(&entry.path(), &dst);
