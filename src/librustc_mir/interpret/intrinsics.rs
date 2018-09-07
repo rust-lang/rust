@@ -105,8 +105,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             | "overflowing_add"
             | "overflowing_sub"
             | "overflowing_mul"
-            | "unchecked_shl"
-            | "unchecked_shr"
             | "add_with_overflow"
             | "sub_with_overflow"
             | "mul_with_overflow" => {
@@ -116,8 +114,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     "overflowing_add" => (BinOp::Add, true),
                     "overflowing_sub" => (BinOp::Sub, true),
                     "overflowing_mul" => (BinOp::Mul, true),
-                    "unchecked_shl" => (BinOp::Shl, true),
-                    "unchecked_shr" => (BinOp::Shr, true),
                     "add_with_overflow" => (BinOp::Add, false),
                     "sub_with_overflow" => (BinOp::Sub, false),
                     "mul_with_overflow" => (BinOp::Mul, false),
@@ -128,6 +124,24 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 } else {
                     self.binop_with_overflow(bin_op, lhs, rhs, dest)?;
                 }
+            }
+            "unchecked_shl" | "unchecked_shr" => {
+                let l = self.read_value(args[0])?;
+                let r = self.read_value(args[1])?;
+                let bin_op = match intrinsic_name {
+                    "unchecked_shl" => BinOp::Shl,
+                    "unchecked_shr" => BinOp::Shr,
+                    _ => bug!("Already checked for int ops")
+                };
+                let (val, overflowed) = self.binary_op_val(bin_op, l, r)?;
+                if overflowed {
+                    let layout = self.layout_of(substs.type_at(0))?;
+                    let r_val =  r.to_scalar()?.to_bits(layout.size)?;
+                    return err!(Intrinsic(
+                        format!("Overflowing shift by {} in {}", r_val, intrinsic_name),
+                    ));
+                }
+                self.write_scalar(val, dest)?;
             }
             "transmute" => {
                 // Go through an allocation, to make sure the completely different layouts

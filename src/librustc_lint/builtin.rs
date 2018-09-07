@@ -901,7 +901,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
         // considers this to be an error for two reasons, (a) it is
         // easier to implement, and (b) it seems rare to actually want
         // to have behaviour like the above, rather than
-        // e.g. accidentally recurring after an assert.
+        // e.g. accidentally recursing after an assert.
 
         let cfg = cfg::CFG::new(cx.tcx, &body);
 
@@ -961,8 +961,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
             let sp = cx.tcx.sess.source_map().def_span(sp);
             let mut db = cx.struct_span_lint(UNCONDITIONAL_RECURSION,
                                              sp,
-                                             "function cannot return without recurring");
-            db.span_label(sp, "cannot return without recurring");
+                                             "function cannot return without recursing");
+            db.span_label(sp, "cannot return without recursing");
             // offer some help to the programmer.
             for call in &self_call_spans {
                 db.span_label(*call, "recursive call site");
@@ -1090,7 +1090,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                             // a default method definition.
                             Ok(Some(traits::VtableParam(_))) => {
                                 let on_self = trait_ref.self_ty().is_self();
-                                // We can only be recurring in a default
+                                // We can only be recursing in a default
                                 // method if we're being called literally
                                 // on the `Self` type.
                                 on_self && callee_id == method.def_id

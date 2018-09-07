@@ -252,7 +252,7 @@ use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
 use core::marker;
-use core::marker::{Unsize, PhantomData};
+use core::marker::{Unpin, Unsize, PhantomData};
 use core::mem::{self, align_of_val, forget, size_of_val};
 use core::ops::Deref;
 use core::ops::CoerceUnsized;
@@ -1830,3 +1830,6 @@ impl<T: ?Sized> AsRef<T> for Rc<T> {
         &**self
     }
 }
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: ?Sized> Unpin for Rc<T> { }

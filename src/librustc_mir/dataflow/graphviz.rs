@@ -265,15 +265,12 @@ impl<'a, 'tcx, MWF, P> dot::GraphWalk<'a> for Graph<'a, 'tcx, MWF, P>
 
     fn edges(&self) -> dot::Edges<Edge> {
         let mir = self.mbcx.mir();
-        // base initial capacity on assumption every block has at
-        // least one outgoing edge (Which should be true for all
-        // blocks but one, the exit-block).
-        let mut edges = Vec::with_capacity(mir.basic_blocks().len());
-        for bb in mir.basic_blocks().indices() {
-            let outgoing = outgoing(mir, bb);
-            edges.extend(outgoing.into_iter());
-        }
-        edges.into_cow()
+
+        mir.basic_blocks()
+           .indices()
+           .flat_map(|bb| outgoing(mir, bb))
+           .collect::<Vec<_>>()
+           .into_cow()
     }
 
     fn source(&self, edge: &Edge) -> Node {

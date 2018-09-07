@@ -75,7 +75,7 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
             return;
         }
 
-        let filen_underscore = filename.replace("-","_").replace(".rs","");
+        let filen_underscore = filename.replace('-',"_").replace(".rs","");
         let filename_is_gate_test = test_filen_gate(&filen_underscore, &mut features);
 
         contents.truncate(0);
@@ -88,13 +88,9 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
 
             let gate_test_str = "gate-test-";
 
-            if !line.contains(gate_test_str) {
-                continue;
-            }
-
             let feature_name = match line.find(gate_test_str) {
                 Some(i) => {
-                    &line[i+gate_test_str.len()..line[i+1..].find(' ').unwrap_or(line.len())]
+                    line[i+gate_test_str.len()..].splitn(2, ' ').next().unwrap()
                 },
                 None => continue,
             };
@@ -133,7 +129,7 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
                  name);
     }
 
-    if gate_untested.len() > 0 {
+    if !gate_untested.is_empty() {
         tidy_error!(bad, "Found {} features without a gate test.", gate_untested.len());
     }
 
@@ -259,14 +255,11 @@ pub fn collect_lib_features(base_src_path: &Path) -> Features {
 
     map_lib_features(base_src_path,
                      &mut |res, _, _| {
-        match res {
-            Ok((name, feature)) => {
-                if lib_features.get(name).is_some() {
-                    return;
-                }
-                lib_features.insert(name.to_owned(), feature);
-            },
-            Err(_) => (),
+        if let Ok((name, feature)) = res {
+            if lib_features.contains_key(name) {
+                return;
+            }
+            lib_features.insert(name.to_owned(), feature);
         }
     });
    lib_features
@@ -332,11 +325,11 @@ fn map_lib_features(base_src_path: &Path,
                     f.tracking_issue = find_attr_val(line, "issue")
                     .map(|s| s.parse().unwrap());
                 }
-                if line.ends_with("]") {
+                if line.ends_with(']') {
                     mf(Ok((name, f.clone())), file, i + 1);
-                } else if !line.ends_with(",") && !line.ends_with("\\") {
+                } else if !line.ends_with(',') && !line.ends_with('\\') {
                     // We need to bail here because we might have missed the
-                    // end of a stability attribute above because the "]"
+                    // end of a stability attribute above because the ']'
                     // might not have been at the end of the line.
                     // We could then get into the very unfortunate situation that
                     // we continue parsing the file assuming the current stability
@@ -394,7 +387,7 @@ fn map_lib_features(base_src_path: &Path,
                 has_gate_test: false,
                 tracking_issue,
             };
-            if line.contains("]") {
+            if line.contains(']') {
                 mf(Ok((feature_name, feature)), file, i + 1);
             } else {
                 becoming_feature = Some((feature_name.to_owned(), feature));

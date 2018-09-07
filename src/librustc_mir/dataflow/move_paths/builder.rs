@@ -201,7 +201,7 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
             "done dumping moves"
         });
 
-        if self.errors.len() > 0 {
+        if !self.errors.is_empty() {
             Err((self.data, self.errors))
         } else {
             Ok(self.data)

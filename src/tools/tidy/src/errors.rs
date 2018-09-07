@@ -50,7 +50,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             }
 
             let mut search = line;
-            while let Some(i) = search.find("E") {
+            while let Some(i) = search.find('E') {
                 search = &search[i + 1..];
                 let code = if search.len() > 4 {
                     search[..4].parse::<u32>()
