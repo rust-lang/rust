@@ -23,13 +23,11 @@ use std::ops::Range;
 use syntax::ast::AsmDialect;
 
 
-
 pub trait BuilderMethods<'a, 'tcx: 'a>: Backend {
-    type CodegenCx: TypeMethods + ConstMethods + Backend<
+    type CodegenCx: 'a + TypeMethods + ConstMethods + Backend<
         Value = Self::Value,
         BasicBlock = Self::BasicBlock,
         Type = Self::Type,
-        TypeKind = Self::TypeKind,
         Context = Self::Context,
     >;
 

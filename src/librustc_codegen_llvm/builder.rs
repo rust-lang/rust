@@ -60,7 +60,6 @@ impl Backend for Builder<'a, 'll, 'tcx>  {
     type Value = &'ll Value;
     type BasicBlock = &'ll BasicBlock;
     type Type = &'ll Type;
-    type TypeKind = llvm::TypeKind;
     type Context = &'ll llvm::Context;
 }
 
@@ -1146,7 +1145,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let stored_ty = self.cx.val_ty(val);
         let stored_ptr_ty = self.cx.type_ptr_to(stored_ty);
 
-        assert_eq!(self.cx.type_kind(dest_ptr_ty), llvm::TypeKind::Pointer);
+        assert_eq!(self.cx.type_kind(dest_ptr_ty), TypeKind::Pointer);
 
         if dest_ptr_ty == stored_ptr_ty {
             ptr
@@ -1165,11 +1164,11 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                       args: &'b [&'ll Value]) -> Cow<'b, [&'ll Value]> {
         let mut fn_ty = self.cx.val_ty(llfn);
         // Strip off pointers
-        while self.cx.type_kind(fn_ty) == llvm::TypeKind::Pointer {
+        while self.cx.type_kind(fn_ty) == TypeKind::Pointer {
             fn_ty = self.cx.element_type(fn_ty);
         }
 
-        assert!(self.cx.type_kind(fn_ty) == llvm::TypeKind::Function,
+        assert!(self.cx.type_kind(fn_ty) == TypeKind::Function,
                 "builder::{} not passed a function, but {:?}", typ, fn_ty);
 
         let param_tys = self.cx.func_params_types(fn_ty);

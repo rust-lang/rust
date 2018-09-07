@@ -30,7 +30,7 @@ use super::CachedModuleCodegen;
 
 use abi;
 use back::write::{self, OngoingCodegen};
-use llvm::{self, TypeKind, get_param};
+use llvm::{self, get_param};
 use metadata;
 use rustc::dep_graph::cgu_reuse_tracker::CguReuse;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -54,7 +54,7 @@ use attributes;
 use builder::{Builder, MemFlags};
 use callee;
 use rustc_mir::monomorphize::item::DefPathBasedNames;
-use common::{self, IntPredicate, RealPredicate};
+use common::{self, IntPredicate, RealPredicate, TypeKind};
 use consts;
 use context::CodegenCx;
 use debuginfo;
@@ -66,7 +66,6 @@ use monomorphize::partitioning::{CodegenUnit, CodegenUnitExt};
 use rustc_codegen_utils::symbol_names_test;
 use time_graph;
 use mono_item::{MonoItem, MonoItemExt};
-use type_::Type;
 use type_of::LayoutLlvmExt;
 use rustc::util::nodemap::FxHashMap;
 use CrateInfo;
@@ -333,21 +332,31 @@ pub fn coerce_unsized_into(
     }
 }
 
-pub fn cast_shift_expr_rhs(
-    bx: &Builder<'_, 'll, '_>, op: hir::BinOpKind, lhs: &'ll Value, rhs: &'ll Value
-) -> &'ll Value {
+pub fn cast_shift_expr_rhs<'a, 'tcx: 'a, Builder: BuilderMethods<'a, 'tcx>>(
+    bx: &Builder,
+    op: hir::BinOpKind,
+    lhs: Builder::Value,
+    rhs: Builder::Value
+) -> Builder::Value {
     cast_shift_rhs(bx, op, lhs, rhs, |a, b| bx.trunc(a, b), |a, b| bx.zext(a, b))
 }
 
-fn cast_shift_rhs<'ll, F, G>(bx: &Builder<'_, 'll, '_>,
-                             op: hir::BinOpKind,
-                             lhs: &'ll Value,
-                             rhs: &'ll Value,
-                             trunc: F,
-                             zext: G)
-                             -> &'ll Value
-    where F: FnOnce(&'ll Value, &'ll Type) -> &'ll Value,
-          G: FnOnce(&'ll Value, &'ll Type) -> &'ll Value
+fn cast_shift_rhs<'a, 'tcx: 'a, F, G, Builder: BuilderMethods<'a, 'tcx>>(
+    bx: &Builder,
+    op: hir::BinOpKind,
+    lhs: Builder::Value,
+    rhs: Builder::Value,
+    trunc: F,
+    zext: G
+) -> Builder::Value
+    where F: FnOnce(
+        Builder::Value,
+        Builder::Type
+    ) -> Builder::Value,
+    G: FnOnce(
+        Builder::Value,
+        Builder::Type
+    ) -> Builder::Value
 {
     // Shifts may have any size int on the rhs
     if op.is_shift() {
@@ -389,10 +398,10 @@ pub fn call_assume(bx: &Builder<'_, 'll, '_>, val: &'ll Value) {
     bx.call(assume_intrinsic, &[val], None);
 }
 
-pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll>(
-    bx: &Builder<'_ ,'ll, '_, &'ll Value>,
-    val: &'ll Value
-) -> &'ll Value {
+pub fn from_immediate<'a, 'tcx: 'a, Builder: BuilderMethods<'a, 'tcx>>(
+    bx: &Builder,
+    val: Builder::Value
+) -> Builder::Value {
     if bx.cx().val_ty(val) == bx.cx().type_i1() {
         bx.zext(val, bx.cx().type_i8())
     } else {
@@ -400,30 +409,30 @@ pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll>(
     }
 }
 
-pub fn to_immediate(
-    bx: &Builder<'_, 'll, '_>,
-    val: &'ll Value,
+pub fn to_immediate<'a, 'tcx: 'a, Builder: BuilderMethods<'a, 'tcx>>(
+    bx: &Builder,
+    val: Builder::Value,
     layout: layout::TyLayout,
-) -> &'ll Value {
+) -> Builder::Value {
     if let layout::Abi::Scalar(ref scalar) = layout.abi {
         return to_immediate_scalar(bx, val, scalar);
     }
     val
 }
 
-pub fn to_immediate_scalar(
-    bx: &Builder<'_, 'll, '_>,
-    val: &'ll Value,
+pub fn to_immediate_scalar<'a, 'tcx: 'a, Builder: BuilderMethods<'a, 'tcx>>(
+    bx: &Builder,
+    val: Builder::Value,
     scalar: &layout::Scalar,
-) -> &'ll Value {
+) -> Builder::Value {
     if scalar.is_bool() {
         return bx.trunc(val, bx.cx().type_i1());
     }
     val
 }
 
-pub fn call_memcpy<'a, 'll: 'a, 'tcx: 'll>(
-    bx: &Builder<'_ ,'ll, '_, &'ll Value>,
+pub fn call_memcpy(
+    bx: &Builder<'_, 'll, '_>,
     dst: &'ll Value,
     dst_align: Align,
     src: &'ll Value,
@@ -446,8 +455,8 @@ pub fn call_memcpy<'a, 'll: 'a, 'tcx: 'll>(
     bx.memcpy(dst_ptr, dst_align.abi(), src_ptr, src_align.abi(), size, volatile);
 }
 
-pub fn memcpy_ty<'a, 'll: 'a, 'tcx: 'll>(
-    bx: &Builder<'_ ,'ll, '_, &'ll Value>,
+pub fn memcpy_ty(
+    bx: &Builder<'_, 'll, '_>,
     dst: &'ll Value,
     dst_align: Align,
     src: &'ll Value,
