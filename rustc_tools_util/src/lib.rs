@@ -8,6 +8,7 @@ macro_rules! get_version_info {
         let major = env!("CARGO_PKG_VERSION_MAJOR").parse::<u8>().unwrap();
         let minor = env!("CARGO_PKG_VERSION_MINOR").parse::<u8>().unwrap();
         let patch = env!("CARGO_PKG_VERSION_PATCH").parse::<u16>().unwrap();
+        let crate_name = String::from(env!("CARGO_PKG_NAME"));
 
         let host_compiler = $crate::get_channel();
         let commit_hash = option_env!("GIT_HASH").map(|s| s.to_string());
@@ -20,6 +21,7 @@ macro_rules! get_version_info {
             host_compiler,
             commit_hash,
             commit_date,
+            crate_name,
         }
     }};
 }
@@ -32,6 +34,7 @@ pub struct VersionInfo {
     pub host_compiler: Option<String>,
     pub commit_hash: Option<String>,
     pub commit_date: Option<String>,
+    pub crate_name: String,
 }
 
 impl std::fmt::Display for VersionInfo {
@@ -40,7 +43,8 @@ impl std::fmt::Display for VersionInfo {
             Some(_) => {
                 write!(
                     f,
-                    "clippy {}.{}.{} ({} {})",
+                    "{} {}.{}.{} ({} {})",
+                    self.crate_name,
                     self.major,
                     self.minor,
                     self.patch,
@@ -49,7 +53,7 @@ impl std::fmt::Display for VersionInfo {
                 )?;
             },
             None => {
-                write!(f, "clippy {}.{}.{}", self.major, self.minor, self.patch)?;
+                write!(f, "{} {}.{}.{}", self.crate_name, self.major, self.minor, self.patch)?;
             },
         };
         Ok(())
