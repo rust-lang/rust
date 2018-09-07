@@ -832,7 +832,8 @@ pub fn lldb_version_to_int(version_string: &str) -> isize {
 
 #[test]
 fn test_parse_name_value_directive() {
-    assert_eq!(Some("foo.rs".to_owned()), internal_parse_name_value_directive("aux-build:foo.rs", "aux-build"));
+    assert_eq!(Some("foo.rs".to_owned()),
+               internal_parse_name_value_directive("aux-build:foo.rs", "aux-build"));
     assert_eq!(None, internal_parse_name_value_directive("faux-build:foo.rs", "aux-build"));
 }
 
