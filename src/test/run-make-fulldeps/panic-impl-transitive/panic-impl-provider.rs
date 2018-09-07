@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![crate_type = "rlib"]
-#![feature(panic_handler)]
 #![no_std]
 
 use core::panic::PanicInfo;

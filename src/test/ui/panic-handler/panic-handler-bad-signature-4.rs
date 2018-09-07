@@ -10,7 +10,6 @@
 
 // compile-flags:-C panic=abort
 
-#![feature(panic_handler)]
 #![no_std]
 #![no_main]
 

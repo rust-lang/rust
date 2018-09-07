@@ -11,7 +11,6 @@
 // no-prefer-dynamic
 
 #![crate_type = "rlib"]
-#![feature(panic_handler)]
 #![no_std]
 
 use core::panic::PanicInfo;
