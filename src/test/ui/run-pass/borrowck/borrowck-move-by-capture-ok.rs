@@ -8,19 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// This test verifies that casting from the same lifetime on a value
-// to the same lifetime on a trait succeeds. See issue #10766.
+// run-pass
+#![feature(box_syntax)]
 
-// pretty-expanded FIXME #23616
-
-#![allow(dead_code)]
-
-use std::marker;
-
-fn main() {
-    trait T { fn foo(&self) {} }
-
-    fn f<'a, V: T>(v: &'a V) -> &'a T {
-        v as &'a T
-    }
+pub fn main() {
+    let bar: Box<_> = box 3;
+    let h = || -> isize { *bar };
+    assert_eq!(h(), 3);
 }

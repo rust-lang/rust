@@ -8,26 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//compile-flags: -Z borrowck=mir
+// run-pass
 
-#![feature(slice_patterns)]
+struct F { f: Vec<isize> }
 
-fn mut_head_tail<'a, A>(v: &'a mut [A]) -> Option<(&'a mut A, &'a mut [A])> {
-    match *v {
-        [ref mut head, ref mut tail..] => {
-            Some((head, tail))
-        }
-        [] => None
-    }
+fn impure(_v: &[isize]) {
 }
 
-fn main() {
-    let mut v = [1,2,3,4];
-    match mut_head_tail(&mut v) {
-        None => {},
-        Some((h,t)) => {
-            *h = 1000;
-            t.reverse();
-        }
+pub fn main() {
+    let mut x = F {f: vec![3]};
+
+    match x {
+      F {f: ref mut v} => {
+        impure(v);
+      }
     }
 }

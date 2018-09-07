@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct F { f: Vec<isize> }
+// run-pass
+// Regression test for issue #7740
 
-fn impure(_v: &[isize]) {
-}
+// pretty-expanded FIXME #23616
 
 pub fn main() {
-    let mut x = F {f: vec![3]};
-
-    match x {
-      F {f: ref mut v} => {
-        impure(v);
-      }
-    }
+    static A: &'static char = &'A';
 }

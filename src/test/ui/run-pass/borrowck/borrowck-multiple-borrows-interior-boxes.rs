@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,21 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// revisions: lxl nll
-//[lxl]compile-flags: -Z borrowck=mir -Z two-phase-borrows
+// run-pass
+// Test case from #39963.
 
-#![cfg_attr(nll, feature(nll))]
+#![feature(nll)]
 
-fn main() {
-    let mut a = 0;
-    let mut b = 0;
-    let p = if maybe() {
-        &mut a
-    } else {
-        &mut b
-    };
-    use_(p);
+#[derive(Clone)]
+struct Foo(Option<Box<Foo>>, Option<Box<Foo>>);
+
+fn test(f: &mut Foo) {
+  match *f {
+    Foo(Some(ref mut left), Some(ref mut right)) => match **left {
+      Foo(Some(ref mut left), Some(ref mut right)) => panic!(),
+      _ => panic!(),
+    },
+    _ => panic!(),
+  }
 }
 
-fn maybe() -> bool { false }
-fn use_<T>(_: T) { }
+fn main() {
+}

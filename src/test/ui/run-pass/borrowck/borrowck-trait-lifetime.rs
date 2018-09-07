@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+// This test verifies that casting from the same lifetime on a value
+// to the same lifetime on a trait succeeds. See issue #10766.
 
-pub fn main() {
-    let mut x = None;
-    match x {
-      None => {
-        // It is ok to reassign x here, because there is in
-        // fact no outstanding loan of x!
-        x = Some(0);
-      }
-      Some(_) => { }
+// pretty-expanded FIXME #23616
+
+#![allow(dead_code)]
+
+use std::marker;
+
+fn main() {
+    trait T { fn foo(&self) {} }
+
+    fn f<'a, V: T>(v: &'a V) -> &'a T {
+        v as &'a T
     }
-    assert_eq!(x, Some(0));
 }

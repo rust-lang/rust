@@ -8,25 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
+// run-pass
+//compile-flags: -Z borrowck=mir
 
-pub fn main() {
-    struct A {
-        a: isize,
-        w: B,
+#![feature(slice_patterns)]
+
+fn mut_head_tail<'a, A>(v: &'a mut [A]) -> Option<(&'a mut A, &'a mut [A])> {
+    match *v {
+        [ref mut head, ref mut tail..] => {
+            Some((head, tail))
+        }
+        [] => None
     }
-    struct B {
-        a: isize
+}
+
+fn main() {
+    let mut v = [1,2,3,4];
+    match mut_head_tail(&mut v) {
+        None => {},
+        Some((h,t)) => {
+            *h = 1000;
+            t.reverse();
+        }
     }
-    let mut p = A {
-        a: 1,
-        w: B {a: 1},
-    };
-
-    // even though `x` is not declared as a mutable field,
-    // `p` as a whole is mutable, so it can be modified.
-    p.a = 2;
-
-    // this is true for an interior field too
-    p.w.a = 2;
 }

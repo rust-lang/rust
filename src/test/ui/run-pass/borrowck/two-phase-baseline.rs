@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test taken from #45641 (https://github.com/rust-lang/rust/issues/45641)
+// run-pass
+// compile-flags: -Z borrowck=mir -Z two-phase-borrows
 
-// revisions: ast mir
-//[mir]compile-flags: -Z borrowck=mir
+// This is the "goto example" for why we want two phase borrows.
 
-static mut Y: u32 = 0;
-
-unsafe fn should_ok() {
-    Y = 1;
+fn main() {
+    let mut v = vec![0, 1, 2];
+    v.push(v.len());
+    assert_eq!(v, [0, 1, 2, 3]);
 }
-
-fn main() {}

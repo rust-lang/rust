@@ -8,27 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-use std::cell::Cell;
-
-#[derive(Copy, Clone)]
-enum newtype {
-    newvar(isize)
-}
+// run-pass
+// pretty-expanded FIXME #23616
 
 pub fn main() {
-
-    // Test that borrowck treats enums with a single variant
-    // specially.
-
-    let x = &Cell::new(5);
-    let y = &Cell::new(newtype::newvar(3));
-    let z = match y.get() {
-      newtype::newvar(b) => {
-        x.set(x.get() + 1);
-        x.get() * b
-      }
+    struct A {
+        a: isize,
+        w: B,
+    }
+    struct B {
+        a: isize
+    }
+    let mut p = A {
+        a: 1,
+        w: B {a: 1},
     };
-    assert_eq!(z, 18);
+
+    // even though `x` is not declared as a mutable field,
+    // `p` as a whole is mutable, so it can be modified.
+    p.a = 2;
+
+    // this is true for an interior field too
+    p.w.a = 2;
 }

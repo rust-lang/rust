@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,20 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax)]
-
-fn borrow<F>(x: &isize, f: F) where F: FnOnce(&isize) {
-    f(x)
-}
-
-fn test1(x: &Box<isize>) {
-    borrow(&*(*x).clone(), |p| {
-        let x_a = &**x as *const isize;
-        assert!((x_a as usize) != (p as *const isize as usize));
-        assert_eq!(unsafe{*x_a}, *p);
-    })
-}
+// run-pass
 
 pub fn main() {
-    test1(&box 22);
+    let mut x = None;
+    match x {
+      None => {
+        // It is ok to reassign x here, because there is in
+        // fact no outstanding loan of x!
+        x = Some(0);
+      }
+      Some(_) => { }
+    }
+    assert_eq!(x, Some(0));
 }

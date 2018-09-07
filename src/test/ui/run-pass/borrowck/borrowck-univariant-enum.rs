@@ -8,9 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+#![allow(non_camel_case_types)]
+
+use std::cell::Cell;
+
+#[derive(Copy, Clone)]
+enum newtype {
+    newvar(isize)
+}
 
 pub fn main() {
-    let x = [22];
-    let y = &x[0];
-    assert_eq!(*y, 22);
+
+    // Test that borrowck treats enums with a single variant
+    // specially.
+
+    let x = &Cell::new(5);
+    let y = &Cell::new(newtype::newvar(3));
+    let z = match y.get() {
+      newtype::newvar(b) => {
+        x.set(x.get() + 1);
+        x.get() * b
+      }
+    };
+    assert_eq!(z, 18);
 }
