@@ -1,0 +1,8 @@
+error: expected token: `,`
+ --> $DIR/issue-3145.rs:2:19
+  |
+2 |     println!("{}" a); //~ERROR expected token: `,`
+  |                   ^
+
+error: aborting due to previous error
+
