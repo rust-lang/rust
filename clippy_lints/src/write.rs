@@ -284,7 +284,6 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
     let mut idx = 0;
     loop {
         if !parser.eat(&token::Comma) {
-            assert!(parser.eat(&token::Eof));
             return (Some(fmtstr), expr);
         }
         let token_expr = match parser.parse_expr().map_err(|mut err| err.cancel()) {
