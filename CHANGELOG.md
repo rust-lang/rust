@@ -645,6 +645,7 @@ All notable changes to this project will be documented in this file.
 [`cmp_owned`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#cmp_owned
 [`collapsible_if`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#collapsible_if
 [`const_static_lifetime`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#const_static_lifetime
+[`copy_iterator`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#copy_iterator
 [`crosspointer_transmute`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#crosspointer_transmute
 [`cyclomatic_complexity`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#cyclomatic_complexity
 [`decimal_literal_representation`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#decimal_literal_representation
@@ -748,6 +749,7 @@ All notable changes to this project will be documented in this file.
 [`misrefactored_assign_op`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#misrefactored_assign_op
 [`missing_docs_in_private_items`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#missing_docs_in_private_items
 [`missing_inline_in_public_items`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#missing_inline_in_public_items
+[`mistyped_literal_suffixes`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mistyped_literal_suffixes
 [`mixed_case_hex_literals`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mixed_case_hex_literals
 [`module_inception`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#module_inception
 [`modulo_one`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#modulo_one
@@ -800,6 +802,7 @@ All notable changes to this project will be documented in this file.
 [`print_with_newline`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#print_with_newline
 [`println_empty_string`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#println_empty_string
 [`ptr_arg`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#ptr_arg
+[`ptr_offset_with_cast`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#ptr_offset_with_cast
 [`pub_enum_variant_names`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#pub_enum_variant_names
 [`question_mark`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#question_mark
 [`range_minus_one`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#range_minus_one

@@ -43,4 +43,15 @@ fn main() {
     let fail11 = 0xabcdeff;
     let fail12 = 0xabcabcabcabcabcabc;
     let fail13 = 0x1_23456_78901_usize;
+
+    let fail14 = 2_32;
+    let fail15 = 4_64;
+    let fail16 = 7_8;
+    let fail17 = 23_16;
+    let ok18 = 23_128;
+    let fail19 = 12_3456_21;
+    let fail20 = 2__8;
+    let fail21 = 4___16;
+    let fail22 = 3__4___23;
+    let fail23 = 3__16___23;
 }
