@@ -1566,6 +1566,10 @@ impl<'test> TestCx<'test> {
             build_auxiliary(self, rel_ab, &aux_dir);
         }
 
+        for rel_ab in &self.props.aux_crates {
+            build_auxiliary(self, &rel_ab.value, &aux_dir);
+        }
+
         rustc.envs(self.props.rustc_env.clone());
         self.compose_and_run(
             rustc,
