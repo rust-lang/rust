@@ -26,8 +26,10 @@
 // CHECK: {{.*}}DICompositeType{{.*}}tag: DW_TAG_structure_type,{{.*}}name: "B",{{.*}}
 // CHECK: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "C",{{.*}}extraData:{{.*}}
 // CHECK: {{.*}}DICompositeType{{.*}}tag: DW_TAG_structure_type,{{.*}}name: "C",{{.*}}
+// CHECK-NOT: {{.*}}DIDerivedType{{.*}}name: "D",{{.*}}extraData:{{.*}}
 // CHECK: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "D",{{.*}}
 // CHECK: {{.*}}DICompositeType{{.*}}tag: DW_TAG_structure_type,{{.*}}name: "D",{{.*}}
+// CHECK: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}flags: DIFlagArtificial{{.*}}
 
 #![allow(dead_code)]
 #![allow(unused_variables)]
