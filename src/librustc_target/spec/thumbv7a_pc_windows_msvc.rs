@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -12,21 +12,6 @@ use spec::{LinkerFlavor, Target, TargetOptions, TargetResult, PanicStrategy};
 
 pub fn target() -> TargetResult {
     let mut base = super::windows_msvc_base::opts();
-
-    base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().push(
-        "/LIBPATH:C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Enterprise\\VC\\Tools\\MSVC\\14.11.25503\\lib\\arm".to_string());
-
-    base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().push(
-        "/LIBPATH:C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.17134.0\\ucrt\\arm".to_string());
-
-    base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().push(
-        "/LIBPATH:C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.17134.0\\um\\arm".to_string());
-
-    base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().push(
-        "/MACHINE:ARM".to_string());
-
-    base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().push(
-        "/INCREMENTAL:NO".to_string());
 
     // Prevent error LNK2013: BRANCH24(T) fixup overflow
     base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().push(
@@ -47,7 +32,7 @@ pub fn target() -> TargetResult {
         linker_flavor: LinkerFlavor::Msvc,
 
         options: TargetOptions {
-            features: "+v7,+thumb-mode,+vfp3,+d16,+thumb2,+neon".to_string(),
+            features: "+vfp3,+neon".to_string(),
             cpu: "generic".to_string(),
             max_atomic_width: Some(64),
             abi_blacklist: super::arm_base::abi_blacklist(),
