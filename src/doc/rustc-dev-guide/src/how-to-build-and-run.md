@@ -49,11 +49,12 @@ use-jemalloc = false
 
 ### Running x.py and building a stage1 compiler
 
-One thing to keep in mind is that `rustc` is a _bootstrapping_ compiler. That
-is, since `rustc` is written in Rust, we need to use an older version of the
-compiler to compile the newer version. In particular, the newer version of the
-compiler, `libstd`, and other tooling may use some unstable features
-internally. The result is the compiling `rustc` is done in stages:
+One thing to keep in mind is that `rustc` is a _bootstrapping_
+compiler. That is, since `rustc` is written in Rust, we need to use an
+older version of the compiler to compile the newer version. In
+particular, the newer version of the compiler, `libstd`, and other
+tooling may use some unstable features internally. The result is that
+compiling `rustc` is done in stages:
 
 - **Stage 0:** the stage0 compiler is usually the current _beta_ compiler
   (`x.py` will download it for you); you can configure `x.py` to use something
@@ -73,10 +74,11 @@ internally. The result is the compiling `rustc` is done in stages:
     with stage1.)
 - **Stage 2:** we rebuild our stage1 compiler with itself to produce
   the stage2 compiler (i.e. it builds itself) to have all the _latest
-  optimizations_.
+  optimizations_. (By default, we copy the stage1 libraries for use by
+  the stage2 compiler, since they ought to be identical.)
 - _(Optional)_ **Stage 3**: to sanity check of our new compiler, we
-  can build it again with stage2 compiler which must be identical to
-  itself, unless something has broken.
+  can build the libraries with the stage2 compiler. The result ought
+  to be identical to before, unless something has broken.
 
 For hacking, often building the stage 1 compiler is enough, but for
 final testing and release, the stage 2 compiler is used.
@@ -86,7 +88,7 @@ It is, in particular, very useful when you're doing some kind of
 "type-based refactoring", like renaming a method, or changing the
 signature of some function.
 
-<a name=command>
+<a name=command></a>
 
 Once you've created a config.toml, you are now ready to run
 `x.py`. There are a lot of options here, but let's start with what is
@@ -104,8 +106,8 @@ What this command does is the following:
   - This produces the stage1 compiler
 - Build libstd using the stage1 compiler (cannot use incremental)
 
-This final product (stage1 compiler + libs build using that compiler)
-is what you need to build other rust programs. 
+This final product (stage1 compiler + libs built using that compiler)
+is what you need to build other rust programs.
 
 Note that the command includes the `-i` switch. This enables incremental
 compilation. This will be used to speed up the first two steps of the process:
@@ -125,7 +127,7 @@ Note that this whole command just gives you a subset of the full rustc
 build. The **full** rustc build (what you get if you just say `./x.py
 build`) has quite a few more steps:
 
-- Build librustc rustc with the stage1 compiler.
+- Build librustc and rustc with the stage1 compiler.
   - The resulting compiler here is called the "stage2" compiler.
 - Build libstd with stage2 compiler.
 - Build librustdoc and a bunch of other things with the stage2 compiler.
@@ -168,7 +170,7 @@ release: 1.25.0-dev
 LLVM version: 4.0
 ```
 
-<a name=workflow>
+<a name=workflow></a>
 
 ### Suggested workflows for faster builds of the compiler
 
@@ -188,7 +190,7 @@ refactoring commits and only run the tests at some later time. You can
 then use `git bisect` to track down **precisely** which commit caused
 the problem. A nice side-effect of this style is that you are left
 with a fairly fine-grained set of commits at the end, all of which
-build and pass testes. This often helps reviewing.
+build and pass tests. This often helps reviewing.
 
 **Incremental builds with `--keep-stage`.** Sometimes just checking
 whether the compiler builds is not enough. A common example is that
@@ -216,7 +218,7 @@ encodes types and other states into the `rlib` files, or if you are editing
 things that wind up in the metadata (such as the definition of the MIR).
 
 **The TL;DR is that you might get weird behavior from a compile when
-using `--keep-stage 1`** -- for example, strange ICEs or other
+using `--keep-stage 1`** -- for example, strange [ICEs](appendix/glossary.html) or other
 panics. In that case, you should simply remove the `--keep-stage 1`
 from the command and rebuild.  That ought to fix the problem.
 
