@@ -12,7 +12,9 @@ This is a guide for how to profile rustc with [perf](https://perf.wiki.kernel.or
   - leave everything else the defaults
 - Run `./x.py build` to get a full build
 - Make a rustup toolchain pointing to that result
-  - see [the "build and run" section for instructions](../how-to-build-and-run.html#toolchain)
+  - see [the "build and run" section for instructions][b-a-r]
+
+[b-a-r]: ../how-to-build-and-run.html#toolchain
   
 ## Gathering a perf profile
 
