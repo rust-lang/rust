@@ -157,7 +157,7 @@ pub fn bin_op_to_fcmp_predicate(op: hir::BinOpKind) -> RealPredicate {
     }
 }
 
-pub fn compare_simd_types<'a, 'll:'a, 'tcx:'ll, Builder: BuilderMethods<'a, 'll, 'tcx>>(
+pub fn compare_simd_types<'a, 'tcx: 'a, Builder: BuilderMethods<'a, 'tcx>>(
     bx: &Builder,
     lhs: Builder::Value,
     rhs: Builder::Value,

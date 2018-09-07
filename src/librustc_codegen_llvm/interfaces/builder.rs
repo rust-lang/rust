@@ -15,6 +15,8 @@ use rustc::ty::layout::{Align, Size};
 use rustc::session::Session;
 use builder::MemFlags;
 use super::backend::Backend;
+use super::type_::TypeMethods;
+use super::consts::ConstMethods;
 
 use std::borrow::Cow;
 use std::ops::Range;
@@ -22,17 +24,24 @@ use syntax::ast::AsmDialect;
 
 
 
-pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll>: Backend {
+pub trait BuilderMethods<'a, 'tcx: 'a>: Backend {
+    type CodegenCx: TypeMethods + ConstMethods + Backend<
+        Value = Self::Value,
+        BasicBlock = Self::BasicBlock,
+        Type = Self::Type,
+        TypeKind = Self::TypeKind,
+        Context = Self::Context,
+    >;
 
     fn new_block<'b>(
-        cx: &'a CodegenCx<'ll, 'tcx, Self::Value>,
+        cx: &'a Self::CodegenCx,
         llfn: Self::Value,
         name: &'b str
     ) -> Self;
-    fn with_cx(cx: &'a CodegenCx<'ll, 'tcx, Self::Value>) -> Self;
+    fn with_cx(cx: &'a Self::CodegenCx) -> Self;
     fn build_sibling_block<'b>(&self, name: &'b str) -> Self;
     fn sess(&self) -> &Session;
-    fn cx(&self) -> &'a CodegenCx<'ll, 'tcx, Self::Value>;
+    fn cx(&self) -> &'a Self::CodegenCx;
     fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx>;
     fn llfn(&self) -> Self::Value;
     fn llbb(&self) -> Self::BasicBlock;
@@ -62,7 +71,7 @@ pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll>: Backend {
         args: &[Self::Value],
         then: Self::BasicBlock,
         catch: Self::BasicBlock,
-        bundle: Option<&OperandBundleDef<'ll, Self::Value>>
+        bundle: Option<&OperandBundleDef<Self::Value>>
     ) -> Self::Value;
     fn unreachable(&self);
     fn add(&self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
@@ -278,6 +287,6 @@ pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll>: Backend {
     fn call_lifetime_intrinsic(&self, intrinsic: &str, ptr: Self::Value, size: Size);
 
     fn call(&self, llfn: Self::Value, args: &[Self::Value],
-                bundle: Option<&OperandBundleDef<'ll, Self::Value>>) -> Self::Value;
+                bundle: Option<&OperandBundleDef<Self::Value>>) -> Self::Value;
     fn zext(&self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
 }

@@ -50,13 +50,13 @@ pub fn type_is_freeze<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bo
     ty.is_freeze(tcx, ty::ParamEnv::reveal_all(), DUMMY_SP)
 }
 
-pub struct OperandBundleDef<'a, Value: 'a> {
+pub struct OperandBundleDef<'a, Value> {
     pub name: &'a str,
     pub val: Value
 }
 
-impl OperandBundleDef<'ll, &'ll Value> {
-    pub fn new(name: &'ll str, val: &'ll Value) -> Self {
+impl<'a, Value> OperandBundleDef<'a, Value> {
+    pub fn new(name: &'a str, val: Value) -> Self {
         OperandBundleDef {
             name,
             val
