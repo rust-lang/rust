@@ -748,7 +748,7 @@ fn link_natively(sess: &Session,
     // with some thread pool working in the background. It seems that no one
     // currently knows a fix for this so in the meantime we're left with this...
     info!("{:?}", &cmd);
-    let retry_on_segfault = env::var("RUSTc_RETRY_LINKER_ON_SEGFAULT").is_ok();
+    let retry_on_segfault = env::var("RUSTC_RETRY_LINKER_ON_SEGFAULT").is_ok();
     let mut prog;
     let mut i = 0;
     loop {
