@@ -9,7 +9,7 @@ To add a new test, the first thing you generally do is to create a
 file, typically a Rust source file. Test files have a particular
 structure:
 
-- then they should have some kind of
+- They should have some kind of
   [comment explaining what the test is about](#explanatory_comment);
 - next, they can have one or more [header commands](#header_commands), which
   are special comments that the test interpreter knows how to interpret.
