@@ -833,7 +833,8 @@ pub struct CONTEXT {
 // will not appear in the final documentation. This should be also defined for
 // other architectures supported by Windows such as ARM, and for historical
 // interest, maybe MIPS and PowerPC as well.
-#[cfg(all(rustdoc, not(any(target_arch = "x86_64", target_arch = "x86", target_arch = "aarch64", target_arch = "arm"))))]
+#[cfg(all(rustdoc, not(any(target_arch = "x86_64", target_arch = "x86",
+      target_arch = "aarch64", target_arch = "arm"))))]
 pub enum CONTEXT {}
 
 #[cfg(target_arch = "aarch64")]
