@@ -68,7 +68,7 @@ the directory of a specific test; we'll use `clap-rs` as an example:
 [dir]: https://github.com/rust-lang-nursery/rustc-perf/tree/master/collector/benchmarks
 
 ```bash
-cd collector/benchmarks/clap-rs
+> cd collector/benchmarks/clap-rs
 ```
 
 In this case, let's say we want to profile the `cargo check`
@@ -77,8 +77,8 @@ build the dependencies:
 
 ```bash
 # Setup: first clean out any old results and build the dependencies:
-cargo +rust-prof clean 
-CARGO_INCREMENTAL=0 cargo +rust-prof check 
+> cargo +rust-prof clean
+> CARGO_INCREMENTAL=0 cargo +rust-prof check
 ```
 
 Next: we want record the execution time for *just* the clap-rs crate,
@@ -86,8 +86,8 @@ running cargo check. I tend to use `cargo rustc` for this, since it
 also allows me to add explicit flags, which we'll do later on.
 
 ```bash
-touch src/lib.rs
-CARGO_INCREMENTAL=0 perf record -F99 --call-graph dwarf cargo rustc --profile check --lib
+> touch src/lib.rs
+> CARGO_INCREMENTAL=0 perf record -F99 --call-graph dwarf cargo rustc --profile check --lib
 ```
 
 Note that final command: it's a doozy! It uses the `cargo rustc`
@@ -117,8 +117,8 @@ If you want to profile an NLL run, you can just pass extra options to
 the `cargo rustc` command, like so:
 
 ```bash
-touch src/lib.rs
-CARGO_INCREMENTAL=0 perf record -F99 --call-graph dwarf cargo rustc --profile check --lib — -Zborrowck=mir
+> touch src/lib.rs
+> CARGO_INCREMENTAL=0 perf record -F99 --call-graph dwarf cargo rustc --profile check --lib — -Zborrowck=mir
 ```
 
 [pf]: https://github.com/nikomatsakis/perf-focus
