@@ -11,7 +11,6 @@
 // compile-flags:-C panic=abort
 
 #![feature(lang_items)]
-#![feature(panic_handler)]
 #![no_std]
 #![no_main]
 
