@@ -224,7 +224,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
             ty::ReEarlyBound(..)
             | ty::ReFree(_)
             | ty::ReScope(_)
-            | ty::ReSkolemized(..)
+            | ty::RePlaceholder(..)
             | ty::ReEmpty
             | ty::ReErased => {
                 if self.canonicalize_region_mode.other_free_regions {

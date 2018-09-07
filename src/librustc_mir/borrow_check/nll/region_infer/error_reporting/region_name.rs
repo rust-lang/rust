@@ -274,7 +274,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             ty::ReLateBound(..)
             | ty::ReScope(..)
             | ty::ReVar(..)
-            | ty::ReSkolemized(..)
+            | ty::RePlaceholder(..)
             | ty::ReEmpty
             | ty::ReErased
             | ty::ReClosureBound(..)

@@ -431,7 +431,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             ty::ReClosureBound(..) |
             ty::ReScope(..) |
             ty::ReVar(..) |
-            ty::ReSkolemized(..) |
+            ty::RePlaceholder(..) |
             ty::ReEmpty |
             ty::ReErased => {
                 // We don't expect to see anything but 'static or bound

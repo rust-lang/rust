@@ -1258,7 +1258,7 @@ impl Clean<Option<Lifetime>> for ty::RegionKind {
             ty::ReFree(..) |
             ty::ReScope(..) |
             ty::ReVar(..) |
-            ty::ReSkolemized(..) |
+            ty::RePlaceholder(..) |
             ty::ReEmpty |
             ty::ReClosureBound(_) |
             ty::ReCanonical(_) |

@@ -229,9 +229,10 @@ pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     universe: Cell<ty::UniverseIndex>,
 }
 
-/// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
-/// region that each late-bound region was replaced with.
-pub type SkolemizationMap<'tcx> = BTreeMap<ty::BoundRegion, ty::Region<'tcx>>;
+/// A map returned by `replace_late_bound_regions_with_placeholders()`
+/// indicating the placeholder region that each late-bound region was
+/// replaced with.
+pub type PlaceholderMap<'tcx> = BTreeMap<ty::BoundRegion, ty::Region<'tcx>>;
 
 /// See `error_reporting` module for more details
 #[derive(Clone, Debug)]
@@ -913,13 +914,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     a,
                     b,
                 },
-                skol_map,
-            ) = self.skolemize_late_bound_regions(predicate);
+                placeholder_map,
+            ) = self.replace_late_bound_regions_with_placeholders(predicate);
 
             let cause_span = cause.span;
             let ok = self.at(cause, param_env).sub_exp(a_is_expected, a, b)?;
-            self.leak_check(false, cause_span, &skol_map, snapshot)?;
-            self.pop_skolemized(skol_map, snapshot);
+            self.leak_check(false, cause_span, &placeholder_map, snapshot)?;
+            self.pop_placeholders(placeholder_map, snapshot);
             Ok(ok.unit())
         }))
     }
@@ -930,14 +931,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         predicate: &ty::PolyRegionOutlivesPredicate<'tcx>,
     ) -> UnitResult<'tcx> {
         self.commit_if_ok(|snapshot| {
-            let (ty::OutlivesPredicate(r_a, r_b), skol_map) =
-                self.skolemize_late_bound_regions(predicate);
+            let (ty::OutlivesPredicate(r_a, r_b), placeholder_map) =
+                self.replace_late_bound_regions_with_placeholders(predicate);
             let origin = SubregionOrigin::from_obligation_cause(cause, || {
                 RelateRegionParamBound(cause.span)
             });
             self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
-            self.leak_check(false, cause.span, &skol_map, snapshot)?;
-            Ok(self.pop_skolemized(skol_map, snapshot))
+            self.leak_check(false, cause.span, &placeholder_map, snapshot)?;
+            Ok(self.pop_placeholders(placeholder_map, snapshot))
         })
     }
 

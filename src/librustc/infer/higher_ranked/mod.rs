@@ -15,7 +15,7 @@ use super::{CombinedSnapshot,
             InferCtxt,
             HigherRankedType,
             SubregionOrigin,
-            SkolemizationMap};
+            PlaceholderMap};
 use super::combine::CombineFields;
 use super::region_constraints::{TaintDirections};
 
@@ -61,8 +61,8 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 
             // Second, we instantiate each bound region in the supertype with a
             // fresh concrete region.
-            let (b_prime, skol_map) =
-                self.infcx.skolemize_late_bound_regions(b);
+            let (b_prime, placeholder_map) =
+                self.infcx.replace_late_bound_regions_with_placeholders(b);
 
             debug!("a_prime={:?}", a_prime);
             debug!("b_prime={:?}", b_prime);
@@ -71,12 +71,12 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             let result = self.sub(a_is_expected).relate(&a_prime, &b_prime)?;
 
             // Presuming type comparison succeeds, we need to check
-            // that the skolemized regions do not "leak".
-            self.infcx.leak_check(!a_is_expected, span, &skol_map, snapshot)?;
+            // that the placeholder regions do not "leak".
+            self.infcx.leak_check(!a_is_expected, span, &placeholder_map, snapshot)?;
 
-            // We are finished with the skolemized regions now so pop
+            // We are finished with the placeholder regions now so pop
             // them off.
-            self.infcx.pop_skolemized(skol_map, snapshot);
+            self.infcx.pop_placeholders(placeholder_map, snapshot);
 
             debug!("higher_ranked_sub: OK result={:?}", result);
 
@@ -112,21 +112,21 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
         // created as part of this type comparison".
         return self.infcx.commit_if_ok(|snapshot| {
             // First, we instantiate each bound region in the matcher
-            // with a skolemized region.
-            let ((a_match, a_value), skol_map) =
-                self.infcx.skolemize_late_bound_regions(a_pair);
+            // with a placeholder region.
+            let ((a_match, a_value), placeholder_map) =
+                self.infcx.replace_late_bound_regions_with_placeholders(a_pair);
 
             debug!("higher_ranked_match: a_match={:?}", a_match);
-            debug!("higher_ranked_match: skol_map={:?}", skol_map);
+            debug!("higher_ranked_match: placeholder_map={:?}", placeholder_map);
 
             // Equate types now that bound regions have been replaced.
             self.equate(a_is_expected).relate(&a_match, &b_match)?;
 
-            // Map each skolemized region to a vector of other regions that it
+            // Map each placeholder region to a vector of other regions that it
             // must be equated with. (Note that this vector may include other
-            // skolemized regions from `skol_map`.)
+            // placeholder regions from `placeholder_map`.)
             let skol_resolution_map: FxHashMap<_, _> =
-                skol_map
+                placeholder_map
                 .iter()
                 .map(|(&br, &skol)| {
                     let tainted_regions =
@@ -134,7 +134,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                                                    skol,
                                                    TaintDirections::incoming()); // [1]
 
-                    // [1] this routine executes after the skolemized
+                    // [1] this routine executes after the placeholder
                     // regions have been *equated* with something
                     // else, so examining the incoming edges ought to
                     // be enough to collect all constraints
@@ -143,9 +143,9 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                 })
                 .collect();
 
-            // For each skolemized region, pick a representative -- which can
+            // For each placeholder region, pick a representative -- which can
             // be any region from the sets above, except for other members of
-            // `skol_map`. There should always be a representative if things
+            // `placeholder_map`. There should always be a representative if things
             // are properly well-formed.
             let skol_representatives: FxHashMap<_, _> =
                 skol_resolution_map
@@ -184,7 +184,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                 }
             }
 
-            // Replace the skolemized regions appearing in value with
+            // Replace the placeholder regions appearing in value with
             // their representatives
             let a_value =
                 fold_regions_in(
@@ -194,8 +194,8 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 
             debug!("higher_ranked_match: value={:?}", a_value);
 
-            // We are now done with these skolemized variables.
-            self.infcx.pop_skolemized(skol_map, snapshot);
+            // We are now done with these placeholder variables.
+            self.infcx.pop_placeholders(placeholder_map, snapshot);
 
             Ok(HrMatchResult { value: a_value })
         });
@@ -500,7 +500,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
          * started. This is used in the sub/lub/glb computations. The
          * idea here is that when we are computing lub/glb of two
          * regions, we sometimes create intermediate region variables.
-         * Those region variables may touch some of the skolemized or
+         * Those region variables may touch some of the placeholder or
          * other "forbidden" regions we created to replace bound
          * regions, but they don't really represent an "external"
          * constraint.
@@ -527,10 +527,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
          * we're not careful, it will succeed.
          *
          * The reason is that when we walk through the subtyping
-         * algorithm, we begin by replacing `'a` with a skolemized
+         * algorithm, we begin by replacing `'a` with a placeholder
          * variable `'1`. We then have `fn(_#0t) <: fn(&'1 int)`. This
          * can be made true by unifying `_#0t` with `&'1 int`. In the
-         * process, we create a fresh variable for the skolemized
+         * process, we create a fresh variable for the placeholder
          * region, `'$2`, and hence we have that `_#0t == &'$2
          * int`. However, because `'$2` was created during the sub
          * computation, if we're not careful we will erroneously
@@ -568,14 +568,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         region_vars
     }
 
-    /// Replace all regions bound by `binder` with skolemized regions and
+    /// Replace all regions bound by `binder` with placeholder regions and
     /// return a map indicating which bound-region was replaced with what
-    /// skolemized region. This is the first step of checking subtyping
+    /// placeholder region. This is the first step of checking subtyping
     /// when higher-ranked things are involved.
     ///
     /// **Important:** you must call this function from within a snapshot.
     /// Moreover, before committing the snapshot, you must eventually call
-    /// either `plug_leaks` or `pop_skolemized` to remove the skolemized
+    /// either `plug_leaks` or `pop_placeholders` to remove the placeholder
     /// regions. If you rollback the snapshot (or are using a probe), then
     /// the pop occurs as part of the rollback, so an explicit call is not
     /// needed (but is also permitted).
@@ -584,14 +584,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// the [rustc guide].
     ///
     /// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/traits/hrtb.html
-    pub fn skolemize_late_bound_regions<T>(&self,
+    pub fn replace_late_bound_regions_with_placeholders<T>(&self,
                                            binder: &ty::Binder<T>)
-                                           -> (T, SkolemizationMap<'tcx>)
+                                           -> (T, PlaceholderMap<'tcx>)
         where T : TypeFoldable<'tcx>
     {
         let (result, map) = self.tcx.replace_late_bound_regions(binder, |br| {
             self.universe.set(self.universe().subuniverse());
-            self.tcx.mk_region(ty::ReSkolemized(self.universe(), br))
+            self.tcx.mk_region(ty::RePlaceholder(self.universe(), br))
         });
 
         debug!("skolemize_bound_regions(binder={:?}, result={:?}, map={:?})",
@@ -603,19 +603,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Searches the region constraints created since `snapshot` was started
-    /// and checks to determine whether any of the skolemized regions created
-    /// in `skol_map` would "escape" -- meaning that they are related to
+    /// and checks to determine whether any of the placeholder regions created
+    /// in `placeholder_map` would "escape" -- meaning that they are related to
     /// other regions in some way. If so, the higher-ranked subtyping doesn't
     /// hold. See `README.md` for more details.
     pub fn leak_check(&self,
                       overly_polymorphic: bool,
                       _span: Span,
-                      skol_map: &SkolemizationMap<'tcx>,
+                      placeholder_map: &PlaceholderMap<'tcx>,
                       snapshot: &CombinedSnapshot<'a, 'tcx>)
                       -> RelateResult<'tcx, ()>
     {
-        debug!("leak_check: skol_map={:?}",
-               skol_map);
+        debug!("leak_check: placeholder_map={:?}",
+               placeholder_map);
 
         // If the user gave `-Zno-leak-check`, then skip the leak
         // check completely. This is wildly unsound and also not
@@ -630,14 +630,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         let new_vars = self.region_vars_confined_to_snapshot(snapshot);
-        for (&skol_br, &skol) in skol_map {
-            // The inputs to a skolemized variable can only
+        for (&skol_br, &skol) in placeholder_map {
+            // The inputs to a placeholder variable can only
             // be itself or other new variables.
             let incoming_taints = self.tainted_regions(snapshot,
                                                        skol,
                                                        TaintDirections::both());
             for &tainted_region in &incoming_taints {
-                // Each skolemized should only be relatable to itself
+                // Each placeholder should only be relatable to itself
                 // or new variables:
                 match *tainted_region {
                     ty::ReVar(vid) => {
@@ -668,9 +668,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         Ok(())
     }
 
-    /// This code converts from skolemized regions back to late-bound
+    /// This code converts from placeholder regions back to late-bound
     /// regions. It works by replacing each region in the taint set of a
-    /// skolemized region with a bound-region. The bound region will be bound
+    /// placeholder region with a bound-region. The bound region will be bound
     /// by the outer-most binder in `value`; the caller must ensure that there is
     /// such a binder and it is the right place.
     ///
@@ -687,7 +687,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ///         where A : Clone
     ///     { ... }
     ///
-    /// Here we will have replaced `'a` with a skolemized region
+    /// Here we will have replaced `'a` with a placeholder region
     /// `'0`. This means that our substitution will be `{A=>&'0
     /// int, R=>&'0 int}`.
     ///
@@ -697,25 +697,25 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// to the depth of the predicate, in this case 1, so that the final
     /// predicate is `for<'a> &'a int : Clone`.
     pub fn plug_leaks<T>(&self,
-                         skol_map: SkolemizationMap<'tcx>,
+                         placeholder_map: PlaceholderMap<'tcx>,
                          snapshot: &CombinedSnapshot<'a, 'tcx>,
                          value: T) -> T
         where T : TypeFoldable<'tcx>
     {
-        debug!("plug_leaks(skol_map={:?}, value={:?})",
-               skol_map,
+        debug!("plug_leaks(placeholder_map={:?}, value={:?})",
+               placeholder_map,
                value);
 
-        if skol_map.is_empty() {
+        if placeholder_map.is_empty() {
             return value;
         }
 
-        // Compute a mapping from the "taint set" of each skolemized
+        // Compute a mapping from the "taint set" of each placeholder
         // region back to the `ty::BoundRegion` that it originally
         // represented. Because `leak_check` passed, we know that
         // these taint sets are mutually disjoint.
-        let inv_skol_map: FxHashMap<ty::Region<'tcx>, ty::BoundRegion> =
-            skol_map
+        let inv_placeholder_map: FxHashMap<ty::Region<'tcx>, ty::BoundRegion> =
+            placeholder_map
             .iter()
             .flat_map(|(&skol_br, &skol)| {
                 self.tainted_regions(snapshot, skol, TaintDirections::both())
@@ -724,8 +724,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             })
             .collect();
 
-        debug!("plug_leaks: inv_skol_map={:?}",
-               inv_skol_map);
+        debug!("plug_leaks: inv_placeholder_map={:?}",
+               inv_placeholder_map);
 
         // Remove any instantiated type variables from `value`; those can hide
         // references to regions from the `fold_regions` code below.
@@ -737,25 +737,25 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // responsible for ensuring that (a) `value` contains at least one
         // binder and (b) that binder is the one we want to use.
         let result = self.tcx.fold_regions(&value, &mut false, |r, current_depth| {
-            match inv_skol_map.get(&r) {
+            match inv_placeholder_map.get(&r) {
                 None => r,
                 Some(br) => {
                     // It is the responsibility of the caller to ensure
-                    // that each skolemized region appears within a
+                    // that each placeholder region appears within a
                     // binder. In practice, this routine is only used by
-                    // trait checking, and all of the skolemized regions
+                    // trait checking, and all of the placeholder regions
                     // appear inside predicates, which always have
                     // binders, so this assert is satisfied.
                     assert!(current_depth > ty::INNERMOST);
 
-                    // since leak-check passed, this skolemized region
+                    // since leak-check passed, this placeholder region
                     // should only have incoming edges from variables
                     // (which ought not to escape the snapshot, but we
                     // don't check that) or itself
                     assert!(
                         match *r {
                             ty::ReVar(_) => true,
-                            ty::ReSkolemized(_, ref br1) => br == br1,
+                            ty::RePlaceholder(_, ref br1) => br == br1,
                             _ => false,
                         },
                         "leak-check would have us replace {:?} with {:?}",
@@ -769,31 +769,37 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         });
 
-        self.pop_skolemized(skol_map, snapshot);
+        self.pop_placeholders(placeholder_map, snapshot);
 
         debug!("plug_leaks: result={:?}", result);
 
         result
     }
 
-    /// Pops the skolemized regions found in `skol_map` from the region
-    /// inference context. Whenever you create skolemized regions via
-    /// `skolemize_late_bound_regions`, they must be popped before you
+    /// Pops the placeholder regions found in `placeholder_map` from the region
+    /// inference context. Whenever you create placeholder regions via
+    /// `replace_late_bound_regions_with_placeholders`, they must be popped before you
     /// commit the enclosing snapshot (if you do not commit, e.g. within a
     /// probe or as a result of an error, then this is not necessary, as
     /// popping happens as part of the rollback).
     ///
     /// Note: popping also occurs implicitly as part of `leak_check`.
-    pub fn pop_skolemized(&self,
-                          skol_map: SkolemizationMap<'tcx>,
-                          snapshot: &CombinedSnapshot<'a, 'tcx>) {
-        debug!("pop_skolemized({:?})", skol_map);
-        let skol_regions: FxHashSet<_> = skol_map.values().cloned().collect();
+    pub fn pop_placeholders(
+        &self,
+        placeholder_map: PlaceholderMap<'tcx>,
+        snapshot: &CombinedSnapshot<'a, 'tcx>,
+    ) {
+        debug!("pop_placeholders({:?})", placeholder_map);
+        let skol_regions: FxHashSet<_> = placeholder_map.values().cloned().collect();
         self.borrow_region_constraints()
-            .pop_skolemized(self.universe(), &skol_regions, &snapshot.region_constraints_snapshot);
+            .pop_placeholders(
+                self.universe(),
+                &skol_regions,
+                &snapshot.region_constraints_snapshot,
+            );
         self.universe.set(snapshot.universe);
-        if !skol_map.is_empty() {
-            self.projection_cache.borrow_mut().rollback_skolemized(
+        if !placeholder_map.is_empty() {
+            self.projection_cache.borrow_mut().rollback_placeholder(
                 &snapshot.projection_cache_snapshot);
         }
     }

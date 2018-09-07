@@ -306,9 +306,9 @@ pub struct RegionSnapshot {
     any_unifications: bool,
 }
 
-/// When working with skolemized regions, we often wish to find all of
-/// the regions that are either reachable from a skolemized region, or
-/// which can reach a skolemized region, or both. We call such regions
+/// When working with placeholder regions, we often wish to find all of
+/// the regions that are either reachable from a placeholder region, or
+/// which can reach a placeholder region, or both. We call such regions
 /// *tained* regions.  This struct allows you to decide what set of
 /// tainted regions you want.
 #[derive(Debug)]
@@ -527,23 +527,23 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         self.var_infos[vid].origin
     }
 
-    /// Removes all the edges to/from the skolemized regions that are
+    /// Removes all the edges to/from the placeholder regions that are
     /// in `skols`. This is used after a higher-ranked operation
-    /// completes to remove all trace of the skolemized regions
+    /// completes to remove all trace of the placeholder regions
     /// created in that time.
-    pub fn pop_skolemized(
+    pub fn pop_placeholders(
         &mut self,
         skolemization_count: ty::UniverseIndex,
         skols: &FxHashSet<ty::Region<'tcx>>,
         snapshot: &RegionSnapshot,
     ) {
-        debug!("pop_skolemized_regions(skols={:?})", skols);
+        debug!("pop_placeholders(skols={:?})", skols);
 
         assert!(self.in_snapshot());
         assert!(self.undo_log[snapshot.length] == OpenSnapshot);
         assert!(
             skolemization_count.as_usize() >= skols.len(),
-            "popping more skolemized variables than actually exist, \
+            "popping more placeholder variables than actually exist, \
              sc now = {:?}, skols.len = {:?}",
             skolemization_count,
             skols.len()
@@ -555,7 +555,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         debug_assert! {
             skols.iter()
                  .all(|&k| match *k {
-                     ty::ReSkolemized(universe, _) =>
+                     ty::RePlaceholder(universe, _) =>
                          universe >= first_to_pop &&
                          universe < last_to_pop,
                      _ =>
@@ -860,7 +860,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             ty::ReErased |
             ty::ReFree(..) |
             ty::ReEarlyBound(..) => ty::UniverseIndex::ROOT,
-            ty::ReSkolemized(universe, _) => universe,
+            ty::RePlaceholder(universe, _) => universe,
             ty::ReClosureBound(vid) |
             ty::ReVar(vid) => self.var_universe(vid),
             ty::ReLateBound(..) =>
@@ -886,7 +886,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     /// relations are considered. For example, one can say that only
     /// "incoming" edges to `r0` are desired, in which case one will
     /// get the set of regions `{r|r <= r0}`. This is used when
-    /// checking whether skolemized regions are being improperly
+    /// checking whether placeholder regions are being improperly
     /// related to other regions.
     pub fn tainted(
         &self,

@@ -1780,7 +1780,7 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
         // lifetimes without names with the value `'0`.
         match ty.sty {
             ty::TyKind::Ref(ty::RegionKind::ReLateBound(_, br), _, _)
-            | ty::TyKind::Ref(ty::RegionKind::ReSkolemized(_, br), _, _) => {
+            | ty::TyKind::Ref(ty::RegionKind::RePlaceholder(_, br), _, _) => {
                 with_highlight_region_for_bound_region(*br, counter, || format!("{}", ty))
             }
             _ => format!("{}", ty),
@@ -1792,7 +1792,7 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
     fn get_region_name_for_ty(&self, ty: ty::Ty<'tcx>, counter: usize) -> String {
         match ty.sty {
             ty::TyKind::Ref(region, _, _) => match region {
-                ty::RegionKind::ReLateBound(_, br) | ty::RegionKind::ReSkolemized(_, br) => {
+                ty::RegionKind::ReLateBound(_, br) | ty::RegionKind::RePlaceholder(_, br) => {
                     with_highlight_region_for_bound_region(*br, counter, || format!("{}", region))
                 }
                 _ => format!("{}", region),

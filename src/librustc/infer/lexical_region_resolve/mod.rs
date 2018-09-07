@@ -28,7 +28,7 @@ use std::u32;
 use ty::fold::TypeFoldable;
 use ty::{self, Ty, TyCtxt};
 use ty::{ReEarlyBound, ReEmpty, ReErased, ReFree, ReStatic};
-use ty::{ReLateBound, ReScope, ReSkolemized, ReVar};
+use ty::{ReLateBound, ReScope, RePlaceholder, ReVar};
 use ty::{Region, RegionVid};
 
 mod graphviz;
@@ -341,7 +341,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
 
             // For these types, we cannot define any additional
             // relationship:
-            (&ReSkolemized(..), _) | (_, &ReSkolemized(..)) => if a == b {
+            (&RePlaceholder(..), _) | (_, &RePlaceholder(..)) => if a == b {
                 a
             } else {
                 tcx.types.re_static
