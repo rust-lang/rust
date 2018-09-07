@@ -30,11 +30,11 @@ perf record -F99 --call-graph dwarf XXX
 ```
 
 The `-F99` tells perf to sample at 99 Hz, which avoids generating too
-much data for longer runs (why 99 Hz you ask? No particular reason, it
-just seems to work well for me). The `--call-graph dwarf` tells perf
-to get call-graph information from debuginfo, which is accurate. The
-`XXX` is the command you want to profile. So, for example, you might
-do:
+much data for longer runs (why 99 Hz you ask? It is often chosen
+because it is unlikely to be in lockstep with other periodic
+activity). The `--call-graph dwarf` tells perf to get call-graph
+information from debuginfo, which is accurate. The `XXX` is the
+command you want to profile. So, for example, you might do:
 
 ```
 perf record -F99 --call-graph dwarf cargo +<toolchain> rustc
