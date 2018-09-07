@@ -134,6 +134,44 @@ build`) has quite a few more steps:
 
 <a name=toolchain></a>
 
+### Build different stages
+
+  `./x.py build --stage 0`
+
+  # Stage 1 is typically enough to test out all of your changes
+  # to the compiler
+    
+  `./x.py build --stage 1`
+
+  # Equivalent to ./x.py build
+    
+  `./x.py build --stage 2`
+
+You can pass the --stage flag with what stage you want to build to. 
+It is recommended that you build to Stage 1 as this is enough to know 
+your changes can successfully compile and should let you run tests 
+with your changes.
+
+### Build specific components
+
+   Build only the libcore library
+
+   `./x.py build src/libcore`
+
+   Build the libcore and libproc_macro library only
+
+   `./x.py build src/libcore src/libproc_macro`
+
+   Build only libcore up to Stage 1
+
+   `./x.py build src/libcore --stage 1`
+
+Sometimes you might just want to test if the part you’re working on can 
+compile. Using these commands you can test that it compiles before doing 
+a bigger build to make sure it works with the compiler. As shown before 
+you can also pass flags at the end such as --stage.
+
+
 ### Creating a rustup toolchain
 
 Once you have successfully built rustc, you will have created a bunch
@@ -145,8 +183,8 @@ you will likely need to build at some point; for example, if you want
 to run the entire test suite).
 
 ```bash
-> rustup toolchain link stage1 build/<host-triple>/stage1
-> rustup toolchain link stage2 build/<host-triple>/stage2
+  rustup toolchain link stage1 build/<host-triple>/stage1
+  rustup toolchain link stage2 build/<host-triple>/stage2
 ```
 
 The `<host-triple>` would typically be one of the following:
@@ -263,3 +301,12 @@ This allows you to do "jump-to-def" with whatever functions were around when
 you last built, which is ridiculously useful.
 
 [etags]: https://github.com/nikomatsakis/rust-etags
+
+### Cleaning out build directories
+
+Sometimes you need to start fresh, but this is normally not the case. 
+If you need to run this then rustbuild is most likely not acting right and 
+you should file a bug as to what is going wrong. If you do need to clean 
+everything up then you only need to run one command!
+
+   `./x.py clean`
