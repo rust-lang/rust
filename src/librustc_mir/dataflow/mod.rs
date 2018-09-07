@@ -250,8 +250,7 @@ impl<'b, 'a: 'b, 'tcx: 'a, BD> PropagationContext<'b, 'a, 'tcx, BD> where BD: Bi
     }
 }
 
-fn dataflow_path(context: &str, prepost: &str, path: &str) -> PathBuf {
-    format!("{}_{}", context, prepost);
+fn dataflow_path(context: &str, path: &str) -> PathBuf {
     let mut path = PathBuf::from(path);
     let new_file_name = {
         let orig_file_name = path.file_name().unwrap().to_str().unwrap();
@@ -267,7 +266,7 @@ impl<'a, 'tcx: 'a, BD> DataflowBuilder<'a, 'tcx, BD> where BD: BitDenotation
         where P: Fn(&BD, BD::Idx) -> DebugFormatted
     {
         if let Some(ref path_str) = self.print_preflow_to {
-            let path = dataflow_path(BD::name(), "preflow", path_str);
+            let path = dataflow_path(BD::name(), path_str);
             graphviz::print_borrowck_graph_to(self, &path, p)
         } else {
             Ok(())
@@ -278,9 +277,9 @@ impl<'a, 'tcx: 'a, BD> DataflowBuilder<'a, 'tcx, BD> where BD: BitDenotation
         where P: Fn(&BD, BD::Idx) -> DebugFormatted
     {
         if let Some(ref path_str) = self.print_postflow_to {
-            let path = dataflow_path(BD::name(), "postflow", path_str);
+            let path = dataflow_path(BD::name(), path_str);
             graphviz::print_borrowck_graph_to(self, &path, p)
-        } else{
+        } else {
             Ok(())
         }
     }
