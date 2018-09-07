@@ -1,4 +1,4 @@
-// Copyright 2013-2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME(31528) we emit a bunch of silly errors here due to continuing past the
-// first one. This would be easy-ish to address by better recovery in tokenisation.
+struct A;
 
-pub fn trace_option(option: Option<isize>) {
-    option.map(|some| 42;
+impl A {
+    fn banana(&mut self) {
+        fn peach(this: &Self, foo: usize {
+        //~^ ERROR expected one of
+        //~| ERROR expected pattern
+        }
+    }
     //~^ ERROR expected one of
-    //~| ERROR expected expression
-
+    //~| ERROR incorrect close delimiter
 }
-//~^ ERROR: incorrect close delimiter
 
 fn main() {}

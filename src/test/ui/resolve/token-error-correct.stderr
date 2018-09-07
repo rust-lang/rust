@@ -1,11 +1,11 @@
 error: incorrect close delimiter: `}`
-  --> $DIR/token-error-correct.rs:16:1
+  --> $DIR/token-error-correct.rs:18:1
    |
 LL | fn main() {
    |           - close delimiter possibly meant for this
 LL |     foo(bar(;
    |            - un-closed delimiter
-LL |     //~^ ERROR: expected expression, found `;`
+...
 LL | }
    | ^ incorrect close delimiter
 
@@ -13,7 +13,27 @@ error: expected expression, found `;`
   --> $DIR/token-error-correct.rs:14:13
    |
 LL |     foo(bar(;
+   |        -    -
+   |        |    |
+   |        |    expected expression
+   |        |    help: ...the missing `)` may belong here
+   |        if you meant to close this...
+
+error: expected one of `)`, `,`, `-`, `.`, `<`, `?`, `break`, `continue`, `false`, `for`, `if`, `loop`, `match`, `move`, `return`, `static`, `true`, `unsafe`, `while`, `yield`, or an operator, found `;`
+  --> $DIR/token-error-correct.rs:14:13
+   |
+LL |     foo(bar(;
+   |            --
+   |            ||
+   |            |expected one of 21 possible tokens here
+   |            |help: ...the missing `)` may belong here
+   |            if you meant to close this...
+
+error: expected expression, found `;`
+  --> $DIR/token-error-correct.rs:14:13
+   |
+LL |     foo(bar(;
    |             ^ expected expression
 
-error: aborting due to 2 previous errors
+error: aborting due to 4 previous errors
 

@@ -66,6 +66,7 @@ pub struct StringReader<'a> {
     /// The raw source span which *does not* take `override_span` into account
     span_src_raw: Span,
     open_braces: Vec<(token::DelimToken, Span)>,
+    crate unmatched_braces: Vec<(token::DelimToken, Span)>,
     /// The type and spans for all braces
     ///
     /// Used only for error recovery when arriving to EOF with mismatched braces.
@@ -221,6 +222,7 @@ impl<'a> StringReader<'a> {
             span_src_raw: syntax_pos::DUMMY_SP,
             open_braces: Vec::new(),
             matching_delim_spans: Vec::new(),
+            unmatched_braces: Vec::new(),
             override_span,
             last_unclosed_found_span: None,
         }

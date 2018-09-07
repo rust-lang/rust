@@ -12,6 +12,8 @@
 
 fn main() {
     foo(bar(;
-    //~^ ERROR: expected expression, found `;`
+    //~^ ERROR expected expression, found `;`
+    //~| ERROR expected one of
+    //~| ERROR expected expression
 }
-//~^ ERROR: incorrect close delimiter: `}`
+//~^ ERROR incorrect close delimiter: `}`

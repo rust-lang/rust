@@ -1,0 +1,34 @@
+error: incorrect close delimiter: `}`
+  --> $DIR/parser-recovery-3.rs:19:5
+   |
+LL |     fn banana(&mut self) {
+   |                          - close delimiter possibly meant for this
+LL |         fn peach(this: &Self, foo: usize {
+   |                 - un-closed delimiter
+...
+LL |     }
+   |     ^ incorrect close delimiter
+
+error: expected one of `!`, `(`, `)`, `+`, `,`, `::`, or `<`, found `{`
+  --> $DIR/parser-recovery-3.rs:15:42
+   |
+LL |         fn peach(this: &Self, foo: usize {
+   |                 -                       -^ expected one of 7 possible tokens here
+   |                 |                       |
+   |                 |                       help: ...the missing `)` may belong here
+   |                 if you meant to close this...
+
+error: expected pattern, found `{`
+  --> $DIR/parser-recovery-3.rs:15:42
+   |
+LL |         fn peach(this: &Self, foo: usize {
+   |                                          ^ expected pattern
+
+error: expected one of `->`, `where`, or `{`, found `}`
+  --> $DIR/parser-recovery-3.rs:19:5
+   |
+LL |     }
+   |     ^ expected one of `->`, `where`, or `{` here
+
+error: aborting due to 4 previous errors
+
