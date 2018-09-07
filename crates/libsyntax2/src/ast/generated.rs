@@ -699,11 +699,8 @@ impl<'a> AstNode<'a> for ItemList<'a> {
 }
 
 impl<'a> ast::FnDefOwner<'a> for ItemList<'a> {}
-impl<'a> ItemList<'a> {
-    pub fn items(self) -> impl Iterator<Item = ModuleItem<'a>> + 'a {
-        super::children(self)
-    }
-}
+impl<'a> ast::ModuleItemOwner<'a> for ItemList<'a> {}
+impl<'a> ItemList<'a> {}
 
 // Label
 #[derive(Debug, Clone, Copy)]
@@ -979,7 +976,6 @@ impl<'a> AstNode<'a> for Module<'a> {
 
 impl<'a> ast::NameOwner<'a> for Module<'a> {}
 impl<'a> ast::AttrsOwner<'a> for Module<'a> {}
-impl<'a> ast::FnDefOwner<'a> for Module<'a> {}
 impl<'a> Module<'a> {pub fn item_list(self) -> Option<ItemList<'a>> {
         super::child_opt(self)
     }
@@ -1616,12 +1612,9 @@ impl<'a> AstNode<'a> for Root<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<'a> ast::ModuleItemOwner<'a> for Root<'a> {}
 impl<'a> ast::FnDefOwner<'a> for Root<'a> {}
 impl<'a> Root<'a> {
-    pub fn items(self) -> impl Iterator<Item = ModuleItem<'a>> + 'a {
-        super::children(self)
-    }
-
     pub fn modules(self) -> impl Iterator<Item = Module<'a>> + 'a {
         super::children(self)
     }

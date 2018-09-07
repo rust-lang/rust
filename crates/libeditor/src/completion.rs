@@ -2,7 +2,7 @@ use std::collections::{HashSet, HashMap};
 
 use libsyntax2::{
     File, TextUnit, AstNode, SyntaxNodeRef, SyntaxKind::*,
-    ast::{self, LoopBodyOwner},
+    ast::{self, LoopBodyOwner, ModuleItemOwner},
     algo::{
         ancestors,
         visit::{visitor, Visitor, visitor_ctx, VisitorCtx},
@@ -58,22 +58,34 @@ fn complete_name_ref(file: &File, name_ref: ast::NameRef, acc: &mut Vec<Completi
     if !is_node::<ast::Path>(name_ref.syntax()) {
         return;
     }
-    if let Some(fn_def) = ancestors(name_ref.syntax()).filter_map(ast::FnDef::cast).next() {
-        complete_expr_keywords(&file, fn_def, name_ref, acc);
-        let scopes = FnScopes::new(fn_def);
-        complete_fn(name_ref, &scopes, acc);
-    }
-    if let Some(root) = ancestors(name_ref.syntax()).filter_map(ast::Root::cast).next() {
-        let scope = ModuleScope::new(root);
-        acc.extend(
-            scope.entries().iter()
-                .filter(|entry| entry.syntax() != name_ref.syntax())
-                .map(|entry| CompletionItem {
-                    label: entry.name().to_string(),
-                    lookup: None,
-                    snippet: None,
-                })
-        );
+    let mut visited_fn = false;
+    for node in ancestors(name_ref.syntax()) {
+        if let Some(items) = visitor()
+            .visit::<ast::Root, _>(|it| Some(it.items()))
+            .visit::<ast::Module, _>(|it| Some(it.item_list()?.items()))
+            .accept(node) {
+            if let Some(items) = items {
+                let scope = ModuleScope::new(items);
+                acc.extend(
+                    scope.entries().iter()
+                        .filter(|entry| entry.syntax() != name_ref.syntax())
+                        .map(|entry| CompletionItem {
+                            label: entry.name().to_string(),
+                            lookup: None,
+                            snippet: None,
+                        })
+                );
+            }
+            break;
+
+        } else if !visited_fn {
+            if let Some(fn_def) = ast::FnDef::cast(node) {
+                visited_fn = true;
+                complete_expr_keywords(&file, fn_def, name_ref, acc);
+                let scopes = FnScopes::new(fn_def);
+                complete_fn(name_ref, &scopes, acc);
+            }
+        }
     }
 }
 
@@ -297,6 +309,18 @@ mod tests {
         check_scope_completion(r"
             use foo<|>;
             ", r#"[]"#);
+    }
+
+    #[test]
+    fn test_completion_mod_scope_nested() {
+        check_scope_completion(r"
+            struct Foo;
+            mod m {
+                struct Bar;
+                fn quux() { <|> }
+            }
+            ", r#"[CompletionItem { label: "Bar", lookup: None, snippet: None },
+                   CompletionItem { label: "quux", lookup: None, snippet: None }]"#);
     }
 
     #[test]

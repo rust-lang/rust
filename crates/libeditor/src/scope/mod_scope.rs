@@ -1,5 +1,6 @@
 use libsyntax2::{
-    AstNode, SyntaxNode, SyntaxNodeRef, SmolStr, ast
+    AstNode, SyntaxNode, SyntaxNodeRef, SmolStr,
+    ast::{self, AstChildren},
 };
 
 pub struct ModuleScope {
@@ -16,9 +17,9 @@ enum EntryKind {
 }
 
 impl ModuleScope {
-    pub fn new(m: ast::Root) -> ModuleScope {
+    pub fn new(items: AstChildren<ast::ModuleItem>) -> ModuleScope {
         let mut entries = Vec::new();
-        for item in m.items() {
+        for item in items {
             let entry = match item {
                 ast::ModuleItem::StructDef(item) => Entry::new(item),
                 ast::ModuleItem::EnumDef(item) => Entry::new(item),
@@ -85,11 +86,11 @@ fn collect_imports(tree: ast::UseTree, acc: &mut Vec<Entry>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use libsyntax2::File;
+    use libsyntax2::{File, ast::ModuleItemOwner};
 
     fn do_check(code: &str, expected: &[&str]) {
         let file = File::parse(&code);
-        let scope = ModuleScope::new(file.ast());
+        let scope = ModuleScope::new(file.ast().items());
         let actual = scope.entries
             .iter()
             .map(|it| it.name())

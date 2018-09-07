@@ -238,9 +238,8 @@ Grammar(
     ],
     ast: {
         "Root": (
-            traits: [ "FnDefOwner" ],
+            traits: [ "ModuleItemOwner", "FnDefOwner" ],
             collections: [
-                ["items", "ModuleItem"],
                 ["modules", "Module"],
             ]
         ),
@@ -271,12 +270,11 @@ Grammar(
         ] ),
         "TraitDef": ( traits: ["NameOwner", "AttrsOwner"] ),
         "Module": (
-            traits: ["NameOwner", "AttrsOwner", "FnDefOwner" ],
+            traits: ["NameOwner", "AttrsOwner" ],
             options: [ "ItemList" ]
         ),
         "ItemList": (
-            traits: [ "FnDefOwner" ],
-            collections: [ ["items", "ModuleItem"] ]
+            traits: [ "FnDefOwner", "ModuleItemOwner" ],
         ),
         "ConstDef": ( traits: [
             "NameOwner",

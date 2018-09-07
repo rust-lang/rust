@@ -36,7 +36,13 @@ pub trait ArgListOwner<'a>: AstNode<'a> {
 }
 
 pub trait FnDefOwner<'a>: AstNode<'a> {
-    fn functions(self) -> AstNodeChildren<'a, FnDef<'a>> {
+    fn functions(self) -> AstChildren<'a, FnDef<'a>> {
+        children(self)
+    }
+}
+
+pub trait ModuleItemOwner<'a>: AstNode<'a> {
+    fn items(self) -> AstChildren<'a, ModuleItem<'a>> {
         children(self)
     }
 }
@@ -52,7 +58,7 @@ pub trait TypeParamsOwner<'a>: AstNode<'a> {
 }
 
 pub trait AttrsOwner<'a>: AstNode<'a> {
-    fn attrs(self) -> AstNodeChildren<'a, Attr<'a>> {
+    fn attrs(self) -> AstChildren<'a, Attr<'a>> {
         children(self)
     }
 }
@@ -158,7 +164,7 @@ impl<'a> IfExpr<'a> {
     pub fn else_branch(self) -> Option<Block<'a>> {
         self.blocks().nth(1)
     }
-    fn blocks(self) -> AstNodeChildren<'a, Block<'a>> {
+    fn blocks(self) -> AstChildren<'a, Block<'a>> {
         children(self)
     }
 }
@@ -167,27 +173,27 @@ fn child_opt<'a, P: AstNode<'a>, C: AstNode<'a>>(parent: P) -> Option<C> {
     children(parent).next()
 }
 
-fn children<'a, P: AstNode<'a>, C: AstNode<'a>>(parent: P) -> AstNodeChildren<'a, C> {
-    AstNodeChildren::new(parent.syntax())
+fn children<'a, P: AstNode<'a>, C: AstNode<'a>>(parent: P) -> AstChildren<'a, C> {
+    AstChildren::new(parent.syntax())
 }
 
 
 #[derive(Debug)]
-pub struct AstNodeChildren<'a, N> {
+pub struct AstChildren<'a, N> {
     inner: SyntaxNodeChildren<RefRoot<'a>>,
     ph: PhantomData<N>,
 }
 
-impl<'a, N> AstNodeChildren<'a, N> {
+impl<'a, N> AstChildren<'a, N> {
     fn new(parent: SyntaxNodeRef<'a>) -> Self {
-        AstNodeChildren {
+        AstChildren {
             inner: parent.children(),
             ph: PhantomData,
         }
     }
 }
 
-impl<'a, N: AstNode<'a>> Iterator for AstNodeChildren<'a, N> {
+impl<'a, N: AstNode<'a>> Iterator for AstChildren<'a, N> {
     type Item = N;
     fn next(&mut self) -> Option<N> {
         loop {
