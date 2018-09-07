@@ -36,6 +36,7 @@ LL |     twice(cell, value, |a, b| invoke(a, b));
                i16,
                for<'r, 's> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) ()>>, &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 's)) T))
            ]
+   = note: late-bound region is '_#2r
    = note: number of external vids: 3
    = note: where T: '_#1r
 

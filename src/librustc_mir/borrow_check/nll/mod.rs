@@ -276,7 +276,7 @@ fn dump_annotation<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     mir_def_id: DefId,
-    regioncx: &RegionInferenceContext,
+    regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements>,
     errors_buffer: &mut Vec<Diagnostic>,
 ) {
@@ -299,7 +299,7 @@ fn dump_annotation<'a, 'gcx, 'tcx>(
             .diagnostic()
             .span_note_diag(mir.span, "External requirements");
 
-        regioncx.annotate(&mut err);
+        regioncx.annotate(tcx, &mut err);
 
         err.note(&format!(
             "number of external vids: {}",
@@ -319,7 +319,7 @@ fn dump_annotation<'a, 'gcx, 'tcx>(
             .sess
             .diagnostic()
             .span_note_diag(mir.span, "No external requirements");
-        regioncx.annotate(&mut err);
+        regioncx.annotate(tcx, &mut err);
 
         err.buffer(errors_buffer);
     }

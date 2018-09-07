@@ -12,6 +12,9 @@ LL | |         },
                i16,
                for<'r, 's> extern "rust-call" fn((std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) u32>, std::cell::Cell<&'_#2r &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 's)) &'_#3r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 's)) u32>))
            ]
+   = note: late-bound region is '_#4r
+   = note: late-bound region is '_#5r
+   = note: late-bound region is '_#6r
 
 error: unsatisfied lifetime constraints
   --> $DIR/propagate-approximated-fail-no-postdom.rs:56:13
