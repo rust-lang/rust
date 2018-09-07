@@ -170,7 +170,7 @@ The `'{do_mir_borrowck}'` argument is called the **matcher**. It
 specifies the test to be applied on the backtrace. In this case, the
 `{X}` indicates that there must be *some* function on the backtrace
 that meets the regular expression `X`. In this case, that regex is
-just the name of the fn we want (in fact, it's a subset of the name;
+just the name of the function we want (in fact, it's a subset of the name;
 the full name includes a bunch of other stuff, like the module
 path). In this mode, perf-focus just prints out the percentage of
 samples where `do_mir_borrowck` was on the stack: in this case, 29%.
@@ -208,8 +208,8 @@ Percentage : 0%
 ```
 
 Here we used the `..` operator to ask "how often do we have
-`do_mir_borrowck` on the stack and then, later, some fn whose name
-begins with `rusc::traits`?" (basically, code in that module). It
+`do_mir_borrowck` on the stack and then, later, some function whose
+name begins with `rusc::traits`?" (basically, code in that module). It
 turns out the answer is "almost never" — only 12 samples fit that
 description (if you ever see *no* samples, that often indicates your
 query is messed up).
