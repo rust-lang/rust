@@ -327,11 +327,15 @@ impl<'tcx> UniversalRegions<'tcx> {
                     &substs.substs[..]
                 ));
 
+                // FIXME: It'd be nice to print the late-bound regions
+                // here, but unfortunately these wind up stored into
+                // tests, and the resulting print-outs include def-ids
+                // and other things that are not stable across tests!
+                // So we just include the region-vid. Annoying.
                 let closure_base_def_id = tcx.closure_base_def_id(def_id);
                 for_each_late_bound_region_defined_on(tcx, closure_base_def_id, |r| {
                     err.note(&format!(
-                        "late-bound region {:?} is {:?}",
-                        r,
+                        "late-bound region is {:?}",
                         self.to_region_vid(r),
                     ));
                 });
@@ -343,11 +347,13 @@ impl<'tcx> UniversalRegions<'tcx> {
                     &substs.substs[..]
                 ));
 
+                // FIXME: As above, we'd like to print out the region
+                // `r` but doing so is not stable across architectures
+                // and so forth.
                 let closure_base_def_id = tcx.closure_base_def_id(def_id);
                 for_each_late_bound_region_defined_on(tcx, closure_base_def_id, |r| {
                     err.note(&format!(
-                        "late-bound region {:?} is {:?}",
-                        r,
+                        "late-bound region is {:?}",
                         self.to_region_vid(r),
                     ));
                 });

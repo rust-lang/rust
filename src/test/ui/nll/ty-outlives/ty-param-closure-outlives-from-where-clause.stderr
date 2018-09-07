@@ -16,6 +16,7 @@ LL | |     })
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#1r ()>, T))
            ]
+   = note: late-bound region is '_#2r
    = note: number of external vids: 3
    = note: where T: '_#1r
 
@@ -106,6 +107,7 @@ LL | |     })
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T))
            ]
+   = note: late-bound region is '_#3r
    = note: number of external vids: 4
    = note: where T: '_#2r
 
