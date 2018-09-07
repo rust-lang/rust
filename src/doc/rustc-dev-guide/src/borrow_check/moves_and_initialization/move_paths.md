@@ -1,7 +1,8 @@
 # Move paths
 
 In reality, it's not enough to track initialization at the granularity
-of local variables. Sometimes we need to track, e.g., individual fields:
+of local variables. Rust also allows us to do moves and initialization
+at the field granularity:
 
 ```rust
 fn foo() {
@@ -63,9 +64,9 @@ later section.
 
 ### Illegal move paths
 
-We don't actually move-paths for **every** [`Place`] that gets used.
-In particular, if it is illegal to move from a [`Place`], then there
-is no need for a [`MovePathIndex`]. Some examples:
+We don't actually create a move-path for **every** [`Place`] that gets
+used.  In particular, if it is illegal to move from a [`Place`], then
+there is no need for a [`MovePathIndex`]. Some examples:
 
 - You cannot move from a static variable, so we do not create a [`MovePathIndex`]
   for static variables.
@@ -115,11 +116,12 @@ they are also structured into a tree. So for example if you have the
 [`MovePathIndex`] for `a.b.c`, you can go to its parent move-path
 `a.b`. You can also iterate over all children paths: so, from `a.b`,
 you might iterate to find the path `a.b.c` (here you are iterating
-just over the paths that the user **actually referenced**, not all
-**possible** paths the user could have done). These references are
-used for example in the [`has_any_child_of`] function, which checks
-whether the dataflow results contain a value for the given move-path
-(e.g., `a.b`) or any child of that move-path (e.g., `a.b.c`).
+just over the paths that are **actually referenced** in the source,
+not all **possible** paths that could have been referenced). These
+references are used for example in the [`has_any_child_of`] function,
+which checks whether the dataflow results contain a value for the
+given move-path (e.g., `a.b`) or any child of that move-path (e.g.,
+`a.b.c`).
 
 [`Place`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/enum.Place.html
 [`has_any_child_of`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/at_location/struct.FlowAtLocation.html#method.has_any_child_of

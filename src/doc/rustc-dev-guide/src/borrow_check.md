@@ -38,10 +38,10 @@ the [`mir_borrowck`] query.
 [b_c]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/index.html
 [`mir_borrowck`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/fn.mir_borrowck.html
 
-- We first create a **local copy** C of the MIR. In the coming steps,
+- We first create a **local copy** of the MIR. In the coming steps,
   we will modify this copy in place to modify the types and things to
   include references to the new regions that we are computing.
-- We then invoke [`replace_regions_in_mir`] to modify this copy C.
+- We then invoke [`replace_regions_in_mir`] to modify our local MIR.
   Among other things, this function will replace all of the [regions](./appendix/glossary.html) in
   the MIR with fresh [inference variables](./appendix/glossary.html).
 - Next, we perform a number of
@@ -51,7 +51,7 @@ the [`mir_borrowck`] query.
   the purpose of this type check is to determine all of the constraints between
   different regions.
 - Next, we do [region inference](borrow_check/region_inference.html), which computes
-  the values of each region -- basically, points in the control-flow graph.
+  the values of each region — basically, points in the control-flow graph.
 - At this point, we can compute the "borrows in scope" at each point.
 - Finally, we do a second walk over the MIR, looking at the actions it
   does and reporting errors. For example, if we see a statement like

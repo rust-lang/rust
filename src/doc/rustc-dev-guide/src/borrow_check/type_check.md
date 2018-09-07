@@ -7,5 +7,4 @@ kind you might find in any other language. In the process of doing
 this type-check, we also uncover the region constraints that apply to
 the program.
 
-
-
+TODO -- elaborate further? Maybe? :)

@@ -11,9 +11,9 @@ value -- and moves -- transfering ownership to another place -- might
 seem like distinct topics. Indeed, our borrow checker error messages
 often talk about them differently. But **within the borrow checker**,
 they are not nearly as separate. Roughly speaking, the borrow checker
-tracks the set of "initialized places" at any point in time. Assigning
-to a previously uninitialized local variable adds it to that set;
-moving from a local variable removes it from that set.
+tracks the set of "initialized places" at any point in the source
+code. Assigning to a previously uninitialized local variable adds it
+to that set; moving from a local variable removes it from that set.
 
 Consider this example:
 
@@ -36,8 +36,8 @@ fn foo() {
 ```
 
 Here you can see that `a` starts off as uninitialized; once it is
-assigned, it becomes initialized. But when `drop(a)` is called, it
-becomes uninitialized again.
+assigned, it becomes initialized. But when `drop(a)` is called, that
+moves `a` into the call, and hence it becomes uninitialized again.
 
 ## Subsections
 
@@ -47,4 +47,4 @@ subsections:
 - [Move paths](./moves_and_initialization/move_paths.html the
   *move path* concept that we use to track which local variables (or parts of
   local variables, in some cases) are initialized.
-- *Rest not yet written* =)
+- TODO *Rest not yet written* =)
