@@ -591,9 +591,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                            -> (T, PlaceholderMap<'tcx>)
         where T : TypeFoldable<'tcx>
     {
+        let new_universe = self.create_subuniverse();
+
         let (result, map) = self.tcx.replace_late_bound_regions(binder, |br| {
-            self.universe.set(self.universe().subuniverse());
-            self.tcx.mk_region(ty::RePlaceholder(self.universe(), br))
+            self.tcx.mk_region(ty::RePlaceholder(new_universe, br))
         });
 
         debug!("skolemize_bound_regions(binder={:?}, result={:?}, map={:?})",
@@ -795,7 +796,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let skol_regions: FxHashSet<_> = placeholder_map.values().cloned().collect();
         self.borrow_region_constraints()
             .pop_placeholders(
-                self.universe(),
                 &skol_regions,
                 &snapshot.region_constraints_snapshot,
             );
