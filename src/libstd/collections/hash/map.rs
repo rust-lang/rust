@@ -443,7 +443,7 @@ fn search_hashed<K, V, M, F>(table: M, hash: SafeHash, is_match: F) -> InternalE
 #[inline]
 fn search_hashed_mut<K, V, M, F>(table: M, hash: SafeHash, is_match: F) -> InternalEntry<K, V, M>
     where M: DerefMut<Target = RawTable<K, V>>,
-          F: FnMut(&mut K) -> bool
+          F: FnMut(&K) -> bool
 {
     // This is the only function where capacity can be zero. To avoid
     // undefined behavior when Bucket::new gets the raw bucket in this
@@ -510,7 +510,7 @@ fn search_hashed_nonempty<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F)
 fn search_hashed_nonempty_mut<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F)
     -> InternalEntry<K, V, M>
     where M: DerefMut<Target = RawTable<K, V>>,
-          F: FnMut(&mut K) -> bool
+          F: FnMut(&K) -> bool
 {
     // Do not check the capacity as an extra branch could slow the lookup.
 
@@ -1591,9 +1591,9 @@ impl<K, V, S> HashMap<K, V, S>
     ///
     ///
     #[unstable(feature = "hash_raw_entry", issue = "42069")]
-    pub fn raw_entry(&mut self) -> RawEntryBuilder<K, V, S> {
+    pub fn raw_entry_mut(&mut self) -> RawEntryBuilderMut<K, V, S> {
         self.reserve(1);
-        RawEntryBuilder { map: self }
+        RawEntryBuilderMut { map: self }
     }
 
     /// Creates a raw immutable entry builder for the HashMap.
@@ -1611,9 +1611,9 @@ impl<K, V, S> HashMap<K, V, S>
     /// `get` should be preferred.
     ///
     /// Immutable raw entries have very limited use; you might instead want `raw_entry`.
-    #[unstable(feature = "hash_raw_entry_immut", issue = "42069")]
-    pub fn raw_entry_immut(&self) -> RawImmutableEntryBuilder<K, V, S> {
-        RawImmutableEntryBuilder { map: self }
+    #[unstable(feature = "hash_raw_entry", issue = "42069")]
+    pub fn raw_entry(&self) -> RawEntryBuilder<K, V, S> {
+        RawEntryBuilder { map: self }
     }
 }
 
@@ -1842,13 +1842,14 @@ impl<'a, K, V> InternalEntry<K, V, &'a mut RawTable<K, V>> {
             InternalEntry::Occupied { elem } => {
                 Some(Occupied(OccupiedEntry {
                     key: Some(key),
-                    entry: RawOccupiedEntry { elem },
+                    elem,
                 }))
             }
             InternalEntry::Vacant { hash, elem } => {
                 Some(Vacant(VacantEntry {
+                    hash,
                     key,
-                    entry: RawVacantEntry { hash, elem }
+                    elem,
                 }))
             }
             InternalEntry::TableIsEmpty => None,
@@ -1858,20 +1859,10 @@ impl<'a, K, V> InternalEntry<K, V, &'a mut RawTable<K, V>> {
 
 /// A builder for computing where in a HashMap a key-value pair would be stored.
 ///
-/// See the [`HashMap::raw_entry`][] docs for usage examples.
+/// See the [`HashMap::raw_entry_mut`][] docs for usage examples.
 #[unstable(feature = "hash_raw_entry", issue = "42069")]
-pub struct RawEntryBuilder<'a, K: 'a, V: 'a, S: 'a> {
+pub struct RawEntryBuilderMut<'a, K: 'a, V: 'a, S: 'a> {
     map: &'a mut HashMap<K, V, S>,
-}
-
-/// A builder for computing where in a HashMap a key-value pair would be stored,
-/// where the hash has already been specified.
-///
-/// See the [`HashMap::raw_entry`][] docs for usage examples.
-#[unstable(feature = "hash_raw_entry", issue = "42069")]
-pub struct RawEntryBuilderHashed<'a, K: 'a, V: 'a> {
-    map: &'a mut RawTable<K, V>,
-    hash: SafeHash,
 }
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
@@ -1884,191 +1875,170 @@ pub struct RawEntryBuilderHashed<'a, K: 'a, V: 'a> {
 /// [`Entry`]: struct.Entry.html
 /// [`raw_entry`]: struct.HashMap.html#method.raw_entry
 #[unstable(feature = "hash_raw_entry", issue = "42069")]
-pub enum RawEntry<'a, K: 'a, V: 'a> {
+pub enum RawEntryMut<'a, K: 'a, V: 'a, S: 'a> {
     /// An occupied entry.
-    Occupied(RawOccupiedEntry<'a, K, V>),
+    Occupied(RawOccupiedEntryMut<'a, K, V>),
     /// A vacant entry.
-    Vacant(RawVacantEntry<'a, K, V>),
+    Vacant(RawVacantEntryMut<'a, K, V, S>),
 }
 
 /// A view into an occupied entry in a `HashMap`.
-/// It is part of the [`RawEntry`] enum.
+/// It is part of the [`RawEntryMut`] enum.
 ///
-/// [`RawEntry`]: enum.RawEntry.html
+/// [`RawEntryMut`]: enum.RawEntryMut.html
 #[unstable(feature = "hash_raw_entry", issue = "42069")]
-pub struct RawOccupiedEntry<'a, K: 'a, V: 'a> {
+pub struct RawOccupiedEntryMut<'a, K: 'a, V: 'a> {
     elem: FullBucket<K, V, &'a mut RawTable<K, V>>,
 }
 
 /// A view into a vacant entry in a `HashMap`.
-/// It is part of the [`RawEntry`] enum.
+/// It is part of the [`RawEntryMut`] enum.
 ///
-/// [`RawEntry`]: enum.RawEntry.html
+/// [`RawEntryMut`]: enum.RawEntryMut.html
 #[unstable(feature = "hash_raw_entry", issue = "42069")]
-pub struct RawVacantEntry<'a, K: 'a, V: 'a> {
-    hash: SafeHash,
+pub struct RawVacantEntryMut<'a, K: 'a, V: 'a, S: 'a> {
     elem: VacantEntryState<K, V, &'a mut RawTable<K, V>>,
+    hash_builder: &'a S,
 }
 
 /// A builder for computing where in a HashMap a key-value pair would be stored.
 ///
-/// See the [`HashMap::raw_entry_immut`][] docs for usage examples.
-#[unstable(feature = "hash_raw_entry_immut", issue = "42069")]
-pub struct RawImmutableEntryBuilder<'a, K: 'a, V: 'a, S: 'a> {
+/// See the [`HashMap::raw_entry`][] docs for usage examples.
+#[unstable(feature = "hash_raw_entry", issue = "42069")]
+pub struct RawEntryBuilder<'a, K: 'a, V: 'a, S: 'a> {
     map: &'a HashMap<K, V, S>,
 }
 
-/// A builder for computing where in a HashMap a key-value pair would be stored,
-/// where the hash has already been specified.
-///
-/// See the [`HashMap::raw_entry_immut`][] docs for usage examples.
-#[unstable(feature = "hash_raw_entry_immut", issue = "42069")]
-pub struct RawImmutableEntryBuilderHashed<'a, K: 'a, V: 'a> {
-    map: &'a RawTable<K, V>,
-    hash: SafeHash,
-}
-
-impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S>
+impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
     where S: BuildHasher,
+          K: Eq + Hash,
 {
-    /// Initializes the raw entry builder with the hash of the given query value.
+    /// Create a `RawEntryMut` from the given key.
     #[unstable(feature = "hash_raw_entry", issue = "42069")]
-    pub fn hash_by<Q: ?Sized>(self, k: &Q) -> RawEntryBuilderHashed<'a, K, V>
-        where Q: Hash
-    {
-        self.hash_with(|mut hasher| {
-            k.hash(&mut hasher);
-            hasher.finish()
-        })
-    }
-
-    /// Initializes the raw entry builder with the hash yielded by the given function.
-    #[unstable(feature = "hash_raw_entry", issue = "42069")]
-    pub fn hash_with<F>(self, func: F) -> RawEntryBuilderHashed<'a, K, V>
-        where F: FnOnce(S::Hasher) -> u64
-    {
-        let hasher = self.map.hash_builder.build_hasher();
-        let hash = SafeHash::new(func(hasher));
-
-        RawEntryBuilderHashed { map: &mut self.map.table, hash }
-    }
-
-    /// Searches for the location of the raw entry with the given query value.
-    #[unstable(feature = "hash_raw_entry", issue = "42069")]
-    pub fn search_by<Q: ?Sized>(self, k: &Q) -> RawEntry<'a, K, V>
+    pub fn from_key<Q: ?Sized>(self, k: &Q) -> RawEntryMut<'a, K, V, S>
         where K: Borrow<Q>,
-              Q: Eq + Hash
+              Q: Hash + Eq
     {
-        self.hash_by(k).search_by(k)
+        let mut hasher = self.map.hash_builder.build_hasher();
+        k.hash(&mut hasher);
+        self.from_key_hashed_nocheck(hasher.finish(), k)
     }
-}
 
-impl<'a, K, V> RawEntryBuilderHashed<'a, K, V>
-{
-    /// Searches for the location of the raw entry with the given query value.
-    ///
-    /// Note that it isn't required that the query value be hashable, as the
-    /// builder's hash is used.
+    /// Create a `RawEntryMut` from the given key and its hash.
     #[unstable(feature = "hash_raw_entry", issue = "42069")]
-    pub fn search_by<Q: ?Sized>(self, k: &Q) -> RawEntry<'a, K, V>
+    pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> RawEntryMut<'a, K, V, S>
         where K: Borrow<Q>,
-              Q: Eq,
+              Q: Eq
     {
-        // I don't know why we need this `&mut -> &` transform to resolve Borrow, but we do
-        self.search_with(|key| (&*key).borrow() == k)
+        self.from_hash(hash, |q| q.borrow().eq(k))
     }
 
-    /// Searches for the location of the raw entry with the given comparison function.
-    ///
-    /// Note that mutable access is given to each key that is visited, because
-    /// this land is truly godless, and *someone* might have a use for this.
+    /// Create a `RawEntryMut` from the given hash.
     #[unstable(feature = "hash_raw_entry", issue = "42069")]
-    pub fn search_with<F>(self, func: F) -> RawEntry<'a, K, V>
-        where F: FnMut(&mut K) -> bool,
+    pub fn from_hash<F>(self, hash: u64, is_match: F) -> RawEntryMut<'a, K, V, S>
+        where for<'b> F: FnMut(&'b K) -> bool,
     {
-        match search_hashed_mut(self.map, self.hash, func) {
+        match search_hashed_mut(&mut self.map.table, SafeHash::new(hash), is_match) {
             InternalEntry::Occupied { elem } => {
-                RawEntry::Occupied(RawOccupiedEntry { elem })
+                RawEntryMut::Occupied(RawOccupiedEntryMut { elem })
             }
-            InternalEntry::Vacant { hash, elem } => {
-                RawEntry::Vacant(RawVacantEntry { hash, elem })
+            InternalEntry::Vacant { elem, .. } => {
+                RawEntryMut::Vacant(RawVacantEntryMut {
+                    elem,
+                    hash_builder: &self.map.hash_builder,
+                })
             }
             InternalEntry::TableIsEmpty => {
                 unreachable!()
             }
         }
     }
-}
 
-impl<'a, K, V, S> RawImmutableEntryBuilder<'a, K, V, S>
-    where S: BuildHasher,
-{
-    /// Initializes the raw entry builder with the hash of the given query value.
-    #[unstable(feature = "hash_raw_entry_immut", issue = "42069")]
-    pub fn hash_by<Q: ?Sized>(self, k: &Q) -> RawImmutableEntryBuilderHashed<'a, K, V>
-        where Q: Hash
+    /// Create a `RawEntryMut` by examining the elements of a hash bucket until `is_match` returns true for one of them.
+    #[unstable(feature = "hash_raw_entry", issue = "42069")]
+    pub fn from_bucket<F>(self, hash_bucket: u64, mut is_match: F) -> RawEntryMut<'a, K, V, S>
+        where for<'b> F: FnMut(&'b K) -> bool,
     {
-        self.hash_with(|mut hasher| {
-            k.hash(&mut hasher);
-            hasher.finish()
-        })
-    }
+        let hash = SafeHash::new(hash_bucket);
 
-    /// Initializes the raw entry builder with the hash yielded by the given function.
-    #[unstable(feature = "hash_raw_entry_immut", issue = "42069")]
-    pub fn hash_with<F>(self, func: F) -> RawImmutableEntryBuilderHashed<'a, K, V>
-        where F: FnOnce(S::Hasher) -> u64
-    {
-        let hasher = self.map.hash_builder.build_hasher();
-        let hash = SafeHash::new(func(hasher));
+        let size = self.map.table.size();
+        let mut probe = Bucket::new(&mut self.map.table, hash);
+        let mut displacement = 0;
 
-        RawImmutableEntryBuilderHashed { map: &self.map.table, hash }
-    }
+        loop {
+            let full = match probe.peek() {
+                Empty(bucket) => {
+                    // Found a hole!
+                    return RawEntryMut::Vacant(RawVacantEntryMut {
+                        elem: NoElem(bucket, displacement),
+                        hash_builder: &self.map.hash_builder,
+                    });
+                }
+                Full(bucket) => bucket,
+            };
 
-    /// Searches for the location of the raw entry with the given query value.
-    #[unstable(feature = "hash_raw_entry_immut", issue = "42069")]
-    pub fn search_by<Q: ?Sized>(self, k: &Q) -> Option<(&'a K, &'a V)>
-        where K: Borrow<Q>,
-              Q: Eq + Hash
-    {
-        self.hash_by(k).search_by(k)
-    }
-}
+            let probe_displacement = full.displacement();
 
-impl<'a, K, V> RawImmutableEntryBuilderHashed<'a, K, V>
-{
-    /// Searches for the location of the raw entry with the given query value.
-    ///
-    /// Note that it isn't required that the query value be hashable, as the
-    /// builder's hash is used.
-    #[unstable(feature = "hash_raw_entry_immut", issue = "42069")]
-    pub fn search_by<Q: ?Sized>(self, k: &Q) -> Option<(&'a K, &'a V)>
-        where K: Borrow<Q>,
-              Q: Eq,
-    {
-        self.search_with(|key| key.borrow() == k)
-    }
-
-    /// Searches for the location of the raw entry with the given comparison function.
-    ///
-    /// Note that mutable access is given to each key that is visited, because
-    /// this land is truly godless, and *someone* might have a use for this.
-    #[unstable(feature = "hash_raw_entry_immut", issue = "42069")]
-    pub fn search_with<F>(self, func: F) -> Option<(&'a K, &'a V)>
-        where F: FnMut(&K) -> bool,
-    {
-        match search_hashed(self.map, self.hash, func) {
-            InternalEntry::Occupied { elem } => {
-                Some(elem.into_refs())
+            if probe_displacement < displacement {
+                // Found a luckier bucket than me.
+                // We can finish the search early if we hit any bucket
+                // with a lower distance to initial bucket than we've probed.
+                return RawEntryMut::Vacant(RawVacantEntryMut {
+                    elem: NeqElem(full, probe_displacement),
+                    hash_builder: &self.map.hash_builder,
+                })
             }
-            InternalEntry::Vacant { .. } | InternalEntry::TableIsEmpty  => {
-                None
+
+            // Call is_match even if hash doesn't match hash_bucket.
+            if is_match(full.read().0) {
+                return RawEntryMut::Occupied(RawOccupiedEntryMut { elem: full });
             }
+
+            displacement += 1;
+            probe = full.next();
+            debug_assert!(displacement <= size);
         }
     }
 }
 
-impl<'a, K, V> RawEntry<'a, K, V> {
+impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S>
+    where S: BuildHasher,
+{
+    /// Access an entry by key.
+    #[unstable(feature = "hash_raw_entry", issue = "42069")]
+    pub fn from_key<Q: ?Sized>(self, k: &Q) -> Option<(&'a K, &'a V)>
+        where K: Borrow<Q>,
+              Q: Hash + Eq
+    {
+        let mut hasher = self.map.hash_builder.build_hasher();
+        k.hash(&mut hasher);
+        self.from_key_hashed_nocheck(hasher.finish(), k)
+    }
+
+    /// Access an entry by a key and its hash.
+    #[unstable(feature = "hash_raw_entry", issue = "42069")]
+    pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> Option<(&'a K, &'a V)>
+        where K: Borrow<Q>,
+              Q: Hash + Eq
+
+    {
+        self.from_hash(hash, |q| q.borrow().eq(k))
+    }
+
+    /// Access an entry by hash.
+    #[unstable(feature = "hash_raw_entry", issue = "42069")]
+    pub fn from_hash<F>(self, hash: u64, is_match: F) -> Option<(&'a K, &'a V)>
+        where F: FnMut(&K) -> bool
+    {
+        match search_hashed(&self.map.table, SafeHash::new(hash), is_match) {
+            InternalEntry::Occupied { elem } => Some(elem.into_refs()),
+            InternalEntry::Vacant { .. } => None,
+            InternalEntry::TableIsEmpty => unreachable!(),
+        }
+    }
+}
+
+impl<'a, K, V, S> RawEntryMut<'a, K, V, S> {
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// mutable references to the key and value in the entry.
     ///
@@ -2086,10 +2056,13 @@ impl<'a, K, V> RawEntry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 22);
     /// ```
     #[unstable(feature = "hash_raw_entry", issue = "42069")]
-    pub fn or_insert(self, default_key: K, default_val: V) -> (&'a mut K, &'a mut V) {
+    pub fn or_insert(self, default_key: K, default_val: V) -> (&'a mut K, &'a mut V)
+        where K: Hash,
+              S: BuildHasher,
+    {
         match self {
-            RawEntry::Occupied(entry) => entry.into_kv(),
-            RawEntry::Vacant(entry) => entry.insert(default_key, default_val),
+            RawEntryMut::Occupied(entry) => entry.into_key_value(),
+            RawEntryMut::Vacant(entry) => entry.insert(default_key, default_val),
         }
     }
 
@@ -2112,10 +2085,12 @@ impl<'a, K, V> RawEntry<'a, K, V> {
     #[unstable(feature = "hash_raw_entry", issue = "42069")]
     pub fn or_insert_with<F>(self, default: F) -> (&'a mut K, &'a mut V)
         where F: FnOnce() -> (K, V),
+              K: Hash,
+              S: BuildHasher,
     {
         match self {
-            RawEntry::Occupied(entry) => entry.into_kv(),
-            RawEntry::Vacant(entry) => {
+            RawEntryMut::Occupied(entry) => entry.into_key_value(),
+            RawEntryMut::Vacant(entry) => {
                 let (k, v) = default();
                 entry.insert(k, v)
             }
@@ -2149,19 +2124,19 @@ impl<'a, K, V> RawEntry<'a, K, V> {
         where F: FnOnce(&mut K, &mut V)
     {
         match self {
-            RawEntry::Occupied(mut entry) => {
+            RawEntryMut::Occupied(mut entry) => {
                 {
-                    let (k, v) = entry.kv_mut();
+                    let (k, v) = entry.get_key_value_mut();
                     f(k, v);
                 }
-                RawEntry::Occupied(entry)
+                RawEntryMut::Occupied(entry)
             },
-            RawEntry::Vacant(entry) => RawEntry::Vacant(entry),
+            RawEntryMut::Vacant(entry) => RawEntryMut::Vacant(entry),
         }
     }
 }
 
-impl<'a, K, V> RawOccupiedEntry<'a, K, V> {
+impl<'a, K, V> RawOccupiedEntryMut<'a, K, V> {
     /// Gets a reference to the key in the entry.
     #[unstable(feature = "hash_raw_entry", issue = "42069")]
     pub fn key(&self) -> &K {
@@ -2202,20 +2177,20 @@ impl<'a, K, V> RawOccupiedEntry<'a, K, V> {
 
     /// Gets a reference to the key and value in the entry.
     #[unstable(feature = "hash_raw_entry", issue = "42069")]
-    pub fn kv(&mut self) -> (&K, &V) {
+    pub fn get_key_value(&mut self) -> (&K, &V) {
         self.elem.read()
     }
 
     /// Gets a mutable reference to the key and value in the entry.
     #[unstable(feature = "hash_raw_entry", issue = "42069")]
-    pub fn kv_mut(&mut self) -> (&mut K, &mut V) {
+    pub fn get_key_value_mut(&mut self) -> (&mut K, &mut V) {
         self.elem.read_mut()
     }
 
     /// Converts the OccupiedEntry into a mutable reference to the key and value in the entry
     /// with a lifetime bound to the map itself.
     #[unstable(feature = "hash_raw_entry", issue = "42069")]
-    pub fn into_kv(self) -> (&'a mut K, &'a mut V) {
+    pub fn into_key_value(self) -> (&'a mut K, &'a mut V) {
         self.elem.into_mut_refs()
     }
 
@@ -2246,23 +2221,36 @@ impl<'a, K, V> RawOccupiedEntry<'a, K, V> {
     }
 }
 
-impl<'a, K, V> RawVacantEntry<'a, K, V> {
+impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it.
     #[unstable(feature = "hash_raw_entry", issue = "42069")]
-    pub fn insert(self, key: K, value: V) -> (&'a mut K, &'a mut V) {
+    pub fn insert(self, key: K, value: V) -> (&'a mut K, &'a mut V)
+        where K: Hash,
+              S: BuildHasher,
+    {
+        let mut hasher = self.hash_builder.build_hasher();
+        key.hash(&mut hasher);
+        self.insert_hashed_nocheck(hasher.finish(), key, value)
+    }
+
+    /// Sets the value of the entry with the VacantEntry's key,
+    /// and returns a mutable reference to it.
+    #[unstable(feature = "hash_raw_entry", issue = "42069")]
+    pub fn insert_hashed_nocheck(self, hash: u64, key: K, value: V) -> (&'a mut K, &'a mut V) {
+        let hash = SafeHash::new(hash);
         let b = match self.elem {
             NeqElem(mut bucket, disp) => {
                 if disp >= DISPLACEMENT_THRESHOLD {
                     bucket.table_mut().set_tag(true);
                 }
-                robin_hood(bucket, disp, self.hash, key, value)
+                robin_hood(bucket, disp, hash, key, value)
             },
             NoElem(mut bucket, disp) => {
                 if disp >= DISPLACEMENT_THRESHOLD {
                     bucket.table_mut().set_tag(true);
                 }
-                bucket.put(self.hash, key, value)
+                bucket.put(hash, key, value)
             },
         };
         b.into_mut_refs()
@@ -2270,7 +2258,7 @@ impl<'a, K, V> RawVacantEntry<'a, K, V> {
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "42069")]
-impl<'a, K, V, S> Debug for RawEntryBuilder<'a, K, V, S> {
+impl<'a, K, V, S> Debug for RawEntryBuilderMut<'a, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("RawEntryBuilder")
          .finish()
@@ -2278,24 +2266,15 @@ impl<'a, K, V, S> Debug for RawEntryBuilder<'a, K, V, S> {
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "42069")]
-impl<'a, K, V> Debug for RawEntryBuilderHashed<'a, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("RawEntryBuilderHashed")
-         .field("hash", &self.hash.inspect())
-         .finish()
-    }
-}
-
-#[unstable(feature = "hash_raw_entry", issue = "42069")]
-impl<'a, K: Debug, V: Debug> Debug for RawEntry<'a, K, V> {
+impl<'a, K: Debug, V: Debug, S> Debug for RawEntryMut<'a, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            RawEntry::Vacant(ref v) => {
+            RawEntryMut::Vacant(ref v) => {
                 f.debug_tuple("RawEntry")
                     .field(v)
                     .finish()
             }
-            RawEntry::Occupied(ref o) => {
+            RawEntryMut::Occupied(ref o) => {
                 f.debug_tuple("RawEntry")
                     .field(o)
                     .finish()
@@ -2305,9 +2284,9 @@ impl<'a, K: Debug, V: Debug> Debug for RawEntry<'a, K, V> {
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "42069")]
-impl<'a, K: Debug, V: Debug> Debug for RawOccupiedEntry<'a, K, V> {
+impl<'a, K: Debug, V: Debug> Debug for RawOccupiedEntryMut<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("RawOccupiedEntry")
+        f.debug_struct("RawOccupiedEntryMut")
          .field("key", self.key())
          .field("value", self.get())
          .finish()
@@ -2315,27 +2294,17 @@ impl<'a, K: Debug, V: Debug> Debug for RawOccupiedEntry<'a, K, V> {
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "42069")]
-impl<'a, K, V> Debug for RawVacantEntry<'a, K, V> {
+impl<'a, K, V, S> Debug for RawVacantEntryMut<'a, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("RawVacantEntry")
-         .field("hash", &self.hash.inspect())
+        f.debug_struct("RawVacantEntryMut")
          .finish()
     }
 }
 
-#[unstable(feature = "hash_raw_entry_immut", issue = "42069")]
-impl<'a, K, V, S> Debug for RawImmutableEntryBuilder<'a, K, V, S> {
+#[unstable(feature = "hash_raw_entry", issue = "42069")]
+impl<'a, K, V, S> Debug for RawEntryBuilder<'a, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("RawImmutableEntryBuilder")
-         .finish()
-    }
-}
-
-#[unstable(feature = "hash_raw_entry_immut", issue = "42069")]
-impl<'a, K, V> Debug for RawImmutableEntryBuilderHashed<'a, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("RawImmutableEntryBuilderHashed")
-         .field("hash", &self.hash.inspect())
+        f.debug_struct("RawEntryBuilder")
          .finish()
     }
 }
@@ -2384,7 +2353,7 @@ impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for Entry<'a, K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
     key: Option<K>,
-    entry: RawOccupiedEntry<'a, K, V>,
+    elem: FullBucket<K, V, &'a mut RawTable<K, V>>,
 }
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
@@ -2403,8 +2372,9 @@ impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for OccupiedEntry<'a, K, V> {
 /// [`Entry`]: enum.Entry.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct VacantEntry<'a, K: 'a, V: 'a> {
+    hash: SafeHash,
     key: K,
-    entry: RawVacantEntry<'a, K, V>,
+    elem: VacantEntryState<K, V, &'a mut RawTable<K, V>>,
 }
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
@@ -2828,7 +2798,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[stable(feature = "map_entry_keys", since = "1.10.0")]
     pub fn key(&self) -> &K {
-        self.entry.key()
+        self.elem.read().0
     }
 
     /// Take the ownership of the key and value from the map.
@@ -2851,7 +2821,8 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[stable(feature = "map_entry_recover_keys2", since = "1.12.0")]
     pub fn remove_entry(self) -> (K, V) {
-        self.entry.remove_entry()
+        let (k, v, _) = pop_internal(self.elem);
+        (k, v)
     }
 
     /// Gets a reference to the value in the entry.
@@ -2871,7 +2842,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self) -> &V {
-        self.entry.get()
+        self.elem.read().1
     }
 
     /// Gets a mutable reference to the value in the entry.
@@ -2903,7 +2874,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut V {
-        self.entry.get_mut()
+        self.elem.read_mut().1
     }
 
     /// Converts the OccupiedEntry into a mutable reference to the value in the entry
@@ -2931,7 +2902,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_mut(self) -> &'a mut V {
-        self.entry.into_mut()
+        self.elem.into_mut_refs().1
     }
 
     /// Sets the value of the entry, and returns the entry's old value.
@@ -2952,8 +2923,10 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 15);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn insert(&mut self, value: V) -> V {
-        self.entry.insert(value)
+    pub fn insert(&mut self, mut value: V) -> V {
+        let old_value = self.get_mut();
+        mem::swap(&mut value, old_value);
+        value
     }
 
     /// Takes the value out of the entry, and returns it.
@@ -2975,7 +2948,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(self) -> V {
-        self.entry.remove()
+        pop_internal(self.elem).1
     }
 
     /// Returns a key that was used for search.
@@ -3008,7 +2981,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[unstable(feature = "map_entry_replace", issue = "44286")]
     pub fn replace_entry(mut self, value: V) -> (K, V) {
-        let (old_key, old_value) = self.entry.kv_mut();
+        let (old_key, old_value) = self.elem.read_mut();
 
         let old_key = mem::replace(old_key, self.key.unwrap());
         let old_value = mem::replace(old_value, value);
@@ -3043,7 +3016,8 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[unstable(feature = "map_entry_replace", issue = "44286")]
     pub fn replace_key(mut self) -> K {
-        mem::replace(self.entry.key_mut(), self.key.unwrap())
+        let (old_key, _) = self.elem.read_mut();
+        mem::replace(old_key, self.key.unwrap())
     }
 }
 
@@ -3101,7 +3075,21 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(self, value: V) -> &'a mut V {
-        self.entry.insert(self.key, value).1
+        let b = match self.elem {
+            NeqElem(mut bucket, disp) => {
+                if disp >= DISPLACEMENT_THRESHOLD {
+                    bucket.table_mut().set_tag(true);
+                }
+                robin_hood(bucket, disp, self.hash, self.key, value)
+            },
+            NoElem(mut bucket, disp) => {
+                if disp >= DISPLACEMENT_THRESHOLD {
+                    bucket.table_mut().set_tag(true);
+                }
+                bucket.put(self.hash, self.key, value)
+            },
+        };
+        b.into_mut_refs().1
     }
 }
 
@@ -3312,7 +3300,7 @@ impl<K, S, Q: ?Sized> super::Recover<Q> for HashMap<K, (), S>
         match self.entry(key) {
             Occupied(mut occupied) => {
                 let key = occupied.take_key().unwrap();
-                Some(mem::replace(occupied.entry.key_mut(), key))
+                Some(mem::replace(occupied.elem.read_mut().0, key))
             }
             Vacant(vacant) => {
                 vacant.insert(());
@@ -3363,6 +3351,7 @@ fn assert_covariance() {
 #[cfg(test)]
 mod test_map {
     use super::HashMap;
+    use super::Entry::{Occupied, Vacant};
     use super::RandomState;
     use cell::RefCell;
     use rand::{thread_rng, Rng};
@@ -3601,8 +3590,6 @@ mod test_map {
 
     #[test]
     fn test_empty_entry() {
-        use super::Entry::{Occupied, Vacant};
-
         let mut m: HashMap<i32, bool> = HashMap::new();
         match m.entry(0) {
             Occupied(_) => panic!(),
@@ -4061,8 +4048,6 @@ mod test_map {
 
     #[test]
     fn test_entry() {
-        use super::Entry::{Occupied, Vacant};
-
         let xs = [(1, 10), (2, 20), (3, 30), (4, 40), (5, 50), (6, 60)];
 
         let mut map: HashMap<_, _> = xs.iter().cloned().collect();
@@ -4116,9 +4101,6 @@ mod test_map {
     #[test]
     fn test_entry_take_doesnt_corrupt() {
         #![allow(deprecated)] //rand
-
-        use super::Entry::{Occupied, Vacant};
-
         // Test for #19292
         fn check(m: &HashMap<i32, ()>) {
             for k in m.keys() {
@@ -4193,8 +4175,6 @@ mod test_map {
 
     #[test]
     fn test_occupied_entry_key() {
-        use super::Entry::{Occupied, Vacant};
-
         let mut a = HashMap::new();
         let key = "hello there";
         let value = "value goes here";
@@ -4213,8 +4193,6 @@ mod test_map {
 
     #[test]
     fn test_vacant_entry_key() {
-        use super::Entry::{Occupied, Vacant};
-
         let mut a = HashMap::new();
         let key = "hello there";
         let value = "value goes here";
@@ -4333,7 +4311,7 @@ mod test_map {
         }).search_with(|k| *k == 3) {
             Vacant(_) => unreachable!(),
             Occupied(view) => {
-                assert_eq!(view.remove_kv(), (3, 30));
+                assert_eq!(view.remove_key_value(), (3, 30));
             }
         }
         assert_eq!(map.raw_entry_immut().search_by(&3), None);

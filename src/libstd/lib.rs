@@ -285,7 +285,6 @@
 #![feature(ptr_internals)]
 #![feature(raw)]
 #![feature(hash_raw_entry)]
-#![feature(hash_raw_entry_immut)]
 #![feature(rustc_attrs)]
 #![feature(rustc_const_unstable)]
 #![feature(std_internals)]
