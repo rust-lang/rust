@@ -1,3 +1,4 @@
+#![feature(test)]
 #![feature(tool_lints)]
 
 use std::env;
@@ -83,4 +84,29 @@ pub fn get_commit_date() -> Option<String> {
         .output()
         .ok()
         .and_then(|r| String::from_utf8(r.stdout).ok())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_struct_local() {
+        let vi = get_version_info!();
+        assert_eq!(vi.major, 0);
+        assert_eq!(vi.minor, 1);
+        assert_eq!(vi.patch, 0);
+        assert_eq!(vi.crate_name, "rustc_tools_util");
+        // hard to make positive tests for these since they will always change
+        assert!(vi.commit_hash.is_none());
+        assert!(vi.commit_date.is_none());
+    }
+
+    #[test]
+    fn test_display_local() {
+        let vi = get_version_info!();
+        let fmt = format!("{}", vi);
+        assert_eq!(fmt, "rustc_tools_util 0.1.0");
+    }
+
 }
