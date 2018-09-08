@@ -601,5 +601,16 @@ mod issue_1219 {
             }
             println!("{}", count);
         }
+
+        // should trigger the lint because the count is not conditional
+        let text = "banana";
+        let mut count = 0;
+        for ch in text.chars() {
+            count += 1;
+            if ch == 'a' {
+                continue;
+            }
+            println!("{}", count);
+        }
     }
 }

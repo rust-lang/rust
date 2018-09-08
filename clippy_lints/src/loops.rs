@@ -1950,6 +1950,9 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
             walk_expr(self, expr);
             self.depth -= 1;
             return;
+        } else if let ExprKind::Continue(_) = expr.node {
+            self.done = true;
+            return;
         }
         walk_expr(self, expr);
     }
