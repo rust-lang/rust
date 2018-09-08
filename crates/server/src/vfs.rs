@@ -3,11 +3,11 @@ use std::{
     fs,
 };
 
-use crossbeam_channel::{Sender, Receiver, unbounded};
+use crossbeam_channel::{Sender, Receiver};
 use walkdir::WalkDir;
 
 use {
-    thread_watcher::ThreadWatcher,
+    thread_watcher::{ThreadWatcher, worker_chan},
 };
 
 
@@ -22,11 +22,11 @@ pub enum FileEventKind {
     Add(String),
 }
 
-pub fn roots_loader() -> (Sender<PathBuf>, Receiver<(PathBuf, Vec<FileEvent>)>, ThreadWatcher) {
-    let (path_sender, path_receiver) = unbounded::<PathBuf>();
-    let (event_sender, event_receiver) = unbounded::<(PathBuf, Vec<FileEvent>)>();
+pub fn roots_loader() -> ((Sender<PathBuf>, Receiver<(PathBuf, Vec<FileEvent>)>), ThreadWatcher) {
+    let (interface, input_receiver, output_sender) =
+        worker_chan::<PathBuf, (PathBuf, Vec<FileEvent>)>(128);
     let thread = ThreadWatcher::spawn("roots loader", move || {
-        path_receiver
+        input_receiver
             .into_iter()
             .map(|path| {
                 debug!("loading {} ...", path.as_path().display());
@@ -34,10 +34,10 @@ pub fn roots_loader() -> (Sender<PathBuf>, Receiver<(PathBuf, Vec<FileEvent>)>, 
                 debug!("... loaded {}", path.as_path().display());
                 (path, events)
             })
-            .for_each(|it| event_sender.send(it))
+            .for_each(|it| output_sender.send(it))
     });
 
-    (path_sender, event_receiver, thread)
+    (interface, thread)
 }
 
 fn load_root(path: &Path) -> Vec<FileEvent> {

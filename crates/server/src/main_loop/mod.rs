@@ -43,8 +43,8 @@ pub fn main_loop(
         .build()
         .unwrap();
     let (task_sender, task_receiver) = unbounded::<Task>();
-    let (fs_sender, fs_receiver, fs_watcher) = vfs::roots_loader();
-    let (ws_sender, ws_receiver, ws_watcher) = workspace_loader();
+    let ((fs_sender, fs_receiver), fs_watcher) = vfs::roots_loader();
+    let ((ws_sender, ws_receiver), ws_watcher) = workspace_loader();
 
     info!("server initialized, serving requests");
     let mut state = ServerWorldState::new();

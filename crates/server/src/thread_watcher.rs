@@ -1,4 +1,5 @@
 use std::thread;
+use crossbeam_channel::{bounded, unbounded, Sender, Receiver};
 use drop_bomb::DropBomb;
 use Result;
 
@@ -30,4 +31,13 @@ impl ThreadWatcher {
         }
         res
     }
+}
+
+/// Sets up worker channels in a deadlock-avoind way.
+/// If one sets both input and output buffers to a fixed size,
+/// a worker might get stuck.
+pub fn worker_chan<I, O>(buf: usize) -> ((Sender<I>, Receiver<O>), Receiver<I>, Sender<O>) {
+    let (input_sender, input_receiver) = bounded::<I>(buf);
+    let (output_sender, output_receiver) = unbounded::<O>();
+    ((input_sender, output_receiver), input_receiver, output_sender)
 }

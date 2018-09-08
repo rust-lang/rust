@@ -8,7 +8,7 @@ use std::{
 };
 
 use tempdir::TempDir;
-use crossbeam_channel::{unbounded, after, Sender, Receiver};
+use crossbeam_channel::{after, Sender, Receiver};
 use flexi_logger::Logger;
 use languageserver_types::{
     Url,
@@ -22,7 +22,7 @@ use serde::Serialize;
 use serde_json::{Value, from_str, to_string_pretty};
 use gen_lsp_server::{RawMessage, RawRequest, RawNotification};
 
-use m::{Result, main_loop, req};
+use m::{Result, main_loop, req, thread_watcher::worker_chan};
 
 pub fn project(fixture: &str) -> Server {
     static INIT: Once = Once::new();
@@ -69,15 +69,19 @@ pub struct Server {
 impl Server {
     fn new(dir: TempDir, files: Vec<(PathBuf, String)>) -> Server {
         let path = dir.path().to_path_buf();
-        let (client_sender, mut server_receiver) = unbounded();
-        let (mut server_sender, client_receiver) = unbounded();
-        let server = thread::spawn(move || main_loop(true, path, &mut server_receiver, &mut server_sender));
+        let ((msg_sender, msg_receiver), server) = {
+            let (api, mut msg_receiver, mut msg_sender) = worker_chan::<RawMessage, RawMessage>(128);
+            let server = thread::spawn(move || {
+                main_loop(true, path, &mut msg_receiver, &mut msg_sender)
+            });
+            (api, server)
+        };
         let res = Server {
             req_id: Cell::new(1),
             dir,
             messages: Default::default(),
-            sender: Some(client_sender),
-            receiver: client_receiver,
+            sender: Some(msg_sender),
+            receiver: msg_receiver,
             server: Some(server),
         };
 
