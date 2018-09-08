@@ -482,17 +482,17 @@ pub fn codegen_call<'a, 'tcx: 'a>(
 
     let call_inst = match fn_ty.sty {
         ty::FnDef(def_id, substs) => {
-            let func_ref = fx.get_function_ref(
-                Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs).unwrap(),
-            );
+            let inst = Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs).unwrap();
+            let func_ref = fx.get_function_ref(inst);
             fx.bcx.ins().call(func_ref, &call_args)
         }
-        _ => {
+        ty::FnPtr(_) => {
             let func = trans_operand(fx, func);
             let func = func.load_value(fx);
             let sig = fx.bcx.import_signature(cton_sig_from_fn_ty(fx.tcx, fn_ty));
             fx.bcx.ins().call_indirect(sig, func, &call_args)
         }
+        _ => bug!("{:?}", fn_ty),
     };
 
     match output_pass_mode {
