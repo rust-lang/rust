@@ -8,7 +8,11 @@ pub(super) const PATTERN_FIRST: TokenSet =
     ];
 
 pub(super) fn pattern(p: &mut Parser) {
-    if let Some(lhs) = atom_pat(p) {
+    pattern_r(p, PAT_RECOVERY_SET)
+}
+
+pub(super) fn pattern_r(p: &mut Parser, recovery_set: TokenSet) {
+    if let Some(lhs) = atom_pat(p, recovery_set) {
         // test range_pat
         // fn main() {
         //     match 92 { 0 ... 100 => () }
@@ -16,7 +20,7 @@ pub(super) fn pattern(p: &mut Parser) {
         if p.at(DOTDOTDOT) {
             let m = lhs.precede(p);
             p.bump();
-            atom_pat(p);
+            atom_pat(p, recovery_set);
             m.complete(p, RANGE_PAT);
         }
     }
@@ -26,7 +30,7 @@ const PAT_RECOVERY_SET: TokenSet =
     token_set![LET_KW, IF_KW, WHILE_KW, LOOP_KW, MATCH_KW, R_PAREN, COMMA];
 
 
-fn atom_pat(p: &mut Parser) -> Option<CompletedMarker> {
+fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
     let la0 = p.nth(0);
     let la1 = p.nth(1);
     if la0 == REF_KW || la0 == MUT_KW
@@ -56,7 +60,7 @@ fn atom_pat(p: &mut Parser) -> Option<CompletedMarker> {
         L_PAREN => tuple_pat(p),
         L_BRACK => slice_pat(p),
         _ => {
-            p.err_recover("expected pattern", PAT_RECOVERY_SET);
+            p.err_recover("expected pattern", recovery_set);
             return None;
         }
     };
