@@ -110,9 +110,6 @@ mod c {
         let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
         let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
         let target_vendor = env::var("CARGO_CFG_TARGET_VENDOR").unwrap();
-        let target_arch_arm =
-            target_arch.contains("arm") ||
-            target_arch.contains("thumb");
         let cfg = &mut cc::Build::new();
 
         cfg.warnings(false);
