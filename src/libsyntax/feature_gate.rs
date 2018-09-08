@@ -487,7 +487,6 @@ declare_features! (
 
     // RFC 2070: #[panic_implementation] / #[panic_handler]
     (active, panic_implementation, "1.28.0", Some(44489), None),
-    (active, panic_handler, "1.30.0", Some(44489), None),
 
     // #[doc(keyword = "...")]
     (active, doc_keyword, "1.28.0", Some(51315), None),
@@ -674,6 +673,7 @@ declare_features! (
     (accepted, proc_macro_path_invoc, "1.30.0", Some(38356), None),
     // Allows all literals in attribute lists and values of key-value pairs.
     (accepted, attr_literals, "1.30.0", Some(34981), None),
+    (accepted, panic_handler, "1.30.0", Some(44489), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1143,10 +1143,7 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
            cfg_fn!(panic_implementation))),
 
     // RFC 2070
-    ("panic_handler", Normal, Gated(Stability::Unstable,
-                                    "panic_handler",
-                                    "#[panic_handler] is an unstable feature",
-                                    cfg_fn!(panic_handler))),
+    ("panic_handler", Normal, Ungated),
 
     ("alloc_error_handler", Normal, Gated(Stability::Unstable,
                            "alloc_error_handler",

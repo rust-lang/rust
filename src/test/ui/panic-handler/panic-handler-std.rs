@@ -10,7 +10,6 @@
 
 // error-pattern: duplicate lang item found: `panic_impl`.
 
-#![feature(panic_handler)]
 
 use std::panic::PanicInfo;
 

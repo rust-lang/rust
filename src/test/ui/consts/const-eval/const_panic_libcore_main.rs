@@ -10,7 +10,6 @@
 
 #![crate_type = "bin"]
 #![feature(lang_items)]
-#![feature(panic_handler)]
 #![feature(const_panic)]
 #![no_main]
 #![no_std]
