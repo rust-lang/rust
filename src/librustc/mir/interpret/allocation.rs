@@ -12,7 +12,7 @@
 
 use super::{Pointer, EvalResult, AllocId};
 
-use ty::layout::{Size, Align, AbiAndPrefAlign};
+use ty::layout::{Size, Align};
 use syntax::ast::Mutability;
 use std::iter;
 use mir;
@@ -40,7 +40,7 @@ pub struct Allocation<Tag=(),Extra=()> {
     /// Denotes undefined memory. Reading from undefined memory is forbidden in miri
     pub undef_mask: UndefMask,
     /// The alignment of the allocation to detect unaligned reads.
-    pub align: AbiAndPrefAlign,
+    pub align: Align,
     /// Whether the allocation is mutable.
     /// Also used by codegen to determine if a static should be put into mutable memory,
     /// which happens for `static mut` and `static` with interior mutability.
@@ -90,7 +90,7 @@ impl AllocationExtra<()> for () {}
 
 impl<Tag, Extra: Default> Allocation<Tag, Extra> {
     /// Creates a read-only allocation initialized by the given bytes
-    pub fn from_bytes(slice: &[u8], align: AbiAndPrefAlign) -> Self {
+    pub fn from_bytes(slice: &[u8], align: Align) -> Self {
         let mut undef_mask = UndefMask::new(Size::ZERO);
         undef_mask.grow(Size::from_bytes(slice.len() as u64), true);
         Self {
@@ -104,10 +104,10 @@ impl<Tag, Extra: Default> Allocation<Tag, Extra> {
     }
 
     pub fn from_byte_aligned_bytes(slice: &[u8]) -> Self {
-        Allocation::from_bytes(slice, AbiAndPrefAlign::new(Align::from_bytes(1).unwrap()))
+        Allocation::from_bytes(slice, Align::from_bytes(1).unwrap())
     }
 
-    pub fn undef(size: Size, align: AbiAndPrefAlign) -> Self {
+    pub fn undef(size: Size, align: Align) -> Self {
         assert_eq!(size.bytes() as usize as u64, size.bytes());
         Allocation {
             bytes: vec![0; size.bytes() as usize],

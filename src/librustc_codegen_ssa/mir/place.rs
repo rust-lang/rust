@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, AbiAndPrefAlign, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
+use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
 use rustc::mir;
 use rustc::mir::tcx::PlaceTy;
 use MemFlags;
@@ -33,14 +33,14 @@ pub struct PlaceRef<'tcx, V> {
     pub layout: TyLayout<'tcx>,
 
     /// What alignment we know for this place
-    pub align: AbiAndPrefAlign,
+    pub align: Align,
 }
 
 impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
     pub fn new_sized(
         llval: V,
         layout: TyLayout<'tcx>,
-        align: AbiAndPrefAlign,
+        align: Align,
     ) -> PlaceRef<'tcx, V> {
         assert!(!layout.is_unsized());
         PlaceRef {
@@ -58,8 +58,8 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
     ) -> Self {
         debug!("alloca({:?}: {:?})", name, layout);
         assert!(!layout.is_unsized(), "tried to statically allocate unsized place");
-        let tmp = bx.alloca(bx.cx().backend_type(layout), name, layout.align);
-        Self::new_sized(tmp, layout, layout.align)
+        let tmp = bx.alloca(bx.cx().backend_type(layout), name, layout.align.abi);
+        Self::new_sized(tmp, layout, layout.align.abi)
     }
 
     /// Returns a place for an indirect reference to an unsized place.
@@ -101,7 +101,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
     ) -> Self {
         let field = self.layout.field(bx.cx(), ix);
         let offset = self.layout.fields.offset(ix);
-        let effective_field_align = self.align.abi.restrict_for_offset(offset);
+        let effective_field_align = self.align.restrict_for_offset(offset);
 
         let mut simple = || {
             // Unions and newtypes only use an offset of 0.
@@ -109,7 +109,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
                 self.llval
             } else if let layout::Abi::ScalarPair(ref a, ref b) = self.layout.abi {
                 // Offsets have to match either first or second field.
-                assert_eq!(offset, a.value.size(bx.cx()).abi_align(b.value.align(bx.cx())));
+                assert_eq!(offset, a.value.size(bx.cx()).align_to(b.value.align(bx.cx()).abi));
                 bx.struct_gep(self.llval, 1)
             } else {
                 bx.struct_gep(self.llval, bx.cx().backend_field_index(self.layout, ix))
@@ -123,7 +123,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
                     None
                 },
                 layout: field,
-                align: AbiAndPrefAlign::new(effective_field_align),
+                align: effective_field_align,
             }
         };
 
@@ -197,7 +197,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
             llval: bx.pointercast(byte_ptr, bx.cx().type_ptr_to(ll_fty)),
             llextra: self.llextra,
             layout: field,
-            align: AbiAndPrefAlign::new(effective_field_align),
+            align: effective_field_align,
         }
     }
 
@@ -418,13 +418,13 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let llval = bx.cx().const_undef(
                             bx.cx().type_ptr_to(bx.cx().backend_type(layout))
                         );
-                        PlaceRef::new_sized(llval, layout, layout.align)
+                        PlaceRef::new_sized(llval, layout, layout.align.abi)
                     }
                 }
             }
             mir::Place::Static(box mir::Static { def_id, ty }) => {
                 let layout = cx.layout_of(self.monomorphize(&ty));
-                PlaceRef::new_sized(cx.get_static(def_id), layout, layout.align)
+                PlaceRef::new_sized(cx.get_static(def_id), layout, layout.align.abi)
             },
             mir::Place::Projection(box mir::Projection {
                 ref base,

@@ -35,7 +35,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc::ty::Instance;
 use common::CodegenCx;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
-use rustc::ty::layout::{self, AbiAndPrefAlign, HasDataLayout, Integer, IntegerExt, LayoutOf,
+use rustc::ty::layout::{self, Align, HasDataLayout, Integer, IntegerExt, LayoutOf,
                         PrimitiveExt, Size, TyLayout};
 use rustc::session::config;
 use rustc::util::nodemap::FxHashMap;
@@ -323,7 +323,7 @@ fn fixed_vec_metadata(
         llvm::LLVMRustDIBuilderCreateArrayType(
             DIB(cx),
             size.bits(),
-            align.abi.bits() as u32,
+            align.bits() as u32,
             element_type_metadata,
             subscripts)
     };
@@ -465,7 +465,7 @@ fn trait_pointer_metadata(
                 syntax_pos::DUMMY_SP),
             offset: layout.fields.offset(0),
             size: data_ptr_field.size,
-            align: data_ptr_field.align,
+            align: data_ptr_field.align.abi,
             flags: DIFlags::FlagArtificial,
             discriminant: None,
         },
@@ -474,7 +474,7 @@ fn trait_pointer_metadata(
             type_metadata: type_metadata(cx, vtable_field.ty, syntax_pos::DUMMY_SP),
             offset: layout.fields.offset(1),
             size: vtable_field.size,
-            align: vtable_field.align,
+            align: vtable_field.align.abi,
             flags: DIFlags::FlagArtificial,
             discriminant: None,
         },
@@ -787,7 +787,7 @@ fn basic_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
             DIB(cx),
             name.as_ptr(),
             size.bits(),
-            align.abi.bits() as u32,
+            align.bits() as u32,
             encoding)
     };
 
@@ -818,7 +818,7 @@ fn pointer_type_metadata(
             DIB(cx),
             pointee_type_metadata,
             pointer_size.bits(),
-            pointer_align.abi.bits() as u32,
+            pointer_align.bits() as u32,
             name.as_ptr())
     }
 }
@@ -923,7 +923,7 @@ struct MemberDescription<'ll> {
     type_metadata: &'ll DIType,
     offset: Size,
     size: Size,
-    align: AbiAndPrefAlign,
+    align: Align,
     flags: DIFlags,
     discriminant: Option<u64>,
 }
@@ -990,7 +990,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
                 type_metadata: type_metadata(cx, field.ty, self.span),
                 offset: layout.fields.offset(i),
                 size: field.size,
-                align: field.align,
+                align: field.align.abi,
                 flags: DIFlags::FlagZero,
                 discriminant: None,
             }
@@ -1113,7 +1113,7 @@ impl<'tcx> UnionMemberDescriptionFactory<'tcx> {
                 type_metadata: type_metadata(cx, field.ty, self.span),
                 offset: Size::ZERO,
                 size: field.size,
-                align: field.align,
+                align: field.align.abi,
                 flags: DIFlags::FlagZero,
                 discriminant: None,
             }
@@ -1226,7 +1226,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         type_metadata: variant_type_metadata,
                         offset: Size::ZERO,
                         size: self.layout.size,
-                        align: self.layout.align,
+                        align: self.layout.align.abi,
                         flags: DIFlags::FlagZero,
                         discriminant: None,
                     }
@@ -1265,7 +1265,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         type_metadata: variant_type_metadata,
                         offset: Size::ZERO,
                         size: self.layout.size,
-                        align: self.layout.align,
+                        align: self.layout.align.abi,
                         flags: DIFlags::FlagZero,
                         discriminant: Some(self.layout.ty.ty_adt_def().unwrap()
                                            .discriminant_for_variant(cx.tcx, i)
@@ -1334,7 +1334,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                             type_metadata: variant_type_metadata,
                             offset: Size::ZERO,
                             size: variant.size,
-                            align: variant.align,
+                            align: variant.align.abi,
                             flags: DIFlags::FlagZero,
                             discriminant: None,
                         }
@@ -1372,7 +1372,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                             type_metadata: variant_type_metadata,
                             offset: Size::ZERO,
                             size: self.layout.size,
-                            align: self.layout.align,
+                            align: self.layout.align.abi,
                             flags: DIFlags::FlagZero,
                             discriminant: niche_value,
                         }
@@ -1675,7 +1675,7 @@ fn prepare_enum_metadata(
                     file_metadata,
                     UNKNOWN_LINE_NUMBER,
                     size.bits(),
-                    align.abi.bits() as u32,
+                    align.bits() as u32,
                     layout.fields.offset(0).bits(),
                     DIFlags::FlagArtificial,
                     discr_metadata))
@@ -1803,7 +1803,7 @@ fn set_members_of_composite_type(cx: &CodegenCx<'ll, '_>,
                     unknown_file_metadata(cx),
                     UNKNOWN_LINE_NUMBER,
                     member_description.size.bits(),
-                    member_description.align.abi.bits() as u32,
+                    member_description.align.bits() as u32,
                     member_description.offset.bits(),
                     match member_description.discriminant {
                         None => None,
@@ -1851,7 +1851,7 @@ fn create_struct_stub(
             unknown_file_metadata(cx),
             UNKNOWN_LINE_NUMBER,
             struct_size.bits(),
-            struct_align.abi.bits() as u32,
+            struct_align.bits() as u32,
             DIFlags::FlagZero,
             None,
             empty_array,
@@ -1889,7 +1889,7 @@ fn create_union_stub(
             unknown_file_metadata(cx),
             UNKNOWN_LINE_NUMBER,
             union_size.bits(),
-            union_align.abi.bits() as u32,
+            union_align.bits() as u32,
             DIFlags::FlagZero,
             Some(empty_array),
             0, // RuntimeLang
@@ -1958,7 +1958,7 @@ pub fn create_global_var_metadata(
                                                     is_local_to_unit,
                                                     global,
                                                     None,
-                                                    global_align.abi.bytes() as u32,
+                                                    global_align.bytes() as u32,
         );
     }
 }

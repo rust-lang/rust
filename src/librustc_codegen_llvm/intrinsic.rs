@@ -110,7 +110,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let name = &*tcx.item_name(def_id).as_str();
 
         let llret_ty = self.cx().layout_of(ret_ty).llvm_type(self.cx());
-        let result = PlaceRef::new_sized(llresult, fn_ty.ret.layout, fn_ty.ret.layout.align);
+        let result = PlaceRef::new_sized(llresult, fn_ty.ret.layout, fn_ty.ret.layout.align.abi);
 
         let simple = get_simple_intrinsic(self.cx(), name);
         let llval = match name {
@@ -158,7 +158,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             }
             "min_align_of" => {
                 let tp_ty = substs.type_at(0);
-                self.cx().const_usize(self.cx().align_of(tp_ty).abi.bytes())
+                self.cx().const_usize(self.cx().align_of(tp_ty).bytes())
             }
             "min_align_of_val" => {
                 let tp_ty = substs.type_at(0);
@@ -167,12 +167,12 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                         glue::size_and_align_of_dst(self, tp_ty, Some(meta));
                     llalign
                 } else {
-                    self.cx().const_usize(self.cx().align_of(tp_ty).abi.bytes())
+                    self.cx().const_usize(self.cx().align_of(tp_ty).bytes())
                 }
             }
             "pref_align_of" => {
                 let tp_ty = substs.type_at(0);
-                self.cx().const_usize(self.cx().align_of(tp_ty).pref.bytes())
+                self.cx().const_usize(self.cx().layout_of(tp_ty).align.pref.bytes())
             }
             "type_name" => {
                 let tp_ty = substs.type_at(0);
@@ -261,7 +261,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 let align = if name == "unaligned_volatile_load" {
                     1
                 } else {
-                    self.cx().align_of(tp_ty).abi.bytes() as u32
+                    self.cx().align_of(tp_ty).bytes() as u32
                 };
                 unsafe {
                     llvm::LLVMSetAlignment(load, align);
@@ -815,7 +815,7 @@ fn try_intrinsic(
 ) {
     if bx.cx().sess().no_landing_pads() {
         bx.call(func, &[data], None);
-        let ptr_align = bx.tcx().data_layout.pointer_align;
+        let ptr_align = bx.tcx().data_layout.pointer_align.abi;
         bx.store(bx.cx().const_null(bx.cx().type_i8p()), dest, ptr_align);
     } else if wants_msvc_seh(bx.cx().sess()) {
         codegen_msvc_try(bx, func, data, local_ptr, dest);
@@ -890,7 +890,7 @@ fn codegen_msvc_try(
         //
         // More information can be found in libstd's seh.rs implementation.
         let i64p = bx.cx().type_ptr_to(bx.cx().type_i64());
-        let ptr_align = bx.tcx().data_layout.pointer_align;
+        let ptr_align = bx.tcx().data_layout.pointer_align.abi;
         let slot = bx.alloca(i64p, "slot", ptr_align);
         bx.invoke(func, &[data], normal.llbb(), catchswitch.llbb(), None);
 
@@ -906,7 +906,7 @@ fn codegen_msvc_try(
         let funclet = catchpad.catch_pad(cs, &[tydesc, bx.cx().const_i32(0), slot]);
         let addr = catchpad.load(slot, ptr_align);
 
-        let i64_align = bx.tcx().data_layout.i64_align;
+        let i64_align = bx.tcx().data_layout.i64_align.abi;
         let arg1 = catchpad.load(addr, i64_align);
         let val1 = bx.cx().const_i32(1);
         let gep1 = catchpad.inbounds_gep(addr, &[val1]);
@@ -923,7 +923,7 @@ fn codegen_msvc_try(
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
     let ret = bx.call(llfn, &[func, data, local_ptr], None);
-    let i32_align = bx.tcx().data_layout.i32_align;
+    let i32_align = bx.tcx().data_layout.i32_align.abi;
     bx.store(ret, dest, i32_align);
 }
 
@@ -982,7 +982,7 @@ fn codegen_gnu_try(
         let vals = catch.landing_pad(lpad_ty, bx.cx().eh_personality(), 1);
         catch.add_clause(vals, bx.cx().const_null(bx.cx().type_i8p()));
         let ptr = catch.extract_value(vals, 0);
-        let ptr_align = bx.tcx().data_layout.pointer_align;
+        let ptr_align = bx.tcx().data_layout.pointer_align.abi;
         let bitcast = catch.bitcast(local_ptr, bx.cx().type_ptr_to(bx.cx().type_i8p()));
         catch.store(ptr, bitcast, ptr_align);
         catch.ret(bx.cx().const_i32(1));
@@ -991,7 +991,7 @@ fn codegen_gnu_try(
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
     let ret = bx.call(llfn, &[func, data, local_ptr], None);
-    let i32_align = bx.tcx().data_layout.i32_align;
+    let i32_align = bx.tcx().data_layout.i32_align.abi;
     bx.store(ret, dest, i32_align);
 }
 
@@ -1436,7 +1436,7 @@ fn generic_simd_intrinsic(
 
         // Alignment of T, must be a constant integer value:
         let alignment_ty = bx.cx().type_i32();
-        let alignment = bx.cx().const_i32(bx.cx().align_of(in_elem).abi.bytes() as i32);
+        let alignment = bx.cx().const_i32(bx.cx().align_of(in_elem).bytes() as i32);
 
         // Truncate the mask vector to a vector of i1s:
         let (mask, mask_ty) = {
@@ -1536,7 +1536,7 @@ fn generic_simd_intrinsic(
 
         // Alignment of T, must be a constant integer value:
         let alignment_ty = bx.cx().type_i32();
-        let alignment = bx.cx().const_i32(bx.cx().align_of(in_elem).abi.bytes() as i32);
+        let alignment = bx.cx().const_i32(bx.cx().align_of(in_elem).bytes() as i32);
 
         // Truncate the mask vector to a vector of i1s:
         let (mask, mask_ty) = {

@@ -16,7 +16,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
 use rustc::mir;
 use rustc::ty::layout::{
-    self, Size, AbiAndPrefAlign, HasDataLayout, LayoutOf, TyLayout
+    self, Size, Align, HasDataLayout, LayoutOf, TyLayout
 };
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -314,9 +314,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         &self,
         metadata: Option<Scalar<M::PointerTag>>,
         layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, Option<(Size, AbiAndPrefAlign)>> {
+    ) -> EvalResult<'tcx, Option<(Size, Align)>> {
         if !layout.is_unsized() {
-            return Ok(Some((layout.size, layout.align)));
+            return Ok(Some((layout.size, layout.align.abi)));
         }
         match layout.ty.sty {
             ty::Adt(..) | ty::Tuple(..) => {
@@ -328,7 +328,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                 trace!("DST layout: {:?}", layout);
 
                 let sized_size = layout.fields.offset(layout.fields.count() - 1);
-                let sized_align = layout.align;
+                let sized_align = layout.align.abi;
                 trace!(
                     "DST {} statically sized prefix size: {:?} align: {:?}",
                     layout.ty,
@@ -381,7 +381,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                 //
                 //   `(size + (align-1)) & -align`
 
-                Ok(Some((size.abi_align(align), align)))
+                Ok(Some((size.align_to(align), align)))
             }
             ty::Dynamic(..) => {
                 let vtable = metadata.expect("dyn trait fat ptr must have vtable").to_ptr()?;
@@ -392,7 +392,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             ty::Slice(_) | ty::Str => {
                 let len = metadata.expect("slice fat ptr must have vtable").to_usize(self)?;
                 let elem = layout.field(self, 0)?;
-                Ok(Some((elem.size * len, elem.align)))
+                Ok(Some((elem.size * len, elem.align.abi)))
             }
 
             ty::Foreign(_) => {
@@ -406,7 +406,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     pub fn size_and_align_of_mplace(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>
-    ) -> EvalResult<'tcx, Option<(Size, AbiAndPrefAlign)>> {
+    ) -> EvalResult<'tcx, Option<(Size, Align)>> {
         self.size_and_align_of(mplace.meta, mplace.layout)
     }
 
@@ -636,7 +636,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                         let (ptr, align) = mplace.to_scalar_ptr_align();
                         match ptr {
                             Scalar::Ptr(ptr) => {
-                                write!(msg, " by align({}) ref:", align.abi.bytes()).unwrap();
+                                write!(msg, " by align({}) ref:", align.bytes()).unwrap();
                                 allocs.push(ptr.alloc_id);
                             }
                             ptr => write!(msg, " by integral ref: {:?}", ptr).unwrap(),
@@ -665,7 +665,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             Place::Ptr(mplace) => {
                 match mplace.ptr {
                     Scalar::Ptr(ptr) => {
-                        trace!("by align({}) ref:", mplace.align.abi.bytes());
+                        trace!("by align({}) ref:", mplace.align.bytes());
                         self.memory.dump_alloc(ptr.alloc_id);
                     }
                     ptr => trace!(" integral by ref: {:?}", ptr),

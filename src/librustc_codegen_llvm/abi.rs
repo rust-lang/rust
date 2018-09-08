@@ -73,7 +73,7 @@ impl ArgAttributesExt for ArgAttributes {
             if let Some(align) = self.pointee_align {
                 llvm::LLVMRustAddAlignmentAttr(llfn,
                                                idx.as_uint(),
-                                               align.abi.bytes() as u32);
+                                               align.bytes() as u32);
             }
             regular.for_each_kind(|attr| attr.apply_llfn(idx, llfn));
         }
@@ -98,7 +98,7 @@ impl ArgAttributesExt for ArgAttributes {
             if let Some(align) = self.pointee_align {
                 llvm::LLVMRustAddAlignmentCallSiteAttr(callsite,
                                                        idx.as_uint(),
-                                                       align.abi.bytes() as u32);
+                                                       align.bytes() as u32);
             }
             regular.for_each_kind(|attr| attr.apply_callsite(idx, callsite));
         }
@@ -204,7 +204,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
             return;
         }
         if self.is_sized_indirect() {
-            OperandValue::Ref(val, None, self.layout.align).store(bx, dst)
+            OperandValue::Ref(val, None, self.layout.align.abi).store(bx, dst)
         } else if self.is_unsized_indirect() {
             bug!("unsized ArgType must be handled through store_fn_arg");
         } else if let PassMode::Cast(cast) = self.mode {
@@ -214,7 +214,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
             if can_store_through_cast_ptr {
                 let cast_ptr_llty = bx.cx().type_ptr_to(cast.llvm_type(bx.cx()));
                 let cast_dst = bx.pointercast(dst.llval, cast_ptr_llty);
-                bx.store(val, cast_dst, self.layout.align);
+                bx.store(val, cast_dst, self.layout.align.abi);
             } else {
                 // The actual return type is a struct, but the ABI
                 // adaptation code has cast it into some scalar type.  The
@@ -242,7 +242,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                 // ...and then memcpy it to the intended destination.
                 bx.memcpy(
                     dst.llval,
-                    self.layout.align,
+                    self.layout.align.abi,
                     llscratch,
                     scratch_align,
                     bx.cx().const_usize(self.layout.size.bytes()),
@@ -273,7 +273,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                 OperandValue::Pair(next(), next()).store(bx, dst);
             }
             PassMode::Indirect(_, Some(_)) => {
-                OperandValue::Ref(next(), Some(next()), self.layout.align).store(bx, dst);
+                OperandValue::Ref(next(), Some(next()), self.layout.align.abi).store(bx, dst);
             }
             PassMode::Direct(_) | PassMode::Indirect(_, None) | PassMode::Cast(_) => {
                 self.store(bx, next(), dst);
@@ -545,7 +545,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                     adjust_for_rust_scalar(&mut b_attrs,
                                            b,
                                            arg.layout,
-                                           a.value.size(cx).abi_align(b.value.align(cx)),
+                                           a.value.size(cx).align_to(b.value.align(cx).abi),
                                            false);
                     arg.mode = PassMode::Pair(a_attrs, b_attrs);
                     return arg;

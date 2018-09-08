@@ -19,7 +19,7 @@ use type_of::LayoutLlvmExt;
 use value::Value;
 use libc::{c_uint, c_char};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::{self, AbiAndPrefAlign, Size, TyLayout};
+use rustc::ty::layout::{self, Align, Size, TyLayout};
 use rustc::session::config;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_codegen_ssa::traits::*;
@@ -457,7 +457,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn alloca(&mut self, ty: &'ll Type, name: &str, align: AbiAndPrefAlign) -> &'ll Value {
+    fn alloca(&mut self, ty: &'ll Type, name: &str, align: Align) -> &'ll Value {
         let mut bx = Builder::with_cx(self.cx);
         bx.position_at_start(unsafe {
             llvm::LLVMGetFirstBasicBlock(self.llfn())
@@ -465,7 +465,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         bx.dynamic_alloca(ty, name, align)
     }
 
-    fn dynamic_alloca(&mut self, ty: &'ll Type, name: &str, align: AbiAndPrefAlign) -> &'ll Value {
+    fn dynamic_alloca(&mut self, ty: &'ll Type, name: &str, align: Align) -> &'ll Value {
         self.count_insn("alloca");
         unsafe {
             let alloca = if name.is_empty() {
@@ -475,7 +475,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 llvm::LLVMBuildAlloca(self.llbuilder, ty,
                                       name.as_ptr())
             };
-            llvm::LLVMSetAlignment(alloca, align.abi.bytes() as c_uint);
+            llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
             alloca
         }
     }
@@ -484,7 +484,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                         ty: &'ll Type,
                         len: &'ll Value,
                         name: &str,
-                        align: AbiAndPrefAlign) -> &'ll Value {
+                        align: Align) -> &'ll Value {
         self.count_insn("alloca");
         unsafe {
             let alloca = if name.is_empty() {
@@ -494,16 +494,16 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 llvm::LLVMBuildArrayAlloca(self.llbuilder, ty, len,
                                            name.as_ptr())
             };
-            llvm::LLVMSetAlignment(alloca, align.abi.bytes() as c_uint);
+            llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
             alloca
         }
     }
 
-    fn load(&mut self, ptr: &'ll Value, align: AbiAndPrefAlign) -> &'ll Value {
+    fn load(&mut self, ptr: &'ll Value, align: Align) -> &'ll Value {
         self.count_insn("load");
         unsafe {
             let load = llvm::LLVMBuildLoad(self.llbuilder, ptr, noname());
-            llvm::LLVMSetAlignment(load, align.abi.bytes() as c_uint);
+            llvm::LLVMSetAlignment(load, align.bytes() as c_uint);
             load
         }
     }
@@ -639,7 +639,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn store(&mut self, val: &'ll Value, ptr: &'ll Value, align: AbiAndPrefAlign) -> &'ll Value {
+    fn store(&mut self, val: &'ll Value, ptr: &'ll Value, align: Align) -> &'ll Value {
         self.store_with_flags(val, ptr, align, MemFlags::empty())
     }
 
@@ -647,7 +647,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         &mut self,
         val: &'ll Value,
         ptr: &'ll Value,
-        align: AbiAndPrefAlign,
+        align: Align,
         flags: MemFlags,
     ) -> &'ll Value {
         debug!("Store {:?} -> {:?} ({:?})", val, ptr, flags);
@@ -658,7 +658,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             let align = if flags.contains(MemFlags::UNALIGNED) {
                 1
             } else {
-                align.abi.bytes() as c_uint
+                align.bytes() as c_uint
             };
             llvm::LLVMSetAlignment(store, align);
             if flags.contains(MemFlags::VOLATILE) {
@@ -878,8 +878,8 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn memcpy(&mut self, dst: &'ll Value, dst_align: AbiAndPrefAlign,
-                  src: &'ll Value, src_align: AbiAndPrefAlign,
+    fn memcpy(&mut self, dst: &'ll Value, dst_align: Align,
+                  src: &'ll Value, src_align: Align,
                   size: &'ll Value, flags: MemFlags) {
         if flags.contains(MemFlags::NONTEMPORAL) {
             // HACK(nox): This is inefficient but there is no nontemporal memcpy.
@@ -893,13 +893,13 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let dst = self.pointercast(dst, self.cx().type_i8p());
         let src = self.pointercast(src, self.cx().type_i8p());
         unsafe {
-            llvm::LLVMRustBuildMemCpy(self.llbuilder, dst, dst_align.abi.bytes() as c_uint,
-                                      src, src_align.abi.bytes() as c_uint, size, is_volatile);
+            llvm::LLVMRustBuildMemCpy(self.llbuilder, dst, dst_align.bytes() as c_uint,
+                                      src, src_align.bytes() as c_uint, size, is_volatile);
         }
     }
 
-    fn memmove(&mut self, dst: &'ll Value, dst_align: AbiAndPrefAlign,
-                  src: &'ll Value, src_align: AbiAndPrefAlign,
+    fn memmove(&mut self, dst: &'ll Value, dst_align: Align,
+                  src: &'ll Value, src_align: Align,
                   size: &'ll Value, flags: MemFlags) {
         if flags.contains(MemFlags::NONTEMPORAL) {
             // HACK(nox): This is inefficient but there is no nontemporal memmove.
@@ -913,8 +913,8 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let dst = self.pointercast(dst, self.cx().type_i8p());
         let src = self.pointercast(src, self.cx().type_i8p());
         unsafe {
-            llvm::LLVMRustBuildMemMove(self.llbuilder, dst, dst_align.abi.bytes() as c_uint,
-                                      src, src_align.abi.bytes() as c_uint, size, is_volatile);
+            llvm::LLVMRustBuildMemMove(self.llbuilder, dst, dst_align.bytes() as c_uint,
+                                      src, src_align.bytes() as c_uint, size, is_volatile);
         }
     }
 
@@ -923,14 +923,14 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         ptr: &'ll Value,
         fill_byte: &'ll Value,
         size: &'ll Value,
-        align: AbiAndPrefAlign,
+        align: Align,
         flags: MemFlags,
     ) {
         let ptr_width = &self.cx().sess().target.target.target_pointer_width;
         let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
         let llintrinsicfn = self.cx().get_intrinsic(&intrinsic_key);
         let ptr = self.pointercast(ptr, self.cx().type_i8p());
-        let align = self.cx().const_u32(align.abi.bytes() as u32);
+        let align = self.cx().const_u32(align.bytes() as u32);
         let volatile = self.cx().const_bool(flags.contains(MemFlags::VOLATILE));
         self.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None);
     }

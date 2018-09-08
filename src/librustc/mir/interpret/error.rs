@@ -13,7 +13,7 @@ use std::{fmt, env};
 use hir::map::definitions::DefPathData;
 use mir;
 use ty::{self, Ty, layout};
-use ty::layout::{Size, AbiAndPrefAlign, LayoutError};
+use ty::layout::{Size, Align, LayoutError};
 use rustc_target::spec::abi::Abi;
 
 use super::{RawConst, Pointer, InboundsCheck, ScalarMaybeUndef};
@@ -301,8 +301,8 @@ pub enum EvalErrorKind<'tcx, O> {
     TlsOutOfBounds,
     AbiViolation(String),
     AlignmentCheckFailed {
-        required: AbiAndPrefAlign,
-        has: AbiAndPrefAlign,
+        required: Align,
+        has: Align,
     },
     ValidationFailure(String),
     CalledClosureAsFunction,
@@ -315,7 +315,7 @@ pub enum EvalErrorKind<'tcx, O> {
     DeallocatedWrongMemoryKind(String, String),
     ReallocateNonBasePtr,
     DeallocateNonBasePtr,
-    IncorrectAllocationInformation(Size, Size, AbiAndPrefAlign, AbiAndPrefAlign),
+    IncorrectAllocationInformation(Size, Size, Align, Align),
     Layout(layout::LayoutError<'tcx>),
     HeapAllocZeroBytes,
     HeapAllocNonPowerOfTwoAlignment(u64),
@@ -527,7 +527,7 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for EvalErrorKind<'tcx, O> {
                 write!(f, "tried to interpret an invalid 32-bit value as a char: {}", c),
             AlignmentCheckFailed { required, has } =>
                write!(f, "tried to access memory with alignment {}, but alignment {} is required",
-                      has.abi.bytes(), required.abi.bytes()),
+                      has.bytes(), required.bytes()),
             TypeNotPrimitive(ty) =>
                 write!(f, "expected primitive type, got {}", ty),
             Layout(ref err) =>
@@ -539,7 +539,7 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for EvalErrorKind<'tcx, O> {
             IncorrectAllocationInformation(size, size2, align, align2) =>
                 write!(f, "incorrect alloc info: expected size {} and align {}, \
                            got size {} and align {}",
-                    size.bytes(), align.abi.bytes(), size2.bytes(), align2.abi.bytes()),
+                    size.bytes(), align.bytes(), size2.bytes(), align2.bytes()),
             Panic { ref msg, line, col, ref file } =>
                 write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col),
             InvalidDiscriminant(val) =>

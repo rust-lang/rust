@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc_target::abi::{AbiAndPrefAlign, Size};
+use rustc_target::abi::{Align, Size};
 use rustc_data_structures::fx::{FxHashSet};
 use std::cmp::{self, Ordering};
 
@@ -63,7 +63,7 @@ impl CodeStats {
     pub fn record_type_size<S: ToString>(&mut self,
                                          kind: DataTypeKind,
                                          type_desc: S,
-                                         align: AbiAndPrefAlign,
+                                         align: Align,
                                          overall_size: Size,
                                          packed: bool,
                                          opt_discr_size: Option<Size>,
@@ -71,7 +71,7 @@ impl CodeStats {
         let info = TypeSizeInfo {
             kind,
             type_description: type_desc.to_string(),
-            align: align.abi.bytes(),
+            align: align.bytes(),
             overall_size: overall_size.bytes(),
             packed: packed,
             opt_discr_size: opt_discr_size.map(|s| s.bytes()),

@@ -28,7 +28,7 @@ use value::Value;
 use rustc::ty::{self, Ty};
 use rustc_codegen_ssa::traits::*;
 
-use rustc::ty::layout::{self, Size, Align, AbiAndPrefAlign, LayoutOf};
+use rustc::ty::layout::{self, Size, Align, LayoutOf};
 
 use rustc::hir::{self, CodegenFnAttrs, CodegenFnAttrFlags};
 
@@ -89,20 +89,20 @@ pub fn codegen_static_initializer(
 
 fn set_global_alignment(cx: &CodegenCx<'ll, '_>,
                         gv: &'ll Value,
-                        mut align: AbiAndPrefAlign) {
+                        mut align: Align) {
     // The target may require greater alignment for globals than the type does.
     // Note: GCC and Clang also allow `__attribute__((aligned))` on variables,
     // which can force it to be smaller.  Rust doesn't support this yet.
     if let Some(min) = cx.sess().target.target.options.min_global_align {
         match Align::from_bits(min) {
-            Ok(min) => align = align.max(AbiAndPrefAlign::new(min)),
+            Ok(min) => align = align.max(min),
             Err(err) => {
                 cx.sess().err(&format!("invalid minimum global alignment: {}", err));
             }
         }
     }
     unsafe {
-        llvm::LLVMSetAlignment(gv, align.abi.bytes() as u32);
+        llvm::LLVMSetAlignment(gv, align.bytes() as u32);
     }
 }
 
@@ -186,7 +186,7 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn static_addr_of_mut(
         &self,
         cv: &'ll Value,
-        align: AbiAndPrefAlign,
+        align: Align,
         kind: Option<&str>,
     ) -> &'ll Value {
         unsafe {
@@ -212,14 +212,14 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn static_addr_of(
         &self,
         cv: &'ll Value,
-        align: AbiAndPrefAlign,
+        align: Align,
         kind: Option<&str>,
     ) -> &'ll Value {
         if let Some(&gv) = self.const_globals.borrow().get(&cv) {
             unsafe {
                 // Upgrade the alignment in cases where the same constant is used with different
                 // alignment requirements
-                let llalign = align.abi.bytes() as u32;
+                let llalign = align.bytes() as u32;
                 if llalign > llvm::LLVMGetAlignment(gv) {
                     llvm::LLVMSetAlignment(gv, llalign);
                 }

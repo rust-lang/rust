@@ -16,7 +16,7 @@ use rustc::mir::interpret::{
 };
 
 use rustc::ty::{self, TyCtxt};
-use rustc::ty::layout::AbiAndPrefAlign;
+use rustc::ty::layout::Align;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -276,7 +276,7 @@ struct AllocationSnapshot<'a> {
     bytes: &'a [u8],
     relocations: Relocations<(), AllocIdSnapshot<'a>>,
     undef_mask: &'a UndefMask,
-    align: &'a AbiAndPrefAlign,
+    align: &'a Align,
     mutability: &'a Mutability,
 }
 

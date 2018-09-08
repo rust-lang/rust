@@ -121,7 +121,7 @@ fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>, abi: ABI)
         // Aggregates larger than a doubleword should be padded
         // at the tail to fill out a whole number of doublewords.
         let reg_i64 = Reg::i64();
-        (reg_i64, size.abi_align(reg_i64.align(cx)))
+        (reg_i64, size.align_to(reg_i64.align(cx)))
     };
 
     arg.cast_to(Uniform {

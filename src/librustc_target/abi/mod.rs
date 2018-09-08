@@ -277,14 +277,14 @@ impl Size {
     }
 
     #[inline]
-    pub fn abi_align(self, align: AbiAndPrefAlign) -> Size {
-        let mask = align.abi.bytes() - 1;
+    pub fn align_to(self, align: Align) -> Size {
+        let mask = align.bytes() - 1;
         Size::from_bytes((self.bytes() + mask) & !mask)
     }
 
     #[inline]
-    pub fn is_abi_aligned(self, align: AbiAndPrefAlign) -> bool {
-        let mask = align.abi.bytes() - 1;
+    pub fn is_aligned(self, align: Align) -> bool {
+        let mask = align.bytes() - 1;
         self.bytes() & mask == 0
     }
 
@@ -425,7 +425,6 @@ impl Align {
 
 /// A pair of aligments, ABI-mandated and preferred.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
-#[derive(PartialOrd, Ord)] // FIXME(eddyb) remove (error prone/incorrect)
 pub struct AbiAndPrefAlign {
     pub abi: Align,
     pub pref: Align,
@@ -510,10 +509,9 @@ impl Integer {
     }
 
     /// Find the smallest integer with the given alignment.
-    pub fn for_abi_align<C: HasDataLayout>(cx: &C, align: AbiAndPrefAlign) -> Option<Integer> {
+    pub fn for_align<C: HasDataLayout>(cx: &C, wanted: Align) -> Option<Integer> {
         let dl = cx.data_layout();
 
-        let wanted = align.abi;
         for &candidate in &[I8, I16, I32, I64, I128] {
             if wanted == candidate.align(dl).abi && wanted.bytes() == candidate.size().bytes() {
                 return Some(candidate);
@@ -523,10 +521,9 @@ impl Integer {
     }
 
     /// Find the largest integer with the given alignment or less.
-    pub fn approximate_abi_align<C: HasDataLayout>(cx: &C, align: AbiAndPrefAlign) -> Integer {
+    pub fn approximate_align<C: HasDataLayout>(cx: &C, wanted: Align) -> Integer {
         let dl = cx.data_layout();
 
-        let wanted = align.abi;
         // FIXME(eddyb) maybe include I128 in the future, when it works everywhere.
         for &candidate in &[I64, I32, I16] {
             if wanted >= candidate.align(dl).abi && wanted.bytes() >= candidate.size().bytes() {

@@ -12,7 +12,7 @@ use abi::{FnType, FnTypeExt};
 use common::*;
 use rustc::hir;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, AbiAndPrefAlign, LayoutOf, Size, TyLayout};
+use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
 use rustc_target::abi::FloatTy;
 use rustc_mir::monomorphize::item::DefPathBasedNames;
 use type_::Type;
@@ -80,7 +80,7 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
     match layout.fields {
         layout::FieldPlacement::Union(_) => {
-            let fill = cx.type_padding_filler(layout.size, layout.align);
+            let fill = cx.type_padding_filler(layout.size, layout.align.abi);
             let packed = false;
             match name {
                 None => {
@@ -120,23 +120,23 @@ fn struct_llfields<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
     let mut packed = false;
     let mut offset = Size::ZERO;
-    let mut prev_effective_align = layout.align;
+    let mut prev_effective_align = layout.align.abi;
     let mut result: Vec<_> = Vec::with_capacity(1 + field_count * 2);
     for i in layout.fields.index_by_increasing_offset() {
         let target_offset = layout.fields.offset(i as usize);
         let field = layout.field(cx, i);
-        let effective_field_align = AbiAndPrefAlign::new(layout.align.abi
+        let effective_field_align = layout.align.abi
             .min(field.align.abi)
-            .restrict_for_offset(target_offset));
-        packed |= effective_field_align.abi < field.align.abi;
+            .restrict_for_offset(target_offset);
+        packed |= effective_field_align < field.align.abi;
 
         debug!("struct_llfields: {}: {:?} offset: {:?} target_offset: {:?} \
                 effective_field_align: {}",
-               i, field, offset, target_offset, effective_field_align.abi.bytes());
+               i, field, offset, target_offset, effective_field_align.bytes());
         assert!(target_offset >= offset);
         let padding = target_offset - offset;
         let padding_align = prev_effective_align.min(effective_field_align);
-        assert_eq!(offset.abi_align(padding_align) + padding, target_offset);
+        assert_eq!(offset.align_to(padding_align) + padding, target_offset);
         result.push(cx.type_padding_filler( padding, padding_align));
         debug!("    padding before: {:?}", padding);
 
@@ -151,7 +151,7 @@ fn struct_llfields<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         }
         let padding = layout.size - offset;
         let padding_align = prev_effective_align;
-        assert_eq!(offset.abi_align(padding_align) + padding, layout.size);
+        assert_eq!(offset.align_to(padding_align) + padding, layout.size);
         debug!("struct_llfields: pad_bytes: {:?} offset: {:?} stride: {:?}",
                padding, offset, layout.size);
         result.push(cx.type_padding_filler(padding, padding_align));
@@ -165,17 +165,17 @@ fn struct_llfields<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
-    pub fn align_of(&self, ty: Ty<'tcx>) -> AbiAndPrefAlign {
-        self.layout_of(ty).align
+    pub fn align_of(&self, ty: Ty<'tcx>) -> Align {
+        self.layout_of(ty).align.abi
     }
 
     pub fn size_of(&self, ty: Ty<'tcx>) -> Size {
         self.layout_of(ty).size
     }
 
-    pub fn size_and_align_of(&self, ty: Ty<'tcx>) -> (Size, AbiAndPrefAlign) {
+    pub fn size_and_align_of(&self, ty: Ty<'tcx>) -> (Size, Align) {
         let layout = self.layout_of(ty);
-        (layout.size, layout.align)
+        (layout.size, layout.align.abi)
     }
 }
 
@@ -197,7 +197,7 @@ pub enum PointerKind {
 #[derive(Copy, Clone)]
 pub struct PointeeInfo {
     pub size: Size,
-    pub align: AbiAndPrefAlign,
+    pub align: Align,
     pub safe: Option<PointerKind>,
 }
 
@@ -333,7 +333,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
             layout::Pointer => {
                 // If we know the alignment, pick something better than i8.
                 let pointee = if let Some(pointee) = self.pointee_info_at(cx, offset) {
-                    cx.type_pointee_for_abi_align( pointee.align)
+                    cx.type_pointee_for_align(pointee.align)
                 } else {
                     cx.type_i8()
                 };
@@ -377,7 +377,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         let offset = if index == 0 {
             Size::ZERO
         } else {
-            a.value.size(cx).abi_align(b.value.align(cx))
+            a.value.size(cx).align_to(b.value.align(cx).abi)
         };
         self.scalar_llvm_type_at(cx, scalar, offset)
     }
