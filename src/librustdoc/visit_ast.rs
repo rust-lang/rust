@@ -269,7 +269,10 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
                 Def::Enum(did) |
                 Def::ForeignTy(did) |
                 Def::TyAlias(did) if !self_is_hidden => {
-                    self.cx.access_levels.borrow_mut().map.insert(did, AccessLevel::Public);
+                    self.cx.renderinfo
+                        .borrow_mut()
+                        .access_levels.map
+                        .insert(did, AccessLevel::Public);
                 },
                 Def::Mod(did) => if !self_is_hidden {
                     ::visit_lib::LibEmbargoVisitor::new(self.cx).visit_mod(did);
@@ -284,7 +287,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
             Some(n) => n, None => return false
         };
 
-        let is_private = !self.cx.access_levels.borrow().is_public(def_did);
+        let is_private = !self.cx.renderinfo.borrow().access_levels.is_public(def_did);
         let is_hidden = inherits_doc_hidden(self.cx, def_node_id);
 
         // Only inline if requested or if the item would otherwise be stripped
@@ -510,9 +513,9 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
                           ref tr,
                           ref ty,
                           ref item_ids) => {
-                // Don't duplicate impls when inlining, we'll pick them up
-                // regardless of where they're located.
-                if !self.inlining {
+                // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
+                // them up regardless of where they're located.
+                if !self.inlining && tr.is_none() {
                     let items = item_ids.iter()
                                         .map(|ii| self.cx.tcx.hir.impl_item(ii.id).clone())
                                         .collect();

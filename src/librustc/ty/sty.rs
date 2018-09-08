@@ -157,13 +157,13 @@ pub enum TyKind<'tcx> {
     /// `<T as Trait<..>>::N`.
     Projection(ProjectionTy<'tcx>),
 
-    /// Anonymized (`impl Trait`) type found in a return type.
+    /// Opaque (`impl Trait`) type found in a return type.
     /// The DefId comes either from
     /// * the `impl Trait` ast::Ty node,
     /// * or the `existential type` declaration
     /// The substitutions are for the generics of the function in question.
     /// After typeck, the concrete type can be found in the `types` map.
-    Anon(DefId, &'tcx Substs<'tcx>),
+    Opaque(DefId, &'tcx Substs<'tcx>),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
     Param(ParamTy),
@@ -1764,7 +1764,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn is_impl_trait(&self) -> bool {
         match self.sty {
-            Anon(..) => true,
+            Opaque(..) => true,
             _ => false,
         }
     }
@@ -1791,7 +1791,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
                 }
                 v
             }
-            Adt(_, substs) | Anon(_, substs) => {
+            Adt(_, substs) | Opaque(_, substs) => {
                 substs.regions().collect()
             }
             Closure(_, ClosureSubsts { ref substs }) |
@@ -1876,7 +1876,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             ty::Adt(def, _substs) =>
                 def.sized_constraint(tcx).is_empty(),
 
-            ty::Projection(_) | ty::Param(_) | ty::Anon(..) => false,
+            ty::Projection(_) | ty::Param(_) | ty::Opaque(..) => false,
 
             ty::Infer(ty::TyVar(_)) => false,
 

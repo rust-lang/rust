@@ -91,7 +91,7 @@ use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use std::slice;
 use namespace::Namespace;
 use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
-use rustc::infer::anon_types::AnonTypeDecl;
+use rustc::infer::opaque_types::OpaqueTypeDecl;
 use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region;
 use rustc::mir::interpret::{ConstValue, GlobalId};
@@ -212,11 +212,11 @@ pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     deferred_generator_interiors: RefCell<Vec<(hir::BodyId, Ty<'tcx>)>>,
 
-    // Anonymized types found in explicit return types and their
+    // Opaque types found in explicit return types and their
     // associated fresh inference variable. Writeback resolves these
     // variables to get the concrete type, which can be used to
-    // deanonymize Anon, after typeck is done with all functions.
-    anon_types: RefCell<DefIdMap<AnonTypeDecl<'tcx>>>,
+    // 'de-opaque' OpaqueTypeDecl, after typeck is done with all functions.
+    opaque_types: RefCell<DefIdMap<OpaqueTypeDecl<'tcx>>>,
 
     /// Each type parameter has an implicit region bound that
     /// indicates it must outlive at least the function body (the user
@@ -635,7 +635,7 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
             deferred_call_resolutions: RefCell::new(DefIdMap()),
             deferred_cast_checks: RefCell::new(Vec::new()),
             deferred_generator_interiors: RefCell::new(Vec::new()),
-            anon_types: RefCell::new(DefIdMap()),
+            opaque_types: RefCell::new(DefIdMap()),
             implicit_region_bound,
             body_id,
         }
@@ -1024,7 +1024,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     let declared_ret_ty = fn_sig.output();
     fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
-    let revealed_ret_ty = fcx.instantiate_anon_types_from_return_value(fn_id, &declared_ret_ty);
+    let revealed_ret_ty = fcx.instantiate_opaque_types_from_return_value(fn_id, &declared_ret_ty);
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(revealed_ret_ty)));
     fn_sig = fcx.tcx.mk_fn_sig(
         fn_sig.inputs().iter().cloned(),
@@ -2217,24 +2217,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         result
     }
 
-    /// Replace the anonymized types from the return value of the
-    /// function with type variables and records the `AnonTypeMap` for
+    /// Replace the opaque types from the return value of the
+    /// function with type variables and records the `OpaqueTypeMap` for
     /// later use during writeback. See
-    /// `InferCtxt::instantiate_anon_types` for more details.
-    fn instantiate_anon_types_from_return_value<T: TypeFoldable<'tcx>>(
+    /// `InferCtxt::instantiate_opaque_types` for more details.
+    fn instantiate_opaque_types_from_return_value<T: TypeFoldable<'tcx>>(
         &self,
         fn_id: ast::NodeId,
         value: &T,
     ) -> T {
         let fn_def_id = self.tcx.hir.local_def_id(fn_id);
         debug!(
-            "instantiate_anon_types_from_return_value(fn_def_id={:?}, value={:?})",
+            "instantiate_opaque_types_from_return_value(fn_def_id={:?}, value={:?})",
             fn_def_id,
             value
         );
 
-        let (value, anon_type_map) = self.register_infer_ok_obligations(
-            self.instantiate_anon_types(
+        let (value, opaque_type_map) = self.register_infer_ok_obligations(
+            self.instantiate_opaque_types(
                 fn_def_id,
                 self.body_id,
                 self.param_env,
@@ -2242,9 +2242,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             )
         );
 
-        let mut anon_types = self.anon_types.borrow_mut();
-        for (ty, decl) in anon_type_map {
-            let old_value = anon_types.insert(ty, decl);
+        let mut opaque_types = self.opaque_types.borrow_mut();
+        for (ty, decl) in opaque_type_map {
+            let old_value = opaque_types.insert(ty, decl);
             assert!(old_value.is_none(), "instantiated twice: {:?}/{:?}", ty, decl);
         }
 

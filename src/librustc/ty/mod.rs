@@ -559,7 +559,7 @@ impl<'tcx> TyS<'tcx> {
 
     pub fn is_suggestable(&self) -> bool {
         match self.sty {
-            TyKind::Anon(..) |
+            TyKind::Opaque(..) |
             TyKind::FnDef(..) |
             TyKind::FnPtr(..) |
             TyKind::Dynamic(..) |
@@ -2320,7 +2320,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                     .collect()
             }
 
-            Projection(..) | Anon(..) => {
+            Projection(..) | Opaque(..) => {
                 // must calculate explicitly.
                 // FIXME: consider special-casing always-Sized projections
                 vec![ty]

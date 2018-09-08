@@ -25,6 +25,7 @@
 #![feature(ptr_offset_from)]
 #![feature(crate_visibility_modifier)]
 #![feature(const_fn)]
+#![feature(drain_filter)]
 
 #![recursion_limit="256"]
 
@@ -49,6 +50,7 @@ extern crate rustc_errors as errors;
 extern crate pulldown_cmark;
 extern crate tempfile;
 extern crate minifier;
+extern crate parking_lot;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
@@ -286,7 +288,7 @@ fn opts() -> Vec<RustcOptGroup> {
                       \"light-suffix.css\"",
                      "PATH")
         }),
-        unstable("edition", |o| {
+        stable("edition", |o| {
             o.optopt("", "edition",
                      "edition to use when compiling rust code (default: 2015)",
                      "EDITION")

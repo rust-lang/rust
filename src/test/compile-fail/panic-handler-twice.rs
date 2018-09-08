@@ -10,7 +10,6 @@
 
 // aux-build:some-panic-impl.rs
 
-#![feature(panic_handler)]
 #![feature(lang_items)]
 #![no_std]
 #![no_main]

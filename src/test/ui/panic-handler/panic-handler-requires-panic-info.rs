@@ -13,7 +13,6 @@
 
 #![feature(lang_items)]
 #![feature(no_core)]
-#![feature(panic_handler)]
 #![no_core]
 #![no_main]
 

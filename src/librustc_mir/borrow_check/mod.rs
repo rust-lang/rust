@@ -1605,10 +1605,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         place_span: (&Place<'tcx>, Span),
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) {
-        // FIXME: analogous code in check_loans first maps `place` to
-        // its base_path ... but is that what we want here?
-        let place = self.base_path(place_span.0);
-
         let maybe_uninits = &flow_state.uninits;
 
         // Bad scenarios:
@@ -1646,8 +1642,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         //
         // This code covers scenarios 1, 2, and 3.
 
-        debug!("check_if_full_path_is_moved place: {:?}", place);
-        match self.move_path_closest_to(place) {
+        debug!("check_if_full_path_is_moved place: {:?}", place_span.0);
+        match self.move_path_closest_to(place_span.0) {
             Ok(mpi) => {
                 if maybe_uninits.contains(&mpi) {
                     self.report_use_of_moved_or_uninitialized(
@@ -1677,10 +1673,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         place_span: (&Place<'tcx>, Span),
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) {
-        // FIXME: analogous code in check_loans first maps `place` to
-        // its base_path ... but is that what we want here?
-        let place = self.base_path(place_span.0);
-
         let maybe_uninits = &flow_state.uninits;
 
         // Bad scenarios:
@@ -1709,8 +1701,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         //
         // This code covers scenario 1.
 
-        debug!("check_if_path_or_subpath_is_moved place: {:?}", place);
-        if let Some(mpi) = self.move_path_for_place(place) {
+        debug!("check_if_path_or_subpath_is_moved place: {:?}", place_span.0);
+        if let Some(mpi) = self.move_path_for_place(place_span.0) {
             if let Some(child_mpi) = maybe_uninits.has_any_child_of(mpi) {
                 self.report_use_of_moved_or_uninitialized(
                     context,
@@ -1813,11 +1805,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             let tcx = self.tcx;
                             match base.ty(self.mir, tcx).to_ty(tcx).sty {
                                 ty::Adt(def, _) if def.has_dtor(tcx) => {
-
-                                    // FIXME: analogous code in
-                                    // check_loans.rs first maps
-                                    // `base` to its base_path.
-
                                     self.check_if_path_or_subpath_is_moved(
                                         context, InitializationRequiringAction::Assignment,
                                         (base, span), flow_state);
@@ -2188,35 +2175,6 @@ enum Overlap {
     /// The places are disjoint, so we know all extensions of them
     /// will also be disjoint.
     Disjoint,
-}
-
-impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
-    // FIXME (#16118): function intended to allow the borrow checker
-    // to be less precise in its handling of Box while still allowing
-    // moves out of a Box. They should be removed when/if we stop
-    // treating Box specially (e.g. when/if DerefMove is added...)
-
-    fn base_path<'d>(&self, place: &'d Place<'tcx>) -> &'d Place<'tcx> {
-        //! Returns the base of the leftmost (deepest) dereference of an
-        //! Box in `place`. If there is no dereference of an Box
-        //! in `place`, then it just returns `place` itself.
-
-        let mut cursor = place;
-        let mut deepest = place;
-        loop {
-            let proj = match *cursor {
-                Place::Promoted(_) |
-                Place::Local(..) | Place::Static(..) => return deepest,
-                Place::Projection(ref proj) => proj,
-            };
-            if proj.elem == ProjectionElem::Deref
-                && place.ty(self.mir, self.tcx).to_ty(self.tcx).is_box()
-            {
-                deepest = &proj.base;
-            }
-            cursor = &proj.base;
-        }
-    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]

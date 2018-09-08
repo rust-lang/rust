@@ -10,7 +10,7 @@
 
 // edition:2018
 
-#![feature(edition_2018_preview)]
+#![feature(crate_visibility_modifier)]
 
 mod bar {
     crate struct Foo;

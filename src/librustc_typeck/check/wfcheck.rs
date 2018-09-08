@@ -18,7 +18,7 @@ use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::util::ExplicitSelf;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::middle::lang_items;
-use rustc::infer::anon_types::may_define_existential_type;
+use rustc::infer::opaque_types::may_define_existential_type;
 
 use syntax::ast;
 use syntax::feature_gate::{self, GateIssue};
@@ -576,13 +576,13 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
     ty.fold_with(&mut ty::fold::BottomUpFolder {
         tcx: fcx.tcx,
         fldop: |ty| {
-            if let ty::Anon(def_id, substs) = ty.sty {
-                trace!("check_existential_types: anon_ty, {:?}, {:?}", def_id, substs);
+            if let ty::Opaque(def_id, substs) = ty.sty {
+                trace!("check_existential_types: opaque_ty, {:?}, {:?}", def_id, substs);
                 let generics = tcx.generics_of(def_id);
                 // only check named existential types
                 if generics.parent.is_none() {
-                    let anon_node_id = tcx.hir.as_local_node_id(def_id).unwrap();
-                    if may_define_existential_type(tcx, fn_def_id, anon_node_id) {
+                    let opaque_node_id = tcx.hir.as_local_node_id(def_id).unwrap();
+                    if may_define_existential_type(tcx, fn_def_id, opaque_node_id) {
                         trace!("check_existential_types may define. Generics: {:#?}", generics);
                         let mut seen: FxHashMap<_, Vec<_>> = FxHashMap();
                         for (subst, param) in substs.iter().zip(&generics.params) {
@@ -674,7 +674,7 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
                         }
                     }
                 } // if is_named_existential_type
-            } // if let Anon
+            } // if let Opaque
             ty
         },
         reg_op: |reg| reg,

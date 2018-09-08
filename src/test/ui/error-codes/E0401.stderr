@@ -24,12 +24,13 @@ error[E0401]: can't use type parameters from outer function
   --> $DIR/E0401.rs:32:25
    |
 LL | impl<T> Iterator for A<T> {
-   | ---- `Self` type implicitly declared here, on the `impl`
+   | ---- `Self` type implicitly declared here, by this `impl`
 ...
 LL |         fn helper(sel: &Self) -> u8 { //~ ERROR E0401
-   |            ------       ^^^^ use of type variable from outer function
-   |            |
-   |            help: try using a local type parameter instead: `helper<Self>`
+   |                         ^^^^
+   |                         |
+   |                         use of type variable from outer function
+   |                         use a type here instead
 
 error: aborting due to 3 previous errors
 

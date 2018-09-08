@@ -28,7 +28,6 @@ use syntax::symbol::InternedString;
 use syntax_pos::{self, DUMMY_SP, Pos, FileName};
 
 use rustc::mir::interpret::ConstValue;
-use rustc::middle::privacy::AccessLevels;
 use rustc::middle::resolve_lifetime as rl;
 use rustc::ty::fold::TypeFolder;
 use rustc::middle::lang_items;
@@ -55,6 +54,8 @@ use std::str::FromStr;
 use std::cell::RefCell;
 use std::sync::Arc;
 use std::u32;
+
+use parking_lot::ReentrantMutex;
 
 use core::{self, DocContext};
 use doctree;
@@ -135,10 +136,9 @@ pub struct Crate {
     pub module: Option<Item>,
     pub externs: Vec<(CrateNum, ExternalCrate)>,
     pub primitives: Vec<(DefId, PrimitiveType, Attributes)>,
-    pub access_levels: Arc<AccessLevels<DefId>>,
     // These are later on moved into `CACHEKEY`, leaving the map empty.
     // Only here so that they can be filtered through the rustdoc passes.
-    pub external_traits: FxHashMap<DefId, Trait>,
+    pub external_traits: Arc<ReentrantMutex<RefCell<FxHashMap<DefId, Trait>>>>,
     pub masked_crates: FxHashSet<CrateNum>,
 }
 
@@ -209,9 +209,6 @@ impl<'a, 'tcx, 'rcx, 'cstore> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tc
             }));
         }
 
-        let mut access_levels = cx.access_levels.borrow_mut();
-        let mut external_traits = cx.external_traits.borrow_mut();
-
         Crate {
             name,
             version: None,
@@ -219,8 +216,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tc
             module: Some(module),
             externs,
             primitives,
-            access_levels: Arc::new(mem::replace(&mut access_levels, Default::default())),
-            external_traits: mem::replace(&mut external_traits, Default::default()),
+            external_traits: cx.external_traits.clone(),
             masked_crates,
         }
     }
@@ -579,9 +575,9 @@ impl Clean<Item> for doctree::Module {
         let mut items: Vec<Item> = vec![];
         items.extend(self.extern_crates.iter().map(|x| x.clean(cx)));
         items.extend(self.imports.iter().flat_map(|x| x.clean(cx)));
-        items.extend(self.structs.iter().flat_map(|x| x.clean(cx)));
-        items.extend(self.unions.iter().flat_map(|x| x.clean(cx)));
-        items.extend(self.enums.iter().flat_map(|x| x.clean(cx)));
+        items.extend(self.structs.iter().map(|x| x.clean(cx)));
+        items.extend(self.unions.iter().map(|x| x.clean(cx)));
+        items.extend(self.enums.iter().map(|x| x.clean(cx)));
         items.extend(self.fns.iter().map(|x| x.clean(cx)));
         items.extend(self.foreigns.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.mods.iter().map(|x| x.clean(cx)));
@@ -2436,7 +2432,7 @@ impl Clean<Type> for hir::Ty {
                 if let Def::TyAlias(def_id) = path.def {
                     // Substitute private type aliases
                     if let Some(node_id) = cx.tcx.hir.as_local_node_id(def_id) {
-                        if !cx.access_levels.borrow().is_exported(def_id) {
+                        if !cx.renderinfo.borrow().access_levels.is_exported(def_id) {
                             alias = Some(&cx.tcx.hir.expect_item(node_id).node);
                         }
                     }
@@ -2678,11 +2674,11 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
             ty::Param(ref p) => Generic(p.name.to_string()),
 
-            ty::Anon(def_id, substs) => {
+            ty::Opaque(def_id, substs) => {
                 // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
                 // by looking up the projections associated with the def_id.
                 let predicates_of = cx.tcx.predicates_of(def_id);
-                let substs = cx.tcx.lift(&substs).expect("Anon lift failed");
+                let substs = cx.tcx.lift(&substs).expect("Opaque lift failed");
                 let bounds = predicates_of.instantiate(cx.tcx, substs);
                 let mut regions = vec![];
                 let mut has_sized = false;
@@ -2816,14 +2812,10 @@ pub struct Union {
     pub fields_stripped: bool,
 }
 
-impl Clean<Vec<Item>> for doctree::Struct {
-    fn clean(&self, cx: &DocContext) -> Vec<Item> {
-        let name = self.name.clean(cx);
-        let mut ret = get_auto_traits_with_node_id(cx, self.id, name.clone());
-        ret.extend(get_blanket_impls_with_node_id(cx, self.id, name.clone()));
-
-        ret.push(Item {
-            name: Some(name),
+impl Clean<Item> for doctree::Struct {
+    fn clean(&self, cx: &DocContext) -> Item {
+        Item {
+            name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
             def_id: cx.tcx.hir.local_def_id(self.id),
@@ -2836,20 +2828,14 @@ impl Clean<Vec<Item>> for doctree::Struct {
                 fields: self.fields.clean(cx),
                 fields_stripped: false,
             }),
-        });
-
-        ret
+        }
     }
 }
 
-impl Clean<Vec<Item>> for doctree::Union {
-    fn clean(&self, cx: &DocContext) -> Vec<Item> {
-        let name = self.name.clean(cx);
-        let mut ret = get_auto_traits_with_node_id(cx, self.id, name.clone());
-        ret.extend(get_blanket_impls_with_node_id(cx, self.id, name.clone()));
-
-        ret.push(Item {
-            name: Some(name),
+impl Clean<Item> for doctree::Union {
+    fn clean(&self, cx: &DocContext) -> Item {
+        Item {
+            name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
             def_id: cx.tcx.hir.local_def_id(self.id),
@@ -2862,9 +2848,7 @@ impl Clean<Vec<Item>> for doctree::Union {
                 fields: self.fields.clean(cx),
                 fields_stripped: false,
             }),
-        });
-
-        ret
+        }
     }
 }
 
@@ -2895,14 +2879,10 @@ pub struct Enum {
     pub variants_stripped: bool,
 }
 
-impl Clean<Vec<Item>> for doctree::Enum {
-    fn clean(&self, cx: &DocContext) -> Vec<Item> {
-        let name = self.name.clean(cx);
-        let mut ret = get_auto_traits_with_node_id(cx, self.id, name.clone());
-        ret.extend(get_blanket_impls_with_node_id(cx, self.id, name.clone()));
-
-        ret.push(Item {
-            name: Some(name),
+impl Clean<Item> for doctree::Enum {
+    fn clean(&self, cx: &DocContext) -> Item {
+        Item {
+            name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
             def_id: cx.tcx.hir.local_def_id(self.id),
@@ -2914,9 +2894,7 @@ impl Clean<Vec<Item>> for doctree::Enum {
                 generics: self.generics.clean(cx),
                 variants_stripped: false,
             }),
-        });
-
-        ret
+        }
     }
 }
 
@@ -3445,11 +3423,7 @@ fn build_deref_target_impls(cx: &DocContext,
         let primitive = match *target {
             ResolvedPath { did, .. } if did.is_local() => continue,
             ResolvedPath { did, .. } => {
-                // We set the last parameter to false to avoid looking for auto-impls for traits
-                // and therefore avoid an ICE.
-                // The reason behind this is that auto-traits don't propagate through Deref so
-                // we're not supposed to synthesise impls for them.
-                ret.extend(inline::build_impls(cx, did, false));
+                ret.extend(inline::build_impls(cx, did));
                 continue
             }
             _ => match target.primitive_type() {

@@ -150,7 +150,7 @@ impl FlagComputation {
                 self.add_projection_ty(data);
             }
 
-            &ty::Anon(_, substs) => {
+            &ty::Opaque(_, substs) => {
                 self.add_flags(TypeFlags::HAS_PROJECTION);
                 self.add_substs(substs);
             }

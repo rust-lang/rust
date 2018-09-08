@@ -8,14 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-C panic=abort
+// edition:2018
 
-#![no_std]
-#![no_main]
+#![feature(uniform_paths)]
 
-use core::panic::PanicInfo;
+mod m { pub fn f() {} }
+mod n { pub fn g() {} }
 
-#[panic_handler] //~ ERROR #[panic_handler] is an unstable feature (see issue #44489)
-fn panic(info: &PanicInfo) -> ! {
-    loop {}
-}
+pub use m::f;
+pub use n::g;

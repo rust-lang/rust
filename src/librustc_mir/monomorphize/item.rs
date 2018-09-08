@@ -385,7 +385,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
             ty::Projection(..) |
             ty::Param(_) |
             ty::GeneratorWitness(_) |
-            ty::Anon(..) => {
+            ty::Opaque(..) => {
                 bug!("DefPathBasedNames: Trying to create type name for \
                                          unexpected type: {:?}", t);
             }

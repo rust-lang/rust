@@ -198,12 +198,25 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
 
             let cm = resolver.session.source_map();
             match outer_def {
-                Def::SelfTy(_, maybe_impl_defid) => {
-                    if let Some(impl_span) = maybe_impl_defid.map_or(None,
-                            |def_id| resolver.definitions.opt_span(def_id)) {
-                        err.span_label(reduce_impl_span_to_impl_keyword(cm, impl_span),
-                                    "`Self` type implicitly declared here, on the `impl`");
+                Def::SelfTy(maybe_trait_defid, maybe_impl_defid) => {
+                    if let Some(impl_span) = maybe_impl_defid.and_then(|def_id| {
+                        resolver.definitions.opt_span(def_id)
+                    }) {
+                        err.span_label(
+                            reduce_impl_span_to_impl_keyword(cm, impl_span),
+                            "`Self` type implicitly declared here, by this `impl`",
+                        );
                     }
+                    match (maybe_trait_defid, maybe_impl_defid) {
+                        (Some(_), None) => {
+                            err.span_label(span, "can't use `Self` here");
+                        }
+                        (_, Some(_)) => {
+                            err.span_label(span, "use a type here instead");
+                        }
+                        (None, None) => bug!("`impl` without trait nor type?"),
+                    }
+                    return err;
                 },
                 Def::TyParam(typaram_defid) => {
                     if let Some(typaram_span) = resolver.definitions.opt_span(typaram_defid) {

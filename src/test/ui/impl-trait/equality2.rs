@@ -36,7 +36,7 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected type `u32`
     //~| found type `impl Foo`
-    //~| expected u32, found anonymized type
+    //~| expected u32, found opaque type
 
     let _: i32 = Leak::leak(hide(0_i32));
     //~^ ERROR mismatched types

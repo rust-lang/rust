@@ -123,7 +123,7 @@ fn dropck_outlives<'tcx>(
 
                             // A projection that we couldn't resolve - it
                             // might have a destructor.
-                            ty::Projection(..) | ty::Anon(..) => {
+                            ty::Projection(..) | ty::Opaque(..) => {
                                 result.kinds.push(ty.into());
                             }
 
@@ -266,7 +266,7 @@ fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
         }),
 
         // Types that can't be resolved. Pass them forward.
-        ty::Projection(..) | ty::Anon(..) | ty::Param(..) => Ok(DtorckConstraint {
+        ty::Projection(..) | ty::Opaque(..) | ty::Param(..) => Ok(DtorckConstraint {
             outlives: vec![],
             dtorck_types: vec![ty],
             overflows: vec![],
