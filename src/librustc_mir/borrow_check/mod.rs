@@ -196,7 +196,12 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         |bd, i| DebugFormatted::new(&bd.move_data().inits[i]),
     ));
 
-    let borrow_set = Rc::new(BorrowSet::build(tcx, mir));
+    let locals_are_invalidated_at_exit = match tcx.hir.body_owner_kind(id) {
+            hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => false,
+            hir::BodyOwnerKind::Fn => true,
+    };
+    let borrow_set = Rc::new(BorrowSet::build(
+            tcx, mir, locals_are_invalidated_at_exit, &mdpe.move_data));
 
     // If we are in non-lexical mode, compute the non-lexical lifetimes.
     let (regioncx, polonius_output, opt_closure_req) = nll::compute_regions(
@@ -241,10 +246,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         param_env: param_env,
         location_table,
         movable_generator,
-        locals_are_invalidated_at_exit: match tcx.hir.body_owner_kind(id) {
-            hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => false,
-            hir::BodyOwnerKind::Fn => true,
-        },
+        locals_are_invalidated_at_exit,
         access_place_error_reported: FxHashSet(),
         reservation_error_reported: FxHashSet(),
         moved_error_reported: FxHashSet(),

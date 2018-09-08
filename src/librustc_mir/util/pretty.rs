@@ -612,8 +612,9 @@ fn write_temp_decls(mir: &Mir, w: &mut dyn Write) -> io::Result<()> {
     for temp in mir.temps_iter() {
         writeln!(
             w,
-            "{}let mut {:?}: {};",
+            "{}let {}{:?}: {};",
             INDENT,
+            if mir.local_decls[temp].mutability == Mutability::Mut {"mut "} else {""},
             temp,
             mir.local_decls[temp].ty
         )?;

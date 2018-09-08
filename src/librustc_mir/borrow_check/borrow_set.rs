@@ -10,12 +10,14 @@
 
 use borrow_check::place_ext::PlaceExt;
 use dataflow::indexes::BorrowIndex;
+use dataflow::move_paths::MoveData;
 use rustc::mir::traversal;
 use rustc::mir::visit::{PlaceContext, Visitor};
-use rustc::mir::{self, Location, Mir, Place};
+use rustc::mir::{self, Location, Mir, Place, Local};
 use rustc::ty::{Region, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::bitvec::BitArray;
 use std::fmt;
 use std::hash::Hash;
 use std::ops::Index;
@@ -43,6 +45,8 @@ crate struct BorrowSet<'tcx> {
 
     /// Map from local to all the borrows on that local
     crate local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
+
+    crate locals_state_at_exit: LocalsStateAtExit,
 }
 
 impl<'tcx> Index<BorrowIndex> for BorrowSet<'tcx> {
@@ -96,8 +100,52 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
     }
 }
 
+crate enum LocalsStateAtExit {
+    AllAreInvalidated,
+    SomeAreInvalidated { has_storage_dead_or_moved: BitArray<Local> }
+}
+
+impl LocalsStateAtExit {
+    fn build(
+        locals_are_invalidated_at_exit: bool,
+        mir: &Mir<'tcx>,
+        move_data: &MoveData<'tcx>
+    ) -> Self {
+        struct HasStorageDead(BitArray<Local>);
+
+        impl<'tcx> Visitor<'tcx> for HasStorageDead {
+            fn visit_local(&mut self, local: &Local, ctx: PlaceContext<'tcx>, _: Location) {
+                if ctx == PlaceContext::StorageDead {
+                    self.0.insert(*local);
+                }
+            }
+        }
+
+        if locals_are_invalidated_at_exit {
+            LocalsStateAtExit::AllAreInvalidated
+        } else {
+            let mut has_storage_dead = HasStorageDead(BitArray::new(mir.local_decls.len()));
+            has_storage_dead.visit_mir(mir);
+            let mut has_storage_dead_or_moved = has_storage_dead.0;
+            for move_out in &move_data.moves {
+                if let Some(index) = move_data.base_local(move_out.path) {
+                    has_storage_dead_or_moved.insert(index);
+
+                }
+            }
+            LocalsStateAtExit::SomeAreInvalidated{ has_storage_dead_or_moved }
+        }
+    }
+}
+
 impl<'tcx> BorrowSet<'tcx> {
-    pub fn build(tcx: TyCtxt<'_, '_, 'tcx>, mir: &Mir<'tcx>) -> Self {
+    pub fn build(
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        mir: &Mir<'tcx>,
+        locals_are_invalidated_at_exit: bool,
+        move_data: &MoveData<'tcx>
+    ) -> Self {
+
         let mut visitor = GatherBorrows {
             tcx,
             mir,
@@ -107,6 +155,8 @@ impl<'tcx> BorrowSet<'tcx> {
             region_map: FxHashMap(),
             local_map: FxHashMap(),
             pending_activations: FxHashMap(),
+            locals_state_at_exit:
+                LocalsStateAtExit::build(locals_are_invalidated_at_exit, mir, move_data),
         };
 
         for (block, block_data) in traversal::preorder(mir) {
@@ -119,6 +169,7 @@ impl<'tcx> BorrowSet<'tcx> {
             activation_map: visitor.activation_map,
             region_map: visitor.region_map,
             local_map: visitor.local_map,
+            locals_state_at_exit: visitor.locals_state_at_exit,
         }
     }
 
@@ -148,6 +199,8 @@ struct GatherBorrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     /// the borrow. When we find a later use of this activation, we
     /// remove from the map (and add to the "tombstone" set below).
     pending_activations: FxHashMap<mir::Local, BorrowIndex>,
+
+    locals_state_at_exit: LocalsStateAtExit,
 }
 
 impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
@@ -159,7 +212,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
         location: mir::Location,
     ) {
         if let mir::Rvalue::Ref(region, kind, ref borrowed_place) = *rvalue {
-            if borrowed_place.ignore_borrow(self.tcx, self.mir) {
+            if borrowed_place.ignore_borrow(
+                self.tcx, self.mir, &self.locals_state_at_exit) {
                 return;
             }
 

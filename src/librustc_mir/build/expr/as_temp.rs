@@ -18,42 +18,63 @@ use rustc::mir::*;
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
     /// up rvalues so as to freeze the value that will be consumed.
-    pub fn as_temp<M>(&mut self,
-                      block: BasicBlock,
-                      temp_lifetime: Option<region::Scope>,
-                      expr: M)
-                      -> BlockAnd<Local>
-        where M: Mirror<'tcx, Output = Expr<'tcx>>
+    pub fn as_temp<M>(
+        &mut self,
+        block: BasicBlock,
+        temp_lifetime: Option<region::Scope>,
+        expr: M,
+        mutability: Mutability,
+    ) -> BlockAnd<Local>
+    where
+        M: Mirror<'tcx, Output = Expr<'tcx>>,
     {
         let expr = self.hir.mirror(expr);
-        self.expr_as_temp(block, temp_lifetime, expr)
+        self.expr_as_temp(block, temp_lifetime, expr, mutability)
     }
 
-    fn expr_as_temp(&mut self,
-                    mut block: BasicBlock,
-                    temp_lifetime: Option<region::Scope>,
-                    expr: Expr<'tcx>)
-                    -> BlockAnd<Local> {
-        debug!("expr_as_temp(block={:?}, temp_lifetime={:?}, expr={:?})",
-               block, temp_lifetime, expr);
+    fn expr_as_temp(
+        &mut self,
+        mut block: BasicBlock,
+        temp_lifetime: Option<region::Scope>,
+        expr: Expr<'tcx>,
+        mutability: Mutability,
+    ) -> BlockAnd<Local> {
+        debug!(
+            "expr_as_temp(block={:?}, temp_lifetime={:?}, expr={:?}, mutability={:?})",
+            block, temp_lifetime, expr, mutability
+        );
         let this = self;
 
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
-        if let ExprKind::Scope { region_scope, lint_level, value } = expr.kind {
+        if let ExprKind::Scope {
+            region_scope,
+            lint_level,
+            value,
+        } = expr.kind
+        {
             return this.in_scope((region_scope, source_info), lint_level, block, |this| {
-                this.as_temp(block, temp_lifetime, value)
+                this.as_temp(block, temp_lifetime, value, mutability)
             });
         }
 
         let expr_ty = expr.ty;
-        let temp = this.local_decls.push(LocalDecl::new_temp(expr_ty, expr_span));
+        let temp = if mutability == Mutability::Not {
+            this.local_decls
+                .push(LocalDecl::new_immutable_temp(expr_ty, expr_span))
+        } else {
+            this.local_decls
+                .push(LocalDecl::new_temp(expr_ty, expr_span))
+        };
 
         if !expr_ty.is_never() {
-            this.cfg.push(block, Statement {
-                source_info,
-                kind: StatementKind::StorageLive(temp)
-            });
+            this.cfg.push(
+                block,
+                Statement {
+                    source_info,
+                    kind: StatementKind::StorageLive(temp),
+                },
+            );
         }
 
         unpack!(block = this.into(&Place::Local(temp), block, expr));
@@ -63,7 +84,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // a constant at this time, even if the type may need dropping.
         if let Some(temp_lifetime) = temp_lifetime {
             this.schedule_drop_storage_and_value(
-                expr_span, temp_lifetime, &Place::Local(temp), expr_ty,
+                expr_span,
+                temp_lifetime,
+                &Place::Local(temp),
+                expr_ty,
             );
         }
 

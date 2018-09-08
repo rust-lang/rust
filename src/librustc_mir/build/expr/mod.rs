@@ -71,9 +71,9 @@
 //! over to the "by reference" mode (`as_place`).
 
 mod as_constant;
+mod as_operand;
 mod as_place;
 mod as_rvalue;
-mod as_operand;
 mod as_temp;
 mod category;
 mod into;

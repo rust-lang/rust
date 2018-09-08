@@ -334,4 +334,14 @@ impl<'a, 'gcx, 'tcx> MoveData<'tcx> {
                         -> Result<Self, (Self, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
         builder::gather_moves(mir, tcx)
     }
+
+    /// For the move path `mpi`, returns the root local variable (if any) that starts the path.
+    /// (e.g., for a path like `a.b.c` returns `Some(a)`)
+    pub fn base_local(&self, mut mpi: MovePathIndex) -> Option<Local> {
+        loop {
+            let path = &self.move_paths[mpi];
+            if let Place::Local(l) = path.place { return Some(l); }
+            if let Some(parent) = path.parent { mpi = parent; continue } else { return None }
+        }
+    }
 }

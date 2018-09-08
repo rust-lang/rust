@@ -249,11 +249,6 @@ impl<'tcx> Mir<'tcx> {
         } else if self.local_decls[local].name.is_some() {
             LocalKind::Var
         } else {
-            debug_assert!(
-                self.local_decls[local].mutability == Mutability::Mut,
-                "temp should be mutable"
-            );
-
             LocalKind::Temp
         }
     }
@@ -782,25 +777,30 @@ impl<'tcx> LocalDecl<'tcx> {
     /// Create a new `LocalDecl` for a temporary.
     #[inline]
     pub fn new_temp(ty: Ty<'tcx>, span: Span) -> Self {
-        LocalDecl {
-            mutability: Mutability::Mut,
-            ty,
-            name: None,
-            source_info: SourceInfo {
-                span,
-                scope: OUTERMOST_SOURCE_SCOPE,
-            },
-            visibility_scope: OUTERMOST_SOURCE_SCOPE,
-            internal: false,
-            is_user_variable: None,
-        }
+        Self::new_local(ty, Mutability::Mut, false, span)
+    }
+
+    /// Create a new immutable `LocalDecl` for a temporary.
+    #[inline]
+    pub fn new_immutable_temp(ty: Ty<'tcx>, span: Span) -> Self {
+        Self::new_local(ty, Mutability::Not, false, span)
     }
 
     /// Create a new `LocalDecl` for a internal temporary.
     #[inline]
     pub fn new_internal(ty: Ty<'tcx>, span: Span) -> Self {
+        Self::new_local(ty, Mutability::Mut, true, span)
+    }
+
+    #[inline]
+    fn new_local(
+        ty: Ty<'tcx>,
+        mutability: Mutability,
+        internal: bool,
+        span: Span,
+    ) -> Self {
         LocalDecl {
-            mutability: Mutability::Mut,
+            mutability,
             ty,
             name: None,
             source_info: SourceInfo {
@@ -808,7 +808,7 @@ impl<'tcx> LocalDecl<'tcx> {
                 scope: OUTERMOST_SOURCE_SCOPE,
             },
             visibility_scope: OUTERMOST_SOURCE_SCOPE,
-            internal: true,
+            internal,
             is_user_variable: None,
         }
     }
