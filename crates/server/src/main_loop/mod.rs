@@ -23,6 +23,7 @@ use {
     server_world::{ServerWorldState, ServerWorld},
     main_loop::subscriptions::{Subscriptions},
     project_model::{CargoWorkspace, workspace_loader},
+    thread_watcher::Worker,
 };
 
 #[derive(Debug)]
@@ -43,8 +44,8 @@ pub fn main_loop(
         .build()
         .unwrap();
     let (task_sender, task_receiver) = unbounded::<Task>();
-    let ((fs_sender, fs_receiver), fs_watcher) = vfs::roots_loader();
-    let ((ws_sender, ws_receiver), ws_watcher) = workspace_loader();
+    let (fs_worker, fs_watcher) = vfs::roots_loader();
+    let (ws_worker, ws_watcher) = workspace_loader();
 
     info!("server initialized, serving requests");
     let mut state = ServerWorldState::new();
@@ -59,10 +60,8 @@ pub fn main_loop(
         msg_receriver,
         task_sender,
         task_receiver.clone(),
-        fs_sender,
-        fs_receiver,
-        ws_sender,
-        ws_receiver,
+        fs_worker,
+        ws_worker,
         &mut state,
         &mut pending_requests,
         &mut subs,
@@ -93,17 +92,15 @@ fn main_loop_inner(
     msg_receiver: &mut Receiver<RawMessage>,
     task_sender: Sender<Task>,
     task_receiver: Receiver<Task>,
-    fs_sender: Sender<PathBuf>,
-    fs_receiver: Receiver<(PathBuf, Vec<FileEvent>)>,
-    ws_sender: Sender<PathBuf>,
-    ws_receiver: Receiver<Result<CargoWorkspace>>,
+    fs_worker: Worker<PathBuf, (PathBuf, Vec<FileEvent>)>,
+    ws_worker: Worker<PathBuf, Result<CargoWorkspace>>,
     state: &mut ServerWorldState,
     pending_requests: &mut HashMap<u64, JobHandle>,
     subs: &mut Subscriptions,
 ) -> Result<()> {
     let (libdata_sender, libdata_receiver) = unbounded();
-    ws_sender.send(ws_root.clone());
-    fs_sender.send(ws_root.clone());
+    ws_worker.send(ws_root.clone());
+    fs_worker.send(ws_root.clone());
     loop {
         #[derive(Debug)]
         enum Event {
@@ -120,11 +117,11 @@ fn main_loop_inner(
                 None => bail!("client exited without shutdown"),
             },
             recv(task_receiver, task) => Event::Task(task.unwrap()),
-            recv(fs_receiver, events) => match events {
+            recv(fs_worker.out, events) => match events {
                 None => bail!("roots watcher died"),
                 Some((pb, events)) => Event::Fs(pb, events),
             }
-            recv(ws_receiver, ws) => match ws {
+            recv(ws_worker.out, ws) => match ws {
                 None => bail!("workspace watcher died"),
                 Some(ws) => Event::Ws(ws),
             }
@@ -158,8 +155,7 @@ fn main_loop_inner(
                         for ws in workspaces.iter() {
                             for pkg in ws.packages().filter(|pkg| !pkg.is_member(ws)) {
                                 debug!("sending root, {}", pkg.root(ws).to_path_buf().display());
-                                // deadlocky :-(
-                                fs_sender.send(pkg.root(ws).to_path_buf());
+                                fs_worker.send(pkg.root(ws).to_path_buf());
                             }
                         }
                         state.set_workspaces(workspaces);

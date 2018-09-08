@@ -1,6 +1,5 @@
 use std::{
     fs,
-    thread,
     cell::{Cell, RefCell},
     path::PathBuf,
     time::Duration,
@@ -8,7 +7,7 @@ use std::{
 };
 
 use tempdir::TempDir;
-use crossbeam_channel::{after, Sender, Receiver};
+use crossbeam_channel::{after, Receiver};
 use flexi_logger::Logger;
 use languageserver_types::{
     Url,
@@ -22,7 +21,7 @@ use serde::Serialize;
 use serde_json::{Value, from_str, to_string_pretty};
 use gen_lsp_server::{RawMessage, RawRequest, RawNotification};
 
-use m::{Result, main_loop, req, thread_watcher::worker_chan};
+use m::{main_loop, req, thread_watcher::{ThreadWatcher, Worker}};
 
 pub fn project(fixture: &str) -> Server {
     static INIT: Once = Once::new();
@@ -61,28 +60,27 @@ pub struct Server {
     req_id: Cell<u64>,
     messages: RefCell<Vec<RawMessage>>,
     dir: TempDir,
-    sender: Option<Sender<RawMessage>>,
-    receiver: Receiver<RawMessage>,
-    server: Option<thread::JoinHandle<Result<()>>>,
+    worker: Option<Worker<RawMessage, RawMessage>>,
+    watcher: Option<ThreadWatcher>,
 }
 
 impl Server {
     fn new(dir: TempDir, files: Vec<(PathBuf, String)>) -> Server {
         let path = dir.path().to_path_buf();
-        let ((msg_sender, msg_receiver), server) = {
-            let (api, mut msg_receiver, mut msg_sender) = worker_chan::<RawMessage, RawMessage>(128);
-            let server = thread::spawn(move || {
+        let (worker, watcher) = Worker::<RawMessage, RawMessage>::spawn(
+            "test server",
+            128,
+            move |mut msg_receiver, mut msg_sender| {
                 main_loop(true, path, &mut msg_receiver, &mut msg_sender)
-            });
-            (api, server)
-        };
+                    .unwrap()
+            }
+        );
         let res = Server {
             req_id: Cell::new(1),
             dir,
             messages: Default::default(),
-            sender: Some(msg_sender),
-            receiver: msg_receiver,
-            server: Some(server),
+            worker: Some(worker),
+            watcher: Some(watcher),
         };
 
         for (path, text) in files {
@@ -140,7 +138,7 @@ impl Server {
     fn send_request_(&self, r: RawRequest) -> Value
     {
         let id = r.id;
-        self.sender.as_ref()
+        self.worker.as_ref()
             .unwrap()
             .send(RawMessage::Request(r));
         while let Some(msg) = self.recv() {
@@ -183,14 +181,14 @@ impl Server {
         }
     }
     fn recv(&self) -> Option<RawMessage> {
-        recv_timeout(&self.receiver)
+        recv_timeout(&self.worker.as_ref().unwrap().out)
             .map(|msg| {
                 self.messages.borrow_mut().push(msg.clone());
                 msg
             })
     }
     fn send_notification(&self, not: RawNotification) {
-        self.sender.as_ref()
+        self.worker.as_ref()
             .unwrap()
             .send(RawMessage::Notification(not));
     }
@@ -198,16 +196,15 @@ impl Server {
 
 impl Drop for Server {
     fn drop(&mut self) {
-        {
-            self.send_request::<Shutdown>(666, ());
-            drop(self.sender.take().unwrap());
-            while let Some(msg) = recv_timeout(&self.receiver) {
-                drop(msg);
-            }
+        self.send_request::<Shutdown>(666, ());
+        let receiver = self.worker.take().unwrap().stop();
+        while let Some(msg) = recv_timeout(&receiver) {
+            drop(msg);
         }
-        self.server.take()
+        self.watcher.take()
             .unwrap()
-            .join().unwrap().unwrap();
+            .stop()
+            .unwrap();
     }
 }
 

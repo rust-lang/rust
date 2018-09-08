@@ -3,12 +3,11 @@ use std::{
     path::{Path, PathBuf},
 };
 use cargo_metadata::{metadata_run, CargoOpt};
-use crossbeam_channel::{Sender, Receiver};
 use libsyntax2::SmolStr;
 
 use {
     Result,
-    thread_watcher::{ThreadWatcher, worker_chan},
+    thread_watcher::{Worker, ThreadWatcher},
 };
 
 #[derive(Debug, Clone)]
@@ -162,14 +161,15 @@ impl TargetKind {
     }
 }
 
-pub fn workspace_loader() -> ((Sender<PathBuf>, Receiver<Result<CargoWorkspace>>), ThreadWatcher) {
-    let (interface, input_receiver, output_sender) = worker_chan::<PathBuf, Result<CargoWorkspace>>(1);
-    let thread = ThreadWatcher::spawn("workspace loader", move || {
-        input_receiver
-            .into_iter()
-            .map(|path| CargoWorkspace::from_cargo_metadata(path.as_path()))
-            .for_each(|it| output_sender.send(it))
-    });
-
-    (interface, thread)
+pub fn workspace_loader() -> (Worker<PathBuf, Result<CargoWorkspace>>, ThreadWatcher) {
+    Worker::<PathBuf, Result<CargoWorkspace>>::spawn(
+        "workspace loader",
+        1,
+        |input_receiver, output_sender| {
+            input_receiver
+                .into_iter()
+                .map(|path| CargoWorkspace::from_cargo_metadata(path.as_path()))
+                .for_each(|it| output_sender.send(it))
+        }
+    )
 }
