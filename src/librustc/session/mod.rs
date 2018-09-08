@@ -159,6 +159,9 @@ pub struct Session {
     /// Metadata about the allocators for the current crate being compiled
     pub has_global_allocator: Once<bool>,
 
+    /// Metadata about the panic handlers for the current crate being compiled
+    pub has_panic_handler: Once<bool>,
+
     /// Cap lint level specified by a driver specifically.
     pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
 }
@@ -1160,6 +1163,7 @@ pub fn build_session_(
             (*GLOBAL_JOBSERVER).clone()
         },
         has_global_allocator: Once::new(),
+        has_panic_handler: Once::new(),
         driver_lint_caps: FxHashMap(),
     };
 

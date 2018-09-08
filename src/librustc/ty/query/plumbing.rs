@@ -1168,6 +1168,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::IsPanicRuntime => { force!(is_panic_runtime, krate!()); }
         DepKind::IsCompilerBuiltins => { force!(is_compiler_builtins, krate!()); }
         DepKind::HasGlobalAllocator => { force!(has_global_allocator, krate!()); }
+        DepKind::HasPanicHandler => { force!(has_panic_handler, krate!()); }
         DepKind::ExternCrate => { force!(extern_crate, def_id!()); }
         DepKind::LintLevels => { force!(lint_levels, LOCAL_CRATE); }
         DepKind::InScopeTraits => { force!(in_scope_traits_map, def_id!().index); }

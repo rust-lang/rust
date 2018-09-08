@@ -484,6 +484,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let is_proc_macro = tcx.sess.crate_types.borrow().contains(&CrateType::ProcMacro);
         let has_default_lib_allocator = attr::contains_name(&attrs, "default_lib_allocator");
         let has_global_allocator = *tcx.sess.has_global_allocator.get();
+        let has_panic_handler = *tcx.sess.has_panic_handler.try_get().unwrap_or(&false);
 
         let root = self.lazy(&CrateRoot {
             name: tcx.crate_name(LOCAL_CRATE),
@@ -494,6 +495,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             panic_strategy: tcx.sess.panic_strategy(),
             edition: hygiene::default_edition(),
             has_global_allocator: has_global_allocator,
+            has_panic_handler: has_panic_handler,
             has_default_lib_allocator: has_default_lib_allocator,
             plugin_registrar_fn: tcx.sess
                 .plugin_registrar_fn

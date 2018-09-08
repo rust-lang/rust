@@ -1138,6 +1138,11 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     if let Some(panic_impl_did) = fcx.tcx.lang_items().panic_impl() {
         if panic_impl_did == fcx.tcx.hir.local_def_id(fn_id) {
             if let Some(panic_info_did) = fcx.tcx.lang_items().panic_info() {
+                // at this point we don't care if there are duplicate handlers or if the handler has
+                // the wrong signature as this value we'll be used when writing metadata and that
+                // only happens if compilation succeeded
+                fcx.tcx.sess.has_panic_handler.try_set_same(true);
+
                 if declared_ret_ty.sty != ty::Never {
                     fcx.tcx.sess.span_err(
                         decl.output.span(),
