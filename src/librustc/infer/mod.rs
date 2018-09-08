@@ -32,7 +32,6 @@ use ty::{FloatVid, IntVid, TyVid};
 use util::nodemap::FxHashMap;
 
 use self::combine::CombineFields;
-use self::higher_ranked::HrMatchResult;
 use self::lexical_region_resolve::LexicalRegionResolutions;
 use self::outlives::env::OutlivesEnvironment;
 use self::region_constraints::{GenericKind, RegionConstraintData, VarInfos, VerifyBound};
@@ -948,39 +947,32 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             return None;
         }
 
-        Some(self.commit_if_ok(|snapshot| {
-            let (
-                ty::SubtypePredicate {
-                    a_is_expected,
-                    a,
-                    b,
-                },
-                placeholder_map,
-            ) = self.replace_bound_vars_with_placeholders(predicate);
+        let (
+            ty::SubtypePredicate {
+                a_is_expected,
+                a,
+                b,
+            },
+            _,
+        ) = self.replace_bound_vars_with_placeholders(predicate);
 
-            let cause_span = cause.span;
-            let ok = self.at(cause, param_env).sub_exp(a_is_expected, a, b)?;
-            self.leak_check(false, cause_span, &placeholder_map, snapshot)?;
-            self.pop_placeholders(placeholder_map, snapshot);
-            Ok(ok.unit())
-        }))
+        Some(
+            self.at(cause, param_env)
+                .sub_exp(a_is_expected, a, b)
+                .map(|ok| ok.unit()),
+        )
     }
 
     pub fn region_outlives_predicate(
         &self,
         cause: &traits::ObligationCause<'tcx>,
         predicate: &ty::PolyRegionOutlivesPredicate<'tcx>,
-    ) -> UnitResult<'tcx> {
-        self.commit_if_ok(|snapshot| {
-            let (ty::OutlivesPredicate(r_a, r_b), placeholder_map) =
-                self.replace_bound_vars_with_placeholders(predicate);
-            let origin = SubregionOrigin::from_obligation_cause(cause, || {
-                RelateRegionParamBound(cause.span)
-            });
-            self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
-            self.leak_check(false, cause.span, &placeholder_map, snapshot)?;
-            Ok(self.pop_placeholders(placeholder_map, snapshot))
-        })
+    ) {
+        let (ty::OutlivesPredicate(r_a, r_b), _) =
+            self.replace_bound_vars_with_placeholders(predicate);
+        let origin =
+            SubregionOrigin::from_obligation_cause(cause, || RelateRegionParamBound(cause.span));
+        self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
     }
 
     pub fn next_ty_var_id(&self, diverging: bool, origin: TypeVariableOrigin) -> TyVid {
@@ -1387,46 +1379,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let fld_r = |br| self.next_region_var(LateBoundRegion(span, br, lbrct));
         let fld_t = |_| self.next_ty_var(TypeVariableOrigin::MiscVariable(span));
         self.tcx.replace_bound_vars(value, fld_r, fld_t)
-    }
-
-    /// Given a higher-ranked projection predicate like:
-    ///
-    ///     for<'a> <T as Fn<&'a u32>>::Output = &'a u32
-    ///
-    /// and a target trait-ref like:
-    ///
-    ///     <T as Fn<&'x u32>>
-    ///
-    /// find a substitution `S` for the higher-ranked regions (here,
-    /// `['a => 'x]`) such that the predicate matches the trait-ref,
-    /// and then return the value (here, `&'a u32`) but with the
-    /// substitution applied (hence, `&'x u32`).
-    ///
-    /// See `higher_ranked_match` in `higher_ranked/mod.rs` for more
-    /// details.
-    pub fn match_poly_projection_predicate(
-        &self,
-        cause: ObligationCause<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        match_a: ty::PolyProjectionPredicate<'tcx>,
-        match_b: ty::TraitRef<'tcx>,
-    ) -> InferResult<'tcx, HrMatchResult<Ty<'tcx>>> {
-        let match_pair = match_a.map_bound(|p| (p.projection_ty.trait_ref(self.tcx), p.ty));
-        let trace = TypeTrace {
-            cause,
-            values: TraitRefs(ExpectedFound::new(
-                true,
-                match_pair.skip_binder().0,
-                match_b,
-            )),
-        };
-
-        let mut combine = self.combine_fields(trace, param_env);
-        let result = combine.higher_ranked_match(&match_pair, &match_b, true)?;
-        Ok(InferOk {
-            value: result,
-            obligations: combine.obligations,
-        })
     }
 
     /// See `verify_generic_bound` method in `region_constraints`

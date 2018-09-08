@@ -215,21 +215,39 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
     ) -> bool {
         debug!("expand_node({:?}, {:?} == {:?})", a_region, b_vid, b_data);
 
-        // Check if this relationship is implied by a given.
         match *a_region {
+            // Check if this relationship is implied by a given.
             ty::ReEarlyBound(_) | ty::ReFree(_) => if self.data.givens.contains(&(a_region, b_vid))
             {
                 debug!("given");
                 return false;
             },
+
             _ => {}
         }
 
+
         match *b_data {
             VarValue::Value(cur_region) => {
-                let lub = self.lub_concrete_regions(a_region, cur_region);
+                let mut lub = self.lub_concrete_regions(a_region, cur_region);
                 if lub == cur_region {
                     return false;
+                }
+
+                // Watch out for `'b: !1` relationships, where the
+                // universe of `'b` can't name the placeholder `!1`. In
+                // that case, we have to grow `'b` to be `'static` for the
+                // relationship to hold. This is obviously a kind of sub-optimal
+                // choice -- in the future, when we incorporate a knowledge
+                // of the parameter environment, we might be able to find a
+                // tighter bound than `'static`.
+                //
+                // (This might e.g. arise from being asked to prove `for<'a> { 'b: 'a }`.)
+                let b_universe = self.var_infos[b_vid].universe;
+                if let ty::RePlaceholder(p) = lub {
+                    if b_universe.cannot_name(p.universe) {
+                        lub = self.tcx().types.re_static;
+                    }
                 }
 
                 debug!(
@@ -554,10 +572,22 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
         lower_bounds.sort_by_key(region_order_key);
         upper_bounds.sort_by_key(region_order_key);
 
+        let node_universe = self.var_infos[node_idx].universe;
+
         for lower_bound in &lower_bounds {
+            let effective_lower_bound = if let ty::RePlaceholder(p) = lower_bound.region {
+                if node_universe.cannot_name(p.universe) {
+                    self.tcx().types.re_static
+                } else {
+                    lower_bound.region
+                }
+            } else {
+                lower_bound.region
+            };
+
             for upper_bound in &upper_bounds {
                 if !self.region_rels
-                    .is_subregion_of(lower_bound.region, upper_bound.region)
+                    .is_subregion_of(effective_lower_bound, upper_bound.region)
                 {
                     let origin = self.var_infos[node_idx].origin.clone();
                     debug!(
@@ -580,9 +610,10 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
         span_bug!(
             self.var_infos[node_idx].origin.span(),
             "collect_error_for_expanding_node() could not find \
-             error for var {:?}, lower_bounds={:?}, \
-             upper_bounds={:?}",
+             error for var {:?} in universe {:?}, lower_bounds={:#?}, \
+             upper_bounds={:#?}",
             node_idx,
+            node_universe,
             lower_bounds,
             upper_bounds
         );
