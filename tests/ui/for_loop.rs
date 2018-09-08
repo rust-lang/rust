@@ -612,5 +612,27 @@ mod issue_1219 {
             }
             println!("{}", count);
         }
+
+        // should trigger the lint because the count is not conditional
+        let text = "banana";
+        let mut count = 0;
+        for ch in text.chars() {
+            count += 1;
+            for i in 0..2 {
+                let _ = 123;
+            }
+            println!("{}", count);
+        }
+
+        // should not trigger the lint because the count is incremented multiple times
+        let text = "banana";
+        let mut count = 0;
+        for ch in text.chars() {
+            count += 1;
+            for i in 0..2 {
+                count += 1;
+            }
+            println!("{}", count);
+        }
     }
 }

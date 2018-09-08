@@ -493,5 +493,11 @@ error: the variable `count` is used as a loop counter. Consider using `for (coun
 608 |         for ch in text.chars() {
     |                   ^^^^^^^^^^^^
 
-error: aborting due to 60 previous errors
+error: the variable `count` is used as a loop counter. Consider using `for (count, item) in text.chars().enumerate()` or similar iterators
+   --> $DIR/for_loop.rs:619:19
+    |
+619 |         for ch in text.chars() {
+    |                   ^^^^^^^^^^^^
+
+error: aborting due to 61 previous errors
 

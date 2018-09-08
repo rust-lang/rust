@@ -1942,8 +1942,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
                 }
             }
         } else if is_loop(expr) {
-            self.states.clear();
-            self.done = true;
+            walk_expr(self, expr);
             return;
         } else if is_conditional(expr) {
             self.depth += 1;
