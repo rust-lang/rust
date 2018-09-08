@@ -39,6 +39,7 @@
 #![feature(inner_deref)]
 #![feature(slice_internals)]
 #![feature(option_replace)]
+#![feature(slice_partition_dedup)]
 #![feature(copy_within)]
 
 extern crate core;

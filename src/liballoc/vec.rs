@@ -947,10 +947,9 @@ impl<T> Vec<T> {
     /// Removes all but the first of consecutive elements in the vector satisfying a given equality
     /// relation.
     ///
-    /// The `same_bucket` function is passed references to two elements from the vector, and
-    /// returns `true` if the elements compare equal, or `false` if they do not. The elements are
-    /// passed in opposite order from their order in the vector, so if `same_bucket(a, b)` returns
-    /// `true`, `a` is removed.
+    /// The `same_bucket` function is passed references to two elements from the vector and
+    /// must determine if the elements compare equal. The elements are passed in opposite order
+    /// from their order in the slice, so if `same_bucket(a, b)` returns `true`, `a` is removed.
     ///
     /// If the vector is sorted, this removes all duplicates.
     ///
@@ -1533,7 +1532,8 @@ impl<'a> Drop for SetLenOnDrop<'a> {
 }
 
 impl<T: PartialEq> Vec<T> {
-    /// Removes consecutive repeated elements in the vector.
+    /// Removes consecutive repeated elements in the vector according to the
+    /// [`PartialEq`] trait implementation.
     ///
     /// If the vector is sorted, this removes all duplicates.
     ///
