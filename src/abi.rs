@@ -90,7 +90,8 @@ pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(
         ),
         PassMode::ByRef => {
             (
-                Some(pointer_ty(tcx)).into_iter() // First param is place to put return val
+                Some(pointer_ty(tcx)) // First param is place to put return val
+                    .into_iter()
                     .chain(inputs)
                     .map(AbiParam::new)
                     .collect(),
@@ -182,7 +183,9 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
     ) -> Option<Value> {
         let sig = Signature {
             params: input_tys.iter().cloned().map(AbiParam::new).collect(),
-            returns: output_ty.map(|output_ty| vec![AbiParam::new(output_ty)]).unwrap_or(Vec::new()),
+            returns: output_ty
+                .map(|output_ty| vec![AbiParam::new(output_ty)])
+                .unwrap_or(Vec::new()),
             call_conv: CallConv::SystemV,
         };
         let func_id = self
@@ -606,7 +609,7 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                             let len = args[0].load_value_pair(fx).1;
                             let elem_size = fx.layout_of(elem).size.bytes();
                             fx.bcx.ins().imul_imm(len, elem_size as i64)
-                        },
+                        }
                         ty => unimplemented!("size_of_val for {:?}", ty),
                     };
                     ret.write_cvalue(fx, CValue::ByVal(size, usize_layout));

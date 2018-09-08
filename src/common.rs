@@ -143,16 +143,17 @@ impl<'tcx> CValue<'tcx> {
     {
         match self {
             CValue::ByRef(addr, layout) => {
-                let cton_ty = fx
-                    .cton_type(layout.ty)
-                    .unwrap_or_else(|| {
-                        if layout.ty.is_box() && !fx.layout_of(layout.ty.builtin_deref(true).unwrap().ty).is_unsized() {
-                            // Consider sized box to be a ptr
-                            pointer_ty(fx.tcx)
-                        } else {
-                            panic!("load_value of type {:?}", layout.ty);
-                        }
-                    });
+                let cton_ty = fx.cton_type(layout.ty).unwrap_or_else(|| {
+                    if layout.ty.is_box() && !fx
+                        .layout_of(layout.ty.builtin_deref(true).unwrap().ty)
+                        .is_unsized()
+                    {
+                        // Consider sized box to be a ptr
+                        pointer_ty(fx.tcx)
+                    } else {
+                        panic!("load_value of type {:?}", layout.ty);
+                    }
+                });
                 fx.bcx.ins().load(cton_ty, MemFlags::new(), addr, 0)
             }
             CValue::ByVal(value, _layout) => value,

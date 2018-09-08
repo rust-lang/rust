@@ -82,9 +82,7 @@ mod prelude {
     };
     pub use cranelift::codegen::Context;
     pub use cranelift::prelude::*;
-    pub use cranelift_module::{
-        Backend, DataContext, DataId, FuncId, Linkage, Module,
-    };
+    pub use cranelift_module::{Backend, DataContext, DataId, FuncId, Linkage, Module};
     pub use cranelift_simplejit::{SimpleJITBackend, SimpleJITBuilder};
 
     pub use crate::abi::*;

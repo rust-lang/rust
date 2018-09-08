@@ -194,7 +194,7 @@ static mut MY_TINY_HEAP: [u8; 16] = [0; 16];
 
 #[lang = "exchange_malloc"]
 unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
-     &mut MY_TINY_HEAP as *mut [u8; 16] as *mut u8
+    &mut MY_TINY_HEAP as *mut [u8; 16] as *mut u8
 }
 
 pub mod intrinsics {

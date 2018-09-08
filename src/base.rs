@@ -23,7 +23,9 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
                 match inst.def {
                     InstanceDef::Item(_)
                     | InstanceDef::DropGlue(_, _)
-                    | InstanceDef::Virtual(_, _) if inst.def_id().krate == LOCAL_CRATE => {
+                    | InstanceDef::Virtual(_, _)
+                        if inst.def_id().krate == LOCAL_CRATE =>
+                    {
                         let mut mir = ::std::io::Cursor::new(Vec::new());
                         ::rustc_mir::util::write_mir_pretty(tcx, Some(inst.def_id()), &mut mir)
                             .unwrap();
@@ -35,8 +37,8 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
                     | InstanceDef::FnPtrShim(_, _)
                     | InstanceDef::ClosureOnceShim { .. }
                     | InstanceDef::CloneShim(_, _) => {
-                       // FIXME fix write_mir_pretty for these instances
-                       format!("{:#?}", tcx.instance_mir(inst.def))
+                        // FIXME fix write_mir_pretty for these instances
+                        format!("{:#?}", tcx.instance_mir(inst.def))
                     }
                     InstanceDef::Intrinsic(_) => bug!("tried to codegen intrinsic"),
                 }
@@ -507,7 +509,9 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let def_id = match fx.tcx.lang_items().require(ExchangeMallocFnLangItem) {
                         Ok(id) => id,
                         Err(s) => {
-                            fx.tcx.sess.fatal(&format!("allocation of `{}` {}", box_layout.ty, s));
+                            fx.tcx
+                                .sess
+                                .fatal(&format!("allocation of `{}` {}", box_layout.ty, s));
                         }
                     };
                     let instance = ty::Instance::mono(fx.tcx, def_id);
@@ -515,7 +519,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let call = fx.bcx.ins().call(func_ref, &[llsize, llalign]);
                     let ptr = fx.bcx.inst_results(call)[0];
                     lval.write_cvalue(fx, CValue::ByVal(ptr, box_layout));
-                },
+                }
                 Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
                     assert!(
                         lval.layout()
