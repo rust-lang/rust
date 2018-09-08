@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax)]
+#![feature(box_syntax, rustc_attrs)]
 
 struct A {
     x: Box<isize>,
@@ -156,6 +156,7 @@ fn mut_borrow_after_borrow_nested() {
     //~^ mutable borrow occurs here
 }
 
+#[rustc_error]
 fn main() {
     copy_after_move();
     move_after_move();
