@@ -109,7 +109,7 @@ pub fn acquire_global_lock(name: &str) -> Box<dyn Any> {
     }
 }
 
-#[cfg(unix)]
+#[cfg(not(windows))]
 pub fn acquire_global_lock(_name: &str) -> Box<dyn Any> {
     Box::new(())
 }
