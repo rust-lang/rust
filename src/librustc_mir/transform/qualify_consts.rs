@@ -16,7 +16,7 @@
 
 use rustc_data_structures::bitvec::BitArray;
 use rustc_data_structures::indexed_set::IdxSet;
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashSet;
 use rustc::hir;
 use rustc::hir::def_id::DefId;

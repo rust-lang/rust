@@ -42,7 +42,6 @@ use syntax_pos::{Span, DUMMY_SP};
 use transform::{MirPass, MirSource};
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::indexed_vec::Idx;
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({

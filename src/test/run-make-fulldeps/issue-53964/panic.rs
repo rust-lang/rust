@@ -8,20 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// edition:2018
-// aux-build:removing-extern-crate.rs
-// run-rustfix
-// compile-pass
+#![crate_type = "lib"]
+#![feature(panic_handler)]
+#![no_std]
 
-#![warn(rust_2018_idioms)]
-#![allow(unused_imports)]
+use core::panic::PanicInfo;
 
-extern crate removing_extern_crate as foo;
-extern crate core;
-
-mod another {
-    extern crate removing_extern_crate as foo;
-    extern crate core;
+#[panic_handler]
+fn panic(_: &PanicInfo) -> ! {
+    loop {}
 }
-
-fn main() {}

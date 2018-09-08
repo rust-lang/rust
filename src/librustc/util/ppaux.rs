@@ -26,7 +26,6 @@ use std::cell::Cell;
 use std::fmt;
 use std::usize;
 
-use rustc_data_structures::indexed_vec::Idx;
 use rustc_target::spec::abi::Abi;
 use syntax::ast::CRATE_NODE_ID;
 use syntax::symbol::{Symbol, InternedString};

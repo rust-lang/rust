@@ -159,11 +159,13 @@ pub struct BlockRemainder {
     pub first_statement_index: FirstStatementIndex,
 }
 
-newtype_index!(FirstStatementIndex
-    {
-        pub idx
+newtype_index! {
+    pub struct FirstStatementIndex {
         MAX = SCOPE_DATA_REMAINDER_MAX
-    });
+    }
+}
+
+impl_stable_hash_for!(struct ::middle::region::FirstStatementIndex { private });
 
 impl From<ScopeData> for Scope {
     #[inline]

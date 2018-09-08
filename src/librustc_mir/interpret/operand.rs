@@ -16,7 +16,7 @@ use std::convert::TryInto;
 
 use rustc::{mir, ty};
 use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt};
-use rustc_data_structures::indexed_vec::Idx;
+
 use rustc::mir::interpret::{
     GlobalId, AllocId,
     ConstValue, Pointer, Scalar, ScalarMaybeUndef,

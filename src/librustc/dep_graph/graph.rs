@@ -39,10 +39,12 @@ pub struct DepGraph {
     fingerprints: Lrc<Lock<IndexVec<DepNodeIndex, Fingerprint>>>
 }
 
-newtype_index!(DepNodeIndex);
+newtype_index! {
+    pub struct DepNodeIndex { .. }
+}
 
 impl DepNodeIndex {
-    const INVALID: DepNodeIndex = DepNodeIndex(::std::u32::MAX);
+    const INVALID: DepNodeIndex = DepNodeIndex::MAX;
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -1125,14 +1127,16 @@ impl DepNodeColorMap {
         match self.values[index] {
             COMPRESSED_NONE => None,
             COMPRESSED_RED => Some(DepNodeColor::Red),
-            value => Some(DepNodeColor::Green(DepNodeIndex(value - COMPRESSED_FIRST_GREEN)))
+            value => Some(DepNodeColor::Green(DepNodeIndex::from_u32(
+                value - COMPRESSED_FIRST_GREEN
+            )))
         }
     }
 
     fn insert(&mut self, index: SerializedDepNodeIndex, color: DepNodeColor) {
         self.values[index] = match color {
             DepNodeColor::Red => COMPRESSED_RED,
-            DepNodeColor::Green(index) => index.0 + COMPRESSED_FIRST_GREEN,
+            DepNodeColor::Green(index) => index.as_u32() + COMPRESSED_FIRST_GREEN,
         }
     }
 }

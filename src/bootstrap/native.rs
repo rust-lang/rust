@@ -239,6 +239,10 @@ impl Step for Llvm {
             cfg.define("LLVM_NATIVE_BUILD", builder.llvm_out(builder.config.build).join("build"));
         }
 
+        if let Some(ref suffix) = builder.config.llvm_version_suffix {
+            cfg.define("LLVM_VERSION_SUFFIX", suffix);
+        }
+
         if let Some(ref python) = builder.config.python {
             cfg.define("PYTHON_EXECUTABLE", python);
         }

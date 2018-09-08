@@ -48,7 +48,9 @@ struct Appearance {
     next: Option<AppearanceIndex>,
 }
 
-newtype_index!(AppearanceIndex);
+newtype_index! {
+    pub struct AppearanceIndex { .. }
+}
 
 impl vll::LinkElem for Appearance {
     type LinkIndex = AppearanceIndex;

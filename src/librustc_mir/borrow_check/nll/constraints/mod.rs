@@ -99,6 +99,14 @@ impl fmt::Debug for OutlivesConstraint {
     }
 }
 
-newtype_index!(ConstraintIndex { DEBUG_FORMAT = "ConstraintIndex({})" });
+newtype_index! {
+    pub struct ConstraintIndex {
+        DEBUG_FORMAT = "ConstraintIndex({})"
+    }
+}
 
-newtype_index!(ConstraintSccIndex { DEBUG_FORMAT = "ConstraintSccIndex({})" });
+newtype_index! {
+    pub struct ConstraintSccIndex {
+        DEBUG_FORMAT = "ConstraintSccIndex({})"
+    }
+}

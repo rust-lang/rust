@@ -117,6 +117,7 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
             !tcx.is_compiler_builtins(cnum)
                 && !tcx.is_panic_runtime(cnum)
                 && !tcx.has_global_allocator(cnum)
+                && !tcx.has_panic_handler(cnum)
         })
         .cloned()
         .collect();

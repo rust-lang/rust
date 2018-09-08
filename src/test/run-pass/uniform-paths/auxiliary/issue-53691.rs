@@ -9,19 +9,11 @@
 // except according to those terms.
 
 // edition:2018
-// aux-build:removing-extern-crate.rs
-// run-rustfix
-// compile-pass
 
-#![warn(rust_2018_idioms)]
-#![allow(unused_imports)]
+#![feature(uniform_paths)]
 
-extern crate removing_extern_crate as foo;
-extern crate core;
+mod m { pub fn f() {} }
+mod n { pub fn g() {} }
 
-mod another {
-    extern crate removing_extern_crate as foo;
-    extern crate core;
-}
-
-fn main() {}
+pub use m::f;
+pub use n::g;

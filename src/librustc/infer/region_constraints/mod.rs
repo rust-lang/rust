@@ -16,7 +16,7 @@ use self::CombineMapType::*;
 use super::{MiscVariable, RegionVariableOrigin, SubregionOrigin};
 use super::unify_key;
 
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unify as ut;
 use ty::{self, Ty, TyCtxt};

@@ -15,8 +15,8 @@ use serialize;
 use std::fmt;
 use std::u32;
 
-newtype_index!(CrateNum
-    {
+newtype_index! {
+    pub struct CrateNum {
         ENCODABLE = custom
         DEBUG_FORMAT = "crate{}",
 
@@ -27,32 +27,20 @@ newtype_index!(CrateNum
         /// Virtual crate for builtin macros
         // FIXME(jseyfried): this is also used for custom derives until proc-macro crates get
         // `CrateNum`s.
-        const BUILTIN_MACROS_CRATE = u32::MAX,
+        const BUILTIN_MACROS_CRATE = CrateNum::MAX_AS_U32,
 
         /// A CrateNum value that indicates that something is wrong.
-        const INVALID_CRATE = u32::MAX - 1,
+        const INVALID_CRATE = CrateNum::MAX_AS_U32 - 1,
 
         /// A special CrateNum that we use for the tcx.rcache when decoding from
         /// the incr. comp. cache.
-        const RESERVED_FOR_INCR_COMP_CACHE = u32::MAX - 2,
-    });
+        const RESERVED_FOR_INCR_COMP_CACHE = CrateNum::MAX_AS_U32 - 2,
+    }
+}
 
 impl CrateNum {
     pub fn new(x: usize) -> CrateNum {
-        assert!(x < (u32::MAX as usize));
-        CrateNum(x as u32)
-    }
-
-    pub fn from_u32(x: u32) -> CrateNum {
-        CrateNum(x)
-    }
-
-    pub fn as_usize(&self) -> usize {
-        self.0 as usize
-    }
-
-    pub fn as_u32(&self) -> u32 {
-        self.0
+        CrateNum::from_usize(x)
     }
 
     pub fn as_def_id(&self) -> DefId { DefId { krate: *self, index: CRATE_DEF_INDEX } }
@@ -60,7 +48,7 @@ impl CrateNum {
 
 impl fmt::Display for CrateNum {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
+        fmt::Display::fmt(&self.as_u32(), f)
     }
 }
 

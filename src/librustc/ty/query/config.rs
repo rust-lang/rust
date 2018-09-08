@@ -464,6 +464,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::has_global_allocator<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::has_panic_handler<'tcx> {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
+        "checking if the crate has_panic_handler".to_string()
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::extern_crate<'tcx> {
     fn describe(_: TyCtxt, _: DefId) -> String {
         "getting crate's ExternCrateData".to_string()

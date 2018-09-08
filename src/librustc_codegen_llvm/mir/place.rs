@@ -13,7 +13,6 @@ use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, Size};
 use rustc::mir;
 use rustc::mir::tcx::PlaceTy;
-use rustc_data_structures::indexed_vec::Idx;
 use base;
 use builder::Builder;
 use common::{CodegenCx, C_undef, C_usize, C_u8, C_u32, C_uint, C_null, C_uint_big};

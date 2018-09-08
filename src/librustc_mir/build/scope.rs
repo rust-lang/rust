@@ -95,7 +95,6 @@ use rustc::hir;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::mir::*;
 use syntax_pos::{Span};
-use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::fx::FxHashMap;
 
 #[derive(Debug)]

@@ -11,7 +11,7 @@
 #![unstable(reason = "not public", issue = "0", feature = "fd")]
 
 use cmp;
-use io::{self, Read};
+use io::{self, Read, Initializer};
 use libc::{self, c_int, c_void, ssize_t};
 use mem;
 use sync::atomic::{AtomicBool, Ordering};
@@ -269,6 +269,11 @@ impl FileDesc {
 impl<'a> Read for &'a FileDesc {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (**self).read(buf)
+    }
+
+    #[inline]
+    unsafe fn initializer(&self) -> Initializer {
+        Initializer::nop()
     }
 }
 

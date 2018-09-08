@@ -402,7 +402,9 @@ struct CFG<'tcx> {
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
 }
 
-newtype_index!(ScopeId);
+newtype_index! {
+    pub struct ScopeId { .. }
+}
 
 ///////////////////////////////////////////////////////////////////////////
 /// The `BlockAnd` "monad" packages up the new basic block along with a

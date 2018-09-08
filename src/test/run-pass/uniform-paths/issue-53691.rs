@@ -8,20 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// edition:2018
-// aux-build:removing-extern-crate.rs
-// run-rustfix
-// compile-pass
+// aux-build:issue-53691.rs
 
-#![warn(rust_2018_idioms)]
-#![allow(unused_imports)]
+extern crate issue_53691;
 
-extern crate removing_extern_crate as foo;
-extern crate core;
-
-mod another {
-    extern crate removing_extern_crate as foo;
-    extern crate core;
+fn main() {
+    issue_53691::f();
+    issue_53691::g();
 }
-
-fn main() {}

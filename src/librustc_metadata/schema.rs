@@ -193,6 +193,7 @@ pub struct CrateRoot {
     pub panic_strategy: PanicStrategy,
     pub edition: Edition,
     pub has_global_allocator: bool,
+    pub has_panic_handler: bool,
     pub has_default_lib_allocator: bool,
     pub plugin_registrar_fn: Option<DefIndex>,
     pub macro_derive_registrar: Option<DefIndex>,

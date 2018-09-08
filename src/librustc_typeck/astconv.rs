@@ -25,10 +25,11 @@ use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc::ty::wf::object_region_bounds;
 use rustc_target::spec::abi;
+use std::collections::BTreeSet;
 use std::slice;
 use require_c_abi_if_variadic;
 use util::common::ErrorReported;
-use util::nodemap::{FxHashSet, FxHashMap};
+use util::nodemap::FxHashMap;
 use errors::{FatalError, DiagnosticId};
 use lint;
 
@@ -996,7 +997,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             return tcx.types.err;
         }
 
-        let mut associated_types = FxHashSet::default();
+        // use a btreeset to keep output in a more consistent order
+        let mut associated_types = BTreeSet::default();
+
         for tr in traits::supertraits(tcx, principal) {
             associated_types.extend(tcx.associated_items(tr.def_id())
                 .filter(|item| item.kind == ty::AssociatedKind::Type)

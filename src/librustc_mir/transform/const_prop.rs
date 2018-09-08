@@ -26,7 +26,7 @@ use interpret::{self, Value, OpTy, MemoryKind};
 use transform::{MirPass, MirSource};
 use syntax::source_map::{Span, DUMMY_SP};
 use rustc::ty::subst::Substs;
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::ty::ParamEnv;
 use rustc::ty::layout::{
     LayoutOf, TyLayout, LayoutError,
@@ -133,7 +133,6 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
         self.ecx.tcx.span = source_info.span;
         let lint_root = match self.mir.source_scope_local_data {
             ClearCrossCrate::Set(ref ivs) => {
-                use rustc_data_structures::indexed_vec::Idx;
                 //FIXME(#51314): remove this check
                 if source_info.scope.index() >= ivs.len() {
                     return None;

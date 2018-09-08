@@ -381,6 +381,7 @@ define_queries! { <'tcx>
         [fatal_cycle] fn is_panic_runtime: IsPanicRuntime(CrateNum) -> bool,
         [fatal_cycle] fn is_compiler_builtins: IsCompilerBuiltins(CrateNum) -> bool,
         [fatal_cycle] fn has_global_allocator: HasGlobalAllocator(CrateNum) -> bool,
+        [fatal_cycle] fn has_panic_handler: HasPanicHandler(CrateNum) -> bool,
         [fatal_cycle] fn is_sanitizer_runtime: IsSanitizerRuntime(CrateNum) -> bool,
         [fatal_cycle] fn is_profiler_runtime: IsProfilerRuntime(CrateNum) -> bool,
         [fatal_cycle] fn panic_strategy: GetPanicStrategy(CrateNum) -> PanicStrategy,

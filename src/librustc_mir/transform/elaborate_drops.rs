@@ -19,7 +19,6 @@ use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_set::IdxSet;
-use rustc_data_structures::indexed_vec::Idx;
 use transform::{MirPass, MirSource};
 use util::patch::MirPatch;
 use util::elaborate_drops::{DropFlagState, Unwind, elaborate_drop};

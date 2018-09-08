@@ -73,8 +73,6 @@ use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 
-use rustc_data_structures::indexed_vec::Idx;
-
 mod note;
 
 mod need_type_info;
