@@ -91,6 +91,10 @@ pub(crate) fn named_field_def_list(p: &mut Parser) {
     let m = p.start();
     p.bump();
     while !p.at(R_CURLY) && !p.at(EOF) {
+        if p.at(L_CURLY) {
+            error_block(p, "expected field");
+            continue;
+        }
         named_field_def(p);
         if !p.at(R_CURLY) {
             p.expect(COMMA);
@@ -127,10 +131,15 @@ fn pos_field_list(p: &mut Parser) {
         return;
     }
     while !p.at(R_PAREN) && !p.at(EOF) {
-        let pos_field = p.start();
+        let m = p.start();
         opt_visibility(p);
+        if !p.at_ts(types::TYPE_FIRST) {
+            p.error("expected a type");
+            m.complete(p, ERROR);
+            break;
+        }
         types::type_(p);
-        pos_field.complete(p, POS_FIELD);
+        m.complete(p, POS_FIELD);
 
         if !p.at(R_PAREN) {
             p.expect(COMMA);

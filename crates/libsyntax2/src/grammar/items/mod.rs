@@ -1,11 +1,11 @@
 
 mod consts;
-mod structs;
+mod nominal;
 mod traits;
 mod use_item;
 
 use super::*;
-pub(crate) use self::structs::named_field_def_list;
+pub(crate) use self::nominal::named_field_def_list;
 
 // test mod_contents
 // fn foo() {}
@@ -176,7 +176,7 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
             MODULE
         }
         STRUCT_KW => {
-            structs::struct_def(p);
+            nominal::struct_def(p);
             if p.at(SEMI) {
                 p.err_and_bump(
                     "expected item, found `;`\n\
@@ -186,7 +186,7 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
             STRUCT_DEF
         }
         ENUM_KW => {
-            structs::enum_def(p);
+            nominal::enum_def(p);
             ENUM_DEF
         }
         USE_KW => {

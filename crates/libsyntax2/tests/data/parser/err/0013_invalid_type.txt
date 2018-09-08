@@ -1,5 +1,5 @@
 ROOT@[0; 86)
-  STRUCT_DEF@[0; 84)
+  STRUCT_DEF@[0; 72)
     VISIBILITY@[0; 3)
       PUB_KW@[0; 3)
     WHITESPACE@[3; 4)
@@ -7,7 +7,7 @@ ROOT@[0; 86)
     WHITESPACE@[10; 11)
     NAME@[11; 16)
       IDENT@[11; 16) "Cache"
-    POS_FIELD_LIST@[16; 83)
+    POS_FIELD_LIST@[16; 72)
       L_PAREN@[16; 17)
       WHITESPACE@[17; 22)
       POS_FIELD@[22; 68)
@@ -62,22 +62,28 @@ ROOT@[0; 86)
               NAME_REF@[69; 72)
                 IDENT@[69; 72) "Any"
                 err: `expected COMMA`
-                err: `expected type`
-      POS_FIELD@[72; 73)
-        ERROR@[72; 73)
-          R_ANGLE@[72; 73)
-      COMMA@[73; 74)
-      WHITESPACE@[74; 79)
-      err: `expected type`
-      POS_FIELD@[79; 80)
-        ERROR@[79; 80)
-          R_ANGLE@[79; 80)
-          err: `expected COMMA`
-          err: `expected type`
-      POS_FIELD@[80; 81)
-        ERROR@[80; 81)
-          R_ANGLE@[80; 81)
-      WHITESPACE@[81; 82)
-      R_PAREN@[82; 83)
+                err: `expected a type`
+                err: `expected R_PAREN`
+                err: `expected SEMI`
+                err: `expected an item`
+      ERROR@[72; 72)
+  ERROR@[72; 73)
+    R_ANGLE@[72; 73)
+    err: `expected an item`
+  ERROR@[73; 74)
+    COMMA@[73; 74)
+  WHITESPACE@[74; 79)
+  err: `expected an item`
+  ERROR@[79; 80)
+    R_ANGLE@[79; 80)
+    err: `expected an item`
+  ERROR@[80; 81)
+    R_ANGLE@[80; 81)
+  WHITESPACE@[81; 82)
+  err: `expected an item`
+  ERROR@[82; 83)
+    R_PAREN@[82; 83)
+    err: `expected an item`
+  ERROR@[83; 84)
     SEMI@[83; 84)
   WHITESPACE@[84; 86)
