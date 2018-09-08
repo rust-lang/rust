@@ -323,11 +323,9 @@ fn match_arm_list(p: &mut Parser) {
 // }
 fn match_arm(p: &mut Parser) -> BlockLike {
     let m = p.start();
-    loop {
+    patterns::pattern_r(p, TokenSet::EMPTY);
+    while p.eat(PIPE) {
         patterns::pattern(p);
-        if !p.eat(PIPE) {
-            break;
-        }
     }
     if p.eat(IF_KW) {
         expr_no_struct(p);
