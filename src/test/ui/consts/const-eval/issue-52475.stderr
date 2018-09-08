@@ -1,0 +1,42 @@
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/issue-52475.rs:19:9
+   |
+LL | /         while n < 5 { //~ ERROR constant contains unimplemented expression type
+LL | |             n = (n + 1) % 5;
+LL | |             x = &0; // Materialize a new AllocId
+LL | |         }
+   | |_________^
+
+warning: Constant evaluating a complex constant, this might take some time
+  --> $DIR/issue-52475.rs:14:18
+   |
+LL |       let _ = [(); {
+   |  __________________^
+LL | |         //~^ WARNING Constant evaluating a complex constant, this might take some time
+LL | |         //~| ERROR could not evaluate repeat length
+LL | |         let mut x = &0;
+...  |
+LL | |         0
+LL | |     }];
+   | |_____^
+
+error[E0080]: could not evaluate repeat length
+  --> $DIR/issue-52475.rs:14:18
+   |
+LL |       let _ = [(); {
+   |  __________________^
+LL | |         //~^ WARNING Constant evaluating a complex constant, this might take some time
+LL | |         //~| ERROR could not evaluate repeat length
+LL | |         let mut x = &0;
+...  |
+LL | |             n = (n + 1) % 5;
+   | |                 ----------- duplicate interpreter state observed here, const evaluation will never terminate
+...  |
+LL | |         0
+LL | |     }];
+   | |_____^
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0019, E0080.
+For more information about an error, try `rustc --explain E0019`.

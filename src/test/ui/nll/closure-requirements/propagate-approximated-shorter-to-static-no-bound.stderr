@@ -3,7 +3,8 @@ note: External requirements
    |
 LL |       establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
    |  _______________________________________________^
-LL | |         //~^ ERROR
+LL | |         //~^ ERROR borrowed data escapes outside of function
+LL | |         //~| ERROR unsatisfied lifetime constraints
 LL | |
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get())
@@ -14,6 +15,8 @@ LL | |     });
                i16,
                for<'r, 's, 't0, 't1, 't2> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 's)) u32>, &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 't0)) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 's)) u32>, &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 't1)) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 't2)) u32>))
            ]
+   = note: late-bound region is '_#2r
+   = note: late-bound region is '_#3r
    = note: number of external vids: 4
    = note: where '_#1r: '_#0r
 
@@ -22,8 +25,8 @@ note: No external requirements
    |
 LL | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
 LL | |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
-LL | |         //~^ ERROR
-LL | |
+LL | |         //~^ ERROR borrowed data escapes outside of function
+LL | |         //~| ERROR unsatisfied lifetime constraints
 ...  |
 LL | |     });
 LL | | }
@@ -37,12 +40,23 @@ error: borrowed data escapes outside of function
 LL |   fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
    |                     ------ `cell_a` is a reference that is only valid in the function body
 LL | /     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
-LL | |         //~^ ERROR
+LL | |         //~^ ERROR borrowed data escapes outside of function
+LL | |         //~| ERROR unsatisfied lifetime constraints
 LL | |
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get())
 LL | |     });
    | |______^ `cell_a` escapes the function body here
 
-error: aborting due to previous error
+error: unsatisfied lifetime constraints
+  --> $DIR/propagate-approximated-shorter-to-static-no-bound.rs:45:29
+   |
+LL | fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+   |           --  -- lifetime `'b` defined here
+   |           |
+   |           lifetime `'a` defined here
+LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
+   |                             ^^^^^^^ requires that `'a` must outlive `'b`
+
+error: aborting due to 2 previous errors
 

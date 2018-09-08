@@ -28,7 +28,7 @@
 	url = https://github.com/rust-lang-nursery/rls.git
 [submodule "src/libcompiler_builtins"]
 	path = src/libcompiler_builtins
-	url = https://github.com/rust-lang-nursery/compiler-builtins
+	url = https://github.com/rust-lang-nursery/compiler-builtins.git
 [submodule "src/tools/clippy"]
 	path = src/tools/clippy
 	url = https://github.com/rust-lang-nursery/rust-clippy.git
@@ -43,24 +43,25 @@
 	url = https://github.com/alexcrichton/dlmalloc-rs.git
 [submodule "src/doc/rust-by-example"]
 	path = src/doc/rust-by-example
-	url = https://github.com/rust-lang/rust-by-example
+	url = https://github.com/rust-lang/rust-by-example.git
 [submodule "src/llvm-emscripten"]
 	path = src/llvm-emscripten
-	url = https://github.com/rust-lang/llvm
+	url = https://github.com/rust-lang/llvm.git
 [submodule "src/stdsimd"]
 	path = src/stdsimd
-	url = https://github.com/rust-lang-nursery/stdsimd
+	url = https://github.com/rust-lang-nursery/stdsimd.git
 [submodule "src/tools/lld"]
 	path = src/tools/lld
 	url = https://github.com/rust-lang/lld.git
 [submodule "src/libbacktrace"]
 	path = src/libbacktrace
-	url = https://github.com/rust-lang-nursery/libbacktrace
+	url = https://github.com/rust-lang-nursery/libbacktrace.git
 [submodule "src/tools/lldb"]
 	path = src/tools/lldb
-	url = https://github.com/rust-lang-nursery/lldb/
-	branch = rust-release-70
+	url = https://github.com/rust-lang-nursery/lldb.git
+	branch = rust-release-80-v1
 [submodule "src/tools/clang"]
 	path = src/tools/clang
-	url = https://github.com/rust-lang-nursery/clang/
-	branch = release_70
+	url = https://github.com/rust-lang-nursery/clang.git
+	branch = rust-release-80-v1
+  

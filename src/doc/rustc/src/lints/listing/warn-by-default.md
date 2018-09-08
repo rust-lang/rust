@@ -603,11 +603,11 @@ fn foo() {
 This will produce:
 
 ```text
-warning: function cannot return without recurring
+warning: function cannot return without recursing
  --> src/main.rs:1:1
   |
 1 | fn foo() {
-  | ^^^^^^^^ cannot return without recurring
+  | ^^^^^^^^ cannot return without recursing
 2 |     foo();
   |     ----- recursive call site
   |

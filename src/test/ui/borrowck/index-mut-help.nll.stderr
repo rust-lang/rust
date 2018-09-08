@@ -3,6 +3,8 @@ error[E0596]: cannot borrow data in a `&` reference as mutable
    |
 LL |     map["peter"].clear();           //~ ERROR
    |     ^^^^^^^^^^^^ cannot borrow as mutable
+   |
+   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `std::collections::HashMap<&str, std::string::String>`
 
 error[E0594]: cannot assign to data in a `&` reference
   --> $DIR/index-mut-help.rs:22:5
@@ -15,6 +17,8 @@ error[E0596]: cannot borrow data in a `&` reference as mutable
    |
 LL |     let _ = &mut map["peter"];      //~ ERROR
    |             ^^^^^^^^^^^^^^^^^ cannot borrow as mutable
+   |
+   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `std::collections::HashMap<&str, std::string::String>`
 
 error: aborting due to 3 previous errors
 

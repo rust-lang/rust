@@ -14,33 +14,41 @@
 
 use std::convert::TryFrom;
 
+use rustc::ich::StableHashingContext;
 use rustc::mir;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout};
 use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 
 use rustc::mir::interpret::{
-    GlobalId, Scalar, EvalResult, Pointer, ScalarMaybeUndef, PointerArithmetic
+    GlobalId, AllocId, Scalar, EvalResult, Pointer, ScalarMaybeUndef, PointerArithmetic
 };
 use super::{EvalContext, Machine, Value, ValTy, Operand, OpTy, MemoryKind};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub struct MemPlace {
+pub struct MemPlace<Id=AllocId> {
     /// A place may have an integral pointer for ZSTs, and since it might
     /// be turned back into a reference before ever being dereferenced.
     /// However, it may never be undef.
-    pub ptr: Scalar,
+    pub ptr: Scalar<Id>,
     pub align: Align,
     /// Metadata for unsized places.  Interpretation is up to the type.
     /// Must not be present for sized types, but can be missing for unsized types
     /// (e.g. `extern type`).
-    pub extra: Option<Scalar>,
+    pub extra: Option<Scalar<Id>>,
 }
 
+impl_stable_hash_for!(struct ::interpret::MemPlace {
+    ptr,
+    align,
+    extra,
+});
+
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum Place {
+pub enum Place<Id=AllocId> {
     /// A place referring to a value allocated in the `Memory` system.
-    Ptr(MemPlace),
+    Ptr(MemPlace<Id>),
 
     /// To support alloc-free locals, we are able to write directly to a local.
     /// (Without that optimization, we'd just always be a `MemPlace`.)
@@ -50,6 +58,21 @@ pub enum Place {
     },
 }
 
+impl<'a> HashStable<StableHashingContext<'a>> for Place {
+    fn hash_stable<W: StableHasherResult>(
+        &self, hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>) {
+
+        match self {
+            Place::Ptr(mem_place) => mem_place.hash_stable(hcx, hasher),
+
+            Place::Local { frame, local } => {
+                frame.hash_stable(hcx, hasher);
+                local.hash_stable(hcx, hasher);
+            },
+        }
+    }
+}
 #[derive(Copy, Clone, Debug)]
 pub struct PlaceTy<'tcx> {
     place: Place,

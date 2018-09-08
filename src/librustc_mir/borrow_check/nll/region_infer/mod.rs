@@ -11,7 +11,7 @@
 use super::universal_regions::UniversalRegions;
 use borrow_check::nll::constraints::graph::NormalConstraintGraph;
 use borrow_check::nll::constraints::{
-    ConstraintIndex, ConstraintSccIndex, ConstraintSet, OutlivesConstraint,
+    ConstraintSccIndex, ConstraintSet, OutlivesConstraint,
 };
 use borrow_check::nll::region_infer::values::{RegionElement, ToElementIndex};
 use borrow_check::nll::type_check::free_region_relations::UniversalRegionRelations;
@@ -29,11 +29,10 @@ use rustc::util::common;
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_data_structures::indexed_set::IdxSet;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_errors::Diagnostic;
+use rustc_errors::{DiagnosticBuilder, Diagnostic};
 
 use std::rc::Rc;
 
-mod annotation;
 mod dump_mir;
 mod error_reporting;
 mod graphviz;
@@ -234,7 +233,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let constraints = Rc::new(outlives_constraints); // freeze constraints
         let constraint_graph = Rc::new(constraints.graph(definitions.len()));
-        let constraint_sccs = Rc::new(constraints.compute_sccs(&constraint_graph));
+        let fr_static = universal_regions.fr_static;
+        let constraint_sccs = Rc::new(constraints.compute_sccs(&constraint_graph, fr_static));
 
         let mut scc_values = RegionValues::new(elements, universal_regions.len(), max_universe);
 
@@ -356,6 +356,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// (Panics if `r` is not a registered universal region.)
     pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
         self.universal_regions.to_region_vid(r)
+    }
+
+    /// Add annotations for `#[rustc_regions]`; see `UniversalRegions::annotate`.
+    crate fn annotate(&self, tcx: TyCtxt<'_, '_, 'tcx>, err: &mut DiagnosticBuilder<'_>) {
+        self.universal_regions.annotate(tcx, err)
     }
 
     /// Returns true if the region `r` contains the point `p`.
@@ -685,7 +690,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             test: _,
         } = type_test;
 
-
         let generic_ty = generic_kind.to_ty(tcx);
         let subject = match self.try_promote_type_test_subject(infcx, generic_ty) {
             Some(s) => s,
@@ -697,20 +701,38 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // `ClosureOutlivesRequirement`.
         let r_scc = self.constraint_sccs.scc(*lower_bound);
         for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
+            // Check whether we can already prove that the "subject" outlives `ur`.
+            // If so, we don't have to propagate this requirement to our caller.
+            //
+            // To continue the example from the function, if we are trying to promote
+            // a requirement that `T: 'X`, and we know that `'X = '1 + '2` (i.e., the union
+            // `'1` and `'2`), then in this loop `ur` will be `'1` (and `'2`). So here
+            // we check whether `T: '1` is something we *can* prove. If so, no need
+            // to propagate that requirement.
+            //
+            // This is needed because -- particularly in the case
+            // where `ur` is a local bound -- we are sometimes in a
+            // position to prove things that our caller cannot.  See
+            // #53570 for an example.
+            if self.eval_region_test(mir, ur, &type_test.test) {
+                continue;
+            }
+
+            debug!("try_promote_type_test: ur={:?}", ur);
+
             let non_local_ub = self.universal_region_relations.non_local_upper_bound(ur);
+            debug!("try_promote_type_test: non_local_ub={:?}", non_local_ub);
 
             assert!(self.universal_regions.is_universal_region(non_local_ub));
-            assert!(
-                !self
-                .universal_regions
-                .is_local_free_region(non_local_ub)
-            );
+            assert!(!self.universal_regions.is_local_free_region(non_local_ub));
 
-            propagated_outlives_requirements.push(ClosureOutlivesRequirement {
+            let requirement = ClosureOutlivesRequirement {
                 subject,
                 outlived_free_region: non_local_ub,
                 blame_span: locations.span(mir),
-            });
+            };
+            debug!("try_promote_type_test: pushing {:#?}", requirement);
+            propagated_outlives_requirements.push(requirement);
         }
         true
     }
@@ -916,8 +938,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // now). Therefore, the sup-region outlives the sub-region if,
         // for each universal region R1 in the sub-region, there
         // exists some region R2 in the sup-region that outlives R1.
-        let universal_outlives = self
-            .scc_values
+        let universal_outlives = self.scc_values
             .universal_regions_outlived_by(sub_region_scc)
             .all(|r1| {
                 self.scc_values
@@ -1028,8 +1049,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // (because `fr` includes `end(o)`).
         for shorter_fr in self.scc_values.universal_regions_outlived_by(longer_fr_scc) {
             // If it is known that `fr: o`, carry on.
-            if self
-                .universal_region_relations
+            if self.universal_region_relations
                 .outlives(longer_fr, shorter_fr)
             {
                 continue;
@@ -1045,8 +1065,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if let Some(propagated_outlives_requirements) = propagated_outlives_requirements {
                 // Shrink `fr` until we find a non-local region (if we do).
                 // We'll call that `fr-` -- it's ever so slightly smaller than `fr`.
-                if let Some(fr_minus) = self
-                    .universal_region_relations
+                if let Some(fr_minus) = self.universal_region_relations
                     .non_local_lower_bound(longer_fr)
                 {
                     debug!("check_universal_region: fr_minus={:?}", fr_minus);
@@ -1055,8 +1074,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     // region. (We always will.)  We'll call that
                     // `shorter_fr+` -- it's ever so slightly larger than
                     // `fr`.
-                    let shorter_fr_plus = self
-                        .universal_region_relations
+                    let shorter_fr_plus = self.universal_region_relations
                         .non_local_upper_bound(shorter_fr);
                     debug!(
                         "check_universal_region: shorter_fr_plus={:?}",
@@ -1116,8 +1134,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let error_region = match error_element {
             RegionElement::Location(l) => self.find_sub_region_live_at(longer_fr, l),
             RegionElement::RootUniversalRegion(r) => r,
-            RegionElement::SubUniversalRegion(error_ui) => self
-                .definitions
+            RegionElement::SubUniversalRegion(error_ui) => self.definitions
                 .iter_enumerated()
                 .filter_map(|(r, definition)| match definition.origin {
                     NLLRegionVariableOrigin::BoundRegion(ui) if error_ui == ui => Some(r),
@@ -1214,7 +1231,11 @@ impl<'gcx, 'tcx> ClosureRegionRequirementsExt<'gcx, 'tcx> for ClosureRegionRequi
         // into a vector.  These are the regions that we will be
         // relating to one another.
         let closure_mapping = &UniversalRegions::closure_mapping(
-            tcx, user_closure_ty, self.num_external_vids, tcx.closure_base_def_id(closure_def_id));
+            tcx,
+            user_closure_ty,
+            self.num_external_vids,
+            tcx.closure_base_def_id(closure_def_id),
+        );
         debug!("apply_requirements: closure_mapping={:?}", closure_mapping);
 
         // Create the predicates.

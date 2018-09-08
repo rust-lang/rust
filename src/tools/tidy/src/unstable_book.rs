@@ -56,12 +56,11 @@ pub fn collect_unstable_feature_names(features: &Features) -> BTreeSet<String> {
 pub fn collect_unstable_book_section_file_names(dir: &path::Path) -> BTreeSet<String> {
     fs::read_dir(dir)
         .expect("could not read directory")
-        .into_iter()
         .map(|entry| entry.expect("could not read directory entry"))
         .filter(dir_entry_is_file)
-        .map(|entry| entry.file_name().into_string().unwrap())
-        .filter(|n| n.ends_with(".md"))
-        .map(|n| n.trim_right_matches(".md").to_owned())
+        .map(|entry| entry.path())
+        .filter(|path| path.extension().map(|e| e.to_str().unwrap()) == Some("md"))
+        .map(|path| path.file_stem().unwrap().to_str().unwrap().into())
         .collect()
 }
 

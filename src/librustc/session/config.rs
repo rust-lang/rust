@@ -21,7 +21,7 @@ use rustc_target::spec::{Target, TargetTriple};
 use lint;
 use middle::cstore;
 
-use syntax::ast::{self, IntTy, UintTy};
+use syntax::ast::{self, IntTy, UintTy, MetaItemKind};
 use syntax::source_map::{FileName, FilePathMapping};
 use syntax::edition::{Edition, EDITION_NAME_LIST, DEFAULT_EDITION};
 use syntax::parse::token;
@@ -1735,22 +1735,33 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> ast::CrateConfig {
             let mut parser =
                 parse::new_parser_from_source_str(&sess, FileName::CfgSpec, s.to_string());
 
-            let meta_item = panictry!(parser.parse_meta_item());
+            macro_rules! error {($reason: expr) => {
+                early_error(ErrorOutputType::default(),
+                            &format!(concat!("invalid `--cfg` argument: `{}` (", $reason, ")"), s));
+            }}
 
-            if parser.token != token::Eof {
-                early_error(
-                    ErrorOutputType::default(),
-                    &format!("invalid --cfg argument: {}", s),
-                )
-            } else if meta_item.is_meta_item_list() {
-                let msg = format!(
-                    "invalid predicate in --cfg command line argument: `{}`",
-                    meta_item.ident
-                );
-                early_error(ErrorOutputType::default(), &msg)
+            match &mut parser.parse_meta_item() {
+                Ok(meta_item) if parser.token == token::Eof => {
+                    if meta_item.ident.segments.len() != 1 {
+                        error!("argument key must be an identifier");
+                    }
+                    match &meta_item.node {
+                        MetaItemKind::List(..) => {
+                            error!(r#"expected `key` or `key="value"`"#);
+                        }
+                        MetaItemKind::NameValue(lit) if !lit.node.is_str() => {
+                            error!("argument value must be a string");
+                        }
+                        MetaItemKind::NameValue(..) | MetaItemKind::Word => {
+                            return (meta_item.name(), meta_item.value_str());
+                        }
+                    }
+                }
+                Ok(..) => {}
+                Err(err) => err.cancel(),
             }
 
-            (meta_item.name(), meta_item.value_str())
+            error!(r#"expected `key` or `key="value"`"#);
         })
         .collect::<ast::CrateConfig>()
 }

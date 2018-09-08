@@ -36,8 +36,7 @@ pub fn target() -> Result<Target, String> {
         dll_suffix: ".wasm".to_string(),
         linker_is_gnu: false,
 
-        // A bit of a lie, but "eh"
-        max_atomic_width: Some(32),
+        max_atomic_width: Some(64),
 
         // Unwinding doesn't work right now, so the whole target unconditionally
         // defaults to panic=abort. Note that this is guaranteed to change in

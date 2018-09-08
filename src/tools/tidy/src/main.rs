@@ -24,11 +24,8 @@ use std::path::PathBuf;
 use std::env;
 
 fn main() {
-    let path = env::args_os().skip(1).next().expect("need path to src");
-    let path = PathBuf::from(path);
-
-    let cargo = env::args_os().skip(2).next().expect("need path to cargo");
-    let cargo = PathBuf::from(cargo);
+    let path: PathBuf = env::args_os().nth(1).expect("need path to src").into();
+    let cargo: PathBuf = env::args_os().nth(2).expect("need path to cargo").into();
 
     let args: Vec<String> = env::args().skip(1).collect();
 

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use borrow_check::nll::type_check::Locations;
 use borrow_check::nll::constraints::{ConstraintIndex, ConstraintSet, OutlivesConstraint};
 use rustc::ty::RegionVid;
 use rustc_data_structures::graph;
@@ -31,6 +32,7 @@ crate type ReverseConstraintGraph = ConstraintGraph<Reverse>;
 crate trait ConstraintGraphDirecton: Copy + 'static {
     fn start_region(c: &OutlivesConstraint) -> RegionVid;
     fn end_region(c: &OutlivesConstraint) -> RegionVid;
+    fn is_normal() -> bool;
 }
 
 /// In normal mode, a `R1: R2` constraint results in an edge `R1 ->
@@ -48,6 +50,10 @@ impl ConstraintGraphDirecton for Normal {
     fn end_region(c: &OutlivesConstraint) -> RegionVid {
         c.sub
     }
+
+    fn is_normal() -> bool {
+        true
+    }
 }
 
 /// In reverse mode, a `R1: R2` constraint results in an edge `R2 ->
@@ -64,6 +70,10 @@ impl ConstraintGraphDirecton for Reverse {
 
     fn end_region(c: &OutlivesConstraint) -> RegionVid {
         c.sup
+    }
+
+    fn is_normal() -> bool {
+        false
     }
 }
 
@@ -98,32 +108,74 @@ impl<D: ConstraintGraphDirecton> ConstraintGraph<D> {
     /// Given the constraint set from which this graph was built
     /// creates a region graph so that you can iterate over *regions*
     /// and not constraints.
-    crate fn region_graph<'rg>(&'rg self, set: &'rg ConstraintSet) -> RegionGraph<'rg, D> {
-        RegionGraph::new(set, self)
+    crate fn region_graph<'rg>(
+        &'rg self,
+        set: &'rg ConstraintSet,
+        static_region: RegionVid,
+    ) -> RegionGraph<'rg, D> {
+        RegionGraph::new(set, self, static_region)
     }
 
     /// Given a region `R`, iterate over all constraints `R: R1`.
-    crate fn outgoing_edges(&self, region_sup: RegionVid) -> Edges<'_, D> {
-        let first = self.first_constraints[region_sup];
-        Edges {
-            graph: self,
-            pointer: first,
+    crate fn outgoing_edges<'a>(
+        &'a self,
+        region_sup: RegionVid,
+        constraints: &'a ConstraintSet,
+        static_region: RegionVid,
+    ) -> Edges<'a, D> {
+        //if this is the `'static` region and the graph's direction is normal,
+        //then setup the Edges iterator to return all regions #53178
+        if region_sup == static_region && D::is_normal() {
+            Edges {
+                graph: self,
+                constraints,
+                pointer: None,
+                next_static_idx: Some(0),
+                static_region,
+            }
+        } else {
+            //otherwise, just setup the iterator as normal
+            let first = self.first_constraints[region_sup];
+            Edges {
+                graph: self,
+                constraints,
+                pointer: first,
+                next_static_idx: None,
+                static_region,
+           }
         }
     }
 }
 
 crate struct Edges<'s, D: ConstraintGraphDirecton> {
     graph: &'s ConstraintGraph<D>,
+    constraints: &'s ConstraintSet,
     pointer: Option<ConstraintIndex>,
+    next_static_idx: Option<usize>,
+    static_region: RegionVid,
 }
 
 impl<'s, D: ConstraintGraphDirecton> Iterator for Edges<'s, D> {
-    type Item = ConstraintIndex;
+    type Item = OutlivesConstraint;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(p) = self.pointer {
             self.pointer = self.graph.next_constraints[p];
-            Some(p)
+
+            Some(self.constraints[p])
+        } else if let Some(next_static_idx) = self.next_static_idx {
+            self.next_static_idx =
+                if next_static_idx == (self.graph.first_constraints.len() - 1) {
+                    None
+                } else {
+                    Some(next_static_idx + 1)
+                };
+
+            Some(OutlivesConstraint {
+                sup: self.static_region,
+                sub: next_static_idx.into(),
+                locations: Locations::All,
+            })
         } else {
             None
         }
@@ -136,6 +188,7 @@ impl<'s, D: ConstraintGraphDirecton> Iterator for Edges<'s, D> {
 crate struct RegionGraph<'s, D: ConstraintGraphDirecton> {
     set: &'s ConstraintSet,
     constraint_graph: &'s ConstraintGraph<D>,
+    static_region: RegionVid,
 }
 
 impl<'s, D: ConstraintGraphDirecton> RegionGraph<'s, D> {
@@ -143,10 +196,15 @@ impl<'s, D: ConstraintGraphDirecton> RegionGraph<'s, D> {
     /// R2` is treated as an edge `R1 -> R2`. We use this graph to
     /// construct SCCs for region inference but also for error
     /// reporting.
-    crate fn new(set: &'s ConstraintSet, constraint_graph: &'s ConstraintGraph<D>) -> Self {
+    crate fn new(
+        set: &'s ConstraintSet,
+        constraint_graph: &'s ConstraintGraph<D>,
+        static_region: RegionVid,
+    ) -> Self {
         Self {
             set,
             constraint_graph,
+            static_region,
         }
     }
 
@@ -154,14 +212,12 @@ impl<'s, D: ConstraintGraphDirecton> RegionGraph<'s, D> {
     /// there exists a constraint `R: R1`.
     crate fn outgoing_regions(&self, region_sup: RegionVid) -> Successors<'_, D> {
         Successors {
-            set: self.set,
-            edges: self.constraint_graph.outgoing_edges(region_sup),
+            edges: self.constraint_graph.outgoing_edges(region_sup, self.set, self.static_region),
         }
     }
 }
 
 crate struct Successors<'s, D: ConstraintGraphDirecton> {
-    set: &'s ConstraintSet,
     edges: Edges<'s, D>,
 }
 
@@ -169,7 +225,7 @@ impl<'s, D: ConstraintGraphDirecton> Iterator for Successors<'s, D> {
     type Item = RegionVid;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.edges.next().map(|c| D::end_region(&self.set[c]))
+        self.edges.next().map(|c| D::end_region(&c))
     }
 }
 

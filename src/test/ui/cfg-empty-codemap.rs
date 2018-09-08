@@ -12,7 +12,7 @@
 
 // compile-flags: --cfg ""
 
-// error-pattern: expected identifier, found
+// error-pattern: invalid `--cfg` argument: `""` (expected `key` or `key="value"`)
 
 pub fn main() {
 }

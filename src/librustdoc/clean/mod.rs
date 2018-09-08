@@ -1312,7 +1312,13 @@ impl<'a> Clean<WherePredicate> for ty::Predicate<'a> {
             Predicate::RegionOutlives(ref pred) => pred.clean(cx),
             Predicate::TypeOutlives(ref pred) => pred.clean(cx),
             Predicate::Projection(ref pred) => pred.clean(cx),
-            Predicate::WellFormed(_) => panic!("not user writable"),
+            Predicate::WellFormed(ty) => {
+                // This comes from `where Ty:` (i.e. no bounds) (see #53696).
+                WherePredicate::BoundPredicate {
+                    ty: ty.clean(cx),
+                    bounds: vec![],
+                }
+            }
             Predicate::ObjectSafe(_) => panic!("not user writable"),
             Predicate::ClosureKind(..) => panic!("not user writable"),
             Predicate::ConstEvaluatable(..) => panic!("not user writable"),

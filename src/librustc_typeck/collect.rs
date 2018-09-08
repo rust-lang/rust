@@ -549,12 +549,13 @@ fn convert_enum_variant_types<'a, 'tcx>(
     }
 }
 
-fn convert_struct_variant<'a, 'tcx>(
+fn convert_variant<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     did: DefId,
     name: ast::Name,
     discr: ty::VariantDiscr,
     def: &hir::VariantData,
+    adt_kind: ty::AdtKind
 ) -> ty::VariantDef {
     let mut seen_fields: FxHashMap<ast::Ident, Span> = FxHashMap();
     let node_id = tcx.hir.as_local_node_id(did).unwrap();
@@ -585,13 +586,13 @@ fn convert_struct_variant<'a, 'tcx>(
             }
         })
         .collect();
-    ty::VariantDef {
+    ty::VariantDef::new(tcx,
         did,
         name,
         discr,
         fields,
-        ctor_kind: CtorKind::from_hir(def),
-    }
+        adt_kind,
+        CtorKind::from_hir(def))
 }
 
 fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::AdtDef {
@@ -621,7 +622,7 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
                         };
                         distance_from_explicit += 1;
 
-                        convert_struct_variant(tcx, did, v.node.name, discr, &v.node.data)
+                        convert_variant(tcx, did, v.node.name, discr, &v.node.data, AdtKind::Enum)
                     })
                     .collect(),
             )
@@ -635,23 +636,25 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
             };
             (
                 AdtKind::Struct,
-                vec![convert_struct_variant(
+                vec![convert_variant(
                     tcx,
                     ctor_id.unwrap_or(def_id),
                     item.name,
                     ty::VariantDiscr::Relative(0),
                     def,
+                    AdtKind::Struct
                 )],
             )
         }
         ItemKind::Union(ref def, _) => (
             AdtKind::Union,
-            vec![convert_struct_variant(
+            vec![convert_variant(
                 tcx,
                 def_id,
                 item.name,
                 ty::VariantDiscr::Relative(0),
                 def,
+                AdtKind::Union
             )],
         ),
         _ => bug!(),
@@ -1795,6 +1798,21 @@ fn explicit_predicates_of<'a, 'tcx>(
         match predicate {
             &hir::WherePredicate::BoundPredicate(ref bound_pred) => {
                 let ty = icx.to_ty(&bound_pred.bounded_ty);
+
+                // Keep the type around in a WF predicate, in case of no bounds.
+                // That way, `where Ty:` is not a complete noop (see #53696).
+                if bound_pred.bounds.is_empty() {
+                    if let ty::Param(_) = ty.sty {
+                        // This is a `where T:`, which can be in the HIR from the
+                        // transformation that moves `?Sized` to `T`'s declaration.
+                        // We can skip the predicate because type parameters are
+                        // trivially WF, but also we *should*, to avoid exposing
+                        // users who never wrote `where Type:,` themselves, to
+                        // compiler/tooling bugs from not handling WF predicates.
+                    } else {
+                        predicates.push(ty::Predicate::WellFormed(ty));
+                    }
+                }
 
                 for bound in bound_pred.bounds.iter() {
                     match bound {

@@ -686,7 +686,9 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
                         // visibility to within the crate.
                         let struct_def_id = self.tcx.hir.get_parent_did(node_id);
                         let adt_def = self.tcx.adt_def(struct_def_id);
-                        if adt_def.is_non_exhaustive() && ctor_vis == ty::Visibility::Public {
+                        if adt_def.non_enum_variant().is_field_list_non_exhaustive()
+                            && ctor_vis == ty::Visibility::Public
+                        {
                             ctor_vis = ty::Visibility::Restricted(
                                 DefId::local(CRATE_DEF_INDEX));
                         }

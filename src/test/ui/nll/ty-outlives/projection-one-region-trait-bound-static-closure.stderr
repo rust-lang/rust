@@ -10,6 +10,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T))
            ]
+   = note: late-bound region is '_#3r
 
 note: No external requirements
   --> $DIR/projection-one-region-trait-bound-static-closure.rs:42:1
