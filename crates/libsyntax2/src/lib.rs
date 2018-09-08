@@ -66,7 +66,9 @@ impl File {
     fn new(green: GreenNode, errors: Vec<SyntaxError>) -> File {
         let root = SyntaxRoot::new(green, errors);
         let root = SyntaxNode::new_owned(root);
-        validate_block_structure(root.borrowed());
+        if cfg!(debug_assertions) {
+            utils::validate_block_structure(root.borrowed());
+        }
         File { root }
     }
     pub fn parse(text: &str) -> File {
@@ -109,40 +111,6 @@ impl File {
     }
     pub fn errors(&self) -> Vec<SyntaxError> {
         self.syntax().root.syntax_root().errors.clone()
-    }
-}
-
-#[cfg(not(debug_assertions))]
-fn validate_block_structure(_: SyntaxNodeRef) {}
-
-#[cfg(debug_assertions)]
-fn validate_block_structure(root: SyntaxNodeRef) {
-    let mut stack = Vec::new();
-    for node in algo::walk::preorder(root) {
-        match node.kind() {
-            SyntaxKind::L_CURLY => {
-                stack.push(node)
-            }
-            SyntaxKind::R_CURLY => {
-                if let Some(pair) = stack.pop() {
-                    assert_eq!(
-                        node.parent(),
-                        pair.parent(),
-                        "\nunpaired curleys:\n{}\n{}\n",
-                        root.text(),
-                        utils::dump_tree(root),
-                    );
-                    assert!(
-                        node.next_sibling().is_none() && pair.prev_sibling().is_none(),
-                        "\nfloating curlys at {:?}\nfile:\n{}\nerror:\n{}\n",
-                        node,
-                        root.text(),
-                        node.text(),
-                    );
-                }
-            }
-            _ => (),
-        }
     }
 }
 

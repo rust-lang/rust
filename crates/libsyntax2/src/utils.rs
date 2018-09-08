@@ -1,7 +1,7 @@
 use std::fmt::Write;
 use {
-    algo::walk::{walk, WalkEvent},
-    SyntaxNodeRef, TreeRoot,
+    algo::walk::{preorder, walk, WalkEvent},
+    SyntaxKind, File, SyntaxNodeRef, TreeRoot,
 };
 
 /// Parse a file and create a string representation of the resulting parse tree.
@@ -44,4 +44,42 @@ pub fn dump_tree(syntax: SyntaxNodeRef) -> String {
     }
 
     return buf;
+}
+
+pub fn check_fuzz_invariants(text: &str) {
+    let file = File::parse(text);
+    let root = file.syntax();
+    validate_block_structure(root);
+    let _ = file.ast();
+    let _ = file.errors();
+}
+
+pub(crate) fn validate_block_structure(root: SyntaxNodeRef) {
+    let mut stack = Vec::new();
+    for node in preorder(root) {
+        match node.kind() {
+            SyntaxKind::L_CURLY => {
+                stack.push(node)
+            }
+            SyntaxKind::R_CURLY => {
+                if let Some(pair) = stack.pop() {
+                    assert_eq!(
+                        node.parent(),
+                        pair.parent(),
+                        "\nunpaired curleys:\n{}\n{}\n",
+                        root.text(),
+                        dump_tree(root),
+                    );
+                    assert!(
+                        node.next_sibling().is_none() && pair.prev_sibling().is_none(),
+                        "\nfloating curlys at {:?}\nfile:\n{}\nerror:\n{}\n",
+                        node,
+                        root.text(),
+                        node.text(),
+                    );
+                }
+            }
+            _ => (),
+        }
+    }
 }
