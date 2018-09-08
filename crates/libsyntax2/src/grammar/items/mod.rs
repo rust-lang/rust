@@ -355,7 +355,12 @@ pub(super) fn token_tree(p: &mut Parser) {
     while !p.at(EOF) && !p.at(closing_paren_kind) {
         match p.current() {
             L_CURLY | L_PAREN | L_BRACK => token_tree(p),
-            R_CURLY | R_PAREN | R_BRACK => p.err_and_bump("unmatched brace"),
+            R_CURLY => {
+                p.error("unmatched `}`");
+                m.complete(p, TOKEN_TREE);
+                return;
+            }
+            R_PAREN | R_BRACK => p.err_and_bump("unmatched brace"),
             _ => p.bump()
         }
     };
