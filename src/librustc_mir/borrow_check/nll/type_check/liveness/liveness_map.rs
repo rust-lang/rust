@@ -97,6 +97,6 @@ impl NllLivenessMap {
 /// compute liveness information. For many locals, we are able to
 /// skip liveness information: for example, those variables whose
 /// types contain no regions.
-newtype_index!(
-    LiveVar
-);
+newtype_index! {
+    pub struct LiveVar { .. }
+}

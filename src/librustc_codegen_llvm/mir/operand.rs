@@ -13,7 +13,6 @@ use rustc::mir;
 use rustc::mir::interpret::{ConstValue, ScalarMaybeUndef};
 use rustc::ty;
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
-use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::sync::Lrc;
 
 use base;

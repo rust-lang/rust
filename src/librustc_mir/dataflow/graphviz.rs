@@ -13,7 +13,6 @@
 use syntax::ast::NodeId;
 use rustc::mir::{BasicBlock, Mir};
 use rustc_data_structures::bitslice::bits_to_string;
-use rustc_data_structures::indexed_vec::Idx;
 
 use dot;
 use dot::IntoCow;

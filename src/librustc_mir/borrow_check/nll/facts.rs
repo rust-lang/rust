@@ -100,18 +100,6 @@ impl Atom for LocationIndex {
     }
 }
 
-impl From<usize> for LocationIndex {
-    fn from(i: usize) -> LocationIndex {
-        LocationIndex::new(i)
-    }
-}
-
-impl From<LocationIndex> for usize {
-    fn from(vid: LocationIndex) -> usize {
-        Idx::index(vid)
-    }
-}
-
 struct FactWriter<'w> {
     location_table: &'w LocationTable,
     dir: &'w Path,

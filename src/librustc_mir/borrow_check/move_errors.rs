@@ -12,7 +12,6 @@ use core::unicode::property::Pattern_White_Space;
 use rustc::mir::*;
 use rustc::ty;
 use rustc_errors::DiagnosticBuilder;
-use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
 
 use borrow_check::MirBorrowckCtxt;

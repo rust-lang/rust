@@ -27,7 +27,11 @@ crate struct LocationTable {
     statements_before_block: IndexVec<BasicBlock, usize>,
 }
 
-newtype_index!(LocationIndex { DEBUG_FORMAT = "LocationIndex({})" });
+newtype_index! {
+    pub struct LocationIndex {
+        DEBUG_FORMAT = "LocationIndex({})"
+    }
+}
 
 #[derive(Copy, Clone, Debug)]
 crate enum RichLocation {

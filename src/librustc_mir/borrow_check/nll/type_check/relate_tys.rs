@@ -20,7 +20,7 @@ use rustc::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc::ty::subst::Kind;
 use rustc::ty::{self, CanonicalTy, CanonicalVar, RegionVid, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_data_structures::indexed_vec::IndexVec;
 use std::mem;
 
 pub(super) fn sub_types<'tcx>(

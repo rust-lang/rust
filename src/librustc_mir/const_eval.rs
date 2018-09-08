@@ -19,7 +19,7 @@ use rustc::mir;
 use rustc::ty::{self, TyCtxt, Instance, query::TyCtxtAt};
 use rustc::ty::layout::{LayoutOf, TyLayout};
 use rustc::ty::subst::Subst;
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_data_structures::indexed_vec::IndexVec;
 
 use syntax::ast::Mutability;
 use syntax::source_map::Span;

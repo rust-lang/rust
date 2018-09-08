@@ -143,7 +143,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionVid {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        use rustc_data_structures::indexed_vec::Idx;
         self.index().hash_stable(hcx, hasher);
     }
 }
@@ -153,7 +152,6 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::CanonicalVar {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
-        use rustc_data_structures::indexed_vec::Idx;
         self.index().hash_stable(hcx, hasher);
     }
 }
@@ -774,7 +772,6 @@ impl_stable_hash_for!(enum ty::cast::CastKind {
     FnPtrAddrCast
 });
 
-impl_stable_hash_for!(tuple_struct ::middle::region::FirstStatementIndex { idx });
 impl_stable_hash_for!(struct ::middle::region::Scope { id, code });
 
 impl<'a> ToStableHashKey<StableHashingContext<'a>> for region::Scope {

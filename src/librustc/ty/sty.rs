@@ -1034,11 +1034,12 @@ impl<'a, 'gcx, 'tcx> ParamTy {
 /// is the outer fn.
 ///
 /// [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
-newtype_index!(DebruijnIndex
-    {
+newtype_index! {
+    pub struct DebruijnIndex {
         DEBUG_FORMAT = "DebruijnIndex({})",
         const INNERMOST = 0,
-    });
+    }
+}
 
 pub type Region<'tcx> = &'tcx RegionKind;
 
@@ -1176,27 +1177,15 @@ pub struct FloatVid {
     pub index: u32,
 }
 
-newtype_index!(RegionVid
-    {
-        pub idx
+newtype_index! {
+    pub struct RegionVid {
         DEBUG_FORMAT = custom,
-    });
+    }
+}
 
 impl Atom for RegionVid {
     fn index(self) -> usize {
         Idx::index(self)
-    }
-}
-
-impl From<usize> for RegionVid {
-    fn from(i: usize) -> RegionVid {
-        RegionVid::new(i)
-    }
-}
-
-impl From<RegionVid> for usize {
-    fn from(vid: RegionVid) -> usize {
-        Idx::index(vid)
     }
 }
 
@@ -1217,7 +1206,9 @@ pub enum InferTy {
     CanonicalTy(CanonicalVar),
 }
 
-newtype_index!(CanonicalVar);
+newtype_index! {
+    pub struct CanonicalVar { .. }
+}
 
 /// A `ProjectionPredicate` for an `ExistentialTraitRef`.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
@@ -1282,8 +1273,8 @@ impl DebruijnIndex {
     ///
     /// you would need to shift the index for `'a` into 1 new binder.
     #[must_use]
-    pub const fn shifted_in(self, amount: u32) -> DebruijnIndex {
-        DebruijnIndex(self.0 + amount)
+    pub fn shifted_in(self, amount: u32) -> DebruijnIndex {
+        DebruijnIndex::from_u32(self.as_u32() + amount)
     }
 
     /// Update this index in place by shifting it "in" through
@@ -1295,8 +1286,8 @@ impl DebruijnIndex {
     /// Returns the resulting index when this value is moved out from
     /// `amount` number of new binders.
     #[must_use]
-    pub const fn shifted_out(self, amount: u32) -> DebruijnIndex {
-        DebruijnIndex(self.0 - amount)
+    pub fn shifted_out(self, amount: u32) -> DebruijnIndex {
+        DebruijnIndex::from_u32(self.as_u32() - amount)
     }
 
     /// Update in place by shifting out from `amount` binders.
@@ -1325,11 +1316,11 @@ impl DebruijnIndex {
     /// bound by one of the binders we are shifting out of, that is an
     /// error (and should fail an assertion failure).
     pub fn shifted_out_to_binder(self, to_binder: DebruijnIndex) -> Self {
-        self.shifted_out((to_binder.0 - INNERMOST.0) as u32)
+        self.shifted_out(to_binder.as_u32() - INNERMOST.as_u32())
     }
 }
 
-impl_stable_hash_for!(tuple_struct DebruijnIndex { index });
+impl_stable_hash_for!(struct DebruijnIndex { private });
 
 /// Region utilities
 impl RegionKind {
