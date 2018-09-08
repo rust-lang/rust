@@ -236,9 +236,13 @@ impl<'tcx> CValue<'tcx> {
                         }
                         _ => bug!("unsize non array {:?} to slice", ty),
                     },
-                    ty::Dynamic(_, _) => match ty.sty {
+                    ty::Dynamic(data, _) => match ty.sty {
                         ty::Dynamic(_, _) => self.load_value_pair(fx),
-                        _ => unimpl!("unsize of type ... to {:?}", dest.layout().ty),
+                        _ => {
+                            let ptr = self.load_value(fx);
+                            let vtable = crate::vtable::get_vtable(fx, ty, data.principal());
+                            (ptr, vtable)
+                        }
                     },
                     _ => bug!(
                         "unsize of type {:?} to {:?}",
@@ -556,7 +560,7 @@ pub struct FunctionCx<'a, 'tcx: 'a, B: Backend + 'a> {
     pub local_map: HashMap<Local, CPlace<'tcx>>,
     pub comments: HashMap<Inst, String>,
     pub constants: &'a mut crate::constant::ConstantCx,
-    pub caches: &'a mut Caches,
+    pub caches: &'a mut Caches<'tcx>,
 
     /// add_global_comment inserts a comment here
     pub top_nop: Option<Inst>,

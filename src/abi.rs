@@ -50,6 +50,18 @@ fn get_pass_mode<'a, 'tcx: 'a>(
     }
 }
 
+fn adjust_arg_for_abi<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+    sig: FnSig<'tcx>,
+    arg: CValue<'tcx>,
+) -> Value {
+    match get_pass_mode(fx.tcx, sig.abi, arg.layout().ty, false) {
+        PassMode::NoPass => unimplemented!("pass mode nopass"),
+        PassMode::ByVal(_) => arg.load_value(fx),
+        PassMode::ByRef => arg.force_stack(fx),
+    }
+}
+
 pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     fn_ty: Ty<'tcx>,
@@ -164,12 +176,16 @@ pub fn get_function_name_and_sig<'a, 'tcx>(
 
 impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
     /// Instance must be monomorphized
-    pub fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
+    pub fn get_function_id(&mut self, inst: Instance<'tcx>) -> FuncId {
         let (name, sig) = get_function_name_and_sig(self.tcx, inst);
-        let func_id = self
-            .module
+        self.module
             .declare_function(&name, Linkage::Import, &sig)
-            .unwrap();
+            .unwrap()
+    }
+
+    /// Instance must be monomorphized
+    pub fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
+        let func_id = self.get_function_id(inst);
         self.module
             .declare_func_in_func(func_id, &mut self.bcx.func)
     }
@@ -468,29 +484,51 @@ pub fn codegen_call<'a, 'tcx: 'a>(
         PassMode::ByVal(_) => None,
     };
 
+    let instance = match fn_ty.sty {
+        ty::FnDef(def_id, substs) => {
+            Some(Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs).unwrap())
+        }
+        _ => None,
+    };
+
+    let func_ref: Option<Value>; // Indirect call target
+
+    let first_arg = {
+        if let Some(Instance {
+            def: InstanceDef::Virtual(_, idx),
+            ..
+        }) = instance
+        {
+            let (ptr, method) = crate::vtable::get_ptr_and_method_ref(fx, args[0], idx);
+            func_ref = Some(method);
+            Some(ptr)
+        } else {
+            func_ref = if instance.is_none() {
+                let func = trans_operand(fx, func);
+                Some(func.load_value(fx))
+            } else {
+                None
+            };
+
+            args.get(0).map(|arg| adjust_arg_for_abi(fx, sig, *arg))
+        }.into_iter()
+    };
+
     let call_args: Vec<Value> = return_ptr
         .into_iter()
-        .chain(args.into_iter().map(|arg| {
-            match get_pass_mode(fx.tcx, sig.abi, arg.layout().ty, false) {
-                PassMode::NoPass => unimplemented!("pass mode nopass"),
-                PassMode::ByVal(_) => arg.load_value(fx),
-                PassMode::ByRef => arg.force_stack(fx),
-            }
-        })).collect::<Vec<_>>();
+        .chain(first_arg)
+        .chain(
+            args.into_iter()
+                .skip(1)
+                .map(|arg| adjust_arg_for_abi(fx, sig, arg)),
+        ).collect::<Vec<_>>();
 
-    let call_inst = match fn_ty.sty {
-        ty::FnDef(def_id, substs) => {
-            let inst = Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs).unwrap();
-            let func_ref = fx.get_function_ref(inst);
-            fx.bcx.ins().call(func_ref, &call_args)
-        }
-        ty::FnPtr(_) => {
-            let func = trans_operand(fx, func);
-            let func = func.load_value(fx);
-            let sig = fx.bcx.import_signature(cton_sig_from_fn_ty(fx.tcx, fn_ty));
-            fx.bcx.ins().call_indirect(sig, func, &call_args)
-        }
-        _ => bug!("{:?}", fn_ty),
+    let sig = fx.bcx.import_signature(cton_sig_from_fn_ty(fx.tcx, fn_ty));
+    let call_inst = if let Some(func_ref) = func_ref {
+        fx.bcx.ins().call_indirect(sig, func_ref, &call_args)
+    } else {
+        let func_ref = fx.get_function_ref(instance.expect("non-indirect call on non-FnDef type"));
+        fx.bcx.ins().call(func_ref, &call_args)
     };
 
     match output_pass_mode {
@@ -610,6 +648,7 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                             let elem_size = fx.layout_of(elem).size.bytes();
                             fx.bcx.ins().imul_imm(len, elem_size as i64)
                         }
+                        ty::Dynamic(..) => crate::vtable::size_of_obj(fx, args[0]),
                         ty => unimplemented!("size_of_val for {:?}", ty),
                     };
                     ret.write_cvalue(fx, CValue::ByVal(size, usize_layout));

@@ -12,7 +12,7 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 pub fn trans_mono_item<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     module: &mut Module<impl Backend>,
-    caches: &mut Caches,
+    caches: &mut Caches<'tcx>,
     ccx: &mut crate::constant::ConstantCx,
     mono_item: MonoItem<'tcx>,
 ) {
@@ -59,7 +59,7 @@ fn trans_fn<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     module: &mut Module<impl Backend>,
     constants: &mut crate::constant::ConstantCx,
-    caches: &mut Caches,
+    caches: &mut Caches<'tcx>,
     instance: Instance<'tcx>,
 ) {
     // Step 1. Get mir

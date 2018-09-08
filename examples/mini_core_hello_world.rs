@@ -31,6 +31,18 @@ impl Termination for () {
     }
 }
 
+trait SomeTrait {
+    fn object_safe(&self);
+}
+
+impl SomeTrait for &'static str {
+    fn object_safe(&self) {
+        unsafe {
+            puts(*self as *const str as *const u8);
+        }
+    }
+}
+
 #[lang = "start"]
 fn start<T: Termination + 'static>(
     main: fn() -> T,
@@ -45,15 +57,28 @@ static NUM_REF: &'static u8 = unsafe { &NUM };
 
 fn main() {
     unsafe {
-        let slice: &[u8] = b"Hello\0" as &[u8; 6];
-        if intrinsics::size_of_val(slice) as u8 != 6 {
-            panic(&("eji", "frjio", 0, 0));
-        };
-        let ptr: *const u8 = slice as *const [u8] as *const u8;
-        let world = box "World!\0";
+        let hello: &[u8] = b"Hello\0" as &[u8; 6];
+        let ptr: *const u8 = hello as *const [u8] as *const u8;
         puts(ptr);
-        puts(*world as *const str as *const u8);
-    }
 
-    //panic(&("panic msg", "abc.rs", 0, 43));
+        let world = box "World!\0";
+        puts(*world as *const str as *const u8);
+
+        if intrinsics::size_of_val(hello) as u8 != 6 {
+            panic(&("", "", 0, 0));
+        };
+
+        let chars = &['C', 'h', 'a', 'r', 's'];
+        let chars = chars as &[char];
+        if intrinsics::size_of_val(chars) as u8 != 4 * 5 {
+            panic(&("", "", 0, 0));
+        }
+
+        let a: &dyn SomeTrait = &"abc\0";
+        a.object_safe();
+
+        if intrinsics::size_of_val(a) as u8 != 16 {
+            panic(&("", "", 0, 0));
+        }
+    }
 }

@@ -1,6 +1,7 @@
 #![feature(rustc_private, macro_at_most_once_rep)]
 #![allow(intra_doc_link_resolution_failure)]
 
+extern crate byteorder;
 extern crate syntax;
 #[macro_use]
 extern crate rustc;
@@ -53,6 +54,7 @@ mod common;
 mod constant;
 mod metadata;
 mod pretty_clif;
+mod vtable;
 
 mod prelude {
     pub use std::any::Any;
@@ -100,14 +102,16 @@ mod prelude {
 use crate::constant::ConstantCx;
 use crate::prelude::*;
 
-pub struct Caches {
+pub struct Caches<'tcx> {
     pub context: Context,
+    pub vtables: HashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
 }
 
-impl Caches {
+impl<'tcx> Caches<'tcx> {
     fn new() -> Self {
         Caches {
             context: Context::new(),
+            vtables: HashMap::new(),
         }
     }
 }

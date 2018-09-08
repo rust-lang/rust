@@ -24,6 +24,7 @@ target-lexicon = "0.0.3"
 faerie = "0.5.0"
 ar = "0.6.0"
 bitflags = "1.0.3"
+byteorder = "1.2.6"
 
 # Uncomment to use local checkout of cranelift
 #[patch."https://github.com/CraneStation/cranelift.git"]
