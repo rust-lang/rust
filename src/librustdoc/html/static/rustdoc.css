@@ -114,7 +114,7 @@ h3.impl, h3.method, h3.type {
 
 h1, h2, h3, h4,
 .sidebar, a.source, .search-input, .content table :not(code)>a,
-.collapse-toggle, ul.item-list > li > .out-of-band {
+.collapse-toggle, div.item-list .out-of-band {
 	font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
@@ -367,10 +367,6 @@ h4.method > .out-of-band {
 	font-size: 19px;
 }
 
-ul.item-list > li > .out-of-band {
-	font-size: 19px;
-}
-
 h4 > code, h3 > code, .invisible > code {
 	max-width: calc(100% - 41px);
 	display: block;
@@ -436,10 +432,6 @@ h4 > code, h3 > code, .invisible > code {
 	padding: 0;
 }
 
-.content .item-list li {
-	margin-bottom: 1em;
-}
-
 .content .multi-column {
 	-moz-column-count: 5;
 	-moz-column-gap: 2.5em;
@@ -473,6 +465,11 @@ h4 > code, h3 > code, .invisible > code {
 .content .impl-items .docblock, .content .impl-items .stability {
 	margin-bottom: .6em;
 }
+
+.content .impl-items > .stability {
+	margin-left: 40px;
+}
+
 .content .docblock > .impl-items {
 	margin-left: 20px;
 	margin-top: -34px;
@@ -1362,6 +1359,15 @@ kbd {
 	position: relative;
 	font-size: 19px;
 	display: block;
+}
+#implementors-list > .impl-items .table-display .out-of-band {
+	font-size: 17px;
+}
+
+.table-display td:hover .anchor {
+	display: block;
+	top: 2px;
+	left: -5px;
 }
 
 #main > ul {

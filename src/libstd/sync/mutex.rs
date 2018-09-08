@@ -386,8 +386,6 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Mutex<T> {
 impl<T> From<T> for Mutex<T> {
     /// Creates a new mutex in an unlocked state ready for use.
     /// This is equivalent to [`Mutex::new`].
-    ///
-    /// [`Mutex::new`]: #method.new
     fn from(t: T) -> Self {
         Mutex::new(t)
     }

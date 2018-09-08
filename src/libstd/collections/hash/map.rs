@@ -2655,9 +2655,8 @@ impl DefaultHasher {
 
 #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
 impl Default for DefaultHasher {
-    /// Creates a new `DefaultHasher` using [`new`]. See its documentation for more.
-    ///
-    /// [`new`]: #method.new
+    /// Creates a new `DefaultHasher` using [`new`][DefaultHasher::new].
+    /// See its documentation for more.
     fn default() -> DefaultHasher {
         DefaultHasher::new()
     }

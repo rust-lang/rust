@@ -1006,9 +1006,7 @@ fn expect_failed(msg: &str) -> ! {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for Option<T> {
-    /// Returns [`None`].
-    ///
-    /// [`None`]: #variant.None
+    /// Returns [`None`][Option::None].
     #[inline]
     fn default() -> Option<T> { None }
 }
@@ -1228,9 +1226,10 @@ unsafe impl<A> TrustedLen for IntoIter<A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
-    /// Takes each element in the [`Iterator`]: if it is [`None`], no further
-    /// elements are taken, and the [`None`] is returned. Should no [`None`] occur, a
-    /// container with the values of each `Option` is returned.
+    /// Takes each element in the [`Iterator`]: if it is [`None`][Option::None],
+    /// no further elements are taken, and the [`None`][Option::None] is
+    /// returned. Should no [`None`][Option::None] occur, a container with the
+    /// values of each [`Option`] is returned.
     ///
     /// Here is an example which increments every integer in a vector,
     /// checking for overflow:
@@ -1247,7 +1246,6 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// ```
     ///
     /// [`Iterator`]: ../iter/trait.Iterator.html
-    /// [`None`]: enum.Option.html#variant.None
     #[inline]
     fn from_iter<I: IntoIterator<Item=Option<A>>>(iter: I) -> Option<V> {
         // FIXME(#11084): This could be replaced with Iterator::scan when this

@@ -1791,9 +1791,12 @@
                         x[k].setAttribute('href', rootPath + href);
                     }
                 }
-                var li = document.createElement('li');
-                li.appendChild(code);
-                list.appendChild(li);
+                var display = document.createElement('h3');
+                addClass(display, "impl");
+                display.innerHTML = '<span class="in-band"><table class="table-display"><tbody>\
+                    <tr><td><code>' + code.outerHTML + '</code></td><td></td></tr></tbody></table>\
+                    </span>';
+                list.appendChild(display);
             }
         }
     };
