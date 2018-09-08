@@ -2536,7 +2536,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
                                             visit::walk_impl_item(this, impl_item);
                                         }
-                                        ImplItemKind::Type(ref ty) => {
+                                        ImplItemKind::Type(..) => {
                                             // If this is a trait impl, ensure the type
                                             // exists in trait
                                             this.check_trait_item(impl_item.ident,
@@ -2544,7 +2544,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                                                   impl_item.span,
                                                 |n, s| TypeNotMemberOfTrait(n, s));
 
-                                            this.visit_ty(ty);
+                                            visit::walk_impl_item(this, impl_item);
                                         }
                                         ImplItemKind::Existential(ref bounds) => {
                                             // If this is a trait impl, ensure the type
