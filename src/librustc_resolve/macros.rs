@@ -118,11 +118,21 @@ pub struct ProcMacError {
     warn_msg: &'static str,
 }
 
-// For compatibility bang macros are skipped when resolving potentially built-in attributes.
-fn macro_kind_mismatch(name: Name, requirement: Option<MacroKind>, candidate: Option<MacroKind>)
-                       -> bool {
-    requirement == Some(MacroKind::Attr) && candidate == Some(MacroKind::Bang) &&
-    (name == "test" || name == "bench" || is_builtin_attr_name(name))
+// Macro namespace is separated into two sub-namespaces, one for bang macros and
+// one for attribute-like macros (attributes, derives).
+// We ignore resolutions from one sub-namespace when searching names in scope for another.
+fn sub_namespace_mismatch(requirement: Option<MacroKind>, candidate: Option<MacroKind>) -> bool {
+    #[derive(PartialEq)]
+    enum SubNS { Bang, AttrLike }
+    let sub_ns = |kind| match kind {
+        MacroKind::Bang => Some(SubNS::Bang),
+        MacroKind::Attr | MacroKind::Derive => Some(SubNS::AttrLike),
+        MacroKind::ProcMacroStub => None,
+    };
+    let requirement = requirement.and_then(|kind| sub_ns(kind));
+    let candidate = candidate.and_then(|kind| sub_ns(kind));
+    // "No specific sub-namespace" means "matches anything" for both requirements and candidates.
+    candidate.is_some() && requirement.is_some() && candidate != requirement
 }
 
 impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
@@ -641,10 +651,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     }
                 }
                 WhereToResolve::BuiltinAttrs => {
-                    // FIXME: Only built-in attributes are not considered as candidates for
-                    // non-attributes to fight off regressions on stable channel (#53205).
-                    // We need to come up with some more principled approach instead.
-                    if kind == Some(MacroKind::Attr) && is_builtin_attr_name(ident.name) {
+                    if is_builtin_attr_name(ident.name) {
                         let binding = (Def::NonMacroAttr(NonMacroAttrKind::Builtin),
                                        ty::Visibility::Public, ident.span, Mark::root())
                                        .to_name_binding(self.arenas);
@@ -765,7 +772,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
             match result {
                 Ok(result) => {
-                    if macro_kind_mismatch(ident.name, kind, result.0.macro_kind()) {
+                    if sub_namespace_mismatch(kind, result.0.macro_kind()) {
                         continue_search!();
                     }
 
@@ -829,7 +836,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         parent_scope: &ParentScope<'a>,
         record_used: bool,
     ) -> Option<&'a NameBinding<'a>> {
-        if macro_kind_mismatch(ident.name, kind, Some(MacroKind::Bang)) {
+        if sub_namespace_mismatch(kind, Some(MacroKind::Bang)) {
             return None;
         }
 

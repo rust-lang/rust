@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    concat!(test!()); //~ ERROR `test` can only be used in attributes
+    concat!(test!()); //~ ERROR cannot find macro `test!` in this scope
 }
