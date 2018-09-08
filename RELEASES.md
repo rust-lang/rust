@@ -370,6 +370,8 @@ Compatibility Notes
 - [The maximum number for `repr(align(N))` is now 2²⁹.][50378] Previously you
   could enter higher numbers but they were not supported by LLVM. Up to 512MB
   alignment should cover all use cases.
+- The `.description()` method on the `std::error::Error` trait
+  [has been soft-deprecated][50163]. It is no longer required to implement it.
 
 [48553]: https://github.com/rust-lang/rust/pull/48553/
 [48851]: https://github.com/rust-lang/rust/pull/48851/
@@ -383,6 +385,7 @@ Compatibility Notes
 [49719]: https://github.com/rust-lang/rust/pull/49719/
 [49896]: https://github.com/rust-lang/rust/pull/49896/
 [49968]: https://github.com/rust-lang/rust/pull/49968/
+[50163]: https://github.com/rust-lang/rust/pull/50163
 [50177]: https://github.com/rust-lang/rust/pull/50177/
 [50378]: https://github.com/rust-lang/rust/pull/50378/
 [50398]: https://github.com/rust-lang/rust/pull/50398/
