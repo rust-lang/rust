@@ -17,8 +17,6 @@ use ty::{Region, RegionVid};
 use std::collections::BTreeMap;
 use std::{cmp, fmt, mem, u32};
 
-mod taint;
-
 #[derive(Default)]
 pub struct RegionConstraintCollector<'tcx> {
     /// For each `RegionVid`, the corresponding `RegionVariableOrigin`.
@@ -824,35 +822,6 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
                 _ => None,
             })
             .collect()
-    }
-
-    /// Computes all regions that have been related to `r0` since the
-    /// mark `mark` was made---`r0` itself will be the first
-    /// entry. The `directions` parameter controls what kind of
-    /// relations are considered. For example, one can say that only
-    /// "incoming" edges to `r0` are desired, in which case one will
-    /// get the set of regions `{r|r <= r0}`. This is used when
-    /// checking whether placeholder regions are being improperly
-    /// related to other regions.
-    pub fn tainted(
-        &self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
-        mark: &RegionSnapshot,
-        r0: Region<'tcx>,
-        directions: TaintDirections,
-    ) -> FxHashSet<ty::Region<'tcx>> {
-        debug!(
-            "tainted(mark={:?}, r0={:?}, directions={:?})",
-            mark, r0, directions
-        );
-
-        // `result_set` acts as a worklist: we explore all outgoing
-        // edges and add any new regions we find to result_set.  This
-        // is not a terribly efficient implementation.
-        let mut taint_set = taint::TaintSet::new(directions, r0);
-        taint_set.fixed_point(tcx, &self.undo_log[mark.length..], &self.data.verifys);
-        debug!("tainted: result={:?}", taint_set);
-        return taint_set.into_set();
     }
 
     pub fn region_constraints_added_in_snapshot(&self, mark: &RegionSnapshot) -> bool {

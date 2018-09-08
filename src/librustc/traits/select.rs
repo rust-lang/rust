@@ -29,7 +29,7 @@ use super::{
 
 use dep_graph::{DepKind, DepNodeIndex};
 use hir::def_id::DefId;
-use infer::{self, InferCtxt, InferOk, TypeFreshener};
+use infer::{InferCtxt, InferOk, TypeFreshener};
 use middle::lang_items;
 use mir::interpret::GlobalId;
 use ty::fast_reject;
@@ -44,7 +44,6 @@ use rustc_target::spec::abi::Abi;
 use std::cmp;
 use std::fmt;
 use std::iter;
-use std::mem;
 use std::rc::Rc;
 use util::nodemap::{FxHashMap, FxHashSet};
 
@@ -1633,8 +1632,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             _ => return,
         }
 
-        let result = self.infcx.probe(|snapshot| {
-            self.match_projection_obligation_against_definition_bounds(obligation, snapshot)
+        let result = self.infcx.probe(|_| {
+            self.match_projection_obligation_against_definition_bounds(obligation)
         });
 
         if result {
@@ -1645,16 +1644,15 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn match_projection_obligation_against_definition_bounds(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-        snapshot: &infer::CombinedSnapshot<'cx, 'tcx>,
     ) -> bool {
         let poly_trait_predicate = self.infcx()
             .resolve_type_vars_if_possible(&obligation.predicate);
-        let (skol_trait_predicate, placeholder_map) = self.infcx()
+        let (skol_trait_predicate, _) = self.infcx()
             .replace_bound_vars_with_placeholders(&poly_trait_predicate);
         debug!(
             "match_projection_obligation_against_definition_bounds: \
-             skol_trait_predicate={:?} placeholder_map={:?}",
-            skol_trait_predicate, placeholder_map
+             skol_trait_predicate={:?}",
+            skol_trait_predicate,
         );
 
         let (def_id, substs) = match skol_trait_predicate.trait_ref.self_ty().sty {
@@ -1691,8 +1689,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         obligation,
                         bound.clone(),
                         skol_trait_predicate.trait_ref.clone(),
-                        &placeholder_map,
-                        snapshot,
                     )
                 })
             });
@@ -1710,11 +1706,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     obligation,
                     bound,
                     skol_trait_predicate.trait_ref.clone(),
-                    &placeholder_map,
-                    snapshot,
                 );
-
-                self.infcx.pop_placeholders(placeholder_map, snapshot);
 
                 assert!(result);
                 true
@@ -1727,20 +1719,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         trait_bound: ty::PolyTraitRef<'tcx>,
         skol_trait_ref: ty::TraitRef<'tcx>,
-        placeholder_map: &infer::PlaceholderMap<'tcx>,
-        snapshot: &infer::CombinedSnapshot<'cx, 'tcx>,
     ) -> bool {
         debug_assert!(!skol_trait_ref.has_escaping_bound_vars());
-        if self.infcx
+        self.infcx
             .at(&obligation.cause, obligation.param_env)
             .sup(ty::Binder::dummy(skol_trait_ref), trait_bound)
-            .is_err()
-        {
-            return false;
-        }
-
-        self.infcx
-            .leak_check(false, obligation.cause.span, placeholder_map, snapshot)
             .is_ok()
     }
 
@@ -1942,14 +1925,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             obligation.predicate.def_id(),
             obligation.predicate.skip_binder().trait_ref.self_ty(),
             |impl_def_id| {
-                self.infcx.probe(|snapshot| {
-                    if let Ok(placeholder_map) = self.match_impl(impl_def_id, obligation, snapshot)
+                self.infcx.probe(|_| {
+                    if let Ok(_substs) = self.match_impl(impl_def_id, obligation)
                     {
                         candidates.vec.push(ImplCandidate(impl_def_id));
-
-                        // N.B., we can safely drop the placeholder map
-                        // since we are in a probe.
-                        mem::drop(placeholder_map);
                     }
                 });
             },
@@ -2607,8 +2586,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 // binder moved -\
                 let ty: ty::Binder<Ty<'tcx>> = ty::Binder::bind(ty); // <----/
 
-                self.infcx.in_snapshot(|snapshot| {
-                    let (skol_ty, placeholder_map) = self.infcx
+                self.infcx.in_snapshot(|_| {
+                    let (skol_ty, _) = self.infcx
                         .replace_bound_vars_with_placeholders(&ty);
                     let Normalized {
                         value: normalized_ty,
@@ -2629,8 +2608,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         &[],
                     );
                     obligations.push(skol_obligation);
-                    self.infcx
-                        .plug_leaks(placeholder_map, snapshot, obligations)
+                    obligations
                 })
             })
             .collect()
@@ -2721,9 +2699,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     }
 
     fn confirm_projection_candidate(&mut self, obligation: &TraitObligation<'tcx>) {
-        self.infcx.in_snapshot(|snapshot| {
+        self.infcx.in_snapshot(|_| {
             let result =
-                self.match_projection_obligation_against_definition_bounds(obligation, snapshot);
+                self.match_projection_obligation_against_definition_bounds(obligation);
             assert!(result);
         })
     }
@@ -2840,9 +2818,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             nested,
         );
 
-        let trait_obligations: Vec<PredicateObligation<'_>> = self.infcx.in_snapshot(|snapshot| {
+        let trait_obligations: Vec<PredicateObligation<'_>> = self.infcx.in_snapshot(|_| {
             let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
-            let (trait_ref, placeholder_map) = self.infcx
+            let (trait_ref, _) = self.infcx
                 .replace_bound_vars_with_placeholders(&poly_trait_ref);
             let cause = obligation.derived_cause(ImplDerivedObligation);
             self.impl_or_trait_obligations(
@@ -2851,8 +2829,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 obligation.param_env,
                 trait_def_id,
                 &trait_ref.substs,
-                placeholder_map,
-                snapshot,
             )
         });
 
@@ -2877,8 +2853,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         // First, create the substitutions by matching the impl again,
         // this time not in a probe.
-        self.infcx.in_snapshot(|snapshot| {
-            let (substs, placeholder_map) = self.rematch_impl(impl_def_id, obligation, snapshot);
+        self.infcx.in_snapshot(|_| {
+            let substs = self.rematch_impl(impl_def_id, obligation);
             debug!("confirm_impl_candidate: substs={:?}", substs);
             let cause = obligation.derived_cause(ImplDerivedObligation);
             self.vtable_impl(
@@ -2887,8 +2863,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 cause,
                 obligation.recursion_depth + 1,
                 obligation.param_env,
-                placeholder_map,
-                snapshot,
             )
         })
     }
@@ -2900,12 +2874,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         cause: ObligationCause<'tcx>,
         recursion_depth: usize,
         param_env: ty::ParamEnv<'tcx>,
-        placeholder_map: infer::PlaceholderMap<'tcx>,
-        snapshot: &infer::CombinedSnapshot<'cx, 'tcx>,
     ) -> VtableImplData<'tcx, PredicateObligation<'tcx>> {
         debug!(
-            "vtable_impl(impl_def_id={:?}, substs={:?}, recursion_depth={}, placeholder_map={:?})",
-            impl_def_id, substs, recursion_depth, placeholder_map
+            "vtable_impl(impl_def_id={:?}, substs={:?}, recursion_depth={})",
+            impl_def_id, substs, recursion_depth,
         );
 
         let mut impl_obligations = self.impl_or_trait_obligations(
@@ -2914,8 +2886,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             param_env,
             impl_def_id,
             &substs.value,
-            placeholder_map,
-            snapshot,
         );
 
         debug!(
@@ -3044,8 +3014,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             obligation, alias_def_id
         );
 
-        self.infcx.in_snapshot(|snapshot| {
-            let (predicate, placeholder_map) = self.infcx
+        self.infcx.in_snapshot(|_| {
+            let (predicate, _) = self.infcx()
                 .replace_bound_vars_with_placeholders(&obligation.predicate);
             let trait_ref = predicate.trait_ref;
             let trait_def_id = trait_ref.def_id;
@@ -3057,8 +3027,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 obligation.param_env,
                 trait_def_id,
                 &substs,
-                placeholder_map,
-                snapshot,
             );
 
             debug!(
@@ -3473,13 +3441,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         &mut self,
         impl_def_id: DefId,
         obligation: &TraitObligation<'tcx>,
-        snapshot: &infer::CombinedSnapshot<'cx, 'tcx>,
-    ) -> (
-        Normalized<'tcx, &'tcx Substs<'tcx>>,
-        infer::PlaceholderMap<'tcx>,
-    ) {
-        match self.match_impl(impl_def_id, obligation, snapshot) {
-            Ok((substs, placeholder_map)) => (substs, placeholder_map),
+    ) -> Normalized<'tcx, &'tcx Substs<'tcx>> {
+        match self.match_impl(impl_def_id, obligation) {
+            Ok(substs) => substs,
             Err(()) => {
                 bug!(
                     "Impl {:?} was matchable against {:?} but now is not",
@@ -3494,14 +3458,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         &mut self,
         impl_def_id: DefId,
         obligation: &TraitObligation<'tcx>,
-        snapshot: &infer::CombinedSnapshot<'cx, 'tcx>,
-    ) -> Result<
-        (
-            Normalized<'tcx, &'tcx Substs<'tcx>>,
-            infer::PlaceholderMap<'tcx>,
-        ),
-        (),
-    > {
+    ) -> Result<Normalized<'tcx, &'tcx Substs<'tcx>>, ()> {
         let impl_trait_ref = self.tcx().impl_trait_ref(impl_def_id).unwrap();
 
         // Before we create the substitutions and everything, first
@@ -3511,7 +3468,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             return Err(());
         }
 
-        let (skol_obligation, placeholder_map) = self.infcx()
+        let (skol_obligation, _) = self.infcx()
             .replace_bound_vars_with_placeholders(&obligation.predicate);
         let skol_obligation_trait_ref = skol_obligation.trait_ref;
 
@@ -3543,22 +3500,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             .map_err(|e| debug!("match_impl: failed eq_trait_refs due to `{}`", e))?;
         nested_obligations.extend(obligations);
 
-        if let Err(e) =
-            self.infcx
-                .leak_check(false, obligation.cause.span, &placeholder_map, snapshot)
-        {
-            debug!("match_impl: failed leak check due to `{}`", e);
-            return Err(());
-        }
-
         debug!("match_impl: success impl_substs={:?}", impl_substs);
-        Ok((
-            Normalized {
-                value: impl_substs,
-                obligations: nested_obligations,
-            },
-            placeholder_map,
-        ))
+        Ok(Normalized {
+            value: impl_substs,
+            obligations: nested_obligations,
+        })
     }
 
     fn fast_reject_trait_refs(
@@ -3714,8 +3660,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,         // of impl or trait
         substs: &Substs<'tcx>, // for impl or trait
-        placeholder_map: infer::PlaceholderMap<'tcx>,
-        snapshot: &infer::CombinedSnapshot<'cx, 'tcx>,
     ) -> Vec<PredicateObligation<'tcx>> {
         debug!("impl_or_trait_obligations(def_id={:?})", def_id);
         let tcx = self.tcx();
@@ -3777,8 +3721,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             let mut seen = FxHashSet::default();
             predicates.retain(|i| seen.insert(i.clone()));
         }
-        self.infcx()
-            .plug_leaks(placeholder_map, snapshot, predicates)
+
+        predicates
     }
 }
 
