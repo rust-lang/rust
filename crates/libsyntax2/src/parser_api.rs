@@ -118,7 +118,7 @@ impl<'t> Parser<'t> {
     pub(crate) fn err_recover(&mut self, message: &str, recovery: TokenSet) {
         if self.at(SyntaxKind::L_CURLY)
             || self.at(SyntaxKind::R_CURLY)
-            || recovery.contains(self.current()) {
+            || self.at_ts(recovery) {
             self.error(message);
         } else {
             let m = self.start();

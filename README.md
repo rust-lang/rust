@@ -37,24 +37,28 @@ doesn't hurt too much :-)
 
 * syntax highlighting (LSP does not have API for it, so impl is hacky
   and sometimes fall-backs to the horrible built-in highlighting)
-  
+
 * commands (`ctrl+shift+p` or keybindings)
   - **Show Rust Syntax Tree** (use it to verify that plugin works)
   - **Rust Extend Selection** (works with multiple cursors)
   - **Rust Matching Brace** (knows the difference between `<` and `<`)
   - **Rust Parent Module**
   - **Rust Join Lines** (deals with trailing commas)
-  
+
 * **Go to symbol in file**
 
-* **Go to symbol in workspace** (no support for Cargo deps yet)
+* **Go to symbol in workspace**
+  - `#Foo` searches for `Foo` type in the current workspace
+  - `#foo#` searches for `foo` function in the current workspace
+  - `#Foo*` searches for `Foo` type among dependencies, excluding `stdlib`
+  - Sorry for a weired UI, neither LSP, not VSCode have any sane API for filtering! :)
 
 * code actions:
   - Flip `,` in comma separated lists
   - Add `#[derive]` to struct/enum
   - Add `impl` block to struct/enum
   - Run tests at caret
-  
+
 * **Go to definition** ("correct" for `mod foo;` decls, index-based for functions).
 
 
@@ -71,7 +75,7 @@ doesn't hurt too much :-)
   space tree traversal (this is cool) and `visit` for type-driven
   visiting the nodes (this is double plus cool, if you understand how
   `Visitor` works, you understand libsyntax2).
-  
+
 
 ### `crates/libeditor`
 
@@ -84,7 +88,7 @@ single-file and is basically a bunch of pure functions.
 A stateful library for analyzing many Rust files as they change.
 `WorldState` is a mutable entity (clojure's atom) which holds current
 state, incorporates changes and handles out `World`s --- immutable
-consistent snapshots of `WorldState`, which actually power analysis. 
+consistent snapshots of `WorldState`, which actually power analysis.
 
 
 ### `crates/server`
