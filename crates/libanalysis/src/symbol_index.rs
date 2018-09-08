@@ -42,7 +42,7 @@ impl SymbolIndex {
 
 impl Query {
     pub(crate) fn search(
-        mut self,
+        self,
         indices: &[&SymbolIndex],
         token: &JobToken,
     ) -> Vec<(FileId, FileSymbol)> {
@@ -55,7 +55,7 @@ impl Query {
         let mut stream = op.union();
         let mut res = Vec::new();
         while let Some((_, indexed_values)) = stream.next() {
-            if self.limit == 0 || token.is_canceled() {
+            if res.len() >= self.limit || token.is_canceled() {
                 break;
             }
             for indexed_value in indexed_values {
@@ -70,7 +70,6 @@ impl Query {
                     continue;
                 }
                 res.push((*file_id, symbol.clone()));
-                self.limit -= 1;
             }
         }
         res
