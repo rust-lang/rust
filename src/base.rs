@@ -101,8 +101,6 @@ fn trans_fn<'a, 'tcx: 'a>(
     // Step 6. Codegen function
     crate::abi::codegen_fn_prelude(&mut fx, start_ebb);
     codegen_fn_content(&mut fx);
-    fx.bcx.seal_all_blocks();
-    fx.bcx.finalize();
 
     // Step 7. Write function to file for debugging
     let mut writer = crate::pretty_clif::CommentWriter(fx.comments);
