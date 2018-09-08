@@ -11,7 +11,7 @@
 use rustc::mir::interpret::{ConstValue, ErrorHandled};
 use rustc::mir;
 use rustc::ty;
-use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
+use rustc::ty::layout::{self, AbiAndPrefAlign, LayoutOf, TyLayout};
 
 use base;
 use MemFlags;
@@ -33,7 +33,7 @@ pub enum OperandValue<V> {
     /// to be valid for the operand's lifetime.
     /// The second value, if any, is the extra data (vtable or length)
     /// which indicates that it refers to an unsized rvalue.
-    Ref(V, Option<V>, Align),
+    Ref(V, Option<V>, AbiAndPrefAlign),
     /// A single LLVM value.
     Immediate(V),
     /// A pair of immediate LLVM values. Used by fat pointers too.
@@ -348,8 +348,8 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandValue<V> {
             };
 
         // FIXME: choose an appropriate alignment, or use dynamic align somehow
-        let max_align = Align::from_bits(128, 128).unwrap();
-        let min_align = Align::from_bits(8, 8).unwrap();
+        let max_align = AbiAndPrefAlign::from_bits(128, 128).unwrap();
+        let min_align = AbiAndPrefAlign::from_bits(8, 8).unwrap();
 
         // Allocate an appropriate region on the stack, and copy the value into it
         let (llsize, _) = glue::size_and_align_of_dst(bx, unsized_ty, Some(llextra));

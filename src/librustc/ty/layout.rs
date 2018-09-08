@@ -248,7 +248,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             /// A univariant, the last field of which may be coerced to unsized.
             MaybeUnsized,
             /// A univariant, but with a prefix of an arbitrary size & alignment (e.g. enum tag).
-            Prefixed(Size, Align),
+            Prefixed(Size, AbiAndPrefAlign),
         }
 
         let univariant_uninterned = |fields: &[TyLayout<'_>], repr: &ReprOptions, kind| {
@@ -259,7 +259,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
             let pack = {
                 let pack = repr.pack as u64;
-                Align::from_bytes(pack, pack).unwrap()
+                AbiAndPrefAlign::from_bytes(pack, pack).unwrap()
             };
 
             let mut align = if packed {
@@ -352,7 +352,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
             if repr.align > 0 {
                 let repr_align = repr.align as u64;
-                align = align.max(Align::from_bytes(repr_align, repr_align).unwrap());
+                align = align.max(AbiAndPrefAlign::from_bytes(repr_align, repr_align).unwrap());
                 debug!("univariant repr_align: {:?}", repr_align);
             }
 
@@ -682,7 +682,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
                     let pack = {
                         let pack = def.repr.pack as u64;
-                        Align::from_bytes(pack, pack).unwrap()
+                        AbiAndPrefAlign::from_bytes(pack, pack).unwrap()
                     };
 
                     let mut align = if packed {
@@ -694,7 +694,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     if def.repr.align > 0 {
                         let repr_align = def.repr.align as u64;
                         align = align.max(
-                            Align::from_bytes(repr_align, repr_align).unwrap());
+                            AbiAndPrefAlign::from_bytes(repr_align, repr_align).unwrap());
                     }
 
                     let optimize = !def.repr.inhibit_union_abi_opt();
@@ -964,7 +964,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 let mut size = Size::ZERO;
 
                 // We're interested in the smallest alignment, so start large.
-                let mut start_align = Align::from_bytes(256, 256).unwrap();
+                let mut start_align = AbiAndPrefAlign::from_bytes(256, 256).unwrap();
                 assert_eq!(Integer::for_abi_align(dl, start_align), None);
 
                 // repr(C) on an enum tells us to make a (tag, union) layout,
@@ -1994,7 +1994,7 @@ impl_stable_hash_for!(enum ::ty::layout::Primitive {
     Pointer
 });
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for Align {
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for AbiAndPrefAlign {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {

@@ -13,7 +13,7 @@
 // need to be fixed when PowerPC vector support is added.
 
 use abi::call::{FnType, ArgType, Reg, RegKind, Uniform};
-use abi::{Align, Endian, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
+use abi::{AbiAndPrefAlign, Endian, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 use spec::HasTargetSpec;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -120,7 +120,7 @@ fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>, abi: ABI)
     } else {
         // Aggregates larger than a doubleword should be padded
         // at the tail to fill out a whole number of doublewords.
-        let align = Align::from_bits(64, 64).unwrap();
+        let align = AbiAndPrefAlign::from_bits(64, 64).unwrap();
         (Reg::i64(), size.abi_align(align))
     };
 

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
+use rustc::ty::layout::{self, AbiAndPrefAlign, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
 use rustc::mir;
 use rustc::mir::tcx::PlaceTy;
 use MemFlags;
@@ -33,14 +33,14 @@ pub struct PlaceRef<'tcx, V> {
     pub layout: TyLayout<'tcx>,
 
     /// What alignment we know for this place
-    pub align: Align,
+    pub align: AbiAndPrefAlign,
 }
 
 impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
     pub fn new_sized(
         llval: V,
         layout: TyLayout<'tcx>,
-        align: Align,
+        align: AbiAndPrefAlign,
     ) -> PlaceRef<'tcx, V> {
         assert!(!layout.is_unsized());
         PlaceRef {
@@ -308,9 +308,8 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
                         // Issue #34427: As workaround for LLVM bug on ARM,
                         // use memset of 0 before assigning niche value.
                         let fill_byte = bx.cx().const_u8(0);
-                        let (size, align) = self.layout.size_and_align();
-                        let size = bx.cx().const_usize(size.bytes());
-                        bx.memset(self.llval, fill_byte, size, align, MemFlags::empty());
+                        let size = bx.cx().const_usize(self.layout.size.bytes());
+                        bx.memset(self.llval, fill_byte, size, self.align, MemFlags::empty());
                     }
 
                     let niche = self.project_field(bx, 0);

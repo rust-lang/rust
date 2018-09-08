@@ -19,7 +19,7 @@ use type_of::LayoutLlvmExt;
 use value::Value;
 use libc::{c_uint, c_char};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::{self, Align, Size, TyLayout};
+use rustc::ty::layout::{self, AbiAndPrefAlign, Size, TyLayout};
 use rustc::session::config;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_codegen_ssa::traits::*;
@@ -457,7 +457,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn alloca(&mut self, ty: &'ll Type, name: &str, align: Align) -> &'ll Value {
+    fn alloca(&mut self, ty: &'ll Type, name: &str, align: AbiAndPrefAlign) -> &'ll Value {
         let mut bx = Builder::with_cx(self.cx);
         bx.position_at_start(unsafe {
             llvm::LLVMGetFirstBasicBlock(self.llfn())
@@ -465,7 +465,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         bx.dynamic_alloca(ty, name, align)
     }
 
-    fn dynamic_alloca(&mut self, ty: &'ll Type, name: &str, align: Align) -> &'ll Value {
+    fn dynamic_alloca(&mut self, ty: &'ll Type, name: &str, align: AbiAndPrefAlign) -> &'ll Value {
         self.count_insn("alloca");
         unsafe {
             let alloca = if name.is_empty() {
@@ -484,7 +484,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                         ty: &'ll Type,
                         len: &'ll Value,
                         name: &str,
-                        align: Align) -> &'ll Value {
+                        align: AbiAndPrefAlign) -> &'ll Value {
         self.count_insn("alloca");
         unsafe {
             let alloca = if name.is_empty() {
@@ -499,7 +499,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn load(&mut self, ptr: &'ll Value, align: Align) -> &'ll Value {
+    fn load(&mut self, ptr: &'ll Value, align: AbiAndPrefAlign) -> &'ll Value {
         self.count_insn("load");
         unsafe {
             let load = llvm::LLVMBuildLoad(self.llbuilder, ptr, noname());
@@ -639,7 +639,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn store(&mut self, val: &'ll Value, ptr: &'ll Value, align: Align) -> &'ll Value {
+    fn store(&mut self, val: &'ll Value, ptr: &'ll Value, align: AbiAndPrefAlign) -> &'ll Value {
         self.store_with_flags(val, ptr, align, MemFlags::empty())
     }
 
@@ -647,7 +647,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         &mut self,
         val: &'ll Value,
         ptr: &'ll Value,
-        align: Align,
+        align: AbiAndPrefAlign,
         flags: MemFlags,
     ) -> &'ll Value {
         debug!("Store {:?} -> {:?} ({:?})", val, ptr, flags);
@@ -878,8 +878,8 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn memcpy(&mut self, dst: &'ll Value, dst_align: Align,
-                  src: &'ll Value, src_align: Align,
+    fn memcpy(&mut self, dst: &'ll Value, dst_align: AbiAndPrefAlign,
+                  src: &'ll Value, src_align: AbiAndPrefAlign,
                   size: &'ll Value, flags: MemFlags) {
         if flags.contains(MemFlags::NONTEMPORAL) {
             // HACK(nox): This is inefficient but there is no nontemporal memcpy.
@@ -898,8 +898,8 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn memmove(&mut self, dst: &'ll Value, dst_align: Align,
-                  src: &'ll Value, src_align: Align,
+    fn memmove(&mut self, dst: &'ll Value, dst_align: AbiAndPrefAlign,
+                  src: &'ll Value, src_align: AbiAndPrefAlign,
                   size: &'ll Value, flags: MemFlags) {
         if flags.contains(MemFlags::NONTEMPORAL) {
             // HACK(nox): This is inefficient but there is no nontemporal memmove.
@@ -923,7 +923,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         ptr: &'ll Value,
         fill_byte: &'ll Value,
         size: &'ll Value,
-        align: Align,
+        align: AbiAndPrefAlign,
         flags: MemFlags,
     ) {
         let ptr_width = &self.cx().sess().target.target.target_pointer_width;

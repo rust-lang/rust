@@ -28,7 +28,7 @@ use value::Value;
 use rustc::ty::{self, Ty};
 use rustc_codegen_ssa::traits::*;
 
-use rustc::ty::layout::{self, Size, Align, LayoutOf};
+use rustc::ty::layout::{self, Size, AbiAndPrefAlign, LayoutOf};
 
 use rustc::hir::{self, CodegenFnAttrs, CodegenFnAttrFlags};
 
@@ -89,12 +89,12 @@ pub fn codegen_static_initializer(
 
 fn set_global_alignment(cx: &CodegenCx<'ll, '_>,
                         gv: &'ll Value,
-                        mut align: Align) {
+                        mut align: AbiAndPrefAlign) {
     // The target may require greater alignment for globals than the type does.
     // Note: GCC and Clang also allow `__attribute__((aligned))` on variables,
     // which can force it to be smaller.  Rust doesn't support this yet.
     if let Some(min) = cx.sess().target.target.options.min_global_align {
-        match ty::layout::Align::from_bits(min, min) {
+        match ty::layout::AbiAndPrefAlign::from_bits(min, min) {
             Ok(min) => align = align.max(min),
             Err(err) => {
                 cx.sess().err(&format!("invalid minimum global alignment: {}", err));
@@ -186,7 +186,7 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn static_addr_of_mut(
         &self,
         cv: &'ll Value,
-        align: Align,
+        align: AbiAndPrefAlign,
         kind: Option<&str>,
     ) -> &'ll Value {
         unsafe {
@@ -212,7 +212,7 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn static_addr_of(
         &self,
         cv: &'ll Value,
-        align: Align,
+        align: AbiAndPrefAlign,
         kind: Option<&str>,
     ) -> &'ll Value {
         if let Some(&gv) = self.const_globals.borrow().get(&cv) {

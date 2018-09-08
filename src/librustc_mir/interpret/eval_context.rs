@@ -16,7 +16,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
 use rustc::mir;
 use rustc::ty::layout::{
-    self, Size, Align, HasDataLayout, LayoutOf, TyLayout
+    self, Size, AbiAndPrefAlign, HasDataLayout, LayoutOf, TyLayout
 };
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -314,9 +314,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         &self,
         metadata: Option<Scalar<M::PointerTag>>,
         layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, Option<(Size, Align)>> {
+    ) -> EvalResult<'tcx, Option<(Size, AbiAndPrefAlign)>> {
         if !layout.is_unsized() {
-            return Ok(Some(layout.size_and_align()));
+            return Ok(Some((layout.size, layout.align)));
         }
         match layout.ty.sty {
             ty::Adt(..) | ty::Tuple(..) => {
@@ -391,8 +391,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
 
             ty::Slice(_) | ty::Str => {
                 let len = metadata.expect("slice fat ptr must have vtable").to_usize(self)?;
-                let (elem_size, align) = layout.field(self, 0)?.size_and_align();
-                Ok(Some((elem_size * len, align)))
+                let elem = layout.field(self, 0)?;
+                Ok(Some((elem.size * len, elem.align)))
             }
 
             ty::Foreign(_) => {
@@ -406,7 +406,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     pub fn size_and_align_of_mplace(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>
-    ) -> EvalResult<'tcx, Option<(Size, Align)>> {
+    ) -> EvalResult<'tcx, Option<(Size, AbiAndPrefAlign)>> {
         self.size_and_align_of(mplace.meta, mplace.layout)
     }
 

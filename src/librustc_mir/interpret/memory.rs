@@ -21,7 +21,7 @@ use std::ptr;
 use std::borrow::Cow;
 
 use rustc::ty::{self, Instance, ParamEnv, query::TyCtxtAt};
-use rustc::ty::layout::{self, Align, TargetDataLayout, Size, HasDataLayout};
+use rustc::ty::layout::{self, AbiAndPrefAlign, TargetDataLayout, Size, HasDataLayout};
 pub use rustc::mir::interpret::{truncate, write_target_uint, read_target_uint};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 
@@ -71,7 +71,7 @@ pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
     /// To be able to compare pointers with NULL, and to check alignment for accesses
     /// to ZSTs (where pointers may dangle), we keep track of the size even for allocations
     /// that do not exist any more.
-    dead_alloc_map: FxHashMap<AllocId, (Size, Align)>,
+    dead_alloc_map: FxHashMap<AllocId, (Size, AbiAndPrefAlign)>,
 
     /// Lets us implement `HasDataLayout`, which is awfully convenient.
     pub(super) tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
@@ -130,7 +130,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn allocate(
         &mut self,
         size: Size,
-        align: Align,
+        align: AbiAndPrefAlign,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> EvalResult<'tcx, Pointer> {
         Ok(Pointer::from(self.allocate_with(Allocation::undef(size, align), kind)?))
@@ -140,9 +140,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         &mut self,
         ptr: Pointer<M::PointerTag>,
         old_size: Size,
-        old_align: Align,
+        old_align: AbiAndPrefAlign,
         new_size: Size,
-        new_align: Align,
+        new_align: AbiAndPrefAlign,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> EvalResult<'tcx, Pointer> {
         if ptr.offset.bytes() != 0 {
@@ -179,7 +179,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn deallocate(
         &mut self,
         ptr: Pointer<M::PointerTag>,
-        size_and_align: Option<(Size, Align)>,
+        size_and_align: Option<(Size, AbiAndPrefAlign)>,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> EvalResult<'tcx> {
         trace!("deallocating: {}", ptr.alloc_id);
@@ -244,7 +244,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn check_align(
         &self,
         ptr: Scalar<M::PointerTag>,
-        required_align: Align
+        required_align: AbiAndPrefAlign
     ) -> EvalResult<'tcx> {
         // Check non-NULL/Undef, extract offset
         let (offset, alloc_align) = match ptr {
@@ -279,7 +279,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         } else {
             let has = offset % required_align.abi();
             err!(AlignmentCheckFailed {
-                has: Align::from_bytes(has, has).unwrap(),
+                has: AbiAndPrefAlign::from_bytes(has, has).unwrap(),
                 required: required_align,
             })
         }
@@ -443,13 +443,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
     }
 
-    pub fn get_size_and_align(&self, id: AllocId) -> (Size, Align) {
+    pub fn get_size_and_align(&self, id: AllocId) -> (Size, AbiAndPrefAlign) {
         if let Ok(alloc) = self.get(id) {
             return (Size::from_bytes(alloc.bytes.len() as u64), alloc.align);
         }
         // Could also be a fn ptr or extern static
         match self.tcx.alloc_map.lock().get(id) {
-            Some(AllocType::Function(..)) => (Size::ZERO, Align::from_bytes(1, 1).unwrap()),
+            Some(AllocType::Function(..)) => {
+                (Size::ZERO, AbiAndPrefAlign::from_bytes(1, 1).unwrap())
+            }
             Some(AllocType::Static(did)) => {
                 // The only way `get` couldn't have worked here is if this is an extern static
                 assert!(self.tcx.is_foreign_item(did));
@@ -622,7 +624,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         &self,
         ptr: Pointer<M::PointerTag>,
         size: Size,
-        align: Align,
+        align: AbiAndPrefAlign,
         check_defined_and_ptr: bool,
     ) -> EvalResult<'tcx, &[u8]> {
         assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
@@ -651,7 +653,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         &self,
         ptr: Pointer<M::PointerTag>,
         size: Size,
-        align: Align
+        align: AbiAndPrefAlign
     ) -> EvalResult<'tcx, &[u8]> {
         self.get_bytes_internal(ptr, size, align, true)
     }
@@ -663,7 +665,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         &self,
         ptr: Pointer<M::PointerTag>,
         size: Size,
-        align: Align
+        align: AbiAndPrefAlign
     ) -> EvalResult<'tcx, &[u8]> {
         self.get_bytes_internal(ptr, size, align, false)
     }
@@ -674,7 +676,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         &mut self,
         ptr: Pointer<M::PointerTag>,
         size: Size,
-        align: Align,
+        align: AbiAndPrefAlign,
     ) -> EvalResult<'tcx, &mut [u8]> {
         assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
         self.check_align(ptr.into(), align)?;
@@ -747,9 +749,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn copy(
         &mut self,
         src: Scalar<M::PointerTag>,
-        src_align: Align,
+        src_align: AbiAndPrefAlign,
         dest: Scalar<M::PointerTag>,
-        dest_align: Align,
+        dest_align: AbiAndPrefAlign,
         size: Size,
         nonoverlapping: bool,
     ) -> EvalResult<'tcx> {
@@ -759,9 +761,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn copy_repeatedly(
         &mut self,
         src: Scalar<M::PointerTag>,
-        src_align: Align,
+        src_align: AbiAndPrefAlign,
         dest: Scalar<M::PointerTag>,
-        dest_align: Align,
+        dest_align: AbiAndPrefAlign,
         size: Size,
         length: u64,
         nonoverlapping: bool,
@@ -863,7 +865,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         allow_ptr_and_undef: bool,
     ) -> EvalResult<'tcx> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
-        let align = Align::from_bytes(1, 1).unwrap();
+        let align = AbiAndPrefAlign::from_bytes(1, 1).unwrap();
         if size.bytes() == 0 {
             self.check_align(ptr, align)?;
             return Ok(());
@@ -881,7 +883,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     pub fn read_bytes(&self, ptr: Scalar<M::PointerTag>, size: Size) -> EvalResult<'tcx, &[u8]> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
-        let align = Align::from_bytes(1, 1).unwrap();
+        let align = AbiAndPrefAlign::from_bytes(1, 1).unwrap();
         if size.bytes() == 0 {
             self.check_align(ptr, align)?;
             return Ok(&[]);
@@ -891,7 +893,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     pub fn write_bytes(&mut self, ptr: Scalar<M::PointerTag>, src: &[u8]) -> EvalResult<'tcx> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
-        let align = Align::from_bytes(1, 1).unwrap();
+        let align = AbiAndPrefAlign::from_bytes(1, 1).unwrap();
         if src.is_empty() {
             self.check_align(ptr, align)?;
             return Ok(());
@@ -908,7 +910,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         count: Size
     ) -> EvalResult<'tcx> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
-        let align = Align::from_bytes(1, 1).unwrap();
+        let align = AbiAndPrefAlign::from_bytes(1, 1).unwrap();
         if count.bytes() == 0 {
             self.check_align(ptr, align)?;
             return Ok(());
@@ -924,7 +926,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn read_scalar(
         &self,
         ptr: Pointer<M::PointerTag>,
-        ptr_align: Align,
+        ptr_align: AbiAndPrefAlign,
         size: Size
     ) -> EvalResult<'tcx, ScalarMaybeUndef<M::PointerTag>> {
         // get_bytes_unchecked tests alignment and relocation edges
@@ -961,7 +963,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn read_ptr_sized(
         &self,
         ptr: Pointer<M::PointerTag>,
-        ptr_align: Align
+        ptr_align: AbiAndPrefAlign
     ) -> EvalResult<'tcx, ScalarMaybeUndef<M::PointerTag>> {
         self.read_scalar(ptr, ptr_align, self.pointer_size())
     }
@@ -970,7 +972,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn write_scalar(
         &mut self,
         ptr: Pointer<M::PointerTag>,
-        ptr_align: Align,
+        ptr_align: AbiAndPrefAlign,
         val: ScalarMaybeUndef<M::PointerTag>,
         type_size: Size,
     ) -> EvalResult<'tcx> {
@@ -1017,14 +1019,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn write_ptr_sized(
         &mut self,
         ptr: Pointer<M::PointerTag>,
-        ptr_align: Align,
+        ptr_align: AbiAndPrefAlign,
         val: ScalarMaybeUndef<M::PointerTag>
     ) -> EvalResult<'tcx> {
         let ptr_size = self.pointer_size();
         self.write_scalar(ptr.into(), ptr_align, val, ptr_size)
     }
 
-    fn int_align(&self, size: Size) -> Align {
+    fn int_align(&self, size: Size) -> AbiAndPrefAlign {
         // We assume pointer-sized integers have the same alignment as pointers.
         // We also assume signed and unsigned integers of the same size have the same alignment.
         let ity = match size.bytes() {

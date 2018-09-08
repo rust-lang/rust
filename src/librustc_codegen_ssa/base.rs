@@ -31,7 +31,7 @@ use rustc::middle::lang_items::StartFnLangItem;
 use rustc::middle::weak_lang_items;
 use rustc::mir::mono::{Stats, CodegenUnitNameBuilder};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
+use rustc::ty::layout::{self, AbiAndPrefAlign, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
 use rustc::ty::query::Providers;
 use rustc::middle::cstore::{self, LinkagePreference};
 use rustc::util::common::{time, print_time_passes_entry};
@@ -410,9 +410,9 @@ pub fn to_immediate_scalar<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 pub fn memcpy_ty<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     dst: Bx::Value,
-    dst_align: Align,
+    dst_align: AbiAndPrefAlign,
     src: Bx::Value,
-    src_align: Align,
+    src_align: AbiAndPrefAlign,
     layout: TyLayout<'tcx>,
     flags: MemFlags,
 ) {

@@ -15,10 +15,10 @@ use super::intrinsic::IntrinsicCallMethods;
 use super::type_::ArgTypeMethods;
 use super::HasCodegen;
 use common::{AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope};
-use std::ffi::CStr;
 use mir::operand::OperandRef;
 use mir::place::PlaceRef;
-use rustc::ty::layout::{Align, Size};
+use rustc::ty::layout::{AbiAndPrefAlign, Size};
+use std::ffi::CStr;
 use MemFlags;
 
 use std::borrow::Cow;
@@ -97,17 +97,18 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     fn fneg(&mut self, v: Self::Value) -> Self::Value;
     fn not(&mut self, v: Self::Value) -> Self::Value;
 
-    fn alloca(&mut self, ty: Self::Type, name: &str, align: Align) -> Self::Value;
-    fn dynamic_alloca(&mut self, ty: Self::Type, name: &str, align: Align) -> Self::Value;
+    fn alloca(&mut self, ty: Self::Type, name: &str, align: AbiAndPrefAlign) -> Self::Value;
+    fn dynamic_alloca(&mut self, ty: Self::Type, name: &str, align: AbiAndPrefAlign)
+        -> Self::Value;
     fn array_alloca(
         &mut self,
         ty: Self::Type,
         len: Self::Value,
         name: &str,
-        align: Align,
+        align: AbiAndPrefAlign,
     ) -> Self::Value;
 
-    fn load(&mut self, ptr: Self::Value, align: Align) -> Self::Value;
+    fn load(&mut self, ptr: Self::Value, align: AbiAndPrefAlign) -> Self::Value;
     fn volatile_load(&mut self, ptr: Self::Value) -> Self::Value;
     fn atomic_load(&mut self, ptr: Self::Value, order: AtomicOrdering, size: Size) -> Self::Value;
     fn load_operand(&mut self, place: PlaceRef<'tcx, Self::Value>)
@@ -116,12 +117,12 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     fn range_metadata(&mut self, load: Self::Value, range: Range<u128>);
     fn nonnull_metadata(&mut self, load: Self::Value);
 
-    fn store(&mut self, val: Self::Value, ptr: Self::Value, align: Align) -> Self::Value;
+    fn store(&mut self, val: Self::Value, ptr: Self::Value, align: AbiAndPrefAlign) -> Self::Value;
     fn store_with_flags(
         &mut self,
         val: Self::Value,
         ptr: Self::Value,
-        align: Align,
+        align: AbiAndPrefAlign,
         flags: MemFlags,
     ) -> Self::Value;
     fn atomic_store(
@@ -174,18 +175,18 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     fn memcpy(
         &mut self,
         dst: Self::Value,
-        dst_align: Align,
+        dst_align: AbiAndPrefAlign,
         src: Self::Value,
-        src_align: Align,
+        src_align: AbiAndPrefAlign,
         size: Self::Value,
         flags: MemFlags,
     );
     fn memmove(
         &mut self,
         dst: Self::Value,
-        dst_align: Align,
+        dst_align: AbiAndPrefAlign,
         src: Self::Value,
-        src_align: Align,
+        src_align: AbiAndPrefAlign,
         size: Self::Value,
         flags: MemFlags,
     );
@@ -194,7 +195,7 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
         ptr: Self::Value,
         fill_byte: Self::Value,
         size: Self::Value,
-        align: Align,
+        align: AbiAndPrefAlign,
         flags: MemFlags,
     );
 

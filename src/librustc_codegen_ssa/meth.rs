@@ -100,15 +100,15 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
         })
     });
 
-    let (size, align) = cx.layout_of(ty).size_and_align();
+    let layout = cx.layout_of(ty);
     // /////////////////////////////////////////////////////////////////////////////////////////////
     // If you touch this code, be sure to also make the corresponding changes to
     // `get_vtable` in rust_mir/interpret/traits.rs
     // /////////////////////////////////////////////////////////////////////////////////////////////
     let components: Vec<_> = [
         cx.get_fn(monomorphize::resolve_drop_in_place(cx.tcx(), ty)),
-        cx.const_usize(size.bytes()),
-        cx.const_usize(align.abi())
+        cx.const_usize(layout.size.bytes()),
+        cx.const_usize(layout.align.abi())
     ].iter().cloned().chain(methods).collect();
 
     let vtable_const = cx.const_struct(&components, false);

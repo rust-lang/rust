@@ -13,7 +13,7 @@ use std::hash::Hash;
 use std::ops::RangeInclusive;
 
 use syntax_pos::symbol::Symbol;
-use rustc::ty::layout::{self, Size, Align, TyLayout, LayoutOf, VariantIdx};
+use rustc::ty::layout::{self, Size, AbiAndPrefAlign, TyLayout, LayoutOf, VariantIdx};
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 use rustc::mir::interpret::{
@@ -355,7 +355,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                     // for the purpose of validity, consider foreign types to have
                     // alignment and size determined by the layout (size will be 0,
                     // alignment should take attributes into account).
-                    .unwrap_or_else(|| layout.size_and_align());
+                    .unwrap_or_else(|| (layout.size, layout.align));
                 match self.ecx.memory.check_align(ptr, align) {
                     Ok(_) => {},
                     Err(err) => {
@@ -463,7 +463,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                     // for function pointers.
                     let non_null =
                         self.ecx.memory.check_align(
-                            Scalar::Ptr(ptr), Align::from_bytes(1, 1).unwrap()
+                            Scalar::Ptr(ptr), AbiAndPrefAlign::from_bytes(1, 1).unwrap()
                         ).is_ok() ||
                         self.ecx.memory.get_fn(ptr).is_ok();
                     if !non_null {

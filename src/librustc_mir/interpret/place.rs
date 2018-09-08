@@ -18,7 +18,7 @@ use std::hash::Hash;
 use rustc::hir;
 use rustc::mir;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout, VariantIdx};
+use rustc::ty::layout::{self, Size, AbiAndPrefAlign, LayoutOf, TyLayout, HasDataLayout, VariantIdx};
 
 use super::{
     GlobalId, AllocId, Allocation, Scalar, EvalResult, Pointer, PointerArithmetic,
@@ -32,7 +32,7 @@ pub struct MemPlace<Tag=(), Id=AllocId> {
     /// be turned back into a reference before ever being dereferenced.
     /// However, it may never be undef.
     pub ptr: Scalar<Tag, Id>,
-    pub align: Align,
+    pub align: AbiAndPrefAlign,
     /// Metadata for unsized places.  Interpretation is up to the type.
     /// Must not be present for sized types, but can be missing for unsized types
     /// (e.g. `extern type`).
@@ -116,7 +116,7 @@ impl<Tag> MemPlace<Tag> {
     }
 
     #[inline(always)]
-    pub fn from_scalar_ptr(ptr: Scalar<Tag>, align: Align) -> Self {
+    pub fn from_scalar_ptr(ptr: Scalar<Tag>, align: AbiAndPrefAlign) -> Self {
         MemPlace {
             ptr,
             align,
@@ -127,16 +127,16 @@ impl<Tag> MemPlace<Tag> {
     /// Produces a Place that will error if attempted to be read from or written to
     #[inline(always)]
     pub fn null(cx: &impl HasDataLayout) -> Self {
-        Self::from_scalar_ptr(Scalar::ptr_null(cx), Align::from_bytes(1, 1).unwrap())
+        Self::from_scalar_ptr(Scalar::ptr_null(cx), AbiAndPrefAlign::from_bytes(1, 1).unwrap())
     }
 
     #[inline(always)]
-    pub fn from_ptr(ptr: Pointer<Tag>, align: Align) -> Self {
+    pub fn from_ptr(ptr: Pointer<Tag>, align: AbiAndPrefAlign) -> Self {
         Self::from_scalar_ptr(ptr.into(), align)
     }
 
     #[inline(always)]
-    pub fn to_scalar_ptr_align(self) -> (Scalar<Tag>, Align) {
+    pub fn to_scalar_ptr_align(self) -> (Scalar<Tag>, AbiAndPrefAlign) {
         assert!(self.meta.is_none());
         (self.ptr, self.align)
     }
@@ -230,12 +230,12 @@ impl<'tcx, Tag: ::std::fmt::Debug> Place<Tag> {
     }
 
     #[inline(always)]
-    pub fn from_scalar_ptr(ptr: Scalar<Tag>, align: Align) -> Self {
+    pub fn from_scalar_ptr(ptr: Scalar<Tag>, align: AbiAndPrefAlign) -> Self {
         Place::Ptr(MemPlace::from_scalar_ptr(ptr, align))
     }
 
     #[inline(always)]
-    pub fn from_ptr(ptr: Pointer<Tag>, align: Align) -> Self {
+    pub fn from_ptr(ptr: Pointer<Tag>, align: AbiAndPrefAlign) -> Self {
         Place::Ptr(MemPlace::from_ptr(ptr, align))
     }
 
@@ -249,7 +249,7 @@ impl<'tcx, Tag: ::std::fmt::Debug> Place<Tag> {
     }
 
     #[inline]
-    pub fn to_scalar_ptr_align(self) -> (Scalar<Tag>, Align) {
+    pub fn to_scalar_ptr_align(self) -> (Scalar<Tag>, AbiAndPrefAlign) {
         self.to_mem_place().to_scalar_ptr_align()
     }
 

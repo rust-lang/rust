@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{Size, Align, LayoutOf};
+use rustc::ty::layout::{Size, AbiAndPrefAlign, LayoutOf};
 use rustc::mir::interpret::{Scalar, Pointer, EvalResult, PointerArithmetic};
 
 use super::{EvalContext, Machine, MemoryKind};
@@ -101,7 +101,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     pub fn read_size_and_align_from_vtable(
         &self,
         vtable: Pointer<M::PointerTag>,
-    ) -> EvalResult<'tcx, (Size, Align)> {
+    ) -> EvalResult<'tcx, (Size, AbiAndPrefAlign)> {
         let pointer_size = self.pointer_size();
         let pointer_align = self.tcx.data_layout.pointer_align;
         let size = self.memory.read_ptr_sized(vtable.offset(pointer_size, self)?,pointer_align)?
@@ -110,6 +110,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             vtable.offset(pointer_size * 2, self)?,
             pointer_align
         )?.to_bits(pointer_size)? as u64;
-        Ok((Size::from_bytes(size), Align::from_bytes(align, align).unwrap()))
+        Ok((Size::from_bytes(size), AbiAndPrefAlign::from_bytes(align, align).unwrap()))
     }
 }

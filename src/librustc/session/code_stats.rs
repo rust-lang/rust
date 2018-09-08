@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc_target::abi::{Align, Size};
+use rustc_target::abi::{AbiAndPrefAlign, Size};
 use rustc_data_structures::fx::{FxHashSet};
 use std::cmp::{self, Ordering};
 
@@ -63,7 +63,7 @@ impl CodeStats {
     pub fn record_type_size<S: ToString>(&mut self,
                                          kind: DataTypeKind,
                                          type_desc: S,
-                                         align: Align,
+                                         align: AbiAndPrefAlign,
                                          overall_size: Size,
                                          packed: bool,
                                          opt_discr_size: Option<Size>,

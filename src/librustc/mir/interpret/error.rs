@@ -13,7 +13,7 @@ use std::{fmt, env};
 use hir::map::definitions::DefPathData;
 use mir;
 use ty::{self, Ty, layout};
-use ty::layout::{Size, Align, LayoutError};
+use ty::layout::{Size, AbiAndPrefAlign, LayoutError};
 use rustc_target::spec::abi::Abi;
 
 use super::{RawConst, Pointer, InboundsCheck, ScalarMaybeUndef};
@@ -301,8 +301,8 @@ pub enum EvalErrorKind<'tcx, O> {
     TlsOutOfBounds,
     AbiViolation(String),
     AlignmentCheckFailed {
-        required: Align,
-        has: Align,
+        required: AbiAndPrefAlign,
+        has: AbiAndPrefAlign,
     },
     ValidationFailure(String),
     CalledClosureAsFunction,
@@ -315,7 +315,7 @@ pub enum EvalErrorKind<'tcx, O> {
     DeallocatedWrongMemoryKind(String, String),
     ReallocateNonBasePtr,
     DeallocateNonBasePtr,
-    IncorrectAllocationInformation(Size, Size, Align, Align),
+    IncorrectAllocationInformation(Size, Size, AbiAndPrefAlign, AbiAndPrefAlign),
     Layout(layout::LayoutError<'tcx>),
     HeapAllocZeroBytes,
     HeapAllocNonPowerOfTwoAlignment(u64),

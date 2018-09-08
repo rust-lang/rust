@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::{self, Abi, Align, FieldPlacement, Size};
+use abi::{self, Abi, AbiAndPrefAlign, FieldPlacement, Size};
 use abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 use spec::HasTargetSpec;
 
@@ -80,7 +80,7 @@ mod attr_impl {
 pub struct ArgAttributes {
     pub regular: ArgAttribute,
     pub pointee_size: Size,
-    pub pointee_align: Option<Align>
+    pub pointee_align: Option<AbiAndPrefAlign>
 }
 
 impl ArgAttributes {
@@ -137,7 +137,7 @@ impl Reg {
 }
 
 impl Reg {
-    pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
+    pub fn align<C: HasDataLayout>(&self, cx: &C) -> AbiAndPrefAlign {
         let dl = cx.data_layout();
         match self.kind {
             RegKind::Integer => {
@@ -188,7 +188,7 @@ impl From<Reg> for Uniform {
 }
 
 impl Uniform {
-    pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
+    pub fn align<C: HasDataLayout>(&self, cx: &C) -> AbiAndPrefAlign {
         self.unit.align(cx)
     }
 }
@@ -230,7 +230,7 @@ impl CastTarget {
              .abi_align(self.rest.align(cx)) + self.rest.total
     }
 
-    pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
+    pub fn align<C: HasDataLayout>(&self, cx: &C) -> AbiAndPrefAlign {
         self.prefix.iter()
             .filter_map(|x| x.map(|kind| Reg { kind, size: self.prefix_chunk }.align(cx)))
             .fold(cx.data_layout().aggregate_align.max(self.rest.align(cx)),

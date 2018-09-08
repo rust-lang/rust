@@ -35,7 +35,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc::ty::Instance;
 use common::CodegenCx;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
-use rustc::ty::layout::{self, Align, HasDataLayout, Integer, IntegerExt, LayoutOf,
+use rustc::ty::layout::{self, AbiAndPrefAlign, HasDataLayout, Integer, IntegerExt, LayoutOf,
                         PrimitiveExt, Size, TyLayout};
 use rustc::session::config;
 use rustc::util::nodemap::FxHashMap;
@@ -923,7 +923,7 @@ struct MemberDescription<'ll> {
     type_metadata: &'ll DIType,
     offset: Size,
     size: Size,
-    align: Align,
+    align: AbiAndPrefAlign,
     flags: DIFlags,
     discriminant: Option<u64>,
 }
@@ -985,13 +985,12 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
                 f.ident.to_string()
             };
             let field = layout.field(cx, i);
-            let (size, align) = field.size_and_align();
             MemberDescription {
                 name,
                 type_metadata: type_metadata(cx, field.ty, self.span),
                 offset: layout.fields.offset(i),
-                size,
-                align,
+                size: field.size,
+                align: field.align,
                 flags: DIFlags::FlagZero,
                 discriminant: None,
             }
@@ -1109,13 +1108,12 @@ impl<'tcx> UnionMemberDescriptionFactory<'tcx> {
                                   -> Vec<MemberDescription<'ll>> {
         self.variant.fields.iter().enumerate().map(|(i, f)| {
             let field = self.layout.field(cx, i);
-            let (size, align) = field.size_and_align();
             MemberDescription {
                 name: f.ident.to_string(),
                 type_metadata: type_metadata(cx, field.ty, self.span),
                 offset: Size::ZERO,
-                size,
-                align,
+                size: field.size,
+                align: field.align,
                 flags: DIFlags::FlagZero,
                 discriminant: None,
             }
@@ -1587,8 +1585,6 @@ fn prepare_enum_metadata(
         _ => {}
     }
 
-    let (enum_type_size, enum_type_align) = layout.size_and_align();
-
     let enum_name = SmallCStr::new(&enum_name);
     let unique_type_id_str = SmallCStr::new(
         debug_context(cx).type_map.borrow().get_unique_type_id_as_string(unique_type_id)
@@ -1610,8 +1606,8 @@ fn prepare_enum_metadata(
                 enum_name.as_ptr(),
                 file_metadata,
                 UNKNOWN_LINE_NUMBER,
-                enum_type_size.bits(),
-                enum_type_align.abi_bits() as u32,
+                layout.size.bits(),
+                layout.align.abi_bits() as u32,
                 DIFlags::FlagZero,
                 None,
                 0, // RuntimeLang
@@ -1695,8 +1691,8 @@ fn prepare_enum_metadata(
             ptr::null_mut(),
             file_metadata,
             UNKNOWN_LINE_NUMBER,
-            enum_type_size.bits(),
-            enum_type_align.abi_bits() as u32,
+            layout.size.bits(),
+            layout.align.abi_bits() as u32,
             DIFlags::FlagZero,
             discriminator_metadata,
             empty_array,
@@ -1712,8 +1708,8 @@ fn prepare_enum_metadata(
             enum_name.as_ptr(),
             file_metadata,
             UNKNOWN_LINE_NUMBER,
-            enum_type_size.bits(),
-            enum_type_align.abi_bits() as u32,
+            layout.size.bits(),
+            layout.align.abi_bits() as u32,
             DIFlags::FlagZero,
             None,
             type_array,

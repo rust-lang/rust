@@ -12,7 +12,7 @@ use abi::{FnType, FnTypeExt};
 use common::*;
 use rustc::hir;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
+use rustc::ty::layout::{self, AbiAndPrefAlign, LayoutOf, Size, TyLayout};
 use rustc_target::abi::FloatTy;
 use rustc_mir::monomorphize::item::DefPathBasedNames;
 use type_::Type;
@@ -80,7 +80,7 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
     match layout.fields {
         layout::FieldPlacement::Union(_) => {
-            let fill = cx.type_padding_filler( layout.size, layout.align);
+            let fill = cx.type_padding_filler(layout.size, layout.align);
             let packed = false;
             match name {
                 None => {
@@ -165,7 +165,7 @@ fn struct_llfields<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
-    pub fn align_of(&self, ty: Ty<'tcx>) -> Align {
+    pub fn align_of(&self, ty: Ty<'tcx>) -> AbiAndPrefAlign {
         self.layout_of(ty).align
     }
 
@@ -173,8 +173,9 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
         self.layout_of(ty).size
     }
 
-    pub fn size_and_align_of(&self, ty: Ty<'tcx>) -> (Size, Align) {
-        self.layout_of(ty).size_and_align()
+    pub fn size_and_align_of(&self, ty: Ty<'tcx>) -> (Size, AbiAndPrefAlign) {
+        let layout = self.layout_of(ty);
+        (layout.size, layout.align)
     }
 }
 
@@ -196,7 +197,7 @@ pub enum PointerKind {
 #[derive(Copy, Clone)]
 pub struct PointeeInfo {
     pub size: Size,
-    pub align: Align,
+    pub align: AbiAndPrefAlign,
     pub safe: Option<PointerKind>,
 }
 

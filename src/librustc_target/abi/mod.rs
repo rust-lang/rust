@@ -24,20 +24,21 @@ pub mod call;
 /// for a target, which contains everything needed to compute layouts.
 pub struct TargetDataLayout {
     pub endian: Endian,
-    pub i1_align: Align,
-    pub i8_align: Align,
-    pub i16_align: Align,
-    pub i32_align: Align,
-    pub i64_align: Align,
-    pub i128_align: Align,
-    pub f32_align: Align,
-    pub f64_align: Align,
+    pub i1_align: AbiAndPrefAlign,
+    pub i8_align: AbiAndPrefAlign,
+    pub i16_align: AbiAndPrefAlign,
+    pub i32_align: AbiAndPrefAlign,
+    pub i64_align: AbiAndPrefAlign,
+    pub i128_align: AbiAndPrefAlign,
+    pub f32_align: AbiAndPrefAlign,
+    pub f64_align: AbiAndPrefAlign,
     pub pointer_size: Size,
-    pub pointer_align: Align,
-    pub aggregate_align: Align,
+    pub pointer_align: AbiAndPrefAlign,
+    pub aggregate_align: AbiAndPrefAlign,
 
     /// Alignments for vector types.
-    pub vector_align: Vec<(Size, Align)>,
+    pub vector_align: Vec<(Size, AbiAndPrefAlign)>,
+
     pub instruction_address_space: u32,
 }
 
@@ -46,20 +47,20 @@ impl Default for TargetDataLayout {
     fn default() -> TargetDataLayout {
         TargetDataLayout {
             endian: Endian::Big,
-            i1_align: Align::from_bits(8, 8).unwrap(),
-            i8_align: Align::from_bits(8, 8).unwrap(),
-            i16_align: Align::from_bits(16, 16).unwrap(),
-            i32_align: Align::from_bits(32, 32).unwrap(),
-            i64_align: Align::from_bits(32, 64).unwrap(),
-            i128_align: Align::from_bits(32, 64).unwrap(),
-            f32_align: Align::from_bits(32, 32).unwrap(),
-            f64_align: Align::from_bits(64, 64).unwrap(),
+            i1_align: AbiAndPrefAlign::from_bits(8, 8).unwrap(),
+            i8_align: AbiAndPrefAlign::from_bits(8, 8).unwrap(),
+            i16_align: AbiAndPrefAlign::from_bits(16, 16).unwrap(),
+            i32_align: AbiAndPrefAlign::from_bits(32, 32).unwrap(),
+            i64_align: AbiAndPrefAlign::from_bits(32, 64).unwrap(),
+            i128_align: AbiAndPrefAlign::from_bits(32, 64).unwrap(),
+            f32_align: AbiAndPrefAlign::from_bits(32, 32).unwrap(),
+            f64_align: AbiAndPrefAlign::from_bits(64, 64).unwrap(),
             pointer_size: Size::from_bits(64),
-            pointer_align: Align::from_bits(64, 64).unwrap(),
-            aggregate_align: Align::from_bits(0, 64).unwrap(),
+            pointer_align: AbiAndPrefAlign::from_bits(64, 64).unwrap(),
+            aggregate_align: AbiAndPrefAlign::from_bits(0, 64).unwrap(),
             vector_align: vec![
-                (Size::from_bits(64), Align::from_bits(64, 64).unwrap()),
-                (Size::from_bits(128), Align::from_bits(128, 128).unwrap())
+                (Size::from_bits(64), AbiAndPrefAlign::from_bits(64, 64).unwrap()),
+                (Size::from_bits(128), AbiAndPrefAlign::from_bits(128, 128).unwrap())
             ],
             instruction_address_space: 0,
         }
@@ -96,7 +97,7 @@ impl TargetDataLayout {
             }
             let abi = parse_bits(s[0], "alignment", cause)?;
             let pref = s.get(1).map_or(Ok(abi), |pref| parse_bits(pref, "alignment", cause))?;
-            Align::from_bits(abi, pref).map_err(|err| {
+            AbiAndPrefAlign::from_bits(abi, pref).map_err(|err| {
                 format!("invalid alignment for `{}` in \"data-layout\": {}",
                         cause, err)
             })
@@ -205,7 +206,7 @@ impl TargetDataLayout {
         }
     }
 
-    pub fn vector_align(&self, vec_size: Size) -> Align {
+    pub fn vector_align(&self, vec_size: Size) -> AbiAndPrefAlign {
         for &(size, align) in &self.vector_align {
             if size == vec_size {
                 return align;
@@ -214,7 +215,7 @@ impl TargetDataLayout {
         // Default to natural alignment, which is what LLVM does.
         // That is, use the size, rounded up to a power of 2.
         let align = vec_size.bytes().next_power_of_two();
-        Align::from_bytes(align, align).unwrap()
+        AbiAndPrefAlign::from_bytes(align, align).unwrap()
     }
 }
 
@@ -270,13 +271,13 @@ impl Size {
     }
 
     #[inline]
-    pub fn abi_align(self, align: Align) -> Size {
+    pub fn abi_align(self, align: AbiAndPrefAlign) -> Size {
         let mask = align.abi() - 1;
         Size::from_bytes((self.bytes() + mask) & !mask)
     }
 
     #[inline]
-    pub fn is_abi_aligned(self, align: Align) -> bool {
+    pub fn is_abi_aligned(self, align: AbiAndPrefAlign) -> bool {
         let mask = align.abi() - 1;
         self.bytes() & mask == 0
     }
@@ -358,23 +359,23 @@ impl AddAssign for Size {
     }
 }
 
-/// Alignment of a type in bytes, both ABI-mandated and preferred.
+/// Alignments of a type in bytes, both ABI-mandated and preferred.
 /// Each field is a power of two, giving the alignment a maximum value
 /// of 2<sup>(2<sup>8</sup> - 1)</sup>, which is limited by LLVM to a
 /// maximum capacity of 2<sup>29</sup> or 536870912.
 #[derive(Copy, Clone, PartialEq, Eq, Ord, PartialOrd, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub struct Align {
+pub struct AbiAndPrefAlign {
     abi_pow2: u8,
     pref_pow2: u8,
 }
 
-impl Align {
-    pub fn from_bits(abi: u64, pref: u64) -> Result<Align, String> {
-        Align::from_bytes(Size::from_bits(abi).bytes(),
+impl AbiAndPrefAlign {
+    pub fn from_bits(abi: u64, pref: u64) -> Result<AbiAndPrefAlign, String> {
+        AbiAndPrefAlign::from_bytes(Size::from_bits(abi).bytes(),
                           Size::from_bits(pref).bytes())
     }
 
-    pub fn from_bytes(abi: u64, pref: u64) -> Result<Align, String> {
+    pub fn from_bytes(abi: u64, pref: u64) -> Result<AbiAndPrefAlign, String> {
         let log2 = |align: u64| {
             // Treat an alignment of 0 bytes like 1-byte alignment.
             if align == 0 {
@@ -396,7 +397,7 @@ impl Align {
             }
         };
 
-        Ok(Align {
+        Ok(AbiAndPrefAlign {
             abi_pow2: log2(abi)?,
             pref_pow2: log2(pref)?,
         })
@@ -418,15 +419,15 @@ impl Align {
         self.pref() * 8
     }
 
-    pub fn min(self, other: Align) -> Align {
-        Align {
+    pub fn min(self, other: AbiAndPrefAlign) -> AbiAndPrefAlign {
+        AbiAndPrefAlign {
             abi_pow2: cmp::min(self.abi_pow2, other.abi_pow2),
             pref_pow2: cmp::min(self.pref_pow2, other.pref_pow2),
         }
     }
 
-    pub fn max(self, other: Align) -> Align {
-        Align {
+    pub fn max(self, other: AbiAndPrefAlign) -> AbiAndPrefAlign {
+        AbiAndPrefAlign {
             abi_pow2: cmp::max(self.abi_pow2, other.abi_pow2),
             pref_pow2: cmp::max(self.pref_pow2, other.pref_pow2),
         }
@@ -436,9 +437,9 @@ impl Align {
     /// (the largest power of two that the offset is a multiple of).
     ///
     /// NB: for an offset of `0`, this happens to return `2^64`.
-    pub fn max_for_offset(offset: Size) -> Align {
+    pub fn max_for_offset(offset: Size) -> AbiAndPrefAlign {
         let pow2 = offset.bytes().trailing_zeros() as u8;
-        Align {
+        AbiAndPrefAlign {
             abi_pow2: pow2,
             pref_pow2: pow2,
         }
@@ -446,8 +447,8 @@ impl Align {
 
     /// Lower the alignment, if necessary, such that the given offset
     /// is aligned to it (the offset is a multiple of the alignment).
-    pub fn restrict_for_offset(self, offset: Size) -> Align {
-        self.min(Align::max_for_offset(offset))
+    pub fn restrict_for_offset(self, offset: Size) -> AbiAndPrefAlign {
+        self.min(AbiAndPrefAlign::max_for_offset(offset))
     }
 }
 
@@ -472,7 +473,7 @@ impl Integer {
         }
     }
 
-    pub fn align<C: HasDataLayout>(self, cx: &C) -> Align {
+    pub fn align<C: HasDataLayout>(self, cx: &C) -> AbiAndPrefAlign {
         let dl = cx.data_layout();
 
         match self {
@@ -507,7 +508,7 @@ impl Integer {
     }
 
     /// Find the smallest integer with the given alignment.
-    pub fn for_abi_align<C: HasDataLayout>(cx: &C, align: Align) -> Option<Integer> {
+    pub fn for_abi_align<C: HasDataLayout>(cx: &C, align: AbiAndPrefAlign) -> Option<Integer> {
         let dl = cx.data_layout();
 
         let wanted = align.abi();
@@ -520,7 +521,7 @@ impl Integer {
     }
 
     /// Find the largest integer with the given alignment or less.
-    pub fn approximate_abi_align<C: HasDataLayout>(cx: &C, align: Align) -> Integer {
+    pub fn approximate_abi_align<C: HasDataLayout>(cx: &C, align: AbiAndPrefAlign) -> Integer {
         let dl = cx.data_layout();
 
         let wanted = align.abi();
@@ -597,7 +598,7 @@ impl<'a, 'tcx> Primitive {
         }
     }
 
-    pub fn align<C: HasDataLayout>(self, cx: &C) -> Align {
+    pub fn align<C: HasDataLayout>(self, cx: &C) -> AbiAndPrefAlign {
         let dl = cx.data_layout();
 
         match self {
@@ -868,7 +869,7 @@ pub struct LayoutDetails {
     pub variants: Variants,
     pub fields: FieldPlacement,
     pub abi: Abi,
-    pub align: Align,
+    pub align: AbiAndPrefAlign,
     pub size: Size
 }
 
@@ -948,9 +949,5 @@ impl<'a, Ty> TyLayout<'a, Ty> {
             Abi::Uninhabited => self.size.bytes() == 0,
             Abi::Aggregate { sized } => sized && self.size.bytes() == 0
         }
-    }
-
-    pub fn size_and_align(&self) -> (Size, Align) {
-        (self.size, self.align)
     }
 }
