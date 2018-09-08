@@ -22,6 +22,7 @@ use borrow_check::nll::type_check::free_region_relations::{
 };
 use borrow_check::nll::universal_regions::UniversalRegions;
 use borrow_check::nll::ToRegionVid;
+use borrow_check::nll::renumber;
 use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedPlaces;
@@ -29,15 +30,18 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::region_constraints::GenericKind;
-use rustc::infer::{InferCtxt, LateBoundRegionConversionTime};
+use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::mir::*;
+use rustc::traits::{ObligationCause, PredicateObligations};
 use rustc::traits::query::type_op;
+use rustc::traits::query::type_op::custom::CustomTypeOp;
 use rustc::traits::query::{Fallible, NoSolution};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, CanonicalTy, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind};
+use rustc::ty::subst::Subst;
 use std::fmt;
 use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
@@ -155,12 +159,11 @@ pub(crate) fn type_check<'gcx, 'tcx>(
             &region_bound_pairs,
             Some(implicit_region_bound),
             Some(&mut borrowck_context),
+            Some(&universal_region_relations),
             |cx| {
                 cx.equate_inputs_and_outputs(
                     mir,
-                    mir_def_id,
                     universal_regions,
-                    &universal_region_relations,
                     &normalized_inputs_and_output,
                 );
                 liveness::generate(cx, mir, elements, flow_inits, move_data);
@@ -182,6 +185,7 @@ fn type_check_internal<'a, 'gcx, 'tcx, R>(
     region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
     implicit_region_bound: Option<ty::Region<'tcx>>,
     borrowck_context: Option<&'a mut BorrowCheckContext<'a, 'tcx>>,
+    universal_region_relations: Option<&'a UniversalRegionRelations<'tcx>>,
     mut extra: impl FnMut(&mut TypeChecker<'a, 'gcx, 'tcx>) -> R,
 ) -> R where {
     let mut checker = TypeChecker::new(
@@ -192,6 +196,7 @@ fn type_check_internal<'a, 'gcx, 'tcx, R>(
         region_bound_pairs,
         implicit_region_bound,
         borrowck_context,
+        universal_region_relations,
     );
     let errors_reported = {
         let mut verifier = TypeVerifier::new(&mut checker, mir);
@@ -692,6 +697,7 @@ struct TypeChecker<'a, 'gcx: 'tcx, 'tcx: 'a> {
     implicit_region_bound: Option<ty::Region<'tcx>>,
     reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
     borrowck_context: Option<&'a mut BorrowCheckContext<'a, 'tcx>>,
+    universal_region_relations: Option<&'a UniversalRegionRelations<'tcx>>,
 }
 
 struct BorrowCheckContext<'a, 'tcx: 'a> {
@@ -799,6 +805,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
         implicit_region_bound: Option<ty::Region<'tcx>>,
         borrowck_context: Option<&'a mut BorrowCheckContext<'a, 'tcx>>,
+        universal_region_relations: Option<&'a UniversalRegionRelations<'tcx>>,
     ) -> Self {
         TypeChecker {
             infcx,
@@ -810,6 +817,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             implicit_region_bound,
             borrowck_context,
             reported_errors: FxHashSet(),
+            universal_region_relations,
         }
     }
 
@@ -883,6 +891,23 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         )
     }
 
+    fn sub_types_or_anon(
+        &mut self,
+        sub: Ty<'tcx>,
+        sup: Ty<'tcx>,
+        locations: Locations,
+        category: ConstraintCategory,
+    ) -> Fallible<()> {
+        if let Err(terr) = self.sub_types(sub, sup, locations) {
+            if let TyKind::Opaque(..) = sup.sty {
+                return self.eq_opaque_type_and_type(sub, sup, locations, category);
+            } else {
+                return Err(terr);
+            }
+        }
+        Ok(())
+    }
+
     fn eq_types(
         &mut self,
         a: Ty<'tcx>,
@@ -919,6 +944,111 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         )
     }
 
+    fn eq_opaque_type_and_type(
+        &mut self,
+        revealed_ty: Ty<'tcx>,
+        anon_ty: Ty<'tcx>,
+        locations: Locations,
+        category: ConstraintCategory,
+    ) -> Fallible<()> {
+        let infcx = self.infcx;
+        let tcx = infcx.tcx;
+        let param_env = self.param_env;
+        let mir_def_id = self.mir_def_id;
+        let opaque_type_map =
+            self.fully_perform_op(
+                locations,
+                CustomTypeOp::new(
+                    |infcx| {
+                        let mut obligations = ObligationAccumulator::default();
+
+                        let dummy_body_id = ObligationCause::dummy().body_id;
+                        let (output_ty, opaque_type_map) =
+                            obligations.add(infcx.instantiate_opaque_types(
+                                mir_def_id,
+                                dummy_body_id,
+                                param_env,
+                                &anon_ty,
+                            ));
+                        debug!(
+                            "eq_opaque_type_and_type: \
+                             instantiated output_ty={:?} \
+                             opaque_type_map={:#?} \
+                             revealed_ty={:?}",
+                            output_ty,
+                            opaque_type_map,
+                            revealed_ty
+                        );
+                        obligations.add(
+                            infcx
+                                .at(&ObligationCause::dummy(), param_env)
+                                .eq(output_ty, revealed_ty)?,
+                        );
+
+                        for (&opaque_def_id, opaque_decl) in &opaque_type_map {
+                            let opaque_defn_ty = tcx.type_of(opaque_def_id);
+                            let opaque_defn_ty = opaque_defn_ty.subst(tcx, opaque_decl.substs);
+                            let opaque_defn_ty = renumber::renumber_regions(
+                                infcx,
+                                &opaque_defn_ty,
+                            );
+                            debug!(
+                                "eq_opaque_type_and_type: concrete_ty={:?} opaque_defn_ty={:?}",
+                                opaque_decl.concrete_ty,
+                                opaque_defn_ty
+                            );
+                            obligations.add(
+                                infcx
+                                    .at(&ObligationCause::dummy(), param_env)
+                                    .eq(opaque_decl.concrete_ty, opaque_defn_ty)?,
+                            );
+                        }
+
+                        debug!("eq_opaque_type_and_type: equated");
+
+                        Ok(InferOk {
+                            value: Some(opaque_type_map),
+                            obligations: obligations.into_vec(),
+                        })
+                    },
+                    || "input_output".to_string(),
+                ),
+            )?;
+
+        let universal_region_relations = match self.universal_region_relations {
+            Some(rel) => rel,
+            None => return Ok(()),
+        };
+
+        // Finally, if we instantiated the anon types successfully, we
+        // have to solve any bounds (e.g., `-> impl Iterator` needs to
+        // prove that `T: Iterator` where `T` is the type we
+        // instantiated it with).
+        if let Some(opaque_type_map) = opaque_type_map {
+            for (opaque_def_id, opaque_decl) in opaque_type_map {
+                self.fully_perform_op(
+                    locations,
+                    category,
+                    CustomTypeOp::new(
+                        |_cx| {
+                            infcx.constrain_opaque_type(
+                                opaque_def_id,
+                                &opaque_decl,
+                                universal_region_relations
+                            );
+                            Ok(InferOk {
+                                value: (),
+                                obligations: vec![],
+                            })
+                        },
+                        || "opaque_type_map".to_string(),
+                    ),
+                )?;
+            }
+        }
+        Ok(())
+    }
+
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.infcx.tcx
     }
@@ -942,7 +1072,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
                 let place_ty = place.ty(mir, tcx).to_ty(tcx);
                 let rv_ty = rv.ty(mir, tcx);
-                if let Err(terr) = self.sub_types(
+                if let Err(terr) = self.sub_types_or_anon(
                     rv_ty,
                     place_ty,
                     location.to_locations(),
@@ -1235,7 +1365,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
                 let locations = term_location.to_locations();
 
-                if let Err(terr) = self.sub_types(
+                if let Err(terr) = self.sub_types_or_anon(
                     sig.output(),
                     dest_ty,
                     locations,
@@ -2104,6 +2234,7 @@ impl MirPass for TypeckMir {
                 &[],
                 None,
                 None,
+                None,
                 |_| (),
             );
 
@@ -2128,3 +2259,21 @@ impl NormalizeLocation for Location {
         Locations::Single(self)
     }
 }
+
+#[derive(Debug, Default)]
+struct ObligationAccumulator<'tcx> {
+    obligations: PredicateObligations<'tcx>,
+}
+
+impl<'tcx> ObligationAccumulator<'tcx> {
+    fn add<T>(&mut self, value: InferOk<'tcx, T>) -> T {
+        let InferOk { value, obligations } = value;
+        self.obligations.extend(obligations);
+        value
+    }
+
+    fn into_vec(self) -> PredicateObligations<'tcx> {
+        self.obligations
+    }
+}
+

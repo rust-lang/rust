@@ -494,7 +494,7 @@ declare_features! (
     // Allows `Self` in type definitions
     (active, self_in_typedefs, "1.30.0", Some(49303), None),
 
-    // unsized rvalues at arguments and parameters
+    // Allows unsized rvalues at arguments and parameters
     (active, unsized_locals, "1.30.0", Some(48055), None),
 
     // #![test_runner]
@@ -505,13 +505,16 @@ declare_features! (
     (active, custom_inner_attributes, "1.30.0", Some(38356), None),
 
     // Self struct constructor  (RFC 2302)
-    (active, self_struct_ctor, "1.31.0", Some(51994), None),
+    (active, self_struct_ctor, "1.30.0", Some(51994), None),
 
     // allow mixing of bind-by-move in patterns and references to
     // those identifiers in guards, *if* we are using MIR-borrowck
     // (aka NLL). Essentially this means you need to be on
     // edition:2018 or later.
     (active, bind_by_move_pattern_guards, "1.30.0", Some(15287), None),
+
+    // Allows `impl Trait` in bindings (`let`, `const`, `static`)
+    (active, impl_trait_in_bindings, "1.30.0", Some(34511), None),
 );
 
 declare_features! (

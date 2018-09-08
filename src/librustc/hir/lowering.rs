@@ -1284,12 +1284,18 @@ impl<'a> LoweringContext<'a> {
                         ))
                     }
                     ImplTraitContext::Disallowed => {
+                        let allowed_in = if self.sess.features_untracked()
+                                                .impl_trait_in_bindings {
+                            "bindings or function and inherent method return types"
+                        } else {
+                            "function and inherent method return types"
+                        };
                         span_err!(
                             self.sess,
                             t.span,
                             E0562,
-                            "`impl Trait` not allowed outside of function \
-                             and inherent method return types or bindings"
+                            "`impl Trait` not allowed outside of {}",
+                            allowed_in,
                         );
                         hir::TyKind::Err
                     }
@@ -2206,8 +2212,10 @@ impl<'a> LoweringContext<'a> {
         let impl_trait_ty = self.lower_existential_impl_trait(
             span, Some(fn_def_id), return_impl_trait_id, |this| {
             let output_ty = match output {
-                FunctionRetTy::Ty(ty) =>
-                    this.lower_ty(ty, ImplTraitContext::Existential(Some(fn_def_id))),
+                FunctionRetTy::Ty(ty) => {
+                    let impl_trait_owner_id = *this.current_impl_trait_owner.last().unwrap();
+                    this.lower_ty(ty, ImplTraitContext::Existential(Some(impl_trait_owner_id)))
+                }
                 FunctionRetTy::Default(span) => {
                     let LoweredNodeId { node_id, hir_id } = this.next_id();
                     P(hir::Ty {
@@ -2702,14 +2710,31 @@ impl<'a> LoweringContext<'a> {
             ItemKind::Static(ref t, m, ref e) => {
                 let value = self.lower_body(None, |this| this.lower_expr(e));
                 hir::ItemKind::Static(
-                    self.lower_ty(t, ImplTraitContext::Disallowed),
+                    self.lower_ty(
+                        t,
+                        if self.sess.features_untracked().impl_trait_in_bindings {
+                            ImplTraitContext::Existential(None)
+                        } else {
+                            ImplTraitContext::Disallowed
+                        }
+                    ),
                     self.lower_mutability(m),
                     value,
                 )
             }
             ItemKind::Const(ref t, ref e) => {
                 let value = self.lower_body(None, |this| this.lower_expr(e));
-                hir::ItemKind::Const(self.lower_ty(t, ImplTraitContext::Disallowed), value)
+                hir::ItemKind::Const(
+                    self.lower_ty(
+                        t,
+                        if self.sess.features_untracked().impl_trait_in_bindings {
+                            ImplTraitContext::Existential(None)
+                        } else {
+                            ImplTraitContext::Disallowed
+                        }
+                    ),
+                    value
+                )
             }
             ItemKind::Fn(ref decl, header, ref generics, ref body) => {
                 let fn_def_id = self.resolver.definitions().local_def_id(id);
@@ -3255,6 +3280,22 @@ impl<'a> LoweringContext<'a> {
                     if let ImplItemKind::Method(ref sig, _) = item.node {
                         self.lower_fn_impl_trait_ids(&sig.decl, &sig.header, &mut ids);
                     }
+                }
+                ids
+            },
+            ItemKind::Static(ref ty, ..) => {
+                let mut ids = smallvec![hir::ItemId { id: i.id }];
+                if self.sess.features_untracked().impl_trait_in_bindings {
+                    let mut visitor = ImplTraitTypeIdVisitor { ids: &mut ids };
+                    visitor.visit_ty(ty);
+                }
+                ids
+            },
+            ItemKind::Const(ref ty, ..) => {
+                let mut ids = smallvec![hir::ItemId { id: i.id }];
+                if self.sess.features_untracked().impl_trait_in_bindings {
+                    let mut visitor = ImplTraitTypeIdVisitor { ids: &mut ids };
+                    visitor.visit_ty(ty);
                 }
                 ids
             },
@@ -3817,8 +3858,8 @@ impl<'a> LoweringContext<'a> {
             }
             ExprKind::Block(ref blk, opt_label) => {
                 hir::ExprKind::Block(self.lower_block(blk,
-                                                opt_label.is_some()),
-                                                self.lower_label(opt_label))
+                                                      opt_label.is_some()),
+                                                      self.lower_label(opt_label))
             }
             ExprKind::Assign(ref el, ref er) => {
                 hir::ExprKind::Assign(P(self.lower_expr(el)), P(self.lower_expr(er)))

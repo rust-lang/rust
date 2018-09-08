@@ -65,7 +65,7 @@ nodes within the function.
 The types of top-level items, which never contain unbound type
 variables, are stored directly into the `tcx` tables.
 
-n.b.: A type variable is not the same thing as a type parameter.  A
+N.B.: A type variable is not the same thing as a type parameter.  A
 type variable is rather an "instance" of a type parameter: that is,
 given a generic function `fn foo<T>(t: T)`: while checking the
 function `foo`, the type `ty_param(0)` refers to the type `T`, which
@@ -852,7 +852,7 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             check_abi(tcx, span, fn_sig.abi());
 
-            // Compute the fty from point of view of inside fn.
+            // Compute the fty from point of view of inside the fn.
             let fn_sig =
                 tcx.liberate_late_bound_regions(def_id, &fn_sig);
             let fn_sig =
@@ -869,10 +869,20 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let expected_type = fcx.normalize_associated_types_in(body.value.span, &expected_type);
             fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
 
+            let revealed_ty = if tcx.features().impl_trait_in_bindings {
+                fcx.require_type_is_sized(expected_type, body.value.span, traits::SizedReturnType);
+                fcx.instantiate_opaque_types_from_value(
+                    id,
+                    &expected_type
+                )
+            } else {
+                expected_type
+            };
+
             // Gather locals in statics (because of block expressions).
             GatherLocalsVisitor { fcx: &fcx, parent_id: id, }.visit_body(body);
 
-            fcx.check_expr_coercable_to_type(&body.value, expected_type);
+            fcx.check_expr_coercable_to_type(&body.value, revealed_ty);
 
             fcx
         };
@@ -957,9 +967,14 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
                 let o_ty = self.fcx.to_ty(&ty);
                 debug!("visit_local: ty.hir_id={:?} o_ty={:?} c_ty={:?}", ty.hir_id, o_ty, 1);
 
-                let revealed_ty = self.fcx.instantiate_opaque_types_from_value(
-                    self.parent_id,
-                    &o_ty);
+                let revealed_ty = if self.fcx.tcx.features().impl_trait_in_bindings {
+                    self.fcx.instantiate_opaque_types_from_value(
+                        self.parent_id,
+                        &o_ty
+                    )
+                } else {
+                    o_ty
+                };
 
                 let c_ty = self.fcx.inh.infcx.canonicalize_response(&revealed_ty);
                 self.fcx.tables.borrow_mut().user_provided_tys_mut().insert(ty.hir_id, c_ty);
@@ -1288,90 +1303,96 @@ fn check_union<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     check_packed(tcx, span, def_id);
 }
 
-pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item) {
-    debug!("check_item_type(it.id={}, it.name={})",
-           it.id,
-           tcx.item_path_str(tcx.hir.local_def_id(it.id)));
+pub fn check_item_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item) {
+    debug!(
+        "check_item_type(it.id={}, it.name={})",
+        it.id,
+        tcx.item_path_str(tcx.hir.local_def_id(it.id))
+    );
     let _indenter = indenter();
     match it.node {
-      // Consts can play a role in type-checking, so they are included here.
-      hir::ItemKind::Static(..) => {
-        let def_id = tcx.hir.local_def_id(it.id);
-        tcx.typeck_tables_of(def_id);
-        maybe_check_static_with_link_section(tcx, def_id, it.span);
-      }
-      hir::ItemKind::Const(..) => {
-        tcx.typeck_tables_of(tcx.hir.local_def_id(it.id));
-      }
-      hir::ItemKind::Enum(ref enum_definition, _) => {
-        check_enum(tcx,
-                   it.span,
-                   &enum_definition.variants,
-                   it.id);
-      }
-      hir::ItemKind::Fn(..) => {} // entirely within check_item_body
-      hir::ItemKind::Impl(.., ref impl_item_refs) => {
-          debug!("ItemKind::Impl {} with id {}", it.name, it.id);
-          let impl_def_id = tcx.hir.local_def_id(it.id);
-          if let Some(impl_trait_ref) = tcx.impl_trait_ref(impl_def_id) {
-              check_impl_items_against_trait(tcx,
-                                             it.span,
-                                             impl_def_id,
-                                             impl_trait_ref,
-                                             impl_item_refs);
-              let trait_def_id = impl_trait_ref.def_id;
-              check_on_unimplemented(tcx, trait_def_id, it);
-          }
-      }
-      hir::ItemKind::Trait(..) => {
-        let def_id = tcx.hir.local_def_id(it.id);
-        check_on_unimplemented(tcx, def_id, it);
-      }
-      hir::ItemKind::Struct(..) => {
-        check_struct(tcx, it.id, it.span);
-      }
-      hir::ItemKind::Union(..) => {
-        check_union(tcx, it.id, it.span);
-      }
-      hir::ItemKind::Existential(..) |
-      hir::ItemKind::Ty(..) => {
-        let def_id = tcx.hir.local_def_id(it.id);
-        let pty_ty = tcx.type_of(def_id);
-        let generics = tcx.generics_of(def_id);
-        check_bounds_are_used(tcx, &generics, pty_ty);
-      }
-      hir::ItemKind::ForeignMod(ref m) => {
-        check_abi(tcx, it.span, m.abi);
+        // Consts can play a role in type-checking, so they are included here.
+        hir::ItemKind::Static(..) => {
+            let def_id = tcx.hir.local_def_id(it.id);
+            tcx.typeck_tables_of(def_id);
+            maybe_check_static_with_link_section(tcx, def_id, it.span);
+        }
+        hir::ItemKind::Const(..) => {
+            tcx.typeck_tables_of(tcx.hir.local_def_id(it.id));
+        }
+        hir::ItemKind::Enum(ref enum_definition, _) => {
+            check_enum(tcx, it.span, &enum_definition.variants, it.id);
+        }
+        hir::ItemKind::Fn(..) => {} // entirely within check_item_body
+        hir::ItemKind::Impl(.., ref impl_item_refs) => {
+            debug!("ItemKind::Impl {} with id {}", it.name, it.id);
+            let impl_def_id = tcx.hir.local_def_id(it.id);
+            if let Some(impl_trait_ref) = tcx.impl_trait_ref(impl_def_id) {
+                check_impl_items_against_trait(
+                    tcx,
+                    it.span,
+                    impl_def_id,
+                    impl_trait_ref,
+                    impl_item_refs,
+                );
+                let trait_def_id = impl_trait_ref.def_id;
+                check_on_unimplemented(tcx, trait_def_id, it);
+            }
+        }
+        hir::ItemKind::Trait(..) => {
+            let def_id = tcx.hir.local_def_id(it.id);
+            check_on_unimplemented(tcx, def_id, it);
+        }
+        hir::ItemKind::Struct(..) => {
+            check_struct(tcx, it.id, it.span);
+        }
+        hir::ItemKind::Union(..) => {
+            check_union(tcx, it.id, it.span);
+        }
+        hir::ItemKind::Existential(..) | hir::ItemKind::Ty(..) => {
+            let def_id = tcx.hir.local_def_id(it.id);
+            let pty_ty = tcx.type_of(def_id);
+            let generics = tcx.generics_of(def_id);
+            check_bounds_are_used(tcx, &generics, pty_ty);
+        }
+        hir::ItemKind::ForeignMod(ref m) => {
+            check_abi(tcx, it.span, m.abi);
 
-        if m.abi == Abi::RustIntrinsic {
-            for item in &m.items {
-                intrinsic::check_intrinsic_type(tcx, item);
-            }
-        } else if m.abi == Abi::PlatformIntrinsic {
-            for item in &m.items {
-                intrinsic::check_platform_intrinsic_type(tcx, item);
-            }
-        } else {
-            for item in &m.items {
-                let generics = tcx.generics_of(tcx.hir.local_def_id(item.id));
-                if generics.params.len() - generics.own_counts().lifetimes != 0 {
-                    let mut err = struct_span_err!(tcx.sess, item.span, E0044,
-                        "foreign items may not have type parameters");
-                    err.span_label(item.span, "can't have type parameters");
-                    // FIXME: once we start storing spans for type arguments, turn this into a
-                    // suggestion.
-                    err.help("use specialization instead of type parameters by replacing them \
-                              with concrete types like `u32`");
-                    err.emit();
+            if m.abi == Abi::RustIntrinsic {
+                for item in &m.items {
+                    intrinsic::check_intrinsic_type(tcx, item);
                 }
+            } else if m.abi == Abi::PlatformIntrinsic {
+                for item in &m.items {
+                    intrinsic::check_platform_intrinsic_type(tcx, item);
+                }
+            } else {
+                for item in &m.items {
+                    let generics = tcx.generics_of(tcx.hir.local_def_id(item.id));
+                    if generics.params.len() - generics.own_counts().lifetimes != 0 {
+                        let mut err = struct_span_err!(
+                            tcx.sess,
+                            item.span,
+                            E0044,
+                            "foreign items may not have type parameters"
+                        );
+                        err.span_label(item.span, "can't have type parameters");
+                        // FIXME: once we start storing spans for type arguments, turn this into a
+                        // suggestion.
+                        err.help(
+                            "use specialization instead of type parameters by replacing them \
+                             with concrete types like `u32`",
+                        );
+                        err.emit();
+                    }
 
-                if let hir::ForeignItemKind::Fn(ref fn_decl, _, _) = item.node {
-                    require_c_abi_if_variadic(tcx, fn_decl, m.abi, item.span);
+                    if let hir::ForeignItemKind::Fn(ref fn_decl, _, _) = item.node {
+                        require_c_abi_if_variadic(tcx, fn_decl, m.abi, item.span);
+                    }
                 }
             }
         }
-      }
-      _ => {/* nothing to do */ }
+        _ => { /* nothing to do */ }
     }
 }
 
@@ -3936,7 +3957,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             hir::ExprKind::Path(ref qpath) => {
                 let (def, opt_ty, segs) = self.resolve_ty_and_def_ufcs(qpath, expr.id, expr.span);
-                debug!("path_foo: {:?} {:?}", def, opt_ty);
                 let ty = if def != Def::Err {
                     self.instantiate_value_path(segs, opt_ty, def, expr.span, id).0
                 } else {
