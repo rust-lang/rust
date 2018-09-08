@@ -33,7 +33,7 @@ use sys;
 /// type is a static guarantee that the underlying bytes contain no interior 0
 /// bytes ("nul characters") and that the final byte is 0 ("nul terminator").
 ///
-/// `CString` is to [`CStr`] as [`String`] is to [`&str`]: the former
+/// `CString` is to [`&CStr`] as [`String`] is to [`&str`]: the former
 /// in each pair are owned strings; the latter are borrowed
 /// references.
 ///
@@ -88,6 +88,7 @@ use sys;
 /// [slice.len]: ../primitive.slice.html#method.len
 /// [`Deref`]: ../ops/trait.Deref.html
 /// [`CStr`]: struct.CStr.html
+/// [`&CStr`]: struct.CStr.html
 ///
 /// # Examples
 ///
@@ -137,7 +138,7 @@ pub struct CString {
 /// converted to a Rust [`&str`] by performing UTF-8 validation, or
 /// into an owned [`CString`].
 ///
-/// `CStr` is to [`CString`] as [`&str`] is to [`String`]: the former
+/// `&CStr` is to [`CString`] as [`&str`] is to [`String`]: the former
 /// in each pair are borrowed references; the latter are owned
 /// strings.
 ///
