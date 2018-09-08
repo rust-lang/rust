@@ -23,17 +23,20 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
                 match inst.def {
                     InstanceDef::Item(_)
                     | InstanceDef::DropGlue(_, _)
-                    | InstanceDef::Virtual(_, _) => {
+                    | InstanceDef::Virtual(_, _) if inst.def_id().krate == LOCAL_CRATE => {
                         let mut mir = ::std::io::Cursor::new(Vec::new());
                         ::rustc_mir::util::write_mir_pretty(tcx, Some(inst.def_id()), &mut mir)
                             .unwrap();
                         String::from_utf8(mir.into_inner()).unwrap()
                     }
-                    InstanceDef::FnPtrShim(_, _)
+                    InstanceDef::Item(_)
+                    | InstanceDef::DropGlue(_, _)
+                    | InstanceDef::Virtual(_, _)
+                    | InstanceDef::FnPtrShim(_, _)
                     | InstanceDef::ClosureOnceShim { .. }
                     | InstanceDef::CloneShim(_, _) => {
-                        // FIXME fix write_mir_pretty for these instances
-                        format!("{:#?}", tcx.instance_mir(inst.def))
+                       // FIXME fix write_mir_pretty for these instances
+                       format!("{:#?}", tcx.instance_mir(inst.def))
                     }
                     InstanceDef::Intrinsic(_) => bug!("tried to codegen intrinsic"),
                 }
