@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_type = "rlib"]
+// edition:2018
+// aux-crate:netted=ep-nested-lib.rs
 
-pub mod foo {
-    pub mod bar {
-        pub struct Baz;
-    }
+fn main() {
+    let _x = Bazz{};
+    //~^ ERROR cannot find struct, variant or union type `Bazz` in this scope
 }

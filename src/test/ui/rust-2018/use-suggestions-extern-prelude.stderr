@@ -1,0 +1,13 @@
+error[E0422]: cannot find struct, variant or union type `Bazz` in this scope
+  --> $DIR/use-suggestions-extern-prelude.rs:15:14
+   |
+LL |     let _x = Bazz{};
+   |              ^^^^ not found in this scope
+help: possible candidate is found in another module, you can import it into scope
+   |
+LL | use netted::foo::bar::Bazz;
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0422`.

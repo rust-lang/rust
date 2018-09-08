@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let x = Baz{};
+#![crate_type = "rlib"]
+
+pub mod foo {
+    pub mod bar {
+        pub struct Bazz;
+    }
 }
