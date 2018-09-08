@@ -1,6 +1,6 @@
-From 78c557ab91915384c4de6b743fa67dedcb0263c9 Mon Sep 17 00:00:00 2001
+From 7f8b6fdc01a17a0f963ac05bf9a488c093307090 Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Tue, 14 Aug 2018 09:59:32 +0200
+Date: Sat, 8 Sep 2018 11:06:28 +0200
 Subject: [PATCH] Disable u128 and i128 in libcore
 
 ---
@@ -8,20 +8,20 @@ Subject: [PATCH] Disable u128 and i128 in libcore
  src/libcore/cmp.rs           |  6 +--
  src/libcore/default.rs       |  2 -
  src/libcore/fmt/num.rs       |  6 +--
- src/libcore/hash/mod.rs      | 20 ----------
+ src/libcore/hash/mod.rs      | 20 ---------
  src/libcore/iter/range.rs    |  1 -
  src/libcore/iter/traits.rs   |  2 +-
  src/libcore/lib.rs           |  2 -
  src/libcore/marker.rs        |  4 +-
  src/libcore/mem.rs           |  2 -
- src/libcore/num/mod.rs       | 92 +++++++++++++-------------------------------
+ src/libcore/num/mod.rs       | 99 ++++++++++++--------------------------------
  src/libcore/num/wrapping.rs  | 14 +++----
- src/libcore/ops/arith.rs     | 22 +++++------
- src/libcore/ops/bit.rs       | 30 ++++++---------
- src/libcore/tests/iter.rs    | 15 --------
- src/libcore/tests/num/mod.rs | 18 ---------
- src/libcore/time.rs          | 51 ------------------------
- 17 files changed, 62 insertions(+), 229 deletions(-)
+ src/libcore/ops/arith.rs     | 22 +++++-----
+ src/libcore/ops/bit.rs       | 30 +++++---------
+ src/libcore/tests/iter.rs    | 15 -------
+ src/libcore/tests/num/mod.rs | 18 --------
+ src/libcore/time.rs          | 51 -----------------------
+ 17 files changed, 62 insertions(+), 236 deletions(-)
 
 diff --git a/src/libcore/clone.rs b/src/libcore/clone.rs
 index 3b15ba2..de08ce0 100644
@@ -39,10 +39,10 @@ index 3b15ba2..de08ce0 100644
          bool char
      }
 diff --git a/src/libcore/cmp.rs b/src/libcore/cmp.rs
-index 58d6c4f..a6e6496 100644
+index ef7d83a..e40c5c2 100644
 --- a/src/libcore/cmp.rs
 +++ b/src/libcore/cmp.rs
-@@ -800,7 +800,7 @@ mod impls {
+@@ -883,7 +883,7 @@ mod impls {
      }
  
      partial_eq_impl! {
@@ -51,7 +51,7 @@ index 58d6c4f..a6e6496 100644
      }
  
      macro_rules! eq_impl {
-@@ -810,7 +810,7 @@ mod impls {
+@@ -893,7 +893,7 @@ mod impls {
          )*)
      }
  
@@ -60,7 +60,7 @@ index 58d6c4f..a6e6496 100644
  
      macro_rules! partial_ord_impl {
          ($($t:ty)*) => ($(
-@@ -899,7 +899,7 @@ mod impls {
+@@ -982,7 +982,7 @@ mod impls {
          }
      }
  
@@ -188,10 +188,10 @@ index e7907e0..84b700c 100644
  
      #[stable(feature = "rust1", since = "1.0.0")]
 diff --git a/src/libcore/iter/range.rs b/src/libcore/iter/range.rs
-index 651c7a3..3708b8e 100644
+index 55addd8..6695cfe 100644
 --- a/src/libcore/iter/range.rs
 +++ b/src/libcore/iter/range.rs
-@@ -175,7 +175,6 @@ step_impl_signed!([i64: u64]);
+@@ -183,7 +183,6 @@ step_impl_signed!([i64: u64]);
  // assume here that it is less than 64-bits.
  #[cfg(not(target_pointer_width = "64"))]
  step_impl_no_between!(u64 i64);
@@ -213,10 +213,10 @@ index 4b2c1aa..ec3991f 100644
  
  /// An iterator adapter that produces output as long as the underlying
 diff --git a/src/libcore/lib.rs b/src/libcore/lib.rs
-index c7618b9..31b33a2 100644
+index fb90be8..310f376 100644
 --- a/src/libcore/lib.rs
 +++ b/src/libcore/lib.rs
-@@ -144,14 +144,12 @@ mod uint_macros;
+@@ -152,14 +152,12 @@ mod uint_macros;
  #[path = "num/i16.rs"]   pub mod i16;
  #[path = "num/i32.rs"]   pub mod i32;
  #[path = "num/i64.rs"]   pub mod i64;
@@ -232,10 +232,10 @@ index c7618b9..31b33a2 100644
  #[path = "num/f32.rs"]   pub mod f32;
  #[path = "num/f64.rs"]   pub mod f64;
 diff --git a/src/libcore/marker.rs b/src/libcore/marker.rs
-index d18e167..ec2edc1 100644
+index dd57d2d..b75376b 100644
 --- a/src/libcore/marker.rs
 +++ b/src/libcore/marker.rs
-@@ -649,8 +649,8 @@ mod copy_impls {
+@@ -672,8 +672,8 @@ mod copy_impls {
      }
  
      impl_copy! {
@@ -247,10 +247,10 @@ index d18e167..ec2edc1 100644
          bool char
      }
 diff --git a/src/libcore/mem.rs b/src/libcore/mem.rs
-index 8a74e7c..642fffa 100644
+index 1803ade..f7fb0cb 100644
 --- a/src/libcore/mem.rs
 +++ b/src/libcore/mem.rs
-@@ -196,12 +196,10 @@ pub fn forget<T>(t: T) {
+@@ -162,12 +162,10 @@ pub fn forget<T>(t: T) {
  /// u16 | 2
  /// u32 | 4
  /// u64 | 8
@@ -264,10 +264,10 @@ index 8a74e7c..642fffa 100644
  /// f64 | 8
  /// char | 4
 diff --git a/src/libcore/num/mod.rs b/src/libcore/num/mod.rs
-index eb63966..eb06710 100644
+index 5ae984a..63b3754 100644
 --- a/src/libcore/num/mod.rs
 +++ b/src/libcore/num/mod.rs
-@@ -95,7 +95,6 @@ nonzero_integers! {
+@@ -105,7 +105,6 @@ nonzero_integers! {
      NonZeroU16(u16);
      NonZeroU32(u32);
      NonZeroU64(u64);
@@ -275,8 +275,8 @@ index eb63966..eb06710 100644
      NonZeroUsize(usize);
  }
  
-@@ -2025,15 +2024,6 @@ impl i64 {
-          "0x6a2c48091e6a2c48" }
+@@ -2282,18 +2281,6 @@ impl i64 {
+          "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
  }
  
 -#[lang = "i128"]
@@ -284,28 +284,35 @@ index eb63966..eb06710 100644
 -    int_impl! { i128, i128, u128, 128, -170141183460469231731687303715884105728,
 -        170141183460469231731687303715884105727, "", "", 16,
 -        "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
--        "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48"
--    }
+-        "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48",
+-        "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
+-          0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+-        "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
+-          0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]" }
 -}
 -
  #[cfg(target_pointer_width = "16")]
  #[lang = "isize"]
  impl isize {
-@@ -4157,13 +4147,6 @@ impl u64 {
-         "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48" }
+@@ -4729,17 +4716,6 @@ impl u64 {
+         "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
  }
  
 -#[lang = "u128"]
 -impl u128 {
 -    uint_impl! { u128, u128, 128, 340282366920938463463374607431768211455, "", "", 16,
 -        "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
--        "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48" }
+-        "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48",
+-        "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
+-          0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+-        "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
+-          0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]" }
 -}
 -
  #[cfg(target_pointer_width = "16")]
  #[lang = "usize"]
  impl usize {
-@@ -4244,7 +4227,7 @@ macro_rules! from_str_radix_int_impl {
+@@ -4823,7 +4799,7 @@ macro_rules! from_str_radix_int_impl {
          }
      )*}
  }
@@ -314,7 +321,7 @@ index eb63966..eb06710 100644
  
  /// The error type returned when a checked integral type conversion fails.
  #[unstable(feature = "try_from", issue = "33417")]
-@@ -4360,30 +4343,25 @@ macro_rules! rev {
+@@ -4939,30 +4915,25 @@ macro_rules! rev {
  try_from_upper_bounded!(u16, u8);
  try_from_upper_bounded!(u32, u16, u8);
  try_from_upper_bounded!(u64, u32, u16, u8);
@@ -349,7 +356,7 @@ index eb63966..eb06710 100644
  
  // usize/isize
  try_from_upper_bounded!(usize, isize);
-@@ -4395,21 +4373,21 @@ mod ptr_try_from_impls {
+@@ -4974,21 +4945,21 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8);
@@ -379,7 +386,7 @@ index eb63966..eb06710 100644
  }
  
  #[cfg(target_pointer_width = "32")]
-@@ -4418,24 +4396,24 @@ mod ptr_try_from_impls {
+@@ -4997,24 +4968,24 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8, u16);
@@ -412,7 +419,7 @@ index eb63966..eb06710 100644
  }
  
  #[cfg(target_pointer_width = "64")]
-@@ -4444,24 +4422,20 @@ mod ptr_try_from_impls {
+@@ -5023,24 +4994,20 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8, u16, u32);
@@ -441,7 +448,7 @@ index eb63966..eb06710 100644
  }
  
  #[doc(hidden)]
-@@ -4496,7 +4470,7 @@ macro_rules! doit {
+@@ -5075,7 +5042,7 @@ macro_rules! doit {
          }
      })*)
  }
@@ -450,7 +457,7 @@ index eb63966..eb06710 100644
  
  fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, ParseIntError> {
      use self::IntErrorKind::*;
-@@ -4664,52 +4638,38 @@ impl_from_bool! { u8, #[stable(feature = "from_bool", since = "1.28.0")] }
+@@ -5243,52 +5210,38 @@ impl_from_bool! { u8, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u16, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u32, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u64, #[stable(feature = "from_bool", since = "1.28.0")] }
@@ -839,10 +846,11 @@ index 72b115f..d542e10 100644
  
      #[derive(Clone)]
      struct Test(Bigger);
-@@ -1878,19 +1876,6 @@ fn test_step_replace_signed() {
+@@ -1877,19 +1875,6 @@ fn test_step_replace_signed() {
+     assert_eq!(y, 5);
  }
  
- #[test]
+-#[test]
 -fn test_step_replace_no_between() {
 -    let mut x = 4u128;
 -    let y = x.replace_zero();
@@ -855,10 +863,9 @@ index 72b115f..d542e10 100644
 -    assert_eq!(y, 5);
 -}
 -
--#[test]
+ #[test]
  fn test_rev_try_folds() {
      let f = &|acc, x| i32::checked_add(2*acc, x);
-     assert_eq!((1..10).rev().try_fold(7, f), (1..10).try_rfold(7, f));
 diff --git a/src/libcore/tests/num/mod.rs b/src/libcore/tests/num/mod.rs
 index ab96d31..bb5c1d0 100644
 --- a/src/libcore/tests/num/mod.rs
@@ -991,5 +998,5 @@ index b589202..0f8a2ee 100644
      /// if overflow occurred.
      ///
 -- 
-2.11.0
+2.15.2 (Apple Git-101.1)
 
