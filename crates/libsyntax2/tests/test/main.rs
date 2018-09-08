@@ -12,7 +12,7 @@ use std::{
 use test_utils::extract_range;
 use libsyntax2::{
     File, AtomEdit,
-    utils::dump_tree,
+    utils::{dump_tree, check_fuzz_invariants},
 };
 
 #[test]
@@ -29,6 +29,13 @@ fn parser_tests() {
         let file = File::parse(text);
         dump_tree(file.syntax())
     })
+}
+
+#[test]
+fn parser_fuzz_tests() {
+    for (_, text) in collect_tests(&["parser/fuzz-failures"]) {
+        check_fuzz_invariants(&text)
+    }
 }
 
 #[test]
@@ -88,8 +95,7 @@ pub fn dir_tests<F>(paths: &[&str], f: F)
     where
         F: Fn(&str) -> String,
 {
-    for path in collect_tests(paths) {
-        let input_code = read_text(&path);
+    for (path, input_code) in collect_tests(paths) {
         let parse_tree = f(&input_code);
         let path = path.with_extension("txt");
         if !path.exists() {
@@ -128,12 +134,16 @@ fn assert_equal_text(expected: &str, actual: &str, path: &Path) {
     assert_eq_text!(expected, actual, "file: {}", pretty_path.display());
 }
 
-fn collect_tests(paths: &[&str]) -> Vec<PathBuf> {
+fn collect_tests(paths: &[&str]) -> Vec<(PathBuf, String)> {
     paths
         .iter()
         .flat_map(|path| {
             let path = test_data_dir().join(path);
             test_from_dir(&path).into_iter()
+        })
+        .map(|path| {
+            let text = read_text(&path);
+            (path, text)
         })
         .collect()
 }
