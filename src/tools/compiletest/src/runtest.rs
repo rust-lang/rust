@@ -1574,7 +1574,10 @@ impl<'test> TestCx<'test> {
 
         for aux_crate in &self.props.aux_crates {
             rustc.arg("--extern");
-            rustc.arg(format!("{}={}/lib{}", aux_crate.key, aux_dir.display(), &aux_crate.value.replace(".rs", ".so").replace("-","_")));
+            rustc.arg(format!("{}={}/lib{}",
+                              aux_crate.key,
+                              aux_dir.display(),
+                              &aux_crate.value.replace(".rs", ".so").replace("-","_")));
         }
 
         self.compose_and_run(
