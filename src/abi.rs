@@ -249,11 +249,6 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
 ) {
     let ssa_analyzed = crate::analyze::analyze(fx);
 
-    match fx.self_sig().abi {
-        Abi::Rust | Abi::RustCall => {}
-        _ => unimplemented!("declared function with non \"rust\" or \"rust-call\" abi"),
-    }
-
     let ret_layout = fx.layout_of(fx.return_type());
     let output_pass_mode = get_pass_mode(fx.tcx, fx.self_sig().abi, fx.return_type(), true);
     let ret_param = match output_pass_mode {

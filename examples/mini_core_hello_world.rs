@@ -9,10 +9,12 @@ extern crate mini_core;
 use mini_core::*;
 
 #[link(name = "c")]
-extern "C" {}
-
 extern "C" {
     fn puts(s: *const u8);
+}
+
+unsafe extern "C" fn my_puts(s: *const u8) {
+    puts(s);
 }
 
 #[lang = "termination"]
@@ -44,7 +46,7 @@ static NUM_REF: &'static u8 = unsafe { &NUM };
 fn main() {
     unsafe {
         let slice: &[u8] = b"Hello\0" as &[u8; 6];
-        if intrinsics::size_of_val(slice) as u8 != 0 {
+        if intrinsics::size_of_val(slice) as u8 != 6 {
             panic(&("eji", "frjio", 0, 0));
         };
         let ptr: *const u8 = slice as *const [u8] as *const u8;
