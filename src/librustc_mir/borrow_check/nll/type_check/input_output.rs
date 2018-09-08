@@ -72,7 +72,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         // types.
         let param_env = self.param_env;
         let mir_output_ty = mir.local_decls[RETURN_PLACE].ty;
-        let anon_type_map =
+        let opaque_type_map =
             self.fully_perform_op(
                 Locations::All,
                 CustomTypeOp::new(
@@ -80,8 +80,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         let mut obligations = ObligationAccumulator::default();
 
                         let dummy_body_id = ObligationCause::dummy().body_id;
-                        let (output_ty, anon_type_map) =
-                            obligations.add(infcx.instantiate_anon_types(
+                        let (output_ty, opaque_type_map) =
+                            obligations.add(infcx.instantiate_opaque_types(
                                 mir_def_id,
                                 dummy_body_id,
                                 param_env,
@@ -92,8 +92,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                             output_ty
                         );
                         debug!(
-                            "equate_inputs_and_outputs: anon_type_map={:#?}",
-                            anon_type_map
+                            "equate_inputs_and_outputs: opaque_type_map={:#?}",
+                            opaque_type_map
                         );
 
                         debug!(
@@ -106,29 +106,30 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                                 .eq(output_ty, mir_output_ty)?,
                         );
 
-                        for (&anon_def_id, anon_decl) in &anon_type_map {
-                            let anon_defn_ty = tcx.type_of(anon_def_id);
-                            let anon_defn_ty = anon_defn_ty.subst(tcx, anon_decl.substs);
-                            let anon_defn_ty = renumber::renumber_regions(
+                        for (&opaque_def_id, opaque_decl) in &opaque_type_map {
+                            let opaque_defn_ty = tcx.type_of(opaque_def_id);
+                            let opaque_defn_ty = opaque_defn_ty.subst(tcx, opaque_decl.substs);
+                            let opaque_defn_ty = renumber::renumber_regions(
                                 infcx,
-                                &anon_defn_ty,
+                                &opaque_defn_ty,
                             );
                             debug!(
                                 "equate_inputs_and_outputs: concrete_ty={:?}",
-                                anon_decl.concrete_ty
+                                opaque_decl.concrete_ty
                             );
-                            debug!("equate_inputs_and_outputs: anon_defn_ty={:?}", anon_defn_ty);
+                            debug!("equate_inputs_and_outputs: opaque_defn_ty={:?}",
+                                   opaque_defn_ty);
                             obligations.add(
                                 infcx
                                     .at(&ObligationCause::dummy(), param_env)
-                                    .eq(anon_decl.concrete_ty, anon_defn_ty)?,
+                                    .eq(opaque_decl.concrete_ty, opaque_defn_ty)?,
                             );
                         }
 
                         debug!("equate_inputs_and_outputs: equated");
 
                         Ok(InferOk {
-                            value: Some(anon_type_map),
+                            value: Some(opaque_type_map),
                             obligations: obligations.into_vec(),
                         })
                     },
@@ -146,22 +147,22 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 None
             });
 
-        // Finally, if we instantiated the anon types successfully, we
+        // Finally, if we instantiated the opaque types successfully, we
         // have to solve any bounds (e.g., `-> impl Iterator` needs to
         // prove that `T: Iterator` where `T` is the type we
         // instantiated it with).
-        if let Some(anon_type_map) = anon_type_map {
+        if let Some(opaque_type_map) = opaque_type_map {
             self.fully_perform_op(
                 Locations::All,
                 CustomTypeOp::new(
                     |_cx| {
-                        infcx.constrain_anon_types(&anon_type_map, universal_region_relations);
+                        infcx.constrain_opaque_types(&opaque_type_map, universal_region_relations);
                         Ok(InferOk {
                             value: (),
                             obligations: vec![],
                         })
                     },
-                    || "anon_type_map".to_string(),
+                    || "opaque_type_map".to_string(),
                 ),
             ).unwrap();
         }

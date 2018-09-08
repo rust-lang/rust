@@ -1646,18 +1646,18 @@ fn explicit_predicates_of<'a, 'tcx>(
         Node::ImplItem(item) => match item.node {
             ImplItemKind::Existential(ref bounds) => {
                 let substs = Substs::identity_for_item(tcx, def_id);
-                let anon_ty = tcx.mk_anon(def_id, substs);
+                let opaque_ty = tcx.mk_opaque(def_id, substs);
 
                 // Collect the bounds, i.e. the `A+B+'c` in `impl A+B+'c`.
                 let bounds = compute_bounds(
                     &icx,
-                    anon_ty,
+                    opaque_ty,
                     bounds,
                     SizedByDefault::Yes,
                     tcx.def_span(def_id),
                 );
 
-                predicates.extend(bounds.predicates(tcx, anon_ty));
+                predicates.extend(bounds.predicates(tcx, opaque_ty));
                 &item.generics
             }
             _ => &item.generics,
@@ -1687,12 +1687,12 @@ fn explicit_predicates_of<'a, 'tcx>(
                     ref generics,
                 }) => {
                     let substs = Substs::identity_for_item(tcx, def_id);
-                    let anon_ty = tcx.mk_anon(def_id, substs);
+                    let opaque_ty = tcx.mk_opaque(def_id, substs);
 
                     // Collect the bounds, i.e. the `A+B+'c` in `impl A+B+'c`.
                     let bounds = compute_bounds(
                         &icx,
-                        anon_ty,
+                        opaque_ty,
                         bounds,
                         SizedByDefault::Yes,
                         tcx.def_span(def_id),
@@ -1702,11 +1702,11 @@ fn explicit_predicates_of<'a, 'tcx>(
                         // impl Trait
                         return ty::GenericPredicates {
                             parent: None,
-                            predicates: bounds.predicates(tcx, anon_ty),
+                            predicates: bounds.predicates(tcx, opaque_ty),
                         };
                     } else {
                         // named existential types
-                        predicates.extend(bounds.predicates(tcx, anon_ty));
+                        predicates.extend(bounds.predicates(tcx, opaque_ty));
                         generics
                     }
                 }

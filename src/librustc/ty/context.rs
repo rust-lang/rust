@@ -2136,7 +2136,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             self,
             Adt, Array, Slice, RawPtr, Ref, FnDef, FnPtr,
             Generator, GeneratorWitness, Dynamic, Closure, Tuple,
-            Param, Infer, Projection, Anon, Foreign);
+            Param, Infer, Projection, Opaque, Foreign);
 
         println!("Substs interner: #{}", self.interners.substs.borrow().len());
         println!("Region interner: #{}", self.interners.region.borrow().len());
@@ -2606,8 +2606,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn mk_anon(self, def_id: DefId, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(Anon(def_id, substs))
+    pub fn mk_opaque(self, def_id: DefId, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(Opaque(def_id, substs))
     }
 
     pub fn intern_existential_predicates(self, eps: &[ExistentialPredicate<'tcx>])

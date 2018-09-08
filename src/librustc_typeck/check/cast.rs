@@ -78,8 +78,8 @@ enum PointerKind<'tcx> {
     Length,
     /// The unsize info of this projection
     OfProjection(&'tcx ty::ProjectionTy<'tcx>),
-    /// The unsize info of this anon ty
-    OfAnon(DefId, &'tcx Substs<'tcx>),
+    /// The unsize info of this opaque ty
+    OfOpaque(DefId, &'tcx Substs<'tcx>),
     /// The unsize info of this parameter
     OfParam(&'tcx ty::ParamTy),
 }
@@ -124,7 +124,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ty::Foreign(..) => Some(PointerKind::Thin),
             // We should really try to normalize here.
             ty::Projection(ref pi) => Some(PointerKind::OfProjection(pi)),
-            ty::Anon(def_id, substs) => Some(PointerKind::OfAnon(def_id, substs)),
+            ty::Opaque(def_id, substs) => Some(PointerKind::OfOpaque(def_id, substs)),
             ty::Param(ref p) => Some(PointerKind::OfParam(p)),
             // Insufficient type information.
             ty::Infer(_) => None,

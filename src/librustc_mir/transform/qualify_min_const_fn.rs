@@ -100,7 +100,7 @@ fn check_ty(
                 span,
                 "mutable references in const fn are unstable".into(),
             )),
-            ty::Anon(..) => return Err((span, "`impl Trait` in const fn is unstable".into())),
+            ty::Opaque(..) => return Err((span, "`impl Trait` in const fn is unstable".into())),
             ty::FnPtr(..) => {
                 return Err((span, "function pointers in const fn are unstable".into()))
             }

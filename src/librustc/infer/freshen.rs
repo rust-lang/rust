@@ -197,7 +197,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             ty::Param(..) |
             ty::Closure(..) |
             ty::GeneratorWitness(..) |
-            ty::Anon(..) => {
+            ty::Opaque(..) => {
                 t.super_fold_with(self)
             }
         }

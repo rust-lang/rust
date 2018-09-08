@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/never_reveal_concrete_type.rs:24:27
    |
 LL |     let _: &'static str = x; //~ mismatched types
-   |                           ^ expected reference, found anonymized type
+   |                           ^ expected reference, found opaque type
    |
    = note: expected type `&'static str`
               found type `NoReveal`

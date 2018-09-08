@@ -366,7 +366,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
 
         let ty = ty.super_fold_with(self);
         match ty.sty {
-            ty::Anon(def_id, substs) if !substs.has_escaping_regions() => { // (*)
+            ty::Opaque(def_id, substs) if !substs.has_escaping_regions() => { // (*)
                 // Only normalize `impl Trait` after type-checking, usually in codegen.
                 match self.param_env.reveal {
                     Reveal::UserFacing => ty,
@@ -986,7 +986,7 @@ fn assemble_candidates_from_trait_def<'cx, 'gcx, 'tcx>(
         ty::Projection(ref data) => {
             (data.trait_ref(tcx).def_id, data.substs)
         }
-        ty::Anon(def_id, substs) => (def_id, substs),
+        ty::Opaque(def_id, substs) => (def_id, substs),
         ty::Infer(ty::TyVar(_)) => {
             // If the self-type is an inference variable, then it MAY wind up
             // being a projected type, so induce an ambiguity.
@@ -1518,7 +1518,7 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
     let substs = translate_substs(selcx.infcx(), param_env, impl_def_id, substs, assoc_ty.node);
     let ty = if let ty::AssociatedKind::Existential = assoc_ty.item.kind {
         let item_substs = Substs::identity_for_item(tcx, assoc_ty.item.def_id);
-        tcx.mk_anon(assoc_ty.item.def_id, item_substs)
+        tcx.mk_opaque(assoc_ty.item.def_id, item_substs)
     } else {
         tcx.type_of(assoc_ty.item.def_id)
     };

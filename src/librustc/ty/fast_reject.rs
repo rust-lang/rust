@@ -47,7 +47,7 @@ pub enum SimplifiedTypeGen<D>
     ClosureSimplifiedType(D),
     GeneratorSimplifiedType(D),
     GeneratorWitnessSimplifiedType(usize),
-    AnonSimplifiedType(D),
+    OpaqueSimplifiedType(D),
     FunctionSimplifiedType(usize),
     ParameterSimplifiedType,
     ForeignSimplifiedType(DefId),
@@ -115,8 +115,8 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                 None
             }
         }
-        ty::Anon(def_id, _) => {
-            Some(AnonSimplifiedType(def_id))
+        ty::Opaque(def_id, _) => {
+            Some(OpaqueSimplifiedType(def_id))
         }
         ty::Foreign(def_id) => {
             Some(ForeignSimplifiedType(def_id))
@@ -146,7 +146,7 @@ impl<D: Copy + Debug + Ord + Eq + Hash> SimplifiedTypeGen<D> {
             ClosureSimplifiedType(d) => ClosureSimplifiedType(map(d)),
             GeneratorSimplifiedType(d) => GeneratorSimplifiedType(map(d)),
             GeneratorWitnessSimplifiedType(n) => GeneratorWitnessSimplifiedType(n),
-            AnonSimplifiedType(d) => AnonSimplifiedType(map(d)),
+            OpaqueSimplifiedType(d) => OpaqueSimplifiedType(map(d)),
             FunctionSimplifiedType(n) => FunctionSimplifiedType(n),
             ParameterSimplifiedType => ParameterSimplifiedType,
             ForeignSimplifiedType(d) => ForeignSimplifiedType(d),
@@ -181,7 +181,7 @@ impl<'a, 'gcx, D> HashStable<StableHashingContext<'a>> for SimplifiedTypeGen<D>
             ClosureSimplifiedType(d) => d.hash_stable(hcx, hasher),
             GeneratorSimplifiedType(d) => d.hash_stable(hcx, hasher),
             GeneratorWitnessSimplifiedType(n) => n.hash_stable(hcx, hasher),
-            AnonSimplifiedType(d) => d.hash_stable(hcx, hasher),
+            OpaqueSimplifiedType(d) => d.hash_stable(hcx, hasher),
             FunctionSimplifiedType(n) => n.hash_stable(hcx, hasher),
             ForeignSimplifiedType(d) => d.hash_stable(hcx, hasher),
         }
