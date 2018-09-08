@@ -27,7 +27,8 @@ const fn baz() -> i32 {
 fn main() {
     foo(2);
     foo(2 + 3);
-    foo(baz());
+    const BAZ: i32 = baz();
+    foo(BAZ);
     let a = 4;
     foo(A);
     foo(a); //~ ERROR: argument 1 is required to be a constant

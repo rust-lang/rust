@@ -130,6 +130,7 @@ impl_stable_hash_for!(struct ::syntax::attr::Stability {
     level,
     feature,
     rustc_depr,
+    promotable,
     const_stability
 });
 

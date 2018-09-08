@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-pass
-
 #![feature(const_fn, const_fn_union)]
 
 #![deny(const_err)]
@@ -29,10 +27,7 @@ const fn bar() -> u8 {
 }
 
 fn main() {
-    // FIXME(oli-obk): this should panic at runtime
-    // this will actually compile, but then
-    // abort at runtime (not panic, hard abort).
-    let x: &'static u8 = &(bar() + 1);
+    let x: &'static u8 = &(bar() + 1); //~ ERROR does not live long enough
     let y = *x;
     unreachable!();
 }

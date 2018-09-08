@@ -13,7 +13,8 @@
 
 // compile-flags: -C debug_assertions=yes
 
-#![feature(const_fn, libc)]
+#![stable(feature = "rustc", since = "1.0.0")]
+#![feature(const_fn, libc, staged_api, rustc_attrs)]
 #![allow(const_err)]
 
 extern crate libc;
@@ -22,6 +23,8 @@ use std::env;
 use std::process::{Command, Stdio};
 
 // this will panic in debug mode and overflow in release mode
+#[stable(feature = "rustc", since = "1.0.0")]
+#[rustc_promotable]
 const fn bar() -> usize { 0 - 1 }
 
 fn foo() {
