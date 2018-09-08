@@ -280,7 +280,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 scratch.llval
                             }
                             Ref(llval, _, align) => {
-                                assert_eq!(align.abi(), op.layout.align.abi(),
+                                assert_eq!(align.abi, op.layout.align.abi,
                                            "return place is unaligned!");
                                 llval
                             }
@@ -805,7 +805,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
             Ref(llval, _, align) => {
-                if arg.is_indirect() && align.abi() < arg.layout.align.abi() {
+                if arg.is_indirect() && align.abi < arg.layout.align.abi {
                     // `foo(packed.large_field)`. We can't pass the (unaligned) field directly. I
                     // think that ATM (Rust 1.16) we only pass temporaries, but we shouldn't
                     // have scary latent bugs around.
@@ -1006,7 +1006,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.codegen_place(bx, dest)
         };
         if fn_ret.is_indirect() {
-            if dest.align.abi() < dest.layout.align.abi() {
+            if dest.align.abi < dest.layout.align.abi {
                 // Currently, MIR code generation does not create calls
                 // that store directly to fields of packed structs (in
                 // fact, the calls it creates write only to temps),

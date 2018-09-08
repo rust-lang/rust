@@ -30,7 +30,7 @@ pub fn size_and_align_of_dst<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
            t, info, layout);
     if !layout.is_unsized() {
         let size = bx.cx().const_usize(layout.size.bytes());
-        let align = bx.cx().const_usize(layout.align.abi());
+        let align = bx.cx().const_usize(layout.align.abi.bytes());
         return (size, align);
     }
     match t.sty {
@@ -44,7 +44,7 @@ pub fn size_and_align_of_dst<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
             (bx.mul(info.unwrap(), bx.cx().const_usize(unit.size.bytes())),
-             bx.cx().const_usize(unit.align.abi()))
+             bx.cx().const_usize(unit.align.abi.bytes()))
         }
         _ => {
             // First get the size of all statically known fields.
@@ -55,7 +55,7 @@ pub fn size_and_align_of_dst<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 
             let i = layout.fields.count() - 1;
             let sized_size = layout.fields.offset(i).bytes();
-            let sized_align = layout.align.abi();
+            let sized_align = layout.align.abi.bytes();
             debug!("DST {} statically sized prefix size: {} align: {}",
                    t, sized_size, sized_align);
             let sized_size = bx.cx().const_usize(sized_size);

@@ -108,7 +108,7 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     let components: Vec<_> = [
         cx.get_fn(monomorphize::resolve_drop_in_place(cx.tcx(), ty)),
         cx.const_usize(layout.size.bytes()),
-        cx.const_usize(layout.align.abi())
+        cx.const_usize(layout.align.abi.bytes())
     ].iter().cloned().chain(methods).collect();
 
     let vtable_const = cx.const_struct(&components, false);

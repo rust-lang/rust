@@ -101,7 +101,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
     ) -> Self {
         let field = self.layout.field(bx.cx(), ix);
         let offset = self.layout.fields.offset(ix);
-        let effective_field_align = self.align.restrict_for_offset(offset);
+        let effective_field_align = self.align.abi.restrict_for_offset(offset);
 
         let mut simple = || {
             // Unions and newtypes only use an offset of 0.
@@ -123,7 +123,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
                     None
                 },
                 layout: field,
-                align: effective_field_align,
+                align: AbiAndPrefAlign::new(effective_field_align),
             }
         };
 
@@ -143,7 +143,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
                 if def.repr.packed() {
                     // FIXME(eddyb) generalize the adjustment when we
                     // start supporting packing to larger alignments.
-                    assert_eq!(self.layout.align.abi(), 1);
+                    assert_eq!(self.layout.align.abi.bytes(), 1);
                     return simple();
                 }
             }
@@ -197,7 +197,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
             llval: bx.pointercast(byte_ptr, bx.cx().type_ptr_to(ll_fty)),
             llextra: self.llextra,
             layout: field,
-            align: effective_field_align,
+            align: AbiAndPrefAlign::new(effective_field_align),
         }
     }
 

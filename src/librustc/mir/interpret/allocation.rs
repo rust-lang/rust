@@ -12,7 +12,7 @@
 
 use super::{Pointer, EvalResult, AllocId};
 
-use ty::layout::{Size, AbiAndPrefAlign};
+use ty::layout::{Size, Align, AbiAndPrefAlign};
 use syntax::ast::Mutability;
 use std::iter;
 use mir;
@@ -104,7 +104,7 @@ impl<Tag, Extra: Default> Allocation<Tag, Extra> {
     }
 
     pub fn from_byte_aligned_bytes(slice: &[u8]) -> Self {
-        Allocation::from_bytes(slice, AbiAndPrefAlign::from_bytes(1, 1).unwrap())
+        Allocation::from_bytes(slice, AbiAndPrefAlign::new(Align::from_bytes(1).unwrap()))
     }
 
     pub fn undef(size: Size, align: AbiAndPrefAlign) -> Self {

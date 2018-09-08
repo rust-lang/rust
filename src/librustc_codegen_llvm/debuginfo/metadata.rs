@@ -323,7 +323,7 @@ fn fixed_vec_metadata(
         llvm::LLVMRustDIBuilderCreateArrayType(
             DIB(cx),
             size.bits(),
-            align.abi_bits() as u32,
+            align.abi.bits() as u32,
             element_type_metadata,
             subscripts)
     };
@@ -787,7 +787,7 @@ fn basic_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
             DIB(cx),
             name.as_ptr(),
             size.bits(),
-            align.abi_bits() as u32,
+            align.abi.bits() as u32,
             encoding)
     };
 
@@ -818,7 +818,7 @@ fn pointer_type_metadata(
             DIB(cx),
             pointee_type_metadata,
             pointer_size.bits(),
-            pointer_align.abi_bits() as u32,
+            pointer_align.abi.bits() as u32,
             name.as_ptr())
     }
 }
@@ -1563,7 +1563,7 @@ fn prepare_enum_metadata(
                         file_metadata,
                         UNKNOWN_LINE_NUMBER,
                         discriminant_size.bits(),
-                        discriminant_align.abi_bits() as u32,
+                        discriminant_align.abi.bits() as u32,
                         create_DIArray(DIB(cx), &enumerators_metadata),
                         discriminant_base_type_metadata, true)
                 };
@@ -1607,7 +1607,7 @@ fn prepare_enum_metadata(
                 file_metadata,
                 UNKNOWN_LINE_NUMBER,
                 layout.size.bits(),
-                layout.align.abi_bits() as u32,
+                layout.align.abi.bits() as u32,
                 DIFlags::FlagZero,
                 None,
                 0, // RuntimeLang
@@ -1655,7 +1655,7 @@ fn prepare_enum_metadata(
                     file_metadata,
                     UNKNOWN_LINE_NUMBER,
                     size.bits(),
-                    align.abi_bits() as u32,
+                    align.abi.bits() as u32,
                     layout.fields.offset(0).bits(),
                     DIFlags::FlagArtificial,
                     discr_metadata))
@@ -1675,7 +1675,7 @@ fn prepare_enum_metadata(
                     file_metadata,
                     UNKNOWN_LINE_NUMBER,
                     size.bits(),
-                    align.abi_bits() as u32,
+                    align.abi.bits() as u32,
                     layout.fields.offset(0).bits(),
                     DIFlags::FlagArtificial,
                     discr_metadata))
@@ -1692,7 +1692,7 @@ fn prepare_enum_metadata(
             file_metadata,
             UNKNOWN_LINE_NUMBER,
             layout.size.bits(),
-            layout.align.abi_bits() as u32,
+            layout.align.abi.bits() as u32,
             DIFlags::FlagZero,
             discriminator_metadata,
             empty_array,
@@ -1709,7 +1709,7 @@ fn prepare_enum_metadata(
             file_metadata,
             UNKNOWN_LINE_NUMBER,
             layout.size.bits(),
-            layout.align.abi_bits() as u32,
+            layout.align.abi.bits() as u32,
             DIFlags::FlagZero,
             None,
             type_array,
@@ -1803,7 +1803,7 @@ fn set_members_of_composite_type(cx: &CodegenCx<'ll, '_>,
                     unknown_file_metadata(cx),
                     UNKNOWN_LINE_NUMBER,
                     member_description.size.bits(),
-                    member_description.align.abi_bits() as u32,
+                    member_description.align.abi.bits() as u32,
                     member_description.offset.bits(),
                     match member_description.discriminant {
                         None => None,
@@ -1851,7 +1851,7 @@ fn create_struct_stub(
             unknown_file_metadata(cx),
             UNKNOWN_LINE_NUMBER,
             struct_size.bits(),
-            struct_align.abi_bits() as u32,
+            struct_align.abi.bits() as u32,
             DIFlags::FlagZero,
             None,
             empty_array,
@@ -1889,7 +1889,7 @@ fn create_union_stub(
             unknown_file_metadata(cx),
             UNKNOWN_LINE_NUMBER,
             union_size.bits(),
-            union_align.abi_bits() as u32,
+            union_align.abi.bits() as u32,
             DIFlags::FlagZero,
             Some(empty_array),
             0, // RuntimeLang
@@ -1958,7 +1958,7 @@ pub fn create_global_var_metadata(
                                                     is_local_to_unit,
                                                     global,
                                                     None,
-                                                    global_align.abi() as u32,
+                                                    global_align.abi.bytes() as u32,
         );
     }
 }
@@ -1996,7 +1996,7 @@ pub fn create_vtable_metadata(
             unknown_file_metadata(cx),
             UNKNOWN_LINE_NUMBER,
             Size::ZERO.bits(),
-            cx.tcx.data_layout.pointer_align.abi_bits() as u32,
+            cx.tcx.data_layout.pointer_align.abi.bits() as u32,
             DIFlags::FlagArtificial,
             None,
             empty_array,

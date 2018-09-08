@@ -636,7 +636,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                         let (ptr, align) = mplace.to_scalar_ptr_align();
                         match ptr {
                             Scalar::Ptr(ptr) => {
-                                write!(msg, " by align({}) ref:", align.abi()).unwrap();
+                                write!(msg, " by align({}) ref:", align.abi.bytes()).unwrap();
                                 allocs.push(ptr.alloc_id);
                             }
                             ptr => write!(msg, " by integral ref: {:?}", ptr).unwrap(),
@@ -665,7 +665,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             Place::Ptr(mplace) => {
                 match mplace.ptr {
                     Scalar::Ptr(ptr) => {
-                        trace!("by align({}) ref:", mplace.align.abi());
+                        trace!("by align({}) ref:", mplace.align.abi.bytes());
                         self.memory.dump_alloc(ptr.alloc_id);
                     }
                     ptr => trace!(" integral by ref: {:?}", ptr),

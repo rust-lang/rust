@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{Size, AbiAndPrefAlign, LayoutOf};
+use rustc::ty::layout::{Size, Align, AbiAndPrefAlign, LayoutOf};
 use rustc::mir::interpret::{Scalar, Pointer, EvalResult, PointerArithmetic};
 
 use super::{EvalContext, Machine, MemoryKind};
@@ -42,7 +42,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         let layout = self.layout_of(ty)?;
         assert!(!layout.is_unsized(), "can't create a vtable for an unsized type");
         let size = layout.size.bytes();
-        let align = layout.align.abi();
+        let align = layout.align.abi.bytes();
 
         let ptr_size = self.pointer_size();
         let ptr_align = self.tcx.data_layout.pointer_align;
@@ -110,6 +110,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             vtable.offset(pointer_size * 2, self)?,
             pointer_align
         )?.to_bits(pointer_size)? as u64;
-        Ok((Size::from_bytes(size), AbiAndPrefAlign::from_bytes(align, align).unwrap()))
+        Ok((Size::from_bytes(size), AbiAndPrefAlign::new(Align::from_bytes(align).unwrap())))
     }
 }

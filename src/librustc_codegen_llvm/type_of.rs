@@ -125,14 +125,14 @@ fn struct_llfields<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     for i in layout.fields.index_by_increasing_offset() {
         let target_offset = layout.fields.offset(i as usize);
         let field = layout.field(cx, i);
-        let effective_field_align = layout.align
-            .min(field.align)
-            .restrict_for_offset(target_offset);
-        packed |= effective_field_align.abi() < field.align.abi();
+        let effective_field_align = AbiAndPrefAlign::new(layout.align.abi
+            .min(field.align.abi)
+            .restrict_for_offset(target_offset));
+        packed |= effective_field_align.abi < field.align.abi;
 
         debug!("struct_llfields: {}: {:?} offset: {:?} target_offset: {:?} \
                 effective_field_align: {}",
-               i, field, offset, target_offset, effective_field_align.abi());
+               i, field, offset, target_offset, effective_field_align.abi.bytes());
         assert!(target_offset >= offset);
         let padding = target_offset - offset;
         let padding_align = prev_effective_align.min(effective_field_align);

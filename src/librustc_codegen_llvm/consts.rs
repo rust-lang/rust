@@ -28,7 +28,7 @@ use value::Value;
 use rustc::ty::{self, Ty};
 use rustc_codegen_ssa::traits::*;
 
-use rustc::ty::layout::{self, Size, AbiAndPrefAlign, LayoutOf};
+use rustc::ty::layout::{self, Size, Align, AbiAndPrefAlign, LayoutOf};
 
 use rustc::hir::{self, CodegenFnAttrs, CodegenFnAttrFlags};
 
@@ -94,15 +94,15 @@ fn set_global_alignment(cx: &CodegenCx<'ll, '_>,
     // Note: GCC and Clang also allow `__attribute__((aligned))` on variables,
     // which can force it to be smaller.  Rust doesn't support this yet.
     if let Some(min) = cx.sess().target.target.options.min_global_align {
-        match ty::layout::AbiAndPrefAlign::from_bits(min, min) {
-            Ok(min) => align = align.max(min),
+        match Align::from_bits(min) {
+            Ok(min) => align = align.max(AbiAndPrefAlign::new(min)),
             Err(err) => {
                 cx.sess().err(&format!("invalid minimum global alignment: {}", err));
             }
         }
     }
     unsafe {
-        llvm::LLVMSetAlignment(gv, align.abi() as u32);
+        llvm::LLVMSetAlignment(gv, align.abi.bytes() as u32);
     }
 }
 
@@ -219,7 +219,7 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             unsafe {
                 // Upgrade the alignment in cases where the same constant is used with different
                 // alignment requirements
-                let llalign = align.abi() as u32;
+                let llalign = align.abi.bytes() as u32;
                 if llalign > llvm::LLVMGetAlignment(gv) {
                     llvm::LLVMSetAlignment(gv, llalign);
                 }

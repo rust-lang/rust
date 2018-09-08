@@ -11,7 +11,7 @@
 use rustc::mir::interpret::{ConstValue, ErrorHandled};
 use rustc::mir;
 use rustc::ty;
-use rustc::ty::layout::{self, AbiAndPrefAlign, LayoutOf, TyLayout};
+use rustc::ty::layout::{self, Align, AbiAndPrefAlign, LayoutOf, TyLayout};
 
 use base;
 use MemFlags;
@@ -348,8 +348,8 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandValue<V> {
             };
 
         // FIXME: choose an appropriate alignment, or use dynamic align somehow
-        let max_align = AbiAndPrefAlign::from_bits(128, 128).unwrap();
-        let min_align = AbiAndPrefAlign::from_bits(8, 8).unwrap();
+        let max_align = AbiAndPrefAlign::new(Align::from_bits(128).unwrap());
+        let min_align = AbiAndPrefAlign::new(Align::from_bits(8).unwrap());
 
         // Allocate an appropriate region on the stack, and copy the value into it
         let (llsize, _) = glue::size_and_align_of_dst(bx, unsized_ty, Some(llextra));

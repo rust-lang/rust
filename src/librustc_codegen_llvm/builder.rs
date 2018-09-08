@@ -475,7 +475,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 llvm::LLVMBuildAlloca(self.llbuilder, ty,
                                       name.as_ptr())
             };
-            llvm::LLVMSetAlignment(alloca, align.abi() as c_uint);
+            llvm::LLVMSetAlignment(alloca, align.abi.bytes() as c_uint);
             alloca
         }
     }
@@ -494,7 +494,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 llvm::LLVMBuildArrayAlloca(self.llbuilder, ty, len,
                                            name.as_ptr())
             };
-            llvm::LLVMSetAlignment(alloca, align.abi() as c_uint);
+            llvm::LLVMSetAlignment(alloca, align.abi.bytes() as c_uint);
             alloca
         }
     }
@@ -503,7 +503,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         self.count_insn("load");
         unsafe {
             let load = llvm::LLVMBuildLoad(self.llbuilder, ptr, noname());
-            llvm::LLVMSetAlignment(load, align.abi() as c_uint);
+            llvm::LLVMSetAlignment(load, align.abi.bytes() as c_uint);
             load
         }
     }
@@ -658,7 +658,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             let align = if flags.contains(MemFlags::UNALIGNED) {
                 1
             } else {
-                align.abi() as c_uint
+                align.abi.bytes() as c_uint
             };
             llvm::LLVMSetAlignment(store, align);
             if flags.contains(MemFlags::VOLATILE) {
@@ -893,8 +893,8 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let dst = self.pointercast(dst, self.cx().type_i8p());
         let src = self.pointercast(src, self.cx().type_i8p());
         unsafe {
-            llvm::LLVMRustBuildMemCpy(self.llbuilder, dst, dst_align.abi() as c_uint,
-                                      src, src_align.abi() as c_uint, size, is_volatile);
+            llvm::LLVMRustBuildMemCpy(self.llbuilder, dst, dst_align.abi.bytes() as c_uint,
+                                      src, src_align.abi.bytes() as c_uint, size, is_volatile);
         }
     }
 
@@ -913,8 +913,8 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let dst = self.pointercast(dst, self.cx().type_i8p());
         let src = self.pointercast(src, self.cx().type_i8p());
         unsafe {
-            llvm::LLVMRustBuildMemMove(self.llbuilder, dst, dst_align.abi() as c_uint,
-                                      src, src_align.abi() as c_uint, size, is_volatile);
+            llvm::LLVMRustBuildMemMove(self.llbuilder, dst, dst_align.abi.bytes() as c_uint,
+                                      src, src_align.abi.bytes() as c_uint, size, is_volatile);
         }
     }
 
@@ -930,7 +930,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
         let llintrinsicfn = self.cx().get_intrinsic(&intrinsic_key);
         let ptr = self.pointercast(ptr, self.cx().type_i8p());
-        let align = self.cx().const_u32(align.abi() as u32);
+        let align = self.cx().const_u32(align.abi.bytes() as u32);
         let volatile = self.cx().const_bool(flags.contains(MemFlags::VOLATILE));
         self.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None);
     }

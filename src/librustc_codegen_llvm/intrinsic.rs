@@ -158,7 +158,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             }
             "min_align_of" => {
                 let tp_ty = substs.type_at(0);
-                self.cx().const_usize(self.cx().align_of(tp_ty).abi())
+                self.cx().const_usize(self.cx().align_of(tp_ty).abi.bytes())
             }
             "min_align_of_val" => {
                 let tp_ty = substs.type_at(0);
@@ -167,12 +167,12 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                         glue::size_and_align_of_dst(self, tp_ty, Some(meta));
                     llalign
                 } else {
-                    self.cx().const_usize(self.cx().align_of(tp_ty).abi())
+                    self.cx().const_usize(self.cx().align_of(tp_ty).abi.bytes())
                 }
             }
             "pref_align_of" => {
                 let tp_ty = substs.type_at(0);
-                self.cx().const_usize(self.cx().align_of(tp_ty).pref())
+                self.cx().const_usize(self.cx().align_of(tp_ty).pref.bytes())
             }
             "type_name" => {
                 let tp_ty = substs.type_at(0);
@@ -261,7 +261,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 let align = if name == "unaligned_volatile_load" {
                     1
                 } else {
-                    self.cx().align_of(tp_ty).abi() as u32
+                    self.cx().align_of(tp_ty).abi.bytes() as u32
                 };
                 unsafe {
                     llvm::LLVMSetAlignment(load, align);
@@ -1436,7 +1436,7 @@ fn generic_simd_intrinsic(
 
         // Alignment of T, must be a constant integer value:
         let alignment_ty = bx.cx().type_i32();
-        let alignment = bx.cx().const_i32(bx.cx().align_of(in_elem).abi() as i32);
+        let alignment = bx.cx().const_i32(bx.cx().align_of(in_elem).abi.bytes() as i32);
 
         // Truncate the mask vector to a vector of i1s:
         let (mask, mask_ty) = {
@@ -1536,7 +1536,7 @@ fn generic_simd_intrinsic(
 
         // Alignment of T, must be a constant integer value:
         let alignment_ty = bx.cx().type_i32();
-        let alignment = bx.cx().const_i32(bx.cx().align_of(in_elem).abi() as i32);
+        let alignment = bx.cx().const_i32(bx.cx().align_of(in_elem).abi.bytes() as i32);
 
         // Truncate the mask vector to a vector of i1s:
         let (mask, mask_ty) = {

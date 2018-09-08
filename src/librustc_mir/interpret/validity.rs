@@ -13,7 +13,7 @@ use std::hash::Hash;
 use std::ops::RangeInclusive;
 
 use syntax_pos::symbol::Symbol;
-use rustc::ty::layout::{self, Size, AbiAndPrefAlign, TyLayout, LayoutOf, VariantIdx};
+use rustc::ty::layout::{self, Size, Align, AbiAndPrefAlign, TyLayout, LayoutOf, VariantIdx};
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 use rustc::mir::interpret::{
@@ -463,7 +463,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                     // for function pointers.
                     let non_null =
                         self.ecx.memory.check_align(
-                            Scalar::Ptr(ptr), AbiAndPrefAlign::from_bytes(1, 1).unwrap()
+                            Scalar::Ptr(ptr), AbiAndPrefAlign::new(Align::from_bytes(1).unwrap())
                         ).is_ok() ||
                         self.ecx.memory.get_fn(ptr).is_ok();
                     if !non_null {

@@ -18,7 +18,8 @@ use std::hash::Hash;
 use rustc::hir;
 use rustc::mir;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, Size, AbiAndPrefAlign, LayoutOf, TyLayout, HasDataLayout, VariantIdx};
+use rustc::ty::layout::{self, Size, Align,
+    AbiAndPrefAlign, LayoutOf, TyLayout, HasDataLayout, VariantIdx};
 
 use super::{
     GlobalId, AllocId, Allocation, Scalar, EvalResult, Pointer, PointerArithmetic,
@@ -127,7 +128,8 @@ impl<Tag> MemPlace<Tag> {
     /// Produces a Place that will error if attempted to be read from or written to
     #[inline(always)]
     pub fn null(cx: &impl HasDataLayout) -> Self {
-        Self::from_scalar_ptr(Scalar::ptr_null(cx), AbiAndPrefAlign::from_bytes(1, 1).unwrap())
+        Self::from_scalar_ptr(Scalar::ptr_null(cx),
+            AbiAndPrefAlign::new(Align::from_bytes(1).unwrap()))
     }
 
     #[inline(always)]
@@ -167,7 +169,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     pub fn dangling(layout: TyLayout<'tcx>, cx: &impl HasDataLayout) -> Self {
         MPlaceTy {
             mplace: MemPlace::from_scalar_ptr(
-                Scalar::from_uint(layout.align.abi(), cx.pointer_size()),
+                Scalar::from_uint(layout.align.abi.bytes(), cx.pointer_size()),
                 layout.align
             ),
             layout
@@ -368,10 +370,10 @@ where
         };
 
         let ptr = base.ptr.ptr_offset(offset, self)?;
-        let align = base.align
+        let align = AbiAndPrefAlign::new(base.align.abi
             // We do not look at `base.layout.align` nor `field_layout.align`, unlike
             // codegen -- mostly to see if we can get away with that
-            .restrict_for_offset(offset); // must be last thing that happens
+            .restrict_for_offset(offset)); // must be last thing that happens
 
         Ok(MPlaceTy { mplace: MemPlace { ptr, align, meta }, layout: field_layout })
     }
@@ -998,7 +1000,8 @@ where
         if cfg!(debug_assertions) {
             let (size, align) = self.read_size_and_align_from_vtable(vtable)?;
             assert_eq!(size, layout.size);
-            assert_eq!(align.abi(), layout.align.abi()); // only ABI alignment is preserved
+            // only ABI alignment is preserved
+            assert_eq!(align.abi, layout.align.abi);
         }
 
         let mplace = MPlaceTy {

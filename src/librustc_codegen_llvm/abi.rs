@@ -73,7 +73,7 @@ impl ArgAttributesExt for ArgAttributes {
             if let Some(align) = self.pointee_align {
                 llvm::LLVMRustAddAlignmentAttr(llfn,
                                                idx.as_uint(),
-                                               align.abi() as u32);
+                                               align.abi.bytes() as u32);
             }
             regular.for_each_kind(|attr| attr.apply_llfn(idx, llfn));
         }
@@ -98,7 +98,7 @@ impl ArgAttributesExt for ArgAttributes {
             if let Some(align) = self.pointee_align {
                 llvm::LLVMRustAddAlignmentCallSiteAttr(callsite,
                                                        idx.as_uint(),
-                                                       align.abi() as u32);
+                                                       align.abi.bytes() as u32);
             }
             regular.for_each_kind(|attr| attr.apply_callsite(idx, callsite));
         }
