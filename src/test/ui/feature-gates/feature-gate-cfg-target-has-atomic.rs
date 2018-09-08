@@ -61,6 +61,16 @@ pub unsafe fn atomic_u64(x: *mut u64) {
 pub unsafe fn atomic_i64(x: *mut i64) {
     atomic_xadd(x, 1);
 }
+#[cfg(target_has_atomic = "128")]
+//~^ ERROR `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+pub unsafe fn atomic_u128(x: *mut u128) {
+    atomic_xadd(x, 1);
+}
+#[cfg(target_has_atomic = "128")]
+//~^ ERROR `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+pub unsafe fn atomic_i128(x: *mut i128) {
+    atomic_xadd(x, 1);
+}
 #[cfg(target_has_atomic = "ptr")]
 //~^ ERROR `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
 pub unsafe fn atomic_usize(x: *mut usize) {
@@ -80,6 +90,8 @@ fn main() {
     cfg!(target_has_atomic = "32");
     //~^ ERROR `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
     cfg!(target_has_atomic = "64");
+    //~^ ERROR `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+    cfg!(target_has_atomic = "128");
     //~^ ERROR `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
     cfg!(target_has_atomic = "ptr");
     //~^ ERROR `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)

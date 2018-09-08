@@ -477,8 +477,8 @@ pub fn codegen_intrinsic_call(
                 "load" => {
                     let ty = substs.type_at(0);
                     if int_type_width_signed(ty, cx).is_some() {
-                        let align = cx.align_of(ty);
-                        bx.atomic_load(args[0].immediate(), order, align)
+                        let size = cx.size_of(ty);
+                        bx.atomic_load(args[0].immediate(), order, size)
                     } else {
                         return invalid_monomorphization(ty);
                     }
@@ -487,8 +487,8 @@ pub fn codegen_intrinsic_call(
                 "store" => {
                     let ty = substs.type_at(0);
                     if int_type_width_signed(ty, cx).is_some() {
-                        let align = cx.align_of(ty);
-                        bx.atomic_store(args[1].immediate(), args[0].immediate(), order, align);
+                        let size = cx.size_of(ty);
+                        bx.atomic_store(args[1].immediate(), args[0].immediate(), order, size);
                         return;
                     } else {
                         return invalid_monomorphization(ty);
