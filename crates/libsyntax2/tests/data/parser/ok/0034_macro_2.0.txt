@@ -79,119 +79,186 @@ ROOT@[0; 350)
                 IDENT@[134; 139) "macro"
                 err: `expected SEMI`
       WHITESPACE@[139; 140)
-      EXPR_STMT@[140; 203)
-        CALL_EXPR@[140; 203)
+      EXPR_STMT@[140; 154)
+        CALL_EXPR@[140; 154)
           PATH_EXPR@[140; 150)
             PATH@[140; 150)
               PATH_SEGMENT@[140; 150)
                 NAME_REF@[140; 150)
                   IDENT@[140; 150) "test_merge"
-          ARG_LIST@[150; 203)
+          ARG_LIST@[150; 154)
             L_PAREN@[150; 151)
-            ARRAY_EXPR@[151; 202)
+            ARRAY_EXPR@[151; 154)
               L_BRACK@[151; 152)
               err: `expected expression`
               ERROR@[152; 153)
                 DOLLAR@[152; 153)
                 err: `expected COMMA`
-              TUPLE_EXPR@[153; 166)
+              PAREN_EXPR@[153; 154)
                 L_PAREN@[153; 154)
                 err: `expected expression`
-                ERROR@[154; 155)
-                  DOLLAR@[154; 155)
-                  err: `expected COMMA`
-                PATH_EXPR@[155; 160)
-                  PATH@[155; 160)
-                    PATH_SEGMENT@[155; 160)
-                      NAME_REF@[155; 160)
-                        IDENT@[155; 160) "input"
-                        err: `expected COMMA`
-                        err: `expected expression`
-                ERROR@[160; 161)
-                  COLON@[160; 161)
-                  err: `expected COMMA`
-                PATH_EXPR@[161; 165)
-                  PATH@[161; 165)
-                    PATH_SEGMENT@[161; 165)
-                      NAME_REF@[161; 165)
-                        IDENT@[161; 165) "expr"
-                R_PAREN@[165; 166)
-              COMMA@[166; 167)
-              PREFIX_EXPR@[167; 170)
-                STAR@[167; 168)
-                WHITESPACE@[168; 169)
+                err: `expected R_PAREN`
+                err: `expected COMMA`
                 err: `expected expression`
-                ERROR@[169; 170)
-                  DOLLAR@[169; 170)
-                  err: `expected COMMA`
-              BIN_EXPR@[170; 175)
-                PAREN_EXPR@[170; 173)
-                  L_PAREN@[170; 171)
-                  err: `expected expression`
-                  ERROR@[171; 172)
-                    COMMA@[171; 172)
-                  R_PAREN@[172; 173)
-                STAR@[173; 174)
+                err: `expected R_BRACK`
+                err: `expected COMMA`
+                err: `expected SEMI`
                 err: `expected expression`
-                ERROR@[174; 175)
-                  R_BRACK@[174; 175)
-              COMMA@[175; 176)
-              WHITESPACE@[176; 177)
-              ARRAY_EXPR@[177; 202)
-                L_BRACK@[177; 178)
+      EXPR_STMT@[154; 155)
+        ERROR@[154; 155)
+          DOLLAR@[154; 155)
+          err: `expected SEMI`
+      EXPR_STMT@[155; 160)
+        PATH_EXPR@[155; 160)
+          PATH@[155; 160)
+            PATH_SEGMENT@[155; 160)
+              NAME_REF@[155; 160)
+                IDENT@[155; 160) "input"
+                err: `expected SEMI`
                 err: `expected expression`
-                ERROR@[178; 179)
-                  DOLLAR@[178; 179)
-                  err: `expected COMMA`
-                TUPLE_EXPR@[179; 193)
-                  L_PAREN@[179; 180)
-                  err: `expected expression`
-                  ERROR@[180; 181)
-                    DOLLAR@[180; 181)
-                    err: `expected COMMA`
-                  PATH_EXPR@[181; 187)
-                    PATH@[181; 187)
-                      PATH_SEGMENT@[181; 187)
-                        NAME_REF@[181; 187)
-                          IDENT@[181; 187) "output"
-                          err: `expected COMMA`
-                          err: `expected expression`
-                  ERROR@[187; 188)
-                    COLON@[187; 188)
-                    err: `expected COMMA`
-                  PATH_EXPR@[188; 192)
-                    PATH@[188; 192)
-                      PATH_SEGMENT@[188; 192)
-                        NAME_REF@[188; 192)
-                          IDENT@[188; 192) "expr"
-                  R_PAREN@[192; 193)
-                COMMA@[193; 194)
-                PREFIX_EXPR@[194; 197)
-                  STAR@[194; 195)
-                  WHITESPACE@[195; 196)
-                  err: `expected expression`
-                  ERROR@[196; 197)
-                    DOLLAR@[196; 197)
-                    err: `expected COMMA`
-                BIN_EXPR@[197; 202)
-                  PAREN_EXPR@[197; 200)
-                    L_PAREN@[197; 198)
-                    err: `expected expression`
-                    ERROR@[198; 199)
-                      COMMA@[198; 199)
-                    R_PAREN@[199; 200)
-                  STAR@[200; 201)
-                  err: `expected expression`
-                  ERROR@[201; 202)
-                    R_BRACK@[201; 202)
-                    err: `expected COMMA`
-                    err: `expected expression`
-                    err: `expected R_BRACK`
-                    err: `expected COMMA`
-                    err: `expected expression`
-                    err: `expected R_BRACK`
-            R_PAREN@[202; 203)
+      EXPR_STMT@[160; 161)
+        ERROR@[160; 161)
+          COLON@[160; 161)
+          err: `expected SEMI`
+      EXPR_STMT@[161; 165)
+        PATH_EXPR@[161; 165)
+          PATH@[161; 165)
+            PATH_SEGMENT@[161; 165)
+              NAME_REF@[161; 165)
+                IDENT@[161; 165) "expr"
+                err: `expected SEMI`
+                err: `expected expression`
+      EXPR_STMT@[165; 166)
+        ERROR@[165; 166)
+          R_PAREN@[165; 166)
+          err: `expected SEMI`
+          err: `expected expression`
+      EXPR_STMT@[166; 167)
+        ERROR@[166; 167)
+          COMMA@[166; 167)
+          err: `expected SEMI`
+      EXPR_STMT@[167; 170)
+        PREFIX_EXPR@[167; 170)
+          STAR@[167; 168)
+          WHITESPACE@[168; 169)
+          err: `expected expression`
+          ERROR@[169; 170)
+            DOLLAR@[169; 170)
             err: `expected SEMI`
+      EXPR_STMT@[170; 171)
+        PAREN_EXPR@[170; 171)
+          L_PAREN@[170; 171)
+          err: `expected expression`
+          err: `expected R_PAREN`
+          err: `expected SEMI`
+          err: `expected expression`
+      EXPR_STMT@[171; 172)
+        ERROR@[171; 172)
+          COMMA@[171; 172)
+          err: `expected SEMI`
+          err: `expected expression`
+      EXPR_STMT@[172; 173)
+        ERROR@[172; 173)
+          R_PAREN@[172; 173)
+          err: `expected SEMI`
+      EXPR_STMT@[173; 175)
+        PREFIX_EXPR@[173; 175)
+          STAR@[173; 174)
+          err: `expected expression`
+          ERROR@[174; 175)
+            R_BRACK@[174; 175)
+            err: `expected SEMI`
+            err: `expected expression`
+      EXPR_STMT@[175; 176)
+        ERROR@[175; 176)
+          COMMA@[175; 176)
+          err: `expected SEMI`
+      WHITESPACE@[176; 177)
+      EXPR_STMT@[177; 180)
+        ARRAY_EXPR@[177; 180)
+          L_BRACK@[177; 178)
+          err: `expected expression`
+          ERROR@[178; 179)
+            DOLLAR@[178; 179)
+            err: `expected COMMA`
+          PAREN_EXPR@[179; 180)
+            L_PAREN@[179; 180)
+            err: `expected expression`
+            err: `expected R_PAREN`
+            err: `expected COMMA`
+            err: `expected expression`
+            err: `expected R_BRACK`
+            err: `expected SEMI`
+            err: `expected expression`
+      EXPR_STMT@[180; 181)
+        ERROR@[180; 181)
+          DOLLAR@[180; 181)
+          err: `expected SEMI`
+      EXPR_STMT@[181; 187)
+        PATH_EXPR@[181; 187)
+          PATH@[181; 187)
+            PATH_SEGMENT@[181; 187)
+              NAME_REF@[181; 187)
+                IDENT@[181; 187) "output"
+                err: `expected SEMI`
+                err: `expected expression`
+      EXPR_STMT@[187; 188)
+        ERROR@[187; 188)
+          COLON@[187; 188)
+          err: `expected SEMI`
+      EXPR_STMT@[188; 192)
+        PATH_EXPR@[188; 192)
+          PATH@[188; 192)
+            PATH_SEGMENT@[188; 192)
+              NAME_REF@[188; 192)
+                IDENT@[188; 192) "expr"
+                err: `expected SEMI`
+                err: `expected expression`
+      EXPR_STMT@[192; 193)
+        ERROR@[192; 193)
+          R_PAREN@[192; 193)
+          err: `expected SEMI`
+          err: `expected expression`
+      EXPR_STMT@[193; 194)
+        ERROR@[193; 194)
+          COMMA@[193; 194)
+          err: `expected SEMI`
+      EXPR_STMT@[194; 197)
+        PREFIX_EXPR@[194; 197)
+          STAR@[194; 195)
+          WHITESPACE@[195; 196)
+          err: `expected expression`
+          ERROR@[196; 197)
+            DOLLAR@[196; 197)
+            err: `expected SEMI`
+      EXPR_STMT@[197; 198)
+        PAREN_EXPR@[197; 198)
+          L_PAREN@[197; 198)
+          err: `expected expression`
+          err: `expected R_PAREN`
+          err: `expected SEMI`
+          err: `expected expression`
+      EXPR_STMT@[198; 199)
+        ERROR@[198; 199)
+          COMMA@[198; 199)
+          err: `expected SEMI`
+          err: `expected expression`
+      EXPR_STMT@[199; 200)
+        ERROR@[199; 200)
+          R_PAREN@[199; 200)
+          err: `expected SEMI`
+      EXPR_STMT@[200; 202)
+        PREFIX_EXPR@[200; 202)
+          STAR@[200; 201)
+          err: `expected expression`
+          ERROR@[201; 202)
+            R_BRACK@[201; 202)
+            err: `expected SEMI`
+            err: `expected expression`
+      EXPR_STMT@[202; 203)
+        ERROR@[202; 203)
+          R_PAREN@[202; 203)
+          err: `expected SEMI`
       WHITESPACE@[203; 204)
       BLOCK_EXPR@[204; 346)
         BLOCK@[204; 346)

@@ -108,6 +108,10 @@ fn tuple_expr(p: &mut Parser) -> CompletedMarker {
     let mut saw_expr = false;
     while !p.at(EOF) && !p.at(R_PAREN) {
         saw_expr = true;
+        if !EXPR_FIRST.contains(p.current()) {
+            p.error("expected expression");
+            break;
+        }
         expr(p);
         if !p.at(R_PAREN) {
             saw_comma = true;
