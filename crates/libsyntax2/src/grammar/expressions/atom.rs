@@ -140,9 +140,14 @@ fn array_expr(p: &mut Parser) -> CompletedMarker {
     }
     while !p.at(EOF) && !p.at(R_BRACK) {
         p.expect(COMMA);
-        if !p.at(R_BRACK) {
-            expr(p);
+        if p.at(R_BRACK) {
+            break;
         }
+        if !EXPR_FIRST.contains(p.current()) {
+            p.error("expected expression");
+            break;
+        }
+        expr(p);
     }
     p.expect(R_BRACK);
     m.complete(p, ARRAY_EXPR)

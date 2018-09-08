@@ -376,6 +376,10 @@ fn arg_list(p: &mut Parser) {
     let m = p.start();
     p.bump();
     while !p.at(R_PAREN) && !p.at(EOF) {
+        if !EXPR_FIRST.contains(p.current()) {
+            p.error("expected expression");
+            break;
+        }
         expr(p);
         if !p.at(R_PAREN) && !p.expect(COMMA) {
             break;
