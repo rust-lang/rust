@@ -67,6 +67,13 @@ fn async_block(x: u8) -> impl Future<Output = u8> {
     }
 }
 
+fn async_block_with_borrow_named_lifetime<'a>(x: &'a u8) -> impl Future<Output = u8> + 'a {
+    async move {
+        await!(wake_and_yield_once());
+        *x
+    }
+}
+
 fn async_nonmove_block(x: u8) -> impl Future<Output = u8> {
     async move {
         let future = async {
@@ -90,6 +97,23 @@ async fn async_fn(x: u8) -> u8 {
 }
 
 async fn async_fn_with_borrow(x: &u8) -> u8 {
+    await!(wake_and_yield_once());
+    *x
+}
+
+async fn async_fn_with_borrow_named_lifetime<'a>(x: &'a u8) -> u8 {
+    await!(wake_and_yield_once());
+    *x
+}
+
+fn async_fn_with_impl_future_named_lifetime<'a>(x: &'a u8) -> impl Future<Output = u8> + 'a {
+    async move {
+        await!(wake_and_yield_once());
+        *x
+    }
+}
+
+async fn async_fn_with_named_lifetime_multiple_args<'a>(x: &'a u8, _y: &'a u8) -> u8 {
     await!(wake_and_yield_once());
     *x
 }
@@ -138,8 +162,18 @@ where
 
 fn main() {
     macro_rules! test {
-        ($($fn_name:ident,)*) => { $(
+        ($($fn_name:expr,)*) => { $(
             test_future_yields_once_then_returns($fn_name);
+        )* }
+    }
+
+    macro_rules! test_with_borrow {
+        ($($fn_name:expr,)*) => { $(
+            test_future_yields_once_then_returns(|x| {
+                async move {
+                    await!($fn_name(&x))
+                }
+            });
         )* }
     }
 
@@ -149,5 +183,22 @@ fn main() {
         async_closure,
         async_fn,
         async_fn_with_internal_borrow,
+        |x| {
+            async move {
+                unsafe { await!(unsafe_async_fn(x)) }
+            }
+        },
+    }
+
+    test_with_borrow! {
+        async_block_with_borrow_named_lifetime,
+        async_fn_with_borrow,
+        async_fn_with_borrow_named_lifetime,
+        async_fn_with_impl_future_named_lifetime,
+        |x| {
+            async move {
+                await!(async_fn_with_named_lifetime_multiple_args(x, x))
+            }
+        },
     }
 }
