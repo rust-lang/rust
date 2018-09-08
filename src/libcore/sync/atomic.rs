@@ -124,6 +124,7 @@ pub fn spin_loop_hint() {
 /// [`bool`]: ../../../std/primitive.bool.html
 #[cfg(target_has_atomic = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[repr(align(1))]
 pub struct AtomicBool {
     v: UnsafeCell<u8>,
 }
@@ -147,6 +148,9 @@ unsafe impl Sync for AtomicBool {}
 /// This type has the same in-memory representation as a `*mut T`.
 #[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(target_pointer_width = "16", repr(align(2)))]
+#[cfg_attr(target_pointer_width = "32", repr(align(4)))]
+#[cfg_attr(target_pointer_width = "64", repr(align(8)))]
 pub struct AtomicPtr<T> {
     p: UnsafeCell<*mut T>,
 }
@@ -1086,6 +1090,7 @@ macro_rules! atomic_int {
      $s_int_type:expr, $int_ref:expr,
      $extra_feature:expr,
      $min_fn:ident, $max_fn:ident,
+     $align:expr,
      $int_type:ident $atomic_type:ident $atomic_init:ident) => {
         /// An integer type which can be safely shared between threads.
         ///
@@ -1099,6 +1104,7 @@ macro_rules! atomic_int {
         ///
         /// [module-level documentation]: index.html
         #[$stable]
+        #[repr(align($align))]
         pub struct $atomic_type {
             v: UnsafeCell<$int_type>,
         }
@@ -1819,6 +1825,7 @@ atomic_int! {
     "i8", "../../../std/primitive.i8.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_min, atomic_max,
+    1,
     i8 AtomicI8 ATOMIC_I8_INIT
 }
 #[cfg(target_has_atomic = "8")]
@@ -1832,6 +1839,7 @@ atomic_int! {
     "u8", "../../../std/primitive.u8.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_umin, atomic_umax,
+    1,
     u8 AtomicU8 ATOMIC_U8_INIT
 }
 #[cfg(target_has_atomic = "16")]
@@ -1845,6 +1853,7 @@ atomic_int! {
     "i16", "../../../std/primitive.i16.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_min, atomic_max,
+    2,
     i16 AtomicI16 ATOMIC_I16_INIT
 }
 #[cfg(target_has_atomic = "16")]
@@ -1858,6 +1867,7 @@ atomic_int! {
     "u16", "../../../std/primitive.u16.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_umin, atomic_umax,
+    2,
     u16 AtomicU16 ATOMIC_U16_INIT
 }
 #[cfg(target_has_atomic = "32")]
@@ -1871,6 +1881,7 @@ atomic_int! {
     "i32", "../../../std/primitive.i32.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_min, atomic_max,
+    4,
     i32 AtomicI32 ATOMIC_I32_INIT
 }
 #[cfg(target_has_atomic = "32")]
@@ -1884,6 +1895,7 @@ atomic_int! {
     "u32", "../../../std/primitive.u32.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_umin, atomic_umax,
+    4,
     u32 AtomicU32 ATOMIC_U32_INIT
 }
 #[cfg(target_has_atomic = "64")]
@@ -1897,6 +1909,7 @@ atomic_int! {
     "i64", "../../../std/primitive.i64.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_min, atomic_max,
+    8,
     i64 AtomicI64 ATOMIC_I64_INIT
 }
 #[cfg(target_has_atomic = "64")]
@@ -1910,7 +1923,48 @@ atomic_int! {
     "u64", "../../../std/primitive.u64.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_umin, atomic_umax,
+    8,
     u64 AtomicU64 ATOMIC_U64_INIT
+}
+#[cfg(target_has_atomic = "128")]
+atomic_int! {
+    unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
+    "i128", "../../../std/primitive.i128.html",
+    "#![feature(integer_atomics)]\n\n",
+    atomic_min, atomic_max,
+    16,
+    i128 AtomicI128 ATOMIC_I128_INIT
+}
+#[cfg(target_has_atomic = "128")]
+atomic_int! {
+    unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
+    "u128", "../../../std/primitive.u128.html",
+    "#![feature(integer_atomics)]\n\n",
+    atomic_umin, atomic_umax,
+    16,
+    u128 AtomicU128 ATOMIC_U128_INIT
+}
+#[cfg(target_pointer_width = "16")]
+macro_rules! ptr_width {
+    () => { 2 }
+}
+#[cfg(target_pointer_width = "32")]
+macro_rules! ptr_width {
+    () => { 4 }
+}
+#[cfg(target_pointer_width = "64")]
+macro_rules! ptr_width {
+    () => { 8 }
 }
 #[cfg(target_has_atomic = "ptr")]
 atomic_int!{
@@ -1923,6 +1977,7 @@ atomic_int!{
     "isize", "../../../std/primitive.isize.html",
     "",
     atomic_min, atomic_max,
+    ptr_width!(),
     isize AtomicIsize ATOMIC_ISIZE_INIT
 }
 #[cfg(target_has_atomic = "ptr")]
@@ -1936,6 +1991,7 @@ atomic_int!{
     "usize", "../../../std/primitive.usize.html",
     "",
     atomic_umin, atomic_umax,
+    ptr_width!(),
     usize AtomicUsize ATOMIC_USIZE_INIT
 }
 
