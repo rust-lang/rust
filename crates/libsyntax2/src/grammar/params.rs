@@ -48,7 +48,7 @@ fn list_(p: &mut Parser, flavor: Flavor) {
         opt_self_param(p);
     }
     while !p.at(EOF) && !p.at(ket) {
-        if !VALUE_PARAMETER_FIRST.contains(p.current()) {
+        if !p.at_ts(VALUE_PARAMETER_FIRST) {
             p.error("expected value parameter");
             break;
         }

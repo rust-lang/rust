@@ -35,6 +35,11 @@ impl<'t> Parser<'t> {
         self.current() == kind
     }
 
+    /// Checks if the current token is `kind`.
+    pub(crate) fn at_ts(&self, kinds: TokenSet) -> bool {
+        kinds.contains(self.current())
+    }
+
     pub(crate) fn next2(&self) -> Option<(SyntaxKind, SyntaxKind)> {
         self.0.next2()
     }

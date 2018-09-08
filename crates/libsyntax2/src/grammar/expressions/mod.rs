@@ -236,7 +236,7 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
         DOTDOT => {
             m = p.start();
             p.bump();
-            if EXPR_FIRST.contains(p.current()) {
+            if p.at_ts(EXPR_FIRST) {
                 expr_bp(p, r, 2);
             }
             return Some(m.complete(p, RANGE_EXPR));
@@ -376,7 +376,7 @@ fn arg_list(p: &mut Parser) {
     let m = p.start();
     p.bump();
     while !p.at(R_PAREN) && !p.at(EOF) {
-        if !EXPR_FIRST.contains(p.current()) {
+        if !p.at_ts(EXPR_FIRST) {
             p.error("expected expression");
             break;
         }

@@ -102,7 +102,7 @@ fn tuple_pat_fields(p: &mut Parser) {
         match p.current() {
             DOTDOT => p.bump(),
             _ => {
-                if !PATTERN_FIRST.contains(p.current()) {
+                if !p.at_ts(PATTERN_FIRST) {
                     p.error("expected a pattern");
                     break;
                 }

@@ -18,7 +18,7 @@ pub(crate) const LITERAL_FIRST: TokenSet =
                STRING, RAW_STRING, BYTE_STRING, RAW_BYTE_STRING];
 
 pub(crate) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
-    if !LITERAL_FIRST.contains(p.current()) {
+    if !p.at_ts(LITERAL_FIRST) {
         return None;
     }
     let m = p.start();
@@ -108,7 +108,7 @@ fn tuple_expr(p: &mut Parser) -> CompletedMarker {
     let mut saw_expr = false;
     while !p.at(EOF) && !p.at(R_PAREN) {
         saw_expr = true;
-        if !EXPR_FIRST.contains(p.current()) {
+        if !p.at_ts(EXPR_FIRST) {
             p.error("expected expression");
             break;
         }
@@ -147,7 +147,7 @@ fn array_expr(p: &mut Parser) -> CompletedMarker {
         if p.at(R_BRACK) {
             break;
         }
-        if !EXPR_FIRST.contains(p.current()) {
+        if !p.at_ts(EXPR_FIRST) {
             p.error("expected expression");
             break;
         }
@@ -360,7 +360,7 @@ fn return_expr(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(RETURN_KW));
     let m = p.start();
     p.bump();
-    if EXPR_FIRST.contains(p.current()) {
+    if p.at_ts(EXPR_FIRST) {
         expr(p);
     }
     m.complete(p, RETURN_EXPR)
@@ -395,7 +395,7 @@ fn break_expr(p: &mut Parser) -> CompletedMarker {
     let m = p.start();
     p.bump();
     p.eat(LIFETIME);
-    if EXPR_FIRST.contains(p.current()) {
+    if p.at_ts(EXPR_FIRST) {
         expr(p);
     }
     m.complete(p, BREAK_EXPR)
