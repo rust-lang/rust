@@ -400,7 +400,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                     }
                     relocations.push((i, target_id));
                 }
-                if alloc.undef_mask.is_range_defined(i, i + Size::from_bytes(1)) {
+                if alloc.undef_mask.is_range_defined(i, i + Size::from_bytes(1)).is_ok() {
                     // this `as usize` is fine, since `i` came from a `usize`
                     write!(msg, "{:02x} ", alloc.bytes[i.bytes() as usize]).unwrap();
                 } else {
@@ -736,7 +736,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         )?;
         // Undef check happens *after* we established that the alignment is correct.
         // We must not return Ok() for unaligned pointers!
-        if !self.is_defined(ptr, size)? {
+        if self.check_defined(ptr, size).is_err() {
             // this inflates undefined bytes to the entire scalar, even if only a few
             // bytes are undefined
             return Ok(ScalarMaybeUndef::Undef);
@@ -938,21 +938,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(())
     }
 
-    fn is_defined(&self, ptr: Pointer, size: Size) -> EvalResult<'tcx, bool> {
-        let alloc = self.get(ptr.alloc_id)?;
-        Ok(alloc.undef_mask.is_range_defined(
-            ptr.offset,
-            ptr.offset + size,
-        ))
-    }
-
+    /// Checks that a range of bytes is defined. If not, returns the `ReadUndefBytes`
+    /// error which will report the first byte which is undefined.
     #[inline]
     fn check_defined(&self, ptr: Pointer, size: Size) -> EvalResult<'tcx> {
-        if self.is_defined(ptr, size)? {
-            Ok(())
-        } else {
-            err!(ReadUndefBytes)
-        }
+        let alloc = self.get(ptr.alloc_id)?;
+        alloc.undef_mask.is_range_defined(
+            ptr.offset,
+            ptr.offset + size,
+        ).or_else(|idx| err!(ReadUndefBytes(idx)))
     }
 
     pub fn mark_definedness(

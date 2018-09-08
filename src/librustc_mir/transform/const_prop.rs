@@ -180,7 +180,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                     | InvalidMemoryLockRelease { .. }
                     | DeallocatedLockedMemory { .. }
                     | InvalidPointerMath
-                    | ReadUndefBytes
+                    | ReadUndefBytes(_)
                     | DeadLocal
                     | InvalidBoolOp(_)
                     | DerefFunctionPointer

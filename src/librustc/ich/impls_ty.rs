@@ -521,7 +521,6 @@ for ::mir::interpret::EvalErrorKind<'gcx, O> {
             ReadBytesAsPointer |
             ReadForeignStatic |
             InvalidPointerMath |
-            ReadUndefBytes |
             DeadLocal |
             StackFrameLimitReached |
             OutOfTls |
@@ -548,6 +547,7 @@ for ::mir::interpret::EvalErrorKind<'gcx, O> {
             GeneratorResumedAfterReturn |
             GeneratorResumedAfterPanic |
             InfiniteLoop => {}
+            ReadUndefBytes(offset) => offset.hash_stable(hcx, hasher),
             InvalidDiscriminant(val) => val.hash_stable(hcx, hasher),
             Panic { ref msg, ref file, line, col } => {
                 msg.hash_stable(hcx, hasher);

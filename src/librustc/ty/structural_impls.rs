@@ -511,7 +511,7 @@ impl<'a, 'tcx, O: Lift<'tcx>> Lift<'tcx> for interpret::EvalErrorKind<'a, O> {
             ReadBytesAsPointer => ReadBytesAsPointer,
             ReadForeignStatic => ReadForeignStatic,
             InvalidPointerMath => InvalidPointerMath,
-            ReadUndefBytes => ReadUndefBytes,
+            ReadUndefBytes(offset) => ReadUndefBytes(offset),
             DeadLocal => DeadLocal,
             InvalidBoolOp(bop) => InvalidBoolOp(bop),
             Unimplemented(ref s) => Unimplemented(s.clone()),

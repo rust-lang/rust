@@ -359,7 +359,7 @@ impl<'tcx> ScalarMaybeUndef {
     pub fn not_undef(self) -> EvalResult<'static, Scalar> {
         match self {
             ScalarMaybeUndef::Scalar(scalar) => Ok(scalar),
-            ScalarMaybeUndef::Undef => err!(ReadUndefBytes),
+            ScalarMaybeUndef::Undef => err!(ReadUndefBytes(Size::from_bytes(0))),
         }
     }
 

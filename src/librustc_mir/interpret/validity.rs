@@ -290,7 +290,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                             Ok(val) => val,
                             Err(err) => match err.kind {
                                 EvalErrorKind::PointerOutOfBounds { .. } |
-                                EvalErrorKind::ReadUndefBytes =>
+                                EvalErrorKind::ReadUndefBytes(_) =>
                                     return validation_failure!(
                                         "uninitialized or out-of-bounds memory", path
                                     ),
@@ -333,16 +333,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 // The fields don't need to correspond to any bit pattern of the union's fields.
                 // See https://github.com/rust-lang/rust/issues/32836#issuecomment-406875389
             },
-            layout::FieldPlacement::Array { .. } if !dest.layout.is_zst() => {
+            layout::FieldPlacement::Array { stride, .. } if !dest.layout.is_zst() => {
                 let dest = dest.to_mem_place(); // non-ZST array/slice/str cannot be immediate
-                // Special handling for strings to verify UTF-8
                 match dest.layout.ty.sty {
+                    // Special handling for strings to verify UTF-8
                     ty::Str => {
                         match self.read_str(dest) {
                             Ok(_) => {},
                             Err(err) => match err.kind {
                                 EvalErrorKind::PointerOutOfBounds { .. } |
-                                EvalErrorKind::ReadUndefBytes =>
+                                EvalErrorKind::ReadUndefBytes(_) =>
                                     // The error here looks slightly different than it does
                                     // for slices, because we do not report the index into the
                                     // str at which we are OOB.
@@ -356,6 +356,55 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                             }
                         }
                     }
+                    // Special handling for arrays/slices of builtin integer types
+                    ty::Array(tys, ..) | ty::Slice(tys) if {
+                        // This optimization applies only for integer types
+                        match tys.sty {
+                            ty::Int(..) | ty::Uint(..) => true,
+                            _ => false,
+                        }
+                    } => {
+                        // This is the length of the array/slice.
+                        let len = dest.len(self)?;
+                        // Since primitive types are naturally aligned and tightly packed in arrays,
+                        // we can use the stride to get the size of the integral type.
+                        let ty_size = stride.bytes();
+                        // This is the size in bytes of the whole array.
+                        let size = Size::from_bytes(ty_size * len);
+
+                        match self.memory.read_bytes(dest.ptr, size) {
+                            // In the happy case, we needn't check anything else.
+                            Ok(_) => {},
+                            // Some error happened, try to provide a more detailed description.
+                            Err(err) => {
+                                // For some errors we might be able to provide extra information
+                                match err.kind {
+                                    EvalErrorKind::ReadUndefBytes(offset) => {
+                                        // Some byte was undefined, determine which
+                                        // element that byte belongs to so we can
+                                        // provide an index.
+                                        let i = (offset.bytes() / ty_size) as usize;
+                                        path.push(PathElem::ArrayElem(i));
+
+                                        return validation_failure!(
+                                            "undefined bytes", path
+                                        )
+                                    },
+                                    EvalErrorKind::PointerOutOfBounds { allocation_size, .. } => {
+                                        // If the array access is out-of-bounds, the first
+                                        // undefined access is the after the end of the array.
+                                        let i = (allocation_size.bytes() * ty_size) as usize;
+                                        path.push(PathElem::ArrayElem(i));
+                                    },
+                                    _ => (),
+                                }
+
+                                return validation_failure!(
+                                    "uninitialized or out-of-bounds memory", path
+                                )
+                            }
+                        }
+                    },
                     _ => {
                         // This handles the unsized case correctly as well, as well as
                         // SIMD an all sorts of other array-like types.
