@@ -8,7 +8,7 @@ use std::{
 };
 
 use tempdir::TempDir;
-use crossbeam_channel::{bounded, after, Sender, Receiver};
+use crossbeam_channel::{unbounded, after, Sender, Receiver};
 use flexi_logger::Logger;
 use languageserver_types::{
     Url,
@@ -54,7 +54,6 @@ pub fn project(fixture: &str) -> Server {
         buf.push('\n');
     }
     flush!();
-
     Server::new(tmp_dir, paths)
 }
 
@@ -70,8 +69,8 @@ pub struct Server {
 impl Server {
     fn new(dir: TempDir, files: Vec<(PathBuf, String)>) -> Server {
         let path = dir.path().to_path_buf();
-        let (client_sender, mut server_receiver) = bounded(1);
-        let (mut server_sender, client_receiver) = bounded(1);
+        let (client_sender, mut server_receiver) = unbounded();
+        let (mut server_sender, client_receiver) = unbounded();
         let server = thread::spawn(move || main_loop(true, path, &mut server_receiver, &mut server_sender));
         let res = Server {
             req_id: Cell::new(1),
@@ -81,6 +80,7 @@ impl Server {
             receiver: client_receiver,
             server: Some(server),
         };
+
         for (path, text) in files {
             res.send_notification(RawNotification::new::<DidOpenTextDocument>(
                 &DidOpenTextDocumentParams {
@@ -179,15 +179,11 @@ impl Server {
         }
     }
     fn recv(&self) -> Option<RawMessage> {
-        let timeout = Duration::from_secs(5);
-        let msg = select! {
-            recv(&self.receiver, msg) => msg,
-            recv(after(timeout)) => panic!("timed out"),
-        };
-        msg.map(|msg| {
-            self.messages.borrow_mut().push(msg.clone());
-            msg
-        })
+        recv_timeout(&self.receiver)
+            .map(|msg| {
+                self.messages.borrow_mut().push(msg.clone());
+                msg
+            })
     }
     fn send_notification(&self, not: RawNotification) {
         self.sender.as_ref()
@@ -201,12 +197,20 @@ impl Drop for Server {
         {
             self.send_request::<Shutdown>(666, ());
             drop(self.sender.take().unwrap());
-            while let Some(msg) = self.receiver.recv() {
+            while let Some(msg) = recv_timeout(&self.receiver) {
                 drop(msg);
             }
         }
         self.server.take()
             .unwrap()
             .join().unwrap().unwrap();
+    }
+}
+
+fn recv_timeout(receiver: &Receiver<RawMessage>) -> Option<RawMessage> {
+    let timeout = Duration::from_secs(5);
+    select! {
+        recv(receiver, msg) => msg,
+        recv(after(timeout)) => panic!("timed out"),
     }
 }
