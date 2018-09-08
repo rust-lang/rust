@@ -8,14 +8,6 @@ LL |         while true { while true { while true { x = y; x.clone(); } } }
    |
    = note: move occurs because `y` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
-error[E0382]: use of moved value: `y`
-  --> $DIR/liveness-move-in-while.rs:18:52
-   |
-LL |         while true { while true { while true { x = y; x.clone(); } } }
-   |                                                    ^ value moved here in previous iteration of loop
-   |
-   = note: move occurs because `y` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0382`.

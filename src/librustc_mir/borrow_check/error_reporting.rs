@@ -37,6 +37,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         (place, span): (&Place<'tcx>, Span),
         mpi: MovePathIndex,
     ) {
+        debug!(
+            "report_use_of_moved_or_uninitialized: context={:?} desired_action={:?} place={:?} \
+            span={:?} mpi={:?}",
+            context, desired_action, place, span, mpi
+        );
+
         let use_spans = self
             .move_spans(place, context.loc)
             .or_else(|| self.borrow_spans(span, context.loc));
@@ -48,7 +54,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         if mois.is_empty() {
             let root_place = self.prefixes(&place, PrefixSet::All).last().unwrap();
 
-            if self.moved_error_reported.contains(&root_place.clone()) {
+            if self.uninitialized_error_reported.contains(&root_place.clone()) {
                 debug!(
                     "report_use_of_moved_or_uninitialized place: error about {:?} suppressed",
                     root_place
@@ -56,7 +62,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 return;
             }
 
-            self.moved_error_reported.insert(root_place.clone());
+            self.uninitialized_error_reported.insert(root_place.clone());
 
             let item_msg = match self.describe_place_with_options(place, IncludingDowncast(true)) {
                 Some(name) => format!("`{}`", name),
@@ -79,6 +85,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             err.buffer(&mut self.errors_buffer);
         } else {
+            if let Some((reported_place, _)) = self.move_error_reported.get(&mois) {
+                if self.prefixes(&reported_place, PrefixSet::All).any(|p| p == place) {
+                    debug!("report_use_of_moved_or_uninitialized place: error suppressed \
+                           mois={:?}", mois);
+                    return;
+                }
+            }
+
             let msg = ""; //FIXME: add "partially " or "collaterally "
 
             let mut err = self.tcx.cannot_act_on_moved_value(
@@ -166,7 +180,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 }
             }
 
-            err.buffer(&mut self.errors_buffer);
+            if let Some((_, mut old_err)) = self.move_error_reported.insert(
+                mois,
+                (place.clone(), err)
+            ) {
+                // Cancel the old error so it doesn't ICE.
+                old_err.cancel();
+            }
         }
     }
 
