@@ -11,7 +11,8 @@ use gen_lsp_server::{run_server, stdio_transport};
 use m::Result;
 
 fn main() -> Result<()> {
-    Logger::with_env_or_str("m=error")
+    ::std::env::set_var("RUST_BACKTRACE", "short");
+    Logger::with_env_or_str("error")
         .duplicate_to_stderr(Duplicate::All)
         .log_to_file()
         .directory("log")

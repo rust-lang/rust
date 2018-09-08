@@ -1,0 +1,28 @@
+ROOT@[0; 30)
+  FN_DEF@[0; 29)
+    FN_KW@[0; 2)
+    WHITESPACE@[2; 3)
+    NAME@[3; 7)
+      IDENT@[3; 7) "main"
+    PARAM_LIST@[7; 9)
+      L_PAREN@[7; 8)
+      R_PAREN@[8; 9)
+    WHITESPACE@[9; 10)
+    BLOCK@[10; 29)
+      L_CURLY@[10; 11)
+      WHITESPACE@[11; 16)
+      EXPR_STMT@[16; 22)
+        ERROR@[16; 22)
+          LABEL@[16; 22)
+            LIFETIME@[16; 21) "'loop"
+            COLON@[21; 22)
+            err: `expected a loop`
+            err: `expected SEMI`
+      WHITESPACE@[22; 23)
+      IMPL_ITEM@[23; 27)
+        IMPL_KW@[23; 27)
+        err: `expected type`
+        err: `expected `{``
+      WHITESPACE@[27; 28)
+      R_CURLY@[28; 29)
+  WHITESPACE@[29; 30)

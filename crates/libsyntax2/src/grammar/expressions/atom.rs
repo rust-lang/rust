@@ -62,16 +62,26 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMark
                 LOOP_KW => loop_expr(p, Some(m)),
                 FOR_KW => for_expr(p, Some(m)),
                 WHILE_KW => while_expr(p, Some(m)),
+                L_CURLY => block_expr(p, Some(m)),
                 _ => {
+                    // test misplaced_label_err
+                    // fn main() {
+                    //     'loop: impl
+                    // }
                     p.error("expected a loop");
+                    m.complete(p, ERROR);
                     return None;
                 }
             }
         }
 
         MATCH_KW => match_expr(p),
-        UNSAFE_KW if la == L_CURLY => block_expr(p),
-        L_CURLY => block_expr(p),
+        UNSAFE_KW if la == L_CURLY => {
+            let m = p.start();
+            p.bump();
+            block_expr(p, Some(m))
+        },
+        L_CURLY => block_expr(p, None),
         RETURN_KW => return_expr(p),
         CONTINUE_KW => continue_expr(p),
         BREAK_KW => break_expr(p),
@@ -323,11 +333,11 @@ fn match_arm(p: &mut Parser) -> BlockLike {
 // fn foo() {
 //     {};
 //     unsafe {};
+//     'label: {};
 // }
-pub(super) fn block_expr(p: &mut Parser) -> CompletedMarker {
-    assert!(p.at(L_CURLY) || p.at(UNSAFE_KW) && p.nth(1) == L_CURLY);
-    let m = p.start();
-    p.eat(UNSAFE_KW);
+fn block_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
+    assert!(p.at(L_CURLY));
+    let m = m.unwrap_or_else(|| p.start());
     block(p);
     m.complete(p, BLOCK_EXPR)
 }

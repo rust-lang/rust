@@ -38,7 +38,9 @@ pub fn main_loop(
     msg_sender: &mut Sender<RawMessage>,
 ) -> Result<()> {
     let pool = rayon::ThreadPoolBuilder::new()
-        .num_threads(4).build()
+        .num_threads(4)
+        .panic_handler(|_| error!("thread panicked :("))
+        .build()
         .unwrap();
     let (task_sender, task_receiver) = unbounded::<Task>();
     let (fs_sender, fs_receiver, fs_watcher) = vfs::roots_loader();
