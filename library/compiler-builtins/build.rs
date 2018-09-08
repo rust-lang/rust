@@ -141,29 +141,6 @@ mod c {
             cfg.define("VISIBILITY_HIDDEN", None);
         }
 
-        // NOTE Most of the ARM intrinsics are written in assembly. Tell gcc which arch we are going
-        // to target to make sure that the assembly implementations really work for the target. If
-        // the implementation is not valid for the arch, then gcc will error when compiling it.
-        if llvm_target[0].starts_with("thumb") {
-            cfg.flag("-mthumb");
-        }
-
-        if target_arch_arm && llvm_target.last() == Some(&"eabihf") {
-            cfg.flag("-mfloat-abi=hard");
-        }
-
-        if llvm_target[0] == "thumbv6m" {
-            cfg.flag("-march=armv6-m");
-        }
-
-        if llvm_target[0] == "thumbv7m" {
-            cfg.flag("-march=armv7-m");
-        }
-
-        if llvm_target[0] == "thumbv7em" {
-            cfg.flag("-march=armv7e-m");
-        }
-
         let mut sources = Sources::new();
         sources.extend(
             &[
