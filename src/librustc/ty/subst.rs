@@ -42,7 +42,7 @@ const TAG_MASK: usize = 0b11;
 const TYPE_TAG: usize = 0b00;
 const REGION_TAG: usize = 0b01;
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, RustcEncodable, RustcDecodable, PartialEq, Eq, PartialOrd, Ord)]
 pub enum UnpackedKind<'tcx> {
     Lifetime(ty::Region<'tcx>),
     Type(Ty<'tcx>),
@@ -74,17 +74,7 @@ impl<'tcx> UnpackedKind<'tcx> {
 
 impl<'tcx> Ord for Kind<'tcx> {
     fn cmp(&self, other: &Kind) -> Ordering {
-        match (self.unpack(), other.unpack()) {
-            (UnpackedKind::Type(_), UnpackedKind::Lifetime(_)) => Ordering::Greater,
-
-            (UnpackedKind::Type(ty1), UnpackedKind::Type(ty2)) => {
-                ty1.sty.cmp(&ty2.sty)
-            }
-
-            (UnpackedKind::Lifetime(reg1), UnpackedKind::Lifetime(reg2)) => reg1.cmp(reg2),
-
-            (UnpackedKind::Lifetime(_), UnpackedKind::Type(_))  => Ordering::Less,
-        }
+        self.unpack().cmp(&other.unpack())
     }
 }
 
