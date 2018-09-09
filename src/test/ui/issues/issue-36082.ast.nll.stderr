@@ -8,6 +8,8 @@ LL |     let val: &_ = x.borrow().0;
 ...
 LL |     println!("{}", val);
    |                    --- borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
 
 error: aborting due to previous error
 

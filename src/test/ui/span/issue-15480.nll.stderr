@@ -8,6 +8,8 @@ LL |     ];
 ...
 LL |     for &&x in &v {
    |                -- borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
 
 error: aborting due to previous error
 
