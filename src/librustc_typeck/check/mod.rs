@@ -4726,13 +4726,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         if receiver.ends_with(&method_call) {
                             None  // do not suggest code that is already there (#53348)
                         } else {
-                            // methods defined will be overwrite `.clone()`
-                            // if suggesion is present in `method_call_list` (#53692)
+                            /*
+                            methods defined in `method_call_list` will overwrite
+                            `.clone()` in copy of `receiver`
+                            */
                             let method_call_list = [".to_vec()", ".to_string()"];
-                            if receiver.ends_with("clone()")
+                            if receiver.ends_with(".clone()")
                                     && method_call_list.contains(&method_call.as_str()){
-                                // needed to clone receiver, because we don't want other
-                                // suggestion to get affect because of that
+                                // created copy of `receiver` because we don't want other
+                                // suggestion to get affected
                                 let mut new_receiver = receiver.clone();
                                 let max_len = new_receiver.rfind(".").unwrap();
                                 new_receiver.truncate(max_len);
