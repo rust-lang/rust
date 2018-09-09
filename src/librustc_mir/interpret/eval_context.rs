@@ -65,6 +65,8 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// detector period.
     pub(super) steps_since_detector_enabled: isize,
 
+    /// Extra state to detect loops.
+    /// FIXME: Move this to the CTFE machine's state, out of the general miri engine.
     pub(super) loop_detector: InfiniteLoopDetector<'a, 'mir, 'tcx, M>,
 }
 
@@ -110,6 +112,7 @@ pub struct Frame<'mir, 'tcx: 'mir> {
     pub stmt: usize,
 }
 
+// Not using the macro because that does not support types depending on 'tcx
 impl<'a, 'mir, 'tcx: 'mir> HashStable<StableHashingContext<'a>> for Frame<'mir, 'tcx> {
     fn hash_stable<W: StableHasherResult>(
         &self,
@@ -144,11 +147,14 @@ pub enum StackPopCleanup {
     None { cleanup: bool },
 }
 
+// Can't use the macro here because that does not support named enum fields.
 impl<'a> HashStable<StableHashingContext<'a>> for StackPopCleanup {
     fn hash_stable<W: StableHasherResult>(
         &self,
         hcx: &mut StableHashingContext<'a>,
-        hasher: &mut StableHasher<W>) {
+        hasher: &mut StableHasher<W>)
+    {
+        mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
             StackPopCleanup::Goto(ref block) => block.hash_stable(hcx, hasher),
             StackPopCleanup::None { cleanup } => cleanup.hash_stable(hcx, hasher),

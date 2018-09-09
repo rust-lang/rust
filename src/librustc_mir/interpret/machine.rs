@@ -12,28 +12,28 @@
 //! This separation exists to ensure that no fancy miri features like
 //! interpreting common C functions leak into CTFE.
 
-use std::hash::Hash;
-
 use rustc::hir::def_id::DefId;
-use rustc::ich::StableHashingContext;
 use rustc::mir::interpret::{Allocation, EvalResult, Scalar};
 use rustc::mir;
 use rustc::ty::{self, layout::TyLayout, query::TyCtxtAt};
-use rustc_data_structures::stable_hasher::HashStable;
 
 use super::{EvalContext, PlaceTy, OpTy};
 
 /// Methods of this trait signifies a point where CTFE evaluation would fail
 /// and some use case dependent behaviour can instead be applied
-pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash + for<'a> HashStable<StableHashingContext<'a>> {
+pub trait Machine<'mir, 'tcx>: Clone + Eq {
     /// Additional data that can be accessed via the Memory
-    type MemoryData: Clone + Eq + Hash + for<'a> HashStable<StableHashingContext<'a>>;
+    type MemoryData: Clone + Eq;
 
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
-    type MemoryKinds: ::std::fmt::Debug + Copy + Clone + Eq + Hash;
+    type MemoryKinds: ::std::fmt::Debug + Copy + Clone + Eq;
 
     /// The memory kind to use for mutated statics -- or None if those are not supported.
     const MUT_STATIC_KIND: Option<Self::MemoryKinds>;
+
+    /// Whether to attempt to detect infinite loops (any kind of infinite
+    /// execution, really).
+    const DETECT_LOOPS: bool;
 
     /// Entry point to all function calls.
     ///
