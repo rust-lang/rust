@@ -19,7 +19,7 @@ extern crate shared_generics_aux;
 //~ MONO_ITEM fn shared_generics::foo[0]
 pub fn foo() {
 
-    //~ MONO_ITEM fn shared_generics_aux::generic_fn[0]<u16> @@ shared_generics_aux.volatile[External]
+    //~ MONO_ITEM fn shared_generics_aux::generic_fn[0]<u16> @@ shared_generics_aux[External]
     let _ = shared_generics_aux::generic_fn(0u16, 1u16);
 
     // This should not generate a monomorphization because it's already

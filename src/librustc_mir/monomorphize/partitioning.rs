@@ -303,7 +303,6 @@ fn place_root_mono_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     let mut roots = FxHashSet();
     let mut codegen_units = FxHashMap();
-    let is_incremental_build = tcx.sess.opts.incremental.is_some();
     let mut internalization_candidates = FxHashSet();
 
     // Determine if monomorphizations instantiated in this crate will be made
@@ -323,14 +322,11 @@ fn place_root_mono_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         let characteristic_def_id = characteristic_def_id_of_mono_item(tcx, mono_item);
-        let is_volatile = is_incremental_build &&
-                          mono_item.is_generic_fn();
 
         let codegen_unit_name = match characteristic_def_id {
             Some(def_id) => compute_codegen_unit_name(tcx,
                                                       cgu_name_builder,
                                                       def_id,
-                                                      is_volatile,
                                                       cgu_name_cache),
             None => fallback_cgu_name(cgu_name_builder),
         };
@@ -794,12 +790,11 @@ fn characteristic_def_id_of_mono_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-type CguNameCache = FxHashMap<(DefId, bool), InternedString>;
+type CguNameCache = FxHashMap<DefId, InternedString>;
 
 fn compute_codegen_unit_name(tcx: TyCtxt,
                              name_builder: &mut CodegenUnitNameBuilder,
                              def_id: DefId,
-                             volatile: bool,
                              cache: &mut CguNameCache)
                              -> InternedString {
     // Find the innermost module that is not nested within a function
@@ -838,7 +833,7 @@ fn compute_codegen_unit_name(tcx: TyCtxt,
 
     let cgu_def_id = cgu_def_id.unwrap();
 
-    cache.entry((cgu_def_id, volatile)).or_insert_with(|| {
+    cache.entry(cgu_def_id).or_insert_with(|| {
         let def_path = tcx.def_path(cgu_def_id);
 
         let components = def_path
@@ -846,13 +841,8 @@ fn compute_codegen_unit_name(tcx: TyCtxt,
             .iter()
             .map(|part| part.data.as_interned_str());
 
-        let volatile_suffix = if volatile {
-            Some("volatile")
-        } else {
-            None
-        };
-
-        name_builder.build_cgu_name(def_path.krate, components, volatile_suffix)
+        let suffix: Option<&str> = None;
+        name_builder.build_cgu_name(def_path.krate, components, suffix)
     }).clone()
 }
 
