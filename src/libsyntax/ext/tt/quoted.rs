@@ -16,7 +16,7 @@ use parse::{token, ParseSess};
 use print::pprust;
 use symbol::keywords;
 use syntax_pos::{edition::Edition, BytePos, Span};
-use tokenstream;
+use tokenstream::{self, DelimSpan};
 use {ast, attr};
 
 use rustc_data_structures::sync::Lrc;
@@ -90,9 +90,9 @@ pub enum KleeneOp {
 #[derive(Debug, Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum TokenTree {
     Token(Span, token::Token),
-    Delimited(Span, Lrc<Delimited>),
+    Delimited(DelimSpan, Lrc<Delimited>),
     /// A kleene-style repetition sequence
-    Sequence(Span, Lrc<SequenceRepetition>),
+    Sequence(DelimSpan, Lrc<SequenceRepetition>),
     /// E.g. `$var`
     MetaVar(Span, ast::Ident),
     /// E.g. `$var:expr`. This is only used in the left hand side of MBE macros.
@@ -137,10 +137,10 @@ impl TokenTree {
             }
             (&TokenTree::Delimited(span, ref delimed), _) => {
                 if index == 0 {
-                    return delimed.open_tt(span);
+                    return delimed.open_tt(span.open);
                 }
                 if index == delimed.tts.len() + 1 {
-                    return delimed.close_tt(span);
+                    return delimed.close_tt(span.close);
                 }
                 delimed.tts[index - 1].clone()
             }
@@ -154,9 +154,9 @@ impl TokenTree {
         match *self {
             TokenTree::Token(sp, _)
             | TokenTree::MetaVar(sp, _)
-            | TokenTree::MetaVarDecl(sp, _, _)
-            | TokenTree::Delimited(sp, _)
-            | TokenTree::Sequence(sp, _) => sp,
+            | TokenTree::MetaVarDecl(sp, _, _) => sp,
+            TokenTree::Delimited(sp, _)
+            | TokenTree::Sequence(sp, _) => sp.entire(),
         }
     }
 }
@@ -286,7 +286,7 @@ where
                 if delimited.delim != token::Paren {
                     let tok = pprust::token_to_string(&token::OpenDelim(delimited.delim));
                     let msg = format!("expected `(`, found `{}`", tok);
-                    sess.span_diagnostic.span_err(span, &msg);
+                    sess.span_diagnostic.span_err(span.entire(), &msg);
                 }
                 // Parse the contents of the sequence itself
                 let sequence = parse(
@@ -302,7 +302,7 @@ where
                 let (separator, op) =
                     parse_sep_and_kleene_op(
                         trees,
-                        span,
+                        span.entire(),
                         sess,
                         features,
                         attrs,

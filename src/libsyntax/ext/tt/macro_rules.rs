@@ -25,7 +25,7 @@ use parse::parser::Parser;
 use parse::token::{self, NtTT};
 use parse::token::Token::*;
 use symbol::Symbol;
-use tokenstream::{TokenStream, TokenTree};
+use tokenstream::{DelimSpan, TokenStream, TokenTree};
 
 use rustc_data_structures::fx::FxHashMap;
 use std::borrow::Cow;
@@ -226,7 +226,7 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item, edition: 
     // ...quasiquoting this would be nice.
     // These spans won't matter, anyways
     let argument_gram = vec![
-        quoted::TokenTree::Sequence(DUMMY_SP, Lrc::new(quoted::SequenceRepetition {
+        quoted::TokenTree::Sequence(DelimSpan::dummy(), Lrc::new(quoted::SequenceRepetition {
             tts: vec![
                 quoted::TokenTree::MetaVarDecl(DUMMY_SP, lhs_nm, ast::Ident::from_str("tt")),
                 quoted::TokenTree::Token(DUMMY_SP, token::FatArrow),
@@ -237,7 +237,7 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item, edition: 
             num_captures: 2,
         })),
         // to phase into semicolon-termination instead of semicolon-separation
-        quoted::TokenTree::Sequence(DUMMY_SP, Lrc::new(quoted::SequenceRepetition {
+        quoted::TokenTree::Sequence(DelimSpan::dummy(), Lrc::new(quoted::SequenceRepetition {
             tts: vec![quoted::TokenTree::Token(DUMMY_SP, token::Semi)],
             separator: None,
             op: quoted::KleeneOp::ZeroOrMore,
@@ -400,7 +400,8 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[quoted::TokenTree]) -> bool {
                         _ => false,
                     }
                 }) {
-                    sess.span_diagnostic.span_err(span, "repetition matches empty token tree");
+                    let sp = span.entire();
+                    sess.span_diagnostic.span_err(sp, "repetition matches empty token tree");
                     return false;
                 }
                 if !check_lhs_no_empty_seq(sess, &seq.tts) {
@@ -474,12 +475,12 @@ impl FirstSets {
                     }
                     TokenTree::Delimited(span, ref delimited) => {
                         build_recur(sets, &delimited.tts[..]);
-                        first.replace_with(delimited.open_tt(span));
+                        first.replace_with(delimited.open_tt(span.open));
                     }
                     TokenTree::Sequence(sp, ref seq_rep) => {
                         let subfirst = build_recur(sets, &seq_rep.tts[..]);
 
-                        match sets.first.entry(sp) {
+                        match sets.first.entry(sp.entire()) {
                             Entry::Vacant(vac) => {
                                 vac.insert(Some(subfirst.clone()));
                             }
@@ -499,7 +500,7 @@ impl FirstSets {
 
                         if let (Some(ref sep), true) = (seq_rep.separator.clone(),
                                                         subfirst.maybe_empty) {
-                            first.add_one_maybe(TokenTree::Token(sp, sep.clone()));
+                            first.add_one_maybe(TokenTree::Token(sp.entire(), sep.clone()));
                         }
 
                         // Reverse scan: Sequence comes before `first`.
@@ -534,11 +535,11 @@ impl FirstSets {
                     return first;
                 }
                 TokenTree::Delimited(span, ref delimited) => {
-                    first.add_one(delimited.open_tt(span));
+                    first.add_one(delimited.open_tt(span.open));
                     return first;
                 }
                 TokenTree::Sequence(sp, ref seq_rep) => {
-                    match self.first.get(&sp) {
+                    match self.first.get(&sp.entire()) {
                         Some(&Some(ref subfirst)) => {
 
                             // If the sequence contents can be empty, then the first
@@ -546,7 +547,7 @@ impl FirstSets {
 
                             if let (Some(ref sep), true) = (seq_rep.separator.clone(),
                                                             subfirst.maybe_empty) {
-                                first.add_one_maybe(TokenTree::Token(sp, sep.clone()));
+                                first.add_one_maybe(TokenTree::Token(sp.entire(), sep.clone()));
                             }
 
                             assert!(first.maybe_empty);
@@ -727,7 +728,7 @@ fn check_matcher_core(sess: &ParseSess,
                 }
             }
             TokenTree::Delimited(span, ref d) => {
-                let my_suffix = TokenSet::singleton(d.close_tt(span));
+                let my_suffix = TokenSet::singleton(d.close_tt(span.close));
                 check_matcher_core(sess, features, attrs, first_sets, &d.tts, &my_suffix);
                 // don't track non NT tokens
                 last.replace_with_irrelevant();
@@ -751,7 +752,7 @@ fn check_matcher_core(sess: &ParseSess,
                 let mut new;
                 let my_suffix = if let Some(ref u) = seq_rep.separator {
                     new = suffix_first.clone();
-                    new.add_one_maybe(TokenTree::Token(sp, u.clone()));
+                    new.add_one_maybe(TokenTree::Token(sp.entire(), u.clone()));
                     &new
                 } else {
                     &suffix_first

@@ -85,7 +85,7 @@ pub use self::ParseResult::*;
 use self::TokenTreeOrTokenTreeSlice::*;
 
 use ast::Ident;
-use syntax_pos::{self, BytePos, Span};
+use syntax_pos::{self, Span};
 use errors::FatalError;
 use ext::tt::quoted::{self, TokenTree};
 use parse::{Directory, ParseSess};
@@ -94,7 +94,7 @@ use parse::token::{self, DocComment, Nonterminal, Token};
 use print::pprust;
 use OneVector;
 use symbol::keywords;
-use tokenstream::TokenStream;
+use tokenstream::{DelimSpan, TokenStream};
 
 use rustc_data_structures::fx::FxHashMap;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
@@ -151,10 +151,10 @@ struct MatcherPos<'a> {
     top_elts: TokenTreeOrTokenTreeSlice<'a>,
     /// The position of the "dot" in this matcher
     idx: usize,
-    /// The beginning position in the source that the beginning of this matcher corresponds to. In
-    /// other words, the token in the source at `sp_lo` is matched against the first token of the
-    /// matcher.
-    sp_lo: BytePos,
+    /// The first span of source source that the beginning of this matcher corresponds to. In other
+    /// words, the token in the source whose span is `sp_open` is matched against the first token of
+    /// the matcher.
+    sp_open: Span,
 
     /// For each named metavar in the matcher, we keep track of token trees matched against the
     /// metavar by the black box parser. In particular, there may be more than one match per
@@ -284,8 +284,8 @@ fn create_matches(len: usize) -> Vec<Rc<Vec<NamedMatch>>> {
 }
 
 /// Generate the top-level matcher position in which the "dot" is before the first token of the
-/// matcher `ms` and we are going to start matching at position `lo` in the source.
-fn initial_matcher_pos(ms: &[TokenTree], lo: BytePos) -> MatcherPos {
+/// matcher `ms` and we are going to start matching at the span `open` in the source.
+fn initial_matcher_pos(ms: &[TokenTree], open: Span) -> MatcherPos {
     let match_idx_hi = count_names(ms);
     let matches = create_matches(match_idx_hi);
     MatcherPos {
@@ -293,8 +293,8 @@ fn initial_matcher_pos(ms: &[TokenTree], lo: BytePos) -> MatcherPos {
         top_elts: TtSeq(ms), // "elts" is an abbr. for "elements"
         // The "dot" is before the first token of the matcher
         idx: 0,
-        // We start matching with byte `lo` in the source code
-        sp_lo: lo,
+        // We start matching at the span `open` in the source code
+        sp_open: open,
 
         // Initialize `matches` to a bunch of empty `Vec`s -- one for each metavar in `top_elts`.
         // `match_lo` for `top_elts` is 0 and `match_hi` is `matches.len()`. `match_cur` is 0 since
@@ -332,7 +332,7 @@ fn initial_matcher_pos(ms: &[TokenTree], lo: BytePos) -> MatcherPos {
 /// token tree it was derived from.
 #[derive(Debug, Clone)]
 pub enum NamedMatch {
-    MatchedSeq(Rc<Vec<NamedMatch>>, syntax_pos::Span),
+    MatchedSeq(Rc<Vec<NamedMatch>>, DelimSpan),
     MatchedNonterminal(Rc<Nonterminal>),
 }
 
@@ -488,7 +488,7 @@ fn inner_parse_loop<'a>(
                     // Add matches from this repetition to the `matches` of `up`
                     for idx in item.match_lo..item.match_hi {
                         let sub = item.matches[idx].clone();
-                        let span = span.with_lo(item.sp_lo);
+                        let span = DelimSpan::from_pair(item.sp_open, span);
                         new_pos.push_match(idx, MatchedSeq(sub, span));
                     }
 
@@ -556,7 +556,7 @@ fn inner_parse_loop<'a>(
                         match_cur: item.match_cur,
                         match_hi: item.match_cur + seq.num_captures,
                         up: Some(item),
-                        sp_lo: sp.lo(),
+                        sp_open: sp.open,
                         top_elts: Tt(TokenTree::Sequence(sp, seq)),
                     })));
                 }
@@ -643,7 +643,7 @@ pub fn parse(
     //
     // This MatcherPos instance is allocated on the stack. All others -- and
     // there are frequently *no* others! -- are allocated on the heap.
-    let mut initial = initial_matcher_pos(ms, parser.span.lo());
+    let mut initial = initial_matcher_pos(ms, parser.span);
     let mut cur_items = smallvec![MatcherPosHandle::Ref(&mut initial)];
     let mut next_items = Vec::new();
 

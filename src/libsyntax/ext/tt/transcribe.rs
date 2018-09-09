@@ -16,8 +16,8 @@ use ext::tt::quoted;
 use fold::noop_fold_tt;
 use parse::token::{self, Token, NtTT};
 use OneVector;
-use syntax_pos::{Span, DUMMY_SP};
-use tokenstream::{TokenStream, TokenTree, Delimited};
+use syntax_pos::DUMMY_SP;
+use tokenstream::{TokenStream, TokenTree, Delimited, DelimSpan};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -30,7 +30,7 @@ enum Frame {
     Delimited {
         forest: Lrc<quoted::Delimited>,
         idx: usize,
-        span: Span,
+        span: DelimSpan,
     },
     Sequence {
         forest: Lrc<quoted::SequenceRepetition>,
@@ -42,7 +42,7 @@ enum Frame {
 impl Frame {
     fn new(tts: Vec<quoted::TokenTree>) -> Frame {
         let forest = Lrc::new(quoted::Delimited { delim: token::NoDelim, tts: tts });
-        Frame::Delimited { forest: forest, idx: 0, span: DUMMY_SP }
+        Frame::Delimited { forest: forest, idx: 0, span: DelimSpan::dummy() }
     }
 }
 
@@ -123,20 +123,20 @@ pub fn transcribe(cx: &ExtCtxt,
                                          &interpolations,
                                          &repeats) {
                     LockstepIterSize::Unconstrained => {
-                        cx.span_fatal(sp, /* blame macro writer */
+                        cx.span_fatal(sp.entire(), /* blame macro writer */
                             "attempted to repeat an expression \
                              containing no syntax \
                              variables matched as repeating at this depth");
                     }
                     LockstepIterSize::Contradiction(ref msg) => {
                         // FIXME #2887 blame macro invoker instead
-                        cx.span_fatal(sp, &msg[..]);
+                        cx.span_fatal(sp.entire(), &msg[..]);
                     }
                     LockstepIterSize::Constraint(len, _) => {
                         if len == 0 {
                             if seq.op == quoted::KleeneOp::OneOrMore {
                                 // FIXME #2887 blame invoker
-                                cx.span_fatal(sp, "this must repeat at least once");
+                                cx.span_fatal(sp.entire(), "this must repeat at least once");
                             }
                         } else {
                             repeats.push((0, len));

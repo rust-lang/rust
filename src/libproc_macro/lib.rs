@@ -63,7 +63,7 @@ use std::str::FromStr;
 use syntax::errors::DiagnosticBuilder;
 use syntax::parse::{self, token};
 use syntax::symbol::Symbol;
-use syntax::tokenstream;
+use syntax::tokenstream::{self, DelimSpan};
 use syntax_pos::{Pos, FileName};
 
 /// The main type provided by this crate, representing an abstract stream of
@@ -609,7 +609,7 @@ impl fmt::Display for TokenTree {
 pub struct Group {
     delimiter: Delimiter,
     stream: TokenStream,
-    span: Span,
+    span: DelimSpan,
 }
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
@@ -650,7 +650,7 @@ impl Group {
         Group {
             delimiter: delimiter,
             stream: stream,
-            span: Span::call_site(),
+            span: DelimSpan::from_single(Span::call_site().0),
         }
     }
 
@@ -671,9 +671,36 @@ impl Group {
 
     /// Returns the span for the delimiters of this token stream, spanning the
     /// entire `Group`.
+    ///
+    /// ```text
+    /// pub fn span(&self) -> Span {
+    ///            ^^^^^^^
+    /// ```
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn span(&self) -> Span {
-        self.span
+        Span(self.span.entire())
+    }
+
+    /// Returns the span pointing to the opening delimiter of this group.
+    ///
+    /// ```text
+    /// pub fn span_open(&self) -> Span {
+    ///                 ^
+    /// ```
+    #[unstable(feature = "proc_macro_span", issue = "38356")]
+    pub fn span_open(&self) -> Span {
+        Span(self.span.open)
+    }
+
+    /// Returns the span pointing to the closing delimiter of this group.
+    ///
+    /// ```text
+    /// pub fn span_close(&self) -> Span {
+    ///                        ^
+    /// ```
+    #[unstable(feature = "proc_macro_span", issue = "38356")]
+    pub fn span_close(&self) -> Span {
+        Span(self.span.close)
     }
 
     /// Configures the span for this `Group`'s delimiters, but not its internal
@@ -684,7 +711,7 @@ impl Group {
     /// tokens at the level of the `Group`.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn set_span(&mut self, span: Span) {
-        self.span = span;
+        self.span = DelimSpan::from_single(span.0);
     }
 }
 

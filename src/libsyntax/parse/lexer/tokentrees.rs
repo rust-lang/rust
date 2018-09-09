@@ -11,7 +11,7 @@
 use print::pprust::token_to_string;
 use parse::lexer::StringReader;
 use parse::{token, PResult};
-use tokenstream::{Delimited, TokenStream, TokenTree};
+use tokenstream::{Delimited, DelimSpan, TokenStream, TokenTree};
 
 impl<'a> StringReader<'a> {
     // Parse a stream of tokens into a list of `TokenTree`s, up to an `Eof`.
@@ -85,7 +85,7 @@ impl<'a> StringReader<'a> {
                 let tts = self.parse_token_trees_until_close_delim();
 
                 // Expand to cover the entire delimited token tree
-                let span = pre_span.with_hi(self.span.hi());
+                let delim_span = DelimSpan::from_pair(pre_span, self.span);
 
                 let sm = self.sess.source_map();
                 match self.token {
@@ -158,7 +158,7 @@ impl<'a> StringReader<'a> {
                     _ => {}
                 }
 
-                Ok(TokenTree::Delimited(span, Delimited {
+                Ok(TokenTree::Delimited(delim_span, Delimited {
                     delim,
                     tts: tts.into(),
                 }).into())

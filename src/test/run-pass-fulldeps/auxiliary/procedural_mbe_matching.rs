@@ -70,7 +70,8 @@ fn expand_mbe_matches(cx: &mut ExtCtxt, _: Span, args: &[TokenTree])
                     _ => unreachable!(),
                 }
             }).collect();
-            let arm = cx.arm(seq_sp, pats, cx.expr_bool(seq_sp, true));
+            let span = seq_sp.entire();
+            let arm = cx.arm(span, pats, cx.expr_bool(span, true));
 
             quote_expr!(cx,
                 match $matched_expr {

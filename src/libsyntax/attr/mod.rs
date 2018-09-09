@@ -34,7 +34,7 @@ use parse::token::{self, Token};
 use ptr::P;
 use symbol::Symbol;
 use ThinVec;
-use tokenstream::{TokenStream, TokenTree, Delimited};
+use tokenstream::{TokenStream, TokenTree, Delimited, DelimSpan};
 use GLOBALS;
 
 use std::iter;
@@ -535,7 +535,7 @@ impl MetaItemKind {
                     }
                     tokens.push(item.node.tokens());
                 }
-                TokenTree::Delimited(span, Delimited {
+                TokenTree::Delimited(DelimSpan::from_single(span), Delimited {
                     delim: token::Paren,
                     tts: TokenStream::concat(tokens).into(),
                 }).into()

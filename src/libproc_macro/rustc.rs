@@ -64,7 +64,7 @@ impl TokenTree {
             tokenstream::TokenTree::Delimited(span, delimed) => {
                 let delimiter = Delimiter::from_internal(delimed.delim);
                 let mut g = Group::new(delimiter, ::TokenStream(delimed.tts.into()));
-                g.set_span(Span(span));
+                g.span = span;
                 return g.into();
             }
         };
@@ -192,7 +192,7 @@ impl TokenTree {
             self::TokenTree::Punct(tt) => (tt.as_char(), tt.spacing(), tt.span()),
             self::TokenTree::Group(tt) => {
                 return TokenTree::Delimited(
-                    tt.span.0,
+                    tt.span,
                     Delimited {
                         delim: tt.delimiter.to_internal(),
                         tts: tt.stream.0.into(),

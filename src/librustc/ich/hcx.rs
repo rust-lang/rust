@@ -27,6 +27,7 @@ use syntax::ast;
 use syntax::source_map::SourceMap;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::symbol::Symbol;
+use syntax::tokenstream::DelimSpan;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::hygiene;
 
@@ -389,6 +390,17 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
 
             sub_hash.hash_stable(hcx, hasher);
         }
+    }
+}
+
+impl<'a> HashStable<StableHashingContext<'a>> for DelimSpan {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>,
+    ) {
+        self.open.hash_stable(hcx, hasher);
+        self.close.hash_stable(hcx, hasher);
     }
 }
 
