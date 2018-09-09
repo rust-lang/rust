@@ -23,8 +23,7 @@ mod m {
     pub(in crate::m) struct S;
 }
 
-mod n
-{
+mod n {
     use crate::m::f;
     use crate as root;
     pub fn check() {
@@ -34,9 +33,20 @@ mod n
     }
 }
 
+mod p {
+    use {super::f, crate::m::g, self::root::m::h};
+    use crate as root;
+    pub fn check() {
+        assert_eq!(f(), 1);
+        assert_eq!(g(), 2);
+        assert_eq!(h(), 3);
+    }
+}
+
 fn main() {
     assert_eq!(f(), 1);
     assert_eq!(crate::m::g(), 2);
     assert_eq!(root::m::h(), 3);
     n::check();
+    p::check();
 }
