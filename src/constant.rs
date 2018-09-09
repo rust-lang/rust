@@ -27,9 +27,7 @@ impl ConstantCx {
         //println!("todo {:?}", self.todo);
         define_all_allocs(tcx, module, &mut self);
         //println!("done {:?}", self.done);
-        for data_id in self.done.drain() {
-            module.finalize_data(data_id);
-        }
+        self.done.clear();
     }
 }
 

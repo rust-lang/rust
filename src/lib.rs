@@ -230,9 +230,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
             codegen_mono_items(tcx, &mut jit_module, &mono_items);
 
             tcx.sess.abort_if_errors();
-            tcx.sess.warn("Compiled everything");
-
-            tcx.sess.warn("Rustc codegen cranelift will JIT run the executable, because the SHOULD_RUN env var is set");
+            println!("Compiled everything");
+            println!("Rustc codegen cranelift will JIT run the executable, because the SHOULD_RUN env var is set");
 
             let sig = Signature {
                 params: vec![
@@ -246,14 +245,14 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 .declare_function("main", Linkage::Import, &sig)
                 .unwrap();
 
-            let finalized_main: *const u8 = jit_module.finalize_function(main_func_id);
             jit_module.finalize_all();
-            tcx.sess.warn("Finalized everything");
+            let finalized_main: *const u8 = jit_module.get_finalized_function(main_func_id);
+            println!("🎉 Finalized everything");
 
             let f: extern "C" fn(isize, *const *const u8) -> isize =
                 unsafe { ::std::mem::transmute(finalized_main) };
             let res = f(0, 0 as *const _);
-            tcx.sess.warn(&format!("main returned {}", res));
+            tcx.sess.warn(&format!("🚀 main returned {}", res));
 
             jit_module.finish();
             ::std::process::exit(0);
@@ -271,11 +270,9 @@ impl CodegenBackend for CraneliftCodegenBackend {
             codegen_mono_items(tcx, &mut faerie_module, &mono_items);
 
             tcx.sess.abort_if_errors();
-            tcx.sess.warn("Compiled everything");
 
             if should_codegen(tcx.sess) {
                 faerie_module.finalize_all();
-                tcx.sess.warn("Finalized everything");
             }
 
             return Box::new(OngoingCodegen {

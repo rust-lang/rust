@@ -17,6 +17,10 @@ unsafe extern "C" fn my_puts(s: *const u8) {
     puts(s);
 }
 
+// TODO remove when jit supports linking rlibs
+#[cfg(jit)]
+fn panic<T>(_: T) { loop {} }
+
 #[lang = "termination"]
 trait Termination {
     fn report(self) -> i32;
@@ -61,8 +65,12 @@ fn main() {
         let ptr: *const u8 = hello as *const [u8] as *const u8;
         puts(ptr);
 
-        let world = box "World!\0";
-        puts(*world as *const str as *const u8);
+        // TODO remove when jit supports linking rlibs
+        #[cfg(not(jit))]
+        {
+            let world = box "World!\0";
+            puts(*world as *const str as *const u8);
+        }
 
         if intrinsics::size_of_val(hello) as u8 != 6 {
             panic(&("", "", 0, 0));

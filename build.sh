@@ -35,7 +35,7 @@ build_lib() {
 }
 
 run_bin() {
-    SHOULD_RUN=1 $RUSTC $1 --crate-type bin
+    SHOULD_RUN=1 $RUSTC $@ --crate-type bin
 }
 
 build_example_bin() {
@@ -58,15 +58,18 @@ RUSTC="rustc -Zcodegen-backend=$(pwd)/target/$channel/librustc_codegen_cranelift
 rm -r target/out || true
 mkdir -p target/out/clif
 
+echo "[BUILD] mini_core"
 build_lib mini_core examples/mini_core.rs
 
 $RUSTC examples/example.rs --crate-type lib
 
-# SimpleJIT is broken
-# run_bin examples/mini_core_hello_world.rs
+echo "[JIT] mini_core_hello_world"
+run_bin examples/mini_core_hello_world.rs --cfg jit
 
+echo "[AOT] mini_core_hello_world"
 build_example_bin mini_core_hello_world examples/mini_core_hello_world.rs
 
+echo "[BUILD] core"
 time $RUSTC target/libcore/src/libcore/lib.rs --crate-type lib --crate-name core -Cincremental=target/incremental_core
 cat target/out/log.txt | sort | uniq -c
 #extract_data libcore.rlib core.o
