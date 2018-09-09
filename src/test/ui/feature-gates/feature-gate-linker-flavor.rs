@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -15,6 +15,5 @@
 
 #[used]
 fn foo() {}
-//~^^ ERROR the `#[used]` attribute is an experimental feature
 
 fn main() {}
