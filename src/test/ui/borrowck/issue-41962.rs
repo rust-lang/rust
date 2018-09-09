@@ -18,9 +18,6 @@ pub fn main(){
         }
         //~^^ ERROR use of partially moved value: `maybe` (Ast) [E0382]
         //~| ERROR use of moved value: `(maybe as std::prelude::v1::Some).0` (Ast) [E0382]
-        //~| ERROR use of moved value: `maybe` (Mir) [E0382]
-        //~| ERROR use of moved value: `maybe` (Mir) [E0382]
         //~| ERROR use of moved value (Mir) [E0382]
-        //~| ERROR borrow of moved value: `maybe` (Mir) [E0382]
     }
 }

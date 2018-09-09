@@ -120,26 +120,48 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         use_tree: &ast::UseTree,
         id: NodeId,
         vis: ty::Visibility,
-        prefix: &ast::Path,
+        parent_prefix: &[Ident],
         mut uniform_paths_canary_emitted: bool,
         nested: bool,
         item: &Item,
         expansion: Mark,
     ) {
-        debug!("build_reduced_graph_for_use_tree(prefix={:?}, \
+        debug!("build_reduced_graph_for_use_tree(parent_prefix={:?}, \
                 uniform_paths_canary_emitted={}, \
                 use_tree={:?}, nested={})",
-               prefix, uniform_paths_canary_emitted, use_tree, nested);
+               parent_prefix, uniform_paths_canary_emitted, use_tree, nested);
 
         let is_prelude = attr::contains_name(&item.attrs, "prelude_import");
-        let path = &use_tree.prefix;
+        let uniform_paths =
+            self.session.rust_2018() &&
+            self.session.features_untracked().uniform_paths;
 
-        let mut module_path: Vec<_> = prefix.segments.iter()
-            .chain(path.segments.iter())
-            .map(|seg| seg.ident)
-            .collect();
+        let prefix_iter = || parent_prefix.iter().cloned()
+            .chain(use_tree.prefix.segments.iter().map(|seg| seg.ident));
+        let prefix_start = prefix_iter().nth(0);
+        let starts_with_non_keyword = prefix_start.map_or(false, |ident| {
+            !ident.is_path_segment_keyword()
+        });
 
-        debug!("build_reduced_graph_for_use_tree: module_path={:?}", module_path);
+        // Imports are resolved as global by default, prepend `CrateRoot`,
+        // unless `#![feature(uniform_paths)]` is enabled.
+        let inject_crate_root =
+            !uniform_paths &&
+            match use_tree.kind {
+                // HACK(eddyb) special-case `use *` to mean `use ::*`.
+                ast::UseTreeKind::Glob if prefix_start.is_none() => true,
+                _ => starts_with_non_keyword,
+            };
+        let root = if inject_crate_root {
+            let span = use_tree.prefix.span.shrink_to_lo();
+            Some(Ident::new(keywords::CrateRoot.name(), span))
+        } else {
+            None
+        };
+
+        let prefix: Vec<_> = root.into_iter().chain(prefix_iter()).collect();
+
+        debug!("build_reduced_graph_for_use_tree: prefix={:?}", prefix);
 
         // `#[feature(uniform_paths)]` allows an unqualified import path,
         // e.g. `use x::...;` to resolve not just globally (`use ::x::...;`)
@@ -172,15 +194,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         // ergonomically unacceptable.
         let emit_uniform_paths_canary =
             !uniform_paths_canary_emitted &&
-            module_path.get(0).map_or(false, |ident| {
-                !ident.is_path_segment_keyword()
-            });
+            self.session.rust_2018() &&
+            starts_with_non_keyword;
         if emit_uniform_paths_canary {
-            // Relative paths should only get here if the feature-gate is on.
-            assert!(self.session.rust_2018() &&
-                    self.session.features_untracked().uniform_paths);
-
-            let source = module_path[0];
+            let source = prefix_start.unwrap();
 
             // HACK(eddyb) For `use x::{self, ...};`, use the ID of the
             // `self` nested import for the canary. This allows the
@@ -256,6 +273,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         match use_tree.kind {
             ast::UseTreeKind::Simple(rename, ..) => {
                 let mut ident = use_tree.ident();
+                let mut module_path = prefix;
                 let mut source = module_path.pop().unwrap();
                 let mut type_ns_only = false;
 
@@ -354,7 +372,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     max_vis: Cell::new(ty::Visibility::Invisible),
                 };
                 self.add_import_directive(
-                    module_path,
+                    prefix,
                     subclass,
                     use_tree.span,
                     id,
@@ -366,13 +384,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 );
             }
             ast::UseTreeKind::Nested(ref items) => {
-                let prefix = ast::Path {
-                    segments: module_path.into_iter()
-                        .map(|ident| ast::PathSegment::from_ident(ident))
-                        .collect(),
-                    span: path.span,
-                };
-
                 // Ensure there is at most one `self` in the list
                 let self_spans = items.iter().filter_map(|&(ref use_tree, _)| {
                     if let ast::UseTreeKind::Simple(..) = use_tree.kind {
@@ -422,28 +433,13 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
         match item.node {
             ItemKind::Use(ref use_tree) => {
-                let uniform_paths =
-                    self.session.rust_2018() &&
-                    self.session.features_untracked().uniform_paths;
-                // Imports are resolved as global by default, add starting root segment.
-                let root = if !uniform_paths {
-                    use_tree.prefix.make_root()
-                } else {
-                    // Except when `#![feature(uniform_paths)]` is on.
-                    None
-                };
-                let prefix = ast::Path {
-                    segments: root.into_iter().collect(),
-                    span: use_tree.span,
-                };
-
                 self.build_reduced_graph_for_use_tree(
                     use_tree,
                     item.id,
                     use_tree,
                     item.id,
                     vis,
-                    &prefix,
+                    &[],
                     false, // uniform_paths_canary_emitted
                     false,
                     item,

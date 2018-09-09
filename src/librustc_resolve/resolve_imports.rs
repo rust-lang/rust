@@ -708,6 +708,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             }
         }
 
+        let uniform_paths_feature = self.session.features_untracked().uniform_paths;
         for ((span, _), (name, results)) in uniform_paths_canaries {
             self.per_ns(|this, ns| {
                 let results = &results[ns];
@@ -739,15 +740,24 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                         suggestion_choices.push_str(" or ");
                     }
                     write!(suggestion_choices, "`self::{}`", name);
-                    err.span_label(span,
-                        format!("can refer to `self::{}`", name));
+                    if uniform_paths_feature {
+                        err.span_label(span,
+                            format!("can refer to `self::{}`", name));
+                    } else {
+                        err.span_label(span,
+                            format!("may refer to `self::{}` in the future", name));
+                    }
                 }
                 for &span in &results.block_scopes {
                     err.span_label(span,
                         format!("shadowed by block-scoped `{}`", name));
                 }
                 err.help(&format!("write {} explicitly instead", suggestion_choices));
-                err.note("relative `use` paths enabled by `#![feature(uniform_paths)]`");
+                if uniform_paths_feature {
+                    err.note("relative `use` paths enabled by `#![feature(uniform_paths)]`");
+                } else {
+                    err.note("in the future, `#![feature(uniform_paths)]` may become the default");
+                }
                 err.emit();
             });
         }
@@ -933,11 +943,15 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             _ => unreachable!(),
         };
 
+        // Do not record uses from canaries, to avoid interfering with other
+        // diagnostics or suggestions that rely on some items not being used.
+        let record_used = !directive.is_uniform_paths_canary;
+
         let mut all_ns_err = true;
         self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
             if let Ok(binding) = result[ns].get() {
                 all_ns_err = false;
-                if this.record_use(ident, ns, binding, directive.span) {
+                if record_used && this.record_use(ident, ns, binding, directive.span) {
                     if let ModuleOrUniformRoot::Module(module) = module {
                         this.resolution(module, ident, ns).borrow_mut().binding =
                             Some(this.dummy_binding);
@@ -949,7 +963,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         if all_ns_err {
             let mut all_ns_failed = true;
             self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
-                match this.resolve_ident_in_module(module, ident, ns, true, span) {
+                match this.resolve_ident_in_module(module, ident, ns, record_used, span) {
                     Ok(_) => all_ns_failed = false,
                     _ => {}
                 }

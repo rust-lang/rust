@@ -1,0 +1,31 @@
+error: `std` import is ambiguous
+  --> $DIR/block-scoped-shadow.rs:18:9
+   |
+LL | struct std;
+   | ----------- may refer to `self::std` in the future
+...
+LL |     enum std {}
+   |     ----------- shadowed by block-scoped `std`
+LL |     use std as foo;
+   |         ^^^ can refer to external crate `::std`
+   |
+   = help: write `::std` or `self::std` explicitly instead
+   = note: in the future, `#![feature(uniform_paths)]` may become the default
+
+error: `std` import is ambiguous
+  --> $DIR/block-scoped-shadow.rs:18:9
+   |
+LL | struct std;
+   | ----------- may refer to `self::std` in the future
+...
+LL |     fn std() {}
+   |     ----------- shadowed by block-scoped `std`
+LL |     enum std {}
+LL |     use std as foo;
+   |         ^^^
+   |
+   = help: write `self::std` explicitly instead
+   = note: in the future, `#![feature(uniform_paths)]` may become the default
+
+error: aborting due to 2 previous errors
+

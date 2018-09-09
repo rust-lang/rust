@@ -1077,7 +1077,7 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn is_const_fn(&self, id: DefIndex) -> bool {
+    crate fn is_const_fn_raw(&self, id: DefIndex) -> bool {
         let constness = match self.entry(id).kind {
             EntryKind::Method(data) => data.decode(self).fn_data.constness,
             EntryKind::Fn(data) => data.decode(self).constness,
