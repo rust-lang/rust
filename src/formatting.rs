@@ -64,7 +64,7 @@ fn format_project<T: FormatHandler>(
     config: &Config,
     handler: &mut T,
 ) -> Result<FormatReport, ErrorKind> {
-    let mut timer = Timer::Initialized(Instant::now());
+    let mut timer = Timer::start();
 
     let main_file = input.file_name();
     let input_is_stdin = main_file == FileName::Stdin;
@@ -344,14 +344,23 @@ pub(crate) struct ModifiedLines {
 
 #[derive(Clone, Copy, Debug)]
 enum Timer {
+    Disabled,
     Initialized(Instant),
     DoneParsing(Instant, Instant),
     DoneFormatting(Instant, Instant, Instant),
 }
 
 impl Timer {
+    fn start() -> Timer {
+        if cfg!(target_arch = "wasm32") {
+            Timer::Disabled
+        } else {
+            Timer::Initialized(Instant::now())
+        }
+    }
     fn done_parsing(self) -> Self {
         match self {
+            Timer::Disabled => Timer::Disabled,
             Timer::Initialized(init_time) => Timer::DoneParsing(init_time, Instant::now()),
             _ => panic!("Timer can only transition to DoneParsing from Initialized state"),
         }
@@ -359,6 +368,7 @@ impl Timer {
 
     fn done_formatting(self) -> Self {
         match self {
+            Timer::Disabled => Timer::Disabled,
             Timer::DoneParsing(init_time, parse_time) => {
                 Timer::DoneFormatting(init_time, parse_time, Instant::now())
             }
@@ -369,6 +379,7 @@ impl Timer {
     /// Returns the time it took to parse the source files in seconds.
     fn get_parse_time(&self) -> f32 {
         match *self {
+            Timer::Disabled => panic!("this platform cannot time execution"),
             Timer::DoneParsing(init, parse_time) | Timer::DoneFormatting(init, parse_time, _) => {
                 // This should never underflow since `Instant::now()` guarantees monotonicity.
                 Self::duration_to_f32(parse_time.duration_since(init))
@@ -381,6 +392,7 @@ impl Timer {
     /// not included.
     fn get_format_time(&self) -> f32 {
         match *self {
+            Timer::Disabled => panic!("this platform cannot time execution"),
             Timer::DoneFormatting(_init, parse_time, format_time) => {
                 Self::duration_to_f32(format_time.duration_since(parse_time))
             }
