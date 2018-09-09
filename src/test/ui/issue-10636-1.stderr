@@ -1,9 +1,9 @@
 error: incorrect close delimiter: `)`
-  --> $DIR/issue-10636-1.rs:15:1
+  --> $DIR/issue-10636-1.rs:16:1
    |
-LL | struct Obj { //~ NOTE: unclosed delimiter
-   |            - unclosed delimiter
-LL |     member: usize
+LL | struct Obj {
+   |            - un-closed delimiter
+...
 LL | )
    | ^ incorrect close delimiter
 
