@@ -56,6 +56,7 @@ mod diagnostic;
 pub use diagnostic::{Diagnostic, Level};
 
 use std::{ascii, fmt, iter};
+use std::ops::{Bound, RangeBounds};
 use std::path::PathBuf;
 use rustc_data_structures::sync::Lrc;
 use std::str::FromStr;
@@ -64,7 +65,7 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::parse::{self, token};
 use syntax::symbol::Symbol;
 use syntax::tokenstream::{self, DelimSpan};
-use syntax_pos::{Pos, FileName};
+use syntax_pos::{BytePos, Pos, FileName};
 
 /// The main type provided by this crate, representing an abstract stream of
 /// tokens, or, more specifically, a sequence of token trees.
@@ -346,6 +347,84 @@ impl Span {
             line: loc.line,
             column: loc.col.to_usize()
         }
+    }
+
+    /// Number of bytes of source code covered by this span.
+    ///
+    /// In other words, the number of bytes from the first byte associated with
+    /// this span to the byte after the last byte associated with this span.
+    ///
+    /// # Example
+    ///
+    /// In the following line of source code, the span associated with the
+    /// parenthesis token would have a `len` of 6 bytes.
+    ///
+    /// ```text
+    /// pub fn len(self) -> usize {
+    ///           ^^^^^^
+    /// ```
+    #[unstable(feature = "proc_macro_span", issue = "38356")]
+    pub fn len(self) -> usize {
+        self.0.hi().to_usize() - self.0.lo().to_usize()
+    }
+
+    /// Produces a span for some range of the bytes represented by this span.
+    ///
+    /// # Examples
+    ///
+    /// In the following line of source code the span of the parenthesis token
+    /// is shown. We could call `span.subspan(..1)` on this span to receive a
+    /// span referring to just the first byte, the opening parenthesis.
+    ///
+    /// ```text
+    /// pub fn subspan<R: RangeBounds<usize>>(self, range: R) -> Span {
+    ///                                      ^^^^^^^^^^^^^^^^
+    /// ```
+    ///
+    /// In this line the indicated span would be obtained by
+    /// `span.subspan(9..12)` on the span of the full string literal token.
+    ///
+    /// ```text
+    /// println!("{a} {b} {c}", a=1, b=2);
+    ///                   ^^^
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if the start of the resulting span would be greater than its end,
+    /// or if the upper bound of the range is out of bounds considering the
+    /// length of this span.
+    ///
+    /// In the case of a half-open range like `lo..hi` this means we require `lo
+    /// <= hi` and `hi <= span.len()`.
+    #[unstable(feature = "proc_macro_span", issue = "38356")]
+    pub fn subspan<R: RangeBounds<usize>>(self, range: R) -> Span {
+        let len = self.len();
+        let hi = match range.end_bound() {
+            Bound::Included(&hi) => {
+                assert!(hi < len);
+                hi + 1
+            }
+            Bound::Excluded(&hi) => {
+                assert!(hi <= len);
+                hi
+            }
+            Bound::Unbounded => len,
+        };
+        let lo = match range.start_bound() {
+            Bound::Included(&lo) => {
+                assert!(lo <= hi);
+                lo
+            }
+            Bound::Excluded(&lo) => {
+                assert!(lo < hi);
+                lo + 1
+            }
+            Bound::Unbounded => 0,
+        };
+        let lo = BytePos::from_usize(self.0.lo().to_usize() + lo);
+        let hi = BytePos::from_usize(self.0.lo().to_usize() + hi);
+        Span(self.0.with_lo(lo).with_hi(hi))
     }
 
     /// Create a new span encompassing `self` and `other`.
