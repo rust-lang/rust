@@ -31,8 +31,8 @@ LL |     enum Foo {} //~ ERROR the name `Foo` is defined multiple times
 error[E0428]: the name `Bar` is defined multiple times
   --> $DIR/issue-6936.rs:35:5
    |
-LL |     type Bar<T> = T;
-   |     ---------------- previous definition of the type `Bar` here
+LL |     type Bar<T: ?Sized> = T;
+   |     ------------------------ previous definition of the type `Bar` here
 LL |     mod Bar {} //~ ERROR the name `Bar` is defined multiple times
    |     ^^^^^^^ `Bar` redefined here
    |

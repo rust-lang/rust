@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // run-pass
-type MyType<'a, T> = &'a T;
+type MyType<'a, T> = &'a Option<T>;
 
 // combine lifetime bounds and type arguments in usual way
 type TypeA<'a> = MyType<'a, ()>;
@@ -28,18 +28,18 @@ type TypeD = TypeA<'static>;
 type TypeE = TypeA<'static,>;
 
 // normal type argument
-type TypeF<T> = Box<T>;
+type TypeF<T> = Option<T>;
 
 // type argument with trailing comma
-type TypeG<T> = Box<T,>;
+type TypeG<T> = Option<T,>;
 
 // trailing comma on lifetime defs
 type TypeH<'a,> = &'a ();
 
 // trailing comma on type argument
-type TypeI<T,> = T;
+type TypeI<T,> = Option<T>;
 
-static STATIC: () = ();
+static STATIC: Option<()> = Some(());
 
 fn main() {
 

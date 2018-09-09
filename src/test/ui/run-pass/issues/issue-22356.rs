@@ -35,7 +35,8 @@ impl<D: Device, T> BufferHandle<D, T> {
     }
 }
 
-pub type RawBufferHandle<D: Device> = Handle<<D as Device>::Buffer, String>;
+#[allow(type_alias_bounds)]
+pub type RawBufferHandle<D: ?Sized + Device> = Handle<<D as Device>::Buffer, String>;
 
 pub trait Device {
     type Buffer;

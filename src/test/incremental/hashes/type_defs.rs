@@ -132,12 +132,12 @@ type ChangeNestedTupleField = (i32, (i64, i8));
 
 // Add type param --------------------------------------------------------------
 #[cfg(cfail1)]
-type AddTypeParam<T1> = (T1, T1);
+type AddTypeParam<T1> = (T1, Option<T1>);
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
-type AddTypeParam<T1, T2> = (T1, T2);
+type AddTypeParam<T1, T2> = (T1, Option<T2>);
 
 
 
@@ -148,18 +148,18 @@ type AddTypeParamBound<T1> = (T1, u32);
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
-type AddTypeParamBound<T1: Clone> = (T1, u32);
+type AddTypeParamBound<T1: std::any::Any> = (T1, u32);
 
 
 
 // Add type param bound in where clause ----------------------------------------
 #[cfg(cfail1)]
-type AddTypeParamBoundWhereClause<T1> where T1: Clone = (T1, u32);
+type AddTypeParamBoundWhereClause<T1> where T1: Sized = (T1, u32);
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
-type AddTypeParamBoundWhereClause<T1> where T1: Clone+Copy = (T1, u32);
+type AddTypeParamBoundWhereClause<T1> where T1: Sized+std::any::Any = (T1, u32);
 
 
 
@@ -203,7 +203,9 @@ where 'b: 'a,
 
 // Change Trait Bound Indirectly -----------------------------------------------
 trait ReferencedTrait1 {}
+impl<T> ReferencedTrait1 for T {}
 trait ReferencedTrait2 {}
+impl<T> ReferencedTrait2 for T {}
 
 mod change_trait_bound_indirectly {
     #[cfg(cfail1)]

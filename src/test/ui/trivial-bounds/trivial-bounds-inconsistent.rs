@@ -29,7 +29,7 @@ trait T where i32: Foo {}
 
 union U where i32: Foo { f: i32 }
 
-type Y where i32: Foo = ();
+type Y where i32: Foo = S;
 
 impl Foo for () where i32: Foo {
     fn test(&self) {

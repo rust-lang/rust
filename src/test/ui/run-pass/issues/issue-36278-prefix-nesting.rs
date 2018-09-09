@@ -17,7 +17,8 @@ use std::mem;
 const SZ: usize = 100;
 struct P<T: ?Sized>([u8; SZ], T);
 
-type Ack<T> = P<P<T>>;
+#[allow(type_alias_bounds)]
+type Ack<T: ?Sized> = P<P<T>>;
 
 fn main() {
     let size_of_sized; let size_of_unsized;

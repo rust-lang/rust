@@ -147,7 +147,7 @@ mod aliases_priv {
 
 mod aliases_params {
     struct Priv;
-    type PrivAliasGeneric<T = Priv> = T;
+    type PrivAliasGeneric<T = Priv> = Option<T>;
     type Result<T> = ::std::result::Result<T, Priv>;
 
     pub fn f2(arg: PrivAliasGeneric) {}

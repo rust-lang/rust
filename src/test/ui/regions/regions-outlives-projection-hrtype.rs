@@ -24,7 +24,8 @@ trait TheTrait {
 
 fn wf<T>() { }
 
-type FnType<T> = for<'r> fn(&'r T);
+#[allow(type_alias_bounds)]
+type FnType<T: ?Sized> = for<'r> fn(&'r T);
 
 fn foo<'a,'b,T>()
     where FnType<T>: TheTrait

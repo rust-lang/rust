@@ -9,8 +9,10 @@
 // except according to those terms.
 
 // run-pass
-#![allow(type_alias_bounds)]
 
-type Foo<T> where T: Copy = Box<T>;
+struct NeedsCopy<T: Copy>(T);
+
+#[allow(type_alias_bounds)]
+type Foo<T> where T: Copy = NeedsCopy<T>;
 
 fn main(){}

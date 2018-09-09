@@ -31,7 +31,7 @@ mod t4 {
 }
 
 mod t5 {
-    type Bar<T> = T;
+    type Bar<T: ?Sized> = T;
     mod Bar {} //~ ERROR the name `Bar` is defined multiple times
 }
 

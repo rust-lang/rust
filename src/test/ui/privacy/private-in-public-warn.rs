@@ -57,8 +57,11 @@ mod traits {
     pub struct Pub<T>(T);
     pub trait PubTr {}
 
-    pub type Alias<T: PrivTr> = T; //~ ERROR private trait `traits::PrivTr` in public interface
-    //~| WARNING hard error
+    pub struct Struct<T: PrivTr>(T);
+        //~^ ERROR private trait `traits::PrivTr` in public interface
+    pub type Alias<T: PrivTr> = Struct<T>;
+        //~^ ERROR private trait `traits::PrivTr` in public interface
+        //~| WARNING hard error
     pub trait Tr1: PrivTr {} //~ ERROR private trait `traits::PrivTr` in public interface
     //~^ WARNING hard error
     pub trait Tr2<T: PrivTr> {} //~ ERROR private trait `traits::PrivTr` in public interface
@@ -81,7 +84,9 @@ mod traits_where {
     pub struct Pub<T>(T);
     pub trait PubTr {}
 
-    pub type Alias<T> where T: PrivTr = T;
+    pub struct Struct<T>(T) where T: PrivTr;
+        //~^ ERROR private trait `traits_where::PrivTr` in public interface
+    pub type Alias<T> where T: PrivTr = Struct<T>;
         //~^ ERROR private trait `traits_where::PrivTr` in public interface
         //~| WARNING hard error
     pub trait Tr2<T> where T: PrivTr {}
@@ -273,7 +278,7 @@ mod aliases_priv {
 
 mod aliases_params {
     struct Priv;
-    type PrivAliasGeneric<T = Priv> = T;
+    type PrivAliasGeneric<T = Priv> = Option<T>;
     type Result<T> = ::std::result::Result<T, Priv>;
 
     pub fn f1(arg: PrivAliasGeneric<u8>) {} // OK, not an error

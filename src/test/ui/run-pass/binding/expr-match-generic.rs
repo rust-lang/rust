@@ -11,7 +11,8 @@
 // run-pass
 #![allow(non_camel_case_types)]
 
-type compare<T> = extern "Rust" fn(T, T) -> bool;
+#[allow(type_alias_bounds)]
+type compare<T: ?Sized> = extern "Rust" fn(T, T) -> bool;
 
 fn test_generic<T:Clone>(expected: T, eq: compare<T>) {
   let actual: T = match true { true => { expected.clone() }, _ => panic!("wat") };

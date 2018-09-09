@@ -27,7 +27,7 @@ LL | union U where i32: Foo { f: i32 }
 warning: where clauses are not enforced in type aliases
   --> $DIR/trivial-bounds-inconsistent.rs:32:14
    |
-LL | type Y where i32: Foo = ();
+LL | type Y where i32: Foo = S;
    |              ^^^^^^^^
    |
    = note: #[warn(type_alias_bounds)] on by default
@@ -36,8 +36,8 @@ LL | type Y where i32: Foo = ();
 warning: Trait bound i32: Foo does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent.rs:32:1
    |
-LL | type Y where i32: Foo = ();
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | type Y where i32: Foo = S;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: Trait bound i32: Foo does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent.rs:34:1

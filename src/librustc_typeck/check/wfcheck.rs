@@ -118,11 +118,53 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
         hir::ItemKind::Fn(..) => {
             check_item_fn(tcx, item);
         }
-        hir::ItemKind::Static(..) => {
-            check_item_type(tcx, item);
-        }
+        hir::ItemKind::Static(..) |
         hir::ItemKind::Const(..) => {
-            check_item_type(tcx, item);
+            for_item(tcx, item).with_fcx(|fcx, _this| {
+                let ty = fcx.tcx.type_of(fcx.tcx.hir.local_def_id(item.id));
+                let item_ty = fcx.normalize_associated_types_in(item.span, &ty);
+
+                fcx.register_wf_obligation(item_ty, item.span, ObligationCauseCode::MiscObligation);
+
+                vec![] // no implied bounds in a static/const
+            });
+        }
+        hir::ItemKind::Ty(..) => {
+            let def_id = tcx.hir.local_def_id(item.id);
+            let item_ty = tcx.type_of(def_id);
+            let generics = tcx.generics_of(def_id);
+            let used_params = super::check_params_are_used(tcx, &generics, item_ty);
+            for_item(tcx, item).with_fcx(|fcx, _this| {
+                let item_ty = fcx.normalize_associated_types_in(item.span, &item_ty);
+
+                // Check the user-declared bounds, assuming the type is WF.
+                // This ensures that by checking the WF of the aliased type, where
+                // the alias is used, we don't ignore bounds written on the alias.
+                // NB: this check only happens if *all* type parameters are used,
+                // otherwise every unused type parameter can cause errors here.
+                if let Ok(()) = used_params {
+                    let user_predicates = fcx.param_env.caller_bounds;
+                    let wf_predicates = ty::wf::obligations(
+                        &fcx.infcx,
+                        fcx.param_env,
+                        fcx.body_id,
+                        item_ty,
+                        item.span,
+                    ).into_iter().flatten().map(|o| o.predicate).collect();
+                    let wf_predicates = traits::elaborate_predicates(fcx.tcx, wf_predicates);
+                    let wf_param_env = ty::ParamEnv {
+                        caller_bounds: fcx.tcx.mk_predicates(wf_predicates),
+                        reveal: fcx.param_env.reveal,
+                    };
+                    fcx.register_predicates(user_predicates.iter().map(|&predicate| {
+                        let code = ObligationCauseCode::MiscObligation;
+                        let cause = traits::ObligationCause::new(item.span, fcx.body_id, code);
+                        traits::Obligation::new(cause, wf_param_env, predicate)
+                    }));
+                }
+
+                vec![item_ty]
+            });
         }
         hir::ItemKind::Struct(ref struct_def, ref ast_generics) => {
             check_type_defn(tcx, item, false, |fcx| {
@@ -320,21 +362,6 @@ fn check_item_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &hir::Item) {
                                 def_id, &mut implied_bounds);
         implied_bounds
     })
-}
-
-fn check_item_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    item: &hir::Item)
-{
-    debug!("check_item_type: {:?}", item);
-
-    for_item(tcx, item).with_fcx(|fcx, _this| {
-        let ty = fcx.tcx.type_of(fcx.tcx.hir.local_def_id(item.id));
-        let item_ty = fcx.normalize_associated_types_in(item.span, &ty);
-
-        fcx.register_wf_obligation(item_ty, item.span, ObligationCauseCode::MiscObligation);
-
-        vec![] // no implied bounds in a const etc
-    });
 }
 
 fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

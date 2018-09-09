@@ -1316,12 +1316,14 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
       hir::ItemKind::Union(..) => {
         check_union(tcx, it.id, it.span);
       }
-      hir::ItemKind::Existential(..) |
-      hir::ItemKind::Ty(..) => {
+      hir::ItemKind::Existential(..)
+      // HACK(eddyb) This is done in `wfcheck` for type aliases, instead.
+      // | hir::ItemKind::Ty(..)
+      => {
         let def_id = tcx.hir.local_def_id(it.id);
         let pty_ty = tcx.type_of(def_id);
         let generics = tcx.generics_of(def_id);
-        check_bounds_are_used(tcx, &generics, pty_ty);
+        let _ = check_params_are_used(tcx, &generics, pty_ty);
       }
       hir::ItemKind::ForeignMod(ref m) => {
         check_abi(tcx, it.span, m.abi);
@@ -5240,14 +5242,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                       generics: &ty::Generics,
-                                       ty: Ty<'tcx>) {
+fn check_params_are_used<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    generics: &ty::Generics,
+    ty: Ty<'tcx>,
+) -> Result<(), ErrorReported> {
     let own_counts = generics.own_counts();
-    debug!("check_bounds_are_used(n_tps={}, ty={:?})", own_counts.types, ty);
+    debug!("check_params_are_used(n_tps={}, ty={:?})", own_counts.types, ty);
 
     if own_counts.types == 0 {
-        return;
+        return Ok(());
     }
     // Make a vector of booleans initially false, set to true when used.
     let mut types_used = vec![false; own_counts.types];
@@ -5260,7 +5264,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // If there is already another error, do not emit
             // an error for not using a type Parameter.
             assert!(tcx.sess.err_count() > 0);
-            return;
+            return Err(ErrorReported);
         }
     }
 
@@ -5268,6 +5272,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::GenericParamDefKind::Type { .. } => true,
         _ => false,
     });
+    let mut result = Ok(());
     for (&used, param) in types_used.iter().zip(types) {
         if !used {
             let id = tcx.hir.as_local_node_id(param.def_id).unwrap();
@@ -5275,8 +5280,10 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             struct_span_err!(tcx.sess, span, E0091, "type parameter `{}` is unused", param.name)
                 .span_label(span, "unused type parameter")
                 .emit();
+            result = Err(ErrorReported);
         }
     }
+    result
 }
 
 fn fatally_break_rust(sess: &Session) {

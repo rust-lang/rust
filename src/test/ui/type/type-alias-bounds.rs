@@ -15,9 +15,8 @@
 
 use std::rc::Rc;
 
-type SVec<T: Send+Send> = Vec<T>;
-//~^ WARN bounds on generic parameters are not enforced in type aliases [type_alias_bounds]
-type S2Vec<T> where T: Send = Vec<T>;
+type SVec<T: /*Send+Send*/> = Vec<T>; // NOTE(eddyb) moved to `type-alias-bounds-err.rs`
+type S2Vec<T> where T: /*Send*/ = Vec<T>; // NOTE(eddyb) moved to `type-alias-bounds-err.rs`
 //~^ WARN where clauses are not enforced in type aliases [type_alias_bounds]
 type VVec<'b, 'a: 'b+'b> = (&'b u32, Vec<&'a i32>);
 //~^ WARN bounds on generic parameters are not enforced in type aliases [type_alias_bounds]
@@ -54,16 +53,16 @@ type MySendable<T> = Sendable<T>; // no error here!
 
 // However, bounds *are* taken into account when accessing associated types
 trait Bound { type Assoc; }
-type T1<U: Bound> = U::Assoc; //~ WARN not enforced in type aliases
-type T2<U> where U: Bound = U::Assoc;  //~ WARN not enforced in type aliases
+type T1<U: Bound + ?Sized> = U::Assoc; //~ WARN not enforced in type aliases
+type T2<U> where U: Bound + ?Sized = U::Assoc;  //~ WARN not enforced in type aliases
 
 // This errors
 // type T3<U> = U::Assoc;
 // Do this instead
-type T4<U> = <U as Bound>::Assoc;
+// type T4<U: ?Sized> = <U as Bound>::Assoc; // NOTE(eddyb) moved to `type-alias-bounds-err.rs`
 
 // Make sure the help about associatd types is not shown incorrectly
-type T5<U: Bound> = <U as Bound>::Assoc;  //~ WARN not enforced in type aliases
-type T6<U: Bound> = ::std::vec::Vec<U>;  //~ WARN not enforced in type aliases
+type T5<U: Bound + ?Sized> = <U as Bound>::Assoc;  //~ WARN not enforced in type aliases
+// type T6<U: Bound> = ::std::vec::Vec<U>; // NOTE(eddyb) moved to `type-alias-bounds-err.rs`
 
 fn main() {}

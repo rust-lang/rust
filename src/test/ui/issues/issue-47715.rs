@@ -31,7 +31,7 @@ union Union<T: Iterable<Item = impl Foo> + Copy> {
     x: T,
 }
 
-type Type<T: Iterable<Item = impl Foo>> = T;
+type Type<T: Iterable<Item = impl Foo>> = Container<T>;
 //~^ ERROR `impl Trait` not allowed
 
 fn main() {

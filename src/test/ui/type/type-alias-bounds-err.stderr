@@ -1,0 +1,47 @@
+error[E0277]: `T` cannot be sent between threads safely
+  --> $DIR/type-alias-bounds-err.rs:16:1
+   |
+LL | type SVec<T: Send+Send> = Vec<T>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `T` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `T`
+   = help: consider adding a `where T: std::marker::Send` bound
+
+error[E0277]: `T` cannot be sent between threads safely
+  --> $DIR/type-alias-bounds-err.rs:18:1
+   |
+LL | type S2Vec<T> where T: Send = Vec<T>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `T` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `T`
+   = help: consider adding a `where T: std::marker::Send` bound
+
+error[E0277]: the trait bound `U: Bound` is not satisfied
+  --> $DIR/type-alias-bounds-err.rs:22:1
+   |
+LL | type T4<U> = <U as Bound>::Assoc;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bound` is not implemented for `U`
+   |
+   = help: consider adding a `where U: Bound` bound
+
+error[E0277]: the size for values of type `U` cannot be known at compilation time
+  --> $DIR/type-alias-bounds-err.rs:22:1
+   |
+LL | type T4<U> = <U as Bound>::Assoc;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `U`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where U: std::marker::Sized` bound
+
+error[E0277]: the trait bound `U: Bound` is not satisfied
+  --> $DIR/type-alias-bounds-err.rs:26:1
+   |
+LL | type T6<U: Bound> = ::std::vec::Vec<U>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bound` is not implemented for `U`
+   |
+   = help: consider adding a `where U: Bound` bound
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

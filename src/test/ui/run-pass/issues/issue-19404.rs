@@ -12,7 +12,8 @@
 use std::any::TypeId;
 use std::rc::Rc;
 
-type Fp<T> = Rc<T>;
+#[allow(type_alias_bounds)]
+type Fp<T: ?Sized> = Rc<T>;
 
 struct Engine;
 

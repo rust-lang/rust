@@ -28,7 +28,7 @@ enum EnTy<#[rustc_ty_enum] J> { A(J), B }
 trait TrLt<#[rustc_lt_trait] 'c> { fn foo(&self, _: &'c [u32]) -> &'c u32; }
 trait TrTy<#[rustc_ty_trait] K> { fn foo(&self, _: K); }
 type TyLt<#[rustc_lt_type] 'd> = &'d u32;
-type TyTy<#[rustc_ty_type] L> = (L, );
+type TyTy<#[rustc_ty_type] L> = Option<L>;
 
 impl<#[rustc_lt_inherent] 'e> StLt<'e> { }
 impl<#[rustc_ty_inherent] M> StTy<M> { }

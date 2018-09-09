@@ -11,6 +11,7 @@
 // run-pass
 // pretty-expanded FIXME #23616
 
-pub type BigRat<T = isize> = T;
+#[allow(type_alias_bounds)]
+pub type BigRat<T: ?Sized = isize> = T;
 
 fn main() {}
