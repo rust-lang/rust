@@ -1,7 +1,7 @@
 # The lowering module in rustc
 
 The program clauses described in the
-[lowering rules](./traits/lowering-rules.html) section are actually
+[lowering rules](./lowering-rules.html) section are actually
 created in the [`rustc_traits::lowering`][lowering] module.
 
 [lowering]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_traits/lowering/
@@ -16,7 +16,7 @@ query is invoked on a `DefId` that identifies something like a trait,
 an impl, or an associated item definition. It then produces and
 returns a vector of program clauses.
 
-[query]: ./query.html
+[query]: ../query.html
 
 <a name="unit-tests"></a>
 

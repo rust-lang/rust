@@ -3,11 +3,11 @@
 The "start" of the trait system is the **canonical query** (these are
 both queries in the more general sense of the word – something you
 would like to know the answer to – and in the
-[rustc-specific sense](./query.html)).  The idea is that the type
+[rustc-specific sense](../query.html)).  The idea is that the type
 checker or other parts of the system, may in the course of doing their
 thing want to know whether some trait is implemented for some type
 (e.g., is `u32: Debug` true?). Or they may want to
-[normalize some associated type](./traits/associated-types.html).
+[normalize some associated type](./associated-types.html).
 
 This section covers queries at a fairly high level of abstraction. The
 subsections look a bit more closely at how these ideas are implemented
@@ -106,7 +106,7 @@ value for a type variable, that means that this is the **only possible
 instantiation** that you could use, given the current set of impls and
 where-clauses, that would be provable. (Internally within the solver,
 though, they can potentially enumerate all possible answers. See
-[the description of the SLG solver](./traits/slg.html) for details.)
+[the description of the SLG solver](./slg.html) for details.)
 
 The response to a trait query in rustc is typically a
 `Result<QueryResult<T>, NoSolution>` (where the `T` will vary a bit
@@ -132,7 +132,7 @@ we did find. It consists of four parts:
 - **Region constraints:** these are relations that must hold between
   the lifetimes that you supplied as inputs. We'll ignore these here,
   but see the
-  [section on handling regions in traits](./traits/regions.html) for
+  [section on handling regions in traits](./regions.html) for
   more details.
 - **Value:** The query result also comes with a value of type `T`. For
   some specialized queries – like normalizing associated types –
@@ -219,7 +219,7 @@ As a result of this assignment, the type of `u` is forced to be
 `Option<Vec<?V>>`, where `?V` represents the element type of the
 vector. This in turn implies that `?U` is [unified] to `Vec<?V>`.
 
-[unified]: ./type-checking.html
+[unified]: ../type-checking.html
 
 Let's suppose that the type checker decides to revisit the
 "as-yet-unproven" trait obligation we saw before, `Vec<?T>:

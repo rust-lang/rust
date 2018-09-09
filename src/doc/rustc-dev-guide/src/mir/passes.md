@@ -156,7 +156,7 @@ then `mir_const_qualif(D)` would succeed if it came before
 `mir_validated(D)`, but fail otherwise. Therefore, `mir_validated(D)`
 will **force** `mir_const_qualif` before it actually steals, thus
 ensuring that the reads have already happened (remember that
-[queries are memoized](./query.html), so executing a query twice
+[queries are memoized](../query.html), so executing a query twice
 simply loads from a cache the second time):
 
 ```text
@@ -174,4 +174,4 @@ alternatives in [rust-lang/rust#41710].
 [rust-lang/rust#41710]: https://github.com/rust-lang/rust/issues/41710
 [mirtransform]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/
 [`NoLandingPads`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/no_landing_pads/struct.NoLandingPads.html
-[MIR visitor]: mir/visitor.html
+[MIR visitor]: ./visitor.html

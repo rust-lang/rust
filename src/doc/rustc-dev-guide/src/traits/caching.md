@@ -24,7 +24,7 @@ On the other hand, if there is no hit, we need to go through the [selection
 process] from scratch. Suppose, we come to the conclusion that the only
 possible impl is this one, with def-id 22:
 
-[selection process]: ./traits/resolution.html#selection
+[selection process]: ./resolution.html#selection
 
 ```rust,ignore
 impl Foo<isize> for usize { ... } // Impl #22
@@ -34,7 +34,7 @@ We would then record in the cache `usize : Foo<$0> => ImplCandidate(22)`. Next
 we would [confirm] `ImplCandidate(22)`, which would (as a side-effect) unify
 `$t` with `isize`.
 
-[confirm]: ./traits/resolution.html#confirmation
+[confirm]: ./resolution.html#confirmation
 
 Now, at some later time, we might come along and see a `usize :
 Foo<$u>`. When skolemized, this would yield `usize : Foo<$0>`, just as
@@ -61,7 +61,7 @@ to be pretty clearly safe and also still retains a very high hit rate
 **TODO**: it looks like `pick_candidate_cache` no longer exists. In
 general, is this section still accurate at all?
 
-[`ParamEnv`]: ./param_env.html
-[`tcx`]: ./ty.html
+[`ParamEnv`]: ../param_env.html
+[`tcx`]: ../ty.html
 [#18290]: https://github.com/rust-lang/rust/issues/18290
 [#22019]: https://github.com/rust-lang/rust/issues/22019

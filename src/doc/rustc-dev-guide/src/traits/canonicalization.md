@@ -6,7 +6,7 @@ from its context. It is a key part of implementing
 to get more context.
 
 Canonicalization is really based on a very simple concept: every
-[inference variable](./type-inference.html#vars) is always in one of
+[inference variable](../type-inference.html#vars) is always in one of
 two states: either it is **unbound**, in which case we don't know yet
 what type it is, or it is **bound**, in which case we do. So to
 isolate some data-structure T that contains types/regions from its
@@ -16,7 +16,7 @@ starting from zero and numbered in a fixed order (left to right, for
 the most part, but really it doesn't matter as long as it is
 consistent).
 
-[cq]: ./traits/canonical-queries.html
+[cq]: ./canonical-queries.html
 
 So, for example, if we have the type `X = (?T, ?U)`, where `?T` and
 `?U` are distinct, unbound inference variables, then the canonical
@@ -41,7 +41,7 @@ trait query: `?A: Foo<'static, ?B>`, where `?A` and `?B` are unbound.
 This query contains two unbound variables, but it also contains the
 lifetime `'static`. The trait system generally ignores all lifetimes
 and treats them equally, so when canonicalizing, we will *also*
-replace any [free lifetime](./appendix/background.html#free-vs-bound) with a
+replace any [free lifetime](../appendix/background.html#free-vs-bound) with a
 canonical variable. Therefore, we get the following result:
 
 ```text
@@ -98,12 +98,12 @@ Remember that substitution S though! We're going to need it later.
 
 OK, now that we have a fresh inference context and an instantiated
 query, we can go ahead and try to solve it. The trait solver itself is
-explained in more detail in [another section](./traits/slg.html), but
+explained in more detail in [another section](./slg.html), but
 suffice to say that it will compute a [certainty value][cqqr] (`Proven` or
 `Ambiguous`) and have side-effects on the inference variables we've
 created. For example, if there were only one impl of `Foo`, like so:
 
-[cqqr]: ./traits/canonical-queries.html#query-response
+[cqqr]: ./canonical-queries.html#query-response
 
 ```rust,ignore
 impl<'a, X> Foo<'a, X> for Vec<X>

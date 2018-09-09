@@ -29,16 +29,16 @@ Item            |  Kind    | Short description           | Chapter            | 
 `Ty<'tcx>` | struct | This is the internal representation of a type used for type checking | [Type checking] | [src/librustc/ty/mod.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/type.Ty.html)
 `TyCtxt<'cx, 'tcx, 'tcx>` | type | The "typing context". This is the central data structure in the compiler. It is the context that you use to perform all manner of queries | [The `ty` modules] | [src/librustc/ty/context.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.TyCtxt.html)
 
-[The HIR]: hir.html
-[Identifiers in the HIR]: hir.html#hir-id
-[The parser]: the-parser.html
-[The Rustc Driver]: rustc-driver.html
-[Type checking]: type-checking.html
-[The `ty` modules]: ty.html
-[Rustdoc]: rustdoc.html
-[Emitting Diagnostics]: diag.html
-[Macro expansion]: macro-expansion.html
-[Name resolution]: name-resolution.html
-[Parameter Environment]: param_env.html
-[Trait Solving: Goals and Clauses]: traits/goals-and-clauses.html#domain-goals
-[Trait Solving: Lowering impls]: traits/lowering-rules.html#lowering-impls
+[The HIR]: ../hir.html
+[Identifiers in the HIR]: ../hir.html#hir-id
+[The parser]: ../the-parser.html
+[The Rustc Driver]: ../rustc-driver.html
+[Type checking]: ../type-checking.html
+[The `ty` modules]: ../ty.html
+[Rustdoc]: ../rustdoc.html
+[Emitting Diagnostics]: ../diag.html
+[Macro expansion]: ../macro-expansion.html
+[Name resolution]: ../name-resolution.html
+[Parameter Environment]: ../param_env.html
+[Trait Solving: Goals and Clauses]: ../traits/goals-and-clauses.html#domain-goals
+[Trait Solving: Lowering impls]: ../traits/lowering-rules.html#lowering-impls

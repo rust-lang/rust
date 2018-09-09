@@ -17,7 +17,7 @@ type can be referenced by the user using an **associated type
 projection** like `<Option<u32> as IntoIterator>::Item`. (Often,
 though, people will use the shorthand syntax `T::Item` – presently,
 that syntax is expanded during
-["type collection"](./type-checking.html) into the explicit form,
+["type collection"](../type-checking.html) into the explicit form,
 though that is something we may want to change in the future.)
 
 [intoiter-item]: https://doc.rust-lang.org/nightly/core/iter/trait.IntoIterator.html#associatedtype.Item
@@ -130,7 +130,7 @@ any given associated item.
 
 Now we are ready to discuss how associated type equality integrates
 with unification. As described in the
-[type inference](./type-inference.html) section, unification is
+[type inference](../type-inference.html) section, unification is
 basically a procedure with a signature like this:
 
 ```text

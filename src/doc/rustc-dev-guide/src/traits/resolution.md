@@ -6,7 +6,7 @@ some non-obvious things.
 **Note:** This chapter (and its subchapters) describe how the trait
 solver **currently** works. However, we are in the process of
 designing a new trait solver. If you'd prefer to read about *that*,
-see [*this* traits chapter](./traits/index.html).
+see [*this* traits chapter](./index.html).
 
 ## Major concepts
 
@@ -220,7 +220,7 @@ in that list. If so, it is considered satisfied. More precisely, we
 want to check whether there is a where-clause obligation that is for
 the same trait (or some subtrait) and which can match against the obligation.
 
-[parameter environment]: ./param_env.html
+[parameter environment]: ../param_env.html
 
 Consider this simple example:
 

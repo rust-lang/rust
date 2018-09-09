@@ -5,8 +5,8 @@ by the build system (`x.py test`).  The main test harness for testing
 the compiler itself is a tool called compiletest (sources in the
 [`src/tools/compiletest`]). This section gives a brief overview of how
 the testing framework is setup, and then gets into some of the details
-on [how to run tests](./tests/running.html#ui) as well as
-[how to add new tests](./tests/adding.html).
+on [how to run tests](./running.html#ui) as well as
+[how to add new tests](./adding.html).
 
 [`src/tools/compiletest`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest
 
@@ -24,7 +24,7 @@ Here is a brief summary of the test suites as of this writing and what
 they mean. In some cases, the test suites are linked to parts of the manual
 that give more details.
 
-- [`ui`](./tests/adding.html#ui) – tests that check the exact
+- [`ui`](./adding.html#ui) – tests that check the exact
   stdout/stderr from compilation and/or running the test
 - `run-pass` – tests that are expected to compile and execute
   successfully (no panics)
@@ -59,7 +59,7 @@ including:
 - **Tidy** – This is a custom tool used for validating source code
   style and formatting conventions, such as rejecting long lines.
   There is more information in the
-  [section on coding conventions](./conventions.html#formatting).
+  [section on coding conventions](../conventions.html#formatting).
 
   Example: `./x.py test src/tools/tidy`
 

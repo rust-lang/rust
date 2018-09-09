@@ -1,7 +1,7 @@
 # The MIR (Mid-level IR)
 
 MIR is Rust's _Mid-level Intermediate Representation_. It is
-constructed from [HIR](./hir.html). MIR was introduced in
+constructed from [HIR](../hir.html). MIR was introduced in
 [RFC 1211]. It is a radically simplified form of Rust that is used for
 certain flow-sensitive safety checks – notably the borrow checker! –
 and also for optimization and code generation.
@@ -26,7 +26,7 @@ Some of the key characteristics of MIR are:
 - It does not have nested expressions.
 - All types in MIR are fully explicit.
 
-[cfg]: ./appendix/background.html#cfg
+[cfg]: ../appendix/background.html#cfg
 
 ## Key MIR vocabulary
 
@@ -244,4 +244,4 @@ but [you can read about those below](#promoted)).
 [mir]: https://github.com/rust-lang/rust/tree/master/src/librustc/mir
 [mirmanip]: https://github.com/rust-lang/rust/tree/master/src/librustc_mir
 [mir]: https://github.com/rust-lang/rust/tree/master/src/librustc/mir
-[newtype'd]: appendix/glossary.html
+[newtype'd]: ../appendix/glossary.html
