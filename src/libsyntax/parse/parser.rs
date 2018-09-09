@@ -54,7 +54,7 @@ use print::pprust;
 use ptr::P;
 use parse::PResult;
 use ThinVec;
-use tokenstream::{self, Delimited, ThinTokenStream, TokenTree, TokenStream};
+use tokenstream::{self, Delimited, DelimSpan, ThinTokenStream, TokenTree, TokenStream};
 use symbol::{Symbol, keywords};
 
 use std::borrow::Cow;
@@ -262,7 +262,7 @@ struct TokenCursor {
 #[derive(Clone)]
 struct TokenCursorFrame {
     delim: token::DelimToken,
-    span: Span,
+    span: DelimSpan,
     open_delim: bool,
     tree_cursor: tokenstream::Cursor,
     close_delim: bool,
@@ -293,7 +293,7 @@ enum LastToken {
 }
 
 impl TokenCursorFrame {
-    fn new(sp: Span, delimited: &Delimited) -> Self {
+    fn new(sp: DelimSpan, delimited: &Delimited) -> Self {
         TokenCursorFrame {
             delim: delimited.delim,
             span: sp,
@@ -311,13 +311,13 @@ impl TokenCursor {
             let tree = if !self.frame.open_delim {
                 self.frame.open_delim = true;
                 Delimited { delim: self.frame.delim, tts: TokenStream::empty().into() }
-                    .open_tt(self.frame.span)
+                    .open_tt(self.frame.span.open)
             } else if let Some(tree) = self.frame.tree_cursor.next() {
                 tree
             } else if !self.frame.close_delim {
                 self.frame.close_delim = true;
                 Delimited { delim: self.frame.delim, tts: TokenStream::empty().into() }
-                    .close_tt(self.frame.span)
+                    .close_tt(self.frame.span.close)
             } else if let Some(frame) = self.stack.pop() {
                 self.frame = frame;
                 continue
@@ -361,7 +361,8 @@ impl TokenCursor {
             num_of_hashes = cmp::max(num_of_hashes, count);
         }
 
-        let body = TokenTree::Delimited(sp, Delimited {
+        let delim_span = DelimSpan::from_single(sp);
+        let body = TokenTree::Delimited(delim_span, Delimited {
             delim: token::Bracket,
             tts: [TokenTree::Token(sp, token::Ident(ast::Ident::from_str("doc"), false)),
                   TokenTree::Token(sp, token::Eq),
@@ -370,7 +371,7 @@ impl TokenCursor {
                 .iter().cloned().collect::<TokenStream>().into(),
         });
 
-        self.stack.push(mem::replace(&mut self.frame, TokenCursorFrame::new(sp, &Delimited {
+        self.stack.push(mem::replace(&mut self.frame, TokenCursorFrame::new(delim_span, &Delimited {
             delim: token::NoDelim,
             tts: if doc_comment_style(&name.as_str()) == AttrStyle::Inner {
                 [TokenTree::Token(sp, token::Pound), TokenTree::Token(sp, token::Not), body]
@@ -560,7 +561,7 @@ impl<'a> Parser<'a> {
             root_module_name: None,
             expected_tokens: Vec::new(),
             token_cursor: TokenCursor {
-                frame: TokenCursorFrame::new(syntax_pos::DUMMY_SP, &Delimited {
+                frame: TokenCursorFrame::new(DelimSpan::dummy(), &Delimited {
                     delim: token::NoDelim,
                     tts: tokens.into(),
                 }),
@@ -1229,7 +1230,8 @@ impl<'a> Parser<'a> {
         }
 
         match self.token_cursor.frame.tree_cursor.look_ahead(dist - 1) {
-            Some(TokenTree::Token(span, _)) | Some(TokenTree::Delimited(span, _)) => span,
+            Some(TokenTree::Token(span, _)) => span,
+            Some(TokenTree::Delimited(span, _)) => span.entire(),
             None => self.look_ahead_span(dist - 1),
         }
     }
@@ -2796,7 +2798,7 @@ impl<'a> Parser<'a> {
             token::OpenDelim(..) => {
                 let frame = mem::replace(&mut self.token_cursor.frame,
                                          self.token_cursor.stack.pop().unwrap());
-                self.span = frame.span;
+                self.span = frame.span.entire();
                 self.bump();
                 TokenTree::Delimited(frame.span, Delimited {
                     delim: frame.delim,

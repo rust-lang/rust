@@ -722,7 +722,7 @@ mod tests {
     use attr::first_attr_value_str_by_name;
     use parse;
     use print::pprust::item_to_string;
-    use tokenstream::{self, TokenTree};
+    use tokenstream::{self, DelimSpan, TokenTree};
     use util::parser_testing::string_to_stream;
     use util::parser_testing::{string_to_expr, string_to_item};
     use with_globals;
@@ -805,7 +805,7 @@ mod tests {
                 TokenTree::Token(sp(0, 2), token::Ident(Ident::from_str("fn"), false)).into(),
                 TokenTree::Token(sp(3, 4), token::Ident(Ident::from_str("a"), false)).into(),
                 TokenTree::Delimited(
-                    sp(5, 14),
+                    DelimSpan::from_pair(sp(5, 6), sp(13, 14)),
                     tokenstream::Delimited {
                         delim: token::DelimToken::Paren,
                         tts: TokenStream::concat(vec![
@@ -817,7 +817,7 @@ mod tests {
                         ]).into(),
                     }).into(),
                 TokenTree::Delimited(
-                    sp(15, 21),
+                    DelimSpan::from_pair(sp(15, 16), sp(20, 21)),
                     tokenstream::Delimited {
                         delim: token::DelimToken::Brace,
                         tts: TokenStream::concat(vec![

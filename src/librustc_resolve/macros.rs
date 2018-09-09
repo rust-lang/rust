@@ -35,7 +35,7 @@ use syntax::parse::parser::PathStyle;
 use syntax::parse::token::{self, Token};
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
-use syntax::tokenstream::{TokenStream, TokenTree, Delimited};
+use syntax::tokenstream::{TokenStream, TokenTree, Delimited, DelimSpan};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{Span, DUMMY_SP};
 use errors::Applicability;
@@ -279,7 +279,8 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
                                 tokens.push(TokenTree::Token(path.span, tok).into());
                             }
                         }
-                        attrs[i].tokens = TokenTree::Delimited(attrs[i].span, Delimited {
+                        let delim_span = DelimSpan::from_single(attrs[i].span);
+                        attrs[i].tokens = TokenTree::Delimited(delim_span, Delimited {
                             delim: token::Paren,
                             tts: TokenStream::concat(tokens).into(),
                         }).into();

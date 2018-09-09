@@ -594,10 +594,13 @@ pub fn noop_fold_tt<T: Folder>(tt: TokenTree, fld: &mut T) -> TokenTree {
     match tt {
         TokenTree::Token(span, tok) =>
             TokenTree::Token(fld.new_span(span), fld.fold_token(tok)),
-        TokenTree::Delimited(span, delimed) => TokenTree::Delimited(fld.new_span(span), Delimited {
-            tts: fld.fold_tts(delimed.stream()).into(),
-            delim: delimed.delim,
-        }),
+        TokenTree::Delimited(span, delimed) => TokenTree::Delimited(
+            DelimSpan::from_pair(fld.new_span(span.open), fld.new_span(span.close)),
+            Delimited {
+                tts: fld.fold_tts(delimed.stream()).into(),
+                delim: delimed.delim,
+            }
+        ),
     }
 }
 

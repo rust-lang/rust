@@ -22,7 +22,7 @@
 //! and a borrowed `TokenStream` is sufficient to build an owned `TokenStream` without taking
 //! ownership of the original.
 
-use syntax_pos::{BytePos, Span, DUMMY_SP};
+use syntax_pos::{BytePos, Mark, Span, DUMMY_SP};
 use ext::base;
 use ext::tt::{macro_parser, quoted};
 use parse::Directory;
@@ -97,7 +97,7 @@ pub enum TokenTree {
     /// A single token
     Token(Span, token::Token),
     /// A delimited sequence of token trees
-    Delimited(Span, Delimited),
+    Delimited(DelimSpan, Delimited),
 }
 
 impl TokenTree {
@@ -145,16 +145,16 @@ impl TokenTree {
     /// Retrieve the TokenTree's span.
     pub fn span(&self) -> Span {
         match *self {
-            TokenTree::Token(sp, _) | TokenTree::Delimited(sp, _) => sp,
+            TokenTree::Token(sp, _) => sp,
+            TokenTree::Delimited(sp, _) => sp.entire(),
         }
     }
 
     /// Modify the `TokenTree`'s span inplace.
     pub fn set_span(&mut self, span: Span) {
         match *self {
-            TokenTree::Token(ref mut sp, _) | TokenTree::Delimited(ref mut sp, _) => {
-                *sp = span;
-            }
+            TokenTree::Token(ref mut sp, _) => *sp = span,
+            TokenTree::Delimited(ref mut sp, _) => *sp = DelimSpan::from_single(span),
         }
     }
 
@@ -192,27 +192,20 @@ impl TokenStream {
             let mut iter = slice.iter().enumerate().peekable();
             while let Some((pos, ts)) = iter.next() {
                 if let Some((_, next)) = iter.peek() {
-                    match (ts, next) {
-                        (TokenStream {
-                            kind: TokenStreamKind::Tree(TokenTree::Token(_, token::Token::Comma))
-                        }, _) |
-                        (_, TokenStream {
-                            kind: TokenStreamKind::Tree(TokenTree::Token(_, token::Token::Comma))
-                        }) => {}
-                        (TokenStream {
-                            kind: TokenStreamKind::Tree(TokenTree::Token(sp, _))
-                        }, _) |
-                        (TokenStream {
-                            kind: TokenStreamKind::Tree(TokenTree::Delimited(sp, _))
-                        }, _) => {
-                            let sp = sp.shrink_to_hi();
-                            let comma = TokenStream {
-                                kind: TokenStreamKind::Tree(TokenTree::Token(sp, token::Comma)),
-                            };
-                            suggestion = Some((pos, comma, sp));
+                    let sp = match (&ts.kind, &next.kind) {
+                        (TokenStreamKind::Tree(TokenTree::Token(_, token::Token::Comma)), _) |
+                        (_, TokenStreamKind::Tree(TokenTree::Token(_, token::Token::Comma))) => {
+                            continue;
                         }
-                        _ => {}
-                    }
+                        (TokenStreamKind::Tree(TokenTree::Token(sp, _)), _) => *sp,
+                        (TokenStreamKind::Tree(TokenTree::Delimited(sp, _)), _) => sp.entire(),
+                        _ => continue,
+                    };
+                    let sp = sp.shrink_to_hi();
+                    let comma = TokenStream {
+                        kind: TokenStreamKind::Tree(TokenTree::Token(sp, token::Comma)),
+                    };
+                    suggestion = Some((pos, comma, sp));
                 }
             }
             if let Some((pos, comma, sp)) = suggestion {
@@ -715,6 +708,40 @@ impl Encodable for ThinTokenStream {
 impl Decodable for ThinTokenStream {
     fn decode<D: Decoder>(decoder: &mut D) -> Result<ThinTokenStream, D::Error> {
         TokenStream::decode(decoder).map(Into::into)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, RustcEncodable, RustcDecodable)]
+pub struct DelimSpan {
+    pub open: Span,
+    pub close: Span,
+}
+
+impl DelimSpan {
+    pub fn from_single(sp: Span) -> Self {
+        DelimSpan {
+            open: sp,
+            close: sp,
+        }
+    }
+
+    pub fn from_pair(open: Span, close: Span) -> Self {
+        DelimSpan { open, close }
+    }
+
+    pub fn dummy() -> Self {
+        Self::from_single(DUMMY_SP)
+    }
+
+    pub fn entire(self) -> Span {
+        self.open.with_hi(self.close.hi())
+    }
+
+    pub fn apply_mark(self, mark: Mark) -> Self {
+        DelimSpan {
+            open: self.open.apply_mark(mark),
+            close: self.close.apply_mark(mark),
+        }
     }
 }
 

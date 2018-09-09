@@ -23,8 +23,7 @@ use symbol::keywords;
 use syntax::parse::parse_stream_from_source_str;
 use syntax_pos::{self, Span, FileName};
 use syntax_pos::symbol::{self, Symbol};
-use tokenstream::{TokenStream, TokenTree};
-use tokenstream;
+use tokenstream::{self, DelimSpan, TokenStream, TokenTree};
 
 use std::{cmp, fmt};
 use std::mem;
@@ -825,7 +824,8 @@ fn prepend_attrs(sess: &ParseSess,
         // that it encompasses more than each token, but it hopefully is "good
         // enough" for now at least.
         builder.push(tokenstream::TokenTree::Token(attr.span, Pound));
-        builder.push(tokenstream::TokenTree::Delimited(attr.span, tokens));
+        let delim_span = DelimSpan::from_single(attr.span);
+        builder.push(tokenstream::TokenTree::Delimited(delim_span, tokens));
     }
     builder.push(tokens.clone());
     Some(builder.build())
