@@ -2,7 +2,7 @@ error[E0659]: `std` is ambiguous
   --> $DIR/macro-path-prelude-shadowing.rs:39:9
    |
 LL |         std::panic!(); //~ ERROR `std` is ambiguous
-   |         ^^^^^^^^^^
+   |         ^^^ ambiguous name
    |
 note: `std` could refer to the name imported here
   --> $DIR/macro-path-prelude-shadowing.rs:37:9

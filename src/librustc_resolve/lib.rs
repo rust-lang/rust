@@ -1177,9 +1177,7 @@ struct UseError<'a> {
 }
 
 struct AmbiguityError<'a> {
-    span: Span,
-    name: Name,
-    lexical: bool,
+    ident: Ident,
     b1: &'a NameBinding<'a>,
     b2: &'a NameBinding<'a>,
 }
@@ -1282,6 +1280,26 @@ impl<'a> NameBinding<'a> {
 
     fn descr(&self) -> &'static str {
         if self.is_extern_crate() { "extern crate" } else { self.def().kind_name() }
+    }
+
+    // Suppose that we resolved macro invocation with `invoc_id` to binding `binding` at some
+    // expansion round `max(invoc_id, binding)` when they both emerged from macros.
+    // Then this function returns `true` if `self` may emerge from a macro *after* that
+    // in some later round and screw up our previously found resolution.
+    // See more detailed explanation in
+    // https://github.com/rust-lang/rust/pull/53778#issuecomment-419224049
+    fn may_appear_after(&self, invoc_id: Mark, binding: &NameBinding) -> bool {
+        // self > max(invoc_id, binding) => !(self <= invoc_id || self <= binding)
+        // Expansions are partially ordered, so "may appear after" is an inversion of
+        // "certainly appears before or simultaneously" and includes unordered cases.
+        let self_parent_expansion = self.expansion;
+        let other_parent_expansion = binding.expansion;
+        let invoc_parent_expansion = invoc_id.parent();
+        let certainly_before_other_or_simultaneously =
+            other_parent_expansion.is_descendant_of(self_parent_expansion);
+        let certainly_before_invoc_or_simultaneously =
+            invoc_parent_expansion.is_descendant_of(self_parent_expansion);
+        !(certainly_before_other_or_simultaneously || certainly_before_invoc_or_simultaneously)
     }
 }
 
@@ -1416,8 +1434,6 @@ pub struct Resolver<'a, 'b: 'a> {
     proc_mac_errors: Vec<macros::ProcMacError>,
     /// crate-local macro expanded `macro_export` referred to by a module-relative path
     macro_expanded_macro_export_errors: BTreeSet<(Span, Span)>,
-    /// macro-expanded `macro_rules` shadowing existing macros
-    disallowed_shadowing: Vec<&'a LegacyBinding<'a>>,
 
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
@@ -1729,7 +1745,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             ambiguity_errors: Vec::new(),
             use_injections: Vec::new(),
             proc_mac_errors: Vec::new(),
-            disallowed_shadowing: Vec::new(),
             macro_expanded_macro_export_errors: BTreeSet::new(),
 
             arenas,
@@ -1815,7 +1830,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         self.arenas.alloc_module(module)
     }
 
-    fn record_use(&mut self, ident: Ident, ns: Namespace, binding: &'a NameBinding<'a>, span: Span)
+    fn record_use(&mut self, ident: Ident, ns: Namespace, binding: &'a NameBinding<'a>)
                   -> bool /* true if an error was reported */ {
         match binding.kind {
             NameBindingKind::Import { directive, binding, ref used }
@@ -1824,13 +1839,11 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 directive.used.set(true);
                 self.used_imports.insert((directive.id, ns));
                 self.add_to_glob_map(directive.id, ident);
-                self.record_use(ident, ns, binding, span)
+                self.record_use(ident, ns, binding)
             }
             NameBindingKind::Import { .. } => false,
             NameBindingKind::Ambiguity { b1, b2 } => {
-                self.ambiguity_errors.push(AmbiguityError {
-                    span, name: ident.name, lexical: false, b1, b2,
-                });
+                self.ambiguity_errors.push(AmbiguityError { ident, b1, b2 });
                 true
             }
             _ => false
@@ -2850,7 +2863,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             Def::Const(..) if is_syntactic_ambiguity => {
                                 // Disambiguate in favor of a unit struct/variant
                                 // or constant pattern.
-                                self.record_use(ident, ValueNS, binding.unwrap(), ident.span);
+                                self.record_use(ident, ValueNS, binding.unwrap());
                                 Some(PathResolution::new(def))
                             }
                             Def::StructCtor(..) | Def::VariantCtor(..) |
@@ -3484,6 +3497,20 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         path_span: Span,
         crate_lint: CrateLint,
     ) -> PathResult<'a> {
+        self.resolve_path_with_invoc_id(base_module, path, opt_ns, Mark::root(),
+                                        record_used, path_span, crate_lint)
+    }
+
+    fn resolve_path_with_invoc_id(
+        &mut self,
+        base_module: Option<ModuleOrUniformRoot<'a>>,
+        path: &[Ident],
+        opt_ns: Option<Namespace>, // `None` indicates a module path
+        invoc_id: Mark,
+        record_used: bool,
+        path_span: Span,
+        crate_lint: CrateLint,
+    ) -> PathResult<'a> {
         let mut module = base_module;
         let mut allow_super = true;
         let mut second_binding = None;
@@ -3572,8 +3599,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 self.resolve_ident_in_module(module, ident, ns, record_used, path_span)
             } else if opt_ns == Some(MacroNS) {
                 assert!(ns == TypeNS);
-                self.resolve_lexical_macro_path_segment(ident, ns, record_used, record_used,
-                                                        false, path_span).map(|(b, _)| b)
+                self.resolve_lexical_macro_path_segment(ident, ns, invoc_id, record_used,
+                                                        record_used, false, path_span)
+                                                        .map(|(binding, _)| binding)
             } else {
                 let record_used_id =
                     if record_used { crate_lint.node_id().or(Some(CRATE_NODE_ID)) } else { None };
@@ -4514,35 +4542,33 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         vis.is_accessible_from(module.normal_ancestor_id, self)
     }
 
-    fn report_ambiguity_error(
-        &self, name: Name, span: Span, _lexical: bool,
-        def1: Def, is_import1: bool, is_glob1: bool, from_expansion1: bool, span1: Span,
-        def2: Def, is_import2: bool, _is_glob2: bool, _from_expansion2: bool, span2: Span,
-    ) {
+    fn report_ambiguity_error(&self, ident: Ident, b1: &NameBinding, b2: &NameBinding) {
         let participle = |is_import: bool| if is_import { "imported" } else { "defined" };
-        let msg1 = format!("`{}` could refer to the name {} here", name, participle(is_import1));
+        let msg1 =
+            format!("`{}` could refer to the name {} here", ident, participle(b1.is_import()));
         let msg2 =
-            format!("`{}` could also refer to the name {} here", name, participle(is_import2));
-        let note = if from_expansion1 {
-            Some(if let Def::Macro(..) = def1 {
+            format!("`{}` could also refer to the name {} here", ident, participle(b2.is_import()));
+        let note = if b1.expansion != Mark::root() {
+            Some(if let Def::Macro(..) = b1.def() {
                 format!("macro-expanded {} do not shadow",
-                        if is_import1 { "macro imports" } else { "macros" })
+                        if b1.is_import() { "macro imports" } else { "macros" })
             } else {
                 format!("macro-expanded {} do not shadow when used in a macro invocation path",
-                        if is_import1 { "imports" } else { "items" })
+                        if b1.is_import() { "imports" } else { "items" })
             })
-        } else if is_glob1 {
-            Some(format!("consider adding an explicit import of `{}` to disambiguate", name))
+        } else if b1.is_glob_import() {
+            Some(format!("consider adding an explicit import of `{}` to disambiguate", ident))
         } else {
             None
         };
 
-        let mut err = struct_span_err!(self.session, span, E0659, "`{}` is ambiguous", name);
-        err.span_note(span1, &msg1);
-        match def2 {
-            Def::Macro(..) if span2.is_dummy() =>
-                err.note(&format!("`{}` is also a builtin macro", name)),
-            _ => err.span_note(span2, &msg2),
+        let mut err = struct_span_err!(self.session, ident.span, E0659, "`{}` is ambiguous", ident);
+        err.span_label(ident.span, "ambiguous name");
+        err.span_note(b1.span, &msg1);
+        match b2.def() {
+            Def::Macro(..) if b2.span.is_dummy() =>
+                err.note(&format!("`{}` is also a builtin macro", ident)),
+            _ => err.span_note(b2.span, &msg2),
         };
         if let Some(note) = note {
             err.note(&note);
@@ -4551,7 +4577,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
     }
 
     fn report_errors(&mut self, krate: &Crate) {
-        self.report_shadowing_errors();
         self.report_with_use_injections(krate);
         self.report_proc_macro_import(krate);
         let mut reported_spans = FxHashSet();
@@ -4567,15 +4592,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             );
         }
 
-        for &AmbiguityError { span, name, b1, b2, lexical } in &self.ambiguity_errors {
-            if reported_spans.insert(span) {
-                self.report_ambiguity_error(
-                    name, span, lexical,
-                    b1.def(), b1.is_import(), b1.is_glob_import(),
-                    b1.expansion != Mark::root(), b1.span,
-                    b2.def(), b2.is_import(), b2.is_glob_import(),
-                    b2.expansion != Mark::root(), b2.span,
-                );
+        for &AmbiguityError { ident, b1, b2 } in &self.ambiguity_errors {
+            if reported_spans.insert(ident.span) {
+                self.report_ambiguity_error(ident, b1, b2);
             }
         }
 
@@ -4592,20 +4611,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 show_candidates(&mut err, span, &candidates, better, found_use);
             }
             err.emit();
-        }
-    }
-
-    fn report_shadowing_errors(&mut self) {
-        let mut reported_errors = FxHashSet();
-        for binding in replace(&mut self.disallowed_shadowing, Vec::new()) {
-            if self.resolve_legacy_scope(&binding.parent, binding.ident, false).is_some() &&
-               reported_errors.insert((binding.ident, binding.span)) {
-                let msg = format!("`{}` is already in scope", binding.ident);
-                self.session.struct_span_err(binding.span, &msg)
-                    .note("macro-expanded `macro_rules!`s may not shadow \
-                           existing macros (see RFC 1560)")
-                    .emit();
-            }
         }
     }
 

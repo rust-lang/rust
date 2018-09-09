@@ -242,22 +242,19 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
         if record_used {
             if let Some(binding) = resolution.binding {
                 if let Some(shadowed_glob) = resolution.shadowed_glob {
-                    let name = ident.name;
                     // Forbid expanded shadowing to avoid time travel.
                     if restricted_shadowing &&
                        binding.expansion != Mark::root() &&
                        ns != MacroNS && // In MacroNS, `try_define` always forbids this shadowing
                        binding.def() != shadowed_glob.def() {
                         self.ambiguity_errors.push(AmbiguityError {
-                            span: path_span,
-                            name,
-                            lexical: false,
+                            ident,
                             b1: binding,
                             b2: shadowed_glob,
                         });
                     }
                 }
-                if self.record_use(ident, ns, binding, path_span) {
+                if self.record_use(ident, ns, binding) {
                     return Ok(self.dummy_binding);
                 }
                 if !self.is_accessible(binding.vis) {
@@ -937,7 +934,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
             if let Ok(binding) = result[ns].get() {
                 all_ns_err = false;
-                if this.record_use(ident, ns, binding, directive.span) {
+                if this.record_use(ident, ns, binding) {
                     if let ModuleOrUniformRoot::Module(module) = module {
                         this.resolution(module, ident, ns).borrow_mut().binding =
                             Some(this.dummy_binding);

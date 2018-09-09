@@ -2,7 +2,7 @@ error[E0659]: `bar` is ambiguous
   --> $DIR/macro-paths.rs:23:5
    |
 LL |     bar::m! { //~ ERROR ambiguous
-   |     ^^^^^^
+   |     ^^^ ambiguous name
    |
 note: `bar` could refer to the name defined here
   --> $DIR/macro-paths.rs:24:9
@@ -20,7 +20,7 @@ error[E0659]: `baz` is ambiguous
   --> $DIR/macro-paths.rs:33:5
    |
 LL |     baz::m! { //~ ERROR ambiguous
-   |     ^^^^^^
+   |     ^^^ ambiguous name
    |
 note: `baz` could refer to the name defined here
   --> $DIR/macro-paths.rs:34:9

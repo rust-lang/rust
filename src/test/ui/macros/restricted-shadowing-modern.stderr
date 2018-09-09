@@ -1,0 +1,147 @@
+error[E0659]: `m` is ambiguous
+  --> $DIR/restricted-shadowing-modern.rs:106:17
+   |
+LL |                 m!(); //~ ERROR `m` is ambiguous
+   |                 ^ ambiguous name
+   |
+note: `m` could refer to the name defined here
+  --> $DIR/restricted-shadowing-modern.rs:91:9
+   |
+LL |         macro m() { Right }
+   |         ^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+note: `m` could also refer to the name defined here
+  --> $DIR/restricted-shadowing-modern.rs:101:9
+   |
+LL |         macro m() {}
+   |         ^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+   = note: macro-expanded macros do not shadow
+
+error[E0659]: `m` is ambiguous
+  --> $DIR/restricted-shadowing-modern.rs:149:33
+   |
+LL |             macro gen_invoc() { m!() } //~ ERROR `m` is ambiguous
+   |                                 ^ ambiguous name
+   |
+note: `m` could refer to the name defined here
+  --> $DIR/restricted-shadowing-modern.rs:91:9
+   |
+LL |         macro m() { Right }
+   |         ^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+note: `m` could also refer to the name defined here
+  --> $DIR/restricted-shadowing-modern.rs:145:9
+   |
+LL |         macro m() {}
+   |         ^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+   = note: macro-expanded macros do not shadow
+
+error[E0659]: `m` is ambiguous
+  --> $DIR/restricted-shadowing-modern.rs:158:13
+   |
+LL |             m!(); //~ ERROR `m` is ambiguous
+   |             ^ ambiguous name
+   |
+note: `m` could refer to the name defined here
+  --> $DIR/restricted-shadowing-modern.rs:91:9
+   |
+LL |         macro m() { Right }
+   |         ^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+note: `m` could also refer to the name defined here
+  --> $DIR/restricted-shadowing-modern.rs:155:9
+   |
+LL |         macro m() {}
+   |         ^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+   = note: macro-expanded macros do not shadow
+
+error[E0659]: `m` is ambiguous
+  --> $DIR/restricted-shadowing-modern.rs:174:13
+   |
+LL |             m!(); //~ ERROR `m` is ambiguous
+   |             ^ ambiguous name
+   |
+note: `m` could refer to the name defined here
+  --> $DIR/restricted-shadowing-modern.rs:91:9
+   |
+LL |         macro m() { Right }
+   |         ^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+note: `m` could also refer to the name defined here
+  --> $DIR/restricted-shadowing-modern.rs:87:9
+   |
+LL |         macro m() { Wrong }
+   |         ^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+   = note: macro-expanded macros do not shadow
+
+error[E0659]: `m` is ambiguous
+  --> $DIR/restricted-shadowing-modern.rs:192:17
+   |
+LL |                 m!(); //~ ERROR `m` is ambiguous
+   |                 ^ ambiguous name
+   |
+note: `m` could refer to the name defined here
+  --> $DIR/restricted-shadowing-modern.rs:91:9
+   |
+LL |         macro m() { Right }
+   |         ^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+note: `m` could also refer to the name defined here
+  --> $DIR/restricted-shadowing-modern.rs:87:9
+   |
+LL |         macro m() { Wrong }
+   |         ^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+   = note: macro-expanded macros do not shadow
+
+error[E0659]: `m` is ambiguous
+  --> $DIR/restricted-shadowing-modern.rs:235:33
+   |
+LL |             macro gen_invoc() { m!() } //~ ERROR `m` is ambiguous
+   |                                 ^ ambiguous name
+   |
+note: `m` could refer to the name defined here
+  --> $DIR/restricted-shadowing-modern.rs:91:9
+   |
+LL |         macro m() { Right }
+   |         ^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+note: `m` could also refer to the name defined here
+  --> $DIR/restricted-shadowing-modern.rs:87:9
+   |
+LL |         macro m() { Wrong }
+   |         ^^^^^^^^^^^^^^^^^^^
+...
+LL | include!();
+   | ----------- in this macro invocation
+   = note: macro-expanded macros do not shadow
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0659`.
