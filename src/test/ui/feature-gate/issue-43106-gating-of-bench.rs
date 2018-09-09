@@ -20,6 +20,8 @@
 // See issue-12997-1.rs and issue-12997-2.rs to see how `#[bench]` is
 // handled in "weird places" when `--test` is passed.
 
+#![feature(custom_inner_attributes)]
+
 #![bench                   = "4100"]
 
 fn main() { }

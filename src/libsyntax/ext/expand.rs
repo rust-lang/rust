@@ -1074,6 +1074,21 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         self.collect(kind, InvocationKind::Attr { attr, traits, item })
     }
 
+    fn find_attr_invoc(&self, attrs: &mut Vec<ast::Attribute>) -> Option<ast::Attribute> {
+        let attr = attrs.iter()
+                        .position(|a| !attr::is_known(a) && !is_builtin_attr(a))
+                        .map(|i| attrs.remove(i));
+        if let Some(attr) = &attr {
+            if !self.cx.ecfg.enable_custom_inner_attributes() &&
+               attr.style == ast::AttrStyle::Inner && attr.path != "test" {
+                emit_feature_err(&self.cx.parse_sess, "custom_inner_attributes",
+                                 attr.span, GateIssue::Language,
+                                 "non-builtin inner attributes are unstable");
+            }
+        }
+        attr
+    }
+
     /// If `item` is an attr invocation, remove and return the macro attribute and derive traits.
     fn classify_item<T>(&mut self, mut item: T) -> (Option<ast::Attribute>, Vec<Path>, T)
         where T: HasAttrs,
@@ -1087,7 +1102,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 return attrs;
             }
 
-            attr = find_attr_invoc(&mut attrs);
+            attr = self.find_attr_invoc(&mut attrs);
             traits = collect_derives(&mut self.cx, &mut attrs);
             attrs
         });
@@ -1108,7 +1123,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 return attrs;
             }
 
-            attr = find_attr_invoc(&mut attrs);
+            attr = self.find_attr_invoc(&mut attrs);
             attrs
         });
 
@@ -1143,12 +1158,6 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn check_attribute_inner(&mut self, at: &ast::Attribute, features: &Features) {
         feature_gate::check_attribute(at, self.cx.parse_sess, features);
     }
-}
-
-pub fn find_attr_invoc(attrs: &mut Vec<ast::Attribute>) -> Option<ast::Attribute> {
-    attrs.iter()
-         .position(|a| !attr::is_known(a) && !is_builtin_attr(a))
-         .map(|i| attrs.remove(i))
 }
 
 impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
@@ -1581,6 +1590,12 @@ impl<'feat> ExpansionConfig<'feat> {
         fn proc_macro_gen = proc_macro_gen,
         fn proc_macro_expr = proc_macro_expr,
         fn proc_macro_non_items = proc_macro_non_items,
+    }
+
+    fn enable_custom_inner_attributes(&self) -> bool {
+        self.features.map_or(false, |features| {
+            features.custom_inner_attributes || features.custom_attribute || features.rustc_attrs
+        })
     }
 }
 

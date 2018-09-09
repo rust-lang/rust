@@ -22,7 +22,7 @@ extern crate proc_macro_gates as foo;
 use foo::*;
 
 fn _test_inner() {
-    #![a] // OK
+    #![a] //~ ERROR: non-builtin inner attributes are unstable
 }
 
 #[a] //~ ERROR: custom attributes cannot be applied to modules
@@ -30,6 +30,7 @@ mod _test2 {}
 
 mod _test2_inner {
     #![a] //~ ERROR: custom attributes cannot be applied to modules
+          //~| ERROR: non-builtin inner attributes are unstable
 }
 
 #[a = y] //~ ERROR: must only be followed by a delimiter token
