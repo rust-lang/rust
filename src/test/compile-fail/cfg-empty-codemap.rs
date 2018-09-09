@@ -12,7 +12,7 @@
 
 // compile-flags: --cfg ""
 
-// error-pattern: expected identifier, found
+// error-pattern: invalid `--cfg` argument
 
 pub fn main() {
 }
