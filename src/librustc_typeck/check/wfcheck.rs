@@ -156,10 +156,19 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
                         caller_bounds: fcx.tcx.mk_predicates(wf_predicates),
                         reveal: fcx.param_env.reveal,
                     };
-                    fcx.register_predicates(user_predicates.iter().map(|&predicate| {
+                    fcx.register_predicates(user_predicates.iter().filter_map(|&predicate| {
+                        // HACK(eddyb) Ignore `Sized` bounds on type parameters.
+                        if let ty::Predicate::Trait(trait_ref) = predicate {
+                            if Some(trait_ref.def_id()) == tcx.lang_items().sized_trait() {
+                                if let ty::Param(_) = trait_ref.skip_binder().self_ty().sty {
+                                    return None;
+                                }
+                            }
+                        }
+
                         let code = ObligationCauseCode::MiscObligation;
                         let cause = traits::ObligationCause::new(item.span, fcx.body_id, code);
-                        traits::Obligation::new(cause, wf_param_env, predicate)
+                        Some(traits::Obligation::new(cause, wf_param_env, predicate))
                     }));
                 }
 
