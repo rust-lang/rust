@@ -110,9 +110,6 @@ mod c {
         let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
         let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
         let target_vendor = env::var("CARGO_CFG_TARGET_VENDOR").unwrap();
-        let target_arch_arm =
-            target_arch.contains("arm") ||
-            target_arch.contains("thumb");
         let cfg = &mut cc::Build::new();
 
         cfg.warnings(false);
@@ -139,29 +136,6 @@ mod c {
             // in https://github.com/rust-lang/compiler-rt/blob/c8fbcb3/cmake/config-ix.cmake#L19.
             cfg.flag_if_supported("-fomit-frame-pointer");
             cfg.define("VISIBILITY_HIDDEN", None);
-        }
-
-        // NOTE Most of the ARM intrinsics are written in assembly. Tell gcc which arch we are going
-        // to target to make sure that the assembly implementations really work for the target. If
-        // the implementation is not valid for the arch, then gcc will error when compiling it.
-        if llvm_target[0].starts_with("thumb") {
-            cfg.flag("-mthumb");
-        }
-
-        if target_arch_arm && llvm_target.last() == Some(&"eabihf") {
-            cfg.flag("-mfloat-abi=hard");
-        }
-
-        if llvm_target[0] == "thumbv6m" {
-            cfg.flag("-march=armv6-m");
-        }
-
-        if llvm_target[0] == "thumbv7m" {
-            cfg.flag("-march=armv7-m");
-        }
-
-        if llvm_target[0] == "thumbv7em" {
-            cfg.flag("-march=armv7e-m");
         }
 
         let mut sources = Sources::new();
