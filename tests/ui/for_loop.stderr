@@ -487,5 +487,17 @@ error: it looks like you're manually copying between slices
 547 |     for i in 0..src.len() {
     |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[..])`
 
-error: aborting due to 59 previous errors
+error: the variable `count` is used as a loop counter. Consider using `for (count, item) in text.chars().enumerate()` or similar iterators
+   --> $DIR/for_loop.rs:608:19
+    |
+608 |         for ch in text.chars() {
+    |                   ^^^^^^^^^^^^
+
+error: the variable `count` is used as a loop counter. Consider using `for (count, item) in text.chars().enumerate()` or similar iterators
+   --> $DIR/for_loop.rs:619:19
+    |
+619 |         for ch in text.chars() {
+    |                   ^^^^^^^^^^^^
+
+error: aborting due to 61 previous errors
 
