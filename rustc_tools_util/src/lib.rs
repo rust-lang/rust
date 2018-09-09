@@ -1,3 +1,4 @@
+#![feature(test)]
 #![feature(tool_lints)]
 
 use std::env;
@@ -8,6 +9,7 @@ macro_rules! get_version_info {
         let major = env!("CARGO_PKG_VERSION_MAJOR").parse::<u8>().unwrap();
         let minor = env!("CARGO_PKG_VERSION_MINOR").parse::<u8>().unwrap();
         let patch = env!("CARGO_PKG_VERSION_PATCH").parse::<u16>().unwrap();
+        let crate_name = String::from(env!("CARGO_PKG_NAME"));
 
         let host_compiler = $crate::get_channel();
         let commit_hash = option_env!("GIT_HASH").map(|s| s.to_string());
@@ -20,6 +22,7 @@ macro_rules! get_version_info {
             host_compiler,
             commit_hash,
             commit_date,
+            crate_name,
         }
     }};
 }
@@ -32,6 +35,7 @@ pub struct VersionInfo {
     pub host_compiler: Option<String>,
     pub commit_hash: Option<String>,
     pub commit_date: Option<String>,
+    pub crate_name: String,
 }
 
 impl std::fmt::Display for VersionInfo {
@@ -40,7 +44,8 @@ impl std::fmt::Display for VersionInfo {
             Some(_) => {
                 write!(
                     f,
-                    "clippy {}.{}.{} ({} {})",
+                    "{} {}.{}.{} ({} {})",
+                    self.crate_name,
                     self.major,
                     self.minor,
                     self.patch,
@@ -49,7 +54,7 @@ impl std::fmt::Display for VersionInfo {
                 )?;
             },
             None => {
-                write!(f, "clippy {}.{}.{}", self.major, self.minor, self.patch)?;
+                write!(f, "{} {}.{}.{}", self.crate_name, self.major, self.minor, self.patch)?;
             },
         };
         Ok(())
@@ -79,4 +84,29 @@ pub fn get_commit_date() -> Option<String> {
         .output()
         .ok()
         .and_then(|r| String::from_utf8(r.stdout).ok())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_struct_local() {
+        let vi = get_version_info!();
+        assert_eq!(vi.major, 0);
+        assert_eq!(vi.minor, 1);
+        assert_eq!(vi.patch, 0);
+        assert_eq!(vi.crate_name, "rustc_tools_util");
+        // hard to make positive tests for these since they will always change
+        assert!(vi.commit_hash.is_none());
+        assert!(vi.commit_date.is_none());
+    }
+
+    #[test]
+    fn test_display_local() {
+        let vi = get_version_info!();
+        let fmt = format!("{}", vi);
+        assert_eq!(fmt, "rustc_tools_util 0.1.0");
+    }
+
 }
