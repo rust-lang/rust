@@ -151,10 +151,10 @@ struct MatcherPos<'a> {
     top_elts: TokenTreeOrTokenTreeSlice<'a>,
     /// The position of the "dot" in this matcher
     idx: usize,
-    /// The beginning position in the source that the beginning of this matcher corresponds to. In
-    /// other words, the token in the source at `sp_lo` is matched against the first token of the
-    /// matcher.
-    sp_lo: Span,
+    /// The first span of source source that the beginning of this matcher corresponds to. In other
+    /// words, the token in the source whose span is `sp_open` is matched against the first token of
+    /// the matcher.
+    sp_open: Span,
 
     /// For each named metavar in the matcher, we keep track of token trees matched against the
     /// metavar by the black box parser. In particular, there may be more than one match per
@@ -284,8 +284,8 @@ fn create_matches(len: usize) -> Vec<Rc<Vec<NamedMatch>>> {
 }
 
 /// Generate the top-level matcher position in which the "dot" is before the first token of the
-/// matcher `ms` and we are going to start matching at position `lo` in the source.
-fn initial_matcher_pos(ms: &[TokenTree], lo: Span) -> MatcherPos {
+/// matcher `ms` and we are going to start matching at the span `open` in the source.
+fn initial_matcher_pos(ms: &[TokenTree], open: Span) -> MatcherPos {
     let match_idx_hi = count_names(ms);
     let matches = create_matches(match_idx_hi);
     MatcherPos {
@@ -293,8 +293,8 @@ fn initial_matcher_pos(ms: &[TokenTree], lo: Span) -> MatcherPos {
         top_elts: TtSeq(ms), // "elts" is an abbr. for "elements"
         // The "dot" is before the first token of the matcher
         idx: 0,
-        // We start matching with byte `lo` in the source code
-        sp_lo: lo,
+        // We start matching at the span `open` in the source code
+        sp_open: open,
 
         // Initialize `matches` to a bunch of empty `Vec`s -- one for each metavar in `top_elts`.
         // `match_lo` for `top_elts` is 0 and `match_hi` is `matches.len()`. `match_cur` is 0 since
@@ -488,7 +488,7 @@ fn inner_parse_loop<'a>(
                     // Add matches from this repetition to the `matches` of `up`
                     for idx in item.match_lo..item.match_hi {
                         let sub = item.matches[idx].clone();
-                        let span = DelimSpan::from_pair(item.sp_lo, span);
+                        let span = DelimSpan::from_pair(item.sp_open, span);
                         new_pos.push_match(idx, MatchedSeq(sub, span));
                     }
 
@@ -556,7 +556,7 @@ fn inner_parse_loop<'a>(
                         match_cur: item.match_cur,
                         match_hi: item.match_cur + seq.num_captures,
                         up: Some(item),
-                        sp_lo: sp.open,
+                        sp_open: sp.open,
                         top_elts: Tt(TokenTree::Sequence(sp, seq)),
                     })));
                 }
