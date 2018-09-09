@@ -135,7 +135,8 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
             let generics = tcx.generics_of(def_id);
             let used_params = super::check_params_are_used(tcx, &generics, item_ty);
             for_item(tcx, item).with_fcx(|fcx, _this| {
-                let item_ty = fcx.normalize_associated_types_in(item.span, &item_ty);
+                // HACK(eddyb) Commented out to not require trait bounds for projections.
+                // let item_ty = fcx.normalize_associated_types_in(item.span, &item_ty);
 
                 // Check the user-declared bounds, assuming the type is WF.
                 // This ensures that by checking the WF of the aliased type, where
@@ -172,7 +173,8 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
                     }));
                 }
 
-                vec![item_ty]
+                // HACK(eddyb) Commented out to not require trait bounds for projections.
+                vec![/*item_ty*/]
             });
         }
         hir::ItemKind::Struct(ref struct_def, ref ast_generics) => {

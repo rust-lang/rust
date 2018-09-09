@@ -19,9 +19,6 @@ type S2Vec<T> where T: Send = Vec<T>;
 //~^ ERROR `T` cannot be sent between threads safely
 
 trait Bound { type Assoc; }
-type T4<U> = <U as Bound>::Assoc;
-//~^ ERROR the trait bound `U: Bound` is not satisfied
-//~| ERROR the size for values of type `U` cannot be known at compilation time
 
 type T6<U: Bound> = ::std::vec::Vec<U>;
 //~^ ERROR the trait bound `U: Bound` is not satisfied

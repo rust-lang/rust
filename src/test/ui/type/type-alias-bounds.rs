@@ -59,7 +59,7 @@ type T2<U> where U: Bound + ?Sized = U::Assoc;  //~ WARN not enforced in type al
 // This errors
 // type T3<U> = U::Assoc;
 // Do this instead
-// type T4<U: ?Sized> = <U as Bound>::Assoc; // NOTE(eddyb) moved to `type-alias-bounds-err.rs`
+type T4<U> = <U as Bound>::Assoc;
 
 // Make sure the help about associatd types is not shown incorrectly
 type T5<U: Bound + ?Sized> = <U as Bound>::Assoc;  //~ WARN not enforced in type aliases
