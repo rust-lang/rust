@@ -164,3 +164,23 @@ impl Bar {
         let _1_ok= 1;
     }
 }
+
+// false positive similar_names (#3057, #2651)
+// clippy claimed total_reg_src_size and total_size and
+// numb_reg_src_checkouts and total_bin_size were similar
+#[derive(Debug, Clone)]
+pub(crate) struct DirSizes {
+    pub(crate) total_size: u64,
+    pub(crate) numb_bins: u64,
+    pub(crate) total_bin_size: u64,
+    pub(crate) total_reg_size: u64,
+    pub(crate) total_git_db_size: u64,
+    pub(crate) total_git_repos_bare_size: u64,
+    pub(crate) numb_git_repos_bare_repos: u64,
+    pub(crate) numb_git_checkouts: u64,
+    pub(crate) total_git_chk_size: u64,
+    pub(crate) total_reg_cache_size: u64,
+    pub(crate) total_reg_src_size: u64,
+    pub(crate) numb_reg_cache_entries: u64,
+    pub(crate) numb_reg_src_checkouts: u64,
+}
