@@ -456,6 +456,27 @@ pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     Shared,
 
+    /// The immediately borrowed place must be immutable, but projections from
+    /// it don't need to be. For example, a shallow borrow of `a.b` doesn't
+    /// conflict with a mutable borrow of `a.b.c`.
+    ///
+    /// This is used when lowering matches: when matching on a place we want to
+    /// ensure that place have the same value from the start of the match until
+    /// an arm is selected. This prevents this code from compiling:
+    ///
+    ///     let mut x = &Some(0);
+    ///     match *x {
+    ///         None => (),
+    ///         Some(_) if { x = &None; false } => (),
+    ///         Some(_) => (),
+    ///     }
+    ///
+    /// This can't be a shared borrow because mutably borrowing (*x as Some).0
+    /// should not prevent `if let None = x { ... }`, for example, becase the
+    /// mutating `(*x as Some).0` can't affect the discriminant of `x`.
+    /// We can also report errors with this kind of borrow differently.
+    Shallow,
+
     /// Data must be immutable but not aliasable.  This kind of borrow
     /// cannot currently be expressed by the user and is used only in
     /// implicit closure bindings. It is needed when the closure is
@@ -504,7 +525,7 @@ pub enum BorrowKind {
 impl BorrowKind {
     pub fn allows_two_phase_borrow(&self) -> bool {
         match *self {
-            BorrowKind::Shared | BorrowKind::Unique => false,
+            BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => false,
             BorrowKind::Mut {
                 allow_two_phase_borrow,
             } => allow_two_phase_borrow,
@@ -2198,6 +2219,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Ref(region, borrow_kind, ref place) => {
                 let kind_str = match borrow_kind {
                     BorrowKind::Shared => "",
+                    BorrowKind::Shallow => "shallow ",
                     BorrowKind::Mut { .. } | BorrowKind::Unique => "mut ",
                 };
 

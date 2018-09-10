@@ -12,7 +12,7 @@ use borrow_check::ArtificialField;
 use borrow_check::Overlap;
 use borrow_check::{Deep, Shallow, AccessDepth};
 use rustc::hir;
-use rustc::mir::{Mir, Place};
+use rustc::mir::{BorrowKind, Mir, Place};
 use rustc::mir::{Projection, ProjectionElem};
 use rustc::ty::{self, TyCtxt};
 use std::cmp::max;
@@ -21,6 +21,7 @@ pub(super) fn places_conflict<'gcx, 'tcx>(
     tcx: TyCtxt<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     borrow_place: &Place<'tcx>,
+    borrow_kind: BorrowKind,
     access_place: &Place<'tcx>,
     access: AccessDepth,
 ) -> bool {
@@ -39,7 +40,14 @@ pub(super) fn places_conflict<'gcx, 'tcx>(
 
     unroll_place(borrow_place, None, |borrow_components| {
         unroll_place(access_place, None, |access_components| {
-            place_components_conflict(tcx, mir, borrow_components, access_components, access)
+            place_components_conflict(
+                tcx,
+                mir,
+                borrow_components,
+                borrow_kind,
+                access_components,
+                access
+            )
         })
     })
 }
@@ -48,6 +56,7 @@ fn place_components_conflict<'gcx, 'tcx>(
     tcx: TyCtxt<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     mut borrow_components: PlaceComponentsIter<'_, 'tcx>,
+    borrow_kind: BorrowKind,
     mut access_components: PlaceComponentsIter<'_, 'tcx>,
     access: AccessDepth,
 ) -> bool {
@@ -157,7 +166,8 @@ fn place_components_conflict<'gcx, 'tcx>(
 
                 match (elem, &base_ty.sty, access) {
                     (_, _, Shallow(Some(ArtificialField::Discriminant)))
-                    | (_, _, Shallow(Some(ArtificialField::ArrayLength))) => {
+                    | (_, _, Shallow(Some(ArtificialField::ArrayLength)))
+                    | (_, _, Shallow(Some(ArtificialField::ShallowBorrow))) => {
                         // The discriminant and array length are like
                         // additional fields on the type; they do not
                         // overlap any existing data there. Furthermore,
@@ -225,11 +235,13 @@ fn place_components_conflict<'gcx, 'tcx>(
             // If the second example, where we did, then we still know
             // that the borrow can access a *part* of our place that
             // our access cares about, so we still have a conflict.
-            //
-            // FIXME: Differs from AST-borrowck; includes drive-by fix
-            // to #38899. Will probably need back-compat mode flag.
-            debug!("places_conflict: full borrow, CONFLICT");
-            return true;
+            if borrow_kind == BorrowKind::Shallow && access_components.next().is_some() {
+                debug!("places_conflict: shallow borrow");
+                return false;
+            } else {
+                debug!("places_conflict: full borrow, CONFLICT");
+                return true;
+            }
         }
     }
 }

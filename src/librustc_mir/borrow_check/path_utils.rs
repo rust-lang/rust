@@ -61,7 +61,14 @@ pub(super) fn each_borrow_involving_path<'a, 'tcx, 'gcx: 'tcx, F, I, S> (
     for i in candidates {
         let borrowed = &borrow_set[i];
 
-        if places_conflict::places_conflict(tcx, mir, &borrowed.borrowed_place, place, access) {
+        if places_conflict::places_conflict(
+            tcx,
+            mir,
+            &borrowed.borrowed_place,
+            borrowed.kind,
+            place,
+            access,
+        ) {
             debug!(
                 "each_borrow_involving_path: {:?} @ {:?} vs. {:?}/{:?}",
                 i, borrowed, place, access
