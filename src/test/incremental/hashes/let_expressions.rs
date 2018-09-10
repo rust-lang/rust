@@ -49,7 +49,7 @@ pub fn add_type() {
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2",
-    except="HirBody,TypeckTables,MirValidated")]
+    except="HirBody,TypeckTables,MirValidated,MirOptimized")]
 #[rustc_clean(cfg="cfail3")]
 pub fn add_type() {
     let _x: u32 = 2u32;
