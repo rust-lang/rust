@@ -340,7 +340,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
         let field = field.try_into().unwrap();
         let field_layout = op.layout.field(self, field)?;
-        if field_layout.size.bytes() == 0 {
+        if field_layout.is_zst() {
             let val = Value::Scalar(Scalar::zst().into());
             return Ok(OpTy { op: Operand::Immediate(val), layout: field_layout });
         }
@@ -397,9 +397,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Field(field, _) => self.operand_field(base, field.index() as u64)?,
             Downcast(_, variant) => self.operand_downcast(base, variant)?,
             Deref => self.deref_operand(base)?.into(),
-            // The rest should only occur as mplace, we do not use Immediates for types
-            // allowing such operations.  This matches place_projection forcing an allocation.
-            Subslice { .. } | ConstantIndex { .. } | Index(_) => {
+            Subslice { .. } | ConstantIndex { .. } | Index(_) => if base.layout.is_zst() {
+                OpTy {
+                    op: Operand::Immediate(Value::Scalar(Scalar::zst().into())),
+                    // the actual index doesn't matter, so we just pick a convenient one like 0
+                    layout: base.layout.field(self, 0)?,
+                }
+            } else {
+                // The rest should only occur as mplace, we do not use Immediates for types
+                // allowing such operations.  This matches place_projection forcing an allocation.
                 let mplace = base.to_mem_place();
                 self.mplace_projection(mplace, proj_elem)?.into()
             }
