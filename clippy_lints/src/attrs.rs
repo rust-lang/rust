@@ -296,13 +296,13 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &Vec<NestedMetaItem>
             if let CheckLintNameResult::Tool(Err((None, _))) = lint_store.check_lint_name(
                 &name.as_str(),
                 Some(tool_name.as_str()),
-                );
+            );
             then {
                 span_lint_and_then(
                     cx,
                     UNKNOWN_CLIPPY_LINTS,
                     lint.span,
-                    &format!("unknwon clippy lint: clippy::{}", name),
+                    &format!("unknown clippy lint: clippy::{}", name),
                     |db| {
                         if name.as_str().chars().any(|c| c.is_uppercase()) {
                             let name_lower = name.as_str().to_lowercase().to_string();
