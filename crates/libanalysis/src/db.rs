@@ -2,50 +2,95 @@ use std::{
     hash::Hash,
     sync::Arc,
     cell::RefCell,
+    fmt::Debug,
 };
+use parking_lot::Mutex;
 use libsyntax2::{File};
 use im;
 use {
     FileId,
     imp::{FileResolverImp},
+    module_map_db::ModuleDescr,
 };
 
-#[derive(Clone)]
-pub(crate) struct Db {
-    file_resolver: FileResolverImp,
-    files: im::HashMap<FileId, Arc<String>>,
+#[derive(Debug)]
+pub(crate) struct DbHost {
+    db: Arc<Db>,
 }
 
-impl Db {
-    pub(crate) fn new() -> Db {
-        Db {
+impl DbHost {
+    pub(crate) fn new() -> DbHost {
+        let db = Db {
             file_resolver: FileResolverImp::default(),
             files: im::HashMap::new(),
-        }
+            cache: Mutex::new(Cache::new())
+        };
+        DbHost { db: Arc::new(db) }
     }
     pub(crate) fn change_file(&mut self, file_id: FileId, text: Option<String>) {
+        let db = self.db_mut();
         match text {
             None => {
-                self.files.remove(&file_id);
+                db.files.remove(&file_id);
             }
             Some(text) => {
-                self.files.insert(file_id, Arc::new(text));
+                db.files.insert(file_id, Arc::new(text));
             }
         }
     }
     pub(crate) fn set_file_resolver(&mut self, file_resolver: FileResolverImp) {
-        self.file_resolver = file_resolver
+        let db = self.db_mut();
+        db.file_resolver = file_resolver
     }
     pub(crate) fn query_ctx(&self) -> QueryCtx {
         QueryCtx {
-            db: self.clone(),
+            db: Arc::clone(&self.db),
             trace: RefCell::new(Vec::new()),
+        }
+    }
+    fn db_mut(&mut self) -> &mut Db {
+        // NB: this "forks" the database & clears the cache
+        let db = Arc::make_mut(&mut self.db);
+        *db.cache.get_mut() = Default::default();
+        db
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct Db {
+    file_resolver: FileResolverImp,
+    files: im::HashMap<FileId, Arc<String>>,
+    cache: Mutex<Cache>,
+}
+
+impl Clone for Db {
+    fn clone(&self) -> Db {
+        Db {
+            file_resolver: self.file_resolver.clone(),
+            files: self.files.clone(),
+            cache: Mutex::new(Cache::new()),
         }
     }
 }
 
+#[derive(Clone, Default, Debug)]
+pub(crate) struct Cache {
+    pub(crate) module_descr: QueryCache<ModuleDescr>
+}
+#[allow(type_alias_bounds)]
+pub(crate) type QueryCache<Q: Query> = im::HashMap<
+    <Q as Query>::Params,
+    <Q as Query>::Output
+>;
+
+impl Cache {
+    fn new() -> Cache {
+        Default::default()
+    }
+}
+
 pub(crate) struct QueryCtx {
-    db: Db,
+    db: Arc<Db>,
     pub(crate) trace: RefCell<Vec<TraceEvent>>,
 }
 
@@ -62,9 +107,7 @@ pub(crate) enum TraceEventKind {
 
 impl QueryCtx {
     pub(crate) fn get<Q: Get>(&self, params: &Q::Params) -> Q::Output {
-        self.trace(TraceEvent { query_id: Q::ID, kind: TraceEventKind::Start });
         let res = Q::get(self, params);
-        self.trace(TraceEvent { query_id: Q::ID, kind: TraceEventKind::Finish });
         res
     }
     fn trace(&self, event: TraceEvent) {
@@ -74,26 +117,55 @@ impl QueryCtx {
 
 pub(crate) trait Query {
     const ID: u32;
-    type Params: Hash;
-    type Output;
+    type Params: Hash + Eq + Debug;
+    type Output: Debug;
 }
 
 pub(crate) trait Get: Query {
     fn get(ctx: &QueryCtx, params: &Self::Params) -> Self::Output;
 }
 
-impl<T: Eval> Get for T {
+impl<T: Eval> Get for T
+where
+    T::Params: Clone,
+    T::Output: Clone,
+{
     fn get(ctx: &QueryCtx, params: &Self::Params) -> Self::Output {
-        Self::eval(ctx, params)
+        {
+            let mut cache = ctx.db.cache.lock();
+            if let Some(cache) = Self::cache(&mut cache) {
+                if let Some(res) = cache.get(params) {
+                    return res.clone();
+                }
+            }
+        }
+        ctx.trace(TraceEvent { query_id: Self::ID, kind: TraceEventKind::Start });
+        let res = Self::eval(ctx, params);
+        ctx.trace(TraceEvent { query_id: Self::ID, kind: TraceEventKind::Finish });
+
+        let mut cache = ctx.db.cache.lock();
+        if let Some(cache) = Self::cache(&mut cache) {
+            cache.insert(params.clone(), res.clone());
+        }
+
+        res
     }
 }
 
-pub(crate) trait Eval: Query {
+pub(crate) trait Eval: Query
+where
+    Self::Params: Clone,
+    Self::Output: Clone,
+ {
+    fn cache(_cache: &mut Cache) -> Option<&mut QueryCache<Self>> {
+        None
+    }
     fn eval(ctx: &QueryCtx, params: &Self::Params) -> Self::Output;
 }
 
+#[derive(Debug)]
 pub(crate) struct DbFiles {
-    db: Db,
+    db: Arc<Db>,
 }
 
 impl DbFiles {
@@ -113,7 +185,7 @@ impl Query for Files {
 }
 impl Get for Files {
     fn get(ctx: &QueryCtx, _params: &()) -> DbFiles {
-        DbFiles { db: ctx.db.clone() }
+        DbFiles { db: Arc::clone(&ctx.db) }
     }
 }
 

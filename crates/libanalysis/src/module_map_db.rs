@@ -1,11 +1,14 @@
 use std::sync::Arc;
 use {
     FileId,
-    db::{Query, Eval, QueryCtx, FileSyntax, Files},
+    db::{
+        Query, Eval, QueryCtx, FileSyntax, Files,
+        Cache, QueryCache,
+    },
     module_map::resolve_submodule,
 };
 
-enum ModuleDescr {}
+pub(crate) enum ModuleDescr {}
 impl Query for ModuleDescr {
     const ID: u32 = 30;
     type Params = FileId;
@@ -27,6 +30,9 @@ impl Query for ParentModule {
 }
 
 impl Eval for ModuleDescr {
+    fn cache(cache: &mut Cache) -> Option<&mut QueryCache<Self>> {
+        Some(&mut cache.module_descr)
+    }
     fn eval(ctx: &QueryCtx, file_id: &FileId) -> Arc<descr::ModuleDescr> {
         let file = ctx.get::<FileSyntax>(file_id);
         Arc::new(descr::ModuleDescr::new(file.ast()))
@@ -66,6 +72,7 @@ mod descr {
         ast::{self, NameOwner},
     };
 
+    #[derive(Debug)]
     pub struct ModuleDescr {
         pub submodules: Vec<Submodule>
     }
@@ -85,7 +92,7 @@ mod descr {
             ModuleDescr { submodules } }
     }
 
-    #[derive(Clone, Hash)]
+    #[derive(Clone, Hash, PartialEq, Eq, Debug)]
     pub struct Submodule {
         pub name: SmolStr,
     }
@@ -98,7 +105,7 @@ mod tests {
     use im;
     use relative_path::{RelativePath, RelativePathBuf};
     use {
-        db::{Query, Db, TraceEventKind},
+        db::{Query, DbHost, TraceEventKind},
         imp::FileResolverImp,
         FileId, FileResolver,
     };
@@ -122,7 +129,7 @@ mod tests {
     struct Fixture {
         next_file_id: u32,
         fm: im::HashMap<FileId, RelativePathBuf>,
-        db: Db,
+        db: DbHost,
     }
 
     impl Fixture {
@@ -130,7 +137,7 @@ mod tests {
             Fixture {
                 next_file_id: 1,
                 fm: im::HashMap::new(),
-                db: Db::new(),
+                db: DbHost::new(),
             }
         }
         fn add_file(&mut self, path: &str, text: &str) -> FileId {
@@ -185,10 +192,11 @@ mod tests {
     fn test_parent_module() {
         let mut f = Fixture::new();
         let foo = f.add_file("/foo.rs", "");
-        f.check_parent_modules(foo, &[], &[(FileSyntax::ID, 1)]);
+        f.check_parent_modules(foo, &[], &[(ModuleDescr::ID, 1)]);
 
         let lib = f.add_file("/lib.rs", "mod foo;");
-        f.check_parent_modules(foo, &[lib], &[(FileSyntax::ID, 2)]);
+        f.check_parent_modules(foo, &[lib], &[(ModuleDescr::ID, 2)]);
+        f.check_parent_modules(foo, &[lib], &[(ModuleDescr::ID, 0)]);
 
         f.change_file(lib, "");
         f.check_parent_modules(foo, &[], &[(ModuleDescr::ID, 2)]);
