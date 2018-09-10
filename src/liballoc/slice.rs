@@ -218,7 +218,7 @@ impl<T> [T] {
     /// * total and antisymmetric: exactly one of a < b, a == b or a > b is true; and
     /// * transitive, a < b and b < c implies a < c. The same must hold for both == and >.
     ///
-    /// For example, while `f64` doesn't implement `Ord` because `NaN != NaN`, we can use
+    /// For example, while [`f64`] doesn't implement [`Ord`] because `NaN != NaN`, we can use
     /// `partial_cmp` as our sort function when we know the slice doesn't contain a `NaN`.
     ///
     /// ```
