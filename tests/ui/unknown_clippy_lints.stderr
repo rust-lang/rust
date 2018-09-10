@@ -1,0 +1,16 @@
+error: unknwon clippy lint: clippy::if_not_els
+ --> $DIR/unknown_clippy_lints.rs:5:8
+  |
+5 | #[warn(clippy::if_not_els)]
+  |        ^^^^^^^^^^^^^^^^^^
+  |
+  = note: `-D clippy::unknown-clippy-lints` implied by `-D warnings`
+
+error: unknwon clippy lint: clippy::All
+ --> $DIR/unknown_clippy_lints.rs:2:10
+  |
+2 | #![allow(clippy::All)]
+  |          ^^^^^^^^^^^ help: lowercase the lint name: `all`
+
+error: aborting due to 2 previous errors
+
