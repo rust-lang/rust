@@ -17,7 +17,7 @@ use rustc_apfloat::{ieee, Float, Status, Round};
 use std::{u128, i128};
 
 use base;
-use builder::Builder;
+use builder::{Builder, MemFlags};
 use callee;
 use common::{self, IntPredicate, RealPredicate};
 use monomorphize;
@@ -104,20 +104,19 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                 let start = dest.project_index(&bx, bx.cx().const_usize(0)).llval;
 
                 if let OperandValue::Immediate(v) = cg_elem.val {
-                    let align = bx.cx().const_i32(dest.align.abi() as i32);
                     let size = bx.cx().const_usize(dest.layout.size.bytes());
 
                     // Use llvm.memset.p0i8.* to initialize all zero arrays
                     if bx.cx().is_const_integral(v) && bx.cx().const_to_uint(v) == 0 {
                         let fill = bx.cx().const_u8(0);
-                        base::call_memset(&bx, start, fill, size, align, false);
+                        bx.memset(start, fill, size, dest.align, MemFlags::empty());
                         return bx;
                     }
 
                     // Use llvm.memset.p0i8.* to initialize byte arrays
                     let v = base::from_immediate(&bx, v);
                     if bx.cx().val_ty(v) == bx.cx().type_i8() {
-                        base::call_memset(&bx, start, v, size, align, false);
+                        bx.memset(start, v, size, dest.align, MemFlags::empty());
                         return bx;
                     }
                 }

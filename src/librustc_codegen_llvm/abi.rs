@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use llvm::{self, AttributePlace};
-use base;
 use builder::{Builder, MemFlags};
 use context::CodegenCx;
 use mir::place::PlaceRef;
@@ -239,13 +238,14 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                 bx.store(val, llscratch, scratch_align);
 
                 // ...and then memcpy it to the intended destination.
-                base::call_memcpy(bx,
-                                  bx.pointercast(dst.llval, cx.type_i8p()),
-                                  self.layout.align,
-                                  bx.pointercast(llscratch, cx.type_i8p()),
-                                  scratch_align,
-                                  cx.const_usize(self.layout.size.bytes()),
-                                  MemFlags::empty());
+                bx.memcpy(
+                    bx.pointercast(dst.llval, cx.type_i8p()),
+                    self.layout.align,
+                    bx.pointercast(llscratch, cx.type_i8p()),
+                    scratch_align,
+                    cx.const_usize(self.layout.size.bytes()),
+                    MemFlags::empty()
+                );
 
                 bx.lifetime_end(llscratch, scratch_size);
             }

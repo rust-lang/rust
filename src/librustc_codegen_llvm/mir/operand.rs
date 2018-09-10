@@ -349,7 +349,7 @@ impl OperandValue<&'ll Value> {
         // Allocate an appropriate region on the stack, and copy the value into it
         let (llsize, _) = glue::size_and_align_of_dst(bx, unsized_ty, Some(llextra));
         let lldst = bx.array_alloca(bx.cx().type_i8(), llsize, "unsized_tmp", max_align);
-        base::call_memcpy(bx, lldst, max_align, llptr, min_align, llsize, flags);
+        bx.memcpy(lldst, max_align, llptr, min_align, llsize, flags);
 
         // Store the allocated region and the extra to the indirect place.
         let indirect_operand = OperandValue::Pair(lldst, llextra);

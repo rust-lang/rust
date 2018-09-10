@@ -170,12 +170,20 @@ pub trait BuilderMethods<'a, 'tcx: 'a>: Backend {
     ) -> Option<Self::Value>;
 
 
-    fn memcpy(&self, dst: Self::Value, dst_align: u64,
-                  src: Self::Value, src_align: u64,
-                  size: Self::Value, is_volatile: bool) -> Self::Value;
-    fn memmove(&self, dst: Self::Value, dst_align: u64,
-                  src: Self::Value, src_align: u64,
-                  size: Self::Value, is_volatile: bool) -> Self::Value;
+    fn memcpy(&self, dst: Self::Value, dst_align: Align,
+                  src: Self::Value, src_align: Align,
+                  size: Self::Value, flags: MemFlags);
+    fn memmove(&self, dst: Self::Value, dst_align: Align,
+                  src: Self::Value, src_align: Align,
+                  size: Self::Value, flags: MemFlags);
+    fn memset(
+        &self,
+        ptr: Self::Value,
+        fill_byte: Self::Value,
+        size: Self::Value,
+        align: Align,
+        flags: MemFlags,
+    );
 
     fn minnum(&self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn maxnum(&self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;

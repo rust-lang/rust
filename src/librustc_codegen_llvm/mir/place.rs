@@ -14,7 +14,7 @@ use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, Size, VariantIdx};
 use rustc::mir;
 use rustc::mir::tcx::PlaceTy;
 use base;
-use builder::Builder;
+use builder::{Builder, MemFlags};
 use common::{CodegenCx, IntPredicate};
 use type_of::LayoutLlvmExt;
 use value::Value;
@@ -381,15 +381,10 @@ impl PlaceRef<'tcx, &'ll Value> {
                        bx.sess().target.target.arch == "aarch64" {
                         // Issue #34427: As workaround for LLVM bug on ARM,
                         // use memset of 0 before assigning niche value.
-                        let llptr = bx.pointercast(
-                            self.llval,
-                            bx.cx().type_ptr_to(bx.cx().type_i8())
-                        );
                         let fill_byte = bx.cx().const_u8(0);
                         let (size, align) = self.layout.size_and_align();
                         let size = bx.cx().const_usize(size.bytes());
-                        let align = bx.cx().const_u32(align.abi() as u32);
-                        base::call_memset(bx, llptr, fill_byte, size, align, false);
+                        bx.memset(self.llval, fill_byte, size, align, MemFlags::empty());
                     }
 
                     let niche = self.project_field(bx, 0);

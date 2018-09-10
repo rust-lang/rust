@@ -29,7 +29,7 @@ use rustc::ty::layout::LayoutOf;
 use rustc::hir;
 use syntax::ast;
 use syntax::symbol::Symbol;
-use builder::Builder;
+use builder::{Builder, MemFlags};
 use value::Value;
 
 use interfaces::{
@@ -228,28 +228,34 @@ pub fn codegen_intrinsic_call(
 
         "copy_nonoverlapping" => {
             copy_intrinsic(bx, false, false, substs.type_at(0),
-                           args[1].immediate(), args[0].immediate(), args[2].immediate())
+                           args[1].immediate(), args[0].immediate(), args[2].immediate());
+            return;
         }
         "copy" => {
             copy_intrinsic(bx, true, false, substs.type_at(0),
-                           args[1].immediate(), args[0].immediate(), args[2].immediate())
+                           args[1].immediate(), args[0].immediate(), args[2].immediate());
+            return;
         }
         "write_bytes" => {
             memset_intrinsic(bx, false, substs.type_at(0),
-                             args[0].immediate(), args[1].immediate(), args[2].immediate())
+                             args[0].immediate(), args[1].immediate(), args[2].immediate());
+            return;
         }
 
         "volatile_copy_nonoverlapping_memory" => {
             copy_intrinsic(bx, false, true, substs.type_at(0),
-                           args[0].immediate(), args[1].immediate(), args[2].immediate())
+                           args[0].immediate(), args[1].immediate(), args[2].immediate());
+            return;
         }
         "volatile_copy_memory" => {
             copy_intrinsic(bx, true, true, substs.type_at(0),
-                           args[0].immediate(), args[1].immediate(), args[2].immediate())
+                           args[0].immediate(), args[1].immediate(), args[2].immediate());
+            return;
         }
         "volatile_set_memory" => {
             memset_intrinsic(bx, true, substs.type_at(0),
-                             args[0].immediate(), args[1].immediate(), args[2].immediate())
+                             args[0].immediate(), args[1].immediate(), args[2].immediate());
+            return;
         }
         "volatile_load" | "unaligned_volatile_load" => {
             let tp_ty = substs.type_at(0);
@@ -725,17 +731,18 @@ fn copy_intrinsic(
     dst: &'ll Value,
     src: &'ll Value,
     count: &'ll Value,
-) -> &'ll Value {
-    let cx = bx.cx();
-    let (size, align) = cx.size_and_align_of(ty);
-    let size = cx.const_usize(size.bytes());
-    let align = align.abi();
-    let dst_ptr = bx.pointercast(dst, cx.type_i8p());
-    let src_ptr = bx.pointercast(src, cx.type_i8p());
-    if allow_overlap {
-        bx.memmove(dst_ptr, align, src_ptr, align, bx.mul(size, count), volatile)
+) {
+    let (size, align) = bx.cx().size_and_align_of(ty);
+    let size = bx.mul(bx.cx().const_usize(size.bytes()), count);
+    let flags = if volatile {
+        MemFlags::VOLATILE
     } else {
-        bx.memcpy(dst_ptr, align, src_ptr, align, bx.mul(size, count), volatile)
+        MemFlags::empty()
+    };
+    if allow_overlap {
+        bx.memmove(dst, align, src, align, size, flags);
+    } else {
+        bx.memcpy(dst, align, src, align, size, flags);
     }
 }
 
@@ -746,13 +753,15 @@ fn memset_intrinsic(
     dst: &'ll Value,
     val: &'ll Value,
     count: &'ll Value
-) -> &'ll Value {
-    let cx = bx.cx();
-    let (size, align) = cx.size_and_align_of(ty);
-    let size = cx.const_usize(size.bytes());
-    let align = cx.const_i32(align.abi() as i32);
-    let dst = bx.pointercast(dst, cx.type_i8p());
-    call_memset(bx, dst, val, bx.mul(size, count), align, volatile)
+) {
+    let (size, align) = bx.cx().size_and_align_of(ty);
+    let size = bx.cx().const_usize(size.bytes());
+    let flags = if volatile {
+        MemFlags::VOLATILE
+    } else {
+        MemFlags::empty()
+    };
+    bx.memset(dst, val, bx.mul(size, count), align, flags);
 }
 
 fn try_intrinsic(
