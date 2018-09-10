@@ -1270,6 +1270,7 @@ impl<'a> NameBinding<'a> {
     fn macro_kind(&self) -> Option<MacroKind> {
         match self.def_ignoring_ambiguity() {
             Def::Macro(_, kind) => Some(kind),
+            Def::NonMacroAttr(..) => Some(MacroKind::Attr),
             _ => None,
         }
     }
@@ -3596,8 +3597,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 self.resolve_ident_in_module(module, ident, ns, record_used, path_span)
             } else if opt_ns == Some(MacroNS) {
                 assert!(ns == TypeNS);
-                self.resolve_lexical_macro_path_segment(ident, ns, parent_expansion, record_used,
-                                                        record_used, false, path_span)
+                self.resolve_lexical_macro_path_segment(ident, ns, None, parent_expansion,
+                                                        record_used, record_used, path_span)
                                                         .map(|(binding, _)| binding)
             } else {
                 let record_used_id =

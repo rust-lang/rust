@@ -109,6 +109,13 @@ pub struct ProcMacError {
     warn_msg: &'static str,
 }
 
+// For compatibility bang macros are skipped when resolving potentially built-in attributes.
+fn macro_kind_mismatch(name: Name, requirement: Option<MacroKind>, candidate: Option<MacroKind>)
+                       -> bool {
+    requirement == Some(MacroKind::Attr) && candidate == Some(MacroKind::Bang) &&
+    (name == "test" || name == "bench" || is_builtin_attr_name(name))
+}
+
 impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
     fn next_node_id(&mut self) -> ast::NodeId {
         self.session.next_node_id()
@@ -479,13 +486,13 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         }
 
         let legacy_resolution = self.resolve_legacy_scope(
-            path[0], parent_expansion, parent_legacy_scope, false, kind == MacroKind::Attr
+            path[0], Some(kind), parent_expansion, parent_legacy_scope, false
         );
         let result = if let Some(legacy_binding) = legacy_resolution {
             Ok(legacy_binding.def())
         } else {
-            match self.resolve_lexical_macro_path_segment(path[0], MacroNS, parent_expansion, false,
-                                                          force, kind == MacroKind::Attr, span) {
+            match self.resolve_lexical_macro_path_segment(path[0], MacroNS, Some(kind),
+                                                          parent_expansion, false, force, span) {
                 Ok((binding, _)) => Ok(binding.def_ignoring_ambiguity()),
                 Err(Determinacy::Undetermined) => return Err(Determinacy::Undetermined),
                 Err(Determinacy::Determined) => {
@@ -543,10 +550,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         &mut self,
         mut ident: Ident,
         ns: Namespace,
+        kind: Option<MacroKind>,
         parent_expansion: Mark,
         record_used: bool,
         force: bool,
-        is_attr: bool,
         path_span: Span,
     ) -> Result<(&'a NameBinding<'a>, FromPrelude), Determinacy> {
         // General principles:
@@ -622,19 +629,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 }
                 WhereToResolve::MacroUsePrelude => {
                     match self.macro_use_prelude.get(&ident.name).cloned() {
-                        Some(binding) => {
-                            let mut result = Ok((binding, FromPrelude(true)));
-                            // FIXME: Keep some built-in macros working even if they are
-                            // shadowed by non-attribute macros imported with `macro_use`.
-                            // We need to come up with some more principled approach instead.
-                            if is_attr && (ident.name == "test" || ident.name == "bench") {
-                                if let Def::Macro(_, MacroKind::Bang) =
-                                        binding.def_ignoring_ambiguity() {
-                                    result = Err(Determinacy::Determined);
-                                }
-                            }
-                            result
-                        }
+                        Some(binding) => Ok((binding, FromPrelude(true))),
                         None => Err(Determinacy::Determined),
                     }
                 }
@@ -648,7 +643,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     // FIXME: Only built-in attributes are not considered as candidates for
                     // non-attributes to fight off regressions on stable channel (#53205).
                     // We need to come up with some more principled approach instead.
-                    if is_attr && is_builtin_attr_name(ident.name) {
+                    if kind == Some(MacroKind::Attr) && is_builtin_attr_name(ident.name) {
                         let binding = (Def::NonMacroAttr(NonMacroAttrKind::Builtin),
                                        ty::Visibility::Public, ident.span, Mark::root())
                                        .to_name_binding(self.arenas);
@@ -748,6 +743,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
             match result {
                 Ok(result) => {
+                    if macro_kind_mismatch(ident.name, kind, result.0.macro_kind()) {
+                        continue_search!();
+                    }
+
                     if !record_used {
                         return Ok(result);
                     }
@@ -784,9 +783,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         }
 
         let determinacy = Determinacy::determined(force);
-        if determinacy == Determinacy::Determined && is_attr {
+        if determinacy == Determinacy::Determined && kind == Some(MacroKind::Attr) {
             // For single-segment attributes interpret determinate "no resolution" as a custom
-            // attribute. (Lexical resolution implies the first segment and is_attr should imply
+            // attribute. (Lexical resolution implies the first segment and attr kind should imply
             // the last segment, so we are certainly working with a single-segment attribute here.)
             assert!(ns == MacroNS);
             let binding = (Def::NonMacroAttr(NonMacroAttrKind::Custom),
@@ -800,15 +799,12 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
     fn resolve_legacy_scope(&mut self,
                             ident: Ident,
+                            kind: Option<MacroKind>,
                             parent_expansion: Mark,
                             parent_legacy_scope: LegacyScope<'a>,
-                            record_used: bool,
-                            is_attr: bool)
+                            record_used: bool)
                             -> Option<&'a NameBinding<'a>> {
-        if is_attr && (ident.name == "test" || ident.name == "bench") {
-            // FIXME: Keep some built-in macros working even if they are
-            // shadowed by user-defined `macro_rules`.
-            // We need to come up with some more principled approach instead.
+        if macro_kind_mismatch(ident.name, kind, Some(MacroKind::Bang)) {
             return None;
         }
 
@@ -897,10 +893,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 in module.legacy_macro_resolutions.borrow().iter() {
             let span = ident.span;
             let legacy_resolution = self.resolve_legacy_scope(
-                ident, parent_expansion, parent_legacy_scope, true, kind == MacroKind::Attr
+                ident, Some(kind), parent_expansion, parent_legacy_scope, true
             );
             let resolution = self.resolve_lexical_macro_path_segment(
-                ident, MacroNS, parent_expansion, true, true, kind == MacroKind::Attr, span
+                ident, MacroNS, Some(kind), parent_expansion, true, true, span
             );
 
             let check_consistency = |this: &Self, new_def: Def| {
@@ -960,10 +956,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         for &(ident, parent_expansion, parent_legacy_scope)
                 in module.builtin_attrs.borrow().iter() {
             let resolve_legacy = |this: &mut Self| this.resolve_legacy_scope(
-                ident, parent_expansion, parent_legacy_scope, true, true
+                ident, Some(MacroKind::Attr), parent_expansion, parent_legacy_scope, true
             );
             let resolve_modern = |this: &mut Self| this.resolve_lexical_macro_path_segment(
-                ident, MacroNS, parent_expansion, true, true, true, ident.span
+                ident, MacroNS, Some(MacroKind::Attr), parent_expansion, true, true, ident.span
             ).map(|(binding, _)| binding).ok();
 
             if let Some(binding) = resolve_legacy(self).or_else(|| resolve_modern(self)) {
