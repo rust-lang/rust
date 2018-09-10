@@ -27,6 +27,9 @@ pub enum InstanceDef<'tcx> {
     Item(DefId),
     Intrinsic(DefId),
 
+    /// `<T as Trait>::method` where `method` receives unsizeable `self: Self`.
+    VtableShim(DefId),
+
     /// \<fn() as FnTrait>::call_*
     /// def-id is FnTrait::call_*
     FnPtrShim(DefId, Ty<'tcx>),
@@ -63,6 +66,7 @@ impl<'tcx> InstanceDef<'tcx> {
     pub fn def_id(&self) -> DefId {
         match *self {
             InstanceDef::Item(def_id) |
+            InstanceDef::VtableShim(def_id) |
             InstanceDef::FnPtrShim(def_id, _) |
             InstanceDef::Virtual(def_id, _) |
             InstanceDef::Intrinsic(def_id, ) |
@@ -120,6 +124,9 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
         ppaux::parameterized(f, self.substs, self.def_id(), &[])?;
         match self.def {
             InstanceDef::Item(_) => Ok(()),
+            InstanceDef::VtableShim(_) => {
+                write!(f, " - shim(vtable)")
+            }
             InstanceDef::Intrinsic(_) => {
                 write!(f, " - intrinsic")
             }

@@ -2759,6 +2759,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::InstanceDef::Item(did) => {
                 self.optimized_mir(did)
             }
+            ty::InstanceDef::VtableShim(..) |
             ty::InstanceDef::Intrinsic(..) |
             ty::InstanceDef::FnPtrShim(..) |
             ty::InstanceDef::Virtual(..) |
