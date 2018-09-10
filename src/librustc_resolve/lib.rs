@@ -1278,6 +1278,13 @@ impl<'a> NameBinding<'a> {
         }
     }
 
+    fn macro_kind(&self) -> Option<MacroKind> {
+        match self.def_ignoring_ambiguity() {
+            Def::Macro(_, kind) => Some(kind),
+            _ => None,
+        }
+    }
+
     fn descr(&self) -> &'static str {
         if self.is_extern_crate() { "extern crate" } else { self.def().kind_name() }
     }
@@ -1440,8 +1447,8 @@ pub struct Resolver<'a, 'b: 'a> {
 
     crate_loader: &'a mut CrateLoader<'b>,
     macro_names: FxHashSet<Ident>,
-    macro_prelude: FxHashMap<Name, &'a NameBinding<'a>>,
-    unshadowable_attrs: FxHashMap<Name, &'a NameBinding<'a>>,
+    builtin_macros: FxHashMap<Name, &'a NameBinding<'a>>,
+    macro_use_prelude: FxHashMap<Name, &'a NameBinding<'a>>,
     pub all_macros: FxHashMap<Name, Def>,
     macro_map: FxHashMap<DefId, Lrc<SyntaxExtension>>,
     macro_defs: FxHashMap<Mark, DefId>,
@@ -1757,8 +1764,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
             crate_loader,
             macro_names: FxHashSet(),
-            macro_prelude: FxHashMap(),
-            unshadowable_attrs: FxHashMap(),
+            builtin_macros: FxHashMap(),
+            macro_use_prelude: FxHashMap(),
             all_macros: FxHashMap(),
             macro_map: FxHashMap(),
             invocations,
@@ -3340,10 +3347,12 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 };
             }
         }
-        let is_global = self.macro_prelude.get(&path[0].name).cloned()
-            .map(|binding| binding.get_macro(self).kind() == MacroKind::Bang).unwrap_or(false);
-        if primary_ns != MacroNS && (is_global ||
-                                     self.macro_names.contains(&path[0].modern())) {
+        if primary_ns != MacroNS &&
+           (self.macro_names.contains(&path[0].modern()) ||
+            self.builtin_macros.get(&path[0].name).cloned()
+                               .and_then(NameBinding::macro_kind) == Some(MacroKind::Bang) ||
+            self.macro_use_prelude.get(&path[0].name).cloned()
+                                  .and_then(NameBinding::macro_kind) == Some(MacroKind::Bang)) {
             // Return some dummy definition, it's enough for error reporting.
             return Some(
                 PathResolution::new(Def::Macro(DefId::local(CRATE_DEF_INDEX), MacroKind::Bang))

@@ -214,24 +214,10 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
             vis: ty::Visibility::Invisible,
             expansion: Mark::root(),
         });
-        self.macro_prelude.insert(ident.name, binding);
-    }
-
-    fn add_unshadowable_attr(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>) {
-        let def_id = DefId {
-            krate: BUILTIN_MACROS_CRATE,
-            index: DefIndex::from_array_index(self.macro_map.len(),
-                                              DefIndexAddressSpace::Low),
-        };
-        let kind = ext.kind();
-        self.macro_map.insert(def_id, ext);
-        let binding = self.arenas.alloc_name_binding(NameBinding {
-            kind: NameBindingKind::Def(Def::Macro(def_id, kind), false),
-            span: DUMMY_SP,
-            vis: ty::Visibility::Invisible,
-            expansion: Mark::root(),
-        });
-        self.unshadowable_attrs.insert(ident.name, binding);
+        if self.builtin_macros.insert(ident.name, binding).is_some() {
+            self.session.span_err(ident.span,
+                                  &format!("built-in macro `{}` was already defined", ident));
+        }
     }
 
     fn resolve_imports(&mut self) {
@@ -249,7 +235,7 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
                 attr::mark_known(&attrs[i]);
             }
 
-            match self.macro_prelude.get(&name).cloned() {
+            match self.builtin_macros.get(&name).cloned() {
                 Some(binding) => match *binding.get_macro(self) {
                     MultiModifier(..) | MultiDecorator(..) | SyntaxExtension::AttrProcMacro(..) => {
                         return Some(attrs.remove(i))
@@ -285,7 +271,7 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
                     }
                     let trait_name = traits[j].segments[0].ident.name;
                     let legacy_name = Symbol::intern(&format!("derive_{}", trait_name));
-                    if !self.macro_prelude.contains_key(&legacy_name) {
+                    if !self.builtin_macros.contains_key(&legacy_name) {
                         continue
                     }
                     let span = traits.remove(j).span;
@@ -490,14 +476,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             return def;
         }
 
-        if kind == MacroKind::Attr {
-            if let Some(ext) = self.unshadowable_attrs.get(&path[0].name) {
-                return Ok(ext.def());
-            }
-        }
-
         let legacy_resolution = self.resolve_legacy_scope(
-            path[0], invoc_id, invocation.parent_legacy_scope.get(), false
+            path[0], invoc_id, invocation.parent_legacy_scope.get(), false, kind == MacroKind::Attr
         );
         let result = if let Some(legacy_binding) = legacy_resolution {
             Ok(legacy_binding.def())
@@ -585,14 +565,12 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         // (Macro NS)
         // 1. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
         //    (open, not controlled).
-        // 2. Macro prelude (language, standard library, user-defined legacy plugins lumped into
-        //    one set) (open, the open part is from macro expansions, not controlled).
+        // 2. `macro_use` prelude (open, the open part is from macro expansions, not controlled).
         // 2a. User-defined prelude from macro-use
         //    (open, the open part is from macro expansions, not controlled).
-        // 2b. Standard library prelude, currently just a macro-use (closed, controlled)
-        // 2c. Language prelude, perhaps including builtin attributes
-        //    (closed, controlled, except for legacy plugins).
-        // 3. Builtin attributes (closed, controlled).
+        // 2b. Standard library prelude is currently implemented as `macro-use` (closed, controlled)
+        // 3. Language prelude: builtin macros (closed, controlled, except for legacy plugins).
+        // 4. Language prelude: builtin attributes (closed, controlled).
 
         assert!(ns == TypeNS  || ns == MacroNS);
         assert!(force || !record_used); // `record_used` implies `force`
@@ -613,12 +591,13 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
         enum WhereToResolve<'a> {
             Module(Module<'a>),
-            MacroPrelude,
+            MacroUsePrelude,
+            BuiltinMacros,
             BuiltinAttrs,
             ExternPrelude,
             ToolPrelude,
             StdLibPrelude,
-            PrimitiveTypes,
+            BuiltinTypes,
         }
 
         // Go through all the scopes and try to resolve the name.
@@ -639,8 +618,26 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     self.current_module = orig_current_module;
                     binding.map(|binding| (binding, FromPrelude(false)))
                 }
-                WhereToResolve::MacroPrelude => {
-                    match self.macro_prelude.get(&ident.name).cloned() {
+                WhereToResolve::MacroUsePrelude => {
+                    match self.macro_use_prelude.get(&ident.name).cloned() {
+                        Some(binding) => {
+                            let mut result = Ok((binding, FromPrelude(true)));
+                            // FIXME: Keep some built-in macros working even if they are
+                            // shadowed by non-attribute macros imported with `macro_use`.
+                            // We need to come up with some more principled approach instead.
+                            if is_attr && (ident.name == "test" || ident.name == "bench") {
+                                if let Def::Macro(_, MacroKind::Bang) =
+                                        binding.def_ignoring_ambiguity() {
+                                    result = Err(Determinacy::Determined);
+                                }
+                            }
+                            result
+                        }
+                        None => Err(Determinacy::Determined),
+                    }
+                }
+                WhereToResolve::BuiltinMacros => {
+                    match self.builtin_macros.get(&ident.name).cloned() {
                         Some(binding) => Ok((binding, FromPrelude(true))),
                         None => Err(Determinacy::Determined),
                     }
@@ -708,7 +705,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     }
                     result
                 }
-                WhereToResolve::PrimitiveTypes => {
+                WhereToResolve::BuiltinTypes => {
                     if let Some(prim_ty) =
                             self.primitive_type_table.primitive_types.get(&ident.name).cloned() {
                         let binding = (Def::PrimTy(prim_ty), ty::Visibility::Public,
@@ -728,19 +725,20 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                             None => {
                                 use_prelude = !module.no_implicit_prelude;
                                 if ns == MacroNS {
-                                    WhereToResolve::MacroPrelude
+                                    WhereToResolve::MacroUsePrelude
                                 } else {
                                     WhereToResolve::ExternPrelude
                                 }
                             }
                         }
                     }
-                    WhereToResolve::MacroPrelude => WhereToResolve::BuiltinAttrs,
+                    WhereToResolve::MacroUsePrelude => WhereToResolve::BuiltinMacros,
+                    WhereToResolve::BuiltinMacros => WhereToResolve::BuiltinAttrs,
                     WhereToResolve::BuiltinAttrs => break, // nowhere else to search
                     WhereToResolve::ExternPrelude => WhereToResolve::ToolPrelude,
                     WhereToResolve::ToolPrelude => WhereToResolve::StdLibPrelude,
-                    WhereToResolve::StdLibPrelude => WhereToResolve::PrimitiveTypes,
-                    WhereToResolve::PrimitiveTypes => break, // nowhere else to search
+                    WhereToResolve::StdLibPrelude => WhereToResolve::BuiltinTypes,
+                    WhereToResolve::BuiltinTypes => break, // nowhere else to search
                 };
 
                 continue;
@@ -802,8 +800,16 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                             ident: Ident,
                             invoc_id: Mark,
                             invoc_parent_legacy_scope: LegacyScope<'a>,
-                            record_used: bool)
+                            record_used: bool,
+                            is_attr: bool)
                             -> Option<&'a NameBinding<'a>> {
+        if is_attr && (ident.name == "test" || ident.name == "bench") {
+            // FIXME: Keep some built-in macros working even if they are
+            // shadowed by user-defined `macro_rules`.
+            // We need to come up with some more principled approach instead.
+            return None;
+        }
+
         let ident = ident.modern();
 
         // This is *the* result, resolution from the scope closest to the resolved identifier.
@@ -889,7 +895,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             let span = ident.span;
             let invocation = self.invocations[&invoc_id];
             let legacy_resolution = self.resolve_legacy_scope(
-                ident, invoc_id, invocation.parent_legacy_scope.get(), true
+                ident, invoc_id, invocation.parent_legacy_scope.get(), true, kind == MacroKind::Attr
             );
             let resolution = self.resolve_lexical_macro_path_segment(
                 ident, MacroNS, invoc_id, true, true, kind == MacroKind::Attr, span
@@ -958,14 +964,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             None
         // Then check global macros.
         }.or_else(|| {
-            // FIXME: get_macro needs an &mut Resolver, can we do it without cloning?
-            let macro_prelude = self.macro_prelude.clone();
-            let names = macro_prelude.iter().filter_map(|(name, binding)| {
-                if binding.get_macro(self).kind() == kind {
-                    Some(name)
-                } else {
-                    None
-                }
+            let names = self.builtin_macros.iter().chain(self.macro_use_prelude.iter())
+                                                  .filter_map(|(name, binding)| {
+                if binding.macro_kind() == Some(kind) { Some(name) } else { None }
             });
             find_best_match_for_name(names, name, None)
         // Then check modules.

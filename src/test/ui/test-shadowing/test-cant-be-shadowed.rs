@@ -16,3 +16,8 @@
 
 #[test]
 fn foo(){}
+
+macro_rules! test { () => () }
+
+#[test]
+fn bar() {}
