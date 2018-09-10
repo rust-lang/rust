@@ -97,7 +97,7 @@ macro_rules! newtype_index {
      @vis          [$v:vis]
      @debug_format [$debug_format:tt]) => (
         #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, $($derives),*)]
-        #[rustc_layout_scalar_range_end($max)]
+        #[rustc_layout_scalar_valid_range_end($max)]
         $v struct $type {
             private: u32
         }
