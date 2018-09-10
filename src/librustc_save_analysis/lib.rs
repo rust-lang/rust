@@ -60,9 +60,7 @@ use std::path::{Path, PathBuf};
 use syntax::ast::{self, Attribute, NodeId, PatKind};
 use syntax::source_map::Spanned;
 use syntax::parse::lexer::comments::strip_doc_comment_decoration;
-use syntax::parse::token;
 use syntax::print::pprust;
-use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{arg_to_string, ty_to_string};
 use syntax::source_map::MacroAttribute;
@@ -162,14 +160,12 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let qualname = format!("::{}", self.tcx.node_path_str(item.id));
         match item.node {
             ast::ForeignItemKind::Fn(ref decl, ref generics) => {
-                let sub_span = self.span_utils
-                    .sub_span_after_keyword(item.span, keywords::Fn);
-                filter!(self.span_utils, sub_span, item.span, None);
+                filter!(self.span_utils, item.ident.span);
 
                 Some(Data::DefData(Def {
                     kind: DefKind::ForeignFunction,
                     id: id_from_node_id(item.id, self),
-                    span: self.span_from_span(sub_span.unwrap()),
+                    span: self.span_from_span(item.ident.span),
                     name: item.ident.to_string(),
                     qualname,
                     value: make_signature(decl, generics),
@@ -181,13 +177,11 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
-            ast::ForeignItemKind::Static(ref ty, m) => {
-                let keyword = if m { keywords::Mut } else { keywords::Static };
-                let sub_span = self.span_utils.sub_span_after_keyword(item.span, keyword);
-                filter!(self.span_utils, sub_span, item.span, None);
+            ast::ForeignItemKind::Static(ref ty, _) => {
+                filter!(self.span_utils, item.ident.span);
 
                 let id = ::id_from_node_id(item.id, self);
-                let span = self.span_from_span(sub_span.unwrap());
+                let span = self.span_from_span(item.ident.span);
 
                 Some(Data::DefData(Def {
                     kind: DefKind::ForeignStatic,
@@ -214,13 +208,11 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         match item.node {
             ast::ItemKind::Fn(ref decl, .., ref generics, _) => {
                 let qualname = format!("::{}", self.tcx.node_path_str(item.id));
-                let sub_span = self.span_utils
-                    .sub_span_after_keyword(item.span, keywords::Fn);
-                filter!(self.span_utils, sub_span, item.span, None);
+                filter!(self.span_utils, item.ident.span);
                 Some(Data::DefData(Def {
                     kind: DefKind::Function,
                     id: id_from_node_id(item.id, self),
-                    span: self.span_from_span(sub_span.unwrap()),
+                    span: self.span_from_span(item.ident.span),
                     name: item.ident.to_string(),
                     qualname,
                     value: make_signature(decl, generics),
@@ -232,19 +224,13 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
-            ast::ItemKind::Static(ref typ, mt, _) => {
+            ast::ItemKind::Static(ref typ, ..) => {
                 let qualname = format!("::{}", self.tcx.node_path_str(item.id));
 
-                let keyword = match mt {
-                    ast::Mutability::Mutable => keywords::Mut,
-                    ast::Mutability::Immutable => keywords::Static,
-                };
-
-                let sub_span = self.span_utils.sub_span_after_keyword(item.span, keyword);
-                filter!(self.span_utils, sub_span, item.span, None);
+                filter!(self.span_utils, item.ident.span);
 
                 let id = id_from_node_id(item.id, self);
-                let span = self.span_from_span(sub_span.unwrap());
+                let span = self.span_from_span(item.ident.span);
 
                 Some(Data::DefData(Def {
                     kind: DefKind::Static,
@@ -263,12 +249,10 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }
             ast::ItemKind::Const(ref typ, _) => {
                 let qualname = format!("::{}", self.tcx.node_path_str(item.id));
-                let sub_span = self.span_utils
-                    .sub_span_after_keyword(item.span, keywords::Const);
-                filter!(self.span_utils, sub_span, item.span, None);
+                filter!(self.span_utils, item.ident.span);
 
                 let id = id_from_node_id(item.id, self);
-                let span = self.span_from_span(sub_span.unwrap());
+                let span = self.span_from_span(item.ident.span);
 
                 Some(Data::DefData(Def {
                     kind: DefKind::Const,
@@ -291,16 +275,14 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 let cm = self.tcx.sess.source_map();
                 let filename = cm.span_to_filename(m.inner);
 
-                let sub_span = self.span_utils
-                    .sub_span_after_keyword(item.span, keywords::Mod);
-                filter!(self.span_utils, sub_span, item.span, None);
+                filter!(self.span_utils, item.ident.span);
 
                 Some(Data::DefData(Def {
                     kind: DefKind::Mod,
                     id: id_from_node_id(item.id, self),
                     name: item.ident.to_string(),
                     qualname,
-                    span: self.span_from_span(sub_span.unwrap()),
+                    span: self.span_from_span(item.ident.span),
                     value: filename.to_string(),
                     parent: None,
                     children: m.items
@@ -316,9 +298,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             ast::ItemKind::Enum(ref def, _) => {
                 let name = item.ident.to_string();
                 let qualname = format!("::{}", self.tcx.node_path_str(item.id));
-                let sub_span = self.span_utils
-                    .sub_span_after_keyword(item.span, keywords::Enum);
-                filter!(self.span_utils, sub_span, item.span, None);
+                filter!(self.span_utils, item.ident.span);
                 let variants_str = def.variants
                     .iter()
                     .map(|v| v.node.ident.to_string())
@@ -328,7 +308,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 Some(Data::DefData(Def {
                     kind: DefKind::Enum,
                     id: id_from_node_id(item.id, self),
-                    span: self.span_from_span(sub_span.unwrap()),
+                    span: self.span_from_span(item.ident.span),
                     name,
                     qualname,
                     value,
@@ -349,11 +329,11 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     if generated_code(path.span) {
                         return None;
                     }
-                    let sub_span = self.span_utils.sub_span_for_type_name(path.span);
-                    filter!(self.span_utils, sub_span, typ.span, None);
+                    let sub_span = path.segments.last().unwrap().ident.span;
+                    filter!(self.span_utils, sub_span);
 
                     let impl_id = self.next_impl_id();
-                    let span = self.span_from_span(sub_span.unwrap());
+                    let span = self.span_from_span(sub_span);
 
                     let type_data = self.lookup_ref_id(typ.id);
                     type_data.map(|type_data| {
@@ -402,15 +382,13 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         if let Some(ident) = field.ident {
             let name = ident.to_string();
             let qualname = format!("::{}::{}", self.tcx.node_path_str(scope), ident);
-            let sub_span = self.span_utils
-                .sub_span_before_token(field.span, token::Colon);
-            filter!(self.span_utils, sub_span, field.span, None);
+            filter!(self.span_utils, ident.span);
             let def_id = self.tcx.hir.local_def_id(field.id);
             let typ = self.tcx.type_of(def_id).to_string();
 
 
             let id = id_from_node_id(field.id, self);
-            let span = self.span_from_span(sub_span.unwrap());
+            let span = self.span_from_span(ident.span);
 
             Some(Def {
                 kind: DefKind::Field,
@@ -433,7 +411,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     // FIXME would be nice to take a MethodItem here, but the ast provides both
     // trait and impl flavours, so the caller must do the disassembly.
-    pub fn get_method_data(&self, id: ast::NodeId, name: ast::Name, span: Span) -> Option<Def> {
+    pub fn get_method_data(&self, id: ast::NodeId, ident: ast::Ident, span: Span) -> Option<Def> {
         // The qualname for a method is the trait name or name of the struct in an impl in
         // which the method is declared in, followed by the method's name.
         let (qualname, parent_scope, decl_id, docs, attributes) =
@@ -459,7 +437,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                 qualname.push_str(&self.tcx.item_path_str(def_id));
                                 self.tcx
                                     .associated_items(def_id)
-                                    .find(|item| item.ident.name == name)
+                                    .find(|item| item.ident.name == ident.name)
                                     .map(|item| decl_id = Some(item.def_id));
                             }
                             qualname.push_str(">");
@@ -512,16 +490,15 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 },
             };
 
-        let qualname = format!("{}::{}", qualname, name);
+        let qualname = format!("{}::{}", qualname, ident.name);
 
-        let sub_span = self.span_utils.sub_span_after_keyword(span, keywords::Fn);
-        filter!(self.span_utils, sub_span, span, None);
+        filter!(self.span_utils, ident.span);
 
         Some(Def {
             kind: DefKind::Method,
             id: id_from_node_id(id, self),
-            span: self.span_from_span(sub_span.unwrap()),
-            name: name.to_string(),
+            span: self.span_from_span(ident.span),
+            name: ident.name.to_string(),
             qualname,
             // FIXME you get better data here by using the visitor.
             value: String::new(),
@@ -540,9 +517,9 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             if generated_code(span) {
                 return None;
             }
-            let sub_span = self.span_utils.sub_span_for_type_name(span).or(Some(span));
-            filter!(self.span_utils, sub_span, span, None);
-            let span = self.span_from_span(sub_span.unwrap());
+            let sub_span = trait_ref.path.segments.last().unwrap().ident.span;
+            filter!(self.span_utils, sub_span);
+            let span = self.span_from_span(sub_span);
             Some(Ref {
                 kind: RefKind::Type,
                 span,
@@ -574,9 +551,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     ty::Adt(def, _) if !def.is_enum() => {
                         let variant = &def.non_enum_variant();
                         let index = self.tcx.find_field_index(ident, variant).unwrap();
-                        let sub_span = self.span_utils.span_for_last_ident(expr.span);
-                        filter!(self.span_utils, sub_span, expr.span, None);
-                        let span = self.span_from_span(sub_span.unwrap());
+                        filter!(self.span_utils, ident.span);
+                        let span = self.span_from_span(ident.span);
                         return Some(Data::RefData(Ref {
                             kind: RefKind::Variable,
                             span,
@@ -593,9 +569,9 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             ast::ExprKind::Struct(ref path, ..) => {
                 match self.tables.expr_ty_adjusted(&hir_node).sty {
                     ty::Adt(def, _) if !def.is_enum() => {
-                        let sub_span = self.span_utils.span_for_last_ident(path.span);
-                        filter!(self.span_utils, sub_span, path.span, None);
-                        let span = self.span_from_span(sub_span.unwrap());
+                        let sub_span = path.segments.last().unwrap().ident.span;
+                        filter!(self.span_utils, sub_span);
+                        let span = self.span_from_span(sub_span);
                         Some(Data::RefData(Ref {
                             kind: RefKind::Type,
                             span,
@@ -624,7 +600,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     ty::TraitContainer(_) => (None, Some(method_id)),
                 };
                 let sub_span = seg.ident.span;
-                filter!(self.span_utils, Some(sub_span), expr.span, None);
+                filter!(self.span_utils, sub_span);
                 let span = self.span_from_span(sub_span);
                 Some(Data::RefData(Ref {
                     kind: RefKind::Function,
@@ -729,7 +705,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let def = self.get_path_def(id);
         let last_seg = &path.segments[path.segments.len() - 1];
         let sub_span = last_seg.ident.span;
-        filter!(self.span_utils, Some(sub_span), path.span, None);
+        filter!(self.span_utils, sub_span);
         match def {
             HirDef::Upvar(id, ..) | HirDef::Local(id) => {
                 let span = self.span_from_span(sub_span);
@@ -753,13 +729,11 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             HirDef::Trait(def_id) if fn_type(path) => {
                 // Function type bounds are desugared in the parser, so we have to
                 // special case them here.
-                let fn_span = self.span_utils.span_for_first_ident(path.span);
-                fn_span.map(|span| {
-                    Ref {
-                        kind: RefKind::Type,
-                        span: self.span_from_span(span),
-                        ref_id: id_from_def_id(def_id),
-                    }
+                let fn_span = path.segments.first().unwrap().ident.span;
+                Some(Ref {
+                    kind: RefKind::Type,
+                    span: self.span_from_span(fn_span),
+                    ref_id: id_from_def_id(def_id),
                 })
             }
             HirDef::Struct(def_id) |
@@ -844,10 +818,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         variant: &ty::VariantDef,
     ) -> Option<Ref> {
         let index = self.tcx.find_field_index(field_ref.ident, variant).unwrap();
-        // We don't really need a sub-span here, but no harm done
-        let sub_span = self.span_utils.span_for_last_ident(field_ref.ident.span);
-        filter!(self.span_utils, sub_span, field_ref.ident.span, None);
-        let span = self.span_from_span(sub_span.unwrap());
+        filter!(self.span_utils, field_ref.ident.span);
+        let span = self.span_from_span(field_ref.ident.span);
         Some(Ref {
             kind: RefKind::Variable,
             span,
