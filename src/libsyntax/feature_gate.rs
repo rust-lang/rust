@@ -518,6 +518,9 @@ declare_features! (
     // #![test_runner]
     // #[test_case]
     (active, custom_test_frameworks, "1.30.0", Some(50297), None),
+
+    // Non-builtin attributes in inner attribute position
+    (active, custom_inner_attributes, "1.30.0", Some(38356), None),
 );
 
 declare_features! (
