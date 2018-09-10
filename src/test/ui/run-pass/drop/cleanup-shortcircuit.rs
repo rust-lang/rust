@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test that cleanups for the RHS of shortcircuiting operators work.
 
 // pretty-expanded FIXME #23616

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 #![feature(const_int_conversion, const_int_ops, reverse_bits, int_to_from_bytes)]
 
 const REVERSE: u32 = 0x12345678_u32.reverse_bits();

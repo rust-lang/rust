@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 fn iter_vec<T, F>(v: Vec<T> , mut f: F) where F: FnMut(&T) { for x in &v { f(x); } }
 
 pub fn main() {

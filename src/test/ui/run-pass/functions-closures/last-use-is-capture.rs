@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Make sure #1399 stays fixed
 
 #![feature(box_syntax)]

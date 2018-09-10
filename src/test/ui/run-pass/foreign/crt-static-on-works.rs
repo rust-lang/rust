@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // compile-flags:-C target-feature=+crt-static -Z unstable-options
 
 #![feature(cfg_target_feature)]

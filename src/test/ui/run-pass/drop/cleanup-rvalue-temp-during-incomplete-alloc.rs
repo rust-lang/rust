@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test cleanup of rvalue temporary that occurs while `box` construction
 // is in progress. This scenario revealed a rather terrible bug.  The
 // ingredients are:

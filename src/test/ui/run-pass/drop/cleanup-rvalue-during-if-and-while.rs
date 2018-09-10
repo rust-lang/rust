@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // This test verifies that temporaries created for `while`'s and `if`
 // conditions are dropped after the condition is evaluated.
 

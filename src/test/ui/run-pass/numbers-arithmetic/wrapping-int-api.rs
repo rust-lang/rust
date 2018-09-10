@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test inherent wrapping_* methods for {i,u}{size,8,16,32,64}.
 
 use std::{i8, i16, i32, i64, isize};

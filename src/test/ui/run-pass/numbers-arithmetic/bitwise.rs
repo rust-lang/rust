@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 #[cfg(any(target_pointer_width = "32"))]
 fn target() {
     assert_eq!(-1000isize as usize >> 3_usize, 536870787_usize);

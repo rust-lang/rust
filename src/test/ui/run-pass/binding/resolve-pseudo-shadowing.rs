@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // check that type parameters can't "shadow" qualified paths.
 
 fn check<Clone>(_c: Clone) {

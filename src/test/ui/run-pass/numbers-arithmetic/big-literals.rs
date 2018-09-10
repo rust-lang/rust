@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Catch mistakes in the overflowing literals lint.
 #![deny(overflowing_literals)]
 

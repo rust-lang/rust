@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 
 static FOO: [isize; 4] = [32; 4];
 static BAR: [isize; 4] = [32, 32, 32, 32];

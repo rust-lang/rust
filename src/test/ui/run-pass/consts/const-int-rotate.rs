@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 #![feature(const_int_rotate)]
 
 const LEFT: u32 = 0x10000b3u32.rotate_left(8);

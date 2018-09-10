@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // aux-build:weak-lang-items.rs
 
 // ignore-emscripten no threads support

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 
 fn force<F>(f: F) -> isize where F: FnOnce() -> isize { return f(); }
 

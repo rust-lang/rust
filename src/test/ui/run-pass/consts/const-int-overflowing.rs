@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 #![feature(const_int_overflowing)]
 
 const ADD_A: (u32, bool) = 5u32.overflowing_add(2);

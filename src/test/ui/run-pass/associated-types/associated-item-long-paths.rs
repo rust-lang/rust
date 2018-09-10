@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 use std::mem::size_of;
 
 // The main point of this test is to ensure that we can parse and resolve

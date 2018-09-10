@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test that cleanup scope for temporaries created in a match
 // arm is confined to the match arm itself.
 

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Checks if the "sysv64" calling convention behaves the same as the
 // "C" calling convention on platforms where both should be the same
 

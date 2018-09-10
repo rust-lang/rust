@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // alloc::heap::reallocate test.
 //
 // Ideally this would be revised to use no_std, but for now it serves
