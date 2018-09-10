@@ -75,7 +75,7 @@ macro_rules! encoder_methods {
 impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
     type Error = <opaque::Encoder as Encoder>::Error;
 
-    fn emit_nil(&mut self) -> Result<(), Self::Error> {
+    fn emit_unit(&mut self) -> Result<(), Self::Error> {
         Ok(())
     }
 

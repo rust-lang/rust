@@ -490,7 +490,7 @@ macro_rules! emit_enquoted_if_mapkey {
 impl<'a> ::Encoder for Encoder<'a> {
     type Error = EncoderError;
 
-    fn emit_nil(&mut self) -> EncodeResult {
+    fn emit_unit(&mut self) -> EncodeResult {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         write!(self.writer, "null")?;
         Ok(())
@@ -648,7 +648,7 @@ impl<'a> ::Encoder for Encoder<'a> {
     }
     fn emit_option_none(&mut self) -> EncodeResult {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
-        self.emit_nil()
+        self.emit_unit()
     }
     fn emit_option_some<F>(&mut self, f: F) -> EncodeResult where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
@@ -740,7 +740,7 @@ impl<'a> PrettyEncoder<'a> {
 impl<'a> ::Encoder for PrettyEncoder<'a> {
     type Error = EncoderError;
 
-    fn emit_nil(&mut self) -> EncodeResult {
+    fn emit_unit(&mut self) -> EncodeResult {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         write!(self.writer, "null")?;
         Ok(())
@@ -923,7 +923,7 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
     }
     fn emit_option_none(&mut self) -> EncodeResult {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
-        self.emit_nil()
+        self.emit_unit()
     }
     fn emit_option_some<F>(&mut self, f: F) -> EncodeResult where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
@@ -1016,7 +1016,7 @@ impl Encodable for Json {
             Json::Boolean(v) => v.encode(e),
             Json::Array(ref v) => v.encode(e),
             Json::Object(ref v) => v.encode(e),
-            Json::Null => e.emit_nil(),
+            Json::Null => e.emit_unit(),
         }
     }
 }
