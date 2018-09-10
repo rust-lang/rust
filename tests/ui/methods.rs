@@ -1,5 +1,5 @@
 #![feature(tool_lints)]
-#![feature(const_fn)]
+
 
 #![warn(clippy::all, clippy::pedantic, clippy::option_unwrap_used)]
 #![allow(clippy::blacklisted_name, unused, clippy::print_stdout, clippy::non_ascii_literal, clippy::new_without_default,
@@ -294,15 +294,15 @@ fn or_fun_call() {
         A(i32),
     }
 
-    const fn make_const(i: i32) -> i32 { i }
+
 
     fn make<T>() -> T { unimplemented!(); }
 
     let with_enum = Some(Enum::A(1));
     with_enum.unwrap_or(Enum::A(5));
 
-    let with_const_fn = Some(1);
-    with_const_fn.unwrap_or(make_const(5));
+    let with_const_fn = Some(::std::time::Duration::from_secs(1));
+    with_const_fn.unwrap_or(::std::time::Duration::from_secs(5));
 
     let with_constructor = Some(vec![1]);
     with_constructor.unwrap_or(make());
