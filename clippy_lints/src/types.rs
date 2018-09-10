@@ -1810,9 +1810,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
 
                     let generics_suggestion_span = generics.span.substitute_dummy({
                         let pos = snippet_opt(cx, item.span.until(target.span()))
-                            .and_then(|snip| Some(item.span.lo() + BytePos(snip.find("impl")? as u32 + 4)))
-                            .expect("failed to create span for type arguments");
-                        Span::new(pos, pos, item.span.data().ctxt)
+                            .and_then(|snip| Some(item.span.lo() + BytePos(snip.find("impl")? as u32 + 4)));
+                        if let Some(pos) = pos {
+                            Span::new(pos, pos, item.span.data().ctxt)
+                        } else {
+                            return;
+                        }
                     });
 
                     let mut ctr_vis = ImplicitHasherConstructorVisitor::new(cx, target);
