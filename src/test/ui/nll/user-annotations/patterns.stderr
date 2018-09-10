@@ -1,5 +1,26 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/patterns.rs:15:27
+   |
+LL |     let y: &'static u32 = &x; //~ ERROR
+   |                           ^^ borrowed value does not live long enough
+LL | }
+   | - `x` dropped here while still borrowed
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/patterns.rs:20:27
+   |
+LL |     let _: &'static u32 = &x; //~ ERROR
+   |                           ^^ borrowed value does not live long enough
+...
+LL | }
+   | - `x` dropped here while still borrowed
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/patterns.rs:6:41
+  --> $DIR/patterns.rs:22:41
    |
 LL |     let _: Vec<&'static String> = vec![&String::new()];
    |                                         ^^^^^^^^^^^^^ - temporary value only lives until here
@@ -9,7 +30,7 @@ LL |     let _: Vec<&'static String> = vec![&String::new()];
    = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/patterns.rs:9:52
+  --> $DIR/patterns.rs:25:52
    |
 LL |     let (_, a): (Vec<&'static String>, _) = (vec![&String::new()], 44);
    |                                                    ^^^^^^^^^^^^^      - temporary value only lives until here
@@ -19,7 +40,7 @@ LL |     let (_, a): (Vec<&'static String>, _) = (vec![&String::new()], 44);
    = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/patterns.rs:12:53
+  --> $DIR/patterns.rs:28:53
    |
 LL |     let (_a, b): (Vec<&'static String>, _) = (vec![&String::new()], 44);
    |                                                     ^^^^^^^^^^^^^      - temporary value only lives until here
@@ -28,6 +49,74 @@ LL |     let (_a, b): (Vec<&'static String>, _) = (vec![&String::new()], 44);
    |
    = note: borrowed value must be valid for the static lifetime...
 
-error: aborting due to 3 previous errors
+error[E0597]: `x` does not live long enough
+  --> $DIR/patterns.rs:34:40
+   |
+LL |     let (_, _): (&'static u32, u32) = (&x, 44); //~ ERROR
+   |                                        ^^ borrowed value does not live long enough
+LL | }
+   | - `x` dropped here while still borrowed
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/patterns.rs:39:40
+   |
+LL |     let (y, _): (&'static u32, u32) = (&x, 44); //~ ERROR
+   |                                        ^^ borrowed value does not live long enough
+LL | }
+   | - `x` dropped here while still borrowed
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/patterns.rs:46:69
+   |
+LL |     let Single { value: y }: Single<&'static u32> = Single { value: &x }; //~ ERROR
+   |                                                                     ^^ borrowed value does not live long enough
+LL | }
+   | - `x` dropped here while still borrowed
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/patterns.rs:51:69
+   |
+LL |     let Single { value: _ }: Single<&'static u32> = Single { value: &x }; //~ ERROR
+   |                                                                     ^^ borrowed value does not live long enough
+LL | }
+   | - `x` dropped here while still borrowed
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/patterns.rs:59:17
+   |
+LL |         value1: &x, //~ ERROR
+   |                 ^^ borrowed value does not live long enough
+...
+LL | }
+   | - `x` dropped here while still borrowed
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: unsatisfied lifetime constraints
+  --> $DIR/patterns.rs:72:5
+   |
+LL | fn static_to_a_to_static_through_variable<'a>(x: &'a u32) -> &'static u32 {
+   |                                           -- lifetime `'a` defined here
+...
+LL |     y //~ ERROR
+   |     ^ returning this value requires that `'a` must outlive `'static`
+
+error: unsatisfied lifetime constraints
+  --> $DIR/patterns.rs:88:40
+   |
+LL | fn a_to_static_then_static<'a>(x: &'a u32) -> &'static u32 {
+   |                            -- lifetime `'a` defined here
+LL |     let (y, _z): (&'static u32, u32) = (x, 44); //~ ERROR
+   |                                        ^^^^^^^ requires that `'a` must outlive `'static`
+
+error: aborting due to 12 previous errors
 
 For more information about this error, try `rustc --explain E0597`.
