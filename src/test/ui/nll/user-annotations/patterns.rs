@@ -20,7 +20,7 @@ fn ref_with_ascribed_static_type() -> u32 {
     // Check the behavior in some wacky cases.
     let x = 22;
     let y = &x; //~ ERROR
-    let ref z: &'static u32 = y; //~ ERROR
+    let ref z: &'static u32 = y;
     **z
 }
 

@@ -475,7 +475,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn visit_bindings(
         &mut self,
         pattern: &Pattern<'tcx>,
-        pattern_user_ty: Option<CanonicalTy<'tcx>>,
+        mut pattern_user_ty: Option<CanonicalTy<'tcx>>,
         f: &mut impl FnMut(
             &mut Self,
             Mutability,
@@ -497,6 +497,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 ref subpattern,
                 ..
             } => {
+                match mode {
+                    BindingMode::ByValue => { }
+                    BindingMode::ByRef(..) => {
+                        // If this is a `ref` binding (e.g., `let ref
+                        // x: T = ..`), then the type of `x` is not
+                        // `T` but rather `&T`, so ignore
+                        // `pattern_user_ty` for now.
+                        //
+                        // FIXME(#47184): extract or handle `pattern_user_ty` somehow
+                        pattern_user_ty = None;
+                    }
+                }
+
                 f(self, mutability, name, mode, var, pattern.span, ty, pattern_user_ty);
                 if let Some(subpattern) = subpattern.as_ref() {
                     self.visit_bindings(subpattern, pattern_user_ty, f);
