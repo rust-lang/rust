@@ -237,6 +237,25 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
         result
     }
 
+    pub fn resolve_for_vtable(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              param_env: ty::ParamEnv<'tcx>,
+                              def_id: DefId,
+                              substs: &'tcx Substs<'tcx>) -> Option<Instance<'tcx>> {
+        debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
+        let fn_sig = tcx.fn_sig(def_id);
+        let is_vtable_shim =
+            fn_sig.inputs().skip_binder().len() > 0 && fn_sig.input(0).skip_binder().is_self();
+        if is_vtable_shim {
+            debug!(" => associated item with unsizeable self: Self");
+            Some(Instance {
+                def: InstanceDef::VtableShim(def_id),
+                substs,
+            })
+        } else {
+            Instance::resolve(tcx, param_env, def_id, substs)
+        }
+    }
+
     pub fn resolve_closure(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         def_id: DefId,
@@ -249,6 +268,14 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
         match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
             Ok(true) => fn_once_adapter_instance(tcx, def_id, substs),
             _ => Instance::new(def_id, substs.substs)
+        }
+    }
+
+    pub fn is_vtable_shim(&self) -> bool {
+        if let InstanceDef::VtableShim(..) = self.def {
+            true
+        } else {
+            false
         }
     }
 }
