@@ -11,19 +11,6 @@ struct S;
 #[cfg_attr(all(), repr(C))] //~ ERROR `repr` is ambiguous
 struct SCond;
 
-#[cfg(all())] //~ ERROR `cfg` is ambiguous
-struct A;
-#[cfg(any())] // ERROR FIXME
-struct A;
-
-#[cfg_attr(all(), cold)] // ERROR FIXME
-fn g() {}
-#[cfg_attr(any(), cold)] // ERROR FIXME
-fn h() {}
-
-#[derive(Clone)] // ERROR FIXME
-struct B;
-
 #[test] // OK, shadowed
 fn test() {}
 

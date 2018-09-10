@@ -26,21 +26,6 @@ pub fn repr(_: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn cfg(_: TokenStream, input: TokenStream) -> TokenStream {
-    input
-}
-
-#[proc_macro_attribute]
-pub fn cfg_attr(_: TokenStream, input: TokenStream) -> TokenStream {
-    input
-}
-
-#[proc_macro_attribute]
-pub fn derive(_: TokenStream, input: TokenStream) -> TokenStream {
-    input
-}
-
-#[proc_macro_attribute]
 pub fn test(_: TokenStream, input: TokenStream) -> TokenStream {
     "struct Test;".parse().unwrap()
 }

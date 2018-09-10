@@ -1083,6 +1083,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 self.define(module, ident, MacroNS,
                             (def, vis, item.span, expansion, IsMacroExport));
             } else {
+                if !attr::contains_name(&item.attrs, "rustc_doc_only_macro") {
+                    self.check_reserved_macro_name(ident, MacroNS);
+                }
                 self.unused_macros.insert(def_id);
             }
         } else {

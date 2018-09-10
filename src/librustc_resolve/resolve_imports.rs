@@ -452,6 +452,16 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
         })
     }
 
+    crate fn check_reserved_macro_name(&self, ident: Ident, ns: Namespace) {
+        // Reserve some names that are not quite covered by the general check
+        // performed on `Resolver::builtin_attrs`.
+        if ns == MacroNS &&
+           (ident.name == "cfg" || ident.name == "cfg_attr" || ident.name == "derive") {
+            self.session.span_err(ident.span,
+                                  &format!("name `{}` is reserved in macro namespace", ident));
+        }
+    }
+
     // Define the name or return the existing binding if there is a collision.
     pub fn try_define(&mut self,
                       module: Module<'a>,
@@ -459,6 +469,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                       ns: Namespace,
                       binding: &'a NameBinding<'a>)
                       -> Result<(), &'a NameBinding<'a>> {
+        self.check_reserved_macro_name(ident, ns);
         self.update_resolution(module, ident, ns, |this, resolution| {
             if let Some(old_binding) = resolution.binding {
                 if binding.is_glob_import() {
