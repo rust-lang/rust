@@ -308,7 +308,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         )))
     }
 
-    pub fn t_nil(&self) -> Ty<'tcx> {
+    pub fn t_unit(&self) -> Ty<'tcx> {
         self.infcx.tcx.mk_unit()
     }
 
@@ -491,7 +491,7 @@ fn subst_ty_renumber_bound() {
         // t_source = fn(A)
         let t_source = {
             let t_param = env.t_param(0);
-            env.t_fn(&[t_param], env.t_nil())
+            env.t_fn(&[t_param], env.t_unit())
         };
 
         let substs = env.infcx.tcx.intern_substs(&[t_rptr_bound1.into()]);
@@ -500,7 +500,7 @@ fn subst_ty_renumber_bound() {
         // t_expected = fn(&'a isize)
         let t_expected = {
             let t_ptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, d2());
-            env.t_fn(&[t_ptr_bound2], env.t_nil())
+            env.t_fn(&[t_ptr_bound2], env.t_unit())
         };
 
         debug!("subst_bound: t_source={:?} substs={:?} t_substituted={:?} t_expected={:?}",
@@ -526,7 +526,7 @@ fn subst_ty_renumber_some_bounds() {
         // t_source = (A, fn(A))
         let t_source = {
             let t_param = env.t_param(0);
-            env.t_pair(t_param, env.t_fn(&[t_param], env.t_nil()))
+            env.t_pair(t_param, env.t_fn(&[t_param], env.t_unit()))
         };
 
         let substs = env.infcx.tcx.intern_substs(&[t_rptr_bound1.into()]);
@@ -537,7 +537,7 @@ fn subst_ty_renumber_some_bounds() {
         // but not that the Debruijn index is different in the different cases.
         let t_expected = {
             let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, d2());
-            env.t_pair(t_rptr_bound1, env.t_fn(&[t_rptr_bound2], env.t_nil()))
+            env.t_pair(t_rptr_bound1, env.t_fn(&[t_rptr_bound2], env.t_unit()))
         };
 
         debug!("subst_bound: t_source={:?} substs={:?} t_substituted={:?} t_expected={:?}",
@@ -559,7 +559,7 @@ fn escaping() {
         // Theta = [A -> &'a foo]
         env.create_simple_region_hierarchy();
 
-        assert!(!env.t_nil().has_escaping_regions());
+        assert!(!env.t_unit().has_escaping_regions());
 
         let t_rptr_free1 = env.t_rptr_free(1);
         assert!(!t_rptr_free1.has_escaping_regions());
@@ -573,7 +573,7 @@ fn escaping() {
         // t_fn = fn(A)
         let t_param = env.t_param(0);
         assert!(!t_param.has_escaping_regions());
-        let t_fn = env.t_fn(&[t_param], env.t_nil());
+        let t_fn = env.t_fn(&[t_param], env.t_unit());
         assert!(!t_fn.has_escaping_regions());
     })
 }
@@ -588,7 +588,7 @@ fn subst_region_renumber_region() {
         // type t_source<'a> = fn(&'a isize)
         let t_source = {
             let re_early = env.re_early_bound(0, "'a");
-            env.t_fn(&[env.t_rptr(re_early)], env.t_nil())
+            env.t_fn(&[env.t_rptr(re_early)], env.t_unit())
         };
 
         let substs = env.infcx.tcx.intern_substs(&[re_bound1.into()]);
@@ -599,7 +599,7 @@ fn subst_region_renumber_region() {
         // but not that the Debruijn index is different in the different cases.
         let t_expected = {
             let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, d2());
-            env.t_fn(&[t_rptr_bound2], env.t_nil())
+            env.t_fn(&[t_rptr_bound2], env.t_unit())
         };
 
         debug!("subst_bound: t_source={:?} substs={:?} t_substituted={:?} t_expected={:?}",
