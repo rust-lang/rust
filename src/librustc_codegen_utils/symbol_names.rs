@@ -219,6 +219,9 @@ fn get_symbol_hash<'a, 'tcx>(
                 .hash_stable(&mut hcx, &mut hasher);
             (&tcx.crate_disambiguator(instantiating_crate)).hash_stable(&mut hcx, &mut hasher);
         }
+
+        let is_vtable_shim = instance.is_vtable_shim();
+        is_vtable_shim.hash_stable(&mut hcx, &mut hasher);
     });
 
     // 64 bits should be enough to avoid collisions.
@@ -322,7 +325,13 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
 
     let hash = get_symbol_hash(tcx, def_id, instance, instance_ty, substs);
 
-    SymbolPathBuffer::from_interned(tcx.def_symbol_name(def_id)).finish(hash)
+    let mut buf = SymbolPathBuffer::from_interned(tcx.def_symbol_name(def_id));
+
+    if instance.is_vtable_shim() {
+        buf.push("{{vtable-shim}}");
+    }
+
+    buf.finish(hash)
 }
 
 // Follow C++ namespace-mangling style, see
