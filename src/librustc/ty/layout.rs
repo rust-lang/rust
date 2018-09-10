@@ -779,7 +779,8 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                                 scalar.valid_range = *scalar.valid_range.start()..=end;
                             }
                         }
-                        _ => bug!(
+                        _ => assert!(
+                            start == Bound::Unbounded && end == Bound::Unbounded,
                             "nonscalar layout for layout_scalar_valid_range type {:?}: {:#?}",
                             def,
                             st,
