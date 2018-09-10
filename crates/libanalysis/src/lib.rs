@@ -9,12 +9,15 @@ extern crate rayon;
 extern crate relative_path;
 #[macro_use]
 extern crate crossbeam_channel;
+extern crate im;
 
 mod symbol_index;
 mod module_map;
+mod module_map_db;
 mod imp;
 mod job;
 mod roots;
+mod db;
 
 use std::{
     sync::Arc,

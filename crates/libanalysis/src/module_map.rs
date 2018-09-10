@@ -244,31 +244,38 @@ impl Link {
             self.points_to = Vec::new();
             return;
         }
-
-        let mod_name = file_resolver.file_stem(self.owner.0);
-        let is_dir_owner =
-            mod_name == "mod" || mod_name == "lib" || mod_name == "main";
-
-        let file_mod = RelativePathBuf::from(format!("../{}.rs", self.name()));
-        let dir_mod = RelativePathBuf::from(format!("../{}/mod.rs", self.name()));
-        if is_dir_owner {
-            self.points_to = [&file_mod, &dir_mod].iter()
-                .filter_map(|path| file_resolver.resolve(self.owner.0, path))
-                .map(ModuleId)
-                .collect();
-            self.problem = if self.points_to.is_empty() {
-                Some(Problem::UnresolvedModule {
-                    candidate: file_mod,
-                })
-            } else {
-                None
-            }
-        } else {
-            self.points_to = Vec::new();
-            self.problem = Some(Problem::NotDirOwner {
-                move_to: RelativePathBuf::from(format!("../{}/mod.rs", mod_name)),
-                candidate: file_mod,
-            });
-        }
+        let (points_to, problem) = resolve_submodule(self.owner.0, &self.name(), file_resolver);
+        self.problem = problem;
+        self.points_to = points_to.into_iter().map(ModuleId).collect();
     }
+}
+
+pub(crate) fn resolve_submodule(file_id: FileId, name: &SmolStr, file_resolver: &FileResolverImp) -> (Vec<FileId>, Option<Problem>) {
+    let mod_name = file_resolver.file_stem(file_id);
+    let is_dir_owner =
+        mod_name == "mod" || mod_name == "lib" || mod_name == "main";
+
+    let file_mod = RelativePathBuf::from(format!("../{}.rs", name));
+    let dir_mod = RelativePathBuf::from(format!("../{}/mod.rs", name));
+    let points_to: Vec<FileId>;
+    let problem: Option<Problem>;
+    if is_dir_owner {
+        points_to = [&file_mod, &dir_mod].iter()
+            .filter_map(|path| file_resolver.resolve(file_id, path))
+            .collect();
+        problem = if points_to.is_empty() {
+            Some(Problem::UnresolvedModule {
+                candidate: file_mod,
+            })
+        } else {
+            None
+        }
+    } else {
+        points_to = Vec::new();
+        problem = Some(Problem::NotDirOwner {
+            move_to: RelativePathBuf::from(format!("../{}/mod.rs", mod_name)),
+            candidate: file_mod,
+        });
+    }
+    (points_to, problem)
 }

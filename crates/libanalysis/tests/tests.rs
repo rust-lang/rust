@@ -14,24 +14,6 @@ use test_utils::assert_eq_dbg;
 #[derive(Debug)]
 struct FileMap(Vec<(FileId, RelativePathBuf)>);
 
-fn analysis_host(files: &'static [(&'static str, &'static str)]) -> AnalysisHost {
-    let mut host = AnalysisHost::new();
-    let mut file_map = Vec::new();
-    for (id, &(path, contents)) in files.iter().enumerate() {
-        let file_id = FileId((id + 1) as u32);
-        assert!(path.starts_with('/'));
-        let path = RelativePathBuf::from_path(&path[1..]).unwrap();
-        host.change_file(file_id, Some(contents.to_string()));
-        file_map.push((file_id, path));
-    }
-    host.set_file_resolver(Arc::new(FileMap(file_map)));
-    host
-}
-
-fn analysis(files: &'static [(&'static str, &'static str)]) -> Analysis {
-    analysis_host(files).analysis()
-}
-
 impl FileMap {
     fn iter<'a>(&'a self) -> impl Iterator<Item=(FileId, &'a RelativePath)> + 'a {
         self.0.iter().map(|(id, path)| (*id, path.as_relative_path()))
@@ -56,6 +38,23 @@ impl FileResolver for FileMap {
     }
 }
 
+fn analysis_host(files: &'static [(&'static str, &'static str)]) -> AnalysisHost {
+    let mut host = AnalysisHost::new();
+    let mut file_map = Vec::new();
+    for (id, &(path, contents)) in files.iter().enumerate() {
+        let file_id = FileId((id + 1) as u32);
+        assert!(path.starts_with('/'));
+        let path = RelativePathBuf::from_path(&path[1..]).unwrap();
+        host.change_file(file_id, Some(contents.to_string()));
+        file_map.push((file_id, path));
+    }
+    host.set_file_resolver(Arc::new(FileMap(file_map)));
+    host
+}
+
+fn analysis(files: &'static [(&'static str, &'static str)]) -> Analysis {
+    analysis_host(files).analysis()
+}
 
 #[test]
 fn test_resolve_module() {
