@@ -840,6 +840,7 @@ enum LocalMutationIsAllowed {
 enum InitializationRequiringAction {
     Update,
     Borrow,
+    MatchOn,
     Use,
     Assignment,
 }
@@ -854,6 +855,7 @@ impl InitializationRequiringAction {
         match self {
             InitializationRequiringAction::Update => "update",
             InitializationRequiringAction::Borrow => "borrow",
+            InitializationRequiringAction::MatchOn => "use", // no good noun
             InitializationRequiringAction::Use => "use",
             InitializationRequiringAction::Assignment => "assign",
         }
@@ -863,6 +865,7 @@ impl InitializationRequiringAction {
         match self {
             InitializationRequiringAction::Update => "updated",
             InitializationRequiringAction::Borrow => "borrowed",
+            InitializationRequiringAction::MatchOn => "matched on",
             InitializationRequiringAction::Use => "used",
             InitializationRequiringAction::Assignment => "assigned",
         }
@@ -1219,7 +1222,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     }
 
                     match kind {
-                        ReadKind::Copy => {
+                        ReadKind::Copy  => {
                             error_reported = true;
                             this.report_use_while_mutably_borrowed(context, place_span, borrow)
                         }
@@ -1365,9 +1368,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     flow_state,
                 );
 
+                let action = if bk == BorrowKind::Shallow {
+                    InitializationRequiringAction::MatchOn
+                } else {
+                    InitializationRequiringAction::Borrow
+                };
+
                 self.check_if_path_or_subpath_is_moved(
                     context,
-                    InitializationRequiringAction::Borrow,
+                    action,
                     (place, span),
                     flow_state,
                 );
