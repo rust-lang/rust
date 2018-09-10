@@ -53,7 +53,7 @@ fn use_tree(p: &mut Parser) {
     m.complete(p, USE_TREE);
 }
 
-fn use_tree_list(p: &mut Parser) {
+pub(crate) fn use_tree_list(p: &mut Parser) {
     assert!(p.at(L_CURLY));
     let m = p.start();
     p.bump();

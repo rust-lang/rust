@@ -25,7 +25,7 @@ pub(super) fn trait_def(p: &mut Parser) {
 //     fn foo() {}
 //     fn bar(&self);
 // }
-fn trait_item_list(p: &mut Parser) {
+pub(crate) fn trait_item_list(p: &mut Parser) {
     assert!(p.at(L_CURLY));
     let m = p.start();
     p.bump();
@@ -74,7 +74,7 @@ pub(super) fn impl_item(p: &mut Parser) {
 //     fn foo() {}
 //     fn bar(&self) {}
 // }
-fn impl_item_list(p: &mut Parser) {
+pub(crate) fn impl_item_list(p: &mut Parser) {
     assert!(p.at(L_CURLY));
     let m = p.start();
     p.bump();

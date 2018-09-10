@@ -51,7 +51,7 @@ pub(super) fn enum_def(p: &mut Parser) {
     }
 }
 
-fn enum_variant_list(p: &mut Parser) {
+pub(crate) fn enum_variant_list(p: &mut Parser) {
     assert!(p.at(L_CURLY));
     let m = p.start();
     p.bump();

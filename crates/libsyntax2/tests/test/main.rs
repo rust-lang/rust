@@ -24,21 +24,6 @@ fn lexer_tests() {
 }
 
 #[test]
-fn parser_tests() {
-    dir_tests(&["parser/inline", "parser/ok", "parser/err"], |text| {
-        let file = File::parse(text);
-        dump_tree(file.syntax())
-    })
-}
-
-#[test]
-fn parser_fuzz_tests() {
-    for (_, text) in collect_tests(&["parser/fuzz-failures"]) {
-        check_fuzz_invariants(&text)
-    }
-}
-
-#[test]
 fn reparse_test() {
     fn do_check(before: &str, replace_with: &str) {
         let (range, before) = extract_range(before);
@@ -73,6 +58,52 @@ fn foo {
     <|>92<|>;
 }
 ", "62");
+    do_check(r"
+mod foo {
+    fn <|><|>
+}
+", "bar");
+    do_check(r"
+trait Foo {
+    type <|>Foo<|>;
+}
+", "Output");
+    do_check(r"
+impl IntoIterator<Item=i32> for Foo {
+    f<|><|>
+}
+", "n next(");
+    do_check(r"
+use a::b::{foo,<|>,bar<|>};
+    ", "baz");
+    do_check(r"
+pub enum A {
+    Foo<|><|>
+}
+", "\nBar;\n");
+    do_check(r"
+foo!{a, b<|><|> d}
+", ", c[3]");
+    do_check(r"
+extern {
+    fn<|>;<|>
+}
+", " exit(code: c_int)");
+}
+
+#[test]
+fn parser_tests() {
+    dir_tests(&["parser/inline", "parser/ok", "parser/err"], |text| {
+        let file = File::parse(text);
+        dump_tree(file.syntax())
+    })
+}
+
+#[test]
+fn parser_fuzz_tests() {
+    for (_, text) in collect_tests(&["parser/fuzz-failures"]) {
+        check_fuzz_invariants(&text)
+    }
 }
 
 

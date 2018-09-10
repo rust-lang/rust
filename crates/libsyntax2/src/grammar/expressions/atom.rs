@@ -287,7 +287,7 @@ fn match_expr(p: &mut Parser) -> CompletedMarker {
     m.complete(p, MATCH_EXPR)
 }
 
-fn match_arm_list(p: &mut Parser) {
+pub(crate) fn match_arm_list(p: &mut Parser) {
     assert!(p.at(L_CURLY));
     let m = p.start();
     p.eat(L_CURLY);
