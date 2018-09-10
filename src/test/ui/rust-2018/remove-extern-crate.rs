@@ -12,7 +12,7 @@
 // edition:2018
 // compile-pass
 // aux-build:remove-extern-crate.rs
-// compile-flags:--extern remove_extern_crate --extern core
+// compile-flags:--extern remove_extern_crate
 
 #![warn(rust_2018_idioms)]
 

@@ -1674,13 +1674,14 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
         let mut extern_prelude: FxHashSet<Name> =
             session.opts.externs.iter().map(|kv| Symbol::intern(kv.0)).collect();
-        if !attr::contains_name(&krate.attrs, "no_core") {
-            if !attr::contains_name(&krate.attrs, "no_std") {
-                extern_prelude.insert(Symbol::intern("std"));
-            } else {
-                extern_prelude.insert(Symbol::intern("core"));
-            }
-        }
+
+        // HACK(eddyb) this ignore the `no_{core,std}` attributes.
+        // FIXME(eddyb) warn (elsewhere) if core/std is used with `no_{core,std}`.
+        // if !attr::contains_name(&krate.attrs, "no_core") {
+        // if !attr::contains_name(&krate.attrs, "no_std") {
+        extern_prelude.insert(Symbol::intern("core"));
+        extern_prelude.insert(Symbol::intern("std"));
+        extern_prelude.insert(Symbol::intern("meta"));
 
         let mut invocations = FxHashMap();
         invocations.insert(Mark::root(),
@@ -1982,7 +1983,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                 "access to extern crates through prelude is experimental").emit();
                 }
 
-                let crate_root = self.load_extern_prelude_crate_if_needed(ident);
+                let crate_id = self.crate_loader.process_path_extern(ident.name, ident.span);
+                let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
+                self.populate_module_if_necessary(&crate_root);
 
                 let binding = (crate_root, ty::Visibility::Public,
                                ident.span, Mark::root()).to_name_binding(self.arenas);
@@ -2008,13 +2011,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         }
 
         None
-    }
-
-    fn load_extern_prelude_crate_if_needed(&mut self, ident: Ident) -> Module<'a> {
-        let crate_id = self.crate_loader.process_path_extern(ident.name, ident.span);
-        let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
-        self.populate_module_if_necessary(&crate_root);
-        crate_root
     }
 
     fn hygienic_lexical_parent(&mut self, module: Module<'a>, span: &mut Span)
@@ -4427,15 +4423,24 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
         if self.session.features_untracked().extern_prelude {
             let extern_prelude_names = self.extern_prelude.clone();
-            for &krate_name in extern_prelude_names.iter() {
-                let krate_ident = Ident::with_empty_ctxt(krate_name);
-                let external_prelude_module = self.load_extern_prelude_crate_if_needed(krate_ident);
+            for &name in extern_prelude_names.iter() {
+                let ident = Ident::with_empty_ctxt(name);
+                match self.crate_loader.maybe_process_path_extern(name, ident.span) {
+                    Some(crate_id) => {
+                        let crate_root = self.get_module(DefId {
+                            krate: crate_id,
+                            index: CRATE_DEF_INDEX,
+                        });
+                        self.populate_module_if_necessary(&crate_root);
 
-                suggestions.extend(
-                    self.lookup_import_candidates_from_module(
-                        lookup_name, namespace, external_prelude_module, krate_ident, &filter_fn
-                    )
-                );
+                        suggestions.extend(
+                            self.lookup_import_candidates_from_module(
+                                lookup_name, namespace, crate_root, ident, &filter_fn
+                            )
+                        );
+                    }
+                    None => {}
+                }
             }
         }
 

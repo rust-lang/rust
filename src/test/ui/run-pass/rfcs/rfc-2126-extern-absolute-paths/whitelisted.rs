@@ -8,33 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// run-rustfix
+// run-pass
 // edition:2018
-// compile-pass
-// aux-build:remove-extern-crate.rs
-// compile-flags:--extern remove_extern_crate
 
-#![warn(rust_2018_idioms)]
-
-
-use core as another_name;
-use remove_extern_crate;
-#[macro_use]
-extern crate remove_extern_crate as something_else;
+// Tests that `core` and `std` are always available.
+use core::iter;
+use std::io;
+// FIXME(eddyb) Add a `meta` crate to the distribution.
+// use meta;
 
 fn main() {
-    another_name::mem::drop(3);
-    another::foo();
-    remove_extern_crate::foo!();
-    bar!();
-}
-
-mod another {
-    use core;
-    use remove_extern_crate;
-
-    pub fn foo() {
-        core::mem::drop(4);
-        remove_extern_crate::foo!();
+    for _ in iter::once(()) {
+        io::stdout();
     }
 }
