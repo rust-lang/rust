@@ -166,14 +166,14 @@ impl DefaultResizePolicy {
 // Our hash generation scheme consists of generating a 64-bit hash and
 // truncating the most significant bits. When moving to the new table, we
 // simply introduce a new bit to the front of the hash. Therefore, if an
-// elements has ideal index i in the old table, it can have one of two ideal
+// element has ideal index i in the old table, it can have one of two ideal
 // locations in the new table. If the new bit is 0, then the new ideal index
 // is i. If the new bit is 1, then the new ideal index is n + i. Intuitively,
 // we are producing two independent tables of size n, and for each element we
 // independently choose which table to insert it into with equal probability.
-// However the rather than wrapping around themselves on overflowing their
-// indexes, the first table overflows into the first, and the first into the
-// second. Visually, our new table will look something like:
+// However, rather than wrapping around themselves on overflowing their
+// indexes, the first table overflows into the second, and the second into the
+// first. Visually, our new table will look something like:
 //
 // [yy_xxx_xxxx_xxx|xx_yyy_yyyy_yyy]
 //
