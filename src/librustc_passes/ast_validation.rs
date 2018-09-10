@@ -22,6 +22,7 @@ use syntax::ast::*;
 use syntax::attr;
 use syntax::source_map::Spanned;
 use syntax::symbol::keywords;
+use syntax::ptr::P;
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
 use errors;
@@ -167,11 +168,61 @@ impl<'a> AstValidator<'a> {
                 "only lifetime parameters can be used in this context");
         }
     }
+
+    /// With eRFC 2497, we need to check whether an expression is ambigious and warn or error
+    /// depending on the edition, this function handles that.
+    fn while_if_let_ambiguity(&self, expr: &P<Expr>) {
+        if let Some((span, op_kind)) = self.while_if_let_expr_ambiguity(&expr) {
+            let mut err = self.err_handler().struct_span_err(
+                span, &format!("ambigious use of `{}`", op_kind.to_string())
+            );
+
+            err.note(
+                "this will be a error until the `let_chains` feature is stabilized"
+            );
+            err.note(
+                "see rust-lang/rust#53668 for more information"
+            );
+
+            if let Ok(snippet) = self.session.source_map().span_to_snippet(span) {
+                err.span_suggestion(
+                    span, "consider adding parentheses", format!("({})", snippet),
+                );
+            }
+
+            err.emit();
+        }
+    }
+
+    /// With eRFC 2497 adding if-let chains, there is a requirement that the parsing of
+    /// `&&` and `||` in a if-let statement be unambigious. This function returns a span and
+    /// a `BinOpKind` (either `&&` or `||` depending on what was ambigious) if it is determined
+    /// that the current expression parsed is ambigious and will break in future.
+    fn while_if_let_expr_ambiguity(&self, expr: &P<Expr>) -> Option<(Span, BinOpKind)> {
+        debug!("while_if_let_expr_ambiguity: expr.node: {:?}", expr.node);
+        match &expr.node {
+            ExprKind::Binary(op, _, _) if op.node == BinOpKind::And || op.node == BinOpKind::Or => {
+                Some((expr.span, op.node))
+            },
+            ExprKind::Range(ref lhs, ref rhs, _) => {
+                let lhs_ambigious = lhs.as_ref()
+                    .and_then(|lhs| self.while_if_let_expr_ambiguity(lhs));
+                let rhs_ambigious = rhs.as_ref()
+                    .and_then(|rhs| self.while_if_let_expr_ambiguity(rhs));
+
+                lhs_ambigious.or(rhs_ambigious)
+            }
+            _ => None,
+        }
+    }
+
 }
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_expr(&mut self, expr: &'a Expr) {
         match expr.node {
+            ExprKind::IfLet(_, ref expr, _, _) | ExprKind::WhileLet(_, ref expr, _, _) =>
+                self.while_if_let_ambiguity(&expr),
             ExprKind::InlineAsm(..) if !self.session.target.target.options.allow_asm => {
                 span_err!(self.session, expr.span, E0472, "asm! is unsupported on this target");
             }
