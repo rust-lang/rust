@@ -199,22 +199,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         if emit_uniform_paths_canary {
             let source = prefix_start.unwrap();
 
-            // HACK(eddyb) For `use x::{self, ...};`, use the ID of the
-            // `self` nested import for the canary. This allows the
-            // ambiguity reporting scope to ignore false positives
-            // in the same way it does for `use x;` (by comparing IDs).
-            let mut canary_id = id;
-            if let ast::UseTreeKind::Nested(ref items) = use_tree.kind {
-                for &(ref use_tree, id) in items {
-                    if let ast::UseTreeKind::Simple(..) = use_tree.kind {
-                        if use_tree.ident().name == keywords::SelfValue.name() {
-                            canary_id = id;
-                            break;
-                        }
-                    }
-                }
-            }
-
             // Helper closure to emit a canary with the given base path.
             let emit = |this: &mut Self, base: Option<Ident>| {
                 let subclass = SingleImport {
@@ -234,7 +218,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     base.into_iter().collect(),
                     subclass.clone(),
                     source.span,
-                    canary_id,
+                    id,
                     root_use_tree.span,
                     root_id,
                     ty::Visibility::Invisible,
