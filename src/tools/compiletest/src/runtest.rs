@@ -242,7 +242,7 @@ struct DebuggerCommands {
 
 enum ReadFrom {
     Path,
-    Stdin,
+    Stdin(String),
 }
 
 impl<'test> TestCx<'test> {
@@ -426,11 +426,14 @@ impl<'test> TestCx<'test> {
                     round, self.revision
                 ),
             );
-            let read_from = if round == 0 { ReadFrom::Path } else { ReadFrom::Stdin };
-            let proc_res = self.print_source(srcs[round].to_owned(),
-                                             &self.props.pretty_mode,
-                                             read_from);
+            let read_from = if round == 0 {
+                ReadFrom::Path
+            } else {
+                ReadFrom::Stdin(srcs[round].to_owned())
+            };
 
+            let proc_res = self.print_source(read_from,
+                                             &self.props.pretty_mode);
             if !proc_res.status.success() {
                 self.fatal_proc_rec(
                     &format!(
@@ -485,7 +488,7 @@ impl<'test> TestCx<'test> {
         }
 
         // additionally, run `--pretty expanded` and try to build it.
-        let proc_res = self.print_source(srcs[round].clone(), "expanded", ReadFrom::Path);
+        let proc_res = self.print_source(ReadFrom::Path, "expanded");
         if !proc_res.status.success() {
             self.fatal_proc_rec("pretty-printing (expanded) failed", &proc_res);
         }
@@ -503,10 +506,10 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn print_source(&self, src: String, pretty_type: &str, read_from: ReadFrom) -> ProcRes {
+    fn print_source(&self, read_from: ReadFrom, pretty_type: &str) -> ProcRes {
         let aux_dir = self.aux_output_dir_name();
         let input: &str = match read_from {
-            ReadFrom::Stdin => "-",
+            ReadFrom::Stdin(_) => "-",
             ReadFrom::Path => self.testpaths.file.to_str().unwrap(),
         };
 
@@ -521,8 +524,8 @@ impl<'test> TestCx<'test> {
             .args(&self.props.compile_flags)
             .envs(self.props.exec_env.clone());
 
-        let src_to_read = match read_from {
-            ReadFrom::Stdin => Some(src),
+        let src = match read_from {
+            ReadFrom::Stdin(src) => Some(src),
             ReadFrom::Path => None
         };
 
@@ -530,7 +533,7 @@ impl<'test> TestCx<'test> {
             rustc,
             self.config.compile_lib_path.to_str().unwrap(),
             Some(aux_dir.to_str().unwrap()),
-            src_to_read,
+            src,
         )
     }
 
