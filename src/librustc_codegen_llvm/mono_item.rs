@@ -17,7 +17,6 @@
 use asm;
 use attributes;
 use base;
-use consts;
 use context::CodegenCx;
 use declare;
 use llvm;
@@ -30,6 +29,7 @@ use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty::TypeFoldable;
 use rustc::ty::layout::LayoutOf;
 use std::fmt;
+use interfaces::StaticMethods;
 
 pub use rustc::mir::mono::MonoItem;
 
@@ -54,7 +54,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
                         bug!("Expected Def::Static for {:?}, found nothing", def_id)
                     }
                 };
-                consts::codegen_static(&cx, def_id, is_mutable);
+                cx.codegen_static(def_id, is_mutable);
             }
             MonoItem::GlobalAsm(node_id) => {
                 let item = cx.tcx.hir.expect_item(node_id);
