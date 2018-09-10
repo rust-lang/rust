@@ -1813,7 +1813,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
                             .and_then(|snip| Some(item.span.lo() + BytePos(snip.find("impl")? as u32 + 4)));
                         if let Some(pos) = pos {
                             Span::new(pos, pos, item.span.data().ctxt)
-                        }else{
+                        } else {
                             return;
                         }
                     });
