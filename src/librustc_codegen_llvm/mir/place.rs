@@ -384,7 +384,7 @@ impl PlaceRef<'tcx, &'ll Value> {
                         let (size, align) = self.layout.size_and_align();
                         let size = bx.cx().const_usize(size.bytes());
                         let align = bx.cx().const_u32(align.abi() as u32);
-                        base::call_memset(bx, llptr, fill_byte, size, align, false);
+                        bx.call_memset(llptr, fill_byte, size, align, false);
                     }
 
                     let niche = self.project_field(bx, 0);

@@ -583,6 +583,25 @@ pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> {
         args: &[<Self::CodegenCx as Backend>::Value],
         bundle: Option<&OperandBundleDef<'ll, <Self::CodegenCx as Backend>::Value>>
     ) -> <Self::CodegenCx as Backend>::Value;
+
+    fn call_memcpy(
+        &self,
+        dst: <Self::CodegenCx as Backend>::Value,
+        src: <Self::CodegenCx as Backend>::Value,
+        n_bytes: <Self::CodegenCx as Backend>::Value,
+        align: Align,
+        flags: MemFlags,
+    );
+
+    fn call_memset(
+        &self,
+        ptr: <Self::CodegenCx as Backend>::Value,
+        fill_byte: <Self::CodegenCx as Backend>::Value,
+        size: <Self::CodegenCx as Backend>::Value,
+        align: <Self::CodegenCx as Backend>::Value,
+        volatile: bool,
+    ) -> <Self::CodegenCx as Backend>::Value;
+
     fn zext(
         &self,
         val: <Self::CodegenCx as Backend>::Value,

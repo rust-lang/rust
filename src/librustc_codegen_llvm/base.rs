@@ -79,7 +79,6 @@ use std::any::Any;
 use std::ffi::CString;
 use std::sync::Arc;
 use std::time::{Instant, Duration};
-use std::i32;
 use std::cmp;
 use std::sync::mpsc;
 use syntax_pos::Span;
@@ -432,33 +431,6 @@ pub fn to_immediate_scalar<'a, 'll, 'tcx, Builder : BuilderMethods<'a, 'll, 'tcx
     val
 }
 
-pub fn call_memcpy<'a, 'll: 'a, 'tcx: 'll, Builder : BuilderMethods<'a, 'll, 'tcx>>(
-    bx: &Builder,
-    dst: <Builder::CodegenCx as Backend>::Value,
-    src: <Builder::CodegenCx as Backend>::Value,
-    n_bytes: <Builder::CodegenCx as Backend>::Value,
-    align: Align,
-    flags: MemFlags,
-) {
-    if flags.contains(MemFlags::NONTEMPORAL) {
-        // HACK(nox): This is inefficient but there is no nontemporal memcpy.
-        let val = bx.load(src, align);
-        let ptr = bx.pointercast(dst, bx.cx().type_ptr_to(bx.cx().val_ty(val)));
-        bx.store_with_flags(val, ptr, align, flags);
-        return;
-    }
-    let cx = bx.cx();
-    let ptr_width = &bx.sess().target.target.target_pointer_width;
-    let key = format!("llvm.memcpy.p0i8.p0i8.i{}", ptr_width);
-    let memcpy = cx.get_intrinsic(&key);
-    let src_ptr = bx.pointercast(src, cx.type_i8p());
-    let dst_ptr = bx.pointercast(dst, cx.type_i8p());
-    let size = bx.intcast(n_bytes, cx.type_isize(), false);
-    let align = cx.const_i32(align.abi() as i32);
-    let volatile = cx.const_bool(flags.contains(MemFlags::VOLATILE));
-    bx.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
-}
-
 pub fn memcpy_ty<'a, 'll: 'a, 'tcx: 'll, Builder : BuilderMethods<'a, 'll, 'tcx>>(
     bx: &Builder,
     dst: <Builder::CodegenCx as Backend>::Value,
@@ -472,22 +444,7 @@ pub fn memcpy_ty<'a, 'll: 'a, 'tcx: 'll, Builder : BuilderMethods<'a, 'll, 'tcx>
         return;
     }
 
-    call_memcpy(bx, dst, src, bx.cx().const_usize(size), align, flags);
-}
-
-pub fn call_memset<'a, 'll: 'a, 'tcx: 'll, Builder : BuilderMethods<'a, 'll, 'tcx>>(
-    bx: &Builder,
-    ptr: <Builder::CodegenCx as Backend>::Value,
-    fill_byte: <Builder::CodegenCx as Backend>::Value,
-    size: <Builder::CodegenCx as Backend>::Value,
-    align: <Builder::CodegenCx as Backend>::Value,
-    volatile: bool,
-) -> <Builder::CodegenCx as Backend>::Value {
-    let ptr_width = &bx.sess().target.target.target_pointer_width;
-    let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
-    let llintrinsicfn = bx.cx().get_intrinsic(&intrinsic_key);
-    let volatile = bx.cx().const_bool(volatile);
-    bx.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None)
+    bx.call_memcpy(dst, src, bx.cx().const_usize(size), align, flags);
 }
 
 pub fn codegen_instance<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx, &'a Value>, instance: Instance<'tcx>) {

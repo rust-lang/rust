@@ -743,7 +743,7 @@ fn memset_intrinsic(
     let size = cx.const_usize(size.bytes());
     let align = cx.const_i32(align.abi() as i32);
     let dst = bx.pointercast(dst, cx.type_i8p());
-    call_memset(bx, dst, val, bx.mul(size, count), align, volatile)
+    bx.call_memset(dst, val, bx.mul(size, count), align, volatile)
 }
 
 fn try_intrinsic(

@@ -1293,6 +1293,48 @@ impl BuilderMethods<'a, 'll, 'tcx>
         }
     }
 
+    fn call_memcpy(
+        &self,
+        dst: &'ll Value,
+        src: &'ll Value,
+        n_bytes: &'ll Value,
+        align: Align,
+        flags: MemFlags,
+    ) {
+        if flags.contains(MemFlags::NONTEMPORAL) {
+            // HACK(nox): This is inefficient but there is no nontemporal memcpy.
+            let val = &self.load(src, align);
+            let ptr = &self.pointercast(dst, &self.cx().type_ptr_to(&self.cx().val_ty(val)));
+            &self.store_with_flags(val, ptr, align, flags);
+            return;
+        }
+        let cx = &self.cx();
+        let ptr_width = &self.sess().target.target.target_pointer_width;
+        let key = format!("llvm.memcpy.p0i8.p0i8.i{}", ptr_width);
+        let memcpy = cx.get_intrinsic(&key);
+        let src_ptr = &self.pointercast(src, cx.type_i8p());
+        let dst_ptr = &self.pointercast(dst, cx.type_i8p());
+        let size = &self.intcast(n_bytes, cx.type_isize(), false);
+        let align = cx.const_i32(align.abi() as i32);
+        let volatile = cx.const_bool(flags.contains(MemFlags::VOLATILE));
+        &self.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
+    }
+
+    fn call_memset(
+        &self,
+        ptr: &'ll Value,
+        fill_byte: &'ll Value,
+        size: &'ll Value,
+        align: &'ll Value,
+        volatile: bool,
+    ) -> &'ll Value {
+        let ptr_width = &self.sess().target.target.target_pointer_width;
+        let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
+        let llintrinsicfn = &self.cx().get_intrinsic(&intrinsic_key);
+        let volatile = &self.cx().const_bool(volatile);
+        &self.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None)
+    }
+
     fn zext(&self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         self.count_insn("zext");
         unsafe {

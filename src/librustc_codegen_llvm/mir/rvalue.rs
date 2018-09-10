@@ -110,14 +110,14 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                     // Use llvm.memset.p0i8.* to initialize all zero arrays
                     if bx.cx().is_const_integral(v) && bx.cx().const_to_uint(v) == 0 {
                         let fill = bx.cx().const_u8(0);
-                        base::call_memset(&bx, start, fill, size, align, false);
+                        bx.call_memset(start, fill, size, align, false);
                         return bx;
                     }
 
                     // Use llvm.memset.p0i8.* to initialize byte arrays
                     let v = base::from_immediate(&bx, v);
                     if bx.cx().val_ty(v) == bx.cx().type_i8() {
-                        base::call_memset(&bx, start, v, size, align, false);
+                        bx.call_memset(start, v, size, align, false);
                         return bx;
                     }
                 }
