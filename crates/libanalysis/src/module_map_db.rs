@@ -94,14 +94,15 @@ mod descr {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::collections::HashMap;
     use im;
     use relative_path::{RelativePath, RelativePathBuf};
     use {
-        db::Db,
+        db::{Query, Db, TraceEventKind},
         imp::FileResolverImp,
         FileId, FileResolver,
     };
+    use super::*;
 
     #[derive(Debug)]
     struct FileMap(im::HashMap<FileId, RelativePathBuf>);
@@ -154,10 +155,29 @@ mod tests {
         fn change_file(&mut self, file_id: FileId, new_text: &str) {
             self.db.change_file(file_id, Some(new_text.to_string()));
         }
-        fn check_parent_modules(&self, file_id: FileId, expected: &[FileId]) {
+        fn check_parent_modules(
+            &self,
+            file_id: FileId,
+            expected: &[FileId],
+            queries: &[(u32, u64)]
+        ) {
             let ctx = self.db.query_ctx();
             let actual = ctx.get::<ParentModule>(&file_id);
             assert_eq!(actual.as_slice(), expected);
+            let mut counts = HashMap::new();
+            ctx.trace.borrow().iter()
+               .filter(|event| event.kind == TraceEventKind::Start)
+               .for_each(|event| *counts.entry(event.query_id).or_insert(0) += 1);
+            for &(query_id, expected_count) in queries.iter() {
+                let actual_count = *counts.get(&query_id).unwrap_or(&0);
+                assert_eq!(
+                    actual_count,
+                    expected_count,
+                    "counts for {} differ",
+                    query_id,
+                )
+            }
+
         }
     }
 
@@ -165,25 +185,25 @@ mod tests {
     fn test_parent_module() {
         let mut f = Fixture::new();
         let foo = f.add_file("/foo.rs", "");
-        f.check_parent_modules(foo, &[]);
+        f.check_parent_modules(foo, &[], &[(FileSyntax::ID, 1)]);
 
         let lib = f.add_file("/lib.rs", "mod foo;");
-        f.check_parent_modules(foo, &[lib]);
+        f.check_parent_modules(foo, &[lib], &[(FileSyntax::ID, 2)]);
 
         f.change_file(lib, "");
-        f.check_parent_modules(foo, &[]);
+        f.check_parent_modules(foo, &[], &[(ModuleDescr::ID, 2)]);
 
         f.change_file(lib, "mod foo;");
-        f.check_parent_modules(foo, &[lib]);
+        f.check_parent_modules(foo, &[lib], &[(ModuleDescr::ID, 2)]);
 
         f.change_file(lib, "mod bar;");
-        f.check_parent_modules(foo, &[]);
+        f.check_parent_modules(foo, &[], &[(ModuleDescr::ID, 2)]);
 
         f.change_file(lib, "mod foo;");
-        f.check_parent_modules(foo, &[lib]);
+        f.check_parent_modules(foo, &[lib], &[(ModuleDescr::ID, 2)]);
 
         f.remove_file(lib);
-        f.check_parent_modules(foo, &[]);
+        f.check_parent_modules(foo, &[], &[(ModuleDescr::ID, 1)]);
     }
 
 }

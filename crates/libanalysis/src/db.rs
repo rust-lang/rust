@@ -1,6 +1,7 @@
 use std::{
     hash::Hash,
     sync::Arc,
+    cell::RefCell,
 };
 use libsyntax2::{File};
 use im;
@@ -36,17 +37,38 @@ impl Db {
         self.file_resolver = file_resolver
     }
     pub(crate) fn query_ctx(&self) -> QueryCtx {
-        QueryCtx { db: self.clone() }
+        QueryCtx {
+            db: self.clone(),
+            trace: RefCell::new(Vec::new()),
+        }
     }
 }
 
 pub(crate) struct QueryCtx {
-    db: Db
+    db: Db,
+    pub(crate) trace: RefCell<Vec<TraceEvent>>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct TraceEvent {
+    pub(crate) query_id: u32,
+    pub(crate) kind: TraceEventKind
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum TraceEventKind {
+    Start, Finish
 }
 
 impl QueryCtx {
     pub(crate) fn get<Q: Get>(&self, params: &Q::Params) -> Q::Output {
-        Q::get(self, params)
+        self.trace(TraceEvent { query_id: Q::ID, kind: TraceEventKind::Start });
+        let res = Q::get(self, params);
+        self.trace(TraceEvent { query_id: Q::ID, kind: TraceEventKind::Finish });
+        res
+    }
+    fn trace(&self, event: TraceEvent) {
+        self.trace.borrow_mut().push(event)
     }
 }
 
