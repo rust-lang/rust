@@ -2808,9 +2808,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         } else {
             // is the missing argument of type `()`?
             let sugg_unit = if expected_arg_tys.len() == 1 && supplied_arg_count == 0 {
-                self.resolve_type_vars_if_possible(&expected_arg_tys[0]).is_nil()
+                self.resolve_type_vars_if_possible(&expected_arg_tys[0]).is_unit()
             } else if fn_inputs.len() == 1 && supplied_arg_count == 0 {
-                self.resolve_type_vars_if_possible(&fn_inputs[0]).is_nil()
+                self.resolve_type_vars_if_possible(&fn_inputs[0]).is_unit()
             } else {
                 false
             };
@@ -3958,7 +3958,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         if let Some(ref e) = *expr_opt {
                             coerce.coerce(self, &cause, e, e_ty);
                         } else {
-                            assert!(e_ty.is_nil());
+                            assert!(e_ty.is_unit());
                             coerce.coerce_forced_unit(self, &cause, &mut |_| (), true);
                         }
                     } else {
@@ -4752,7 +4752,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                  expression: &'gcx hir::Expr,
                                  expected: Ty<'tcx>,
                                  cause_span: Span) {
-        if expected.is_nil() {
+        if expected.is_unit() {
             // `BlockTailExpression` only relevant if the tail expr would be
             // useful on its own.
             match expression.node {
@@ -4795,7 +4795,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                    can_suggest: bool) {
         // Only suggest changing the return type for methods that
         // haven't set a return type at all (and aren't `fn main()` or an impl).
-        match (&fn_decl.output, found.is_suggestable(), can_suggest, expected.is_nil()) {
+        match (&fn_decl.output, found.is_suggestable(), can_suggest, expected.is_unit()) {
             (&hir::FunctionRetTy::DefaultReturn(span), true, true, true) => {
                 err.span_suggestion_with_applicability(
                     span,

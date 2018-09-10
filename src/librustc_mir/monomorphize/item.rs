@@ -368,7 +368,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
                 output.push(')');
 
-                if !sig.output().is_nil() {
+                if !sig.output().is_unit() {
                     output.push_str(" -> ");
                     self.push_type_name(sig.output(), output);
                 }
