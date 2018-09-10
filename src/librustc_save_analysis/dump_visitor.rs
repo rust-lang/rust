@@ -38,7 +38,6 @@ use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{
     bounds_to_string,
     generic_params_to_string,
-    path_to_string,
     ty_to_string
 };
 use syntax::ptr::P;
@@ -218,95 +217,21 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         self.dumper.compilation_opts(data);
     }
 
-    // Return all non-empty prefixes of a path.
-    // For each prefix, we return the span for the last segment in the prefix and
-    // a str representation of the entire prefix.
-    fn process_path_prefixes(&self, path: &ast::Path) -> Vec<(Span, String)> {
-        let segments = &path.segments[if path.is_global() { 1 } else { 0 }..];
-
-        let mut result = Vec::with_capacity(segments.len());
-        let mut segs = Vec::with_capacity(segments.len());
-
-        for (i, seg) in segments.iter().enumerate() {
-            segs.push(seg.clone());
-            let sub_path = ast::Path {
-                span: seg.ident.span, // span for the last segment
-                segments: segs,
-            };
-            let qualname = if i == 0 && path.is_global() {
-                format!("::{}", path_to_string(&sub_path))
-            } else {
-                path_to_string(&sub_path)
-            };
-            result.push((seg.ident.span, qualname));
-            segs = sub_path.segments;
-        }
-
-        result
-    }
-
     fn write_sub_paths(&mut self, path: &ast::Path) {
-        let sub_paths = self.process_path_prefixes(path);
-        for (span, _) in sub_paths {
-            let span = self.span_from_span(span);
-            self.dumper.dump_ref(Ref {
-                kind: RefKind::Mod,
-                span,
-                ref_id: ::null_id(),
-            });
+        for seg in &path.segments {
+            if let Some(data) = self.save_ctxt.get_path_segment_data(seg) {
+                self.dumper.dump_ref(data);
+            }
         }
     }
 
     // As write_sub_paths, but does not process the last ident in the path (assuming it
     // will be processed elsewhere). See note on write_sub_paths about global.
     fn write_sub_paths_truncated(&mut self, path: &ast::Path) {
-        let sub_paths = self.process_path_prefixes(path);
-        let len = sub_paths.len();
-        if len <= 1 {
-            return;
-        }
-
-        for (span, _) in sub_paths.into_iter().take(len - 1) {
-            let span = self.span_from_span(span);
-            self.dumper.dump_ref(Ref {
-                kind: RefKind::Mod,
-                span,
-                ref_id: ::null_id(),
-            });
-        }
-    }
-
-    // As write_sub_paths, but expects a path of the form module_path::trait::method
-    // Where trait could actually be a struct too.
-    fn write_sub_path_trait_truncated(&mut self, path: &ast::Path) {
-        let sub_paths = self.process_path_prefixes(path);
-        let len = sub_paths.len();
-        if len <= 1 {
-            return;
-        }
-        let sub_paths = &sub_paths[..(len - 1)];
-
-        // write the trait part of the sub-path
-        let (ref span, _) = sub_paths[len - 2];
-        let span = self.span_from_span(*span);
-        self.dumper.dump_ref(Ref {
-            kind: RefKind::Type,
-            ref_id: ::null_id(),
-            span,
-        });
-
-        // write the other sub-paths
-        if len <= 2 {
-            return;
-        }
-        let sub_paths = &sub_paths[..len - 2];
-        for &(ref span, _) in sub_paths {
-            let span = self.span_from_span(*span);
-            self.dumper.dump_ref(Ref {
-                kind: RefKind::Mod,
-                span,
-                ref_id: ::null_id(),
-            });
+        for seg in &path.segments[..path.segments.len() - 1] {
+            if let Some(data) = self.save_ctxt.get_path_segment_data(seg) {
+                self.dumper.dump_ref(data);
+            }
         }
     }
 
@@ -876,29 +801,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             }
         }
 
-        // Modules or types in the path prefix.
-        match self.save_ctxt.get_path_def(id) {
-            HirDef::Method(did) => {
-                let ti = self.tcx.associated_item(did);
-                if ti.kind == ty::AssociatedKind::Method && ti.method_has_self_argument {
-                    self.write_sub_path_trait_truncated(path);
-                }
-            }
-            HirDef::Fn(..) |
-            HirDef::Const(..) |
-            HirDef::Static(..) |
-            HirDef::StructCtor(..) |
-            HirDef::VariantCtor(..) |
-            HirDef::AssociatedConst(..) |
-            HirDef::Local(..) |
-            HirDef::Upvar(..) |
-            HirDef::Struct(..) |
-            HirDef::Union(..) |
-            HirDef::Variant(..) |
-            HirDef::TyAlias(..) |
-            HirDef::AssociatedTy(..) => self.write_sub_paths_truncated(path),
-            _ => {}
-        }
+        self.write_sub_paths_truncated(path);
     }
 
     fn process_struct_lit(

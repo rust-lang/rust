@@ -684,13 +684,14 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
-    pub fn get_path_data(&self, id: NodeId, path: &ast::Path) -> Option<Ref> {
+    pub fn get_path_data(&self, _id: NodeId, path: &ast::Path) -> Option<Ref> {
+        path.segments.last().and_then(|seg| self.get_path_segment_data(seg))
+    }
+
+    pub fn get_path_segment_data(&self, path_seg: &ast::PathSegment) -> Option<Ref> {
         // Returns true if the path is function type sugar, e.g., `Fn(A) -> B`.
-        fn fn_type(path: &ast::Path) -> bool {
-            if path.segments.len() != 1 {
-                return false;
-            }
-            if let Some(ref generic_args) = path.segments[0].args {
+        fn fn_type(seg: &ast::PathSegment) -> bool {
+            if let Some(ref generic_args) = seg.args {
                 if let ast::GenericArgs::Parenthesized(_) = **generic_args {
                     return true;
                 }
@@ -698,17 +699,13 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             false
         }
 
-        if path.segments.is_empty() {
-            return None;
-        }
+        let def = self.get_path_def(path_seg.id);
+        let span = path_seg.ident.span;
+        filter!(self.span_utils, span);
+        let span = self.span_from_span(span);
 
-        let def = self.get_path_def(id);
-        let last_seg = &path.segments[path.segments.len() - 1];
-        let sub_span = last_seg.ident.span;
-        filter!(self.span_utils, sub_span);
         match def {
             HirDef::Upvar(id, ..) | HirDef::Local(id) => {
-                let span = self.span_from_span(sub_span);
                 Some(Ref {
                     kind: RefKind::Variable,
                     span,
@@ -719,20 +716,16 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             HirDef::Const(..) |
             HirDef::AssociatedConst(..) |
             HirDef::VariantCtor(..) => {
-                let span = self.span_from_span(sub_span);
                 Some(Ref {
                     kind: RefKind::Variable,
                     span,
                     ref_id: id_from_def_id(def.def_id()),
                 })
             }
-            HirDef::Trait(def_id) if fn_type(path) => {
-                // Function type bounds are desugared in the parser, so we have to
-                // special case them here.
-                let fn_span = path.segments.first().unwrap().ident.span;
+            HirDef::Trait(def_id) if fn_type(path_seg) => {
                 Some(Ref {
                     kind: RefKind::Type,
-                    span: self.span_from_span(fn_span),
+                    span,
                     ref_id: id_from_def_id(def_id),
                 })
             }
@@ -748,7 +741,6 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             HirDef::Trait(def_id) |
             HirDef::Existential(def_id) |
             HirDef::TyParam(def_id) => {
-                let span = self.span_from_span(sub_span);
                 Some(Ref {
                     kind: RefKind::Type,
                     span,
@@ -759,7 +751,6 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 // This is a reference to a tuple struct where the def_id points
                 // to an invisible constructor function. That is not a very useful
                 // def, so adjust to point to the tuple struct itself.
-                let span = self.span_from_span(sub_span);
                 let parent_def_id = self.tcx.parent_def_id(def_id).unwrap();
                 Some(Ref {
                     kind: RefKind::Type,
@@ -778,7 +769,6 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 } else {
                     None
                 };
-                let span = self.span_from_span(sub_span);
                 Some(Ref {
                     kind: RefKind::Function,
                     span,
@@ -786,7 +776,6 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 })
             }
             HirDef::Fn(def_id) => {
-                let span = self.span_from_span(sub_span);
                 Some(Ref {
                     kind: RefKind::Function,
                     span,
@@ -794,7 +783,6 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 })
             }
             HirDef::Mod(def_id) => {
-                let span = self.span_from_span(sub_span);
                 Some(Ref {
                     kind: RefKind::Mod,
                     span,
