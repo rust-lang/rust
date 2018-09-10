@@ -20,7 +20,6 @@ use ich::{StableHashingContext, NodeIdHashingMode};
 use util::nodemap::{FxHashMap, FxHashSet};
 use ty;
 
-use std::fmt;
 use std::mem;
 use rustc_data_structures::sync::Lrc;
 use syntax::source_map;
@@ -100,39 +99,29 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 /// placate the same deriving in `ty::FreeRegion`, but we may want to
 /// actually attach a more meaningful ordering to scopes than the one
 /// generated via deriving here.
-///
-/// Scope is a bit-packed to save space - if `code` is SCOPE_DATA_REMAINDER_MAX
-/// or less, it is a `ScopeData::Remainder`, otherwise it is a type specified
-/// by the bitpacking.
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Copy, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Debug, Copy, RustcEncodable, RustcDecodable)]
 pub struct Scope {
     pub(crate) id: hir::ItemLocalId,
-    pub(crate) code: u32
+    pub(crate) data: ScopeData,
 }
-
-const SCOPE_DATA_NODE: u32 = 0xFFFF_FFFF;
-const SCOPE_DATA_CALLSITE: u32 = 0xFFFF_FFFE;
-const SCOPE_DATA_ARGUMENTS: u32 = 0xFFFF_FFFD;
-const SCOPE_DATA_DESTRUCTION: u32 = 0xFFFF_FFFC;
-// be sure to add the MAX of FirstStatementIndex if you add more constants here
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Debug, Copy, RustcEncodable, RustcDecodable)]
 pub enum ScopeData {
-    Node(hir::ItemLocalId),
+    Node,
 
     // Scope of the call-site for a function or closure
     // (outlives the arguments as well as the body).
-    CallSite(hir::ItemLocalId),
+    CallSite,
 
     // Scope of arguments passed to a function or closure
     // (they outlive its body).
-    Arguments(hir::ItemLocalId),
+    Arguments,
 
     // Scope of destructors for temporaries of node-id.
-    Destruction(hir::ItemLocalId),
+    Destruction,
 
     // Scope following a `let id = expr;` binding in a block.
-    Remainder(BlockRemainder)
+    Remainder(FirstStatementIndex)
 }
 
 /// Represents a subscope of `block` for a binding that is introduced
@@ -152,12 +141,6 @@ pub enum ScopeData {
 ///
 /// * the subscope with `first_statement_index == 1` is scope of `c`,
 ///   and thus does not include EXPR_2, but covers the `...`.
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable,
-         RustcDecodable, Debug, Copy)]
-pub struct BlockRemainder {
-    pub block: hir::ItemLocalId,
-    pub first_statement_index: FirstStatementIndex,
-}
 
 newtype_index! {
     pub struct FirstStatementIndex;
@@ -165,67 +148,53 @@ newtype_index! {
 
 impl_stable_hash_for!(struct ::middle::region::FirstStatementIndex { private });
 
-impl From<ScopeData> for Scope {
-    #[inline]
-    fn from(scope_data: ScopeData) -> Self {
-        let (id, code) = match scope_data {
-            ScopeData::Node(id) => (id, SCOPE_DATA_NODE),
-            ScopeData::CallSite(id) => (id, SCOPE_DATA_CALLSITE),
-            ScopeData::Arguments(id) => (id, SCOPE_DATA_ARGUMENTS),
-            ScopeData::Destruction(id) => (id, SCOPE_DATA_DESTRUCTION),
-            ScopeData::Remainder(r) => (r.block, r.first_statement_index.index() as u32)
-        };
-        Self { id, code }
-    }
-}
-
-impl fmt::Debug for Scope {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&self.data(), formatter)
-    }
-}
+// compilation error if size of `ScopeData` is not the same as a `u32`
+#[allow(dead_code)]
+// only works on stage 1 when the rustc_layout_scalar_valid_range attribute actually exists
+#[cfg(not(stage0))]
+static ASSERT: () = [()][(mem::size_of::<ScopeData>() != 4) as usize];
 
 #[allow(non_snake_case)]
 impl Scope {
     #[inline]
     pub fn data(self) -> ScopeData {
-        match self.code {
-            SCOPE_DATA_NODE => ScopeData::Node(self.id),
-            SCOPE_DATA_CALLSITE => ScopeData::CallSite(self.id),
-            SCOPE_DATA_ARGUMENTS => ScopeData::Arguments(self.id),
-            SCOPE_DATA_DESTRUCTION => ScopeData::Destruction(self.id),
-            idx => ScopeData::Remainder(BlockRemainder {
-                block: self.id,
-                first_statement_index: FirstStatementIndex::new(idx as usize)
-            })
+        self.data
         }
+
+    #[inline]
+    pub fn new(id: hir::ItemLocalId, data: ScopeData) -> Self {
+        Scope { id, data }
     }
 
     #[inline]
     pub fn Node(id: hir::ItemLocalId) -> Self {
-        Self::from(ScopeData::Node(id))
+        Self::new(id, ScopeData::Node)
     }
 
     #[inline]
     pub fn CallSite(id: hir::ItemLocalId) -> Self {
-        Self::from(ScopeData::CallSite(id))
+        Self::new(id, ScopeData::CallSite)
     }
 
     #[inline]
     pub fn Arguments(id: hir::ItemLocalId) -> Self {
-        Self::from(ScopeData::Arguments(id))
+        Self::new(id, ScopeData::Arguments)
     }
 
     #[inline]
     pub fn Destruction(id: hir::ItemLocalId) -> Self {
-        Self::from(ScopeData::Destruction(id))
+        Self::new(id, ScopeData::Destruction)
     }
 
     #[inline]
-    pub fn Remainder(r: BlockRemainder) -> Self {
-        Self::from(ScopeData::Remainder(r))
+    pub fn Remainder(
+        id: hir::ItemLocalId,
+        first: FirstStatementIndex,
+    ) -> Self {
+        Self::new(id, ScopeData::Remainder(first))
     }
 }
+
 
 impl Scope {
     /// Returns a item-local id associated with this scope.
@@ -257,7 +226,7 @@ impl Scope {
             return DUMMY_SP;
         }
         let span = tcx.hir.span(node_id);
-        if let ScopeData::Remainder(r) = self.data() {
+        if let ScopeData::Remainder(first_statement_index) = self.data() {
             if let Node::Block(ref blk) = tcx.hir.get(node_id) {
                 // Want span for scope starting after the
                 // indexed statement and ending at end of
@@ -267,7 +236,7 @@ impl Scope {
                 // (This is the special case aluded to in the
                 // doc-comment for this method)
 
-                let stmt_span = blk.stmts[r.first_statement_index.index()].span;
+                let stmt_span = blk.stmts[first_statement_index.index()].span;
 
                 // To avoid issues with macro-generated spans, the span
                 // of the statement must be nested in that of the block.
@@ -511,8 +480,8 @@ impl<'tcx> ScopeTree {
         }
 
         // record the destruction scopes for later so we can query them
-        if let ScopeData::Destruction(n) = child.data() {
-            self.destruction_scopes.insert(n, child);
+        if let ScopeData::Destruction = child.data() {
+            self.destruction_scopes.insert(child.item_local_id(), child);
         }
     }
 
@@ -595,7 +564,7 @@ impl<'tcx> ScopeTree {
 
         while let Some(&(p, _)) = self.parent_map.get(&id) {
             match p.data() {
-                ScopeData::Destruction(..) => {
+                ScopeData::Destruction => {
                     debug!("temporary_scope({:?}) = {:?} [enclosing]",
                            expr_id, id);
                     return Some(id);
@@ -650,8 +619,8 @@ impl<'tcx> ScopeTree {
     /// Returns the id of the innermost containing body
     pub fn containing_body(&self, mut scope: Scope)-> Option<hir::ItemLocalId> {
         loop {
-            if let ScopeData::CallSite(id) = scope.data() {
-                return Some(id);
+            if let ScopeData::CallSite = scope.data() {
+                return Some(scope.item_local_id());
             }
 
             match self.opt_encl_scope(scope) {
@@ -867,10 +836,7 @@ fn resolve_block<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, blk:
                 // except for the first such subscope, which has the
                 // block itself as a parent.
                 visitor.enter_scope(
-                    Scope::Remainder(BlockRemainder {
-                        block: blk.hir_id.local_id,
-                        first_statement_index: FirstStatementIndex::new(i)
-                    })
+                    Scope::Remainder(blk.hir_id.local_id, FirstStatementIndex::new(i))
                 );
                 visitor.cx.var_parent = visitor.cx.parent;
             }
@@ -1033,7 +999,7 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
             match visitor.scope_tree.parent_map.get(&scope) {
                 // Don't cross from closure bodies to their parent.
                 Some(&(superscope, _)) => match superscope.data() {
-                    ScopeData::CallSite(_) => break,
+                    ScopeData::CallSite => break,
                     _ => scope = superscope
                 },
                 None => break

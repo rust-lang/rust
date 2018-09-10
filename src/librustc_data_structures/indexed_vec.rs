@@ -72,7 +72,8 @@ macro_rules! newtype_index {
         newtype_index!(
             // Leave out derives marker so we can use its absence to ensure it comes first
             @type         [$name]
-            @max          [0xFFFF_FFFE]
+            // shave off 256 indices at the end to allow space for packing these indices into enums
+            @max          [0xFFFF_FF00]
             @vis          [$v]
             @debug_format ["{}"]);
     );
@@ -82,7 +83,8 @@ macro_rules! newtype_index {
         newtype_index!(
             // Leave out derives marker so we can use its absence to ensure it comes first
             @type         [$name]
-            @max          [0xFFFF_FFFE]
+            // shave off 256 indices at the end to allow space for packing these indices into enums
+            @max          [0xFFFF_FF00]
             @vis          [$v]
             @debug_format ["{}"]
                           $($tokens)+);
