@@ -14,7 +14,7 @@
 set -ex
 source shared.sh
 
-ZIRCON=e9a26dbc70d631029f8ee9763103910b7e3a2fe1
+ZIRCON=1e827755b8b48bb5029e3c7cf2ea9ced9c8f8e1d
 
 mkdir -p zircon
 pushd zircon > /dev/null
@@ -26,16 +26,19 @@ git fetch --depth=1 origin $ZIRCON
 git reset --hard FETCH_HEAD
 
 # Download toolchain
-./scripts/download-toolchain
-chmod -R a+rx prebuilt/downloads/clang+llvm-x86_64-linux
-cp -a prebuilt/downloads/clang+llvm-x86_64-linux/. /usr/local
+./scripts/download-prebuilt
+chmod -R a+rx prebuilt/downloads/clang
+cp -a prebuilt/downloads/clang/. /usr/local
+if ! which python > /dev/null; then
+  ln -s `which python2.7` /usr/local/bin/python
+fi
 
 build() {
   local arch="$1"
 
   case "${arch}" in
-    x86_64) tgt="zircon-pc-x86-64" ;;
-    aarch64) tgt="zircon-qemu-arm64" ;;
+    x86_64) tgt="x64" ;;
+    aarch64) tgt="arm64" ;;
   esac
 
   hide_output make -j$(getconf _NPROCESSORS_ONLN) $tgt
