@@ -3,7 +3,7 @@ cache:
 - cargo
 before_install:
 - shopt -s globstar
-- MAX_LINE_LENGTH=80 bash ci/check_line_lengths.sh src/**/*.md
+- MAX_LINE_LENGTH=100 bash ci/check_line_lengths.sh src/**/*.md
 install:
 - source ~/.cargo/env || true
 - bash ci/install.sh

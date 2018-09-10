@@ -2,7 +2,7 @@
 
 if [ "$1" == "--help" ]; then
     echo 'Usage:'
-    echo '  MAX_LINE_LENGTH=80' "$0" 'src/**/*.md'
+    echo '  MAX_LINE_LENGTH=100' "$0" 'src/**/*.md'
     exit 1
 fi
 
