@@ -24,6 +24,7 @@ impl_stable_hash_for!(enum mir::LocalKind { Var, Temp, Arg, ReturnPointer });
 impl_stable_hash_for!(struct mir::LocalDecl<'tcx> {
     mutability,
     ty,
+    user_ty,
     name,
     source_info,
     visibility_scope,

@@ -399,7 +399,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let num_patterns = patterns.len();
         self.visit_bindings(
             &patterns[0],
-            &mut |this, mutability, name, mode, var, span, ty| {
+            None,
+            &mut |this, mutability, name, mode, var, span, ty, user_ty| {
                 if visibility_scope.is_none() {
                     visibility_scope =
                         Some(this.new_source_scope(scope_span, LintLevel::Inherited, None));
@@ -421,6 +422,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     num_patterns,
                     var,
                     ty,
+                    user_ty,
                     has_guard,
                     opt_match_place.map(|(x, y)| (x.cloned(), y)),
                     patterns[0].span,
@@ -470,10 +472,21 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         );
     }
 
-    pub fn visit_bindings<F>(&mut self, pattern: &Pattern<'tcx>, f: &mut F)
-    where
-        F: FnMut(&mut Self, Mutability, Name, BindingMode, NodeId, Span, Ty<'tcx>),
-    {
+    pub fn visit_bindings(
+        &mut self,
+        pattern: &Pattern<'tcx>,
+        pattern_user_ty: Option<CanonicalTy<'tcx>>,
+        f: &mut impl FnMut(
+            &mut Self,
+            Mutability,
+            Name,
+            BindingMode,
+            NodeId,
+            Span,
+            Ty<'tcx>,
+            Option<CanonicalTy<'tcx>>,
+        ),
+    ) {
         match *pattern.kind {
             PatternKind::Binding {
                 mutability,
@@ -484,9 +497,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 ref subpattern,
                 ..
             } => {
-                f(self, mutability, name, mode, var, pattern.span, ty);
+                f(self, mutability, name, mode, var, pattern.span, ty, pattern_user_ty);
                 if let Some(subpattern) = subpattern.as_ref() {
-                    self.visit_bindings(subpattern, f);
+                    self.visit_bindings(subpattern, pattern_user_ty, f);
                 }
             }
             PatternKind::Array {
@@ -499,21 +512,34 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 ref slice,
                 ref suffix,
             } => {
+                // FIXME(#47184): extract or handle `pattern_user_ty` somehow
                 for subpattern in prefix.iter().chain(slice).chain(suffix) {
-                    self.visit_bindings(subpattern, f);
+                    self.visit_bindings(subpattern, None, f);
                 }
             }
             PatternKind::Constant { .. } | PatternKind::Range { .. } | PatternKind::Wild => {}
-            PatternKind::AscribeUserType { ref subpattern, .. }
-            | PatternKind::Deref { ref subpattern } => {
-                self.visit_bindings(subpattern, f);
+            PatternKind::Deref { ref subpattern } => {
+                // FIXME(#47184): extract or handle `pattern_user_ty` somehow
+                self.visit_bindings(subpattern, None, f);
+            }
+            PatternKind::AscribeUserType { ref subpattern, user_ty } => {
+                // This corresponds to something like
+                //
+                // ```
+                // let (p1: T1): T2 = ...;
+                // ```
+                //
+                // Not presently possible, though maybe someday.
+                assert!(pattern_user_ty.is_none());
+                self.visit_bindings(subpattern, Some(user_ty), f)
             }
             PatternKind::Leaf { ref subpatterns }
             | PatternKind::Variant {
                 ref subpatterns, ..
             } => {
+                // FIXME(#47184): extract or handle `pattern_user_ty` somehow
                 for subpattern in subpatterns {
-                    self.visit_bindings(&subpattern.pattern, f);
+                    self.visit_bindings(&subpattern.pattern, None, f);
                 }
             }
         }
@@ -1375,6 +1401,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         num_patterns: usize,
         var_id: NodeId,
         var_ty: Ty<'tcx>,
+        user_var_ty: Option<CanonicalTy<'tcx>>,
         has_guard: ArmHasGuard,
         opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
         pat_span: Span,
@@ -1392,7 +1419,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         };
         let local = LocalDecl::<'tcx> {
             mutability,
-            ty: var_ty.clone(),
+            ty: var_ty,
+            user_ty: user_var_ty,
             name: Some(name),
             source_info,
             visibility_scope,
@@ -1424,6 +1452,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // See previous comment.
                 mutability: Mutability::Not,
                 ty: tcx.mk_imm_ref(tcx.types.re_empty, var_ty),
+                user_ty: None,
                 name: Some(name),
                 source_info,
                 visibility_scope,

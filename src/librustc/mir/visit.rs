@@ -721,6 +721,7 @@ macro_rules! make_mir_visitor {
                 let LocalDecl {
                     mutability: _,
                     ref $($mutability)* ty,
+                    ref $($mutability)* user_ty,
                     name: _,
                     ref $($mutability)* source_info,
                     ref $($mutability)* visibility_scope,
@@ -732,6 +733,9 @@ macro_rules! make_mir_visitor {
                     local,
                     source_info: *source_info,
                 });
+                if let Some(user_ty) = user_ty {
+                    self.visit_canonical_ty(user_ty);
+                }
                 self.visit_source_info(source_info);
                 self.visit_source_scope(visibility_scope);
             }

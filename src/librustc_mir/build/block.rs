@@ -143,7 +143,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             None, remainder_span, lint_level, slice::from_ref(&pattern),
                             ArmHasGuard(false), None);
 
-                        this.visit_bindings(&pattern, &mut |this, _, _, _, node, span, _| {
+                        this.visit_bindings(&pattern, None, &mut |this, _, _, _, node, span, _, _| {
                             this.storage_live_binding(block, node, span, OutsideGuard);
                             this.schedule_drop_for_binding(node, span, OutsideGuard);
                         })

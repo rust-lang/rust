@@ -640,6 +640,12 @@ pub struct LocalDecl<'tcx> {
     /// Type of this local.
     pub ty: Ty<'tcx>,
 
+    /// If the user manually ascribed a type to this variable,
+    /// e.g. via `let x: T`, then we carry that type here. The MIR
+    /// borrow checker needs this information since it can affect
+    /// region inference.
+    pub user_ty: Option<CanonicalTy<'tcx>>,
+
     /// Name of the local, used in debuginfo and pretty-printing.
     ///
     /// Note that function arguments can also have this set to `Some(_)`
@@ -802,6 +808,7 @@ impl<'tcx> LocalDecl<'tcx> {
         LocalDecl {
             mutability,
             ty,
+            user_ty: None,
             name: None,
             source_info: SourceInfo {
                 span,
@@ -821,6 +828,7 @@ impl<'tcx> LocalDecl<'tcx> {
         LocalDecl {
             mutability: Mutability::Mut,
             ty: return_ty,
+            user_ty: None,
             source_info: SourceInfo {
                 span,
                 scope: OUTERMOST_SOURCE_SCOPE,
@@ -2613,6 +2621,7 @@ BraceStructTypeFoldableImpl! {
         is_user_variable,
         internal,
         ty,
+        user_ty,
         name,
         source_info,
         visibility_scope,

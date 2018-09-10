@@ -17,6 +17,7 @@ use rustc::ty::item_path;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use std::fmt::Display;
+use std::fmt::Write as _;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -493,14 +494,18 @@ fn write_scope_tree(
             };
 
             let indent = indent + INDENT.len();
-            let indented_var = format!(
-                "{0:1$}let {2}{3:?}: {4:?};",
+            let mut indented_var = format!(
+                "{0:1$}let {2}{3:?}: {4:?}",
                 INDENT,
                 indent,
                 mut_str,
                 local,
                 var.ty
             );
+            if let Some(user_ty) = var.user_ty {
+                write!(indented_var, " as {:?}", user_ty).unwrap();
+            }
+            indented_var.push_str(";");
             writeln!(
                 w,
                 "{0:1$} // \"{2}\" in {3}",

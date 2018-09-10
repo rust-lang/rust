@@ -275,6 +275,25 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
         self.super_local_decl(local, local_decl);
         self.sanitize_type(local_decl, local_decl.ty);
+
+        if let Some(user_ty) = local_decl.user_ty {
+            if let Err(terr) = self.cx.relate_type_and_user_type(
+                local_decl.ty,
+                ty::Variance::Invariant,
+                user_ty,
+                Locations::All,
+            ) {
+                span_mirbug!(
+                    self,
+                    local,
+                    "bad user type on variable {:?}: {:?} != {:?} ({:?})",
+                    local,
+                    local_decl.ty,
+                    local_decl.user_ty,
+                    terr,
+                );
+            }
+        }
     }
 
     fn visit_mir(&mut self, mir: &Mir<'tcx>) {
