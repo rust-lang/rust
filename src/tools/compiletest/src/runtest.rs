@@ -521,11 +521,16 @@ impl<'test> TestCx<'test> {
             .args(&self.props.compile_flags)
             .envs(self.props.exec_env.clone());
 
+        let src_to_read = match read_from {
+            ReadFrom::Stdin => Some(src),
+            ReadFrom::Path => None
+        };
+
         self.compose_and_run(
             rustc,
             self.config.compile_lib_path.to_str().unwrap(),
             Some(aux_dir.to_str().unwrap()),
-            Some(src),
+            src_to_read,
         )
     }
 
