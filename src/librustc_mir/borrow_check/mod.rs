@@ -754,6 +754,7 @@ use self::ShallowOrDeep::{Deep, Shallow};
 enum ArtificialField {
     Discriminant,
     ArrayLength,
+    ShallowBorrow,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -1200,7 +1201,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Control::Continue
                 }
 
-                (Read(_), BorrowKind::Shared) | (Reservation(..), BorrowKind::Shared) => {
+                (Read(_), BorrowKind::Shared) | (Reservation(..), BorrowKind::Shared)
+                | (Read(_), BorrowKind::Shallow) | (Reservation(..), BorrowKind::Shallow) => {
+                    Control::Continue
+                }
+
+                (Write(WriteKind::Move), BorrowKind::Shallow) => {
+                    // Handled by initialization checks.
                     Control::Continue
                 }
 
@@ -1336,6 +1343,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         match *rvalue {
             Rvalue::Ref(_ /*rgn*/, bk, ref place) => {
                 let access_kind = match bk {
+                    BorrowKind::Shallow => {
+                        (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
+                    },
                     BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
                     BorrowKind::Unique | BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
@@ -1543,11 +1553,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             return;
         }
 
-        // FIXME: replace this with a proper borrow_conflicts_with_place when
-        // that is merged.
         let sd = if might_be_alive { Deep } else { Shallow(None) };
 
-        if places_conflict::places_conflict(self.infcx.tcx, self.mir, place, root_place, sd) {
+        if places_conflict::borrow_conflicts_with_place(
+            self.infcx.tcx,
+            self.mir,
+            place,
+            borrow.kind,
+            root_place,
+            sd
+        ) {
             debug!("check_for_invalidation_at_exit({:?}): INVALID", place);
             // FIXME: should be talking about the region lifetime instead
             // of just a span here.
@@ -1597,7 +1612,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             // only mutable borrows should be 2-phase
             assert!(match borrow.kind {
-                BorrowKind::Shared => false,
+                BorrowKind::Shared | BorrowKind::Shallow => false,
                 BorrowKind::Unique | BorrowKind::Mut { .. } => true,
             });
 
@@ -1897,7 +1912,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 let is_local_mutation_allowed = match borrow_kind {
                     BorrowKind::Unique => LocalMutationIsAllowed::Yes,
                     BorrowKind::Mut { .. } => is_local_mutation_allowed,
-                    BorrowKind::Shared => unreachable!(),
+                    BorrowKind::Shared | BorrowKind::Shallow => unreachable!(),
                 };
                 match self.is_mutable(place, is_local_mutation_allowed) {
                     Ok(root_place) => {
@@ -1927,8 +1942,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             | Write(wk @ WriteKind::Move)
             | Reservation(wk @ WriteKind::StorageDeadOrDrop(_))
             | Reservation(wk @ WriteKind::MutableBorrow(BorrowKind::Shared))
+            | Reservation(wk @ WriteKind::MutableBorrow(BorrowKind::Shallow))
             | Write(wk @ WriteKind::StorageDeadOrDrop(_))
-            | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shared)) => {
+            | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shared))
+            | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shallow)) => {
                 if let Err(_place_err) = self.is_mutable(place, is_local_mutation_allowed) {
                     if self.infcx.tcx.migrate_borrowck() {
                         // rust-lang/rust#46908: In pure NLL mode this
@@ -1971,6 +1988,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Read(ReadKind::Borrow(BorrowKind::Unique))
             | Read(ReadKind::Borrow(BorrowKind::Mut { .. }))
             | Read(ReadKind::Borrow(BorrowKind::Shared))
+            | Read(ReadKind::Borrow(BorrowKind::Shallow))
             | Read(ReadKind::Copy) => {
                 // Access authorized
                 return false;

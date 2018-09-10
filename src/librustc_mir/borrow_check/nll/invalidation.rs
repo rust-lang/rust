@@ -409,6 +409,9 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
         match *rvalue {
             Rvalue::Ref(_ /*rgn*/, bk, ref place) => {
                 let access_kind = match bk {
+                    BorrowKind::Shallow => {
+                        (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
+                    },
                     BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
                     BorrowKind::Unique | BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
@@ -519,6 +522,10 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
                         // have already taken the reservation
                     }
 
+                    (Read(_), BorrowKind::Shallow) | (Reservation(..), BorrowKind::Shallow) => {
+                        // Sccess_place be called for BorrowKind::Match.
+                        unreachable!();
+                    }
                     (Read(_), BorrowKind::Shared) | (Reservation(..), BorrowKind::Shared) => {
                         // Reads/reservations don't invalidate shared borrows
                     }

@@ -46,6 +46,7 @@ for mir::BorrowKind {
 
         match *self {
             mir::BorrowKind::Shared |
+            mir::BorrowKind::Shallow |
             mir::BorrowKind::Unique => {}
             mir::BorrowKind::Mut { allow_two_phase_borrow } => {
                 allow_two_phase_borrow.hash_stable(hcx, hasher);

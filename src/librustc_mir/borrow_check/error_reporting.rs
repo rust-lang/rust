@@ -333,6 +333,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Origin::Mir,
                 ),
 
+            (BorrowKind::Mut { .. }, _, _, BorrowKind::Shallow, _, _)
+            | (BorrowKind::Unique, _, _, BorrowKind::Shallow, _, _) => {
+                return;
+            }
+
             (BorrowKind::Unique, _, _, _, _, _) => tcx.cannot_uniquely_borrow_by_one_closure(
                 span,
                 &desc_place,

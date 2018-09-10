@@ -1363,7 +1363,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     // borrow of the whole match input. See additional
                     // discussion on rust-lang/rust#49870.
                     let borrow_kind = match borrow_kind {
-                        BorrowKind::Shared | BorrowKind::Unique => borrow_kind,
+                        BorrowKind::Shared
+                        | BorrowKind::Shallow
+                        | BorrowKind::Unique => borrow_kind,
                         BorrowKind::Mut { .. } => BorrowKind::Mut {
                             allow_two_phase_borrow: true,
                         },
