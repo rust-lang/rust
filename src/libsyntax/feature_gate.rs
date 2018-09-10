@@ -672,7 +672,7 @@ declare_features! (
     (accepted, attr_literals, "1.30.0", Some(34981), None),
     (accepted, panic_handler, "1.30.0", Some(44489), None),
     // Used to preserve symbols (see llvm.used)
-    (accepted, used, "1.29.0", Some(40289), None),
+    (accepted, used, "1.30.0", Some(40289), None),
 
 );
 
