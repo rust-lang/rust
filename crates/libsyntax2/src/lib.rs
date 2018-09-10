@@ -149,7 +149,7 @@ fn find_reparsable_node(node: SyntaxNodeRef, range: TextRange) -> Option<(Syntax
             MATCH_ARM_LIST => grammar::match_arm_list,
             USE_TREE_LIST => grammar::use_tree_list,
             EXTERN_ITEM_LIST => grammar::extern_item_list,
-            TOKEN_TREE => grammar::token_tree,
+            TOKEN_TREE if node.first_child().unwrap().kind() == L_CURLY => grammar::token_tree,
             ITEM_LIST => {
                 let parent = node.parent().unwrap();
                 match parent.kind() {

@@ -85,6 +85,11 @@ pub enum A {
 foo!{a, b<|><|> d}
 ", ", c[3]");
     do_check(r"
+fn foo() {
+    vec![<|><|>]
+}
+", "123");
+    do_check(r"
 extern {
     fn<|>;<|>
 }
