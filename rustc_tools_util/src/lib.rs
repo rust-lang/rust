@@ -61,6 +61,30 @@ impl std::fmt::Display for VersionInfo {
     }
 }
 
+impl std::fmt::Debug for VersionInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "VersionInfo {{ crate_name: \"{}\", major: {}, minor: {}, patch: {}",
+            self.crate_name, self.major, self.minor, self.patch,
+        )?;
+        match self.commit_hash {
+            Some(_) => {
+                write!(
+                    f,
+                    ", commit_hash: \"{}\", commit_date: \"{}\" }}",
+                    self.commit_hash.clone().unwrap_or_default().trim(),
+                    self.commit_date.clone().unwrap_or_default().trim()
+                )?;
+            },
+            None => {
+                write!(f, " }}")?;
+            },
+        }
+        Ok(())
+    }
+}
+
 pub fn get_channel() -> Option<String> {
     if let Ok(channel) = env::var("CFG_RELEASE_CHANNEL") {
         Some(channel)
@@ -105,8 +129,17 @@ mod test {
     #[test]
     fn test_display_local() {
         let vi = get_version_info!();
-        let fmt = format!("{}", vi);
-        assert_eq!(fmt, "rustc_tools_util 0.1.0");
+        assert_eq!(vi.to_string(), "rustc_tools_util 0.1.0");
+    }
+
+    #[test]
+    fn test_debug_local() {
+        let vi = get_version_info!();
+        let s = format!("{:?}", vi);
+        assert_eq!(
+            s,
+            "VersionInfo { crate_name: \"rustc_tools_util\", major: 0, minor: 1, patch: 0 }"
+        );
     }
 
 }
