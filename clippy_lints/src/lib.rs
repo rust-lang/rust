@@ -533,6 +533,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         assign_ops::ASSIGN_OP_PATTERN,
         assign_ops::MISREFACTORED_ASSIGN_OP,
         attrs::DEPRECATED_SEMVER,
+        attrs::UNKNOWN_CLIPPY_LINTS,
         attrs::USELESS_ATTRIBUTE,
         bit_mask::BAD_BIT_MASK,
         bit_mask::INEFFECTIVE_BIT_MASK,
@@ -749,6 +750,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
 
     reg.register_lint_group("clippy::style", Some("clippy_style"), vec![
         assign_ops::ASSIGN_OP_PATTERN,
+        attrs::UNKNOWN_CLIPPY_LINTS,
         bit_mask::VERBOSE_BIT_MASK,
         blacklisted_name::BLACKLISTED_NAME,
         block_in_if_condition::BLOCK_IN_IF_CONDITION_EXPR,
