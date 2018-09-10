@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_snake_case)]
 
 // Test that destructors for rvalue temporaries run either at end of
 // statement or end of block, as appropriate given the temporary

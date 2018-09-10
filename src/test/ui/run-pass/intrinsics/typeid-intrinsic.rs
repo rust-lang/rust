@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(deprecated)]
 
 // aux-build:typeid-intrinsic-aux1.rs
 // aux-build:typeid-intrinsic-aux2.rs

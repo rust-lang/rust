@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // run-pass
-
+#![allow(non_upper_case_globals, non_camel_case_types)]
 
 const foo: isize = 4 >> 1;
 enum bs { thing = foo }

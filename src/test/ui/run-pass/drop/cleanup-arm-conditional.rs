@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(stable_features)]
 
 // Test that cleanup scope for temporaries created in a match
 // arm is confined to the match arm itself.
