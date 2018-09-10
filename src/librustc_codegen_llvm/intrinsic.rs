@@ -31,7 +31,7 @@ use syntax::symbol::Symbol;
 use builder::Builder;
 use value::Value;
 
-use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods, DerivedTypeMethods, DerivedIntrinsicMethods};
+use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods, DerivedTypeMethods, DerivedIntrinsicMethods, StaticMethods};
 
 use rustc::session::Session;
 use syntax_pos::Span;
@@ -845,7 +845,7 @@ fn codegen_msvc_try(
 
         let tcx = cx.tcx;
         let tydesc = match tcx.lang_items().msvc_try_filter() {
-            Some(did) => ::consts::get_static(cx, did),
+            Some(did) => cx.get_static(did),
             None => bug!("msvc_try_filter not defined"),
         };
         let tok = catchpad.catch_pad(cs, &[tydesc, cx.const_i32(0), slot]);

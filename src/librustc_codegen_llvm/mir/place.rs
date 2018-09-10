@@ -16,13 +16,12 @@ use rustc::mir::tcx::PlaceTy;
 use base;
 use builder::Builder;
 use common::{CodegenCx, IntPredicate};
-use consts;
 use type_of::LayoutLlvmExt;
 use value::Value;
 use glue;
 use mir::constant::const_alloc_to_llvm;
 
-use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods, DerivedTypeMethods, DerivedIntrinsicMethods};
+use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods, DerivedTypeMethods, DerivedIntrinsicMethods, StaticMethods};
 
 use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
@@ -64,14 +63,14 @@ impl PlaceRef<'tcx, &'ll Value> {
         offset: Size,
     ) -> PlaceRef<'tcx, &'ll Value> {
         let init = const_alloc_to_llvm(bx.cx(), alloc);
-        let base_addr = consts::addr_of(bx.cx(), init, layout.align, None);
+        let base_addr = bx.cx().static_addr_of(init, layout.align, None);
 
         let llval = unsafe { LLVMConstInBoundsGEP(
-            consts::bitcast(base_addr, bx.cx().type_i8p()),
+            bx.cx().static_bitcast(base_addr, bx.cx().type_i8p()),
             &bx.cx().const_usize(offset.bytes()),
             1,
         )};
-        let llval = consts::bitcast(llval, bx.cx().type_ptr_to(layout.llvm_type(bx.cx())));
+        let llval = bx.cx().static_bitcast(llval, bx.cx().type_ptr_to(layout.llvm_type(bx.cx())));
         PlaceRef::new_sized(llval, layout, alloc.align)
     }
 
@@ -492,7 +491,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
             }
             mir::Place::Static(box mir::Static { def_id, ty }) => {
                 let layout = cx.layout_of(self.monomorphize(&ty));
-                PlaceRef::new_sized(consts::get_static(cx, def_id), layout, layout.align)
+                PlaceRef::new_sized(cx.get_static(def_id), layout, layout.align)
             },
             mir::Place::Projection(box mir::Projection {
                 ref base,

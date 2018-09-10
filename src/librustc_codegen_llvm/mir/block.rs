@@ -19,14 +19,13 @@ use base;
 use callee;
 use builder::{Builder, MemFlags};
 use common::{self, IntPredicate};
-use consts;
 use meth;
 use monomorphize;
 use type_of::LayoutLlvmExt;
 use type_::Type;
 use value::Value;
 
-use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods, DerivedTypeMethods, DerivedIntrinsicMethods};
+use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods, DerivedTypeMethods, DerivedIntrinsicMethods, StaticMethods};
 
 use syntax::symbol::Symbol;
 use syntax_pos::Pos;
@@ -379,10 +378,11 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                         let index = self.codegen_operand(&mut bx, index).immediate();
 
                         let file_line_col = bx.cx().const_struct(&[filename, line, col], false);
-                        let file_line_col = consts::addr_of(bx.cx(),
-                                                            file_line_col,
-                                                            align,
-                                                            Some("panic_bounds_check_loc"));
+                        let file_line_col = bx.cx().static_addr_of(
+                            file_line_col,
+                            align,
+                            Some("panic_bounds_check_loc")
+                        );
                         (lang_items::PanicBoundsCheckFnLangItem,
                          vec![file_line_col, index, len])
                     }
@@ -394,10 +394,11 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                             &[msg_str, filename, line, col],
                             false
                         );
-                        let msg_file_line_col = consts::addr_of(bx.cx(),
-                                                                msg_file_line_col,
-                                                                align,
-                                                                Some("panic_loc"));
+                        let msg_file_line_col = bx.cx().static_addr_of(
+                            msg_file_line_col,
+                            align,
+                            Some("panic_loc")
+                        );
                         (lang_items::PanicFnLangItem,
                          vec![msg_file_line_col])
                     }

@@ -12,11 +12,10 @@ use abi::{FnType, FnTypeExt};
 use callee;
 use context::CodegenCx;
 use builder::Builder;
-use consts;
 use monomorphize;
 use value::Value;
 
-use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods, DerivedTypeMethods};
+use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods, DerivedTypeMethods, StaticMethods};
 
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::HasDataLayout;
@@ -120,7 +119,7 @@ pub fn get_vtable(
 
     let vtable_const = cx.const_struct(&components, false);
     let align = cx.data_layout().pointer_align;
-    let vtable = consts::addr_of(cx, vtable_const, align, Some("vtable"));
+    let vtable = cx.static_addr_of(vtable_const, align, Some("vtable"));
 
     debuginfo::create_vtable_metadata(cx, ty, vtable);
 

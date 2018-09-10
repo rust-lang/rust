@@ -20,13 +20,12 @@ use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Size};
 use builder::Builder;
 use common::{CodegenCx};
-use consts;
 use type_of::LayoutLlvmExt;
 use type_::Type;
 use syntax::ast::Mutability;
 use syntax::source_map::Span;
 use value::Value;
-use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods, DerivedTypeMethods};
+use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods, DerivedTypeMethods, StaticMethods};
 
 use super::super::callee;
 use super::FunctionCx;
@@ -49,7 +48,7 @@ pub fn scalar_to_llvm(
             if layout.value == layout::Pointer {
                 unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
             } else {
-                consts::bitcast(llval, llty)
+                cx.static_bitcast(llval, llty)
             }
         },
         Scalar::Ptr(ptr) => {
@@ -58,9 +57,9 @@ pub fn scalar_to_llvm(
                 Some(AllocType::Memory(alloc)) => {
                     let init = const_alloc_to_llvm(cx, alloc);
                     if alloc.mutability == Mutability::Mutable {
-                        consts::addr_of_mut(cx, init, alloc.align, None)
+                        cx.static_addr_of_mut(init, alloc.align, None)
                     } else {
-                        consts::addr_of(cx, init, alloc.align, None)
+                        cx.static_addr_of(init, alloc.align, None)
                     }
                 }
                 Some(AllocType::Function(fn_instance)) => {
@@ -68,19 +67,19 @@ pub fn scalar_to_llvm(
                 }
                 Some(AllocType::Static(def_id)) => {
                     assert!(cx.tcx.is_static(def_id).is_some());
-                    consts::get_static(cx, def_id)
+                    cx.get_static(def_id)
                 }
                 None => bug!("missing allocation {:?}", ptr.alloc_id),
             };
             let llval = unsafe { llvm::LLVMConstInBoundsGEP(
-                consts::bitcast(base_addr, cx.type_i8p()),
+                cx.static_bitcast(base_addr, cx.type_i8p()),
                 &cx.const_usize(ptr.offset.bytes()),
                 1,
             ) };
             if layout.value != layout::Pointer {
                 unsafe { llvm::LLVMConstPtrToInt(llval, llty) }
             } else {
-                consts::bitcast(llval, llty)
+                cx.static_bitcast(llval, llty)
             }
         }
     }

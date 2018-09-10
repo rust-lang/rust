@@ -20,7 +20,6 @@ use base;
 use builder::Builder;
 use callee;
 use common::{self, IntPredicate, RealPredicate};
-use consts;
 use monomorphize;
 use type_::Type;
 use type_of::LayoutLlvmExt;
@@ -841,7 +840,7 @@ fn cast_int_to_float(bx: &Builder<'_, 'll, '_, &'ll Value>,
         let max = bx.cx().const_uint_big(int_ty, MAX_F32_PLUS_HALF_ULP);
         let overflow = bx.icmp(IntPredicate::IntUGE, x, max);
         let infinity_bits = bx.cx().const_u32(ieee::Single::INFINITY.to_bits() as u32);
-        let infinity = consts::bitcast(infinity_bits, float_ty);
+        let infinity = bx.bitcast(infinity_bits, float_ty);
         bx.select(overflow, infinity, bx.uitofp(x, float_ty))
     } else {
         if signed {
@@ -922,7 +921,7 @@ fn cast_float_to_int(bx: &Builder<'_, 'll, '_, &'ll Value>,
             64 => bx.cx().const_u64(bits as u64),
             n => bug!("unsupported float width {}", n),
         };
-        consts::bitcast(bits_llval, float_ty)
+        bx.bitcast(bits_llval, float_ty)
     };
     let (f_min, f_max) = match bx.cx().float_width(float_ty) {
         32 => compute_clamp_bounds_single(signed, int_ty),
