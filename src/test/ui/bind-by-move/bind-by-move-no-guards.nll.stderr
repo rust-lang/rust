@@ -1,0 +1,11 @@
+error[E0008]: cannot bind by-move into a pattern guard
+  --> $DIR/bind-by-move-no-guards.rs:8:14
+   |
+LL |         Some(z) if z.recv().unwrap() => { panic!() },
+   |              ^ moves value into pattern guard
+   |
+   = help: add #![feature(bind_by_move_pattern_guards)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0008`.
