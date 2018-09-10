@@ -90,7 +90,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     macro_rules! add_pre_expansion_builtin {
         ($sess:ident, $($name:ident),*,) => (
             {$(
-                store.register_early_pass($sess, false, box $name);
+                store.register_pre_expansion_pass($sess, box $name);
                 )*}
             )
     }
