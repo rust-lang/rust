@@ -43,8 +43,6 @@ struct foo7 {
     bar: isize,
 }
 
-type __ = isize; //~ ERROR type `__` should have a camel case name such as `CamelCase`
-
 struct X86_64;
 
 struct X86__64; //~ ERROR type `X86__64` should have a camel case name such as `X86_64`
