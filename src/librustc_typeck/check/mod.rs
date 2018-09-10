@@ -3918,7 +3918,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 for input in inputs {
                     self.check_expr(input);
                 }
-                tcx.mk_nil()
+                tcx.mk_unit()
             }
             hir::ExprKind::Break(destination, ref expr_opt) => {
                 if let Ok(target_id) = destination.target_id {
@@ -3945,7 +3945,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     } else {
                         // Otherwise, this is a break *without* a value. That's
                         // always legal, and is equivalent to `break ()`.
-                        e_ty = tcx.mk_nil();
+                        e_ty = tcx.mk_unit();
                         cause = self.misc(expr.span);
                     }
 
@@ -4052,7 +4052,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if lhs_ty.references_error() || rhs_ty.references_error() {
                     tcx.types.err
                 } else {
-                    tcx.mk_nil()
+                    tcx.mk_unit()
                 }
             }
             hir::ExprKind::If(ref cond, ref then_expr, ref opt_else_expr) => {
@@ -4081,7 +4081,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     self.diverges.set(Diverges::Maybe);
                 }
 
-                self.tcx.mk_nil()
+                self.tcx.mk_unit()
             }
             hir::ExprKind::Loop(ref body, _, source) => {
                 let coerce = match source {
@@ -4121,7 +4121,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // [1]
                     self.tcx.sess.delay_span_bug(body.span, "no coercion, but loop may not break");
                 }
-                ctxt.coerce.map(|c| c.complete(self)).unwrap_or(self.tcx.mk_nil())
+                ctxt.coerce.map(|c| c.complete(self)).unwrap_or(self.tcx.mk_unit())
             }
             hir::ExprKind::Match(ref discrim, ref arms, match_src) => {
                 self.check_match(expr, &discrim, arms, expected, match_src)
@@ -4352,7 +4352,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         "yield statement outside of generator literal").emit();
                     }
                 }
-                tcx.mk_nil()
+                tcx.mk_unit()
             }
         }
     }
@@ -4516,7 +4516,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             hir::StmtKind::Expr(ref expr, _) => {
                 // Check with expected type of ()
-                self.check_expr_has_type_or_error(&expr, self.tcx.mk_nil());
+                self.check_expr_has_type_or_error(&expr, self.tcx.mk_unit());
             }
             hir::StmtKind::Semi(ref expr, _) => {
                 self.check_expr(&expr);
@@ -4529,7 +4529,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_block_no_value(&self, blk: &'gcx hir::Block)  {
-        let unit = self.tcx.mk_nil();
+        let unit = self.tcx.mk_unit();
         let ty = self.check_block_with_expected(blk, ExpectHasType(unit));
 
         // if the block produces a `!` value, that can always be

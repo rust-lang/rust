@@ -656,7 +656,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 // us to give better error messages (pointing to a usually better
                 // arm for inconsistent arms or to the whole match when a `()` type
                 // is required).
-                Expectation::ExpectHasType(ety) if ety != self.tcx.mk_nil() => ety,
+                Expectation::ExpectHasType(ety) if ety != self.tcx.mk_unit() => ety,
                 _ => self.next_ty_var(TypeVariableOrigin::MiscVariable(expr.span)),
             };
             CoerceMany::with_coercion_sites(coerce_first, arms)

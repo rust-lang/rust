@@ -1077,7 +1077,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
         self.coerce_inner(fcx,
                           cause,
                           None,
-                          fcx.tcx.mk_nil(),
+                          fcx.tcx.mk_unit(),
                           Some(augment_error),
                           label_unit_as_expected)
     }

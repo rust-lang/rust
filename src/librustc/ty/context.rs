@@ -2492,7 +2492,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_nil_ptr(self) -> Ty<'tcx> {
-        self.mk_imm_ptr(self.mk_nil())
+        self.mk_imm_ptr(self.mk_unit())
     }
 
     pub fn mk_array(self, ty: Ty<'tcx>, n: u64) -> Ty<'tcx> {
@@ -2511,7 +2511,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         iter.intern_with(|ts| self.mk_ty(Tuple(self.intern_type_list(ts))))
     }
 
-    pub fn mk_nil(self) -> Ty<'tcx> {
+    pub fn mk_unit(self) -> Ty<'tcx> {
         self.intern_tup(&[])
     }
 

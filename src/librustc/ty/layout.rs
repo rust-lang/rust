@@ -132,7 +132,7 @@ impl PrimitiveExt for Primitive {
             Int(i, signed) => i.to_ty(tcx, signed),
             Float(FloatTy::F32) => tcx.types.f32,
             Float(FloatTy::F64) => tcx.types.f64,
-            Pointer => tcx.mk_mut_ptr(tcx.mk_nil()),
+            Pointer => tcx.mk_mut_ptr(tcx.mk_unit()),
         }
     }
 }
@@ -1606,7 +1606,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                 // (which may have no non-DST form), and will work as long
                 // as the `Abi` or `FieldPlacement` is checked by users.
                 if i == 0 {
-                    let nil = tcx.mk_nil();
+                    let nil = tcx.mk_unit();
                     let ptr_ty = if this.ty.is_unsafe_ptr() {
                         tcx.mk_mut_ptr(nil)
                     } else {
