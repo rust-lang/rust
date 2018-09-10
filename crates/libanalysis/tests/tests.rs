@@ -3,21 +3,38 @@ extern crate relative_path;
 extern crate test_utils;
 
 use std::{
+    sync::Arc,
     collections::HashMap,
 };
 
-use relative_path::{RelativePath};
-use libanalysis::{AnalysisHost, FileId, FileResolver, JobHandle, CrateGraph, CrateId};
+use relative_path::{RelativePath, RelativePathBuf};
+use libanalysis::{Analysis, AnalysisHost, FileId, FileResolver, JobHandle, CrateGraph, CrateId};
 use test_utils::assert_eq_dbg;
 
-struct FileMap(&'static [(u32, &'static str)]);
+#[derive(Debug)]
+struct FileMap(Vec<(FileId, RelativePathBuf)>);
+
+fn analysis_host(files: &'static [(&'static str, &'static str)]) -> AnalysisHost {
+    let mut host = AnalysisHost::new();
+    let mut file_map = Vec::new();
+    for (id, &(path, contents)) in files.iter().enumerate() {
+        let file_id = FileId((id + 1) as u32);
+        assert!(path.starts_with('/'));
+        let path = RelativePathBuf::from_path(&path[1..]).unwrap();
+        host.change_file(file_id, Some(contents.to_string()));
+        file_map.push((file_id, path));
+    }
+    host.set_file_resolver(Arc::new(FileMap(file_map)));
+    host
+}
+
+fn analysis(files: &'static [(&'static str, &'static str)]) -> Analysis {
+    analysis_host(files).analysis()
+}
 
 impl FileMap {
     fn iter<'a>(&'a self) -> impl Iterator<Item=(FileId, &'a RelativePath)> + 'a {
-        self.0.iter().map(|&(id, path)| {
-            assert!(path.starts_with('/'));
-            (FileId(id), RelativePath::new(&path[1..]))
-        })
+        self.0.iter().map(|(id, path)| (*id, path.as_relative_path()))
     }
 
     fn path(&self, id: FileId) -> &RelativePath {
@@ -42,14 +59,10 @@ impl FileResolver for FileMap {
 
 #[test]
 fn test_resolve_module() {
-    let mut world = AnalysisHost::new();
-    world.change_file(FileId(1), Some("mod foo;".to_string()));
-    world.change_file(FileId(2), Some("".to_string()));
-
-    let snap = world.analysis(FileMap(&[
-        (1, "/lib.rs"),
-        (2, "/foo.rs"),
-    ]));
+    let snap = analysis(&[
+        ("/lib.rs", "mod foo;"),
+        ("/foo.rs", "")
+    ]);
     let (_handle, token) = JobHandle::new();
     let symbols = snap.approximately_resolve_symbol(FileId(1), 4.into(), &token);
     assert_eq_dbg(
@@ -57,10 +70,10 @@ fn test_resolve_module() {
         &symbols,
     );
 
-    let snap = world.analysis(FileMap(&[
-        (1, "/lib.rs"),
-        (2, "/foo/mod.rs")
-    ]));
+    let snap = analysis(&[
+        ("/lib.rs", "mod foo;"),
+        ("/foo/mod.rs", "")
+    ]);
     let symbols = snap.approximately_resolve_symbol(FileId(1), 4.into(), &token);
     assert_eq_dbg(
         r#"[(FileId(2), FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE })]"#,
@@ -70,10 +83,7 @@ fn test_resolve_module() {
 
 #[test]
 fn test_unresolved_module_diagnostic() {
-    let mut world = AnalysisHost::new();
-    world.change_file(FileId(1), Some("mod foo;".to_string()));
-
-    let snap = world.analysis(FileMap(&[(1, "/lib.rs")]));
+    let snap = analysis(&[("/lib.rs", "mod foo;")]);
     let diagnostics = snap.diagnostics(FileId(1));
     assert_eq_dbg(
         r#"[Diagnostic {
@@ -90,10 +100,7 @@ fn test_unresolved_module_diagnostic() {
 
 #[test]
 fn test_unresolved_module_diagnostic_no_diag_for_inline_mode() {
-    let mut world = AnalysisHost::new();
-    world.change_file(FileId(1), Some("mod foo {}".to_string()));
-
-    let snap = world.analysis(FileMap(&[(1, "/lib.rs")]));
+    let snap = analysis(&[("/lib.rs", "mod foo {}")]);
     let diagnostics = snap.diagnostics(FileId(1));
     assert_eq_dbg(
         r#"[]"#,
@@ -103,14 +110,10 @@ fn test_unresolved_module_diagnostic_no_diag_for_inline_mode() {
 
 #[test]
 fn test_resolve_parent_module() {
-    let mut world = AnalysisHost::new();
-    world.change_file(FileId(1), Some("mod foo;".to_string()));
-    world.change_file(FileId(2), Some("".to_string()));
-
-    let snap = world.analysis(FileMap(&[
-        (1, "/lib.rs"),
-        (2, "/foo.rs"),
-    ]));
+    let snap = analysis(&[
+        ("/lib.rs", "mod foo;"),
+        ("/foo.rs", ""),
+    ]);
     let symbols = snap.parent_module(FileId(2));
     assert_eq_dbg(
         r#"[(FileId(1), FileSymbol { name: "foo", node_range: [0; 8), kind: MODULE })]"#,
@@ -120,14 +123,11 @@ fn test_resolve_parent_module() {
 
 #[test]
 fn test_resolve_crate_root() {
-    let mut world = AnalysisHost::new();
-    world.change_file(FileId(1), Some("mod foo;".to_string()));
-    world.change_file(FileId(2), Some("".to_string()));
-
-    let snap = world.analysis(FileMap(&[
-        (1, "/lib.rs"),
-        (2, "/foo.rs"),
-    ]));
+    let mut host = analysis_host(&[
+        ("/lib.rs", "mod foo;"),
+        ("/foo.rs", ""),
+    ]);
+    let snap = host.analysis();
     assert!(snap.crate_for(FileId(2)).is_empty());
 
     let crate_graph = CrateGraph {
@@ -137,12 +137,9 @@ fn test_resolve_crate_root() {
             m
         },
     };
-    world.set_crate_graph(crate_graph);
+    host.set_crate_graph(crate_graph);
+    let snap = host.analysis();
 
-    let snap = world.analysis(FileMap(&[
-        (1, "/lib.rs"),
-        (2, "/foo.rs"),
-    ]));
     assert_eq!(
         snap.crate_for(FileId(2)),
         vec![CrateId(1)],

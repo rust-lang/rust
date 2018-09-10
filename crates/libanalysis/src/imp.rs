@@ -7,6 +7,7 @@ use std::{
     collections::{HashSet, VecDeque},
 };
 
+use relative_path::RelativePath;
 use libeditor::{self, FileSymbol, LineIndex, find_node_at_offset, LocalEdit};
 use libsyntax2::{
     TextUnit, TextRange, SmolStr, File, AstNode,
@@ -21,6 +22,40 @@ use {
     roots::{SourceRoot, ReadonlySourceRoot, WritableSourceRoot},
 };
 
+
+#[derive(Clone, Debug)]
+pub(crate) struct FileResolverImp {
+    inner: Arc<FileResolver>
+}
+
+impl FileResolverImp {
+    pub(crate) fn new(inner: Arc<FileResolver>) -> FileResolverImp {
+        FileResolverImp { inner }
+    }
+    pub(crate) fn file_stem(&self, file_id: FileId) -> String {
+        self.inner.file_stem(file_id)
+    }
+    pub(crate) fn resolve(&self, file_id: FileId, path: &RelativePath) -> Option<FileId> {
+        self.inner.resolve(file_id, path)
+    }
+}
+
+impl Default for FileResolverImp {
+    fn default() -> FileResolverImp {
+        #[derive(Debug)]
+        struct DummyResolver;
+        impl FileResolver for DummyResolver {
+            fn file_stem(&self, _file_: FileId) -> String {
+                panic!("file resolver not set")
+            }
+            fn resolve(&self, _file_id: FileId, _path: &::relative_path::RelativePath) -> Option<FileId> {
+                panic!("file resolver not set")
+            }
+        }
+        FileResolverImp { inner: Arc::new(DummyResolver) }
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct AnalysisHostImpl {
     data: Arc<WorldData>
@@ -32,13 +67,9 @@ impl AnalysisHostImpl {
             data: Arc::new(WorldData::default()),
         }
     }
-    pub fn analysis(
-        &self,
-        file_resolver: Arc<dyn FileResolver>,
-    ) -> AnalysisImpl {
+    pub fn analysis(&self) -> AnalysisImpl {
         AnalysisImpl {
             needs_reindex: AtomicBool::new(false),
-            file_resolver,
             data: self.data.clone(),
         }
     }
@@ -47,6 +78,11 @@ impl AnalysisHostImpl {
         for (file_id, text) in changes {
             data.root.update(file_id, text);
         }
+    }
+    pub fn set_file_resolver(&mut self, resolver: FileResolverImp) {
+        let data = self.data_mut();
+        data.file_resolver = resolver.clone();
+        data.root.set_file_resolver(resolver);
     }
     pub fn set_crate_graph(&mut self, graph: CrateGraph) {
         let mut visited = HashSet::new();
@@ -67,7 +103,6 @@ impl AnalysisHostImpl {
 
 pub(crate) struct AnalysisImpl {
     needs_reindex: AtomicBool,
-    file_resolver: Arc<dyn FileResolver>,
     data: Arc<WorldData>,
 }
 
@@ -81,7 +116,6 @@ impl Clone for AnalysisImpl {
     fn clone(&self) -> AnalysisImpl {
         AnalysisImpl {
             needs_reindex: AtomicBool::new(self.needs_reindex.load(SeqCst)),
-            file_resolver: Arc::clone(&self.file_resolver),
             data: Arc::clone(&self.data),
         }
     }
@@ -117,11 +151,7 @@ impl AnalysisImpl {
         let module_map = root.module_map();
         let id = module_map.file2module(file_id);
         module_map
-            .parent_modules(
-                id,
-                &*self.file_resolver,
-                &|file_id| root.syntax(file_id),
-            )
+            .parent_modules(id, &|file_id| root.syntax(file_id))
             .into_iter()
             .map(|(id, name, node)| {
                 let id = module_map.module2file(id);
@@ -149,11 +179,7 @@ impl AnalysisImpl {
             }
             let mid = module_map.file2module(id);
             let parents = module_map
-                .parent_module_ids(
-                    mid,
-                    &*self.file_resolver,
-                    &|file_id| self.file_syntax(file_id),
-                )
+                .parent_module_ids(mid, &|file_id| self.file_syntax(file_id))
                 .into_iter()
                 .map(|id| module_map.module2file(id))
                 .filter(|&id| visited.insert(id));
@@ -213,7 +239,6 @@ impl AnalysisImpl {
 
         module_map.problems(
             file_id,
-            &*self.file_resolver,
             &|file_id| self.file_syntax(file_id),
             |name_node, problem| {
                 let diag = match problem {
@@ -291,7 +316,6 @@ impl AnalysisImpl {
         module_map
             .child_module_by_name(
                 id, name.as_str(),
-                &*self.file_resolver,
                 &|file_id| self.file_syntax(file_id),
             )
             .into_iter()
@@ -306,8 +330,9 @@ impl AnalysisImpl {
     }
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Default, Clone, Debug)]
 struct WorldData {
+    file_resolver: FileResolverImp,
     crate_graph: CrateGraph,
     root: WritableSourceRoot,
     libs: Vec<Arc<ReadonlySourceRoot>>,

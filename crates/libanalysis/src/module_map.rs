@@ -1,12 +1,11 @@
 use relative_path::RelativePathBuf;
-
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use libsyntax2::{
     File,
     ast::{self, AstNode, NameOwner},
     SyntaxNode, SmolStr,
 };
-use {FileId, FileResolver};
+use {FileId, imp::FileResolverImp};
 
 type SyntaxProvider<'a> = dyn Fn(FileId) -> &'a File + 'a;
 
@@ -32,6 +31,7 @@ impl Clone for ModuleMap {
 
 #[derive(Clone, Debug, Default)]
 struct State {
+    file_resolver: FileResolverImp,
     changes: Vec<(FileId, ChangeKind)>,
     links: Vec<Link>,
 }
@@ -59,27 +59,25 @@ impl ModuleMap {
     pub fn new() -> ModuleMap {
         Default::default()
     }
-
-    pub fn update_file(&mut self, file: FileId, change_kind: ChangeKind) {
-        self.state.get_mut().changes.push((file, change_kind));
+    pub fn update_file(&mut self, file_id: FileId, change_kind: ChangeKind) {
+        self.state.get_mut().changes.push((file_id, change_kind));
     }
-
+    pub(crate) fn set_file_resolver(&mut self, file_resolver: FileResolverImp) {
+        self.state.get_mut().file_resolver = file_resolver;
+    }
     pub fn module2file(&self, m: ModuleId) -> FileId {
         m.0
     }
-
     pub fn file2module(&self, file_id: FileId) -> ModuleId {
         ModuleId(file_id)
     }
-
     pub fn child_module_by_name<'a>(
         &self,
         parent_mod: ModuleId,
         child_mod: &str,
-        file_resolver: &FileResolver,
         syntax_provider: &SyntaxProvider,
     ) -> Vec<ModuleId> {
-        self.links(file_resolver, syntax_provider)
+        self.links(syntax_provider)
             .links
             .iter()
             .filter(|link| link.owner == parent_mod)
@@ -92,11 +90,10 @@ impl ModuleMap {
     pub fn parent_modules(
         &self,
         m: ModuleId,
-        file_resolver: &FileResolver,
         syntax_provider: &SyntaxProvider,
     ) -> Vec<(ModuleId, SmolStr, SyntaxNode)> {
         let mut res = Vec::new();
-        self.for_each_parent_link(m, file_resolver, syntax_provider, |link| {
+        self.for_each_parent_link(m, syntax_provider, |link| {
             res.push(
                 (link.owner, link.name().clone(), link.syntax.clone())
             )
@@ -107,22 +104,20 @@ impl ModuleMap {
     pub fn parent_module_ids(
         &self,
         m: ModuleId,
-        file_resolver: &FileResolver,
         syntax_provider: &SyntaxProvider,
     ) -> Vec<ModuleId> {
         let mut res = Vec::new();
-        self.for_each_parent_link(m, file_resolver, syntax_provider, |link| res.push(link.owner));
+        self.for_each_parent_link(m, syntax_provider, |link| res.push(link.owner));
         res
     }
 
     fn for_each_parent_link(
         &self,
         m: ModuleId,
-        file_resolver: &FileResolver,
         syntax_provider: &SyntaxProvider,
         f: impl FnMut(&Link)
     ) {
-        self.links(file_resolver, syntax_provider)
+        self.links(syntax_provider)
             .links
             .iter()
             .filter(move |link| link.points_to.iter().any(|&it| it == m))
@@ -132,12 +127,11 @@ impl ModuleMap {
     pub fn problems(
         &self,
         file: FileId,
-        file_resolver: &FileResolver,
         syntax_provider: &SyntaxProvider,
         mut cb: impl FnMut(ast::Name, &Problem),
     ) {
         let module = self.file2module(file);
-        let links = self.links(file_resolver, syntax_provider);
+        let links = self.links(syntax_provider);
         links
             .links
             .iter()
@@ -151,7 +145,6 @@ impl ModuleMap {
 
     fn links(
         &self,
-        file_resolver: &FileResolver,
         syntax_provider: &SyntaxProvider,
     ) -> RwLockReadGuard<State> {
         {
@@ -162,7 +155,7 @@ impl ModuleMap {
         }
         let mut guard = self.state.write();
         if !guard.changes.is_empty() {
-            guard.apply_changes(file_resolver, syntax_provider);
+            guard.apply_changes(syntax_provider);
         }
         assert!(guard.changes.is_empty());
         RwLockWriteGuard::downgrade(guard)
@@ -172,7 +165,6 @@ impl ModuleMap {
 impl State {
     pub fn apply_changes(
         &mut self,
-        file_resolver: &FileResolver,
         syntax_provider: &SyntaxProvider,
     ) {
         let mut reresolve = false;
@@ -197,13 +189,14 @@ impl State {
                 }
                 ChangeKind::Update => {
                     let file = syntax_provider(file_id);
+                    let resolver = &self.file_resolver;
                     self.links.extend(
                         file
                             .ast()
                             .modules()
                             .filter_map(|it| Link::new(mod_id, it))
                             .map(|mut link| {
-                                link.resolve(file_resolver);
+                                link.resolve(resolver);
                                 link
                             })
                     );
@@ -212,7 +205,7 @@ impl State {
         }
         if reresolve {
             for link in self.links.iter_mut() {
-                link.resolve(file_resolver)
+                link.resolve(&self.file_resolver)
             }
         }
     }
@@ -245,7 +238,7 @@ impl Link {
             .unwrap()
     }
 
-    fn resolve(&mut self, file_resolver: &FileResolver) {
+    fn resolve(&mut self, file_resolver: &FileResolverImp) {
         if !self.ast().has_semi() {
             self.problem = None;
             self.points_to = Vec::new();

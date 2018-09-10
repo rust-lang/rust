@@ -135,12 +135,12 @@ fn main_loop_inner(
                 if root == ws_root {
                     state.apply_fs_changes(events);
                 } else {
-                    let files = state.events_to_files(events);
+                    let (files, resolver) = state.events_to_files(events);
                     let sender = libdata_sender.clone();
                     pool.spawn(move || {
                         let start = ::std::time::Instant::now();
                         info!("indexing {} ... ", root.display());
-                        let data = LibraryData::prepare(files);
+                        let data = LibraryData::prepare(files, resolver);
                         info!("indexed {:?} {}", start.elapsed(), root.display());
                         sender.send(data);
                     });

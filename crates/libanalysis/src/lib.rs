@@ -19,11 +19,12 @@ mod roots;
 use std::{
     sync::Arc,
     collections::HashMap,
+    fmt::Debug,
 };
 
 use relative_path::{RelativePath, RelativePathBuf};
 use libsyntax2::{File, TextRange, TextUnit, AtomEdit};
-use imp::{AnalysisImpl, AnalysisHostImpl};
+use imp::{AnalysisImpl, AnalysisHostImpl, FileResolverImp};
 
 pub use libeditor::{
     StructureNode, LineIndex, FileSymbol,
@@ -42,9 +43,9 @@ pub struct CrateGraph {
     pub crate_roots: HashMap<CrateId, FileId>,
 }
 
-pub trait FileResolver: Send + Sync + 'static {
-    fn file_stem(&self, id: FileId) -> String;
-    fn resolve(&self, id: FileId, path: &RelativePath) -> Option<FileId>;
+pub trait FileResolver: Debug + Send + Sync + 'static {
+    fn file_stem(&self, file_id: FileId) -> String;
+    fn resolve(&self, file_id: FileId, path: &RelativePath) -> Option<FileId>;
 }
 
 #[derive(Debug)]
@@ -56,14 +57,17 @@ impl AnalysisHost {
     pub fn new() -> AnalysisHost {
         AnalysisHost { imp: AnalysisHostImpl::new() }
     }
-    pub fn analysis(&self, file_resolver: impl FileResolver) -> Analysis {
-        Analysis { imp: self.imp.analysis(Arc::new(file_resolver)) }
+    pub fn analysis(&self) -> Analysis {
+        Analysis { imp: self.imp.analysis() }
     }
     pub fn change_file(&mut self, file_id: FileId, text: Option<String>) {
         self.change_files(::std::iter::once((file_id, text)));
     }
     pub fn change_files(&mut self, mut changes: impl Iterator<Item=(FileId, Option<String>)>) {
         self.imp.change_files(&mut changes)
+    }
+    pub fn set_file_resolver(&mut self, resolver: Arc<FileResolver>) {
+        self.imp.set_file_resolver(FileResolverImp::new(resolver));
     }
     pub fn set_crate_graph(&mut self, graph: CrateGraph) {
         self.imp.set_crate_graph(graph)
@@ -223,8 +227,9 @@ pub struct LibraryData {
 }
 
 impl LibraryData {
-    pub fn prepare(files: Vec<(FileId, String)>) -> LibraryData {
-        let root = roots::ReadonlySourceRoot::new(files);
+    pub fn prepare(files: Vec<(FileId, String)>, file_resolver: Arc<FileResolver>) -> LibraryData {
+        let file_resolver = FileResolverImp::new(file_resolver);
+        let root = roots::ReadonlySourceRoot::new(files, file_resolver);
         LibraryData { root }
     }
 }

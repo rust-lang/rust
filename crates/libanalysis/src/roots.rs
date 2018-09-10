@@ -12,6 +12,7 @@ use libsyntax2::File;
 
 use {
     FileId,
+    imp::FileResolverImp,
     module_map::{ModuleMap, ChangeKind},
     symbol_index::SymbolIndex,
 };
@@ -47,6 +48,9 @@ impl WritableSourceRoot {
             let file_data = FileData::new(text);
             self.file_map.insert(file_id, Arc::new((file_data, Default::default())));
         }
+    }
+    pub fn set_file_resolver(&mut self, file_resolver: FileResolverImp) {
+        self.module_map.set_file_resolver(file_resolver)
     }
     pub fn reindex(&self) {
         let now = Instant::now();
@@ -136,8 +140,9 @@ pub(crate) struct ReadonlySourceRoot {
 }
 
 impl ReadonlySourceRoot {
-    pub fn new(files: Vec<(FileId, String)>) -> ReadonlySourceRoot {
+    pub(crate) fn new(files: Vec<(FileId, String)>, file_resolver: FileResolverImp) -> ReadonlySourceRoot {
         let mut module_map = ModuleMap::new();
+        module_map.set_file_resolver(file_resolver);
         let symbol_index = SymbolIndex::for_files(
             files.par_iter().map(|(file_id, text)| {
                 (*file_id, File::parse(text))

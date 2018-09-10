@@ -6,7 +6,7 @@ use std::{
 };
 
 use languageserver_types::Url;
-use libanalysis::{FileId, AnalysisHost, Analysis, CrateGraph, CrateId, LibraryData};
+use libanalysis::{FileId, AnalysisHost, Analysis, CrateGraph, CrateId, LibraryData, FileResolver};
 
 use {
     Result,
@@ -64,17 +64,21 @@ impl ServerWorldState {
 
         self.analysis_host.change_files(changes);
     }
-    pub fn events_to_files(&mut self, events: Vec<FileEvent>) -> Vec<(FileId, String)> {
-        let pm = &mut self.path_map;
-        events.into_iter()
-            .map(|event| {
-                let text = match event.kind {
-                    FileEventKind::Add(text) => text,
-                };
-                (event.path, text)
-            })
-            .map(|(path, text)| (pm.get_or_insert(path, Root::Lib), text))
-            .collect()
+    pub fn events_to_files(&mut self, events: Vec<FileEvent>) -> (Vec<(FileId, String)>, Arc<FileResolver>) {
+        let files = {
+            let pm = &mut self.path_map;
+            events.into_iter()
+                .map(|event| {
+                    let text = match event.kind {
+                        FileEventKind::Add(text) => text,
+                    };
+                    (event.path, text)
+                })
+                .map(|(path, text)| (pm.get_or_insert(path, Root::Lib), text))
+                .collect()
+        };
+        let resolver = Arc::new(self.path_map.clone());
+        (files, resolver)
     }
     pub fn add_lib(&mut self, data: LibraryData) {
         self.analysis_host.add_library(data);
@@ -82,6 +86,7 @@ impl ServerWorldState {
 
     pub fn add_mem_file(&mut self, path: PathBuf, text: String) -> FileId {
         let file_id = self.path_map.get_or_insert(path, Root::Workspace);
+        self.analysis_host.set_file_resolver(Arc::new(self.path_map.clone()));
         self.mem_map.insert(file_id, None);
         if self.path_map.get_root(file_id) != Root::Lib {
             self.analysis_host.change_file(file_id, Some(text));
@@ -135,7 +140,7 @@ impl ServerWorldState {
     pub fn snapshot(&self) -> ServerWorld {
         ServerWorld {
             workspaces: Arc::clone(&self.workspaces),
-            analysis: self.analysis_host.analysis(self.path_map.clone()),
+            analysis: self.analysis_host.analysis(),
             path_map: self.path_map.clone()
         }
     }
