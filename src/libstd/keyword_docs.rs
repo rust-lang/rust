@@ -292,6 +292,77 @@ mod extern_keyword { }
 /// [Reference]: https://doc.rust-lang.org/reference/items/functions.html
 mod fn_keyword { }
 
+#[doc(keyword = "for")]
+//
+/// The `for` keyword.
+///
+/// `for` is primarily used in for-in-loops, but it has a few other pieces of syntactic uses such as
+/// `impl Trait for Type` (see [`impl`] for more info on that). for-in-loops, or to be more
+/// precise, iterator loops, are a simple syntactic sugar over an exceedingly common practice
+/// within Rust, which is to loop over an iterator until that iterator returns None (or [`break`]
+/// is called).
+///
+/// ```rust
+/// for i in 0..5 {
+///     println!("{}", i * 2);
+/// }
+///
+/// for i in std::iter::repeat(5) {
+///     println!("turns out {} never stops being 5", i);
+///     break; // would loop forever otherwise
+/// }
+///
+/// 'outer: for x in 5..50 {
+///     for y in 0..10 {
+///         if x == y {
+///             break 'outer;
+///         }
+///     }
+/// }
+/// ```
+///
+/// As shown in the example above, `for` loops (along with all other loops) can be tagged, using
+/// similar syntax to lifetimes (only visually similar, entirely distinct in practice). Giving the
+/// same tag to `break` breaks the tagged loop, which is useful for inner loops. It is definitely
+/// not a goto.
+///
+/// A `for` loop expands as shown:
+///
+/// ```rust
+/// # fn code() { }
+/// # let iterator = 0..2;
+/// for loop_variable in iterator {
+///     code()
+/// }
+/// ```
+///
+/// ```rust
+/// # fn code() { }
+/// # let iterator = 0..2;
+/// {
+///     let mut _iter = std::iter::IntoIterator::into_iter(iterator);
+///     loop {
+///         match _iter.next() {
+///             Some(loop_variable) => {
+///                 code()
+///             },
+///             None => break,
+///         }
+///     }
+/// }
+/// ```
+///
+/// More details on the functionality shown can be seen at the [`IntoIterator`] docs.
+///
+/// For more information on for-loops, see the [Rust book] or the [Reference].
+///
+/// [`impl`]: keyword.impl.html
+/// [`break`]: keyword.break.html
+/// [`IntoIterator`]: iter/trait.IntoIterator.html
+/// [Rust book]: https://doc.rust-lang.org/book/2018-edition/ch03-05-control-flow.html#looping-through-a-collection-with-for
+/// [Reference]: https://doc.rust-lang.org/reference/expressions/loop-expr.html#iterator-loops
+mod for_keyword { }
+
 #[doc(keyword = "let")]
 //
 /// The `let` keyword.
