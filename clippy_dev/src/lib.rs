@@ -1,3 +1,5 @@
+#![feature(tool_lints)]
+#![allow(clippy::default_hash_types)]
 extern crate regex;
 #[macro_use]
 extern crate lazy_static;

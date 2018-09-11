@@ -1,7 +1,7 @@
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass, LintContext, in_external_macro};
 use rustc::{declare_tool_lint, lint_array};
+use rustc_data_structures::fx::FxHashMap;
 use if_chain::if_chain;
-use std::collections::HashMap;
 use std::char;
 use syntax::ast::*;
 use syntax::source_map::Span;
@@ -267,7 +267,7 @@ impl EarlyLintPass for MiscEarly {
     }
 
     fn check_fn(&mut self, cx: &EarlyContext<'_>, _: FnKind<'_>, decl: &FnDecl, _: Span, _: NodeId) {
-        let mut registered_names: HashMap<String, Span> = HashMap::new();
+        let mut registered_names: FxHashMap<String, Span> = FxHashMap::default();
 
         for arg in &decl.inputs {
             if let PatKind::Ident(_, ident, None) = arg.pat.node {

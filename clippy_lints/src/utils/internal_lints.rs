@@ -3,12 +3,11 @@ use rustc::{declare_tool_lint, lint_array};
 use rustc::hir::*;
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use crate::utils::{match_qpath, paths, span_lint, span_lint_and_sugg};
 use syntax::symbol::LocalInternedString;
 use syntax::ast::{Crate as AstCrate, Ident, ItemKind, Name};
 use syntax::source_map::Span;
-use std::collections::{HashMap, HashSet};
 
 
 /// **What it does:** Checks for various things we like to keep tidy in clippy.
@@ -114,12 +113,10 @@ impl EarlyLintPass for Clippy {
     }
 }
 
-
-
 #[derive(Clone, Debug, Default)]
 pub struct LintWithoutLintPass {
-    declared_lints: HashMap<Name, Span>,
-    registered_lints: HashSet<Name>,
+    declared_lints: FxHashMap<Name, Span>,
+    registered_lints: FxHashSet<Name>,
 }
 
 
@@ -128,7 +125,6 @@ impl LintPass for LintWithoutLintPass {
         lint_array!(LINT_WITHOUT_LINT_PASS)
     }
 }
-
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
@@ -202,7 +198,7 @@ fn is_lint_array_type(ty: &Ty) -> bool {
 }
 
 struct LintCollector<'a, 'tcx: 'a> {
-    output: &'a mut HashSet<Name>,
+    output: &'a mut FxHashSet<Name>,
     cx: &'a LateContext<'a, 'tcx>,
 }
 
@@ -220,8 +216,6 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for LintCollector<'a, 'tcx> {
         NestedVisitorMap::All(&self.cx.tcx.hir)
     }
 }
-
-
 
 pub struct DefaultHashTypes {
     map: FxHashMap<String, String>,

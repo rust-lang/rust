@@ -2,8 +2,9 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc::ty::Ty;
 use rustc::hir::*;
-use std::collections::HashMap;
+use rustc_data_structures::fx::FxHashMap;
 use std::collections::hash_map::Entry;
+use std::hash::BuildHasherDefault;
 use syntax::symbol::LocalInternedString;
 use rustc_data_structures::small_vec::OneVector;
 use crate::utils::{SpanlessEq, SpanlessHash};
@@ -263,8 +264,8 @@ fn if_sequence(mut expr: &Expr) -> (OneVector<&Expr>, OneVector<&Block>) {
 }
 
 /// Return the list of bindings in a pattern.
-fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<LocalInternedString, Ty<'tcx>> {
-    fn bindings_impl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat, map: &mut HashMap<LocalInternedString, Ty<'tcx>>) {
+fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> FxHashMap<LocalInternedString, Ty<'tcx>> {
+    fn bindings_impl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat, map: &mut FxHashMap<LocalInternedString, Ty<'tcx>>) {
         match pat.node {
             PatKind::Box(ref pat) | PatKind::Ref(ref pat, _) => bindings_impl(cx, pat, map),
             PatKind::TupleStruct(_, ref pats, _) => for pat in pats {
@@ -299,7 +300,7 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<LocalInt
         }
     }
 
-    let mut result = HashMap::new();
+    let mut result = FxHashMap::default();
     bindings_impl(cx, pat, &mut result);
     result
 }
@@ -333,7 +334,10 @@ where
         };
     }
 
-    let mut map: HashMap<_, Vec<&_>> = HashMap::with_capacity(exprs.len());
+    let mut map: FxHashMap<_, Vec<&_>> = FxHashMap::with_capacity_and_hasher(
+        exprs.len(),
+        BuildHasherDefault::default()
+    );
 
     for expr in exprs {
         match map.entry(hash(expr)) {

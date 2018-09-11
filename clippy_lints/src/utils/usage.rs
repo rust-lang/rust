@@ -6,14 +6,14 @@ use rustc::middle::expr_use_visitor::*;
 use rustc::middle::mem_categorization::cmt_;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::ty;
-use std::collections::HashSet;
+use rustc_data_structures::fx::FxHashSet;
 use syntax::ast::NodeId;
 use syntax::source_map::Span;
 
 /// Returns a set of mutated local variable ids or None if mutations could not be determined.
-pub fn mutated_variables<'a, 'tcx: 'a>(expr: &'tcx Expr, cx: &'a LateContext<'a, 'tcx>) -> Option<HashSet<NodeId>> {
+pub fn mutated_variables<'a, 'tcx: 'a>(expr: &'tcx Expr, cx: &'a LateContext<'a, 'tcx>) -> Option<FxHashSet<NodeId>> {
     let mut delegate = MutVarsDelegate {
-        used_mutably: HashSet::new(),
+        used_mutably: FxHashSet::default(),
         skip: false,
     };
     let def_id = def_id::DefId::local(expr.hir_id.owner);
@@ -39,7 +39,7 @@ pub fn is_potentially_mutated<'a, 'tcx: 'a>(
 }
 
 struct MutVarsDelegate {
-    used_mutably: HashSet<NodeId>,
+    used_mutably: FxHashSet<NodeId>,
     skip: bool,
 }
 

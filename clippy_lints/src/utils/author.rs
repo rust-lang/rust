@@ -8,8 +8,8 @@ use rustc::{declare_tool_lint, lint_array};
 use rustc::hir;
 use rustc::hir::{Expr, ExprKind, QPath, TyKind, Pat, PatKind, BindingAnnotation, StmtKind, DeclKind, Stmt};
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
+use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::{Attribute, LitKind, DUMMY_NODE_ID};
-use std::collections::HashMap;
 use crate::utils::get_attr;
 
 /// **What it does:** Generates clippy code that detects the offending pattern
@@ -154,7 +154,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 impl PrintVisitor {
     fn new(s: &'static str) -> Self {
         Self {
-            ids: HashMap::new(),
+            ids: FxHashMap::default(),
             current: s.to_owned(),
         }
     }
@@ -186,7 +186,7 @@ impl PrintVisitor {
 struct PrintVisitor {
     /// Fields are the current index that needs to be appended to pattern
     /// binding names
-    ids: HashMap<&'static str, usize>,
+    ids: FxHashMap<&'static str, usize>,
     /// the name that needs to be destructured
     current: String,
 }

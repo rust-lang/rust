@@ -1,3 +1,5 @@
+#![allow(clippy::default_hash_types)]
+
 use crate::reexport::*;
 use rustc::hir;
 use rustc::hir::*;
