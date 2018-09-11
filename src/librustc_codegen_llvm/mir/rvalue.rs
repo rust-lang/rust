@@ -566,7 +566,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
     ) -> &'ll Value {
         let is_float = input_ty.is_fp();
         let is_signed = input_ty.is_signed();
-        let is_unit = input_ty.is_unit();
+        let is_nil = input_ty.is_nil();
         match op {
             mir::BinOp::Add => if is_float {
                 bx.fadd(lhs, rhs)
@@ -604,7 +604,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
             mir::BinOp::Shl => common::build_unchecked_lshift(bx, lhs, rhs),
             mir::BinOp::Shr => common::build_unchecked_rshift(bx, input_ty, lhs, rhs),
             mir::BinOp::Ne | mir::BinOp::Lt | mir::BinOp::Gt |
-            mir::BinOp::Eq | mir::BinOp::Le | mir::BinOp::Ge => if is_unit {
+            mir::BinOp::Eq | mir::BinOp::Le | mir::BinOp::Ge => if is_nil {
                 C_bool(bx.cx, match op {
                     mir::BinOp::Ne | mir::BinOp::Lt | mir::BinOp::Gt => false,
                     mir::BinOp::Eq | mir::BinOp::Le | mir::BinOp::Ge => true,

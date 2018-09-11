@@ -691,7 +691,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
 
                 let sig = cx.erase_late_bound_regions(&sig);
-                if !sig.output().is_unit() {
+                if !sig.output().is_nil() {
                     let r = self.check_type_for_ffi(cache, sig.output());
                     match r {
                         FfiSafe => {}
@@ -767,7 +767,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         if let hir::Return(ref ret_hir) = decl.output {
             let ret_ty = sig.output();
-            if !ret_ty.is_unit() {
+            if !ret_ty.is_nil() {
                 self.check_type_for_ffi_and_report_errors(ret_hir.span, ret_ty);
             }
         }

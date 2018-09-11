@@ -1458,7 +1458,7 @@ impl RegionKind {
 
 /// Type utilities
 impl<'a, 'gcx, 'tcx> TyS<'tcx> {
-    pub fn is_unit(&self) -> bool {
+    pub fn is_nil(&self) -> bool {
         match self.sty {
             Tuple(ref tys) => tys.is_empty(),
             _ => false,
