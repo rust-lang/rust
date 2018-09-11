@@ -73,9 +73,7 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::indexed_vec::Idx;
 
-use interfaces::{
-    BuilderMethods, ConstMethods, BaseTypeMethods, DerivedTypeMethods, DerivedIntrinsicMethods,
-};
+use interfaces::*;
 
 use std::any::Any;
 use std::cmp;

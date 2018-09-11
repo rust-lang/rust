@@ -25,10 +25,7 @@ use type_of::LayoutLlvmExt;
 use type_::Type;
 use value::Value;
 
-use interfaces::{
-    BuilderMethods, ConstMethods, BaseTypeMethods, DerivedTypeMethods, DerivedIntrinsicMethods,
-    StaticMethods,
-};
+use interfaces::*;
 
 use syntax::symbol::Symbol;
 use syntax_pos::Pos;
@@ -560,8 +557,6 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                 };
 
                 if intrinsic.is_some() && intrinsic != Some("drop_in_place") {
-                    use intrinsic::codegen_intrinsic_call;
-
                     let dest = match ret_dest {
                         _ if fn_ty.ret.is_indirect() => llargs[0],
                         ReturnDest::Nothing => {
@@ -628,8 +623,8 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
 
 
                     let callee_ty = instance.as_ref().unwrap().ty(bx.cx().tcx);
-                    codegen_intrinsic_call(&bx, callee_ty, &fn_ty, &args, dest,
-                                           terminator.source_info.span);
+                    &bx.codegen_intrinsic_call(callee_ty, &fn_ty, &args, dest,
+                                               terminator.source_info.span);
 
                     if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
                         self.store_return(&bx, ret_dest, &fn_ty.ret, dst.llval);

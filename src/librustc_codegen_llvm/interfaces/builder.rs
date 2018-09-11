@@ -17,21 +17,29 @@ use builder::MemFlags;
 use super::backend::Backend;
 use super::type_::TypeMethods;
 use super::consts::ConstMethods;
-use super::intrinsic::IntrinsicMethods;
+use super::intrinsic::IntrinsicDeclarationMethods;
 
 use std::borrow::Cow;
 use std::ops::Range;
 use syntax::ast::AsmDialect;
 
-
-pub trait BuilderMethods<'a, 'tcx: 'a>: Backend {
-    type CodegenCx: 'a + TypeMethods + ConstMethods + IntrinsicMethods + Backend<
+pub trait HasCodegen: Backend {
+    type CodegenCx: TypeMethods + ConstMethods + IntrinsicDeclarationMethods + Backend<
         Value = Self::Value,
         BasicBlock = Self::BasicBlock,
         Type = Self::Type,
         Context = Self::Context,
     >;
+}
 
+impl<T: HasCodegen> Backend for T {
+    type Value = <T::CodegenCx as Backend>::Value;
+    type BasicBlock = <T::CodegenCx as Backend>::BasicBlock;
+    type Type = <T::CodegenCx as Backend>::Type;
+    type Context = <T::CodegenCx as Backend>::Context;
+}
+
+pub trait BuilderMethods<'a, 'tcx: 'a>: HasCodegen {
     fn new_block<'b>(
         cx: &'a Self::CodegenCx,
         llfn: Self::Value,

@@ -23,8 +23,7 @@ use value::Value;
 use monomorphize::partitioning::CodegenUnit;
 use type_::Type;
 use type_of::PointeeInfo;
-use interfaces::{BaseTypeMethods, DerivedTypeMethods,
-    IntrinsicMethods, BaseIntrinsicMethods, DerivedIntrinsicMethods};
+use interfaces::{BaseTypeMethods, DerivedTypeMethods, IntrinsicDeclarationMethods};
 
 use rustc_data_structures::base_n;
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -323,9 +322,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
     }
 }
 
-impl BaseIntrinsicMethods for CodegenCx<'_, '_> {}
-
-impl DerivedIntrinsicMethods for CodegenCx<'b, 'tcx> {
+impl IntrinsicDeclarationMethods for CodegenCx<'b, 'tcx> {
     fn get_intrinsic(&self, key: &str) -> &'b Value {
         if let Some(v) = self.intrinsics.borrow().get(key).cloned() {
             return v;
@@ -646,8 +643,6 @@ impl DerivedIntrinsicMethods for CodegenCx<'b, 'tcx> {
         return None;
     }
 }
-
-impl IntrinsicMethods for CodegenCx<'a, 'tcx> {}
 
 impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
     /// Generate a new symbol name with the given prefix. This symbol name must

@@ -9,17 +9,27 @@
 // except according to those terms.
 
 use super::backend::Backend;
+use super::builder::HasCodegen;
+use mir::operand::OperandRef;
+use rustc::ty::Ty;
+use abi::FnType;
+use syntax_pos::Span;
 
-pub trait BaseIntrinsicMethods: Backend {
-
+pub trait IntrinsicCallMethods<'a, 'tcx: 'a>: HasCodegen {
+    fn codegen_intrinsic_call(
+        &self,
+        callee_ty: Ty<'tcx>,
+        fn_ty: &FnType<'tcx, Ty<'tcx>>,
+        args: &[OperandRef<'tcx, Self::Value>],
+        llresult: Self::Value,
+        span: Span,
+    );
 }
 
-pub trait DerivedIntrinsicMethods: Backend {
+pub trait IntrinsicDeclarationMethods: Backend {
     fn get_intrinsic(&self, key: &str) -> Self::Value;
     fn declare_intrinsic(
         &self,
         key: &str
     ) -> Option<Self::Value>;
 }
-
-pub trait IntrinsicMethods: BaseIntrinsicMethods + DerivedIntrinsicMethods {}

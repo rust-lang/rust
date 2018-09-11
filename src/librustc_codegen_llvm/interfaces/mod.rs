@@ -15,9 +15,9 @@ mod type_;
 mod intrinsic;
 mod statics;
 
-pub use self::builder::BuilderMethods;
+pub use self::builder::{BuilderMethods, HasCodegen};
 pub use self::backend::Backend;
 pub use self::consts::ConstMethods;
 pub use self::type_::{TypeMethods, BaseTypeMethods, DerivedTypeMethods};
-pub use self::intrinsic::{IntrinsicMethods, BaseIntrinsicMethods, DerivedIntrinsicMethods};
+pub use self::intrinsic::{IntrinsicCallMethods, IntrinsicDeclarationMethods};
 pub use self::statics::StaticMethods;
