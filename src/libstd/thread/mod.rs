@@ -800,7 +800,7 @@ pub fn park() {
     match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
         Ok(_) => {}
         Err(NOTIFIED) => {
-            thread.inner.state.store(EMPTY, SeqCst);
+            thread.inner.state.swap(EMPTY, SeqCst);
             return;
         } // should consume this notification, so prohibit spurious wakeups in next park.
         Err(_) => panic!("inconsistent park state"),
@@ -889,7 +889,7 @@ pub fn park_timeout(dur: Duration) {
     match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
         Ok(_) => {}
         Err(NOTIFIED) => {
-            thread.inner.state.store(EMPTY, SeqCst);
+            thread.inner.state.swap(EMPTY, SeqCst);
             return;
         } // should consume this notification, so prohibit spurious wakeups in next park.
         Err(_) => panic!("inconsistent park_timeout state"),
@@ -1058,23 +1058,16 @@ impl Thread {
     /// [park]: fn.park.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn unpark(&self) {
-        loop {
-            match self.inner.state.compare_exchange(EMPTY, NOTIFIED, SeqCst, SeqCst) {
-                Ok(_) => return, // no one was waiting
-                Err(NOTIFIED) => return, // already unparked
-                Err(PARKED) => {} // gotta go wake someone up
-                _ => panic!("inconsistent state in unpark"),
-            }
-
-            // Coordinate wakeup through the mutex and a condvar notification
-            let _lock = self.inner.lock.lock().unwrap();
-            match self.inner.state.compare_exchange(PARKED, NOTIFIED, SeqCst, SeqCst) {
-                Ok(_) => return self.inner.cvar.notify_one(),
-                Err(NOTIFIED) => return, // a different thread unparked
-                Err(EMPTY) => {} // parked thread went away, try again
-                _ => panic!("inconsistent state in unpark"),
-            }
+        match self.inner.state.swap(NOTIFIED, SeqCst) {
+            EMPTY => return, // no one was waiting
+            NOTIFIED => return, // already unparked
+            PARKED => {} // gotta go wake someone up
+            _ => panic!("inconsistent state in unpark"),
         }
+
+        // Coordinate wakeup through the mutex and a condvar notification
+        let _lock = self.inner.lock.lock().unwrap();
+        self.inner.cvar.notify_one()
     }
 
     /// Gets the thread's unique identifier.
