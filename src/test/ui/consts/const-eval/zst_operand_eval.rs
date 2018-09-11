@@ -1,5 +1,5 @@
 // compile-pass
 
-static ASSERT: () = [()][(std::mem::size_of::<u32>() != 4) as usize];
+static ASSERT: () = [()][!(std::mem::size_of::<u32>() == 4) as usize];
 
 fn main() {}
