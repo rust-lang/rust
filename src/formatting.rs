@@ -271,6 +271,7 @@ impl FormattingError {
             ErrorKind::LineOverflow(found, max) => (max, found - max),
             ErrorKind::TrailingWhitespace
             | ErrorKind::DeprecatedAttr
+            | ErrorKind::BadIssue(_)
             | ErrorKind::BadAttr
             | ErrorKind::LostComment => {
                 let trailing_ws_start = self
