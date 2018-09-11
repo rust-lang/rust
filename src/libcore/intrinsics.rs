@@ -1159,7 +1159,7 @@ extern "rust-intrinsic" {
     /// // At this point, using or dropping `v` results in undefined behavior.
     /// // drop(v); // ERROR
     ///
-    /// // Even leaking `v` "uses" it, and henc eis undefined behavior.
+    /// // Even leaking `v` "uses" it, and hence is undefined behavior.
     /// // mem::forget(v); // ERROR
     ///
     /// unsafe {
