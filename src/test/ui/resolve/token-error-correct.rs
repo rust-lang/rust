@@ -14,6 +14,8 @@ fn main() {
     foo(bar(;
     //~^ ERROR expected expression, found `;`
     //~| ERROR expected one of
-    //~| ERROR expected expression
+    //~| ERROR cannot find function `foo` in this scope
+    //~| ERROR cannot find function `bar` in this scope
 }
 //~^ ERROR incorrect close delimiter: `}`
+//~| ERROR expected expression

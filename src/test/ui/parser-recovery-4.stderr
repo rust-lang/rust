@@ -22,19 +22,13 @@ LL |     foo(x
 LL |     bar()
    |     ^^^ unexpected token
 
-error[E0061]: this function takes 1 parameter but 2 parameters were supplied
-  --> $DIR/parser-recovery-4.rs:16:5
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `bar`
+  --> $DIR/parser-recovery-4.rs:17:5
    |
-LL |   fn foo(_: usize) {}
-   |   ---------------- defined here
-...
-LL | /     foo(x
-LL | |     bar()
-LL | |     //~^ ERROR expected one of
-LL | |     //~^^^ ERROR this function takes 1 parameter but 2 parameters were supplied
-LL | | }
-   | |_^ expected 1 parameter
+LL |     foo(x
+   |          - expected one of `.`, `;`, `?`, `}`, or an operator here
+LL |     bar()
+   |     ^^^ unexpected token
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0061`.

@@ -16,6 +16,6 @@ fn main() {
     foo(x
     bar()
     //~^ ERROR expected one of
-    //~^^^ ERROR this function takes 1 parameter but 2 parameters were supplied
+    //~| ERROR expected one of
 }
 //~^ ERROR incorrect close delimiter

@@ -1,5 +1,5 @@
 error: incorrect close delimiter: `}`
-  --> $DIR/token-error-correct.rs:18:1
+  --> $DIR/token-error-correct.rs:19:1
    |
 LL | fn main() {
    |           - close delimiter possibly meant for this
@@ -19,21 +19,34 @@ LL |     foo(bar(;
    |        |    help: ...the missing `)` may belong here
    |        if you meant to close this...
 
-error: expected one of `)`, `,`, `-`, `.`, `<`, `?`, `break`, `continue`, `false`, `for`, `if`, `loop`, `match`, `move`, `return`, `static`, `true`, `unsafe`, `while`, `yield`, or an operator, found `;`
+error: expected one of `)`, `,`, `.`, `?`, or an operator, found `;`
   --> $DIR/token-error-correct.rs:14:13
    |
 LL |     foo(bar(;
    |            -^
    |            ||
-   |            |expected one of 21 possible tokens here
+   |            |expected one of `)`, `,`, `.`, `?`, or an operator here
    |            |help: ...the missing `)` may belong here
    |            if you meant to close this...
 
-error: expected expression, found `;`
-  --> $DIR/token-error-correct.rs:14:13
+error: expected expression, found `)`
+  --> $DIR/token-error-correct.rs:19:1
+   |
+LL | }
+   | ^ expected expression
+
+error[E0425]: cannot find function `foo` in this scope
+  --> $DIR/token-error-correct.rs:14:5
    |
 LL |     foo(bar(;
-   |             ^ expected expression
+   |     ^^^ not found in this scope
 
-error: aborting due to 4 previous errors
+error[E0425]: cannot find function `bar` in this scope
+  --> $DIR/token-error-correct.rs:14:9
+   |
+LL |     foo(bar(;
+   |         ^^^ not found in this scope
 
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

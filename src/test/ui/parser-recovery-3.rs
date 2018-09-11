@@ -14,11 +14,11 @@ impl A {
     fn banana(&mut self) {
         fn peach(this: &Self, foo: usize {
         //~^ ERROR expected one of
-        //~| ERROR expected pattern
+        //~| ERROR can't use type parameters from outer function
         }
     }
-    //~^ ERROR expected one of
-    //~| ERROR incorrect close delimiter
+    //~^ ERROR incorrect close delimiter
+    //~| ERROR expected expression
 }
 
 fn main() {}

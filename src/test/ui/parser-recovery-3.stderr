@@ -18,17 +18,24 @@ LL |         fn peach(this: &Self, foo: usize {
    |                 |                       help: ...the missing `)` may belong here
    |                 if you meant to close this...
 
-error: expected pattern, found `{`
-  --> $DIR/parser-recovery-3.rs:15:42
-   |
-LL |         fn peach(this: &Self, foo: usize {
-   |                                          ^ expected pattern
-
-error: expected one of `->`, `where`, or `{`, found `}`
+error: expected expression, found `)`
   --> $DIR/parser-recovery-3.rs:19:5
    |
 LL |     }
-   |     ^ expected one of `->`, `where`, or `{` here
+   |     ^ expected expression
+
+error[E0401]: can't use type parameters from outer function
+  --> $DIR/parser-recovery-3.rs:15:25
+   |
+LL | impl A {
+   | ---- `Self` type implicitly declared here, by this `impl`
+LL |     fn banana(&mut self) {
+LL |         fn peach(this: &Self, foo: usize {
+   |                         ^^^^
+   |                         |
+   |                         use of type variable from outer function
+   |                         use a type here instead
 
 error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0401`.

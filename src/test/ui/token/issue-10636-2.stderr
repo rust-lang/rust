@@ -1,5 +1,5 @@
 error: incorrect close delimiter: `}`
-  --> $DIR/issue-10636-2.rs:19:1
+  --> $DIR/issue-10636-2.rs:18:1
    |
 LL | pub fn trace_option(option: Option<isize>) {
    |                                            - close delimiter possibly meant for this
@@ -19,11 +19,11 @@ LL |     option.map(|some| 42;
    |               |         help: ...the missing `)` may belong here
    |               if you meant to close this...
 
-error: expected expression, found `;`
-  --> $DIR/issue-10636-2.rs:15:25
+error: expected expression, found `)`
+  --> $DIR/issue-10636-2.rs:18:1
    |
-LL |     option.map(|some| 42;
-   |                         ^ expected expression
+LL | }
+   | ^ expected expression
 
 error: aborting due to 3 previous errors
 
