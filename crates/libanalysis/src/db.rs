@@ -113,7 +113,7 @@ impl Cache {
 
 pub(crate) struct QueryCtx {
     db: Arc<Db>,
-    stack: RefCell<Vec<QueryInvocationId>>,
+    stack: RefCell<Vec<(QueryInvocationId, Vec<(QueryInvocationId, OutputHash)>)>>,
     pub(crate) trace: RefCell<Vec<TraceEvent>>,
 }
 
@@ -131,22 +131,16 @@ pub(crate) enum TraceEventKind {
 impl QueryCtx {
     pub(crate) fn get<Q: Get>(&self, params: &Q::Params) -> Q::Output {
         let me = id::<Q>(params);
-        eprintln!("eval: {:?}", me);
-        let parent = self.stack.borrow().last().map(|&id| id);
-        self.stack.borrow_mut().push(me);
         self.trace(TraceEvent { query_id: Q::ID, kind: TraceEventKind::Start });
         let res = Q::get(self, params);
         self.trace(TraceEvent { query_id: Q::ID, kind: TraceEventKind::Finish });
-        if let Some(parent) = parent {
-            let h = output_hash::<Q>(&res);
-            let mut cache = self.db.cache.lock();
-            cache.deps
-                .entry(parent)
-                .or_insert(Vec::new())
-                .push((me, h))
+        {
+            let mut stack = self.stack.borrow_mut();
+            if let Some((_, ref mut deps)) = stack.last_mut() {
+                deps.push((me, output_hash::<Q>(&res)));
+            }
         }
-        let also_me = self.stack.borrow_mut().pop();
-        assert_eq!(also_me, Some(me));
+
         res
     }
     fn trace(&self, event: TraceEvent) {
@@ -179,10 +173,14 @@ where
             return res;
         }
 
+        let me = id::<Q>(params);
         ctx.trace(TraceEvent { query_id: Q::ID, kind: TraceEventKind::Evaluating });
+        ctx.stack.borrow_mut().push((me, Vec::new()));
         let res = Self::eval(ctx, params);
-
+        let (also_me, deps) = ctx.stack.borrow_mut().pop().unwrap();
+        assert_eq!(also_me, me);
         let mut cache = ctx.db.cache.lock();
+        cache.deps.insert(me, deps);
         let gen = cache.gen;
         let output_hash = output_hash::<Q>(&res);
         let id = id::<Q>(params);

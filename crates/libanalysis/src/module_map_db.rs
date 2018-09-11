@@ -169,7 +169,6 @@ mod tests {
             expected: &[FileId],
             queries: &[(u32, u64)]
         ) {
-            eprintln!();
             let ctx = self.db.query_ctx();
             let actual = ctx.get::<ParentModule>(&file_id);
             assert_eq!(actual.as_slice(), expected);
@@ -194,23 +193,14 @@ mod tests {
     fn test_parent_module() {
         let mut f = Fixture::new();
         let foo = f.add_file("/foo.rs", "");
-        f.check_parent_modules(foo, &[], &[
-            (ModuleDescr::ID, 1),
-            (FileSyntax::ID, 1),
-        ]);
+        // f.check_parent_modules(foo, &[], &[(ModuleDescr::ID, 1)]);
 
         let lib = f.add_file("/lib.rs", "mod foo;");
-        f.check_parent_modules(foo, &[lib], &[
-            (ModuleDescr::ID, 1),
-            (FileSyntax::ID, 2),
-        ]);
-        // f.check_parent_modules(foo, &[lib], &[
-        //     (ModuleDescr::ID, 0),
-        //     (FileSyntax::ID, 2),
-        // ]);
+        f.check_parent_modules(foo, &[lib], &[(ModuleDescr::ID, 2)]);
+        f.check_parent_modules(foo, &[lib], &[(ModuleDescr::ID, 0)]);
 
-        // f.change_file(lib, "");
-        // f.check_parent_modules(foo, &[], &[(ModuleDescr::ID, 2)]);
+        f.change_file(lib, "");
+        f.check_parent_modules(foo, &[], &[(ModuleDescr::ID, 2)]);
 
         // f.change_file(lib, "mod foo;");
         // f.check_parent_modules(foo, &[lib], &[(ModuleDescr::ID, 2)]);
@@ -224,5 +214,4 @@ mod tests {
         // f.remove_file(lib);
         // f.check_parent_modules(foo, &[], &[(ModuleDescr::ID, 1)]);
     }
-
 }
