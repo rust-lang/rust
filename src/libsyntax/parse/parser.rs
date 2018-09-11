@@ -644,7 +644,7 @@ impl<'a> Parser<'a> {
         mut err: DiagnosticBuilder<'a>,
     ) -> PResult<'a, ()> {
         let mut pos = None;
-        let mut tokens: Vec<token::Token> = tokens.iter().map(|t| (*t).clone()).collect();
+        let mut tokens: Vec<token::Token> = tokens.to_vec();
         tokens.extend(self.expected_tokens.iter().filter_map(|t| match t {
             TokenType::Token(t) => Some((*t).clone()),
             _ => None,
