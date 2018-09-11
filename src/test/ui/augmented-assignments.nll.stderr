@@ -9,7 +9,7 @@ LL |       x   //~ error: use of moved value: `x`
 LL | |     //~^ value used here after move
 LL | |     +=
 LL | |     x;  //~ value moved here
-   | |     -
+   | |     ^
    | |     |
    | |_____move out of `x` occurs here
    |       borrow later used here

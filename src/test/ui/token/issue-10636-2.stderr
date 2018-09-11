@@ -13,7 +13,7 @@ error: expected one of `)`, `,`, `.`, `?`, or an operator, found `;`
   --> $DIR/issue-10636-2.rs:15:25
    |
 LL |     option.map(|some| 42;
-   |               -         -
+   |               -         ^
    |               |         |
    |               |         expected one of `)`, `,`, `.`, `?`, or an operator here
    |               |         help: ...the missing `)` may belong here
