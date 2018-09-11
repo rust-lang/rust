@@ -331,7 +331,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             func: fun,
                             args,
                             cleanup: Some(cleanup),
-                            destination: if expr.ty.conservative_is_uninhabited() {
+                            destination: if expr.ty.conservative_is_uninhabited(this.hir.tcx()) {
                                 None
                             } else {
                                 Some((destination.clone(), success))

@@ -463,7 +463,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                         // we can do what we like. Here, we declare that transmuting
                         // into an uninhabited type is impossible, so anything following
                         // it must be unreachable.
-                        assert!(sig.output().conservative_is_uninhabited());
+                        assert!(sig.output().conservative_is_uninhabited(bx.tcx()));
                         bx.unreachable();
                     }
                     return;
