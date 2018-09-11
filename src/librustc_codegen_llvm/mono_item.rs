@@ -155,7 +155,7 @@ fn predefine_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
     let mono_ty = instance.ty(cx.tcx);
     let attrs = cx.tcx.codegen_fn_attrs(instance.def_id());
-    let lldecl = declare::declare_fn(cx, symbol_name, mono_ty);
+    let lldecl = declare::declare_fn(cx, symbol_name, mono_ty, instance.is_vtable_shim());
     unsafe { llvm::LLVMRustSetLinkage(lldecl, base::linkage_to_llvm(linkage)) };
     base::set_link_section(lldecl, &attrs);
     if linkage == Linkage::LinkOnceODR ||

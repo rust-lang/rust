@@ -412,7 +412,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
             Abi::C
         )));
 
-        let llfn = declare::declare_fn(self, "rust_eh_unwind_resume", ty);
+        let llfn = declare::declare_fn(self, "rust_eh_unwind_resume", ty, false);
         attributes::unwind(llfn, true);
         attributes::apply_target_cpu_attr(self, llfn);
         unwresume.set(Some(llfn));

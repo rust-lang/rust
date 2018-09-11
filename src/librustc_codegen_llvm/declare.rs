@@ -130,9 +130,11 @@ pub fn declare_fn(
     cx: &CodegenCx<'ll, 'tcx>,
     name: &str,
     fn_type: Ty<'tcx>,
+    is_vtable_shim: bool,
 ) -> &'ll Value {
-    debug!("declare_rust_fn(name={:?}, fn_type={:?})", name, fn_type);
-    let sig = common::ty_fn_sig(cx, fn_type);
+    debug!("declare_rust_fn(name={:?}, fn_type={:?}, is_vtable_shim={:?})",
+           name, fn_type, is_vtable_shim);
+    let sig = common::ty_fn_sig_vtable(cx, fn_type, is_vtable_shim);
     let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
     debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
 
@@ -189,7 +191,7 @@ pub fn define_fn(
     if get_defined_value(cx, name).is_some() {
         cx.sess().fatal(&format!("symbol `{}` already defined", name))
     } else {
-        declare_fn(cx, name, fn_type)
+        declare_fn(cx, name, fn_type, false)
     }
 }
 
