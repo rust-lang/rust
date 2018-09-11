@@ -640,6 +640,12 @@ pub struct LocalDecl<'tcx> {
     /// Type of this local.
     pub ty: Ty<'tcx>,
 
+    /// If the user manually ascribed a type to this variable,
+    /// e.g. via `let x: T`, then we carry that type here. The MIR
+    /// borrow checker needs this information since it can affect
+    /// region inference.
+    pub user_ty: Option<CanonicalTy<'tcx>>,
+
     /// Name of the local, used in debuginfo and pretty-printing.
     ///
     /// Note that function arguments can also have this set to `Some(_)`
@@ -802,6 +808,7 @@ impl<'tcx> LocalDecl<'tcx> {
         LocalDecl {
             mutability,
             ty,
+            user_ty: None,
             name: None,
             source_info: SourceInfo {
                 span,
@@ -821,6 +828,7 @@ impl<'tcx> LocalDecl<'tcx> {
         LocalDecl {
             mutability: Mutability::Mut,
             ty: return_ty,
+            user_ty: None,
             source_info: SourceInfo {
                 span,
                 scope: OUTERMOST_SOURCE_SCOPE,
@@ -1636,22 +1644,19 @@ pub enum StatementKind<'tcx> {
     /// (The starting point(s) arise implicitly from borrows.)
     EndRegion(region::Scope),
 
-    /// Encodes a user's type assertion. These need to be preserved intact so that NLL can respect
-    /// them. For example:
+    /// Encodes a user's type ascription. These need to be preserved
+    /// intact so that NLL can respect them. For example:
     ///
-    ///     let (a, b): (T, U) = y;
+    ///     let a: T = y;
     ///
-    /// Here we would insert a `UserAssertTy<(T, U)>(y)` instruction to check that the type of `y`
-    /// is the right thing.
+    /// The effect of this annotation is to relate the type `T_y` of the place `y`
+    /// to the user-given type `T`. The effect depends on the specified variance:
     ///
-    /// `CanonicalTy` is used to capture "inference variables" from the user's types. For example:
-    ///
-    ///     let x: Vec<_> = ...;
-    ///     let y: &u32 = ...;
-    ///
-    /// would result in `Vec<?0>` and `&'?0 u32` respectively (where `?0` is a canonicalized
-    /// variable).
-    UserAssertTy(CanonicalTy<'tcx>, Local),
+    /// - `Covariant` -- requires that `T_y <: T`
+    /// - `Contravariant` -- requires that `T_y :> T`
+    /// - `Invariant` -- requires that `T_y == T`
+    /// - `Bivariant` -- no effect
+    AscribeUserType(Place<'tcx>, ty::Variance, CanonicalTy<'tcx>),
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
@@ -1728,8 +1733,8 @@ impl<'tcx> Debug for Statement<'tcx> {
                 ref outputs,
                 ref inputs,
             } => write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs),
-            UserAssertTy(ref c_ty, ref local) => {
-                write!(fmt, "UserAssertTy({:?}, {:?})", c_ty, local)
+            AscribeUserType(ref place, ref variance, ref c_ty) => {
+                write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
             }
             Nop => write!(fmt, "nop"),
         }
@@ -2616,6 +2621,7 @@ BraceStructTypeFoldableImpl! {
         is_user_variable,
         internal,
         ty,
+        user_ty,
         name,
         source_info,
         visibility_scope,
@@ -2652,7 +2658,7 @@ EnumTypeFoldableImpl! {
         (StatementKind::InlineAsm) { asm, outputs, inputs },
         (StatementKind::Validate)(a, b),
         (StatementKind::EndRegion)(a),
-        (StatementKind::UserAssertTy)(a, b),
+        (StatementKind::AscribeUserType)(a, v, b),
         (StatementKind::Nop),
     }
 }

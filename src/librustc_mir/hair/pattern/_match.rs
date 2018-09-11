@@ -1235,6 +1235,8 @@ fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt,
                           -> Option<Vec<Constructor<'tcx>>>
 {
     match *pat.kind {
+        PatternKind::AscribeUserType { ref subpattern, .. } =>
+            pat_constructors(cx, subpattern, pcx),
         PatternKind::Binding { .. } | PatternKind::Wild => None,
         PatternKind::Leaf { .. } | PatternKind::Deref { .. } => Some(vec![Single]),
         PatternKind::Variant { adt_def, variant_index, .. } => {
@@ -1606,6 +1608,9 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
     let pat = &r[0];
 
     let head: Option<Vec<&Pattern>> = match *pat.kind {
+        PatternKind::AscribeUserType { ref subpattern, .. } =>
+            specialize(cx, ::std::slice::from_ref(&subpattern), constructor, wild_patterns),
+
         PatternKind::Binding { .. } | PatternKind::Wild => {
             Some(wild_patterns.to_owned())
         }

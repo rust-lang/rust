@@ -1098,7 +1098,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 StatementKind::InlineAsm {..} |
                 StatementKind::EndRegion(_) |
                 StatementKind::Validate(..) |
-                StatementKind::UserAssertTy(..) |
+                StatementKind::AscribeUserType(..) |
                 StatementKind::Nop => {}
             }
         });

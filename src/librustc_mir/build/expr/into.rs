@@ -296,6 +296,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let ptr_temp = this.local_decls.push(LocalDecl {
                         mutability: Mutability::Mut,
                         ty: ptr_ty,
+                        user_ty: None,
                         name: None,
                         source_info,
                         visibility_scope: source_info.scope,
