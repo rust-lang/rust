@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 pub fn main() {
     let x = true;
     if x { let mut i = 10; while i > 0 { i -= 1; } }

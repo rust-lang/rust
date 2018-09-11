@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // ignore-android FIXME #17520
 // ignore-cloudabi spawning processes is not supported
 // ignore-emscripten spawning processes is not supported

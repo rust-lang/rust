@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Make sure the type inference for the new range expression work as
 // good as the old one. Check out issue #21672, #21595 and #21649 for
 // more details.

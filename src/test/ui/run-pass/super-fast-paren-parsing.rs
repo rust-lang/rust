@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // exec-env:RUST_MIN_STACK=16000000
 // rustc-env:RUST_MIN_STACK=16000000
 //

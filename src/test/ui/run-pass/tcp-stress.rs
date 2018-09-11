@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // ignore-android needs extra network permissions
 // ignore-bitrig system ulimit (Too many open files)
 // ignore-cloudabi no global network namespace access

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 
 // Beware editing: it has numerous whitespace characters which are important.
 // It contains one ranges from the 'PATTERN_WHITE_SPACE' property outlined in

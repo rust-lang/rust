@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 #![feature(box_syntax)]
 
 // Iota-reduction is a rule in the Calculus of (Co-)Inductive Constructions,

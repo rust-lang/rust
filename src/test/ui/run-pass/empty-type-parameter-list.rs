@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test that empty type parameter list (<>) is synonymous with
 // no type parameters at all
 

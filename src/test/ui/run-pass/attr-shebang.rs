@@ -2,3 +2,4 @@
 #![feature(rust1)]
 pub fn main() { }
 // ignore-license
+// run-pass

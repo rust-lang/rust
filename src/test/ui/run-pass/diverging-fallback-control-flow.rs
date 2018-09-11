@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test various cases where we permit an unconstrained variable
 // to fallback based on control-flow.
 //

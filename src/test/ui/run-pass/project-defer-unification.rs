@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // A regression test extracted from image-0.3.11. The point of
 // failure was in `index_colors` below.
 

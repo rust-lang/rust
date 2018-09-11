@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Ensure that both `Box<Error + Send + Sync>` and `Box<Error>` can be obtained from `String`.
 
 use std::error::Error;

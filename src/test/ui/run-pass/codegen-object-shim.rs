@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 fn main() {
     assert_eq!((ToString::to_string as fn(&(ToString+'static)) -> String)(&"foo"),
         String::from("foo"));

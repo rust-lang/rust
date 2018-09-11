@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // This tests reification from safe function to `unsafe fn` pointer
 
 fn do_nothing() -> () {}

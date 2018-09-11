@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test that `Clone` is correctly implemented for builtin types.
 // Also test that cloning an array or a tuple is done right, i.e.
 // each component is cloned.

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test that `Box<Test>` is equivalent to `Box<Test+'static>`, both in
 // fields and fn arguments.
 

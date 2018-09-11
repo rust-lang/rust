@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // aux-build:blind-item-mixed-crate-use-item-foo.rs
 // aux-build:blind-item-mixed-crate-use-item-foo2.rs
 

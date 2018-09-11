@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test invoked `&self` methods on owned objects where the values
 // closed over do not contain managed values, and thus the boxes do
 // not have headers.

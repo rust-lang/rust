@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // We disable tail merging here because it can't preserve debuginfo and thus
 // potentially breaks the backtraces. Also, subtle changes can decide whether
 // tail merging succeeds, so the test might work today but fail tomorrow due to a

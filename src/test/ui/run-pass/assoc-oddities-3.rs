@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 fn that_odd_parse(c: bool, n: usize) -> u32 {
     let x = 2;
     let a = [1, 2, 3, 4];

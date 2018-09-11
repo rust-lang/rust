@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test that the `wf` checker properly handles bound regions in object
 // types. Compiling this code used to trigger an ICE.
 

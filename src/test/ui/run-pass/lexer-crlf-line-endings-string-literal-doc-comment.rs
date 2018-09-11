@@ -12,6 +12,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // NB: this file needs CRLF line endings. The .gitattributes file in
 // this directory should enforce it.
 

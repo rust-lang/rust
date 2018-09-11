@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Issue #7988
 // Transmuting non-immediate type to immediate type
 

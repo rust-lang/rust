@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test that the lifetime of the enclosing `&` is used for the object
 // lifetime bound.
 

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test that we can overload the `+` operator for points so that two
 // points can be added, and a point can be added to an integer.
 

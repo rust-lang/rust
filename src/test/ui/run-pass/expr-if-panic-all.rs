@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // When all branches of an if expression result in panic, the entire if
 // expression results in panic.
 

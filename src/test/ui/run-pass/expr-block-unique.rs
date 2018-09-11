@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 #![feature(box_syntax)]
 
 pub fn main() { let x: Box<_> = { box 100 }; assert_eq!(*x, 100); }

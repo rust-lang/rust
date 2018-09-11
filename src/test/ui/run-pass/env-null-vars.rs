@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // ignore-windows
 // ignore-wasm32-bare no libc to test ffi with
 

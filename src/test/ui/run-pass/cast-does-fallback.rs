@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 pub fn main() {
     // Test that these type check correctly.
     (&42u8 >> 4) as usize;

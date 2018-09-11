@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // pp-exact - Make sure we actually print the attributes
 // pretty-expanded FIXME #23616
 

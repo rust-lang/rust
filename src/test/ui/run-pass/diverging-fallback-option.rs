@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 #![allow(warnings)]
 
 // Here the type of `c` is `Option<?T>`, where `?T` is unconstrained.

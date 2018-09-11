@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // aux-build:link-cfg-works-transitive-rlib.rs
 // aux-build:link-cfg-works-transitive-dylib.rs
 

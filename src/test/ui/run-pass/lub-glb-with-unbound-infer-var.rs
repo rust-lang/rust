@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test for a specific corner case: when we compute the LUB of two fn
 // types and their parameters have unbound variables. In that case, we
 // wind up relating those two variables. This was causing an ICE in an

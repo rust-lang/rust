@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // compile-flags: -Z thinlto -C codegen-units=2
 
 #[global_allocator]

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 use std::fmt;
 use std::io::{self, Error, Write, sink};
 

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 #![feature(stmt_expr_attributes)]
 #![deny(unused_parens)]
 

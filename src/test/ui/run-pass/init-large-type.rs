@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Makes sure that zero-initializing large types is reasonably fast,
 // Doing it incorrectly causes massive slowdown in LLVM during
 // optimisation.

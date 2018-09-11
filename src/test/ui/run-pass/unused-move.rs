@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Issue #3878
 // Issue Name: Unused move causes a crash
 // Abstract: zero-fill to block after drop

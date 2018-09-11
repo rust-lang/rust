@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 #[cfg(not(target_os = "macos"))]
 #[link_section=".moretext"]
 fn i_live_in_more_text() -> &'static str {

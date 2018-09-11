@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Type ascription doesn't lead to unsoundness
 
 #![feature(type_ascription)]

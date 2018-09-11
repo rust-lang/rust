@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 #![feature(arbitrary_self_types, futures_api, pin)]
 #![allow(unused)]
 

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // aux-build:msvc-data-only-lib.rs
 
 extern crate msvc_data_only_lib;

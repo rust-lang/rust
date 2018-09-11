@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Issue #5041 - avoid overlapping memcpy when src and dest of a swap are the same
 
 // pretty-expanded FIXME #23616

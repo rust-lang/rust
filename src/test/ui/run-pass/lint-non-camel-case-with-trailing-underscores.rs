@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // This is ok because we often use the trailing underscore to mean 'prime'
 
 // pretty-expanded FIXME #23616

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Static recursion check shouldn't fail when given a foreign item (#18279)
 
 // aux-build:check_static_recursion_foreign_helper.rs

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Regression test for #37154: the problem here was that the cache
 // results in a false error because it was caching skolemized results
 // even after those skolemized regions had been popped.

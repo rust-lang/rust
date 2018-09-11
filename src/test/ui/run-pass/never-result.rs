@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test that we can extract a ! through pattern matching then use it as several different types.
 
 #![feature(never_type)]

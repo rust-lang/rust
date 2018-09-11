@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 fn incr(x: &mut isize) -> bool { *x += 1; assert!((false)); return false; }
 
 pub fn main() {

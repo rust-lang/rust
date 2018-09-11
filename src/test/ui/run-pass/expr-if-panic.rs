@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 
 fn test_if_panic() {
     let x = if false { panic!() } else { 10 };

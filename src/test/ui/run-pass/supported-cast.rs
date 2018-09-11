@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 pub fn main() {
   let f = 1_usize as *const String;
   println!("{:?}", f as isize);

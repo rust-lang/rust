@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // compile-flags:--test
 // Building as a test runner means that a synthetic main will be run,
 // not ours

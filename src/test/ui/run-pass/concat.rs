@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 
 pub fn main() {
     assert_eq!(format!(concat!("foo", "bar", "{}"), "baz"), "foobarbaz".to_string());

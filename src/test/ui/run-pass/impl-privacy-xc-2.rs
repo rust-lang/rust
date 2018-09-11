@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // aux-build:impl_privacy_xc_2.rs
 
 extern crate impl_privacy_xc_2;

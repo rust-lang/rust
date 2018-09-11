@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // edition:2018
 
 #![feature(arbitrary_self_types, async_await, await_macro, futures_api, pin)]

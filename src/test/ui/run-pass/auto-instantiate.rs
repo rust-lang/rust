@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 #[derive(Debug)]
 struct Pair<T, U> { a: T, b: U }
 struct Triple { x: isize, y: isize, z: isize }

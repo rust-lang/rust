@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test that we can call static methods on ! both directly and when it appears in a generic
 
 #![feature(never_type)]

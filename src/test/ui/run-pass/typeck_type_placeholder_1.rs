@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // This test checks that the `_` type placeholder works
 // correctly for enabling type inference.
 

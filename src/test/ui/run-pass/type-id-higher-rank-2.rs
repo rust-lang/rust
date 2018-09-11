@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test that we can't ignore lifetimes by going through Any.
 
 use std::any::Any;

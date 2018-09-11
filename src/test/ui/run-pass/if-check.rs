@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 fn even(x: usize) -> bool {
     if x < 2 {
         return false;

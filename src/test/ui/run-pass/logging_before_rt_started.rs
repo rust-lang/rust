@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // exec-env:RUST_LOG=std::ptr
 
 // In issue #9487, it was realized that std::ptr was invoking the logging

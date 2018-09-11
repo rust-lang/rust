@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test that a glob-export functions as an import
 // when referenced within its own local scope.
 

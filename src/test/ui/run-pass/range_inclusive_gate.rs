@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Test that you only need the syntax gate if you don't mention the structs.
 // (Obsoleted since both features are stabilized)
 

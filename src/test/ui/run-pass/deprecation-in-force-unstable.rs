@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // compile-flags:-Zforce-unstable-if-unmarked
 
 #[deprecated] // should work even with -Zforce-unstable-if-unmarked

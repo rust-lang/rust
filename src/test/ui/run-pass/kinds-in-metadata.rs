@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // aux-build:kinds_in_metadata.rs
 
 // pretty-expanded FIXME #23616

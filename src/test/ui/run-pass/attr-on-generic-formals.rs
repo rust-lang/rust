@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // This test ensures we can attach attributes to the formals in all
 // places where generic parameter lists occur, assuming appropriate
 // feature gates are enabled.

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 fn main() {
     // test compound assignment operators with ref as right-hand side,
     // for each operator, with various types as operands.

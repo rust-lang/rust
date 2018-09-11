@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 
 use std::mem::{size_of, align_of};
 use std::os::raw::c_int;

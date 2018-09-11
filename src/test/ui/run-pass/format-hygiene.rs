@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 pub const arg0: u8 = 1;
 
 pub fn main() {

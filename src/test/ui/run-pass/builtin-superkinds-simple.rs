@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Simple test case of implementing a trait with super-builtin-kinds.
 
 // pretty-expanded FIXME #23616

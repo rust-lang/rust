@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // pretty-expanded FIXME #23616
 
 /* Any copyright is dedicated to the Public Domain.

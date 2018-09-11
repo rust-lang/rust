@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // compile-flags: --cfg test
 
 // Make sure `--cfg test` does not inject test harness

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // ignore-windows - this is a unix-specific test
 // ignore-cloudabi no processes
 // ignore-emscripten no processes

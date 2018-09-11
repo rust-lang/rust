@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 #![feature(asm)]
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]

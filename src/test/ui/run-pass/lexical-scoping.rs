@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // Tests that items in subscopes can shadow type parameters and local variables (see issue #23880).
 
 #![allow(unused)]

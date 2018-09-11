@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // note that these aux-build directives must be in this order
 // aux-build:svh-a-base.rs
 // aux-build:svh-b.rs

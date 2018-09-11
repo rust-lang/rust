@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // #11303, #11040:
 // This would previously crash on i686 Linux due to abi differences
 // between returning an Option<T> and T, where T is a non nullable

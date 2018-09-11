@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 // edition:2018
 // aux-build:edition-kw-macro-2015.rs
 
