@@ -21,6 +21,7 @@ use util::nodemap::{FxHashMap, FxHashSet};
 use ty;
 
 use std::mem;
+use std::fmt;
 use rustc_data_structures::sync::Lrc;
 use syntax::source_map;
 use syntax::ast;
@@ -50,7 +51,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 /// `DestructionScope`, but those that are `terminating_scopes` do;
 /// see discussion with `ScopeTree`.
 ///
-/// `Remainder(BlockRemainder { block, statement_index })` represents
+/// `Remainder { block, statement_index }` represents
 /// the scope of user code running immediately after the initializer
 /// expression for the indexed statement, until the end of the block.
 ///
@@ -99,10 +100,27 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 /// placate the same deriving in `ty::FreeRegion`, but we may want to
 /// actually attach a more meaningful ordering to scopes than the one
 /// generated via deriving here.
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Debug, Copy, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Copy, RustcEncodable, RustcDecodable)]
 pub struct Scope {
     pub(crate) id: hir::ItemLocalId,
     pub(crate) data: ScopeData,
+}
+
+impl fmt::Debug for Scope {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self.data {
+            ScopeData::Node => write!(fmt, "Node({:?})", self.id),
+            ScopeData::CallSite => write!(fmt, "CallSite({:?})", self.id),
+            ScopeData::Arguments => write!(fmt, "Arguments({:?})", self.id),
+            ScopeData::Destruction => write!(fmt, "Destruction({:?})", self.id),
+            ScopeData::Remainder(fsi) => write!(
+                fmt,
+                "Remainder {{ block: {:?}, first_statement_index: {}}}",
+                self.id,
+                fsi.as_u32(),
+            ),
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Debug, Copy, RustcEncodable, RustcDecodable)]
@@ -159,7 +177,7 @@ impl Scope {
     #[inline]
     pub fn data(self) -> ScopeData {
         self.data
-        }
+    }
 
     #[inline]
     pub fn new(id: hir::ItemLocalId, data: ScopeData) -> Self {
