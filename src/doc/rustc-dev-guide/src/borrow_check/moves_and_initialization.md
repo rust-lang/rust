@@ -17,7 +17,7 @@ to that set; moving from a local variable removes it from that set.
 
 Consider this example:
 
-```rust
+```rust,ignore
 fn foo() {
     let a: Vec<u32>;
     

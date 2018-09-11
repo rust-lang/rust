@@ -4,7 +4,7 @@ In reality, it's not enough to track initialization at the granularity
 of local variables. Rust also allows us to do moves and initialization
 at the field granularity:
 
-```rust
+```rust,ignore
 fn foo() {
     let a: (Vec<u32>, Vec<u32>) = (vec![22], vec![44]);
     
@@ -41,7 +41,7 @@ the [`move_paths` field of the `MoveData`][move_paths]. For example,
 to convert a [`MovePathIndex`] `mpi` into a MIR [`Place`], you might
 access the [`MovePath::place`] field like so:
 
-```rust
+```rust,ignore
 move_data.move_paths[mpi].place
 ```
 
