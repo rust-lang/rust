@@ -220,3 +220,19 @@ pub fn resolve_and_get_fn(
         ).unwrap()
     )
 }
+
+pub fn resolve_and_get_fn_for_vtable(
+    cx: &CodegenCx<'ll, 'tcx>,
+    def_id: DefId,
+    substs: &'tcx Substs<'tcx>,
+) -> &'ll Value {
+    get_fn(
+        cx,
+        ty::Instance::resolve_for_vtable(
+            cx.tcx,
+            ty::ParamEnv::reveal_all(),
+            def_id,
+            substs
+        ).unwrap()
+    )
+}
