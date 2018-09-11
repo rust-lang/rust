@@ -651,6 +651,12 @@ impl FunctionCx<'a, 'll, 'tcx> {
                                 .get_fn(&bx, meta, &fn_ty));
                             llargs.push(data_ptr);
                             continue;
+                        } else if let Ref(data_ptr, Some(meta), _) = op.val {
+                            // by-value dynamic dispatch
+                            llfn = Some(meth::VirtualIndex::from_index(idx)
+                                .get_fn(&bx, meta, &fn_ty));
+                            llargs.push(data_ptr);
+                            continue;
                         }
                     }
 
