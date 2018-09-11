@@ -57,7 +57,7 @@ use {
     parser_api::Parser,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash)]
 pub struct File {
     root: SyntaxNode
 }

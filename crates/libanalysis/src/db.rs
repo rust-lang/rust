@@ -1,5 +1,5 @@
 use std::{
-    hash::Hash,
+    hash::{Hash, Hasher},
     sync::Arc,
     cell::RefCell,
     fmt::Debug,
@@ -45,15 +45,33 @@ impl DbHost {
     pub(crate) fn query_ctx(&self) -> QueryCtx {
         QueryCtx {
             db: Arc::clone(&self.db),
+            stack: RefCell::new(Vec::new()),
             trace: RefCell::new(Vec::new()),
         }
     }
     fn db_mut(&mut self) -> &mut Db {
-        // NB: this "forks" the database & clears the cache
+        // NB: this "forks" the database
         let db = Arc::make_mut(&mut self.db);
-        *db.cache.get_mut() = Default::default();
+        db.cache.get_mut().gen += 1;
         db
     }
+}
+
+type QueryInvocationId = (u32, u64);
+type Gen = u64;
+type OutputHash = u64;
+
+fn id<Q: Query>(params: &Q::Params) -> QueryInvocationId {
+    use std::collections::hash_map::DefaultHasher;
+    let mut hasher = DefaultHasher::new();
+    params.hash(&mut hasher);
+    (Q::ID, hasher.finish())
+}
+fn output_hash<Q: Query>(output: &Q::Output) -> OutputHash {
+    use std::collections::hash_map::DefaultHasher;
+    let mut hasher = DefaultHasher::new();
+    output.hash(&mut hasher);
+    hasher.finish()
 }
 
 #[derive(Debug)]
@@ -73,9 +91,13 @@ impl Clone for Db {
     }
 }
 
-#[derive(Clone, Default, Debug)]
+
+#[derive(Default, Debug)]
 pub(crate) struct Cache {
-    pub(crate) module_descr: QueryCache<ModuleDescr>
+    pub(crate) module_descr: QueryCache<ModuleDescr>,
+    gen: Gen,
+    green: im::HashMap<QueryInvocationId, (Gen, OutputHash)>,
+    deps: im::HashMap<QueryInvocationId, Vec<(QueryInvocationId, OutputHash)>>,
 }
 #[allow(type_alias_bounds)]
 pub(crate) type QueryCache<Q: Query> = im::HashMap<
@@ -91,6 +113,7 @@ impl Cache {
 
 pub(crate) struct QueryCtx {
     db: Arc<Db>,
+    stack: RefCell<Vec<QueryInvocationId>>,
     pub(crate) trace: RefCell<Vec<TraceEvent>>,
 }
 
@@ -102,12 +125,28 @@ pub(crate) struct TraceEvent {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum TraceEventKind {
-    Start, Finish
+    Start, Evaluating, Finish
 }
 
 impl QueryCtx {
     pub(crate) fn get<Q: Get>(&self, params: &Q::Params) -> Q::Output {
+        let me = id::<Q>(params);
+        eprintln!("eval: {:?}", me);
+        let parent = self.stack.borrow().last().map(|&id| id);
+        self.stack.borrow_mut().push(me);
+        self.trace(TraceEvent { query_id: Q::ID, kind: TraceEventKind::Start });
         let res = Q::get(self, params);
+        self.trace(TraceEvent { query_id: Q::ID, kind: TraceEventKind::Finish });
+        if let Some(parent) = parent {
+            let h = output_hash::<Q>(&res);
+            let mut cache = self.db.cache.lock();
+            cache.deps
+                .entry(parent)
+                .or_insert(Vec::new())
+                .push((me, h))
+        }
+        let also_me = self.stack.borrow_mut().pop();
+        assert_eq!(also_me, Some(me));
         res
     }
     fn trace(&self, event: TraceEvent) {
@@ -118,47 +157,80 @@ impl QueryCtx {
 pub(crate) trait Query {
     const ID: u32;
     type Params: Hash + Eq + Debug;
-    type Output: Debug;
+    type Output: Hash + Debug;
 }
 
 pub(crate) trait Get: Query {
     fn get(ctx: &QueryCtx, params: &Self::Params) -> Self::Output;
 }
 
-impl<T: Eval> Get for T
+impl<Q: Eval> Get for Q
 where
-    T::Params: Clone,
-    T::Output: Clone,
+    Q::Params: Clone,
+    Q::Output: Clone,
 {
     fn get(ctx: &QueryCtx, params: &Self::Params) -> Self::Output {
-        {
-            let mut cache = ctx.db.cache.lock();
-            if let Some(cache) = Self::cache(&mut cache) {
-                if let Some(res) = cache.get(params) {
-                    return res.clone();
-                }
-            }
+        if !Self::cacheable() {
+            ctx.trace(TraceEvent { query_id: Q::ID, kind: TraceEventKind::Evaluating });
+            return Self::eval(ctx, params);
         }
-        ctx.trace(TraceEvent { query_id: Self::ID, kind: TraceEventKind::Start });
+
+        if let Some(res) = try_reuse::<Q>(ctx, params) {
+            return res;
+        }
+
+        ctx.trace(TraceEvent { query_id: Q::ID, kind: TraceEventKind::Evaluating });
         let res = Self::eval(ctx, params);
-        ctx.trace(TraceEvent { query_id: Self::ID, kind: TraceEventKind::Finish });
 
         let mut cache = ctx.db.cache.lock();
-        if let Some(cache) = Self::cache(&mut cache) {
-            cache.insert(params.clone(), res.clone());
-        }
-
+        let gen = cache.gen;
+        let output_hash = output_hash::<Q>(&res);
+        let id = id::<Q>(params);
+        cache.green.insert(id, (gen, output_hash));
+        let cache = Self::cache(&mut cache);
+        cache.insert(params.clone(), res.clone());
         res
     }
+}
+
+fn try_reuse<Q: Eval>(ctx: &QueryCtx, params: &Q::Params) -> Option<Q::Output>
+where
+    Q::Params: Clone,
+    Q::Output: Clone,
+{
+    let id = id::<Q>(params);
+    let mut cache = ctx.db.cache.lock();
+    let curr_gen = cache.gen;
+    let old_hash = match *cache.green.get(&id)? {
+        (gen, _) if gen == curr_gen => {
+            return Some(Q::cache(&mut cache)[params].clone());
+        }
+        (_, hash) => hash,
+    };
+    let deps_are_fresh = cache.deps[&id]
+        .iter()
+        .all(|&(dep_id, dep_hash)| {
+            match cache.green.get(&dep_id) {
+                //TODO: store the value of parameters, and re-execute the query
+                Some((gen, hash)) if gen == &curr_gen && hash == &dep_hash => true,
+                _ => false,
+            }
+        });
+    if !deps_are_fresh {
+        return None;
+    }
+    cache.green.insert(id, (curr_gen, old_hash));
+    Some(Q::cache(&mut cache)[params].clone())
 }
 
 pub(crate) trait Eval: Query
 where
     Self::Params: Clone,
     Self::Output: Clone,
- {
-    fn cache(_cache: &mut Cache) -> Option<&mut QueryCache<Self>> {
-        None
+{
+    fn cacheable() -> bool { false }
+    fn cache(_cache: &mut Cache) -> &mut QueryCache<Self> {
+        unimplemented!()
     }
     fn eval(ctx: &QueryCtx, params: &Self::Params) -> Self::Output;
 }
@@ -166,6 +238,12 @@ where
 #[derive(Debug)]
 pub(crate) struct DbFiles {
     db: Arc<Db>,
+}
+
+impl Hash for DbFiles {
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        self.db.cache.lock().gen.hash(hasher)
+    }
 }
 
 impl DbFiles {
@@ -184,8 +262,14 @@ impl Query for Files {
     type Output = DbFiles;
 }
 impl Get for Files {
-    fn get(ctx: &QueryCtx, _params: &()) -> DbFiles {
-        DbFiles { db: Arc::clone(&ctx.db) }
+    fn get(ctx: &QueryCtx, params: &()) -> DbFiles {
+        let res = DbFiles { db: Arc::clone(&ctx.db) };
+        let id = id::<Self>(params);
+        let hash = output_hash::<Self>(&res);
+        let mut cache = ctx.db.cache.lock();
+        let gen = cache.gen;
+        cache.green.insert(id, (gen, hash));
+        res
     }
 }
 
@@ -197,7 +281,13 @@ impl Query for FileText {
 }
 impl Get for FileText {
     fn get(ctx: &QueryCtx, file_id: &FileId) -> Arc<String> {
-        ctx.db.files[file_id].clone()
+        let res = ctx.db.files[file_id].clone();
+        let id = id::<Self>(file_id);
+        let hash = output_hash::<Self>(&res);
+        let mut cache = ctx.db.cache.lock();
+        let gen = cache.gen;
+        cache.green.insert(id, (gen, hash));
+        res
     }
 }
 
