@@ -307,7 +307,7 @@
 #![feature(doc_cfg)]
 #![feature(doc_masked)]
 #![feature(doc_spotlight)]
-#![cfg_attr(windows, feature(used))]
+#![cfg_attr(all(windows, stage0), feature(used))]
 #![feature(doc_alias)]
 #![feature(doc_keyword)]
 #![feature(panic_info_message)]

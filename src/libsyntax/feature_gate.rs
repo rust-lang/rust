@@ -349,9 +349,6 @@ declare_features! (
     // Allows the `try {...}` expression
     (active, try_blocks, "1.29.0", Some(31436), None),
 
-    // Used to preserve symbols (see llvm.used)
-    (active, used, "1.18.0", Some(40289), None),
-
     // Allows module-level inline assembly by way of global_asm!()
     (active, global_asm, "1.18.0", Some(35119), None),
 
@@ -677,6 +674,9 @@ declare_features! (
     // Allows all literals in attribute lists and values of key-value pairs.
     (accepted, attr_literals, "1.30.0", Some(34981), None),
     (accepted, panic_handler, "1.30.0", Some(44489), None),
+    // Used to preserve symbols (see llvm.used)
+    (accepted, used, "1.30.0", Some(40289), None),
+
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1071,10 +1071,7 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                   "unwind_attributes",
                                   "#[unwind] is experimental",
                                   cfg_fn!(unwind_attributes))),
-    ("used", Whitelisted, Gated(
-        Stability::Unstable, "used",
-        "the `#[used]` attribute is an experimental feature",
-        cfg_fn!(used))),
+    ("used", Whitelisted, Ungated),
 
     // used in resolve
     ("prelude_import", Whitelisted, Gated(Stability::Unstable,

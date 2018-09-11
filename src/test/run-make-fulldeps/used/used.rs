@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![crate_type = "lib"]
-#![feature(used)]
 
 #[used]
 static FOO: u32 = 0;

@@ -10,7 +10,6 @@
 
 // run-pass
 #![deny(dead_code)]
-#![feature(used)]
 
 #[used]
 static FOO: u32 = 0;
