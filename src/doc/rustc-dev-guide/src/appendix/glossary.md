@@ -40,7 +40,7 @@ MIR                     |  the Mid-level IR that is created after type-checking 
 miri                    |  an interpreter for MIR used for constant evaluation ([see more](./miri.html))
 normalize               |  a general term for converting to a more canonical form, but in the case of rustc typically refers to [associated type normalization](./traits/associated-types.html#normalize)
 newtype                 |  a "newtype" is a wrapper around some other type (e.g., `struct Foo(T)` is a "newtype" for `T`). This is commonly used in Rust to give a stronger type for indices.
-NLL                     | [non-lexical lifetimes](./mir/regionck.html), an extension to Rust's borrowing system to make it be based on the control-flow graph.
+NLL                     | [non-lexical lifetimes](./borrow_check/region_inference.html), an extension to Rust's borrowing system to make it be based on the control-flow graph.
 node-id or NodeId       |  an index identifying a particular node in the AST or HIR; gradually being phased out and replaced with `HirId`.
 obligation              |  something that must be proven by the trait system ([see more](traits/resolution.html))
 projection              |  a general term for a "relative path", e.g. `x.f` is a "field projection", and `T::Item` is an ["associated type projection"](./traits/goals-and-clauses.html#trait-ref)
@@ -53,7 +53,7 @@ rib                     |  a data structure in the name resolver that keeps trac
 sess                    |  the compiler session, which stores global data used throughout compilation
 side tables             |  because the AST and HIR are immutable once created, we often carry extra information about them in the form of hashtables, indexed by the id of a particular node.
 sigil                   |  like a keyword but composed entirely of non-alphanumeric tokens. For example, `&` is a sigil for references.
-skolemization           |  a way of handling subtyping around "for-all" types (e.g., `for<'a> fn(&'a u32)`) as well as solving higher-ranked trait bounds (e.g., `for<'a> T: Trait<'a>`). See [the chapter on skolemization and universes](./mir/regionck.html#skol) for more details.
+skolemization           |  a way of handling subtyping around "for-all" types (e.g., `for<'a> fn(&'a u32)`) as well as solving higher-ranked trait bounds (e.g., `for<'a> T: Trait<'a>`). See [the chapter on skolemization and universes](./borrow_check/region_inference.html#skol) for more details.
 soundness               |  soundness is a technical term in type theory. Roughly, if a type system is sound, then if a program type-checks, it is type-safe; i.e. I can never (in safe rust) force a value into a variable of the wrong type. (see "completeness").
 span                    |  a location in the user's source code, used for error reporting primarily. These are like a file-name/line-number/column tuple on steroids: they carry a start/end point, and also track macro expansions and compiler desugaring. All while being packed into a few bytes (really, it's an index into a table). See the Span datatype for more.
 substs                  |  the substitutions for a given generic type or item (e.g. the `i32`, `u32` in `HashMap<i32, u32>`)
