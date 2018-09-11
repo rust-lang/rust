@@ -17,18 +17,17 @@ use builder::MemFlags;
 use super::backend::Backend;
 use super::type_::TypeMethods;
 use super::consts::ConstMethods;
-use super::intrinsic::IntrinsicMethods;
+use super::intrinsic::IntrinsicDeclarationMethods;
 
 use std::borrow::Cow;
 use std::ops::Range;
 use syntax::ast::AsmDialect;
 
+pub trait HasCodegen<'a> {
+    type CodegenCx : 'a + Backend + TypeMethods + ConstMethods + IntrinsicDeclarationMethods;
+}
 
-pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> {
-
-
-    type CodegenCx : 'a + Backend + TypeMethods + ConstMethods + IntrinsicMethods;
-
+pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> : HasCodegen<'a> {
     fn new_block<'b>(
         cx: &'a Self::CodegenCx,
         llfn: <Self::CodegenCx as Backend>::Value,
@@ -76,125 +75,125 @@ pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> {
         rhs: <Self::CodegenCx as Backend>::Value
     ) -> <Self::CodegenCx as Backend>::Value;
     fn fadd(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn fadd_fast(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn sub(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn fsub(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn fsub_fast(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn mul(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn fmul(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn fmul_fast(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn udiv(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn exactudiv(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn sdiv(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn exactsdiv(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn fdiv(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn fdiv_fast(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn urem(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn srem(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn frem(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn frem_fast(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn shl(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn lshr(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn ashr(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn and(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn or(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn xor(
-		&self,
-		lhs: <Self::CodegenCx as Backend>::Value,
-		rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        lhs: <Self::CodegenCx as Backend>::Value,
+        rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn neg(&self, v: <Self::CodegenCx as Backend>::Value) -> <Self::CodegenCx as Backend>::Value;
     fn fneg(&self, v: <Self::CodegenCx as Backend>::Value) -> <Self::CodegenCx as Backend>::Value;
     fn not(&self, v: <Self::CodegenCx as Backend>::Value) -> <Self::CodegenCx as Backend>::Value;
@@ -257,107 +256,107 @@ pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> {
     ) -> <Self::CodegenCx as Backend>::Value;
 
     fn gep(
-		&self,
-		ptr: <Self::CodegenCx as Backend>::Value,
-		indices: &[<Self::CodegenCx as Backend>::Value]
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        ptr: <Self::CodegenCx as Backend>::Value,
+        indices: &[<Self::CodegenCx as Backend>::Value]
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn inbounds_gep(
-		&self,
-		ptr: <Self::CodegenCx as Backend>::Value,
-		indices: &[<Self::CodegenCx as Backend>::Value]
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        ptr: <Self::CodegenCx as Backend>::Value,
+        indices: &[<Self::CodegenCx as Backend>::Value]
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn struct_gep(
-		&self,
-		ptr: <Self::CodegenCx as Backend>::Value,
-		idx: u64
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        ptr: <Self::CodegenCx as Backend>::Value,
+        idx: u64
+    ) -> <Self::CodegenCx as Backend>::Value;
 
     fn trunc(
-		&self,
-		val: <Self::CodegenCx as Backend>::Value,
-		dest_ty: <Self::CodegenCx as Backend>::Type
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        val: <Self::CodegenCx as Backend>::Value,
+        dest_ty: <Self::CodegenCx as Backend>::Type
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn sext(
-		&self,
-		val: <Self::CodegenCx as Backend>::Value,
-		dest_ty: <Self::CodegenCx as Backend>::Type
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        val: <Self::CodegenCx as Backend>::Value,
+        dest_ty: <Self::CodegenCx as Backend>::Type
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn fptoui(
-		&self,
-		val: <Self::CodegenCx as Backend>::Value,
-		dest_ty: <Self::CodegenCx as Backend>::Type
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        val: <Self::CodegenCx as Backend>::Value,
+        dest_ty: <Self::CodegenCx as Backend>::Type
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn fptosi(
-		&self,
-		val: <Self::CodegenCx as Backend>::Value,
-		dest_ty: <Self::CodegenCx as Backend>::Type
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        val: <Self::CodegenCx as Backend>::Value,
+        dest_ty: <Self::CodegenCx as Backend>::Type
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn uitofp(
-		&self,
-		val: <Self::CodegenCx as Backend>::Value,
-		dest_ty: <Self::CodegenCx as Backend>::Type
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        val: <Self::CodegenCx as Backend>::Value,
+        dest_ty: <Self::CodegenCx as Backend>::Type
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn sitofp(
-		&self,
-		val: <Self::CodegenCx as Backend>::Value,
-		dest_ty: <Self::CodegenCx as Backend>::Type
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        val: <Self::CodegenCx as Backend>::Value,
+        dest_ty: <Self::CodegenCx as Backend>::Type
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn fptrunc(
-		&self,
-		val: <Self::CodegenCx as Backend>::Value,
-		dest_ty: <Self::CodegenCx as Backend>::Type
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        val: <Self::CodegenCx as Backend>::Value,
+        dest_ty: <Self::CodegenCx as Backend>::Type
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn fpext(
-		&self,
-		val: <Self::CodegenCx as Backend>::Value,
-		dest_ty: <Self::CodegenCx as Backend>::Type
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        val: <Self::CodegenCx as Backend>::Value,
+        dest_ty: <Self::CodegenCx as Backend>::Type
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn ptrtoint(
-		&self,
-		val: <Self::CodegenCx as Backend>::Value,
-		dest_ty: <Self::CodegenCx as Backend>::Type
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        val: <Self::CodegenCx as Backend>::Value,
+        dest_ty: <Self::CodegenCx as Backend>::Type
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn inttoptr(
-		&self,
-		val: <Self::CodegenCx as Backend>::Value,
-		dest_ty: <Self::CodegenCx as Backend>::Type
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        val: <Self::CodegenCx as Backend>::Value,
+        dest_ty: <Self::CodegenCx as Backend>::Type
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn bitcast(
-		&self,
-		val: <Self::CodegenCx as Backend>::Value,
-		dest_ty: <Self::CodegenCx as Backend>::Type
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        val: <Self::CodegenCx as Backend>::Value,
+        dest_ty: <Self::CodegenCx as Backend>::Type
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn intcast(
-		&self,
-		val: <Self::CodegenCx as Backend>::Value,
-		dest_ty: <Self::CodegenCx as Backend>::Type, is_signed: bool
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        val: <Self::CodegenCx as Backend>::Value,
+        dest_ty: <Self::CodegenCx as Backend>::Type, is_signed: bool
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn pointercast(
-		&self,
-		val: <Self::CodegenCx as Backend>::Value,
-		dest_ty: <Self::CodegenCx as Backend>::Type
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        val: <Self::CodegenCx as Backend>::Value,
+        dest_ty: <Self::CodegenCx as Backend>::Type
+    ) -> <Self::CodegenCx as Backend>::Value;
 
     fn icmp(
-		&self,
-		op: IntPredicate,
-		lhs: <Self::CodegenCx as Backend>::Value, rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        op: IntPredicate,
+        lhs: <Self::CodegenCx as Backend>::Value, rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn fcmp(
-		&self,
-		op: RealPredicate,
-		lhs: <Self::CodegenCx as Backend>::Value, rhs: <Self::CodegenCx as Backend>::Value
-	) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        op: RealPredicate,
+        lhs: <Self::CodegenCx as Backend>::Value, rhs: <Self::CodegenCx as Backend>::Value
+    ) -> <Self::CodegenCx as Backend>::Value;
 
     fn empty_phi(
-		&self,
-		ty: <Self::CodegenCx as Backend>::Type) -> <Self::CodegenCx as Backend>::Value;
+        &self,
+        ty: <Self::CodegenCx as Backend>::Type) -> <Self::CodegenCx as Backend>::Value;
     fn phi(
         &self,
-		ty: <Self::CodegenCx as Backend>::Type,
+        ty: <Self::CodegenCx as Backend>::Type,
         vals: &[<Self::CodegenCx as Backend>::Value],
         bbs: &[<Self::CodegenCx as Backend>::BasicBlock]
-	) -> <Self::CodegenCx as Backend>::Value;
+    ) -> <Self::CodegenCx as Backend>::Value;
     fn inline_asm_call(
         &self,
         asm: *const c_char,
@@ -575,7 +574,11 @@ pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> {
     fn lifetime_start(&self, ptr: <Self::CodegenCx as Backend>::Value, size: Size);
     fn lifetime_end(&self, ptr: <Self::CodegenCx as Backend>::Value, size: Size);
 
-    fn call_lifetime_intrinsic(&self, intrinsic: &str, ptr: <Self::CodegenCx as Backend>::Value, size: Size);
+    fn call_lifetime_intrinsic(
+        &self,
+        intrinsic: &str,
+        ptr: <Self::CodegenCx as Backend>::Value, size: Size
+    );
 
     fn call(
         &self,

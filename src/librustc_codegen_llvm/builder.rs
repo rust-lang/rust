@@ -19,7 +19,7 @@ use rustc::ty::TyCtxt;
 use rustc::ty::layout::{Align, Size};
 use rustc::session::{config, Session};
 use rustc_data_structures::small_c_str::SmallCStr;
-use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods, DerivedTypeMethods, DerivedIntrinsicMethods};
+use interfaces::*;
 use syntax;
 
 use std::borrow::Cow;
@@ -56,10 +56,12 @@ bitflags! {
     }
 }
 
-impl BuilderMethods<'a, 'll, 'tcx>
-    for Builder<'a, 'll, 'tcx, &'ll Value> {
-
+impl<'a, 'll: 'a, 'tcx: 'll> HasCodegen<'a> for Builder<'a, 'll, 'tcx, &'ll Value> {
     type CodegenCx = CodegenCx<'ll, 'tcx, &'ll Value>;
+}
+
+impl<'a, 'll: 'a, 'tcx: 'll> BuilderMethods<'a, 'll, 'tcx>
+    for Builder<'a, 'll, 'tcx, &'ll Value> {
 
     fn new_block<'b>(
         cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>,

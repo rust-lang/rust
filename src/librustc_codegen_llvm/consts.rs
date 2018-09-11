@@ -274,8 +274,8 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
                 // This item is external but not foreign, i.e. it originates from an external Rust
                 // crate. Since we don't know whether this crate will be linked dynamically or
                 // statically in the final application, we always mark such symbols as 'dllimport'.
-                // If final linkage happens to be static, we rely on compiler-emitted __imp_ stubs to
-                // make things work.
+                // If final linkage happens to be static, we rely on compiler-emitted __imp_ stubs
+                // to make things work.
                 //
                 // However, in some scenarios we defer emission of statics to downstream
                 // crates, so there are cases where a static with an upstream DefId

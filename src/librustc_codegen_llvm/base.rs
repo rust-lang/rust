@@ -73,7 +73,7 @@ use CrateInfo;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::sync::Lrc;
 
-use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods, DerivedTypeMethods, Backend, DerivedIntrinsicMethods};
+use interfaces::*;
 
 use std::any::Any;
 use std::ffi::CString;
@@ -409,7 +409,7 @@ pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll, Builder : BuilderMethods<'a, 'll ,
     }
 }
 
-pub fn to_immediate<'a, 'll, 'tcx, Builder : BuilderMethods<'a, 'll, 'tcx>>(
+pub fn to_immediate<'a, 'll: 'a, 'tcx: 'll, Builder : BuilderMethods<'a, 'll, 'tcx>>(
     bx: &Builder,
     val: <Builder::CodegenCx as Backend>::Value,
     layout: layout::TyLayout,
@@ -420,7 +420,7 @@ pub fn to_immediate<'a, 'll, 'tcx, Builder : BuilderMethods<'a, 'll, 'tcx>>(
     val
 }
 
-pub fn to_immediate_scalar<'a, 'll, 'tcx, Builder : BuilderMethods<'a, 'll, 'tcx>>(
+pub fn to_immediate_scalar<'a, 'll :'a, 'tcx :'ll, Builder : BuilderMethods<'a, 'll, 'tcx>>(
     bx: &Builder,
     val: <Builder::CodegenCx as Backend>::Value,
     scalar: &layout::Scalar,
