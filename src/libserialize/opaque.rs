@@ -228,7 +228,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
     type Error = String;
 
     #[inline]
-    fn read_unit(&mut self) -> Result<(), Self::Error> {
+    fn read_nil(&mut self) -> Result<(), Self::Error> {
         Ok(())
     }
 
