@@ -1543,6 +1543,17 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    pub fn conservative_is_uninhabited(&self) -> bool {
+        // Checks whether a type is definitely uninhabited. This is
+        // conservative: for some types that are uninhabited we return `false`,
+        // but we only return `true` for types that are definitely uninhabited.
+        match self.sty {
+            ty::Never => true,
+            ty::Adt(def, _) => def.variants.is_empty(),
+            _ => false
+        }
+    }
+
     pub fn is_primitive(&self) -> bool {
         match self.sty {
             Bool | Char | Int(_) | Uint(_) | Float(_) => true,
