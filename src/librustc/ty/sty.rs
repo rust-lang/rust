@@ -1543,14 +1543,40 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn conservative_is_uninhabited(&self) -> bool {
+    pub fn conservative_is_uninhabited(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
         // Checks whether a type is definitely uninhabited. This is
         // conservative: for some types that are uninhabited we return `false`,
         // but we only return `true` for types that are definitely uninhabited.
         match self.sty {
             ty::Never => true,
-            ty::Adt(def, _) => def.variants.is_empty(),
-            _ => false
+            ty::Adt(def, _) => {
+                // Any ADT is uninhabited if:
+                // (a) It has no variants (i.e. an empty `enum`);
+                // (b) Each of its variants (a single one in the case of a `struct`) has at least
+                //     one uninhabited field.
+                def.variants.iter().all(|var| {
+                    var.fields.iter().any(|field| {
+                        tcx.type_of(field.did).conservative_is_uninhabited(tcx)
+                    })
+                })
+            }
+            ty::Tuple(tys) => tys.iter().any(|ty| ty.conservative_is_uninhabited(tcx)),
+            ty::Array(ty, len) => {
+                match len.val.try_to_scalar() {
+                    // If the array is definitely non-empty, it's uninhabited if
+                    // the type of its elements is uninhabited.
+                    Some(n) if !n.is_null() => ty.conservative_is_uninhabited(tcx),
+                    _ => false
+                }
+            }
+            ty::Ref(..) => {
+                // Though references to uninhabited types are trivially uninhabited
+                // theoretically, null references are permitted in unsafe code (as
+                // long as the value is not dereferenced), so we treat all references
+                // as inhabited.
+                false
+            }
+            _ => false,
         }
     }
 

@@ -415,7 +415,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             args: I) -> CFGIndex {
         let func_or_rcvr_exit = self.expr(func_or_rcvr, pred);
         let ret = self.straightline(call_expr, func_or_rcvr_exit, args);
-        if self.tables.expr_ty(call_expr).conservative_is_uninhabited() {
+        if self.tables.expr_ty(call_expr).conservative_is_uninhabited(self.tcx) {
             self.add_unreachable_node()
         } else {
             ret
