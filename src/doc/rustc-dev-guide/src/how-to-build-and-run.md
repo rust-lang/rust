@@ -219,9 +219,10 @@ editing things that wind up in the metadata (such as the definition of
 the MIR).
 
 **The TL;DR is that you might get weird behavior from a compile when
-using `--keep-stage 1`** -- for example, strange [ICEs](appendix/glossary.html) or other
-panics. In that case, you should simply remove the `--keep-stage 1`
-from the command and rebuild.  That ought to fix the problem.
+using `--keep-stage 1`** -- for example, strange
+[ICEs](appendix/glossary.html) or other panics. In that case, you
+should simply remove the `--keep-stage 1` from the command and
+rebuild.  That ought to fix the problem.
 
 You can also use `--keep-stage 1` when running tests. Something like
 this:
