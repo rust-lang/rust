@@ -143,7 +143,7 @@ pub enum ScopeData {
 ///   and thus does not include EXPR_2, but covers the `...`.
 
 newtype_index! {
-    pub struct FirstStatementIndex;
+    pub struct FirstStatementIndex { .. }
 }
 
 impl_stable_hash_for!(struct ::middle::region::FirstStatementIndex { private });
