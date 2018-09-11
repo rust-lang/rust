@@ -27,6 +27,8 @@ macro_rules! foo {
 }
 
 foo!(async);
+    //~^ ERROR async
+    //~| WARN hard error in the 2018 edition
 
 mod dont_lint_raw {
     fn r#async() {}
