@@ -347,6 +347,7 @@ impl fmt::Display for Path {
 pub struct PathSegment {
     /// The identifier portion of this path segment.
     pub ident: Ident,
+    pub id: Option<NodeId>,
     pub def: Option<Def>,
 
     /// Type/lifetime parameters attached to this path. They come in
@@ -368,15 +369,23 @@ impl PathSegment {
     pub fn from_ident(ident: Ident) -> PathSegment {
         PathSegment {
             ident,
+            id: None,
             def: None,
             infer_types: true,
             args: None,
         }
     }
 
-    pub fn new(ident: Ident, def: Option<Def>, args: GenericArgs, infer_types: bool) -> Self {
+    pub fn new(
+        ident: Ident,
+        id: Option<NodeId>,
+        def: Option<Def>,
+        args: GenericArgs,
+        infer_types: bool,
+    ) -> Self {
         PathSegment {
             ident,
+            id,
             def,
             infer_types,
             args: if args.is_empty() {
@@ -2514,6 +2523,7 @@ pub enum Node<'hir> {
     AnonConst(&'hir AnonConst),
     Expr(&'hir Expr),
     Stmt(&'hir Stmt),
+    PathSegment(&'hir PathSegment),
     Ty(&'hir Ty),
     TraitRef(&'hir TraitRef),
     Binding(&'hir Pat),

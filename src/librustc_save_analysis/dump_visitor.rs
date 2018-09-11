@@ -812,9 +812,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         variant: &'l ty::VariantDef,
         base: &'l Option<P<ast::Expr>>,
     ) {
-        self.write_sub_paths_truncated(path);
-
         if let Some(struct_lit_data) = self.save_ctxt.get_expr_data(ex) {
+            self.write_sub_paths_truncated(path);
             down_cast_data!(struct_lit_data, RefData, ex.span);
             if !generated_code(ex.span) {
                 self.dumper.dump_ref(struct_lit_data);
@@ -1232,8 +1231,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                         value: String::new(),
                         parent,
                     });
+                    self.write_sub_paths_truncated(&path);
                 }
-                self.write_sub_paths_truncated(&path);
             }
             ast::UseTreeKind::Glob => {
                 let path = ast::Path {
@@ -1268,8 +1267,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                         value: names.join(", "),
                         parent,
                     });
+                    self.write_sub_paths(&path);
                 }
-                self.write_sub_paths(&path);
             }
             ast::UseTreeKind::Nested(ref nested_items) => {
                 let prefix = ast::Path {

@@ -632,6 +632,10 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             Node::Visibility(&Spanned {
                 node: hir::VisibilityKind::Restricted { ref path, .. }, .. }) => path.def,
 
+            Node::PathSegment(seg) => match seg.def {
+                Some(def) => def,
+                None => HirDef::Err,
+            },
             Node::Expr(&hir::Expr {
                 node: hir::ExprKind::Struct(ref qpath, ..),
                 ..

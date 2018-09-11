@@ -392,18 +392,18 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     e.emit();
                 }
 
-                for &(ref tree, id) in items {
-                    let prefix = ast::Path {
-                        segments: module_path.iter()
-                            .map(|ident| {
-                                let mut seg = ast::PathSegment::from_ident(ident.0);
-                                seg.id = self.session.next_node_id();
-                                seg
-                            })
-                            .collect(),
-                        span: path.span,
-                    };
+                let prefix = ast::Path {
+                    segments: module_path.into_iter()
+                        .map(|(ident, id)| {
+                            let mut seg = ast::PathSegment::from_ident(ident);
+                            seg.id = id.expect("Missing node id");
+                            seg
+                        })
+                        .collect(),
+                    span: path.span,
+                };
 
+                for &(ref tree, id) in items {
                     self.build_reduced_graph_for_use_tree(
                         root_use_tree,
                         root_id,

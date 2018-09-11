@@ -204,7 +204,7 @@ impl<'hir> Map<'hir> {
         if let Some(entry) = self.map[id.as_usize()] {
             self.dep_graph.read_index(entry.dep_node);
         } else {
-            bug!("called `HirMap::read()` with invalid `NodeId`")
+            bug!("called `HirMap::read()` with invalid `NodeId`: {:?}", id)
         }
     }
 
@@ -344,6 +344,7 @@ impl<'hir> Map<'hir> {
             Node::AnonConst(_) |
             Node::Expr(_) |
             Node::Stmt(_) |
+            Node::PathSegment(_) |
             Node::Ty(_) |
             Node::TraitRef(_) |
             Node::Pat(_) |
@@ -884,6 +885,7 @@ impl<'hir> Map<'hir> {
             Some(Node::AnonConst(constant)) => self.body(constant.body).value.span,
             Some(Node::Expr(expr)) => expr.span,
             Some(Node::Stmt(stmt)) => stmt.span,
+            Some(Node::PathSegment(seg)) => seg.ident.span,
             Some(Node::Ty(ty)) => ty.span,
             Some(Node::TraitRef(tr)) => tr.path.span,
             Some(Node::Binding(pat)) => pat.span,
@@ -1098,6 +1100,7 @@ impl<'a> print::State<'a> {
             Node::AnonConst(a)    => self.print_anon_const(&a),
             Node::Expr(a)         => self.print_expr(&a),
             Node::Stmt(a)         => self.print_stmt(&a),
+            Node::PathSegment(_)  => bug!("cannot print PathSegment"),
             Node::Ty(a)           => self.print_type(&a),
             Node::TraitRef(a)     => self.print_trait_ref(&a),
             Node::Binding(a)      |
@@ -1214,6 +1217,9 @@ fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
         }
         Some(Node::Stmt(_)) => {
             format!("stmt {}{}", map.node_to_pretty_string(id), id_str)
+        }
+        Some(Node::PathSegment(_)) => {
+            format!("path segment {}{}", map.node_to_pretty_string(id), id_str)
         }
         Some(Node::Ty(_)) => {
             format!("type {}{}", map.node_to_pretty_string(id), id_str)

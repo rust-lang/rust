@@ -3614,6 +3614,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
         for (i, &(ident, id)) in path.iter().enumerate() {
             debug!("resolve_path ident {} {:?}", i, ident);
+
             let is_last = i == path.len() - 1;
             let ns = if is_last { opt_ns.unwrap_or(TypeNS) } else { TypeNS };
             let name = ident.name;
@@ -3713,10 +3714,12 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     let maybe_assoc = opt_ns != Some(MacroNS) && PathSource::Type.is_expected(def);
                     if let Some(next_module) = binding.module() {
                         module = Some(ModuleOrUniformRoot::Module(next_module));
-                        if !is_last && record_used {
+                        if record_used {
                             if let Some(id) = id {
-                                assert!(id != ast::DUMMY_NODE_ID, "Trying to resolve dummy id");
-                                self.record_def(id, PathResolution::new(def));
+                                if !self.def_map.contains_key(&id) {
+                                    assert!(id != ast::DUMMY_NODE_ID, "Trying to resolve dummy id");
+                                    self.record_def(id, PathResolution::new(def));
+                                }
                             }
                         }
                     } else if def == Def::ToolMod && i + 1 != path.len() {

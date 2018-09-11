@@ -1861,6 +1861,7 @@ impl<'a> LoweringContext<'a> {
         let def = self.expect_full_def(segment.id);
         hir::PathSegment::new(
             segment.ident,
+            Some(segment.id),
             Some(def),
             generic_args,
             infer_types,
