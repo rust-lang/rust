@@ -197,6 +197,11 @@ unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
     &mut MY_TINY_HEAP as *mut [u8; 16] as *mut u8
 }
 
+#[lang = "drop"]
+pub trait Drop {
+    fn drop(&mut self);
+}
+
 pub mod intrinsics {
     extern "rust-intrinsic" {
         pub fn abort() -> !;

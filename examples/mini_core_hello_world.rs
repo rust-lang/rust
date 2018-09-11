@@ -49,6 +49,29 @@ impl SomeTrait for &'static str {
     }
 }
 
+struct NoisyDrop {
+    text: &'static str,
+    inner: NoisyDropInner,
+}
+
+struct NoisyDropInner;
+
+impl Drop for NoisyDrop {
+    fn drop(&mut self) {
+        unsafe {
+            puts(self.text as *const str as *const u8);
+        }
+    }
+}
+
+impl Drop for NoisyDropInner {
+    fn drop(&mut self) {
+        unsafe {
+            puts("Inner got dropped!\0" as *const str as *const u8);
+        }
+    }
+}
+
 #[lang = "start"]
 fn start<T: Termination + 'static>(
     main: fn() -> T,
@@ -91,4 +114,9 @@ fn main() {
             panic(&("", "", 0, 0));
         }
     }
+
+    let _ = NoisyDrop {
+        text: "Outer got dropped!\0",
+        inner: NoisyDropInner,
+    };
 }

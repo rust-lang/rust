@@ -433,7 +433,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
         .jump(*fx.ebb_map.get(&START_BLOCK).unwrap(), &[]);
 }
 
-pub fn codegen_call<'a, 'tcx: 'a>(
+pub fn codegen_terminator_call<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     func: &Operand<'tcx>,
     args: &[Operand<'tcx>],
@@ -466,19 +466,42 @@ pub fn codegen_call<'a, 'tcx: 'a>(
 
     let destination = destination
         .as_ref()
-        .map(|(place, bb)| (trans_place(fx, place), *bb));
+        .map(|&(ref place, bb)| (trans_place(fx, place), bb));
 
-    if codegen_intrinsic_call(fx, fn_ty, sig, &args, destination) {
-        return;
+    if !codegen_intrinsic_call(fx, fn_ty, &args, destination) {
+        codegen_call_inner(
+            fx,
+            Some(func),
+            fn_ty,
+            args,
+            destination.map(|(place, _)| place),
+        );
+
+        if let Some((_, dest)) = destination {
+            let ret_ebb = fx.get_ebb(dest);
+            fx.bcx.ins().jump(ret_ebb, &[]);
+        } else {
+            fx.bcx.ins().trap(TrapCode::User(!0));
+        }
     }
+}
+
+pub fn codegen_call_inner<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+    func: Option<&Operand<'tcx>>,
+    fn_ty: Ty<'tcx>,
+    args: Vec<CValue<'tcx>>,
+    ret_place: Option<CPlace<'tcx>>,
+) {
+    let sig = ty_fn_sig(fx.tcx, fn_ty);
 
     let ret_layout = fx.layout_of(sig.output());
 
     let output_pass_mode = get_pass_mode(fx.tcx, sig.abi, sig.output(), true);
     let return_ptr = match output_pass_mode {
         PassMode::NoPass => None,
-        PassMode::ByRef => match destination {
-            Some((place, _)) => Some(place.expect_addr()),
+        PassMode::ByRef => match ret_place {
+            Some(ret_place) => Some(ret_place.expect_addr()),
             None => Some(fx.bcx.ins().iconst(fx.module.pointer_type(), 0)),
         },
         PassMode::ByVal(_) => None,
@@ -504,7 +527,7 @@ pub fn codegen_call<'a, 'tcx: 'a>(
             Some(ptr)
         } else {
             func_ref = if instance.is_none() {
-                let func = trans_operand(fx, func);
+                let func = trans_operand(fx, func.expect("indirect call without func Operand"));
                 Some(func.load_value(fx))
             } else {
                 None
@@ -534,18 +557,12 @@ pub fn codegen_call<'a, 'tcx: 'a>(
     match output_pass_mode {
         PassMode::NoPass => {}
         PassMode::ByVal(_) => {
-            if let Some((ret_place, _)) = destination {
+            if let Some(ret_place) = ret_place {
                 let results = fx.bcx.inst_results(call_inst);
                 ret_place.write_cvalue(fx, CValue::ByVal(results[0], ret_layout));
             }
         }
         PassMode::ByRef => {}
-    }
-    if let Some((_, dest)) = destination {
-        let ret_ebb = fx.get_ebb(dest);
-        fx.bcx.ins().jump(ret_ebb, &[]);
-    } else {
-        fx.bcx.ins().trap(TrapCode::User(!0));
     }
 }
 
@@ -565,11 +582,12 @@ pub fn codegen_return(fx: &mut FunctionCx<impl Backend>) {
 fn codegen_intrinsic_call<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     fn_ty: Ty<'tcx>,
-    sig: FnSig<'tcx>,
     args: &[CValue<'tcx>],
     destination: Option<(CPlace<'tcx>, BasicBlock)>,
 ) -> bool {
     if let ty::FnDef(def_id, substs) = fn_ty.sty {
+        let sig = ty_fn_sig(fx.tcx, fn_ty);
+
         if sig.abi == Abi::RustIntrinsic {
             let intrinsic = fx.tcx.item_name(def_id).as_str();
             let intrinsic = &intrinsic[..];

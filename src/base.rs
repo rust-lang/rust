@@ -224,19 +224,90 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
                 destination,
                 cleanup: _,
             } => {
-                crate::abi::codegen_call(fx, func, args, destination);
+                crate::abi::codegen_terminator_call(fx, func, args, destination);
             }
             TerminatorKind::Resume | TerminatorKind::Abort | TerminatorKind::Unreachable => {
                 fx.bcx.ins().trap(TrapCode::User(!0));
             }
             TerminatorKind::Yield { .. }
             | TerminatorKind::FalseEdges { .. }
-            | TerminatorKind::FalseUnwind { .. } => {
+            | TerminatorKind::FalseUnwind { .. }
+            | TerminatorKind::DropAndReplace { .. } => {
                 bug!("shouldn't exist at trans {:?}", bb_data.terminator());
             }
-            TerminatorKind::Drop { target, .. } | TerminatorKind::DropAndReplace { target, .. } => {
-                // TODO call drop impl
-                // unimplemented!("terminator {:?}", bb_data.terminator());
+            TerminatorKind::Drop {
+                location,
+                target,
+                unwind: _,
+            } => {
+                let ty = location.ty(fx.mir, fx.tcx).to_ty(fx.tcx);
+                let ty = fx.monomorphize(&ty);
+                let drop_fn = ::rustc_mir::monomorphize::resolve_drop_in_place(fx.tcx, ty);
+
+                if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
+                    // we don't actually need to drop anything
+                } else {
+                    let drop_place = trans_place(fx, location);
+                    let arg_place = CPlace::temp(
+                        fx,
+                        fx.tcx.mk_ref(
+                            &ty::RegionKind::ReErased,
+                            TypeAndMut {
+                                ty,
+                                mutbl: ::rustc::hir::Mutability::MutMutable,
+                            },
+                        ),
+                    );
+                    drop_place.write_place_ref(fx, arg_place);
+                    match ty.sty {
+                        ty::Dynamic(..) => {
+                            unimplemented!("Drop for trait object");
+                        }
+                        _ => {
+                            let drop_fn_ty = drop_fn.ty(fx.tcx);
+                            let arg_value = arg_place.to_cvalue(fx);
+                            crate::abi::codegen_call_inner(
+                                fx,
+                                None,
+                                drop_fn_ty,
+                                vec![arg_value],
+                                None,
+                            );
+                        }
+                    }
+                    /*
+                    let (args1, args2);
+                    /*let mut args = if let Some(llextra) = place.llextra {
+                        args2 = [place.llval, llextra];
+                        &args2[..]
+                    } else {
+                        args1 = [place.llval];
+                        &args1[..]
+                    };*/
+                    let (drop_fn, fn_ty) = match ty.sty {
+                        ty::Dynamic(..) => {
+                            let fn_ty = drop_fn.ty(bx.cx.tcx);
+                            let sig = common::ty_fn_sig(bx.cx, fn_ty);
+                            let sig = bx.tcx().normalize_erasing_late_bound_regions(
+                                ty::ParamEnv::reveal_all(),
+                                &sig,
+                            );
+                            let fn_ty = FnType::new_vtable(bx.cx, sig, &[]);
+                            let vtable = args[1];
+                            args = &args[..1];
+                            (meth::DESTRUCTOR.get_fn(&bx, vtable, &fn_ty), fn_ty)
+                        }
+                        _ => {
+                            let value = place.to_cvalue(fx);
+                            (callee::get_fn(bx.cx, drop_fn),
+                            FnType::of_instance(bx.cx, &drop_fn))
+                        }
+                    };
+                    do_call(self, bx, fn_ty, drop_fn, args,
+                            Some((ReturnDest::Nothing, target)),
+                            unwind);*/
+                }
+
                 let target_ebb = fx.get_ebb(*target);
                 fx.bcx.ins().jump(target_ebb, &[]);
             }
