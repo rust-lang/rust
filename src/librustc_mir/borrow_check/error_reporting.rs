@@ -19,6 +19,7 @@ use rustc::mir::{
     VarBindingForm,
 };
 use rustc::ty;
+use rustc::hir;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};
@@ -462,9 +463,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
 
         let mut err = match &self.describe_place(&borrow.borrowed_place) {
-            Some(_) if self.is_place_thread_local(root_place) => {
-                self.report_thread_local_value_does_not_live_long_enough(drop_span, borrow_span)
-            }
+            Some(_) if self.is_place_thread_local(root_place) =>
+                self.report_thread_local_value_does_not_live_long_enough(drop_span, borrow_span),
             Some(name) => self.report_local_value_does_not_live_long_enough(
                 context,
                 name,
@@ -511,14 +511,50 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Origin::Mir,
         );
 
-        err.span_label(borrow_span, "borrowed value does not live long enough");
-        err.span_label(
-            drop_span,
-            format!("`{}` dropped here while still borrowed", name),
-        );
+        let explanation = self.explain_why_borrow_contains_point(context, borrow, kind_place);
+        if let Some((
+            arg_name,
+            arg_span,
+            return_name,
+            return_span,
+        )) = self.find_name_and_ty_of_values() {
+            err.span_label(
+                arg_span,
+                format!("has lifetime `{}`", arg_name)
+            );
 
-        self.explain_why_borrow_contains_point(context, borrow, kind_place)
-            .emit(self.infcx.tcx, &mut err);
+            err.span_label(
+                return_span,
+                format!(
+                    "{}has lifetime `{}`",
+                    if arg_name == return_name { "also " } else { "" },
+                    return_name
+                )
+            );
+
+            err.span_label(
+                borrow_span,
+                format!("`{}` would have to be valid for `{}`", name, return_name),
+            );
+
+            err.span_label(
+                drop_span,
+                format!("but `{}` dropped here while still borrowed", name),
+            );
+
+            if let BorrowExplanation::MustBeValidFor(..) = explanation { } else {
+                explanation.emit(self.infcx.tcx, &mut err);
+            }
+        } else {
+            err.span_label(borrow_span, "borrowed value does not live long enough");
+
+            err.span_label(
+                drop_span,
+                format!("`{}` dropped here while still borrowed", name),
+            );
+
+            explanation.emit(self.infcx.tcx, &mut err);
+        }
 
         err
     }
@@ -643,6 +679,66 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         explanation.emit(self.infcx.tcx, &mut err);
 
         err
+    }
+
+    fn find_name_and_ty_of_values(
+        &self,
+    ) -> Option<(String, Span, String, Span)> {
+        let mir_node_id = self.infcx.tcx.hir.as_local_node_id(self.mir_def_id)?;
+        let fn_decl = self.infcx.tcx.hir.fn_decl(mir_node_id)?;
+
+        // If there is one argument and this error is being reported, that means
+        // that the lifetime of the borrow could not be made to match the single
+        // argument's lifetime. We can highlight it.
+        //
+        // If there is more than one argument and this error is being reported, that
+        // means there must be a self parameter - as otherwise there would be an error
+        // from lifetime elision and not this. So we highlight the self parameter.
+        let arg = fn_decl.inputs
+            .first()
+            .and_then(|ty| {
+                if let hir::TyKind::Rptr(
+                    hir::Lifetime { name, span, ..  }, ..
+                ) = ty.node {
+                    Some((name, span))
+                } else {
+                    None
+                }
+            });
+
+        let ret = if let hir::FunctionRetTy::Return(ret_ty) = &fn_decl.output {
+            if let hir::Ty {
+                node: hir::TyKind::Rptr(hir::Lifetime { name, span, ..  }, ..),
+                ..
+            } = ret_ty.clone().into_inner() {
+                Some((name, span))
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        let (arg_name, arg_span) = arg?;
+        let (return_name, return_span) = ret?;
+
+        let lifetimes_match = arg_name == return_name;
+
+        let arg_name = if arg_name.is_elided() {
+            "'0".to_string()
+        } else {
+            format!("{}", arg_name.ident())
+        };
+
+        let return_name = if return_name.is_elided() && lifetimes_match {
+            "'0".to_string()
+        } else if return_name.is_elided() {
+            "'1".to_string()
+        } else {
+            format!("{}", return_name.ident())
+        };
+
+        Some((arg_name, arg_span, return_name, return_span))
     }
 
     fn get_moved_indexes(&mut self, context: Context, mpi: MovePathIndex) -> Vec<MoveOutIndex> {
