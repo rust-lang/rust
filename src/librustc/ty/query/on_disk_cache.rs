@@ -1020,7 +1020,7 @@ impl<'enc, 'a, 'tcx, E> Encoder for CacheEncoder<'enc, 'a, 'tcx, E>
 {
     type Error = E::Error;
 
-    fn emit_unit(&mut self) -> Result<(), Self::Error> {
+    fn emit_nil(&mut self) -> Result<(), Self::Error> {
         Ok(())
     }
 

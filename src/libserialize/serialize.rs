@@ -25,7 +25,7 @@ pub trait Encoder {
     type Error;
 
     // Primitive types:
-    fn emit_unit(&mut self) -> Result<(), Self::Error>;
+    fn emit_nil(&mut self) -> Result<(), Self::Error>;
     fn emit_usize(&mut self, v: usize) -> Result<(), Self::Error>;
     fn emit_u128(&mut self, v: u128) -> Result<(), Self::Error>;
     fn emit_u64(&mut self, v: u64) -> Result<(), Self::Error>;
@@ -537,7 +537,7 @@ impl Decodable for char {
 
 impl Encodable for () {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_unit()
+        s.emit_nil()
     }
 }
 
