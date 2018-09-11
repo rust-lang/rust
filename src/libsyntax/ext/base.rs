@@ -727,10 +727,9 @@ pub trait Resolver {
     fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<Attribute>, allow_derive: bool)
                               -> Option<Attribute>;
 
-    fn resolve_macro_invocation(&mut self, invoc: &Invocation, scope: Mark, force: bool)
+    fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: Mark, force: bool)
                                 -> Result<Option<Lrc<SyntaxExtension>>, Determinacy>;
-
-    fn resolve_macro_path(&mut self, path: &ast::Path, kind: MacroKind, scope: Mark,
+    fn resolve_macro_path(&mut self, path: &ast::Path, kind: MacroKind, invoc_id: Mark,
                           derives_in_scope: &[ast::Path], force: bool)
                           -> Result<Lrc<SyntaxExtension>, Determinacy>;
 
@@ -764,11 +763,11 @@ impl Resolver for DummyResolver {
     fn resolve_imports(&mut self) {}
     fn find_legacy_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>, _allow_derive: bool)
                               -> Option<Attribute> { None }
-    fn resolve_macro_invocation(&mut self, _invoc: &Invocation, _scope: Mark, _force: bool)
+    fn resolve_macro_invocation(&mut self, _invoc: &Invocation, _invoc_id: Mark, _force: bool)
                                 -> Result<Option<Lrc<SyntaxExtension>>, Determinacy> {
         Err(Determinacy::Determined)
     }
-    fn resolve_macro_path(&mut self, _path: &ast::Path, _kind: MacroKind, _scope: Mark,
+    fn resolve_macro_path(&mut self, _path: &ast::Path, _kind: MacroKind, _invoc_id: Mark,
                           _derives_in_scope: &[ast::Path], _force: bool)
                           -> Result<Lrc<SyntaxExtension>, Determinacy> {
         Err(Determinacy::Determined)

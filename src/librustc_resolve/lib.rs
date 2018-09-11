@@ -81,7 +81,7 @@ use std::mem::replace;
 use rustc_data_structures::sync::Lrc;
 
 use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution, ImportResolver};
-use macros::{InvocationData, LegacyBinding};
+use macros::{InvocationData, LegacyBinding, LegacyScope};
 
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
@@ -1010,8 +1010,9 @@ pub struct ModuleData<'a> {
     normal_ancestor_id: DefId,
 
     resolutions: RefCell<FxHashMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>,
-    legacy_macro_resolutions: RefCell<Vec<(Mark, Ident, MacroKind, Option<Def>)>>,
+    legacy_macro_resolutions: RefCell<Vec<(Ident, MacroKind, Mark, LegacyScope<'a>, Option<Def>)>>,
     macro_resolutions: RefCell<Vec<(Box<[Ident]>, Span)>>,
+    builtin_attrs: RefCell<Vec<(Ident, Mark, LegacyScope<'a>)>>,
 
     // Macro invocations that can expand into items in this module.
     unresolved_invocations: RefCell<FxHashSet<Mark>>,
@@ -1050,6 +1051,7 @@ impl<'a> ModuleData<'a> {
             resolutions: RefCell::new(FxHashMap()),
             legacy_macro_resolutions: RefCell::new(Vec::new()),
             macro_resolutions: RefCell::new(Vec::new()),
+            builtin_attrs: RefCell::new(Vec::new()),
             unresolved_invocations: RefCell::new(FxHashSet()),
             no_implicit_prelude: false,
             glob_importers: RefCell::new(Vec::new()),
@@ -1268,6 +1270,7 @@ impl<'a> NameBinding<'a> {
     fn macro_kind(&self) -> Option<MacroKind> {
         match self.def_ignoring_ambiguity() {
             Def::Macro(_, kind) => Some(kind),
+            Def::NonMacroAttr(..) => Some(MacroKind::Attr),
             _ => None,
         }
     }
@@ -1276,19 +1279,18 @@ impl<'a> NameBinding<'a> {
         if self.is_extern_crate() { "extern crate" } else { self.def().kind_name() }
     }
 
-    // Suppose that we resolved macro invocation with `invoc_id` to binding `binding` at some
-    // expansion round `max(invoc_id, binding)` when they both emerged from macros.
+    // Suppose that we resolved macro invocation with `invoc_parent_expansion` to binding `binding`
+    // at some expansion round `max(invoc, binding)` when they both emerged from macros.
     // Then this function returns `true` if `self` may emerge from a macro *after* that
     // in some later round and screw up our previously found resolution.
     // See more detailed explanation in
     // https://github.com/rust-lang/rust/pull/53778#issuecomment-419224049
-    fn may_appear_after(&self, invoc_id: Mark, binding: &NameBinding) -> bool {
-        // self > max(invoc_id, binding) => !(self <= invoc_id || self <= binding)
+    fn may_appear_after(&self, invoc_parent_expansion: Mark, binding: &NameBinding) -> bool {
+        // self > max(invoc, binding) => !(self <= invoc || self <= binding)
         // Expansions are partially ordered, so "may appear after" is an inversion of
         // "certainly appears before or simultaneously" and includes unordered cases.
         let self_parent_expansion = self.expansion;
         let other_parent_expansion = binding.expansion;
-        let invoc_parent_expansion = invoc_id.parent();
         let certainly_before_other_or_simultaneously =
             other_parent_expansion.is_descendant_of(self_parent_expansion);
         let certainly_before_invoc_or_simultaneously =
@@ -3493,16 +3495,16 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         path_span: Span,
         crate_lint: CrateLint,
     ) -> PathResult<'a> {
-        self.resolve_path_with_invoc_id(base_module, path, opt_ns, Mark::root(),
-                                        record_used, path_span, crate_lint)
+        self.resolve_path_with_parent_expansion(base_module, path, opt_ns, Mark::root(),
+                                                record_used, path_span, crate_lint)
     }
 
-    fn resolve_path_with_invoc_id(
+    fn resolve_path_with_parent_expansion(
         &mut self,
         base_module: Option<ModuleOrUniformRoot<'a>>,
         path: &[Ident],
         opt_ns: Option<Namespace>, // `None` indicates a module path
-        invoc_id: Mark,
+        parent_expansion: Mark,
         record_used: bool,
         path_span: Span,
         crate_lint: CrateLint,
@@ -3595,8 +3597,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 self.resolve_ident_in_module(module, ident, ns, record_used, path_span)
             } else if opt_ns == Some(MacroNS) {
                 assert!(ns == TypeNS);
-                self.resolve_lexical_macro_path_segment(ident, ns, invoc_id, record_used,
-                                                        record_used, false, path_span)
+                self.resolve_lexical_macro_path_segment(ident, ns, None, parent_expansion,
+                                                        record_used, record_used, path_span)
                                                         .map(|(binding, _)| binding)
             } else {
                 let record_used_id =
