@@ -61,21 +61,24 @@ filtering for tests that include "issue-1234" in the name.
 
 ## Using incremental compilation
 
-You can further enable the `--incremental` flag to save additional time in subsequent rebuilds:
+You can further enable the `--incremental` flag to save additional
+time in subsequent rebuilds:
 
 ```bash
 > ./x.py test --stage 1 src/test/ui --incremental --test-args issue-1234
 ```
 
-If you don't want to include the flag with every command, you can enable it in the `config.toml`, too:
+If you don't want to include the flag with every command, you can
+enable it in the `config.toml`, too:
 
 ```toml
 # Whether to always use incremental compilation when building rustc
 incremental = true
 ```
 
-Note that incremental compilation will use more disk space than usual. If disk space is a
-concern for you, you might want to check the size of the `build` directory from time to time.
+Note that incremental compilation will use more disk space than
+usual. If disk space is a concern for you, you might want to check the
+size of the `build` directory from time to time.
 
 ## Running tests manually
 
