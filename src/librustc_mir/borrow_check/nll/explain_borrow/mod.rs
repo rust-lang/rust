@@ -106,7 +106,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let regioncx = &self.nonlexical_regioncx;
         let mir = self.mir;
-        let tcx = self.tcx;
+        let tcx = self.infcx.tcx;
 
         let borrow_region_vid = regioncx.to_region_vid(borrow.region);
         debug!(
