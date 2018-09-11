@@ -14,8 +14,8 @@ use ModuleOrUniformRoot;
 use Namespace::{self, TypeNS, MacroNS};
 use build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
 use resolve_imports::ImportResolver;
-use rustc::hir::def_id::{DefId, BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, DefIndex,
-                         DefIndexAddressSpace};
+use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, DefIndex,
+                         CrateNum, DefIndexAddressSpace};
 use rustc::hir::def::{Def, NonMacroAttrKind};
 use rustc::hir::map::{self, DefCollector};
 use rustc::{ty, lint};
@@ -202,7 +202,7 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
 
     fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>) {
         let def_id = DefId {
-            krate: BUILTIN_MACROS_CRATE,
+            krate: CrateNum::BuiltinMacros,
             index: DefIndex::from_array_index(self.macro_map.len(),
                                               DefIndexAddressSpace::Low),
         };
@@ -335,7 +335,7 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
             self.definitions.add_parent_module_of_macro_def(invoc.expansion_data.mark,
                                                             normal_module_def_id);
             invoc.expansion_data.mark.set_default_transparency(ext.default_transparency());
-            invoc.expansion_data.mark.set_is_builtin(def_id.krate == BUILTIN_MACROS_CRATE);
+            invoc.expansion_data.mark.set_is_builtin(def_id.krate == CrateNum::BuiltinMacros);
         }
 
         Ok(Some(ext))
@@ -1087,7 +1087,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         };
 
         // Plugin-based syntax extensions are exempt from this check
-        if krate == BUILTIN_MACROS_CRATE { return; }
+        if krate == CrateNum::BuiltinMacros { return; }
 
         let ext = binding.get_macro(self);
 

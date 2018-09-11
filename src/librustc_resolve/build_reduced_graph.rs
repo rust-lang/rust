@@ -22,7 +22,7 @@ use Namespace::{self, TypeNS, ValueNS, MacroNS};
 use {resolve_error, resolve_struct_error, ResolutionError};
 
 use rustc::hir::def::*;
-use rustc::hir::def_id::{BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
+use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::ty;
 use rustc::middle::cstore::CrateStore;
 use rustc_metadata::cstore::LoadedMacro;
@@ -768,7 +768,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         let def_id = self.macro_defs[&expansion];
         if let Some(id) = self.definitions.as_local_node_id(def_id) {
             self.local_macro_def_scopes[&id]
-        } else if def_id.krate == BUILTIN_MACROS_CRATE {
+        } else if def_id.krate == CrateNum::BuiltinMacros {
             self.injected_crate.unwrap_or(self.graph_root)
         } else {
             let module_def_id = ty::DefIdTree::parent(&*self, def_id).unwrap();
