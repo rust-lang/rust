@@ -27,12 +27,13 @@ use rustc::ty::{self, ParamEnv, TyCtxt, Ty};
 
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, Level};
 use rustc_data_structures::bit_set::BitSet;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::indexed_vec::Idx;
 use smallvec::SmallVec;
 
 use std::rc::Rc;
+use std::collections::BTreeMap;
 
 use syntax_pos::Span;
 
@@ -256,7 +257,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         locals_are_invalidated_at_exit,
         access_place_error_reported: FxHashSet(),
         reservation_error_reported: FxHashSet(),
-        move_error_reported: FxHashMap(),
+        move_error_reported: BTreeMap::new(),
         uninitialized_error_reported: FxHashSet(),
         errors_buffer,
         nonlexical_regioncx: regioncx,
@@ -336,7 +337,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     }
 
     // Buffer any move errors that we collected and de-duplicated.
-    for (_, (_, diag)) in mbcx.move_error_reported.drain() {
+    for (_, (_, diag)) in mbcx.move_error_reported {
         diag.buffer(&mut mbcx.errors_buffer);
     }
 
@@ -425,7 +426,11 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     /// `Place` of the previous most diagnostic. This happens instead of buffering the error. Once
     /// all move errors have been reported, any diagnostics in this map are added to the buffer
     /// to be emitted.
-    move_error_reported: FxHashMap<Vec<MoveOutIndex>, (Place<'tcx>, DiagnosticBuilder<'cx>)>,
+    ///
+    /// `BTreeMap` is used to preserve the order of insertions when iterating. This is necessary
+    /// when errors in the map are being re-added to the error buffer so that errors with the
+    /// same primary span come out in a consistent order.
+    move_error_reported: BTreeMap<Vec<MoveOutIndex>, (Place<'tcx>, DiagnosticBuilder<'cx>)>,
     /// This field keeps track of errors reported in the checking of uninitialized variables,
     /// so that we don't report seemingly duplicate errors.
     uninitialized_error_reported: FxHashSet<Place<'tcx>>,
