@@ -604,6 +604,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
             (None, Some(flavor)) => Some((PathBuf::from(match flavor {
                 LinkerFlavor::Em  => if cfg!(windows) { "emcc.bat" } else { "emcc" },
                 LinkerFlavor::Gcc => "cc",
+                LinkerFlavor::L4Bender => "l4-bender",
                 LinkerFlavor::Ld => "ld",
                 LinkerFlavor::Msvc => "link.exe",
                 LinkerFlavor::Lld(_) => "lld",

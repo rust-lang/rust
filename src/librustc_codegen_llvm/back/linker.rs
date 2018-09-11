@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use rustc_data_structures::fx::FxHashMap;
+use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
 use std::io::prelude::*;
@@ -86,11 +87,7 @@ impl LinkerInfo {
             }
 
             LinkerFlavor::L4Bender => {
-                Box::new(L4Bender {
-                    cmd,
-                    sess,
-                    hinted_static: false,
-                }) as Box<dyn Linker>
+                Box::new(L4Bender::new(cmd, sess)) as Box<dyn Linker>
             },
             LinkerFlavor::Lld(LldFlavor::Wasm) => {
                 Box::new(WasmLd {
@@ -1169,9 +1166,11 @@ impl<'a> Linker for L4Bender<'a> {
     fn pgo_gen(&mut self) { }
 
     fn debuginfo(&mut self) {
-        // for documentation, see GccLinker.debuginfo()
         match self.sess.opts.debuginfo {
-            DebugInfoLevel::NoDebugInfo => {
+            DebugInfo::None => {
+                // If we are building without debuginfo enabled and we were called with
+                // `-Zstrip-debuginfo-if-disabled=yes`, tell the linker to strip any debuginfo
+                // found when linking to get rid of symbols from libstd.
                 match self.sess.opts.debugging_opts.strip_debuginfo_if_disabled {
                     Some(true) => { self.cmd.arg("-S"); },
                     _ => {},
@@ -1212,6 +1211,47 @@ impl<'a> Linker for L4Bender<'a> {
 }
 
 impl<'a> L4Bender<'a> {
+    pub fn new(mut cmd: Command, sess: &'a Session) -> L4Bender<'a> {
+        if let Ok(l4bender_args) = env::var("L4_BENDER_ARGS") {
+            L4Bender::split_cmd_args(&mut cmd, &l4bender_args);
+        }
+        
+        cmd.arg("--"); // separate direct l4-bender args from linker args
+
+        if let Ok(l4_ld_opts) = env::var("L4_LD_OPTIONS") {
+            L4Bender::split_cmd_args(&mut cmd, &l4_ld_opts);
+        }
+
+        L4Bender { cmd: cmd,
+        sess: sess,
+        hinted_static: false,
+        }
+    }
+
+    /// This parses a shell-escaped string and unquotes the arguments. It doesn't attempt to
+    /// completely understand shell, but should instead allow passing arguments like 
+    /// `-Dlinker="ld -m x86_64"`, and a copy without quotes, but spaces preserved, is added as an
+    /// argument to the given Command. This means that constructs as \" are not understood, so
+    /// quote wisely.
+    fn split_cmd_args(cmd: &mut Command, shell_args: &str) {
+        let mut arg = String::new();
+        let mut quoted = false;
+        for character in shell_args.chars() {
+            match character {
+                ' ' if !quoted => {
+                    cmd.arg(&arg);
+                    arg.clear();
+                },
+                '"' | '\'' => quoted = !quoted,
+                _ => arg.push(character),
+            };
+            if arg.len() > 0 {
+                cmd.arg(&arg);
+                arg.clear();
+            }
+        }
+    }
+
     fn hint_static(&mut self) {
         if !self.hinted_static {
             self.cmd.arg("-static");
