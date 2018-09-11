@@ -28,7 +28,8 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::env;
 
 use syntax::ast::{self, Attribute, NodeId, PatKind, CRATE_NODE_ID};
 use syntax::parse::token;
@@ -49,8 +50,10 @@ use json_dumper::{Access, DumpOutput, JsonDumper};
 use span_utils::SpanUtils;
 use sig;
 
-use rls_data::{CratePreludeData, Def, DefKind, GlobalCrateId, Import, ImportKind, Ref, RefKind,
-               Relation, RelationKind, SpanData};
+use rls_data::{
+    CompilationOptions, CratePreludeData, Def, DefKind, GlobalCrateId, Import, ImportKind, Ref,
+    RefKind, Relation, RelationKind, SpanData,
+};
 
 macro_rules! down_cast_data {
     ($id:ident, $kind:ident, $sp:expr) => {
@@ -167,6 +170,61 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         };
 
         self.dumper.crate_prelude(data);
+    }
+
+    pub fn dump_compilation_options(&mut self) {
+        // Apply possible `remap-path-prefix` remapping to the raw invocation
+        let invocation = {
+            let remap_arg_indices = {
+                let mut indices = FxHashSet();
+                for (i, e) in env::args().enumerate() {
+                    if e.starts_with("--remap-path-prefix=") {
+                        indices.insert(i);
+                    } else if e == "--remap-path-prefix" {
+                        indices.insert(i);
+                        indices.insert(i + 1);
+                    }
+                }
+                indices
+            };
+
+            let args_without_remap_args = env::args()
+                .enumerate()
+                .filter(|(i, _)| !remap_arg_indices.contains(i))
+                .map(|(_, e)| e);
+
+            let mapping = self.tcx.sess.source_map().path_mapping();
+            let remap_arg = |x: &str| -> String {
+                mapping.map_prefix(PathBuf::from(x)).0.to_str().unwrap().to_owned()
+            };
+
+            // Naively attempt to remap every argument
+            let args = args_without_remap_args
+                .map(|elem| {
+                    let mut arg = elem.splitn(2, '=');
+                    match (arg.next(), arg.next()) {
+                        // Apart from `--remap...`, in `a=b` args usually only
+                        // `b` is a path (e.g. `--extern some_crate=/path/to..`)
+                        (Some(a), Some(b)) => format!("{}={}", a, remap_arg(b)),
+                        (Some(a), _) => remap_arg(a),
+                        _ => unreachable!(),
+                    }
+                }).collect::<Vec<_>>();
+
+            args.as_slice().join(" ")
+        };
+
+        let opts = &self.tcx.sess.opts;
+
+        let data = CompilationOptions {
+            invocation,
+            crate_name: opts.crate_name.clone(),
+            test: opts.test,
+            sysroot: opts.maybe_sysroot.clone(),
+            target_triple: opts.target_triple.to_string(),
+        };
+
+        self.dumper.compilation_opts(data);
     }
 
     // Return all non-empty prefixes of a path.

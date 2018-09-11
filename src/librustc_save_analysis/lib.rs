@@ -70,10 +70,11 @@ use json_dumper::JsonDumper;
 use dump_visitor::DumpVisitor;
 use span_utils::SpanUtils;
 
-use rls_data::{Def, DefKind, ExternalCrateData, GlobalCrateId, MacroRef, Ref, RefKind, Relation,
-               RelationKind, SpanData, Impl, ImplKind};
 use rls_data::config::Config;
-
+use rls_data::{
+    CrateSource, Def, DefKind, ExternalCrateData, GlobalCrateId, Impl, ImplKind, MacroRef, Ref,
+    RefKind, Relation, RelationKind, SpanData,
+};
 
 pub struct SaveContext<'l, 'tcx: 'l> {
     tcx: TyCtxt<'l, 'tcx, 'tcx>,
@@ -122,16 +123,32 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     continue;
                 }
             };
+            let src = self.tcx.used_crate_source(n);
             let lo_loc = self.span_utils.sess.source_map().lookup_char_pos(span.lo());
+            let map_prefix = |path: &PathBuf| -> PathBuf {
+                self.tcx.sess.source_map().path_mapping().map_prefix(path.to_owned()).0
+            };
+
             result.push(ExternalCrateData {
                 // FIXME: change file_name field to PathBuf in rls-data
                 // https://github.com/nrc/rls-data/issues/7
-                file_name: self.span_utils.make_path_string(&lo_loc.file.name),
+                file_name: self.span_utils.make_filename_string(&lo_loc.file),
                 num: n.as_u32(),
                 id: GlobalCrateId {
                     name: self.tcx.crate_name(n).to_string(),
                     disambiguator: self.tcx.crate_disambiguator(n).to_fingerprint().as_value(),
                 },
+                source: CrateSource {
+                    dylib: src.dylib.as_ref().map(|(ref path, _)|
+                        map_prefix(path).display().to_string()
+                    ),
+                    rlib: src.rlib.as_ref().map(|(ref path, _)|
+                        map_prefix(path).display().to_string()
+                    ),
+                    rmeta: src.rmeta.as_ref().map(|(ref path, _)|
+                        map_prefix(path).display().to_string()
+                    ),
+                }
             });
         }
 
@@ -1086,6 +1103,7 @@ impl<'a> SaveHandler for DumpHandler<'a> {
         let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
 
         visitor.dump_crate_info(cratename, krate);
+        visitor.dump_compilation_options();
         visit::walk_crate(&mut visitor, krate);
     }
 }
@@ -1111,6 +1129,7 @@ impl<'b> SaveHandler for CallbackHandler<'b> {
         let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
 
         visitor.dump_crate_info(cratename, krate);
+        visitor.dump_compilation_options();
         visit::walk_crate(&mut visitor, krate);
     }
 }
