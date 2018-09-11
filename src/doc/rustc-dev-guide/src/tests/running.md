@@ -76,9 +76,9 @@ enable it in the `config.toml`, too:
 incremental = true
 ```
 
-Note that incremental compilation will use more disk space than
-usual. If disk space is a concern for you, you might want to check the
-size of the `build` directory from time to time.
+Note that incremental compilation will use more disk space than usual.
+If disk space is a concern for you, you might want to check the size
+of the `build` directory from time to time.
 
 ## Running tests manually
 

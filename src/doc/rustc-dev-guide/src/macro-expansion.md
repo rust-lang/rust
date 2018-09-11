@@ -96,9 +96,9 @@ three cases has occurred:
   from metavariables to the corresponding token trees.
 - Failure: `tts` does not match `ms`. This results in an error message such as
   "No rule expected token _blah_".
-- Error: some fatal error has occurred _in the parser_. For example, this happens
-  if there are more than one pattern match, since that indicates the macro is
-  ambiguous.
+- Error: some fatal error has occurred _in the parser_. For example, this
+  happens if there are more than one pattern match, since that indicates
+  the macro is ambiguous.
 
 The full interface is defined [here][code_parse_int].
 
