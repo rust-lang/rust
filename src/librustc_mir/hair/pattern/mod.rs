@@ -101,6 +101,7 @@ pub enum PatternKind<'tcx> {
     Range {
         lo: &'tcx ty::Const<'tcx>,
         hi: &'tcx ty::Const<'tcx>,
+        ty: Ty<'tcx>,
         end: RangeEnd,
     },
 
@@ -230,7 +231,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
             PatternKind::Constant { value } => {
                 fmt_const_val(f, value)
             }
-            PatternKind::Range { lo, hi, end } => {
+            PatternKind::Range { lo, hi, ty: _, end } => {
                 fmt_const_val(f, lo)?;
                 match end {
                     RangeEnd::Included => write!(f, "..=")?,
@@ -359,7 +360,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         );
                         match (end, cmp) {
                             (RangeEnd::Excluded, Some(Ordering::Less)) =>
-                                PatternKind::Range { lo, hi, end },
+                                PatternKind::Range { lo, hi, ty, end },
                             (RangeEnd::Excluded, _) => {
                                 span_err!(
                                     self.tcx.sess,
@@ -373,7 +374,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                 PatternKind::Constant { value: lo }
                             }
                             (RangeEnd::Included, Some(Ordering::Less)) => {
-                                PatternKind::Range { lo, hi, end }
+                                PatternKind::Range { lo, hi, ty, end }
                             }
                             (RangeEnd::Included, _) => {
                                 let mut err = struct_span_err!(
@@ -1017,10 +1018,12 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
             PatternKind::Range {
                 lo,
                 hi,
+                ty,
                 end,
             } => PatternKind::Range {
                 lo: lo.fold_with(folder),
                 hi: hi.fold_with(folder),
+                ty: ty.fold_with(folder),
                 end,
             },
             PatternKind::Slice {
