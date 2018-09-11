@@ -115,7 +115,7 @@ which make it simple to parse common patterns like simple presence or not
 attribute is defined (`has_cfg_prefix()`) and many more.  The low-level parsers
 are found near the end of the `impl Config` block; be sure to look through them
 and their associated parsers immediately above to see how they are used to
-avoid writing additional parsing code unneccessarily.
+avoid writing additional parsing code unnecessarily.
 
 As a concrete example, here is the implementation for the
 `parse_failure_status()` parser, in

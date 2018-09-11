@@ -23,7 +23,7 @@ The MIR-based region analysis consists of two major functions:
     won't be doing lexical region inference at all.
 - `compute_regions`, invoked second: this is given as argument the
   results of move analysis. It has the job of computing values for all
-  the inference variabes that `replace_regions_in_mir` introduced.
+  the inference variables that `replace_regions_in_mir` introduced.
   - To do that, it first runs the [MIR type checker](#mirtypeck). This
     is basically a normal type-checker but specialized to MIR, which
     is much simpler than full Rust of course. Running the MIR type
@@ -531,7 +531,7 @@ then we have this constraint `V2: V3`, so we wind up having to enlarge
 V2 in U2 = {skol(1), skol(2)}
 ```
 
-Now contraint propagation is done, but when we check the outlives
+Now constraint propagation is done, but when we check the outlives
 relationships, we find that `V2` includes this new element `skol(1)`,
 so we report an error.
 

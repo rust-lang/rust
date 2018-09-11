@@ -10,7 +10,7 @@ generates an executable binary. rustc uses LLVM for code generation.
 
 ## What is LLVM?
 
-All of the preceeding chapters of this guide have one thing in common: we never
+All of the preceding chapters of this guide have one thing in common: we never
 generated any executable machine code at all! With this chapter, all of that
 changes.
 
@@ -29,14 +29,14 @@ many compiler projects, including the `clang` C compiler and our beloved
 
 LLVM's "format `X`" is called LLVM IR. It is basically assembly code with
 additional low-level types and annotations added. These annotations are helpful
-for doing optimizations on the LLVM IR and outputed machine code. The end
+for doing optimizations on the LLVM IR and outputted machine code. The end
 result of all this is (at long last) something executable (e.g. an ELF object
 or wasm).
 
 There are a few benefits to using LLVM:
 
 - We don't have to write a whole compiler backend. This reduces implementation
-  and maintainance burden.
+  and maintenance burden.
 - We benefit from the large suite of advanced optimizations that the LLVM
   project has been collecting.
 - We automatically can compile Rust to any of the platforms for which LLVM has

@@ -10,7 +10,7 @@ reference the [domain goals][dg] defined in an earlier section.
 ## Notation
 
 The nonterminal `Pi` is used to mean some generic *parameter*, either a
-named lifetime like `'a` or a type paramter like `A`.
+named lifetime like `'a` or a type parameter like `A`.
 
 The nonterminal `Ai` is used to mean some generic *argument*, which
 might be a lifetime like `'a` or a type like `Vec<A>`.
