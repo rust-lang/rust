@@ -275,8 +275,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 exit_block.unit()
             }
             ExprKind::Call { ty, fun, args, from_hir_call } => {
-                // FIXME(canndrew): This is_never should probably be an is_uninhabited
-                let diverges = expr.ty.is_never();
+                let diverges = expr.ty.conservative_is_uninhabited();
                 let intrinsic = match ty.sty {
                     ty::FnDef(def_id, _) => {
                         let f = ty.fn_sig(this.hir.tcx());
@@ -332,7 +331,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             func: fun,
                             args,
                             cleanup: Some(cleanup),
-                            destination: if diverges {
+                            destination: if expr.ty.conservative_is_uninhabited() {
                                 None
                             } else {
                                 Some((destination.clone(), success))
