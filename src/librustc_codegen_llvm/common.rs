@@ -453,3 +453,22 @@ pub fn ty_fn_sig<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         _ => bug!("unexpected type {:?} to ty_fn_sig", ty)
     }
 }
+
+pub fn ty_fn_sig_vtable<'a, 'tcx>(
+    cx: &CodegenCx<'a, 'tcx>,
+    ty: Ty<'tcx>,
+    is_vtable_shim: bool
+    ) -> ty::PolyFnSig<'tcx>
+{
+    let mut fn_sig = ty_fn_sig(cx, ty);
+    if is_vtable_shim {
+        // Modify fn(self, ...) to fn(self: *mut Self, ...)
+        fn_sig = fn_sig.map_bound(|mut fn_sig| {
+            let mut inputs_and_output = fn_sig.inputs_and_output.to_vec();
+            inputs_and_output[0] = cx.tcx.mk_mut_ptr(inputs_and_output[0]);
+            fn_sig.inputs_and_output = cx.tcx.intern_type_list(&inputs_and_output);
+            fn_sig
+        });
+    }
+    fn_sig
+}

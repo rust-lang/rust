@@ -56,7 +56,7 @@ pub fn get_fn(
     debug!("get_fn({:?}: {:?}) => {}", instance, fn_ty, sym);
 
     // Create a fn pointer with the substituted signature.
-    let fn_ptr_ty = tcx.mk_fn_ptr(common::ty_fn_sig(cx, fn_ty));
+    let fn_ptr_ty = tcx.mk_fn_ptr(common::ty_fn_sig_vtable(cx, fn_ty, instance.is_vtable_shim()));
     let llptrty = cx.layout_of(fn_ptr_ty).llvm_type(cx);
 
     let llfn = if let Some(llfn) = declare::get_declared_value(cx, &sym) {

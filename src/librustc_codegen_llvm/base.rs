@@ -492,7 +492,7 @@ pub fn codegen_instance<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, instance: Instance<'
     info!("codegen_instance({})", instance);
 
     let fn_ty = instance.ty(cx.tcx);
-    let sig = common::ty_fn_sig(cx, fn_ty);
+    let sig = common::ty_fn_sig_vtable(cx, fn_ty, instance.is_vtable_shim());
     let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
 
     let lldecl = cx.instances.borrow().get(&instance).cloned().unwrap_or_else(||
