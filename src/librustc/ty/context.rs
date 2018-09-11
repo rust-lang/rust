@@ -2491,7 +2491,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ptr(TypeAndMut {ty: ty, mutbl: hir::MutImmutable})
     }
 
-    pub fn mk_unit_ptr(self) -> Ty<'tcx> {
+    pub fn mk_nil_ptr(self) -> Ty<'tcx> {
         self.mk_imm_ptr(self.mk_unit())
     }
 
