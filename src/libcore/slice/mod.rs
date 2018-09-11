@@ -3881,7 +3881,8 @@ unsafe impl<'a, T> TrustedRandomAccess for ExactChunksMut<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
     debug_assert!(data as usize % mem::align_of::<T>() == 0, "attempt to create unaligned slice");
-    debug_assert!(len * mem::size_of::<T>() < isize::MAX as usize,
+    let size = mem::size_of::<T>();
+    debug_assert!(size == 0 || len < (isize::MAX as usize + size - 1) / size,
                   "attempt to create slice covering half the address space");
     Repr { raw: FatPtr { data, len } }.rust
 }
@@ -3904,9 +3905,10 @@ pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
     debug_assert!(data as usize % mem::align_of::<T>() == 0, "attempt to create unaligned slice");
-    debug_assert!(len * mem::size_of::<T>() < isize::MAX as usize,
+    let size = mem::size_of::<T>();
+    debug_assert!(size == 0 || len < (isize::MAX as usize + size - 1) / size,
                   "attempt to create slice covering half the address space");
-    Repr { raw: FatPtr { data, len} }.rust_mut
+    Repr { raw: FatPtr { data, len } }.rust_mut
 }
 
 /// Converts a reference to T into a slice of length 1 (without copying).
