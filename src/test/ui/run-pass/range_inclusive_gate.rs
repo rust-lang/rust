@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_comparisons)]
 
 // Test that you only need the syntax gate if you don't mention the structs.
 // (Obsoleted since both features are stabilized)

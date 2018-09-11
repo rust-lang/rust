@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(stable_features)]
+#![allow(deprecated)]
 
 // compile-flags:--test
 // ignore-cloudabi no processes

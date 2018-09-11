@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_snake_case)]
 //
 
 #![feature(non_ascii_idents)]

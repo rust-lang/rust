@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(deprecated)]
 
 // ignore-cloudabi no process support
 // ignore-emscripten no threads support

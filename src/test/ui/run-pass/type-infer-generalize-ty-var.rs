@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_upper_case_globals)]
 
 // Test a scenario where we generate a constraint like `?1 <: &?2`.
 // In such a case, it is important that we instantiate `?1` with `&?3`

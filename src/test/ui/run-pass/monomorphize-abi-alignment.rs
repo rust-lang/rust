@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_upper_case_globals)]
 
 /*!
  * On x86_64-linux-gnu and possibly other platforms, structs get 8-byte "preferred" alignment,

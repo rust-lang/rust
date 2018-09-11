@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unconditional_recursion)]
 
 #![feature(box_syntax)]
 

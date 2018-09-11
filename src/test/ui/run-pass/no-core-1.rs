@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(stable_features)]
 
 #![feature(no_core, core)]
 #![no_core]

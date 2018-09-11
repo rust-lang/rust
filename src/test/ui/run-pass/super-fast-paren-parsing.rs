@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(non_upper_case_globals)]
 
 // exec-env:RUST_MIN_STACK=16000000
 // rustc-env:RUST_MIN_STACK=16000000

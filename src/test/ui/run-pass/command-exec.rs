@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(stable_features)]
 
 // ignore-windows - this is a unix-specific test
 // ignore-pretty issue #37199

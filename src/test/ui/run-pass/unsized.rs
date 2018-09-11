@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(type_alias_bounds)]
 
 // Test syntax checks for `?Sized` syntax.
 

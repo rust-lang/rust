@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(deprecated)]
 
 // ignore-cloudabi no environment variables present
 // ignore-emscripten env vars don't work?

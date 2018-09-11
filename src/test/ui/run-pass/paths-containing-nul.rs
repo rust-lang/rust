@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(deprecated)]
 
 // ignore-cloudabi no files or I/O
 // ignore-wasm32-bare no files or I/O

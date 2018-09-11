@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unknown_lints)]
 
 // pretty-expanded FIXME #23616
 
