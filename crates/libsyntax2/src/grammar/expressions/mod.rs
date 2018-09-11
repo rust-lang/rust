@@ -2,6 +2,7 @@ mod atom;
 
 use super::*;
 pub(super) use self::atom::{literal, LITERAL_FIRST};
+pub(crate) use self::atom::match_arm_list;
 
 const EXPR_FIRST: TokenSet = LHS_FIRST;
 
@@ -419,7 +420,7 @@ fn path_expr(p: &mut Parser, r: Restrictions) -> CompletedMarker {
 //     S { x, y: 32, };
 //     S { x, y: 32, ..Default::default() };
 // }
-fn named_field_list(p: &mut Parser) {
+pub(crate) fn named_field_list(p: &mut Parser) {
     assert!(p.at(L_CURLY));
     let m = p.start();
     p.bump();

@@ -5,7 +5,12 @@ mod traits;
 mod use_item;
 
 use super::*;
-pub(crate) use self::nominal::named_field_def_list;
+pub(crate) use self::{
+    expressions::{named_field_list, match_arm_list},
+    nominal::{enum_variant_list, named_field_def_list},
+    traits::{trait_item_list, impl_item_list},
+    use_item::use_tree_list,
+};
 
 // test mod_contents
 // fn foo() {}
@@ -223,7 +228,7 @@ fn extern_crate_item(p: &mut Parser) {
     p.expect(SEMI);
 }
 
-fn extern_item_list(p: &mut Parser) {
+pub(crate) fn extern_item_list(p: &mut Parser) {
     assert!(p.at(L_CURLY));
     let m = p.start();
     p.bump();
@@ -295,7 +300,7 @@ fn type_def(p: &mut Parser) {
     p.expect(SEMI);
 }
 
-fn mod_item(p: &mut Parser) {
+pub(crate) fn mod_item(p: &mut Parser) {
     assert!(p.at(MOD_KW));
     p.bump();
 
@@ -307,7 +312,7 @@ fn mod_item(p: &mut Parser) {
     }
 }
 
-fn mod_item_list(p: &mut Parser) {
+pub(crate) fn mod_item_list(p: &mut Parser) {
     assert!(p.at(L_CURLY));
     let m = p.start();
     p.bump();
@@ -343,7 +348,7 @@ pub(super) fn macro_call_after_excl(p: &mut Parser) -> BlockLike {
     flavor
 }
 
-pub(super) fn token_tree(p: &mut Parser) {
+pub(crate) fn token_tree(p: &mut Parser) {
     let closing_paren_kind = match p.current() {
         L_CURLY => R_CURLY,
         L_PAREN => R_PAREN,

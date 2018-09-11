@@ -37,8 +37,21 @@ use {
     SyntaxKind::{self, *},
 };
 pub(crate) use self::{
-    expressions::block,
-    items::named_field_def_list,
+    expressions::{
+        block,
+    },
+    items::{
+        enum_variant_list,
+        extern_item_list,
+        impl_item_list,
+        match_arm_list,
+        mod_item_list,
+        named_field_def_list,
+        named_field_list,
+        token_tree,
+        trait_item_list,
+        use_tree_list,
+    },
 };
 
 pub(crate) fn root(p: &mut Parser) {
