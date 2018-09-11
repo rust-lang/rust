@@ -1303,7 +1303,7 @@ fn main() {
     });
 
     match lorem {
-        None => if ipsum {
+        None => |ipsum| {
             println!("Hello World");
         },
         Some(dolor) => foo(),
@@ -1324,7 +1324,7 @@ fn main() {
 
     match lorem {
         None => {
-            if ipsum {
+            |ipsum| {
                 println!("Hello World");
             }
         }

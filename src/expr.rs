@@ -179,11 +179,13 @@ pub fn format_expr(
                 Some(format!("break{}", id_str))
             }
         }
-        ast::ExprKind::Yield(ref opt_expr) => if let Some(ref expr) = *opt_expr {
-            rewrite_unary_prefix(context, "yield ", &**expr, shape)
-        } else {
-            Some("yield".to_string())
-        },
+        ast::ExprKind::Yield(ref opt_expr) => {
+            if let Some(ref expr) = *opt_expr {
+                rewrite_unary_prefix(context, "yield ", &**expr, shape)
+            } else {
+                Some("yield".to_string())
+            }
+        }
         ast::ExprKind::Closure(capture, asyncness, movability, ref fn_decl, ref body, _) => {
             closures::rewrite_closure(
                 capture, asyncness, movability, fn_decl, body, expr.span, context, shape,
