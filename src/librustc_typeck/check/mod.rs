@@ -1082,10 +1082,18 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     GatherLocalsVisitor { fcx: &fcx, parent_id: outer_node_id, }.visit_body(body);
 
     // Add formal parameters.
+    let mut uninhabited_args = vec![];
     for (arg_ty, arg) in fn_sig.inputs().iter().zip(&body.arguments) {
         // Check the pattern.
         fcx.check_pat_walk(&arg.pat, arg_ty,
             ty::BindingMode::BindByValue(hir::Mutability::MutImmutable), true);
+
+        // If any of a function's parameters have a type that is uninhabited, then it
+        // cannot be called (because its arguments cannot be constructed).
+        let module = fcx.tcx.hir().get_module_parent(fn_id);
+        if fcx.tcx.is_ty_uninhabited_from(module, arg_ty) {
+            uninhabited_args.push(arg);
+        }
 
         // Check that argument is Sized.
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
@@ -1096,6 +1104,28 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         }
 
         fcx.write_ty(arg.hir_id, arg_ty);
+    }
+
+    if !uninhabited_args.is_empty() {
+        match fcx.tcx.hir().find(fcx.tcx.hir().get_parent(fn_id)) {
+            Some(Node::Item(&hir::Item { node: ItemKind::Impl(..), .. })) => {
+                // We only want to warn for functions with parameters of uninhabited types if they
+                // are not required (e.g. trait implementations). In the future, such
+                // implementations may be unnecessary, but for now they are required.
+            }
+            _ => {
+                let mut err = fcx.tcx.struct_span_lint_node(
+                    lint::builtin::UNREACHABLE_CODE,
+                    fn_id,
+                    fcx.tcx.hir().span(fn_id),
+                    "functions with parameters of uninhabited types are uncallable",
+                );
+                for arg in uninhabited_args {
+                    err.span_label(arg.pat.span, format!("this parameter has an uninhabited type"));
+                }
+                err.emit();
+            }
+        }
     }
 
     let fn_hir_id = fcx.tcx.hir().node_to_hir_id(fn_id);
