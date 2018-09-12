@@ -351,35 +351,33 @@ impl Rewrite for ast::Attribute {
                 return Some(snippet.to_owned());
             }
 
-            let meta = self.meta();
+            if let Some(ref meta) = self.meta() {
+                // This attribute is possibly a doc attribute needing normalization to a doc comment
+                if context.config.normalize_doc_attributes() && meta.check_name("doc") {
+                    if let Some(ref literal) = meta.value_str() {
+                        let comment_style = match self.style {
+                            ast::AttrStyle::Inner => CommentStyle::Doc,
+                            ast::AttrStyle::Outer => CommentStyle::TripleSlash,
+                        };
 
-            // This attribute is possibly a doc attribute needing normalization to a doc comment
-            if context.config.normalize_doc_attributes() {
-                if let Some(ref meta) = meta {
-                    if meta.check_name("doc") {
-                        if let Some(ref literal) = meta.value_str() {
-                            let comment_style = match self.style {
-                                ast::AttrStyle::Inner => CommentStyle::Doc,
-                                ast::AttrStyle::Outer => CommentStyle::TripleSlash,
-                            };
-
-                            let doc_comment = format!("{}{}", comment_style.opener(), literal);
-                            return rewrite_doc_comment(
-                                &doc_comment,
-                                shape.comment(context.config),
-                                context.config,
-                            );
-                        }
+                        let doc_comment = format!("{}{}", comment_style.opener(), literal);
+                        return rewrite_doc_comment(
+                            &doc_comment,
+                            shape.comment(context.config),
+                            context.config,
+                        );
                     }
                 }
-            }
 
-            // 1 = `[`
-            let shape = shape.offset_left(prefix.len() + 1)?;
-            Some(
-                meta.and_then(|meta| meta.rewrite(context, shape))
-                    .map_or_else(|| snippet.to_owned(), |rw| format!("{}[{}]", prefix, rw)),
-            )
+                // 1 = `[`
+                let shape = shape.offset_left(prefix.len() + 1)?;
+                Some(
+                    meta.rewrite(context, shape)
+                        .map_or_else(|| snippet.to_owned(), |rw| format!("{}[{}]", prefix, rw)),
+                )
+            } else {
+                Some(snippet.to_owned())
+            }
         }
     }
 }
