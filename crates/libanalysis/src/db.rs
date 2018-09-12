@@ -91,12 +91,13 @@ impl Clone for Db {
     }
 }
 
+type QueryDeps = Vec<(QueryInvocationId, Arc<Any>, OutputHash)>;
 
 #[derive(Default, Debug)]
 pub(crate) struct Cache {
     gen: Gen,
     green: im::HashMap<QueryInvocationId, (Gen, OutputHash)>,
-    deps: im::HashMap<QueryInvocationId, Vec<(QueryInvocationId, OutputHash)>>,
+    deps: im::HashMap<QueryInvocationId, QueryDeps>,
     results: im::HashMap<QueryInvocationId, Arc<Any>>,
 }
 
@@ -124,7 +125,7 @@ impl Cache {
 
 pub(crate) struct QueryCtx {
     db: Arc<Db>,
-    stack: RefCell<Vec<(QueryInvocationId, Vec<(QueryInvocationId, OutputHash)>)>>,
+    stack: RefCell<Vec<(QueryInvocationId, QueryDeps)>>,
     pub(crate) trace: RefCell<Vec<TraceEvent>>,
 }
 
@@ -148,7 +149,8 @@ impl QueryCtx {
         {
             let mut stack = self.stack.borrow_mut();
             if let Some((_, ref mut deps)) = stack.last_mut() {
-                deps.push((me, output_hash::<Q>(&res)));
+                let params = Arc::new(params.clone());
+                deps.push((me, params, output_hash::<Q>(&res)));
             }
         }
 
@@ -161,7 +163,7 @@ impl QueryCtx {
 
 pub(crate) trait Query {
     const ID: u32;
-    type Params: Hash + Eq + Debug + Any + 'static;
+    type Params: Hash + Eq + Debug + Clone + Any + 'static;
     type Output: Hash + Debug + Any + 'static;
 }
 
@@ -212,7 +214,7 @@ where
     };
     let deps_are_fresh = cache.deps[&id]
         .iter()
-        .all(|&(dep_id, dep_hash)| {
+        .all(|&(dep_id, _, dep_hash)| {
             match cache.green.get(&dep_id) {
                 //TODO: store the value of parameters, and re-execute the query
                 Some((gen, hash)) if gen == &curr_gen && hash == &dep_hash => true,
