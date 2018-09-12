@@ -50,7 +50,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     pub fn demand_eqtype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
         if let Some(mut err) = self.demand_eqtype_diag(sp, expected, actual) {
-            self.has_errors.set(true);
             err.emit();
         }
     }

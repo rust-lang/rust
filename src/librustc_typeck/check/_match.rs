@@ -298,8 +298,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     TypeVariableOrigin::TypeInference(pat.span)));
                 let element_tys = tcx.mk_type_list(element_tys_iter);
                 let pat_ty = tcx.mk_ty(ty::Tuple(element_tys));
-                self.demand_eqtype(pat.span, expected, pat_ty);
-                if self.has_errors.get() {
+                if let Some(mut err) = self.demand_eqtype_diag(pat.span, expected, pat_ty) {
+                    err.emit();
                     let element_tys_iter = (0..max_len).map(|_| tcx.types.err);
                     for (_, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
                         self.check_pat_walk(elem, &tcx.types.err, def_bm, true);
