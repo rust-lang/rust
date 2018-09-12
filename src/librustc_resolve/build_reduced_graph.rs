@@ -13,7 +13,7 @@
 //! Here we build the "reduced graph": the graph of the module tree without
 //! any imports resolved.
 
-use macros::{InvocationData, LegacyScope};
+use macros::{InvocationData, ParentScope, LegacyScope};
 use resolve_imports::ImportDirective;
 use resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
 use {Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, ToNameBinding};
@@ -1061,8 +1061,15 @@ impl<'a, 'b, 'cl> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b, 'cl> {
 
     fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
         if !attr.is_sugared_doc && is_builtin_attr(attr) {
-            self.resolver.current_module.builtin_attrs.borrow_mut().push((
-                attr.path.segments[0].ident, self.expansion, self.current_legacy_scope
+            let parent_scope = ParentScope {
+                module: self.resolver.current_module.nearest_item_scope(),
+                expansion: self.expansion,
+                legacy: self.current_legacy_scope,
+                // Let's hope discerning built-in attributes from derive helpers is not necessary
+                derives: Vec::new(),
+            };
+            parent_scope.module.builtin_attrs.borrow_mut().push((
+                attr.path.segments[0].ident, parent_scope
             ));
         }
         visit::walk_attribute(self, attr);

@@ -384,7 +384,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         let mark = Mark::fresh(self.cx.current_expansion.mark);
                         derives.push(mark);
                         let item = match self.cx.resolver.resolve_macro_path(
-                                path, MacroKind::Derive, Mark::root(), &[], false) {
+                                path, MacroKind::Derive, Mark::root(), Vec::new(), false) {
                             Ok(ext) => match *ext {
                                 BuiltinDerive(..) => item_with_markers.clone(),
                                 _ => item.clone(),

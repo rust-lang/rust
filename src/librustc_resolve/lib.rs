@@ -80,7 +80,7 @@ use std::mem::replace;
 use rustc_data_structures::sync::Lrc;
 
 use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution, ImportResolver};
-use macros::{InvocationData, LegacyBinding, LegacyScope};
+use macros::{InvocationData, LegacyBinding, ParentScope};
 
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
@@ -1009,9 +1009,9 @@ pub struct ModuleData<'a> {
     normal_ancestor_id: DefId,
 
     resolutions: RefCell<FxHashMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>,
-    legacy_macro_resolutions: RefCell<Vec<(Ident, MacroKind, Mark, LegacyScope<'a>, Option<Def>)>>,
+    legacy_macro_resolutions: RefCell<Vec<(Ident, MacroKind, ParentScope<'a>, Option<Def>)>>,
     macro_resolutions: RefCell<Vec<(Box<[Ident]>, Span)>>,
-    builtin_attrs: RefCell<Vec<(Ident, Mark, LegacyScope<'a>)>>,
+    builtin_attrs: RefCell<Vec<(Ident, ParentScope<'a>)>>,
 
     // Macro invocations that can expand into items in this module.
     unresolved_invocations: RefCell<FxHashSet<Mark>>,
@@ -3494,16 +3494,17 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         path_span: Span,
         crate_lint: CrateLint,
     ) -> PathResult<'a> {
-        self.resolve_path_with_parent_expansion(base_module, path, opt_ns, Mark::root(),
-                                                record_used, path_span, crate_lint)
+        let parent_scope = ParentScope { module: self.current_module, ..self.dummy_parent_scope() };
+        self.resolve_path_with_parent_scope(base_module, path, opt_ns, &parent_scope,
+                                            record_used, path_span, crate_lint)
     }
 
-    fn resolve_path_with_parent_expansion(
+    fn resolve_path_with_parent_scope(
         &mut self,
         base_module: Option<ModuleOrUniformRoot<'a>>,
         path: &[Ident],
         opt_ns: Option<Namespace>, // `None` indicates a module path
-        parent_expansion: Mark,
+        parent_scope: &ParentScope<'a>,
         record_used: bool,
         path_span: Span,
         crate_lint: CrateLint,
@@ -3511,6 +3512,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         let mut module = base_module;
         let mut allow_super = true;
         let mut second_binding = None;
+        self.current_module = parent_scope.module;
 
         debug!(
             "resolve_path(path={:?}, opt_ns={:?}, record_used={:?}, \
@@ -3596,9 +3598,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 self.resolve_ident_in_module(module, ident, ns, record_used, path_span)
             } else if opt_ns == Some(MacroNS) {
                 assert!(ns == TypeNS);
-                self.resolve_lexical_macro_path_segment(ident, ns, None, parent_expansion,
-                                                        record_used, record_used, path_span)
-                                                        .map(|(binding, _)| binding)
+                self.resolve_lexical_macro_path_segment(ident, ns, None, parent_scope, record_used,
+                                                        record_used, path_span).map(|(b, _)| b)
             } else {
                 let record_used_id =
                     if record_used { crate_lint.node_id().or(Some(CRATE_NODE_ID)) } else { None };

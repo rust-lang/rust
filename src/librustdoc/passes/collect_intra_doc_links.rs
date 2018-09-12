@@ -398,12 +398,12 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
 /// Resolve a string as a macro
 fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
     use syntax::ext::base::{MacroKind, SyntaxExtension};
-    use syntax::ext::hygiene::Mark;
     let segment = ast::PathSegment::from_ident(Ident::from_str(path_str));
     let path = ast::Path { segments: vec![segment], span: DUMMY_SP };
     let mut resolver = cx.resolver.borrow_mut();
-    let mark = Mark::root();
-    if let Ok(def) = resolver.resolve_macro_to_def_inner(&path, MacroKind::Bang, mark, &[], false) {
+    let parent_scope = resolver.dummy_parent_scope();
+    if let Ok(def) = resolver.resolve_macro_to_def_inner(&path, MacroKind::Bang,
+                                                         &parent_scope, false) {
         if let SyntaxExtension::DeclMacro { .. } = *resolver.get_macro(def) {
             return Some(def);
         }
