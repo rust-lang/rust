@@ -616,7 +616,6 @@ impl DivAssign<u32> for Duration {
     }
 }
 
-
 macro_rules! sum_durations {
     ($iter:expr) => {{
         let mut total_secs: u64 = 0;
