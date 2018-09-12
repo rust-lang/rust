@@ -400,7 +400,7 @@ where
             shape.block().indent.to_string_with_newline(context.config),
         )
     };
-    if last_line_width(&args) + first_line_width(&output) <= shape.width {
+    if output.is_empty() || last_line_width(&args) + first_line_width(&output) <= shape.width {
         Some(format!("{}{}", args, output))
     } else {
         Some(format!(
