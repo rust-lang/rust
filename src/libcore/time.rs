@@ -464,6 +464,8 @@ impl Duration {
     ///
     /// # Examples
     /// ```
+    /// use std::time::Duration;
+    ///
     /// let dur = Duration::new(2, 700_000_000);
     /// assert_eq!(dur.mul_f64(3.14), Duration::new(8, 478_000_000));
     /// assert_eq!(dur.mul_f64(3.14e5), Duration::new(847_800, 0));
@@ -495,6 +497,8 @@ impl Duration {
     ///
     /// # Examples
     /// ```
+    /// use std::time::Duration;
+    ///
     /// let dur = Duration::new(2, 700_000_000);
     /// assert_eq!(dur.div_f64(3.14), Duration::new(0, 859_872_611));
     /// // note that truncation is used, not rounding
@@ -527,6 +531,8 @@ impl Duration {
     ///
     /// # Examples
     /// ```
+    /// use std::time::Duration;
+    ///
     /// let dur1 = Duration::new(2, 700_000_000);
     /// let dur2 = Duration::new(5, 400_000_000);
     /// assert_eq!(dur1.div_duration(dur2), 0.5);
