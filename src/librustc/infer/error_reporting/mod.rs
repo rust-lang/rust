@@ -55,7 +55,7 @@
 //! ported to this system, and which relies on string concatenation at the
 //! time of error detection.
 
-use infer;
+use infer::{self, UnlessNll};
 use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
 use super::region_constraints::GenericKind;
 use super::lexical_region_resolve::RegionResolutionError;
@@ -298,13 +298,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         &self,
         region_scope_tree: &region::ScopeTree,
         errors: &Vec<RegionResolutionError<'tcx>>,
-        will_later_be_reported_by_nll: bool,
+        unless_nll: UnlessNll,
     ) {
         debug!("report_region_errors(): {} errors to start", errors.len());
 
         // If the errors will later be reported by NLL, choose wether to display them or not based
         // on the borrowck mode
-        if will_later_be_reported_by_nll {
+        if unless_nll.0 {
             match self.tcx.borrowck_mode() {
                 // If we're on AST or Migrate mode, report AST region errors
                 BorrowckMode::Ast | BorrowckMode::Migrate => {},

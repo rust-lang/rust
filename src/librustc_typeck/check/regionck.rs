@@ -88,7 +88,7 @@ use middle::mem_categorization as mc;
 use middle::mem_categorization::Categorization;
 use middle::region;
 use rustc::hir::def_id::DefId;
-use rustc::infer;
+use rustc::infer::{self, UnlessNll};
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::ty::adjustment;
 use rustc::ty::subst::Substs;
@@ -140,7 +140,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             rcx.visit_body(body);
             rcx.visit_region_obligations(id);
         }
-        rcx.resolve_regions_and_report_errors_unless_nll();
+        rcx.resolve_regions_and_report_errors(UnlessNll(true));
 
         assert!(self.tables.borrow().free_region_map.is_empty());
         self.tables.borrow_mut().free_region_map = rcx.outlives_environment.into_free_region_map();
@@ -162,7 +162,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             .add_implied_bounds(self, wf_tys, item_id, span);
         rcx.outlives_environment.save_implied_bounds(item_id);
         rcx.visit_region_obligations(item_id);
-        rcx.resolve_regions_and_report_errors();
+        rcx.resolve_regions_and_report_errors(UnlessNll(false));
     }
 
     /// Region check a function body. Not invoked on closures, but
@@ -190,7 +190,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             rcx.visit_fn_body(fn_id, body, self.tcx.hir.span(fn_id));
         }
 
-        rcx.resolve_regions_and_report_errors_unless_nll();
+        rcx.resolve_regions_and_report_errors(UnlessNll(true));
 
         // In this mode, we also copy the free-region-map into the
         // tables of the enclosing fcx. In the other regionck modes
@@ -399,19 +399,12 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         );
     }
 
-    fn resolve_regions_and_report_errors(&self) {
+    fn resolve_regions_and_report_errors(&self, unless_nll: UnlessNll) {
         self.fcx.resolve_regions_and_report_errors(
             self.subject_def_id,
             &self.region_scope_tree,
             &self.outlives_environment,
-        );
-    }
-
-    fn resolve_regions_and_report_errors_unless_nll(&self) {
-        self.fcx.resolve_regions_and_report_errors_unless_nll(
-            self.subject_def_id,
-            &self.region_scope_tree,
-            &self.outlives_environment,
+            unless_nll,
         );
     }
 
