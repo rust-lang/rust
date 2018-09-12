@@ -30,10 +30,6 @@ impl Query for ParentModule {
 }
 
 impl Eval for ModuleDescr {
-    fn cacheable() -> bool { true }
-    fn cache(cache: &mut Cache) -> &mut QueryCache<Self> {
-        &mut cache.module_descr
-    }
     fn eval(ctx: &QueryCtx, file_id: &FileId) -> Arc<descr::ModuleDescr> {
         let file = ctx.get::<FileSyntax>(file_id);
         Arc::new(descr::ModuleDescr::new(file.ast()))

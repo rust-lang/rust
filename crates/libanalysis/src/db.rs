@@ -3,6 +3,7 @@ use std::{
     sync::Arc,
     cell::RefCell,
     fmt::Debug,
+    any::Any,
 };
 use parking_lot::Mutex;
 use libsyntax2::{File};
@@ -10,7 +11,6 @@ use im;
 use {
     FileId,
     imp::{FileResolverImp},
-    module_map_db::ModuleDescr,
 };
 
 #[derive(Debug)]
@@ -94,11 +94,13 @@ impl Clone for Db {
 
 #[derive(Default, Debug)]
 pub(crate) struct Cache {
-    pub(crate) module_descr: QueryCache<ModuleDescr>,
     gen: Gen,
     green: im::HashMap<QueryInvocationId, (Gen, OutputHash)>,
     deps: im::HashMap<QueryInvocationId, Vec<(QueryInvocationId, OutputHash)>>,
+    results: im::HashMap<QueryInvocationId, Arc<Any>>,
 }
+
+
 #[allow(type_alias_bounds)]
 pub(crate) type QueryCache<Q: Query> = im::HashMap<
     <Q as Query>::Params,
@@ -108,6 +110,15 @@ pub(crate) type QueryCache<Q: Query> = im::HashMap<
 impl Cache {
     fn new() -> Cache {
         Default::default()
+    }
+
+    fn get_result<Q: Query>(&self, id: QueryInvocationId) -> Q::Output
+    where
+        Q::Output: Clone
+    {
+        let res = &self.results[&id];
+        let res = res.downcast_ref::<Q::Output>().unwrap();
+        res.clone()
     }
 }
 
@@ -150,8 +161,8 @@ impl QueryCtx {
 
 pub(crate) trait Query {
     const ID: u32;
-    type Params: Hash + Eq + Debug;
-    type Output: Hash + Debug;
+    type Params: Hash + Eq + Debug + Any + 'static;
+    type Output: Hash + Debug + Any + 'static;
 }
 
 pub(crate) trait Get: Query {
@@ -164,11 +175,6 @@ where
     Q::Output: Clone,
 {
     fn get(ctx: &QueryCtx, params: &Self::Params) -> Self::Output {
-        if !Self::cacheable() {
-            ctx.trace(TraceEvent { query_id: Q::ID, kind: TraceEventKind::Evaluating });
-            return Self::eval(ctx, params);
-        }
-
         if let Some(res) = try_reuse::<Q>(ctx, params) {
             return res;
         }
@@ -185,8 +191,7 @@ where
         let output_hash = output_hash::<Q>(&res);
         let id = id::<Q>(params);
         cache.green.insert(id, (gen, output_hash));
-        let cache = Self::cache(&mut cache);
-        cache.insert(params.clone(), res.clone());
+        cache.results.insert(me, Arc::new(res.clone()));
         res
     }
 }
@@ -201,7 +206,7 @@ where
     let curr_gen = cache.gen;
     let old_hash = match *cache.green.get(&id)? {
         (gen, _) if gen == curr_gen => {
-            return Some(Q::cache(&mut cache)[params].clone());
+            return Some(cache.get_result::<Q>(id));
         }
         (_, hash) => hash,
     };
@@ -218,7 +223,7 @@ where
         return None;
     }
     cache.green.insert(id, (curr_gen, old_hash));
-    Some(Q::cache(&mut cache)[params].clone())
+    Some(cache.get_result::<Q>(id))
 }
 
 pub(crate) trait Eval: Query
@@ -226,10 +231,6 @@ where
     Self::Params: Clone,
     Self::Output: Clone,
 {
-    fn cacheable() -> bool { false }
-    fn cache(_cache: &mut Cache) -> &mut QueryCache<Self> {
-        unimplemented!()
-    }
     fn eval(ctx: &QueryCtx, params: &Self::Params) -> Self::Output;
 }
 
