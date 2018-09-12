@@ -49,6 +49,7 @@ create_config! {
     comment_width: usize, 80, false,
         "Maximum length of comments. No effect unless wrap_comments = true";
     normalize_comments: bool, false, false, "Convert /* */ comments to // comments where possible";
+    normalize_doc_attributes: bool, false, false, "Normalize doc attributes as doc comments";
     license_template_path: String, String::default(), false,
         "Beginning of file must match license template";
     format_strings: bool, false, false, "Format string literals where necessary";
@@ -107,7 +108,6 @@ create_config! {
     blank_lines_lower_bound: usize, 0, false,
         "Minimum number of blank lines which must be put between items";
     edition: Edition, Edition::Edition2015, false, "The edition of the parser (RFC 2052)";
-    normalize_doc_attributes: bool, false, false, "Normalize doc attributes as doc comments";
 
     // Options that can change the source code beyond whitespace/blocks (somewhat linty things)
     merge_derives: bool, true, true, "Merge multiple `#[derive(...)]` into a single one";
