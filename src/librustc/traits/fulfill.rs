@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use infer::{RegionObligation, InferCtxt};
+use infer::InferCtxt;
 use mir::interpret::GlobalId;
 use ty::{self, Ty, TypeFoldable, ToPolyTraitRef, ToPredicate};
 use ty::error::ExpectedFound;
@@ -372,13 +372,11 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
                             Some(t_a) => {
                                 let r_static = self.selcx.tcx().types.re_static;
                                 if self.register_region_obligations {
-                                    self.selcx.infcx().register_region_obligation(
-                                        obligation.cause.body_id,
-                                        RegionObligation {
-                                            sup_type: t_a,
-                                            sub_region: r_static,
-                                            cause: obligation.cause.clone(),
-                                        });
+                                    self.selcx.infcx().register_region_obligation_with_cause(
+                                        t_a,
+                                        r_static,
+                                        &obligation.cause,
+                                    );
                                 }
                                 ProcessResult::Changed(vec![])
                             }
@@ -387,13 +385,11 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
                     // If there aren't, register the obligation.
                     Some(ty::OutlivesPredicate(t_a, r_b)) => {
                         if self.register_region_obligations {
-                            self.selcx.infcx().register_region_obligation(
-                                obligation.cause.body_id,
-                                RegionObligation {
-                                    sup_type: t_a,
-                                    sub_region: r_b,
-                                    cause: obligation.cause.clone()
-                                });
+                            self.selcx.infcx().register_region_obligation_with_cause(
+                                t_a,
+                                r_b,
+                                &obligation.cause,
+                            );
                         }
                         ProcessResult::Changed(vec![])
                     }

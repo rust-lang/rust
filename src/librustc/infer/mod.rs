@@ -418,7 +418,7 @@ pub enum FixupError {
 pub struct RegionObligation<'tcx> {
     pub sub_region: ty::Region<'tcx>,
     pub sup_type: Ty<'tcx>,
-    pub cause: ObligationCause<'tcx>,
+    pub origin: SubregionOrigin<'tcx>,
 }
 
 impl fmt::Display for FixupError {

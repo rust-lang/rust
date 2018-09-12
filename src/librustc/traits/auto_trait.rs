@@ -19,7 +19,7 @@ use std::collections::VecDeque;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 use infer::region_constraints::{Constraint, RegionConstraintData};
-use infer::{InferCtxt, RegionObligation};
+use infer::InferCtxt;
 
 use ty::fold::TypeFolder;
 use ty::{Region, RegionVid};
@@ -693,23 +693,17 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                         binder.map_bound_ref(|pred| pred.0).no_late_bound_regions(),
                     ) {
                         (None, Some(t_a)) => {
-                            select.infcx().register_region_obligation(
-                                ast::DUMMY_NODE_ID,
-                                RegionObligation {
-                                    sup_type: t_a,
-                                    sub_region: select.infcx().tcx.types.re_static,
-                                    cause: dummy_cause.clone(),
-                                },
+                            select.infcx().register_region_obligation_with_cause(
+                                t_a,
+                                select.infcx().tcx.types.re_static,
+                                &dummy_cause,
                             );
                         }
                         (Some(ty::OutlivesPredicate(t_a, r_b)), _) => {
-                            select.infcx().register_region_obligation(
-                                ast::DUMMY_NODE_ID,
-                                RegionObligation {
-                                    sup_type: t_a,
-                                    sub_region: r_b,
-                                    cause: dummy_cause.clone(),
-                                },
+                            select.infcx().register_region_obligation_with_cause(
+                                t_a,
+                                r_b,
+                                &dummy_cause,
                             );
                         }
                         _ => {}

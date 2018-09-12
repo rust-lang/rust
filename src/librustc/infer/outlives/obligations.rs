@@ -72,10 +72,10 @@
 use hir::def_id::DefId;
 use infer::{self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, VerifyBound};
 use syntax::ast;
-use traits;
+use traits::{self, ObligationCause};
 use ty::outlives::Component;
 use ty::subst::{Subst, Substs};
-use ty::{self, Ty, TyCtxt, TypeFoldable};
+use ty::{self, Region, Ty, TyCtxt, TypeFoldable};
 
 impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// Registers that the given region obligation must be resolved
@@ -96,6 +96,26 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         self.region_obligations
             .borrow_mut()
             .push((body_id, obligation));
+    }
+
+    pub fn register_region_obligation_with_cause(
+        &self,
+        sup_type: Ty<'tcx>,
+        sub_region: Region<'tcx>,
+        cause: &ObligationCause<'tcx>,
+    ) {
+        let origin = SubregionOrigin::from_obligation_cause(cause, || {
+            infer::RelateParamBound(cause.span, sup_type)
+        });
+
+        self.register_region_obligation(
+            cause.body_id,
+            RegionObligation {
+                sup_type,
+                sub_region,
+                origin,
+            },
+        );
     }
 
     /// Trait queries just want to pass back type obligations "as is"
@@ -154,10 +174,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         let mut my_region_obligations = Vec::with_capacity(self.region_obligations.borrow().len());
         {
             let mut r_o = self.region_obligations.borrow_mut();
-            my_region_obligations.extend(
-                r_o.drain_filter(|(ro_body_id, _)| *ro_body_id == body_id)
-                   .map(|(_, obligation)| obligation)
-            );
+            my_region_obligations.extend(r_o.drain_filter(|(ro_body_id, _)| {
+                *ro_body_id == body_id
+            }).map(|(_, obligation)| obligation));
         }
 
         let outlives = &mut TypeOutlives::new(
@@ -171,17 +190,13 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         for RegionObligation {
             sup_type,
             sub_region,
-            cause,
+            origin,
         } in my_region_obligations
         {
             debug!(
-                "process_registered_region_obligations: sup_type={:?} sub_region={:?} cause={:?}",
-                sup_type, sub_region, cause
+                "process_registered_region_obligations: sup_type={:?} sub_region={:?} origin={:?}",
+                sup_type, sub_region, origin
             );
-
-            let origin = SubregionOrigin::from_obligation_cause(&cause, || {
-                infer::RelateParamBound(cause.span, sup_type)
-            });
 
             let sup_type = self.resolve_type_vars_if_possible(&sup_type);
             outlives.type_must_outlive(origin, sup_type, sub_region);
@@ -302,7 +317,8 @@ where
             let origin = origin.clone();
             match component {
                 Component::Region(region1) => {
-                    self.delegate.push_sub_region_constraint(origin, region, region1);
+                    self.delegate
+                        .push_sub_region_constraint(origin, region, region1);
                 }
                 Component::Param(param_ty) => {
                     self.param_ty_must_outlive(origin, region, param_ty);
@@ -405,7 +421,8 @@ where
             }
 
             for r in projection_ty.substs.regions() {
-                self.delegate.push_sub_region_constraint(origin.clone(), region, r);
+                self.delegate
+                    .push_sub_region_constraint(origin.clone(), region, r);
             }
 
             return;
@@ -497,8 +514,7 @@ where
         );
 
         // see the extensive comment in projection_must_outlive
-        let ty = self
-            .tcx
+        let ty = self.tcx
             .mk_projection(projection_ty.item_def_id, projection_ty.substs);
         let recursive_bound = self.recursive_type_bound(ty);
 
@@ -506,7 +522,9 @@ where
     }
 
     fn recursive_type_bound(&self, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
-        let mut bounds = ty.walk_shallow().map(|subty| self.type_bound(subty)).collect::<Vec<_>>();
+        let mut bounds = ty.walk_shallow()
+            .map(|subty| self.type_bound(subty))
+            .collect::<Vec<_>>();
 
         let mut regions = ty.regions();
         regions.retain(|r| !r.is_late_bound()); // ignore late-bound regions
@@ -674,4 +692,3 @@ impl<'cx, 'gcx, 'tcx> TypeOutlivesDelegate<'tcx> for &'cx InferCtxt<'cx, 'gcx, '
         self.verify_generic_bound(origin, kind, a, bound)
     }
 }
-
