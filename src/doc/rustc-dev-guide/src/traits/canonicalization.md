@@ -56,7 +56,7 @@ for<T,L,T> { ?0: Foo<'?1, ?2> }
 
 This `for<>` gives some information about each of the canonical
 variables within.  In this case, each `T` indicates a type variable,
-so `?0` and `?2` are types; the `L` indicates a lifetime varibale, so
+so `?0` and `?2` are types; the `L` indicates a lifetime variable, so
 `?1` is a lifetime. The `canonicalize` method *also* gives back a
 `CanonicalVarValues` array OV with the "original values" for each
 canonicalized variable:

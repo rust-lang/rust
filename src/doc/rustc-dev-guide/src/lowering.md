@@ -36,7 +36,7 @@ sanity checks in `src/librustc/hir/map/hir_id_validator.rs`:
   for you so you also get the `HirId`.
 
 If you are creating new `DefId`s, since each `DefId` needs to have a
-corresponding `NodeId`, it is adviseable to add these `NodeId`s to the
+corresponding `NodeId`, it is advisable to add these `NodeId`s to the
 `AST` so you don't have to generate new ones during lowering. This has
 the advantage of creating a way to find the `DefId` of something via its
 `NodeId`. If lowering needs this `DefId` in multiple places, you can't

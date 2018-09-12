@@ -117,7 +117,7 @@ know whether an impl/where-clause applies or not – this occurs when
 the obligation contains unbound inference variables.
 
 The subroutines that decide whether a particular impl/where-clause/etc
-applies to a particular obligation are collectively refered to as the
+applies to a particular obligation are collectively referred to as the
 process of _matching_. At the moment, this amounts to
 unifying the `Self` types, but in the future we may also recursively
 consider some of the nested obligations, in the case of an impl.

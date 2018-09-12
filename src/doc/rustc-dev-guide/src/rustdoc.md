@@ -30,7 +30,7 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
 
 ## Cheat sheet
 
-* Use `./x.py build --stage 1 src/libstd src/tools/rustdoc` to make a useable
+* Use `./x.py build --stage 1 src/libstd src/tools/rustdoc` to make a usable
   rustdoc you can run on other projects.
   * Add `src/libtest` to be able to use `rustdoc --test`.
   * If you've used `rustup toolchain link local /path/to/build/$TARGET/stage1`

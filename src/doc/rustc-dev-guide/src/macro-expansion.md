@@ -90,15 +90,15 @@ tokens containing the inside of the example invocation `print foo`, while `ms`
 might be the sequence of token (trees) `print $mvar:ident`.
 
 The output of the parser is a `NamedParseResult`, which indicates which of
-three cases has occured:
+three cases has occurred:
 
 - Success: `tts` matches the given matcher `ms`, and we have produced a binding
   from metavariables to the corresponding token trees.
 - Failure: `tts` does not match `ms`. This results in an error message such as
   "No rule expected token _blah_".
-- Error: some fatal error has occured _in the parser_. For example, this happens
-  if there are more than one pattern match, since that indicates the macro is
-  ambiguous.
+- Error: some fatal error has occurred _in the parser_. For example, this
+  happens if there are more than one pattern match, since that indicates
+  the macro is ambiguous.
 
 The full interface is defined [here][code_parse_int].
 
@@ -112,7 +112,7 @@ the macro parser. This is extremely non-intuitive and self-referential. The code
 to parse macro _definitions_ is in
 [`src/libsyntax/ext/tt/macro_rules.rs`][code_mr]. It defines the pattern for
 matching for a macro definition as `$( $lhs:tt => $rhs:tt );+`. In other words,
-a `macro_rules` defintion should have in its body at least one occurence of a
+a `macro_rules` definition should have in its body at least one occurrence of a
 token tree followed by `=>` followed by another token tree. When the compiler
 comes to a `macro_rules` definition, it uses this pattern to match the two token
 trees per rule in the definition of the macro _using the macro parser itself_.
