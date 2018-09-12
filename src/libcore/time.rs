@@ -464,7 +464,7 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// #![feature(exact_chunks)]
+    /// #![feature(duration_float_ops)]
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
@@ -498,7 +498,7 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// #![feature(exact_chunks)]
+    /// #![feature(duration_float_ops)]
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
@@ -533,7 +533,7 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// #![feature(exact_chunks)]
+    /// #![feature(duration_float_ops)]
     /// use std::time::Duration;
     ///
     /// let dur1 = Duration::new(2, 700_000_000);
