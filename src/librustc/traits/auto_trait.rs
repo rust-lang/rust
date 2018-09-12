@@ -16,10 +16,9 @@ use super::*;
 use std::collections::hash_map::Entry;
 use std::collections::VecDeque;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-
 use infer::region_constraints::{Constraint, RegionConstraintData};
 use infer::InferCtxt;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 use ty::fold::TypeFolder;
 use ty::{Region, RegionVid};
@@ -231,16 +230,14 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 })
                 .collect();
 
-            let body_ids: FxHashSet<_> = infcx
+            let body_id_map: FxHashMap<_, _> = infcx
                 .region_obligations
                 .borrow()
                 .iter()
-                .map(|&(id, _)| id)
+                .map(|&(id, _)| (id, vec![]))
                 .collect();
 
-            for id in body_ids {
-                infcx.process_registered_region_obligations(&vec![], None, full_env.clone(), id);
-            }
+            infcx.process_registered_region_obligations(&body_id_map, None, full_env.clone());
 
             let region_data = infcx
                 .borrow_region_constraints()

@@ -88,7 +88,7 @@ use middle::mem_categorization as mc;
 use middle::mem_categorization::Categorization;
 use middle::region;
 use rustc::hir::def_id::DefId;
-use rustc::infer::{self, UnlessNll};
+use rustc::infer::{self, RegionObligation, UnlessNll};
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::ty::adjustment;
 use rustc::ty::subst::Substs;
@@ -390,16 +390,15 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // which, when processed, might generate new region
         // obligations. So make sure we process those.
         self.select_all_obligations_or_error();
-
-        self.infcx.process_registered_region_obligations(
-            self.outlives_environment.region_bound_pairs(),
-            self.implicit_region_bound,
-            self.param_env,
-            self.body_id,
-        );
     }
 
     fn resolve_regions_and_report_errors(&self, unless_nll: UnlessNll) {
+        self.infcx.process_registered_region_obligations(
+            self.outlives_environment.region_bound_pairs_map(),
+            self.implicit_region_bound,
+            self.param_env,
+        );
+
         self.fcx.resolve_regions_and_report_errors(
             self.subject_def_id,
             &self.region_scope_tree,
@@ -1042,13 +1041,13 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
     ) {
-        self.infcx.type_must_outlive(
-            self.outlives_environment.region_bound_pairs(),
-            self.implicit_region_bound,
-            self.param_env,
-            origin,
-            ty,
-            region,
+        self.infcx.register_region_obligation(
+            self.body_id,
+            RegionObligation {
+                sub_region: region,
+                sup_type: ty,
+                origin,
+            },
         );
     }
 

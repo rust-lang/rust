@@ -97,8 +97,8 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
     }
 
     /// Borrows current value of the `region_bound_pairs`.
-    pub fn region_bound_pairs(&self) -> &RegionBoundPairs<'tcx> {
-        &self.region_bound_pairs_accum
+    pub fn region_bound_pairs_map(&self) -> &FxHashMap<ast::NodeId, RegionBoundPairs<'tcx>> {
+        &self.region_bound_pairs_map
     }
 
     /// Returns ownership of the `free_region_map`.

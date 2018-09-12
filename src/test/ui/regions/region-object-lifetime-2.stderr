@@ -9,7 +9,7 @@ note: first, the lifetime cannot outlive the lifetime 'a as defined on the funct
    |
 LL | fn borrowed_receiver_different_lifetimes<'a,'b>(x: &'a Foo) -> &'b () {
    |                                          ^^
-note: ...so that the type `(dyn Foo + 'a)` is not borrowed for too long
+note: ...so that reference does not outlive borrowed content
   --> $DIR/region-object-lifetime-2.rs:20:5
    |
 LL |     x.borrowed() //~ ERROR cannot infer

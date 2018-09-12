@@ -70,8 +70,9 @@
 //! imply that `'b: 'a`.
 
 use hir::def_id::DefId;
-use infer::{self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, VerifyBound};
 use infer::outlives::env::RegionBoundPairs;
+use infer::{self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, VerifyBound};
+use rustc_data_structures::fx::FxHashMap;
 use syntax::ast;
 use traits::{self, ObligationCause};
 use ty::outlives::Component;
@@ -159,10 +160,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// processed.
     pub fn process_registered_region_obligations(
         &self,
-        region_bound_pairs: &RegionBoundPairs<'tcx>,
+        region_bound_pairs_map: &FxHashMap<ast::NodeId, RegionBoundPairs<'tcx>>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
-        body_id: ast::NodeId,
     ) {
         assert!(
             !self.in_snapshot.get(),
@@ -171,28 +171,16 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
         debug!("process_registered_region_obligations()");
 
-        // pull out the region obligations with the given `body_id` (leaving the rest)
-        let mut my_region_obligations = Vec::with_capacity(self.region_obligations.borrow().len());
-        {
-            let mut r_o = self.region_obligations.borrow_mut();
-            my_region_obligations.extend(r_o.drain_filter(|(ro_body_id, _)| {
-                *ro_body_id == body_id
-            }).map(|(_, obligation)| obligation));
-        }
+        let my_region_obligations = self.take_registered_region_obligations();
 
-        let outlives = &mut TypeOutlives::new(
-            self,
-            self.tcx,
-            region_bound_pairs,
-            implicit_region_bound,
-            param_env,
-        );
-
-        for RegionObligation {
-            sup_type,
-            sub_region,
-            origin,
-        } in my_region_obligations
+        for (
+            body_id,
+            RegionObligation {
+                sup_type,
+                sub_region,
+                origin,
+            },
+        ) in my_region_obligations
         {
             debug!(
                 "process_registered_region_obligations: sup_type={:?} sub_region={:?} origin={:?}",
@@ -200,7 +188,22 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             );
 
             let sup_type = self.resolve_type_vars_if_possible(&sup_type);
-            outlives.type_must_outlive(origin, sup_type, sub_region);
+
+            if let Some(region_bound_pairs) = region_bound_pairs_map.get(&body_id) {
+                let outlives = &mut TypeOutlives::new(
+                    self,
+                    self.tcx,
+                    &region_bound_pairs,
+                    implicit_region_bound,
+                    param_env,
+                );
+                outlives.type_must_outlive(origin, sup_type, sub_region);
+            } else {
+                self.tcx.sess.delay_span_bug(
+                    origin.span(),
+                    &format!("no region-bound-pairs for {:?}", body_id),
+                )
+            }
         }
     }
 
