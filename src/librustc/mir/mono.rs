@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use hir::def_id::{DefId, CrateNum};
+use hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use syntax::ast::NodeId;
 use syntax::symbol::{Symbol, InternedString};
 use ty::{Instance, TyCtxt};
@@ -266,7 +266,8 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> CodegenUnitNameBuilder<'a, 'gcx, 'tcx> {
     /// This function will build CGU names of the form:
     ///
     /// ```
-    /// <crate-name>.<crate-disambiguator>(-<component>)*[.<special-suffix>]
+    /// <crate-name>.<crate-disambiguator>[-in-<local-crate-id>](-<component>)*[.<special-suffix>]
+    /// <local-crate-id> = <local-crate-name>.<local-crate-disambiguator>
     /// ```
     ///
     /// The '.' before `<special-suffix>` makes sure that names with a special
@@ -311,9 +312,25 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> CodegenUnitNameBuilder<'a, 'gcx, 'tcx> {
         // Start out with the crate name and disambiguator
         let tcx = self.tcx;
         let crate_prefix = self.cache.entry(cnum).or_insert_with(|| {
+            // Whenever the cnum is not LOCAL_CRATE we also mix in the
+            // local crate's ID. Otherwise there can be collisions between CGUs
+            // instantiating stuff for upstream crates.
+            let local_crate_id = if cnum != LOCAL_CRATE {
+                let local_crate_disambiguator =
+                    format!("{}", tcx.crate_disambiguator(LOCAL_CRATE));
+                format!("-in-{}.{}",
+                        tcx.crate_name(LOCAL_CRATE),
+                        &local_crate_disambiguator[0 .. 8])
+            } else {
+                String::new()
+            };
+
             let crate_disambiguator = format!("{}", tcx.crate_disambiguator(cnum));
             // Using a shortened disambiguator of about 40 bits
-            format!("{}.{}", tcx.crate_name(cnum), &crate_disambiguator[0 .. 8])
+            format!("{}.{}{}",
+                tcx.crate_name(cnum),
+                &crate_disambiguator[0 .. 8],
+                local_crate_id)
         });
 
         write!(cgu_name, "{}", crate_prefix).unwrap();

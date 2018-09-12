@@ -2355,21 +2355,30 @@ impl<'test> TestCx<'test> {
             string
         }
 
+        // Given a cgu-name-prefix of the form <crate-name>.<crate-disambiguator> or
+        // the form <crate-name1>.<crate-disambiguator1>-in-<crate-name2>.<crate-disambiguator2>,
+        // remove all crate-disambiguators.
         fn remove_crate_disambiguator_from_cgu(cgu: &str) -> String {
-            // The first '.' is the start of the crate disambiguator
-            let disambiguator_start = cgu.find('.')
-                .expect("Could not find start of crate disambiguator in CGU spec");
+            lazy_static! {
+                static ref RE: Regex = Regex::new(
+                    r"^[^\.]+(?P<d1>\.[[:alnum:]]+)(-in-[^\.]+(?P<d2>\.[[:alnum:]]+))?"
+                ).unwrap();
+            }
 
-            // The first non-alphanumeric character is the end of the disambiguator
-            let disambiguator_end = cgu[disambiguator_start + 1 ..]
-                .find(|c| !char::is_alphanumeric(c))
-                .expect("Could not find end of crate disambiguator in CGU spec")
-                + disambiguator_start + 1;
+            let captures = RE.captures(cgu).unwrap_or_else(|| {
+                panic!("invalid cgu name encountered: {}", cgu)
+            });
 
-            let mut result = cgu[0 .. disambiguator_start].to_string();
-            result.push_str(&cgu[disambiguator_end ..]);
+            let mut new_name = cgu.to_owned();
 
-            result
+            if let Some(d2) = captures.name("d2") {
+                new_name.replace_range(d2.start() .. d2.end(), "");
+            }
+
+            let d1 = captures.name("d1").unwrap();
+            new_name.replace_range(d1.start() .. d1.end(), "");
+
+            new_name
         }
     }
 
