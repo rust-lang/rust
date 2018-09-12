@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use infer::{GenericKind, InferCtxt};
 use infer::outlives::free_region_map::FreeRegionMap;
+use infer::{GenericKind, InferCtxt};
 use traits::query::outlives_bounds::{self, OutlivesBound};
 use ty::{self, Ty};
 
@@ -167,9 +167,11 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
         for outlives_bound in outlives_bounds {
             debug!("add_outlives_bounds: outlives_bound={:?}", outlives_bound);
             match outlives_bound {
-                OutlivesBound::RegionSubRegion(r_a @ &ty::ReEarlyBound(_), &ty::ReVar(vid_b)) |
-                OutlivesBound::RegionSubRegion(r_a @ &ty::ReFree(_), &ty::ReVar(vid_b)) => {
-                    infcx.expect("no infcx provided but region vars found").add_given(r_a, vid_b);
+                OutlivesBound::RegionSubRegion(r_a @ &ty::ReEarlyBound(_), &ty::ReVar(vid_b))
+                | OutlivesBound::RegionSubRegion(r_a @ &ty::ReFree(_), &ty::ReVar(vid_b)) => {
+                    infcx
+                        .expect("no infcx provided but region vars found")
+                        .add_given(r_a, vid_b);
                 }
                 OutlivesBound::RegionSubParam(r_a, param_b) => {
                     self.region_bound_pairs
