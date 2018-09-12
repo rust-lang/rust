@@ -69,10 +69,7 @@ impl Rewrite for ast::Item {
         visitor.block_indent = shape.indent;
         visitor.last_pos = self.span().lo();
         visitor.visit_item(self);
-        if visitor.macro_rewrite_failure {
-            context.macro_rewrite_failure.replace(true);
-        }
-        Some(visitor.buffer)
+        Some(visitor.buffer.to_owned())
     }
 }
 
