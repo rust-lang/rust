@@ -264,6 +264,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard);
                 unpack!(block = self.into(&place, block, initializer));
+
+                // Inject a fake read of the newly created binding
+                // to test the fallout of fixing issue #53695 where NLL
+                // allows to create variables that are immediately unusable.
+                let source_info = self.source_info(irrefutable_pat.span);
+                self.cfg.push(
+                    block,
+                    Statement {
+                        source_info,
+                        kind: StatementKind::ReadForMatch(place.clone()),
+                    },
+                );
+
                 self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
                 block.unit()
             }
