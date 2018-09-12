@@ -464,6 +464,7 @@ impl Duration {
     ///
     /// # Examples
     /// ```
+    /// #![feature(exact_chunks)]
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
@@ -497,6 +498,7 @@ impl Duration {
     ///
     /// # Examples
     /// ```
+    /// #![feature(exact_chunks)]
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
@@ -531,6 +533,7 @@ impl Duration {
     ///
     /// # Examples
     /// ```
+    /// #![feature(exact_chunks)]
     /// use std::time::Duration;
     ///
     /// let dur1 = Duration::new(2, 700_000_000);
@@ -595,7 +598,7 @@ impl Mul<Duration> for u32 {
     type Output = Duration;
 
     fn mul(self, rhs: Duration) -> Duration {
-        rhs.checked_mul(self).expect("overflow when multiplying scalar by duration")
+        rhs * self
     }
 }
 
