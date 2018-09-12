@@ -39,30 +39,31 @@ impl ServerWorldState {
             mem_map: HashMap::new(),
         }
     }
-
     pub fn apply_fs_changes(&mut self, events: Vec<FileEvent>) {
-        let pm = &mut self.path_map;
-        let mm = &mut self.mem_map;
-        let changes = events.into_iter()
-            .map(|event| {
-                let text = match event.kind {
-                    FileEventKind::Add(text) => Some(text),
-                };
-                (event.path, text)
-            })
-            .map(|(path, text)| {
-                (pm.get_or_insert(path, Root::Workspace), text)
-            })
-            .filter_map(|(id, text)| {
-                if mm.contains_key(&id) {
-                    mm.insert(id, text);
-                    None
-                } else {
-                    Some((id, text))
-                }
-            });
-
-        self.analysis_host.change_files(changes);
+        {
+            let pm = &mut self.path_map;
+            let mm = &mut self.mem_map;
+            let changes = events.into_iter()
+                .map(|event| {
+                    let text = match event.kind {
+                        FileEventKind::Add(text) => Some(text),
+                    };
+                    (event.path, text)
+                })
+                .map(|(path, text)| {
+                    (pm.get_or_insert(path, Root::Workspace), text)
+                })
+                .filter_map(|(id, text)| {
+                    if mm.contains_key(&id) {
+                        mm.insert(id, text);
+                        None
+                    } else {
+                        Some((id, text))
+                    }
+                });
+            self.analysis_host.change_files(changes);
+        }
+        self.analysis_host.set_file_resolver(Arc::new(self.path_map.clone()));
     }
     pub fn events_to_files(&mut self, events: Vec<FileEvent>) -> (Vec<(FileId, String)>, Arc<FileResolver>) {
         let files = {
