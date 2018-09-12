@@ -2057,6 +2057,36 @@
     onEach(document.getElementsByClassName('method'), func);
     onEach(document.getElementsByClassName('associatedconstant'), func);
     onEach(document.getElementsByClassName('impl'), func);
+    onEach(document.getElementsByClassName('impl-items'), function(e) {
+        onEach(e.getElementsByClassName('associatedconstant'), func);
+        if (e.getElementsByClassName('hidden').length > 0) {
+            var newToggle = document.createElement('a');
+            newToggle.href = 'javascript:void(0)';
+            newToggle.className = 'collapse-toggle hidden-default collapsed';
+            newToggle.innerHTML = "[<span class='inner'>" + labelForToggleButton(true) + "</span>" +
+                                  "] Show hidden default items";
+            newToggle.onclick = function() {
+                if (hasClass(this, "collapsed")) {
+                    removeClass(this, "collapsed");
+                    onEach(this.parentNode.getElementsByClassName("hidden"), function(x) {
+                        removeClass(x, "hidden");
+                        addClass(x, "x");
+                    }, true);
+                    this.innerHTML = "[<span class='inner'>" + labelForToggleButton(false) +
+                                     "</span>] Hide default items"
+                } else {
+                    addClass(this, "collapsed");
+                    onEach(this.parentNode.getElementsByClassName("x"), function(x) {
+                        addClass(x, "hidden");
+                        removeClass(x, "x");
+                    }, true);
+                    this.innerHTML = "[<span class='inner'>" + labelForToggleButton(true) +
+                                     "</span>] Show hidden default items";
+                }
+            };
+            e.insertBefore(newToggle, e.firstChild);
+        }
+    });
 
     function createToggle(otherMessage, fontSize, extraClass, show) {
         var span = document.createElement('span');

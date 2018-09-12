@@ -816,6 +816,11 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	text-align: center;
 }
 
+.collapse-toggle.hidden-default {
+	position: relative;
+	margin-left: 20px;
+}
+
 .ghost {
 	display: none;
 }
