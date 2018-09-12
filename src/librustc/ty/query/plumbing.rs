@@ -692,10 +692,12 @@ macro_rules! define_queries_inner {
         impl<$tcx> Queries<$tcx> {
             pub fn new(
                 providers: IndexVec<CrateNum, Providers<$tcx>>,
+                fallback_extern_providers: Providers<$tcx>,
                 on_disk_cache: OnDiskCache<'tcx>,
             ) -> Self {
                 Queries {
                     providers,
+                    fallback_extern_providers: Box::new(fallback_extern_providers),
                     on_disk_cache,
                     $($name: Lock::new(QueryCache::new())),*
                 }
@@ -818,7 +820,13 @@ macro_rules! define_queries_inner {
             #[inline]
             fn compute(tcx: TyCtxt<'_, 'tcx, '_>, key: Self::Key) -> Self::Value {
                 __query_compute::$name(move || {
-                    let provider = tcx.queries.providers[key.query_crate()].$name;
+                    let provider = tcx.queries.providers.get(key.query_crate())
+                        // HACK(eddyb) it's possible crates may be loaded after
+                        // the query engine is created, and because crate loading
+                        // is not yet integrated with the query engine, such crates
+                        // would be be missing appropriate entries in `providers`.
+                        .unwrap_or(&tcx.queries.fallback_extern_providers)
+                        .$name;
                     provider(tcx.global_tcx(), key)
                 })
             }
@@ -899,6 +907,7 @@ macro_rules! define_queries_struct {
             pub(crate) on_disk_cache: OnDiskCache<'tcx>,
 
             providers: IndexVec<CrateNum, Providers<$tcx>>,
+            fallback_extern_providers: Box<Providers<$tcx>>,
 
             $($(#[$attr])*  $name: Lock<QueryCache<$tcx, queries::$name<$tcx>>>,)*
         }
