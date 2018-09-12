@@ -1954,7 +1954,8 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
         }
     }
 
-    /// Create a `RawEntryMut` by examining the elements of a hash bucket until `is_match` returns true for one of them.
+    /// Create a `RawEntryMut` by examining the elements of a hash bucket until `is_match` returns
+    /// true for one of them.
     #[unstable(feature = "hash_raw_entry", issue = "42069")]
     pub fn from_bucket<F>(self, hash_bucket: u64, mut is_match: F) -> RawEntryMut<'a, K, V, S>
         where for<'b> F: FnMut(&'b K) -> bool,
