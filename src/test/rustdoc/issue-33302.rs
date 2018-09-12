@@ -17,10 +17,10 @@ macro_rules! make {
         pub struct S;
 
         // @has issue_33302/constant.CST.html \
-        //        '//pre[@class="rust const"]' 'pub const CST: i32 = 4 * 4'
+        //        '//pre[@class="rust const"]' 'pub const CST: i32'
         pub const CST: i32 = ($n * $n);
         // @has issue_33302/static.ST.html \
-        //        '//pre[@class="rust static"]' 'pub static ST: i32 = 4 * 4'
+        //        '//pre[@class="rust static"]' 'pub static ST: i32'
         pub static ST: i32 = ($n * $n);
 
         pub trait T<X> {
@@ -28,7 +28,6 @@ macro_rules! make {
             const C: X;
             // @has issue_33302/trait.T.html \
             //        '//*[@class="rust trait"]' 'const D: i32'
-            // @has - '//*[@class="docblock"]' 'D: i32 = 4 * 4'
             // @has - '//*[@id="associatedconstant.D"]' 'const D: i32'
             const D: i32 = ($n * $n);
         }
@@ -37,7 +36,6 @@ macro_rules! make {
         //        '//h3[@class="impl"]' 'impl T<[i32; 16]> for S'
         // @has - '//*[@id="associatedconstant.C"]' 'const C: [i32; 16]'
         // @has - '//*[@id="associatedconstant.D"]' 'const D: i32'
-        // @has - '//*[@class="docblock"]' 'C: [i32; 16] = [0; 4 * 4]'
         impl T<[i32; ($n * $n)]> for S {
             const C: [i32; ($n * $n)] = [0; ($n * $n)];
         }
@@ -46,7 +44,6 @@ macro_rules! make {
         //        '//h3[@class="impl"]' 'impl T<[i32; 16]> for S'
         // @has - '//*[@id="associatedconstant.C-1"]' 'const C: (i32,)'
         // @has - '//*[@id="associatedconstant.D-1"]' 'const D: i32'
-        // @has - '//*[@class="docblock"]' 'C: (i32,) = (4,)'
         impl T<(i32,)> for S {
             const C: (i32,) = ($n,);
         }
@@ -55,8 +52,6 @@ macro_rules! make {
         //        '//h3[@class="impl"]' 'impl T<(i32, i32)> for S'
         // @has - '//*[@id="associatedconstant.C-2"]' 'const C: (i32, i32)'
         // @has - '//*[@id="associatedconstant.D-2"]' 'const D: i32'
-        // @has - '//*[@class="docblock"]' 'C: (i32, i32) = (4, 4)'
-        // @has - '//*[@class="docblock"]' 'D: i32 = 4 / 4'
         impl T<(i32, i32)> for S {
             const C: (i32, i32) = ($n, $n);
             const D: i32 = ($n / $n);

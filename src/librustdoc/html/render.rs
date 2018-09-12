@@ -2213,8 +2213,7 @@ fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Re
         info!("Documenting {}", name);
     }
     document_stability(w, cx, item)?;
-    let prefix = render_assoc_const_value(item);
-    document_full(w, item, cx, &prefix)?;
+    document_full(w, item, cx, "")?;
     Ok(())
 }
 
@@ -2244,20 +2243,6 @@ fn document_short(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item, link
         write!(w, "<div class='docblock'>{}</div>", prefix)?;
     }
     Ok(())
-}
-
-fn render_assoc_const_value(item: &clean::Item) -> String {
-    match item.inner {
-        clean::AssociatedConstItem(ref ty, Some(ref default)) => {
-            highlight::render_with_highlighting(
-                &format!("{}: {:#} = {}", item.name.as_ref().unwrap(), ty, default),
-                None,
-                None,
-                None,
-            )
-        }
-        _ => String::new(),
-    }
 }
 
 fn document_full(w: &mut fmt::Formatter, item: &clean::Item,
@@ -2609,27 +2594,15 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
     stability
 }
 
-struct Initializer<'a>(&'a str);
-
-impl<'a> fmt::Display for Initializer<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let Initializer(s) = *self;
-        if s.is_empty() { return Ok(()); }
-        write!(f, "<code> = </code>")?;
-        write!(f, "<code>{}</code>", Escape(s))
-    }
-}
-
 fn item_constant(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                  c: &clean::Constant) -> fmt::Result {
     write!(w, "<pre class='rust const'>")?;
     render_attributes(w, it)?;
     write!(w, "{vis}const \
-               {name}: {typ}{init}</pre>",
+               {name}: {typ}</pre>",
            vis = VisSpace(&it.visibility),
            name = it.name.as_ref().unwrap(),
-           typ = c.type_,
-           init = Initializer(&c.expr))?;
+           typ = c.type_)?;
     document(w, cx, it)
 }
 
@@ -2638,12 +2611,11 @@ fn item_static(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     write!(w, "<pre class='rust static'>")?;
     render_attributes(w, it)?;
     write!(w, "{vis}static {mutability}\
-               {name}: {typ}{init}</pre>",
+               {name}: {typ}</pre>",
            vis = VisSpace(&it.visibility),
            mutability = MutableSpace(s.mutability),
            name = it.name.as_ref().unwrap(),
-           typ = s.type_,
-           init = Initializer(&s.expr))?;
+           typ = s.type_)?;
     document(w, cx, it)
 }
 
@@ -3878,7 +3850,13 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                 write!(w, "<h4 id='{}' class=\"{}\">", id, item_type)?;
                 write!(w, "<span id='{}' class='invisible'><code>", ns_id)?;
                 assoc_const(w, item, ty, default.as_ref(), link.anchor(&id))?;
-                write!(w, "</code></span></h4>\n")?;
+                let src = if let Some(l) = (Item { cx, item }).src_href() {
+                    format!("<a class='srclink' href='{}' title='{}'>[src]</a>",
+                            l, "goto source code")
+                } else {
+                    String::new()
+                };
+                write!(w, "</code>{}</span></h4>\n", src)?;
             }
             clean::AssociatedTypeItem(ref bounds, ref default) => {
                 let id = cx.derive_id(format!("{}.{}", item_type, name));
@@ -3893,8 +3871,6 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         }
 
         if render_method_item || render_mode == RenderMode::Normal {
-            let prefix = render_assoc_const_value(item);
-
             if !is_default_item {
                 if let Some(t) = trait_ {
                     // The trait item may have been stripped so we might not
@@ -3904,23 +3880,23 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                         // because impls can't have a stability.
                         document_stability(w, cx, it)?;
                         if item.doc_value().is_some() {
-                            document_full(w, item, cx, &prefix)?;
+                            document_full(w, item, cx, "")?;
                         } else if show_def_docs {
                             // In case the item isn't documented,
                             // provide short documentation from the trait.
-                            document_short(w, cx, it, link, &prefix)?;
+                            document_short(w, cx, it, link, "")?;
                         }
                     }
                 } else {
                     document_stability(w, cx, item)?;
                     if show_def_docs {
-                        document_full(w, item, cx, &prefix)?;
+                        document_full(w, item, cx, "")?;
                     }
                 }
             } else {
                 document_stability(w, cx, item)?;
                 if show_def_docs {
-                    document_short(w, cx, item, link, &prefix)?;
+                    document_short(w, cx, item, link, "")?;
                 }
             }
         }

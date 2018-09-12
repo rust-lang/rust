@@ -2028,7 +2028,8 @@
         if (!next) {
             return;
         }
-        if ((checkIfThereAreMethods(next.childNodes) || hasClass(e, 'method')) &&
+        if ((hasClass(e, 'method') || hasClass(e, 'associatedconstant') ||
+             checkIfThereAreMethods(next.childNodes)) &&
             (hasClass(next, 'docblock') ||
              hasClass(e, 'impl') ||
              (hasClass(next, 'stability') &&
@@ -2037,10 +2038,8 @@
         }
     };
     onEach(document.getElementsByClassName('method'), func);
+    onEach(document.getElementsByClassName('associatedconstant'), func);
     onEach(document.getElementsByClassName('impl'), func);
-    onEach(document.getElementsByClassName('impl-items'), function(e) {
-        onEach(e.getElementsByClassName('associatedconstant'), func);
-    });
 
     function createToggle(otherMessage, fontSize, extraClass) {
         var span = document.createElement('span');
