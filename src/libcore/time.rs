@@ -589,7 +589,7 @@ impl Mul<Duration> for u32 {
     type Output = Duration;
 
     fn mul(self, rhs: Duration) -> Duration {
-        rhs * self
+        rhs.checked_mul(self).expect("overflow when multiplying scalar by duration")
     }
 }
 
