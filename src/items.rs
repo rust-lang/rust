@@ -2040,18 +2040,16 @@ fn rewrite_fn_base(
         let used_width = last_line_used_width(&result, indent.width()) + first_line_width(&ret_str);
         // Put the closing brace on the next line if it overflows the max width.
         // 1 = `)`
-        if fd.inputs.is_empty() && used_width + 1 > context.config.max_width() {
-            result.push('\n');
-        }
+        let closing_paren_overflow_max_width =
+            fd.inputs.is_empty() && used_width + 1 > context.config.max_width();
         // If the last line of args contains comment, we cannot put the closing paren
         // on the same line.
-        if arg_str
+        args_last_line_contains_comment = arg_str
             .lines()
             .last()
-            .map_or(false, |last_line| last_line.contains("//"))
-        {
-            args_last_line_contains_comment = true;
-            result.push_str(&arg_indent.to_string_with_newline(context.config));
+            .map_or(false, |last_line| last_line.contains("//"));
+        if closing_paren_overflow_max_width || args_last_line_contains_comment {
+            result.push_str(&indent.to_string_with_newline(context.config));
         }
         result.push(')');
     }
