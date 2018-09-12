@@ -122,6 +122,9 @@ nonzero_integers! {
 /// all standard arithmetic operations on the underlying value are
 /// intended to have wrapping semantics.
 ///
+/// The underlying value can be retrieved through the `.0` index of the
+/// `Wrapping` tuple.
+///
 /// # Examples
 ///
 /// ```
