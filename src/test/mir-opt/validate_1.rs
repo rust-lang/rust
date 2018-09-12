@@ -59,10 +59,10 @@ fn main() {
 // }
 // END rustc.main.EraseRegions.after.mir
 // START rustc.main-{{closure}}.EraseRegions.after.mir
-// fn main::{{closure}}(_1: &ReErased [closure@NodeId(50)], _2: &ReErased mut i32) -> i32 {
+// fn main::{{closure}}(_1: &ReErased [closure@NodeId(65)], _2: &ReErased mut i32) -> i32 {
 //     ...
 //     bb0: {
-//         Validate(Acquire, [_1: &ReFree(DefId(0/1:11 ~ validate_1[317d]::main[0]::{{closure}}[0]), BrEnv) [closure@NodeId(50)], _2: &ReFree(DefId(0/1:11 ~ validate_1[317d]::main[0]::{{closure}}[0]), BrAnon(0)) mut i32]);
+//         Validate(Acquire, [_1: &ReFree(DefId(0/1:11 ~ validate_1[317d]::main[0]::{{closure}}[0]), BrEnv) [closure@NodeId(65)], _2: &ReFree(DefId(0/1:11 ~ validate_1[317d]::main[0]::{{closure}}[0]), BrAnon(0)) mut i32]);
 //         StorageLive(_3);
 //         Validate(Suspend(ReScope(Remainder { block: ItemLocalId(25), first_statement_index: 0 })), [(*_2): i32]);
 //         _3 = &ReErased (*_2);

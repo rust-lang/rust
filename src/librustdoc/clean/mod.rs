@@ -4012,6 +4012,8 @@ where F: Fn(DefId) -> Def {
         def: def_ctor(def_id),
         segments: hir::HirVec::from_vec(apb.names.iter().map(|s| hir::PathSegment {
             ident: ast::Ident::from_str(&s),
+            id: None,
+            def: None,
             args: None,
             infer_types: false,
         }).collect())
