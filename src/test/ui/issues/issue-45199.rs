@@ -13,7 +13,8 @@
 
 fn test_drop_replace() {
     let b: Box<isize>;
-    //[mir]~^ NOTE consider changing this to `mut b`
+    //[mir]~^ HELP make this binding mutable
+    //[mir]~| SUGGESTION mut b
     b = Box::new(1);    //[ast]~ NOTE first assignment
                         //[mir]~^ NOTE first assignment
     b = Box::new(2);    //[ast]~ ERROR cannot assign twice to immutable variable
@@ -25,7 +26,8 @@ fn test_drop_replace() {
 fn test_call() {
     let b = Box::new(1);    //[ast]~ NOTE first assignment
                             //[mir]~^ NOTE first assignment
-                            //[mir]~| NOTE consider changing this to `mut b`
+                            //[mir]~| HELP make this binding mutable
+                            //[mir]~| SUGGESTION mut b
     b = Box::new(2);        //[ast]~ ERROR cannot assign twice to immutable variable
                             //[mir]~^ ERROR cannot assign twice to immutable variable `b`
                             //[ast]~| NOTE cannot assign twice to immutable
@@ -33,7 +35,8 @@ fn test_call() {
 }
 
 fn test_args(b: Box<i32>) {  //[ast]~ NOTE first assignment
-                                //[mir]~^ NOTE consider changing this to `mut b`
+                                //[mir]~^ HELP make this binding mutable
+                                //[mir]~| SUGGESTION mut b
     b = Box::new(2);            //[ast]~ ERROR cannot assign twice to immutable variable
                                 //[mir]~^ ERROR cannot assign to immutable argument `b`
                                 //[ast]~| NOTE cannot assign twice to immutable

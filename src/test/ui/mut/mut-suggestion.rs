@@ -17,7 +17,8 @@ impl S {
 }
 
 fn func(arg: S) {
-    //~^ consider changing this to `mut arg`
+    //~^ HELP make this binding mutable
+    //~| SUGGESTION mut arg
     arg.mutate();
     //~^ ERROR cannot borrow immutable argument
     //~| cannot borrow mutably
@@ -25,7 +26,8 @@ fn func(arg: S) {
 
 fn main() {
     let local = S;
-    //~^ consider changing this to `mut local`
+    //~^ HELP make this binding mutable
+    //~| SUGGESTION mut local
     local.mutate();
     //~^ ERROR cannot borrow immutable local variable
     //~| cannot borrow mutably

@@ -12,7 +12,7 @@ error[E0596]: cannot borrow immutable argument `f` as mutable
   --> $DIR/borrowck-unboxed-closures.rs:17:5
    |
 LL | fn b<F:FnMut(isize, isize) -> isize>(f: F) {
-   |                                      - consider changing this to `mut f`
+   |                                      - help: make this binding mutable: `mut f`
 LL |     f(1, 2);    //~ ERROR cannot borrow immutable argument
    |     ^ cannot borrow mutably
 

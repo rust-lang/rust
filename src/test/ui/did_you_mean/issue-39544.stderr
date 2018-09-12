@@ -2,7 +2,7 @@ error[E0596]: cannot borrow field `z.x` of immutable binding as mutable
   --> $DIR/issue-39544.rs:21:18
    |
 LL |     let z = Z { x: X::Y };
-   |         - consider changing this to `mut z`
+   |         - help: make this binding mutable: `mut z`
 LL |     let _ = &mut z.x; //~ ERROR cannot borrow
    |                  ^^^ cannot mutably borrow field of immutable binding
 
@@ -77,7 +77,7 @@ error[E0596]: cannot borrow field `z.x` of immutable binding as mutable
   --> $DIR/issue-39544.rs:51:18
    |
 LL | pub fn with_arg(z: Z, w: &Z) {
-   |                 - consider changing this to `mut z`
+   |                 - help: make this binding mutable: `mut z`
 LL |     let _ = &mut z.x; //~ ERROR cannot borrow
    |                  ^^^ cannot mutably borrow field of immutable binding
 

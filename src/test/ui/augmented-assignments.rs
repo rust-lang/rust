@@ -26,7 +26,8 @@ fn main() {
     x;  //~ value moved here
 
     let y = Int(2);
-    //~^ consider changing this to `mut y`
+    //~^ HELP make this binding mutable
+    //~| SUGGESTION mut y
     y   //~ error: cannot borrow immutable local variable `y` as mutable
         //~| cannot borrow
     +=

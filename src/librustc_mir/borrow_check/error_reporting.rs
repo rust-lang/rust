@@ -17,7 +17,7 @@ use rustc::mir::{ProjectionElem, Rvalue, Statement, StatementKind};
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use syntax_pos::Span;
 
 use super::borrow_set::BorrowData;
@@ -690,9 +690,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         if let Some(decl) = local_decl {
             if let Some(name) = decl.name {
                 if decl.can_be_made_mutable() {
-                    err.span_label(
+                    err.span_suggestion_with_applicability(
                         decl.source_info.span,
-                        format!("consider changing this to `mut {}`", name),
+                        "make this binding mutable",
+                        format!("mut {}", name),
+                        Applicability::MachineApplicable,
                     );
                 }
             }

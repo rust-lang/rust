@@ -2,7 +2,7 @@ error[E0595]: closure cannot assign to immutable local variable `n`
   --> $DIR/unboxed-closures-mutate-upvar.rs:24:27
    |
 LL |     let n = 0;
-   |         - consider changing this to `mut n`
+   |         - help: make this binding mutable: `mut n`
 LL |     let mut f = to_fn_mut(|| { //~ ERROR closure cannot assign
    |                           ^^ cannot borrow mutably
 

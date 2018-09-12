@@ -5,7 +5,7 @@ LL |     let x = 42;
    |         -
    |         |
    |         first assignment to `x`
-   |         consider changing this to `mut x`
+   |         help: make this binding mutable: `mut x`
 LL |     x = 43;
    |     ^^^^^^ cannot assign twice to immutable variable
 

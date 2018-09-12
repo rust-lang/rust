@@ -114,7 +114,7 @@ error[E0596]: cannot borrow field `foo.bar1` of immutable binding as mutable
   --> $DIR/borrowck-borrow-from-stack-variable.rs:130:21
    |
 LL |     let foo = make_foo();
-   |         --- consider changing this to `mut foo`
+   |         --- help: make this binding mutable: `mut foo`
 LL |     let bar1 = &mut foo.bar1; //~ ERROR cannot borrow
    |                     ^^^^^^^^ cannot mutably borrow field of immutable binding
 
