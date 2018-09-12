@@ -549,7 +549,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
         | StatementKind::ReadForMatch(_)
         | StatementKind::Validate(_, _)
         | StatementKind::EndRegion(_)
-        | StatementKind::UserAssertTy(_, _) => {}
+        | StatementKind::AscribeUserType(..) => {}
 
         StatementKind::InlineAsm { .. } => unimpl!("Inline assembly is not supported"),
     }
