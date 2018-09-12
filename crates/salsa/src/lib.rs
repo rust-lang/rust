@@ -3,7 +3,7 @@ extern crate parking_lot;
 
 use std::{
     sync::Arc,
-    collections::HashMap,
+    collections::{HashSet, HashMap},
     cell::RefCell,
 };
 use parking_lot::Mutex;
@@ -138,7 +138,16 @@ where
             return (record.output.clone(), record.output_fingerprint)
         }
         if self.query_config.ground_fn.contains_key(&query_id.0) {
-            return self.force(query_id, params);
+            let (invalidated, record) = {
+                let guard = self.db.graph.lock();
+                let (gen, ref record) = guard[&query_id];
+                (gen == INVALIDATED, record.clone())
+            };
+            if invalidated {
+                return self.force(query_id, params);
+            } else {
+                return (record.output.clone(), record.output_fingerprint);
+            }
         }
         for (dep_query_id, prev_fingerprint) in record.deps.iter().cloned() {
             let dep_params: D = {
@@ -198,6 +207,28 @@ where
     }
 }
 
+pub struct Invalidations {
+    types: HashSet<QueryTypeId>,
+    ids: Vec<QueryId>,
+}
+
+impl Invalidations {
+    pub fn new() -> Invalidations {
+        Invalidations {
+            types: HashSet::new(),
+            ids: Vec::new(),
+        }
+    }
+    pub fn invalidate(
+        &mut self,
+        query_type: QueryTypeId,
+        params: impl Iterator<Item=InputFingerprint>,
+    ) {
+        self.types.insert(query_type);
+        self.ids.extend(params.map(|it| QueryId(query_type, it)))
+    }
+}
+
 impl<T, D> Db<T, D>
 where
     D: Clone
@@ -209,9 +240,25 @@ where
         }
     }
 
-    pub fn with_ground_data(&self, ground_data: T) -> Db<T, D> {
+    pub fn with_ground_data(
+        &self,
+        ground_data: T,
+        invalidations: Invalidations,
+    ) -> Db<T, D> {
+        for id in self.query_config.ground_fn.keys() {
+            assert!(
+                invalidations.types.contains(id),
+                "all ground queries must be invalidated"
+            );
+        }
+
         let gen = Gen(self.db.gen.0 + 1);
-        let graph = self.db.graph.lock().clone();
+        let mut graph = self.db.graph.lock().clone();
+        for id in invalidations.ids {
+            if let Some((gen, _)) = graph.get_mut(&id) {
+                *gen = INVALIDATED;
+            }
+        }
         let graph = Mutex::new(graph);
         Db {
             db: Arc::new(DbState { ground_data, gen, graph }),
@@ -232,6 +279,7 @@ where
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct Gen(u64);
+const INVALIDATED: Gen = Gen(!0);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct InputFingerprint(pub u64);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

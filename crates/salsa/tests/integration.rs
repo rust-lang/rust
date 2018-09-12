@@ -1,5 +1,6 @@
 extern crate salsa;
 use std::{
+    iter::once,
     sync::Arc,
     collections::hash_map::{HashMap, DefaultHasher},
     any::Any,
@@ -113,30 +114,45 @@ fn test_number_of_lines() {
     assert_eq!(trace.len(), 0);
 
     state.insert(1, "hello\nworld".to_string());
-    let db = db.with_ground_data(state.clone());
+    let mut inv = salsa::Invalidations::new();
+    inv.invalidate(GET_TEXT, once(i_print(&1u32)));
+    inv.invalidate(GET_FILES, once(i_print(&())));
+    let db = db.with_ground_data(state.clone(), inv);
     let (newlines, trace) = get::<(), usize>(&db, TOTAL_NEWLINES, ());
     assert_eq!(*newlines, 2);
     assert_eq!(trace.len(), 4);
 
     state.insert(2, "spam\neggs".to_string());
-    let db = db.with_ground_data(state.clone());
+    let mut inv = salsa::Invalidations::new();
+    inv.invalidate(GET_TEXT, once(i_print(&2u32)));
+    inv.invalidate(GET_FILES, once(i_print(&())));
+    let db = db.with_ground_data(state.clone(), inv);
     let (newlines, trace) = get::<(), usize>(&db, TOTAL_NEWLINES, ());
     assert_eq!(*newlines, 4);
-    assert_eq!(trace.len(), 5);
+    assert_eq!(trace.len(), 4);
 
+    let mut invs = vec![];
     for i in 0..10 {
-        state.insert(i + 10, "spam".to_string());
+        let id = i + 10;
+        invs.push(i_print(&id));
+        state.insert(id, "spam".to_string());
     }
-    let db = db.with_ground_data(state.clone());
+    let mut inv = salsa::Invalidations::new();
+    inv.invalidate(GET_TEXT, invs.into_iter());
+    inv.invalidate(GET_FILES, once(i_print(&())));
+    let db = db.with_ground_data(state.clone(), inv);
     let (newlines, trace) = get::<(), usize>(&db, TOTAL_NEWLINES, ());
     assert_eq!(*newlines, 14);
-    assert_eq!(trace.len(), 24);
+    assert_eq!(trace.len(), 22);
 
     state.insert(15, String::new());
-    let db = db.with_ground_data(state.clone());
+    let mut inv = salsa::Invalidations::new();
+    inv.invalidate(GET_TEXT, once(i_print(&15u32)));
+    inv.invalidate(GET_FILES, once(i_print(&())));
+    let db = db.with_ground_data(state.clone(), inv);
     let (newlines, trace) = get::<(), usize>(&db, TOTAL_NEWLINES, ());
     assert_eq!(*newlines, 13);
-    assert_eq!(trace.len(), 15);
+    assert_eq!(trace.len(), 4);
 }
 
 fn o_print<T: Hash>(x: &T) -> salsa::OutputFingerprint {
