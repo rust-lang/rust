@@ -11,6 +11,8 @@
 #![deny(improper_ctypes)]
 #![feature(libc)]
 
+#![allow(private_in_public)]
+
 extern crate libc;
 
 use std::marker::PhantomData;

@@ -412,9 +412,6 @@ declare_features! (
     // Use `?` as the Kleene "at most one" operator
     (active, macro_at_most_once_rep, "1.25.0", Some(48075), None),
 
-    // Infer outlives requirements; RFC 2093
-    (active, infer_outlives_requirements, "1.26.0", Some(44493), None),
-
     // Infer static outlives requirements; RFC 2093
     (active, infer_static_outlives_requirements, "1.26.0", Some(44493), None),
 
@@ -672,6 +669,8 @@ declare_features! (
     (accepted, proc_macro_path_invoc, "1.30.0", Some(38356), None),
     // Allows all literals in attribute lists and values of key-value pairs.
     (accepted, attr_literals, "1.30.0", Some(34981), None),
+    // Infer outlives requirements; RFC 2093
+    (accepted, infer_outlives_requirements, "1.30.0", Some(44493), None),
     (accepted, panic_handler, "1.30.0", Some(44489), None),
     // Used to preserve symbols (see llvm.used)
     (accepted, used, "1.30.0", Some(40289), None),
@@ -1123,12 +1122,6 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                  "rustc_attrs",
                                  "never will be stable",
                                  cfg_fn!(rustc_attrs))),
-
-    // RFC #2093
-    ("infer_outlives_requirements", Normal, Gated(Stability::Unstable,
-                                   "infer_outlives_requirements",
-                                   "infer outlives requirements is an experimental feature",
-                                   cfg_fn!(infer_outlives_requirements))),
 
     // RFC #2093
     ("infer_static_outlives_requirements", Normal, Gated(Stability::Unstable,

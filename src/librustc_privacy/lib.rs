@@ -13,7 +13,6 @@
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![cfg_attr(not(stage0), feature(nll))]
-#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 #![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]
@@ -1381,7 +1380,13 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     }
 
     fn predicates(&mut self) -> &mut Self {
-        let predicates = self.tcx.predicates_of(self.item_def_id);
+        // NB: We use `explicit_predicates_of` and not `predicates_of`
+        // because we don't want to report privacy errors due to where
+        // clauses that the compiler inferred. We only want to
+        // consider the ones that the user wrote. This is important
+        // for the inferred outlives rules; see
+        // `src/test/ui/rfc-2093-infer-outlives/privacy.rs`.
+        let predicates = self.tcx.explicit_predicates_of(self.item_def_id);
         for predicate in &predicates.predicates {
             predicate.visit_with(self);
             match predicate {

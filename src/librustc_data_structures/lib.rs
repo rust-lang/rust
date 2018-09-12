@@ -29,7 +29,6 @@
 #![feature(optin_builtin_traits)]
 #![cfg_attr(stage0, feature(macro_vis_matcher))]
 #![cfg_attr(not(stage0), feature(nll))]
-#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 #![feature(allow_internal_unstable)]
 #![feature(vec_resize_with)]
 

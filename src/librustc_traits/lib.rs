@@ -16,7 +16,6 @@
 #![feature(extern_prelude)]
 #![feature(in_band_lifetimes)]
 #![cfg_attr(not(stage0), feature(nll))]
-#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 
 #![recursion_limit="256"]
 

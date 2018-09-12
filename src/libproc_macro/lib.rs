@@ -28,7 +28,6 @@
        test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
 
 #![cfg_attr(not(stage0), feature(nll))]
-#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(lang_items)]

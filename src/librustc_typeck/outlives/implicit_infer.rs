@@ -66,7 +66,8 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
 
         debug!("InferVisitor::visit_item(item={:?})", item_did);
 
-        let node_id = self.tcx
+        let node_id = self
+            .tcx
             .hir
             .as_local_node_id(item_did)
             .expect("expected local def-id");
@@ -108,7 +109,8 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
         // Therefore mark `predicates_added` as true and which will ensure
         // we walk the crates again and re-calculate predicates for all
         // items.
-        let item_predicates_len: usize = self.global_inferred_outlives
+        let item_predicates_len: usize = self
+            .global_inferred_outlives
             .get(&item_did)
             .map(|p| p.len())
             .unwrap_or(0);

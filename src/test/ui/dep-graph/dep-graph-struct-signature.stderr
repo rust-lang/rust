@@ -82,20 +82,14 @@ error: no path from `WillChange` to `FnSignature`
 LL |     #[rustc_then_this_would_need(FnSignature)] //~ ERROR no path
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: no path from `WillChange` to `TypeckTables`
-  --> $DIR/dep-graph-struct-signature.rs:91:5
-   |
-LL |     #[rustc_then_this_would_need(TypeckTables)] //~ ERROR no path
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: no path from `WillChange` to `FnSignature`
-  --> $DIR/dep-graph-struct-signature.rs:94:5
+  --> $DIR/dep-graph-struct-signature.rs:93:5
    |
 LL |     #[rustc_then_this_would_need(FnSignature)] //~ ERROR no path from `WillChange`
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: no path from `WillChange` to `TypeckTables`
-  --> $DIR/dep-graph-struct-signature.rs:95:5
+  --> $DIR/dep-graph-struct-signature.rs:94:5
    |
 LL |     #[rustc_then_this_would_need(TypeckTables)] //~ ERROR no path from `WillChange`
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -136,5 +130,5 @@ error: OK
 LL |         #[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 23 previous errors
+error: aborting due to 22 previous errors
 

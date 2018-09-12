@@ -27,7 +27,6 @@
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
 #![cfg_attr(not(stage0), feature(nll))]
-#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 #![feature(raw_vec_internals)]
 #![cfg_attr(test, feature(test))]
 

@@ -14,9 +14,9 @@ trait ListItem<'a> {
 
 trait Collection { fn len(&self) -> usize; }
 
+// is now well formed. RFC 2093
 struct List<'a, T: ListItem<'a>> {
     slice: &'a [T]
-    //~^ ERROR may not live long enough
 }
 
 impl<'a, T: ListItem<'a>> Collection for List<'a, T> {
