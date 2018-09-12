@@ -14,9 +14,17 @@ pub fn target() -> TargetResult {
     let mut base = super::windows_msvc_base::opts();
 
     // Prevent error LNK2013: BRANCH24(T) fixup overflow
+    // The LBR optimization tries to eliminate branch islands,
+    // but if the displacement is larger than can fit
+    // in the instruction, this error will occur. The linker
+    // should be smart enough to insert branch islands only
+    // where necessary, but this is not the observed behavior.
+    // Disabling the LBR optimization works around the issue.
     base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().push(
         "/OPT:NOLBR".to_string());
 
+    // FIXME(jordanrh): use PanicStrategy::Unwind when SEH is
+    // implemented for windows/arm in LLVM
     base.panic_strategy = PanicStrategy::Abort;
 
     Ok(Target {
