@@ -230,7 +230,7 @@ fn check_statement(
         | StatementKind::StorageDead(_)
         | StatementKind::Validate(..)
         | StatementKind::EndRegion(_)
-        | StatementKind::UserAssertTy(..)
+        | StatementKind::AscribeUserType(..)
         | StatementKind::Nop => Ok(()),
     }
 }

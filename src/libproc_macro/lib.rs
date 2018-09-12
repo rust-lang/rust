@@ -15,10 +15,6 @@
 //! function-like macros `#[proc_macro]`, macro attributes `#[proc_macro_attribute]` and
 //! custom derive attributes`#[proc_macro_derive]`.
 //!
-//! Note that this crate is intentionally bare-bones currently.
-//! This functionality is intended to be expanded over time as more surface
-//! area for macro authors is stabilized.
-//!
 //! See [the book](../book/first-edition/procedural-macros.html) for more.
 
 #![stable(feature = "proc_macro_lib", since = "1.15.0")]
@@ -73,9 +69,6 @@ use syntax_pos::{Pos, FileName};
 ///
 /// This is both the input and output of `#[proc_macro]`, `#[proc_macro_attribute]`
 /// and `#[proc_macro_derive]` definitions.
-///
-/// The API of this type is intentionally bare-bones, but it'll be expanded over
-/// time!
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 #[derive(Clone)]
 pub struct TokenStream(tokenstream::TokenStream);

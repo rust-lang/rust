@@ -70,13 +70,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             }
 
-            PatternKind::Range { lo, hi, end } => {
+            PatternKind::Range { lo, hi, ty, end } => {
+                assert!(ty == match_pair.pattern.ty);
                 Test {
                     span: match_pair.pattern.span,
                     kind: TestKind::Range {
                         lo,
                         hi,
-                        ty: match_pair.pattern.ty.clone(),
+                        ty,
                         end,
                     },
                 }
@@ -96,6 +97,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             }
 
+            PatternKind::AscribeUserType { .. } |
             PatternKind::Array { .. } |
             PatternKind::Slice { .. } |
             PatternKind::Wild |
@@ -138,6 +140,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             PatternKind::Array { .. } |
             PatternKind::Wild |
             PatternKind::Binding { .. } |
+            PatternKind::AscribeUserType { .. } |
             PatternKind::Leaf { .. } |
             PatternKind::Deref { .. } => {
                 // don't know how to add these patterns to a switch
@@ -638,6 +641,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             span: candidate.span,
             match_pairs: other_match_pairs,
             bindings: candidate.bindings.clone(),
+            ascriptions: candidate.ascriptions.clone(),
             guard: candidate.guard.clone(),
             arm_index: candidate.arm_index,
             pat_index: candidate.pat_index,
@@ -702,6 +706,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             span: candidate.span,
             match_pairs: all_match_pairs,
             bindings: candidate.bindings.clone(),
+            ascriptions: candidate.ascriptions.clone(),
             guard: candidate.guard.clone(),
             arm_index: candidate.arm_index,
             pat_index: candidate.pat_index,

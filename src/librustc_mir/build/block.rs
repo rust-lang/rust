@@ -106,7 +106,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     remainder_scope,
                     init_scope,
                     pattern,
-                    ty,
                     initializer,
                     lint_level
                 } => {
@@ -136,7 +135,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             opt_destruction_scope.map(|de|(de, source_info)), block, |this| {
                                 let scope = (init_scope, source_info);
                                 this.in_scope(scope, lint_level, block, |this| {
-                                    this.expr_into_pattern(block, ty, pattern, init)
+                                    this.expr_into_pattern(block, pattern, init)
                                 })
                             }));
                     } else {
@@ -144,16 +143,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             None, remainder_span, lint_level, slice::from_ref(&pattern),
                             ArmHasGuard(false), None);
 
-                        // FIXME(#47184): We currently only insert `UserAssertTy` statements for
-                        // patterns that are bindings, this is as we do not want to deconstruct
-                        // the type being assertion to match the pattern.
-                        if let PatternKind::Binding { var, .. } = *pattern.kind {
-                            if let Some(ty) = ty {
-                                this.user_assert_ty(block, ty, var, span);
-                            }
-                        }
-
-                        this.visit_bindings(&pattern, &mut |this, _, _, _, node, span, _| {
+                        this.visit_bindings(&pattern, None, &mut |this, _, _, _, node, span, _, _| {
                             this.storage_live_binding(block, node, span, OutsideGuard);
                             this.schedule_drop_for_binding(node, span, OutsideGuard);
                         })

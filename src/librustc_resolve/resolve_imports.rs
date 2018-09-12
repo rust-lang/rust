@@ -31,7 +31,7 @@ use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::ext::hygiene::Mark;
 use syntax::symbol::keywords;
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax_pos::Span;
+use syntax_pos::{MultiSpan, Span};
 
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
@@ -452,6 +452,16 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
         })
     }
 
+    crate fn check_reserved_macro_name(&self, ident: Ident, ns: Namespace) {
+        // Reserve some names that are not quite covered by the general check
+        // performed on `Resolver::builtin_attrs`.
+        if ns == MacroNS &&
+           (ident.name == "cfg" || ident.name == "cfg_attr" || ident.name == "derive") {
+            self.session.span_err(ident.span,
+                                  &format!("name `{}` is reserved in macro namespace", ident));
+        }
+    }
+
     // Define the name or return the existing binding if there is a collision.
     pub fn try_define(&mut self,
                       module: Module<'a>,
@@ -459,6 +469,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                       ns: Namespace,
                       binding: &'a NameBinding<'a>)
                       -> Result<(), &'a NameBinding<'a>> {
+        self.check_reserved_macro_name(ident, ns);
         self.update_resolution(module, ident, ns, |this, resolution| {
             if let Some(old_binding) = resolution.binding {
                 if binding.is_glob_import() {
@@ -620,9 +631,9 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         }
 
         #[derive(Default)]
-        struct UniformPathsCanaryResult {
-            module_scope: Option<Span>,
-            block_scopes: Vec<Span>,
+        struct UniformPathsCanaryResult<'a> {
+            module_scope: Option<&'a NameBinding<'a>>,
+            block_scopes: Vec<&'a NameBinding<'a>>,
         }
         // Collect all tripped `uniform_paths` canaries separately.
         let mut uniform_paths_canaries: BTreeMap<
@@ -632,6 +643,8 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
 
         let mut errors = false;
         let mut seen_spans = FxHashSet();
+        let mut error_vec = Vec::new();
+        let mut prev_root_id: NodeId = NodeId::new(0);
         for i in 0 .. self.determined_imports.len() {
             let import = self.determined_imports[i];
             let error = self.finalize_import(import);
@@ -661,20 +674,12 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
 
                 self.per_ns(|_, ns| {
                     if let Some(result) = result[ns].get().ok() {
-                        if let NameBindingKind::Import { directive, .. } = result.kind {
-                            // Skip canaries that resolve to the import itself.
-                            // These come from `use crate_name;`, which isn't really
-                            // ambiguous, as the import can't actually shadow itself.
-                            if directive.id == import.id {
-                                return;
-                            }
-                        }
                         if has_explicit_self {
                             // There should only be one `self::x` (module-scoped) canary.
-                            assert_eq!(canary_results[ns].module_scope, None);
-                            canary_results[ns].module_scope = Some(result.span);
+                            assert!(canary_results[ns].module_scope.is_none());
+                            canary_results[ns].module_scope = Some(result);
                         } else {
-                            canary_results[ns].block_scopes.push(result.span);
+                            canary_results[ns].block_scopes.push(result);
                         }
                     }
                 });
@@ -694,29 +699,59 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 // If the error is a single failed import then create a "fake" import
                 // resolution for it so that later resolve stages won't complain.
                 self.import_dummy_binding(import);
+                if prev_root_id.as_u32() != 0 &&
+                    prev_root_id.as_u32() != import.root_id.as_u32() &&
+                    !error_vec.is_empty(){
+                    // in case of new import line, throw diagnostic message
+                    // for previous line.
+                    let mut empty_vec = vec![];
+                    mem::swap(&mut empty_vec, &mut error_vec);
+                    self.throw_unresolved_import_error(empty_vec, None);
+                }
                 if !seen_spans.contains(&span) {
                     let path = import_path_to_string(&import.module_path[..],
                                                      &import.subclass,
                                                      span);
-                    let error = ResolutionError::UnresolvedImport(Some((span, &path, &err)));
-                    resolve_error(self.resolver, span, error);
+                    error_vec.push((span, path, err));
                     seen_spans.insert(span);
+                    prev_root_id = import.root_id;
                 }
             }
         }
 
+        let uniform_paths_feature = self.session.features_untracked().uniform_paths;
         for ((span, _), (name, results)) in uniform_paths_canaries {
             self.per_ns(|this, ns| {
-                let results = &results[ns];
+                let external_crate = if ns == TypeNS && this.extern_prelude.contains(&name) {
+                    let crate_id =
+                        this.crate_loader.process_path_extern(name, span);
+                    Some(DefId { krate: crate_id, index: CRATE_DEF_INDEX })
+                } else {
+                    None
+                };
+                let result_filter = |result: &&NameBinding| {
+                    // Ignore canaries that resolve to an import of the same crate.
+                    // That is, we allow `use crate_name; use crate_name::foo;`.
+                    if let Some(def_id) = external_crate {
+                        if let Some(module) = result.module() {
+                            if module.normal_ancestor_id == def_id {
+                                return false;
+                            }
+                        }
+                    }
 
-                let has_external_crate =
-                    ns == TypeNS && this.extern_prelude.contains(&name);
+                    true
+                };
+                let module_scope = results[ns].module_scope.filter(result_filter);
+                let block_scopes = || {
+                    results[ns].block_scopes.iter().cloned().filter(result_filter)
+                };
 
                 // An ambiguity requires more than one possible resolution.
                 let possible_resultions =
-                    (has_external_crate as usize) +
-                    (results.module_scope.is_some() as usize) +
-                    (!results.block_scopes.is_empty() as usize);
+                    (external_crate.is_some() as usize) +
+                    (module_scope.is_some() as usize) +
+                    (block_scopes().next().is_some() as usize);
                 if possible_resultions <= 1 {
                     return;
                 }
@@ -726,27 +761,40 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 let msg = format!("`{}` import is ambiguous", name);
                 let mut err = this.session.struct_span_err(span, &msg);
                 let mut suggestion_choices = String::new();
-                if has_external_crate {
+                if external_crate.is_some() {
                     write!(suggestion_choices, "`::{}`", name);
                     err.span_label(span,
                         format!("can refer to external crate `::{}`", name));
                 }
-                if let Some(span) = results.module_scope {
+                if let Some(result) = module_scope {
                     if !suggestion_choices.is_empty() {
                         suggestion_choices.push_str(" or ");
                     }
                     write!(suggestion_choices, "`self::{}`", name);
-                    err.span_label(span,
-                        format!("can refer to `self::{}`", name));
+                    if uniform_paths_feature {
+                        err.span_label(result.span,
+                            format!("can refer to `self::{}`", name));
+                    } else {
+                        err.span_label(result.span,
+                            format!("may refer to `self::{}` in the future", name));
+                    }
                 }
-                for &span in &results.block_scopes {
-                    err.span_label(span,
+                for result in block_scopes() {
+                    err.span_label(result.span,
                         format!("shadowed by block-scoped `{}`", name));
                 }
                 err.help(&format!("write {} explicitly instead", suggestion_choices));
-                err.note("relative `use` paths enabled by `#![feature(uniform_paths)]`");
+                if uniform_paths_feature {
+                    err.note("relative `use` paths enabled by `#![feature(uniform_paths)]`");
+                } else {
+                    err.note("in the future, `#![feature(uniform_paths)]` may become the default");
+                }
                 err.emit();
             });
+        }
+
+        if !error_vec.is_empty() {
+            self.throw_unresolved_import_error(error_vec.clone(), None);
         }
 
         // Report unresolved imports only if no hard error was already reported
@@ -756,12 +804,35 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 if import.is_uniform_paths_canary {
                     continue;
                 }
-
-                let error = ResolutionError::UnresolvedImport(None);
-                resolve_error(self.resolver, import.span, error);
+                self.throw_unresolved_import_error(error_vec, Some(MultiSpan::from(import.span)));
                 break;
             }
         }
+    }
+
+    fn throw_unresolved_import_error(&self, error_vec: Vec<(Span, String, String)>,
+                                     span: Option<MultiSpan>) {
+        let max_span_label_msg_count = 10;  // upper limit on number of span_label message.
+        let (span,msg) = match error_vec.is_empty() {
+            true => (span.unwrap(), "unresolved import".to_string()),
+            false => {
+                let span = MultiSpan::from_spans(error_vec.clone().into_iter()
+                                    .map(|elem: (Span, String, String)| { elem.0 }
+                                    ).collect());
+                let path_vec: Vec<String> = error_vec.clone().into_iter()
+                                .map(|elem: (Span, String, String)| { format!("`{}`", elem.1) }
+                                ).collect();
+                let path = path_vec.join(", ");
+                let msg = format!("unresolved import{} {}",
+                                if path_vec.len() > 1 { "s" } else { "" },  path);
+                (span, msg)
+            }
+        };
+        let mut err = struct_span_err!(self.resolver.session, span, E0432, "{}", &msg);
+        for span_error in error_vec.into_iter().take(max_span_label_msg_count) {
+            err.span_label(span_error.0, span_error.2);
+        }
+        err.emit();
     }
 
     /// Attempts to resolve the given import, returning true if its resolution is determined.
@@ -930,11 +1001,15 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             _ => unreachable!(),
         };
 
+        // Do not record uses from canaries, to avoid interfering with other
+        // diagnostics or suggestions that rely on some items not being used.
+        let record_used = !directive.is_uniform_paths_canary;
+
         let mut all_ns_err = true;
         self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
             if let Ok(binding) = result[ns].get() {
                 all_ns_err = false;
-                if this.record_use(ident, ns, binding) {
+                if record_used && this.record_use(ident, ns, binding) {
                     if let ModuleOrUniformRoot::Module(module) = module {
                         this.resolution(module, ident, ns).borrow_mut().binding =
                             Some(this.dummy_binding);
@@ -946,7 +1021,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         if all_ns_err {
             let mut all_ns_failed = true;
             self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
-                match this.resolve_ident_in_module(module, ident, ns, true, span) {
+                match this.resolve_ident_in_module(module, ident, ns, record_used, span) {
                     Ok(_) => all_ns_failed = false,
                     _ => {}
                 }

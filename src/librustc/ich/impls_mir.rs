@@ -24,6 +24,7 @@ impl_stable_hash_for!(enum mir::LocalKind { Var, Temp, Arg, ReturnPointer });
 impl_stable_hash_for!(struct mir::LocalDecl<'tcx> {
     mutability,
     ty,
+    user_ty,
     name,
     source_info,
     visibility_scope,
@@ -255,9 +256,10 @@ for mir::StatementKind<'gcx> {
                 op.hash_stable(hcx, hasher);
                 places.hash_stable(hcx, hasher);
             }
-            mir::StatementKind::UserAssertTy(ref c_ty, ref local) => {
+            mir::StatementKind::AscribeUserType(ref place, ref variance, ref c_ty) => {
+                place.hash_stable(hcx, hasher);
+                variance.hash_stable(hcx, hasher);
                 c_ty.hash_stable(hcx, hasher);
-                local.hash_stable(hcx, hasher);
             }
             mir::StatementKind::Nop => {}
             mir::StatementKind::InlineAsm { ref asm, ref outputs, ref inputs } => {

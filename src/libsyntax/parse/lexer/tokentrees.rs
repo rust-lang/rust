@@ -44,6 +44,7 @@ impl<'a> StringReader<'a> {
     }
 
     fn parse_token_tree(&mut self) -> PResult<'a, TokenStream> {
+        let sm = self.sess.source_map();
         match self.token {
             token::Eof => {
                 let msg = "this file contains an un-closed delimiter";
@@ -53,20 +54,25 @@ impl<'a> StringReader<'a> {
                 }
 
                 if let Some((delim, _)) = self.open_braces.last() {
-                    if let Some((d, open_sp, close_sp)) = self.suspicious_open_spans.iter()
-                        .filter(|(d, _, _)| delim == d)
-                        .next()  // these are in reverse order as they get inserted on close, but
-                    {            // we want the last open/first close
-                        if d == delim {
-                            err.span_label(
-                                *open_sp,
-                                "this delimiter might not be properly closed...",
-                            );
-                            err.span_label(
-                                *close_sp,
-                                "...as it matches this but it has different indentation",
-                            );
+                    if let Some((_, open_sp, close_sp)) = self.matching_delim_spans.iter()
+                        .filter(|(d, open_sp, close_sp)| {
+
+                        if let Some(close_padding) = sm.span_to_margin(*close_sp) {
+                            if let Some(open_padding) = sm.span_to_margin(*open_sp) {
+                                return delim == d && close_padding != open_padding;
+                            }
                         }
+                        false
+                        }).next()  // these are in reverse order as they get inserted on close, but
+                    {              // we want the last open/first close
+                        err.span_label(
+                            *open_sp,
+                            "this delimiter might not be properly closed...",
+                        );
+                        err.span_label(
+                            *close_sp,
+                            "...as it matches this but it has different indentation",
+                        );
                     }
                 }
                 Err(err)
@@ -87,20 +93,11 @@ impl<'a> StringReader<'a> {
                 // Expand to cover the entire delimited token tree
                 let delim_span = DelimSpan::from_pair(pre_span, self.span);
 
-                let sm = self.sess.source_map();
                 match self.token {
                     // Correct delimiter.
                     token::CloseDelim(d) if d == delim => {
                         let (open_brace, open_brace_span) = self.open_braces.pop().unwrap();
-                        if let Some(current_padding) = sm.span_to_margin(self.span) {
-                            if let Some(padding) = sm.span_to_margin(open_brace_span) {
-                                if current_padding != padding {
-                                    self.suspicious_open_spans.push(
-                                        (open_brace, open_brace_span, self.span),
-                                    );
-                                }
-                            }
-                        }
+                        self.matching_delim_spans.push((open_brace, open_brace_span, self.span));
                         // Parse the close delimiter.
                         self.real_token();
                     }

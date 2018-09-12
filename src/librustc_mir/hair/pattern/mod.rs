@@ -20,7 +20,7 @@ use interpret::{const_field, const_variant_index};
 
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
-use rustc::ty::{self, TyCtxt, AdtDef, Ty, Region};
+use rustc::ty::{self, CanonicalTy, TyCtxt, AdtDef, Ty, Region};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::hir::{self, PatKind, RangeEnd};
 use rustc::hir::def::{Def, CtorKind};
@@ -66,6 +66,11 @@ pub struct Pattern<'tcx> {
 pub enum PatternKind<'tcx> {
     Wild,
 
+    AscribeUserType {
+        user_ty: CanonicalTy<'tcx>,
+        subpattern: Pattern<'tcx>,
+    },
+
     /// x, ref x, x @ P, etc
     Binding {
         mutability: Mutability,
@@ -101,6 +106,7 @@ pub enum PatternKind<'tcx> {
     Range {
         lo: &'tcx ty::Const<'tcx>,
         hi: &'tcx ty::Const<'tcx>,
+        ty: Ty<'tcx>,
         end: RangeEnd,
     },
 
@@ -125,6 +131,8 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self.kind {
             PatternKind::Wild => write!(f, "_"),
+            PatternKind::AscribeUserType { ref subpattern, .. } =>
+                write!(f, "{}: _", subpattern),
             PatternKind::Binding { mutability, name, mode, ref subpattern, .. } => {
                 let is_mut = match mode {
                     BindingMode::ByValue => mutability == Mutability::Mut,
@@ -230,7 +238,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
             PatternKind::Constant { value } => {
                 fmt_const_val(f, value)
             }
-            PatternKind::Range { lo, hi, end } => {
+            PatternKind::Range { lo, hi, ty: _, end } => {
                 fmt_const_val(f, lo)?;
                 match end {
                     RangeEnd::Included => write!(f, "..=")?,
@@ -359,7 +367,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         );
                         match (end, cmp) {
                             (RangeEnd::Excluded, Some(Ordering::Less)) =>
-                                PatternKind::Range { lo, hi, end },
+                                PatternKind::Range { lo, hi, ty, end },
                             (RangeEnd::Excluded, _) => {
                                 span_err!(
                                     self.tcx.sess,
@@ -373,7 +381,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                 PatternKind::Constant { value: lo }
                             }
                             (RangeEnd::Included, Some(Ordering::Less)) => {
-                                PatternKind::Range { lo, hi, end }
+                                PatternKind::Range { lo, hi, ty, end }
                             }
                             (RangeEnd::Included, _) => {
                                 let mut err = struct_span_err!(
@@ -939,7 +947,7 @@ macro_rules! CloneImpls {
 CloneImpls!{ <'tcx>
     Span, Field, Mutability, ast::Name, ast::NodeId, usize, &'tcx ty::Const<'tcx>,
     Region<'tcx>, Ty<'tcx>, BindingMode<'tcx>, &'tcx AdtDef,
-    &'tcx Substs<'tcx>, &'tcx Kind<'tcx>
+    &'tcx Substs<'tcx>, &'tcx Kind<'tcx>, CanonicalTy<'tcx>
 }
 
 impl<'tcx> PatternFoldable<'tcx> for FieldPattern<'tcx> {
@@ -973,6 +981,13 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
     fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
             PatternKind::Wild => PatternKind::Wild,
+            PatternKind::AscribeUserType {
+                ref subpattern,
+                user_ty,
+            } => PatternKind::AscribeUserType {
+                subpattern: subpattern.fold_with(folder),
+                user_ty: user_ty.fold_with(folder),
+            },
             PatternKind::Binding {
                 mutability,
                 name,
@@ -1017,10 +1032,12 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
             PatternKind::Range {
                 lo,
                 hi,
+                ty,
                 end,
             } => PatternKind::Range {
                 lo: lo.fold_with(folder),
                 hi: hi.fold_with(folder),
+                ty: ty.fold_with(folder),
                 end,
             },
             PatternKind::Slice {

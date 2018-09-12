@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: mod statements in non-mod.rs files are unstable
+// run-pass
+// edition:2018
 
-// This is not a directory owner since the file name is not "mod.rs".
-#[path = "mod_file_not_owning_aux1.rs"]
-mod foo;
+use std;
+use std::io;
+
+mod foo {
+    pub use std as my_std;
+}
+
+mod bar {
+    pub use std::{self};
+}
+
+fn main() {
+    io::stdout();
+    self::std::io::stdout();
+    foo::my_std::io::stdout();
+    bar::std::io::stdout();
+}

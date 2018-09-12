@@ -1257,9 +1257,11 @@ impl DocFolder for Cache {
         // Collect all the implementors of traits.
         if let clean::ImplItem(ref i) = item.inner {
             if let Some(did) = i.trait_.def_id() {
-                self.implementors.entry(did).or_default().push(Impl {
-                    impl_item: item.clone(),
-                });
+                if i.blanket_impl.is_none() {
+                    self.implementors.entry(did).or_default().push(Impl {
+                        impl_item: item.clone(),
+                    });
+                }
             }
         }
 
@@ -2931,7 +2933,6 @@ fn item_trait(
 
 
         let (synthetic, concrete): (Vec<&&Impl>, Vec<&&Impl>) = local.iter()
-            .filter(|i| i.inner_impl().blanket_impl.is_none())
             .partition(|i| i.inner_impl().synthetic);
 
         if !foreign.is_empty() {
@@ -2941,17 +2942,14 @@ fn item_trait(
                 </h2>
             ")?;
 
-            let mut foreign_cache = FxHashSet();
             for implementor in foreign {
-                if foreign_cache.insert(implementor.inner_impl().to_string()) {
-                    let assoc_link = AssocItemLink::GotoSource(
-                        implementor.impl_item.def_id,
-                        &implementor.inner_impl().provided_trait_methods
-                    );
-                    render_impl(w, cx, &implementor, assoc_link,
-                                RenderMode::Normal, implementor.impl_item.stable_since(), false,
-                                None)?;
-                }
+                let assoc_link = AssocItemLink::GotoSource(
+                    implementor.impl_item.def_id,
+                    &implementor.inner_impl().provided_trait_methods
+                );
+                render_impl(w, cx, &implementor, assoc_link,
+                            RenderMode::Normal, implementor.impl_item.stable_since(), false,
+                            None)?;
             }
         }
 

@@ -303,6 +303,7 @@ fn replace_result_variable<'tcx>(
     let new_ret = LocalDecl {
         mutability: Mutability::Mut,
         ty: ret_ty,
+        user_ty: None,
         name: None,
         source_info,
         visibility_scope: source_info.scope,
@@ -656,6 +657,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
     mir.local_decls[RETURN_PLACE] = LocalDecl {
         mutability: Mutability::Mut,
         ty: tcx.mk_unit(),
+        user_ty: None,
         name: None,
         source_info,
         visibility_scope: source_info.scope,
@@ -672,6 +674,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
             ty: gen_ty,
             mutbl: hir::Mutability::MutMutable,
         }),
+        user_ty: None,
         name: None,
         source_info,
         visibility_scope: source_info.scope,

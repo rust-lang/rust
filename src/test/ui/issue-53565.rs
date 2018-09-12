@@ -7,23 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
-// edition:2018
-
-#![feature(uniform_paths)]
-
-use std;
-
-mod foo {
-    pub use std as my_std;
-}
-
-mod bar {
-    pub use std::{self};
-}
-
-fn main() {
-    self::std::io::stdout();
-    foo::my_std::io::stdout();
-    bar::std::io::stdout();
+use std::time::{foo, bar, buzz};
+use std::time::{abc, def};
+fn main(){
+   println!("Hello World!");
 }

@@ -12,7 +12,7 @@
 //!
 //!   - `CleanEndRegions`, that reduces the set of `EndRegion` statements
 //!     in the MIR.
-//!   - `CleanUserAssertTy`, that replaces all `UserAssertTy` statements
+//!   - `CleanAscribeUserType`, that replaces all `AscribeUserType` statements
 //!     with `Nop`.
 //!
 //! The `CleanEndRegions` "pass" is actually implemented as two
@@ -24,10 +24,10 @@
 //! MIR and removes any `EndRegion` that is applied to a region that
 //! was not seen in the previous pass.
 //!
-//! The `CleanUserAssertTy` pass runs at a distinct time from the
-//! `CleanEndRegions` pass. It is important that the `CleanUserAssertTy`
+//! The `CleanAscribeUserType` pass runs at a distinct time from the
+//! `CleanEndRegions` pass. It is important that the `CleanAscribeUserType`
 //! pass runs after the MIR borrowck so that the NLL type checker can
-//! perform the type assertion when it encounters the `UserAssertTy`
+//! perform the type assertion when it encounters the `AscribeUserType`
 //! statements.
 
 use rustc_data_structures::fx::FxHashSet;
@@ -110,26 +110,26 @@ impl<'a, 'tcx> MutVisitor<'tcx> for DeleteTrivialEndRegions<'a> {
     }
 }
 
-pub struct CleanUserAssertTy;
+pub struct CleanAscribeUserType;
 
-pub struct DeleteUserAssertTy;
+pub struct DeleteAscribeUserType;
 
-impl MirPass for CleanUserAssertTy {
+impl MirPass for CleanAscribeUserType {
     fn run_pass<'a, 'tcx>(&self,
                           _tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _source: MirSource,
                           mir: &mut Mir<'tcx>) {
-        let mut delete = DeleteUserAssertTy;
+        let mut delete = DeleteAscribeUserType;
         delete.visit_mir(mir);
     }
 }
 
-impl<'tcx> MutVisitor<'tcx> for DeleteUserAssertTy {
+impl<'tcx> MutVisitor<'tcx> for DeleteAscribeUserType {
     fn visit_statement(&mut self,
                        block: BasicBlock,
                        statement: &mut Statement<'tcx>,
                        location: Location) {
-        if let StatementKind::UserAssertTy(..) = statement.kind {
+        if let StatementKind::AscribeUserType(..) = statement.kind {
             statement.make_nop();
         }
         self.super_statement(block, statement, location);

@@ -496,6 +496,14 @@ impl Builder<'a, 'll, 'tcx> {
 
 
     pub fn range_metadata(&self, load: &'ll Value, range: Range<u128>) {
+        if self.sess().target.target.arch == "amdgpu" {
+            // amdgpu/LLVM does something weird and thinks a i64 value is
+            // split into a v2i32, halving the bitwidth LLVM expects,
+            // tripping an assertion. So, for now, just disable this
+            // optimization.
+            return;
+        }
+
         unsafe {
             let llty = val_ty(load);
             let v = [

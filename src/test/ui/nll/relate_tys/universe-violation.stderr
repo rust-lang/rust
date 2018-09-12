@@ -1,0 +1,8 @@
+error: higher-ranked subtype error
+  --> $DIR/universe-violation.rs:15:31
+   |
+LL |     let b: fn(&u32) -> &u32 = a;
+   |                               ^
+
+error: aborting due to previous error
+

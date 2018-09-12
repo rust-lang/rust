@@ -41,8 +41,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax_pos::{Span, DUMMY_SP};
 use self::Promotability::*;
-use std::ops::{BitAnd, BitOr};
-
+use std::ops::{BitAnd, BitAndAssign, BitOr};
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
@@ -114,7 +113,7 @@ struct CheckCrateVisitor<'a, 'tcx: 'a> {
 }
 
 #[must_use]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum Promotability {
     Promotable,
     NotPromotable
@@ -125,11 +124,15 @@ impl BitAnd for Promotability {
 
     fn bitand(self, rhs: Self) -> Self {
         match (self, rhs) {
-            (Promotable, NotPromotable) => NotPromotable,
-            (NotPromotable, Promotable) => NotPromotable,
-            (NotPromotable, NotPromotable) => NotPromotable,
             (Promotable, Promotable) => Promotable,
+            _ => NotPromotable,
         }
+    }
+}
+
+impl BitAndAssign for Promotability {
+    fn bitand_assign(&mut self, rhs: Self) {
+        *self = *self & rhs
     }
 }
 
@@ -138,10 +141,8 @@ impl BitOr for Promotability {
 
     fn bitor(self, rhs: Self) -> Self {
         match (self, rhs) {
-            (Promotable, NotPromotable) => Promotable,
-            (NotPromotable, Promotable) => Promotable,
             (NotPromotable, NotPromotable) => NotPromotable,
-            (Promotable, Promotable) => Promotable,
+            _ => Promotable,
         }
     }
 }
@@ -161,7 +162,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
 
     fn handle_const_fn_call(&mut self, def_id: DefId,
                             ret_ty: Ty<'gcx>, span: Span) -> Promotability {
-        if let NotPromotable = self.type_promotability(ret_ty) {
+        if self.type_promotability(ret_ty) == NotPromotable {
             return NotPromotable;
         }
 
@@ -266,9 +267,8 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
                             }
                         }
 
-                        match local.init {
-                            Some(ref expr) => { let _ = self.check_expr(&expr); },
-                            None => {},
+                        if let Some(ref expr) = local.init {
+                            let _ = self.check_expr(&expr);
                         }
                         NotPromotable
                     }
@@ -287,7 +287,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     fn check_expr(&mut self, ex: &'tcx hir::Expr) -> Promotability {
         let node_ty = self.tables.node_id_to_type(ex.hir_id);
         let mut outer = check_expr_kind(self, ex, node_ty);
-        outer = outer & check_adjustments(self, ex);
+        outer &= check_adjustments(self, ex);
 
         // Handle borrows on (or inside the autorefs of) this expression.
         if self.mut_rvalue_borrows.remove(&ex.id) {
@@ -303,7 +303,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     fn check_block(&mut self, block: &'tcx hir::Block) -> Promotability {
         let mut iter_result = Promotable;
         for index in block.stmts.iter() {
-            iter_result = iter_result & self.check_stmt(index);
+            iter_result &= self.check_stmt(index);
         }
         match block.expr {
             Some(ref box_expr) => iter_result & self.check_expr(&*box_expr),
@@ -336,10 +336,7 @@ fn check_expr_kind<'a, 'tcx>(
         }
         hir::ExprKind::Unary(op, ref expr) => {
             let expr_promotability = v.check_expr(expr);
-            if v.tables.is_method_call(e) {
-                return NotPromotable;
-            }
-            if op == hir::UnDeref {
+            if v.tables.is_method_call(e) || op == hir::UnDeref {
                 return NotPromotable;
             }
             expr_promotability
@@ -353,8 +350,8 @@ fn check_expr_kind<'a, 'tcx>(
             match v.tables.node_id_to_type(lhs.hir_id).sty {
                 ty::RawPtr(_) => {
                     assert!(op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne ||
-                        op.node == hir::BinOpKind::Le || op.node == hir::BinOpKind::Lt ||
-                        op.node == hir::BinOpKind::Ge || op.node == hir::BinOpKind::Gt);
+                            op.node == hir::BinOpKind::Le || op.node == hir::BinOpKind::Lt ||
+                            op.node == hir::BinOpKind::Ge || op.node == hir::BinOpKind::Gt);
 
                     NotPromotable
                 }
@@ -400,7 +397,6 @@ fn check_expr_kind<'a, 'tcx>(
                         debug!("Reference to Static(id={:?}) is unpromotable as it is not \
                                referenced from a static", did);
                         NotPromotable
-
                     }
                 }
 
@@ -425,7 +421,7 @@ fn check_expr_kind<'a, 'tcx>(
         hir::ExprKind::Call(ref callee, ref hirvec) => {
             let mut call_result = v.check_expr(callee);
             for index in hirvec.iter() {
-                call_result = call_result & v.check_expr(index);
+                call_result &= v.check_expr(index);
             }
             let mut callee = &**callee;
             loop {
@@ -464,7 +460,7 @@ fn check_expr_kind<'a, 'tcx>(
         hir::ExprKind::MethodCall(ref _pathsegment, ref _span, ref hirvec) => {
             let mut method_call_result = Promotable;
             for index in hirvec.iter() {
-                method_call_result = method_call_result & v.check_expr(index);
+                method_call_result &= v.check_expr(index);
             }
             if let Some(def) = v.tables.type_dependent_defs().get(e.hir_id) {
                 let def_id = def.def_id();
@@ -483,11 +479,10 @@ fn check_expr_kind<'a, 'tcx>(
         hir::ExprKind::Struct(ref _qpath, ref hirvec, ref option_expr) => {
             let mut struct_result = Promotable;
             for index in hirvec.iter() {
-                struct_result = struct_result & v.check_expr(&index.expr);
+                struct_result &= v.check_expr(&index.expr);
             }
-            match *option_expr {
-                Some(ref expr) => { struct_result = struct_result & v.check_expr(&expr); },
-                None => {},
+            if let Some(ref expr) = *option_expr {
+                struct_result &= v.check_expr(&expr);
             }
             if let ty::Adt(adt, ..) = v.tables.expr_ty(e).sty {
                 // unsafe_cell_type doesn't necessarily exist with no_core
@@ -506,7 +501,7 @@ fn check_expr_kind<'a, 'tcx>(
         }
 
         hir::ExprKind::Closure(_capture_clause, ref _box_fn_decl,
-                         body_id, _span, _option_generator_movability) => {
+                               body_id, _span, _option_generator_movability) => {
             let nested_body_promotable = v.check_nested_body(body_id);
             // Paths in constant contexts cannot refer to local variables,
             // as there are none, and thus closures can't have upvars there.
@@ -543,7 +538,7 @@ fn check_expr_kind<'a, 'tcx>(
         hir::ExprKind::Array(ref hirvec) => {
             let mut array_result = Promotable;
             for index in hirvec.iter() {
-                array_result = array_result & v.check_expr(index);
+                array_result &= v.check_expr(index);
             }
             array_result
         }
@@ -555,7 +550,7 @@ fn check_expr_kind<'a, 'tcx>(
         hir::ExprKind::Tup(ref hirvec) => {
             let mut tup_result = Promotable;
             for index in hirvec.iter() {
-                tup_result = tup_result & v.check_expr(index);
+                tup_result &= v.check_expr(index);
             }
             tup_result
         }
@@ -576,12 +571,9 @@ fn check_expr_kind<'a, 'tcx>(
             let _ = v.check_expr(expr);
             for index in hirvec_arm.iter() {
                 let _ = v.check_expr(&*index.body);
-                match index.guard {
-                    Some(hir::Guard::If(ref expr)) => {
-                        let _ = v.check_expr(&expr);
-                    },
-                    None => {},
-                };
+                if let Some(hir::Guard::If(ref expr)) = index.guard {
+                    let _ = v.check_expr(&expr);
+                }
             }
             NotPromotable
         }
@@ -589,10 +581,9 @@ fn check_expr_kind<'a, 'tcx>(
         hir::ExprKind::If(ref lhs, ref rhs, ref option_expr) => {
             let _ = v.check_expr(lhs);
             let _ = v.check_expr(rhs);
-            match option_expr {
-                Some(ref expr) => { let _ = v.check_expr(&expr); },
-                None => {},
-            };
+            if let Some(ref expr) = option_expr {
+                let _ = v.check_expr(&expr);
+            }
             NotPromotable
         }
 
@@ -610,9 +601,8 @@ fn check_expr_kind<'a, 'tcx>(
 
         // More control flow (also not very meaningful).
         hir::ExprKind::Break(_, ref option_expr) | hir::ExprKind::Ret(ref option_expr) => {
-            match *option_expr {
-                Some(ref expr) => { let _ = v.check_expr(&expr); },
-                None => {},
+            if let Some(ref expr) = *option_expr {
+                 let _ = v.check_expr(&expr);
             }
             NotPromotable
         }
@@ -635,10 +625,7 @@ fn check_expr_kind<'a, 'tcx>(
         }
 
         hir::ExprKind::InlineAsm(ref _inline_asm, ref hirvec_lhs, ref hirvec_rhs) => {
-            for index in hirvec_lhs.iter() {
-                let _ = v.check_expr(index);
-            }
-            for index in hirvec_rhs.iter() {
+            for index in hirvec_lhs.iter().chain(hirvec_rhs.iter()) {
                 let _ = v.check_expr(index);
             }
             NotPromotable
@@ -703,11 +690,8 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
         // These occur when we convert a &T or *T to a *U, as well as
         // when making a thin pointer (e.g., `*T`) into a fat pointer
         // (e.g., `*Trait`).
-        match loan_cause {
-            euv::LoanCause::AutoUnsafe => {
-                return;
-            }
-            _ => {}
+        if let euv::LoanCause::AutoUnsafe = loan_cause {
+            return;
         }
 
         let mut cur = cmt;

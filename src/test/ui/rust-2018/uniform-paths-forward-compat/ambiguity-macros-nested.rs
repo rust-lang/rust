@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: mod statements in non-mod.rs files are unstable
+// edition:2018
 
-mod mod_file_not_owning_aux1;
+// This test is similar to `ambiguity-macros.rs`, but nested in a module.
+
+mod foo {
+    pub use std::io;
+    //~^ ERROR `std` import is ambiguous
+
+    macro_rules! m {
+        () => {
+            mod std {
+                pub struct io;
+            }
+        }
+    }
+    m!();
+}
 
 fn main() {}

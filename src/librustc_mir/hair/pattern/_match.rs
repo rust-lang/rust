@@ -416,7 +416,7 @@ pub enum Constructor<'tcx> {
     /// Literal values.
     ConstantValue(&'tcx ty::Const<'tcx>),
     /// Ranges of literal values (`2...5` and `2..5`).
-    ConstantRange(&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>, RangeEnd),
+    ConstantRange(u128, u128, Ty<'tcx>, RangeEnd),
     /// Array patterns of length n.
     Slice(u64),
 }
@@ -588,7 +588,12 @@ impl<'tcx> Witness<'tcx> {
                 _ => {
                     match *ctor {
                         ConstantValue(value) => PatternKind::Constant { value },
-                        ConstantRange(lo, hi, end) => PatternKind::Range { lo, hi, end },
+                        ConstantRange(lo, hi, ty, end) => PatternKind::Range {
+                            lo: ty::Const::from_bits(cx.tcx, lo, ty::ParamEnv::empty().and(ty)),
+                            hi: ty::Const::from_bits(cx.tcx, hi, ty::ParamEnv::empty().and(ty)),
+                            ty,
+                            end,
+                        },
                         _ => PatternKind::Wild,
                     }
                 }
@@ -648,14 +653,18 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 .collect()
         }
         ty::Char if exhaustive_integer_patterns => {
-            let endpoint = |c: char| {
-                let ty = ty::ParamEnv::empty().and(cx.tcx.types.char);
-                ty::Const::from_bits(cx.tcx, c as u128, ty)
-            };
             vec![
                 // The valid Unicode Scalar Value ranges.
-                ConstantRange(endpoint('\u{0000}'), endpoint('\u{D7FF}'), RangeEnd::Included),
-                ConstantRange(endpoint('\u{E000}'), endpoint('\u{10FFFF}'), RangeEnd::Included),
+                ConstantRange('\u{0000}' as u128,
+                              '\u{D7FF}' as u128,
+                              cx.tcx.types.char,
+                              RangeEnd::Included
+                ),
+                ConstantRange('\u{E000}' as u128,
+                              '\u{10FFFF}' as u128,
+                              cx.tcx.types.char,
+                              RangeEnd::Included
+                ),
             ]
         }
         ty::Int(ity) if exhaustive_integer_patterns => {
@@ -663,19 +672,13 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             let bits = Integer::from_attr(cx.tcx, SignedInt(ity)).size().bits() as u128;
             let min = 1u128 << (bits - 1);
             let max = (1u128 << (bits - 1)) - 1;
-            let ty = ty::ParamEnv::empty().and(pcx.ty);
-            vec![ConstantRange(ty::Const::from_bits(cx.tcx, min as u128, ty),
-                               ty::Const::from_bits(cx.tcx, max as u128, ty),
-                               RangeEnd::Included)]
+            vec![ConstantRange(min, max, pcx.ty, RangeEnd::Included)]
         }
         ty::Uint(uty) if exhaustive_integer_patterns => {
             // FIXME(49937): refactor these bit manipulations into interpret.
             let bits = Integer::from_attr(cx.tcx, UnsignedInt(uty)).size().bits() as u128;
             let max = !0u128 >> (128 - bits);
-            let ty = ty::ParamEnv::empty().and(pcx.ty);
-            vec![ConstantRange(ty::Const::from_bits(cx.tcx, 0, ty),
-                               ty::Const::from_bits(cx.tcx, max, ty),
-                               RangeEnd::Included)]
+            vec![ConstantRange(0, max, pcx.ty, RangeEnd::Included)]
         }
         _ => {
             if cx.is_uninhabited(pcx.ty) {
@@ -811,26 +814,18 @@ impl<'tcx> IntRange<'tcx> {
                  ctor: &Constructor<'tcx>)
                  -> Option<IntRange<'tcx>> {
         match ctor {
-            ConstantRange(lo, hi, end) => {
-                assert_eq!(lo.ty, hi.ty);
-                let ty = lo.ty;
-                let env_ty = ty::ParamEnv::empty().and(ty);
-                if let Some(lo) = lo.assert_bits(tcx, env_ty) {
-                    if let Some(hi) = hi.assert_bits(tcx, env_ty) {
-                        // Perform a shift if the underlying types are signed,
-                        // which makes the interval arithmetic simpler.
-                        let bias = IntRange::signed_bias(tcx, ty);
-                        let (lo, hi) = (lo ^ bias, hi ^ bias);
-                        // Make sure the interval is well-formed.
-                        return if lo > hi || lo == hi && *end == RangeEnd::Excluded {
-                            None
-                        } else {
-                            let offset = (*end == RangeEnd::Excluded) as u128;
-                            Some(IntRange { range: lo..=(hi - offset), ty })
-                        };
-                    }
+            ConstantRange(lo, hi, ty, end) => {
+                // Perform a shift if the underlying types are signed,
+                // which makes the interval arithmetic simpler.
+                let bias = IntRange::signed_bias(tcx, ty);
+                let (lo, hi) = (lo ^ bias, hi ^ bias);
+                // Make sure the interval is well-formed.
+                if lo > hi || lo == hi && *end == RangeEnd::Excluded {
+                    None
+                } else {
+                    let offset = (*end == RangeEnd::Excluded) as u128;
+                    Some(IntRange { range: lo..=(hi - offset), ty })
                 }
-                None
             }
             ConstantValue(val) => {
                 let ty = val.ty;
@@ -853,7 +848,12 @@ impl<'tcx> IntRange<'tcx> {
                 -> Option<IntRange<'tcx>> {
         Self::from_ctor(tcx, &match pat.kind {
             box PatternKind::Constant { value } => ConstantValue(value),
-            box PatternKind::Range { lo, hi, end } => ConstantRange(lo, hi, end),
+            box PatternKind::Range { lo, hi, ty, end } => ConstantRange(
+                lo.to_bits(tcx, ty::ParamEnv::empty().and(ty)).unwrap(),
+                hi.to_bits(tcx, ty::ParamEnv::empty().and(ty)).unwrap(),
+                ty,
+                end,
+            ),
             _ => return None,
         })
     }
@@ -876,14 +876,12 @@ impl<'tcx> IntRange<'tcx> {
         r: RangeInclusive<u128>,
     ) -> Constructor<'tcx> {
         let bias = IntRange::signed_bias(tcx, ty);
-        let ty = ty::ParamEnv::empty().and(ty);
         let (lo, hi) = r.into_inner();
         if lo == hi {
+            let ty = ty::ParamEnv::empty().and(ty);
             ConstantValue(ty::Const::from_bits(tcx, lo ^ bias, ty))
         } else {
-            ConstantRange(ty::Const::from_bits(tcx, lo ^ bias, ty),
-                          ty::Const::from_bits(tcx, hi ^ bias, ty),
-                          RangeEnd::Included)
+            ConstantRange(lo ^ bias, hi ^ bias, ty, RangeEnd::Included)
         }
     }
 
@@ -1228,20 +1226,28 @@ fn is_useful_specialized<'p, 'a:'p, 'tcx: 'a>(
 /// Slice patterns, however, can match slices of different lengths. For instance,
 /// `[a, b, ..tail]` can match a slice of length 2, 3, 4 and so on.
 ///
-/// Returns `None` in case of a catch-all, which can't be specialized.
-fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt,
+/// Returns None in case of a catch-all, which can't be specialized.
+fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
                           pat: &Pattern<'tcx>,
                           pcx: PatternContext)
                           -> Option<Vec<Constructor<'tcx>>>
 {
     match *pat.kind {
+        PatternKind::AscribeUserType { ref subpattern, .. } =>
+            pat_constructors(cx, subpattern, pcx),
         PatternKind::Binding { .. } | PatternKind::Wild => None,
         PatternKind::Leaf { .. } | PatternKind::Deref { .. } => Some(vec![Single]),
         PatternKind::Variant { adt_def, variant_index, .. } => {
             Some(vec![Variant(adt_def.variants[variant_index].did)])
         }
         PatternKind::Constant { value } => Some(vec![ConstantValue(value)]),
-        PatternKind::Range { lo, hi, end } => Some(vec![ConstantRange(lo, hi, end)]),
+        PatternKind::Range { lo, hi, ty, end } =>
+            Some(vec![ConstantRange(
+                lo.to_bits(cx.tcx, ty::ParamEnv::empty().and(ty)).unwrap(),
+                hi.to_bits(cx.tcx, ty::ParamEnv::empty().and(ty)).unwrap(),
+                ty,
+                end,
+            )]),
         PatternKind::Array { .. } => match pcx.ty.sty {
             ty::Array(_, length) => Some(vec![
                 Slice(length.unwrap_usize(cx.tcx))
@@ -1381,10 +1387,13 @@ fn slice_pat_covered_by_constructor<'tcx>(
 // constructor is a range or constant with an integer type.
 fn should_treat_range_exhaustively(tcx: TyCtxt<'_, 'tcx, 'tcx>, ctor: &Constructor<'tcx>) -> bool {
     if tcx.features().exhaustive_integer_patterns {
-        if let ConstantValue(value) | ConstantRange(value, _, _) = ctor {
-            if let ty::Char | ty::Int(_) | ty::Uint(_) = value.ty.sty {
-                return true;
-            }
+        let ty = match ctor {
+            ConstantValue(value) => value.ty,
+            ConstantRange(_, _, ty, _) => ty,
+            _ => return false,
+        };
+        if let ty::Char | ty::Int(_) | ty::Uint(_) = ty.sty {
+            return true;
         }
     }
     false
@@ -1535,7 +1544,7 @@ fn constructor_covered_by_range<'a, 'tcx>(
 ) -> Result<bool, ErrorReported> {
     let (from, to, end, ty) = match pat.kind {
         box PatternKind::Constant { value } => (value, value, RangeEnd::Included, value.ty),
-        box PatternKind::Range { lo, hi, end } => (lo, hi, end, lo.ty),
+        box PatternKind::Range { lo, hi, ty, end } => (lo, hi, end, ty),
         _ => bug!("`constructor_covered_by_range` called with {:?}", pat),
     };
     trace!("constructor_covered_by_range {:#?}, {:#?}, {:#?}, {}", ctor, from, to, ty);
@@ -1557,17 +1566,33 @@ fn constructor_covered_by_range<'a, 'tcx>(
                       (end == RangeEnd::Included && to == Ordering::Equal);
             Ok(some_or_ok!(cmp_from(value)) && end)
         },
-        ConstantRange(from, to, RangeEnd::Included) => {
-            let to = some_or_ok!(cmp_to(to));
+        ConstantRange(from, to, ty, RangeEnd::Included) => {
+            let to = some_or_ok!(cmp_to(ty::Const::from_bits(
+                tcx,
+                to,
+                ty::ParamEnv::empty().and(ty),
+            )));
             let end = (to == Ordering::Less) ||
                       (end == RangeEnd::Included && to == Ordering::Equal);
-            Ok(some_or_ok!(cmp_from(from)) && end)
+            Ok(some_or_ok!(cmp_from(ty::Const::from_bits(
+                tcx,
+                from,
+                ty::ParamEnv::empty().and(ty),
+            ))) && end)
         },
-        ConstantRange(from, to, RangeEnd::Excluded) => {
-            let to = some_or_ok!(cmp_to(to));
+        ConstantRange(from, to, ty, RangeEnd::Excluded) => {
+            let to = some_or_ok!(cmp_to(ty::Const::from_bits(
+                tcx,
+                to,
+                ty::ParamEnv::empty().and(ty)
+            )));
             let end = (to == Ordering::Less) ||
                       (end == RangeEnd::Excluded && to == Ordering::Equal);
-            Ok(some_or_ok!(cmp_from(from)) && end)
+            Ok(some_or_ok!(cmp_from(ty::Const::from_bits(
+                tcx,
+                from,
+                ty::ParamEnv::empty().and(ty)))
+            ) && end)
         }
         Single => Ok(true),
         _ => bug!(),
@@ -1606,6 +1631,9 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
     let pat = &r[0];
 
     let head: Option<Vec<&Pattern>> = match *pat.kind {
+        PatternKind::AscribeUserType { ref subpattern, .. } =>
+            specialize(cx, ::std::slice::from_ref(&subpattern), constructor, wild_patterns),
+
         PatternKind::Binding { .. } | PatternKind::Wild => {
             Some(wild_patterns.to_owned())
         }

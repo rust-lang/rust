@@ -17,7 +17,7 @@ use rustc::infer::InferCtxt;
 use rustc::mir::visit::TyContext;
 use rustc::mir::visit::Visitor;
 use rustc::mir::{BasicBlock, BasicBlockData, Location, Mir, Place, Rvalue};
-use rustc::mir::{Local, Statement, Terminator};
+use rustc::mir::{Statement, Terminator};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, CanonicalTy, ClosureSubsts, GeneratorSubsts, RegionVid};
@@ -175,10 +175,11 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
         self.super_terminator(block, terminator, location);
     }
 
-    fn visit_user_assert_ty(
+    fn visit_ascribe_user_ty(
         &mut self,
+        _place: &Place<'tcx>,
+        _variance: &ty::Variance,
         _c_ty: &CanonicalTy<'tcx>,
-        _local: &Local,
         _location: Location,
     ) {
     }

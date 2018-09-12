@@ -39,6 +39,7 @@ use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
+use syntax::feature_gate::is_builtin_attr;
 use syntax::parse::token::{self, Token};
 use syntax::std_inject::injected_crate_name;
 use syntax::symbol::keywords;
@@ -194,26 +195,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         // ergonomically unacceptable.
         let emit_uniform_paths_canary =
             !uniform_paths_canary_emitted &&
-            uniform_paths &&
+            self.session.rust_2018() &&
             starts_with_non_keyword;
         if emit_uniform_paths_canary {
             let source = prefix_start.unwrap();
-
-            // HACK(eddyb) For `use x::{self, ...};`, use the ID of the
-            // `self` nested import for the canary. This allows the
-            // ambiguity reporting scope to ignore false positives
-            // in the same way it does for `use x;` (by comparing IDs).
-            let mut canary_id = id;
-            if let ast::UseTreeKind::Nested(ref items) = use_tree.kind {
-                for &(ref use_tree, id) in items {
-                    if let ast::UseTreeKind::Simple(..) = use_tree.kind {
-                        if use_tree.ident().name == keywords::SelfValue.name() {
-                            canary_id = id;
-                            break;
-                        }
-                    }
-                }
-            }
 
             // Helper closure to emit a canary with the given base path.
             let emit = |this: &mut Self, base: Option<Ident>| {
@@ -234,7 +219,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     base.into_iter().collect(),
                     subclass.clone(),
                     source.span,
-                    canary_id,
+                    id,
                     root_use_tree.span,
                     root_id,
                     ty::Visibility::Invisible,
@@ -833,7 +818,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                            binding: &'a NameBinding<'a>,
                            span: Span,
                            allow_shadowing: bool) {
-        if self.macro_prelude.insert(name, binding).is_some() && !allow_shadowing {
+        if self.macro_use_prelude.insert(name, binding).is_some() && !allow_shadowing {
             let msg = format!("`{}` is already in scope", name);
             let note =
                 "macro-expanded `#[macro_use]`s may not shadow existing macros (see RFC 1560)";
@@ -1072,5 +1057,14 @@ impl<'a, 'b, 'cl> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b, 'cl> {
                 _ => {}
             }
         }
+    }
+
+    fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
+        if !attr.is_sugared_doc && is_builtin_attr(attr) {
+            self.resolver.current_module.builtin_attrs.borrow_mut().push((
+                attr.path.segments[0].ident, self.expansion, self.current_legacy_scope
+            ));
+        }
+        visit::walk_attribute(self, attr);
     }
 }

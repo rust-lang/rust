@@ -22,6 +22,7 @@ use syntax::ast::*;
 use syntax::attr;
 use syntax::source_map::Spanned;
 use syntax::symbol::keywords;
+use syntax::ptr::P;
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
 use errors;
@@ -98,14 +99,11 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_trait_fn_not_const(&self, constness: Spanned<Constness>) {
-        match constness.node {
-            Constness::Const => {
-                struct_span_err!(self.session, constness.span, E0379,
-                                 "trait fns cannot be declared const")
-                    .span_label(constness.span, "trait fns cannot be const")
-                    .emit();
-            }
-            _ => {}
+        if constness.node == Constness::Const {
+            struct_span_err!(self.session, constness.span, E0379,
+                             "trait fns cannot be declared const")
+                .span_label(constness.span, "trait fns cannot be const")
+                .emit();
         }
     }
 
@@ -113,7 +111,7 @@ impl<'a> AstValidator<'a> {
         for bound in bounds {
             if let GenericBound::Trait(ref poly, TraitBoundModifier::Maybe) = *bound {
                 let mut err = self.err_handler().struct_span_err(poly.span,
-                                    &format!("`?Trait` is not permitted in {}", where_));
+                    &format!("`?Trait` is not permitted in {}", where_));
                 if is_trait {
                     err.note(&format!("traits are `?{}` by default", poly.trait_ref.path));
                 }
@@ -152,26 +150,76 @@ impl<'a> AstValidator<'a> {
         // Check only lifetime parameters are present and that the lifetime
         // parameters that are present have no bounds.
         let non_lt_param_spans: Vec<_> = params.iter().filter_map(|param| match param.kind {
-                GenericParamKind::Lifetime { .. } => {
-                    if !param.bounds.is_empty() {
-                        let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
-                        self.err_handler()
-                            .span_err(spans, "lifetime bounds cannot be used in this context");
-                    }
-                    None
+            GenericParamKind::Lifetime { .. } => {
+                if !param.bounds.is_empty() {
+                    let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
+                    self.err_handler()
+                        .span_err(spans, "lifetime bounds cannot be used in this context");
                 }
-                _ => Some(param.ident.span),
-            }).collect();
+                None
+            }
+            _ => Some(param.ident.span),
+        }).collect();
         if !non_lt_param_spans.is_empty() {
             self.err_handler().span_err(non_lt_param_spans,
                 "only lifetime parameters can be used in this context");
         }
     }
+
+    /// With eRFC 2497, we need to check whether an expression is ambigious and warn or error
+    /// depending on the edition, this function handles that.
+    fn while_if_let_ambiguity(&self, expr: &P<Expr>) {
+        if let Some((span, op_kind)) = self.while_if_let_expr_ambiguity(&expr) {
+            let mut err = self.err_handler().struct_span_err(
+                span, &format!("ambigious use of `{}`", op_kind.to_string())
+            );
+
+            err.note(
+                "this will be a error until the `let_chains` feature is stabilized"
+            );
+            err.note(
+                "see rust-lang/rust#53668 for more information"
+            );
+
+            if let Ok(snippet) = self.session.source_map().span_to_snippet(span) {
+                err.span_suggestion(
+                    span, "consider adding parentheses", format!("({})", snippet),
+                );
+            }
+
+            err.emit();
+        }
+    }
+
+    /// With eRFC 2497 adding if-let chains, there is a requirement that the parsing of
+    /// `&&` and `||` in a if-let statement be unambigious. This function returns a span and
+    /// a `BinOpKind` (either `&&` or `||` depending on what was ambigious) if it is determined
+    /// that the current expression parsed is ambigious and will break in future.
+    fn while_if_let_expr_ambiguity(&self, expr: &P<Expr>) -> Option<(Span, BinOpKind)> {
+        debug!("while_if_let_expr_ambiguity: expr.node: {:?}", expr.node);
+        match &expr.node {
+            ExprKind::Binary(op, _, _) if op.node == BinOpKind::And || op.node == BinOpKind::Or => {
+                Some((expr.span, op.node))
+            },
+            ExprKind::Range(ref lhs, ref rhs, _) => {
+                let lhs_ambigious = lhs.as_ref()
+                    .and_then(|lhs| self.while_if_let_expr_ambiguity(lhs));
+                let rhs_ambigious = rhs.as_ref()
+                    .and_then(|rhs| self.while_if_let_expr_ambiguity(rhs));
+
+                lhs_ambigious.or(rhs_ambigious)
+            }
+            _ => None,
+        }
+    }
+
 }
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_expr(&mut self, expr: &'a Expr) {
         match expr.node {
+            ExprKind::IfLet(_, ref expr, _, _) | ExprKind::WhileLet(_, ref expr, _, _) =>
+                self.while_if_let_ambiguity(&expr),
             ExprKind::InlineAsm(..) if !self.session.target.target.options.allow_asm => {
                 span_err!(self.session, expr.span, E0472, "asm! is unsupported on this target");
             }
@@ -387,7 +435,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.err_handler().span_err(item.span,
                                                 "tuple and unit unions are not permitted");
                 }
-                if vdata.fields().len() == 0 {
+                if vdata.fields().is_empty() {
                     self.err_handler().span_err(item.span,
                                                 "unions cannot have zero fields");
                 }
@@ -414,14 +462,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_vis(&mut self, vis: &'a Visibility) {
-        match vis.node {
-            VisibilityKind::Restricted { ref path, .. } => {
-                path.segments.iter().find(|segment| segment.args.is_some()).map(|segment| {
-                    self.err_handler().span_err(segment.args.as_ref().unwrap().span(),
-                                                "generic arguments in visibility path");
-                });
-            }
-            _ => {}
+        if let VisibilityKind::Restricted { ref path, .. } = vis.node {
+            path.segments.iter().find(|segment| segment.args.is_some()).map(|segment| {
+                self.err_handler().span_err(segment.args.as_ref().unwrap().span(),
+                                            "generic arguments in visibility path");
+            });
         }
 
         visit::walk_vis(self, vis)
@@ -591,8 +636,7 @@ impl<'a> Visitor<'a> for ImplTraitProjectionVisitor<'a> {
             TyKind::ImplTrait(..) => {
                 if self.is_banned {
                     struct_span_err!(self.session, t.span, E0667,
-                                 "`impl Trait` is not allowed in path parameters")
-                        .emit();
+                        "`impl Trait` is not allowed in path parameters").emit();
                 }
             }
             TyKind::Path(ref qself, ref path) => {
@@ -616,7 +660,7 @@ impl<'a> Visitor<'a> for ImplTraitProjectionVisitor<'a> {
 
                 for (i, segment) in path.segments.iter().enumerate() {
                     // Allow `impl Trait` iff we're on the final path segment
-                    if i == (path.segments.len() - 1) {
+                    if i == path.segments.len() - 1 {
                         visit::walk_path_segment(self, path.span, segment);
                     } else {
                         self.with_ban(|this|
