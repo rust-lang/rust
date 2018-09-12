@@ -346,8 +346,7 @@ impl<'tcx,I:Iterator<Item=ty::Predicate<'tcx>>> Iterator for FilterToTraits<I> {
                 Some(ty::Predicate::Trait(data)) => {
                     return Some(data.to_poly_trait_ref());
                 }
-                Some(_) => {
-                }
+                Some(_) => {}
             }
         }
     }

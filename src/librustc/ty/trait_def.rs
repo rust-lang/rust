@@ -138,6 +138,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
         }
     }
+
+    /// Return a vector containing all impls
+    pub fn all_impls(self, def_id: DefId) -> Vec<DefId> {
+        let impls = self.trait_impls_of(def_id);
+
+        impls.blanket_impls.iter().chain(
+            impls.non_blanket_impls.values().flatten()
+        ).cloned().collect()
+    }
 }
 
 // Query provider for `trait_impls_of`.
