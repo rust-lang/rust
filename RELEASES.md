@@ -31,6 +31,8 @@ Cargo
   using `--target`][cargo/5614]
 - [Added the `cargo-fix` subcommand to automatically move project code from
   2015 edition to 2018.][cargo/5723]
+- [`cargo doc` can now optionally document private types using the
+  `--document-private-items` flag.][cargo/5543]
 
 Misc
 ----
@@ -68,6 +70,7 @@ Compatibility Notes
 [51178]: https://github.com/rust-lang/rust/pull/51178/
 [51122]: https://github.com/rust-lang/rust/pull/51122
 [50494]: https://github.com/rust-lang/rust/pull/50494/
+[cargo/5543]: https://github.com/rust-lang/cargo/pull/5543
 [cargo/5614]: https://github.com/rust-lang/cargo/pull/5614/
 [cargo/5723]: https://github.com/rust-lang/cargo/pull/5723/
 [cargo/5831]: https://github.com/rust-lang/cargo/pull/5831/
