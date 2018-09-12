@@ -10,6 +10,9 @@ backtrace = "0.3"
 cc = "1.0"
 lazy_static = "1.0"
 rustc-demangle = "0.1.8"
+cfg-if = "0.1"
+
+[target.wasm32-unknown-unknown.dependencies]
 wasm-bindgen = "=0.2.19"
 
 [features]
