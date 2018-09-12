@@ -53,7 +53,7 @@ use ty::query::Providers;
 use util::nodemap::NodeMap;
 
 pub use lint::context::{LateContext, EarlyContext, LintContext, LintStore,
-                        check_crate, check_ast_crate,
+                        check_crate, check_ast_crate, CheckLintNameResult,
                         FutureIncompatibleInfo, BufferedEarlyLint};
 
 /// Specification of a single lint.

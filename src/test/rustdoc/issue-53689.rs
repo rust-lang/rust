@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: mod statements in non-mod.rs files are unstable
+// aux-build:issue-53689.rs
 
-mod mod_file_not_owning_aux1;
+#![crate_name = "foo"]
 
-fn main() {}
+extern crate issue_53689;
+
+// @has foo/trait.MyTrait.html
+// @!has - 'MyStruct'
+// @count - '//*[code="impl<T> MyTrait for T"]' 1
+pub trait MyTrait {}
+
+impl<T> MyTrait for T {}
+
+mod a {
+    pub use issue_53689::MyStruct;
+}
