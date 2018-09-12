@@ -855,7 +855,7 @@ impl MacroArgParser {
                     self.add_meta_variable(&mut iter)?;
                 }
                 TokenTree::Token(sp, ref t) => self.update_buffer(sp.lo(), t),
-                TokenTree::Delimited(sp, delimited) => {
+                TokenTree::Delimited(delimited_span, delimited) => {
                     if !self.buf.is_empty() {
                         if next_space(&self.last_tok) == SpaceState::Always {
                             self.add_separator();
@@ -866,14 +866,15 @@ impl MacroArgParser {
 
                     // Parse the stuff inside delimiters.
                     let mut parser = MacroArgParser::new();
-                    parser.lo = sp.lo();
+                    parser.lo = delimited_span.open.lo();
                     let delimited_arg = parser.parse(delimited.tts.clone())?;
 
+                    let span = delimited_span.entire();
                     if self.is_meta_var {
-                        self.add_repeat(delimited_arg, delimited.delim, &mut iter, *sp)?;
+                        self.add_repeat(delimited_arg, delimited.delim, &mut iter, span)?;
                         self.is_meta_var = false;
                     } else {
-                        self.add_delimited(delimited_arg, delimited.delim, *sp);
+                        self.add_delimited(delimited_arg, delimited.delim, span);
                     }
                 }
             }
@@ -1186,7 +1187,7 @@ impl MacroParser {
         let tok = self.toks.next()?;
         let (lo, args_paren_kind) = match tok {
             TokenTree::Token(..) => return None,
-            TokenTree::Delimited(sp, ref d) => (sp.lo(), d.delim),
+            TokenTree::Delimited(delimited_span, ref d) => (delimited_span.open.lo(), d.delim),
         };
         let args = tok.joint().into();
         match self.toks.next()? {
@@ -1195,12 +1196,12 @@ impl MacroParser {
         }
         let (mut hi, body, whole_body) = match self.toks.next()? {
             TokenTree::Token(..) => return None,
-            TokenTree::Delimited(sp, _) => {
-                let data = sp.data();
+            TokenTree::Delimited(delimited_span, _) => {
+                let data = delimited_span.entire().data();
                 (
                     data.hi,
                     Span::new(data.lo + BytePos(1), data.hi - BytePos(1), data.ctxt),
-                    sp,
+                    delimited_span.entire(),
                 )
             }
         };
