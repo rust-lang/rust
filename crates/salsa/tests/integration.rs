@@ -7,6 +7,7 @@ use std::{
 };
 
 type State = HashMap<u32, String>;
+type Data = Arc<Any + Send + Sync + 'static>;
 const GET_TEXT: salsa::QueryTypeId = salsa::QueryTypeId(1);
 const GET_FILES: salsa::QueryTypeId = salsa::QueryTypeId(2);
 const FILE_NEWLINES: salsa::QueryTypeId = salsa::QueryTypeId(3);
@@ -14,9 +15,9 @@ const TOTAL_NEWLINES: salsa::QueryTypeId = salsa::QueryTypeId(4);
 
 fn mk_ground_query<T, R>(
     state: &State,
-    params: &(Any + Send + Sync + 'static),
+    params: &Data,
     f: fn(&State, &T) -> R,
-) -> (Box<Any + Send + Sync + 'static>, salsa::OutputFingerprint)
+) -> (Data, salsa::OutputFingerprint)
 where
     T: 'static,
     R: Hash + Send + Sync + 'static,
@@ -24,21 +25,21 @@ where
     let params = params.downcast_ref().unwrap();
     let result = f(state, params);
     let fingerprint = o_print(&result);
-    (Box::new(result), fingerprint)
+    (Arc::new(result), fingerprint)
 }
 
-fn get<T, R>(db: &salsa::Db<State>, query_type: salsa::QueryTypeId, param: T) -> (Arc<R>, Vec<salsa::QueryTypeId>)
+fn get<T, R>(db: &salsa::Db<State, Data>, query_type: salsa::QueryTypeId, param: T) -> (Arc<R>, Vec<salsa::QueryTypeId>)
 where
     T: Hash + Send + Sync + 'static,
     R: Send + Sync + 'static,
 {
     let i_print = i_print(&param);
-    let param = Box::new(param);
+    let param = Arc::new(param);
     let (res, trace) = db.get(salsa::QueryId(query_type, i_print), param);
     (res.downcast().unwrap(), trace)
 }
 
-struct QueryCtx<'a>(&'a salsa::QueryCtx<State>);
+struct QueryCtx<'a>(&'a salsa::QueryCtx<State, Data>);
 
 impl<'a> QueryCtx<'a> {
     fn get_text(&self, id: u32) -> Arc<String> {
@@ -60,10 +61,10 @@ impl<'a> QueryCtx<'a> {
 }
 
 fn mk_query<T, R>(
-    query_ctx: &salsa::QueryCtx<State>,
-    params: &(Any + Send + Sync + 'static),
+    query_ctx: &salsa::QueryCtx<State, Data>,
+    params: &Data,
     f: fn(QueryCtx, &T) -> R,
-) -> (Box<Any + Send + Sync + 'static>, salsa::OutputFingerprint)
+) -> (Data, salsa::OutputFingerprint)
 where
     T: 'static,
     R: Hash + Send + Sync + 'static,
@@ -72,11 +73,11 @@ where
     let query_ctx = QueryCtx(query_ctx);
     let result = f(query_ctx, params);
     let fingerprint = o_print(&result);
-    (Box::new(result), fingerprint)
+    (Arc::new(result), fingerprint)
 }
 
-fn mk_queries() -> salsa::QueryConfig<State> {
-    salsa::QueryConfig::<State>::new()
+fn mk_queries() -> salsa::QueryConfig<State, Data> {
+    salsa::QueryConfig::<State, Data>::new()
         .with_ground_query(GET_TEXT, |state, id| {
             mk_ground_query::<u32, String>(state, id, |state, id| state[id].clone())
         })
