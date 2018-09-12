@@ -1,0 +1,28 @@
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+// run-pass
+#![allow(unknown_lints)]
+
+// pretty-expanded FIXME #23616
+
+#![allow(dead_assignment)]
+#![allow(unused_variables)]
+
+fn f() {
+    let x = 10; let mut y = 11;
+    if true { match x { _ => { y = x; } } } else { }
+}
+
+pub fn main() {
+    let x = 10;
+    let mut y = 11;
+    if true { while false { y = x; } } else { }
+}
