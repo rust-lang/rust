@@ -363,6 +363,84 @@ mod fn_keyword { }
 /// [Reference]: https://doc.rust-lang.org/reference/expressions/loop-expr.html#iterator-loops
 mod for_keyword { }
 
+#[doc(keyword = "if")]
+//
+/// If statements and expressions.
+///
+/// `if` is a familiar construct to most programmers, and is the main way you'll often do logic in
+/// your code. However, unlike in most languages, `if` blocks can also act as expressions.
+///
+/// ```rust
+/// # let rude = true;
+/// if 1 == 2 {
+///     println!("whoops, mathematics broke");
+/// } else {
+///     println!("everything's fine!");
+/// }
+///
+/// let greeting = if rude {
+///     "sup nerd."
+/// } else {
+///     "hello, friend!"
+/// };
+///
+/// if let Ok(x) = "123".parse::<i32>() {
+///     println!("{} double that and you get {}!", greeting, x * 2);
+/// }
+/// ```
+///
+/// Shown above are the three typical forms an `if` block comes in. First is the usual kind of
+/// thing you'd see in many languages, with an optional `else` block. Second uses `if` as an
+/// expression, which is only possible if all branches return the same type. An `if` expression can
+/// be used everywhere you'd expect. The third kind of `if` block is an `if let` block, which
+/// behaves similarly to using a [`match`] expression:
+///
+/// ```rust
+/// if let Some(x) = Some(123) {
+///     // code
+///     # let _ = x;
+/// } else {
+///     // something else
+/// }
+///
+/// match Some(123) {
+///     Some(x) => {
+///         // code
+///         # let _ = x;
+///     },
+///     _ => {
+///         // something else
+///     },
+/// }
+/// ```
+///
+/// See [`let`] for more information on pattern bindings.
+///
+/// Each kind of `if` expression can be mixed and matched as needed.
+///
+/// ```rust
+/// if true == false {
+///     println!("oh no");
+/// } else if "something" == "other thing" {
+///     println!("oh dear");
+/// } else if let Some(200) = "blarg".parse::<i32>().ok() {
+///     println!("uh oh");
+/// } else {
+///     println!("phew, nothing's broken");
+/// }
+/// ```
+///
+/// The `if` keyword is used in one other place in Rust, namely as a part of pattern matching
+/// itself, allowing patterns such as `Some(x) if x > 200` to be used.
+///
+/// For more information on `if` expressions, see the [Rust book] or the [Reference].
+///
+/// [`match`]: keyword.match.html
+/// [`let`]: keyword.let.html
+/// [Rust book]: https://doc.rust-lang.org/stable/book/2018-edition/ch03-05-control-flow.html#if-expressions
+/// [Reference]: https://doc.rust-lang.org/reference/expressions/if-expr.html
+mod if_keyword { }
+
 #[doc(keyword = "let")]
 //
 /// The `let` keyword.
