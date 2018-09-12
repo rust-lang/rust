@@ -102,21 +102,7 @@ fn path_pat(p: &mut Parser) -> CompletedMarker {
 fn tuple_pat_fields(p: &mut Parser) {
     assert!(p.at(L_PAREN));
     p.bump();
-    while !p.at(EOF) && !p.at(R_PAREN) {
-        match p.current() {
-            DOTDOT => p.bump(),
-            _ => {
-                if !p.at_ts(PATTERN_FIRST) {
-                    p.error("expected a pattern");
-                    break;
-                }
-                pattern(p)
-            }
-        }
-        if !p.at(R_PAREN) {
-            p.expect(COMMA);
-        }
-    }
+    pat_list(p, R_PAREN);
     p.expect(R_PAREN);
 }
 
@@ -194,18 +180,27 @@ fn slice_pat(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(L_BRACK));
     let m = p.start();
     p.bump();
-    while !p.at(EOF) && !p.at(R_BRACK) {
+    pat_list(p, R_BRACK);
+    p.expect(R_BRACK);
+    m.complete(p, SLICE_PAT)
+}
+
+fn pat_list(p: &mut Parser, ket: SyntaxKind) {
+    while !p.at(EOF) && !p.at(ket) {
         match p.current() {
             DOTDOT => p.bump(),
-            _ => pattern(p),
+            _ => {
+                if !p.at_ts(PATTERN_FIRST) {
+                    p.error("expected a pattern");
+                    break;
+                }
+                pattern(p)
+            },
         }
-        if !p.at(R_BRACK) {
+        if !p.at(ket) {
             p.expect(COMMA);
         }
     }
-    p.expect(R_BRACK);
-
-    m.complete(p, SLICE_PAT)
 }
 
 // test bind_pat
