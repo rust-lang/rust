@@ -70,13 +70,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             }
 
-            PatternKind::Range { lo, hi, end } => {
+            PatternKind::Range { lo, hi, ty, end } => {
+                assert!(ty == match_pair.pattern.ty);
                 Test {
                     span: match_pair.pattern.span,
                     kind: TestKind::Range {
                         lo,
                         hi,
-                        ty: match_pair.pattern.ty.clone(),
+                        ty,
                         end,
                     },
                 }
