@@ -809,13 +809,14 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         field_ref: &ast::Field,
         variant: &ty::VariantDef,
     ) -> Option<Ref> {
-        let index = self.tcx.find_field_index(field_ref.ident, variant).unwrap();
         filter!(self.span_utils, field_ref.ident.span);
-        let span = self.span_from_span(field_ref.ident.span);
-        Some(Ref {
-            kind: RefKind::Variable,
-            span,
-            ref_id: id_from_def_id(variant.fields[index].did),
+        self.tcx.find_field_index(field_ref.ident, variant).map(|index| {
+            let span = self.span_from_span(field_ref.ident.span);
+            Ref {
+                kind: RefKind::Variable,
+                span,
+                ref_id: id_from_def_id(variant.fields[index].did),
+            }
         })
     }
 
