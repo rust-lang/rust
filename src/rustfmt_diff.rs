@@ -161,7 +161,7 @@ where
     let mut writer = OutputWriter::new(color);
 
     for mismatch in diff {
-        let title = get_section_title(mismatch.line_number);
+        let title = get_section_title(mismatch.line_number_orig);
         writer.writeln(&title, None);
 
         for line in mismatch.lines {
