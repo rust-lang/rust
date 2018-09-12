@@ -10,11 +10,11 @@
 
 use infer::outlives::free_region_map::FreeRegionMap;
 use infer::{GenericKind, InferCtxt};
-use traits::query::outlives_bounds::{self, OutlivesBound};
-use ty::{self, Ty};
-
+use rustc_data_structures::fx::FxHashMap;
 use syntax::ast;
 use syntax_pos::Span;
+use traits::query::outlives_bounds::{self, OutlivesBound};
+use ty::{self, Ty};
 
 /// The `OutlivesEnvironment` collects information about what outlives
 /// what in a given type-checking setting. For example, if we have a
@@ -39,15 +39,51 @@ use syntax_pos::Span;
 pub struct OutlivesEnvironment<'tcx> {
     param_env: ty::ParamEnv<'tcx>,
     free_region_map: FreeRegionMap<'tcx>,
-    region_bound_pairs: Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>,
+
+    // Contains, for each body B that we are checking (that is, the fn
+    // item, but also any nested closures), the set of implied region
+    // bounds that are in scope in that particular body.
+    //
+    // Example:
+    //
+    // ```
+    // fn foo<'a, 'b, T>(x: &'a T, y: &'b ()) {
+    //   bar(x, y, |y: &'b T| { .. } // body B1)
+    // } // body B0
+    // ```
+    //
+    // Here, for body B0, the list would be `[T: 'a]`, because we
+    // infer that `T` must outlive `'a` from the implied bounds on the
+    // fn declaration.
+    //
+    // For the body B1, the list would be `[T: 'a, T: 'b]`, because we
+    // also can see that -- within the closure body! -- `T` must
+    // outlive `'b`. This is not necessarily true outside the closure
+    // body, since the closure may never be called.
+    //
+    // We collect this map as we descend the tree. We then use the
+    // results when proving outlives obligations like `T: 'x` later
+    // (e.g., if `T: 'x` must be proven within the body B1, then we
+    // know it is true if either `'a: 'x` or `'b: 'x`).
+    region_bound_pairs_map: FxHashMap<ast::NodeId, RegionBoundPairs<'tcx>>,
+
+    // Used to compute `region_bound_pairs_map`: contains the set of
+    // in-scope region-bound pairs thus far.
+    region_bound_pairs_accum: RegionBoundPairs<'tcx>,
 }
+
+/// "Region-bound pairs" tracks outlives relations that are known to
+/// be true, either because of explicit where clauses like `T: 'a` or
+/// because of implied bounds.
+pub type RegionBoundPairs<'tcx> = Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>;
 
 impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
     pub fn new(param_env: ty::ParamEnv<'tcx>) -> Self {
         let mut env = OutlivesEnvironment {
             param_env,
             free_region_map: FreeRegionMap::new(),
-            region_bound_pairs: vec![],
+            region_bound_pairs_map: FxHashMap::default(),
+            region_bound_pairs_accum: vec![],
         };
 
         env.add_outlives_bounds(None, outlives_bounds::explicit_outlives_bounds(param_env));
@@ -62,7 +98,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
 
     /// Borrows current value of the `region_bound_pairs`.
     pub fn region_bound_pairs(&self) -> &[(ty::Region<'tcx>, GenericKind<'tcx>)] {
-        &self.region_bound_pairs
+        &self.region_bound_pairs_accum
     }
 
     /// Returns ownership of the `free_region_map`.
@@ -108,12 +144,12 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
     /// similar leaks around givens that seem equally suspicious, to
     /// be honest. --nmatsakis
     pub fn push_snapshot_pre_closure(&self) -> usize {
-        self.region_bound_pairs.len()
+        self.region_bound_pairs_accum.len()
     }
 
     /// See `push_snapshot_pre_closure`.
     pub fn pop_snapshot_post_closure(&mut self, len: usize) {
-        self.region_bound_pairs.truncate(len);
+        self.region_bound_pairs_accum.truncate(len);
     }
 
     /// This method adds "implied bounds" into the outlives environment.
@@ -149,6 +185,15 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
         }
     }
 
+    /// Save the current set of region-bound pairs under the given `body_id`.
+    pub fn save_implied_bounds(&mut self, body_id: ast::NodeId) {
+        let old = self.region_bound_pairs_map.insert(
+            body_id,
+            self.region_bound_pairs_accum.clone(),
+        );
+        assert!(old.is_none());
+    }
+
     /// Processes outlives bounds that are known to hold, whether from implied or other sources.
     ///
     /// The `infcx` parameter is optional; if the implied bounds may
@@ -174,11 +219,11 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
                         .add_given(r_a, vid_b);
                 }
                 OutlivesBound::RegionSubParam(r_a, param_b) => {
-                    self.region_bound_pairs
+                    self.region_bound_pairs_accum
                         .push((r_a, GenericKind::Param(param_b)));
                 }
                 OutlivesBound::RegionSubProjection(r_a, projection_b) => {
-                    self.region_bound_pairs
+                    self.region_bound_pairs_accum
                         .push((r_a, GenericKind::Projection(projection_b)));
                 }
                 OutlivesBound::RegionSubRegion(r_a, r_b) => {

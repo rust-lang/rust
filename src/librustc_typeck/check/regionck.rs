@@ -130,6 +130,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Subject(subject),
             self.param_env,
         );
+
+        // There are no add'l implied bounds when checking a
+        // standalone expr (e.g., the `E` in a type like `[u32; E]`).
+        rcx.outlives_environment.save_implied_bounds(id);
+
         if self.err_count_since_creation() == 0 {
             // regionck assumes typeck succeeded
             rcx.visit_body(body);
@@ -155,6 +160,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         );
         rcx.outlives_environment
             .add_implied_bounds(self, wf_tys, item_id, span);
+        rcx.outlives_environment.save_implied_bounds(item_id);
         rcx.visit_region_obligations(item_id);
         rcx.resolve_regions_and_report_errors();
     }
@@ -308,7 +314,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         id: ast::NodeId, // the id of the fn itself
         body: &'gcx hir::Body,
         span: Span,
-    ) {
+   ) {
         // When we enter a function, we can derive
         debug!("visit_fn_body(id={})", id);
 
@@ -349,6 +355,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             body_id.node_id,
             span,
         );
+        self.outlives_environment.save_implied_bounds(body_id.node_id);
         self.link_fn_args(
             region::Scope {
                 id: body.value.hir_id.local_id,
