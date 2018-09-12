@@ -15,3 +15,15 @@ struct A {
 struct B {
     b: i32,
 }
+
+/// Level 1 comment
+mod tests {
+    /// Level 2 comment
+    impl A {
+        /// Level 3 comment
+        fn f() {
+            /// Level 4 comment
+            fn g() {}
+        }
+    }
+}
