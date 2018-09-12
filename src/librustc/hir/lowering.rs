@@ -596,7 +596,7 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    fn expect_full_def_from_use(&mut self, id: NodeId) -> impl Iterator<Item=Def> {
+    fn expect_full_def_from_use(&mut self, id: NodeId) -> impl Iterator<Item = Def> {
         self.resolver.get_import(id).present_items().map(|pr| {
             if pr.unresolved_segments() != 0 {
                 bug!("path not fully resolved: {:?}", pr);
@@ -989,7 +989,7 @@ impl<'a> LoweringContext<'a> {
             None => {
                 self.loop_scopes
                     .last()
-                    .map(|innermost_loop_id| *innermost_loop_id)
+                    .cloned()
                     .map(|id| Ok(self.lower_node_id(id).node_id))
                     .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope))
                     .into()

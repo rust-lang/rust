@@ -331,13 +331,10 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
     fn visit_token(&mut self, t: Token) {
         if let Token::Interpolated(nt) = t {
-            match nt.0 {
-                token::NtExpr(ref expr) => {
-                    if let ExprKind::Mac(..) = expr.node {
-                        self.visit_macro_invoc(expr.id);
-                    }
+            if let token::NtExpr(ref expr) = nt.0 {
+                if let ExprKind::Mac(..) = expr.node {
+                    self.visit_macro_invoc(expr.id);
                 }
-                _ => {}
             }
         }
     }

@@ -251,6 +251,7 @@ impl<'a> State<'a> {
     pub fn bclose_(&mut self, span: syntax_pos::Span, indented: usize) -> io::Result<()> {
         self.bclose_maybe_open(span, indented, true)
     }
+
     pub fn bclose_maybe_open(&mut self,
                              span: syntax_pos::Span,
                              indented: usize,
@@ -264,6 +265,7 @@ impl<'a> State<'a> {
         }
         Ok(())
     }
+
     pub fn bclose(&mut self, span: syntax_pos::Span) -> io::Result<()> {
         self.bclose_(span, indent_unit)
     }
@@ -274,12 +276,14 @@ impl<'a> State<'a> {
             None => false,
         }
     }
+
     pub fn space_if_not_bol(&mut self) -> io::Result<()> {
         if !self.is_bol() {
             self.s.space()?;
         }
         Ok(())
     }
+
     pub fn break_offset_if_not_bol(&mut self, n: usize, off: isize) -> io::Result<()> {
         if !self.is_bol() {
             self.s.break_offset(n, off)
@@ -303,7 +307,6 @@ impl<'a> State<'a> {
         self.s.space()?;
         self.s.word("*/")
     }
-
 
     pub fn commasep_cmnt<T, F, G>(&mut self,
                                   b: Breaks,
@@ -689,20 +692,14 @@ impl<'a> State<'a> {
                     self.s.space()?;
                 }
 
-                match polarity {
-                    hir::ImplPolarity::Negative => {
-                        self.s.word("!")?;
-                    }
-                    _ => {}
+                if let hir::ImplPolarity::Negative = polarity {
+                    self.s.word("!")?;
                 }
 
-                match opt_trait {
-                    &Some(ref t) => {
-                        self.print_trait_ref(t)?;
-                        self.s.space()?;
-                        self.word_space("for")?;
-                    }
-                    &None => {}
+                if let Some(ref t) = opt_trait {
+                    self.print_trait_ref(t)?;
+                    self.s.space()?;
+                    self.word_space("for")?;
                 }
 
                 self.print_type(&ty)?;
@@ -1061,13 +1058,10 @@ impl<'a> State<'a> {
         for st in &blk.stmts {
             self.print_stmt(st)?;
         }
-        match blk.expr {
-            Some(ref expr) => {
-                self.space_if_not_bol()?;
-                self.print_expr(&expr)?;
-                self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi()))?;
-            }
-            _ => (),
+        if let Some(ref expr) = blk.expr {
+            self.space_if_not_bol()?;
+            self.print_expr(&expr)?;
+            self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi()))?;
         }
         self.bclose_maybe_open(blk.span, indented, close_box)?;
         self.ann.post(self, AnnNode::Block(blk))
@@ -1479,12 +1473,9 @@ impl<'a> State<'a> {
             }
             hir::ExprKind::Ret(ref result) => {
                 self.s.word("return")?;
-                match *result {
-                    Some(ref expr) => {
-                        self.s.word(" ")?;
-                        self.print_expr_maybe_paren(&expr, parser::PREC_JUMP)?;
-                    }
-                    _ => (),
+                if let Some(ref expr) = *result {
+                    self.s.word(" ")?;
+                    self.print_expr_maybe_paren(&expr, parser::PREC_JUMP)?;
                 }
             }
             hir::ExprKind::InlineAsm(ref a, ref outputs, ref inputs) => {
