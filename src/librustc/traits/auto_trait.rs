@@ -239,7 +239,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 .collect();
 
             for id in body_ids {
-                infcx.process_registered_region_obligations(&[], None, full_env.clone(), id);
+                infcx.process_registered_region_obligations(&vec![], None, full_env.clone(), id);
             }
 
             let region_data = infcx

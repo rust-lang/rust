@@ -15,6 +15,7 @@ use borrow_check::nll::region_infer::{RegionTest, TypeTest};
 use borrow_check::nll::type_check::Locations;
 use borrow_check::nll::universal_regions::UniversalRegions;
 use rustc::infer::canonical::QueryRegionConstraint;
+use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
 use rustc::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc::infer::{self, SubregionOrigin};
@@ -26,7 +27,7 @@ crate struct ConstraintConversion<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     universal_regions: &'a UniversalRegions<'tcx>,
     location_table: &'a LocationTable,
-    region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
+    region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: Option<ty::Region<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
     locations: Locations,
@@ -41,7 +42,7 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         universal_regions: &'a UniversalRegions<'tcx>,
         location_table: &'a LocationTable,
-        region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
+        region_bound_pairs: &'a RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
         locations: Locations,

@@ -71,6 +71,7 @@
 
 use hir::def_id::DefId;
 use infer::{self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, VerifyBound};
+use infer::outlives::env::RegionBoundPairs;
 use syntax::ast;
 use traits::{self, ObligationCause};
 use ty::outlives::Component;
@@ -158,7 +159,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// processed.
     pub fn process_registered_region_obligations(
         &self,
-        region_bound_pairs: &[(ty::Region<'tcx>, GenericKind<'tcx>)],
+        region_bound_pairs: &RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
         body_id: ast::NodeId,
@@ -207,7 +208,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// registered in advance.
     pub fn type_must_outlive(
         &self,
-        region_bound_pairs: &[(ty::Region<'tcx>, GenericKind<'tcx>)],
+        region_bound_pairs: &RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
         origin: infer::SubregionOrigin<'tcx>,
@@ -240,7 +241,7 @@ where
     // of these fields.
     delegate: D,
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-    region_bound_pairs: &'cx [(ty::Region<'tcx>, GenericKind<'tcx>)],
+    region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
     implicit_region_bound: Option<ty::Region<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
 }
@@ -269,7 +270,7 @@ where
     pub fn new(
         delegate: D,
         tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-        region_bound_pairs: &'cx [(ty::Region<'tcx>, GenericKind<'tcx>)],
+        region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {

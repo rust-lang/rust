@@ -97,7 +97,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
     }
 
     /// Borrows current value of the `region_bound_pairs`.
-    pub fn region_bound_pairs(&self) -> &[(ty::Region<'tcx>, GenericKind<'tcx>)] {
+    pub fn region_bound_pairs(&self) -> &RegionBoundPairs<'tcx> {
         &self.region_bound_pairs_accum
     }
 

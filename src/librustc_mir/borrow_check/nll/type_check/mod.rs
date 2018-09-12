@@ -29,7 +29,7 @@ use dataflow::MaybeInitializedPlaces;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraint;
-use rustc::infer::region_constraints::GenericKind;
+use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::tcx::PlaceTy;
@@ -182,7 +182,7 @@ fn type_check_internal<'a, 'gcx, 'tcx, R>(
     mir_def_id: DefId,
     param_env: ty::ParamEnv<'gcx>,
     mir: &'a Mir<'tcx>,
-    region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
+    region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: Option<ty::Region<'tcx>>,
     borrowck_context: Option<&'a mut BorrowCheckContext<'a, 'tcx>>,
     universal_region_relations: Option<&'a UniversalRegionRelations<'tcx>>,
@@ -693,7 +693,7 @@ struct TypeChecker<'a, 'gcx: 'tcx, 'tcx: 'a> {
     last_span: Span,
     mir: &'a Mir<'tcx>,
     mir_def_id: DefId,
-    region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
+    region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: Option<ty::Region<'tcx>>,
     reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
     borrowck_context: Option<&'a mut BorrowCheckContext<'a, 'tcx>>,
@@ -802,7 +802,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         mir: &'a Mir<'tcx>,
         mir_def_id: DefId,
         param_env: ty::ParamEnv<'gcx>,
-        region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
+        region_bound_pairs: &'a RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
         borrowck_context: Option<&'a mut BorrowCheckContext<'a, 'tcx>>,
         universal_region_relations: Option<&'a UniversalRegionRelations<'tcx>>,
@@ -2232,7 +2232,7 @@ impl MirPass for TypeckMir {
                 def_id,
                 param_env,
                 mir,
-                &[],
+                &vec![],
                 None,
                 None,
                 None,
