@@ -739,7 +739,9 @@ fn try_intrinsic(
     if bx.sess().no_landing_pads() {
         bx.call(func, &[data], None);
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
-        bx.store(bx.const_null(bx.type_i8p()), dest, ptr_align);
+        let addr_space = bx.type_addr_space(bx.val_ty(dest)).unwrap();
+        bx.store(bx.const_null(bx.type_i8p_as(addr_space)),
+                 dest, ptr_align);
     } else if wants_msvc_seh(bx.sess()) {
         codegen_msvc_try(bx, func, data, local_ptr, dest);
     } else {
@@ -903,10 +905,10 @@ fn codegen_gnu_try(
         // rust_try ignores the selector.
         let lpad_ty = bx.type_struct(&[bx.type_i8p(), bx.type_i32()], false);
         let vals = catch.landing_pad(lpad_ty, bx.eh_personality(), 1);
-        catch.add_clause(vals, bx.const_null(bx.type_i8p()));
+        catch.add_clause(vals, bx.const_null(bx.type_flat_i8p()));
         let ptr = catch.extract_value(vals, 0);
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
-        let bitcast = catch.bitcast(local_ptr, bx.type_ptr_to(bx.type_i8p()));
+        let bitcast = catch.bitcast(local_ptr, bx.type_ptr_to(bx.type_flat_i8p()));
         catch.store(ptr, bitcast, ptr_align);
         catch.ret(bx.const_i32(1));
     });

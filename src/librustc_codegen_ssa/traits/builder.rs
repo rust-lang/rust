@@ -9,6 +9,7 @@ use mir::operand::OperandRef;
 use mir::place::PlaceRef;
 use rustc::ty::Ty;
 use rustc::ty::layout::{Align, Size};
+use rustc_target::spec::AddrSpaceIdx;
 use std::ffi::CStr;
 use MemFlags;
 
@@ -155,7 +156,19 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     fn inttoptr(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn bitcast(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn intcast(&mut self, val: Self::Value, dest_ty: Self::Type, is_signed: bool) -> Self::Value;
+    /// Impls should ignore the address space of `dest_ty`.
     fn pointercast(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+
+    /// address space casts, then bitcasts to dest_ty without changing address spaces.
+    fn as_ptr_cast(&mut self,
+                   val: Self::Value,
+                   addr_space: AddrSpaceIdx,
+                   dest_ty: Self::Type) -> Self::Value;
+    fn addrspace_cast(&mut self, val: Self::Value,
+                      dest: AddrSpaceIdx) -> Self::Value;
+    fn flat_addr_cast(&mut self, val: Self::Value) -> Self::Value;
+    fn flat_as_ptr_cast(&mut self, val: Self::Value,
+                        dest_ty: Self::Type) -> Self::Value;
 
     fn icmp(&mut self, op: IntPredicate, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn fcmp(&mut self, op: RealPredicate, lhs: Self::Value, rhs: Self::Value) -> Self::Value;

@@ -279,6 +279,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         bx.load(addr, self.fn_ty.ret.layout.align.abi)
                     }
                 };
+                // make sure pointers are flat:
+                let llval = bx.flat_addr_cast(llval);
                 bx.ret(llval);
             }
 
@@ -389,6 +391,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             align,
                             Some("panic_bounds_check_loc")
                         );
+                        let file_line_col = bx.cx().const_flat_as_cast(file_line_col);
                         (lang_items::PanicBoundsCheckFnLangItem,
                          vec![file_line_col, index, len])
                     }
@@ -405,6 +408,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             align,
                             Some("panic_loc")
                         );
+                        let msg_file_line_col = bx.cx().const_flat_as_cast(msg_file_line_col);
                         (lang_items::PanicFnLangItem,
                          vec![msg_file_line_col])
                     }
@@ -529,6 +533,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             align,
                             Some("panic_loc"),
                         );
+                    let msg_file_line_col = bx.cx().const_flat_as_cast(msg_file_line_col);
 
                         // Obtain the panic entry point.
                         let def_id =

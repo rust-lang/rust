@@ -4,6 +4,7 @@ use context::CodegenCx;
 use llvm;
 use monomorphize::Instance;
 use type_of::LayoutLlvmExt;
+use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty::TypeFoldable;
@@ -22,7 +23,12 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let ty = instance.ty(self.tcx);
         let llty = self.layout_of(ty).llvm_type(self);
 
-        let g = self.define_global(symbol_name, llty).unwrap_or_else(|| {
+        let addr_space = match self.tcx.describe_def(def_id) {
+          Some(Def::Static(_, true)) => self.mutable_addr_space(),
+          _ => self.const_addr_space(),
+        };
+
+        let g = self.define_global(symbol_name, llty, addr_space).unwrap_or_else(|| {
             self.sess().span_fatal(self.tcx.def_span(def_id),
                 &format!("symbol `{}` is already defined", symbol_name))
         });

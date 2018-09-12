@@ -6,7 +6,7 @@ use rustc::mir::interpret::{ConstValue, Allocation, read_target_uint,
 use rustc::hir::Node;
 use debuginfo;
 use monomorphize::MonoItem;
-use common::CodegenCx;
+use common::{CodegenCx, val_addr_space, val_addr_space_opt};
 use monomorphize::Instance;
 use syntax_pos::Span;
 use rustc_target::abi::HasDataLayout;
@@ -17,6 +17,7 @@ use type_of::LayoutLlvmExt;
 use value::Value;
 use rustc::ty::{self, Ty};
 use rustc_codegen_ssa::traits::*;
+use rustc_target::spec::AddrSpaceIdx;
 
 use rustc::ty::layout::{self, Size, Align, LayoutOf};
 
@@ -123,7 +124,7 @@ fn check_and_apply_linkage(
         };
         unsafe {
             // Declare a symbol `foo` with the desired linkage.
-            let g1 = cx.declare_global(&sym, llty2);
+            let g1 = cx.declare_global(&sym, llty2, cx.flat_addr_space());
             llvm::LLVMRustSetLinkage(g1, base::linkage_to_llvm(linkage));
 
             // Declare an internal global `extern_with_linkage_foo` which
@@ -134,7 +135,8 @@ fn check_and_apply_linkage(
             // zero.
             let mut real_name = "_rust_extern_with_linkage_".to_string();
             real_name.push_str(&sym);
-            let g2 = cx.define_global(&real_name, llty).unwrap_or_else(||{
+            let g2 = cx.define_global(&real_name, llty, cx.flat_addr_space())
+              .unwrap_or_else(||{
                 if let Some(span) = span {
                     cx.sess().span_fatal(
                         span,
@@ -151,11 +153,13 @@ fn check_and_apply_linkage(
     } else {
         // Generate an external declaration.
         // FIXME(nagisa): investigate whether it can be changed into define_global
-        cx.declare_global(&sym, llty)
+        cx.declare_global(&sym, llty, cx.flat_addr_space())
     }
 }
 
+/// Won't change address spaces
 pub fn ptrcast(val: &'ll Value, ty: &'ll Type) -> &'ll Value {
+    let ty = ty.copy_addr_space(val_addr_space(val));
     unsafe {
         llvm::LLVMConstPointerCast(val, ty)
     }
@@ -163,8 +167,26 @@ pub fn ptrcast(val: &'ll Value, ty: &'ll Type) -> &'ll Value {
 
 impl CodegenCx<'ll, 'tcx> {
     crate fn const_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
+        let ty = if let Some(addr_space) = val_addr_space_opt(val) {
+            ty.copy_addr_space(addr_space)
+        } else {
+            ty
+        };
         unsafe {
             llvm::LLVMConstBitCast(val, ty)
+        }
+    }
+
+    crate fn const_addrcast(&self, val: &'ll Value, addr_space: AddrSpaceIdx) -> &'ll Value {
+        let src_ty = self.val_ty(val);
+        if src_ty.is_ptr() && src_ty.address_space() != addr_space {
+            let dest_ty = src_ty.copy_addr_space(addr_space);
+            self.check_addr_space_cast(val, dest_ty);
+            unsafe {
+                llvm::LLVMConstAddrSpaceCast(val, dest_ty)
+            }
+        } else {
+            val
         }
     }
 
@@ -173,19 +195,20 @@ impl CodegenCx<'ll, 'tcx> {
         cv: &'ll Value,
         align: Align,
         kind: Option<&str>,
+        addr_space: AddrSpaceIdx,
     ) -> &'ll Value {
         unsafe {
             let gv = match kind {
                 Some(kind) if !self.tcx.sess.fewer_names() => {
                     let name = self.generate_local_symbol_name(kind);
                     let gv = self.define_global(&name[..],
-                        self.val_ty(cv)).unwrap_or_else(||{
+                        self.val_ty(cv), addr_space).unwrap_or_else(||{
                             bug!("symbol `{}` is already defined", name);
                     });
                     llvm::LLVMRustSetLinkage(gv, llvm::Linkage::PrivateLinkage);
                     gv
                 },
-                _ => self.define_private_global(self.val_ty(cv)),
+                _ => self.define_private_global(self.val_ty(cv), addr_space),
             };
             llvm::LLVMSetInitializer(gv, cv);
             set_global_alignment(&self, gv, align);
@@ -218,13 +241,18 @@ impl CodegenCx<'ll, 'tcx> {
             let llty = self.layout_of(ty).llvm_type(self);
             let (g, attrs) = match self.tcx.hir().get(id) {
                 Node::Item(&hir::Item {
-                    ref attrs, span, node: hir::ItemKind::Static(..), ..
+                    ref attrs, span, node: hir::ItemKind::Static(_, m, _), ..
                 }) => {
                     if self.get_declared_value(&sym[..]).is_some() {
                         span_bug!(span, "Conflicting symbol names for static?");
                     }
+                    let addr_space = if m == hir::MutMutable || !self.type_is_freeze(ty) {
+                        self.mutable_addr_space()
+                    } else {
+                        self.const_addr_space()
+                    };
 
-                    let g = self.define_global(&sym[..], llty).unwrap();
+                    let g = self.define_global(&sym[..], llty, addr_space).unwrap();
 
                     if !self.tcx.is_reachable_non_generic(def_id) {
                         unsafe {
@@ -334,7 +362,8 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
             }
             return gv;
         }
-        let gv = self.static_addr_of_mut(cv, align, kind);
+        let gv = self.static_addr_of_mut(cv, align, kind,
+                                         self.const_addr_space());
         unsafe {
             llvm::LLVMSetGlobalConstant(gv, True);
         }
@@ -370,6 +399,11 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
 
             let instance = Instance::mono(self.tcx, def_id);
             let ty = instance.ty(self.tcx);
+
+            // As an optimization, all shared statics which do not have interior
+            // mutability are placed into read-only memory.
+            let llvm_mutable = is_mutable || !self.type_is_freeze(ty);
+
             let llty = self.layout_of(ty).llvm_type(self);
             let g = if val_llty == llty {
                 g
@@ -384,8 +418,15 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
                 let linkage = llvm::LLVMRustGetLinkage(g);
                 let visibility = llvm::LLVMRustGetVisibility(g);
 
+                let addr_space = if llvm_mutable {
+                    self.mutable_addr_space()
+                } else {
+                    self.const_addr_space()
+                };
+
                 let new_g = llvm::LLVMRustGetOrInsertGlobal(
-                    self.llmod, name_string.as_ptr(), val_llty);
+                    self.llmod, name_string.as_ptr(), val_llty,
+                    addr_space.0);
 
                 llvm::LLVMRustSetLinkage(new_g, linkage);
                 llvm::LLVMRustSetVisibility(new_g, visibility);
@@ -401,10 +442,8 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
 
             // As an optimization, all shared statics which do not have interior
             // mutability are placed into read-only memory.
-            if !is_mutable {
-                if self.type_is_freeze(ty) {
-                    llvm::LLVMSetGlobalConstant(g, llvm::True);
-                }
+            if !llvm_mutable {
+                llvm::LLVMSetGlobalConstant(g, llvm::True);
             }
 
             debuginfo::create_global_var_metadata(&self, def_id, g);
@@ -480,6 +519,7 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
 
             if attrs.flags.contains(CodegenFnAttrFlags::USED) {
                 // This static will be stored in the llvm.used variable which is an array of i8*
+                // Note this ignores the address space of `g`, but that's okay here.
                 let cast = llvm::LLVMConstPointerCast(g, self.type_i8p());
                 self.used_statics.borrow_mut().push(cast);
             }

@@ -59,6 +59,20 @@ pub trait CodegenMethods<'tcx>:
     + AsmMethods<'tcx>
     + PreDefineMethods<'tcx>
 {
+    /// Check that we can actually cast between these addr spaces.
+    fn check_addr_space_cast(&self, val: Self::Value, dest: Self::Type) {
+        let src_ty = self.val_ty(val);
+
+        match (self.type_addr_space(src_ty), self.type_addr_space(dest)) {
+            (Some(left), Some(right)) if !self.can_cast_addr_space(left, right) => {
+                bug!("Target incompatible address space cast:\n\
+                      source addr space `{}`, dest addr space `{}`\n\
+                      source value: {:?}, dest ty: {:?}",
+                     left, right, val, dest);
+            },
+            _ => { },
+        }
+    }
 }
 
 impl<'tcx, T> CodegenMethods<'tcx> for T where

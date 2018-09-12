@@ -17,6 +17,7 @@ use rustc::ty::{self, PolyFnSig};
 use rustc::ty::layout::LayoutOf;
 use rustc::session::config::Sanitizer;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_target::spec::AddrSpaceIdx;
 use abi::{FnType, FnTypeExt};
 use attributes;
 use context::CodegenCx;
@@ -85,12 +86,15 @@ impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn declare_global(
         &self,
-        name: &str, ty: &'ll Type
+        name: &str,
+        ty: &'ll Type,
+        addr_space: AddrSpaceIdx,
     ) -> &'ll Value {
         debug!("declare_global(name={:?})", name);
         let namebuf = SmallCStr::new(name);
         unsafe {
-            llvm::LLVMRustGetOrInsertGlobal(self.llmod, namebuf.as_ptr(), ty)
+            llvm::LLVMRustGetOrInsertGlobal(self.llmod, namebuf.as_ptr(), ty,
+                                            addr_space.0)
         }
     }
 
@@ -126,18 +130,19 @@ impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn define_global(
         &self,
         name: &str,
-        ty: &'ll Type
+        ty: &'ll Type,
+        addr_space: AddrSpaceIdx
     ) -> Option<&'ll Value> {
         if self.get_defined_value(name).is_some() {
             None
         } else {
-            Some(self.declare_global(name, ty))
+            Some(self.declare_global(name, ty, addr_space))
         }
     }
 
-    fn define_private_global(&self, ty: &'ll Type) -> &'ll Value {
+    fn define_private_global(&self, ty: &'ll Type, addr_space: AddrSpaceIdx) -> &'ll Value {
         unsafe {
-            llvm::LLVMRustInsertPrivateGlobal(self.llmod, ty)
+            llvm::LLVMRustInsertPrivateGlobal(self.llmod, ty, addr_space.0)
         }
     }
 

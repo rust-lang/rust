@@ -35,11 +35,12 @@
 //! to the list specified by the target, rather than replace.
 
 use serialize::json::{Json, ToJson};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::default::Default;
 use std::{fmt, io};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::ops::{Deref, DerefMut, };
 use spec::abi::{Abi, lookup as lookup_abi};
 
 pub mod abi;
@@ -259,6 +260,158 @@ impl ToJson for MergeFunctions {
 
 pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<String>>;
 pub type TargetResult = Result<Target, String>;
+
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
+pub struct AddrSpaceIdx(pub u32);
+impl Default for AddrSpaceIdx {
+    fn default() -> Self {
+        AddrSpaceIdx(0)
+    }
+}
+impl fmt::Display for AddrSpaceIdx {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl FromStr for AddrSpaceIdx {
+    type Err = <u32 as FromStr>::Err;
+    fn from_str(s: &str) -> Result<AddrSpaceIdx, Self::Err> {
+        Ok(AddrSpaceIdx(u32::from_str(s)?))
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum AddrSpaceKind {
+    Flat,
+    Alloca,
+    /// aka constant
+    ReadOnly,
+    /// aka global
+    ReadWrite,
+    Named(String),
+}
+
+impl FromStr for AddrSpaceKind {
+    type Err = String;
+    fn from_str(s: &str) -> Result<AddrSpaceKind, String> {
+        Ok(match s {
+            "flat" => AddrSpaceKind::Flat,
+            "alloca" => AddrSpaceKind::Alloca,
+            "readonly" => AddrSpaceKind::ReadOnly,
+            "readwrite" => AddrSpaceKind::ReadWrite,
+            named => AddrSpaceKind::Named(named.into()),
+        })
+    }
+}
+impl fmt::Display for AddrSpaceKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", match self {
+            &AddrSpaceKind::Flat => "flat",
+            &AddrSpaceKind::Alloca => "alloca",
+            &AddrSpaceKind::ReadOnly => "readonly",
+            &AddrSpaceKind::ReadWrite => "readwrite",
+            &AddrSpaceKind::Named(ref s) => s,
+        })
+    }
+}
+impl ToJson for AddrSpaceKind {
+    fn to_json(&self) -> Json {
+        Json::String(format!("{}", self))
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct AddrSpaceProps {
+    pub index: AddrSpaceIdx,
+    /// Indicates which addr spaces this addr space can be addrspacecast-ed to.
+    pub shared_with: BTreeSet<AddrSpaceKind>,
+}
+
+impl AddrSpaceProps {
+    pub fn from_json(json: &Json) -> Result<Self, String> {
+        let index = json.find("index").and_then(|v| v.as_u64() )
+          .ok_or_else(|| {
+              "invalid address space index, expected an unsigned integer"
+          })?;
+
+        let mut shared_with = vec![];
+        if let Some(shared) = json.find("shared-with").and_then(|v| v.as_array() ) {
+            for s in shared {
+                let s = s.as_string()
+                    .ok_or_else(|| {
+                        "expected string for address space kind"
+                    })?;
+
+                let kind = AddrSpaceKind::from_str(s)?;
+                shared_with.push(kind);
+            }
+        }
+
+        Ok(AddrSpaceProps {
+            index: AddrSpaceIdx(index as u32),
+            shared_with: shared_with.into_iter().collect(),
+        })
+    }
+}
+impl ToJson for AddrSpaceProps {
+    fn to_json(&self) -> Json {
+        let mut obj = BTreeMap::new();
+        obj.insert("index".to_string(), self.index.0.to_json());
+        let mut shared_with = vec![];
+        for sw in self.shared_with.iter() {
+            shared_with.push(sw.to_json());
+        }
+        obj.insert("shared-with".to_string(), Json::Array(shared_with));
+
+        Json::Object(obj)
+    }
+}
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct AddrSpaces(pub BTreeMap<AddrSpaceKind, AddrSpaceProps>);
+impl Deref for AddrSpaces {
+    type Target = BTreeMap<AddrSpaceKind, AddrSpaceProps>;
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
+impl DerefMut for AddrSpaces {
+    fn deref_mut(&mut self) -> &mut BTreeMap<AddrSpaceKind, AddrSpaceProps> { &mut self.0 }
+}
+impl ToJson for AddrSpaces {
+    fn to_json(&self) -> Json {
+        let obj = self.iter()
+          .map(|(k, v)| {
+              (format!("{}", k), v.to_json())
+          })
+          .collect();
+        Json::Object(obj)
+    }
+}
+impl Default for AddrSpaces {
+    fn default() -> Self {
+        let mut asp = BTreeMap::new();
+
+        let kinds = vec![AddrSpaceKind::ReadOnly,
+                         AddrSpaceKind::ReadWrite,
+                         AddrSpaceKind::Alloca,
+                         AddrSpaceKind::Flat, ];
+
+        let insert = |asp: &mut BTreeMap<_, _>, kind, idx| {
+            let props = AddrSpaceProps {
+                index: idx,
+                shared_with: kinds.clone()
+                  .into_iter()
+                  .filter(|k| *k != kind)
+                  .collect(),
+            };
+            assert!(asp.insert(kind, props).is_none());
+        };
+
+        for kind in kinds.iter() {
+            insert(&mut asp, kind.clone(), Default::default());
+        }
+
+        AddrSpaces(asp)
+    }
+}
 
 macro_rules! supported_targets {
     ( $(($triple:expr, $module:ident),)+ ) => (
@@ -732,6 +885,11 @@ pub struct TargetOptions {
     /// the usual logic to figure this out from the crate itself.
     pub override_export_symbols: Option<Vec<String>>,
 
+    /// Description of all address spaces and how they are shared with one another.
+    /// Defaults to a single, flat, address space. Note it is generally assumed that
+    /// the address space `0` is your flat address space.
+    pub addr_spaces: AddrSpaces,
+
     /// Determines how or whether the MergeFunctions LLVM pass should run for
     /// this target. Either "disabled", "trampolines", or "aliases".
     /// The MergeFunctions pass is generally useful, but some targets may need
@@ -821,6 +979,7 @@ impl Default for TargetOptions {
             requires_uwtable: false,
             simd_types_indirect: true,
             override_export_symbols: None,
+            addr_spaces: Default::default(),
             merge_functions: MergeFunctions::Aliases,
         }
     }
@@ -1051,6 +1210,16 @@ impl Target {
                     }
                 }
             } );
+            ($key_name:ident, addr_spaces) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                if let Some(obj) = obj.find(&name[..]).and_then(|o| o.as_object() ) {
+                    for (k, v) in obj {
+                        let k = AddrSpaceKind::from_str(&k).unwrap();
+                        let props = AddrSpaceProps::from_json(v)?;
+                        base.options.$key_name.insert(k, props);
+                    }
+                }
+            } );
         }
 
         key!(is_builtin, bool);
@@ -1126,6 +1295,7 @@ impl Target {
         key!(requires_uwtable, bool);
         key!(simd_types_indirect, bool);
         key!(override_export_symbols, opt_list);
+        key!(addr_spaces, addr_spaces);
         key!(merge_functions, MergeFunctions)?;
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
@@ -1338,6 +1508,7 @@ impl ToJson for Target {
         target_option_val!(requires_uwtable);
         target_option_val!(simd_types_indirect);
         target_option_val!(override_export_symbols);
+        target_option_val!(addr_spaces);
         target_option_val!(merge_functions);
 
         if default.abi_blacklist != self.options.abi_blacklist {

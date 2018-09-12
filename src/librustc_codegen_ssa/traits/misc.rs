@@ -5,6 +5,7 @@ use rustc::session::Session;
 use rustc::ty::{self, Instance, Ty};
 use rustc::util::nodemap::FxHashMap;
 use rustc_mir::monomorphize::partitioning::CodegenUnit;
+use rustc_target::spec::AddrSpaceIdx;
 use std::cell::RefCell;
 use std::sync::Arc;
 
@@ -26,4 +27,10 @@ pub trait MiscMethods<'tcx>: BackendTypes {
     fn set_frame_pointer_elimination(&self, llfn: Self::Value);
     fn apply_target_cpu_attr(&self, llfn: Self::Value);
     fn create_used_variable(&self);
+
+    fn can_cast_addr_space(&self, _from: AddrSpaceIdx, _to: AddrSpaceIdx) -> bool { true }
+    fn alloca_addr_space(&self) -> AddrSpaceIdx { Default::default() }
+    fn const_addr_space(&self) -> AddrSpaceIdx { Default::default() }
+    fn mutable_addr_space(&self) -> AddrSpaceIdx { Default::default() }
+    fn flat_addr_space(&self) -> AddrSpaceIdx { Default::default() }
 }

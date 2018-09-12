@@ -7,7 +7,7 @@ use monomorphize::Instance;
 use value::Value;
 
 use monomorphize::partitioning::CodegenUnit;
-use type_::Type;
+use type_::{Type, AddrSpaceIdx, AddrSpaceKind, };
 use type_of::PointeeInfo;
 use rustc_codegen_ssa::traits::*;
 use libc::c_uint;
@@ -20,7 +20,8 @@ use rustc::session::Session;
 use rustc::ty::layout::{LayoutError, LayoutOf, Size, TyLayout, VariantIdx};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
-use rustc_target::spec::{HasTargetSpec, Target};
+use rustc_target::abi::HasDataLayout;
+use rustc_target::spec::{HasTargetSpec, Target, AddrSpaceProps, };
 use rustc_codegen_ssa::callee::resolve_and_get_fn;
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use callee::get_fn;
@@ -32,6 +33,7 @@ use std::str;
 use std::sync::Arc;
 use syntax::symbol::LocalInternedString;
 use abi::Abi;
+use std::u32;
 
 /// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
 /// `llvm::Context` so that several compilation units may be optimized in parallel.
@@ -83,13 +85,18 @@ pub struct CodegenCx<'ll, 'tcx: 'll> {
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
     pub isize_ty: &'ll Type,
 
+    alloca_addr_space: AddrSpaceIdx,
+    const_addr_space: AddrSpaceIdx,
+    mutable_addr_space: AddrSpaceIdx,
+    flat_addr_space: AddrSpaceIdx,
+
     pub dbg_cx: Option<debuginfo::CrateDebugContext<'ll, 'tcx>>,
 
     eh_personality: Cell<Option<&'ll Value>>,
     eh_unwind_resume: Cell<Option<&'ll Value>>,
     pub rust_try_fn: Cell<Option<&'ll Value>>,
 
-    intrinsics: RefCell<FxHashMap<&'static str, &'ll Value>>,
+    intrinsics: RefCell<FxHashMap<String, &'ll Value>>,
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
@@ -276,6 +283,23 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         let isize_ty = Type::ix_llcx(llcx, tcx.data_layout.pointer_size.bits());
 
+        let alloca_addr_space = tcx.data_layout().alloca_address_space;
+        let mutable_addr_space =
+            tcx.sess.target.target.options.addr_spaces
+              .get(&AddrSpaceKind::ReadWrite)
+              .map(|v| v.index )
+              .unwrap_or_default();
+        let const_addr_space =
+            tcx.sess.target.target.options.addr_spaces
+              .get(&AddrSpaceKind::ReadOnly)
+              .map(|v| v.index )
+              .unwrap_or(mutable_addr_space);
+        let flat_addr_space =
+            tcx.sess.target.target.options.addr_spaces
+              .get(&AddrSpaceKind::Flat)
+              .map(|v| v.index )
+              .unwrap_or_default();
+
         CodegenCx {
             tcx,
             check_overflow,
@@ -296,6 +320,12 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             scalar_lltypes: Default::default(),
             pointee_infos: Default::default(),
             isize_ty,
+
+            alloca_addr_space,
+            const_addr_space,
+            mutable_addr_space,
+            flat_addr_space,
+
             dbg_cx,
             eh_personality: Cell::new(None),
             eh_unwind_resume: Cell::new(None),
@@ -453,6 +483,32 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             llvm::LLVMSetSection(g, section.as_ptr());
         }
     }
+    fn can_cast_addr_space(&self, from: AddrSpaceIdx, to: AddrSpaceIdx) -> bool {
+        if from == to { return true; }
+
+        let bug = || {
+            bug!("no address space kind for {}", from);
+        };
+
+        let (to_kind, _) = self.addr_space_props_from_idx(to)
+          .unwrap_or_else(&bug);
+        let (_, from_props) = self.addr_space_props_from_idx(from)
+          .unwrap_or_else(&bug);
+
+        from_props.shared_with.contains(&to_kind)
+    }
+    fn alloca_addr_space(&self) -> AddrSpaceIdx {
+        self.alloca_addr_space
+    }
+    fn const_addr_space(&self) -> AddrSpaceIdx {
+        self.const_addr_space
+    }
+    fn mutable_addr_space(&self) -> AddrSpaceIdx {
+        self.mutable_addr_space
+    }
+    fn flat_addr_space(&self) -> AddrSpaceIdx {
+        self.flat_addr_space
+    }
 }
 
 impl CodegenCx<'b, 'tcx> {
@@ -473,7 +529,7 @@ impl CodegenCx<'b, 'tcx> {
                 if key == $name {
                     let f = self.declare_cfn($name, self.type_func(&[], $ret));
                     llvm::SetUnnamedAddr(f, false);
-                    self.intrinsics.borrow_mut().insert($name, f.clone());
+                    self.intrinsics.borrow_mut().insert($name.to_string(), f.clone());
                     return Some(f);
                 }
             );
@@ -481,7 +537,7 @@ impl CodegenCx<'b, 'tcx> {
                 if key == $name {
                     let f = self.declare_cfn($name, self.type_variadic_func(&[], $ret));
                     llvm::SetUnnamedAddr(f, false);
-                    self.intrinsics.borrow_mut().insert($name, f.clone());
+                    self.intrinsics.borrow_mut().insert($name.to_string(), f.clone());
                     return Some(f);
                 }
             );
@@ -489,7 +545,7 @@ impl CodegenCx<'b, 'tcx> {
                 if key == $name {
                     let f = self.declare_cfn($name, self.type_func(&[$($arg),*], $ret));
                     llvm::SetUnnamedAddr(f, false);
-                    self.intrinsics.borrow_mut().insert($name, f.clone());
+                    self.intrinsics.borrow_mut().insert($name.to_string(), f.clone());
                     return Some(f);
                 }
             );
@@ -518,9 +574,53 @@ impl CodegenCx<'b, 'tcx> {
         let t_v4f64 = self.type_vector(t_f64, 4);
         let t_v8f64 = self.type_vector(t_f64, 8);
 
-        ifn!("llvm.memset.p0i8.i16", fn(i8p, t_i8, t_i16, t_i32, i1) -> void);
-        ifn!("llvm.memset.p0i8.i32", fn(i8p, t_i8, t_i32, t_i32, i1) -> void);
-        ifn!("llvm.memset.p0i8.i64", fn(i8p, t_i8, t_i64, t_i32, i1) -> void);
+        fn parse_addr_space(s: &str) -> AddrSpaceIdx {
+            assert!(s.starts_with("p"));
+            assert!(s.ends_with("i8"));
+            let s = &s[1..];
+            let s = &s[..s.len() - 2];
+            AddrSpaceIdx(u32::from_str_radix(s, 10).unwrap())
+        }
+
+        if key.starts_with("llvm.memcpy") || key.starts_with("llvm.memmove") ||
+          key.starts_with("llvm.memset") {
+
+            let mut split = key.split('.');
+            assert_eq!(Some("llvm"), split.next());
+            let flavor = split.next();
+            let flavor = flavor.unwrap();
+
+            let dst_ptr_str = split.next();
+            assert!(dst_ptr_str.is_some());
+            let dst_ptr_str = dst_ptr_str.unwrap();
+            let dst_asp = parse_addr_space(dst_ptr_str);
+            let dst_ty = self.type_i8p_as(dst_asp);
+
+            let src_ty = if flavor != "memset" {
+                let src_ptr_str = split.next();
+                assert!(src_ptr_str.is_some());
+                let src_ptr_str = src_ptr_str.unwrap();
+                let src_asp = parse_addr_space(src_ptr_str);
+                self.type_i8p_as(src_asp)
+            } else {
+                t_i8
+            };
+
+            let len_ty = match split.next() {
+                Some("i16") => t_i16,
+                Some("i32") => t_i32,
+                Some("i64") => t_i64,
+                Some("i128") => t_i128,
+                l => {
+                    bug!("unknown llvm.{} intrinsic sig (len ty): {}, {:?}", flavor, key, l);
+                },
+            };
+            let fty = self.type_func(&[dst_ty, src_ty, len_ty, t_i32, i1], &void);
+            let f = self.declare_cfn(key, fty);
+            llvm::SetUnnamedAddr(f, false);
+            self.intrinsics.borrow_mut().insert(key.to_string(), f.clone());
+            return Some(f);
+        }
 
         ifn!("llvm.trap", fn() -> void);
         ifn!("llvm.debugtrap", fn() -> void);
@@ -759,6 +859,24 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.lifetime.start", fn(t_i64,i8p) -> void);
         ifn!("llvm.lifetime.end", fn(t_i64, i8p) -> void);
 
+        if key.starts_with("llvm.lifetime") {
+            let mut split = key.split('.');
+            split.next(); split.next();
+
+            let _variant = split.next();
+
+            let addr_space = match split.next() {
+                Some(addr_space) => parse_addr_space(addr_space),
+                None => unreachable!(),
+            };
+
+            let fty = self.type_func(&[t_i64, self.type_i8p_as(addr_space)], &void);
+            let f = self.declare_cfn(key, fty);
+            llvm::SetUnnamedAddr(f, false);
+            self.intrinsics.borrow_mut().insert(key.to_string(), f.clone());
+            return Some(f);
+        }
+
         ifn!("llvm.expect.i1", fn(i1, i1) -> i1);
         ifn!("llvm.eh.typeid.for", fn(i8p) -> t_i32);
         ifn!("llvm.localescape", fn(...) -> void);
@@ -794,6 +912,13 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         name.push_str(".");
         base_n::push_str(idx as u128, base_n::ALPHANUMERIC_ONLY, &mut name);
         name
+    }
+
+    pub fn addr_space_props_from_idx(&self, idx: AddrSpaceIdx)
+        -> Option<(&AddrSpaceKind, &AddrSpaceProps)>
+    {
+        self.tcx.sess.target.target.options.addr_spaces.iter()
+          .find(|&(_, ref props)| props.index == idx )
     }
 }
 

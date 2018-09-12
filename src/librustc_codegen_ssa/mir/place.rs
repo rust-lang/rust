@@ -49,6 +49,18 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
         debug!("alloca({:?}: {:?})", name, layout);
         assert!(!layout.is_unsized(), "tried to statically allocate unsized place");
         let tmp = bx.alloca(bx.cx().backend_type(layout), name, layout.align.abi);
+        Self::new_sized(bx.flat_addr_cast(tmp), layout, layout.align.abi)
+    }
+
+    /// An alloca, left in the alloca address space. If unsure, use `alloca` below.
+    pub fn alloca_addr_space<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        bx: &mut Bx,
+        layout: TyLayout<'tcx>,
+        name: &str
+    ) -> Self {
+        debug!("alloca({:?}: {:?})", name, layout);
+        assert!(!layout.is_unsized(), "tried to statically allocate unsized place");
+        let tmp = bx.alloca(bx.cx().backend_type(layout), name, layout.align.abi);
         Self::new_sized(tmp, layout, layout.align.abi)
     }
 

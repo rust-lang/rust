@@ -89,6 +89,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 let zero = bx.cx().const_usize(0);
                 let start = dest.project_index(&mut bx, zero).llval;
+                let start = bx.flat_addr_cast(start);
 
                 if let OperandValue::Immediate(v) = cg_elem.val {
                     let size = bx.cx().const_usize(dest.layout.size.bytes());
@@ -110,6 +111,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 let count = bx.cx().const_usize(count);
                 let end = dest.project_index(&mut bx, count).llval;
+                let end = bx.flat_addr_cast(end);
 
                 let mut header_bx = bx.build_sibling_block("repeat_loop_header");
                 let mut body_bx = bx.build_sibling_block("repeat_loop_body");
@@ -243,6 +245,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 // until LLVM removes pointee types.
                                 let lldata = bx.pointercast(lldata,
                                     bx.cx().scalar_pair_element_backend_type(cast, 0, true));
+                                let lldata = bx.flat_addr_cast(lldata);
                                 OperandValue::Pair(lldata, llextra)
                             }
                             OperandValue::Immediate(lldata) => {
@@ -350,11 +353,19 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             }
                             (CastTy::Ptr(_), CastTy::Ptr(_)) |
                             (CastTy::FnPtr, CastTy::Ptr(_)) |
-                            (CastTy::RPtr(_), CastTy::Ptr(_)) =>
-                                bx.pointercast(llval, ll_t_out),
+                            (CastTy::RPtr(_), CastTy::Ptr(_)) => {
+                                // This is left in it's original address space. This is okay
+                                // because a &mut T -> &T cast wouldn't change the address
+                                // space used to load it.
+                                bx.pointercast(llval, ll_t_out)
+                            }
                             (CastTy::Ptr(_), CastTy::Int(_)) |
-                            (CastTy::FnPtr, CastTy::Int(_)) =>
-                                bx.ptrtoint(llval, ll_t_out),
+                            (CastTy::FnPtr, CastTy::Int(_)) => {
+                                // Ensure the ptr is in the flat address space.
+                                // This might not be required, but it is safe.
+                                let llval = bx.flat_addr_cast(llval);
+                                bx.ptrtoint(llval, ll_t_out)
+                            },
                             (CastTy::Int(_), CastTy::Ptr(_)) => {
                                 let usize_llval = bx.intcast(llval, bx.cx().type_isize(), signed);
                                 bx.inttoptr(usize_llval, ll_t_out)
@@ -607,6 +618,17 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     lhs, rhs
                 )
             } else {
+                // In case we're in separate addr spaces.
+                // Can happen when cmp against null_mut, eg.
+                // `infer-addr-spaces` should propagate.
+                let lhs_ty = bx.cx().val_ty(rhs);
+                let (lhs, rhs) = if bx.cx().type_addr_space(lhs_ty).is_some() {
+                    assert!(bx.cx().type_addr_space(bx.cx().val_ty(rhs)).is_some());
+                    (bx.flat_addr_cast(lhs),
+                     bx.flat_addr_cast(rhs))
+                } else {
+                    (lhs, rhs)
+                };
                 bx.icmp(
                     base::bin_op_to_icmp_predicate(op.to_hir_binop(), is_signed),
                     lhs, rhs
@@ -625,6 +647,12 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         rhs_extra: Bx::Value,
         _input_ty: Ty<'tcx>,
     ) -> Bx::Value {
+        // In case we're in separate addr spaces.
+        // Can happen when cmp against null_mut, eg.
+        // `infer-addr-spaces` should propagate.
+        let lhs_addr = bx.flat_addr_cast(lhs_addr);
+        let rhs_addr = bx.flat_addr_cast(rhs_addr);
+
         match op {
             mir::BinOp::Eq => {
                 let lhs = bx.icmp(IntPredicate::IntEQ, lhs_addr, rhs_addr);
