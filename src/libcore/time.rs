@@ -459,6 +459,88 @@ impl Duration {
             None
         }
     }
+
+    /// Multiply `Duration` by `f64`.
+    ///
+    /// # Examples
+    /// ```
+    /// let dur = Duration::new(2, 700_000_000);
+    /// assert_eq!(dur.mul_f64(3.14), Duration::new(8, 478_000_000));
+    /// assert_eq!(dur.mul_f64(3.14e5), Duration::new(847_800, 0));
+    /// ```
+    #[unstable(feature = "duration_float_ops",
+               reason = "duration/floats operations are unstabe",
+               issue = "0")]
+    #[inline]
+    pub fn mul_f64(self, rhs: f64) -> Duration {
+        const NPS: f64 = NANOS_PER_SEC as f64;
+        let nanos_f64 = rhs * (NPS * (self.secs as f64) + (self.nanos as f64));
+        if !nanos_f64.is_finite() {
+            panic!("got non-finite value when multiplying duration by float");
+        }
+        if nanos_f64 > MAX_NANOS_F64 {
+            panic!("overflow when multiplying duration by float");
+        }
+        if nanos_f64 < 0.0 {
+            panic!("underflow when multiplying duration by float");
+        }
+        let nanos_u128 = nanos_f64 as u128;
+        Duration {
+            secs: (nanos_u128 / (NANOS_PER_SEC as u128)) as u64,
+            nanos: (nanos_u128 % (NANOS_PER_SEC as u128)) as u32,
+        }
+    }
+
+    /// Divide `Duration` by `f64`.
+    ///
+    /// # Examples
+    /// ```
+    /// let dur = Duration::new(2, 700_000_000);
+    /// assert_eq!(dur.div_f64(3.14), Duration::new(0, 859_872_611));
+    /// // note that truncation is used, not rounding
+    /// assert_eq!(dur.div_f64(3.14e5), Duration::new(0, 8_598));
+    /// ```
+    #[unstable(feature = "duration_float_ops",
+               reason = "duration/floats operations are unstabe",
+               issue = "0")]
+    #[inline]
+    pub fn div_f64(self, rhs: f64) -> Duration {
+        const NPS: f64 = NANOS_PER_SEC as f64;
+        let nanos_f64 = (NPS * (self.secs as f64) + (self.nanos as f64)) / rhs;
+        if !nanos_f64.is_finite() {
+            panic!("got non-finite value when dividing duration by float");
+        }
+        if nanos_f64 > MAX_NANOS_F64 {
+            panic!("overflow when dividing duration by float");
+        }
+        if nanos_f64 < 0.0 {
+            panic!("underflow when multiplying duration by float");
+        }
+        let nanos_u128 = nanos_f64 as u128;
+        Duration {
+            secs: (nanos_u128 / (NANOS_PER_SEC as u128)) as u64,
+            nanos: (nanos_u128 % (NANOS_PER_SEC as u128)) as u32,
+        }
+    }
+
+    /// Divide `Duration` by `Duration` and return `f64`.
+    ///
+    /// # Examples
+    /// ```
+    /// let dur1 = Duration::new(2, 700_000_000);
+    /// let dur2 = Duration::new(5, 400_000_000);
+    /// assert_eq!(dur1.div_duration(dur2), 0.5);
+    /// ```
+    #[unstable(feature = "duration_float_ops",
+               reason = "duration/floats operations are unstabe",
+               issue = "0")]
+    #[inline]
+    pub fn div_duration(self, rhs: Duration) -> f64 {
+        const NPS: f64 = NANOS_PER_SEC as f64;
+        let nanos1 = NPS * (self.secs as f64) + (self.nanos as f64);
+        let nanos2 = NPS * (rhs.secs as f64) + (rhs.nanos as f64);
+        nanos1/nanos2
+    }
 }
 
 #[stable(feature = "duration", since = "1.3.0")]
@@ -502,41 +584,8 @@ impl Mul<u32> for Duration {
     }
 }
 
-#[stable(feature = "duration_mul_div_extras", since = "1.30.0")]
+#[stable(feature = "symmetric_u32_duration_mul", since = "1.30.0")]
 impl Mul<Duration> for u32 {
-    type Output = Duration;
-
-    fn mul(self, rhs: Duration) -> Duration {
-        rhs * self
-    }
-}
-
-#[stable(feature = "duration_mul_div_extras", since = "1.30.0")]
-impl Mul<f64> for Duration {
-    type Output = Duration;
-
-    fn mul(self, rhs: f64) -> Duration {
-        const NPS: f64 = NANOS_PER_SEC as f64;
-        let nanos_f64 = rhs * (NPS * (self.secs as f64) + (self.nanos as f64));
-        if !nanos_f64.is_finite() {
-            panic!("got non-finite value when multiplying duration by float");
-        }
-        if nanos_f64 > MAX_NANOS_F64 {
-            panic!("overflow when multiplying duration by float");
-        }
-        if nanos_f64 < 0.0 {
-            panic!("underflow when multiplying duration by float");
-        }
-        let nanos_u128 = nanos_f64 as u128;
-        Duration {
-            secs: (nanos_u128 / (NANOS_PER_SEC as u128)) as u64,
-            nanos: (nanos_u128 % (NANOS_PER_SEC as u128)) as u32,
-        }
-    }
-}
-
-#[stable(feature = "duration_mul_div_extras", since = "1.30.0")]
-impl Mul<Duration> for f64 {
     type Output = Duration;
 
     fn mul(self, rhs: Duration) -> Duration {
@@ -551,13 +600,6 @@ impl MulAssign<u32> for Duration {
     }
 }
 
-#[stable(feature = "duration_mul_div_extras", since = "1.30.0")]
-impl MulAssign<f64> for Duration {
-    fn mul_assign(&mut self, rhs: f64) {
-        *self = *self * rhs;
-    }
-}
-
 #[stable(feature = "duration", since = "1.3.0")]
 impl Div<u32> for Duration {
     type Output = Duration;
@@ -567,52 +609,9 @@ impl Div<u32> for Duration {
     }
 }
 
-#[stable(feature = "duration_mul_div_extras", since = "1.30.0")]
-impl Div<f64> for Duration {
-    type Output = Duration;
-
-    fn div(self, rhs: f64) -> Duration {
-        const NPS: f64 = NANOS_PER_SEC as f64;
-        let nanos_f64 = (NPS * (self.secs as f64) + (self.nanos as f64)) / rhs;
-        if !nanos_f64.is_finite() {
-            panic!("got non-finite value when dividing duration by float");
-        }
-        if nanos_f64 > MAX_NANOS_F64 {
-            panic!("overflow when dividing duration by float");
-        }
-        if nanos_f64 < 0.0 {
-            panic!("underflow when multiplying duration by float");
-        }
-        let nanos_u128 = nanos_f64 as u128;
-        Duration {
-            secs: (nanos_u128 / (NANOS_PER_SEC as u128)) as u64,
-            nanos: (nanos_u128 % (NANOS_PER_SEC as u128)) as u32,
-        }
-    }
-}
-
-#[stable(feature = "duration_mul_div_extras", since = "1.30.0")]
-impl Div<Duration> for Duration {
-    type Output = f64;
-
-    fn div(self, rhs: Duration) -> f64 {
-        const NPS: f64 = NANOS_PER_SEC as f64;
-        let nanos1 = NPS * (self.secs as f64) + (self.nanos as f64);
-        let nanos2 = NPS * (rhs.secs as f64) + (rhs.nanos as f64);
-        nanos1/nanos2
-    }
-}
-
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
 impl DivAssign<u32> for Duration {
     fn div_assign(&mut self, rhs: u32) {
-        *self = *self / rhs;
-    }
-}
-
-#[stable(feature = "duration_mul_div_extras", since = "1.30.0")]
-impl DivAssign<f64> for Duration {
-    fn div_assign(&mut self, rhs: f64) {
         *self = *self / rhs;
     }
 }
