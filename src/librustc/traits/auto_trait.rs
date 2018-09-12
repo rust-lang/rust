@@ -227,7 +227,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 .iter()
                 .filter_map(|param| match param.kind {
                     ty::GenericParamDefKind::Lifetime => Some(param.name.to_string()),
-                    _ => None
+                    _ => None,
                 })
                 .collect();
 
@@ -359,8 +359,10 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 &Err(SelectionError::Unimplemented) => {
                     if self.is_of_param(pred.skip_binder().trait_ref.substs) {
                         already_visited.remove(&pred);
-                        self.add_user_pred(&mut user_computed_preds,
-                                           ty::Predicate::Trait(pred.clone()));
+                        self.add_user_pred(
+                            &mut user_computed_preds,
+                            ty::Predicate::Trait(pred.clone()),
+                        );
                         predicates.push_back(pred);
                     } else {
                         debug!(
@@ -418,8 +420,11 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     // under which a type implements an auto trait. A trait predicate involving
     // a HRTB means that the type needs to work with any choice of lifetime,
     // not just one specific lifetime (e.g. 'static).
-    fn add_user_pred<'c>(&self, user_computed_preds: &mut FxHashSet<ty::Predicate<'c>>,
-                         new_pred: ty::Predicate<'c>) {
+    fn add_user_pred<'c>(
+        &self,
+        user_computed_preds: &mut FxHashSet<ty::Predicate<'c>>,
+        new_pred: ty::Predicate<'c>,
+    ) {
         let mut should_add_new = true;
         user_computed_preds.retain(|&old_pred| {
             match (&new_pred, old_pred) {
@@ -431,20 +436,19 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                         if !new_substs.types().eq(old_substs.types()) {
                             // We can't compare lifetimes if the types are different,
                             // so skip checking old_pred
-                            return true
+                            return true;
                         }
 
-                        for (new_region, old_region) in new_substs
-                            .regions()
-                            .zip(old_substs.regions()) {
-
+                        for (new_region, old_region) in
+                            new_substs.regions().zip(old_substs.regions())
+                        {
                             match (new_region, old_region) {
                                 // If both predicates have an 'ReLateBound' (a HRTB) in the
                                 // same spot, we do nothing
                                 (
                                     ty::RegionKind::ReLateBound(_, _),
-                                    ty::RegionKind::ReLateBound(_, _)
-                                ) => {},
+                                    ty::RegionKind::ReLateBound(_, _),
+                                ) => {}
 
                                 (ty::RegionKind::ReLateBound(_, _), _) => {
                                     // The new predicate has a HRTB in a spot where the old
@@ -458,7 +462,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                     // so we return 'false' to remove the old predicate from
                                     // user_computed_preds
                                     return false;
-                                },
+                                }
                                 (_, ty::RegionKind::ReLateBound(_, _)) => {
                                     // This is the opposite situation as the previous arm - the
                                     // old predicate has a HRTB lifetime in a place where the
@@ -471,10 +475,10 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                             }
                         }
                     }
-                },
+                }
                 _ => {}
             }
-            return true
+            return true;
         });
 
         if should_add_new {
@@ -513,28 +517,20 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             match constraint {
                 &Constraint::VarSubVar(r1, r2) => {
                     {
-                        let deps1 = vid_map
-                            .entry(RegionTarget::RegionVid(r1))
-                            .or_default();
+                        let deps1 = vid_map.entry(RegionTarget::RegionVid(r1)).or_default();
                         deps1.larger.insert(RegionTarget::RegionVid(r2));
                     }
 
-                    let deps2 = vid_map
-                        .entry(RegionTarget::RegionVid(r2))
-                        .or_default();
+                    let deps2 = vid_map.entry(RegionTarget::RegionVid(r2)).or_default();
                     deps2.smaller.insert(RegionTarget::RegionVid(r1));
                 }
                 &Constraint::RegSubVar(region, vid) => {
                     {
-                        let deps1 = vid_map
-                            .entry(RegionTarget::Region(region))
-                            .or_default();
+                        let deps1 = vid_map.entry(RegionTarget::Region(region)).or_default();
                         deps1.larger.insert(RegionTarget::RegionVid(vid));
                     }
 
-                    let deps2 = vid_map
-                        .entry(RegionTarget::RegionVid(vid))
-                        .or_default();
+                    let deps2 = vid_map.entry(RegionTarget::RegionVid(vid)).or_default();
                     deps2.smaller.insert(RegionTarget::Region(region));
                 }
                 &Constraint::VarSubReg(vid, region) => {
@@ -542,15 +538,11 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 }
                 &Constraint::RegSubReg(r1, r2) => {
                     {
-                        let deps1 = vid_map
-                            .entry(RegionTarget::Region(r1))
-                            .or_default();
+                        let deps1 = vid_map.entry(RegionTarget::Region(r1)).or_default();
                         deps1.larger.insert(RegionTarget::Region(r2));
                     }
 
-                    let deps2 = vid_map
-                        .entry(RegionTarget::Region(r2))
-                        .or_default();
+                    let deps2 = vid_map.entry(RegionTarget::Region(r2)).or_default();
                     deps2.smaller.insert(RegionTarget::Region(r1));
                 }
             }
@@ -683,7 +675,11 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     }
                 }
                 &ty::Predicate::RegionOutlives(ref binder) => {
-                    if select.infcx().region_outlives_predicate(&dummy_cause, binder).is_err() {
+                    if select
+                        .infcx()
+                        .region_outlives_predicate(&dummy_cause, binder)
+                        .is_err()
+                    {
                         return false;
                     }
                 }
