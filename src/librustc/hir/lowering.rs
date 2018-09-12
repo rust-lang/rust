@@ -1385,7 +1385,6 @@ impl<'a> LoweringContext<'a> {
             // does not actually exist in the AST.
             lctx.items.insert(exist_ty_id.node_id, exist_ty_item);
 
-            let def = Def::Existential(DefId::local(exist_ty_def_index));
             // `impl Trait` now just becomes `Foo<'a, 'b, ..>`
             hir::TyKind::Def(hir::ItemId { id: exist_ty_id.node_id }, lifetimes)
         })
