@@ -489,7 +489,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             Some(ty::RegionKind::ReStatic)
         ) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
             if let Some(ty::TyS {
-                sty: ty::TyKind::Anon(did, substs),
+                sty: ty::TyKind::Opaque(did, substs),
                 ..
             }) = infcx.tcx.is_suitable_region(f)
                     .map(|r| r.def_id)
