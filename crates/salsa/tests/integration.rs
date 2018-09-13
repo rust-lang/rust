@@ -79,19 +79,19 @@ where
 
 fn mk_queries() -> salsa::QueryConfig<State, Data> {
     salsa::QueryConfig::<State, Data>::new()
-        .with_ground_query(GET_TEXT, |state, id| {
+        .with_ground_query(GET_TEXT, Box::new(|state, id| {
             mk_ground_query::<u32, String>(state, id, |state, id| state[id].clone())
-        })
-        .with_ground_query(GET_FILES, |state, id| {
+        }))
+        .with_ground_query(GET_FILES, Box::new(|state, id| {
             mk_ground_query::<(), Vec<u32>>(state, id, |state, &()| state.keys().cloned().collect())
-        })
-        .with_query(FILE_NEWLINES, |query_ctx, id| {
+        }))
+        .with_query(FILE_NEWLINES, Box::new(|query_ctx, id| {
             mk_query(query_ctx, id, |query_ctx, &id| {
                 let text = query_ctx.get_text(id);
                 text.lines().count()
             })
-        })
-        .with_query(TOTAL_NEWLINES, |query_ctx, id| {
+        }))
+        .with_query(TOTAL_NEWLINES, Box::new(|query_ctx, id| {
             mk_query(query_ctx, id, |query_ctx, &()| {
                 let mut total = 0;
                 for &id in query_ctx.get_files().iter() {
@@ -99,7 +99,7 @@ fn mk_queries() -> salsa::QueryConfig<State, Data> {
                 }
                 total
             })
-        })
+        }))
 }
 
 #[test]

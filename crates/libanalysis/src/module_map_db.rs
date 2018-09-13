@@ -2,66 +2,55 @@ use std::sync::Arc;
 use {
     FileId,
     db::{
-        Query, Eval, QueryCtx, FileSyntax, Files,
-        Cache, QueryCache,
+        Query, QueryCtx
     },
     module_map::resolve_submodule,
 };
 
-pub(crate) enum ModuleDescr {}
-impl Query for ModuleDescr {
-    const ID: u32 = 30;
-    type Params = FileId;
-    type Output = Arc<descr::ModuleDescr>;
-}
-
-enum ResolveSubmodule {}
-impl Query for ResolveSubmodule {
-    const ID: u32 = 31;
-    type Params = (FileId, descr::Submodule);
-    type Output = Arc<Vec<FileId>>;
-}
-
-enum ParentModule {}
-impl Query for ParentModule {
-    const ID: u32 = 40;
-    type Params = FileId;
-    type Output = Arc<Vec<FileId>>;
-}
-
-impl Eval for ModuleDescr {
-    fn eval(ctx: &QueryCtx, file_id: &FileId) -> Arc<descr::ModuleDescr> {
-        let file = ctx.get::<FileSyntax>(file_id);
-        Arc::new(descr::ModuleDescr::new(file.ast()))
+impl<'a> QueryCtx<'a> {
+    fn module_descr(&self, file_id: FileId) -> Arc<descr::ModuleDescr> {
+        self.get(MODULE_DESCR, file_id)
+    }
+    fn resolve_submodule(&self, file_id: FileId, submod: descr::Submodule) -> Arc<Vec<FileId>> {
+        self.get(RESOLVE_SUBMODULE, (file_id, submod))
     }
 }
 
-impl Eval for ResolveSubmodule {
-    fn eval(ctx: &QueryCtx, &(file_id, ref submodule): &(FileId, descr::Submodule)) -> Arc<Vec<FileId>> {
-        let files = ctx.get::<Files>(&());
-        let res = resolve_submodule(file_id, &submodule.name, &files.file_resolver()).0;
-        Arc::new(res)
+pub(crate) const MODULE_DESCR: Query<FileId, descr::ModuleDescr> = Query {
+    id: 30,
+    f: |ctx, &file_id| {
+        let file = ctx.file_syntax(file_id);
+        descr::ModuleDescr::new(file.ast())
     }
-}
+};
 
-impl Eval for ParentModule {
-    fn eval(ctx: &QueryCtx, file_id: &FileId) -> Arc<Vec<FileId>> {
-        let files = ctx.get::<Files>(&());
-        let res = files.iter()
-            .map(|parent_id| (parent_id, ctx.get::<ModuleDescr>(&parent_id)))
+pub(crate) const RESOLVE_SUBMODULE: Query<(FileId, descr::Submodule), Vec<FileId>> = Query {
+    id: 31,
+    f: |ctx, params| {
+        let files = ctx.file_set();
+        resolve_submodule(params.0, &params.1.name, &files.1).0
+    }
+};
+
+pub(crate) const PARENT_MODULE: Query<FileId, Vec<FileId>> = Query {
+    id: 40,
+    f: |ctx, file_id| {
+        let files = ctx.file_set();
+        let res = files.0.iter()
+            .map(|&parent_id| (parent_id, ctx.module_descr(parent_id)))
             .filter(|(parent_id, descr)| {
                 descr.submodules.iter()
                     .any(|subm| {
-                        ctx.get::<ResolveSubmodule>(&(*parent_id, subm.clone()))
+                        ctx.resolve_submodule(*parent_id, subm.clone())
                             .iter()
                             .any(|it| it == file_id)
                     })
             })
             .map(|(id, _)| id)
             .collect();
-        Arc::new(res)
+        res
     }
-}
+};
 
 mod descr {
     use libsyntax2::{
@@ -102,7 +91,7 @@ mod tests {
     use im;
     use relative_path::{RelativePath, RelativePathBuf};
     use {
-        db::{Query, DbHost, TraceEventKind},
+        db::{Query, Db, State},
         imp::FileResolverImp,
         FileId, FileResolver,
     };
@@ -126,7 +115,7 @@ mod tests {
     struct Fixture {
         next_file_id: u32,
         fm: im::HashMap<FileId, RelativePathBuf>,
-        db: DbHost,
+        db: Db,
     }
 
     impl Fixture {
@@ -134,7 +123,7 @@ mod tests {
             Fixture {
                 next_file_id: 1,
                 fm: im::HashMap::new(),
-                db: DbHost::new(),
+                db: Db::new(State::default()),
             }
         }
         fn add_file(&mut self, path: &str, text: &str) -> FileId {
@@ -142,36 +131,39 @@ mod tests {
             let file_id = FileId(self.next_file_id);
             self.next_file_id += 1;
             self.fm.insert(file_id, RelativePathBuf::from(&path[1..]));
-            self.db.change_file(file_id, Some(text.to_string()));
-            self.db.set_file_resolver(FileResolverImp::new(
+            let mut new_state = self.db.state().clone();
+            new_state.file_map.insert(file_id, text.to_string().into_boxed_str().into());
+            new_state.resolver = FileResolverImp::new(
                 Arc::new(FileMap(self.fm.clone()))
-            ));
-
+            );
+            self.db = self.db.with_state(new_state, &[file_id], true);
             file_id
         }
         fn remove_file(&mut self, file_id: FileId) {
             self.fm.remove(&file_id);
-            self.db.change_file(file_id, None);
-            self.db.set_file_resolver(FileResolverImp::new(
+            let mut new_state = self.db.state().clone();
+            new_state.file_map.remove(&file_id);
+            new_state.resolver = FileResolverImp::new(
                 Arc::new(FileMap(self.fm.clone()))
-            ))
+            );
+            self.db = self.db.with_state(new_state, &[file_id], true);
         }
         fn change_file(&mut self, file_id: FileId, new_text: &str) {
-            self.db.change_file(file_id, Some(new_text.to_string()));
+            let mut new_state = self.db.state().clone();
+            new_state.file_map.insert(file_id, new_text.to_string().into_boxed_str().into());
+            self.db = self.db.with_state(new_state, &[file_id], false);
         }
         fn check_parent_modules(
             &self,
             file_id: FileId,
             expected: &[FileId],
-            queries: &[(u32, u64)]
+            queries: &[(u16, u64)]
         ) {
-            let ctx = self.db.query_ctx();
-            let actual = ctx.get::<ParentModule>(&file_id);
+            let (actual, events) = self.db.get(PARENT_MODULE, file_id);
             assert_eq!(actual.as_slice(), expected);
             let mut counts = HashMap::new();
-            ctx.trace.borrow().iter()
-               .filter(|event| event.kind == TraceEventKind::Evaluating)
-               .for_each(|event| *counts.entry(event.query_id).or_insert(0) += 1);
+            events.into_iter()
+               .for_each(|event| *counts.entry(event).or_insert(0) += 1);
             for &(query_id, expected_count) in queries.iter() {
                 let actual_count = *counts.get(&query_id).unwrap_or(&0);
                 assert_eq!(
@@ -189,25 +181,25 @@ mod tests {
     fn test_parent_module() {
         let mut f = Fixture::new();
         let foo = f.add_file("/foo.rs", "");
-        // f.check_parent_modules(foo, &[], &[(ModuleDescr::ID, 1)]);
+        f.check_parent_modules(foo, &[], &[(MODULE_DESCR.id, 1)]);
 
         let lib = f.add_file("/lib.rs", "mod foo;");
-        f.check_parent_modules(foo, &[lib], &[(ModuleDescr::ID, 2)]);
-        f.check_parent_modules(foo, &[lib], &[(ModuleDescr::ID, 0)]);
+        f.check_parent_modules(foo, &[lib], &[(MODULE_DESCR.id, 1)]);
+        f.check_parent_modules(foo, &[lib], &[(MODULE_DESCR.id, 0)]);
 
         f.change_file(lib, "");
-        f.check_parent_modules(foo, &[], &[(ModuleDescr::ID, 2)]);
+        f.check_parent_modules(foo, &[], &[(MODULE_DESCR.id, 1)]);
 
-        // f.change_file(lib, "mod foo;");
-        // f.check_parent_modules(foo, &[lib], &[(ModuleDescr::ID, 2)]);
+        f.change_file(lib, "mod foo;");
+        f.check_parent_modules(foo, &[lib], &[(MODULE_DESCR.id, 1)]);
 
-        // f.change_file(lib, "mod bar;");
-        // f.check_parent_modules(foo, &[], &[(ModuleDescr::ID, 2)]);
+        f.change_file(lib, "mod bar;");
+        f.check_parent_modules(foo, &[], &[(MODULE_DESCR.id, 1)]);
 
-        // f.change_file(lib, "mod foo;");
-        // f.check_parent_modules(foo, &[lib], &[(ModuleDescr::ID, 2)]);
+        f.change_file(lib, "mod foo;");
+        f.check_parent_modules(foo, &[lib], &[(MODULE_DESCR.id, 1)]);
 
-        // f.remove_file(lib);
-        // f.check_parent_modules(foo, &[], &[(ModuleDescr::ID, 1)]);
+        f.remove_file(lib);
+        f.check_parent_modules(foo, &[], &[(MODULE_DESCR.id, 0)]);
     }
 }

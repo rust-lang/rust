@@ -10,6 +10,7 @@ extern crate relative_path;
 #[macro_use]
 extern crate crossbeam_channel;
 extern crate im;
+extern crate salsa;
 
 mod symbol_index;
 mod module_map;

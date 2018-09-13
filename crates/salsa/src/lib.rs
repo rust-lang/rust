@@ -8,8 +8,8 @@ use std::{
 };
 use parking_lot::Mutex;
 
-type GroundQueryFn<T, D> = fn(&T, &D) -> (D, OutputFingerprint);
-type QueryFn<T, D> = fn(&QueryCtx<T, D>, &D) -> (D, OutputFingerprint);
+type GroundQueryFn<T, D> = Box<Fn(&T, &D) -> (D, OutputFingerprint) + Send + Sync + 'static>;
+type QueryFn<T, D> = Box<Fn(&QueryCtx<T, D>, &D) -> (D, OutputFingerprint) + Send + Sync + 'static>;
 
 #[derive(Debug)]
 pub struct Db<T, D> {
@@ -119,7 +119,7 @@ where
         res
     }
 
-    pub fn get_inner(
+    fn get_inner(
         &self,
         query_id: QueryId,
         params: D,
@@ -176,9 +176,9 @@ where
         self.executed.borrow_mut().push(query_id.0);
         self.stack.borrow_mut().push(Vec::new());
 
-        let (res, output_fingerprint) = if let Some(f) = self.ground_query_fn_by_type(query_id.0) {
+        let (res, output_fingerprint) = if let Some(f) = self.query_config.ground_fn.get(&query_id.0) {
             f(&self.db.ground_data, &params)
-        } else if let Some(f) = self.query_fn_by_type(query_id.0) {
+        } else if let Some(f) = self.query_config.query_fn.get(&query_id.0) {
             f(self, &params)
         } else {
             panic!("unknown query type: {:?}", query_id.0);
@@ -189,12 +189,6 @@ where
         let deps = self.stack.borrow_mut().pop().unwrap();
         self.db.record(query_id, params, res.clone(), output_fingerprint, deps);
         (res, output_fingerprint)
-    }
-    fn ground_query_fn_by_type(&self, query_type: QueryTypeId) -> Option<GroundQueryFn<T, D>> {
-        self.query_config.ground_fn.get(&query_type).map(|&it| it)
-    }
-    fn query_fn_by_type(&self, query_type: QueryTypeId) -> Option<QueryFn<T, D>> {
-        self.query_config.query_fn.get(&query_type).map(|&it| it)
     }
     fn record_dep(
         &self,
@@ -239,7 +233,9 @@ where
             query_config: Arc::new(query_config),
         }
     }
-
+    pub fn ground_data(&self) -> &T {
+        &self.db.ground_data
+    }
     pub fn with_ground_data(
         &self,
         ground_data: T,

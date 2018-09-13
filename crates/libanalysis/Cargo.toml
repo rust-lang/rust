@@ -14,6 +14,7 @@ fst = "0.3.1"
 im = "12.0.0"
 libsyntax2 = { path = "../libsyntax2" }
 libeditor = { path = "../libeditor" }
+salsa = { path = "../salsa" }
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }
