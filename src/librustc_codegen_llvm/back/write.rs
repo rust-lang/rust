@@ -196,6 +196,7 @@ pub fn target_machine_factory(sess: &Session, find_features: bool)
     let features = CString::new(features).unwrap();
     let is_pie_binary = !find_features && is_pie_binary(sess);
     let trap_unreachable = sess.target.target.options.trap_unreachable;
+    let emit_stack_size_section = sess.opts.debugging_opts.emit_stack_sizes;
 
     let asm_comments = sess.asm_comments();
 
@@ -213,6 +214,7 @@ pub fn target_machine_factory(sess: &Session, find_features: bool)
                 trap_unreachable,
                 singlethread,
                 asm_comments,
+                emit_stack_size_section,
             )
         };
 
