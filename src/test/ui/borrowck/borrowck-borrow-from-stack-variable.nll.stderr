@@ -28,17 +28,6 @@ LL |     let _bar2 = &mut foo.bar1;  //~ ERROR cannot borrow
 LL |     *bar1;
    |     ----- borrow later used here
 
-error[E0502]: cannot borrow `foo` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-borrow-from-stack-variable.rs:70:11
-   |
-LL |     let bar1 = &mut foo.bar1;
-   |                ------------- mutable borrow occurs here
-LL |     match foo {
-   |           ^^^ immutable borrow occurs here
-...
-LL |     *bar1;
-   |     ----- borrow later used here
-
 error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
   --> $DIR/borrowck-borrow-from-stack-variable.rs:71:21
    |
@@ -121,7 +110,7 @@ LL |     let foo = make_foo();
 LL |     let bar1 = &mut foo.bar1; //~ ERROR cannot borrow
    |                ^^^^^^^^^^^^^ cannot borrow as mutable
 
-error: aborting due to 12 previous errors
+error: aborting due to 11 previous errors
 
 Some errors occurred: E0499, E0502, E0596.
 For more information about an error, try `rustc --explain E0499`.

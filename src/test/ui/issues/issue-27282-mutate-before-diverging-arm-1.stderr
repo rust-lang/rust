@@ -1,17 +1,14 @@
-error[E0500]: closure requires unique access to `x` but it is already borrowed
+error[E0510]: cannot mutably borrow `x` in match guard
   --> $DIR/issue-27282-mutate-before-diverging-arm-1.rs:33:14
    |
 LL |     match x {
-   |           - borrow occurs here
+   |           - value is immutable in match guard
 ...
 LL |             (|| { *x = None; drop(force_fn_once); })();
-   |              ^^    - second borrow occurs due to use of `x` in closure
+   |              ^^    - borrow occurs due to use of `x` in closure
    |              |
-   |              closure construction occurs here
-...
-LL |         &mut Some(&a) if { // this binds to garbage if we've corrupted discriminant
-   |         ------------- borrow later used here
+   |              cannot mutably borrow
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0500`.
+For more information about this error, try `rustc --explain E0510`.
