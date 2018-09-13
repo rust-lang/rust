@@ -273,7 +273,7 @@ for mir::StatementKind<'gcx> {
     }
 }
 
-impl_stable_hash_for!(enum mir::FakeReadCause { ForMatch, ForLet });
+impl_stable_hash_for!(enum mir::FakeReadCause { ForMatchGuard, ForMatchedPlace, ForLet });
 
 impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>>
     for mir::ValidationOperand<'gcx, T>

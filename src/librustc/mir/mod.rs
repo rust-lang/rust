@@ -451,7 +451,7 @@ impl From<Mutability> for hir::Mutability {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     Shared,
@@ -1693,7 +1693,11 @@ pub enum FakeReadCause {
     ///
     /// This should ensure that you cannot change the variant for an enum
     /// while you are in the midst of matching on it.
-    ForMatch,
+    ForMatchGuard,
+
+    /// `let x: !; match x {}` doesn't generate any read of x so we need to
+    /// generate a read of x to check that it is initialized and safe.
+    ForMatchedPlace,
 
     /// Officially, the semantics of
     ///
@@ -1794,7 +1798,7 @@ impl<'tcx> Debug for Statement<'tcx> {
 
 /// A path to a value; something that can be evaluated without
 /// changing or disturbing program state.
-#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub enum Place<'tcx> {
     /// local variable
     Local(Local),
@@ -1811,7 +1815,7 @@ pub enum Place<'tcx> {
 
 /// The def-id of a static, along with its normalized type (which is
 /// stored to avoid requiring normalization when reading MIR).
-#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct Static<'tcx> {
     pub def_id: DefId,
     pub ty: Ty<'tcx>,
@@ -1826,13 +1830,13 @@ impl_stable_hash_for!(struct Static<'tcx> {
 /// or `*B` or `B[index]`. Note that it is parameterized because it is
 /// shared between `Constant` and `Place`. See the aliases
 /// `PlaceProjection` etc below.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct Projection<'tcx, B, V, T> {
     pub base: B,
     pub elem: ProjectionElem<'tcx, V, T>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub enum ProjectionElem<'tcx, V, T> {
     Deref,
     Field(Field, T),
