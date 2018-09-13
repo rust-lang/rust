@@ -22,6 +22,7 @@ use rustc::ty::layout::LayoutOf;
 use type_of::LayoutLlvmExt;
 use super::FunctionCx;
 use value::Value;
+use interfaces::*;
 
 pub fn non_ssa_locals(fx: &FunctionCx<'a, 'll, 'tcx, &'ll Value>) -> BitSet<mir::Local> {
     let mir = fx.mir;

@@ -208,7 +208,7 @@ pub fn unsized_info<'tcx, Cx: CodegenMethods<'tcx>>(
             let vtable_ptr = cx.layout_of(cx.tcx().mk_mut_ptr(target))
                 .field(cx, abi::FAT_PTR_EXTRA);
             cx.static_ptrcast(meth::get_vtable(cx, source, data.principal()),
-                            cx.backend_type(vtable_ptr))
+                            cx.backend_type(&vtable_ptr))
         }
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}",
                   source,
@@ -217,12 +217,12 @@ pub fn unsized_info<'tcx, Cx: CodegenMethods<'tcx>>(
 }
 
 /// Coerce `src` to `dst_ty`. `src_ty` must be a thin pointer.
-pub fn unsize_thin_ptr(
-    bx: &Builder<'a, 'll, 'tcx>,
-    src: &'ll Value,
+pub fn unsize_thin_ptr<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &Bx,
+    src: Bx::Value,
     src_ty: Ty<'tcx>,
     dst_ty: Ty<'tcx>
-) -> (&'ll Value, &'ll Value) {
+) -> (Bx::Value, Bx::Value) {
     debug!("unsize_thin_ptr: {:?} => {:?}", src_ty, dst_ty);
     match (&src_ty.sty, &dst_ty.sty) {
         (&ty::Ref(_, a, _),
@@ -232,13 +232,13 @@ pub fn unsize_thin_ptr(
         (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }),
          &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
             assert!(bx.cx().type_is_sized(a));
-            let ptr_ty = bx.cx().type_ptr_to(bx.cx().layout_of(b).llvm_type(bx.cx()));
+            let ptr_ty = bx.cx().type_ptr_to(bx.cx().backend_type(&bx.cx().layout_of(b)));
             (bx.pointercast(src, ptr_ty), unsized_info(bx.cx(), a, b, None))
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             let (a, b) = (src_ty.boxed_ty(), dst_ty.boxed_ty());
             assert!(bx.cx().type_is_sized(a));
-            let ptr_ty = bx.cx().type_ptr_to(bx.cx().layout_of(b).llvm_type(bx.cx()));
+            let ptr_ty = bx.cx().type_ptr_to(bx.cx().backend_type(&bx.cx().layout_of(b)));
             (bx.pointercast(src, ptr_ty), unsized_info(bx.cx(), a, b, None))
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
@@ -263,8 +263,8 @@ pub fn unsize_thin_ptr(
             }
             let (lldata, llextra) = result.unwrap();
             // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-            (bx.bitcast(lldata, dst_layout.scalar_pair_element_llvm_type(bx.cx(), 0, true)),
-             bx.bitcast(llextra, dst_layout.scalar_pair_element_llvm_type(bx.cx(), 1, true)))
+            (bx.bitcast(lldata, bx.cx().scalar_pair_element_backend_type(&dst_layout, 0, true)),
+             bx.bitcast(llextra, bx.cx().scalar_pair_element_backend_type(&dst_layout, 1, true)))
         }
         _ => bug!("unsize_thin_ptr: called on bad types"),
     }

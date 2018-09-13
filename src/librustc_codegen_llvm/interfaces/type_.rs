@@ -61,10 +61,21 @@ pub trait DerivedTypeMethods<'tcx>: Backend<'tcx> {
     fn type_from_integer(&self, i: layout::Integer) -> Self::Type;
     fn type_pointee_for_abi_align(&self, align: Align) -> Self::Type;
     fn type_padding_filler(&self, size: Size, align: Align) -> Self::Type;
+
+    fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool;
+    fn type_is_sized(&self, ty: Ty<'tcx>) -> bool;
+    fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool;
+    fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool;
 }
 
 pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
-    fn backend_type(&self, ty: TyLayout<'tcx>) -> Self::Type;
+    fn backend_type(&self, ty: &TyLayout<'tcx>) -> Self::Type;
+    fn scalar_pair_element_backend_type<'a>(
+        &self,
+        ty: &TyLayout<'tcx>,
+        index: usize,
+        immediate: bool
+    ) -> Self::Type;
 }
 
 pub trait TypeMethods<'tcx>:

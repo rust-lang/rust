@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use attributes;
-use common;
 use llvm;
 use rustc::dep_graph::DepGraphSafe;
 use rustc::hir;
@@ -746,31 +745,6 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         llfn
     }
 
-    pub fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
-        common::type_needs_drop(self.tcx, ty)
-    }
-
-    pub fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        common::type_is_sized(self.tcx, ty)
-    }
-
-    pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        common::type_is_freeze(self.tcx, ty)
-    }
-
-    pub fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
-        use syntax_pos::DUMMY_SP;
-        if ty.is_sized(self.tcx.at(DUMMY_SP), ty::ParamEnv::reveal_all()) {
-            return false;
-        }
-
-        let tail = self.tcx.struct_tail(ty);
-        match tail.sty {
-            ty::Foreign(..) => false,
-            ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
-            _ => bug!("unexpected unsized tail: {:?}", tail.sty),
-        }
-    }
 }
 
 impl ty::layout::HasDataLayout for CodegenCx<'ll, 'tcx> {
