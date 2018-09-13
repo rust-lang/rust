@@ -31,7 +31,7 @@ fn main() {
         &mut Some(&_) if {
             // ForceFnOnce needed to exploit #27282
             (|| { *x = None; drop(force_fn_once); })();
-            //~^ ERROR closure requires unique access to `x` but it is already borrowed [E0500]
+            //~^ ERROR cannot mutably borrow `x` in match guard [E0510]
             false
         } => {}
         &mut Some(&a) if { // this binds to garbage if we've corrupted discriminant

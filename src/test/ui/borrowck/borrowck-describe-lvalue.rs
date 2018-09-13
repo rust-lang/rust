@@ -74,7 +74,7 @@ fn main() {
     {
         let mut e = Baz::X(2);
         let x = e.x();
-        match e { //[mir]~ ERROR cannot use `e` because it was mutably borrowed
+        match e {
             Baz::X(value) => value
             //[ast]~^ ERROR cannot use `e.0` because it was mutably borrowed
             //[mir]~^^ ERROR cannot use `e.0` because it was mutably borrowed
@@ -117,7 +117,7 @@ fn main() {
     {
         let mut e = Box::new(Baz::X(3));
         let x = e.x();
-        match *e { //[mir]~ ERROR cannot use `*e` because it was mutably borrowed
+        match *e {
             Baz::X(value) => value
             //[ast]~^ ERROR cannot use `e.0` because it was mutably borrowed
             //[mir]~^^ ERROR cannot use `e.0` because it was mutably borrowed
@@ -136,25 +136,25 @@ fn main() {
     {
         let mut v = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         let x = &mut v;
-        match v { //[mir]~ ERROR cannot use `v` because it was mutably borrowed
+        match v {
             &[x, _, .., _, _] => println!("{}", x),
                 //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
                 //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed
                             _ => panic!("other case"),
         }
-        match v { //[mir]~ ERROR cannot use `v` because it was mutably borrowed
+        match v {
             &[_, x, .., _, _] => println!("{}", x),
                 //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
                 //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed
                             _ => panic!("other case"),
         }
-        match v { //[mir]~ ERROR cannot use `v` because it was mutably borrowed
+        match v {
             &[_, _, .., x, _] => println!("{}", x),
                 //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
                 //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed
                             _ => panic!("other case"),
         }
-        match v { //[mir]~ ERROR cannot use `v` because it was mutably borrowed
+        match v {
             &[_, _, .., _, x] => println!("{}", x),
                 //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
                 //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed
@@ -166,25 +166,25 @@ fn main() {
     {
         let mut v = &[1, 2, 3, 4, 5];
         let x = &mut v;
-        match v { //[mir]~ ERROR cannot use `v` because it was mutably borrowed
+        match v {
             &[x..] => println!("{:?}", x),
                 //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
                 //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed
             _ => panic!("other case"),
         }
-        match v { //[mir]~ ERROR cannot use `v` because it was mutably borrowed
+        match v {
             &[_, x..] => println!("{:?}", x),
                 //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
                 //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed
             _ => panic!("other case"),
         }
-        match v { //[mir]~ ERROR cannot use `v` because it was mutably borrowed
+        match v {
             &[x.., _] => println!("{:?}", x),
                 //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
                 //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed
             _ => panic!("other case"),
         }
-        match v { //[mir]~ ERROR cannot use `v` because it was mutably borrowed
+        match v {
             &[_, x.., _] => println!("{:?}", x),
                 //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
                 //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed
@@ -198,7 +198,7 @@ fn main() {
 
         let mut e = E::A(3);
         let x = &mut e;
-        match e { //[mir]~ ERROR cannot use `e` because it was mutably borrowed
+        match e {
             E::A(ref ax) =>
                 //[ast]~^ ERROR cannot borrow `e.0` as immutable because `e` is also borrowed as mutable
                 //[mir]~^^ ERROR cannot borrow `e.0` as immutable because it is also borrowed as mutable
@@ -217,14 +217,14 @@ fn main() {
         struct S { x: F, y: (u32, u32), };
         let mut s = S { x: F { x: 1, y: 2}, y: (999, 998) };
         let x = &mut s;
-        match s { //[mir]~ ERROR cannot use `s` because it was mutably borrowed
+        match s {
             S  { y: (ref y0, _), .. } =>
                 //[ast]~^ ERROR cannot borrow `s.y.0` as immutable because `s` is also borrowed as mutable
                 //[mir]~^^ ERROR cannot borrow `s.y.0` as immutable because it is also borrowed as mutable
                 println!("y0: {:?}", y0),
             _ => panic!("other case"),
         }
-        match s { //[mir]~ ERROR cannot use `s` because it was mutably borrowed
+        match s {
             S  { x: F { y: ref x0, .. }, .. } =>
                 //[ast]~^ ERROR cannot borrow `s.x.y` as immutable because `s` is also borrowed as mutable
                 //[mir]~^^ ERROR cannot borrow `s.x.y` as immutable because it is also borrowed as mutable
@@ -279,7 +279,7 @@ fn main() {
         struct F {x: u32, y: u32};
         let mut v = &[F{x: 1, y: 2}, F{x: 3, y: 4}];
         let x = &mut v;
-        match v { //[mir]~ ERROR cannot use `v` because it was mutably borrowed
+        match v {
             &[_, F {x: ref xf, ..}] => println!("{}", xf),
             //[mir]~^ ERROR cannot borrow `v[..].x` as immutable because it is also borrowed as mutable
             // No errors in AST
