@@ -532,41 +532,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         parent_scope.module.legacy_macro_resolutions.borrow_mut()
             .push((path[0], kind, parent_scope.clone(), result.ok()));
 
-        if let Ok(Def::NonMacroAttr(NonMacroAttrKind::Custom)) = result {} else {
-            return result;
-        }
-
-        // At this point we've found that the `attr` is determinately unresolved and thus can be
-        // interpreted as a custom attribute. Normally custom attributes are feature gated, but
-        // it may be a custom attribute whitelisted by a derive macro and they do not require
-        // a feature gate.
-        //
-        // So here we look through all of the derive annotations in scope and try to resolve them.
-        // If they themselves successfully resolve *and* one of the resolved derive macros
-        // whitelists this attribute's name, then this is a registered attribute and we can convert
-        // it from a "generic custom attrite" into a "known derive helper attribute".
-        assert!(kind == MacroKind::Attr);
-        enum ConvertToDeriveHelper { Yes, No, DontKnow }
-        let mut convert_to_derive_helper = ConvertToDeriveHelper::No;
-        for derive in &parent_scope.derives {
-            match self.resolve_macro_to_def(derive, MacroKind::Derive, parent_scope, force) {
-                Ok((_, ext)) => if let SyntaxExtension::ProcMacroDerive(_, inert_attrs, _) = &*ext {
-                    if inert_attrs.contains(&path[0].name) {
-                        convert_to_derive_helper = ConvertToDeriveHelper::Yes;
-                        break
-                    }
-                },
-                Err(Determinacy::Undetermined) =>
-                    convert_to_derive_helper = ConvertToDeriveHelper::DontKnow,
-                Err(Determinacy::Determined) => {}
-            }
-        }
-
-        match convert_to_derive_helper {
-            ConvertToDeriveHelper::Yes => Ok(Def::NonMacroAttr(NonMacroAttrKind::DeriveHelper)),
-            ConvertToDeriveHelper::No => result,
-            ConvertToDeriveHelper::DontKnow => Err(Determinacy::determined(force)),
-        }
+        result
     }
 
     // Resolve the initial segment of a non-global macro path
@@ -607,6 +573,13 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         // 2b. Standard library prelude is currently implemented as `macro-use` (closed, controlled)
         // 3. Language prelude: builtin macros (closed, controlled, except for legacy plugins).
         // 4. Language prelude: builtin attributes (closed, controlled).
+        // N (unordered). Derive helpers (open, not controlled). All ambiguities with other names
+        //    are currently reported as errors. They should be higher in priority than preludes
+        //    and maybe even names in modules according to the "general principles" above. They
+        //    also should be subject to restricted shadowing because are effectively produced by
+        //    derives (you need to resolve the derive first to add helpers into scope), but they
+        //    should be available before the derive is expanded for compatibility.
+        //    It's mess in general, so we are being conservative for now.
 
         assert!(ns == TypeNS  || ns == MacroNS);
         assert!(force || !record_used); // `record_used` implies `force`
@@ -630,6 +603,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             MacroUsePrelude,
             BuiltinMacros,
             BuiltinAttrs,
+            DeriveHelpers,
             ExternPrelude,
             ToolPrelude,
             StdLibPrelude,
@@ -678,6 +652,26 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     } else {
                         Err(Determinacy::Determined)
                     }
+                }
+                WhereToResolve::DeriveHelpers => {
+                    let mut result = Err(Determinacy::Determined);
+                    for derive in &parent_scope.derives {
+                        let parent_scope = ParentScope { derives: Vec::new(), ..*parent_scope };
+                        if let Ok((_, ext)) = self.resolve_macro_to_def(derive, MacroKind::Derive,
+                                                                        &parent_scope, force) {
+                            if let SyntaxExtension::ProcMacroDerive(_, helper_attrs, _) = &*ext {
+                                if helper_attrs.contains(&ident.name) {
+                                    let binding =
+                                        (Def::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
+                                        ty::Visibility::Public, derive.span, Mark::root())
+                                        .to_name_binding(self.arenas);
+                                    result = Ok((binding, FromPrelude(false)));
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    result
                 }
                 WhereToResolve::ExternPrelude => {
                     if use_prelude && self.extern_prelude.contains(&ident.name) {
@@ -758,7 +752,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     }
                     WhereToResolve::MacroUsePrelude => WhereToResolve::BuiltinMacros,
                     WhereToResolve::BuiltinMacros => WhereToResolve::BuiltinAttrs,
-                    WhereToResolve::BuiltinAttrs => break, // nowhere else to search
+                    WhereToResolve::BuiltinAttrs => WhereToResolve::DeriveHelpers,
+                    WhereToResolve::DeriveHelpers => break, // nowhere else to search
                     WhereToResolve::ExternPrelude => WhereToResolve::ToolPrelude,
                     WhereToResolve::ToolPrelude => WhereToResolve::StdLibPrelude,
                     WhereToResolve::StdLibPrelude => WhereToResolve::BuiltinTypes,
@@ -780,9 +775,12 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
                     if let Some(innermost_result) = innermost_result {
                         // Found another solution, if the first one was "weak", report an error.
-                        if result.0.def() != innermost_result.0.def() &&
+                        let (def, innermost_def) = (result.0.def(), innermost_result.0.def());
+                        if def != innermost_def &&
                            (innermost_result.0.is_glob_import() ||
-                            innermost_result.0.may_appear_after(parent_scope.expansion, result.0)) {
+                            innermost_result.0.may_appear_after(parent_scope.expansion, result.0) ||
+                            innermost_def == Def::NonMacroAttr(NonMacroAttrKind::DeriveHelper) ||
+                            def == Def::NonMacroAttr(NonMacroAttrKind::DeriveHelper)) {
                             self.ambiguity_errors.push(AmbiguityError {
                                 ident,
                                 b1: innermost_result.0,
