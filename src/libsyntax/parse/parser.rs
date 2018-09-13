@@ -2081,12 +2081,12 @@ impl<'a> Parser<'a> {
 
             let args = if self.eat_lt() {
                 // `<'a, T, A = U>`
-                let args: PResult<_> = do catch {
-                    let (args, bindings) = self.parse_generic_args()?;
-                    self.expect_gt()?;
-                    let span = lo.to(self.prev_span);
-                    AngleBracketedArgs { args, bindings, span }
-                };
+                let args: PResult<_> = self.parse_generic_args().and_then(|(args, bindings)| {
+                    self.expect_gt().and_then(|_| {
+                        let span = lo.to(self.prev_span);
+                        Ok(AngleBracketedArgs { args, bindings, span })
+                    })
+                });
 
                 match args {
                     Err(mut err) => {
