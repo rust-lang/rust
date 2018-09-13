@@ -114,6 +114,11 @@ pub const SECURITY_SQOS_PRESENT: DWORD = 0x00100000;
 
 pub const FIONBIO: c_ulong = 0x8004667e;
 
+#[cfg(target_arch = "arm")]
+const ARM_MAX_BREAKPOINTS: usize = 8;
+#[cfg(target_arch = "arm")]
+const ARM_MAX_WATCHPOINTS: usize = 1;
+
 #[repr(C)]
 #[derive(Copy)]
 pub struct WIN32_FIND_DATAW {
@@ -283,6 +288,9 @@ pub const IMAGE_FILE_MACHINE_AMD64: DWORD = 0x8664;
 #[cfg(target_arch = "aarch64")]
 #[cfg(feature = "backtrace")]
 pub const IMAGE_FILE_MACHINE_ARM64: DWORD = 0xAA64;
+#[cfg(target_arch = "arm")]
+#[cfg(feature = "backtrace")]
+pub const IMAGE_FILE_MACHINE_ARMNT: DWORD = 0x01c4;
 
 pub const EXCEPTION_CONTINUE_SEARCH: LONG = 0;
 pub const EXCEPTION_STACK_OVERFLOW: DWORD = 0xc00000fd;
@@ -789,12 +797,44 @@ pub struct FLOATING_SAVE_AREA {
     _Dummy: [u8; 512] // FIXME: Fill this out
 }
 
+#[cfg(target_arch = "arm")]
+#[repr(C)]
+pub struct CONTEXT {
+    pub ContextFlags: ULONG,
+    pub R0: ULONG,
+    pub R1: ULONG,
+    pub R2: ULONG,
+    pub R3: ULONG,
+    pub R4: ULONG,
+    pub R5: ULONG,
+    pub R6: ULONG,
+    pub R7: ULONG,
+    pub R8: ULONG,
+    pub R9: ULONG,
+    pub R10: ULONG,
+    pub R11: ULONG,
+    pub R12: ULONG,
+    pub Sp: ULONG,
+    pub Lr: ULONG,
+    pub Pc: ULONG,
+    pub Cpsr: ULONG,
+    pub Fpscr: ULONG,
+    pub Padding: ULONG,
+    pub D: [u64; 32],
+    pub Bvr: [ULONG; ARM_MAX_BREAKPOINTS],
+    pub Bcr: [ULONG; ARM_MAX_BREAKPOINTS],
+    pub Wvr: [ULONG; ARM_MAX_WATCHPOINTS],
+    pub Wcr: [ULONG; ARM_MAX_WATCHPOINTS],
+    pub Padding2: [ULONG; 2]
+}
+
 // FIXME(#43348): This structure is used for backtrace only, and a fake
 // definition is provided here only to allow rustdoc to pass type-check. This
 // will not appear in the final documentation. This should be also defined for
 // other architectures supported by Windows such as ARM, and for historical
 // interest, maybe MIPS and PowerPC as well.
-#[cfg(all(rustdoc, not(any(target_arch = "x86_64", target_arch = "x86", target_arch = "aarch64"))))]
+#[cfg(all(rustdoc, not(any(target_arch = "x86_64", target_arch = "x86",
+      target_arch = "aarch64", target_arch = "arm"))))]
 pub enum CONTEXT {}
 
 #[cfg(target_arch = "aarch64")]
