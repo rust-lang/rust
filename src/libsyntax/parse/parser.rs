@@ -250,6 +250,8 @@ pub struct Parser<'a> {
     desugar_doc_comments: bool,
     /// Whether we should configure out of line modules as we parse.
     pub cfg_mods: bool,
+    /// Whether we should prevent recovery from parsing areas (during backtracking).
+    prevent_recovery: bool,
 }
 
 
@@ -569,6 +571,7 @@ impl<'a> Parser<'a> {
             },
             desugar_doc_comments,
             cfg_mods: true,
+            prevent_recovery: false,
         };
 
         let tok = parser.next_tok();
@@ -1111,6 +1114,9 @@ impl<'a> Parser<'a> {
                     first = false;
                 } else {
                     if let Err(mut e) = self.expect(t) {
+                        if self.prevent_recovery {
+                            return Err(e);
+                        }
                         // Attempt to keep parsing if it was a similar separator
                         if let Some(ref tokens) = t.similar_tokens() {
                             if tokens.contains(&self.token) {
@@ -2063,6 +2069,7 @@ impl<'a> Parser<'a> {
                 // We have to save a snapshot, because it could end up being an expression
                 // instead.
                 parser_snapshot_before_generics = Some(self.clone());
+                self.prevent_recovery = true;
                 true
             } {
             // Generic arguments are found - `<`, `(`, `::<` or `::(`.

@@ -28,6 +28,7 @@
 #![feature(str_escape)]
 #![feature(try_trait)]
 #![feature(unicode_internals)]
+#![feature(catch_expr)]
 
 #![recursion_limit="256"]
 
