@@ -51,7 +51,14 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 let mut selcx =
                     SelectionContext::with_query_mode(&self, TraitQueryMode::Standard);
                 selcx.evaluate_obligation_recursively(obligation)
-                     .expect("Overflow should be caught earlier in standard query mode")
+                    .unwrap_or_else(|r| {
+                        span_bug!(
+                            obligation.cause.span,
+                            "Overflow should be caught earlier in standard query mode: {:?}, {:?}",
+                            obligation,
+                            r,
+                        )
+                    })
             }
         }
     }
