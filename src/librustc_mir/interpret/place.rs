@@ -13,6 +13,7 @@
 //! All high-level functions to write to memory work on places as destinations.
 
 use std::convert::TryFrom;
+use std::mem;
 
 use rustc::ich::StableHashingContext;
 use rustc::mir;
@@ -57,11 +58,13 @@ pub enum Place<Id=AllocId> {
     },
 }
 
+// Can't use the macro here because that does not support named enum fields.
 impl<'a> HashStable<StableHashingContext<'a>> for Place {
     fn hash_stable<W: StableHasherResult>(
         &self, hcx: &mut StableHashingContext<'a>,
-        hasher: &mut StableHasher<W>) {
-
+        hasher: &mut StableHasher<W>)
+    {
+        mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
             Place::Ptr(mem_place) => mem_place.hash_stable(hcx, hasher),
 
