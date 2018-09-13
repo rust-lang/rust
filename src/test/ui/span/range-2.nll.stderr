@@ -1,24 +1,24 @@
 error[E0597]: `a` does not live long enough
   --> $DIR/range-2.rs:17:9
    |
+LL |     let r = {
+   |         - borrow later stored here
+...
 LL |         &a..&b
    |         ^^ borrowed value does not live long enough
 LL |     };
    |     - `a` dropped here while still borrowed
-...
-LL |     r.use_ref();
-   |     - borrow later used here
 
 error[E0597]: `b` does not live long enough
   --> $DIR/range-2.rs:17:13
    |
+LL |     let r = {
+   |         - borrow later stored here
+...
 LL |         &a..&b
    |             ^^ borrowed value does not live long enough
 LL |     };
    |     - `b` dropped here while still borrowed
-...
-LL |     r.use_ref();
-   |     - borrow later used here
 
 error: aborting due to 2 previous errors
 
