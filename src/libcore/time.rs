@@ -459,7 +459,7 @@ impl Duration {
             None
         }
     }
-    
+
     /// Returns the number of seconds contained by this `Duration` as `f64`.
     ///
     /// The returned value does include the fractional (nanosecond) part of the duration.
@@ -497,7 +497,7 @@ impl Duration {
             nanos: (nanos % (NANOS_PER_SEC as u128)) as u32,
         }
     }
-    
+
     /// Multiply `Duration` by `f64`.
     ///
     /// # Examples
