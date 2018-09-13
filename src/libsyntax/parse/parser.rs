@@ -732,6 +732,12 @@ impl<'a> Parser<'a> {
                   format!("expected {} here", expect)))
             };
             let mut err = self.fatal(&msg_exp);
+            if self.token.is_ident_named("and") {
+                err.help("Use `&&` instead of `and` for the boolean operator");
+            }
+            if self.token.is_ident_named("or") {
+                err.help("Use `||` instead of `or` for the boolean operator");
+            }
             let sp = if self.token == token::Token::Eof {
                 // This is EOF, don't want to point at the following char, but rather the last token
                 self.prev_span
@@ -4749,6 +4755,13 @@ impl<'a> Parser<'a> {
             if self.token.is_keyword(keywords::In) || self.token == token::Colon {
                 do_not_suggest_help = true;
                 e.span_label(sp, "expected `{`");
+            }
+
+            if self.token.is_ident_named("and") {
+                e.help("Use `&&` instead of `and` for the boolean operator");
+            }
+            if self.token.is_ident_named("or") {
+                e.help("Use `||` instead of `or` for the boolean operator");
             }
 
             // Check to see if the user has written something like
