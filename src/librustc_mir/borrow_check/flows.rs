@@ -15,7 +15,7 @@
 
 use rustc::mir::{BasicBlock, Location};
 use rustc::ty::RegionVid;
-use rustc_data_structures::indexed_set::Iter;
+use rustc_data_structures::bitvec::BitIter;
 
 use borrow_check::location::LocationIndex;
 
@@ -67,7 +67,7 @@ impl<'b, 'gcx, 'tcx> Flows<'b, 'gcx, 'tcx> {
         }
     }
 
-    crate fn with_outgoing_borrows(&self, op: impl FnOnce(Iter<BorrowIndex>)) {
+    crate fn with_outgoing_borrows(&self, op: impl FnOnce(BitIter<BorrowIndex>)) {
         self.borrows.with_iter_outgoing(op)
     }
 }

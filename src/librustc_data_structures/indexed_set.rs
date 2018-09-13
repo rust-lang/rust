@@ -138,10 +138,8 @@ impl<T: Idx> IdxSet<T> {
         bitwise(self.words_mut(), other.words(), &Intersect)
     }
 
-    pub fn iter(&self) -> Iter<T> {
-        Iter {
-            iter: self.0.iter()
-        }
+    pub fn iter(&self) -> BitIter<T> {
+        self.0.iter()
     }
 }
 
@@ -154,18 +152,6 @@ impl<T: Idx> UnionIntoIdxSet<T> for IdxSet<T> {
 impl<T: Idx> SubtractFromIdxSet<T> for IdxSet<T> {
     fn subtract_from(&self, other: &mut IdxSet<T>) -> bool {
         bitwise(other.words_mut(), self.words(), &Subtract)
-    }
-}
-
-pub struct Iter<'a, T: Idx> {
-    iter: BitIter<'a, T>
-}
-
-impl<'a, T: Idx> Iterator for Iter<'a, T> {
-    type Item = T;
-
-    fn next(&mut self) -> Option<T> {
-        self.iter.next()
     }
 }
 
@@ -221,10 +207,8 @@ impl<T: Idx> SparseIdxSet<T> {
         dense
     }
 
-    fn iter(&self) -> SparseIter<T> {
-        SparseIter {
-            iter: self.0.iter(),
-        }
+    fn iter(&self) -> slice::Iter<T> {
+        self.0.iter()
     }
 }
 
@@ -245,18 +229,6 @@ impl<T: Idx> SubtractFromIdxSet<T> for SparseIdxSet<T> {
             changed |= other.remove(&elem);
         }
         changed
-    }
-}
-
-pub struct SparseIter<'a, T: Idx> {
-    iter: slice::Iter<'a, T>,
-}
-
-impl<'a, T: Idx> Iterator for SparseIter<'a, T> {
-    type Item = T;
-
-    fn next(&mut self) -> Option<T> {
-        self.iter.next().map(|e| *e)
     }
 }
 
@@ -370,8 +342,8 @@ impl<T: Idx> SubtractFromIdxSet<T> for HybridIdxSet<T> {
 }
 
 pub enum HybridIter<'a, T: Idx> {
-    Sparse(SparseIter<'a, T>),
-    Dense(Iter<'a, T>),
+    Sparse(slice::Iter<'a, T>),
+    Dense(BitIter<'a, T>),
 }
 
 impl<'a, T: Idx> Iterator for HybridIter<'a, T> {
@@ -379,7 +351,7 @@ impl<'a, T: Idx> Iterator for HybridIter<'a, T> {
 
     fn next(&mut self) -> Option<T> {
         match self {
-            HybridIter::Sparse(sparse) => sparse.next(),
+            HybridIter::Sparse(sparse) => sparse.next().map(|e| *e),
             HybridIter::Dense(dense) => dense.next(),
         }
     }
