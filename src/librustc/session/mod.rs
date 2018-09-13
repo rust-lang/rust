@@ -550,9 +550,27 @@ impl Session {
         // lto` and we've for whatever reason forced off ThinLTO via the CLI,
         // then ensure we can't use a ThinLTO.
         match self.opts.cg.lto {
-            config::Lto::No => {}
-            config::Lto::Yes if self.opts.cli_forced_thinlto_off => return config::Lto::Fat,
-            other => return other,
+            config::LtoCli::Unspecified => {
+                // The compiler was invoked without the `-Clto` flag. Fall
+                // through to the default handling
+            }
+            config::LtoCli::No => {
+                // The user explicitly opted out of any kind of LTO
+                return config::Lto::No;
+            }
+            config::LtoCli::Yes |
+            config::LtoCli::Fat |
+            config::LtoCli::NoParam => {
+                // All of these mean fat LTO
+                return config::Lto::Fat;
+            }
+            config::LtoCli::Thin => {
+                return if self.opts.cli_forced_thinlto_off {
+                    config::Lto::Fat
+                } else {
+                    config::Lto::Thin
+                };
+            }
         }
 
         // Ok at this point the target doesn't require anything and the user
@@ -1178,7 +1196,6 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     if sess.opts.incremental.is_some() {
         match sess.lto() {
-            Lto::Yes |
             Lto::Thin |
             Lto::Fat => {
                 sess.err("can't perform LTO when compiling incrementally");

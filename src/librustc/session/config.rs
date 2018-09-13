@@ -68,14 +68,12 @@ pub enum OptLevel {
     SizeMin,    // -Oz
 }
 
+/// This is what the `LtoCli` values get mapped to after resolving defaults and
+/// and taking other command line options into account.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum Lto {
     /// Don't do any LTO whatsoever
     No,
-
-    /// Do a full crate graph LTO. The flavor is determined by the compiler
-    /// (currently the default is "fat").
-    Yes,
 
     /// Do a full crate graph LTO with ThinLTO
     Thin,
@@ -86,6 +84,23 @@ pub enum Lto {
 
     /// Do a full crate graph LTO with "fat" LTO
     Fat,
+}
+
+/// The different settings that the `-C lto` flag can have.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum LtoCli {
+    /// `-C lto=no`
+    No,
+    /// `-C lto=yes`
+    Yes,
+    /// `-C lto`
+    NoParam,
+    /// `-C lto=thin`
+    Thin,
+    /// `-C lto=fat`
+    Fat,
+    /// No `-C lto` flag passed
+    Unspecified,
 }
 
 #[derive(Clone, PartialEq, Hash)]
@@ -801,7 +816,8 @@ macro_rules! options {
         pub const parse_unpretty: Option<&'static str> =
             Some("`string` or `string=string`");
         pub const parse_lto: Option<&'static str> =
-            Some("one of `thin`, `fat`, or omitted");
+            Some("either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, \
+                  `fat`, or omitted");
         pub const parse_cross_lang_lto: Option<&'static str> =
             Some("either a boolean (`yes`, `no`, `on`, `off`, etc), \
                   or the path to the linker plugin");
@@ -809,7 +825,7 @@ macro_rules! options {
 
     #[allow(dead_code)]
     mod $mod_set {
-        use super::{$struct_name, Passes, Sanitizer, Lto, CrossLangLto};
+        use super::{$struct_name, Passes, Sanitizer, LtoCli, CrossLangLto};
         use rustc_target::spec::{LinkerFlavor, PanicStrategy, RelroLevel};
         use std::path::PathBuf;
 
@@ -1002,11 +1018,23 @@ macro_rules! options {
             }
         }
 
-        fn parse_lto(slot: &mut Lto, v: Option<&str>) -> bool {
+        fn parse_lto(slot: &mut LtoCli, v: Option<&str>) -> bool {
+            if v.is_some() {
+                let mut bool_arg = None;
+                if parse_opt_bool(&mut bool_arg, v) {
+                    *slot = if bool_arg.unwrap() {
+                        LtoCli::Yes
+                    } else {
+                        LtoCli::No
+                    };
+                    return true
+                }
+            }
+
             *slot = match v {
-                None => Lto::Yes,
-                Some("thin") => Lto::Thin,
-                Some("fat") => Lto::Fat,
+                None => LtoCli::NoParam,
+                Some("thin") => LtoCli::Thin,
+                Some("fat") => LtoCli::Fat,
                 Some(_) => return false,
             };
             true
@@ -1047,7 +1075,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "extra arguments to append to the linker invocation (space separated)"),
     link_dead_code: bool = (false, parse_bool, [UNTRACKED],
         "don't let linker strip dead code (turning it on can be used for code coverage)"),
-    lto: Lto = (Lto::No, parse_lto, [TRACKED],
+    lto: LtoCli = (LtoCli::Unspecified, parse_lto, [TRACKED],
         "perform LLVM link-time optimizations"),
     target_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select target processor (rustc --print target-cpus for details)"),
@@ -2384,8 +2412,8 @@ mod dep_tracking {
     use std::hash::Hash;
     use std::path::PathBuf;
     use std::collections::hash_map::DefaultHasher;
-    use super::{CrateType, DebugInfo, ErrorOutputType, Lto, OptLevel, OutputTypes,
-                Passes, Sanitizer, CrossLangLto};
+    use super::{CrateType, DebugInfo, ErrorOutputType, OptLevel, OutputTypes,
+                Passes, Sanitizer, LtoCli, CrossLangLto};
     use syntax::feature_gate::UnstableFeatures;
     use rustc_target::spec::{PanicStrategy, RelroLevel, TargetTriple};
     use syntax::edition::Edition;
@@ -2440,7 +2468,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(RelroLevel);
     impl_dep_tracking_hash_via_hash!(Passes);
     impl_dep_tracking_hash_via_hash!(OptLevel);
-    impl_dep_tracking_hash_via_hash!(Lto);
+    impl_dep_tracking_hash_via_hash!(LtoCli);
     impl_dep_tracking_hash_via_hash!(DebugInfo);
     impl_dep_tracking_hash_via_hash!(UnstableFeatures);
     impl_dep_tracking_hash_via_hash!(OutputTypes);
@@ -2514,7 +2542,7 @@ mod tests {
     use lint;
     use middle::cstore;
     use session::config::{build_configuration, build_session_options_and_crate_config};
-    use session::config::{Lto, CrossLangLto};
+    use session::config::{LtoCli, CrossLangLto};
     use session::build_session;
     use std::collections::{BTreeMap, BTreeSet};
     use std::iter::FromIterator;
@@ -2948,7 +2976,7 @@ mod tests {
 
         // Make sure changing a [TRACKED] option changes the hash
         opts = reference.clone();
-        opts.cg.lto = Lto::Fat;
+        opts.cg.lto = LtoCli::Fat;
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();

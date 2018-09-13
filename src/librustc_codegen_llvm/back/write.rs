@@ -937,7 +937,6 @@ fn need_pre_thin_lto_bitcode_for_incr_comp(sess: &Session) -> bool {
     }
 
     match sess.lto() {
-        Lto::Yes |
         Lto::Fat |
         Lto::No => false,
         Lto::Thin |
@@ -1372,7 +1371,7 @@ fn execute_optimize_work_item(cgcx: &CodegenContext,
         // require LTO so the request for LTO is always unconditionally
         // passed down to the backend, but we don't actually want to do
         // anything about it yet until we've got a final product.
-        Lto::Yes | Lto::Fat | Lto::Thin => {
+        Lto::Fat | Lto::Thin => {
             cgcx.crate_types.len() != 1 ||
                 cgcx.crate_types[0] != config::CrateType::Rlib
         }
@@ -1552,7 +1551,7 @@ fn start_executing_work(tcx: TyCtxt,
                 exported_symbols.insert(LOCAL_CRATE, copy_symbols(LOCAL_CRATE));
                 Some(Arc::new(exported_symbols))
             }
-            Lto::Yes | Lto::Fat | Lto::Thin => {
+            Lto::Fat | Lto::Thin => {
                 exported_symbols.insert(LOCAL_CRATE, copy_symbols(LOCAL_CRATE));
                 for &cnum in tcx.crates().iter() {
                     exported_symbols.insert(cnum, copy_symbols(cnum));

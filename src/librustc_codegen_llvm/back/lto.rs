@@ -118,7 +118,7 @@ pub(crate) fn run(cgcx: &CodegenContext,
         Lto::ThinLocal => SymbolExportLevel::Rust,
 
         // We're doing LTO for the entire crate graph
-        Lto::Yes | Lto::Fat | Lto::Thin => {
+        Lto::Fat | Lto::Thin => {
             symbol_export::crates_export_threshold(&cgcx.crate_types)
         }
 
@@ -201,7 +201,6 @@ pub(crate) fn run(cgcx: &CodegenContext,
                                              .map(|c| c.as_ptr())
                                              .collect::<Vec<_>>();
     match cgcx.lto {
-        Lto::Yes | // `-C lto` == fat LTO by default
         Lto::Fat => {
             assert!(cached_modules.is_empty());
             let opt_jobs = fat_lto(cgcx,
