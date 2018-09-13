@@ -239,6 +239,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeEvaluator {
     type MemoryKinds = !;
 
     const MUT_STATIC_KIND: Option<!> = None; // no mutating of statics allowed
+    const DETECT_LOOPS: bool = true;
 
     fn find_fn<'a>(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,

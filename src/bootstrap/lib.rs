@@ -237,6 +237,11 @@ pub enum DocTests {
     Only,
 }
 
+pub enum GitRepo {
+    Rustc,
+    Llvm,
+}
+
 /// Global configuration for the build system.
 ///
 /// This structure transitively contains all configuration for the build system.
@@ -738,6 +743,21 @@ impl Build {
         self.config.jobs.unwrap_or_else(|| num_cpus::get() as u32)
     }
 
+    fn debuginfo_map(&self, which: GitRepo) -> Option<String> {
+        if !self.config.rust_remap_debuginfo {
+            return None
+        }
+
+        let path = match which {
+            GitRepo::Rustc => {
+                let sha = self.rust_info.sha().expect("failed to find sha");
+                format!("/rustc/{}", sha)
+            }
+            GitRepo::Llvm => format!("/rustc/llvm"),
+        };
+        Some(format!("{}={}", self.src.display(), path))
+    }
+
     /// Returns the path to the C compiler for the target specified.
     fn cc(&self, target: Interned<String>) -> &Path {
         self.cc[&target].path()
@@ -745,7 +765,7 @@ impl Build {
 
     /// Returns a list of flags to pass to the C compiler for the target
     /// specified.
-    fn cflags(&self, target: Interned<String>) -> Vec<String> {
+    fn cflags(&self, target: Interned<String>, which: GitRepo) -> Vec<String> {
         // Filter out -O and /O (the optimization flags) that we picked up from
         // cc-rs because the build scripts will determine that for themselves.
         let mut base = self.cc[&target].args().iter()
@@ -766,6 +786,16 @@ impl Build {
         // See: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=78936
         if &*target == "i686-pc-windows-gnu" {
             base.push("-fno-omit-frame-pointer".into());
+        }
+
+        if let Some(map) = self.debuginfo_map(which) {
+        let cc = self.cc(target);
+            if cc.ends_with("clang") || cc.ends_with("gcc") {
+                base.push(format!("-fdebug-prefix-map={}", map).into());
+            } else if cc.ends_with("clang-cl.exe") {
+                base.push("-Xclang".into());
+                base.push(format!("-fdebug-prefix-map={}", map).into());
+            }
         }
         base
     }

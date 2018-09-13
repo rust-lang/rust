@@ -205,13 +205,12 @@ impl<'a> GccLinker<'a> {
         self.linker_arg(&format!("-plugin-opt={}", opt_level));
         self.linker_arg(&format!("-plugin-opt=mcpu={}", llvm_util::target_cpu(self.sess)));
 
-        match self.sess.opts.cg.lto {
+        match self.sess.lto() {
             config::Lto::Thin |
             config::Lto::ThinLocal => {
                 self.linker_arg("-plugin-opt=thin");
             }
             config::Lto::Fat |
-            config::Lto::Yes |
             config::Lto::No => {
                 // default to regular LTO
             }

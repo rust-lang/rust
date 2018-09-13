@@ -32,7 +32,7 @@ use native;
 use test;
 use tool;
 use util::{add_lib_path, exe, libdir};
-use {Build, DocTests, Mode};
+use {Build, DocTests, Mode, GitRepo};
 
 pub use Compiler;
 
@@ -876,6 +876,10 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_HOST_CRT_STATIC", x.to_string());
         }
 
+        if let Some(map) = self.build.debuginfo_map(GitRepo::Rustc) {
+            cargo.env("RUSTC_DEBUGINFO_MAP", map);
+        }
+
         // Enable usage of unstable features
         cargo.env("RUSTC_BOOTSTRAP", "1");
         self.add_rust_test_threads(&mut cargo);
@@ -964,7 +968,7 @@ impl<'a> Builder<'a> {
             let cc = ccacheify(&self.cc(target));
             cargo.env(format!("CC_{}", target), &cc).env("CC", &cc);
 
-            let cflags = self.cflags(target).join(" ");
+            let cflags = self.cflags(target, GitRepo::Rustc).join(" ");
             cargo
                 .env(format!("CFLAGS_{}", target), cflags.clone())
                 .env("CFLAGS", cflags.clone());

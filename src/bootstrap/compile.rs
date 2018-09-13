@@ -30,7 +30,7 @@ use filetime::FileTime;
 use serde_json;
 
 use util::{exe, libdir, is_dylib, CiEnv};
-use {Compiler, Mode};
+use {Compiler, Mode, GitRepo};
 use native;
 use tool;
 
@@ -895,7 +895,7 @@ pub fn compiler_file(builder: &Builder,
                  target: Interned<String>,
                  file: &str) -> PathBuf {
     let mut cmd = Command::new(compiler);
-    cmd.args(builder.cflags(target));
+    cmd.args(builder.cflags(target, GitRepo::Rustc));
     cmd.arg(format!("-print-file-name={}", file));
     let out = output(&mut cmd);
     PathBuf::from(out.trim())

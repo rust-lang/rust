@@ -65,6 +65,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             }
         }
 
+        if !M::DETECT_LOOPS {
+            return Ok(());
+        }
+
         if self.loop_detector.is_empty() {
             // First run of the loop detector
 
@@ -75,7 +79,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
         self.loop_detector.observe_and_analyze(
             &self.tcx,
-            &self.machine,
             &self.memory,
             &self.stack[..],
         )

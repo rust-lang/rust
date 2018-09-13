@@ -34,7 +34,7 @@ use tool::{self, Tool, SourceType};
 use toolstate::ToolState;
 use util::{self, dylib_path, dylib_path_var};
 use Crate as CargoCrate;
-use {DocTests, Mode};
+use {DocTests, Mode, GitRepo};
 
 const ADB_TEST_DIR: &str = "/data/tmp/work";
 
@@ -1142,7 +1142,7 @@ impl Step for Compiletest {
                     .arg("--cxx")
                     .arg(builder.cxx(target).unwrap())
                     .arg("--cflags")
-                    .arg(builder.cflags(target).join(" "))
+                    .arg(builder.cflags(target, GitRepo::Rustc).join(" "))
                     .arg("--llvm-components")
                     .arg(llvm_components.trim())
                     .arg("--llvm-cxxflags")

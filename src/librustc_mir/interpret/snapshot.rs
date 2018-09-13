@@ -62,14 +62,13 @@ impl<'a, 'mir, 'tcx, M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
     pub fn observe_and_analyze(
         &mut self,
         tcx: &TyCtxt<'b, 'tcx, 'tcx>,
-        machine: &M,
         memory: &Memory<'a, 'mir, 'tcx, M>,
         stack: &[Frame<'mir, 'tcx>],
     ) -> EvalResult<'tcx, ()> {
 
         let mut hcx = tcx.get_stable_hashing_context();
         let mut hasher = StableHasher::<u64>::new();
-        (machine, stack).hash_stable(&mut hcx, &mut hasher);
+        stack.hash_stable(&mut hcx, &mut hasher);
         let hash = hasher.finish();
 
         if self.hashes.insert(hash) {
@@ -79,7 +78,7 @@ impl<'a, 'mir, 'tcx, M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
 
         info!("snapshotting the state of the interpreter");
 
-        if self.snapshots.insert(EvalSnapshot::new(machine, memory, stack)) {
+        if self.snapshots.insert(EvalSnapshot::new(memory, stack)) {
             // Spurious collision or first cycle
             return Ok(())
         }
@@ -345,7 +344,6 @@ impl<'a, 'b, 'mir, 'tcx, M> SnapshotContext<'b> for Memory<'a, 'mir, 'tcx, M>
 
 /// The virtual machine state during const-evaluation at a given point in time.
 struct EvalSnapshot<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
-    machine: M,
     memory: Memory<'a, 'mir, 'tcx, M>,
     stack: Vec<Frame<'mir, 'tcx>>,
 }
@@ -354,21 +352,20 @@ impl<'a, 'mir, 'tcx, M> EvalSnapshot<'a, 'mir, 'tcx, M>
     where M: Machine<'mir, 'tcx>,
 {
     fn new(
-        machine: &M,
         memory: &Memory<'a, 'mir, 'tcx, M>,
-        stack: &[Frame<'mir, 'tcx>]) -> Self {
-
+        stack: &[Frame<'mir, 'tcx>]
+    ) -> Self {
         EvalSnapshot {
-            machine: machine.clone(),
             memory: memory.clone(),
             stack: stack.into(),
         }
     }
 
     fn snapshot<'b: 'a>(&'b self)
-        -> (&'b M, MemorySnapshot<'b, 'mir, 'tcx, M>, Vec<FrameSnapshot<'a, 'tcx>>) {
-        let EvalSnapshot{ machine, memory, stack } = self;
-        (&machine, memory.snapshot(), stack.iter().map(|frame| frame.snapshot(memory)).collect())
+        -> (MemorySnapshot<'b, 'mir, 'tcx, M>, Vec<FrameSnapshot<'a, 'tcx>>)
+    {
+        let EvalSnapshot{ memory, stack } = self;
+        (memory.snapshot(), stack.iter().map(|frame| frame.snapshot(memory)).collect())
     }
 }
 
@@ -384,6 +381,8 @@ impl<'a, 'mir, 'tcx, M> Hash for EvalSnapshot<'a, 'mir, 'tcx, M>
     }
 }
 
+// Not using the macro because we need special handling for `memory`, which the macro
+// does not support at the same time as the extra bounds on the type.
 impl<'a, 'b, 'mir, 'tcx, M> HashStable<StableHashingContext<'b>>
     for EvalSnapshot<'a, 'mir, 'tcx, M>
     where M: Machine<'mir, 'tcx>,
@@ -391,10 +390,10 @@ impl<'a, 'b, 'mir, 'tcx, M> HashStable<StableHashingContext<'b>>
     fn hash_stable<W: StableHasherResult>(
         &self,
         hcx: &mut StableHashingContext<'b>,
-        hasher: &mut StableHasher<W>) {
-
-        let EvalSnapshot{ machine, memory, stack } = self;
-        (machine, &memory.data, stack).hash_stable(hcx, hasher);
+        hasher: &mut StableHasher<W>)
+    {
+        let EvalSnapshot{ memory: _, stack } = self;
+        stack.hash_stable(hcx, hasher);
     }
 }
 
