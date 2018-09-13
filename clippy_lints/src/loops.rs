@@ -15,7 +15,7 @@ use rustc::middle::mem_categorization::cmt_;
 use rustc::ty::{self, Ty};
 use rustc::ty::subst::Subst;
 use rustc_errors::Applicability;
-use std::collections::{HashMap, HashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use std::iter::{once, Iterator};
 use syntax::ast;
 use syntax::source_map::Span;
@@ -1030,10 +1030,10 @@ fn check_for_loop_range<'a, 'tcx>(
             let mut visitor = VarVisitor {
                 cx,
                 var: canonical_id,
-                indexed_mut: HashSet::new(),
-                indexed_indirectly: HashMap::new(),
-                indexed_directly: HashMap::new(),
-                referenced: HashSet::new(),
+                indexed_mut: FxHashSet::default(),
+                indexed_indirectly: FxHashMap::default(),
+                indexed_directly: FxHashMap::default(),
+                referenced: FxHashSet::default(),
                 nonindex: false,
                 prefer_mutable: false,
             };
@@ -1343,7 +1343,7 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
     // Look for variables that are incremented once per loop iteration.
     let mut visitor = IncrementVisitor {
         cx,
-        states: HashMap::new(),
+        states: FxHashMap::default(),
         depth: 0,
         done: false,
     };
@@ -1618,15 +1618,15 @@ struct VarVisitor<'a, 'tcx: 'a> {
     /// var name to look for as index
     var: ast::NodeId,
     /// indexed variables that are used mutably
-    indexed_mut: HashSet<Name>,
+    indexed_mut: FxHashSet<Name>,
     /// indirectly indexed variables (`v[(i + 4) % N]`), the extend is `None` for global
-    indexed_indirectly: HashMap<Name, Option<region::Scope>>,
+    indexed_indirectly: FxHashMap<Name, Option<region::Scope>>,
     /// subset of `indexed` of vars that are indexed directly: `v[i]`
     /// this will not contain cases like `v[calc_index(i)]` or `v[(i + 4) % N]`
-    indexed_directly: HashMap<Name, Option<region::Scope>>,
+    indexed_directly: FxHashMap<Name, Option<region::Scope>>,
     /// Any names that are used outside an index operation.
     /// Used to detect things like `&mut vec` used together with `vec[i]`
-    referenced: HashSet<Name>,
+    referenced: FxHashSet<Name>,
     /// has the loop variable been used in expressions other than the index of
     /// an index op?
     nonindex: bool,
@@ -1906,7 +1906,7 @@ enum VarState {
 /// Scan a for loop for variables that are incremented exactly once.
 struct IncrementVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,     // context reference
-    states: HashMap<NodeId, VarState>, // incremented variables
+    states: FxHashMap<NodeId, VarState>, // incremented variables
     depth: u32,                        // depth of conditional expressions
     done: bool,
 }
@@ -2197,8 +2197,8 @@ fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, e
 
     let mut var_visitor = VarCollectorVisitor {
         cx,
-        ids: HashSet::new(),
-        def_ids: HashMap::new(),
+        ids: FxHashSet::default(),
+        def_ids: FxHashMap::default(),
         skip: false,
     };
     var_visitor.visit_expr(cond);
@@ -2228,8 +2228,8 @@ fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, e
 /// All variables definition IDs are collected
 struct VarCollectorVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    ids: HashSet<NodeId>,
-    def_ids: HashMap<def_id::DefId, bool>,
+    ids: FxHashSet<NodeId>,
+    def_ids: FxHashMap<def_id::DefId, bool>,
     skip: bool,
 }
 

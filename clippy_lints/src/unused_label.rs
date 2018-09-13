@@ -2,7 +2,7 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, walk_fn, FnKind, NestedVisitorMap, Visitor};
-use std::collections::HashMap;
+use rustc_data_structures::fx::FxHashMap;
 use syntax::ast;
 use syntax::source_map::Span;
 use syntax::symbol::LocalInternedString;
@@ -31,7 +31,7 @@ declare_clippy_lint! {
 pub struct UnusedLabel;
 
 struct UnusedLabelVisitor<'a, 'tcx: 'a> {
-    labels: HashMap<LocalInternedString, Span>,
+    labels: FxHashMap<LocalInternedString, Span>,
     cx: &'a LateContext<'a, 'tcx>,
 }
 
@@ -57,7 +57,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedLabel {
 
         let mut v = UnusedLabelVisitor {
             cx,
-            labels: HashMap::new(),
+            labels: FxHashMap::default(),
         };
         walk_fn(&mut v, kind, decl, body.id(), span, fn_id);
 

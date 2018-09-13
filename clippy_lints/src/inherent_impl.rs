@@ -3,7 +3,7 @@
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
-use std::collections::HashMap;
+use rustc_data_structures::fx::FxHashMap;
 use std::default::Default;
 use syntax_pos::Span;
 use crate::utils::span_lint_and_then;
@@ -41,12 +41,12 @@ declare_clippy_lint! {
 }
 
 pub struct Pass {
-    impls: HashMap<def_id::DefId, (Span, Generics)>,
+    impls: FxHashMap<def_id::DefId, (Span, Generics)>,
 }
 
 impl Default for Pass {
     fn default() -> Self {
-        Pass { impls: HashMap::new() }
+        Pass { impls: FxHashMap::default() }
     }
 }
 

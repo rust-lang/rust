@@ -5,7 +5,7 @@ use rustc::{declare_tool_lint, lint_array};
 use rustc::hir::def::Def;
 use rustc::hir::*;
 use rustc::hir::intravisit::*;
-use std::collections::{HashMap, HashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use syntax::source_map::Span;
 use crate::utils::{last_path_segment, span_lint};
 use syntax::symbol::keywords;
@@ -237,8 +237,8 @@ fn could_use_elision<'a, 'tcx: 'a>(
     }
 }
 
-fn allowed_lts_from(named_generics: &[GenericParam]) -> HashSet<RefLt> {
-    let mut allowed_lts = HashSet::new();
+fn allowed_lts_from(named_generics: &[GenericParam]) -> FxHashSet<RefLt> {
+    let mut allowed_lts = FxHashSet::default();
     for par in named_generics.iter() {
         if let GenericParamKind::Lifetime { .. } = par.kind {
             if par.bounds.is_empty() {
@@ -263,7 +263,7 @@ fn lts_from_bounds<'a, T: Iterator<Item = &'a Lifetime>>(mut vec: Vec<RefLt>, bo
 
 /// Number of unique lifetimes in the given vector.
 fn unique_lifetimes(lts: &[RefLt]) -> usize {
-    lts.iter().collect::<HashSet<_>>().len()
+    lts.iter().collect::<FxHashSet<_>>().len()
 }
 
 /// A visitor usable for `rustc_front::visit::walk_ty()`.
@@ -424,7 +424,7 @@ fn has_where_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, where_clause: &
 }
 
 struct LifetimeChecker {
-    map: HashMap<Name, Span>,
+    map: FxHashMap<Name, Span>,
 }
 
 impl<'tcx> Visitor<'tcx> for LifetimeChecker {

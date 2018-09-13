@@ -5,7 +5,7 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc::ty;
 use rustc::hir::def::Def;
-use std::collections::HashSet;
+use rustc_data_structures::fx::FxHashSet;
 use syntax::ast;
 use rustc_target::spec::abi::Abi;
 use syntax::source_map::Span;
@@ -151,7 +151,7 @@ impl<'a, 'tcx> Functions {
             let raw_ptrs = iter_input_pats(decl, body)
                 .zip(decl.inputs.iter())
                 .filter_map(|(arg, ty)| raw_ptr_arg(arg, ty))
-                .collect::<HashSet<_>>();
+                .collect::<FxHashSet<_>>();
 
             if !raw_ptrs.is_empty() {
                 let tables = cx.tcx.body_tables(body.id());
@@ -177,7 +177,7 @@ fn raw_ptr_arg(arg: &hir::Arg, ty: &hir::Ty) -> Option<ast::NodeId> {
 
 struct DerefVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    ptrs: HashSet<ast::NodeId>,
+    ptrs: FxHashSet<ast::NodeId>,
     tables: &'a ty::TypeckTables<'tcx>,
 }
 

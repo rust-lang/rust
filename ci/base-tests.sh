@@ -14,7 +14,7 @@ cp target/debug/cargo-clippy ~/rust/cargo/bin/cargo-clippy
 cp target/debug/clippy-driver ~/rust/cargo/bin/clippy-driver
 rm ~/.cargo/bin/cargo-clippy
 # run clippy on its own codebase...
-PATH=$PATH:~/rust/cargo/bin cargo clippy --all-targets --all-features -- -D clippy::all
+PATH=$PATH:~/rust/cargo/bin cargo clippy --all-targets --all-features -- -D clippy::all -D clippy::internal
 # ... and some test directories
 cd clippy_workspace_tests && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy::all && cd ..
 cd clippy_workspace_tests/src && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy::all && cd ../..

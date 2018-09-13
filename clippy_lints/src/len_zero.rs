@@ -3,7 +3,7 @@ use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc::ty;
-use std::collections::HashSet;
+use rustc_data_structures::fx::FxHashSet;
 use syntax::ast::{Lit, LitKind, Name};
 use syntax::source_map::{Span, Spanned};
 use crate::utils::{get_item_name, in_macro, snippet, span_lint, span_lint_and_sugg, walk_ptrs_ty};
@@ -125,7 +125,7 @@ fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item, trait_items
     }
 
     // fill the set with current and super traits
-    fn fill_trait_set(traitt: DefId, set: &mut HashSet<DefId>, cx: &LateContext<'_, '_>) {
+    fn fill_trait_set(traitt: DefId, set: &mut FxHashSet<DefId>, cx: &LateContext<'_, '_>) {
         if set.insert(traitt) {
             for supertrait in ::rustc::traits::supertrait_def_ids(cx.tcx, traitt) {
                 fill_trait_set(supertrait, set, cx);
@@ -134,7 +134,7 @@ fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item, trait_items
     }
 
     if cx.access_levels.is_exported(visited_trait.id) && trait_items.iter().any(|i| is_named_self(cx, i, "len")) {
-        let mut current_and_super_traits = HashSet::new();
+        let mut current_and_super_traits = FxHashSet::default();
         let visited_trait_def_id = cx.tcx.hir.local_def_id(visited_trait.id);
         fill_trait_set(visited_trait_def_id, &mut current_and_super_traits, cx);
 

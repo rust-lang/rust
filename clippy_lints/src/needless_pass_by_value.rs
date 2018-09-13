@@ -9,13 +9,13 @@ use rustc::traits;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc_target::spec::abi::Abi;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use syntax::ast::NodeId;
 use syntax_pos::Span;
 use syntax::errors::DiagnosticBuilder;
 use crate::utils::{get_trait_def_id, implements_trait, in_macro, is_copy, is_self, match_type, multispan_sugg, paths,
             snippet, snippet_opt, span_lint_and_then};
 use crate::utils::ptr::get_spans;
-use std::collections::{HashMap, HashSet};
 use std::borrow::Cow;
 
 /// **What it does:** Checks for functions taking arguments by value, but not
@@ -301,18 +301,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
 struct MovedVariablesCtxt<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    moved_vars: HashSet<NodeId>,
+    moved_vars: FxHashSet<NodeId>,
     /// Spans which need to be prefixed with `*` for dereferencing the
     /// suggested additional reference.
-    spans_need_deref: HashMap<NodeId, HashSet<Span>>,
+    spans_need_deref: FxHashMap<NodeId, FxHashSet<Span>>,
 }
 
 impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
     fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
         Self {
             cx,
-            moved_vars: HashSet::new(),
-            spans_need_deref: HashMap::new(),
+            moved_vars: FxHashSet::default(),
+            spans_need_deref: FxHashMap::default(),
         }
     }
 
@@ -344,7 +344,7 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
                             if let ExprKind::Match(ref c, ..) = e.node {
                                 self.spans_need_deref
                                     .entry(vid)
-                                    .or_insert_with(HashSet::new)
+                                    .or_insert_with(FxHashSet::default)
                                     .insert(c.span);
                             }
                         },
@@ -357,7 +357,7 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
                                 then {
                                     self.spans_need_deref
                                         .entry(vid)
-                                        .or_insert_with(HashSet::new)
+                                        .or_insert_with(FxHashSet::default)
                                         .insert(local.init
                                             .as_ref()
                                             .map(|e| e.span)

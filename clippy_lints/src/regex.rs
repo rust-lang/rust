@@ -2,8 +2,8 @@ use regex_syntax;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
+use rustc_data_structures::fx::FxHashSet;
 use if_chain::if_chain;
-use std::collections::HashSet;
 use syntax::ast::{LitKind, NodeId, StrStyle};
 use syntax::source_map::{BytePos, Span};
 use crate::utils::{is_expn_of, match_def_path, match_type, opt_def_id, paths, span_help_and_lint, span_lint};
@@ -67,7 +67,7 @@ declare_clippy_lint! {
 
 #[derive(Clone, Default)]
 pub struct Pass {
-    spans: HashSet<Span>,
+    spans: FxHashSet<Span>,
     last: Option<NodeId>,
 }
 
