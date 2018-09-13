@@ -86,8 +86,7 @@ fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_, &'ll Value>, name: &str) -> Opti
     Some(cx.get_intrinsic(&llvm_name))
 }
 
-impl<'a, 'll: 'a, 'tcx: 'll> IntrinsicCallMethods<'a, 'tcx>
-    for Builder<'a, 'll, 'tcx, &'ll Value> {
+impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> {
 
     /// Remember to add all intrinsics here, in librustc_typeck/check/mod.rs,
     /// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
@@ -100,7 +99,7 @@ impl<'a, 'll: 'a, 'tcx: 'll> IntrinsicCallMethods<'a, 'tcx>
         llresult: &'ll Value,
         span: Span,
     ) {
-        let cx = &self.cx();
+        let cx = self.cx();
         let tcx = cx.tcx;
 
         let sig = callee_ty.fn_sig(tcx);

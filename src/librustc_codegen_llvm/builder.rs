@@ -56,11 +56,11 @@ bitflags! {
     }
 }
 
-impl<'a, 'll: 'a, 'tcx: 'll> HasCodegen<'a> for Builder<'a, 'll, 'tcx, &'ll Value> {
+impl HasCodegen<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> {
     type CodegenCx = CodegenCx<'ll, 'tcx, &'ll Value>;
 }
 
-impl<'a, 'll: 'a, 'tcx: 'll> BuilderMethods<'a, 'll, 'tcx>
+impl BuilderMethods<'a, 'll, 'tcx>
     for Builder<'a, 'll, 'tcx, &'ll Value> {
 
     fn new_block<'b>(

@@ -14,10 +14,18 @@ mod consts;
 mod type_;
 mod intrinsic;
 mod statics;
+mod misc;
+mod debuginfo;
 
 pub use self::builder::{BuilderMethods, HasCodegen};
 pub use self::backend::Backend;
 pub use self::consts::ConstMethods;
-pub use self::type_::{TypeMethods, BaseTypeMethods, DerivedTypeMethods};
+pub use self::type_::{TypeMethods, BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods};
 pub use self::intrinsic::{IntrinsicCallMethods, IntrinsicDeclarationMethods};
 pub use self::statics::StaticMethods;
+pub use self::misc::MiscMethods;
+pub use self::debuginfo::DebugInfoMethods;
+
+pub trait CodegenMethods<'ll, 'tcx: 'll> :
+    Backend + TypeMethods<'ll, 'tcx> + MiscMethods<'tcx> + ConstMethods +
+    StaticMethods<'tcx> + DebugInfoMethods<'tcx> {}

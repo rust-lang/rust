@@ -15,7 +15,7 @@ use rustc::ty::Ty;
 use abi::FnType;
 use syntax_pos::Span;
 
-pub trait IntrinsicCallMethods<'a, 'tcx: 'a> : HasCodegen<'a> {
+pub trait IntrinsicCallMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> {
     fn codegen_intrinsic_call(
         &self,
         callee_ty: Ty<'tcx>,

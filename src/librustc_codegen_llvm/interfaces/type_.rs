@@ -12,8 +12,12 @@ use super::backend::Backend;
 use common::TypeKind;
 use syntax::ast;
 use rustc::ty::layout::{self, Align, Size};
+use std::cell::RefCell;
+use rustc::util::nodemap::FxHashMap;
+use rustc::ty::{Ty, TyCtxt};
+use rustc::ty::layout::TyLayout;
 
-pub trait BaseTypeMethods : Backend {
+pub trait BaseTypeMethods<'a, 'tcx: 'a> : Backend {
     fn type_void(&self) -> Self::Type;
     fn type_metadata(&self) -> Self::Type;
     fn type_i1(&self) -> Self::Type;
@@ -43,6 +47,8 @@ pub trait BaseTypeMethods : Backend {
     fn int_width(&self, ty: Self::Type) -> u64;
 
     fn val_ty(&self, v: Self::Value) -> Self::Type;
+    fn scalar_lltypes(&self) -> &RefCell<FxHashMap<Ty<'tcx>, Self::Type>>;
+    fn tcx(&self) -> &TyCtxt<'a, 'tcx, 'tcx>;
 }
 
 pub trait DerivedTypeMethods : Backend {
@@ -72,4 +78,8 @@ pub trait DerivedTypeMethods : Backend {
     ) -> Self::Type;
 }
 
-pub trait TypeMethods : BaseTypeMethods + DerivedTypeMethods {}
+pub trait LayoutTypeMethods<'tcx> : Backend {
+    fn backend_type(&self, ty: TyLayout<'tcx>) -> Self::Type;
+}
+
+pub trait TypeMethods<'a, 'tcx: 'a> : BaseTypeMethods<'a, 'tcx> + DerivedTypeMethods + LayoutTypeMethods<'tcx> {}

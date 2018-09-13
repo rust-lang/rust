@@ -321,7 +321,7 @@ impl<'ll, 'tcx : 'll> ConstMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
     fn const_str_slice(&self, s: LocalInternedString) -> &'ll Value {
         let len = s.len();
         let cs = consts::ptrcast(&self.const_cstr(s, false),
-            &self.type_ptr_to(&self.layout_of(&self.tcx.mk_str()).llvm_type(&self)));
+            &self.type_ptr_to(&self.layout_of(&self.tcx.mk_str()).llvm_type(self)));
         &self.const_fat_ptr(cs, &self.const_usize(len as u64))
     }
 

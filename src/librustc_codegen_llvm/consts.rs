@@ -201,7 +201,7 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
 
         let g = if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
 
-            let llty = &self.layout_of(ty).llvm_type(&self);
+            let llty = &self.layout_of(ty).llvm_type(self);
             let (g, attrs) = match &self.tcx.hir.get(id) {
                 Node::Item(&hir::Item {
                     ref attrs, span, node: hir::ItemKind::Static(..), ..
@@ -329,7 +329,7 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
 
             let instance = Instance::mono(self.tcx, def_id);
             let ty = instance.ty(self.tcx);
-            let llty = self.layout_of(ty).llvm_type(&self);
+            let llty = self.layout_of(ty).llvm_type(self);
             let g = if val_llty == llty {
                 g
             } else {

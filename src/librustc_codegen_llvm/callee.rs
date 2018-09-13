@@ -22,7 +22,7 @@ use llvm;
 use monomorphize::Instance;
 use type_of::LayoutLlvmExt;
 use value::Value;
-use interfaces::BaseTypeMethods;
+use interfaces::*;
 
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TypeFoldable};
@@ -206,15 +206,16 @@ pub fn get_fn(
     llfn
 }
 
-pub fn resolve_and_get_fn(
-    cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
+pub fn resolve_and_get_fn<'ll, 'tcx: 'll,
+    Cx : Backend + MiscMethods<'tcx> + TypeMethods<'ll, 'tcx>
+    >(
+    cx: &Cx,
     def_id: DefId,
     substs: &'tcx Substs<'tcx>,
-) -> &'ll Value {
-    get_fn(
-        cx,
+) -> Cx::Value {
+    cx.get_fn(
         ty::Instance::resolve(
-            cx.tcx,
+            *cx.tcx(),
             ty::ParamEnv::reveal_all(),
             def_id,
             substs

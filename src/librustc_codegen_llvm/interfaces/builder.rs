@@ -15,19 +15,17 @@ use rustc::ty::layout::{Align, Size};
 use rustc::session::Session;
 use builder::MemFlags;
 use super::backend::Backend;
-use super::type_::TypeMethods;
-use super::consts::ConstMethods;
-use super::intrinsic::IntrinsicDeclarationMethods;
+use super::CodegenMethods;
 
 use std::borrow::Cow;
 use std::ops::Range;
 use syntax::ast::AsmDialect;
 
-pub trait HasCodegen<'a> {
-    type CodegenCx : 'a + Backend + TypeMethods + ConstMethods + IntrinsicDeclarationMethods;
+pub trait HasCodegen<'a, 'll: 'a, 'tcx :'ll> {
+    type CodegenCx : 'a + CodegenMethods<'ll, 'tcx>;
 }
 
-pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> : HasCodegen<'a> {
+pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> {
     fn new_block<'b>(
         cx: &'a Self::CodegenCx,
         llfn: <Self::CodegenCx as Backend>::Value,
