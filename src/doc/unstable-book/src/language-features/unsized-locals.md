@@ -101,9 +101,9 @@ fn main() {
 }
 ```
 
-And `Foo` will also be object-safe. However, this object-safety is not yet implemented.
+And `Foo` will also be object-safe.
 
-```rust,ignore
+```rust
 #![feature(unsized_locals)]
 
 trait Foo {
@@ -118,8 +118,6 @@ fn main () {
     <dyn Foo as Foo>::foo(*slice);
 }
 ```
-
-Unfortunately, this is not implemented yet.
 
 One of the objectives of this feature is to allow `Box<dyn FnOnce>`, instead of `Box<dyn FnBox>` in the future. See [#28796] for details.
 
