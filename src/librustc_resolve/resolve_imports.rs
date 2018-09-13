@@ -735,6 +735,12 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 None
             };
 
+            // Currently imports can't resolve in non-module scopes,
+            // we only have canaries in them for future-proofing.
+            if external_crate.is_none() && results.module_scope.is_none() {
+                return;
+            }
+
             let result_filter = |result: &&NameBinding| {
                 // Ignore canaries that resolve to an import of the same crate.
                 // That is, we allow `use crate_name; use crate_name::foo;`.
