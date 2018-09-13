@@ -23,46 +23,6 @@ pub struct BitArray<C: Idx> {
     marker: PhantomData<C>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct BitVector<C: Idx> {
-    data: BitArray<C>,
-}
-
-impl<C: Idx> BitVector<C> {
-    pub fn grow(&mut self, num_bits: C) {
-        self.data.grow(num_bits)
-    }
-
-    pub fn new() -> BitVector<C> {
-        BitVector {
-            data: BitArray::new(0),
-        }
-    }
-
-    pub fn with_capacity(bits: usize) -> BitVector<C> {
-        BitVector {
-            data: BitArray::new(bits),
-        }
-    }
-
-    /// Returns true if the bit has changed.
-    #[inline]
-    pub fn insert(&mut self, bit: C) -> bool {
-        self.grow(bit);
-        self.data.insert(bit)
-    }
-
-    #[inline]
-    pub fn contains(&self, bit: C) -> bool {
-        let (word, mask) = word_mask(bit);
-        if let Some(word) = self.data.data.get(word) {
-            (word & mask) != 0
-        } else {
-            false
-        }
-    }
-}
-
 impl<C: Idx> BitArray<C> {
     // Do not make this method public, instead switch your use case to BitVector.
     #[inline]
@@ -203,6 +163,43 @@ impl<'a, C: Idx> Iterator for BitIter<'a, C> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (_, upper) = self.iter.size_hint();
         (0, upper)
+    }
+}
+
+/// A resizable BitVector type.
+#[derive(Clone, Debug, PartialEq)]
+pub struct BitVector<C: Idx> {
+    data: BitArray<C>,
+}
+
+impl<C: Idx> BitVector<C> {
+    pub fn grow(&mut self, num_bits: C) {
+        self.data.grow(num_bits)
+    }
+
+    pub fn new() -> BitVector<C> {
+        BitVector { data: BitArray::new(0) }
+    }
+
+    pub fn with_capacity(bits: usize) -> BitVector<C> {
+        BitVector { data: BitArray::new(bits) }
+    }
+
+    /// Returns true if the bit has changed.
+    #[inline]
+    pub fn insert(&mut self, bit: C) -> bool {
+        self.grow(bit);
+        self.data.insert(bit)
+    }
+
+    #[inline]
+    pub fn contains(&self, bit: C) -> bool {
+        let (word, mask) = word_mask(bit);
+        if let Some(word) = self.data.data.get(word) {
+            (word & mask) != 0
+        } else {
+            false
+        }
     }
 }
 
