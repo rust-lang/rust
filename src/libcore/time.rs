@@ -30,7 +30,7 @@ const NANOS_PER_MILLI: u32 = 1_000_000;
 const NANOS_PER_MICRO: u32 = 1_000;
 const MILLIS_PER_SEC: u64 = 1_000;
 const MICROS_PER_SEC: u64 = 1_000_000;
-const MAX_NANOS_F64: f64 = ((u64::MAX as u128)*(NANOS_PER_SEC as u128)) as f64;
+const MAX_NANOS_F64: f64 = ((u64::MAX as u128 + 1)*(NANOS_PER_SEC as u128) - 1) as f64;
 
 /// A `Duration` type to represent a span of time, typically used for system
 /// timeouts.
@@ -491,7 +491,17 @@ impl Duration {
     #[unstable(feature = "duration_float", issue = "0")]
     #[inline]
     pub fn from_float_secs(secs: f64) -> Duration {
-        let nanos =  (secs * (NANOS_PER_SEC as f64)) as u128;
+        let nanos =  secs * (NANOS_PER_SEC as f64);
+        if !nanos.is_finite() {
+            panic!("got non-finite value when converting float to duration");
+        }
+        if nanos > MAX_NANOS_F64 {
+            panic!("overflow when converting float to duration");
+        }
+        if nanos < 0.0 {
+            panic!("underflow when converting float to duration");
+        }
+        let nanos =  nanos as u128;
         Duration {
             secs: (nanos / (NANOS_PER_SEC as u128)) as u64,
             nanos: (nanos % (NANOS_PER_SEC as u128)) as u32,
@@ -512,17 +522,7 @@ impl Duration {
     #[unstable(feature = "duration_float", issue = "0")]
     #[inline]
     pub fn mul_f64(self, rhs: f64) -> Duration {
-        let secs = rhs * self.as_float_secs();
-        if !secs.is_finite() {
-            panic!("got non-finite value when multiplying duration by float");
-        }
-        if secs > MAX_NANOS_F64 {
-            panic!("overflow when multiplying duration by float");
-        }
-        if secs < 0.0 {
-            panic!("underflow when multiplying duration by float");
-        }
-        Duration::from_float_secs(secs)
+        Duration::from_float_secs(rhs * self.as_float_secs())
     }
 
     /// Divide `Duration` by `f64`.
@@ -540,17 +540,7 @@ impl Duration {
     #[unstable(feature = "duration_float", issue = "0")]
     #[inline]
     pub fn div_f64(self, rhs: f64) -> Duration {
-        let secs = self.as_float_secs() / rhs;
-        if !secs.is_finite() {
-            panic!("got non-finite value when dividing duration by float");
-        }
-        if secs > MAX_NANOS_F64 {
-            panic!("overflow when dividing duration by float");
-        }
-        if secs < 0.0 {
-            panic!("underflow when multiplying duration by float");
-        }
-        Duration::from_float_secs(secs)
+        Duration::from_float_secs(self.as_float_secs() / rhs)
     }
 
     /// Divide `Duration` by `Duration` and return `f64`.
@@ -567,7 +557,7 @@ impl Duration {
     #[unstable(feature = "duration_float", issue = "0")]
     #[inline]
     pub fn div_duration(self, rhs: Duration) -> f64 {
-        self.as_float_secs()/rhs.as_float_secs()
+        self.as_float_secs() / rhs.as_float_secs()
     }
 }
 
