@@ -670,9 +670,10 @@ impl<'a> Parser<'a> {
                 // the most sense, which is immediately after the last token:
                 //
                 //  {foo(bar {}}
-                //      -   -  ^ expected one of `)`, <...>
-                //      |   |
-                //      |   help: ...missing `)` might belong here
+                //      -      ^
+                //      |      |
+                //      |      expected one of `)`, <...>
+                //      |      help: ...missing `)` might belong here
                 //      you might have meant to close this...
                 err.span_label(open_sp, "if you meant to close this...");
                 err.span_suggestion_short_with_applicability(
@@ -689,8 +690,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Expect and consume the token t. Signal an error if
-    /// the next token is not t.
+    /// Expect and consume the token `t`. Signal an error if the next token is not `t`.
     pub fn expect(&mut self, t: &token::Token) -> PResult<'a,  bool /* recovered */> {
         if self.expected_tokens.is_empty() {
             if self.token == *t {
@@ -734,7 +734,7 @@ impl<'a> Parser<'a> {
     /// anything.  Signal a fatal error if next token is unexpected.
     fn expect_one_of(
         &mut self,
-                         edible: &[token::Token],
+        edible: &[token::Token],
         inedible: &[token::Token],
     ) -> PResult<'a,  bool /* recovered */>{
         fn tokens_to_string(tokens: &[TokenType]) -> String {
