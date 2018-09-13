@@ -1361,8 +1361,11 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         let niche_value = if i == dataful_variant {
                             None
                         } else {
-                            Some((i.wrapping_sub(*niche_variants.start()) as u128)
-                                 .wrapping_add(niche_start) as u64)
+                            let niche = (i as u128)
+                                .wrapping_sub(*niche_variants.start() as u128)
+                                .wrapping_add(niche_start);
+                            assert_eq!(niche as u64 as u128, niche);
+                            Some(niche as u64)
                         };
 
                         MemberDescription {
