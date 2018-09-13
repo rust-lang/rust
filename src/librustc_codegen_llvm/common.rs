@@ -23,12 +23,11 @@ use declare;
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
-use interfaces::{Backend, ConstMethods, BaseTypeMethods};
+use interfaces::{BackendTypes, BuilderMethods, ConstMethods, BaseTypeMethods};
 
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{HasDataLayout, LayoutOf};
 use rustc::hir;
-use interfaces::BuilderMethods;
 
 use libc::{c_uint, c_char};
 
@@ -213,15 +212,14 @@ impl Funclet<'ll> {
     }
 }
 
-impl Backend for CodegenCx<'ll, 'tcx> {
+impl BackendTypes for CodegenCx<'ll, 'tcx> {
     type Value = &'ll Value;
     type BasicBlock = &'ll BasicBlock;
     type Type = &'ll Type;
     type Context = &'ll llvm::Context;
 }
 
-impl<'ll, 'tcx: 'll> ConstMethods for CodegenCx<'ll, 'tcx> {
-
+impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     // LLVM constant constructors.
     fn const_null(&self, t: &'ll Type) -> &'ll Value {
         unsafe {
@@ -319,7 +317,7 @@ impl<'ll, 'tcx: 'll> ConstMethods for CodegenCx<'ll, 'tcx> {
     fn const_str_slice(&self, s: LocalInternedString) -> &'ll Value {
         let len = s.len();
         let cs = consts::ptrcast(self.const_cstr(s, false),
-            self.type_ptr_to(self.layout_of(self.tcx.mk_str()).llvm_type(&self)));
+            self.type_ptr_to(self.layout_of(self.tcx.mk_str()).llvm_type(self)));
         self.const_fat_ptr(cs, self.const_usize(len as u64))
     }
 

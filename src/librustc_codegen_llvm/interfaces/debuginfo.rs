@@ -8,22 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::ty::layout::{HasTyCtxt, LayoutOf, TyLayout};
+use super::backend::Backend;
 use rustc::ty::Ty;
-use std::fmt::Debug;
 
-pub trait BackendTypes {
-    type Value: Debug + PartialEq + Copy;
-    type BasicBlock;
-    type Type: Debug + PartialEq + Copy;
-    type Context;
+pub trait DebugInfoMethods<'tcx>: Backend<'tcx> {
+    fn create_vtable_metadata(&self, ty: Ty<'tcx>, vtable: Self::Value);
 }
-
-pub trait Backend<'tcx>:
-    BackendTypes + HasTyCtxt<'tcx> + LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
-{
-}
-
-impl<'tcx, T> Backend<'tcx> for T where
-    Self: BackendTypes + HasTyCtxt<'tcx> + LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
-{}

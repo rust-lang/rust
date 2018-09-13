@@ -15,8 +15,8 @@ use context::CodegenCx;
 use type_::Type;
 use value::Value;
 use libc::{c_uint, c_char};
-use rustc::ty::TyCtxt;
-use rustc::ty::layout::{Align, Size};
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::layout::{Align, Size, TyLayout};
 use rustc::session::{config, Session};
 use rustc_data_structures::small_c_str::SmallCStr;
 use interfaces::*;
@@ -56,7 +56,36 @@ bitflags! {
     }
 }
 
-impl HasCodegen for Builder<'a, 'll, 'tcx> {
+impl BackendTypes for Builder<'_, 'll, '_> {
+    type Value = &'ll Value;
+    type BasicBlock = &'ll BasicBlock;
+    type Type = &'ll Type;
+    type Context = &'ll llvm::Context;
+}
+
+impl ty::layout::HasDataLayout for Builder<'_, '_, '_> {
+    fn data_layout(&self) -> &ty::layout::TargetDataLayout {
+        self.cx.data_layout()
+    }
+}
+
+impl ty::layout::HasTyCtxt<'tcx> for Builder<'_, '_, 'tcx> {
+    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+        self.cx.tcx
+    }
+}
+
+impl ty::layout::LayoutOf for Builder<'_, '_, 'tcx> {
+    type Ty = Ty<'tcx>;
+    type TyLayout = TyLayout<'tcx>;
+
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
+        self.cx.layout_of(ty)
+    }
+}
+
+
+impl HasCodegen<'tcx> for Builder<'_, 'll, 'tcx> {
     type CodegenCx = CodegenCx<'ll, 'tcx>;
 }
 
@@ -96,10 +125,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn sess(&self) -> &Session {
         self.cx.sess()
-    }
-
-    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
-        self.cx.tcx
     }
 
     fn llfn(&self) -> &'ll Value {

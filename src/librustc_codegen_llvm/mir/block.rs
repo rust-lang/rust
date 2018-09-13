@@ -11,7 +11,7 @@
 use llvm::{self, BasicBlock};
 use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, LayoutOf};
+use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
 use rustc::mir;
 use rustc::mir::interpret::EvalErrorKind;
 use abi::{Abi, ArgType, ArgTypeExt, FnType, FnTypeExt, LlvmType, PassMode};
@@ -57,7 +57,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
         debug!("codegen_terminator: {:?}", terminator);
 
         // Create the cleanup bundle, if needed.
-        let tcx = bx.tcx();
+        let tcx = self.cx.tcx;
         let span = terminator.source_info.span;
         let funclet_bb = self.cleanup_kinds[bb].funclet_bb(bb);
         let funclet = funclet_bb.and_then(|funclet_bb| self.funclets[funclet_bb].as_ref());

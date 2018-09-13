@@ -9,13 +9,13 @@
 // except according to those terms.
 
 use super::backend::Backend;
-use super::builder::HasCodegen;
+use super::builder::BuilderMethods;
+use abi::FnType;
 use mir::operand::OperandRef;
 use rustc::ty::Ty;
-use abi::FnType;
 use syntax_pos::Span;
 
-pub trait IntrinsicCallMethods<'a, 'tcx: 'a>: HasCodegen {
+pub trait IntrinsicCallMethods<'a, 'tcx: 'a>: BuilderMethods<'a, 'tcx> {
     fn codegen_intrinsic_call(
         &self,
         callee_ty: Ty<'tcx>,
@@ -26,10 +26,7 @@ pub trait IntrinsicCallMethods<'a, 'tcx: 'a>: HasCodegen {
     );
 }
 
-pub trait IntrinsicDeclarationMethods: Backend {
+pub trait IntrinsicDeclarationMethods<'tcx>: Backend<'tcx> {
     fn get_intrinsic(&self, key: &str) -> Self::Value;
-    fn declare_intrinsic(
-        &self,
-        key: &str
-    ) -> Option<Self::Value>;
+    fn declare_intrinsic(&self, key: &str) -> Option<Self::Value>;
 }

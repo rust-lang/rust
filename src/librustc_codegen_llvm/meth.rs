@@ -10,16 +10,14 @@
 
 use abi::{FnType, FnTypeExt};
 use callee;
-use context::CodegenCx;
 use builder::Builder;
 use monomorphize;
 use value::Value;
 
-use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods, DerivedTypeMethods, StaticMethods};
+use interfaces::*;
 
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::HasDataLayout;
-use debuginfo;
+use rustc::ty::layout::HasTyCtxt;
 
 #[derive(Copy, Clone, Debug)]
 pub struct VirtualIndex(u64);
@@ -82,17 +80,17 @@ impl<'a, 'tcx> VirtualIndex {
 /// The `trait_ref` encodes the erased self type. Hence if we are
 /// making an object `Foo<Trait>` from a value of type `Foo<T>`, then
 /// `trait_ref` would map `T:Trait`.
-pub fn get_vtable(
-    cx: &CodegenCx<'ll, 'tcx>,
+pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
+    cx: &Cx,
     ty: Ty<'tcx>,
     trait_ref: ty::PolyExistentialTraitRef<'tcx>,
-) -> &'ll Value {
-    let tcx = cx.tcx;
+) -> Cx::Value {
+    let tcx = cx.tcx();
 
     debug!("get_vtable(ty={:?}, trait_ref={:?})", ty, trait_ref);
 
     // Check the cache.
-    if let Some(&val) = cx.vtables.borrow().get(&(ty, trait_ref)) {
+    if let Some(&val) = cx.vtables().borrow().get(&(ty, trait_ref)) {
         return val;
     }
 
@@ -106,13 +104,13 @@ pub fn get_vtable(
         })
     });
 
-    let (size, align) = cx.size_and_align_of(ty);
+    let (size, align) = cx.layout_of(ty).size_and_align();
     // /////////////////////////////////////////////////////////////////////////////////////////////
     // If you touch this code, be sure to also make the corresponding changes to
     // `get_vtable` in rust_mir/interpret/traits.rs
     // /////////////////////////////////////////////////////////////////////////////////////////////
     let components: Vec<_> = [
-        callee::get_fn(cx, monomorphize::resolve_drop_in_place(cx.tcx, ty)),
+        cx.get_fn(monomorphize::resolve_drop_in_place(cx.tcx(), ty)),
         cx.const_usize(size.bytes()),
         cx.const_usize(align.abi())
     ].iter().cloned().chain(methods).collect();
@@ -121,8 +119,8 @@ pub fn get_vtable(
     let align = cx.data_layout().pointer_align;
     let vtable = cx.static_addr_of(vtable_const, align, Some("vtable"));
 
-    debuginfo::create_vtable_metadata(cx, ty, vtable);
+    cx.create_vtable_metadata(ty, vtable);
 
-    cx.vtables.borrow_mut().insert((ty, trait_ref), vtable);
+    cx.vtables().borrow_mut().insert((ty, trait_ref), vtable);
     vtable
 }

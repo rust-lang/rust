@@ -58,7 +58,6 @@ mod source_loc;
 pub use self::create_scope_map::{create_mir_scopes, MirDebugScope};
 pub use self::source_loc::start_emitting_source_locations;
 pub use self::metadata::create_global_var_metadata;
-pub use self::metadata::create_vtable_metadata;
 pub use self::metadata::extend_scope_to_file;
 pub use self::source_loc::set_source_location;
 

@@ -13,7 +13,7 @@ use llvm::{self, BasicBlock};
 use llvm::debuginfo::DIScope;
 use llvm_util;
 use rustc::ty::{self, Ty, TypeFoldable, UpvarSubsts};
-use rustc::ty::layout::{LayoutOf, TyLayout};
+use rustc::ty::layout::{LayoutOf, TyLayout, HasTyCtxt};
 use rustc::mir::{self, Mir};
 use rustc::ty::subst::Substs;
 use rustc::session::config::DebugInfo;

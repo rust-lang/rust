@@ -17,7 +17,7 @@ use std;
 use builder::Builder;
 use common::*;
 use meth;
-use rustc::ty::layout::LayoutOf;
+use rustc::ty::layout::{LayoutOf, HasTyCtxt};
 use rustc::ty::{self, Ty};
 use value::Value;
 use interfaces::{BuilderMethods, ConstMethods};

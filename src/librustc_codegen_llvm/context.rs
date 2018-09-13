@@ -23,7 +23,7 @@ use value::Value;
 use monomorphize::partitioning::CodegenUnit;
 use type_::Type;
 use type_of::PointeeInfo;
-use interfaces::{BaseTypeMethods, DerivedTypeMethods, IntrinsicDeclarationMethods};
+use interfaces::*;
 
 use rustc_data_structures::base_n;
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -322,7 +322,18 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
     }
 }
 
-impl IntrinsicDeclarationMethods for CodegenCx<'b, 'tcx> {
+impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+    fn vtables(&self) -> &RefCell<FxHashMap<(Ty<'tcx>,
+                                ty::PolyExistentialTraitRef<'tcx>), &'ll Value>>
+    {
+        &self.vtables
+    }
+    fn get_fn(&self, instance: Instance<'tcx>) -> &'ll Value {
+        callee::get_fn(&&self,instance)
+    }
+}
+
+impl IntrinsicDeclarationMethods<'tcx> for CodegenCx<'b, 'tcx> {
     fn get_intrinsic(&self, key: &str) -> &'b Value {
         if let Some(v) = self.intrinsics.borrow().get(key).cloned() {
             return v;

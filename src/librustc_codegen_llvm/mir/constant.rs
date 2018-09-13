@@ -16,7 +16,7 @@ use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::mir::interpret::{GlobalId, Pointer, Scalar, Allocation, ConstValue, AllocType};
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Size};
+use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Size, HasTyCtxt};
 use builder::Builder;
 use common::{CodegenCx};
 use type_of::LayoutLlvmExt;

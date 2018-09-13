@@ -8,16 +8,49 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod builder;
 mod backend;
+mod builder;
 mod consts;
-mod type_;
+mod debuginfo;
 mod intrinsic;
+mod misc;
 mod statics;
+mod type_;
 
-pub use self::builder::{BuilderMethods, HasCodegen};
-pub use self::backend::Backend;
+pub use self::backend::{Backend, BackendTypes};
+pub use self::builder::BuilderMethods;
 pub use self::consts::ConstMethods;
-pub use self::type_::{TypeMethods, BaseTypeMethods, DerivedTypeMethods};
+pub use self::debuginfo::DebugInfoMethods;
 pub use self::intrinsic::{IntrinsicCallMethods, IntrinsicDeclarationMethods};
+pub use self::misc::MiscMethods;
 pub use self::statics::StaticMethods;
+pub use self::type_::{BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods, TypeMethods};
+
+pub trait CodegenMethods<'tcx>:
+    Backend<'tcx>
+    + TypeMethods<'tcx>
+    + MiscMethods<'tcx>
+    + ConstMethods<'tcx>
+    + StaticMethods<'tcx>
+    + DebugInfoMethods<'tcx>
+{
+}
+
+impl<'tcx, T> CodegenMethods<'tcx> for T where
+    Self: Backend<'tcx>
+        + TypeMethods<'tcx>
+        + MiscMethods<'tcx>
+        + ConstMethods<'tcx>
+        + StaticMethods<'tcx>
+        + DebugInfoMethods<'tcx>
+{}
+
+pub trait HasCodegen<'tcx>: Backend<'tcx> {
+    type CodegenCx: CodegenMethods<'tcx>
+        + BackendTypes<
+            Value = Self::Value,
+            BasicBlock = Self::BasicBlock,
+            Type = Self::Type,
+            Context = Self::Context,
+        >;
+}

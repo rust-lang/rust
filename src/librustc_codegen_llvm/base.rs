@@ -55,7 +55,6 @@ use builder::{Builder, MemFlags};
 use callee;
 use rustc_mir::monomorphize::item::DefPathBasedNames;
 use common::{self, IntPredicate, RealPredicate, TypeKind};
-use consts;
 use context::CodegenCx;
 use debuginfo;
 use declare;
@@ -188,16 +187,16 @@ pub fn compare_simd_types<'a, 'tcx: 'a, Builder: BuilderMethods<'a, 'tcx>>(
 /// The `old_info` argument is a bit funny. It is intended for use
 /// in an upcast, where the new vtable for an object will be derived
 /// from the old one.
-pub fn unsized_info(
-    cx: &CodegenCx<'ll, 'tcx>,
+pub fn unsized_info<'tcx, Cx: CodegenMethods<'tcx>>(
+    cx: &Cx,
     source: Ty<'tcx>,
     target: Ty<'tcx>,
-    old_info: Option<&'ll Value>,
-) -> &'ll Value {
-    let (source, target) = cx.tcx.struct_lockstep_tails(source, target);
+    old_info: Option<Cx::Value>,
+) -> Cx::Value {
+    let (source, target) = cx.tcx().struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
         (&ty::Array(_, len), &ty::Slice(_)) => {
-            cx.const_usize(len.unwrap_usize(cx.tcx))
+            cx.const_usize(len.unwrap_usize(cx.tcx()))
         }
         (&ty::Dynamic(..), &ty::Dynamic(..)) => {
             // For now, upcasts are limited to changes in marker
@@ -206,10 +205,10 @@ pub fn unsized_info(
             old_info.expect("unsized_info: missing old info for trait upcast")
         }
         (_, &ty::Dynamic(ref data, ..)) => {
-            let vtable_ptr = cx.layout_of(cx.tcx.mk_mut_ptr(target))
+            let vtable_ptr = cx.layout_of(cx.tcx().mk_mut_ptr(target))
                 .field(cx, abi::FAT_PTR_EXTRA);
-            consts::ptrcast(meth::get_vtable(cx, source, data.principal()),
-                            vtable_ptr.llvm_type(cx))
+            cx.static_ptrcast(meth::get_vtable(cx, source, data.principal()),
+                            cx.backend_type(vtable_ptr))
         }
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}",
                   source,

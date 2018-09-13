@@ -25,7 +25,7 @@ use glue;
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::LayoutOf;
+use rustc::ty::layout::{LayoutOf, HasTyCtxt};
 use rustc::hir;
 use syntax::ast;
 use syntax::symbol::Symbol;

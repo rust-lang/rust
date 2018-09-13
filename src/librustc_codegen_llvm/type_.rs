@@ -15,16 +15,21 @@ pub use llvm::Type;
 use llvm;
 use llvm::{Bool, False, True};
 use context::CodegenCx;
-use interfaces::{BaseTypeMethods, DerivedTypeMethods, TypeMethods};
+use interfaces::*;
 use value::Value;
 
 
 use syntax::ast;
 use rustc::ty::layout::{self, Align, Size};
+use rustc::util::nodemap::FxHashMap;
+use rustc::ty::Ty;
+use rustc::ty::layout::TyLayout;
 use rustc_data_structures::small_c_str::SmallCStr;
 use common::{self, TypeKind};
+use type_of::LayoutLlvmExt;
 
 use std::fmt;
+use std::cell::RefCell;
 
 use libc::c_uint;
 
@@ -42,7 +47,7 @@ impl fmt::Debug for Type {
     }
 }
 
-impl BaseTypeMethods for CodegenCx<'ll, 'tcx> {
+impl BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn type_void(&self) -> &'ll Type {
         unsafe {
             llvm::LLVMVoidTypeInContext(self.llcx)
@@ -234,6 +239,10 @@ impl BaseTypeMethods for CodegenCx<'ll, 'tcx> {
     fn val_ty(&self, v: &'ll Value) -> &'ll Type {
         common::val_ty(v)
     }
+
+    fn scalar_lltypes(&self) -> &RefCell<FxHashMap<Ty<'tcx>, Self::Type>> {
+        &self.scalar_lltypes
+    }
 }
 
 impl Type {
@@ -264,7 +273,7 @@ impl Type {
     }
 }
 
-impl DerivedTypeMethods for CodegenCx<'ll, 'tcx> {
+impl DerivedTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn type_bool(&self) -> &'ll Type {
         self.type_i8()
     }
@@ -358,4 +367,8 @@ impl DerivedTypeMethods for CodegenCx<'ll, 'tcx> {
     }
 }
 
-impl TypeMethods for CodegenCx<'ll, 'tcx> {}
+impl LayoutTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+    fn backend_type(&self, ty: TyLayout<'tcx>) -> &'ll Type {
+        ty.llvm_type(&self)
+    }
+}

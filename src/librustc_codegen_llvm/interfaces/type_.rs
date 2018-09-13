@@ -10,10 +10,14 @@
 
 use super::backend::Backend;
 use common::TypeKind;
-use syntax::ast;
+use rustc::ty::layout::TyLayout;
 use rustc::ty::layout::{self, Align, Size};
+use rustc::ty::Ty;
+use rustc::util::nodemap::FxHashMap;
+use std::cell::RefCell;
+use syntax::ast;
 
-pub trait BaseTypeMethods: Backend {
+pub trait BaseTypeMethods<'tcx>: Backend<'tcx> {
     fn type_void(&self) -> Self::Type;
     fn type_metadata(&self) -> Self::Type;
     fn type_i1(&self) -> Self::Type;
@@ -43,32 +47,31 @@ pub trait BaseTypeMethods: Backend {
     fn int_width(&self, ty: Self::Type) -> u64;
 
     fn val_ty(&self, v: Self::Value) -> Self::Type;
+    fn scalar_lltypes(&self) -> &RefCell<FxHashMap<Ty<'tcx>, Self::Type>>;
 }
 
-pub trait DerivedTypeMethods: Backend {
+pub trait DerivedTypeMethods<'tcx>: Backend<'tcx> {
     fn type_bool(&self) -> Self::Type;
     fn type_i8p(&self) -> Self::Type;
     fn type_isize(&self) -> Self::Type;
     fn type_int(&self) -> Self::Type;
-    fn type_int_from_ty(
-        &self,
-        t: ast::IntTy
-    ) -> Self::Type;
-    fn type_uint_from_ty(
-        &self,
-        t: ast::UintTy
-    ) -> Self::Type;
-    fn type_float_from_ty(
-        &self,
-        t: ast::FloatTy
-    ) -> Self::Type;
+    fn type_int_from_ty(&self, t: ast::IntTy) -> Self::Type;
+    fn type_uint_from_ty(&self, t: ast::UintTy) -> Self::Type;
+    fn type_float_from_ty(&self, t: ast::FloatTy) -> Self::Type;
     fn type_from_integer(&self, i: layout::Integer) -> Self::Type;
     fn type_pointee_for_abi_align(&self, align: Align) -> Self::Type;
-    fn type_padding_filler(
-        &self,
-        size: Size,
-        align: Align
-    ) -> Self::Type;
+    fn type_padding_filler(&self, size: Size, align: Align) -> Self::Type;
 }
 
-pub trait TypeMethods: BaseTypeMethods + DerivedTypeMethods {}
+pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
+    fn backend_type(&self, ty: TyLayout<'tcx>) -> Self::Type;
+}
+
+pub trait TypeMethods<'tcx>:
+    BaseTypeMethods<'tcx> + DerivedTypeMethods<'tcx> + LayoutTypeMethods<'tcx>
+{
+}
+
+impl<T> TypeMethods<'tcx> for T where
+    Self: BaseTypeMethods<'tcx> + DerivedTypeMethods<'tcx> + LayoutTypeMethods<'tcx>
+{}

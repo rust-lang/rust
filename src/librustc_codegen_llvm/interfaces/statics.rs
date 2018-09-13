@@ -8,29 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::ty::layout::Align;
-use rustc::hir::def_id::DefId;
 use super::backend::Backend;
+use rustc::hir::def_id::DefId;
+use rustc::ty::layout::Align;
 
-pub trait StaticMethods<'tcx>: Backend {
+pub trait StaticMethods<'tcx>: Backend<'tcx> {
     fn static_ptrcast(&self, val: Self::Value, ty: Self::Type) -> Self::Value;
     fn static_bitcast(&self, val: Self::Value, ty: Self::Type) -> Self::Value;
-    fn static_addr_of_mut(
-        &self,
-        cv: Self::Value,
-        align: Align,
-        kind: Option<&str>,
-    ) -> Self::Value;
-    fn static_addr_of(
-        &self,
-        cv: Self::Value,
-        align: Align,
-        kind: Option<&str>,
-    ) -> Self::Value;
+    fn static_addr_of_mut(&self, cv: Self::Value, align: Align, kind: Option<&str>) -> Self::Value;
+    fn static_addr_of(&self, cv: Self::Value, align: Align, kind: Option<&str>) -> Self::Value;
     fn get_static(&self, def_id: DefId) -> Self::Value;
-    fn codegen_static(
-        &self,
-        def_id: DefId,
-        is_mutable: bool,
-    );
+    fn codegen_static(&self, def_id: DefId, is_mutable: bool);
 }

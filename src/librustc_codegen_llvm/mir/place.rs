@@ -10,7 +10,7 @@
 
 use llvm::{self, LLVMConstInBoundsGEP};
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, Size, VariantIdx};
+use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, Size, VariantIdx, HasTyCtxt};
 use rustc::mir;
 use rustc::mir::tcx::PlaceTy;
 use base;

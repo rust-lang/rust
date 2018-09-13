@@ -17,6 +17,7 @@ use super::utils::{debug_context, DIB, span_start,
 use super::namespace::mangled_name_of_instance;
 use super::type_names::compute_debuginfo_type_name;
 use super::{CrateDebugContext};
+use interfaces::*;
 use abi;
 use interfaces::ConstMethods;
 use value::Value;
@@ -1983,58 +1984,60 @@ pub fn extend_scope_to_file(
     }
 }
 
-/// Creates debug information for the given vtable, which is for the
-/// given type.
-///
-/// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_vtable_metadata(
-    cx: &CodegenCx<'ll, 'tcx>,
-    ty: ty::Ty<'tcx>,
-    vtable: &'ll Value,
-) {
-    if cx.dbg_cx.is_none() {
-        return;
-    }
+impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+    /// Creates debug information for the given vtable, which is for the
+    /// given type.
+    ///
+    /// Adds the created metadata nodes directly to the crate's IR.
+    fn create_vtable_metadata(
+        &self,
+        ty: ty::Ty<'tcx>,
+        vtable: &'ll Value,
+    ) {
+        if self.dbg_cx.is_none() {
+            return;
+        }
 
-    let type_metadata = type_metadata(cx, ty, syntax_pos::DUMMY_SP);
+        let type_metadata = type_metadata(&self, ty, syntax_pos::DUMMY_SP);
 
-    unsafe {
-        // LLVMRustDIBuilderCreateStructType() wants an empty array. A null
-        // pointer will lead to hard to trace and debug LLVM assertions
-        // later on in llvm/lib/IR/Value.cpp.
-        let empty_array = create_DIArray(DIB(cx), &[]);
+        unsafe {
+            // LLVMRustDIBuilderCreateStructType() wants an empty array. A null
+            // pointer will lead to hard to trace and debug LLVM assertions
+            // later on in llvm/lib/IR/Value.cpp.
+            let empty_array = create_DIArray(DIB(&self), &[]);
 
-        let name = const_cstr!("vtable");
+            let name = const_cstr!("vtable");
 
-        // Create a new one each time.  We don't want metadata caching
-        // here, because each vtable will refer to a unique containing
-        // type.
-        let vtable_type = llvm::LLVMRustDIBuilderCreateStructType(
-            DIB(cx),
-            NO_SCOPE_METADATA,
-            name.as_ptr(),
-            unknown_file_metadata(cx),
-            UNKNOWN_LINE_NUMBER,
-            Size::ZERO.bits(),
-            cx.tcx.data_layout.pointer_align.abi_bits() as u32,
-            DIFlags::FlagArtificial,
-            None,
-            empty_array,
-            0,
-            Some(type_metadata),
-            name.as_ptr()
-        );
+            // Create a new one each time.  We don't want metadata caching
+            // here, because each vtable will refer to a unique containing
+            // type.
+            let vtable_type = llvm::LLVMRustDIBuilderCreateStructType(
+                DIB(&self),
+                NO_SCOPE_METADATA,
+                name.as_ptr(),
+                unknown_file_metadata(&self),
+                UNKNOWN_LINE_NUMBER,
+                Size::ZERO.bits(),
+                self.tcx.data_layout.pointer_align.abi_bits() as u32,
+                DIFlags::FlagArtificial,
+                None,
+                empty_array,
+                0,
+                Some(type_metadata),
+                name.as_ptr()
+            );
 
-        llvm::LLVMRustDIBuilderCreateStaticVariable(DIB(cx),
-                                                    NO_SCOPE_METADATA,
-                                                    name.as_ptr(),
-                                                    ptr::null(),
-                                                    unknown_file_metadata(cx),
-                                                    UNKNOWN_LINE_NUMBER,
-                                                    vtable_type,
-                                                    true,
-                                                    vtable,
-                                                    None,
-                                                    0);
+            llvm::LLVMRustDIBuilderCreateStaticVariable(DIB(&self),
+                                                        NO_SCOPE_METADATA,
+                                                        name.as_ptr(),
+                                                        ptr::null(),
+                                                        unknown_file_metadata(&self),
+                                                        UNKNOWN_LINE_NUMBER,
+                                                        vtable_type,
+                                                        true,
+                                                        vtable,
+                                                        None,
+                                                        0);
+        }
     }
 }

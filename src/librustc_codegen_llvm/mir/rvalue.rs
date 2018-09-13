@@ -10,7 +10,7 @@
 
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
-use rustc::ty::layout::{self, LayoutOf};
+use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
 use rustc::mir;
 use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 use rustc_apfloat::{ieee, Float, Status, Round};
@@ -488,7 +488,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
             mir::Rvalue::NullaryOp(mir::NullOp::SizeOf, ty) => {
                 assert!(bx.cx().type_is_sized(ty));
                 let val = bx.cx().const_usize(bx.cx().size_of(ty).bytes());
-                let tcx = bx.tcx();
+                let tcx = self.cx.tcx;
                 (bx, OperandRef {
                     val: OperandValue::Immediate(val),
                     layout: self.cx.layout_of(tcx.types.usize),

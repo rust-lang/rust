@@ -8,48 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use super::HasCodegen;
+use builder::MemFlags;
 use common::*;
 use libc::c_char;
-use rustc::ty::TyCtxt;
-use rustc::ty::layout::{Align, Size};
 use rustc::session::Session;
-use builder::MemFlags;
-use super::backend::Backend;
-use super::type_::TypeMethods;
-use super::consts::ConstMethods;
-use super::intrinsic::IntrinsicDeclarationMethods;
+use rustc::ty::layout::{Align, Size};
 
 use std::borrow::Cow;
 use std::ops::Range;
 use syntax::ast::AsmDialect;
 
-pub trait HasCodegen: Backend {
-    type CodegenCx: TypeMethods + ConstMethods + IntrinsicDeclarationMethods + Backend<
-        Value = Self::Value,
-        BasicBlock = Self::BasicBlock,
-        Type = Self::Type,
-        Context = Self::Context,
-    >;
-}
-
-impl<T: HasCodegen> Backend for T {
-    type Value = <T::CodegenCx as Backend>::Value;
-    type BasicBlock = <T::CodegenCx as Backend>::BasicBlock;
-    type Type = <T::CodegenCx as Backend>::Type;
-    type Context = <T::CodegenCx as Backend>::Context;
-}
-
-pub trait BuilderMethods<'a, 'tcx: 'a>: HasCodegen {
-    fn new_block<'b>(
-        cx: &'a Self::CodegenCx,
-        llfn: Self::Value,
-        name: &'b str
-    ) -> Self;
+pub trait BuilderMethods<'a, 'tcx: 'a>: HasCodegen<'tcx> {
+    fn new_block<'b>(cx: &'a Self::CodegenCx, llfn: Self::Value, name: &'b str) -> Self;
     fn with_cx(cx: &'a Self::CodegenCx) -> Self;
     fn build_sibling_block<'b>(&self, name: &'b str) -> Self;
     fn sess(&self) -> &Session;
-    fn cx(&self) -> &'a Self::CodegenCx;
-    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx>;
+    fn cx(&self) -> &'a Self::CodegenCx; // FIXME(eddyb) remove 'a
     fn llfn(&self) -> Self::Value;
     fn llbb(&self) -> Self::BasicBlock;
     fn count_insn(&self, category: &str);
@@ -60,25 +35,15 @@ pub trait BuilderMethods<'a, 'tcx: 'a>: HasCodegen {
     fn ret_void(&self);
     fn ret(&self, v: Self::Value);
     fn br(&self, dest: Self::BasicBlock);
-    fn cond_br(
-        &self,
-        cond: Self::Value,
-        then_llbb: Self::BasicBlock,
-        else_llbb: Self::BasicBlock,
-    );
-    fn switch(
-        &self,
-        v: Self::Value,
-        else_llbb: Self::BasicBlock,
-        num_cases: usize,
-    ) -> Self::Value;
+    fn cond_br(&self, cond: Self::Value, then_llbb: Self::BasicBlock, else_llbb: Self::BasicBlock);
+    fn switch(&self, v: Self::Value, else_llbb: Self::BasicBlock, num_cases: usize) -> Self::Value;
     fn invoke(
         &self,
         llfn: Self::Value,
         args: &[Self::Value],
         then: Self::BasicBlock,
         catch: Self::BasicBlock,
-        bundle: Option<&OperandBundleDef<Self::Value>>
+        bundle: Option<&OperandBundleDef<Self::Value>>,
     ) -> Self::Value;
     fn unreachable(&self);
     fn add(&self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
@@ -117,7 +82,7 @@ pub trait BuilderMethods<'a, 'tcx: 'a>: HasCodegen {
         ty: Self::Type,
         len: Self::Value,
         name: &str,
-        align: Align
+        align: Align,
     ) -> Self::Value;
 
     fn load(&self, ptr: Self::Value, align: Align) -> Self::Value;
@@ -135,13 +100,7 @@ pub trait BuilderMethods<'a, 'tcx: 'a>: HasCodegen {
         align: Align,
         flags: MemFlags,
     ) -> Self::Value;
-    fn atomic_store(
-        &self,
-        val: Self::Value,
-        ptr: Self::Value,
-        order: AtomicOrdering,
-        size: Size
-    );
+    fn atomic_store(&self, val: Self::Value, ptr: Self::Value, order: AtomicOrdering, size: Size);
 
     fn gep(&self, ptr: Self::Value, indices: &[Self::Value]) -> Self::Value;
     fn inbounds_gep(&self, ptr: Self::Value, indices: &[Self::Value]) -> Self::Value;
@@ -174,16 +133,27 @@ pub trait BuilderMethods<'a, 'tcx: 'a>: HasCodegen {
         output: Self::Type,
         volatile: bool,
         alignstack: bool,
-        dia: AsmDialect
+        dia: AsmDialect,
     ) -> Option<Self::Value>;
 
-
-    fn memcpy(&self, dst: Self::Value, dst_align: Align,
-                  src: Self::Value, src_align: Align,
-                  size: Self::Value, flags: MemFlags);
-    fn memmove(&self, dst: Self::Value, dst_align: Align,
-                  src: Self::Value, src_align: Align,
-                  size: Self::Value, flags: MemFlags);
+    fn memcpy(
+        &self,
+        dst: Self::Value,
+        dst_align: Align,
+        src: Self::Value,
+        src_align: Align,
+        size: Self::Value,
+        flags: MemFlags,
+    );
+    fn memmove(
+        &self,
+        dst: Self::Value,
+        dst_align: Align,
+        src: Self::Value,
+        src_align: Align,
+        size: Self::Value,
+        flags: MemFlags,
+    );
     fn memset(
         &self,
         ptr: Self::Value,
@@ -196,18 +166,15 @@ pub trait BuilderMethods<'a, 'tcx: 'a>: HasCodegen {
     fn minnum(&self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn maxnum(&self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn select(
-        &self, cond: Self::Value,
+        &self,
+        cond: Self::Value,
         then_val: Self::Value,
         else_val: Self::Value,
     ) -> Self::Value;
 
     fn va_arg(&self, list: Self::Value, ty: Self::Type) -> Self::Value;
     fn extract_element(&self, vec: Self::Value, idx: Self::Value) -> Self::Value;
-    fn insert_element(
-        &self, vec: Self::Value,
-        elt: Self::Value,
-        idx: Self::Value,
-    ) -> Self::Value;
+    fn insert_element(&self, vec: Self::Value, elt: Self::Value, idx: Self::Value) -> Self::Value;
     fn shuffle_vector(&self, v1: Self::Value, v2: Self::Value, mask: Self::Value) -> Self::Value;
     fn vector_splat(&self, num_elts: usize, elt: Self::Value) -> Self::Value;
     fn vector_reduce_fadd_fast(&self, acc: Self::Value, src: Self::Value) -> Self::Value;
@@ -224,36 +191,15 @@ pub trait BuilderMethods<'a, 'tcx: 'a>: HasCodegen {
     fn vector_reduce_min(&self, src: Self::Value, is_signed: bool) -> Self::Value;
     fn vector_reduce_max(&self, src: Self::Value, is_signed: bool) -> Self::Value;
     fn extract_value(&self, agg_val: Self::Value, idx: u64) -> Self::Value;
-    fn insert_value(
-        &self,
-        agg_val: Self::Value,
-        elt: Self::Value,
-        idx: u64
-    ) -> Self::Value;
+    fn insert_value(&self, agg_val: Self::Value, elt: Self::Value, idx: u64) -> Self::Value;
 
-    fn landing_pad(
-        &self,
-        ty: Self::Type,
-        pers_fn: Self::Value,
-        num_clauses: usize
-    ) -> Self::Value;
+    fn landing_pad(&self, ty: Self::Type, pers_fn: Self::Value, num_clauses: usize) -> Self::Value;
     fn add_clause(&self, landing_pad: Self::Value, clause: Self::Value);
     fn set_cleanup(&self, landing_pad: Self::Value);
     fn resume(&self, exn: Self::Value) -> Self::Value;
-    fn cleanup_pad(
-        &self,
-        parent: Option<Self::Value>,
-        args: &[Self::Value]
-    ) -> Self::Value;
-    fn cleanup_ret(
-        &self, cleanup: Self::Value,
-        unwind: Option<Self::BasicBlock>,
-    ) -> Self::Value;
-    fn catch_pad(
-        &self,
-        parent: Self::Value,
-        args: &[Self::Value]
-    ) -> Self::Value;
+    fn cleanup_pad(&self, parent: Option<Self::Value>, args: &[Self::Value]) -> Self::Value;
+    fn cleanup_ret(&self, cleanup: Self::Value, unwind: Option<Self::BasicBlock>) -> Self::Value;
+    fn catch_pad(&self, parent: Self::Value, args: &[Self::Value]) -> Self::Value;
     fn catch_ret(&self, pad: Self::Value, unwind: Self::BasicBlock) -> Self::Value;
     fn catch_switch(
         &self,
@@ -285,23 +231,25 @@ pub trait BuilderMethods<'a, 'tcx: 'a>: HasCodegen {
     fn add_incoming_to_phi(&self, phi: Self::Value, val: Self::Value, bb: Self::BasicBlock);
     fn set_invariant_load(&self, load: Self::Value);
 
-    fn check_store(
-        &self,
-        val: Self::Value,
-        ptr: Self::Value
-    ) -> Self::Value;
+    fn check_store(&self, val: Self::Value, ptr: Self::Value) -> Self::Value;
     fn check_call<'b>(
         &self,
         typ: &str,
         llfn: Self::Value,
-        args: &'b [Self::Value]
-    ) -> Cow<'b, [Self::Value]> where [Self::Value]: ToOwned;
+        args: &'b [Self::Value],
+    ) -> Cow<'b, [Self::Value]>
+    where
+        [Self::Value]: ToOwned;
     fn lifetime_start(&self, ptr: Self::Value, size: Size);
     fn lifetime_end(&self, ptr: Self::Value, size: Size);
 
     fn call_lifetime_intrinsic(&self, intrinsic: &str, ptr: Self::Value, size: Size);
 
-    fn call(&self, llfn: Self::Value, args: &[Self::Value],
-                bundle: Option<&OperandBundleDef<Self::Value>>) -> Self::Value;
+    fn call(
+        &self,
+        llfn: Self::Value,
+        args: &[Self::Value],
+        bundle: Option<&OperandBundleDef<Self::Value>>,
+    ) -> Self::Value;
     fn zext(&self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
 }
