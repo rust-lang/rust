@@ -5,6 +5,7 @@ description = "A guide to developing rustc"
 
 [output.html]
 
-[output.linkcheck]
-
 [output.html.search]
+
+[output.linkcheck]
+follow-web-links = true
