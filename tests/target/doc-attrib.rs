@@ -1,7 +1,15 @@
 // rustfmt-wrap_comments: true
 // rustfmt-normalize_doc_attributes: true
 
+// Only doc = "" attributes should be normalized
 //! Example doc attribute comment
+#![doc(
+    html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+    html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+    html_root_url = "https://doc.rust-lang.org/nightly/",
+    html_playground_url = "https://play.rust-lang.org/",
+    test(attr(deny(warnings)))
+)]
 
 // Long `#[doc = "..."]`
 struct A {
