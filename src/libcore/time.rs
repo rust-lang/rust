@@ -459,46 +459,77 @@ impl Duration {
             None
         }
     }
+    
+    /// Returns the number of seconds contained by this `Duration` as `f64`.
+    ///
+    /// The returned value does include the fractional (nanosecond) part of the duration.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(duration_float)]
+    /// use std::time::Duration;
+    ///
+    /// let dur = Duration::new(2, 700_000_000);
+    /// assert_eq!(dur.as_float_secs(), 2.7);
+    /// ```
+    #[unstable(feature = "duration_float", issue = "0")]
+    #[inline]
+    pub fn as_float_secs(&self) -> f64 {
+        (self.secs as f64) + (self.nanos as f64) / (NANOS_PER_SEC as f64)
+    }
 
+    /// Creates a new `Duration` from the specified number of seconds.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(duration_float)]
+    /// use std::time::Duration;
+    ///
+    /// let dur = Duration::from_float_secs(2.7);
+    /// assert_eq!(dur, Duration::new(2, 700_000_000));
+    /// ```
+    #[unstable(feature = "duration_float", issue = "0")]
+    #[inline]
+    pub fn from_float_secs(secs: f64) -> Duration {
+        let nanos =  (secs * (NANOS_PER_SEC as f64)) as u128;
+        Duration {
+            secs: (nanos / (NANOS_PER_SEC as u128)) as u64,
+            nanos: (nanos % (NANOS_PER_SEC as u128)) as u32,
+        }
+    }
+    
     /// Multiply `Duration` by `f64`.
     ///
     /// # Examples
     /// ```
-    /// #![feature(duration_float_ops)]
+    /// #![feature(duration_float)]
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
     /// assert_eq!(dur.mul_f64(3.14), Duration::new(8, 478_000_000));
     /// assert_eq!(dur.mul_f64(3.14e5), Duration::new(847_800, 0));
     /// ```
-    #[unstable(feature = "duration_float_ops",
-               reason = "duration/floats operations are unstabe",
-               issue = "0")]
+    #[unstable(feature = "duration_float", issue = "0")]
     #[inline]
     pub fn mul_f64(self, rhs: f64) -> Duration {
-        const NPS: f64 = NANOS_PER_SEC as f64;
-        let nanos_f64 = rhs * (NPS * (self.secs as f64) + (self.nanos as f64));
-        if !nanos_f64.is_finite() {
+        let secs = rhs * self.as_float_secs();
+        if !secs.is_finite() {
             panic!("got non-finite value when multiplying duration by float");
         }
-        if nanos_f64 > MAX_NANOS_F64 {
+        if secs > MAX_NANOS_F64 {
             panic!("overflow when multiplying duration by float");
         }
-        if nanos_f64 < 0.0 {
+        if secs < 0.0 {
             panic!("underflow when multiplying duration by float");
         }
-        let nanos_u128 = nanos_f64 as u128;
-        Duration {
-            secs: (nanos_u128 / (NANOS_PER_SEC as u128)) as u64,
-            nanos: (nanos_u128 % (NANOS_PER_SEC as u128)) as u32,
-        }
+        Duration::from_float_secs(secs)
     }
 
     /// Divide `Duration` by `f64`.
     ///
     /// # Examples
     /// ```
-    /// #![feature(duration_float_ops)]
+    /// #![feature(duration_float)]
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
@@ -506,49 +537,37 @@ impl Duration {
     /// // note that truncation is used, not rounding
     /// assert_eq!(dur.div_f64(3.14e5), Duration::new(0, 8_598));
     /// ```
-    #[unstable(feature = "duration_float_ops",
-               reason = "duration/floats operations are unstabe",
-               issue = "0")]
+    #[unstable(feature = "duration_float", issue = "0")]
     #[inline]
     pub fn div_f64(self, rhs: f64) -> Duration {
-        const NPS: f64 = NANOS_PER_SEC as f64;
-        let nanos_f64 = (NPS * (self.secs as f64) + (self.nanos as f64)) / rhs;
-        if !nanos_f64.is_finite() {
+        let secs = self.as_float_secs() / rhs;
+        if !secs.is_finite() {
             panic!("got non-finite value when dividing duration by float");
         }
-        if nanos_f64 > MAX_NANOS_F64 {
+        if secs > MAX_NANOS_F64 {
             panic!("overflow when dividing duration by float");
         }
-        if nanos_f64 < 0.0 {
+        if secs < 0.0 {
             panic!("underflow when multiplying duration by float");
         }
-        let nanos_u128 = nanos_f64 as u128;
-        Duration {
-            secs: (nanos_u128 / (NANOS_PER_SEC as u128)) as u64,
-            nanos: (nanos_u128 % (NANOS_PER_SEC as u128)) as u32,
-        }
+        Duration::from_float_secs(secs)
     }
 
     /// Divide `Duration` by `Duration` and return `f64`.
     ///
     /// # Examples
     /// ```
-    /// #![feature(duration_float_ops)]
+    /// #![feature(duration_float)]
     /// use std::time::Duration;
     ///
     /// let dur1 = Duration::new(2, 700_000_000);
     /// let dur2 = Duration::new(5, 400_000_000);
     /// assert_eq!(dur1.div_duration(dur2), 0.5);
     /// ```
-    #[unstable(feature = "duration_float_ops",
-               reason = "duration/floats operations are unstabe",
-               issue = "0")]
+    #[unstable(feature = "duration_float", issue = "0")]
     #[inline]
     pub fn div_duration(self, rhs: Duration) -> f64 {
-        const NPS: f64 = NANOS_PER_SEC as f64;
-        let nanos1 = NPS * (self.secs as f64) + (self.nanos as f64);
-        let nanos2 = NPS * (rhs.secs as f64) + (rhs.nanos as f64);
-        nanos1/nanos2
+        self.as_float_secs()/rhs.as_float_secs()
     }
 }
 
