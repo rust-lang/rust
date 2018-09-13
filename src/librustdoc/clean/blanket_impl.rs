@@ -103,11 +103,20 @@ impl<'a, 'tcx, 'rcx, 'cstore> BlanketImplFinder <'a, 'tcx, 'rcx, 'cstore> {
                         // FIXME(eddyb) ignoring `obligations` might cause false positives.
                         drop(obligations);
 
-                        let may_apply = infcx.predicate_may_hold(&traits::Obligation::new(
-                            cause.clone(),
-                            param_env,
-                            trait_ref.to_predicate(),
-                        ));
+                        debug!(
+                            "invoking predicate_may_hold: {:?}",
+                            trait_ref,
+                        );
+                        let may_apply = match infcx.evaluate_obligation(
+                            &traits::Obligation::new(
+                                cause.clone(),
+                                param_env,
+                                trait_ref.to_predicate(),
+                            ),
+                        ) {
+                            Ok(eval_result) => eval_result.may_apply(),
+                            Err(traits::OverflowError) => true, // overflow doesn't mean yes *or* no
+                        };
                         if !may_apply {
                             return
                         }
