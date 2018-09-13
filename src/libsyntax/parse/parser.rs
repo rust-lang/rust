@@ -4770,16 +4770,37 @@ impl<'a> Parser<'a> {
                     if self.eat(&token::Semi) {
                         stmt_span = stmt_span.with_hi(self.prev_span.hi());
                     }
-                    let sugg = pprust::to_string(|s| {
-                        use print::pprust::{PrintState, INDENT_UNIT};
-                        s.ibox(INDENT_UNIT)?;
-                        s.bopen()?;
-                        s.print_stmt(&stmt)?;
-                        s.bclose_maybe_open(stmt.span, INDENT_UNIT, false)
-                    });
+
+                    let (msg, sugg) = match self.sess.source_map()
+                                         .span_to_snippet(stmt_span)
+                                         .as_ref()
+                                         .map(|s| s.as_str()) {
+                        Ok("and") => {
+                            (
+                                "try replacing this with",
+                                "&&".to_string(),
+                            )
+                        },
+                        Ok("or") => {
+                            (
+                                "try replacing this with",
+                                "||".to_string(),
+                            )
+                        },
+                        _ => (
+                            "try placing this code inside a block",
+                            pprust::to_string(|s| {
+                                use print::pprust::{PrintState, INDENT_UNIT};
+                                s.ibox(INDENT_UNIT)?;
+                                s.bopen()?;
+                                s.print_stmt(&stmt)?;
+                                s.bclose_maybe_open(stmt.span, INDENT_UNIT, false)
+                            }),
+                        ),
+                    };
                     e.span_suggestion_with_applicability(
                         stmt_span,
-                        "try placing this code inside a block",
+                        msg,
                         sugg,
                         // speculative, has been misleading in the past (closed Issue #46836)
                         Applicability::MaybeIncorrect
