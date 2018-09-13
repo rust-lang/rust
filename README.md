@@ -45,7 +45,7 @@ subcommand.
 #### Step 1: Install rustup
 
 You can install [rustup](http://rustup.rs/) on supported platforms. This will help
-us install clippy and its dependencies.
+us install Clippy and its dependencies.
 
 If you already have rustup installed, update to ensure you have the latest
 rustup and compiler:
@@ -54,26 +54,15 @@ rustup and compiler:
 rustup update
 ```
 
-#### Step 2: Install nightly toolchain
+#### Step 2: Install Clippy
 
-Rustup integration is still new, you will need a relatively new nightly (2018-07-15 or later).
-
-To install Rust nightly with [rustup](https://rustup.rs/):
+Once you have rustup and the latest stable release (at least Rust 1.29) installed, run the following command:
 
 ```terminal
-rustup install nightly
+rustup component add clippy-preview
 ```
 
-#### Step 3: Install clippy
-
-Once you have rustup and the nightly toolchain installed, run the following command:
-
-```terminal
-rustup component add clippy-preview --toolchain=nightly
-```
-
-Now you can run Clippy by invoking `cargo +nightly clippy`. If nightly is your
-default toolchain in rustup, `cargo clippy` will work fine.
+Now you can run Clippy by invoking `cargo clippy`.
 
 ### Running Clippy from the command line without installing it
 
@@ -132,15 +121,6 @@ enable/disable Clippy lints until `tool_lints` are stable:
 ```rust
 #![cfg_attr(feature = "cargo-clippy", allow(clippy_lint))]
 ```
-
-## Updating rustc
-
-Sometimes, rustc moves forward without Clippy catching up. Therefore updating
-rustc may leave Clippy a non-functional state until we fix the resulting
-breakage.
-
-You can use the [rust-update](rust-update) script to update rustc only if
-Clippy would also update correctly.
 
 ## License
 
