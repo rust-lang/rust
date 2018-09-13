@@ -1,0 +1,22 @@
+error[E0503]: cannot use `t` because it was mutably borrowed
+  --> $DIR/match-on-borrowed.rs:82:9
+   |
+LL |     let x = &mut t;
+   |             ------ borrow of `t` occurs here
+LL |     match t {
+LL |         true => (), //~ ERROR
+   |         ^^^^ use of borrowed `t`
+...
+LL |     x;
+   |     - borrow later used here
+
+error[E0381]: use of possibly uninitialized variable: `n`
+  --> $DIR/match-on-borrowed.rs:92:11
+   |
+LL |     match n {} //~ ERROR
+   |           ^ use of possibly uninitialized `n`
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0381, E0503.
+For more information about an error, try `rustc --explain E0381`.
