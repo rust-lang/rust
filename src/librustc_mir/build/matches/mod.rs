@@ -267,7 +267,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 // Inject a fake read of the newly created binding
                 // to test the fallout of fixing issue #53695 where NLL
-                // allows to create variables that are immediately unusable.
+                // allows creating unused variables that are effectively unusable.
                 let source_info = self.source_info(irrefutable_pat.span);
                 self.cfg.push(
                     block,
@@ -315,6 +315,17 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             ty::Variance::Invariant,
                             ascription_user_ty,
                         ),
+                    },
+                );
+
+                // Inject a fake read of the newly created binding
+                // to test the fallout of fixing issue #53695 where NLL
+                // allows creating unused variables that are effectively unusable.
+                self.cfg.push(
+                    block,
+                    Statement {
+                        source_info,
+                        kind: StatementKind::ReadForMatch(place.clone()),
                     },
                 );
 
