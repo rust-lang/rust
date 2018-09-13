@@ -1,0 +1,10 @@
+error: expected `{`, found `or`
+  --> $DIR/if-with-or.rs:14:15
+   |
+LL |     if x == 1 or y == 2 {}
+   |     --        ^^ help: try replacing this with: `||`
+   |     |
+   |     this `if` statement has a condition, but no block
+
+error: aborting due to previous error
+
