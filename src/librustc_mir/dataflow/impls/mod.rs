@@ -14,7 +14,7 @@
 
 use rustc::ty::TyCtxt;
 use rustc::mir::{self, Mir, Location};
-use rustc_data_structures::bitslice::{BitwiseOperator, Word};
+use rustc_data_structures::bitvec::{BitwiseOperator, Word};
 use rustc_data_structures::indexed_set::{IdxSet};
 use rustc_data_structures::indexed_vec::Idx;
 

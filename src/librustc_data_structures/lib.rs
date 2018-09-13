@@ -63,7 +63,6 @@ pub use rustc_serialize::hex::ToHex;
 pub mod svh;
 pub mod array_vec;
 pub mod base_n;
-pub mod bitslice;
 pub mod bitvec;
 pub mod const_cstr;
 pub mod flock;

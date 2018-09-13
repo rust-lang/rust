@@ -10,12 +10,9 @@
 
 use array_vec::ArrayVec;
 use std::fmt;
-use std::iter;
-use std::marker::PhantomData;
 use std::mem;
 use std::slice;
-use bitslice::{BitSlice, Word};
-use bitslice::{bitwise, Union, Subtract, Intersect};
+use bitvec::{bitwise, BitArray, BitIter, Intersect, Subtract, Union, Word, WORD_BITS};
 use indexed_vec::Idx;
 use rustc_serialize;
 
@@ -40,38 +37,20 @@ pub trait SubtractFromIdxSet<T: Idx> {
 /// this type uses to represent the set of object it holds.
 ///
 /// The representation is dense, using one bit per possible element.
-#[derive(Eq, PartialEq)]
-pub struct IdxSet<T: Idx> {
-    _pd: PhantomData<fn(&T)>,
-    bits: Vec<Word>,
-}
-
-impl<T: Idx> Clone for IdxSet<T> {
-    fn clone(&self) -> Self {
-        IdxSet { _pd: PhantomData, bits: self.bits.clone() }
-    }
-}
+#[derive(Clone, Eq, PartialEq)]
+pub struct IdxSet<T: Idx>(BitArray<T>);
 
 impl<T: Idx> rustc_serialize::Encodable for IdxSet<T> {
-    fn encode<E: rustc_serialize::Encoder>(&self,
-                                     encoder: &mut E)
-                                     -> Result<(), E::Error> {
-        self.bits.encode(encoder)
+    fn encode<E: rustc_serialize::Encoder>(&self, encoder: &mut E) -> Result<(), E::Error> {
+        self.0.encode(encoder)
     }
 }
 
 impl<T: Idx> rustc_serialize::Decodable for IdxSet<T> {
     fn decode<D: rustc_serialize::Decoder>(d: &mut D) -> Result<IdxSet<T>, D::Error> {
-        let words: Vec<Word> = rustc_serialize::Decodable::decode(d)?;
-
-        Ok(IdxSet {
-            _pd: PhantomData,
-            bits: words,
-        })
+        Ok(IdxSet(rustc_serialize::Decodable::decode(d)?))
     }
 }
-
-const BITS_PER_WORD: usize = mem::size_of::<Word>() * 8;
 
 impl<T: Idx> fmt::Debug for IdxSet<T> {
     fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
@@ -82,31 +61,21 @@ impl<T: Idx> fmt::Debug for IdxSet<T> {
 }
 
 impl<T: Idx> IdxSet<T> {
-    fn new(init: Word, domain_size: usize) -> Self {
-        let num_words = (domain_size + (BITS_PER_WORD - 1)) / BITS_PER_WORD;
-        IdxSet {
-            _pd: Default::default(),
-            bits: vec![init; num_words],
-        }
+    /// Creates set holding no elements.
+    pub fn new_empty(domain_size: usize) -> Self {
+        IdxSet(BitArray::new_empty(domain_size))
     }
 
     /// Creates set holding every element whose index falls in range 0..domain_size.
     pub fn new_filled(domain_size: usize) -> Self {
-        let mut result = Self::new(!0, domain_size);
-        result.trim_to(domain_size);
-        result
-    }
-
-    /// Creates set holding no elements.
-    pub fn new_empty(domain_size: usize) -> Self {
-        Self::new(0, domain_size)
+        IdxSet(BitArray::new_filled(domain_size))
     }
 
     /// Duplicates as a hybrid set.
     pub fn to_hybrid(&self) -> HybridIdxSet<T> {
         // This domain_size may be slightly larger than the one specified
         // upon creation, due to rounding up to a whole word. That's ok.
-        let domain_size = self.bits.len() * BITS_PER_WORD;
+        let domain_size = self.words().len() * WORD_BITS;
 
         // Note: we currently don't bother trying to make a Sparse set.
         HybridIdxSet::Dense(self.to_owned(), domain_size)
@@ -114,60 +83,35 @@ impl<T: Idx> IdxSet<T> {
 
     /// Removes all elements
     pub fn clear(&mut self) {
-        for b in &mut self.bits {
-            *b = 0;
-        }
+        self.0.clear();
     }
 
     /// Sets all elements up to `domain_size`
     pub fn set_up_to(&mut self, domain_size: usize) {
-        for b in &mut self.bits {
-            *b = !0;
-        }
-        self.trim_to(domain_size);
-    }
-
-    /// Clear all elements above `domain_size`.
-    fn trim_to(&mut self, domain_size: usize) {
-        // `trim_block` is the first block where some bits have
-        // to be cleared.
-        let trim_block = domain_size / BITS_PER_WORD;
-
-        // all the blocks above it have to be completely cleared.
-        if trim_block < self.bits.len() {
-            for b in &mut self.bits[trim_block+1..] {
-                *b = 0;
-            }
-
-            // at that block, the `domain_size % BITS_PER_WORD` LSBs
-            // should remain.
-            let remaining_bits = domain_size % BITS_PER_WORD;
-            let mask = (1<<remaining_bits)-1;
-            self.bits[trim_block] &= mask;
-        }
+        self.0.set_up_to(domain_size);
     }
 
     /// Removes `elem` from the set `self`; returns true iff this changed `self`.
     pub fn remove(&mut self, elem: &T) -> bool {
-        self.bits.clear_bit(elem.index())
+        self.0.remove(*elem)
     }
 
     /// Adds `elem` to the set `self`; returns true iff this changed `self`.
     pub fn add(&mut self, elem: &T) -> bool {
-        self.bits.set_bit(elem.index())
+        self.0.insert(*elem)
     }
 
     /// Returns true iff set `self` contains `elem`.
     pub fn contains(&self, elem: &T) -> bool {
-        self.bits.get_bit(elem.index())
+        self.0.contains(*elem)
     }
 
     pub fn words(&self) -> &[Word] {
-        &self.bits
+        self.0.words()
     }
 
     pub fn words_mut(&mut self) -> &mut [Word] {
-        &mut self.bits
+        self.0.words_mut()
     }
 
     /// Efficiently overwrite `self` with `other`. Panics if `self` and `other`
@@ -196,9 +140,7 @@ impl<T: Idx> IdxSet<T> {
 
     pub fn iter(&self) -> Iter<T> {
         Iter {
-            cur: None,
-            iter: self.words().iter().enumerate(),
-            _pd: PhantomData,
+            iter: self.0.iter()
         }
     }
 }
@@ -216,28 +158,14 @@ impl<T: Idx> SubtractFromIdxSet<T> for IdxSet<T> {
 }
 
 pub struct Iter<'a, T: Idx> {
-    cur: Option<(Word, usize)>,
-    iter: iter::Enumerate<slice::Iter<'a, Word>>,
-    _pd: PhantomData<fn(&T)>,
+    iter: BitIter<'a, T>
 }
 
 impl<'a, T: Idx> Iterator for Iter<'a, T> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
-        loop {
-            if let Some((ref mut word, offset)) = self.cur {
-                let bit_pos = word.trailing_zeros() as usize;
-                if bit_pos != BITS_PER_WORD {
-                    let bit = 1 << bit_pos;
-                    *word ^= bit;
-                    return Some(T::new(bit_pos + offset))
-                }
-            }
-
-            let (i, word) = self.iter.next()?;
-            self.cur = Some((*word, BITS_PER_WORD * i));
-        }
+        self.iter.next()
     }
 }
 
@@ -454,45 +382,5 @@ impl<'a, T: Idx> Iterator for HybridIter<'a, T> {
             HybridIter::Sparse(sparse) => sparse.next(),
             HybridIter::Dense(dense) => dense.next(),
         }
-    }
-}
-
-#[test]
-fn test_trim_to() {
-    use std::cmp;
-
-    for i in 0..256 {
-        let mut idx_buf: IdxSet<usize> = IdxSet::new_filled(128);
-        idx_buf.trim_to(i);
-
-        let elems: Vec<usize> = idx_buf.iter().collect();
-        let expected: Vec<usize> = (0..cmp::min(i, 128)).collect();
-        assert_eq!(elems, expected);
-    }
-}
-
-#[test]
-fn test_set_up_to() {
-    for i in 0..128 {
-        for mut idx_buf in
-            vec![IdxSet::new_empty(128), IdxSet::new_filled(128)]
-            .into_iter()
-        {
-            idx_buf.set_up_to(i);
-
-            let elems: Vec<usize> = idx_buf.iter().collect();
-            let expected: Vec<usize> = (0..i).collect();
-            assert_eq!(elems, expected);
-        }
-    }
-}
-
-#[test]
-fn test_new_filled() {
-    for i in 0..128 {
-        let idx_buf = IdxSet::new_filled(i);
-        let elems: Vec<usize> = idx_buf.iter().collect();
-        let expected: Vec<usize> = (0..i).collect();
-        assert_eq!(elems, expected);
     }
 }
