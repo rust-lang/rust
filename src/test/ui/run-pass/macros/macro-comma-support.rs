@@ -62,30 +62,30 @@ fn assert_ne() {
 
 #[test]
 fn cfg() {
-    cfg!(pants);
-    cfg!(pants,);
-    cfg!(pants = "pants");
-    cfg!(pants = "pants",);
-    cfg!(all(pants));
-    cfg!(all(pants),);
-    cfg!(all(pants,));
-    cfg!(all(pants,),);
+    let _ = cfg!(pants);
+    let _ = cfg!(pants,);
+    let _ = cfg!(pants = "pants");
+    let _ = cfg!(pants = "pants",);
+    let _ = cfg!(all(pants));
+    let _ = cfg!(all(pants),);
+    let _ = cfg!(all(pants,));
+    let _ = cfg!(all(pants,),);
 }
 
 #[test]
 fn column() {
-    column!();
+    let _ = column!();
 }
 
 // compile_error! is in a companion to this test in compile-fail
 
 #[test]
 fn concat() {
-    concat!();
-    concat!("hello");
-    concat!("hello",);
-    concat!("hello", " world");
-    concat!("hello", " world",);
+    let _ = concat!();
+    let _ = concat!("hello");
+    let _ = concat!("hello",);
+    let _ = concat!("hello", " world");
+    let _ = concat!("hello", " world",);
 }
 
 #[test]
@@ -131,10 +131,10 @@ fn debug_assert_ne() {
 
 #[test]
 fn env() {
-    env!("PATH");
-    env!("PATH",);
-    env!("PATH", "not found");
-    env!("PATH", "not found",);
+    let _ = env!("PATH");
+    let _ = env!("PATH",);
+    let _ = env!("PATH", "not found");
+    let _ = env!("PATH", "not found",);
 }
 
 #[cfg(std)]
@@ -158,58 +158,58 @@ fn eprintln() {
 
 #[test]
 fn file() {
-    file!();
+    let _ = file!();
 }
 
 #[cfg(std)]
 #[test]
 fn format() {
-    format!("hello");
-    format!("hello",);
-    format!("hello {}", "world");
-    format!("hello {}", "world",);
+    let _ = format!("hello");
+    let _ = format!("hello",);
+    let _ = format!("hello {}", "world");
+    let _ = format!("hello {}", "world",);
 }
 
 #[test]
 fn format_args() {
-    format_args!("hello");
-    format_args!("hello",);
-    format_args!("hello {}", "world");
-    format_args!("hello {}", "world",);
+    let _ = format_args!("hello");
+    let _ = format_args!("hello",);
+    let _ = format_args!("hello {}", "world");
+    let _ = format_args!("hello {}", "world",);
 }
 
 #[test]
 fn include() {
-    include!("auxiliary/macro-comma-support.rs");
-    include!("auxiliary/macro-comma-support.rs",);
+    let _ = include!("auxiliary/macro-comma-support.rs");
+    let _ = include!("auxiliary/macro-comma-support.rs",);
 }
 
 #[test]
 fn include_bytes() {
-    include_bytes!("auxiliary/macro-comma-support.rs");
-    include_bytes!("auxiliary/macro-comma-support.rs",);
+    let _ = include_bytes!("auxiliary/macro-comma-support.rs");
+    let _ = include_bytes!("auxiliary/macro-comma-support.rs",);
 }
 
 #[test]
 fn include_str() {
-    include_str!("auxiliary/macro-comma-support.rs");
-    include_str!("auxiliary/macro-comma-support.rs",);
+    let _ = include_str!("auxiliary/macro-comma-support.rs");
+    let _ = include_str!("auxiliary/macro-comma-support.rs",);
 }
 
 #[test]
 fn line() {
-    line!();
+    let _ = line!();
 }
 
 #[test]
 fn module_path() {
-    module_path!();
+    let _ = module_path!();
 }
 
 #[test]
 fn option_env() {
-    option_env!("PATH");
-    option_env!("PATH",);
+    let _ = option_env!("PATH");
+    let _ = option_env!("PATH",);
 }
 
 #[test]
@@ -309,10 +309,10 @@ fn unreachable() {
 #[test]
 fn vec() {
     let _: Vec<()> = vec![];
-    vec![0];
-    vec![0,];
-    vec![0, 1];
-    vec![0, 1,];
+    let _ = vec![0];
+    let _ = vec![0,];
+    let _ = vec![0, 1];
+    let _ = vec![0, 1,];
 }
 
 // give a test body access to a fmt::Formatter, which seems
@@ -340,21 +340,21 @@ macro_rules! test_with_formatter {
 test_with_formatter! {
     #[test]
     fn write(f: &mut fmt::Formatter) {
-        write!(f, "hello");
-        write!(f, "hello",);
-        write!(f, "hello {}", "world");
-        write!(f, "hello {}", "world",);
+        let _ = write!(f, "hello");
+        let _ = write!(f, "hello",);
+        let _ = write!(f, "hello {}", "world");
+        let _ = write!(f, "hello {}", "world",);
     }
 }
 
 test_with_formatter! {
     #[test]
     fn writeln(f: &mut fmt::Formatter) {
-        writeln!(f);
-        writeln!(f,);
-        writeln!(f, "hello");
-        writeln!(f, "hello",);
-        writeln!(f, "hello {}", "world");
-        writeln!(f, "hello {}", "world",);
+        let _ = writeln!(f);
+        let _ = writeln!(f,);
+        let _ = writeln!(f, "hello");
+        let _ = writeln!(f, "hello",);
+        let _ = writeln!(f, "hello {}", "world");
+        let _ = writeln!(f, "hello {}", "world",);
     }
 }
