@@ -368,8 +368,7 @@ will run all the tests on every platform we support. If it all works out,
 [merge-queue]: https://buildbot2.rust-lang.org/homu/queue/rust
 
 Speaking of tests, Rust has a comprehensive test suite. More information about
-it can be found
-[here](https://github.com/rust-lang/rust/blob/master/src/test/COMPILER_TESTS.md).
+it can be found [here][rctd].
 
 ### External Dependencies
 [external-dependencies]: #external-dependencies
@@ -654,5 +653,5 @@ are:
 [rustforge]: https://forge.rust-lang.org/
 [tlgba]: http://tomlee.co/2014/04/a-more-detailed-tour-of-the-rust-compiler/
 [ro]: http://www.rustaceans.org/
-[rctd]: ./src/test/COMPILER_TESTS.md
+[rctd]: https://rust-lang-nursery.github.io/rustc-guide/tests/intro.html
 [cheatsheet]: https://buildbot2.rust-lang.org/homu/
