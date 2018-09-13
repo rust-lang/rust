@@ -285,7 +285,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
     }
 }
 
-fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &Vec<NestedMetaItem>) {
+fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
     let lint_store = cx.lints();
     for lint in items {
         if_chain! {
