@@ -57,6 +57,8 @@ use syntax::ext::base::ExtCtxt;
 use syntax::fold::Folder;
 use syntax::parse::{self, PResult};
 use syntax::util::node_count::NodeCounter;
+use syntax::util::lev_distance::find_best_match_for_name;
+use syntax::symbol::Symbol;
 use syntax_pos::{FileName, hygiene};
 use syntax_ext;
 
@@ -1508,13 +1510,45 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
                     Some(ref n) if *n == "staticlib" => Some(config::CrateType::Staticlib),
                     Some(ref n) if *n == "proc-macro" => Some(config::CrateType::ProcMacro),
                     Some(ref n) if *n == "bin" => Some(config::CrateType::Executable),
-                    Some(_) => {
-                        session.buffer_lint(
-                            lint::builtin::UNKNOWN_CRATE_TYPES,
-                            ast::CRATE_NODE_ID,
-                            a.span,
-                            "invalid `crate_type` value",
-                        );
+                    Some(ref n) => {
+                        let crate_types = vec![
+                            Symbol::intern("rlib"),
+                            Symbol::intern("dylib"),
+                            Symbol::intern("cdylib"),
+                            Symbol::intern("lib"),
+                            Symbol::intern("staticlib"),
+                            Symbol::intern("proc-macro"),
+                            Symbol::intern("bin")
+                        ];
+                        if let ast::MetaItemKind::NameValue(spanned) = a.meta().unwrap().node {
+                            let span = spanned.span;
+                            let lev_candidate = find_best_match_for_name(
+                                crate_types.iter(),
+                                &n.as_str(),
+                                None
+                            );
+                            if let Some(candidate) = lev_candidate {
+                                session.buffer_lint_with_diagnostic(
+                                    lint::builtin::UNKNOWN_CRATE_TYPES,
+                                    ast::CRATE_NODE_ID,
+                                    span,
+                                    "invalid `crate_type` value",
+                                    lint::builtin::BuiltinLintDiagnostics::
+                                        UnknownCrateTypes(
+                                            span,
+                                            "did you mean".to_string(),
+                                            format!("\"{}\"", candidate)
+                                        )
+                                );
+                            } else {
+                                session.buffer_lint(
+                                    lint::builtin::UNKNOWN_CRATE_TYPES,
+                                    ast::CRATE_NODE_ID,
+                                    span,
+                                    "invalid `crate_type` value"
+                                );
+                            }
+                        }
                         None
                     }
                     _ => {

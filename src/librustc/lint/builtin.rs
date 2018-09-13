@@ -422,6 +422,7 @@ pub enum BuiltinLintDiagnostics {
     ProcMacroDeriveResolutionFallback(Span),
     MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
     ElidedLifetimesInPaths(usize, Span, bool, Span, String),
+    UnknownCrateTypes(Span, String, String),
 }
 
 impl BuiltinLintDiagnostics {
@@ -498,6 +499,14 @@ impl BuiltinLintDiagnostics {
                     &format!("indicate the anonymous lifetime{}", if n >= 2 { "s" } else { "" }),
                     suggestion,
                     Applicability::MachineApplicable
+                );
+            }
+            BuiltinLintDiagnostics::UnknownCrateTypes(span, note, sugg) => {
+                db.span_suggestion_with_applicability(
+                    span,
+                    &note,
+                    sugg,
+                    Applicability::MaybeIncorrect
                 );
             }
         }
