@@ -1431,7 +1431,7 @@ fn lint_get_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr, get_args: &[hir::
         ),
         "try this",
         format!(
-            "{}{}[{}]",
+            "({}{}[{}])",
             borrow_str,
             snippet(cx, get_args[0].span, "_"),
             snippet(cx, get_args[1].span, "_")
