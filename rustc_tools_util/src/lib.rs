@@ -39,48 +39,44 @@ pub struct VersionInfo {
 }
 
 impl std::fmt::Display for VersionInfo {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self.commit_hash {
-            Some(_) => {
-                write!(
-                    f,
-                    "{} {}.{}.{} ({} {})",
-                    self.crate_name,
-                    self.major,
-                    self.minor,
-                    self.patch,
-                    self.commit_hash.clone().unwrap_or_default().trim(),
-                    self.commit_date.clone().unwrap_or_default().trim(),
-                )?;
-            },
-            None => {
-                write!(f, "{} {}.{}.{}", self.crate_name, self.major, self.minor, self.patch)?;
-            },
-        };
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.commit_hash.is_some() {
+            write!(
+                f,
+                "{} {}.{}.{} ({} {})",
+                self.crate_name,
+                self.major,
+                self.minor,
+                self.patch,
+                self.commit_hash.clone().unwrap_or_default().trim(),
+                self.commit_date.clone().unwrap_or_default().trim(),
+            )?;
+        } else {
+            write!(f, "{} {}.{}.{}", self.crate_name, self.major, self.minor, self.patch)?;
+        }
+
         Ok(())
     }
 }
 
 impl std::fmt::Debug for VersionInfo {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "VersionInfo {{ crate_name: \"{}\", major: {}, minor: {}, patch: {}",
             self.crate_name, self.major, self.minor, self.patch,
         )?;
-        match self.commit_hash {
-            Some(_) => {
-                write!(
-                    f,
-                    ", commit_hash: \"{}\", commit_date: \"{}\" }}",
-                    self.commit_hash.clone().unwrap_or_default().trim(),
-                    self.commit_date.clone().unwrap_or_default().trim()
-                )?;
-            },
-            None => {
-                write!(f, " }}")?;
-            },
+        if self.commit_hash.is_some() {
+            write!(
+                f,
+                ", commit_hash: \"{}\", commit_date: \"{}\" }}",
+                self.commit_hash.clone().unwrap_or_default().trim(),
+                self.commit_date.clone().unwrap_or_default().trim()
+            )?;
+        } else {
+            write!(f, " }}")?;
         }
+
         Ok(())
     }
 }
