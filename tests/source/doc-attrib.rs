@@ -18,10 +18,20 @@ mod tests {
         #[doc = "Level 3 comment"]
         fn f() {
             #[doc = "Level 4 comment"]
-            fn g() {                
+            fn g() {
             }
         }
     }
+}
+
+struct C {
+    #[doc = "item doc attrib comment"]
+    // regular item comment
+    b: i32,
+
+    // regular item comment
+    #[doc = "item doc attrib comment"]
+    c: i32,
 }
 
 // non-regression test for regular attributes, from #2647

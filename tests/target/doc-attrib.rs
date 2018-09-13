@@ -28,6 +28,16 @@ mod tests {
     }
 }
 
+struct C {
+    /// item doc attrib comment
+    // regular item comment
+    b: i32,
+
+    // regular item comment
+    /// item doc attrib comment
+    c: i32,
+}
+
 // non-regression test for regular attributes, from #2647
 #[cfg(
     feature = "this_line_is_101_characters_long_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
