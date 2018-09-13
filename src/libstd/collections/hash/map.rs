@@ -3537,7 +3537,6 @@ mod test_map {
             match m.entry(x) {
                 Vacant(_) => {}
                 Occupied(e) => {
-                    println!("{}: remove {}", i, x);
                     e.remove();
                 }
             }
