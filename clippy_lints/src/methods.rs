@@ -342,11 +342,11 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
-/// foo.expect(&format("Err {}: {}", err_code, err_msg))
+/// foo.expect(&format!("Err {}: {}", err_code, err_msg))
 /// ```
 /// or
 /// ```rust
-/// foo.expect(format("Err {}: {}", err_code, err_msg).as_str())
+/// foo.expect(format!("Err {}: {}", err_code, err_msg).as_str())
 /// ```
 /// this can instead be written:
 /// ```rust
@@ -354,7 +354,7 @@ declare_clippy_lint! {
 /// ```
 /// or
 /// ```rust
-/// foo.unwrap_or_else(|_| panic!(format("Err {}: {}", err_code, err_msg).as_str()))
+/// foo.unwrap_or_else(|_| panic!(format!("Err {}: {}", err_code, err_msg).as_str()))
 /// ```
 declare_clippy_lint! {
     pub EXPECT_FUN_CALL,
