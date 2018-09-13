@@ -480,6 +480,9 @@ impl Duration {
 
     /// Creates a new `Duration` from the specified number of seconds.
     ///
+    /// # Panics
+    /// This constructor will panic if `secs` is not finite, negative or overflows `Duration`.
+    ///
     /// # Examples
     /// ```
     /// #![feature(duration_float)]
@@ -510,6 +513,9 @@ impl Duration {
 
     /// Multiply `Duration` by `f64`.
     ///
+    /// # Panics
+    /// This method will panic if result is not finite, negative or overflows `Duration`.
+    ///
     /// # Examples
     /// ```
     /// #![feature(duration_float)]
@@ -526,6 +532,9 @@ impl Duration {
     }
 
     /// Divide `Duration` by `f64`.
+    ///
+    /// # Panics
+    /// This method will panic if result is not finite, negative or overflows `Duration`.
     ///
     /// # Examples
     /// ```
