@@ -733,10 +733,20 @@ impl<'a> Parser<'a> {
             };
             let mut err = self.fatal(&msg_exp);
             if self.token.is_ident_named("and") {
-                err.help("Use `&&` instead of `and` for the boolean operator");
+                err.span_suggestion_with_applicability(
+                    self.span,
+                    "use `&&` instead of `and` for the boolean operator",
+                    "&&".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
             }
             if self.token.is_ident_named("or") {
-                err.help("Use `||` instead of `or` for the boolean operator");
+                err.span_suggestion_with_applicability(
+                    self.span,
+                    "use `||` instead of `or` for the boolean operator",
+                    "||".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
             }
             let sp = if self.token == token::Token::Eof {
                 // This is EOF, don't want to point at the following char, but rather the last token
@@ -4758,10 +4768,20 @@ impl<'a> Parser<'a> {
             }
 
             if self.token.is_ident_named("and") {
-                e.help("Use `&&` instead of `and` for the boolean operator");
+                e.span_suggestion_with_applicability(
+                    self.span,
+                    "use `&&` instead of `and` for the boolean operator",
+                    "&&".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
             }
             if self.token.is_ident_named("or") {
-                e.help("Use `||` instead of `or` for the boolean operator");
+                e.span_suggestion_with_applicability(
+                    self.span,
+                    "use `||` instead of `or` for the boolean operator",
+                    "||".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
             }
 
             // Check to see if the user has written something like
