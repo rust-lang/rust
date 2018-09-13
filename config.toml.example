@@ -377,6 +377,10 @@
 # Whether to verify generated LLVM IR
 #verify-llvm-ir = false
 
+# Map all debuginfo paths for libstd and crates to `/rust/$sha/$crate/...`,
+# generally only set for releases
+#remap-debuginfo = false
+
 # =============================================================================
 # Options for specific targets
 #

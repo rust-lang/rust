@@ -263,6 +263,10 @@ fn main() {
         if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() {
             cmd.arg("-Z").arg("force-unstable-if-unmarked");
         }
+
+        if let Ok(map) = env::var("RUSTC_DEBUGINFO_MAP") {
+            cmd.arg("--remap-path-prefix").arg(&map);
+        }
     } else {
         // Override linker if necessary.
         if let Ok(host_linker) = env::var("RUSTC_HOST_LINKER") {
