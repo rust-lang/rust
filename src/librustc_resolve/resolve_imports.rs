@@ -730,7 +730,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             let external_crate = if ns == TypeNS && self.extern_prelude.contains(&name) {
                 let crate_id =
                     self.crate_loader.process_path_extern(name, span);
-                Some(DefId { krate: crate_id, index: CRATE_DEF_INDEX })
+                Some(Def::Mod(DefId { krate: crate_id, index: CRATE_DEF_INDEX }))
             } else {
                 None
             };
@@ -741,30 +741,20 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 return;
             }
 
-            let result_filter = |result: &&NameBinding| {
-                // Ignore canaries that resolve to an import of the same crate.
-                // That is, we allow `use crate_name; use crate_name::foo;`.
-                if let Some(def_id) = external_crate {
-                    if let Some(module) = result.module() {
-                        if module.normal_ancestor_id == def_id {
-                            return false;
-                        }
-                    }
+            {
+                let mut all_results = external_crate.into_iter().chain(
+                    results.module_scope.iter()
+                        .chain(&results.block_scopes)
+                        .map(|binding| binding.def())
+                );
+                let first = all_results.next().unwrap();
+
+                // An ambiguity requires more than one *distinct* possible resolution.
+                let possible_resultions =
+                    1 + all_results.filter(|&def| def != first).count();
+                if possible_resultions <= 1 {
+                    return;
                 }
-
-                true
-            };
-            let module_scope = results.module_scope.filter(result_filter);
-            let block_scopes = || {
-                results.block_scopes.iter().cloned().filter(result_filter)
-            };
-
-            // An ambiguity requires more than one possible resolution.
-            let possible_resultions =
-                (external_crate.is_some() as usize) +
-                module_scope.into_iter().chain(block_scopes()).count();
-            if possible_resultions <= 1 {
-                return;
             }
 
             errors = true;
@@ -777,7 +767,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 err.span_label(span,
                     format!("can refer to external crate `::{}`", name));
             }
-            if let Some(result) = module_scope {
+            if let Some(result) = results.module_scope {
                 if !suggestion_choices.is_empty() {
                     suggestion_choices.push_str(" or ");
                 }
@@ -790,7 +780,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                         format!("may refer to `self::{}` in the future", name));
                 }
             }
-            for result in block_scopes() {
+            for result in results.block_scopes {
                 err.span_label(result.span,
                     format!("shadowed by block-scoped `{}`", name));
             }
