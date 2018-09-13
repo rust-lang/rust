@@ -1404,22 +1404,33 @@ fn lint_get_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr, get_args: &[hir::
     // Note: we don't want to lint `get_mut().unwrap` for HashMap or BTreeMap,
     // because they do not implement `IndexMut`
     let expr_ty = cx.tables.expr_ty(&get_args[0]);
+    let get_args_str = if get_args.len() > 1 {
+        snippet(cx, get_args[1].span, "_")
+    } else {
+        return; // not linting on a .get().unwrap() chain or variant
+    };
+    let needs_ref;
     let caller_type = if derefs_to_slice(cx, &get_args[0], expr_ty).is_some() {
+        needs_ref = get_args_str.parse::<usize>().is_ok();
         "slice"
     } else if match_type(cx, expr_ty, &paths::VEC) {
+        needs_ref = get_args_str.parse::<usize>().is_ok();
         "Vec"
     } else if match_type(cx, expr_ty, &paths::VEC_DEQUE) {
+        needs_ref = get_args_str.parse::<usize>().is_ok();
         "VecDeque"
     } else if !is_mut && match_type(cx, expr_ty, &paths::HASHMAP) {
+        needs_ref = true;
         "HashMap"
     } else if !is_mut && match_type(cx, expr_ty, &paths::BTREEMAP) {
+        needs_ref = true;
         "BTreeMap"
     } else {
         return; // caller is not a type that we want to lint
     };
 
     let mut_str = if is_mut { "_mut" } else { "" };
-    let borrow_str = if is_mut { "&mut " } else { "&" };
+    let borrow_str = if !needs_ref { "" } else if is_mut { "&mut " } else { "&" };
     span_lint_and_sugg(
         cx,
         GET_UNWRAP,
@@ -1431,10 +1442,10 @@ fn lint_get_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr, get_args: &[hir::
         ),
         "try this",
         format!(
-            "({}{}[{}])",
+            "{}{}[{}]",
             borrow_str,
             snippet(cx, get_args[0].span, "_"),
-            snippet(cx, get_args[1].span, "_")
+            get_args_str
         ),
     );
 }
