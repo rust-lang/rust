@@ -22,7 +22,7 @@ use interfaces::*;
 use syntax::ast;
 use rustc::ty::layout::{self, Align, Size};
 use rustc::util::nodemap::FxHashMap;
-use rustc::ty::{Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::TyLayout;
 use rustc_data_structures::small_c_str::SmallCStr;
 use common::{self, TypeKind};
@@ -276,7 +276,7 @@ impl Type {
     }
 }
 
-impl DerivedTypeMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
+impl DerivedTypeMethods<'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
 
     fn type_bool(&self) -> &'ll Type {
         &self.type_i8()
@@ -373,11 +373,45 @@ impl DerivedTypeMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
         assert_eq!(size % unit_size, 0);
         &self.type_array(&self.type_from_integer(unit), size / unit_size)
     }
+
+    fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
+        common::type_needs_drop(*self.tcx(), ty)
+    }
+
+    fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
+        common::type_is_sized(*self.tcx(), ty)
+    }
+
+    fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
+        common::type_is_freeze(*self.tcx(), ty)
+    }
+
+    fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
+        use syntax_pos::DUMMY_SP;
+        if ty.is_sized(self.tcx().at(DUMMY_SP), ty::ParamEnv::reveal_all()) {
+            return false;
+        }
+
+        let tail = self.tcx().struct_tail(ty);
+        match tail.sty {
+            ty::Foreign(..) => false,
+            ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
+            _ => bug!("unexpected unsized tail: {:?}", tail.sty),
+        }
+    }
 }
 
 impl LayoutTypeMethods<'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
-    fn backend_type(&self, ty: TyLayout<'tcx>) -> &'ll Type {
+    fn backend_type(&self, ty: &TyLayout<'tcx>) -> &'ll Type {
         ty.llvm_type(&self)
+    }
+    fn scalar_pair_element_backend_type<'a>(
+        &self,
+        ty: &TyLayout<'tcx>,
+        index: usize,
+        immediate: bool
+    ) -> &'ll Type {
+        ty.scalar_pair_element_llvm_type(&self, index, immediate)
     }
 }
 

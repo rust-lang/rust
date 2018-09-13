@@ -51,7 +51,7 @@ pub trait BaseTypeMethods<'a, 'tcx: 'a> : Backend {
     fn tcx(&self) -> &TyCtxt<'a, 'tcx, 'tcx>;
 }
 
-pub trait DerivedTypeMethods : Backend {
+pub trait DerivedTypeMethods<'tcx> : Backend {
     fn type_bool(&self) -> Self::Type;
     fn type_char(&self) -> Self::Type;
     fn type_i8p(&self) -> Self::Type;
@@ -76,10 +76,21 @@ pub trait DerivedTypeMethods : Backend {
         size: Size,
         align: Align
     ) -> Self::Type;
+
+    fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool;
+    fn type_is_sized(&self, ty: Ty<'tcx>) -> bool;
+    fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool;
+    fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool;
 }
 
 pub trait LayoutTypeMethods<'tcx> : Backend {
-    fn backend_type(&self, ty: TyLayout<'tcx>) -> Self::Type;
+    fn backend_type(&self, ty: &TyLayout<'tcx>) -> Self::Type;
+    fn scalar_pair_element_backend_type<'a>(
+        &self,
+        ty: &TyLayout<'tcx>,
+        index: usize,
+        immediate: bool
+    ) -> Self::Type;
 }
 
-pub trait TypeMethods<'a, 'tcx: 'a> : BaseTypeMethods<'a, 'tcx> + DerivedTypeMethods + LayoutTypeMethods<'tcx> {}
+pub trait TypeMethods<'a, 'tcx: 'a> : BaseTypeMethods<'a, 'tcx> + DerivedTypeMethods<'tcx> + LayoutTypeMethods<'tcx> {}
