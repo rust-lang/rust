@@ -206,7 +206,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                     ty::Array(_, n) => n.assert_usize(self.tcx).expect("array length"),
                     _ => span_bug!(e.span, "typeck error"),
                 };
-                self.expr(value).map(|v| Constant::Repeat(Box::new(v), n as u64))
+                self.expr(value).map(|v| Constant::Repeat(Box::new(v), n))
             },
             ExprKind::Unary(op, ref operand) => self.expr(operand).and_then(|o| match op {
                 UnNot => self.constant_not(&o, self.tables.expr_ty(e)),
