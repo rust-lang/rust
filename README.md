@@ -104,7 +104,7 @@ define the `CLIPPY_DISABLE_DOCS_LINKS` environment variable.
 
 ### Allowing/denying lints
 
-You can add options  to `allow`/`warn`/`deny`:
+You can add options to your code to `allow`/`warn`/`deny` Clippy lints:
 
 *   the whole set of `Warn` lints using the `clippy` lint group (`#![deny(clippy::all)]`)
 
@@ -117,6 +117,21 @@ You can add options  to `allow`/`warn`/`deny`:
 *   `allow`/`warn`/`deny` can be limited to a single function or module using `#[allow(...)]`, etc
 
 Note: `deny` produces errors instead of warnings.
+
+Note: To use the new `clippy::lint_name` syntax, `#![feature(tool_lints)]` has to be activated 
+currently. If you want to compile your code with the stable toolchain you can use a `cfg_attr` to 
+activate the `tool_lints` feature:
+```rust
+#![cfg_attr(feature = "cargo-clippy", feature(tool_lints))]
+#![cfg_attr(feature = "cargo-clippy", allow(clippy::lint_name))]
+```
+
+For this to work you have to use Clippy on the nightly toolchain: `cargo +nightly clippy`. If you 
+want to use Clippy with the stable toolchain, you can stick to the old unscoped method to 
+enable/disable Clippy lints until `tool_lints` are stable:
+```rust
+#![cfg_attr(feature = "cargo-clippy", allow(clippy_lint))]
+```
 
 ## Updating rustc
 
