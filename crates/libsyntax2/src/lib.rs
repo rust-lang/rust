@@ -82,22 +82,68 @@ impl File {
         self.incremental_reparse(edit).unwrap_or_else(|| self.full_reparse(edit))
     }
     pub fn incremental_reparse(&self, edit: &AtomEdit) -> Option<File> {
+        let (node, green, new_errors) =
+            self.reparse_leaf(&edit).or_else(|| self.reparse_block(&edit))?;
+
+        let green_root = node.replace_with(green);
+        let errors = merge_errors(self.errors(), new_errors, node, edit);
+        Some(File::new(green_root, errors))
+    }
+    fn reparse_leaf(&self, edit: &AtomEdit) -> Option<(SyntaxNodeRef, GreenNode, Vec<SyntaxError>)> {
+        let node = algo::find_covering_node(self.syntax(), edit.delete);
+        match node.kind() {
+            | WHITESPACE
+            | COMMENT
+            | DOC_COMMENT
+            | IDENT
+            | STRING
+            | RAW_STRING => {
+                let text = get_text_after_edit(node, &edit);
+                let tokens = tokenize(&text);
+                if tokens.len() != 1 || tokens[0].kind != node.kind() {
+                    return None;
+                }
+
+                let reparser: fn(&mut Parser) = if node.kind().is_trivia() {
+                    // since trivia is omitted by parser when it doesn't have a parent, \
+                    // we need to create one for it
+                    |p| {
+                        p.start().complete(p, ROOT);
+                    }
+                } else {
+                    |p| {
+                        p.bump();
+                    }
+                };
+
+                let (green, new_errors) =
+                    parser_impl::parse_with::<yellow::GreenBuilder>(
+                        &text, &tokens, reparser,
+                    );
+
+                let green = if node.kind().is_trivia() {
+                    green.children().first().cloned().unwrap()
+                } else {
+                    green
+                };
+
+                Some((node, green, new_errors))
+            },
+            _ => None,
+        }
+    }
+    fn reparse_block(&self, edit: &AtomEdit) -> Option<(SyntaxNodeRef, GreenNode, Vec<SyntaxError>)> {
         let (node, reparser) = find_reparsable_node(self.syntax(), edit.delete)?;
-        let text = replace_range(
-            node.text().to_string(),
-            edit.delete - node.range().start(),
-            &edit.insert,
-        );
+        let text = get_text_after_edit(node, &edit);
         let tokens = tokenize(&text);
         if !is_balanced(&tokens) {
             return None;
         }
-        let (green, new_errors) = parser_impl::parse_with::<yellow::GreenBuilder>(
-            &text, &tokens, reparser,
-        );
-        let green_root = node.replace_with(green);
-        let errors = merge_errors(self.errors(), new_errors, node, edit);
-        Some(File::new(green_root, errors))
+        let (green, new_errors) =
+            parser_impl::parse_with::<yellow::GreenBuilder>(
+                &text, &tokens, reparser,
+            );
+        Some((node, green, new_errors))
     }
     fn full_reparse(&self, edit: &AtomEdit) -> File {
         let text = replace_range(self.syntax().text().to_string(), edit.delete, &edit.insert);
@@ -132,6 +178,14 @@ impl AtomEdit {
     pub fn insert(offset: TextUnit, text: String) -> AtomEdit {
         AtomEdit::replace(TextRange::offset_len(offset, 0.into()), text)
     }
+}
+
+fn get_text_after_edit(node: SyntaxNodeRef, edit: &AtomEdit) -> String {
+    replace_range(
+        node.text().to_string(),
+        edit.delete - node.range().start(),
+        &edit.insert,
+    )
 }
 
 fn find_reparsable_node(node: SyntaxNodeRef, range: TextRange) -> Option<(SyntaxNodeRef, fn(&mut Parser))> {
@@ -200,9 +254,9 @@ fn merge_errors(
 ) -> Vec<SyntaxError> {
     let mut res = Vec::new();
     for e in old_errors {
-        if e.offset < old_node.range().start() {
+        if e.offset <= old_node.range().start() {
             res.push(e)
-        } else if e.offset > old_node.range().end() {
+        } else if e.offset >= old_node.range().end() {
             res.push(SyntaxError {
                 msg: e.msg,
                 offset: e.offset + TextUnit::of_str(&edit.insert) - edit.delete.len(),

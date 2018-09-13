@@ -33,7 +33,7 @@ fn reparse_test() {
         let incrementally_reparsed = {
             let f = File::parse(&before);
             let edit = AtomEdit { delete: range, insert: replace_with.to_string() };
-            f.incremental_reparse(&edit).unwrap()
+            f.incremental_reparse(&edit).expect("cannot incrementally reparse")
         };
         assert_eq_text!(
             &dump_tree(fully_reparsed.syntax()),
@@ -44,6 +44,11 @@ fn reparse_test() {
     do_check(r"
 fn foo() {
     let x = foo + <|>bar<|>
+}
+", "baz");
+    do_check(r"
+fn foo() {
+    let x = foo<|> + bar<|>
 }
 ", "baz");
     do_check(r"
@@ -66,6 +71,11 @@ mod foo {
     do_check(r"
 trait Foo {
     type <|>Foo<|>;
+}
+", "Output");
+    do_check(r"
+trait Foo {
+    type<|> Foo<|>;
 }
 ", "Output");
     do_check(r"
@@ -94,6 +104,50 @@ extern {
     fn<|>;<|>
 }
 ", " exit(code: c_int)");
+do_check(r"<|><|>
+fn foo() -> i32 {
+    1
+}
+", "\n\n\n   \n");
+    do_check(r"
+fn foo() -> <|><|> {}
+", "  \n");
+    do_check(r"
+fn <|>foo<|>() -> i32 {
+    1
+}
+", "bar");
+do_check(r"
+fn aa<|><|>bb() {
+
+}
+", "foofoo");
+    do_check(r"
+fn aabb /* <|><|> */ () {
+
+}
+", "some comment");
+    do_check(r"
+fn aabb <|><|> () {
+
+}
+", "    \t\t\n\n");
+    do_check(r"
+trait foo {
+// comment <|><|>
+}
+", "\n");
+    do_check(r"
+/// good <|><|>omment
+mod {
+}
+", "c");
+    do_check(r#"
+fn -> &str { "Hello<|><|>" }
+"#, ", world");
+    do_check(r#"
+fn -> &str { // "Hello<|><|>"
+"#, ", world");
 }
 
 #[test]
