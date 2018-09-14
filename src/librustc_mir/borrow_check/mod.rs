@@ -177,24 +177,6 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         MaybeInitializedPlaces::new(tcx, mir, &mdpe),
         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]),
     ));
-    let flow_uninits = FlowAtLocation::new(do_dataflow(
-        tcx,
-        mir,
-        id,
-        &attributes,
-        &dead_unwinds,
-        MaybeUninitializedPlaces::new(tcx, mir, &mdpe),
-        |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]),
-    ));
-    let flow_ever_inits = FlowAtLocation::new(do_dataflow(
-        tcx,
-        mir,
-        id,
-        &attributes,
-        &dead_unwinds,
-        EverInitializedPlaces::new(tcx, mir, &mdpe),
-        |bd, i| DebugFormatted::new(&bd.move_data().inits[i]),
-    ));
 
     let locals_are_invalidated_at_exit = match tcx.hir.body_owner_kind(id) {
             hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => false,
@@ -216,6 +198,12 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         &borrow_set,
         &mut errors_buffer,
     );
+
+    // The various `flow_*` structures can be large. We drop `flow_inits` here
+    // so it doesn't overlap with the others below. This reduces peak memory
+    // usage significantly on some benchmarks.
+    drop(flow_inits);
+
     let regioncx = Rc::new(regioncx);
 
     let flow_borrows = FlowAtLocation::new(do_dataflow(
@@ -226,6 +214,24 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         &dead_unwinds,
         Borrows::new(tcx, mir, regioncx.clone(), def_id, body_id, &borrow_set),
         |rs, i| DebugFormatted::new(&rs.location(i)),
+    ));
+    let flow_uninits = FlowAtLocation::new(do_dataflow(
+        tcx,
+        mir,
+        id,
+        &attributes,
+        &dead_unwinds,
+        MaybeUninitializedPlaces::new(tcx, mir, &mdpe),
+        |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]),
+    ));
+    let flow_ever_inits = FlowAtLocation::new(do_dataflow(
+        tcx,
+        mir,
+        id,
+        &attributes,
+        &dead_unwinds,
+        EverInitializedPlaces::new(tcx, mir, &mdpe),
+        |bd, i| DebugFormatted::new(&bd.move_data().inits[i]),
     ));
 
     let movable_generator = match tcx.hir.get(id) {
