@@ -76,6 +76,20 @@ cargo run --bin cargo-clippy --manifest-path=path_to_clippys_Cargo.toml
 *[Note](https://github.com/rust-lang-nursery/rust-clippy/wiki#a-word-of-warning):*
 Be sure that Clippy was compiled with the same version of rustc that cargo invokes here!
 
+### Travis CI
+
+You can add Clippy to Travis CI in the same way you use it locally:
+
+```yml
+- rust: stable
+  before_script:
+    - rustup component add clippy-preview
+  script:
+    - cargo clippy
+    - cargo test
+    # etc.
+```
+
 ## Configuration
 
 Some lints can be configured in a TOML file named `clippy.toml` or `.clippy.toml`. It contains a basic `variable = value` mapping eg.
