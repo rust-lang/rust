@@ -1,7 +1,7 @@
-error: `test` can only be used in attributes
+error: cannot find macro `test!` in this scope
   --> $DIR/issue-11692-2.rs:12:13
    |
-LL |     concat!(test!()); //~ ERROR `test` can only be used in attributes
+LL |     concat!(test!()); //~ ERROR cannot find macro `test!` in this scope
    |             ^^^^
 
 error: aborting due to previous error
