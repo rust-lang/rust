@@ -6,7 +6,7 @@ LL |     foo(|a| &x)
    |           |
    |           has type `&'0 u32`
 LL | }
-   | - but `x` dropped here while still borrowed
+   | - ...but `x` is only valid for the duration of the `bar` function, so it is dropped here while still borrowed
 
 error: aborting due to previous error
 

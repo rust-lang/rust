@@ -31,7 +31,7 @@ LL |         ay = &y;
    |               ^ `y` would have to be valid for `'0`
 ...
 LL | }
-   | - but `y` dropped here while still borrowed
+   | - ...but `y` is only valid for the duration of the `nested` function, so it is dropped here while still borrowed
 
 error: unsatisfied lifetime constraints
   --> $DIR/regions-nested-fns.rs:23:68

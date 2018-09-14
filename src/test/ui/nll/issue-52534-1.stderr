@@ -9,7 +9,7 @@ LL |         let x = 22;
 LL |         &x
    |         ^^ `x` would have to be valid for `'0`
 LL |     }
-   |     - but `x` dropped here while still borrowed
+   |     - ...but `x` is only valid for the duration of the `bar` function, so it is dropped here while still borrowed
 
 error[E0597]: `x` does not live long enough
   --> $DIR/issue-52534-1.rs:25:5
@@ -22,7 +22,7 @@ LL |     let x = 22;
 LL |     &x
    |     ^^ `x` would have to be valid for `'0`
 LL | }
-   | - but `x` dropped here while still borrowed
+   | - ...but `x` is only valid for the duration of the `foo` function, so it is dropped here while still borrowed
 
 error[E0597]: `x` does not live long enough
   --> $DIR/issue-52534-1.rs:30:6
@@ -35,7 +35,7 @@ LL |     let x = 22;
 LL |     &&x
    |      ^^ `x` would have to be valid for `'0`
 LL | }
-   | - but `x` dropped here while still borrowed
+   | - ...but `x` is only valid for the duration of the `baz` function, so it is dropped here while still borrowed
 
 error[E0597]: borrowed value does not live long enough
   --> $DIR/issue-52534-1.rs:30:6

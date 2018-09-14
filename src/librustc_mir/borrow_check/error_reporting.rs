@@ -519,7 +519,23 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 borrow_span,
                 format!("`{}` would have to be valid for `{}`", name, region_name)
             );
-            err.span_label(drop_span, format!("but `{}` dropped here while still borrowed", name));
+
+            if let Some(fn_node_id) = self.infcx.tcx.hir.as_local_node_id(self.mir_def_id) {
+                err.span_label(
+                    drop_span,
+                    format!(
+                        "...but `{}` is only valid for the duration of the `{}` function, so it \
+                         is dropped here while still borrowed",
+                        name,
+                        self.infcx.tcx.hir.name(fn_node_id),
+                    )
+                );
+            } else {
+                err.span_label(
+                    drop_span,
+                    format!("...but `{}` dropped here while still borrowed", name)
+                );
+            }
 
             if let BorrowExplanation::MustBeValidFor(..) = explanation { } else {
                 explanation.emit(self.infcx.tcx, &mut err);

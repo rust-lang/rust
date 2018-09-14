@@ -10,7 +10,7 @@ LL |     &v
    |     ^^ `v` would have to be valid for `'a`
 LL |     //~^ ERROR `v` does not live long enough [E0597]
 LL | }
-   | - but `v` dropped here while still borrowed
+   | - ...but `v` is only valid for the duration of the `foo` function, so it is dropped here while still borrowed
 
 error: aborting due to previous error
 
