@@ -27,7 +27,7 @@
 //! # Examples
 //!
 //! ```rust
-//! #![feature(mpsc_select)]
+//! #![feature(mpsc_select_maybe_to_be_deprecated)]
 //!
 //! use std::sync::mpsc::channel;
 //!
@@ -48,7 +48,7 @@
 //! ```
 
 #![allow(dead_code)]
-#![unstable(feature = "mpsc_select",
+#![unstable(feature = "mpsc_select_maybe_to_be_deprecated",
             reason = "This implementation, while likely sufficient, is unsafe and \
                       likely to be error prone. At some point in the future this \
                       module will likely be replaced, and it is currently \
@@ -125,7 +125,7 @@ impl Select {
     /// # Examples
     ///
     /// ```
-    /// #![feature(mpsc_select)]
+    /// #![feature(mpsc_select_maybe_to_be_deprecated)]
     ///
     /// use std::sync::mpsc::Select;
     ///

@@ -282,7 +282,7 @@ use mem;
 use cell::UnsafeCell;
 use time::{Duration, Instant};
 
-#[unstable(feature = "mpsc_select", issue = "27800")]
+#[unstable(feature = "mpsc_select_maybe_to_be_deprecated", issue = "27800")]
 pub use self::select::{Select, Handle};
 use self::select::StartResult;
 use self::select::StartResult::*;

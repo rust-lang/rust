@@ -251,7 +251,7 @@ macro_rules! await {
 /// # Examples
 ///
 /// ```
-/// #![feature(mpsc_select)]
+/// #![feature(mpsc_select_maybe_to_be_deprecated)]
 ///
 /// use std::thread;
 /// use std::sync::mpsc;
@@ -278,7 +278,7 @@ macro_rules! await {
 ///
 /// For more information about select, see the `std::sync::mpsc::Select` structure.
 #[macro_export]
-#[unstable(feature = "mpsc_select", issue = "27800")]
+#[unstable(feature = "mpsc_select_maybe_to_be_deprecated", issue = "27800")]
 macro_rules! select {
     (
         $($name:pat = $rx:ident.$meth:ident() => $code:expr),+
