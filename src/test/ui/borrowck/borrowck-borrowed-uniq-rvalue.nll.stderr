@@ -8,6 +8,8 @@ LL |     buggy_map.insert(42, &*Box::new(1)); //~ ERROR borrowed value does not 
 ...
 LL |     buggy_map.insert(43, &*tmp);
    |     --------- borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
 
 error: aborting due to previous error
 

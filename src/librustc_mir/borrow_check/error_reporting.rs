@@ -24,6 +24,7 @@ use super::borrow_set::BorrowData;
 use super::{Context, MirBorrowckCtxt};
 use super::{InitializationRequiringAction, PrefixSet};
 
+use borrow_check::nll::explain_borrow::BorrowContainsPointReason;
 use dataflow::drop_flag_effects;
 use dataflow::move_paths::indexes::MoveOutIndex;
 use dataflow::move_paths::MovePathIndex;
@@ -409,6 +410,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         self.access_place_error_reported
             .insert((root_place.clone(), borrow_span));
 
+        let borrow_reason = self.find_why_borrow_contains_point(context, borrow);
+
         let mut err = match &self.describe_place(&borrow.borrowed_place) {
             Some(_) if self.is_place_thread_local(root_place) => {
                 self.report_thread_local_value_does_not_live_long_enough(drop_span, borrow_span)
@@ -418,17 +421,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 name,
                 &scope_tree,
                 &borrow,
+                borrow_reason,
                 drop_span,
                 borrow_span,
-                proper_span,
                 kind.map(|k| (k, place_span.0)),
             ),
             None => self.report_temporary_value_does_not_live_long_enough(
                 context,
                 &scope_tree,
                 &borrow,
+                borrow_reason,
                 drop_span,
-                borrow_span,
                 proper_span,
             ),
         };
@@ -444,16 +447,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         name: &String,
         scope_tree: &Lrc<ScopeTree>,
         borrow: &BorrowData<'tcx>,
+        reason: BorrowContainsPointReason<'tcx>,
         drop_span: Span,
         borrow_span: Span,
-        _proper_span: Span,
         kind_place: Option<(WriteKind, &Place<'tcx>)>,
     ) -> DiagnosticBuilder<'cx> {
         debug!(
             "report_local_value_does_not_live_long_enough(\
-             {:?}, {:?}, {:?}, {:?}, {:?}, {:?}\
+             {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}\
              )",
-            context, name, scope_tree, borrow, drop_span, borrow_span
+            context, name, scope_tree, borrow, reason, drop_span, borrow_span
         );
 
         let mut err = self.tcx.path_does_not_live_long_enough(
@@ -468,7 +471,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             format!("`{}` dropped here while still borrowed", name),
         );
 
-        self.explain_why_borrow_contains_point(context, borrow, kind_place, &mut err);
+        self.report_why_borrow_contains_point(&mut err, reason, kind_place);
         err
     }
 
@@ -501,15 +504,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         context: Context,
         scope_tree: &Lrc<ScopeTree>,
         borrow: &BorrowData<'tcx>,
+        reason: BorrowContainsPointReason<'tcx>,
         drop_span: Span,
-        _borrow_span: Span,
         proper_span: Span,
     ) -> DiagnosticBuilder<'cx> {
         debug!(
             "report_temporary_value_does_not_live_long_enough(\
-             {:?}, {:?}, {:?}, {:?}, {:?}\
+             {:?}, {:?}, {:?}, {:?}, {:?}, {:?}\
              )",
-            context, scope_tree, borrow, drop_span, proper_span
+            context, scope_tree, borrow, reason, drop_span, proper_span
         );
 
         let tcx = self.tcx;
@@ -518,7 +521,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         err.span_label(proper_span, "temporary value does not live long enough");
         err.span_label(drop_span, "temporary value only lives until here");
 
-        self.explain_why_borrow_contains_point(context, borrow, None, &mut err);
+        // Only give this note and suggestion if they could be relevant
+        match reason {
+            BorrowContainsPointReason::Liveness {..}
+            | BorrowContainsPointReason::DropLiveness {..} => {
+                err.note("consider using a `let` binding to create a longer lived value");
+            }
+            BorrowContainsPointReason::OutlivesFreeRegion {..} => (),
+        }
+
+        self.report_why_borrow_contains_point(&mut err, reason, None);
         err
     }
 

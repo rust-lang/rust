@@ -28,6 +28,7 @@ fn main() {
     //[mir]~^^^^^ ERROR borrowed value does not live long enough [E0597]
     //[mir]~| NOTE temporary value does not live long enough
     //[mir]~| NOTE temporary value only lives until here
+    //[mir]~| NOTE consider using a `let` binding to create a longer lived value
     println!("{}", val);
     //[mir]~^ borrow later used here
 }
