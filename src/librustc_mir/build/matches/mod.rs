@@ -265,9 +265,20 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard);
                 unpack!(block = self.into(&place, block, initializer));
 
-                // Inject a fake read of the newly created binding
-                // to test the fallout of fixing issue #53695 where NLL
-                // allows creating unused variables that are effectively unusable.
+
+                // Officially, the semantics of
+                //
+                // `let pattern = <expr>;`
+                //
+                // is that `<expr>` is evaluated into a temporary and then this temporary is
+                // into the pattern.
+                //
+                // However, if we see the simple pattern `let var = <expr>`, we optimize this to
+                // evaluate `<expr>` directly into the variable `var`. This is mostly unobservable,
+                // but in some cases it can affect the borrow checker, as in #53695.
+                // Therefore, we insert a "fake read" here to ensure that we get
+                // appropriate errors.
+                //
                 let source_info = self.source_info(irrefutable_pat.span);
                 self.cfg.push(
                     block,
@@ -318,9 +329,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     },
                 );
 
-                // Inject a fake read of the newly created binding
-                // to test the fallout of fixing issue #53695 where NLL
-                // allows creating unused variables that are effectively unusable.
+                // Similarly to the `let var = <expr>` case, we insert a "fake read" here to
+                // ensure that we get appropriate errors when this usually unobservable
+                // optimization affects the borrow checker.
                 self.cfg.push(
                     block,
                     Statement {
