@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_must_use)]
+#![allow(dead_code)]
 
 #![allow(path_statements)]
 #![allow(unreachable_code)]

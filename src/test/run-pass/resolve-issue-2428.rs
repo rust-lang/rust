@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(non_camel_case_types)]
+#![allow(non_upper_case_globals)]
 
 const foo: isize = 4 >> 1;
 enum bs { thing = foo }

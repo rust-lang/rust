@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(stable_features)]
 #![feature(core, core_intrinsics)]
 
 extern crate core;

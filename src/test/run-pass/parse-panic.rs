@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(dead_code)]
 #![allow(unreachable_code)]
 
 fn dont_call_me() { panic!(); println!("{}", 1); }

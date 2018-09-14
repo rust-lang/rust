@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_imports)]
 // Test a regression found when building compiler. The `produce()`
 // error type `T` winds up getting unified with result of `x.parse()`;
 // the type of the closure given to `unwrap_or_else` needs to be

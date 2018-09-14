@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(deprecated)]
 // ignore-cloudabi no files or I/O
 // ignore-wasm32-bare no files or I/O
 

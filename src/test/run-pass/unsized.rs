@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(type_alias_bounds)]
+#![allow(dead_code)]
 // Test syntax checks for `?Sized` syntax.
 
 use std::marker::PhantomData;

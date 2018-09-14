@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_parens)]
 // pretty-expanded FIXME #23616
 
 fn foo() { if (return) { } }

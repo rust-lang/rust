@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(dead_code)]
 // Test that the lambda kind is inferred correctly as a return
 // expression
 

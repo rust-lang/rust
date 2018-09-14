@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(non_camel_case_types)]
+#![allow(dead_code)]
 #[derive(Debug)]
 enum foo {
   a(usize),

@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_comparisons)]
+#![allow(dead_code)]
+#![allow(unused_mut)]
 // Test range syntax.
 
 

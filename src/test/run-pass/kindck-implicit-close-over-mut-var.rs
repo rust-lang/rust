@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_must_use)]
+#![allow(dead_code)]
 use std::thread;
 
 fn user(_i: isize) {}

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(non_upper_case_globals)]
 /*!
  * On x86_64-linux-gnu and possibly other platforms, structs get 8-byte "preferred" alignment,
  * but their "ABI" alignment (i.e., what actually matters for data layout) is the largest alignment

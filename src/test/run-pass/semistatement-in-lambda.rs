@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_must_use)]
 
 pub fn main() {
     // Test that lambdas behave as unary expressions with block-like expressions

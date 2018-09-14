@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(dead_code)]
 // Tests that even when a type parameter doesn't implement a required
 // super-builtin-kind of a trait, if the type parameter is never used,
 // the type can implement the trait anyway.

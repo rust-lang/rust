@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_attributes)]
+#![allow(non_camel_case_types)]
+#![allow(dead_code)]
 // pp-exact - Make sure we actually print the attributes
 // pretty-expanded FIXME #23616
 
