@@ -813,6 +813,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             HirDef::Macro(..) |
             HirDef::ToolMod |
             HirDef::NonMacroAttr(..) |
+            HirDef::SelfCtor(..) |
             HirDef::Err => None,
         }
     }

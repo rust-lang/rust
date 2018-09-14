@@ -3898,7 +3898,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             hir::ExprKind::Path(ref qpath) => {
                 let (def, opt_ty, segs) = self.resolve_ty_and_def_ufcs(qpath, expr.id, expr.span);
                 let ty = if def != Def::Err {
-                    self.instantiate_value_path(segs, opt_ty, def, expr.span, id)
+                    self.instantiate_value_path(segs, opt_ty, def, expr.span, id).0
                 } else {
                     self.set_tainted_by_errors();
                     tcx.types.err
@@ -4923,7 +4923,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match def {
             // Case 1. Reference to a struct/variant constructor.
             Def::StructCtor(def_id, ..) |
-            Def::VariantCtor(def_id, ..) => {
+            Def::VariantCtor(def_id, ..) |
+            Def::SelfCtor(.., def_id) => {
                 // Everything but the final segment should have no
                 // parameters at all.
                 let generics = self.tcx.generics_of(def_id);
@@ -4969,7 +4970,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   def: Def,
                                   span: Span,
                                   node_id: ast::NodeId)
-                                  -> Ty<'tcx> {
+                                  -> (Ty<'tcx>, Def) {
         debug!("instantiate_value_path(path={:?}, def={:?}, node_id={})",
                segments,
                def,
@@ -5019,7 +5020,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let ty = self.local_ty(span, nid);
                 let ty = self.normalize_associated_types_in(span, &ty);
                 self.write_ty(self.tcx.hir.node_to_hir_id(node_id), ty);
-                return ty;
+                return (ty, def);
             }
             _ => {}
         }
@@ -5056,7 +5057,28 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.tcx.generics_of(*def_id).has_self
         }).unwrap_or(false);
 
-        let def_id = def.def_id();
+        let mut new_def = def;
+        let (def_id, ty) = if let Def::SelfCtor(impl_def_id) = def {
+            let ty = self.impl_self_ty(span, impl_def_id).ty;
+
+            match ty.ty_adt_def() {
+                Some(adt_def) if adt_def.is_struct() => {
+                    let variant = adt_def.non_enum_variant();
+                    new_def = Def::StructCtor(variant.did, variant.ctor_kind);
+                    (variant.did, self.tcx.type_of(variant.did))
+                }
+                _ => {
+                    (impl_def_id, self.tcx.types.err)
+                }
+            }
+        } else {
+            let def_id = def.def_id();
+
+            // The things we are substituting into the type should not contain
+            // escaping late-bound regions, and nor should the base type scheme.
+            let ty = self.tcx.type_of(def_id);
+            (def_id, ty)
+        };
 
         let substs = AstConv::create_substs_for_generic_args(
             self.tcx,
@@ -5121,10 +5143,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             },
         );
-
-        // The things we are substituting into the type should not contain
-        // escaping late-bound regions, and nor should the base type scheme.
-        let ty = self.tcx.type_of(def_id);
         assert!(!substs.has_escaping_regions());
         assert!(!ty.has_escaping_regions());
 
@@ -5168,7 +5186,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         self.write_user_substs_from_substs(hir_id, substs);
 
-        ty_substituted
+        (ty_substituted, new_def)
     }
 
     fn check_rustc_args_require_const(&self,

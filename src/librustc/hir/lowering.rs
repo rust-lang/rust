@@ -67,6 +67,7 @@ use syntax::ast;
 use syntax::ast::*;
 use syntax::errors;
 use syntax::ext::hygiene::{Mark, SyntaxContext};
+use syntax::feature_gate::{emit_feature_err, GateIssue};
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::source_map::{self, respan, CompilerDesugaringKind, Spanned};
@@ -3429,19 +3430,24 @@ impl<'a> LoweringContext<'a> {
                     ParamMode::Optional,
                     ImplTraitContext::Disallowed,
                 );
+                self.check_self_struct_ctor_feature(&qpath);
                 hir::PatKind::TupleStruct(
                     qpath,
                     pats.iter().map(|x| self.lower_pat(x)).collect(),
                     ddpos,
                 )
             }
-            PatKind::Path(ref qself, ref path) => hir::PatKind::Path(self.lower_qpath(
-                p.id,
-                qself,
-                path,
-                ParamMode::Optional,
-                ImplTraitContext::Disallowed,
-            )),
+            PatKind::Path(ref qself, ref path) => {
+                let qpath = self.lower_qpath(
+                    p.id,
+                    qself,
+                    path,
+                    ParamMode::Optional,
+                    ImplTraitContext::Disallowed,
+                );
+                self.check_self_struct_ctor_feature(&qpath);
+                hir::PatKind::Path(qpath)
+            }
             PatKind::Struct(ref path, ref fields, etc) => {
                 let qpath = self.lower_qpath(
                     p.id,
@@ -3828,13 +3834,17 @@ impl<'a> LoweringContext<'a> {
                     attrs: e.attrs.clone(),
                 };
             }
-            ExprKind::Path(ref qself, ref path) => hir::ExprKind::Path(self.lower_qpath(
-                e.id,
-                qself,
-                path,
-                ParamMode::Optional,
-                ImplTraitContext::Disallowed,
-            )),
+            ExprKind::Path(ref qself, ref path) => {
+                let qpath = self.lower_qpath(
+                    e.id,
+                    qself,
+                    path,
+                    ParamMode::Optional,
+                    ImplTraitContext::Disallowed,
+                );
+                self.check_self_struct_ctor_feature(&qpath);
+                hir::ExprKind::Path(qpath)
+            }
             ExprKind::Break(opt_label, ref opt_expr) => {
                 let destination = if self.is_in_loop_condition && opt_label.is_none() {
                     hir::Destination {
@@ -4814,6 +4824,18 @@ impl<'a> LoweringContext<'a> {
         let from_err = P(self.expr_std_path(unstable_span, path, None,
                                             ThinVec::new()));
         P(self.expr_call(e.span, from_err, hir_vec![e]))
+    }
+
+    fn check_self_struct_ctor_feature(&self, qp: &hir::QPath) {
+        if let hir::QPath::Resolved(_, ref p) = qp {
+            if p.segments.len() == 1 &&
+               p.segments[0].ident.name == keywords::SelfType.name() &&
+               !self.sess.features_untracked().self_struct_ctor {
+                emit_feature_err(&self.sess.parse_sess, "self_struct_ctor",
+                                 p.span, GateIssue::Language,
+                                 "`Self` struct constructors are unstable");
+            }
+        }
     }
 }
 

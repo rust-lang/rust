@@ -667,7 +667,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
 
             Def::Struct(..) | Def::StructCtor(..) | Def::Union(..) |
-            Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) => {
+            Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) | Def::SelfCtor(..) => {
                 PatternKind::Leaf { subpatterns: subpatterns }
             }
 

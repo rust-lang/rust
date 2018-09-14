@@ -1,0 +1,19 @@
+error[E0658]: `Self` struct constructors are unstable (see issue #51994)
+  --> $DIR/feature-gate-self-struct-ctor.rs:5:9
+   |
+LL |         Self(1,2)
+   |         ^^^^
+   |
+   = help: add #![feature(self_struct_ctor)] to the crate attributes to enable
+
+error[E0658]: `Self` struct constructors are unstable (see issue #51994)
+  --> $DIR/feature-gate-self-struct-ctor.rs:14:9
+   |
+LL |         Self
+   |         ^^^^
+   |
+   = help: add #![feature(self_struct_ctor)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

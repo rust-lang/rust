@@ -512,6 +512,9 @@ declare_features! (
 
     // Non-builtin attributes in inner attribute position
     (active, custom_inner_attributes, "1.30.0", Some(38356), None),
+
+    // Self struct constructor  (RFC 2302)
+    (active, self_struct_ctor, "1.31.0", Some(51994), None),
 );
 
 declare_features! (

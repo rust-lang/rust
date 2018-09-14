@@ -525,7 +525,9 @@ fn ambiguity_error(cx: &DocContext, attrs: &Attributes,
 fn value_ns_kind(def: Def, path_str: &str) -> Option<(&'static str, String)> {
     match def {
         // structs, variants, and mods exist in both namespaces. skip them
-        Def::StructCtor(..) | Def::Mod(..) | Def::Variant(..) | Def::VariantCtor(..) => None,
+        Def::StructCtor(..) | Def::Mod(..) | Def::Variant(..) |
+        Def::VariantCtor(..) | Def::SelfCtor(..)
+            => None,
         Def::Fn(..)
             => Some(("function", format!("{}()", path_str))),
         Def::Method(..)

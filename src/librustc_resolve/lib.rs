@@ -558,17 +558,21 @@ impl<'a> PathSource<'a> {
                 Def::StructCtor(_, CtorKind::Const) | Def::StructCtor(_, CtorKind::Fn) |
                 Def::VariantCtor(_, CtorKind::Const) | Def::VariantCtor(_, CtorKind::Fn) |
                 Def::Const(..) | Def::Static(..) | Def::Local(..) | Def::Upvar(..) |
-                Def::Fn(..) | Def::Method(..) | Def::AssociatedConst(..) => true,
+                Def::Fn(..) | Def::Method(..) | Def::AssociatedConst(..) |
+                Def::SelfCtor(..) => true,
                 _ => false,
             },
             PathSource::Pat => match def {
                 Def::StructCtor(_, CtorKind::Const) |
                 Def::VariantCtor(_, CtorKind::Const) |
-                Def::Const(..) | Def::AssociatedConst(..) => true,
+                Def::Const(..) | Def::AssociatedConst(..) |
+                Def::SelfCtor(..) => true,
                 _ => false,
             },
             PathSource::TupleStruct => match def {
-                Def::StructCtor(_, CtorKind::Fn) | Def::VariantCtor(_, CtorKind::Fn) => true,
+                Def::StructCtor(_, CtorKind::Fn) |
+                Def::VariantCtor(_, CtorKind::Fn) |
+                Def::SelfCtor(..) => true,
                 _ => false,
             },
             PathSource::Struct => match def {
@@ -2204,6 +2208,19 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         None
     }
 
+    fn resolve_adt(&mut self, item: &Item, generics: &Generics) {
+        self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind), |this| {
+            let item_def_id = this.definitions.local_def_id(item.id);
+            if this.session.features_untracked().self_in_typedefs {
+                this.with_self_rib(Def::SelfTy(None, Some(item_def_id)), |this| {
+                    visit::walk_item(this, item);
+                });
+            } else {
+                visit::walk_item(this, item);
+            }
+        });
+    }
+
     fn resolve_item(&mut self, item: &Item) {
         let name = item.ident.name;
         debug!("(resolving item) resolving {}", name);
@@ -2219,16 +2236,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             ItemKind::Enum(_, ref generics) |
             ItemKind::Struct(_, ref generics) |
             ItemKind::Union(_, ref generics) => {
-                self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind), |this| {
-                    let item_def_id = this.definitions.local_def_id(item.id);
-                    if this.session.features_untracked().self_in_typedefs {
-                        this.with_self_rib(Def::SelfTy(None, Some(item_def_id)), |this| {
-                            visit::walk_item(this, item);
-                        });
-                    } else {
-                        visit::walk_item(this, item);
-                    }
-                });
+                self.resolve_adt(item, generics);
             }
 
             ItemKind::Impl(.., ref generics, ref opt_trait_ref, ref self_type, ref impl_items) =>
@@ -2503,6 +2511,17 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         self.ribs[TypeNS].pop();
     }
 
+    fn with_self_struct_ctor_rib<F>(&mut self, impl_id: DefId, f: F)
+        where F: FnOnce(&mut Resolver)
+    {
+        let self_def = Def::SelfCtor(impl_id);
+        let mut self_type_rib = Rib::new(NormalRibKind);
+        self_type_rib.bindings.insert(keywords::SelfType.ident(), self_def);
+        self.ribs[ValueNS].push(self_type_rib);
+        f(self);
+        self.ribs[ValueNS].pop();
+    }
+
     fn resolve_implementation(&mut self,
                               generics: &Generics,
                               opt_trait_reference: &Option<TraitRef>,
@@ -2527,63 +2546,65 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                         this.visit_generics(generics);
                         // Resolve the items within the impl.
                         this.with_current_self_type(self_type, |this| {
-                            for impl_item in impl_items {
-                                this.resolve_visibility(&impl_item.vis);
+                            this.with_self_struct_ctor_rib(item_def_id, |this| {
+                                for impl_item in impl_items {
+                                    this.resolve_visibility(&impl_item.vis);
 
-                                // We also need a new scope for the impl item type parameters.
-                                let type_parameters = HasTypeParameters(&impl_item.generics,
-                                                                        TraitOrImplItemRibKind);
-                                this.with_type_parameter_rib(type_parameters, |this| {
-                                    use self::ResolutionError::*;
-                                    match impl_item.node {
-                                        ImplItemKind::Const(..) => {
-                                            // If this is a trait impl, ensure the const
-                                            // exists in trait
-                                            this.check_trait_item(impl_item.ident,
-                                                                  ValueNS,
-                                                                  impl_item.span,
-                                                |n, s| ConstNotMemberOfTrait(n, s));
-                                            this.with_constant_rib(|this|
-                                                visit::walk_impl_item(this, impl_item)
-                                            );
-                                        }
-                                        ImplItemKind::Method(..) => {
-                                            // If this is a trait impl, ensure the method
-                                            // exists in trait
-                                            this.check_trait_item(impl_item.ident,
-                                                                  ValueNS,
-                                                                  impl_item.span,
-                                                |n, s| MethodNotMemberOfTrait(n, s));
-
-                                            visit::walk_impl_item(this, impl_item);
-                                        }
-                                        ImplItemKind::Type(ref ty) => {
-                                            // If this is a trait impl, ensure the type
-                                            // exists in trait
-                                            this.check_trait_item(impl_item.ident,
-                                                                  TypeNS,
-                                                                  impl_item.span,
-                                                |n, s| TypeNotMemberOfTrait(n, s));
-
-                                            this.visit_ty(ty);
-                                        }
-                                        ImplItemKind::Existential(ref bounds) => {
-                                            // If this is a trait impl, ensure the type
-                                            // exists in trait
-                                            this.check_trait_item(impl_item.ident,
-                                                                  TypeNS,
-                                                                  impl_item.span,
-                                                |n, s| TypeNotMemberOfTrait(n, s));
-
-                                            for bound in bounds {
-                                                this.visit_param_bound(bound);
+                                    // We also need a new scope for the impl item type parameters.
+                                    let type_parameters = HasTypeParameters(&impl_item.generics,
+                                                                            TraitOrImplItemRibKind);
+                                    this.with_type_parameter_rib(type_parameters, |this| {
+                                        use self::ResolutionError::*;
+                                        match impl_item.node {
+                                            ImplItemKind::Const(..) => {
+                                                // If this is a trait impl, ensure the const
+                                                // exists in trait
+                                                this.check_trait_item(impl_item.ident,
+                                                                      ValueNS,
+                                                                      impl_item.span,
+                                                    |n, s| ConstNotMemberOfTrait(n, s));
+                                                this.with_constant_rib(|this|
+                                                    visit::walk_impl_item(this, impl_item)
+                                                );
                                             }
+                                            ImplItemKind::Method(..) => {
+                                                // If this is a trait impl, ensure the method
+                                                // exists in trait
+                                                this.check_trait_item(impl_item.ident,
+                                                                      ValueNS,
+                                                                      impl_item.span,
+                                                    |n, s| MethodNotMemberOfTrait(n, s));
+
+                                                visit::walk_impl_item(this, impl_item);
+                                            }
+                                            ImplItemKind::Type(ref ty) => {
+                                                // If this is a trait impl, ensure the type
+                                                // exists in trait
+                                                this.check_trait_item(impl_item.ident,
+                                                                      TypeNS,
+                                                                      impl_item.span,
+                                                    |n, s| TypeNotMemberOfTrait(n, s));
+
+                                                this.visit_ty(ty);
+                                            }
+                                            ImplItemKind::Existential(ref bounds) => {
+                                                // If this is a trait impl, ensure the type
+                                                // exists in trait
+                                                this.check_trait_item(impl_item.ident,
+                                                                      TypeNS,
+                                                                      impl_item.span,
+                                                    |n, s| TypeNotMemberOfTrait(n, s));
+
+                                                for bound in bounds {
+                                                    this.visit_param_bound(bound);
+                                                }
+                                            }
+                                            ImplItemKind::Macro(_) =>
+                                                panic!("unexpanded macro in resolve!"),
                                         }
-                                        ImplItemKind::Macro(_) =>
-                                            panic!("unexpanded macro in resolve!"),
-                                    }
-                                });
-                            }
+                                    });
+                                }
+                            });
                         });
                     });
                 });

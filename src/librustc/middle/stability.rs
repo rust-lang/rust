@@ -783,7 +783,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
     fn visit_path(&mut self, path: &'tcx hir::Path, id: hir::HirId) {
         let id = self.tcx.hir.hir_to_node_id(id);
         match path.def {
-            Def::Local(..) | Def::Upvar(..) |
+            Def::Local(..) | Def::Upvar(..) | Def::SelfCtor(..) |
             Def::PrimTy(..) | Def::SelfTy(..) | Def::Err => {}
             _ => self.tcx.check_stability(path.def.def_id(), Some(id), path.span)
         }

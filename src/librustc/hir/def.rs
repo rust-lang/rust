@@ -69,6 +69,7 @@ pub enum Def {
     Static(DefId, bool /* is_mutbl */),
     StructCtor(DefId, CtorKind), // DefId refers to NodeId of the struct's constructor
     VariantCtor(DefId, CtorKind), // DefId refers to the enum variant
+    SelfCtor(DefId /* impl */),  // DefId refers to the impl
     Method(DefId),
     AssociatedConst(DefId),
 
@@ -272,7 +273,8 @@ impl Def {
             Def::AssociatedTy(id) | Def::TyParam(id) | Def::Struct(id) | Def::StructCtor(id, ..) |
             Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
             Def::AssociatedConst(id) | Def::Macro(id, ..) |
-            Def::Existential(id) | Def::AssociatedExistential(id) | Def::ForeignTy(id) => {
+            Def::Existential(id) | Def::AssociatedExistential(id) | Def::ForeignTy(id) |
+            Def::SelfCtor(id) => {
                 id
             }
 
@@ -309,6 +311,7 @@ impl Def {
             Def::StructCtor(.., CtorKind::Fn) => "tuple struct",
             Def::StructCtor(.., CtorKind::Const) => "unit struct",
             Def::StructCtor(.., CtorKind::Fictive) => bug!("impossible struct constructor"),
+            Def::SelfCtor(..) => "self constructor",
             Def::Union(..) => "union",
             Def::Trait(..) => "trait",
             Def::ForeignTy(..) => "foreign type",

@@ -11,18 +11,42 @@ LL |     let Self = 5;
    |         ^^^^ not found in this scope
 
 error[E0531]: cannot find unit struct/variant or constant `Self` in this scope
-  --> $DIR/self_type_keyword-2.rs:18:9
+  --> $DIR/self_type_keyword-2.rs:19:9
    |
 LL |         Self => (),
    |         ^^^^ not found in this scope
 
 error[E0531]: cannot find unit struct/variant or constant `Self` in this scope
-  --> $DIR/self_type_keyword-2.rs:20:18
+  --> $DIR/self_type_keyword-2.rs:22:18
    |
 LL |         Foo { x: Self } => (),
    |                  ^^^^ not found in this scope
 
-error: aborting due to 4 previous errors
+error[E0658]: `Self` struct constructors are unstable (see issue #51994)
+  --> $DIR/self_type_keyword-2.rs:14:9
+   |
+LL |     let Self = 5;
+   |         ^^^^
+   |
+   = help: add #![feature(self_struct_ctor)] to the crate attributes to enable
 
-Some errors occurred: E0432, E0531.
+error[E0658]: `Self` struct constructors are unstable (see issue #51994)
+  --> $DIR/self_type_keyword-2.rs:19:9
+   |
+LL |         Self => (),
+   |         ^^^^
+   |
+   = help: add #![feature(self_struct_ctor)] to the crate attributes to enable
+
+error[E0658]: `Self` struct constructors are unstable (see issue #51994)
+  --> $DIR/self_type_keyword-2.rs:22:18
+   |
+LL |         Foo { x: Self } => (),
+   |                  ^^^^
+   |
+   = help: add #![feature(self_struct_ctor)] to the crate attributes to enable
+
+error: aborting due to 7 previous errors
+
+Some errors occurred: E0432, E0531, E0658.
 For more information about an error, try `rustc --explain E0432`.
