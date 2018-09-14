@@ -104,29 +104,8 @@ impl File {
                     return None;
                 }
 
-                let reparser: fn(&mut Parser) = if node.kind().is_trivia() {
-                    // since trivia is omitted by parser when it doesn't have a parent, \
-                    // we need to create one for it
-                    |p| {
-                        p.start().complete(p, ROOT);
-                    }
-                } else {
-                    |p| {
-                        p.bump();
-                    }
-                };
-
-                let (green, new_errors) =
-                    parser_impl::parse_with::<yellow::GreenBuilder>(
-                        &text, &tokens, reparser,
-                    );
-
-                let green = if node.kind().is_trivia() {
-                    green.children().first().cloned().unwrap()
-                } else {
-                    green
-                };
-
+                let green = GreenNode::new_leaf(node.kind(), &text);
+                let new_errors = vec![];
                 Some((node, green, new_errors))
             },
             _ => None,
