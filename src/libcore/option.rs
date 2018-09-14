@@ -1062,6 +1062,20 @@ impl<T> From<T> for Option<T> {
     }
 }
 
+#[stable(feature = "option_ref_from_ref_option", since = "1.30.0")]
+impl<'a, T> From<&'a Option<T>> for Option<&'a T> {
+    fn from(o: &'a Option<T>) -> Option<&'a T> {
+        o.as_ref()
+    }
+}
+
+#[stable(feature = "option_ref_from_ref_option", since = "1.30.0")]
+impl<'a, T> From<&'a mut Option<T>> for Option<&'a mut T> {
+    fn from(o: &'a mut Option<T>) -> Option<&'a mut T> {
+        o.as_mut()
+    }
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // The Option Iterators
 /////////////////////////////////////////////////////////////////////////////
