@@ -1860,7 +1860,7 @@ pub struct RawEntryBuilderMut<'a, K: 'a, V: 'a, S: 'a> {
 /// This `enum` is constructed from the [`raw_entry`] method on [`HashMap`].
 ///
 /// [`HashMap`]: struct.HashMap.html
-/// [`Entry`]: struct.Entry.html
+/// [`Entry`]: enum.Entry.html
 /// [`raw_entry`]: struct.HashMap.html#method.raw_entry
 #[unstable(feature = "hash_raw_entry", issue = "54043")]
 pub enum RawEntryMut<'a, K: 'a, V: 'a, S: 'a> {
