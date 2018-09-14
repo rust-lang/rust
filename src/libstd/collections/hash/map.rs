@@ -3532,12 +3532,11 @@ mod test_map {
             m.insert(x, ());
         }
 
-        for i in 0..1000 {
+        for _ in 0..1000 {
             let x = rng.gen_range(-10, 10);
             match m.entry(x) {
                 Vacant(_) => {}
                 Occupied(e) => {
-                    println!("{}: remove {}", i, x);
                     e.remove();
                 }
             }
