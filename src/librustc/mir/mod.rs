@@ -1667,7 +1667,25 @@ pub enum StatementKind<'tcx> {
 /// The `FakeReadCause` describes the type of pattern why a `FakeRead` statement exists.
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum FakeReadCause {
+    /// Inject a fake read of the borrowed input at the start of each arm's
+    /// pattern testing code.
+    ///
+    /// This should ensure that you cannot change the variant for an enum
+    /// while you are in the midst of matching on it.
     ForMatch,
+
+    /// Officially, the semantics of
+    ///
+    /// `let pattern = <expr>;`
+    ///
+    /// is that `<expr>` is evaluated into a temporary and then this temporary is
+    /// into the pattern.
+    ///
+    /// However, if we see the simple pattern `let var = <expr>`, we optimize this to
+    /// evaluate `<expr>` directly into the variable `var`. This is mostly unobservable,
+    /// but in some cases it can affect the borrow checker, as in #53695.
+    /// Therefore, we insert a "fake read" here to ensure that we get
+    /// appropriate errors.
     ForLet,
 }
 

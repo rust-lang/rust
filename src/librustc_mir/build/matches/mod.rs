@@ -145,19 +145,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     if let (true, Some(borrow_temp)) =
                         (tcx.emit_read_for_match(), borrowed_input_temp.clone())
                     {
-                        // inject a fake read of the borrowed input at
-                        // the start of each arm's pattern testing
-                        // code.
-                        //
-                        // This should ensure that you cannot change
-                        // the variant for an enum while you are in
-                        // the midst of matching on it.
+                        // Inject a fake read, see comments on `FakeReadCause::ForMatch`.
                         let pattern_source_info = self.source_info(pattern.span);
                         self.cfg.push(
                             *pre_binding_block,
                             Statement {
                                 source_info: pattern_source_info,
-                                kind: StatementKind::FakeRead(FakeReadCause::ForMatch, borrow_temp.clone()),
+                                kind: StatementKind::FakeRead(
+                                    FakeReadCause::ForMatch,
+                                    borrow_temp.clone(),
+                                ),
                             },
                         );
                     }
@@ -266,19 +263,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 unpack!(block = self.into(&place, block, initializer));
 
 
-                // Officially, the semantics of
-                //
-                // `let pattern = <expr>;`
-                //
-                // is that `<expr>` is evaluated into a temporary and then this temporary is
-                // into the pattern.
-                //
-                // However, if we see the simple pattern `let var = <expr>`, we optimize this to
-                // evaluate `<expr>` directly into the variable `var`. This is mostly unobservable,
-                // but in some cases it can affect the borrow checker, as in #53695.
-                // Therefore, we insert a "fake read" here to ensure that we get
-                // appropriate errors.
-                //
+                // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let source_info = self.source_info(irrefutable_pat.span);
                 self.cfg.push(
                     block,
@@ -329,9 +314,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     },
                 );
 
-                // Similarly to the `let var = <expr>` case, we insert a "fake read" here to
-                // ensure that we get appropriate errors when this usually unobservable
-                // optimization affects the borrow checker.
+                // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 self.cfg.push(
                     block,
                     Statement {
