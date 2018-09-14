@@ -354,7 +354,7 @@ macro_rules! make_mir_visitor {
                                           ref $($mutability)* rvalue) => {
                         self.visit_assign(block, place, rvalue, location);
                     }
-                    StatementKind::ReadForMatch(ref $($mutability)* place) => {
+                    StatementKind::FakeRead(_, ref $($mutability)* place) => {
                         self.visit_place(place,
                                          PlaceContext::Inspect,
                                          location);

@@ -157,7 +157,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             *pre_binding_block,
                             Statement {
                                 source_info: pattern_source_info,
-                                kind: StatementKind::ReadForMatch(borrow_temp.clone()),
+                                kind: StatementKind::FakeRead(FakeReadCause::ForMatch, borrow_temp.clone()),
                             },
                         );
                     }
@@ -284,7 +284,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     block,
                     Statement {
                         source_info,
-                        kind: StatementKind::ReadForMatch(place.clone()),
+                        kind: StatementKind::FakeRead(FakeReadCause::ForLet, place.clone()),
                     },
                 );
 
@@ -336,7 +336,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     block,
                     Statement {
                         source_info,
-                        kind: StatementKind::ReadForMatch(place.clone()),
+                        kind: StatementKind::FakeRead(FakeReadCause::ForLet, place.clone()),
                     },
                 );
 

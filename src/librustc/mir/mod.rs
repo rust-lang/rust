@@ -1613,8 +1613,10 @@ pub enum StatementKind<'tcx> {
     Assign(Place<'tcx>, Rvalue<'tcx>),
 
     /// This represents all the reading that a pattern match may do
-    /// (e.g. inspecting constants and discriminant values).
-    ReadForMatch(Place<'tcx>),
+    /// (e.g. inspecting constants and discriminant values), and the
+    /// kind of pattern it comes from. This is in order to adapt potential
+    /// error messages to these specific patterns.
+    FakeRead(FakeReadCause, Place<'tcx>),
 
     /// Write the discriminant for a variant to the enum Place.
     SetDiscriminant {
@@ -1660,6 +1662,13 @@ pub enum StatementKind<'tcx> {
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
+}
+
+/// The `FakeReadCause` describes the type of pattern why a `FakeRead` statement exists.
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
+pub enum FakeReadCause {
+    ForMatch,
+    ForLet,
 }
 
 /// The `ValidationOp` describes what happens with each of the operands of a
@@ -1718,7 +1727,7 @@ impl<'tcx> Debug for Statement<'tcx> {
         use self::StatementKind::*;
         match self.kind {
             Assign(ref place, ref rv) => write!(fmt, "{:?} = {:?}", place, rv),
-            ReadForMatch(ref place) => write!(fmt, "ReadForMatch({:?})", place),
+            FakeRead(ref cause, ref place) => write!(fmt, "FakeRead({:?}, {:?})", cause, place),
             // (reuse lifetime rendering policy from ppaux.)
             EndRegion(ref ce) => write!(fmt, "EndRegion({})", ty::ReScope(*ce)),
             Validate(ref op, ref places) => write!(fmt, "Validate({:?}, {:?})", op, places),
@@ -2585,6 +2594,7 @@ CloneTypeFoldableAndLiftImpls! {
     Mutability,
     SourceInfo,
     UpvarDecl,
+    FakeReadCause,
     ValidationOp,
     SourceScope,
     SourceScopeData,
@@ -2651,7 +2661,7 @@ BraceStructTypeFoldableImpl! {
 EnumTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for StatementKind<'tcx> {
         (StatementKind::Assign)(a, b),
-        (StatementKind::ReadForMatch)(place),
+        (StatementKind::FakeRead)(cause, place),
         (StatementKind::SetDiscriminant) { place, variant_index },
         (StatementKind::StorageLive)(a),
         (StatementKind::StorageDead)(a),
