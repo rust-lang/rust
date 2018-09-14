@@ -10,7 +10,7 @@
 
 #[doc(keyword = "as")]
 //
-/// The type coercion keyword.
+/// The keyword for casting types.
 ///
 /// `as` is most commonly used to turn primitive types into other primitive types, but it has other
 /// uses that include turning pointers into addresses, addresses into pointers, and pointers into
@@ -24,15 +24,20 @@
 /// assert_eq!(true as u8 + thing2 as u8, 100);
 /// ```
 ///
-/// In general, any coercion that can be performed via writing out type hints can also be done
-/// using `as`, so instead of writing `let x: u32 = 123`, you can write `let x = 123 as u32` (Note:
-/// `let x = 123u32` would be best in that situation). The same is not true in the other direction,
-/// however, explicitly using `as` allows a few more coercions that aren't allowed implicitly, such
-/// as changing the type of a raw pointer or turning closures into raw pointers.
+/// In general, any cast that can be performed via ascribing the type can also be done using `as`,
+/// so instead of writing `let x: u32 = 123`, you can write `let x = 123 as u32` (Note: `let x: u32
+/// = 123` would be best in that situation). The same is not true in the other direction, however,
+/// explicitly using `as` allows a few more coercions that aren't allowed implicitly, such as
+/// changing the type of a raw pointer or turning closures into raw pointers.
+///
+/// Other places `as` is used include as extra syntax for [`crate`] and [`use`], to change the name
+/// something is imported as.
 ///
 /// For more information on what `as` is capable of, see the [Reference]
 ///
 /// [Reference]: https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions
+/// [`crate`]: keyword.crate.html
+/// [`use`]: keyword.use.html
 mod as_keyword { }
 
 #[doc(keyword = "const")]
@@ -52,12 +57,12 @@ mod as_keyword { }
 ///
 /// Constants must be explicitly typed, unlike with `let` you can't ignore its type and let the
 /// compiler figure it out. Any constant value can be defined in a const, which in practice happens
-/// to be most things that would be reasonable to have a constant. For example, you can't have a
-/// File as a `const`.
+/// to be most things that would be reasonable to have a constant (barring `const fn`s, coming
+/// soon). For example, you can't have a File as a `const`.
 ///
-/// The only lifetime allowed in a constant is 'static, which is the lifetime that encompasses all
-/// others in a Rust program. For example, if you wanted to define a constant string, it would look
-/// like this:
+/// The only lifetime allowed in a constant is `'static`, which is the lifetime that encompasses
+/// all others in a Rust program. For example, if you wanted to define a constant string, it would
+/// look like this:
 ///
 /// ```rust
 /// const WORDS: &'static str = "hello rust!";
@@ -73,9 +78,8 @@ mod as_keyword { }
 /// to which one should be used at which times. To put it simply, constants are inlined wherever
 /// they're used, making using them identical to simply replacing the name of the const with its
 /// value. Static variables on the other hand point to a single location in memory, which all
-/// accesses share. This means that, unlike with constants, they can't have destructors, but it
-/// also means that (via unsafe code) they can be mutable, which is useful for the rare situations
-/// in which you can't avoid using global state.
+/// accesses share. This means that, unlike with constants, they can't have destructors, and act as
+/// a single value across the entire codebase.
 ///
 /// Constants, as with statics, should always be in SCREAMING_SNAKE_CASE.
 ///
@@ -130,8 +134,8 @@ mod crate_keyword { }
 ///
 /// Enums in Rust are similar to those of other compiled languages like C, but have important
 /// differences that make them considerably more powerful. What Rust calls enums are more commonly
-/// known as Algebraic Data Types if you're coming from a functional programming background, but
-/// the important part is that data can go with the enum variants.
+/// known as Algebraic Data Types if you're coming from a functional programming background. The
+/// important detail is that each enum variant can have data to go along with it.
 ///
 /// ```rust
 /// # struct Coord;
@@ -160,9 +164,9 @@ mod crate_keyword { }
 /// ```
 ///
 /// The first enum shown is the usual kind of enum you'd find in a C-style language. The second
-/// shows off a hypothetical example of something storing location data, with Coord being any other
-/// type that's needed, for example a struct. The third example demonstrates the kind of variant a
-/// variant can store, ranging from nothing, to a tuple, to an anonymous struct.
+/// shows off a hypothetical example of something storing location data, with `Coord` being any
+/// other type that's needed, for example a struct. The third example demonstrates the kind of
+/// data a variant can store, ranging from nothing, to a tuple, to an anonymous struct.
 ///
 /// Instantiating enum variants involves explicitly using the enum's name as its namespace,
 /// followed by one of its variants. `SimpleEnum::SecondVariant` would be an example from above.
@@ -188,7 +192,7 @@ mod enum_keyword { }
 /// lazy_static;`. The other use is in foreign function interfaces (FFI).
 ///
 /// `extern` is used in two different contexts within FFI. The first is in the form of external
-/// blcoks, for declaring function interfaces that Rust code can call foreign code by.
+/// blocks, for declaring function interfaces that Rust code can call foreign code by.
 ///
 /// ```rust ignore
 /// #[link(name = "my_c_library")]
@@ -197,8 +201,8 @@ mod enum_keyword { }
 /// }
 /// ```
 ///
-/// This code would attempt to link with libmy_c_library.so on unix-like systems and
-/// my_c_library.dll on Windows at runtime, and panic if it can't find something to link to. Rust
+/// This code would attempt to link with `libmy_c_library.so` on unix-like systems and
+/// `my_c_library.dll` on Windows at runtime, and panic if it can't find something to link to. Rust
 /// code could then use `my_c_function` as if it were any other unsafe Rust function. Working with
 /// non-Rust languages and FFI is inherently unsafe, so wrappers are usually built around C APIs.
 ///
@@ -275,7 +279,8 @@ mod extern_keyword { }
 /// ```
 ///
 /// Declaring trait bounds in the angle brackets is functionally identical to using a [`where`]
-/// clause, but `where` is preferred due to it being easier to understand at a glance.
+/// clause. It's up to the programmer to decide which works better in each situation, but `where`
+/// tends to be better when things get longer than one line.
 ///
 /// Along with being made public via [`pub`], `fn` can also have an [`extern`] added for use in
 /// FFI.
@@ -475,8 +480,8 @@ mod let_keyword { }
 //
 /// The keyword used to define structs.
 ///
-/// Structs in Rust come in three flavours: Regular structs, tuple structs,
-/// and empty structs.
+/// Structs in Rust come in three flavours: Structs with named fields, tuple structs, and unit
+/// structs.
 ///
 /// ```rust
 /// struct Regular {
@@ -487,7 +492,7 @@ mod let_keyword { }
 ///
 /// struct Tuple(u32, String);
 ///
-/// struct Empty;
+/// struct Unit;
 /// ```
 ///
 /// Regular structs are the most commonly used. Each field defined within them has a name and a
@@ -501,14 +506,14 @@ mod let_keyword { }
 /// individual variables, the same syntax is used as with regular tuples, namely `foo.0`, `foo.1`,
 /// etc, starting at zero.
 ///
-/// Empty structs, or unit-like structs, are most commonly used as markers, for example
-/// [`PhantomData`]. Empty structs have a size of zero bytes, but unlike empty enums they can be
-/// instantiated, making them similar to the unit type `()`. Unit-like structs are useful when you
-/// need to implement a trait on something, but don't need to store any data inside it.
+/// Unit structs are most commonly used as marker. They have a size of zero bytes, but unlike empty
+/// enums they can be instantiated, making them isomorphic to the unit type `()`. Unit structs are
+/// useful when you need to implement a trait on something, but don't need to store any data inside
+/// it.
 ///
 /// # Instantiation
 ///
-/// Structs can be instantiated in a manner of different ways, each of which can be mixed and
+/// Structs can be instantiated in different ways, all of which can be mixed and
 /// matched as needed. The most common way to make a new struct is via a constructor method such as
 /// `new()`, but when that isn't available (or you're writing the constructor itself), struct
 /// literal syntax is used:
