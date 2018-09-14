@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// dont-check-compiler-stderr (rust-lang/rust#54222)
+
 // ignore-wasm32-bare no libc to test ffi with
 
 // compile-flags: -lrust_test_helpers
