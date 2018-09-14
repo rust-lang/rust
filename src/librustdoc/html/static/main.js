@@ -1979,18 +1979,29 @@
         if (collapse) {
             toggleAllDocs(pageId, true);
         }
-        if (getCurrentValue('rustdoc-trait-implementations') !== "false") {
-            onEach(document.getElementsByClassName("collapse-toggle"), function(e) {
+        var collapser = function(e) {
                 // inherent impl ids are like 'impl' or impl-<number>'.
                 // they will never be hidden by default.
-                var n = e.parentNode;
+                var n = e.parentElement;
                 if (n.id.match(/^impl(?:-\d+)?$/) === null) {
                     // Automatically minimize all non-inherent impls
                     if (collapse || hasClass(n, 'impl')) {
                         collapseDocs(e, "hide", pageId);
                     }
                 }
-            });
+        };
+        if (getCurrentValue('rustdoc-trait-implementations') !== "false") {
+            onEach(document.getElementById('implementations-list')
+                           .getElementsByClassName("collapse-toggle"), collapser);
+        }
+        if (getCurrentValue('rustdoc-method-docs') !== "false") {
+            var implItems = document.getElementsByClassName('impl-items');
+
+            if (implItems && implItems.length > 0) {
+                onEach(implItems, function(elem) {
+                    onEach(elem.getElementsByClassName("collapse-toggle"), collapser);
+                });
+            }
         }
     }
 
@@ -2041,10 +2052,12 @@
     onEach(document.getElementsByClassName('associatedconstant'), func);
     onEach(document.getElementsByClassName('impl'), func);
 
-    function createToggle(otherMessage, fontSize, extraClass) {
+    function createToggle(otherMessage, fontSize, extraClass, show) {
         var span = document.createElement('span');
         span.className = 'toggle-label';
-        span.style.display = 'none';
+        if (show) {
+            span.style.display = 'none';
+        }
         if (!otherMessage) {
             span.innerHTML = '&nbsp;Expand&nbsp;description';
         } else {
@@ -2060,8 +2073,15 @@
 
         var wrapper = document.createElement('div');
         wrapper.className = 'toggle-wrapper';
+        if (!show) {
+            addClass(wrapper, 'collapsed');
+            var inner = mainToggle.getElementsByClassName('inner');
+            if (inner && inner.length > 0) {
+                inner[0].innerHTML = '+';
+            }
+        }
         if (extraClass) {
-            wrapper.className += ' ' + extraClass;
+            addClass(wrapper, extraClass);
         }
         wrapper.appendChild(mainToggle);
         return wrapper;
@@ -2093,10 +2113,15 @@
             var otherMessage;
             var fontSize;
             var extraClass;
+            var show = true;
 
             if (hasClass(e, "type-decl")) {
                 fontSize = "20px";
                 otherMessage = '&nbsp;Show&nbsp;declaration';
+                show = getCurrentValue('rustdoc-item-declarations') === "false";
+                if (!show) {
+                    extraClass = 'collapsed';
+                }
             } else if (hasClass(e, "non-exhaustive")) {
                 otherMessage = '&nbsp;This&nbsp;';
                 if (hasClass(e, "non-exhaustive-struct")) {
@@ -2111,8 +2136,8 @@
                 extraClass = "marg-left";
             }
 
-            e.parentNode.insertBefore(createToggle(otherMessage, fontSize, extraClass), e);
-            if (otherMessage && getCurrentValue('rustdoc-item-declarations') !== "false") {
+            e.parentNode.insertBefore(createToggle(otherMessage, fontSize, extraClass, show), e);
+            if (otherMessage && show) {
                 collapseDocs(e.previousSibling.childNodes[0], "toggle");
             }
         }

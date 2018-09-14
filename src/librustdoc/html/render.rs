@@ -1667,6 +1667,7 @@ impl<'a> Settings<'a> {
                 ("item-attributes", "Auto-hide item attributes.", true),
                 ("trait-implementations", "Auto-hide trait implementations documentation",
                  true),
+                ("method-docs", "Auto-hide item methods' documentation", false),
                 ("go-to-only-result", "Directly go to item in search if there is only one result",
                  false),
             ],
@@ -2074,7 +2075,7 @@ impl<'a> Item<'a> {
 fn wrap_into_docblock<F>(w: &mut fmt::Formatter,
                          f: F) -> fmt::Result
 where F: Fn(&mut fmt::Formatter) -> fmt::Result {
-    write!(w, "<div class=\"docblock type-decl\">")?;
+    write!(w, "<div class=\"docblock type-decl hidden-by-usual-hider\">")?;
     f(w)?;
     write!(w, "</div>")
 }
