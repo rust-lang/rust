@@ -1549,8 +1549,12 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         // but we only return `true` for types that are definitely uninhabited.
         match self.sty {
             ty::Never => true,
+            ty::Adt(def, _) if def.is_union() => {
+                // For now, `union`s are never considered uninhabited.
+                false
+            }
             ty::Adt(def, _) => {
-                // Any ADT is uninhabited if:
+                // Any ADT is uninhabited if either:
                 // (a) It has no variants (i.e. an empty `enum`);
                 // (b) Each of its variants (a single one in the case of a `struct`) has at least
                 //     one uninhabited field.
