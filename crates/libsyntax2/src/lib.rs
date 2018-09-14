@@ -100,7 +100,12 @@ impl File {
             | RAW_STRING => {
                 let text = get_text_after_edit(node, &edit);
                 let tokens = tokenize(&text);
-                if tokens.len() != 1 || tokens[0].kind != node.kind() {
+                let token = match tokens[..] {
+                    [token] if token.kind == node.kind() => token,
+                    _ => return None,
+                };
+
+                if token.kind == IDENT && is_contextual_kw(&text) {
                     return None;
                 }
 
@@ -165,6 +170,15 @@ fn get_text_after_edit(node: SyntaxNodeRef, edit: &AtomEdit) -> String {
         edit.delete - node.range().start(),
         &edit.insert,
     )
+}
+
+fn is_contextual_kw(text: &str) -> bool {
+    match text {
+        | "auto"
+        | "default"
+        | "union" => true,
+        _ => false,
+    }
 }
 
 fn find_reparsable_node(node: SyntaxNodeRef, range: TextRange) -> Option<(SyntaxNodeRef, fn(&mut Parser))> {
