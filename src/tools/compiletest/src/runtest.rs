@@ -2654,8 +2654,12 @@ impl<'test> TestCx<'test> {
         let normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
 
         let mut errors = 0;
-        errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
-        errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
+        if !self.props.dont_check_compiler_stdout {
+            errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
+        }
+        if !self.props.dont_check_compiler_stderr {
+            errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
+        }
 
         let modes_to_prune = vec![CompareMode::Nll];
         self.prune_duplicate_outputs(&modes_to_prune);
