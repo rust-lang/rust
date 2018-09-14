@@ -501,6 +501,7 @@ pub fn to_shortest_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, -0.0, MinusPlus,    8,  true), "+0.00000000");
     assert_eq!(to_string(f, -0.0, MinusPlusRaw, 8,  true), "-0.00000000");
 
+    let neg_nan = -(0.0/0.0);
     assert_eq!(to_string(f,  1.0/0.0, Minus,         0, false), "inf");
     assert_eq!(to_string(f,  1.0/0.0, MinusRaw,      0,  true), "inf");
     assert_eq!(to_string(f,  1.0/0.0, MinusPlus,     0, false), "+inf");
@@ -508,11 +509,15 @@ pub fn to_shortest_str_test<F>(mut f_: F)
     assert_eq!(to_string(f,  0.0/0.0, Minus,         0, false), "NaN");
     assert_eq!(to_string(f,  0.0/0.0, MinusRaw,      1,  true), "NaN");
     assert_eq!(to_string(f,  0.0/0.0, MinusPlus,     8, false), "NaN");
-    assert_eq!(to_string(f,  0.0/0.0, MinusPlusRaw, 64,  true), "NaN");
+    assert_eq!(to_string(f,  0.0/0.0, MinusPlusRaw, 64,  true), "+NaN");
     assert_eq!(to_string(f, -1.0/0.0, Minus,         0, false), "-inf");
     assert_eq!(to_string(f, -1.0/0.0, MinusRaw,      1,  true), "-inf");
     assert_eq!(to_string(f, -1.0/0.0, MinusPlus,     8, false), "-inf");
     assert_eq!(to_string(f, -1.0/0.0, MinusPlusRaw, 64,  true), "-inf");
+    assert_eq!(to_string(f,  neg_nan, Minus,         0, false), "NaN");
+    assert_eq!(to_string(f,  neg_nan, MinusRaw,      1,  true), "-NaN");
+    assert_eq!(to_string(f,  neg_nan, MinusPlus,     8, false), "NaN");
+    assert_eq!(to_string(f,  neg_nan, MinusPlusRaw, 64,  true), "-NaN");
 
     assert_eq!(to_string(f,  3.14, Minus,        0, false), "3.14");
     assert_eq!(to_string(f,  3.14, MinusRaw,     0, false), "3.14");
@@ -594,6 +599,7 @@ pub fn to_shortest_exp_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, -0.0, MinusPlus,    (-9, -5),  true), "+0E0");
     assert_eq!(to_string(f, -0.0, MinusPlusRaw, ( 5,  9), false), "-0e0");
 
+    let neg_nan = -(0.0/0.0);
     assert_eq!(to_string(f,  1.0/0.0, Minus,        (-4, 16), false), "inf");
     assert_eq!(to_string(f,  1.0/0.0, MinusRaw,     (-4, 16),  true), "inf");
     assert_eq!(to_string(f,  1.0/0.0, MinusPlus,    (-4, 16), false), "+inf");
@@ -601,11 +607,15 @@ pub fn to_shortest_exp_str_test<F>(mut f_: F)
     assert_eq!(to_string(f,  0.0/0.0, Minus,        ( 0,  0), false), "NaN");
     assert_eq!(to_string(f,  0.0/0.0, MinusRaw,     ( 0,  0),  true), "NaN");
     assert_eq!(to_string(f,  0.0/0.0, MinusPlus,    (-9, -5), false), "NaN");
-    assert_eq!(to_string(f,  0.0/0.0, MinusPlusRaw, ( 5,  9),  true), "NaN");
+    assert_eq!(to_string(f,  0.0/0.0, MinusPlusRaw, ( 5,  9),  true), "+NaN");
     assert_eq!(to_string(f, -1.0/0.0, Minus,        ( 0,  0), false), "-inf");
     assert_eq!(to_string(f, -1.0/0.0, MinusRaw,     ( 0,  0),  true), "-inf");
     assert_eq!(to_string(f, -1.0/0.0, MinusPlus,    (-9, -5), false), "-inf");
     assert_eq!(to_string(f, -1.0/0.0, MinusPlusRaw, ( 5,  9),  true), "-inf");
+    assert_eq!(to_string(f,  neg_nan, Minus,        ( 0,  0), false), "NaN");
+    assert_eq!(to_string(f,  neg_nan, MinusRaw,     ( 0,  0),  true), "-NaN");
+    assert_eq!(to_string(f,  neg_nan, MinusPlus,    (-9, -5), false), "NaN");
+    assert_eq!(to_string(f,  neg_nan, MinusPlusRaw, ( 5,  9),  true), "-NaN");
 
     assert_eq!(to_string(f,  3.14, Minus,        (-4, 16), false), "3.14");
     assert_eq!(to_string(f,  3.14, MinusRaw,     (-4, 16), false), "3.14");
@@ -707,6 +717,7 @@ pub fn to_exact_exp_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, -0.0, MinusPlus,    8,  true), "+0.0000000E0");
     assert_eq!(to_string(f, -0.0, MinusPlusRaw, 8, false), "-0.0000000e0");
 
+    let neg_nan = -(0.0/0.0);
     assert_eq!(to_string(f,  1.0/0.0, Minus,         1, false), "inf");
     assert_eq!(to_string(f,  1.0/0.0, MinusRaw,      1,  true), "inf");
     assert_eq!(to_string(f,  1.0/0.0, MinusPlus,     1, false), "+inf");
@@ -714,11 +725,15 @@ pub fn to_exact_exp_str_test<F>(mut f_: F)
     assert_eq!(to_string(f,  0.0/0.0, Minus,         8, false), "NaN");
     assert_eq!(to_string(f,  0.0/0.0, MinusRaw,      8,  true), "NaN");
     assert_eq!(to_string(f,  0.0/0.0, MinusPlus,     8, false), "NaN");
-    assert_eq!(to_string(f,  0.0/0.0, MinusPlusRaw,  8,  true), "NaN");
+    assert_eq!(to_string(f,  0.0/0.0, MinusPlusRaw,  8,  true), "+NaN");
     assert_eq!(to_string(f, -1.0/0.0, Minus,        64, false), "-inf");
     assert_eq!(to_string(f, -1.0/0.0, MinusRaw,     64,  true), "-inf");
     assert_eq!(to_string(f, -1.0/0.0, MinusPlus,    64, false), "-inf");
     assert_eq!(to_string(f, -1.0/0.0, MinusPlusRaw, 64,  true), "-inf");
+    assert_eq!(to_string(f,  neg_nan, Minus,         8, false), "NaN");
+    assert_eq!(to_string(f,  neg_nan, MinusRaw,      8,  true), "-NaN");
+    assert_eq!(to_string(f,  neg_nan, MinusPlus,     8, false), "NaN");
+    assert_eq!(to_string(f,  neg_nan, MinusPlusRaw,  8,  true), "-NaN");
 
     assert_eq!(to_string(f,  3.14, Minus,        1,  true), "3E0");
     assert_eq!(to_string(f,  3.14, MinusRaw,     1, false), "3e0");
@@ -927,6 +942,7 @@ pub fn to_exact_fixed_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, -0.0, MinusPlus,    8,  true), "+0.00000000");
     assert_eq!(to_string(f, -0.0, MinusPlusRaw, 8,  true), "-0.00000000");
 
+    let neg_nan = -(0.0/0.0);
     assert_eq!(to_string(f,  1.0/0.0, Minus,         0, false), "inf");
     assert_eq!(to_string(f,  1.0/0.0, MinusRaw,      1,  true), "inf");
     assert_eq!(to_string(f,  1.0/0.0, MinusPlus,     8, false), "+inf");
@@ -934,11 +950,15 @@ pub fn to_exact_fixed_str_test<F>(mut f_: F)
     assert_eq!(to_string(f,  0.0/0.0, Minus,         0, false), "NaN");
     assert_eq!(to_string(f,  0.0/0.0, MinusRaw,      1,  true), "NaN");
     assert_eq!(to_string(f,  0.0/0.0, MinusPlus,     8, false), "NaN");
-    assert_eq!(to_string(f,  0.0/0.0, MinusPlusRaw, 64,  true), "NaN");
+    assert_eq!(to_string(f,  0.0/0.0, MinusPlusRaw, 64,  true), "+NaN");
     assert_eq!(to_string(f, -1.0/0.0, Minus,         0, false), "-inf");
     assert_eq!(to_string(f, -1.0/0.0, MinusRaw,      1,  true), "-inf");
     assert_eq!(to_string(f, -1.0/0.0, MinusPlus,     8, false), "-inf");
     assert_eq!(to_string(f, -1.0/0.0, MinusPlusRaw, 64,  true), "-inf");
+    assert_eq!(to_string(f,  neg_nan, Minus,         0, false), "NaN");
+    assert_eq!(to_string(f,  neg_nan, MinusRaw,      1,  true), "-NaN");
+    assert_eq!(to_string(f,  neg_nan, MinusPlus,     8, false), "NaN");
+    assert_eq!(to_string(f,  neg_nan, MinusPlusRaw, 64,  true), "-NaN");
 
     assert_eq!(to_string(f,  3.14, Minus,        0, false), "3");
     assert_eq!(to_string(f,  3.14, MinusRaw,     0, false), "3");

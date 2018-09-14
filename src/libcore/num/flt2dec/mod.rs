@@ -384,13 +384,13 @@ pub enum Sign {
 /// It can be either `b""`, `b"+"` or `b"-"`.
 fn determine_sign(sign: Sign, decoded: &FullDecoded, negative: bool) -> &'static [u8] {
     match (*decoded, sign) {
+        (_, Sign::MinusRaw) => if negative { b"-" } else { b"" },
+        (_, Sign::MinusPlusRaw) => if negative { b"-" } else { b"+" },
         (FullDecoded::Nan, _) => b"",
         (FullDecoded::Zero, Sign::Minus) => b"",
-        (FullDecoded::Zero, Sign::MinusRaw) => if negative { b"-" } else { b"" },
         (FullDecoded::Zero, Sign::MinusPlus) => b"+",
-        (FullDecoded::Zero, Sign::MinusPlusRaw) => if negative { b"-" } else { b"+" },
-        (_, Sign::Minus) | (_, Sign::MinusRaw) => if negative { b"-" } else { b"" },
-        (_, Sign::MinusPlus) | (_, Sign::MinusPlusRaw) => if negative { b"-" } else { b"+" },
+        (_, Sign::Minus) => if negative { b"-" } else { b"" },
+        (_, Sign::MinusPlus) => if negative { b"-" } else { b"+" },
     }
 }
 
