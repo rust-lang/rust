@@ -78,8 +78,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 let mut impl_spans = impls
                     .iter()
                     .filter_map(|impl_def| self.impls.get(impl_def))
-                    .filter(|(_, generics)| generics.params.len() == 0)
-                    .map(|(span, _)| span);
+                    .filter_map(|(span, generics)| if generics.params.len() == 0 {
+                        Some(span)
+                    } else {
+                        None
+                    });
                 if let Some(initial_span) = impl_spans.nth(0) {
                     impl_spans.for_each(|additional_span| {
                         span_lint_and_then(

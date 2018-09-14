@@ -78,8 +78,11 @@ pub fn main() {
                 args.extend(
                     extra_args
                         .split("__CLIPPY_HACKERY__")
-                        .filter(|s| !s.is_empty())
-                        .map(str::to_owned),
+                        .filter_map(|s| if s.is_empty() {
+                            None
+                        } else {
+                            Some(s.to_string())
+                        })
                 );
             }
         }
