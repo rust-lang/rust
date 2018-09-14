@@ -11,7 +11,6 @@
 #![feature(lang_items)]
 #![feature(start)]
 #![feature(allocator_api)]
-#![feature(panic_handler)]
 #![cfg_attr(windows, feature(panic_unwind))]
 #![no_std]
 
