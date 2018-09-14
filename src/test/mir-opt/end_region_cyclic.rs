@@ -83,6 +83,7 @@ fn query() -> bool { true }
 //         StorageDead(_4);
 //         _2 = S<'36_0rs> { r: move _3 };
 //         StorageDead(_3);
+//         FakeRead(ForLet, _2);
 //         StorageLive(_6);
 //         _6 = &'17s (_2.0: std::cell::Cell<std::option::Option<&'36_0rs S<'36_0rs>>>);
 //         StorageLive(_7);

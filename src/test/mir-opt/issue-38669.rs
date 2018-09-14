@@ -25,6 +25,7 @@ fn main() {
 //     bb0: {
 //         StorageLive(_1);
 //         _1 = const false;
+//         FakeRead(ForLet, _1);
 //         goto -> bb2;
 //     }
 //     bb1: {

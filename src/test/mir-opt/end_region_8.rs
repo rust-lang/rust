@@ -40,8 +40,10 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //    bb0: {
 //        StorageLive(_1);
 //        _1 = D::{{constructor}}(const 0i32,);
+//        FakeRead(ForLet, _1);
 //        StorageLive(_2);
 //        _2 = &'21_1rs _1;
+//        FakeRead(ForLet, _2);
 //        StorageLive(_4);
 //        _4 = [closure@NodeId(22)] { r: _2 };
 //        _3 = const foo(move _4) -> [return: bb2, unwind: bb3];

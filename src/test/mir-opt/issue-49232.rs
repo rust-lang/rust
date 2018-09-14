@@ -87,6 +87,7 @@ fn main() {
 //         goto -> bb6;
 //     }
 //     bb14: {
+//         FakeRead(ForLet, _2);
 //         StorageDead(_3);
 //         StorageLive(_7);
 //         _7 = &_2;

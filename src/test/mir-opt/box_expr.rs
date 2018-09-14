@@ -63,6 +63,7 @@ impl Drop for S {
 //
 //     bb4: {
 //         StorageDead(_2);
+//         FakeRead(ForLet, _1);
 //         StorageLive(_4);
 //         _4 = move _1;
 //         _3 = const std::mem::drop(move _4) -> [return: bb5, unwind: bb7];
