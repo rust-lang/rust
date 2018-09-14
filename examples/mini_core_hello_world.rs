@@ -20,7 +20,9 @@ unsafe extern "C" fn my_puts(s: *const u8) {
 // TODO remove when jit supports linking rlibs
 #[cfg(jit)]
 fn panic<T>(_: T) {
-    loop {}
+    unsafe {
+        intrinsics::abort();
+    }
 }
 
 #[lang = "termination"]
@@ -111,6 +113,18 @@ fn main() {
         a.object_safe();
 
         if intrinsics::size_of_val(a) as u8 != 16 {
+            panic(&("", "", 0, 0));
+        }
+
+        if intrinsics::size_of_val(&0u32) as u8 != 4 {
+            panic(&("", "", 0, 0));
+        }
+
+        if intrinsics::needs_drop::<u8>() {
+            panic(&("", "", 0, 0));
+        }
+
+        if !intrinsics::needs_drop::<NoisyDrop>() {
             panic(&("", "", 0, 0));
         }
     }

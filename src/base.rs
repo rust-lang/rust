@@ -432,19 +432,31 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     lval.write_cvalue(fx, res);
                 }
                 Rvalue::UnaryOp(un_op, operand) => {
-                    let ty = fx.monomorphize(&operand.ty(&fx.mir.local_decls, fx.tcx));
-                    let layout = fx.layout_of(ty);
-                    let val = trans_operand(fx, operand).load_value(fx);
+                    let operand = trans_operand(fx, operand);
+                    let layout = operand.layout();
+                    let val = operand.load_value(fx);
                     let res = match un_op {
-                        UnOp::Not => fx.bcx.ins().bnot(val),
-                        UnOp::Neg => match ty.sty {
+                        UnOp::Not => {
+                            match layout.ty.sty {
+                                ty::Bool => {
+                                    let val = fx.bcx.ins().uextend(types::I32, val); // WORKAROUND for CraneStation/cranelift#466
+                                    let res = fx.bcx.ins().icmp_imm(IntCC::Equal, val, 0);
+                                    fx.bcx.ins().bint(types::I8, res)
+                                }
+                                ty::Uint(_) | ty::Int(_) => {
+                                    fx.bcx.ins().bnot(val)
+                                }
+                                _ => unimplemented!("un op Not for {:?}", layout.ty),
+                            }
+                        },
+                        UnOp::Neg => match layout.ty.sty {
                             ty::Int(_) => {
-                                let clif_ty = fx.cton_type(ty).unwrap();
+                                let clif_ty = fx.cton_type(layout.ty).unwrap();
                                 let zero = fx.bcx.ins().iconst(clif_ty, 0);
                                 fx.bcx.ins().isub(zero, val)
                             }
                             ty::Float(_) => fx.bcx.ins().fneg(val),
-                            _ => unimplemented!("un op Neg for {:?}", ty),
+                            _ => unimplemented!("un op Neg for {:?}", layout.ty),
                         },
                     };
                     lval.write_cvalue(fx, CValue::ByVal(res, layout));

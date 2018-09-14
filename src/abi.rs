@@ -660,7 +660,11 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 }
                 "size_of_val" => {
                     assert_eq!(args.len(), 1);
-                    let size = match &substs.type_at(0).sty {
+                    let layout = fx.layout_of(substs.type_at(0));
+                    let size = match &layout.ty.sty {
+                        _ if !layout.is_unsized() => {
+                            fx.bcx.ins().iconst(fx.module.pointer_type(), layout.size.bytes() as i64)
+                        }
                         ty::Slice(elem) => {
                             let len = args[0].load_value_pair(fx).1;
                             let elem_size = fx.layout_of(elem).size.bytes();
@@ -820,6 +824,17 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                     let arg = args[0].load_value(fx);
                     let res = CValue::ByVal(fx.bcx.ins().popcnt(arg), args[0].layout());
                     ret.write_cvalue(fx, res);
+                }
+                "needs_drop" => {
+                    assert_eq!(args.len(), 0);
+                    let ty = substs.type_at(0);
+                    let needs_drop = if ty.needs_drop(fx.tcx, ParamEnv::reveal_all()) {
+                        1
+                    } else {
+                        0
+                    };
+                    let needs_drop = CValue::const_val(fx, fx.tcx.types.bool, needs_drop);
+                    ret.write_cvalue(fx, needs_drop);
                 }
                 _ => unimpl!("unsupported intrinsic {}", intrinsic),
             }

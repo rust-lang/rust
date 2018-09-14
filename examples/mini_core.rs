@@ -50,6 +50,21 @@ unsafe impl Sync for [u8; 16] {}
 #[lang = "freeze"]
 trait Freeze {}
 
+#[lang = "not"]
+pub trait Not {
+    type Output;
+
+    fn not(self) -> Self::Output;
+}
+
+impl Not for bool {
+    type Output = bool;
+
+    fn not(self) -> bool {
+        !self
+    }
+}
+
 #[lang = "mul"]
 pub trait Mul<RHS = Self> {
     type Output;
@@ -211,6 +226,7 @@ pub mod intrinsics {
         pub fn transmute<T, U>(e: T) -> U;
         pub fn uninit<T>() -> T;
         pub fn ctlz_nonzero<T>(x: T) -> T;
+        pub fn needs_drop<T>() -> bool;
     }
 }
 
