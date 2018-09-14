@@ -25,7 +25,6 @@ declare_clippy_lint! {
     "various things that will negatively affect your clippy experience"
 }
 
-
 /// **What it does:** Ensures every lint is associated to a `LintPass`.
 ///
 /// **Why is this bad?** The compiler only knows lints via a `LintPass`. Without
@@ -54,7 +53,6 @@ declare_clippy_lint! {
     internal,
     "declaring a lint without associating it in a LintPass"
 }
-
 
 /// **What it does:** Checks for the presence of the default hash types "HashMap" or "HashSet"
 /// and recommends the FxHash* variants.
@@ -144,7 +142,6 @@ pub struct LintWithoutLintPass {
     registered_lints: FxHashSet<Name>,
 }
 
-
 impl LintPass for LintWithoutLintPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(LINT_WITHOUT_LINT_PASS)
@@ -196,7 +193,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
     }
 }
 
-
 fn is_lint_ref_type(ty: &Ty) -> bool {
     if let TyKind::Rptr(
         _,
@@ -212,7 +208,6 @@ fn is_lint_ref_type(ty: &Ty) -> bool {
     }
     false
 }
-
 
 fn is_lint_array_type(ty: &Ty) -> bool {
     if let TyKind::Path(ref path) = ty.node {
@@ -249,8 +244,8 @@ pub struct DefaultHashTypes {
 impl DefaultHashTypes {
     pub fn default() -> Self {
         let mut map = FxHashMap::default();
-        map.insert("HashMap".to_owned(), "FxHashMap".to_owned());
-        map.insert("HashSet".to_owned(), "FxHashSet".to_owned());
+        map.insert("HashMap".to_string(), "FxHashMap".to_string());
+        map.insert("HashSet".to_string(), "FxHashSet".to_string());
         Self { map }
     }
 }
@@ -265,8 +260,17 @@ impl EarlyLintPass for DefaultHashTypes {
     fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: Ident) {
         let ident_string = ident.to_string();
         if let Some(replace) = self.map.get(&ident_string) {
-            let msg = format!("Prefer {} over {}, it has better performance and we don't need any collision prevention in clippy", replace, ident_string);
-            span_lint_and_sugg(cx, DEFAULT_HASH_TYPES, ident.span, &msg, "use", replace.to_owned());
+            let msg = format!("Prefer {} over {}, it has better performance \
+                              and we don't need any collision prevention in clippy",
+                              replace, ident_string);
+            span_lint_and_sugg(
+                cx,
+                DEFAULT_HASH_TYPES,
+                ident.span,
+                &msg,
+                "use",
+                replace.to_string(),
+            );
         }
     }
 }
