@@ -11,7 +11,7 @@
 use borrow_check::borrow_set::BorrowData;
 use borrow_check::nll::region_infer::Cause;
 use borrow_check::{Context, MirBorrowckCtxt, WriteKind};
-use rustc::mir::{FakeReadCause, Local, Location, Place, StatementKind, TerminatorKind};
+use rustc::mir::{FakeReadCause, Local, Location, Place, TerminatorKind};
 use rustc_errors::DiagnosticBuilder;
 use rustc::ty::Region;
 
@@ -145,27 +145,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         // Check if the location represents a `FakeRead`, and adapt the error
                         // message to the `FakeReadCause` it is from: in particular,
                         // the ones inserted in optimized `let var = <expr>` patterns.
-                        let is_fake_read_for_let = match self.mir.basic_blocks()[location.block]
-                            .statements
-                            .get(location.statement_index)
-                        {
-                            None => false,
-                            Some(stmt) => {
-                                if let StatementKind::FakeRead(ref cause, _) = stmt.kind {
-                                    match cause {
-                                        FakeReadCause::ForLet => true,
-                                        _ => false,
-                                    }
-                                } else {
-                                    false
-                                }
-                            }
-                        };
-
-                        if is_fake_read_for_let {
-                            "borrow later stored here"
-                        } else {
-                            "borrow later used here"
+                        match self.retrieve_fake_read_cause_for_location(&location) {
+                            Some(FakeReadCause::ForLet) => "borrow later stored here",
+                            _ => "borrow later used here"
                         }
                     }
                 };
