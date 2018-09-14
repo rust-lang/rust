@@ -18,7 +18,7 @@ use rustc::infer::InferCtxt;
 use rustc::mir::Mir;
 use rustc::ty::subst::{Substs, UnpackedKind};
 use rustc::ty::{self, RegionKind, RegionVid, Ty, TyCtxt};
-use rustc::util::ppaux::with_highlight_region;
+use rustc::util::ppaux::with_highlight_region_for_regionvid;
 use rustc_errors::DiagnosticBuilder;
 use syntax::ast::{Name, DUMMY_NODE_ID};
 use syntax::symbol::keywords;
@@ -406,7 +406,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         argument_ty: Ty<'tcx>,
         counter: &mut usize,
     ) -> Option<RegionName> {
-        let type_name = with_highlight_region(needle_fr, *counter, || {
+        let type_name = with_highlight_region_for_regionvid(needle_fr, *counter, || {
             infcx.extract_type_name(&argument_ty)
         });
 
@@ -420,9 +420,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let (_, span) = self.get_argument_name_and_span_for_region(mir, argument_index);
 
             Some(RegionName {
-                // This counter value will already have been used, so this function will increment it
-                // so the next value will be used next and return the region name that would have been
-                // used.
+                // This counter value will already have been used, so this function will increment
+                // it so the next value will be used next and return the region name that would
+                // have been used.
                 name: self.synthesize_region_name(counter),
                 source: RegionNameSource::CannotMatchHirTy(span, type_name),
             })
@@ -683,7 +683,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return None;
         }
 
-        let type_name = with_highlight_region(fr, *counter, || infcx.extract_type_name(&return_ty));
+        let type_name = with_highlight_region_for_regionvid(
+            fr, *counter, || infcx.extract_type_name(&return_ty));
 
         let mir_node_id = tcx.hir.as_local_node_id(mir_def_id).expect("non-local mir");
 

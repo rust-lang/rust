@@ -618,7 +618,8 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 let drop_place_ty = drop_place.ty(self.mir, self.infcx.tcx);
 
                 // Erase the regions.
-                let drop_place_ty = self.infcx.tcx.erase_regions(&drop_place_ty).to_ty(self.infcx.tcx);
+                let drop_place_ty = self.infcx.tcx.erase_regions(&drop_place_ty)
+                    .to_ty(self.infcx.tcx);
 
                 // "Lift" into the gcx -- once regions are erased, this type should be in the
                 // global arenas; this "lift" operation basically just asserts that is true, but

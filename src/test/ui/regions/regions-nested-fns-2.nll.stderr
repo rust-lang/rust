@@ -2,15 +2,13 @@ error[E0597]: `y` does not live long enough
   --> $DIR/regions-nested-fns-2.rs:18:25
    |
 LL |         |z| {
-   |         --- value captured here
+   |           - has type `&'0 isize`
 LL |             //~^ ERROR E0373
 LL |             if false { &y } else { z }
-   |                         ^ borrowed value does not live long enough
+   |                         ^ `y` would have to be valid for `'0`
 LL |         });
 LL | }
-   | - `y` dropped here while still borrowed
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   | - but `y` dropped here while still borrowed
 
 error: aborting due to previous error
 

@@ -1,17 +1,16 @@
 error[E0597]: `x` does not live long enough
   --> $DIR/issue-30438-c.rs:19:5
    |
+LL | fn silly<'y, 'z>(_s: &'y Test<'z>) -> &'y <Test<'z> as Trait>::Out where 'z: 'static {
+   |                      ------------     ---------------------------- has type `&'y <Test<'z> as Trait>::Out`
+   |                      |
+   |                      has type `&'y Test<'z>`
+LL |     let x = Test { s: "this cannot last" };
 LL |     &x
-   |     ^^ borrowed value does not live long enough
+   |     ^^ `x` would have to be valid for `'y`
 LL |     //~^ ERROR: `x` does not live long enough
 LL | }
-   | - `x` dropped here while still borrowed
-   |
-note: borrowed value must be valid for the lifetime 'y as defined on the function body at 17:10...
-  --> $DIR/issue-30438-c.rs:17:10
-   |
-LL | fn silly<'y, 'z>(_s: &'y Test<'z>) -> &'y <Test<'z> as Trait>::Out where 'z: 'static {
-   |          ^^
+   | - but `x` dropped here while still borrowed
 
 error: aborting due to previous error
 

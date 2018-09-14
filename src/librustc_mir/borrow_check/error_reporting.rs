@@ -13,16 +13,16 @@ use borrow_check::prefixes::IsPrefixOf;
 use borrow_check::nll::explain_borrow::BorrowExplanation;
 use rustc::middle::region::ScopeTree;
 use rustc::mir::{
-    BindingForm, BorrowKind, ClearCrossCrate, Field, FakeReadCause, Local,
-    LocalDecl, LocalKind, Location, Operand, Place,
-    ProjectionElem, Rvalue, Statement, StatementKind,
-    VarBindingForm,
+    AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, FakeReadCause, Field, Local,
+    LocalDecl, LocalKind, Location, Operand, Place, ProjectionElem, Rvalue, Statement,
+    StatementKind, VarBindingForm,
 };
+use rustc::hir::def_id::DefId;
 use rustc::ty;
-use rustc::hir;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc::util::ppaux::with_highlight_region_for_region;
 use syntax_pos::Span;
 
 use super::borrow_set::BorrowData;
@@ -462,7 +462,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
         }
 
-        let mut err = match &self.describe_place(&borrow.borrowed_place) {
+        let err = match &self.describe_place(&borrow.borrowed_place) {
             Some(_) if self.is_place_thread_local(root_place) =>
                 self.report_thread_local_value_does_not_live_long_enough(drop_span, borrow_span),
             Some(name) => self.report_local_value_does_not_live_long_enough(
@@ -471,7 +471,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 &scope_tree,
                 &borrow,
                 drop_span,
-                borrow_span,
+                borrow_spans,
                 kind.map(|k| (k, place_span.0)),
             ),
             None => self.report_temporary_value_does_not_live_long_enough(
@@ -479,11 +479,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 &scope_tree,
                 &borrow,
                 drop_span,
+                borrow_spans,
                 proper_span,
             ),
         };
-
-        borrow_spans.args_span_label(&mut err, "value captured here");
 
         err.buffer(&mut self.errors_buffer);
     }
@@ -495,16 +494,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         scope_tree: &Lrc<ScopeTree>,
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
-        borrow_span: Span,
+        borrow_spans: UseSpans,
         kind_place: Option<(WriteKind, &Place<'tcx>)>,
     ) -> DiagnosticBuilder<'cx> {
         debug!(
             "report_local_value_does_not_live_long_enough(\
              {:?}, {:?}, {:?}, {:?}, {:?}, {:?}\
              )",
-            context, name, scope_tree, borrow, drop_span, borrow_span
+            context, name, scope_tree, borrow, drop_span, borrow_spans
         );
 
+        let borrow_span = borrow_spans.var_or_use();
         let mut err = self.infcx.tcx.path_does_not_live_long_enough(
             borrow_span,
             &format!("`{}`", name),
@@ -512,46 +512,23 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         );
 
         let explanation = self.explain_why_borrow_contains_point(context, borrow, kind_place);
-        if let Some((
-            arg_name,
-            arg_span,
-            return_name,
-            return_span,
-        )) = self.find_name_and_ty_of_values() {
-            err.span_label(
-                arg_span,
-                format!("has lifetime `{}`", arg_name)
-            );
-
-            err.span_label(
-                return_span,
-                format!(
-                    "{}has lifetime `{}`",
-                    if arg_name == return_name { "also " } else { "" },
-                    return_name
-                )
-            );
+        if let Some(annotation) = self.annotate_argument_and_return_for_borrow(borrow) {
+            let region_name = annotation.emit(&mut err);
 
             err.span_label(
                 borrow_span,
-                format!("`{}` would have to be valid for `{}`", name, return_name),
+                format!("`{}` would have to be valid for `{}`", name, region_name)
             );
-
-            err.span_label(
-                drop_span,
-                format!("but `{}` dropped here while still borrowed", name),
-            );
+            err.span_label(drop_span, format!("but `{}` dropped here while still borrowed", name));
 
             if let BorrowExplanation::MustBeValidFor(..) = explanation { } else {
                 explanation.emit(self.infcx.tcx, &mut err);
             }
         } else {
             err.span_label(borrow_span, "borrowed value does not live long enough");
+            err.span_label(drop_span, format!("`{}` dropped here while still borrowed", name));
 
-            err.span_label(
-                drop_span,
-                format!("`{}` dropped here while still borrowed", name),
-            );
+            borrow_spans.args_span_label(&mut err, "value captured here");
 
             explanation.emit(self.infcx.tcx, &mut err);
         }
@@ -576,19 +553,19 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let borrow_spans = self.retrieve_borrow_spans(borrow);
         let borrow_span = borrow_spans.var_or_use();
 
-        let mut err = self.tcx.cannot_borrow_across_destructor(borrow_span, Origin::Mir);
+        let mut err = self.infcx.tcx.cannot_borrow_across_destructor(borrow_span, Origin::Mir);
 
         let (what_was_dropped, dropped_ty) = {
             let desc = match self.describe_place(place) {
                 Some(name) => format!("`{}`", name.as_str()),
                 None => format!("temporary value"),
             };
-            let ty = place.ty(self.mir, self.tcx).to_ty(self.tcx);
+            let ty = place.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
             (desc, ty)
         };
 
         let label = match dropped_ty.sty {
-            ty::Adt(adt, _) if adt.has_dtor(self.tcx) && !adt.is_box() => {
+            ty::Adt(adt, _) if adt.has_dtor(self.infcx.tcx) && !adt.is_box() => {
                 match self.describe_place(&borrow.borrowed_place) {
                     Some(borrowed) =>
                         format!("here, drop of {D} needs exclusive access to `{B}`, \
@@ -615,7 +592,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             _ => {},
         }
 
-        explanation.emit(self.tcx, &mut err);
+        explanation.emit(self.infcx.tcx, &mut err);
 
         err.buffer(&mut self.errors_buffer);
     }
@@ -651,6 +628,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         scope_tree: &Lrc<ScopeTree>,
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
+        borrow_spans: UseSpans,
         proper_span: Span,
     ) -> DiagnosticBuilder<'cx> {
         debug!(
@@ -678,67 +656,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
         explanation.emit(self.infcx.tcx, &mut err);
 
+        borrow_spans.args_span_label(&mut err, "value captured here");
+
         err
-    }
-
-    fn find_name_and_ty_of_values(
-        &self,
-    ) -> Option<(String, Span, String, Span)> {
-        let mir_node_id = self.infcx.tcx.hir.as_local_node_id(self.mir_def_id)?;
-        let fn_decl = self.infcx.tcx.hir.fn_decl(mir_node_id)?;
-
-        // If there is one argument and this error is being reported, that means
-        // that the lifetime of the borrow could not be made to match the single
-        // argument's lifetime. We can highlight it.
-        //
-        // If there is more than one argument and this error is being reported, that
-        // means there must be a self parameter - as otherwise there would be an error
-        // from lifetime elision and not this. So we highlight the self parameter.
-        let arg = fn_decl.inputs
-            .first()
-            .and_then(|ty| {
-                if let hir::TyKind::Rptr(
-                    hir::Lifetime { name, span, ..  }, ..
-                ) = ty.node {
-                    Some((name, span))
-                } else {
-                    None
-                }
-            });
-
-        let ret = if let hir::FunctionRetTy::Return(ret_ty) = &fn_decl.output {
-            if let hir::Ty {
-                node: hir::TyKind::Rptr(hir::Lifetime { name, span, ..  }, ..),
-                ..
-            } = ret_ty.clone().into_inner() {
-                Some((name, span))
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-
-        let (arg_name, arg_span) = arg?;
-        let (return_name, return_span) = ret?;
-
-        let lifetimes_match = arg_name == return_name;
-
-        let arg_name = if arg_name.is_elided() {
-            "'0".to_string()
-        } else {
-            format!("{}", arg_name.ident())
-        };
-
-        let return_name = if return_name.is_elided() && lifetimes_match {
-            "'0".to_string()
-        } else if return_name.is_elided() {
-            "'1".to_string()
-        } else {
-            format!("{}", return_name.ident())
-        };
-
-        Some((arg_name, arg_span, return_name, return_span))
     }
 
     fn get_moved_indexes(&mut self, context: Context, mpi: MovePathIndex) -> Vec<MoveOutIndex> {
@@ -1222,6 +1142,220 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             None
         }
     }
+
+    /// Annotate argument and return type of function and closure with (synthesized) lifetime for
+    /// borrow of local value that does not live long enough.
+    fn annotate_argument_and_return_for_borrow(
+        &self,
+        borrow: &BorrowData<'tcx>,
+    ) -> Option<AnnotatedBorrowFnSignature> {
+        // There are two cases that need handled: when a closure is involved and
+        // when a closure is not involved.
+        let location = borrow.reserve_location;
+        let is_closure = self.infcx.tcx.is_closure(self.mir_def_id);
+
+        match self.mir[location.block].statements.get(location.statement_index) {
+            // When a closure is involved, we expect the reserve location to be an assignment
+            // to a temporary local, which will be followed by a closure.
+            Some(&Statement {
+                kind: StatementKind::Assign(Place::Local(local), _),
+                ..
+            }) if self.mir.local_kind(local) == LocalKind::Temp => {
+                // Look for the statements within this block after assigning to a local to see
+                // if we have a closure. If we do, then annotate it.
+                for stmt in &self.mir[location.block].statements[location.statement_index + 1..] {
+                    if let StatementKind::Assign(
+                        _,
+                        Rvalue::Aggregate(
+                            box AggregateKind::Closure(def_id, substs),
+                            _
+                        )
+                    ) = stmt.kind {
+                        return self.annotate_fn_sig(
+                            def_id,
+                            self.infcx.closure_sig(def_id, substs)
+                        );
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        // If this is not the case, then return if we're currently on a closure (as we
+        // don't have a substs to get the PolyFnSig) or attempt to get the arguments
+        // and return type of the function.
+        if is_closure {
+            None
+        } else {
+            let ty = self.infcx.tcx.type_of(self.mir_def_id);
+            match ty.sty {
+                ty::TyKind::FnDef(_, _) | ty::TyKind::FnPtr(_) =>
+                    self.annotate_fn_sig(
+                        self.mir_def_id,
+                        self.infcx.tcx.fn_sig(self.mir_def_id)
+                    ),
+                _ => None,
+            }
+        }
+    }
+
+    /// Annotate the first argument and return type of a function signature if they are
+    /// references.
+    fn annotate_fn_sig(
+        &self,
+        did: DefId,
+        sig: ty::PolyFnSig<'tcx>,
+    ) -> Option<AnnotatedBorrowFnSignature> {
+        let is_closure = self.infcx.tcx.is_closure(did);
+        let fn_node_id = self.infcx.tcx.hir.as_local_node_id(did)?;
+        let fn_decl = self.infcx.tcx.hir.fn_decl(fn_node_id)?;
+
+        // If there is one argument and this error is being reported, that means
+        // that the lifetime of the borrow could not be made to match the single
+        // argument's lifetime. We can highlight it.
+        //
+        // If there is more than one argument and this error is being reported, that
+        // means there must be a self parameter - as otherwise there would be an error
+        // from lifetime elision and not this. So we highlight the self parameter.
+        let argument_span = fn_decl.inputs.first()?.span;
+        let argument_ty = sig.inputs().skip_binder().first()?;
+        if is_closure {
+            // Closure arguments are wrapped in a tuple, so we need to get the first
+            // from that.
+            let argument_ty = if let ty::TyKind::Tuple(elems) = argument_ty.sty {
+                let argument_ty = elems.first()?;
+                if let ty::TyKind::Ref(_, _, _) = argument_ty.sty {
+                    argument_ty
+                } else {
+                    return None;
+                }
+            } else {
+                return None
+            };
+
+            Some(AnnotatedBorrowFnSignature::Closure {
+                argument_ty,
+                argument_span,
+            })
+        } else if let ty::TyKind::Ref(argument_region, _, _) = argument_ty.sty {
+            // We only consider the return type for functions.
+            let return_span = fn_decl.output.span();
+
+            let return_ty = sig.output();
+            let (return_region, return_ty) = if let ty::TyKind::Ref(
+                return_region, _, _
+            ) = return_ty.skip_binder().sty {
+                (return_region, *return_ty.skip_binder())
+            } else {
+                return None;
+            };
+
+            Some(AnnotatedBorrowFnSignature::Function {
+                argument_ty,
+                argument_span,
+                return_ty,
+                return_span,
+                regions_equal: return_region == argument_region,
+            })
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Debug)]
+enum AnnotatedBorrowFnSignature<'tcx> {
+    Function {
+        argument_ty: ty::Ty<'tcx>,
+        argument_span: Span,
+        return_ty: ty::Ty<'tcx>,
+        return_span: Span,
+        regions_equal: bool,
+    },
+    Closure {
+        argument_ty: ty::Ty<'tcx>,
+        argument_span: Span,
+    }
+}
+
+impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
+    fn emit(
+        &self,
+        diag: &mut DiagnosticBuilder<'_>
+    ) -> String {
+        let (argument_ty, argument_span) = match self {
+            AnnotatedBorrowFnSignature::Function {
+                argument_ty,
+                argument_span,
+                ..
+            } => (argument_ty, argument_span),
+            AnnotatedBorrowFnSignature::Closure {
+                argument_ty,
+                argument_span,
+            } => (argument_ty, argument_span),
+        };
+
+        let (argument_region_name, argument_ty_name) = (
+            self.get_region_name_for_ty(argument_ty, 0),
+            self.get_name_for_ty(argument_ty, 0),
+        );
+        diag.span_label(
+            *argument_span,
+            format!("has type `{}`", argument_ty_name)
+        );
+
+        // Only emit labels for the return value when we're annotating a function.
+        if let AnnotatedBorrowFnSignature::Function {
+            return_ty,
+            return_span,
+            regions_equal,
+            ..
+        } = self {
+            let counter = if *regions_equal { 0 } else { 1 };
+            let (return_region_name, return_ty_name) = (
+                self.get_region_name_for_ty(return_ty, counter),
+                self.get_name_for_ty(return_ty, counter)
+            );
+
+            let types_equal = return_ty_name == argument_ty_name;
+            diag.span_label(
+                *return_span,
+                format!(
+                    "{}has type `{}`",
+                    if types_equal { "also " } else { "" },
+                    return_ty_name,
+                )
+            );
+
+            return_region_name
+        } else {
+            argument_region_name
+        }
+    }
+
+    fn get_name_for_ty(&self, ty: ty::Ty<'tcx>, counter: usize) -> String {
+        // We need to add synthesized lifetimes where appropriate. We do
+        // this by hooking into the pretty printer and telling it to label the
+        // lifetimes without names with the value `'0`.
+        match ty.sty {
+            ty::TyKind::Ref(ty::RegionKind::ReLateBound(_, br), _, _) |
+            ty::TyKind::Ref(ty::RegionKind::ReSkolemized(_, br), _, _) =>
+                with_highlight_region_for_region(*br, counter, || format!("{}", ty)),
+            _ => format!("{}", ty),
+        }
+    }
+
+    fn get_region_name_for_ty(&self, ty: ty::Ty<'tcx>, counter: usize) -> String {
+        match ty.sty {
+            ty::TyKind::Ref(region, _, _) => match region {
+                ty::RegionKind::ReLateBound(_, br) |
+                ty::RegionKind::ReSkolemized(_, br) =>
+                    with_highlight_region_for_region(*br, counter, || format!("{}", region)),
+                _ => format!("{}", region),
+            }
+            _ => bug!("ty for annotation of borrow region is not a reference"),
+        }
+    }
 }
 
 // The span(s) associated to a use of a place.
@@ -1351,7 +1485,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     pub(super) fn borrow_spans(&self, use_span: Span, location: Location) -> UseSpans {
         use self::UseSpans::*;
         use rustc::hir::ExprKind::Closure;
-        use rustc::mir::AggregateKind;
 
         let local = match self.mir[location.block]
             .statements

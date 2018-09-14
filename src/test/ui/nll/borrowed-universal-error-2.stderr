@@ -1,17 +1,16 @@
 error[E0597]: `v` does not live long enough
   --> $DIR/borrowed-universal-error-2.rs:16:5
    |
+LL | fn foo<'a>(x: &'a (u32,)) -> &'a u32 {
+   |               ----------     ------- has type `&'a u32`
+   |               |
+   |               has type `&'a (u32,)`
+LL |     let v = 22;
 LL |     &v
-   |     ^^ borrowed value does not live long enough
+   |     ^^ `v` would have to be valid for `'a`
 LL |     //~^ ERROR `v` does not live long enough [E0597]
 LL | }
-   | - `v` dropped here while still borrowed
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 14:8...
-  --> $DIR/borrowed-universal-error-2.rs:14:8
-   |
-LL | fn foo<'a>(x: &'a (u32,)) -> &'a u32 {
-   |        ^^
+   | - but `v` dropped here while still borrowed
 
 error: aborting due to previous error
 

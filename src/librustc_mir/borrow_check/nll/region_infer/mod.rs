@@ -652,14 +652,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
     }
 
-    pub fn universal_regions_outlived_by<'a>(
-        &'a self,
-        r: RegionVid
-    ) -> impl Iterator<Item = RegionVid> + 'a {
-        let borrow_scc = self.constraint_sccs.scc(r);
-        self.scc_values.universal_regions_outlived_by(borrow_scc)
-    }
-
     /// Invoked when we have some type-test (e.g., `T: 'X`) that we cannot
     /// prove to be satisfied. If this is a closure, we will attempt to
     /// "promote" this type-test into our `ClosureRegionRequirements` and
