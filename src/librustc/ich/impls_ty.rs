@@ -772,7 +772,15 @@ impl_stable_hash_for!(enum ty::cast::CastKind {
     FnPtrAddrCast
 });
 
-impl_stable_hash_for!(struct ::middle::region::Scope { id, code });
+impl_stable_hash_for!(struct ::middle::region::Scope { id, data });
+
+impl_stable_hash_for!(enum ::middle::region::ScopeData {
+    Node,
+    CallSite,
+    Arguments,
+    Destruction,
+    Remainder(first_statement_index)
+});
 
 impl<'a> ToStableHashKey<StableHashingContext<'a>> for region::Scope {
     type KeyType = region::Scope;
@@ -782,11 +790,6 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for region::Scope {
         *self
     }
 }
-
-impl_stable_hash_for!(struct ::middle::region::BlockRemainder {
-    block,
-    first_statement_index
-});
 
 impl_stable_hash_for!(struct ty::adjustment::CoerceUnsizedInfo {
     custom_kind

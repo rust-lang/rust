@@ -326,8 +326,6 @@ language_item_table! {
 
     PhantomDataItem,                 "phantom_data",            phantom_data;
 
-    NonZeroItem,                     "non_zero",                non_zero;
-
     ManuallyDropItem,                "manually_drop",           manually_drop;
 
     DebugTraitLangItem,              "debug_trait",             debug_trait;

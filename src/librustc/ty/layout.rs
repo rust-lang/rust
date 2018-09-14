@@ -20,6 +20,7 @@ use std::fmt;
 use std::i128;
 use std::iter;
 use std::mem;
+use std::ops::Bound;
 
 use ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
@@ -761,17 +762,29 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
                     let mut st = univariant_uninterned(&variants[v], &def.repr, kind)?;
                     st.variants = Variants::Single { index: v };
-                    // Exclude 0 from the range of a newtype ABI NonZero<T>.
-                    if Some(def.did) == self.tcx.lang_items().non_zero() {
-                        match st.abi {
-                            Abi::Scalar(ref mut scalar) |
-                            Abi::ScalarPair(ref mut scalar, _) => {
-                                if *scalar.valid_range.start() == 0 {
-                                    scalar.valid_range = 1..=*scalar.valid_range.end();
-                                }
+                    let (start, end) = self.tcx.layout_scalar_valid_range(def.did);
+                    match st.abi {
+                        Abi::Scalar(ref mut scalar) |
+                        Abi::ScalarPair(ref mut scalar, _) => {
+                            // the asserts ensure that we are not using the
+                            // `#[rustc_layout_scalar_valid_range(n)]`
+                            // attribute to widen the range of anything as that would probably
+                            // result in UB somewhere
+                            if let Bound::Included(start) = start {
+                                assert!(*scalar.valid_range.start() <= start);
+                                scalar.valid_range = start..=*scalar.valid_range.end();
                             }
-                            _ => {}
+                            if let Bound::Included(end) = end {
+                                assert!(*scalar.valid_range.end() >= end);
+                                scalar.valid_range = *scalar.valid_range.start()..=end;
+                            }
                         }
+                        _ => assert!(
+                            start == Bound::Unbounded && end == Bound::Unbounded,
+                            "nonscalar layout for layout_scalar_valid_range type {:?}: {:#?}",
+                            def,
+                            st,
+                        ),
                     }
                     return Ok(tcx.intern_layout(st));
                 }
@@ -1350,8 +1363,12 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
                 if def.variants.len() == 1 {
                     if let Some(SizeSkeleton::Pointer { non_zero, tail }) = v0 {
                         return Ok(SizeSkeleton::Pointer {
-                            non_zero: non_zero ||
-                                Some(def.did) == tcx.lang_items().non_zero(),
+                            non_zero: non_zero || match tcx.layout_scalar_valid_range(def.did) {
+                                (Bound::Included(start), Bound::Unbounded) => start > 0,
+                                (Bound::Included(start), Bound::Included(end)) =>
+                                    0 < start && start < end,
+                                _ => false,
+                            },
                             tail,
                         });
                     } else {

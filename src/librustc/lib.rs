@@ -58,6 +58,8 @@
 #![feature(optin_builtin_traits)]
 #![feature(refcell_replace_swap)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(rustc_attrs)]
+#![cfg_attr(stage0, feature(attr_literals))]
 #![feature(slice_patterns)]
 #![feature(slice_sort_by_cached_key)]
 #![feature(specialization)]

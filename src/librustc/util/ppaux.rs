@@ -11,7 +11,7 @@
 use hir::def_id::DefId;
 use hir::map::definitions::DefPathData;
 use mir::interpret::ConstValue;
-use middle::region::{self, BlockRemainder};
+use middle::region;
 use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use ty::{Bool, Char, Adt};
@@ -770,17 +770,20 @@ define_print! {
                 }
                 ty::ReScope(scope) if cx.identify_regions => {
                     match scope.data() {
-                        region::ScopeData::Node(id) =>
-                            write!(f, "'{}s", id.as_usize()),
-                        region::ScopeData::CallSite(id) =>
-                            write!(f, "'{}cs", id.as_usize()),
-                        region::ScopeData::Arguments(id) =>
-                            write!(f, "'{}as", id.as_usize()),
-                        region::ScopeData::Destruction(id) =>
-                            write!(f, "'{}ds", id.as_usize()),
-                        region::ScopeData::Remainder(BlockRemainder
-                                                     { block, first_statement_index }) =>
-                            write!(f, "'{}_{}rs", block.as_usize(), first_statement_index.index()),
+                        region::ScopeData::Node =>
+                            write!(f, "'{}s", scope.item_local_id().as_usize()),
+                        region::ScopeData::CallSite =>
+                            write!(f, "'{}cs", scope.item_local_id().as_usize()),
+                        region::ScopeData::Arguments =>
+                            write!(f, "'{}as", scope.item_local_id().as_usize()),
+                        region::ScopeData::Destruction =>
+                            write!(f, "'{}ds", scope.item_local_id().as_usize()),
+                        region::ScopeData::Remainder(first_statement_index) => write!(
+                            f,
+                            "'{}_{}rs",
+                            scope.item_local_id().as_usize(),
+                            first_statement_index.index()
+                        ),
                     }
                 }
                 ty::ReVar(region_vid) if cx.identify_regions => {

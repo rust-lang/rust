@@ -66,7 +66,7 @@ use std::collections::hash_map::{self, Entry};
 use std::hash::{Hash, Hasher};
 use std::fmt;
 use std::mem;
-use std::ops::Deref;
+use std::ops::{Deref, Bound};
 use std::iter;
 use std::sync::mpsc;
 use std::sync::Arc;
@@ -829,10 +829,12 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
 impl<'tcx> CommonTypes<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>) -> CommonTypes<'tcx> {
         // Ensure our type representation does not grow
-        #[cfg(target_pointer_width = "64")]
-        assert!(mem::size_of::<ty::TyKind>() <= 24);
-        #[cfg(target_pointer_width = "64")]
-        assert!(mem::size_of::<ty::TyS>() <= 32);
+        #[cfg(all(not(stage0), target_pointer_width = "64"))]
+        #[allow(dead_code)]
+        static ASSERT_TY_KIND: () = [()][!(::std::mem::size_of::<ty::TyKind>() <= 24) as usize];
+        #[cfg(all(not(stage0), target_pointer_width = "64"))]
+        #[allow(dead_code)]
+        static ASSERT_TYS: () = [()][!(::std::mem::size_of::<ty::TyS>() <= 32) as usize];
 
         let mk = |sty| CtxtInterners::intern_ty(interners, interners, sty);
         let mk_region = |r| {
@@ -1081,6 +1083,26 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             bug!("Tried to overwrite interned Layout: {:?}", prev)
         }
         interned
+    }
+
+    /// Returns a range of the start/end indices specified with the
+    /// `rustc_layout_scalar_valid_range` attribute.
+    pub fn layout_scalar_valid_range(self, def_id: DefId) -> (Bound<u128>, Bound<u128>) {
+        let attrs = self.get_attrs(def_id);
+        let get = |name| {
+            let attr = match attrs.iter().find(|a| a.check_name(name)) {
+                Some(attr) => attr,
+                None => return Bound::Unbounded,
+            };
+            for meta in attr.meta_item_list().expect("rustc_layout_scalar_valid_range takes args") {
+                match meta.literal().expect("attribute takes lit").node {
+                    ast::LitKind::Int(a, _) => return Bound::Included(a),
+                    _ => span_bug!(attr.span, "rustc_layout_scalar_valid_range expects int arg"),
+                }
+            }
+            span_bug!(attr.span, "no arguments to `rustc_layout_scalar_valid_range` attribute");
+        };
+        (get("rustc_layout_scalar_valid_range_start"), get("rustc_layout_scalar_valid_range_end"))
     }
 
     pub fn lift<T: ?Sized + Lift<'tcx>>(self, value: &T) -> Option<T::Lifted> {

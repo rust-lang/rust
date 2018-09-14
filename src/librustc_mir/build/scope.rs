@@ -566,7 +566,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // We want `scopes[1]`, which is the `ParameterScope`.
         assert!(self.scopes.len() >= 2);
         assert!(match self.scopes[1].region_scope.data() {
-            region::ScopeData::Arguments(_) => true,
+            region::ScopeData::Arguments => true,
             _ => false,
         });
         self.scopes[1].region_scope

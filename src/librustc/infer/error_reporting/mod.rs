@@ -119,17 +119,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }
                 };
                 let scope_decorated_tag = match scope.data() {
-                    region::ScopeData::Node(_) => tag,
-                    region::ScopeData::CallSite(_) => "scope of call-site for function",
-                    region::ScopeData::Arguments(_) => "scope of function body",
-                    region::ScopeData::Destruction(_) => {
+                    region::ScopeData::Node => tag,
+                    region::ScopeData::CallSite => "scope of call-site for function",
+                    region::ScopeData::Arguments => "scope of function body",
+                    region::ScopeData::Destruction => {
                         new_string = format!("destruction scope surrounding {}", tag);
                         &new_string[..]
                     }
-                    region::ScopeData::Remainder(r) => {
+                    region::ScopeData::Remainder(first_statement_index) => {
                         new_string = format!(
                             "block suffix following statement {}",
-                            r.first_statement_index.index()
+                            first_statement_index.index()
                         );
                         &new_string[..]
                     }

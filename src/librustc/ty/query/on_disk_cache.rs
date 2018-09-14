@@ -11,8 +11,7 @@
 use dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 use errors::Diagnostic;
 use hir;
-use hir::def_id::{CrateNum, DefIndex, DefId, LocalDefId,
-                  RESERVED_FOR_INCR_COMP_CACHE, LOCAL_CRATE};
+use hir::def_id::{CrateNum, DefIndex, DefId, LocalDefId, LOCAL_CRATE};
 use hir::map::definitions::DefPathHash;
 use ich::{CachingSourceMapView, Fingerprint};
 use mir::{self, interpret};
@@ -566,7 +565,7 @@ impl<'a, 'tcx: 'a, 'x> ty_codec::TyDecoder<'a, 'tcx> for CacheDecoder<'a, 'tcx, 
         let tcx = self.tcx();
 
         let cache_key = ty::CReaderCacheKey {
-            cnum: RESERVED_FOR_INCR_COMP_CACHE,
+            cnum: CrateNum::ReservedForIncrCompCache,
             pos: shorthand,
         };
 

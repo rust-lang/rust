@@ -16,25 +16,53 @@ use std::fmt;
 use std::u32;
 
 newtype_index! {
-    pub struct CrateNum {
+    pub struct CrateId {
         ENCODABLE = custom
-        DEBUG_FORMAT = "crate{}",
+    }
+}
 
-        /// Item definitions in the currently-compiled crate would have the CrateNum
-        /// LOCAL_CRATE in their DefId.
-        const LOCAL_CRATE = 0,
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum CrateNum {
+    /// Virtual crate for builtin macros
+    // FIXME(jseyfried): this is also used for custom derives until proc-macro crates get
+    // `CrateNum`s.
+    BuiltinMacros,
+    /// A CrateNum value that indicates that something is wrong.
+    Invalid,
+    /// A special CrateNum that we use for the tcx.rcache when decoding from
+    /// the incr. comp. cache.
+    ReservedForIncrCompCache,
+    Index(CrateId),
+}
 
-        /// Virtual crate for builtin macros
-        // FIXME(jseyfried): this is also used for custom derives until proc-macro crates get
-        // `CrateNum`s.
-        const BUILTIN_MACROS_CRATE = CrateNum::MAX_AS_U32,
+impl ::std::fmt::Debug for CrateNum {
+    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        match self {
+            CrateNum::Index(id) => write!(fmt, "crate{}", id.private),
+            CrateNum::Invalid => write!(fmt, "invalid crate"),
+            CrateNum::BuiltinMacros => write!(fmt, "bultin macros crate"),
+            CrateNum::ReservedForIncrCompCache => write!(fmt, "crate for decoding incr comp cache"),
+        }
+    }
+}
 
-        /// A CrateNum value that indicates that something is wrong.
-        const INVALID_CRATE = CrateNum::MAX_AS_U32 - 1,
+/// Item definitions in the currently-compiled crate would have the CrateNum
+/// LOCAL_CRATE in their DefId.
+pub const LOCAL_CRATE: CrateNum = CrateNum::Index(CrateId::from_u32_const(0));
 
-        /// A special CrateNum that we use for the tcx.rcache when decoding from
-        /// the incr. comp. cache.
-        const RESERVED_FOR_INCR_COMP_CACHE = CrateNum::MAX_AS_U32 - 2,
+
+impl Idx for CrateNum {
+    #[inline]
+    fn new(value: usize) -> Self {
+        CrateNum::Index(Idx::new(value))
+    }
+
+    #[inline]
+    fn index(self) -> usize {
+        match self {
+            CrateNum::Index(idx) => Idx::index(idx),
+            _ => bug!("Tried to get crate index of {:?}", self),
+        }
     }
 }
 
@@ -43,12 +71,39 @@ impl CrateNum {
         CrateNum::from_usize(x)
     }
 
+    pub fn from_usize(x: usize) -> CrateNum {
+        CrateNum::Index(CrateId::from_usize(x))
+    }
+
+    pub fn from_u32(x: u32) -> CrateNum {
+        CrateNum::Index(CrateId::from_u32(x))
+    }
+
+    pub fn as_usize(self) -> usize {
+        match self {
+            CrateNum::Index(id) => id.as_usize(),
+            _ => bug!("tried to get index of nonstandard crate {:?}", self),
+        }
+    }
+
+    pub fn as_u32(self) -> u32 {
+        match self {
+            CrateNum::Index(id) => id.as_u32(),
+            _ => bug!("tried to get index of nonstandard crate {:?}", self),
+        }
+    }
+
     pub fn as_def_id(&self) -> DefId { DefId { krate: *self, index: CRATE_DEF_INDEX } }
 }
 
 impl fmt::Display for CrateNum {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.as_u32(), f)
+        match self {
+            CrateNum::Index(id) => fmt::Display::fmt(&id.private, f),
+            CrateNum::Invalid => write!(f, "invalid crate"),
+            CrateNum::BuiltinMacros => write!(f, "bultin macros crate"),
+            CrateNum::ReservedForIncrCompCache => write!(f, "crate for decoding incr comp cache"),
+        }
     }
 }
 

@@ -11,7 +11,7 @@
 use hair::*;
 use hair::cx::Cx;
 use hair::cx::to_ref::ToRef;
-use rustc::middle::region::{self, BlockRemainder};
+use rustc::middle::region;
 use rustc::hir;
 
 use rustc_data_structures::indexed_vec::Idx;
@@ -71,10 +71,10 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         // ignore for purposes of the MIR
                     }
                     hir::DeclKind::Local(ref local) => {
-                        let remainder_scope = region::Scope::Remainder(BlockRemainder {
-                            block: block_id,
-                            first_statement_index: region::FirstStatementIndex::new(index),
-                        });
+                        let remainder_scope = region::Scope::Remainder(
+                            block_id,
+                            region::FirstStatementIndex::new(index),
+                        );
 
                         let mut pattern = cx.pattern_from_hir(&local.pat);
 

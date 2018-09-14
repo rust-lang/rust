@@ -51,7 +51,7 @@ impl<'tcx> CFG<'tcx> {
                                              source_info: SourceInfo,
                                              region_scope: region::Scope) {
         if tcx.emit_end_regions() {
-            if let region::ScopeData::CallSite(_) = region_scope.data() {
+            if let region::ScopeData::CallSite = region_scope.data() {
                 // The CallSite scope (aka the root scope) is sort of weird, in that it is
                 // supposed to "separate" the "interior" and "exterior" of a closure. Being
                 // that, it is not really a part of the region hierarchy, but for some

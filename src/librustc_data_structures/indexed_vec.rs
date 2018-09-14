@@ -72,7 +72,8 @@ macro_rules! newtype_index {
         newtype_index!(
             // Leave out derives marker so we can use its absence to ensure it comes first
             @type         [$name]
-            @max          [::std::u32::MAX - 1]
+            // shave off 256 indices at the end to allow space for packing these indices into enums
+            @max          [0xFFFF_FF00]
             @vis          [$v]
             @debug_format ["{}"]);
     );
@@ -82,7 +83,8 @@ macro_rules! newtype_index {
         newtype_index!(
             // Leave out derives marker so we can use its absence to ensure it comes first
             @type         [$name]
-            @max          [::std::u32::MAX - 1]
+            // shave off 256 indices at the end to allow space for packing these indices into enums
+            @max          [0xFFFF_FF00]
             @vis          [$v]
             @debug_format ["{}"]
                           $($tokens)+);
@@ -97,6 +99,7 @@ macro_rules! newtype_index {
      @vis          [$v:vis]
      @debug_format [$debug_format:tt]) => (
         #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, $($derives),*)]
+        #[rustc_layout_scalar_valid_range_end($max)]
         $v struct $type {
             private: u32
         }
