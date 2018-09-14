@@ -250,6 +250,7 @@ mod prim_bool { }
 /// [`Default`]: default/trait.Default.html
 /// [`default()`]: default/trait.Default.html#tymethod.default
 ///
+#[unstable(feature = "never_type", issue = "35121")]
 mod prim_never { }
 
 #[doc(primitive = "char")]
