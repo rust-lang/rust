@@ -181,13 +181,32 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
             MODULE
         }
         STRUCT_KW => {
-            nominal::struct_def(p);
+            // test struct_items
+            // struct Foo;
+            // struct Foo {}
+            // struct Foo();
+            // struct Foo(String, usize);
+            // struct Foo {
+            //     a: i32,
+            //     b: f32,
+            // }
+            nominal::struct_def(p, STRUCT_KW);
             if p.at(SEMI) {
                 p.err_and_bump(
                     "expected item, found `;`\n\
                      consider removing this semicolon"
                 );
             }
+            STRUCT_DEF
+        }
+        IDENT if p.at_contextual_kw("union") => {
+            // test union_items
+            // union Foo {}
+            // union Foo {
+            //     a: i32,
+            //     b: f32,
+            // }
+            nominal::struct_def(p, UNION_KW);
             STRUCT_DEF
         }
         ENUM_KW => {
