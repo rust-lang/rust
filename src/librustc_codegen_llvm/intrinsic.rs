@@ -968,7 +968,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
     let i8p = tcx.mk_mut_ptr(tcx.types.i8);
     let fn_ty = tcx.mk_fn_ptr(ty::Binder::bind(tcx.mk_fn_sig(
         iter::once(i8p),
-        tcx.mk_nil(),
+        tcx.mk_unit(),
         false,
         hir::Unsafety::Unsafe,
         Abi::Rust

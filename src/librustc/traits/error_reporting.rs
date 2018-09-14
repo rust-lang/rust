@@ -661,7 +661,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         {
                             let predicate = trait_predicate.map_bound(|mut trait_pred| {
                                 trait_pred.trait_ref.substs = self.tcx.mk_substs_trait(
-                                    self.tcx.mk_nil(),
+                                    self.tcx.mk_unit(),
                                     &trait_pred.trait_ref.substs[1..],
                                 );
                                 trait_pred

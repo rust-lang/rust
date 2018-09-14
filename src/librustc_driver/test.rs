@@ -309,7 +309,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn t_nil(&self) -> Ty<'tcx> {
-        self.infcx.tcx.mk_nil()
+        self.infcx.tcx.mk_unit()
     }
 
     pub fn t_pair(&self, ty1: Ty<'tcx>, ty2: Ty<'tcx>) -> Ty<'tcx> {

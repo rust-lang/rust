@@ -518,7 +518,7 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let upvar_len = mir.upvar_decls.len();
-    let dummy_local = LocalDecl::new_internal(tcx.mk_nil(), mir.span);
+    let dummy_local = LocalDecl::new_internal(tcx.mk_unit(), mir.span);
 
     // Gather live locals and their indices replacing values in mir.local_decls with a dummy
     // to avoid changing local indices
@@ -656,7 +656,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
     // Replace the return variable
     mir.local_decls[RETURN_PLACE] = LocalDecl {
         mutability: Mutability::Mut,
-        ty: tcx.mk_nil(),
+        ty: tcx.mk_unit(),
         user_ty: None,
         name: None,
         source_info,

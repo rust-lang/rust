@@ -234,7 +234,7 @@ impl PrintContext {
             }
         }
         write!(f, ")")?;
-        if !output.is_nil() {
+        if !output.is_unit() {
             print!(f, self, write(" -> "), print_display(output))?;
         }
 

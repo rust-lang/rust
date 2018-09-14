@@ -167,7 +167,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             // the case of `!`, no return value is required, as the block will never return.
             let tcx = this.hir.tcx();
             let ty = destination.ty(&this.local_decls, tcx).to_ty(tcx);
-            if ty.is_nil() {
+            if ty.is_unit() {
                 // We only want to assign an implicit `()` as the return value of the block if the
                 // block does not diverge. (Otherwise, we may try to assign a unit to a `!`-type.)
                 this.cfg.push_assign_unit(block, source_info, destination);
