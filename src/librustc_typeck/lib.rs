@@ -224,7 +224,7 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 actual.output().skip_binder()
             } else {
                 // standard () main return type
-                tcx.mk_nil()
+                tcx.mk_unit()
             };
 
             let se_ty = tcx.mk_fn_ptr(ty::Binder::bind(

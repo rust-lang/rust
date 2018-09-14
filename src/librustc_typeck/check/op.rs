@@ -35,7 +35,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let ty = if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var()
                     && is_builtin_binop(lhs_ty, rhs_ty, op) {
             self.enforce_builtin_binop_types(lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
-            self.tcx.mk_nil()
+            self.tcx.mk_unit()
         } else {
             return_ty
         };

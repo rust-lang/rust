@@ -666,7 +666,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 // us to give better error messages (pointing to a usually better
                 // arm for inconsistent arms or to the whole match when a `()` type
                 // is required).
-                Expectation::ExpectHasType(ety) if ety != self.tcx.mk_nil() => ety,
+                Expectation::ExpectHasType(ety) if ety != self.tcx.mk_unit() => ety,
                 _ => self.next_ty_var(TypeVariableOrigin::MiscVariable(expr.span)),
             };
             CoerceMany::with_coercion_sites(coerce_first, arms)
@@ -687,14 +687,14 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             // Handle the fallback arm of a desugared if-let like a missing else.
             let is_if_let_fallback = match match_src {
                 hir::MatchSource::IfLetDesugar { contains_else_clause: false } => {
-                    i == arms.len() - 1 && arm_ty.is_nil()
+                    i == arms.len() - 1 && arm_ty.is_unit()
                 }
                 _ => false
             };
 
             if is_if_let_fallback {
                 let cause = self.cause(expr.span, ObligationCauseCode::IfExpressionWithNoElse);
-                assert!(arm_ty.is_nil());
+                assert!(arm_ty.is_unit());
                 coercion.coerce_forced_unit(self, &cause, &mut |_| (), true);
             } else {
                 let cause = self.cause(expr.span, ObligationCauseCode::MatchExpressionArm {

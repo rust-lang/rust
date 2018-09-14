@@ -118,7 +118,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 
     pub fn unit_ty(&mut self) -> Ty<'tcx> {
-        self.tcx.mk_nil()
+        self.tcx.mk_unit()
     }
 
     pub fn true_literal(&mut self) -> &'tcx ty::Const<'tcx> {

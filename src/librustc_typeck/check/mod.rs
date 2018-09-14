@@ -2808,9 +2808,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         } else {
             // is the missing argument of type `()`?
             let sugg_unit = if expected_arg_tys.len() == 1 && supplied_arg_count == 0 {
-                self.resolve_type_vars_if_possible(&expected_arg_tys[0]).is_nil()
+                self.resolve_type_vars_if_possible(&expected_arg_tys[0]).is_unit()
             } else if fn_inputs.len() == 1 && supplied_arg_count == 0 {
-                self.resolve_type_vars_if_possible(&fn_inputs[0]).is_nil()
+                self.resolve_type_vars_if_possible(&fn_inputs[0]).is_unit()
             } else {
                 false
             };
@@ -3918,7 +3918,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 for input in inputs {
                     self.check_expr(input);
                 }
-                tcx.mk_nil()
+                tcx.mk_unit()
             }
             hir::ExprKind::Break(destination, ref expr_opt) => {
                 if let Ok(target_id) = destination.target_id {
@@ -3945,7 +3945,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     } else {
                         // Otherwise, this is a break *without* a value. That's
                         // always legal, and is equivalent to `break ()`.
-                        e_ty = tcx.mk_nil();
+                        e_ty = tcx.mk_unit();
                         cause = self.misc(expr.span);
                     }
 
@@ -3958,7 +3958,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         if let Some(ref e) = *expr_opt {
                             coerce.coerce(self, &cause, e, e_ty);
                         } else {
-                            assert!(e_ty.is_nil());
+                            assert!(e_ty.is_unit());
                             coerce.coerce_forced_unit(self, &cause, &mut |_| (), true);
                         }
                     } else {
@@ -4052,7 +4052,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if lhs_ty.references_error() || rhs_ty.references_error() {
                     tcx.types.err
                 } else {
-                    tcx.mk_nil()
+                    tcx.mk_unit()
                 }
             }
             hir::ExprKind::If(ref cond, ref then_expr, ref opt_else_expr) => {
@@ -4081,7 +4081,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     self.diverges.set(Diverges::Maybe);
                 }
 
-                self.tcx.mk_nil()
+                self.tcx.mk_unit()
             }
             hir::ExprKind::Loop(ref body, _, source) => {
                 let coerce = match source {
@@ -4121,7 +4121,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // [1]
                     self.tcx.sess.delay_span_bug(body.span, "no coercion, but loop may not break");
                 }
-                ctxt.coerce.map(|c| c.complete(self)).unwrap_or(self.tcx.mk_nil())
+                ctxt.coerce.map(|c| c.complete(self)).unwrap_or(self.tcx.mk_unit())
             }
             hir::ExprKind::Match(ref discrim, ref arms, match_src) => {
                 self.check_match(expr, &discrim, arms, expected, match_src)
@@ -4352,7 +4352,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         "yield statement outside of generator literal").emit();
                     }
                 }
-                tcx.mk_nil()
+                tcx.mk_unit()
             }
         }
     }
@@ -4516,7 +4516,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             hir::StmtKind::Expr(ref expr, _) => {
                 // Check with expected type of ()
-                self.check_expr_has_type_or_error(&expr, self.tcx.mk_nil());
+                self.check_expr_has_type_or_error(&expr, self.tcx.mk_unit());
             }
             hir::StmtKind::Semi(ref expr, _) => {
                 self.check_expr(&expr);
@@ -4529,7 +4529,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_block_no_value(&self, blk: &'gcx hir::Block)  {
-        let unit = self.tcx.mk_nil();
+        let unit = self.tcx.mk_unit();
         let ty = self.check_block_with_expected(blk, ExpectHasType(unit));
 
         // if the block produces a `!` value, that can always be
@@ -4752,7 +4752,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                  expression: &'gcx hir::Expr,
                                  expected: Ty<'tcx>,
                                  cause_span: Span) {
-        if expected.is_nil() {
+        if expected.is_unit() {
             // `BlockTailExpression` only relevant if the tail expr would be
             // useful on its own.
             match expression.node {
@@ -4795,7 +4795,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                    can_suggest: bool) {
         // Only suggest changing the return type for methods that
         // haven't set a return type at all (and aren't `fn main()` or an impl).
-        match (&fn_decl.output, found.is_suggestable(), can_suggest, expected.is_nil()) {
+        match (&fn_decl.output, found.is_suggestable(), can_suggest, expected.is_unit()) {
             (&hir::FunctionRetTy::DefaultReturn(span), true, true, true) => {
                 err.span_suggestion_with_applicability(
                     span,

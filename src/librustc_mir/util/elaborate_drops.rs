@@ -529,7 +529,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             mutbl: hir::Mutability::MutMutable
         });
         let ref_place = self.new_temp(ref_ty);
-        let unit_temp = Place::Local(self.new_temp(tcx.mk_nil()));
+        let unit_temp = Place::Local(self.new_temp(tcx.mk_unit()));
 
         let result = BasicBlockData {
             statements: vec![self.assign(
@@ -891,7 +891,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         unwind: Unwind
     ) -> BasicBlock {
         let tcx = self.tcx();
-        let unit_temp = Place::Local(self.new_temp(tcx.mk_nil()));
+        let unit_temp = Place::Local(self.new_temp(tcx.mk_unit()));
         let free_func = tcx.require_lang_item(lang_items::BoxFreeFnLangItem);
         let args = adt.variants[0].fields.iter().enumerate().map(|(i, f)| {
             let field = Field::new(i);

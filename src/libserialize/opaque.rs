@@ -55,7 +55,7 @@ impl serialize::Encoder for Encoder {
     type Error = !;
 
     #[inline]
-    fn emit_nil(&mut self) -> EncodeResult {
+    fn emit_unit(&mut self) -> EncodeResult {
         Ok(())
     }
 
