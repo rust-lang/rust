@@ -149,7 +149,7 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
                 let tp_ty = substs.type_at(0);
                 if let OperandValue::Pair(_, meta) = args[0].val {
                     let (llsize, _) =
-                        glue::size_and_align_of_dst(&self, tp_ty, Some(meta));
+                        glue::size_and_align_of_dst(self, tp_ty, Some(meta));
                     llsize
                 } else {
                     cx.const_usize(cx.size_of(tp_ty).bytes())
@@ -163,7 +163,7 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
                 let tp_ty = substs.type_at(0);
                 if let OperandValue::Pair(_, meta) = args[0].val {
                     let (_, llalign) =
-                        glue::size_and_align_of_dst(&self, tp_ty, Some(meta));
+                        glue::size_and_align_of_dst(self, tp_ty, Some(meta));
                     llalign
                 } else {
                     cx.const_usize(cx.align_of(tp_ty).abi())
@@ -341,9 +341,9 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
                                     cx.type_bool()
                                 );
 
-                                let dest = result.project_field(&self, 0);
+                                let dest = result.project_field(self, 0);
                                 &self.store(val, dest.llval, dest.align);
-                                let dest = result.project_field(&self, 1);
+                                let dest = result.project_field(self, 1);
                                 &self.store(overflow, dest.llval, dest.align);
 
                                 return;
@@ -481,9 +481,9 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
                                 &self.cx().type_bool()
                             );
 
-                            let dest = result.project_field(&self, 0);
+                            let dest = result.project_field(self, 0);
                             &self.store(val, dest.llval, dest.align);
-                            let dest = result.project_field(&self, 1);
+                            let dest = result.project_field(self, 1);
                             &self.store(success, dest.llval, dest.align);
                             return;
                         } else {
@@ -639,7 +639,7 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
                             };
                             let arg = PlaceRef::new_sized(ptr, arg.layout, align);
                             (0..contents.len()).map(|i| {
-                                arg.project_field(bx, i).load(bx).immediate()
+                                bx.load_ref(&arg.project_field(bx, i)).immediate()
                             }).collect()
                         }
                         intrinsics::Type::Pointer(_, Some(ref llvm_elem), _) => {
@@ -690,7 +690,7 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
                         assert!(!flatten);
 
                         for i in 0..elems.len() {
-                            let dest = result.project_field(&self, i);
+                            let dest = result.project_field(self, i);
                             let val = &self.extract_value(val, i as u64);
                             &self.store(val, dest.llval, dest.align);
                         }
@@ -707,7 +707,7 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
                 &self.store(llval, ptr, result.align);
             } else {
                 OperandRef::from_immediate_or_packed_pair(&self, llval, result.layout)
-                    .val.store(&self, result);
+                    .val.store(self, result);
             }
         }
     }

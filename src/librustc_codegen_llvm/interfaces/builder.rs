@@ -16,6 +16,8 @@ use rustc::session::Session;
 use builder::MemFlags;
 use super::backend::Backend;
 use super::CodegenMethods;
+use mir::place::PlaceRef;
+use mir::operand::OperandRef;
 
 use std::borrow::Cow;
 use std::ops::Range;
@@ -228,6 +230,10 @@ pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> {
         ptr: <Self::CodegenCx as Backend>::Value,
         order: AtomicOrdering, align: Align
     ) -> <Self::CodegenCx as Backend>::Value;
+    fn load_ref(
+        &self,
+        &PlaceRef<'tcx,<Self::CodegenCx as Backend>::Value>
+    ) -> OperandRef<'tcx, <Self::CodegenCx as Backend>::Value>;
 
     fn range_metadata(&self, load: <Self::CodegenCx as Backend>::Value, range: Range<u128>);
     fn nonnull_metadata(&self, load: <Self::CodegenCx as Backend>::Value);

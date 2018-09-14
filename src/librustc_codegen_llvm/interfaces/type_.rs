@@ -85,6 +85,8 @@ pub trait DerivedTypeMethods<'tcx> : Backend {
 
 pub trait LayoutTypeMethods<'tcx> : Backend {
     fn backend_type(&self, ty: &TyLayout<'tcx>) -> Self::Type;
+    fn immediate_backend_type(&self, ty: &TyLayout<'tcx>) -> Self::Type;
+    fn is_backend_immediate(&self, ty: &TyLayout<'tcx>) -> bool;
     fn scalar_pair_element_backend_type<'a>(
         &self,
         ty: &TyLayout<'tcx>,
@@ -93,4 +95,5 @@ pub trait LayoutTypeMethods<'tcx> : Backend {
     ) -> Self::Type;
 }
 
-pub trait TypeMethods<'a, 'tcx: 'a> : BaseTypeMethods<'a, 'tcx> + DerivedTypeMethods<'tcx> + LayoutTypeMethods<'tcx> {}
+pub trait TypeMethods<'a, 'tcx: 'a> :
+    BaseTypeMethods<'a, 'tcx> + DerivedTypeMethods<'tcx> + LayoutTypeMethods<'tcx> {}

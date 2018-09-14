@@ -52,11 +52,11 @@ impl<'a, 'tcx> VirtualIndex {
         ptr
     }
 
-    pub fn get_usize(
+    pub fn get_usize<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         self,
-        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-        llvtable: &'ll Value
-    ) -> &'ll Value {
+        bx: &Bx,
+        llvtable: <Bx::CodegenCx as Backend>::Value
+    ) -> <Bx::CodegenCx as Backend>::Value {
         // Load the data pointer from the object.
         debug!("get_int({:?}, {:?})", llvtable, self);
 

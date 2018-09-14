@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::fmt::Debug;
+use super::CodegenObject;
 
 pub trait Backend {
-    type Value : Debug + PartialEq + Copy;
+    type Value : CodegenObject;
     type BasicBlock;
-    type Type : Debug + PartialEq + Copy;
+    type Type : CodegenObject;
     type Context;
 }

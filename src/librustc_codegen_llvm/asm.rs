@@ -37,11 +37,11 @@ pub fn codegen_inline_asm(
     let mut indirect_outputs = vec![];
     for (i, (out, place)) in ia.outputs.iter().zip(&outputs).enumerate() {
         if out.is_rw {
-            inputs.push(place.load(bx).immediate());
+            inputs.push(bx.load_ref(place).immediate());
             ext_constraints.push(i.to_string());
         }
         if out.is_indirect {
-            indirect_outputs.push(place.load(bx).immediate());
+            indirect_outputs.push(bx.load_ref(place).immediate());
         } else {
             output_types.push(place.layout.llvm_type(bx.cx()));
         }

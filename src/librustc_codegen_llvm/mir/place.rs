@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{self, LLVMConstInBoundsGEP};
+use llvm::LLVMConstInBoundsGEP;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, Size};
+use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, Size, HasTyCtxt};
 use rustc::mir;
 use rustc::mir::tcx::PlaceTy;
-use base;
 use builder::Builder;
 use common::{CodegenCx, IntPredicate};
 use type_of::LayoutLlvmExt;
@@ -24,7 +23,7 @@ use mir::constant::const_alloc_to_llvm;
 use interfaces::*;
 
 use super::{FunctionCx, LocalRef};
-use super::operand::{OperandRef, OperandValue};
+use super::operand::OperandValue;
 
 #[derive(Copy, Clone, Debug)]
 pub struct PlaceRef<'tcx, V> {
@@ -108,74 +107,18 @@ impl PlaceRef<'tcx, &'ll Value> {
         }
     }
 
-    pub fn load(&self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>) -> OperandRef<'tcx, &'ll Value> {
-        debug!("PlaceRef::load: {:?}", self);
+}
 
-        assert_eq!(self.llextra.is_some(), self.layout.is_unsized());
-
-        if self.layout.is_zst() {
-            return OperandRef::new_zst(bx.cx(), self.layout);
-        }
-
-        let scalar_load_metadata = |load, scalar: &layout::Scalar| {
-            let vr = scalar.valid_range.clone();
-            match scalar.value {
-                layout::Int(..) => {
-                    let range = scalar.valid_range_exclusive(bx.cx());
-                    if range.start != range.end {
-                        bx.range_metadata(load, range);
-                    }
-                }
-                layout::Pointer if vr.start() < vr.end() && !vr.contains(&0) => {
-                    bx.nonnull_metadata(load);
-                }
-                _ => {}
-            }
-        };
-
-        let val = if let Some(llextra) = self.llextra {
-            OperandValue::Ref(self.llval, Some(llextra), self.align)
-        } else if self.layout.is_llvm_immediate() {
-            let mut const_llval = None;
-            unsafe {
-                if let Some(global) = llvm::LLVMIsAGlobalVariable(self.llval) {
-                    if llvm::LLVMIsGlobalConstant(global) == llvm::True {
-                        const_llval = llvm::LLVMGetInitializer(global);
-                    }
-                }
-            }
-            let llval = const_llval.unwrap_or_else(|| {
-                let load = bx.load(self.llval, self.align);
-                if let layout::Abi::Scalar(ref scalar) = self.layout.abi {
-                    scalar_load_metadata(load, scalar);
-                }
-                load
-            });
-            OperandValue::Immediate(base::to_immediate(bx, llval, self.layout))
-        } else if let layout::Abi::ScalarPair(ref a, ref b) = self.layout.abi {
-            let load = |i, scalar: &layout::Scalar| {
-                let llptr = bx.struct_gep(self.llval, i as u64);
-                let load = bx.load(llptr, self.align);
-                scalar_load_metadata(load, scalar);
-                if scalar.is_bool() {
-                    bx.trunc(load, bx.cx().type_i1())
-                } else {
-                    load
-                }
-            };
-            OperandValue::Pair(load(0, a), load(1, b))
-        } else {
-            OperandValue::Ref(self.llval, None, self.align)
-        };
-
-        OperandRef { val, layout: self.layout }
-    }
-
+impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> PlaceRef<'tcx, V> {
     /// Access a field, at a point when the value's case is known.
-    pub fn project_field(
-        self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+    pub fn project_field<Bx: BuilderMethods<'a, 'll, 'tcx>>(
+        self, bx: &Bx,
         ix: usize
-    ) -> PlaceRef<'tcx, &'ll Value> {
+    ) -> PlaceRef<'tcx, <Bx::CodegenCx as Backend>::Value>
+        where
+            Bx::CodegenCx : Backend<Value = V>,
+            &'a Bx::CodegenCx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+    {
         let cx = bx.cx();
         let field = self.layout.field(cx, ix);
         let offset = self.layout.fields.offset(ix);
@@ -194,7 +137,7 @@ impl PlaceRef<'tcx, &'ll Value> {
             };
             PlaceRef {
                 // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-                llval: bx.pointercast(llval, cx.type_ptr_to(field.llvm_type(cx))),
+                llval: bx.pointercast(llval, cx.type_ptr_to(cx.backend_type(&field))),
                 llextra: if cx.type_has_metadata(field.ty) {
                     self.llextra
                 } else {
@@ -267,7 +210,7 @@ impl PlaceRef<'tcx, &'ll Value> {
         let byte_ptr = bx.gep(byte_ptr, &[offset]);
 
         // Finally, cast back to the type expected
-        let ll_fty = field.llvm_type(cx);
+        let ll_fty = cx.backend_type(&field);
         debug!("struct_field_ptr: Field type is {:?}", ll_fty);
 
         PlaceRef {
@@ -277,6 +220,9 @@ impl PlaceRef<'tcx, &'ll Value> {
             align: effective_field_align,
         }
     }
+}
+
+impl PlaceRef<'tcx, &'ll Value> {
 
     /// Obtain the actual discriminant of a value.
     pub fn codegen_get_discr(
@@ -300,7 +246,7 @@ impl PlaceRef<'tcx, &'ll Value> {
         }
 
         let discr = self.project_field(bx, 0);
-        let lldiscr = discr.load(bx).immediate();
+        let lldiscr = bx.load_ref(&discr).immediate();
         match self.layout.variants {
             layout::Variants::Single { .. } => bug!(),
             layout::Variants::Tagged { ref tag, .. } => {
@@ -451,7 +397,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                     return place;
                 }
                 LocalRef::UnsizedPlace(place) => {
-                    return place.load(bx).deref(&cx);
+                    return bx.load_ref(&place).deref(&cx);
                 }
                 LocalRef::Operand(..) => {
                     bug!("using operand local {:?} as place", place);

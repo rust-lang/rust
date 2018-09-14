@@ -66,7 +66,7 @@ use monomorphize::partitioning::{self, PartitioningStrategy, CodegenUnit, Codege
 use rustc_codegen_utils::symbol_names_test;
 use time_graph;
 use mono_item::{MonoItem, BaseMonoItemExt, MonoItemExt};
-use type_of::LayoutLlvmExt;
+
 use rustc::util::nodemap::{FxHashMap, DefIdSet};
 use CrateInfo;
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -274,22 +274,23 @@ pub fn unsize_thin_ptr<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>
 
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
-pub fn coerce_unsized_into(
-    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-    src: PlaceRef<'tcx, &'ll Value>,
-    dst: PlaceRef<'tcx, &'ll Value>
-) {
+pub fn coerce_unsized_into<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
+    bx: &Bx,
+    src: PlaceRef<'tcx, <Bx::CodegenCx as Backend>::Value>,
+    dst: PlaceRef<'tcx, <Bx::CodegenCx as Backend>::Value>
+) where &'a Bx::CodegenCx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     let src_ty = src.layout.ty;
     let dst_ty = dst.layout.ty;
     let coerce_ptr = || {
-        let (base, info) = match src.load(bx).val {
+        let (base, info) = match bx.load_ref(&src).val {
             OperandValue::Pair(base, info) => {
                 // fat-ptr to fat-ptr unsize preserves the vtable
                 // i.e. &'a fmt::Debug+Send => &'a fmt::Debug
                 // So we need to pointercast the base to ensure
                 // the types match up.
                 let thin_ptr = dst.layout.field(bx.cx(), abi::FAT_PTR_ADDR);
-                (bx.pointercast(base, thin_ptr.llvm_type(bx.cx())), info)
+                (bx.pointercast(base, bx.cx().backend_type(&thin_ptr)), info)
             }
             OperandValue::Immediate(base) => {
                 unsize_thin_ptr(bx, base, src_ty, dst_ty)

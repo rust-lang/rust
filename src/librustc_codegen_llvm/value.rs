@@ -12,6 +12,7 @@ pub use llvm::Value;
 
 use llvm;
 
+use interfaces::CodegenObject;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
@@ -20,6 +21,8 @@ impl PartialEq for Value {
         self as *const _ == other as *const _
     }
 }
+
+impl<'ll> CodegenObject for &'ll Value {}
 
 impl Eq for Value {}
 

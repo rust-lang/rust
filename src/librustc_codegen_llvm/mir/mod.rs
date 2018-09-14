@@ -566,7 +566,7 @@ fn arg_local_refs(
             let indirect_operand = OperandValue::Pair(llarg, llextra);
 
             let tmp = PlaceRef::alloca_unsized_indirect(bx, arg.layout, &name);
-            indirect_operand.store(&bx, tmp);
+            indirect_operand.store(bx, tmp);
             tmp
         } else {
             let tmp = PlaceRef::alloca(bx, arg.layout, &name);

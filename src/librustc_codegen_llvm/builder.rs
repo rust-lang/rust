@@ -13,15 +13,18 @@ use llvm::{self, False, OperandBundleDef, BasicBlock};
 use common::{self, *};
 use context::CodegenCx;
 use type_::Type;
+use type_of::LayoutLlvmExt;
 use value::Value;
 use libc::{c_uint, c_char};
 use rustc::ty::TyCtxt;
-use rustc::ty::layout::{Align, Size};
+use rustc::ty::layout::{self, Align, Size};
 use rustc::session::{config, Session};
 use rustc_data_structures::small_c_str::SmallCStr;
 use interfaces::*;
 use syntax;
-
+use base;
+use mir::operand::{OperandValue, OperandRef};
+use mir::place::PlaceRef;
 use std::borrow::Cow;
 use std::ops::Range;
 use std::ptr;
@@ -532,6 +535,73 @@ impl BuilderMethods<'a, 'll, 'tcx>
             load
         }
     }
+
+    fn load_ref(
+        &self,
+        ptr: &PlaceRef<'tcx, &'ll Value>
+    ) -> OperandRef<'tcx, &'ll Value> {
+        debug!("PlaceRef::load: {:?}", ptr);
+
+        assert_eq!(ptr.llextra.is_some(), ptr.layout.is_unsized());
+
+        if ptr.layout.is_zst() {
+            return OperandRef::new_zst(self.cx(), ptr.layout);
+        }
+
+        let scalar_load_metadata = |load, scalar: &layout::Scalar| {
+            let vr = scalar.valid_range.clone();
+            match scalar.value {
+                layout::Int(..) => {
+                    let range = scalar.valid_range_exclusive(self.cx());
+                    if range.start != range.end {
+                        &self.range_metadata(load, range);
+                    }
+                }
+                layout::Pointer if vr.start() < vr.end() && !vr.contains(&0) => {
+                    &self.nonnull_metadata(load);
+                }
+                _ => {}
+            }
+        };
+
+        let val = if let Some(llextra) = ptr.llextra {
+            OperandValue::Ref(ptr.llval, Some(llextra), ptr.align)
+        } else if ptr.layout.is_llvm_immediate() {
+            let mut const_llval = None;
+            unsafe {
+                if let Some(global) = llvm::LLVMIsAGlobalVariable(ptr.llval) {
+                    if llvm::LLVMIsGlobalConstant(global) == llvm::True {
+                        const_llval = llvm::LLVMGetInitializer(global);
+                    }
+                }
+            }
+            let llval = const_llval.unwrap_or_else(|| {
+                let load = &self.load(ptr.llval, ptr.align);
+                if let layout::Abi::Scalar(ref scalar) = ptr.layout.abi {
+                    scalar_load_metadata(load, scalar);
+                }
+                load
+            });
+            OperandValue::Immediate(base::to_immediate(self, llval, ptr.layout))
+        } else if let layout::Abi::ScalarPair(ref a, ref b) = ptr.layout.abi {
+            let load = |i, scalar: &layout::Scalar| {
+                let llptr = self.struct_gep(ptr.llval, i as u64);
+                let load = self.load(llptr, ptr.align);
+                scalar_load_metadata(load, scalar);
+                if scalar.is_bool() {
+                    self.trunc(load, self.cx().type_i1())
+                } else {
+                    load
+                }
+            };
+            OperandValue::Pair(load(0, a), load(1, b))
+        } else {
+            OperandValue::Ref(ptr.llval, None, ptr.align)
+        };
+
+        OperandRef { val, layout: ptr.layout }
+    }
+
 
 
     fn range_metadata(&self, load: &'ll Value, range: Range<u128>) {

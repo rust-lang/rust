@@ -47,6 +47,8 @@ impl fmt::Debug for Type {
     }
 }
 
+impl<'ll> CodegenObject for &'ll Type {}
+
 impl BaseTypeMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
 
     fn type_void(&self) -> &'ll Type {
@@ -404,6 +406,12 @@ impl DerivedTypeMethods<'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
 impl LayoutTypeMethods<'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
     fn backend_type(&self, ty: &TyLayout<'tcx>) -> &'ll Type {
         ty.llvm_type(&self)
+    }
+    fn immediate_backend_type(&self, ty: &TyLayout<'tcx>) -> &'ll Type {
+        ty.immediate_llvm_type(&self)
+    }
+    fn is_backend_immediate(&self, ty: &TyLayout<'tcx>) -> bool {
+        ty.is_llvm_immediate()
     }
     fn scalar_pair_element_backend_type<'a>(
         &self,

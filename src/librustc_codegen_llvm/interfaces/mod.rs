@@ -26,6 +26,10 @@ pub use self::statics::StaticMethods;
 pub use self::misc::MiscMethods;
 pub use self::debuginfo::DebugInfoMethods;
 
+use std::fmt;
+
 pub trait CodegenMethods<'ll, 'tcx: 'll> :
     Backend + TypeMethods<'ll, 'tcx> + MiscMethods<'tcx> + ConstMethods +
     StaticMethods<'tcx> + DebugInfoMethods<'tcx> {}
+
+pub trait CodegenObject : Copy + PartialEq + fmt::Debug {}
