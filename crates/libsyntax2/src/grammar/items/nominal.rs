@@ -1,8 +1,8 @@
 use super::*;
 
-pub(super) fn struct_def(p: &mut Parser) {
-    assert!(p.at(STRUCT_KW));
-    p.bump();
+pub(super) fn struct_def(p: &mut Parser, kind: SyntaxKind) {
+    assert!(p.at(STRUCT_KW) || p.at_contextual_kw("union"));
+    p.bump_remap(kind);
 
     name_r(p, ITEM_RECOVERY_SET);
     type_params::opt_type_param_list(p);
@@ -22,17 +22,21 @@ pub(super) fn struct_def(p: &mut Parser) {
                 }
             }
         }
-        SEMI => {
+        SEMI if kind == STRUCT_KW => {
             p.bump();
             return;
         }
         L_CURLY => named_field_def_list(p),
-        L_PAREN => {
+        L_PAREN if kind == STRUCT_KW => {
             pos_field_list(p);
             p.expect(SEMI);
         }
-        _ => {
+        _ if kind == STRUCT_KW => {
             p.error("expected `;`, `{`, or `(`");
+            return;
+        }
+        _ => {
+            p.error("expected `{`");
             return;
         }
     }
