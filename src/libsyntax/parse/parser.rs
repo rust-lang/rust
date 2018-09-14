@@ -733,7 +733,7 @@ impl<'a> Parser<'a> {
             };
             let mut err = self.fatal(&msg_exp);
             if self.token.is_ident_named("and") {
-                err.span_suggestion_with_applicability(
+                err.span_suggestion_short_with_applicability(
                     self.span,
                     "use `&&` instead of `and` for the boolean operator",
                     "&&".to_string(),
@@ -741,7 +741,7 @@ impl<'a> Parser<'a> {
                 );
             }
             if self.token.is_ident_named("or") {
-                err.span_suggestion_with_applicability(
+                err.span_suggestion_short_with_applicability(
                     self.span,
                     "use `||` instead of `or` for the boolean operator",
                     "||".to_string(),
@@ -4768,7 +4768,7 @@ impl<'a> Parser<'a> {
             }
 
             if self.token.is_ident_named("and") {
-                e.span_suggestion_with_applicability(
+                e.span_suggestion_short_with_applicability(
                     self.span,
                     "use `&&` instead of `and` for the boolean operator",
                     "&&".to_string(),
@@ -4776,7 +4776,7 @@ impl<'a> Parser<'a> {
                 );
             }
             if self.token.is_ident_named("or") {
-                e.span_suggestion_with_applicability(
+                e.span_suggestion_short_with_applicability(
                     self.span,
                     "use `||` instead of `or` for the boolean operator",
                     "||".to_string(),
