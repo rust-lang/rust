@@ -59,4 +59,12 @@ fn main() {
     bar::io::stdout();
     bar::std();
     bar::std!();
+
+    {
+        // Test that having `io` in a module scope and a non-module
+        // scope is allowed, when both resolve to the same definition.
+        use std::io;
+        use io::stdout;
+        stdout();
+    }
 }
