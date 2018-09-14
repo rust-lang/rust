@@ -15,7 +15,7 @@
 
 use rustc::mir::{BasicBlock, Location};
 use rustc::ty::RegionVid;
-use rustc_data_structures::bitvec::BitIter;
+use rustc_data_structures::bit_set::BitIter;
 
 use borrow_check::location::LocationIndex;
 

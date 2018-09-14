@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use bitvec::BitMatrix;
+use bit_set::BitMatrix;
 use fx::FxHashMap;
 use sync::Lock;
 use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
@@ -279,7 +279,7 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
             //
             // This same algorithm is used in `parents` below.
 
-            let mut candidates = closure.intersection(a.0, b.0); // (1)
+            let mut candidates = closure.intersect_rows(a.0, b.0); // (1)
             pare_down(&mut candidates, closure); // (2)
             candidates.reverse(); // (3a)
             pare_down(&mut candidates, closure); // (3b)
@@ -321,7 +321,7 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
         // with a slight tweak. In the case where `a R a`, we remove
         // that from the set of candidates.
         let ancestors = self.with_closure(|closure| {
-            let mut ancestors = closure.intersection(a.0, a.0);
+            let mut ancestors = closure.intersect_rows(a.0, a.0);
 
             // Remove anything that can reach `a`. If this is a
             // reflexive relation, this will include `a` itself.
@@ -366,10 +366,10 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
             changed = false;
             for edge in &self.edges {
                 // add an edge from S -> T
-                changed |= matrix.add(edge.source.0, edge.target.0);
+                changed |= matrix.insert(edge.source.0, edge.target.0);
 
                 // add all outgoing edges from T into S
-                changed |= matrix.merge(edge.target.0, edge.source.0);
+                changed |= matrix.union_rows(edge.target.0, edge.source.0);
             }
         }
         matrix

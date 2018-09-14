@@ -49,14 +49,14 @@ use util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};
 use util::common::{ErrorReported};
 use util::profiling::ProfileCategory::*;
 
-use rustc_data_structures::indexed_set::IdxSet;
-use rustc_target::spec::PanicStrategy;
+use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::StableVec;
+use rustc_data_structures::sync::Lrc;
+use rustc_target::spec::PanicStrategy;
 
 use std::ops::Deref;
-use rustc_data_structures::sync::Lrc;
 use std::sync::Arc;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::symbol::InternedString;
@@ -208,7 +208,7 @@ define_queries! { <'tcx>
         /// Maps DefId's that have an associated Mir to the result
         /// of the MIR qualify_consts pass. The actual meaning of
         /// the value isn't known except to the pass itself.
-        [] fn mir_const_qualif: MirConstQualif(DefId) -> (u8, Lrc<IdxSet<mir::Local>>),
+        [] fn mir_const_qualif: MirConstQualif(DefId) -> (u8, Lrc<BitSet<mir::Local>>),
 
         /// Fetch the MIR for a given def-id right after it's built - this includes
         /// unreachable code.

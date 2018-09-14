@@ -17,7 +17,7 @@ use rustc::mir::{self, Location, Mir, Place, Local};
 use rustc::ty::{Region, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::bitvec::BitArray;
+use rustc_data_structures::bit_set::BitSet;
 use std::fmt;
 use std::hash::Hash;
 use std::ops::Index;
@@ -102,7 +102,7 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
 
 crate enum LocalsStateAtExit {
     AllAreInvalidated,
-    SomeAreInvalidated { has_storage_dead_or_moved: BitArray<Local> }
+    SomeAreInvalidated { has_storage_dead_or_moved: BitSet<Local> }
 }
 
 impl LocalsStateAtExit {
@@ -111,7 +111,7 @@ impl LocalsStateAtExit {
         mir: &Mir<'tcx>,
         move_data: &MoveData<'tcx>
     ) -> Self {
-        struct HasStorageDead(BitArray<Local>);
+        struct HasStorageDead(BitSet<Local>);
 
         impl<'tcx> Visitor<'tcx> for HasStorageDead {
             fn visit_local(&mut self, local: &Local, ctx: PlaceContext<'tcx>, _: Location) {
@@ -124,7 +124,7 @@ impl LocalsStateAtExit {
         if locals_are_invalidated_at_exit {
             LocalsStateAtExit::AllAreInvalidated
         } else {
-            let mut has_storage_dead = HasStorageDead(BitArray::new(mir.local_decls.len()));
+            let mut has_storage_dead = HasStorageDead(BitSet::new_empty(mir.local_decls.len()));
             has_storage_dead.visit_mir(mir);
             let mut has_storage_dead_or_moved = has_storage_dead.0;
             for move_out in &move_data.moves {

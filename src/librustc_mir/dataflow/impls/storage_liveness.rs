@@ -36,7 +36,7 @@ impl<'a, 'tcx> BitDenotation for MaybeStorageLive<'a, 'tcx> {
         self.mir.local_decls.len()
     }
 
-    fn start_block_effect(&self, _sets: &mut IdxSet<Local>) {
+    fn start_block_effect(&self, _sets: &mut BitSet<Local>) {
         // Nothing is live on function entry
     }
 
@@ -46,8 +46,8 @@ impl<'a, 'tcx> BitDenotation for MaybeStorageLive<'a, 'tcx> {
         let stmt = &self.mir[loc.block].statements[loc.statement_index];
 
         match stmt.kind {
-            StatementKind::StorageLive(l) => sets.gen(&l),
-            StatementKind::StorageDead(l) => sets.kill(&l),
+            StatementKind::StorageLive(l) => sets.gen(l),
+            StatementKind::StorageDead(l) => sets.kill(l),
             _ => (),
         }
     }
@@ -59,7 +59,7 @@ impl<'a, 'tcx> BitDenotation for MaybeStorageLive<'a, 'tcx> {
     }
 
     fn propagate_call_return(&self,
-                             _in_out: &mut IdxSet<Local>,
+                             _in_out: &mut BitSet<Local>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
                              _dest_place: &mir::Place) {

@@ -11,7 +11,7 @@
 //! An analysis to determine which locals require allocas and
 //! which do not.
 
-use rustc_data_structures::bitvec::BitArray;
+use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::mir::{self, Location, TerminatorKind};
@@ -22,7 +22,7 @@ use rustc::ty::layout::LayoutOf;
 use type_of::LayoutLlvmExt;
 use super::FunctionCx;
 
-pub fn non_ssa_locals(fx: &FunctionCx<'a, 'll, 'tcx>) -> BitArray<mir::Local> {
+pub fn non_ssa_locals(fx: &FunctionCx<'a, 'll, 'tcx>) -> BitSet<mir::Local> {
     let mir = fx.mir;
     let mut analyzer = LocalAnalyzer::new(fx);
 
@@ -54,7 +54,7 @@ pub fn non_ssa_locals(fx: &FunctionCx<'a, 'll, 'tcx>) -> BitArray<mir::Local> {
 struct LocalAnalyzer<'mir, 'a: 'mir, 'll: 'a, 'tcx: 'll> {
     fx: &'mir FunctionCx<'a, 'll, 'tcx>,
     dominators: Dominators<mir::BasicBlock>,
-    non_ssa_locals: BitArray<mir::Local>,
+    non_ssa_locals: BitSet<mir::Local>,
     // The location of the first visited direct assignment to each
     // local, or an invalid location (out of bounds `block` index).
     first_assignment: IndexVec<mir::Local, Location>
@@ -67,7 +67,7 @@ impl LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
         let mut analyzer = LocalAnalyzer {
             fx,
             dominators: fx.mir.dominators(),
-            non_ssa_locals: BitArray::new(fx.mir.local_decls.len()),
+            non_ssa_locals: BitSet::new_empty(fx.mir.local_decls.len()),
             first_assignment: IndexVec::from_elem(invalid_location, &fx.mir.local_decls)
         };
 

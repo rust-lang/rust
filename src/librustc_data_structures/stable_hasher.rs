@@ -457,7 +457,7 @@ impl<I: ::indexed_vec::Idx, T, CTX> HashStable<CTX> for ::indexed_vec::IndexVec<
 }
 
 
-impl<I: ::indexed_vec::Idx, CTX> HashStable<CTX> for ::indexed_set::IdxSet<I>
+impl<I: ::indexed_vec::Idx, CTX> HashStable<CTX> for ::bit_set::BitSet<I>
 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           ctx: &mut CTX,

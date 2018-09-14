@@ -26,8 +26,8 @@ use rustc::mir::{
 };
 use rustc::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common;
+use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::graph::scc::Sccs;
-use rustc_data_structures::indexed_set::IdxSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_errors::{DiagnosticBuilder, Diagnostic};
 
@@ -477,7 +477,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // SCC. For each SCC, we visit its successors and compute
         // their values, then we union all those values to get our
         // own.
-        let visited = &mut IdxSet::new_empty(self.constraint_sccs.num_sccs());
+        let visited = &mut BitSet::new_empty(self.constraint_sccs.num_sccs());
         for scc_index in self.constraint_sccs.all_sccs() {
             self.propagate_constraint_sccs_if_new(scc_index, visited);
         }
@@ -487,9 +487,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn propagate_constraint_sccs_if_new(
         &mut self,
         scc_a: ConstraintSccIndex,
-        visited: &mut IdxSet<ConstraintSccIndex>,
+        visited: &mut BitSet<ConstraintSccIndex>,
     ) {
-        if visited.add(&scc_a) {
+        if visited.insert(scc_a) {
             self.propagate_constraint_sccs_new(scc_a, visited);
         }
     }
@@ -497,7 +497,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn propagate_constraint_sccs_new(
         &mut self,
         scc_a: ConstraintSccIndex,
-        visited: &mut IdxSet<ConstraintSccIndex>,
+        visited: &mut BitSet<ConstraintSccIndex>,
     ) {
         let constraint_sccs = self.constraint_sccs.clone();
 

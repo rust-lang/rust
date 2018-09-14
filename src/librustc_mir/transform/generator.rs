@@ -69,7 +69,7 @@ use util::dump_mir;
 use util::liveness::{self, IdentityMap};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_data_structures::indexed_set::IdxSet;
+use rustc_data_structures::bit_set::BitSet;
 use std::borrow::Cow;
 use std::iter::once;
 use std::mem;
@@ -331,7 +331,7 @@ impl<'tcx> Visitor<'tcx> for StorageIgnored {
                        _location: Location) {
         match statement.kind {
             StatementKind::StorageLive(l) |
-            StatementKind::StorageDead(l) => { self.0.remove(&l); }
+            StatementKind::StorageDead(l) => { self.0.remove(l); }
             _ => (),
         }
     }
@@ -341,7 +341,7 @@ struct BorrowedLocals(liveness::LiveVarSet<Local>);
 
 fn mark_as_borrowed<'tcx>(place: &Place<'tcx>, locals: &mut BorrowedLocals) {
     match *place {
-        Place::Local(l) => { locals.0.add(&l); },
+        Place::Local(l) => { locals.0.insert(l); },
         Place::Promoted(_) |
         Place::Static(..) => (),
         Place::Projection(ref proj) => {
@@ -376,7 +376,7 @@ fn locals_live_across_suspend_points(
     liveness::LiveVarSet<Local>,
     FxHashMap<BasicBlock, liveness::LiveVarSet<Local>>,
 ) {
-    let dead_unwinds = IdxSet::new_empty(mir.basic_blocks().len());
+    let dead_unwinds = BitSet::new_empty(mir.basic_blocks().len());
     let node_id = tcx.hir.as_local_node_id(source.def_id).unwrap();
 
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
@@ -388,7 +388,7 @@ fn locals_live_across_suspend_points(
 
     // Find the MIR locals which do not use StorageLive/StorageDead statements.
     // The storage of these locals are always live.
-    let mut ignored = StorageIgnored(IdxSet::new_filled(mir.local_decls.len()));
+    let mut ignored = StorageIgnored(BitSet::new_filled(mir.local_decls.len()));
     ignored.visit_mir(mir);
 
     // Calculate the MIR locals which have been previously
@@ -472,7 +472,7 @@ fn locals_live_across_suspend_points(
     }
 
     // The generator argument is ignored
-    set.remove(&self_arg());
+    set.remove(self_arg());
 
     (set, storage_liveness_map)
 }
@@ -502,7 +502,7 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     for (local, decl) in mir.local_decls.iter_enumerated() {
         // Ignore locals which are internal or not live
-        if !live_locals.contains(&local) || decl.internal {
+        if !live_locals.contains(local) || decl.internal {
             continue;
         }
 
@@ -823,7 +823,7 @@ fn create_cases<'a, 'tcx, F>(mir: &mut Mir<'tcx>,
             // Create StorageLive instructions for locals with live storage
             for i in 0..(mir.local_decls.len()) {
                 let l = Local::new(i);
-                if point.storage_liveness.contains(&l) && !transform.remap.contains_key(&l) {
+                if point.storage_liveness.contains(l) && !transform.remap.contains_key(&l) {
                     statements.push(Statement {
                         source_info,
                         kind: StatementKind::StorageLive(l),

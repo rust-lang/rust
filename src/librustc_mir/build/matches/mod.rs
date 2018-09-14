@@ -21,7 +21,7 @@ use hair::*;
 use rustc::hir;
 use rustc::mir::*;
 use rustc::ty::{self, CanonicalTy, Ty};
-use rustc_data_structures::bitvec::BitArray;
+use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::{Name, NodeId};
 use syntax_pos::Span;
@@ -635,7 +635,7 @@ enum TestKind<'tcx> {
     // test the branches of enum
     Switch {
         adt_def: &'tcx ty::AdtDef,
-        variants: BitArray<usize>,
+        variants: BitSet<usize>,
     },
 
     // test the branches of enum
