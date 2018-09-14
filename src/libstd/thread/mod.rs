@@ -800,7 +800,11 @@ pub fn park() {
     match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
         Ok(_) => {}
         Err(NOTIFIED) => {
-            thread.inner.state.swap(EMPTY, SeqCst);
+            // We must read again here, even though we know it will be NOTIFY,
+            // to synchronize with an write in `unpark` that occurred since we
+            // last read.
+            let old = thread.inner.state.swap(EMPTY, SeqCst);
+            assert_eq!(old, NOTIFIED, "park state changed unexpectedly");
             return;
         } // should consume this notification, so prohibit spurious wakeups in next park.
         Err(_) => panic!("inconsistent park state"),
@@ -889,7 +893,11 @@ pub fn park_timeout(dur: Duration) {
     match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
         Ok(_) => {}
         Err(NOTIFIED) => {
-            thread.inner.state.swap(EMPTY, SeqCst);
+            // We must read again here, even though we know it will be NOTIFY,
+            // to synchronize with an write in `unpark` that occurred since we
+            // last read.
+            let old = thread.inner.state.swap(EMPTY, SeqCst);
+            assert_eq!(old, NOTIFIED, "park state changed unexpectedly");
             return;
         } // should consume this notification, so prohibit spurious wakeups in next park.
         Err(_) => panic!("inconsistent park_timeout state"),
@@ -1058,6 +1066,8 @@ impl Thread {
     /// [park]: fn.park.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn unpark(&self) {
+        // We must unconditionally write NOTIFIED here to
+        // synchronize with a read in `park`.
         match self.inner.state.swap(NOTIFIED, SeqCst) {
             EMPTY => return, // no one was waiting
             NOTIFIED => return, // already unparked
