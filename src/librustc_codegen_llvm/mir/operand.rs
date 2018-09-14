@@ -20,7 +20,7 @@ use value::Value;
 use type_of::LayoutLlvmExt;
 use glue;
 
-use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods, IntrinsicDeclarationMethods};
+use interfaces::*;
 
 use std::fmt;
 
@@ -67,16 +67,20 @@ impl fmt::Debug for OperandRef<'tcx, &'ll Value> {
     }
 }
 
-impl OperandRef<'tcx, &'ll Value> {
-    pub fn new_zst(cx: &CodegenCx<'ll, 'tcx>,
-                   layout: TyLayout<'tcx>) -> OperandRef<'tcx, &'ll Value> {
+impl<'tcx, V: CodegenObject> OperandRef<'tcx, V> {
+    pub fn new_zst<Cx: CodegenMethods<'tcx, Value = V>>(
+        cx: &Cx,
+        layout: TyLayout<'tcx>
+    ) -> OperandRef<'tcx, V> {
         assert!(layout.is_zst());
         OperandRef {
-            val: OperandValue::Immediate(cx.const_undef(layout.immediate_llvm_type(cx))),
+            val: OperandValue::Immediate(cx.const_undef(cx.immediate_backend_type(layout))),
             layout
         }
     }
+}
 
+impl OperandRef<'tcx, &'ll Value> {
     pub fn from_const(bx: &Builder<'a, 'll, 'tcx>,
                       val: &'tcx ty::Const<'tcx>)
                       -> Result<OperandRef<'tcx, &'ll Value>, ErrorHandled> {
@@ -122,7 +126,7 @@ impl OperandRef<'tcx, &'ll Value> {
                 OperandValue::Pair(a_llval, b_llval)
             },
             ConstValue::ByRef(_, alloc, offset) => {
-                return Ok(PlaceRef::from_const_alloc(bx, layout, alloc, offset).load(bx));
+                return Ok(bx.load_operand(PlaceRef::from_const_alloc(bx, layout, alloc, offset)));
             },
         };
 
@@ -256,10 +260,17 @@ impl OperandRef<'tcx, &'ll Value> {
     }
 }
 
-impl OperandValue<&'ll Value> {
-    pub fn store(self, bx: &Builder<'a, 'll, 'tcx>, dest: PlaceRef<'tcx, &'ll Value>) {
+impl<'a, 'tcx: 'a, V: CodegenObject> OperandValue<V> {
+    pub fn store<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        self,
+        bx: &Bx,
+        dest: PlaceRef<'tcx, Bx::Value>
+    ) {
         self.store_with_flags(bx, dest, MemFlags::empty());
     }
+}
+
+impl OperandValue<&'ll Value> {
 
     pub fn volatile_store(
         self,
@@ -286,11 +297,13 @@ impl<'a, 'll: 'a, 'tcx: 'll> OperandValue<&'ll Value> {
     ) {
         self.store_with_flags(bx, dest, MemFlags::NONTEMPORAL);
     }
+}
 
-    fn store_with_flags(
+impl<'a, 'tcx: 'a, V: CodegenObject> OperandValue<V> {
+    fn store_with_flags<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
-        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-        dest: PlaceRef<'tcx, &'ll Value>,
+        bx: &Bx,
+        dest: PlaceRef<'tcx, Bx::Value>,
         flags: MemFlags,
     ) {
         debug!("OperandRef::store: operand={:?}, dest={:?}", self, dest);
@@ -427,7 +440,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
 
         // for most places, to consume them we just load them
         // out from their home
-        self.codegen_place(bx, place).load(bx)
+        bx.load_operand(self.codegen_place(bx, place))
     }
 
     pub fn codegen_operand(&mut self,
@@ -461,11 +474,11 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                         bx.call(fnname, &[], None);
                         // We've errored, so we don't have to produce working code.
                         let layout = bx.cx().layout_of(ty);
-                        PlaceRef::new_sized(
+                        bx.load_operand(PlaceRef::new_sized(
                             bx.cx().const_undef(bx.cx().type_ptr_to(layout.llvm_type(bx.cx()))),
                             layout,
                             layout.align,
-                        ).load(bx)
+                        ))
                     })
             }
         }

@@ -26,6 +26,8 @@ pub use self::misc::MiscMethods;
 pub use self::statics::StaticMethods;
 pub use self::type_::{BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods, TypeMethods};
 
+use std::fmt;
+
 pub trait CodegenMethods<'tcx>:
     Backend<'tcx>
     + TypeMethods<'tcx>
@@ -54,3 +56,6 @@ pub trait HasCodegen<'tcx>: Backend<'tcx> {
             Context = Self::Context,
         >;
 }
+
+pub trait CodegenObject: Copy + PartialEq + fmt::Debug {}
+impl<T: Copy + PartialEq + fmt::Debug> CodegenObject for T {}

@@ -65,7 +65,7 @@ use monomorphize::partitioning::{CodegenUnit, CodegenUnitExt};
 use rustc_codegen_utils::symbol_names_test;
 use time_graph;
 use mono_item::{MonoItem, MonoItemExt};
-use type_of::LayoutLlvmExt;
+
 use rustc::util::nodemap::FxHashMap;
 use CrateInfo;
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -208,7 +208,7 @@ pub fn unsized_info<'tcx, Cx: CodegenMethods<'tcx>>(
             let vtable_ptr = cx.layout_of(cx.tcx().mk_mut_ptr(target))
                 .field(cx, abi::FAT_PTR_EXTRA);
             cx.static_ptrcast(meth::get_vtable(cx, source, data.principal()),
-                            cx.backend_type(&vtable_ptr))
+                            cx.backend_type(vtable_ptr))
         }
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}",
                   source,
@@ -232,13 +232,13 @@ pub fn unsize_thin_ptr<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }),
          &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
             assert!(bx.cx().type_is_sized(a));
-            let ptr_ty = bx.cx().type_ptr_to(bx.cx().backend_type(&bx.cx().layout_of(b)));
+            let ptr_ty = bx.cx().type_ptr_to(bx.cx().backend_type(bx.cx().layout_of(b)));
             (bx.pointercast(src, ptr_ty), unsized_info(bx.cx(), a, b, None))
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             let (a, b) = (src_ty.boxed_ty(), dst_ty.boxed_ty());
             assert!(bx.cx().type_is_sized(a));
-            let ptr_ty = bx.cx().type_ptr_to(bx.cx().backend_type(&bx.cx().layout_of(b)));
+            let ptr_ty = bx.cx().type_ptr_to(bx.cx().backend_type(bx.cx().layout_of(b)));
             (bx.pointercast(src, ptr_ty), unsized_info(bx.cx(), a, b, None))
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
@@ -263,8 +263,8 @@ pub fn unsize_thin_ptr<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             }
             let (lldata, llextra) = result.unwrap();
             // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-            (bx.bitcast(lldata, bx.cx().scalar_pair_element_backend_type(&dst_layout, 0, true)),
-             bx.bitcast(llextra, bx.cx().scalar_pair_element_backend_type(&dst_layout, 1, true)))
+            (bx.bitcast(lldata, bx.cx().scalar_pair_element_backend_type(dst_layout, 0, true)),
+             bx.bitcast(llextra, bx.cx().scalar_pair_element_backend_type(dst_layout, 1, true)))
         }
         _ => bug!("unsize_thin_ptr: called on bad types"),
     }
@@ -272,22 +272,22 @@ pub fn unsize_thin_ptr<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
-pub fn coerce_unsized_into(
-    bx: &Builder<'a, 'll, 'tcx>,
-    src: PlaceRef<'tcx, &'ll Value>,
-    dst: PlaceRef<'tcx, &'ll Value>
-) {
+pub fn coerce_unsized_into<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &Bx,
+    src: PlaceRef<'tcx, Bx::Value>,
+    dst: PlaceRef<'tcx, Bx::Value>
+)  {
     let src_ty = src.layout.ty;
     let dst_ty = dst.layout.ty;
     let coerce_ptr = || {
-        let (base, info) = match src.load(bx).val {
+        let (base, info) = match bx.load_operand(src).val {
             OperandValue::Pair(base, info) => {
                 // fat-ptr to fat-ptr unsize preserves the vtable
                 // i.e. &'a fmt::Debug+Send => &'a fmt::Debug
                 // So we need to pointercast the base to ensure
                 // the types match up.
                 let thin_ptr = dst.layout.field(bx.cx(), abi::FAT_PTR_ADDR);
-                (bx.pointercast(base, thin_ptr.llvm_type(bx.cx())), info)
+                (bx.pointercast(base, bx.cx().backend_type(thin_ptr)), info)
             }
             OperandValue::Immediate(base) => {
                 unsize_thin_ptr(bx, base, src_ty, dst_ty)

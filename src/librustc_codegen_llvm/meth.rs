@@ -26,7 +26,7 @@ pub const DESTRUCTOR: VirtualIndex = VirtualIndex(0);
 pub const SIZE: VirtualIndex = VirtualIndex(1);
 pub const ALIGN: VirtualIndex = VirtualIndex(2);
 
-impl<'a, 'tcx> VirtualIndex {
+impl<'a, 'tcx: 'a> VirtualIndex {
     pub fn from_index(index: usize) -> Self {
         VirtualIndex(index as u64 + 3)
     }
@@ -52,11 +52,11 @@ impl<'a, 'tcx> VirtualIndex {
         ptr
     }
 
-    pub fn get_usize(
+    pub fn get_usize<Bx: BuilderMethods<'a, 'tcx>>(
         self,
-        bx: &Builder<'a, 'll, 'tcx>,
-        llvtable: &'ll Value
-    ) -> &'ll Value {
+        bx: &Bx,
+        llvtable: Bx::Value
+    ) -> Bx::Value {
         // Load the data pointer from the object.
         debug!("get_int({:?}, {:?})", llvtable, self);
 

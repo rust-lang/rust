@@ -10,12 +10,13 @@
 
 use rustc::ty::layout::{HasTyCtxt, LayoutOf, TyLayout};
 use rustc::ty::Ty;
-use std::fmt::Debug;
+
+use super::CodegenObject;
 
 pub trait BackendTypes {
-    type Value: Debug + PartialEq + Copy;
+    type Value: CodegenObject;
     type BasicBlock;
-    type Type: Debug + PartialEq + Copy;
+    type Type: CodegenObject;
     type Context;
 }
 

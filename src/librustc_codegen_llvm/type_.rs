@@ -394,15 +394,21 @@ impl DerivedTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 }
 
 impl LayoutTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
-    fn backend_type(&self, ty: &TyLayout<'tcx>) -> &'ll Type {
-        ty.llvm_type(&self)
+    fn backend_type(&self, layout: TyLayout<'tcx>) -> &'ll Type {
+        layout.llvm_type(&self)
+    }
+    fn immediate_backend_type(&self, layout: TyLayout<'tcx>) -> &'ll Type {
+        layout.immediate_llvm_type(self)
+    }
+    fn is_backend_immediate(&self, layout: TyLayout<'tcx>) -> bool {
+        layout.is_llvm_immediate()
     }
     fn scalar_pair_element_backend_type<'a>(
         &self,
-        ty: &TyLayout<'tcx>,
+        layout: TyLayout<'tcx>,
         index: usize,
         immediate: bool
     ) -> &'ll Type {
-        ty.scalar_pair_element_llvm_type(&self, index, immediate)
+        layout.scalar_pair_element_llvm_type(self, index, immediate)
     }
 }

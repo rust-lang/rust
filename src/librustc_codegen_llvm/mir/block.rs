@@ -165,8 +165,8 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                     bx.cleanup_ret(cleanup_pad, None);
                 } else {
                     let slot = self.get_personality_slot(&bx);
-                    let lp0 = slot.project_field(&bx, 0).load(&bx).immediate();
-                    let lp1 = slot.project_field(&bx, 1).load(&bx).immediate();
+                    let lp0 = bx.load_operand(slot.project_field(&bx, 0)).immediate();
+                    let lp1 = bx.load_operand(slot.project_field(&bx, 1)).immediate();
                     slot.storage_dead(&bx);
 
                     if !bx.sess().target.target.options.custom_unwind_resume {
@@ -835,7 +835,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
             let tuple_ptr = PlaceRef::new_sized(llval, tuple.layout, align);
             for i in 0..tuple.layout.fields.count() {
                 let field_ptr = tuple_ptr.project_field(bx, i);
-                self.codegen_argument(bx, field_ptr.load(bx), llargs, &args[i]);
+                self.codegen_argument(bx, bx.load_operand(field_ptr), llargs, &args[i]);
             }
         } else if let Ref(_, Some(_), _) = tuple.val {
             bug!("closure arguments must be sized")
@@ -994,7 +994,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                     let place = PlaceRef::alloca(bx, dst_layout, "transmute_temp");
                     place.storage_live(bx);
                     self.codegen_transmute_into(bx, src, place);
-                    let op = place.load(bx);
+                    let op = bx.load_operand(place);
                     place.storage_dead(bx);
                     self.locals[index] = LocalRef::Operand(Some(op));
                 }
@@ -1032,7 +1032,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
             Nothing => (),
             Store(dst) => ret_ty.store(bx, llval, dst),
             IndirectOperand(tmp, index) => {
-                let op = tmp.load(bx);
+                let op = bx.load_operand(tmp);
                 tmp.storage_dead(bx);
                 self.locals[index] = LocalRef::Operand(Some(op));
             }
@@ -1042,7 +1042,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                     let tmp = PlaceRef::alloca(bx, ret_ty.layout, "tmp_ret");
                     tmp.storage_live(bx);
                     ret_ty.store(bx, llval, tmp);
-                    let op = tmp.load(bx);
+                    let op = bx.load_operand(tmp);
                     tmp.storage_dead(bx);
                     op
                 } else {

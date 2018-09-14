@@ -12,6 +12,8 @@ use super::HasCodegen;
 use builder::MemFlags;
 use common::*;
 use libc::c_char;
+use mir::operand::OperandRef;
+use mir::place::PlaceRef;
 use rustc::session::Session;
 use rustc::ty::layout::{Align, Size};
 
@@ -88,6 +90,7 @@ pub trait BuilderMethods<'a, 'tcx: 'a>: HasCodegen<'tcx> {
     fn load(&self, ptr: Self::Value, align: Align) -> Self::Value;
     fn volatile_load(&self, ptr: Self::Value) -> Self::Value;
     fn atomic_load(&self, ptr: Self::Value, order: AtomicOrdering, size: Size) -> Self::Value;
+    fn load_operand(&self, place: PlaceRef<'tcx, Self::Value>) -> OperandRef<'tcx, Self::Value>;
 
     fn range_metadata(&self, load: Self::Value, range: Range<u128>);
     fn nonnull_metadata(&self, load: Self::Value);

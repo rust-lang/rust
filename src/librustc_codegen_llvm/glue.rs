@@ -14,23 +14,21 @@
 
 use std;
 
-use builder::Builder;
 use common::*;
 use meth;
-use rustc::ty::layout::{LayoutOf, HasTyCtxt};
+use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, Ty};
-use value::Value;
 use interfaces::*;
 
-pub fn size_and_align_of_dst(
-    bx: &Builder<'_, 'll, 'tcx>,
+pub fn size_and_align_of_dst<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &Bx,
     t: Ty<'tcx>,
-    info: Option<&'ll Value>
-) -> (&'ll Value, &'ll Value) {
+    info: Option<Bx::Value>
+) -> (Bx::Value, Bx::Value) {
     debug!("calculate size of DST: {}; with lost info: {:?}",
            t, info);
     if bx.cx().type_is_sized(t) {
-        let (size, align) = bx.cx().size_and_align_of(t);
+        let (size, align) = bx.cx().layout_of(t).size_and_align();
         debug!("size_and_align_of_dst t={} info={:?} size: {:?} align: {:?}",
                t, info, size, align);
         let size = bx.cx().const_usize(size.bytes());
@@ -47,7 +45,7 @@ pub fn size_and_align_of_dst(
             let unit = t.sequence_element_type(bx.tcx());
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
-            let (size, align) = bx.cx().size_and_align_of(unit);
+            let (size, align) = bx.cx().layout_of(unit).size_and_align();
             (bx.mul(info.unwrap(), bx.cx().const_usize(size.bytes())),
              bx.cx().const_usize(align.abi()))
         }
