@@ -1002,6 +1002,34 @@ impl<T, E> Result<Option<T>, E> {
     }
 }
 
+impl<T> Result<T, T> {
+    /// Extract the value of a [`Result`] where the [`Err`] and [`Ok`] types are the same.
+    ///
+    /// This function does not panic in any way, the [`Result`] type is always either an [`Ok`]
+    /// or an [`Err`]. If the types of the variants are the same, it is possible to extract a value
+    /// either from one or the other variant.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_into_inner)]
+    ///
+    /// let x: Result<i32, i32> = Ok(16);
+    /// assert_eq!(x.into_inner(), 16);
+    ///
+    /// let x: Result<i32, i32> = Err(42);
+    /// assert_eq!(x.into_inner(), 42);
+    /// ```
+    #[unstable(feature = "result_into_inner", issue = "0")]
+    #[inline]
+    pub fn into_inner(self) -> T {
+        match self {
+            Ok(value) => value,
+            Err(value) => value,
+        }
+    }
+}
+
 // This is a separate function to reduce the code size of the methods
 #[inline(never)]
 #[cold]
