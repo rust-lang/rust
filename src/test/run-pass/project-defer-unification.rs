@@ -95,6 +95,10 @@ pub fn index_colors<Pix>(image: &ImageBuffer<Pix, Vec<u8>>)
                          -> ImageBuffer<Luma<u8>, Vec<u8>>
 where Pix: Pixel<Subpixel=u8> + 'static,
 {
+    // When NLL-enabled, `let mut` below is deemed unnecessary (due to
+    // the remaining code being unreachable); so ignore that lint.
+    #![allow(unused_mut)]
+
     let mut indices: ImageBuffer<_,Vec<_>> = loop { };
     for (pixel, idx) in image.pixels().zip(indices.pixels_mut()) {
         // failured occurred here ^^ because we were requiring that we

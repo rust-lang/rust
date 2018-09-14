@@ -755,10 +755,11 @@ default_test_with_compare_mode!(Ui {
     compare_mode: "nll"
 });
 
-default_test!(RunPass {
+default_test_with_compare_mode!(RunPass {
     path: "src/test/run-pass",
     mode: "run-pass",
-    suite: "run-pass"
+    suite: "run-pass",
+    compare_mode: "nll"
 });
 
 default_test!(CompileFail {
