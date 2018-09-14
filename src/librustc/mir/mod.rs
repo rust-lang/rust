@@ -27,6 +27,7 @@ use syntax::ast::{self, Name};
 use syntax::symbol::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use ty::List;
 use ty::subst::{Subst, Substs};
 use ty::layout::VariantIdx;
 use ty::{
@@ -1887,6 +1888,7 @@ impl<'tcx> Debug for Statement<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Places
 
+/// TODO(csmoe): merge the old Place repr into NeoPlace
 /// A path to a value; something that can be evaluated without
 /// changing or disturbing program state.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
@@ -1902,6 +1904,27 @@ pub enum Place<'tcx> {
 
     /// projection out of a place (access a field, deref a pointer, etc)
     Projection(Box<PlaceProjection<'tcx>>),
+}
+
+/// A new Place repr
+#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub struct NeoPlace<'tcx> {
+    base: PlaceBase<'tcx>,
+    elems: &'tcx List<PlaceElem<'tcx>>,
+}
+
+impl<'tcx> serialize::UseSpecializedDecodable for &'tcx List<PlaceElem<'tcx>> {}
+
+#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub enum PlaceBase<'tcx> {
+    /// local variable
+    Local(Local),
+
+    /// static or static mut variable
+    Static(Box<Static<'tcx>>),
+
+    /// Constant code promoted to an injected static
+    Promoted(Box<(Promoted, Ty<'tcx>)>),
 }
 
 /// The def-id of a static, along with its normalized type (which is
