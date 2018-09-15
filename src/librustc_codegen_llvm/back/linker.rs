@@ -1071,6 +1071,10 @@ impl<'a> Linker for WasmLd<'a> {
         // Make the default table accessible
         self.cmd.arg("--export-table");
 
+        // Rust code should never have warnings, and warnings are often
+        // indicative of bugs, let's prevent them.
+        self.cmd.arg("--fatal-warnings");
+
         let mut cmd = Command::new("");
         ::std::mem::swap(&mut cmd, &mut self.cmd);
         cmd
