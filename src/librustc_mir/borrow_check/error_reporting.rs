@@ -564,9 +564,20 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 // created by `StorageDead` and at the beginning
                 // of a function.
             } else {
+                // If we are found a use of a.b.c which was in error, then we want to look for
+                // moves not only of a.b.c but also a.b and a.
+                //
+                // Note that the moves data already includes "parent" paths, so we don't have to
+                // worry about the other case: that is, if there is a move of a.b.c, it is already
+                // marked as a move of a.b and a as well, so we will generate the correct errors
+                // there.
+                let mut mpis = vec![mpi];
+                let move_paths = &self.move_data.move_paths;
+                mpis.extend(move_paths[mpi].parents(move_paths));
+
                 for moi in &self.move_data.loc_map[l] {
                     debug!("report_use_of_moved_or_uninitialized: moi={:?}", moi);
-                    if self.move_data.moves[*moi].path == mpi {
+                    if mpis.contains(&self.move_data.moves[*moi].path) {
                         debug!("report_use_of_moved_or_uninitialized: found");
                         result.push(*moi);
 
