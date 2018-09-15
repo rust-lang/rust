@@ -452,16 +452,23 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     ty::Adt(_adt_def, substs),
                     hir::TyKind::Path(hir::QPath::Resolved(None, path)),
                 ) => {
-                    if let Some(last_segment) = path.segments.last() {
-                        if let Some(name) = self.match_adt_and_segment(
-                            substs,
-                            needle_fr,
-                            last_segment,
-                            counter,
-                            diag,
-                            search_stack,
-                        ) {
-                            return Some(name);
+                    match path.def {
+                        // Type parameters of the type alias have no reason to
+                        // be the same as those of the ADT.
+                        // FIXME: We should be able to do something similar to
+                        // match_adt_and_segment in this case.
+                        hir::def::Def::TyAlias(_) => (),
+                        _ => if let Some(last_segment) = path.segments.last() {
+                            if let Some(name) = self.match_adt_and_segment(
+                                substs,
+                                needle_fr,
+                                last_segment,
+                                counter,
+                                diag,
+                                search_stack,
+                            ) {
+                                return Some(name);
+                            }
                         }
                     }
                 }
