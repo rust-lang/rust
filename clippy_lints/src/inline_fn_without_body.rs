@@ -6,6 +6,7 @@ use crate::rustc::hir::*;
 use crate::syntax::ast::{Attribute, Name};
 use crate::utils::span_lint_and_then;
 use crate::utils::sugg::DiagnosticBuilderExt;
+use crate::rustc_errors::Applicability;
 
 /// **What it does:** Checks for `#[inline]` on trait methods without bodies
 ///
@@ -56,7 +57,7 @@ fn check_attrs(cx: &LateContext<'_, '_>, name: Name, attrs: &[Attribute]) {
             attr.span,
             &format!("use of `#[inline]` on trait method `{}` which has no body", name),
             |db| {
-                db.suggest_remove_item(cx, attr.span, "remove");
+                db.suggest_remove_item(cx, attr.span, "remove", Applicability::Unspecified);
             },
         );
     }
