@@ -391,7 +391,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let escapes_from = if infcx.tcx.is_closure(mir_def_id) { "closure" } else { "function" };
 
-        if fr_name_and_span.is_none() && outlived_fr_name_and_span.is_none() {
+        // Revert to the normal error in these cases.
+        // Assignments aren't "escapes" in function items.
+        if (fr_name_and_span.is_none() && outlived_fr_name_and_span.is_none())
+            || (category == ConstraintCategory::Assignment && escapes_from == "function")
+        {
             return self.report_general_error(mir, infcx, mir_def_id,
                                              fr, true, outlived_fr, false,
                                              category, span, errors_buffer);
