@@ -307,7 +307,7 @@ impl Diagnostic {
         suggestion: Vec<(Span, String)>,
     ) -> &mut Self {
         self.multipart_suggestion_with_applicability(
-                                                     msg, 
+                                                     msg,
                                                      suggestion,
                                                      Applicability::Unspecified
                                                     )
