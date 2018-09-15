@@ -88,11 +88,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 sup,
                 sub,
                 locations,
+                category,
             } = constraint;
             with_msg(&format!(
-                "{:?}: {:?} due to {:?}",
+                "{:?}: {:?} due to {:?} at {:?}",
                 sup,
                 sub,
+                category,
                 locations,
             ))?;
         }

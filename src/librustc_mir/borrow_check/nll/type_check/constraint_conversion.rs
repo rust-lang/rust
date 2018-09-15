@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use borrow_check::location::LocationTable;
-use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
+use borrow_check::nll::constraints::{ConstraintCategory, ConstraintSet, OutlivesConstraint};
 use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::{RegionTest, TypeTest};
 use borrow_check::nll::type_check::Locations;
@@ -30,6 +30,7 @@ crate struct ConstraintConversion<'a, 'gcx: 'tcx, 'tcx: 'a> {
     implicit_region_bound: Option<ty::Region<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
     locations: Locations,
+    category: ConstraintCategory,
     outlives_constraints: &'a mut ConstraintSet,
     type_tests: &'a mut Vec<TypeTest<'tcx>>,
     all_facts: &'a mut Option<AllFacts>,
@@ -44,6 +45,7 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
         locations: Locations,
+        category: ConstraintCategory,
         outlives_constraints: &'a mut ConstraintSet,
         type_tests: &'a mut Vec<TypeTest<'tcx>>,
         all_facts: &'a mut Option<AllFacts>,
@@ -56,6 +58,7 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
             implicit_region_bound,
             param_env,
             locations,
+            category,
             outlives_constraints,
             type_tests,
             all_facts,
@@ -183,6 +186,7 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
     fn add_outlives(&mut self, sup: ty::RegionVid, sub: ty::RegionVid) {
         self.outlives_constraints.push(OutlivesConstraint {
             locations: self.locations,
+            category: self.category,
             sub,
             sup,
         });

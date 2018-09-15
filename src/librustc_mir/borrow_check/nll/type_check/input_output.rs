@@ -29,8 +29,9 @@ use rustc::ty::subst::Subst;
 use rustc::ty::Ty;
 
 use rustc_data_structures::indexed_vec::Idx;
+use syntax_pos::Span;
 
-use super::{Locations, TypeChecker};
+use super::{ConstraintCategory, Locations, TypeChecker};
 
 impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     pub(super) fn equate_inputs_and_outputs(
@@ -56,7 +57,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             );
 
             let mir_input_ty = mir.local_decls[local].ty;
-            self.equate_normalized_input_or_output(normalized_input_ty, mir_input_ty);
+            let mir_input_span = mir.local_decls[local].source_info.span;
+            self.equate_normalized_input_or_output(
+                normalized_input_ty,
+                mir_input_ty,
+                mir_input_span,
+            );
         }
 
         assert!(
@@ -65,16 +71,19 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         );
         if let Some(mir_yield_ty) = mir.yield_ty {
             let ur_yield_ty = universal_regions.yield_ty.unwrap();
-            self.equate_normalized_input_or_output(ur_yield_ty, mir_yield_ty);
+            let yield_span = mir.local_decls[RETURN_PLACE].source_info.span;
+            self.equate_normalized_input_or_output(ur_yield_ty, mir_yield_ty, yield_span);
         }
 
         // Return types are a bit more complex. They may contain existential `impl Trait`
         // types.
         let param_env = self.param_env;
         let mir_output_ty = mir.local_decls[RETURN_PLACE].ty;
+        let output_span = mir.local_decls[RETURN_PLACE].source_info.span;
         let opaque_type_map =
             self.fully_perform_op(
-                Locations::All,
+                Locations::All(output_span),
+                ConstraintCategory::BoringNoLocation,
                 CustomTypeOp::new(
                     |infcx| {
                         let mut obligations = ObligationAccumulator::default();
@@ -152,26 +161,38 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         // prove that `T: Iterator` where `T` is the type we
         // instantiated it with).
         if let Some(opaque_type_map) = opaque_type_map {
-            self.fully_perform_op(
-                Locations::All,
-                CustomTypeOp::new(
-                    |_cx| {
-                        infcx.constrain_opaque_types(&opaque_type_map, universal_region_relations);
-                        Ok(InferOk {
-                            value: (),
-                            obligations: vec![],
-                        })
-                    },
-                    || "opaque_type_map".to_string(),
-                ),
-            ).unwrap();
+            for (opaque_def_id, opaque_decl) in opaque_type_map {
+                self.fully_perform_op(
+                    Locations::All(infcx.tcx.def_span(opaque_def_id)),
+                    ConstraintCategory::OpaqueType,
+                    CustomTypeOp::new(
+                        |_cx| {
+                            infcx.constrain_opaque_type(
+                                opaque_def_id,
+                                &opaque_decl,
+                                universal_region_relations
+                            );
+                            Ok(InferOk {
+                                value: (),
+                                obligations: vec![],
+                            })
+                        },
+                        || "opaque_type_map".to_string(),
+                    ),
+                ).unwrap();
+            }
         }
     }
 
-    fn equate_normalized_input_or_output(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
+    fn equate_normalized_input_or_output(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, span: Span) {
         debug!("equate_normalized_input_or_output(a={:?}, b={:?})", a, b);
 
-        if let Err(terr) = self.eq_types(a, b, Locations::All) {
+        if let Err(terr) = self.eq_types(
+            a,
+            b,
+            Locations::All(span),
+            ConstraintCategory::BoringNoLocation,
+        ) {
             span_mirbug!(
                 self,
                 Location::START,

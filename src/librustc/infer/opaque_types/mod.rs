@@ -284,7 +284,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn constrain_opaque_type<FRR: FreeRegionRelations<'tcx>>(
+    pub fn constrain_opaque_type<FRR: FreeRegionRelations<'tcx>>(
         &self,
         def_id: DefId,
         opaque_defn: &OpaqueTypeDecl<'tcx>,
