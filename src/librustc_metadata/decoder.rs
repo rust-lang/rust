@@ -692,6 +692,8 @@ impl<'a, 'tcx> CrateMetadata {
 
     /// Iterates over all the stability attributes in the given crate.
     pub fn get_lib_features(&self) -> Vec<(ast::Name, Option<ast::Name>)> {
+        // FIXME: For a proc macro crate, not sure whether we should return the "host"
+        // features or an empty Vec. Both don't cause ICEs.
         self.root
             .lib_features
             .decode(self)
@@ -700,11 +702,16 @@ impl<'a, 'tcx> CrateMetadata {
 
     /// Iterates over the language items in the given crate.
     pub fn get_lang_items(&self) -> Vec<(DefId, usize)> {
-        self.root
-            .lang_items
-            .decode(self)
-            .map(|(def_index, index)| (self.local_def_id(def_index), index))
-            .collect()
+        if self.proc_macros.is_some() {
+            // Proc macro crates do not export any lang-items to the target.
+            vec![]
+        } else {
+            self.root
+                .lang_items
+                .decode(self)
+                .map(|(def_index, index)| (self.local_def_id(def_index), index))
+                .collect()
+        }
     }
 
     /// Iterates over each child of the given item.
@@ -978,12 +985,16 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn get_implementations_for_trait(&self,
                                          filter: Option<DefId>,
                                          result: &mut Vec<DefId>) {
+        if self.proc_macros.is_some() {
+            // proc-macro crates export no trait impls.
+            return
+        }
+
         // Do a reverse lookup beforehand to avoid touching the crate_num
         // hash map in the loop below.
         let filter = match filter.map(|def_id| self.reverse_translate_def_id(def_id)) {
             Some(Some(def_id)) => Some((def_id.krate.as_u32(), def_id.index)),
             Some(None) => return,
-            None if self.proc_macros.is_some() => return,
             None => None,
         };
 
@@ -1016,11 +1027,21 @@ impl<'a, 'tcx> CrateMetadata {
 
 
     pub fn get_native_libraries(&self, sess: &Session) -> Vec<NativeLibrary> {
-        self.root.native_libraries.decode((self, sess)).collect()
+        if self.proc_macros.is_some() {
+            // Proc macro crates do not have any *target* native libraries.
+            vec![]
+        } else {
+            self.root.native_libraries.decode((self, sess)).collect()
+        }
     }
 
     pub fn get_foreign_modules(&self, sess: &Session) -> Vec<ForeignModule> {
-        self.root.foreign_modules.decode((self, sess)).collect()
+        if self.proc_macros.is_some() {
+            // Proc macro crates do not have any *target* foreign modules.
+            vec![]
+        } else {
+            self.root.foreign_modules.decode((self, sess)).collect()
+        }
     }
 
     pub fn get_dylib_dependency_formats(&self) -> Vec<(CrateNum, LinkagePreference)> {
@@ -1036,10 +1057,15 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub fn get_missing_lang_items(&self) -> Vec<lang_items::LangItem> {
-        self.root
-            .lang_items_missing
-            .decode(self)
-            .collect()
+        if self.proc_macros.is_some() {
+            // Proc macro crates do not depend on any target weak lang-items.
+            vec![]
+        } else {
+            self.root
+                .lang_items_missing
+                .decode(self)
+                .collect()
+        }
     }
 
     pub fn get_fn_arg_names(&self, id: DefIndex) -> Vec<ast::Name> {
@@ -1055,10 +1081,16 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn exported_symbols(&self,
                             tcx: TyCtxt<'a, 'tcx, 'tcx>)
                             -> Vec<(ExportedSymbol<'tcx>, SymbolExportLevel)> {
-        let lazy_seq: LazySeq<(ExportedSymbol<'tcx>, SymbolExportLevel)> =
-            LazySeq::with_position_and_length(self.root.exported_symbols.position,
-                                              self.root.exported_symbols.len);
-        lazy_seq.decode((self, tcx)).collect()
+        if self.proc_macros.is_some() {
+            // If this crate is a custom derive crate, then we're not even going to
+            // link those in so we skip those crates.
+            vec![]
+        } else {
+            let lazy_seq: LazySeq<(ExportedSymbol<'tcx>, SymbolExportLevel)> =
+                LazySeq::with_position_and_length(self.root.exported_symbols.position,
+                                                  self.root.exported_symbols.len);
+            lazy_seq.decode((self, tcx)).collect()
+        }
     }
 
     pub fn get_rendered_const(&self, id: DefIndex) -> String {
@@ -1149,9 +1181,12 @@ impl<'a, 'tcx> CrateMetadata {
     /// file they represent, just information about length, line breaks, and
     /// multibyte characters. This information is enough to generate valid debuginfo
     /// for items inlined from other crates.
+    ///
+    /// Proc macro crates don't currently export spans, so this function does not have
+    /// to work for them.
     pub fn imported_source_files(&'a self,
-                             local_source_map: &source_map::SourceMap)
-                             -> ReadGuard<'a, Vec<cstore::ImportedSourceFile>> {
+                                 local_source_map: &source_map::SourceMap)
+                                 -> ReadGuard<'a, Vec<cstore::ImportedSourceFile>> {
         {
             let source_files = self.source_map_import_info.borrow();
             if !source_files.is_empty() {
