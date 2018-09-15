@@ -22,7 +22,7 @@ pub(crate) trait SourceRoot {
     fn module_tree(&self) -> Arc<ModuleTreeDescriptor>;
     fn lines(&self, file_id: FileId) -> Arc<LineIndex>;
     fn syntax(&self, file_id: FileId) -> File;
-    fn symbols<'a>(&'a self, acc: &mut Vec<&'a SymbolIndex>);
+    fn symbols(&self, acc: &mut Vec<Arc<SymbolIndex>>);
 }
 
 #[derive(Default, Debug)]
@@ -74,18 +74,14 @@ impl SourceRoot for WritableSourceRoot {
     fn syntax(&self, file_id: FileId) -> File {
         self.db.make_query(|ctx| ::queries::file_syntax(ctx, file_id))
     }
-    fn symbols<'a>(&'a self, acc: &mut Vec<&'a SymbolIndex>) {
-        // acc.extend(
-        //     self.file_map
-        //         .iter()
-        //         .map(|(&file_id, data)| symbols(file_id, data))
-        // )
+    fn symbols<'a>(&'a self, acc: &mut Vec<Arc<SymbolIndex>>) {
+        self.db.make_query(|ctx| {
+            let file_set = ::queries::file_set(ctx);
+            let syms = file_set.0.iter()
+                .map(|file_id| ::queries::file_symbols(ctx, *file_id));
+            acc.extend(syms);
+        });
     }
-}
-
-fn symbols(file_id: FileId, (data, symbols): &(FileData, OnceCell<SymbolIndex>)) -> &SymbolIndex {
-    let syntax = data.syntax_transient();
-    symbols.get_or_init(|| SymbolIndex::for_file(file_id, syntax))
 }
 
 #[derive(Debug)]
@@ -121,7 +117,7 @@ impl FileData {
 
 #[derive(Debug)]
 pub(crate) struct ReadonlySourceRoot {
-    symbol_index: SymbolIndex,
+    symbol_index: Arc<SymbolIndex>,
     file_map: HashMap<FileId, FileData>,
     module_tree: Arc<ModuleTreeDescriptor>,
 }
@@ -149,7 +145,7 @@ impl ReadonlySourceRoot {
             .collect();
 
         ReadonlySourceRoot {
-            symbol_index,
+            symbol_index: Arc::new(symbol_index),
             file_map,
             module_tree: Arc::new(module_tree),
         }
@@ -176,7 +172,7 @@ impl SourceRoot for ReadonlySourceRoot {
     fn syntax(&self, file_id: FileId) -> File {
         self.data(file_id).syntax().clone()
     }
-    fn symbols<'a>(&'a self, acc: &mut Vec<&'a SymbolIndex>) {
-        acc.push(&self.symbol_index)
+    fn symbols(&self, acc: &mut Vec<Arc<SymbolIndex>>) {
+        acc.push(Arc::clone(&self.symbol_index))
     }
 }

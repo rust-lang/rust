@@ -1,3 +1,7 @@
+use std::{
+    sync::Arc,
+    hash::{Hash, Hasher},
+};
 use libeditor::{FileSymbol, file_symbols};
 use libsyntax2::{
     File,
@@ -11,6 +15,12 @@ use {Query, FileId, JobToken};
 pub(crate) struct SymbolIndex {
     symbols: Vec<(FileId, FileSymbol)>,
     map: fst::Map,
+}
+
+impl Hash for SymbolIndex {
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        self.symbols.hash(hasher)
+    }
 }
 
 impl SymbolIndex {
@@ -43,7 +53,7 @@ impl SymbolIndex {
 impl Query {
     pub(crate) fn search(
         self,
-        indices: &[&SymbolIndex],
+        indices: &[Arc<SymbolIndex>],
         token: &JobToken,
     ) -> Vec<(FileId, FileSymbol)> {
 
