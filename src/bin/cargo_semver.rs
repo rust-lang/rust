@@ -247,10 +247,12 @@ fn do_main(config: &Config, matches: &Matches, explain: bool) -> CargoResult<()>
         .map_err(|e| Error(format!("could not spawn rustc: {}", e)))?;
 
     if let Some(ref mut stdin) = child.stdin {
+        // The order of the `extern crate` declaration is important here: it will later
+        // be used to select the `old` and `new` crates.
         stdin.write_fmt(format_args!("#[allow(unused_extern_crates)] \
-                                     extern crate new; \
+                                     extern crate old; \
                                      #[allow(unused_extern_crates)] \
-                                     extern crate old;"))?;
+                                     extern crate new;"))?;
     } else {
         return Err(Error("could not pipe to rustc (wtf?)".to_owned()).into());
     }

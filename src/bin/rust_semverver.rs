@@ -19,6 +19,7 @@ use rustc::hir::def_id::*;
 use rustc_metadata::cstore::CStore;
 use rustc::session::{config, Session};
 use rustc::session::config::{Input, ErrorOutputType};
+use rustc::middle::cstore::ExternCrate;
 
 use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
 
@@ -28,46 +29,46 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use syntax::ast;
+use syntax::source_map::Pos;
 
 /// After the typechecker has finished it's work, perform our checks.
-///
-/// To compare the two well-typed crates, first find the aptly named crates `new` and `old`,
-/// find their root modules and then proceed to walk their module trees.
 fn callback(state: &driver::CompileState, version: &str, verbose: bool) {
     let tcx = state.tcx.unwrap();
 
-    let cnums = tcx
+    // To select the old and new crates we look at the position of the declaration in the
+    // source file.  The first one will be the `old` and the other will be `new`.  This is
+    // unfortunately a bit hacky... See issue #64 for details.
+
+    let mut crates: Vec<_> = tcx
         .crates()
         .iter()
-        .fold((None, None), |(o, n), crate_num| {
-            let name = tcx.crate_name(*crate_num);
-            if name == "old" {
-                (Some(*crate_num), n)
-            } else if name == "new" {
-                (o, Some(*crate_num))
-            } else {
-                (o, n)
+        .flat_map(|crate_num| {
+            let def_id = DefId {
+                krate: *crate_num,
+                index: CRATE_DEF_INDEX,
+            };
+
+            match *tcx.extern_crate(def_id) {
+                Some(ExternCrate { span, direct: true, ..}) if span.data().lo.to_usize() > 0 =>
+                    Some((span.data().lo.to_usize(), def_id)),
+                _ => None,
             }
-        });
+        })
+        .collect();
 
-    let (old_def_id, new_def_id) = if let (Some(c0), Some(c1)) = cnums {
-        (DefId {
-             krate: c0,
-             index: CRATE_DEF_INDEX,
-         },
-         DefId {
-             krate: c1,
-             index: CRATE_DEF_INDEX,
-         })
-    } else {
-        tcx.sess.err("could not find crate `old` and/or `new`");
-        return;
-    };
+    crates.sort_by_key(|&(span_lo, _)| span_lo);
 
-    debug!("running semver analysis");
-    let changes = run_analysis(tcx, old_def_id, new_def_id);
+    match crates.as_slice() {
+        &[(_, old_def_id), (_, new_def_id)] => {
+            debug!("running semver analysis");
+            let changes = run_analysis(tcx, old_def_id, new_def_id);
 
-    changes.output(tcx.sess, version, verbose);
+            changes.output(tcx.sess, version, verbose);
+        }
+        _ => {
+            tcx.sess.err("could not find crate old and new crates");
+        }
+    }
 }
 
 /// A wrapper to control compilation.
