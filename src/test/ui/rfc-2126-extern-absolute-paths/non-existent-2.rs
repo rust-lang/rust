@@ -11,5 +11,6 @@
 // edition:2018
 
 fn main() {
-    let s = ::xcrate::S; //~ ERROR can't find crate for `xcrate`
+    let s = ::xcrate::S;
+    //~^ ERROR failed to resolve. Could not find `xcrate` in `{{root}}`
 }

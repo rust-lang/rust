@@ -275,18 +275,18 @@ impl OutputTypes {
 // DO NOT switch BTreeMap or BTreeSet out for an unsorted container type! That
 // would break dependency tracking for commandline arguments.
 #[derive(Clone, Hash)]
-pub struct Externs(BTreeMap<String, BTreeSet<String>>);
+pub struct Externs(BTreeMap<String, BTreeSet<Option<String>>>);
 
 impl Externs {
-    pub fn new(data: BTreeMap<String, BTreeSet<String>>) -> Externs {
+    pub fn new(data: BTreeMap<String, BTreeSet<Option<String>>>) -> Externs {
         Externs(data)
     }
 
-    pub fn get(&self, key: &str) -> Option<&BTreeSet<String>> {
+    pub fn get(&self, key: &str) -> Option<&BTreeSet<Option<String>>> {
         self.0.get(key)
     }
 
-    pub fn iter<'a>(&'a self) -> BTreeMapIter<'a, String, BTreeSet<String>> {
+    pub fn iter<'a>(&'a self) -> BTreeMapIter<'a, String, BTreeSet<Option<String>>> {
         self.0.iter()
     }
 }
@@ -2169,6 +2169,8 @@ pub fn build_session_options_and_crate_config(
     let cfg = parse_cfgspecs(matches.opt_strs("cfg"));
     let test = matches.opt_present("test");
 
+    let is_unstable_enabled = nightly_options::is_unstable_enabled(matches);
+
     prints.extend(matches.opt_strs("print").into_iter().map(|s| match &*s {
         "crate-name" => PrintRequest::CrateName,
         "file-names" => PrintRequest::FileNames,
@@ -2182,15 +2184,13 @@ pub fn build_session_options_and_crate_config(
         "tls-models" => PrintRequest::TlsModels,
         "native-static-libs" => PrintRequest::NativeStaticLibs,
         "target-spec-json" => {
-            if nightly_options::is_unstable_enabled(matches) {
+            if is_unstable_enabled {
                 PrintRequest::TargetSpec
             } else {
                 early_error(
                     error_format,
-                    &format!(
-                        "the `-Z unstable-options` flag must also be passed to \
-                         enable the target-spec-json print option"
-                    ),
+                    "the `-Z unstable-options` flag must also be passed to \
+                     enable the target-spec-json print option",
                 );
             }
         }
@@ -2220,18 +2220,19 @@ pub fn build_session_options_and_crate_config(
             Some(s) => s,
             None => early_error(error_format, "--extern value must not be empty"),
         };
-        let location = match parts.next() {
-            Some(s) => s,
-            None => early_error(
+        let location = parts.next().map(|s| s.to_string());
+        if location.is_none() && !is_unstable_enabled {
+            early_error(
                 error_format,
-                "--extern value must be of the format `foo=bar`",
-            ),
+                "the `-Z unstable-options` flag must also be passed to \
+                 enable `--extern crate_name` without `=path`",
+            );
         };
 
         externs
             .entry(name.to_string())
             .or_default()
-            .insert(location.to_string());
+            .insert(location);
     }
 
     let crate_name = matches.opt_str("crate-name");
@@ -2687,33 +2688,33 @@ mod tests {
         v1.externs = Externs::new(mk_map(vec![
             (
                 String::from("a"),
-                mk_set(vec![String::from("b"), String::from("c")]),
+                mk_set(vec![Some(String::from("b")), Some(String::from("c"))]),
             ),
             (
                 String::from("d"),
-                mk_set(vec![String::from("e"), String::from("f")]),
+                mk_set(vec![Some(String::from("e")), Some(String::from("f"))]),
             ),
         ]));
 
         v2.externs = Externs::new(mk_map(vec![
             (
                 String::from("d"),
-                mk_set(vec![String::from("e"), String::from("f")]),
+                mk_set(vec![Some(String::from("e")), Some(String::from("f"))]),
             ),
             (
                 String::from("a"),
-                mk_set(vec![String::from("b"), String::from("c")]),
+                mk_set(vec![Some(String::from("b")), Some(String::from("c"))]),
             ),
         ]));
 
         v3.externs = Externs::new(mk_map(vec![
             (
                 String::from("a"),
-                mk_set(vec![String::from("b"), String::from("c")]),
+                mk_set(vec![Some(String::from("b")), Some(String::from("c"))]),
             ),
             (
                 String::from("d"),
-                mk_set(vec![String::from("f"), String::from("e")]),
+                mk_set(vec![Some(String::from("f")), Some(String::from("e"))]),
             ),
         ]));
 

@@ -9,16 +9,16 @@
 // except according to those terms.
 
 // run-pass
-// aux-build:png2.rs
-// compile-flags:--extern png2
 // edition:2018
 
-mod png {
-    use png2 as png_ext;
-
-    fn foo() -> png_ext::DecodingError { unimplemented!() }
-}
+// Tests that `core` and `std` are always available.
+use core::iter;
+use std::io;
+// FIXME(eddyb) Add a `meta` crate to the distribution.
+// use meta;
 
 fn main() {
-    println!("Hello, world!");
+    for _ in iter::once(()) {
+        io::stdout();
+    }
 }

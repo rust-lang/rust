@@ -609,16 +609,19 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
 /// Extracts `--extern CRATE=PATH` arguments from `matches` and
 /// returns a map mapping crate names to their paths or else an
 /// error message.
+// FIXME(eddyb) This shouldn't be duplicated with `rustc::session`.
 fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
     let mut externs: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
     for arg in &matches.opt_strs("extern") {
         let mut parts = arg.splitn(2, '=');
         let name = parts.next().ok_or("--extern value must not be empty".to_string())?;
-        let location = parts.next()
-                                 .ok_or("--extern value must be of the format `foo=bar`"
-                                    .to_string())?;
+        let location = parts.next().map(|s| s.to_string());
+        if location.is_none() && !nightly_options::is_unstable_enabled(matches) {
+            return Err("the `-Z unstable-options` flag must also be passed to \
+                        enable `--extern crate_name` without `=path`".to_string());
+        }
         let name = name.to_string();
-        externs.entry(name).or_default().insert(location.to_string());
+        externs.entry(name).or_default().insert(location);
     }
     Ok(Externs::new(externs))
 }

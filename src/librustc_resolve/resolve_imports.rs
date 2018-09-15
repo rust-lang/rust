@@ -196,7 +196,11 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                     }
 
                     // Fall back to resolving to an external crate.
-                    if !(ns == TypeNS && self.extern_prelude.contains(&ident.name)) {
+                    if !(
+                        ns == TypeNS &&
+                        !ident.is_path_segment_keyword() &&
+                        self.extern_prelude.contains(&ident.name)
+                    ) {
                         // ... unless the crate name is not in the `extern_prelude`.
                         return binding;
                     }
@@ -211,7 +215,11 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                     )
                 {
                     self.resolve_crate_root(ident)
-                } else if ns == TypeNS && !ident.is_path_segment_keyword() {
+                } else if
+                    ns == TypeNS &&
+                    !ident.is_path_segment_keyword() &&
+                    self.extern_prelude.contains(&ident.name)
+                {
                     let crate_id =
                         self.crate_loader.process_path_extern(ident.name, ident.span);
                     self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX })
@@ -738,7 +746,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             // Currently imports can't resolve in non-module scopes,
             // we only have canaries in them for future-proofing.
             if external_crate.is_none() && results.module_scope.is_none() {
-                return;
+                continue;
             }
 
             {
@@ -753,7 +761,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 let possible_resultions =
                     1 + all_results.filter(|&def| def != first).count();
                 if possible_resultions <= 1 {
-                    return;
+                    continue;
                 }
             }
 

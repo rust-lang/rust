@@ -100,6 +100,18 @@ enum LoadResult {
     Loaded(Library),
 }
 
+enum LoadError<'a> {
+    LocatorError(locator::Context<'a>),
+}
+
+impl<'a> LoadError<'a> {
+    fn report(self) -> ! {
+        match self {
+            LoadError::LocatorError(mut locate_ctxt) => locate_ctxt.report_errs(),
+        }
+    }
+}
+
 impl<'a> CrateLoader<'a> {
     pub fn new(sess: &'a Session, cstore: &'a CStore, local_crate_name: &str) -> Self {
         CrateLoader {
@@ -132,7 +144,8 @@ impl<'a> CrateLoader<'a> {
             // from the strings on the command line.
             let source = &self.cstore.get_crate_data(cnum).source;
             if let Some(locs) = self.sess.opts.externs.get(&*name.as_str()) {
-                let found = locs.iter().any(|l| {
+                // Only use `--extern crate_name=path` here, not `--extern crate_name`.
+                let found = locs.iter().filter_map(|l| l.as_ref()).any(|l| {
                     let l = fs::canonicalize(l).ok();
                     source.dylib.as_ref().map(|p| &p.0) == l.as_ref() ||
                     source.rlib.as_ref().map(|p| &p.0) == l.as_ref()
@@ -267,16 +280,17 @@ impl<'a> CrateLoader<'a> {
         (cnum, cmeta)
     }
 
-    fn resolve_crate(&mut self,
-                     root: &Option<CratePaths>,
-                     ident: Symbol,
-                     name: Symbol,
-                     hash: Option<&Svh>,
-                     extra_filename: Option<&str>,
-                     span: Span,
-                     path_kind: PathKind,
-                     mut dep_kind: DepKind)
-                     -> (CrateNum, Lrc<cstore::CrateMetadata>) {
+    fn resolve_crate<'b>(
+        &'b mut self,
+        root: &'b Option<CratePaths>,
+        ident: Symbol,
+        name: Symbol,
+        hash: Option<&'b Svh>,
+        extra_filename: Option<&'b str>,
+        span: Span,
+        path_kind: PathKind,
+        mut dep_kind: DepKind,
+    ) -> Result<(CrateNum, Lrc<cstore::CrateMetadata>), LoadError<'b>> {
         info!("resolving crate `extern crate {} as {}`", name, ident);
         let result = if let Some(cnum) = self.existing_match(name, hash, path_kind) {
             LoadResult::Previous(cnum)
@@ -320,7 +334,7 @@ impl<'a> CrateLoader<'a> {
                 };
 
                 self.load(&mut proc_macro_locator)
-            }).unwrap_or_else(|| locate_ctxt.report_errs())
+            }).ok_or_else(move || LoadError::LocatorError(locate_ctxt))?
         };
 
         match result {
@@ -332,10 +346,10 @@ impl<'a> CrateLoader<'a> {
                 data.dep_kind.with_lock(|data_dep_kind| {
                     *data_dep_kind = cmp::max(*data_dep_kind, dep_kind);
                 });
-                (cnum, data)
+                Ok((cnum, data))
             }
             LoadResult::Loaded(library) => {
-                self.register_crate(root, ident, span, library, dep_kind)
+                Ok(self.register_crate(root, ident, span, library, dep_kind))
             }
         }
     }
@@ -440,7 +454,7 @@ impl<'a> CrateLoader<'a> {
             let (local_cnum, ..) = self.resolve_crate(
                 root, dep.name, dep.name, Some(&dep.hash), Some(&dep.extra_filename), span,
                 PathKind::Dependency, dep_kind,
-            );
+            ).unwrap_or_else(|err| err.report());
             local_cnum
         })).collect()
     }
@@ -694,7 +708,8 @@ impl<'a> CrateLoader<'a> {
 
         let dep_kind = DepKind::Implicit;
         let (cnum, data) =
-            self.resolve_crate(&None, name, name, None, None, DUMMY_SP, PathKind::Crate, dep_kind);
+            self.resolve_crate(&None, name, name, None, None, DUMMY_SP, PathKind::Crate, dep_kind)
+                .unwrap_or_else(|err| err.report());
 
         // Sanity check the loaded crate to ensure it is indeed a panic runtime
         // and the panic strategy is indeed what we thought it was.
@@ -802,7 +817,8 @@ impl<'a> CrateLoader<'a> {
                 let dep_kind = DepKind::Explicit;
                 let (_, data) =
                     self.resolve_crate(&None, symbol, symbol, None, None, DUMMY_SP,
-                                       PathKind::Crate, dep_kind);
+                                       PathKind::Crate, dep_kind)
+                        .unwrap_or_else(|err| err.report());
 
                 // Sanity check the loaded crate to ensure it is indeed a sanitizer runtime
                 if !data.root.sanitizer_runtime {
@@ -825,7 +841,8 @@ impl<'a> CrateLoader<'a> {
             let dep_kind = DepKind::Implicit;
             let (_, data) =
                 self.resolve_crate(&None, symbol, symbol, None, None, DUMMY_SP,
-                                   PathKind::Crate, dep_kind);
+                                   PathKind::Crate, dep_kind)
+                    .unwrap_or_else(|err| err.report());
 
             // Sanity check the loaded crate to ensure it is indeed a profiler runtime
             if !data.root.profiler_runtime {
@@ -945,7 +962,8 @@ impl<'a> CrateLoader<'a> {
                                                               None,
                                                               DUMMY_SP,
                                                               PathKind::Crate,
-                                                              DepKind::Implicit);
+                                                              DepKind::Implicit)
+                            .unwrap_or_else(|err| err.report());
                         self.sess.injected_allocator.set(Some(cnum));
                         data
                     })
@@ -1102,7 +1120,7 @@ impl<'a> CrateLoader<'a> {
                 let (cnum, ..) = self.resolve_crate(
                     &None, item.ident.name, orig_name, None, None,
                     item.span, PathKind::Crate, dep_kind,
-                );
+                ).unwrap_or_else(|err| err.report());
 
                 let def_id = definitions.opt_local_def_id(item.id).unwrap();
                 let path_len = definitions.def_path(def_id.index).data.len();
@@ -1130,7 +1148,7 @@ impl<'a> CrateLoader<'a> {
     ) -> CrateNum {
         let cnum = self.resolve_crate(
             &None, name, name, None, None, span, PathKind::Crate, DepKind::Explicit
-        ).0;
+        ).unwrap_or_else(|err| err.report()).0;
 
         self.update_extern_crate(
             cnum,
@@ -1145,5 +1163,29 @@ impl<'a> CrateLoader<'a> {
         );
 
         cnum
+    }
+
+    pub fn maybe_process_path_extern(
+        &mut self,
+        name: Symbol,
+        span: Span,
+    ) -> Option<CrateNum> {
+        let cnum = self.resolve_crate(
+            &None, name, name, None, None, span, PathKind::Crate, DepKind::Explicit
+        ).ok()?.0;
+
+        self.update_extern_crate(
+            cnum,
+            ExternCrate {
+                src: ExternCrateSource::Path,
+                span,
+                // to have the least priority in `update_extern_crate`
+                path_len: usize::max_value(),
+                direct: true,
+            },
+            &mut FxHashSet(),
+        );
+
+        Some(cnum)
     }
 }

@@ -8,17 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// run-pass
-// aux-build:png2.rs
-// compile-flags:--extern png2
 // edition:2018
 
-mod png {
-    use png2 as png_ext;
+#![no_std]
+#![crate_type = "lib"]
 
-    fn foo() -> png_ext::DecodingError { unimplemented!() }
-}
+use alloc::vec;
+//~^ ERROR unresolved import `alloc`
 
-fn main() {
-    println!("Hello, world!");
+pub fn foo() {
+    let mut xs = vec![];
+    //~^ ERROR cannot determine resolution for the macro `vec`
+    xs.push(0);
 }

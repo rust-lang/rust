@@ -11,5 +11,6 @@
 #![feature(extern_in_paths)]
 
 fn main() {
-    let s = extern::xcrate::S; //~ ERROR can't find crate for `xcrate`
+    let s = extern::xcrate::S;
+    //~^ ERROR failed to resolve. Could not find `xcrate` in `extern`
 }

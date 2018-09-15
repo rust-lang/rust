@@ -8,17 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// run-pass
-// aux-build:png2.rs
-// compile-flags:--extern png2
 // edition:2018
 
-mod png {
-    use png2 as png_ext;
+#![feature(uniform_paths)]
 
-    fn foo() -> png_ext::DecodingError { unimplemented!() }
+// Dummy import to introduce `uniform_paths` canaries.
+use std;
+
+// fn version() -> &'static str {""}
+
+mod foo {
+    // Error wasn't reported, despite `version` being commented out above.
+    use crate::version; //~ ERROR unresolved import `crate::version`
+
+    fn bar() {
+        version();
+    }
 }
 
-fn main() {
-    println!("Hello, world!");
-}
+fn main() {}

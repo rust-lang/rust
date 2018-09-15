@@ -8,17 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// run-pass
-// aux-build:png2.rs
-// compile-flags:--extern png2
 // edition:2018
 
-mod png {
-    use png2 as png_ext;
+// Tests that arbitrary crates (other than `core`, `std` and `meta`)
+// aren't allowed without `--extern`, even if they're in the sysroot.
+use alloc; //~ ERROR unresolved import `alloc`
+use test; //~ ERROR unresolved import `test`
+use proc_macro; //~ ERROR unresolved import `proc_macro`
 
-    fn foo() -> png_ext::DecodingError { unimplemented!() }
-}
-
-fn main() {
-    println!("Hello, world!");
-}
+fn main() {}

@@ -1247,7 +1247,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     .collect(),
             hir,
             def_path_hash_to_def_id,
-            queries: query::Queries::new(providers, on_disk_query_result_cache),
+            queries: query::Queries::new(
+                providers,
+                extern_providers,
+                on_disk_query_result_cache,
+            ),
             rcache: Lock::new(FxHashMap()),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),

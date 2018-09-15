@@ -10,6 +10,7 @@
 
 // run-pass
 // aux-build:edition-lint-paths.rs
+// compile-flags:--extern edition_lint_paths
 // run-rustfix
 
 // The "normal case". Ideally we would remove the `extern crate` here,

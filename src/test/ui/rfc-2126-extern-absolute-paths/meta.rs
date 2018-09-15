@@ -8,17 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// run-pass
-// aux-build:png2.rs
-// compile-flags:--extern png2
 // edition:2018
 
-mod png {
-    use png2 as png_ext;
+// Tests that `meta` is whitelisted, even if the crate doesn't exist
+// yet (i.e. it causes a different error than `not-whitelisted.rs`).
+use meta; //~ ERROR can't find crate for `meta`
 
-    fn foo() -> png_ext::DecodingError { unimplemented!() }
-}
-
-fn main() {
-    println!("Hello, world!");
-}
+fn main() {}
