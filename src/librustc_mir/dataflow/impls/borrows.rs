@@ -20,7 +20,7 @@ use rustc::ty::TyCtxt;
 use rustc::ty::{RegionKind, RegionVid};
 use rustc::ty::RegionKind::ReScope;
 
-use rustc_data_structures::bitslice::{BitwiseOperator, Word};
+use rustc_data_structures::bitvec::{BitwiseOperator, Word};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_set::IdxSet;
 use rustc_data_structures::indexed_vec::IndexVec;

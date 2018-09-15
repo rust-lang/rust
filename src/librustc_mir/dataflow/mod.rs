@@ -10,7 +10,7 @@
 
 use syntax::ast::{self, MetaItem};
 
-use rustc_data_structures::bitslice::{bitwise, BitwiseOperator};
+use rustc_data_structures::bitvec::{bitwise, BitwiseOperator};
 use rustc_data_structures::indexed_set::{HybridIdxSet, IdxSet};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::work_queue::WorkQueue;
