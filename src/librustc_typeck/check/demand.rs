@@ -132,9 +132,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let expr_text = print::to_string(print::NO_ANN, |s| s.print_expr(expr));
                 let suggestions = compatible_variants.iter()
                     .map(|v| format!("{}({})", v, expr_text)).collect::<Vec<_>>();
-                err.span_suggestions(expr.span,
+                err.span_suggestions_with_applicability(expr.span,
                                      "try using a variant of the expected type",
-                                     suggestions);
+                                     suggestions,
+                                     Applicability::Unspecified,
+                                     );
             }
         }
 

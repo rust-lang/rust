@@ -801,7 +801,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             .span_to_snippet(trait_m.generics.span)
                             .ok()?;
 
-                        err.multipart_suggestion(
+                        err.multipart_suggestion_with_applicability(
                             "try changing the `impl Trait` argument to a generic parameter",
                             vec![
                                 // replace `impl Trait` with `T`
@@ -811,6 +811,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 // of the generics, but it works for the common case
                                 (generics_span, new_generics),
                             ],
+                            Applicability::Unspecified,
                         );
                         Some(())
                     })();
@@ -872,7 +873,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             .span_to_snippet(bounds)
                             .ok()?;
 
-                        err.multipart_suggestion(
+                        err.multipart_suggestion_with_applicability(
                             "try removing the generic parameter and using `impl Trait` instead",
                             vec![
                                 // delete generic parameters
@@ -880,6 +881,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 // replace param usage with `impl Trait`
                                 (span, format!("impl {}", bounds)),
                             ],
+                            Applicability::Unspecified,
                         );
                         Some(())
                     })();

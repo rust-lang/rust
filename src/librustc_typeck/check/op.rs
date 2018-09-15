@@ -464,10 +464,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     is_assign,
                 ) {
                     (Ok(l), Ok(r), false) => {
-                        err.multipart_suggestion(msg, vec![
+                        err.multipart_suggestion_with_applicability(msg, vec![
                             (lhs_expr.span, format!("{}.to_owned()", l)),
                             (rhs_expr.span, format!("&{}", r)),
-                        ]);
+                        ],
+                        Applicability::Unspecified,
+                        );
                     }
                     _ => {
                         err.help(msg);
