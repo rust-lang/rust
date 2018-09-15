@@ -14,3 +14,13 @@ pub use self::neon::*;
 
 mod crypto;
 pub use self::crypto::*;
+
+#[cfg(test)]
+use stdsimd_test::assert_instr;
+
+/// Generates the trap instruction `BRK 1`
+#[cfg_attr(test, assert_instr(brk))]
+#[inline]
+pub unsafe fn brk() -> ! {
+    ::_core::intrinsics::abort()
+}

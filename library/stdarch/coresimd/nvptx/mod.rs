@@ -11,6 +11,9 @@
 //! [llvm_docs]:
 //! https://llvm.org/docs/NVPTXUsage.html
 
+#[cfg(test)]
+use stdsimd_test::assert_instr;
+
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.nvvm.barrier0"]
@@ -117,4 +120,11 @@ pub unsafe fn _thread_idx_y() -> i32 {
 #[inline]
 pub unsafe fn _thread_idx_z() -> i32 {
     thread_idx_z()
+}
+
+/// Generates the trap instruction `TRAP`
+#[cfg_attr(test, assert_instr(trap))]
+#[inline]
+pub unsafe fn trap() -> ! {
+    ::_core::intrinsics::abort()
 }

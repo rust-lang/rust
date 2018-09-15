@@ -38,3 +38,10 @@ pub unsafe fn grow_memory(delta: i32) -> i32 {
 
 pub mod atomic;
 pub mod memory;
+
+/// Generates the trap instruction `UNREACHABLE`
+#[cfg_attr(test, assert_instr(unreachable))]
+#[inline]
+pub unsafe fn unreachable() -> ! {
+    ::_core::intrinsics::abort()
+}

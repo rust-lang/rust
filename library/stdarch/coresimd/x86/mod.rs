@@ -512,3 +512,13 @@ pub use self::rdrand::*;
 
 mod sha;
 pub use self::sha::*;
+
+#[cfg(test)]
+use stdsimd_test::assert_instr;
+
+/// Generates the trap instruction `UD2`
+#[cfg_attr(test, assert_instr(ud2))]
+#[inline]
+pub unsafe fn ud2() -> ! {
+    ::_core::intrinsics::abort()
+}

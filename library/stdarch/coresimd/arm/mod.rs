@@ -42,3 +42,14 @@ mod neon;
     dox
 ))]
 pub use self::neon::*;
+
+#[cfg(test)]
+use stdsimd_test::assert_instr;
+
+/// Generates the trap instruction `UDF`
+#[cfg(target_arch = "arm")]
+#[cfg_attr(test, assert_instr(udf))]
+#[inline]
+pub unsafe fn udf() -> ! {
+    ::_core::intrinsics::abort()
+}
