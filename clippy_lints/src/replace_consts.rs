@@ -1,8 +1,8 @@
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use rustc::hir;
-use rustc::hir::def::Def;
+use crate::rustc::hir;
+use crate::rustc::hir::def::Def;
 use crate::utils::{match_def_path, span_lint_and_sugg};
 
 /// **What it does:** Checks for usage of `ATOMIC_X_INIT`, `ONCE_INIT`, and

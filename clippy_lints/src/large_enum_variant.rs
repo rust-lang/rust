@@ -1,10 +1,10 @@
 //! lint when there is a large size difference between variants on an enum
 
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use rustc::hir::*;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::*;
 use crate::utils::{snippet_opt, span_lint_and_then};
-use rustc::ty::layout::LayoutOf;
+use crate::rustc::ty::layout::LayoutOf;
 
 /// **What it does:** Checks for large size differences between variants on
 /// `enum`s.

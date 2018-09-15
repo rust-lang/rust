@@ -1,7 +1,7 @@
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use rustc::ty;
-use rustc::hir::*;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::ty;
+use crate::rustc::hir::*;
 use crate::utils::{is_adjusted, iter_input_pats, snippet_opt, span_lint_and_then};
 
 #[allow(missing_copy_implementations)]

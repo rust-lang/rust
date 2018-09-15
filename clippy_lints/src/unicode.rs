@@ -1,8 +1,8 @@
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use rustc::hir::*;
-use syntax::ast::{LitKind, NodeId};
-use syntax::source_map::Span;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::*;
+use crate::syntax::ast::{LitKind, NodeId};
+use crate::syntax::source_map::Span;
 use unicode_normalization::UnicodeNormalization;
 use crate::utils::{is_allowed, snippet, span_help_and_lint};
 

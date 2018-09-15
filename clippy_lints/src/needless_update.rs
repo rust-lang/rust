@@ -1,7 +1,7 @@
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use rustc::ty;
-use rustc::hir::{Expr, ExprKind};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::ty;
+use crate::rustc::hir::{Expr, ExprKind};
 use crate::utils::span_lint;
 
 /// **What it does:** Checks for needlessly including a base struct on update

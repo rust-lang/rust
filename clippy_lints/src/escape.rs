@@ -1,14 +1,14 @@
-use rustc::hir::*;
-use rustc::hir::intravisit as visit;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use rustc::middle::expr_use_visitor::*;
-use rustc::middle::mem_categorization::{cmt_, Categorization};
-use rustc::ty::{self, Ty};
-use rustc::ty::layout::LayoutOf;
-use rustc::util::nodemap::NodeSet;
-use syntax::ast::NodeId;
-use syntax::source_map::Span;
+use crate::rustc::hir::*;
+use crate::rustc::hir::intravisit as visit;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::middle::expr_use_visitor::*;
+use crate::rustc::middle::mem_categorization::{cmt_, Categorization};
+use crate::rustc::ty::{self, Ty};
+use crate::rustc::ty::layout::LayoutOf;
+use crate::rustc::util::nodemap::NodeSet;
+use crate::syntax::ast::NodeId;
+use crate::syntax::source_map::Span;
 use crate::utils::span_lint;
 
 pub struct Pass {

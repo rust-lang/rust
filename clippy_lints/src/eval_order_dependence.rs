@@ -1,10 +1,10 @@
-use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc::hir::*;
-use rustc::ty;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use crate::rustc::hir::*;
+use crate::rustc::ty;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use syntax::ast;
+use crate::syntax::ast;
 use crate::utils::{get_parent_expr, span_lint, span_note_and_lint};
 
 /// **What it does:** Checks for a read and a write to the same variable where

@@ -1,11 +1,11 @@
-use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass, LintContext, in_external_macro};
-use rustc::{declare_tool_lint, lint_array};
-use rustc_data_structures::fx::FxHashMap;
+use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass, LintContext, in_external_macro};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_data_structures::fx::FxHashMap;
 use if_chain::if_chain;
 use std::char;
-use syntax::ast::*;
-use syntax::source_map::Span;
-use syntax::visit::FnKind;
+use crate::syntax::ast::*;
+use crate::syntax::source_map::Span;
+use crate::syntax::visit::FnKind;
 use crate::utils::{constants, snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_then};
 
 /// **What it does:** Checks for structure field patterns bound to wildcards.

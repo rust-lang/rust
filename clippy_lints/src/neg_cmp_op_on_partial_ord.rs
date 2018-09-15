@@ -1,6 +1,6 @@
-use rustc::hir::*;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::*;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
+use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 
 use crate::utils::{self, paths, span_lint};

@@ -6,7 +6,7 @@ use lazy_static::lazy_static;
 use std::default::Default;
 use std::{env, fmt, fs, io, path};
 use std::io::Read;
-use syntax::{ast, source_map};
+use crate::syntax::{ast, source_map};
 use toml;
 use std::sync::Mutex;
 

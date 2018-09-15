@@ -2,11 +2,12 @@
 
 #![warn(clippy::useless_attribute)]
 
-#[allow(dead_code, unused_extern_crates)]
-#[cfg_attr(feature = "cargo-clippy", allow(dead_code, unused_extern_crates))]
+#[allow(dead_code)]
+#[cfg_attr(feature = "cargo-clippy", allow(dead_code))]
 #[cfg_attr(feature = "cargo-clippy",
-           allow(dead_code, unused_extern_crates))]
+           allow(dead_code))]
 #[allow(unused_imports)]
+#[allow(unused_extern_crates)]
 #[macro_use]
 extern crate clippy_lints;
 

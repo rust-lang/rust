@@ -1,10 +1,10 @@
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use rustc::ty::{self, Ty};
-use rustc::hir::*;
+use crate::rustc::ty::{self, Ty};
+use crate::rustc::hir::*;
 use std::borrow::Cow;
-use syntax::ast;
+use crate::syntax::ast;
 use crate::utils::{last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_then};
 use crate::utils::{opt_def_id, sugg};
 

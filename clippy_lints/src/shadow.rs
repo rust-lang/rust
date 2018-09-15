@@ -1,10 +1,10 @@
 use crate::reexport::*;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
-use rustc::{declare_tool_lint, lint_array};
-use rustc::hir::*;
-use rustc::hir::intravisit::FnKind;
-use rustc::ty;
-use syntax::source_map::Span;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::*;
+use crate::rustc::hir::intravisit::FnKind;
+use crate::rustc::ty;
+use crate::syntax::source_map::Span;
 use crate::utils::{contains_name, higher, iter_input_pats, snippet, span_lint_and_then};
 
 /// **What it does:** Checks for bindings that shadow other bindings already in

@@ -2,15 +2,15 @@
 //!
 //! This lint is **deny** by default.
 
-use rustc::lint::{LateContext, LateLintPass, Lint, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use rustc::hir::*;
-use rustc::hir::def::Def;
-use rustc::ty::{self, TypeFlags};
-use rustc::ty::adjustment::Adjust;
-use rustc_errors::Applicability;
-use rustc_typeck::hir_ty_to_ty;
-use syntax_pos::{DUMMY_SP, Span};
+use crate::rustc::lint::{LateContext, LateLintPass, Lint, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::*;
+use crate::rustc::hir::def::Def;
+use crate::rustc::ty::{self, TypeFlags};
+use crate::rustc::ty::adjustment::Adjust;
+use crate::rustc_errors::Applicability;
+use crate::rustc_typeck::hir_ty_to_ty;
+use crate::syntax_pos::{DUMMY_SP, Span};
 use std::ptr;
 use crate::utils::{in_constant, in_macro, is_copy, span_lint_and_then};
 

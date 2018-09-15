@@ -1,7 +1,7 @@
-use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use syntax::ast::*;
-use syntax::source_map::Spanned;
+use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::syntax::ast::*;
+use crate::syntax::source_map::Spanned;
 use crate::utils::{in_macro, snippet, span_lint_and_sugg};
 
 /// **What it does:** Checks for operations where precedence may be unclear
@@ -121,7 +121,7 @@ fn is_arith_expr(expr: &Expr) -> bool {
 }
 
 fn is_bit_op(op: BinOpKind) -> bool {
-    use syntax::ast::BinOpKind::*;
+    use crate::syntax::ast::BinOpKind::*;
     match op {
         BitXor | BitAnd | BitOr | Shl | Shr => true,
         _ => false,
@@ -129,7 +129,7 @@ fn is_bit_op(op: BinOpKind) -> bool {
 }
 
 fn is_arith_op(op: BinOpKind) -> bool {
-    use syntax::ast::BinOpKind::*;
+    use crate::syntax::ast::BinOpKind::*;
     match op {
         Add | Sub | Mul | Div | Rem => true,
         _ => false,

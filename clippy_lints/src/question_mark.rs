@@ -1,10 +1,10 @@
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use rustc::hir::*;
-use rustc::hir::def::Def;
+use crate::rustc::hir::*;
+use crate::rustc::hir::def::Def;
 use crate::utils::sugg::Sugg;
-use syntax::ptr::P;
+use crate::syntax::ptr::P;
 
 use crate::utils::{match_def_path, match_type, span_lint_and_then};
 use crate::utils::paths::*;

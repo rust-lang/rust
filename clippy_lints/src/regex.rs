@@ -1,11 +1,11 @@
 use regex_syntax;
-use rustc::hir::*;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use rustc_data_structures::fx::FxHashSet;
+use crate::rustc::hir::*;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_data_structures::fx::FxHashSet;
 use if_chain::if_chain;
-use syntax::ast::{LitKind, NodeId, StrStyle};
-use syntax::source_map::{BytePos, Span};
+use crate::syntax::ast::{LitKind, NodeId, StrStyle};
+use crate::syntax::source_map::{BytePos, Span};
 use crate::utils::{is_expn_of, match_def_path, match_type, opt_def_id, paths, span_help_and_lint, span_lint};
 use crate::consts::{constant, Constant};
 

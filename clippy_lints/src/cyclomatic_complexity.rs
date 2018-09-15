@@ -1,13 +1,13 @@
 //! calculate cyclomatic complexity and warn about overly complex functions
 
-use rustc::cfg::CFG;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, LintContext};
-use rustc::{declare_tool_lint, lint_array};
-use rustc::hir::*;
-use rustc::ty;
-use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use syntax::ast::{Attribute, NodeId};
-use syntax::source_map::Span;
+use crate::rustc::cfg::CFG;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, LintContext};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::*;
+use crate::rustc::ty;
+use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use crate::syntax::ast::{Attribute, NodeId};
+use crate::syntax::source_map::Span;
 
 use crate::utils::{in_macro, is_allowed, match_type, paths, span_help_and_lint, LimitStack};
 

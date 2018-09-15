@@ -1,11 +1,11 @@
 use crate::consts::{constant_simple, constant_context};
-use rustc::lint::LateContext;
-use rustc::hir::*;
-use rustc::ty::{TypeckTables};
+use crate::rustc::lint::LateContext;
+use crate::rustc::hir::*;
+use crate::rustc::ty::{TypeckTables};
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
-use syntax::ast::Name;
-use syntax::ptr::P;
+use crate::syntax::ast::Name;
+use crate::syntax::ptr::P;
 use crate::utils::differing_macro_contexts;
 
 /// Type used to check whether two ast are the same. This is different from the

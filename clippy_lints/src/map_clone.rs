@@ -1,9 +1,9 @@
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use rustc::hir::*;
-use rustc::ty;
-use syntax::ast;
+use crate::rustc::hir::*;
+use crate::rustc::ty;
+use crate::syntax::ast;
 use crate::utils::{get_arg_ident, is_adjusted, iter_input_pats, match_qpath, match_trait_method, match_type,
             paths, remove_blocks, snippet, span_help_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq};
 

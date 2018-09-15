@@ -1,15 +1,15 @@
 //! Checks for usage of  `&Vec[_]` and `&String`.
 
 use std::borrow::Cow;
-use rustc::hir::*;
-use rustc::hir::QPath;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::*;
+use crate::rustc::hir::QPath;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use rustc::ty;
-use syntax::ast::NodeId;
-use syntax::source_map::Span;
-use syntax_pos::MultiSpan;
+use crate::rustc::ty;
+use crate::syntax::ast::NodeId;
+use crate::syntax::source_map::Span;
+use crate::syntax_pos::MultiSpan;
 use crate::utils::{match_qpath, match_type, paths, snippet_opt, span_lint, span_lint_and_then, walk_ptrs_hir_ty};
 use crate::utils::ptr::get_spans;
 

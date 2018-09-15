@@ -1,8 +1,8 @@
-use rustc::hir::{Expr, ExprKind};
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use syntax::ast::LitKind;
-use syntax::source_map::{Span, Spanned};
+use crate::rustc::hir::{Expr, ExprKind};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::syntax::ast::LitKind;
+use crate::syntax::source_map::{Span, Spanned};
 use crate::utils::{match_type, paths, span_lint, walk_ptrs_ty};
 
 /// **What it does:** Checks for duplicate open options as well as combinations

@@ -1,12 +1,12 @@
-use rustc::hir::*;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::*;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
+use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use rustc::ty::{self, Ty};
+use crate::rustc::ty::{self, Ty};
 use std::cmp::Ordering;
 use std::collections::Bound;
-use syntax::ast::LitKind;
-use syntax::source_map::Span;
+use crate::syntax::ast::LitKind;
+use crate::syntax::source_map::Span;
 use crate::utils::paths;
 use crate::utils::{expr_block, is_allowed, is_expn_of, match_qpath, match_type, multispan_sugg,
             remove_blocks, snippet, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty};

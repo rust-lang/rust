@@ -1,9 +1,9 @@
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use rustc::hir;
-use rustc::ty;
-use syntax_pos::Span;
+use crate::rustc::hir;
+use crate::rustc::ty;
+use crate::syntax_pos::Span;
 use crate::utils::{match_def_path, method_chain_args, span_lint_and_then, walk_ptrs_ty, is_expn_of, opt_def_id};
 use crate::utils::paths::{BEGIN_PANIC, BEGIN_PANIC_FMT, FROM_TRAIT, OPTION, RESULT};
 
@@ -52,8 +52,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FallibleImplFrom {
 }
 
 fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_items: &hir::HirVec<hir::ImplItemRef>) {
-    use rustc::hir::*;
-    use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+    use crate::rustc::hir::*;
+    use crate::rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 
     struct FindPanicUnwrap<'a, 'tcx: 'a> {
         tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,

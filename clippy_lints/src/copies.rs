@@ -1,12 +1,12 @@
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use rustc::ty::Ty;
-use rustc::hir::*;
-use rustc_data_structures::fx::FxHashMap;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::ty::Ty;
+use crate::rustc::hir::*;
+use crate::rustc_data_structures::fx::FxHashMap;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
-use syntax::symbol::LocalInternedString;
-use rustc_data_structures::small_vec::OneVector;
+use crate::syntax::symbol::LocalInternedString;
+use crate::rustc_data_structures::small_vec::OneVector;
 use crate::utils::{SpanlessEq, SpanlessHash};
 use crate::utils::{get_parent_expr, in_macro, snippet, span_lint_and_then, span_note_and_lint};
 

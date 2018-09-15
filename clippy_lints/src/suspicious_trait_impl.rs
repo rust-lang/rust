@@ -1,9 +1,9 @@
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use rustc::hir;
-use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use syntax::ast;
+use crate::rustc::hir;
+use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use crate::syntax::ast;
 use crate::utils::{get_trait_def_id, span_lint};
 
 /// **What it does:** Lints for suspicious operations in impls of arithmetic operators, e.g.

@@ -1,3 +1,5 @@
+cargo-features = ["edition"]
+
 [package]
 name = "rustc_tools_util"
 version = "0.1.0"

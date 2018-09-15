@@ -1,3 +1,5 @@
+cargo-features = ["edition"]
+
 [package]
 name = "clippy_lints"
 # begin automatic update

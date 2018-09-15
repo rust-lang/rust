@@ -1,9 +1,9 @@
 //! lint when items are used after statements
 
 use matches::matches;
-use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use syntax::ast::*;
+use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::syntax::ast::*;
 use crate::utils::{in_macro, span_lint};
 
 /// **What it does:** Checks for items declared after some statement in a block.

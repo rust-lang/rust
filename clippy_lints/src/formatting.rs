@@ -1,8 +1,8 @@
-use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use syntax::ast;
+use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::syntax::ast;
 use crate::utils::{differing_macro_contexts, in_macro, snippet_opt, span_note_and_lint};
-use syntax::ptr::P;
+use crate::syntax::ptr::P;
 
 /// **What it does:** Checks for use of the non-existent `=*`, `=!` and `=-`
 /// operators.

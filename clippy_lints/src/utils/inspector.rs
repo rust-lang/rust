@@ -2,11 +2,11 @@
 
 //! checks for attributes
 
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use rustc::hir;
-use rustc::hir::print;
-use syntax::ast::Attribute;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir;
+use crate::rustc::hir::print;
+use crate::syntax::ast::Attribute;
 use crate::utils::get_attr;
 
 /// **What it does:** Dumps every ast/hir node which has the `#[clippy_dump]`

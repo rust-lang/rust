@@ -12,10 +12,28 @@
 #![warn(rust_2018_idioms, trivial_casts, trivial_numeric_casts)]
 #![feature(crate_visibility_modifier)]
 
-use toml;
-use rustc_plugin;
-use rustc;
+// FIXME: switch to something more ergonomic here, once available.
+// (currently there is no way to opt into sysroot crates w/o `extern crate`)
+#[allow(unused_extern_crates)]
+extern crate fmt_macros;
+#[allow(unused_extern_crates)]
+extern crate rustc;
+#[allow(unused_extern_crates)]
+extern crate rustc_data_structures;
+#[allow(unused_extern_crates)]
+extern crate rustc_errors;
+#[allow(unused_extern_crates)]
+extern crate rustc_plugin;
+#[allow(unused_extern_crates)]
+extern crate rustc_target;
+#[allow(unused_extern_crates)]
+extern crate rustc_typeck;
+#[allow(unused_extern_crates)]
+extern crate syntax;
+#[allow(unused_extern_crates)]
+extern crate syntax_pos;
 
+use toml;
 
 macro_rules! declare_clippy_lint {
     { pub $name:tt, style, $description:tt } => {
@@ -175,7 +193,7 @@ pub mod zero_div_zero;
 pub use crate::utils::conf::Conf;
 
 mod reexport {
-    crate use syntax::ast::{Name, NodeId};
+    crate use crate::syntax::ast::{Name, NodeId};
 }
 
 pub fn register_pre_expansion_lints(session: &rustc::session::Session, store: &mut rustc::lint::LintStore, conf: &Conf) {

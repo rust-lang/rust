@@ -1,6 +1,6 @@
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use rustc::hir::*;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::*;
 use crate::utils::{get_trait_def_id, paths, span_lint};
 
 /// **What it does:** Checks for mis-uses of the serde API.

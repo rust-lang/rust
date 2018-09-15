@@ -1,8 +1,8 @@
-use rustc::hir::*;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::*;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use syntax::source_map::Spanned;
+use crate::syntax::source_map::Spanned;
 
 use crate::consts::{constant, Constant};
 use crate::utils::paths;

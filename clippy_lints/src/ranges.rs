@@ -1,9 +1,9 @@
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use rustc::hir::*;
-use syntax::ast::RangeLimits;
-use syntax::source_map::Spanned;
+use crate::rustc::hir::*;
+use crate::syntax::ast::RangeLimits;
+use crate::syntax::source_map::Spanned;
 use crate::utils::{is_integer_literal, paths, snippet, span_lint, span_lint_and_then, snippet_opt};
 use crate::utils::{get_trait_def_id, higher, implements_trait, SpanlessEq};
 use crate::utils::sugg::Sugg;

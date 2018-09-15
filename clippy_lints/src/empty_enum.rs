@@ -1,8 +1,8 @@
 //! lint when there is an enum with no variants
 
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use rustc::hir::*;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::*;
 use crate::utils::span_lint_and_then;
 
 /// **What it does:** Checks for `enum`s with no variants.

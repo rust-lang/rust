@@ -1,10 +1,10 @@
 //! lint on enum variants that are prefixed or suffixed by the same characters
 
-use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass, Lint};
-use rustc::{declare_tool_lint, lint_array};
-use syntax::ast::*;
-use syntax::source_map::Span;
-use syntax::symbol::LocalInternedString;
+use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass, Lint};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::syntax::ast::*;
+use crate::syntax::source_map::Span;
+use crate::syntax::symbol::LocalInternedString;
 use crate::utils::{span_help_and_lint, span_lint};
 use crate::utils::{camel_case_from, camel_case_until, in_macro};
 

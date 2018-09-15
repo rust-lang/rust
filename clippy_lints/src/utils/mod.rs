@@ -1,27 +1,27 @@
 use crate::reexport::*;
 use matches::matches;
 use if_chain::if_chain;
-use rustc::hir;
-use rustc::hir::*;
-use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
-use rustc::hir::def::Def;
-use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
-use rustc::hir::Node;
-use rustc::lint::{LateContext, Level, Lint, LintContext};
-use rustc::session::Session;
-use rustc::traits;
-use rustc::ty::{self, Binder, Ty, TyCtxt, layout::{self, IntegerExt}, subst::Kind};
-use rustc_errors::{Applicability, CodeSuggestion, Substitution, SubstitutionPart};
+use crate::rustc::hir;
+use crate::rustc::hir::*;
+use crate::rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
+use crate::rustc::hir::def::Def;
+use crate::rustc::hir::intravisit::{NestedVisitorMap, Visitor};
+use crate::rustc::hir::Node;
+use crate::rustc::lint::{LateContext, Level, Lint, LintContext};
+use crate::rustc::session::Session;
+use crate::rustc::traits;
+use crate::rustc::ty::{self, Binder, Ty, TyCtxt, layout::{self, IntegerExt}, subst::Kind};
+use crate::rustc_errors::{Applicability, CodeSuggestion, Substitution, SubstitutionPart};
 use std::borrow::Cow;
 use std::env;
 use std::mem;
 use std::str::FromStr;
 use std::rc::Rc;
-use syntax::ast::{self, LitKind};
-use syntax::attr;
-use syntax::source_map::{Span, DUMMY_SP};
-use syntax::errors::DiagnosticBuilder;
-use syntax::symbol::keywords;
+use crate::syntax::ast::{self, LitKind};
+use crate::syntax::attr;
+use crate::syntax::source_map::{Span, DUMMY_SP};
+use crate::syntax::errors::DiagnosticBuilder;
+use crate::syntax::symbol::keywords;
 
 mod camel_case;
 pub use self::camel_case::{camel_case_from, camel_case_until};
@@ -70,7 +70,7 @@ pub fn in_macro(span: Span) -> bool {
 ///
 /// See also the `paths` module.
 pub fn match_def_path(tcx: TyCtxt<'_, '_, '_>, def_id: DefId, path: &[&str]) -> bool {
-    use syntax::symbol;
+    use crate::syntax::symbol;
 
     struct AbsolutePathBuffer {
         names: Vec<symbol::LocalInternedString>,

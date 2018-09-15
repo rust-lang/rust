@@ -1,9 +1,9 @@
 use std::borrow::Cow;
-use rustc::hir::*;
-use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc::lint::LateContext;
-use syntax::ast::Name;
-use syntax::source_map::Span;
+use crate::rustc::hir::*;
+use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use crate::rustc::lint::LateContext;
+use crate::syntax::ast::Name;
+use crate::syntax::source_map::Span;
 use crate::utils::{get_pat_name, match_var, snippet};
 
 pub fn get_spans(

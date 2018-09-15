@@ -1,18 +1,18 @@
 #![allow(clippy::float_cmp)]
 
-use rustc::lint::LateContext;
-use rustc::{span_bug, bug};
-use rustc::hir::def::Def;
-use rustc::hir::*;
-use rustc::ty::{self, Ty, TyCtxt, Instance};
-use rustc::ty::subst::{Subst, Substs};
+use crate::rustc::lint::LateContext;
+use crate::rustc::{span_bug, bug};
+use crate::rustc::hir::def::Def;
+use crate::rustc::hir::*;
+use crate::rustc::ty::{self, Ty, TyCtxt, Instance};
+use crate::rustc::ty::subst::{Subst, Substs};
 use std::cmp::Ordering::{self, Equal};
 use std::cmp::PartialOrd;
 use std::hash::{Hash, Hasher};
 use std::mem;
 use std::rc::Rc;
-use syntax::ast::{FloatTy, LitKind};
-use syntax::ptr::P;
+use crate::syntax::ast::{FloatTy, LitKind};
+use crate::syntax::ptr::P;
 use crate::utils::{sext, unsext, clip};
 
 /// A `LitKind`-like enum to fold constant `Expr`s into.
@@ -139,7 +139,7 @@ impl Constant {
 
 /// parse a `LitKind` to a `Constant`
 pub fn lit_to_constant<'tcx>(lit: &LitKind, ty: Ty<'tcx>) -> Constant {
-    use syntax::ast::*;
+    use crate::syntax::ast::*;
 
     match *lit {
         LitKind::Str(ref is, _) => Constant::Str(is.to_string()),
@@ -279,7 +279,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                     instance,
                     promoted: None,
                 };
-                use rustc::mir::interpret::GlobalId;
+                use crate::rustc::mir::interpret::GlobalId;
                 let result = self.tcx.const_eval(self.param_env.and(gid)).ok()?;
                 let ret = miri_to_const(self.tcx, result);
                 if ret.is_some() {
@@ -409,7 +409,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
 }
 
 pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'tcx>) -> Option<Constant> {
-    use rustc::mir::interpret::{Scalar, ScalarMaybeUndef, ConstValue};
+    use crate::rustc::mir::interpret::{Scalar, ScalarMaybeUndef, ConstValue};
     match result.val {
         ConstValue::Scalar(Scalar::Bits{ bits: b, ..}) => match result.ty.sty {
             ty::Bool => Some(Constant::Bool(b == 1)),
