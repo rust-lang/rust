@@ -319,7 +319,7 @@ fn check_ty_rptr(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool, lt:
                     }
 
                     let ltopt = if lt.is_elided() {
-                        "".to_owned()
+                        String::new()
                     } else {
                         format!("{} ", lt.name.ident().name.as_str())
                     };

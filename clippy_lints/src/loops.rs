@@ -956,7 +956,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
                         return if offset.negate {
                             format!("({} - {})", snippet(cx, end.span, "<src>.len()"), offset.value)
                         } else {
-                            "".to_owned()
+                            String::new()
                         };
                     }
                 }
@@ -1067,14 +1067,14 @@ fn check_for_loop_range<'a, 'tcx>(
                 let starts_at_zero = is_integer_literal(start, 0);
 
                 let skip = if starts_at_zero {
-                    "".to_owned()
+                    String::new()
                 } else {
                     format!(".skip({})", snippet(cx, start.span, ".."))
                 };
 
                 let take = if let Some(end) = *end {
                     if is_len_call(end, indexed) {
-                        "".to_owned()
+                        String::new()
                     } else {
                         match limits {
                             ast::RangeLimits::Closed => {
@@ -1085,7 +1085,7 @@ fn check_for_loop_range<'a, 'tcx>(
                         }
                     }
                 } else {
-                    "".to_owned()
+                    String::new()
                 };
 
                 let (ref_mut, method) = if visitor.indexed_mut.contains(&indexed) {

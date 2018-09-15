@@ -287,7 +287,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     let tyopt = if let Some(ref ty) = l.ty {
                         format!(": &{mutopt}{ty}", mutopt=mutopt, ty=snippet(cx, ty.span, "_"))
                     } else {
-                        "".to_owned()
+                        String::new()
                     };
                     span_lint_and_then(cx,
                         TOPLEVEL_REF_ARG,
