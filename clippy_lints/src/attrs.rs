@@ -180,10 +180,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
                                                                 || is_word(lint, "deprecated") {
                                                 return
                                         },
-                                        ItemKind::ExternCrate(..) => if is_word(lint, "unused_imports")
-                                                                        && skip_unused_imports {
+                                        ItemKind::ExternCrate(..) => {
+                                            if is_word(lint, "unused_imports")
+                                                && skip_unused_imports {
+                                                    return
+                                            }
+                                            if is_word(lint, "unused_extern_crates") {
                                                 return
-                                        },
+                                            }
+                                        }
                                         _ => {},
                                     }
                                 }
