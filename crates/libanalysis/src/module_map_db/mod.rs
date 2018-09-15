@@ -1,11 +1,19 @@
+mod descr;
+
 use std::sync::Arc;
 use {
     FileId,
     db::{
-        Query, QueryCtx
+        BoxedQuery, Query, QueryCtx
     },
     module_map::resolve_submodule,
 };
+
+pub(crate) fn queries(acc: &mut Vec<BoxedQuery>) {
+    acc.push(MODULE_DESCR.into());
+    acc.push(RESOLVE_SUBMODULE.into());
+    acc.push(PARENT_MODULE.into());
+}
 
 impl<'a> QueryCtx<'a> {
     fn module_descr(&self, file_id: FileId) -> Arc<descr::ModuleDescr> {
@@ -51,39 +59,6 @@ pub(crate) const PARENT_MODULE: Query<FileId, Vec<FileId>> = Query {
         res
     }
 };
-
-mod descr {
-    use libsyntax2::{
-        SmolStr,
-        ast::{self, NameOwner},
-    };
-
-    #[derive(Debug, Hash)]
-    pub struct ModuleDescr {
-        pub submodules: Vec<Submodule>
-    }
-
-    impl ModuleDescr {
-        pub fn new(root: ast::Root) -> ModuleDescr {
-            let submodules = root
-                .modules()
-                .filter_map(|module| {
-                    let name = module.name()?.text();
-                    if !module.has_semi() {
-                        return None;
-                    }
-                    Some(Submodule { name })
-                }).collect();
-
-            ModuleDescr { submodules } }
-    }
-
-    #[derive(Clone, Hash, PartialEq, Eq, Debug)]
-    pub struct Submodule {
-        pub name: SmolStr,
-    }
-
-}
 
 #[cfg(test)]
 mod tests {

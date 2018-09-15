@@ -120,38 +120,36 @@ impl<'a> QueryCtx<'a> {
 
 fn query_config() -> salsa::QueryConfig<State, Data> {
     let mut res = salsa::QueryConfig::new();
-    let queries: Vec<SalsaGroundQuery> = vec![
+    let queries: Vec<BoxedGroundQuery> = vec![
         queries::FILE_TEXT.into(),
         queries::FILE_SET.into(),
     ];
     for q in queries {
         res = res.with_ground_query(q.query_type, q.f)
     }
-    let queries: Vec<SalsaQuery> = vec![
+    let mut queries: Vec<BoxedQuery> = vec![
         queries::FILE_SYNTAX.into(),
-        ::module_map_db::MODULE_DESCR.into(),
-        ::module_map_db::RESOLVE_SUBMODULE.into(),
-        ::module_map_db::PARENT_MODULE.into(),
     ];
+    ::module_map_db::queries(&mut queries);
     for q in queries {
         res = res.with_query(q.query_type, q.f);
     }
     res
 }
 
-struct SalsaGroundQuery {
+struct BoxedGroundQuery {
     query_type: salsa::QueryTypeId,
     f: Box<Fn(&State, &Data) -> (Data, salsa::OutputFingerprint) + Send + Sync + 'static>,
 }
 
-impl<T, R> From<GroundQuery<T, R>> for SalsaGroundQuery
+impl<T, R> From<GroundQuery<T, R>> for BoxedGroundQuery
 where
     T: Send + Sync + 'static,
     R: Send + Sync + 'static,
 {
-    fn from(q: GroundQuery<T, R>) -> SalsaGroundQuery
+    fn from(q: GroundQuery<T, R>) -> BoxedGroundQuery
     {
-        SalsaGroundQuery {
+        BoxedGroundQuery {
             query_type: salsa::QueryTypeId(q.id),
             f: Box::new(move |state, data| {
                 let data: &T = data.downcast_ref().unwrap();
@@ -163,19 +161,19 @@ where
     }
 }
 
-struct SalsaQuery {
+pub(crate) struct BoxedQuery {
     query_type: salsa::QueryTypeId,
     f: Box<Fn(&salsa::QueryCtx<State, Data>, &Data) -> (Data, salsa::OutputFingerprint) + Send + Sync + 'static>,
 }
 
-impl<T, R> From<Query<T, R>> for SalsaQuery
+impl<T, R> From<Query<T, R>> for BoxedQuery
 where
     T: Hash + Send + Sync + 'static,
     R: Hash + Send + Sync + 'static,
 {
-    fn from(q: Query<T, R>) -> SalsaQuery
+    fn from(q: Query<T, R>) -> BoxedQuery
     {
-        SalsaQuery {
+        BoxedQuery {
             query_type: salsa::QueryTypeId(q.id),
             f: Box::new(move |ctx, data| {
                 let ctx = QueryCtx { inner: ctx };
