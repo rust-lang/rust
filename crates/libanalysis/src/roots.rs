@@ -15,7 +15,7 @@ use {
     imp::FileResolverImp,
     module_map::{ModuleMap, ChangeKind},
     symbol_index::SymbolIndex,
-    descriptors::ModuleTreeDescriptor,
+    descriptors::{ModuleDescriptor, ModuleTreeDescriptor},
 };
 
 pub(crate) trait SourceRoot {
@@ -137,30 +137,35 @@ impl FileData {
 pub(crate) struct ReadonlySourceRoot {
     symbol_index: SymbolIndex,
     file_map: HashMap<FileId, FileData>,
-    module_map: ModuleMap,
+    module_tree: Arc<ModuleTreeDescriptor>,
 }
 
 impl ReadonlySourceRoot {
     pub(crate) fn new(files: Vec<(FileId, String)>, file_resolver: FileResolverImp) -> ReadonlySourceRoot {
-        let mut module_map = ModuleMap::new();
-        module_map.set_file_resolver(file_resolver);
-        let symbol_index = SymbolIndex::for_files(
-            files.par_iter().map(|(file_id, text)| {
-                (*file_id, File::parse(text))
+        let modules = files.par_iter()
+            .map(|(file_id, text)| {
+                let syntax = File::parse(text);
+                let mod_descr = ModuleDescriptor::new(syntax.ast());
+                (*file_id, syntax, mod_descr)
             })
+            .collect::<Vec<_>>();
+        let module_tree = ModuleTreeDescriptor::new(
+            modules.iter().map(|it| (it.0, &it.2)),
+            &file_resolver,
+        );
+
+        let symbol_index = SymbolIndex::for_files(
+            modules.par_iter().map(|it| (it.0, it.1.clone()))
         );
         let file_map: HashMap<FileId, FileData> = files
             .into_iter()
-            .map(|(id, text)| {
-                module_map.update_file(id, ChangeKind::Insert);
-                (id, FileData::new(text))
-            })
+            .map(|(id, text)| (id, FileData::new(text)))
             .collect();
 
         ReadonlySourceRoot {
             symbol_index,
             file_map,
-            module_map,
+            module_tree: Arc::new(module_tree),
         }
     }
 
@@ -173,6 +178,9 @@ impl ReadonlySourceRoot {
 }
 
 impl SourceRoot for ReadonlySourceRoot {
+    fn module_tree(&self) -> Arc<ModuleTreeDescriptor> {
+        Arc::clone(&self.module_tree)
+    }
     fn contains(&self, file_id: FileId) -> bool {
         self.file_map.contains_key(&file_id)
     }

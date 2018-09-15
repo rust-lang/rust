@@ -42,25 +42,25 @@ pub struct Submodule {
     pub name: SmolStr,
 }
 
-#[derive(Hash)]
+#[derive(Hash, Debug)]
 pub(crate) struct ModuleTreeDescriptor {
     nodes: Vec<NodeData>,
     links: Vec<LinkData>,
     file_id2node: BTreeMap<FileId, Node>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 struct Node(usize);
-#[derive(Hash)]
+#[derive(Hash, Debug)]
 struct NodeData {
     file_id: FileId,
     links: Vec<Link>,
     parents: Vec<Link>
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct Link(usize);
-#[derive(Hash)]
+#[derive(Hash, Debug)]
 struct LinkData {
     owner: Node,
     name: SmolStr,
