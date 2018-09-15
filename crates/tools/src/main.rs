@@ -5,8 +5,6 @@ extern crate ron;
 extern crate tera;
 extern crate tools;
 extern crate walkdir;
-#[macro_use]
-extern crate commandspec;
 extern crate heck;
 
 use clap::{App, Arg, SubCommand};
@@ -15,6 +13,7 @@ use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
+    process::Command,
 };
 use tools::{collect_tests, Test};
 
@@ -191,24 +190,25 @@ fn existing_tests(dir: &Path) -> Result<HashMap<String, (PathBuf, Test)>> {
 }
 
 fn install_code_extension() -> Result<()> {
-    execute!(r"cargo install --path crates/server --force")?;
-    execute!(
-        r"
-cd code
-npm install
-    "
-    )?;
-    execute!(
-        r"
-cd code
-./node_modules/vsce/out/vsce package
-    "
-    )?;
-    execute!(
-        r"
-cd code
-code --install-extension ./rcf-lsp-0.0.1.vsix
-    "
-    )?;
+    run("cargo install --path crates/server --force", ".")?;
+    run(r"npm install", "./code")?;
+    run(r"./node_modules/vsce/out/vsce package", "./code")?;
+    run(r"code --install-extension ./rcf-lsp-0.0.1.vsix", "./code")?;
+    Ok(())
+}
+
+fn run(cmdline: &'static str, dir: &str) -> Result<()> {
+    eprintln!("\nwill run: {}", cmdline);
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let project_dir = Path::new(manifest_dir).ancestors().nth(2).unwrap().join(dir);
+    let mut args = cmdline.split_whitespace();
+    let exec = args.next().unwrap();
+    let status = Command::new(exec)
+        .args(args)
+        .current_dir(project_dir)
+        .status()?;
+    if !status.success() {
+        bail!("`{}` exited with {}", cmdline, status);
+    }
     Ok(())
 }
