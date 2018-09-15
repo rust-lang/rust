@@ -274,6 +274,18 @@ impl<'test> TestCx<'test> {
             ParseFail | CompileFail => false,
             RunPass => true,
             Ui => self.props.compile_pass,
+            Incremental => {
+                let revision = self.revision
+                    .expect("incremental tests require a list of revisions");
+                if revision.starts_with("rpass") || revision.starts_with("rfail") {
+                    true
+                } else if revision.starts_with("cfail") {
+                    // FIXME: would be nice if incremental revs could start with "cpass"
+                    self.props.compile_pass
+                } else {
+                    panic!("revision name must begin with rpass, rfail, or cfail");
+                }
+            }
             mode => panic!("unimplemented for mode {:?}", mode),
         }
     }
