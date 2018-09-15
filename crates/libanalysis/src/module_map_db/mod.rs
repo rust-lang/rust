@@ -4,15 +4,16 @@ use std::sync::Arc;
 use {
     FileId,
     db::{
-        BoxedQuery, Query, QueryCtx
+        Query, QueryRegistry, QueryCtx,
+        file_syntax, file_set
     },
     module_map::resolve_submodule,
 };
 
-pub(crate) fn queries(acc: &mut Vec<BoxedQuery>) {
-    acc.push(MODULE_DESCR.into());
-    acc.push(RESOLVE_SUBMODULE.into());
-    acc.push(PARENT_MODULE.into());
+pub(crate) fn register_queries(reg: &mut QueryRegistry) {
+    reg.add(MODULE_DESCR, "MODULE_DESCR");
+    reg.add(RESOLVE_SUBMODULE, "RESOLVE_SUBMODULE");
+    reg.add(PARENT_MODULE, "PARENT_MODULE");
 }
 
 impl<'a> QueryCtx<'a> {
@@ -24,41 +25,32 @@ impl<'a> QueryCtx<'a> {
     }
 }
 
-pub(crate) const MODULE_DESCR: Query<FileId, descr::ModuleDescr> = Query {
-    id: 30,
-    f: |ctx, &file_id| {
-        let file = ctx.file_syntax(file_id);
-        descr::ModuleDescr::new(file.ast())
-    }
-};
+const MODULE_DESCR: Query<FileId, descr::ModuleDescr> = Query(30, |ctx, &file_id| {
+    let file = file_syntax(ctx, file_id);
+    descr::ModuleDescr::new(file.ast())
+});
 
-pub(crate) const RESOLVE_SUBMODULE: Query<(FileId, descr::Submodule), Vec<FileId>> = Query {
-    id: 31,
-    f: |ctx, params| {
-        let files = ctx.file_set();
-        resolve_submodule(params.0, &params.1.name, &files.1).0
-    }
-};
+const RESOLVE_SUBMODULE: Query<(FileId, descr::Submodule), Vec<FileId>> = Query(31, |ctx, params| {
+    let files = file_set(ctx);
+    resolve_submodule(params.0, &params.1.name, &files.1).0
+});
 
-pub(crate) const PARENT_MODULE: Query<FileId, Vec<FileId>> = Query {
-    id: 40,
-    f: |ctx, file_id| {
-        let files = ctx.file_set();
-        let res = files.0.iter()
-            .map(|&parent_id| (parent_id, ctx.module_descr(parent_id)))
-            .filter(|(parent_id, descr)| {
-                descr.submodules.iter()
-                    .any(|subm| {
-                        ctx.resolve_submodule(*parent_id, subm.clone())
-                            .iter()
-                            .any(|it| it == file_id)
-                    })
-            })
-            .map(|(id, _)| id)
-            .collect();
-        res
-    }
-};
+const PARENT_MODULE: Query<FileId, Vec<FileId>> = Query(40, |ctx, file_id| {
+    let files = file_set(ctx);
+    let res = files.0.iter()
+        .map(|&parent_id| (parent_id, ctx.module_descr(parent_id)))
+        .filter(|(parent_id, descr)| {
+            descr.submodules.iter()
+                .any(|subm| {
+                    ctx.resolve_submodule(*parent_id, subm.clone())
+                        .iter()
+                        .any(|it| it == file_id)
+                })
+        })
+        .map(|(id, _)| id)
+        .collect();
+    res
+});
 
 #[cfg(test)]
 mod tests {
@@ -107,34 +99,36 @@ mod tests {
             self.next_file_id += 1;
             self.fm.insert(file_id, RelativePathBuf::from(&path[1..]));
             let mut new_state = self.db.state().clone();
-            new_state.file_map.insert(file_id, text.to_string().into_boxed_str().into());
-            new_state.resolver = FileResolverImp::new(
+            new_state.file_map.insert(file_id, Arc::new(text.to_string()));
+            new_state.file_resolver = FileResolverImp::new(
                 Arc::new(FileMap(self.fm.clone()))
             );
-            self.db = self.db.with_state(new_state, &[file_id], true);
+            self.db = self.db.with_changes(new_state, &[file_id], true);
             file_id
         }
         fn remove_file(&mut self, file_id: FileId) {
             self.fm.remove(&file_id);
             let mut new_state = self.db.state().clone();
             new_state.file_map.remove(&file_id);
-            new_state.resolver = FileResolverImp::new(
+            new_state.file_resolver = FileResolverImp::new(
                 Arc::new(FileMap(self.fm.clone()))
             );
-            self.db = self.db.with_state(new_state, &[file_id], true);
+            self.db = self.db.with_changes(new_state, &[file_id], true);
         }
         fn change_file(&mut self, file_id: FileId, new_text: &str) {
             let mut new_state = self.db.state().clone();
-            new_state.file_map.insert(file_id, new_text.to_string().into_boxed_str().into());
-            self.db = self.db.with_state(new_state, &[file_id], false);
+            new_state.file_map.insert(file_id, Arc::new(new_text.to_string()));
+            self.db = self.db.with_changes(new_state, &[file_id], false);
         }
         fn check_parent_modules(
             &self,
             file_id: FileId,
             expected: &[FileId],
-            queries: &[(u16, u64)]
+            queries: &[(&'static str, u64)]
         ) {
-            let (actual, events) = self.db.get(PARENT_MODULE, file_id);
+            let (actual, events) = self.db.trace_query(|ctx| {
+                ctx.get(PARENT_MODULE, file_id)
+            });
             assert_eq!(actual.as_slice(), expected);
             let mut counts = HashMap::new();
             events.into_iter()
@@ -156,25 +150,25 @@ mod tests {
     fn test_parent_module() {
         let mut f = Fixture::new();
         let foo = f.add_file("/foo.rs", "");
-        f.check_parent_modules(foo, &[], &[(MODULE_DESCR.id, 1)]);
+        f.check_parent_modules(foo, &[], &[("MODULE_DESCR", 1)]);
 
         let lib = f.add_file("/lib.rs", "mod foo;");
-        f.check_parent_modules(foo, &[lib], &[(MODULE_DESCR.id, 1)]);
-        f.check_parent_modules(foo, &[lib], &[(MODULE_DESCR.id, 0)]);
+        f.check_parent_modules(foo, &[lib], &[("MODULE_DESCR", 1)]);
+        f.check_parent_modules(foo, &[lib], &[("MODULE_DESCR", 0)]);
 
         f.change_file(lib, "");
-        f.check_parent_modules(foo, &[], &[(MODULE_DESCR.id, 1)]);
+        f.check_parent_modules(foo, &[], &[("MODULE_DESCR", 1)]);
 
         f.change_file(lib, "mod foo;");
-        f.check_parent_modules(foo, &[lib], &[(MODULE_DESCR.id, 1)]);
+        f.check_parent_modules(foo, &[lib], &[("MODULE_DESCR", 1)]);
 
         f.change_file(lib, "mod bar;");
-        f.check_parent_modules(foo, &[], &[(MODULE_DESCR.id, 1)]);
+        f.check_parent_modules(foo, &[], &[("MODULE_DESCR", 1)]);
 
         f.change_file(lib, "mod foo;");
-        f.check_parent_modules(foo, &[lib], &[(MODULE_DESCR.id, 1)]);
+        f.check_parent_modules(foo, &[lib], &[("MODULE_DESCR", 1)]);
 
         f.remove_file(lib);
-        f.check_parent_modules(foo, &[], &[(MODULE_DESCR.id, 0)]);
+        f.check_parent_modules(foo, &[], &[("MODULE_DESCR", 0)]);
     }
 }

@@ -8,8 +8,8 @@ use std::{
 };
 use parking_lot::Mutex;
 
-type GroundQueryFn<T, D> = Box<Fn(&T, &D) -> (D, OutputFingerprint) + Send + Sync + 'static>;
-type QueryFn<T, D> = Box<Fn(&QueryCtx<T, D>, &D) -> (D, OutputFingerprint) + Send + Sync + 'static>;
+pub type GroundQueryFn<T, D> = Box<Fn(&T, &D) -> (D, OutputFingerprint) + Send + Sync + 'static>;
+pub type QueryFn<T, D> = Box<Fn(&QueryCtx<T, D>, &D) -> (D, OutputFingerprint) + Send + Sync + 'static>;
 
 #[derive(Debug)]
 pub struct Db<T, D> {
@@ -117,6 +117,9 @@ where
         let (res, output_fingerprint) = self.get_inner(query_id, params);
         self.record_dep(query_id, output_fingerprint);
         res
+    }
+    pub fn trace(&self) -> Vec<QueryTypeId> {
+        ::std::mem::replace(&mut *self.executed.borrow_mut(), Vec::new())
     }
 
     fn get_inner(
@@ -261,12 +264,15 @@ where
             query_config: Arc::clone(&self.query_config)
         }
     }
+    pub fn query_ctx(&self) -> QueryCtx<T, D> {
+        QueryCtx::new(self)
+    }
     pub fn get(
         &self,
         query_id: QueryId,
         params: D,
     ) -> (D, Vec<QueryTypeId>) {
-        let ctx = QueryCtx::new(self);
+        let ctx = self.query_ctx();
         let res = ctx.get(query_id, params.into());
         let executed = ::std::mem::replace(&mut *ctx.executed.borrow_mut(), Vec::new());
         (res, executed)
