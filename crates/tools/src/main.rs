@@ -191,9 +191,17 @@ fn existing_tests(dir: &Path) -> Result<HashMap<String, (PathBuf, Test)>> {
 
 fn install_code_extension() -> Result<()> {
     run("cargo install --path crates/server --force", ".")?;
-    run(r"npm install", "./code")?;
-    run(r"./node_modules/vsce/out/vsce package", "./code")?;
-    run(r"code --install-extension ./rcf-lsp-0.0.1.vsix", "./code")?;
+    if cfg!(windows) {
+        run(r"cmd.exe /c npm.cmd install", "./code")?;
+    } else { 
+        run(r"npm install", "./code")?;
+    }
+    run(r"node ./node_modules/vsce/out/vsce package", "./code")?;
+    if cfg!(windows) {
+        run(r"cmd.exe /c code.cmd --install-extension ./rcf-lsp-0.0.1.vsix", "./code")?;
+    } else {
+        run(r"code --install-extension ./rcf-lsp-0.0.1.vsix", "./code")?;
+    }
     Ok(())
 }
 
