@@ -198,7 +198,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
 
     pub fn create_region_hierarchy(&mut self, rh: &RH,
                                    parent: (region::Scope, region::ScopeDepth)) {
-        let me = region { id: rh.id, data: region::ScopeData::Node };
+        let me = region::Scope { id: rh.id, data: region::ScopeData::Node };
         self.region_scope_tree.record_scope_parent(me, Some(parent));
         for child_rh in rh.sub {
             self.create_region_hierarchy(child_rh, (me, parent.1 + 1));
