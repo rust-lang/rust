@@ -51,6 +51,11 @@ pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// a static creates a copy here, in the machine.
     alloc_map: FxHashMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation)>,
 
+    /// To be able to compare pointers with NULL, and to check alignment for accesses
+    /// to ZSTs (where pointers may dangle), we keep track of the size even for allocations
+    /// that do not exist any more.
+    dead_alloc_map: FxHashMap<AllocId, (Size, Align)>,
+
     pub tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
 }
 
@@ -74,6 +79,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Memory {
             data,
             alloc_map: FxHashMap::default(),
+            dead_alloc_map: FxHashMap::default(),
             tcx,
         }
     }
@@ -150,6 +156,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         size_and_align: Option<(Size, Align)>,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> EvalResult<'tcx> {
+        debug!("deallocating: {}", ptr.alloc_id);
+
         if ptr.offset.bytes() != 0 {
             return err!(DeallocateNonBasePtr);
         }
@@ -189,23 +197,41 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             }
         }
 
-        debug!("deallocated : {}", ptr.alloc_id);
+        // Don't forget to remember size and align of this now-dead allocation
+        let old = self.dead_alloc_map.insert(
+            ptr.alloc_id,
+            (Size::from_bytes(alloc.bytes.len() as u64), alloc.align)
+        );
+        if old.is_some() {
+            bug!("Nothing can be deallocated twice");
+        }
 
         Ok(())
     }
 
-    /// Check that the pointer is aligned AND non-NULL. This supports scalars
-    /// for the benefit of other parts of miri that need to check alignment even for ZST.
+    /// Check that the pointer is aligned AND non-NULL. This supports ZSTs in two ways:
+    /// You can pass a scalar, and a `Pointer` does not have to actually still be allocated.
     pub fn check_align(&self, ptr: Scalar, required_align: Align) -> EvalResult<'tcx> {
         // Check non-NULL/Undef, extract offset
         let (offset, alloc_align) = match ptr {
             Scalar::Ptr(ptr) => {
-                let alloc = self.get(ptr.alloc_id)?;
-                (ptr.offset.bytes(), alloc.align)
+                let (size, align) = self.get_size_and_align(ptr.alloc_id)?;
+                // check this is not NULL -- which we can ensure only if this is in-bounds
+                // of some (potentially dead) allocation.
+                if ptr.offset > size {
+                    return err!(PointerOutOfBounds {
+                        ptr,
+                        access: true,
+                        allocation_size: size,
+                    });
+                };
+                // keep data for alignment check
+                (ptr.offset.bytes(), align)
             }
             Scalar::Bits { bits, size } => {
                 assert_eq!(size as u64, self.pointer_size().bytes());
                 assert!(bits < (1u128 << self.pointer_size().bits()));
+                // check this is not NULL
                 if bits == 0 {
                     return err!(InvalidNullPointerUsage);
                 }
@@ -304,6 +330,21 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             // memory in tcx.
             None => Self::get_static_alloc(self.tcx, id),
         }
+    }
+
+    pub fn get_size_and_align(&self, id: AllocId) -> EvalResult<'tcx, (Size, Align)> {
+        Ok(match self.get(id) {
+            Ok(alloc) => (Size::from_bytes(alloc.bytes.len() as u64), alloc.align),
+            Err(err) => match err.kind {
+                EvalErrorKind::DanglingPointerDeref =>
+                    // This should be in the dead allocation map
+                    *self.dead_alloc_map.get(&id).expect(
+                        "allocation missing in dead_alloc_map"
+                    ),
+                // E.g. a function ptr allocation
+                _ => return Err(err)
+            }
+        })
     }
 
     pub fn get_mut(
