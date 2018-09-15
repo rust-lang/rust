@@ -40,16 +40,44 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
     let id = tcx.hir.as_local_node_id(def_id).unwrap();
 
     // Figure out what primary body this item has.
-    let body_id = match tcx.hir.get(id) {
+    let (body_id, return_ty_span) = match tcx.hir.get(id) {
         Node::Variant(variant) =>
             return create_constructor_shim(tcx, id, &variant.node.data),
         Node::StructCtor(ctor) =>
             return create_constructor_shim(tcx, id, ctor),
 
-        _ => match tcx.hir.maybe_body_owned_by(id) {
-            Some(body) => body,
-            None => span_bug!(tcx.hir.span(id), "can't build MIR for {:?}", def_id),
-        },
+        Node::Expr(hir::Expr { node: hir::ExprKind::Closure(_, decl, body_id, _, _), .. })
+        | Node::Item(hir::Item { node: hir::ItemKind::Fn(decl, _, _, body_id), .. })
+        | Node::ImplItem(
+            hir::ImplItem {
+                node: hir::ImplItemKind::Method(hir::MethodSig { decl, .. }, body_id),
+                ..
+            }
+        )
+        | Node::TraitItem(
+            hir::TraitItem {
+                node: hir::TraitItemKind::Method(
+                    hir::MethodSig { decl, .. },
+                    hir::TraitMethod::Provided(body_id),
+                ),
+                ..
+            }
+        ) => {
+            (*body_id, decl.output.span())
+        }
+        Node::Item(hir::Item { node: hir::ItemKind::Static(ty, _, body_id), .. })
+        | Node::Item(hir::Item { node: hir::ItemKind::Const(ty, body_id), .. })
+        | Node::ImplItem(hir::ImplItem { node: hir::ImplItemKind::Const(ty, body_id), .. })
+        | Node::TraitItem(
+            hir::TraitItem { node: hir::TraitItemKind::Const(ty, Some(body_id)), .. }
+        ) => {
+            (*body_id, ty.span)
+        }
+        Node::AnonConst(hir::AnonConst { body, id, .. }) => {
+            (*body, tcx.hir.span(*id))
+        }
+
+        _ => span_bug!(tcx.hir.span(id), "can't build MIR for {:?}", def_id),
     };
 
     tcx.infer_ctxt().enter(|infcx| {
@@ -124,9 +152,9 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
             };
 
             build::construct_fn(cx, id, arguments, safety, abi,
-                                return_ty, yield_ty, body)
+                                return_ty, yield_ty, return_ty_span, body)
         } else {
-            build::construct_const(cx, body_id)
+            build::construct_const(cx, body_id, return_ty_span)
         };
 
         // Convert the Mir to global types.
@@ -494,6 +522,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                                    abi: Abi,
                                    return_ty: Ty<'gcx>,
                                    yield_ty: Option<Ty<'gcx>>,
+                                   return_ty_span: Span,
                                    body: &'gcx hir::Body)
                                    -> Mir<'tcx>
     where A: Iterator<Item=ArgInfo<'gcx>>
@@ -547,6 +576,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         arguments.len(),
         safety,
         return_ty,
+        return_ty_span,
         upvar_decls);
 
     let fn_def_id = tcx.hir.local_def_id(fn_id);
@@ -601,15 +631,17 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     mir
 }
 
-fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
-                                   body_id: hir::BodyId)
-                                   -> Mir<'tcx> {
+fn construct_const<'a, 'gcx, 'tcx>(
+    hir: Cx<'a, 'gcx, 'tcx>,
+    body_id: hir::BodyId,
+    ty_span: Span,
+) -> Mir<'tcx> {
     let tcx = hir.tcx();
     let ast_expr = &tcx.hir.body(body_id).value;
     let ty = hir.tables().expr_ty_adjusted(ast_expr);
     let owner_id = tcx.hir.body_owner(body_id);
     let span = tcx.hir.span(owner_id);
-    let mut builder = Builder::new(hir.clone(), span, 0, Safety::Safe, ty, vec![]);
+    let mut builder = Builder::new(hir.clone(), span, 0, Safety::Safe, ty, ty_span,vec![]);
 
     let mut block = START_BLOCK;
     let expr = builder.hir.mirror(ast_expr);
@@ -637,7 +669,7 @@ fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     let owner_id = hir.tcx().hir.body_owner(body_id);
     let span = hir.tcx().hir.span(owner_id);
     let ty = hir.tcx().types.err;
-    let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty, vec![]);
+    let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty, span, vec![]);
     let source_info = builder.source_info(span);
     builder.cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
     builder.finish(None)
@@ -649,6 +681,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
            arg_count: usize,
            safety: Safety,
            return_ty: Ty<'tcx>,
+           return_span: Span,
            upvar_decls: Vec<UpvarDecl>)
            -> Builder<'a, 'gcx, 'tcx> {
         let lint_level = LintLevel::Explicit(hir.root_lint_level);
@@ -665,8 +698,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             push_unsafe_count: 0,
             unpushed_unsafe: safety,
             breakable_scopes: vec![],
-            local_decls: IndexVec::from_elem_n(LocalDecl::new_return_place(return_ty,
-                                                                             span), 1),
+            local_decls: IndexVec::from_elem_n(
+                LocalDecl::new_return_place(return_ty, return_span),
+                1,
+            ),
             upvar_decls,
             var_indices: NodeMap(),
             unit_temp: None,

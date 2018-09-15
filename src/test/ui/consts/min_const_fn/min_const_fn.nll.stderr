@@ -5,10 +5,10 @@ LL |     const fn into_inner(self) -> T { self.0 } //~ destructors cannot be eva
    |                         ^^^^ constant functions cannot evaluate destructors
 
 error: mutable references in const fn are unstable
-  --> $DIR/min_const_fn.rs:51:5
+  --> $DIR/min_const_fn.rs:51:36
    |
 LL |     const fn get_mut(&mut self) -> &mut T { &mut self.0 }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                    ^^^^^^
 
 error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/min_const_fn.rs:56:28
@@ -17,10 +17,10 @@ LL |     const fn into_inner_lt(self) -> T { self.0 } //~ destructors cannot be 
    |                            ^^^^ constant functions cannot evaluate destructors
 
 error: mutable references in const fn are unstable
-  --> $DIR/min_const_fn.rs:58:5
+  --> $DIR/min_const_fn.rs:58:42
    |
 LL |     const fn get_mut_lt(&'a mut self) -> &mut T { &mut self.0 }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                          ^^^^^^
 
 error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/min_const_fn.rs:63:27
@@ -29,16 +29,16 @@ LL |     const fn into_inner_s(self) -> T { self.0 } //~ ERROR destructors
    |                           ^^^^ constant functions cannot evaluate destructors
 
 error: mutable references in const fn are unstable
-  --> $DIR/min_const_fn.rs:65:5
+  --> $DIR/min_const_fn.rs:65:38
    |
 LL |     const fn get_mut_s(&mut self) -> &mut T { &mut self.0 }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                      ^^^^^^
 
 error: mutable references in const fn are unstable
-  --> $DIR/min_const_fn.rs:70:5
+  --> $DIR/min_const_fn.rs:70:39
    |
 LL |     const fn get_mut_sq(&mut self) -> &mut T { &mut self.0 }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                       ^^^^^^
 
 error: trait bounds other than `Sized` on const fn parameters are unstable
   --> $DIR/min_const_fn.rs:88:16
@@ -155,10 +155,10 @@ LL | impl<T: Sync + Sized> Foo<T> {
    |      ^
 
 error: `impl Trait` in const fn is unstable
-  --> $DIR/min_const_fn.rs:137:1
+  --> $DIR/min_const_fn.rs:137:24
    |
 LL | const fn no_rpit2() -> AlanTuring<impl std::fmt::Debug> { AlanTuring(0) }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: trait bounds other than `Sized` on const fn parameters are unstable
   --> $DIR/min_const_fn.rs:139:34
@@ -173,10 +173,10 @@ LL | const fn no_apit(_x: impl std::fmt::Debug) {} //~ ERROR trait bounds other 
    |                      ^^^^^^^^^^^^^^^^^^^^
 
 error: `impl Trait` in const fn is unstable
-  --> $DIR/min_const_fn.rs:142:1
+  --> $DIR/min_const_fn.rs:142:23
    |
 LL | const fn no_rpit() -> impl std::fmt::Debug {} //~ ERROR `impl Trait` in const fn is unstable
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                       ^^^^^^^^^^^^^^^^^^^^
 
 error: trait bounds other than `Sized` on const fn parameters are unstable
   --> $DIR/min_const_fn.rs:143:23
@@ -185,10 +185,10 @@ LL | const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {} //~ ERROR trait bounds o
    |                       ^^
 
 error: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:144:1
+  --> $DIR/min_const_fn.rs:144:32
    |
 LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: borrowed value does not live long enough
   --> $DIR/min_const_fn.rs:144:64
@@ -213,10 +213,10 @@ LL | const fn no_fn_ptrs(_x: fn()) {}
    |                     ^^
 
 error: function pointers in const fn are unstable
-  --> $DIR/min_const_fn.rs:154:1
+  --> $DIR/min_const_fn.rs:154:27
    |
 LL | const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                           ^^^^
 
 error: aborting due to 36 previous errors
 
