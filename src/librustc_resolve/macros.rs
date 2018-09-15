@@ -22,7 +22,7 @@ use rustc::{ty, lint};
 use syntax::ast::{self, Name, Ident};
 use syntax::attr;
 use syntax::errors::DiagnosticBuilder;
-use syntax::ext::base::{self, Determinacy, MultiModifier, MultiDecorator};
+use syntax::ext::base::{self, Determinacy};
 use syntax::ext::base::{MacroKind, SyntaxExtension, Resolver as SyntaxResolver};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind, TogetherWith};
 use syntax::ext::hygiene::{self, Mark};
@@ -245,21 +245,9 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
     // Resolves attribute and derive legacy macros from `#![plugin(..)]`.
     fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<ast::Attribute>, allow_derive: bool)
                               -> Option<ast::Attribute> {
-        for i in 0..attrs.len() {
-            let name = attrs[i].name();
-
-            match self.builtin_macros.get(&name).cloned() {
-                Some(binding) => match *binding.get_macro(self) {
-                    MultiModifier(..) | MultiDecorator(..) | SyntaxExtension::AttrProcMacro(..) => {
-                        return Some(attrs.remove(i))
-                    }
-                    _ => {}
-                },
-                None => {}
-            }
+        if !allow_derive {
+            return None;
         }
-
-        if !allow_derive { return None }
 
         // Check for legacy derives
         for i in 0..attrs.len() {
