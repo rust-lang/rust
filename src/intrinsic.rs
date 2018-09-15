@@ -33,39 +33,6 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
 
         let intrinsic_name = &self.tcx.item_name(instance.def_id()).as_str()[..];
         match intrinsic_name {
-            "add_with_overflow" => {
-                let l = self.read_value(args[0])?;
-                let r = self.read_value(args[1])?;
-                self.binop_with_overflow(
-                    mir::BinOp::Add,
-                    l,
-                    r,
-                    dest,
-                )?
-            }
-
-            "sub_with_overflow" => {
-                let l = self.read_value(args[0])?;
-                let r = self.read_value(args[1])?;
-                self.binop_with_overflow(
-                    mir::BinOp::Sub,
-                    l,
-                    r,
-                    dest,
-                )?
-            }
-
-            "mul_with_overflow" => {
-                let l = self.read_value(args[0])?;
-                let r = self.read_value(args[1])?;
-                self.binop_with_overflow(
-                    mir::BinOp::Mul,
-                    l,
-                    r,
-                    dest,
-                )?
-            }
-
             "arith_offset" => {
                 let offset = self.read_scalar(args[1])?.to_isize(&self)?;
                 let ptr = self.read_scalar(args[0])?.not_undef()?;
@@ -326,39 +293,6 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 self.write_scalar(result_ptr, dest)?;
             }
 
-            "overflowing_sub" => {
-                let l = self.read_value(args[0])?;
-                let r = self.read_value(args[1])?;
-                self.binop_ignore_overflow(
-                    mir::BinOp::Sub,
-                    l,
-                    r,
-                    dest,
-                )?;
-            }
-
-            "overflowing_mul" => {
-                let l = self.read_value(args[0])?;
-                let r = self.read_value(args[1])?;
-                self.binop_ignore_overflow(
-                    mir::BinOp::Mul,
-                    r,
-                    l,
-                    dest,
-                )?;
-            }
-
-            "overflowing_add" => {
-                let l = self.read_value(args[0])?;
-                let r = self.read_value(args[1])?;
-                self.binop_ignore_overflow(
-                    mir::BinOp::Add,
-                    r,
-                    l,
-                    dest,
-                )?;
-            }
-
             "powf32" => {
                 let f = self.read_scalar(args[0])?.to_f32()?;
                 let f2 = self.read_scalar(args[1])?.to_f32()?;
@@ -441,42 +375,6 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let ty_name = ty.to_string();
                 let value = self.str_to_value(&ty_name)?;
                 self.write_value(value, dest)?;
-            }
-
-            "unchecked_shl" => {
-                let bits = dest.layout.size.bytes() as u128 * 8;
-                let l = self.read_value(args[0])?;
-                let r = self.read_value(args[1])?;
-                let rval = r.to_scalar()?.to_bytes()?;
-                if rval >= bits {
-                    return err!(Intrinsic(
-                        format!("Overflowing shift by {} in unchecked_shl", rval),
-                    ));
-                }
-                self.binop_ignore_overflow(
-                    mir::BinOp::Shl,
-                    l,
-                    r,
-                    dest,
-                )?;
-            }
-
-            "unchecked_shr" => {
-                let bits = dest.layout.size.bytes() as u128 * 8;
-                let l = self.read_value(args[0])?;
-                let r = self.read_value(args[1])?;
-                let rval = r.to_scalar()?.to_bytes()?;
-                if rval >= bits {
-                    return err!(Intrinsic(
-                        format!("Overflowing shift by {} in unchecked_shr", rval),
-                    ));
-                }
-                self.binop_ignore_overflow(
-                    mir::BinOp::Shr,
-                    l,
-                    r,
-                    dest,
-                )?;
             }
 
             "unchecked_div" => {
