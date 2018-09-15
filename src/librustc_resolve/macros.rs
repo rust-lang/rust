@@ -248,11 +248,6 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
         for i in 0..attrs.len() {
             let name = attrs[i].name();
 
-            if self.session.plugin_attributes.borrow().iter()
-                    .any(|&(ref attr_nm, _)| name == &**attr_nm) {
-                attr::mark_known(&attrs[i]);
-            }
-
             match self.builtin_macros.get(&name).cloned() {
                 Some(binding) => match *binding.get_macro(self) {
                     MultiModifier(..) | MultiDecorator(..) | SyntaxExtension::AttrProcMacro(..) => {
@@ -591,6 +586,15 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         // 2b. Standard library prelude is currently implemented as `macro-use` (closed, controlled)
         // 3. Language prelude: builtin macros (closed, controlled, except for legacy plugins).
         // 4. Language prelude: builtin attributes (closed, controlled).
+        // N (unordered). Derive helpers (open, not controlled). All ambiguities with other names
+        //    are currently reported as errors. They should be higher in priority than preludes
+        //    and maybe even names in modules according to the "general principles" above. They
+        //    also should be subject to restricted shadowing because are effectively produced by
+        //    derives (you need to resolve the derive first to add helpers into scope), but they
+        //    should be available before the derive is expanded for compatibility.
+        //    It's mess in general, so we are being conservative for now.
+        // N (unordered). Legacy plugin helpers (open, not controlled). Similar to derive helpers,
+        //    but introduced by legacy plugins using `register_attribute`.
 
         assert!(ns == TypeNS  || ns == MacroNS);
         assert!(force || !record_used); // `record_used` implies `force`
@@ -615,6 +619,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             BuiltinMacros,
             BuiltinAttrs,
             DeriveHelpers,
+            LegacyPluginHelpers,
             ExternPrelude,
             ToolPrelude,
             StdLibPrelude,
@@ -680,6 +685,17 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         }
                     }
                     result
+                }
+                WhereToResolve::LegacyPluginHelpers => {
+                    if self.session.plugin_attributes.borrow().iter()
+                                                     .any(|(name, _)| ident.name == &**name) {
+                        let binding = (Def::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper),
+                                       ty::Visibility::Public, ident.span, Mark::root())
+                                       .to_name_binding(self.arenas);
+                        Ok((binding, FromPrelude(false)))
+                    } else {
+                        Err(Determinacy::Determined)
+                    }
                 }
                 WhereToResolve::ExternPrelude => {
                     if use_prelude && self.session.extern_prelude.contains(&ident.name) {
@@ -752,8 +768,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     }
                     WhereToResolve::MacroUsePrelude => WhereToResolve::BuiltinMacros,
                     WhereToResolve::BuiltinMacros => WhereToResolve::BuiltinAttrs,
-                    WhereToResolve::BuiltinAttrs => break, // nowhere else to search
-                    WhereToResolve::DeriveHelpers => WhereToResolve::Module(parent_scope.module),
+                    WhereToResolve::BuiltinAttrs => WhereToResolve::DeriveHelpers,
+                    WhereToResolve::DeriveHelpers => WhereToResolve::LegacyPluginHelpers,
+                    WhereToResolve::LegacyPluginHelpers => break, // nowhere else to search
                     WhereToResolve::ExternPrelude => WhereToResolve::ToolPrelude,
                     WhereToResolve::ToolPrelude => WhereToResolve::StdLibPrelude,
                     WhereToResolve::StdLibPrelude => WhereToResolve::BuiltinTypes,
@@ -775,12 +792,15 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
                     if let Some(innermost_result) = innermost_result {
                         // Found another solution, if the first one was "weak", report an error.
-                        let (def, innermost_def) = (result.0.def(), innermost_result.0.def());
-                        if def != innermost_def &&
+                        let prohibit_ambiguities = |def| {
+                            def == Def::NonMacroAttr(NonMacroAttrKind::DeriveHelper) ||
+                            def == Def::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper)
+                        };
+                        if result.0.def() != innermost_result.0.def() &&
                            (innermost_result.0.is_glob_import() ||
                             innermost_result.0.may_appear_after(parent_scope.expansion, result.0) ||
-                            innermost_def == Def::NonMacroAttr(NonMacroAttrKind::DeriveHelper) ||
-                            def == Def::NonMacroAttr(NonMacroAttrKind::DeriveHelper)) {
+                            prohibit_ambiguities(innermost_result.0.def()) ||
+                            prohibit_ambiguities(result.0.def())) {
                             self.ambiguity_errors.push(AmbiguityError {
                                 ident,
                                 b1: innermost_result.0,
