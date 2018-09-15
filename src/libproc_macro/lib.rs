@@ -47,7 +47,7 @@ pub mod rustc;
 
 mod diagnostic;
 
-#[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
+#[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 pub use diagnostic::{Diagnostic, Level};
 
 use std::{ascii, fmt, iter};
@@ -274,7 +274,7 @@ macro_rules! diagnostic_method {
     ($name:ident, $level:expr) => (
         /// Create a new `Diagnostic` with the given `message` at the span
         /// `self`.
-        #[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
+        #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
         pub fn $name<T: Into<String>>(self, message: T) -> Diagnostic {
             Diagnostic::spanned(self, $level, message)
         }
