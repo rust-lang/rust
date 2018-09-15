@@ -746,7 +746,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             // Currently imports can't resolve in non-module scopes,
             // we only have canaries in them for future-proofing.
             if external_crate.is_none() && results.module_scope.is_none() {
-                return;
+                continue;
             }
 
             {
@@ -761,7 +761,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 let possible_resultions =
                     1 + all_results.filter(|&def| def != first).count();
                 if possible_resultions <= 1 {
-                    return;
+                    continue;
                 }
             }
 
