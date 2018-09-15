@@ -125,7 +125,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
             .iter()
             .filter(|attr| attr.name() == "repr")
             .filter_map(|attr| attr.meta_item_list())
-            .flat_map(|hints| hints)
+            .flatten()
             .collect();
 
         let mut int_reprs = 0;
@@ -185,7 +185,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                         continue
                     }
                 }
-                "i8" | "u8" | "i16" | "u16" |
+                "i8"  | "u8"  | "i16" | "u16" |
                 "i32" | "u32" | "i64" | "u64" |
                 "isize" | "usize" => {
                     int_reprs += 1;

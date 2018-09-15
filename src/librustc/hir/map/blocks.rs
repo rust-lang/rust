@@ -161,27 +161,27 @@ impl<'a> FnLikeNode<'a> {
     }
 
     pub fn body(self) -> ast::BodyId {
-        self.handle(|i: ItemFnParts<'a>|  i.body,
-                    |_, _, _: &'a ast::MethodSig, _, body: ast::BodyId, _, _|  body,
+        self.handle(|i: ItemFnParts<'a>| i.body,
+                    |_, _, _: &'a ast::MethodSig, _, body: ast::BodyId, _, _| body,
                     |c: ClosureParts<'a>| c.body)
     }
 
     pub fn decl(self) -> &'a FnDecl {
-        self.handle(|i: ItemFnParts<'a>|  &*i.decl,
-                    |_, _, sig: &'a ast::MethodSig, _, _, _, _|  &sig.decl,
+        self.handle(|i: ItemFnParts<'a>| &*i.decl,
+                    |_, _, sig: &'a ast::MethodSig, _, _, _, _| &sig.decl,
                     |c: ClosureParts<'a>| c.decl)
     }
 
     pub fn span(self) -> Span {
-        self.handle(|i: ItemFnParts|     i.span,
+        self.handle(|i: ItemFnParts| i.span,
                     |_, _, _: &'a ast::MethodSig, _, _, span, _| span,
-                    |c: ClosureParts|    c.span)
+                    |c: ClosureParts| c.span)
     }
 
     pub fn id(self) -> NodeId {
-        self.handle(|i: ItemFnParts|     i.id,
+        self.handle(|i: ItemFnParts| i.id,
                     |id, _, _: &'a ast::MethodSig, _, _, _, _| id,
-                    |c: ClosureParts|    c.id)
+                    |c: ClosureParts| c.id)
     }
 
     pub fn constness(self) -> ast::Constness {
@@ -260,9 +260,7 @@ impl<'a> FnLikeNode<'a> {
                     ast::ImplItemKind::Method(ref sig, body) => {
                         method(ii.id, ii.ident, sig, Some(&ii.vis), body, ii.span, &ii.attrs)
                     }
-                    _ => {
-                        bug!("impl method FnLikeNode that is not fn-like")
-                    }
+                    _ => bug!("impl method FnLikeNode that is not fn-like")
                 }
             },
             map::Node::Expr(e) => match e.node {

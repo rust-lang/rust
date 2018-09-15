@@ -67,7 +67,6 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 // them explicitly here.
                 ref attrs,
                 span,
-
                 // These fields are handled separately:
                 exported_macros: _,
                 items: _,
@@ -128,14 +127,14 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                                                   cstore: &dyn CrateStore,
                                                   source_map: &SourceMap,
                                                   commandline_args_hash: u64)
-                                                  -> (Vec<Option<Entry<'hir>>>, Svh) {
-        self.hir_body_nodes
-            .sort_unstable_by(|&(ref d1, _), &(ref d2, _)| d1.cmp(d2));
+                                                  -> (Vec<Option<Entry<'hir>>>, Svh)
+    {
+        self.hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
 
         let node_hashes = self
             .hir_body_nodes
             .iter()
-            .fold(Fingerprint::ZERO, |fingerprint , &(def_path_hash, dep_node_index)| {
+            .fold(Fingerprint::ZERO, |fingerprint, &(def_path_hash, dep_node_index)| {
                 fingerprint.combine(
                     def_path_hash.0.combine(self.dep_graph.fingerprint_of(dep_node_index))
                 )
@@ -143,15 +142,12 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
         let mut upstream_crates: Vec<_> = cstore.crates_untracked().iter().map(|&cnum| {
             let name = cstore.crate_name_untracked(cnum).as_str();
-            let disambiguator = cstore.crate_disambiguator_untracked(cnum)
-                                      .to_fingerprint();
+            let disambiguator = cstore.crate_disambiguator_untracked(cnum).to_fingerprint();
             let hash = cstore.crate_hash_untracked(cnum);
             (name, disambiguator, hash)
         }).collect();
 
-        upstream_crates.sort_unstable_by(|&(name1, dis1, _), &(name2, dis2, _)| {
-            (name1, dis1).cmp(&(name2, dis2))
-        });
+        upstream_crates.sort_unstable_by_key(|&(name, dis, _)| (name, dis));
 
         // We hash the final, remapped names of all local source files so we
         // don't have to include the path prefix remapping commandline args.
@@ -229,7 +225,6 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         }
 
         self.insert_entry(id, entry);
-
     }
 
     fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_id: NodeId, f: F) {
@@ -311,14 +306,11 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.with_dep_node_owner(i.hir_id.owner, i, |this| {
             this.insert(i.id, Node::Item(i));
             this.with_parent(i.id, |this| {
-                match i.node {
-                    ItemKind::Struct(ref struct_def, _) => {
-                        // If this is a tuple-like struct, register the constructor.
-                        if !struct_def.is_struct() {
-                            this.insert(struct_def.id(), Node::StructCtor(struct_def));
-                        }
+                if let ItemKind::Struct(ref struct_def, _) = i.node {
+                    // If this is a tuple-like struct, register the constructor.
+                    if !struct_def.is_struct() {
+                        this.insert(struct_def.id(), Node::StructCtor(struct_def));
                     }
-                    _ => {}
                 }
                 intravisit::walk_item(this, i);
             });

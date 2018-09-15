@@ -831,9 +831,10 @@ impl Pat {
                 s.walk_(it)
             }
             PatKind::Slice(ref before, ref slice, ref after) => {
-                before.iter().all(|p| p.walk_(it)) &&
-                slice.iter().all(|p| p.walk_(it)) &&
-                after.iter().all(|p| p.walk_(it))
+                before.iter()
+                      .chain(slice.iter())
+                      .chain(after.iter())
+                      .all(|p| p.walk_(it))
             }
             PatKind::Wild |
             PatKind::Lit(_) |
@@ -872,23 +873,23 @@ pub struct FieldPat {
 /// inference.
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub enum BindingAnnotation {
-  /// No binding annotation given: this means that the final binding mode
-  /// will depend on whether we have skipped through a `&` reference
-  /// when matching. For example, the `x` in `Some(x)` will have binding
-  /// mode `None`; if you do `let Some(x) = &Some(22)`, it will
-  /// ultimately be inferred to be by-reference.
-  ///
-  /// Note that implicit reference skipping is not implemented yet (#42640).
-  Unannotated,
+    /// No binding annotation given: this means that the final binding mode
+    /// will depend on whether we have skipped through a `&` reference
+    /// when matching. For example, the `x` in `Some(x)` will have binding
+    /// mode `None`; if you do `let Some(x) = &Some(22)`, it will
+    /// ultimately be inferred to be by-reference.
+    ///
+    /// Note that implicit reference skipping is not implemented yet (#42640).
+    Unannotated,
 
-  /// Annotated with `mut x` -- could be either ref or not, similar to `None`.
-  Mutable,
+    /// Annotated with `mut x` -- could be either ref or not, similar to `None`.
+    Mutable,
 
-  /// Annotated as `ref`, like `ref x`
-  Ref,
+    /// Annotated as `ref`, like `ref x`
+    Ref,
 
-  /// Annotated as `ref mut x`.
-  RefMut,
+    /// Annotated as `ref mut x`.
+    RefMut,
 }
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
@@ -1658,7 +1659,6 @@ pub struct TypeBinding {
     pub span: Span,
 }
 
-
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Ty {
     pub id: NodeId,
@@ -2283,7 +2283,6 @@ pub type TraitMap = NodeMap<Vec<TraitCandidate>>;
 // Map from the NodeId of a glob import to a list of items which are actually
 // imported.
 pub type GlobMap = NodeMap<FxHashSet<Name>>;
-
 
 pub fn provide(providers: &mut Providers) {
     providers.describe_def = map::describe_def;

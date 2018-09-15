@@ -317,10 +317,8 @@ pub enum DefPathData {
     // they are treated specially by the `def_path` function.
     /// The crate root (marker)
     CrateRoot,
-
     // Catch-all for random DefId things like DUMMY_NODE_ID
     Misc,
-
     // Different kinds of items and item-like things:
     /// An impl
     Impl,
@@ -342,7 +340,6 @@ pub enum DefPathData {
     MacroDef(InternedString),
     /// A closure expression
     ClosureExpr,
-
     // Subportions of items
     /// A type parameter (generic parameter)
     TypeParam(InternedString),
@@ -358,7 +355,6 @@ pub enum DefPathData {
     AnonConst,
     /// An `impl Trait` type node
     ImplTrait,
-
     /// GlobalMetaData identifies a piece of crate metadata that is global to
     /// a whole crate (as opposed to just one item). GlobalMetaData components
     /// are only supposed to show up right below the crate root.
@@ -656,10 +652,8 @@ impl DefPathData {
             GlobalMetaData(name) => {
                 return name
             }
-
             // note that this does not show up in user printouts
             CrateRoot => "{{root}}",
-
             Impl => "{{impl}}",
             Misc => "{{?}}",
             ClosureExpr => "{{closure}}",

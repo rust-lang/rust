@@ -50,7 +50,6 @@ use super::itemlikevisit::DeepVisitor;
 
 use std::cmp;
 use std::u32;
-use std::result::Result::Err;
 
 #[derive(Copy, Clone)]
 pub enum FnKind<'a> {
@@ -1067,31 +1066,26 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         ExprKind::Break(ref destination, ref opt_expr) => {
             if let Some(ref label) = destination.label {
                 visitor.visit_label(label);
-                match destination.target_id {
-                    Ok(node_id) => visitor.visit_def_mention(Def::Label(node_id)),
-                    Err(_) => {},
-                };
+                if let Ok(node_id) = destination.target_id {
+                    visitor.visit_def_mention(Def::Label(node_id))
+                }
             }
             walk_list!(visitor, visit_expr, opt_expr);
         }
         ExprKind::Continue(ref destination) => {
             if let Some(ref label) = destination.label {
                 visitor.visit_label(label);
-                match destination.target_id {
-                    Ok(node_id) => visitor.visit_def_mention(Def::Label(node_id)),
-                    Err(_) => {},
-                };
+                if let Ok(node_id) = destination.target_id {
+                    visitor.visit_def_mention(Def::Label(node_id))
+                }
             }
         }
         ExprKind::Ret(ref optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);
         }
         ExprKind::InlineAsm(_, ref outputs, ref inputs) => {
-            for output in outputs {
-                visitor.visit_expr(output)
-            }
-            for input in inputs {
-                visitor.visit_expr(input)
+            for expr in outputs.iter().chain(inputs.iter()) {
+                visitor.visit_expr(expr)
             }
         }
         ExprKind::Yield(ref subexpression) => {
@@ -1156,7 +1150,6 @@ impl IdRange {
         self.min = cmp::min(self.min, id);
         self.max = cmp::max(self.max, NodeId::from_u32(id.as_u32() + 1));
     }
-
 }
 
 
