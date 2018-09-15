@@ -186,3 +186,138 @@ fn merge_errors(
     }
     res
 }
+
+#[cfg(test)]
+use super::{File, text_utils, test_utils, utils};
+
+#[cfg(test)]
+mod tests {
+    use super::{*, utils::dump_tree};
+
+    #[test]
+    fn reparse_test() {
+        fn do_check(before: &str, replace_with: &str) {
+            let (range, before) = test_utils::extract_range(before);
+            let after = text_utils::replace_range(before.clone(), range, replace_with);
+
+            let fully_reparsed = File::parse(&after);
+            let incrementally_reparsed = {
+                let f = File::parse(&before);
+                let edit = AtomEdit { delete: range, insert: replace_with.to_string() };
+                f.incremental_reparse(&edit).expect("cannot incrementally reparse")
+            };
+            assert_eq_text!(
+                &dump_tree(fully_reparsed.syntax()),
+                &dump_tree(incrementally_reparsed.syntax()),
+            )
+        }
+
+        do_check(r"
+fn foo() {
+    let x = foo + <|>bar<|>
+}
+", "baz");
+        do_check(r"
+fn foo() {
+    let x = foo<|> + bar<|>
+}
+", "baz");
+        do_check(r"
+struct Foo {
+    f: foo<|><|>
+}
+", ",\n    g: (),");
+        do_check(r"
+fn foo {
+    let;
+    1 + 1;
+    <|>92<|>;
+}
+", "62");
+        do_check(r"
+mod foo {
+    fn <|><|>
+}
+", "bar");
+        do_check(r"
+trait Foo {
+    type <|>Foo<|>;
+}
+", "Output");
+        do_check(r"
+trait Foo {
+    type<|> Foo<|>;
+}
+", "Output");
+        do_check(r"
+impl IntoIterator<Item=i32> for Foo {
+    f<|><|>
+}
+", "n next(");
+        do_check(r"
+use a::b::{foo,<|>,bar<|>};
+    ", "baz");
+        do_check(r"
+pub enum A {
+    Foo<|><|>
+}
+", "\nBar;\n");
+        do_check(r"
+foo!{a, b<|><|> d}
+", ", c[3]");
+        do_check(r"
+fn foo() {
+    vec![<|><|>]
+}
+", "123");
+        do_check(r"
+extern {
+    fn<|>;<|>
+}
+", " exit(code: c_int)");
+        do_check(r"<|><|>
+fn foo() -> i32 {
+    1
+}
+", "\n\n\n   \n");
+        do_check(r"
+fn foo() -> <|><|> {}
+", "  \n");
+        do_check(r"
+fn <|>foo<|>() -> i32 {
+    1
+}
+", "bar");
+        do_check(r"
+fn aa<|><|>bb() {
+
+}
+", "foofoo");
+        do_check(r"
+fn aabb /* <|><|> */ () {
+
+}
+", "some comment");
+        do_check(r"
+fn aabb <|><|> () {
+
+}
+", "    \t\t\n\n");
+        do_check(r"
+trait foo {
+// comment <|><|>
+}
+", "\n");
+        do_check(r"
+/// good <|><|>omment
+mod {
+}
+", "c");
+        do_check(r#"
+fn -> &str { "Hello<|><|>" }
+"#, ", world");
+        do_check(r#"
+fn -> &str { // "Hello<|><|>"
+"#, ", world");
+    }
+}

@@ -27,6 +27,10 @@ extern crate parking_lot;
 extern crate smol_str;
 extern crate text_unit;
 
+#[cfg(test)]
+#[macro_use]
+extern crate test_utils;
+
 pub mod algo;
 pub mod ast;
 mod lexer;
