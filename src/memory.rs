@@ -46,7 +46,7 @@ pub enum MemoryKind {
     C,
     /// Part of env var emulation
     Env,
-    // mutable statics
+    /// mutable statics
     MutStatic,
 }
 
