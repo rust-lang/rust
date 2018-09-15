@@ -19,6 +19,7 @@ mod imp;
 mod job;
 mod roots;
 mod db;
+mod descriptors;
 
 use std::{
     sync::Arc,

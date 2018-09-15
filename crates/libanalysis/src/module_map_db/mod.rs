@@ -1,5 +1,3 @@
-mod descr;
-
 use std::sync::Arc;
 use {
     FileId,
@@ -7,49 +5,36 @@ use {
         Query, QueryRegistry, QueryCtx,
         file_syntax, file_set
     },
-    module_map::resolve_submodule,
+    descriptors::{ModuleDescriptor, ModuleTreeDescriptor}
 };
 
 pub(crate) fn register_queries(reg: &mut QueryRegistry) {
     reg.add(MODULE_DESCR, "MODULE_DESCR");
-    reg.add(RESOLVE_SUBMODULE, "RESOLVE_SUBMODULE");
-    reg.add(PARENT_MODULE, "PARENT_MODULE");
+}
+
+pub(crate) fn module_tree(ctx: QueryCtx) -> Arc<ModuleTreeDescriptor> {
+    ctx.get(MODULE_TREE, ())
 }
 
 impl<'a> QueryCtx<'a> {
-    fn module_descr(&self, file_id: FileId) -> Arc<descr::ModuleDescr> {
+    fn module_descr(&self, file_id: FileId) -> Arc<ModuleDescriptor> {
         self.get(MODULE_DESCR, file_id)
-    }
-    fn resolve_submodule(&self, file_id: FileId, submod: descr::Submodule) -> Arc<Vec<FileId>> {
-        self.get(RESOLVE_SUBMODULE, (file_id, submod))
     }
 }
 
-const MODULE_DESCR: Query<FileId, descr::ModuleDescr> = Query(30, |ctx, &file_id| {
+const MODULE_DESCR: Query<FileId, ModuleDescriptor> = Query(30, |ctx, &file_id| {
     let file = file_syntax(ctx, file_id);
-    descr::ModuleDescr::new(file.ast())
+    ModuleDescriptor::new(file.ast())
 });
 
-const RESOLVE_SUBMODULE: Query<(FileId, descr::Submodule), Vec<FileId>> = Query(31, |ctx, params| {
-    let files = file_set(ctx);
-    resolve_submodule(params.0, &params.1.name, &files.1).0
-});
-
-const PARENT_MODULE: Query<FileId, Vec<FileId>> = Query(40, |ctx, file_id| {
-    let files = file_set(ctx);
-    let res = files.0.iter()
-        .map(|&parent_id| (parent_id, ctx.module_descr(parent_id)))
-        .filter(|(parent_id, descr)| {
-            descr.submodules.iter()
-                .any(|subm| {
-                    ctx.resolve_submodule(*parent_id, subm.clone())
-                        .iter()
-                        .any(|it| it == file_id)
-                })
-        })
-        .map(|(id, _)| id)
-        .collect();
-    res
+const MODULE_TREE: Query<(), ModuleTreeDescriptor> = Query(31, |ctx, _| {
+    let file_set = file_set(ctx);
+    let mut files = Vec::new();
+    for &file_id in file_set.0.iter() {
+        let module_descr = ctx.get(MODULE_DESCR, file_id);
+        files.push((file_id, module_descr));
+    }
+    ModuleTreeDescriptor::new(files.iter().map(|(file_id, descr)| (*file_id, &**descr)), &file_set.1)
 });
 
 #[cfg(test)]

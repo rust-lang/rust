@@ -15,11 +15,15 @@ use {
     imp::FileResolverImp,
     module_map::{ModuleMap, ChangeKind},
     symbol_index::SymbolIndex,
+    descriptors::ModuleTreeDescriptor,
 };
 
 pub(crate) trait SourceRoot {
     fn contains(&self, file_id: FileId) -> bool;
-    fn module_map(&self) -> &ModuleMap;
+    fn module_tree(&self) -> Arc<ModuleTreeDescriptor> {
+        unimplemented!()
+    }
+    // fn module_map(&self) -> &ModuleMap;
     fn lines(&self, file_id: FileId) -> &LineIndex;
     fn syntax(&self, file_id: FileId) -> &File;
     fn symbols<'a>(&'a self, acc: &mut Vec<&'a SymbolIndex>);
@@ -73,9 +77,6 @@ impl WritableSourceRoot {
 impl SourceRoot for WritableSourceRoot {
     fn contains(&self, file_id: FileId) -> bool {
         self.file_map.contains_key(&file_id)
-    }
-    fn module_map(&self) -> &ModuleMap {
-        &self.module_map
     }
     fn lines(&self, file_id: FileId) -> &LineIndex {
         self.data(file_id).lines()
@@ -174,9 +175,6 @@ impl ReadonlySourceRoot {
 impl SourceRoot for ReadonlySourceRoot {
     fn contains(&self, file_id: FileId) -> bool {
         self.file_map.contains_key(&file_id)
-    }
-    fn module_map(&self) -> &ModuleMap {
-        &self.module_map
     }
     fn lines(&self, file_id: FileId) -> &LineIndex {
         self.data(file_id).lines()
