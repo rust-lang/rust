@@ -232,6 +232,7 @@ impl Diagnostic {
     /// inline it will only show the text message and not the text.
     ///
     /// See `CodeSuggestion` for more information.
+    #[deprecated(note = "Use `span_suggestion_short_with_applicability`")]
     pub fn span_suggestion_short(&mut self, sp: Span, msg: &str, suggestion: String) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitutions: vec![Substitution {
@@ -263,6 +264,7 @@ impl Diagnostic {
     /// * may contain a name of a function, variable or type, but not whole expressions
     ///
     /// See `CodeSuggestion` for more information.
+    #[deprecated(note = "Use `span_suggestion_with_applicability`")]
     pub fn span_suggestion(&mut self, sp: Span, msg: &str, suggestion: String) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitutions: vec![Substitution {
@@ -298,6 +300,7 @@ impl Diagnostic {
         self
     }
 
+    #[deprecated(note = "Use `multipart_suggestion_with_applicability`")]
     pub fn multipart_suggestion(
         &mut self,
         msg: &str,
@@ -311,6 +314,7 @@ impl Diagnostic {
     }
 
     /// Prints out a message with multiple suggested edits of the code.
+    #[deprecated(note = "Use `span_suggestions_with_applicability`")]
     pub fn span_suggestions(&mut self, sp: Span, msg: &str, suggestions: Vec<String>) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitutions: suggestions.into_iter().map(|snippet| Substitution {
