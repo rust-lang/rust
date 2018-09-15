@@ -6,7 +6,7 @@ LL | fn foo(mut x: Ref, y: &u32) {
    |        |
    |        has type `Ref<'_, '2>`
 LL |     x.b = y; //~ ERROR lifetime mismatch
-   |     ^^^^^^^ requires that `'1` must outlive `'2`
+   |     ^^^^^^^ assignment requires that `'1` must outlive `'2`
 
 error: aborting due to previous error
 

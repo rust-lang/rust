@@ -36,10 +36,10 @@ LL |     move |_| println!("{}", y)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/must_outlive_least_region_or_bound.rs:34:5
+  --> $DIR/must_outlive_least_region_or_bound.rs:32:51
    |
-LL |     x
-   |     ^
+LL | fn ty_param_wont_outlive_static<T:Debug>(x: T) -> impl Debug + 'static {
+   |                                                   ^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `T: 'static`...
 

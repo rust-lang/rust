@@ -49,14 +49,21 @@ LL | |     });
    | |______^ `cell_a` escapes the function body here
 
 error: unsatisfied lifetime constraints
-  --> $DIR/propagate-approximated-shorter-to-static-no-bound.rs:45:29
+  --> $DIR/propagate-approximated-shorter-to-static-no-bound.rs:45:47
    |
-LL | fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
-   |           --  -- lifetime `'b` defined here
-   |           |
-   |           lifetime `'a` defined here
-LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
-   |                             ^^^^^^^ requires that `'a` must outlive `'b`
+LL |   fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+   |             --  -- lifetime `'b` defined here
+   |             |
+   |             lifetime `'a` defined here
+LL |       establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
+   |  _______________________________________________^
+LL | |         //~^ ERROR borrowed data escapes outside of function
+LL | |         //~| ERROR unsatisfied lifetime constraints
+LL | |
+LL | |         // Only works if 'x: 'y:
+LL | |         demand_y(x, y, x.get())
+LL | |     });
+   | |_____^ closure body requires that `'a` must outlive `'b`
 
 error: aborting due to 2 previous errors
 
