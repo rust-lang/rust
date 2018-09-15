@@ -297,7 +297,7 @@ impl LintStore {
         self.by_name.insert(name.into(), Removed(reason.into()));
     }
 
-    pub fn find_lints(&self, lint_name: &str) -> Result<Vec<LintId>, FindLintError> {
+    pub fn find_lints(&self, mut lint_name: &str) -> Result<Vec<LintId>, FindLintError> {
         match self.by_name.get(lint_name) {
             Some(&Id(lint_id)) => Ok(vec![lint_id]),
             Some(&Renamed(_, lint_id)) => {
@@ -307,9 +307,17 @@ impl LintStore {
                 Err(FindLintError::Removed)
             },
             None => {
-                match self.lint_groups.get(lint_name) {
-                    Some(v) => Ok(v.0.clone()),
-                    None => Err(FindLintError::Removed)
+                loop {
+                    return match self.lint_groups.get(lint_name) {
+                        Some((ids, _, depr)) => {
+                            if let Some((name, _)) = depr {
+                                lint_name = name;
+                                continue;
+                            }
+                            Ok(ids.clone())
+                        }
+                        None => Err(FindLintError::Removed)
+                    };
                 }
             }
         }
