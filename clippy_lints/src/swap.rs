@@ -125,7 +125,7 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
                     (true, format!(" `{}` and `{}`", first, second),
                         format!("std::mem::swap({}, {})", first.mut_addr(), second.mut_addr()))
                 } else {
-                    (true, "".to_owned(), "".to_owned())
+                    (true, String::new(), String::new())
                 };
 
                 let span = w[0].span.to(second.span);
