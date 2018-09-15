@@ -15,7 +15,7 @@ use super::method::MethodCallee;
 
 use rustc::infer::InferOk;
 use rustc::session::DiagnosticMessageId;
-use rustc::traits;
+use rustc::traits::{self, TraitEngine};
 use rustc::ty::{self, Ty, TraitRef};
 use rustc::ty::{ToPredicate, TypeFoldable};
 use rustc::ty::adjustment::{Adjustment, Adjust, OverloadedDeref};
@@ -128,19 +128,28 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
             return None;
         }
 
-        let mut selcx = traits::SelectionContext::new(self.fcx);
-        let normalized_ty = traits::normalize_projection_type(&mut selcx,
-                                                              self.fcx.param_env,
-                                                              ty::ProjectionTy::from_ref_and_name(
-                                                                  tcx,
-                                                                  trait_ref,
-                                                                  Ident::from_str("Target"),
-                                                              ),
-                                                              cause,
-                                                              0,
-                                                              &mut self.obligations);
-
-        debug!("overloaded_deref_ty({:?}) = {:?}", ty, normalized_ty);
+        let mut fulfillcx = traits::FulfillmentContext::new_in_snapshot();
+        let normalized_ty = fulfillcx.normalize_projection_type(
+            &self.fcx,
+            self.fcx.param_env,
+            ty::ProjectionTy::from_ref_and_name(
+                tcx,
+                trait_ref,
+                Ident::from_str("Target"),
+            ),
+            cause);
+        if let Err(e) = fulfillcx.select_where_possible(&self.fcx) {
+            // This shouldn't happen, except for evaluate/fulfill mismatches,
+            // but that's not a reason for an ICE (`predicate_may_hold` is conservative
+            // by design).
+            debug!("overloaded_deref_ty: encountered errors {:?} while fulfilling",
+                   e);
+            return None;
+        }
+        let obligations = fulfillcx.pending_obligations();
+        debug!("overloaded_deref_ty({:?}) = ({:?}, {:?})",
+               ty, normalized_ty, obligations);
+        self.obligations.extend(obligations);
 
         Some(self.fcx.resolve_type_vars_if_possible(&normalized_ty))
     }
