@@ -767,8 +767,12 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
         let mut ret = UseOk;
 
+        let scope = region::Scope {
+            id: expr_id,
+            data: region::ScopeData::Node
+        };
         self.each_in_scope_loan_affecting_path(
-            region::Scope::Node(expr_id), use_path, |loan| {
+            scope, use_path, |loan| {
             if !compatible_borrow_kinds(loan.kind, borrow_kind) {
                 ret = UseWhileBorrowed(loan.loan_path.clone(), loan.span);
                 false
@@ -886,7 +890,10 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
         // Check that we don't invalidate any outstanding loans
         if let Some(loan_path) = opt_loan_path(assignee_cmt) {
-            let scope = region::Scope::Node(assignment_id);
+            let scope = region::Scope {
+                id: assignment_id,
+                data: region::ScopeData::Node
+            };
             self.each_in_scope_loan_affecting_path(scope, &loan_path, |loan| {
                 self.report_illegal_mutation(assignment_span, &loan_path, loan);
                 false

@@ -27,7 +27,10 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
 
     fn make_mirror<'a, 'gcx>(self, cx: &mut Cx<'a, 'gcx, 'tcx>) -> Expr<'tcx> {
         let temp_lifetime = cx.region_scope_tree.temporary_scope(self.hir_id.local_id);
-        let expr_scope = region::Scope::Node(self.hir_id.local_id);
+        let expr_scope = region::Scope {
+            id: self.hir_id.local_id,
+            data: region::ScopeData::Node
+        };
 
         debug!("Expr::make_mirror(): id={}, span={:?}", self.id, self.span);
 
@@ -148,7 +151,10 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             // Convert this to a suitable `&foo` and
             // then an unsafe coercion. Limit the region to be just this
             // expression.
-            let region = ty::ReScope(region::Scope::Node(hir_expr.hir_id.local_id));
+            let region = ty::ReScope(region::Scope {
+                id: hir_expr.hir_id.local_id,
+                data: region::ScopeData::Node
+            });
             let region = cx.tcx.mk_region(region);
             expr = Expr {
                 temp_lifetime,
@@ -581,7 +587,10 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         hir::ExprKind::Break(dest, ref value) => {
             match dest.target_id {
                 Ok(target_id) => ExprKind::Break {
-                    label: region::Scope::Node(cx.tcx.hir.node_to_hir_id(target_id).local_id),
+                    label: region::Scope {
+                        id: cx.tcx.hir.node_to_hir_id(target_id).local_id,
+                        data: region::ScopeData::Node
+                    },
                     value: value.to_ref(),
                 },
                 Err(err) => bug!("invalid loop id for break: {}", err)
@@ -590,7 +599,10 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         hir::ExprKind::Continue(dest) => {
             match dest.target_id {
                 Ok(loop_id) => ExprKind::Continue {
-                    label: region::Scope::Node(cx.tcx.hir.node_to_hir_id(loop_id).local_id),
+                    label: region::Scope {
+                        id: cx.tcx.hir.node_to_hir_id(loop_id).local_id,
+                        data: region::ScopeData::Node
+                    },
                 },
                 Err(err) => bug!("invalid loop id for continue: {}", err)
             }

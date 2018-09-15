@@ -317,7 +317,11 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             debug!("consume_body: arg_ty = {:?}", arg_ty);
 
             let fn_body_scope_r =
-                self.tcx().mk_region(ty::ReScope(region::Scope::Node(body.value.hir_id.local_id)));
+                self.tcx().mk_region(ty::ReScope(
+                    region::Scope {
+                        id: body.value.hir_id.local_id,
+                        data: region::ScopeData::Node
+                    }));
             let arg_cmt = Rc::new(self.mc.cat_rvalue(
                 arg.hir_id,
                 arg.pat.span,
@@ -558,7 +562,10 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             _ => {
                 if let Some(def) = self.mc.tables.type_dependent_defs().get(call.hir_id) {
                     let def_id = def.def_id();
-                    let call_scope = region::Scope::Node(call.hir_id.local_id);
+                    let call_scope = region::Scope {
+                        id: call.hir_id.local_id,
+                        data: region::ScopeData::Node
+                    };
                     match OverloadedCallType::from_method_id(self.tcx(), def_id) {
                         FnMutOverloadedCall => {
                             let call_scope_r = self.tcx().mk_region(ty::ReScope(call_scope));
@@ -766,7 +773,10 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 // treated as borrowing it for the enclosing temporary
                 // scope.
                 let r = self.tcx().mk_region(ty::ReScope(
-                    region::Scope::Node(expr.hir_id.local_id)));
+                    region::Scope {
+                        id: expr.hir_id.local_id,
+                        data: region::ScopeData::Node
+                    }));
 
                 self.delegate.borrow(expr.id,
                                      expr.span,

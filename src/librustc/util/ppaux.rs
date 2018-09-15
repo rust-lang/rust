@@ -769,7 +769,7 @@ define_print! {
                     write!(f, "{}", br)
                 }
                 ty::ReScope(scope) if cx.identify_regions => {
-                    match scope.data() {
+                    match scope.data {
                         region::ScopeData::Node =>
                             write!(f, "'{}s", scope.item_local_id().as_usize()),
                         region::ScopeData::CallSite =>

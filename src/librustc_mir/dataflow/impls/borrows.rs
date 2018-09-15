@@ -157,7 +157,10 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     ) -> Self {
         let scope_tree = tcx.region_scope_tree(def_id);
         let root_scope = body_id.map(|body_id| {
-            region::Scope::CallSite(tcx.hir.body(body_id).value.hir_id.local_id)
+            region::Scope {
+                id: tcx.hir.body(body_id).value.hir_id.local_id,
+                data: region::ScopeData::CallSite
+            }
         });
 
         let mut borrows_out_of_scope_at_location = FxHashMap();

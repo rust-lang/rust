@@ -118,7 +118,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         return;
                     }
                 };
-                let scope_decorated_tag = match scope.data() {
+                let scope_decorated_tag = match scope.data {
                     region::ScopeData::Node => tag,
                     region::ScopeData::CallSite => "scope of call-site for function",
                     region::ScopeData::Arguments => "scope of function body",

@@ -198,7 +198,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
 
     pub fn create_region_hierarchy(&mut self, rh: &RH,
                                    parent: (region::Scope, region::ScopeDepth)) {
-        let me = region::Scope::Node(rh.id);
+        let me = region { id: rh.id, data: region::ScopeData::Node };
         self.region_scope_tree.record_scope_parent(me, Some(parent));
         for child_rh in rh.sub {
             self.create_region_hierarchy(child_rh, (me, parent.1 + 1));
@@ -209,7 +209,10 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         // creates a region hierarchy where 1 is root, 10 and 11 are
         // children of 1, etc
 
-        let dscope = region::Scope::Destruction(hir::ItemLocalId(1));
+        let dscope = region::Scope {
+            id: hir::ItemLocalId(1),
+            data: region::ScopeData::Destruction
+        };
         self.region_scope_tree.record_scope_parent(dscope, None);
         self.create_region_hierarchy(&RH {
             id: hir::ItemLocalId(1),
@@ -355,7 +358,10 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn t_rptr_scope(&self, id: u32) -> Ty<'tcx> {
-        let r = ty::ReScope(region::Scope::Node(hir::ItemLocalId(id)));
+        let r = ty::ReScope(region::Scope {
+            id: hir::ItemLocalId(id),
+            data: region::ScopeData::Node
+        });
         self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r), self.tcx().types.isize)
     }
 

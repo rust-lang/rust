@@ -550,8 +550,14 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         upvar_decls);
 
     let fn_def_id = tcx.hir.local_def_id(fn_id);
-    let call_site_scope = region::Scope::CallSite(body.value.hir_id.local_id);
-    let arg_scope = region::Scope::Arguments(body.value.hir_id.local_id);
+    let call_site_scope = region::Scope {
+        id: body.value.hir_id.local_id,
+        data: region::ScopeData::CallSite
+    };
+    let arg_scope = region::Scope {
+        id: body.value.hir_id.local_id,
+        data: region::ScopeData::Arguments
+    };
     let mut block = START_BLOCK;
     let source_info = builder.source_info(span);
     let call_site_s = (call_site_scope, source_info);
