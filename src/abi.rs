@@ -675,17 +675,33 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                     };
                     ret.write_cvalue(fx, CValue::ByVal(size, usize_layout));
                 }
-                "type_id" => {
-                    assert_eq!(args.len(), 0);
-                    let type_id = fx.tcx.type_id_hash(substs.type_at(0));
-                    let type_id = CValue::const_val(fx, u64_layout.ty, type_id as i64);
-                    ret.write_cvalue(fx, type_id);
-                }
                 "min_align_of" => {
                     assert_eq!(args.len(), 0);
                     let min_align = fx.layout_of(substs.type_at(0)).align.abi();
                     let min_align = CValue::const_val(fx, usize_layout.ty, min_align as i64);
                     ret.write_cvalue(fx, min_align);
+                }
+                "min_align_of_val" => {
+                    assert_eq!(args.len(), 1);
+                    let layout = fx.layout_of(substs.type_at(0));
+                    let align = match &layout.ty.sty {
+                        _ if !layout.is_unsized() => {
+                            fx.bcx.ins().iconst(fx.module.pointer_type(), layout.align.abi() as i64)
+                        }
+                        ty::Slice(elem) => {
+                            let align = fx.layout_of(elem).align.abi() as i64;
+                            fx.bcx.ins().iconst(fx.module.pointer_type(), align)
+                        }
+                        ty::Dynamic(..) => crate::vtable::min_align_of_obj(fx, args[0]),
+                        ty => unimplemented!("min_align_of_val for {:?}", ty),
+                    };
+                    ret.write_cvalue(fx, CValue::ByVal(align, usize_layout));
+                }
+                "type_id" => {
+                    assert_eq!(args.len(), 0);
+                    let type_id = fx.tcx.type_id_hash(substs.type_at(0));
+                    let type_id = CValue::const_val(fx, u64_layout.ty, type_id as i64);
+                    ret.write_cvalue(fx, type_id);
                 }
                 _ if intrinsic.starts_with("unchecked_") => {
                     assert_eq!(args.len(), 2);

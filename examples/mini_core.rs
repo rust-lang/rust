@@ -222,6 +222,8 @@ pub mod intrinsics {
         pub fn abort() -> !;
         pub fn size_of<T>() -> usize;
         pub fn size_of_val<T: ?::Sized>(val: &T) -> usize;
+        pub fn min_align_of<T>() -> usize;
+        pub fn min_align_of_val<T: ?::Sized>(val: &T) -> usize;
         pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
         pub fn transmute<T, U>(e: T) -> U;
         pub fn uninit<T>() -> T;

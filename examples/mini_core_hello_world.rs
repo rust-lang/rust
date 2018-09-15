@@ -86,6 +86,22 @@ fn start<T: Termination + 'static>(
 static mut NUM: u8 = 6 * 7;
 static NUM_REF: &'static u8 = unsafe { &NUM };
 
+macro_rules! assert {
+    ($e:expr) => {
+        if !$e {
+            panic(&(stringify!(! $e), file!(), line!(), 0));
+        }
+    };
+}
+
+macro_rules! assert_eq {
+    ($l:expr, $r: expr) => {
+        if $l != $r {
+            panic(&(stringify!($l != $r), file!(), line!(), 0));
+        }
+    }
+}
+
 fn main() {
     unsafe {
         let hello: &[u8] = b"Hello\0" as &[u8; 6];
@@ -99,34 +115,23 @@ fn main() {
             puts(*world as *const str as *const u8);
         }
 
-        if intrinsics::size_of_val(hello) as u8 != 6 {
-            panic(&("", "", 0, 0));
-        };
+        assert_eq!(intrinsics::size_of_val(hello) as u8, 6);
 
         let chars = &['C', 'h', 'a', 'r', 's'];
         let chars = chars as &[char];
-        if intrinsics::size_of_val(chars) as u8 != 4 * 5 {
-            panic(&("", "", 0, 0));
-        }
+        assert_eq!(intrinsics::size_of_val(chars) as u8, 4 * 5);
 
         let a: &dyn SomeTrait = &"abc\0";
         a.object_safe();
 
-        if intrinsics::size_of_val(a) as u8 != 16 {
-            panic(&("", "", 0, 0));
-        }
+        assert_eq!(intrinsics::size_of_val(a) as u8, 16);
+        assert_eq!(intrinsics::size_of_val(&0u32) as u8, 4);
 
-        if intrinsics::size_of_val(&0u32) as u8 != 4 {
-            panic(&("", "", 0, 0));
-        }
+        assert_eq!(intrinsics::min_align_of::<u16>() as u8, 2);
+        assert_eq!(intrinsics::min_align_of_val(&a) as u8, intrinsics::min_align_of::<&str>() as u8);
 
-        if intrinsics::needs_drop::<u8>() {
-            panic(&("", "", 0, 0));
-        }
-
-        if !intrinsics::needs_drop::<NoisyDrop>() {
-            panic(&("", "", 0, 0));
-        }
+        assert!(!intrinsics::needs_drop::<u8>());
+        assert!(intrinsics::needs_drop::<NoisyDrop>());
     }
 
     let _ = NoisyDrop {

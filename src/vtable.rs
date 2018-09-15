@@ -20,6 +20,20 @@ pub fn size_of_obj<'a, 'tcx: 'a>(
     )
 }
 
+pub fn min_align_of_obj<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+    val: CValue<'tcx>,
+) -> Value {
+    let (_ptr, vtable) = val.load_value_pair(fx);
+    let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
+    fx.bcx.ins().load(
+        pointer_ty(fx.tcx),
+        MemFlags::new(),
+        vtable,
+        (ALIGN_INDEX * usize_size) as i32,
+    )
+}
+
 pub fn get_ptr_and_method_ref<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     arg: CValue<'tcx>,
