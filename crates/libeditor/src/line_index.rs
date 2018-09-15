@@ -1,7 +1,7 @@
 use superslice::Ext;
 use ::TextUnit;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash)]
 pub struct LineIndex {
     newlines: Vec<TextUnit>,
 }

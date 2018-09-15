@@ -1,274 +1,157 @@
-use relative_path::RelativePathBuf;
-use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
-use libsyntax2::{
-    File,
-    ast::{self, AstNode, NameOwner},
-    SyntaxNode, SmolStr,
-};
-use {FileId, imp::FileResolverImp};
-
-type SyntaxProvider<'a> = dyn Fn(FileId) -> &'a File + 'a;
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct ModuleId(FileId);
-
-#[derive(Debug, Default)]
-pub struct ModuleMap {
-    state: RwLock<State>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ChangeKind {
-    Delete, Insert, Update
-}
-
-impl Clone for ModuleMap {
-    fn clone(&self) -> ModuleMap {
-        let state = self.state.read().clone();
-        ModuleMap { state: RwLock::new(state) }
-    }
-}
-
-#[derive(Clone, Debug, Default)]
-struct State {
-    file_resolver: FileResolverImp,
-    changes: Vec<(FileId, ChangeKind)>,
-    links: Vec<Link>,
-}
-
-#[derive(Clone, Debug)]
-struct Link {
-    owner: ModuleId,
-    syntax: SyntaxNode,
-    points_to: Vec<ModuleId>,
-    problem: Option<Problem>,
-}
-
-#[derive(Clone, Debug)]
-pub enum Problem {
-    UnresolvedModule {
-        candidate: RelativePathBuf,
+use std::sync::Arc;
+use {
+    FileId,
+    db::{
+        Query, QueryRegistry, QueryCtx,
+        file_set
     },
-    NotDirOwner {
-        move_to: RelativePathBuf,
-        candidate: RelativePathBuf,
-    }
+    queries::file_syntax,
+    descriptors::{ModuleDescriptor, ModuleTreeDescriptor},
+};
+
+pub(crate) fn register_queries(reg: &mut QueryRegistry) {
+    reg.add(MODULE_DESCR, "MODULE_DESCR");
+    reg.add(MODULE_TREE, "MODULE_TREE");
 }
 
-impl ModuleMap {
-    pub fn new() -> ModuleMap {
-        Default::default()
-    }
-    pub fn update_file(&mut self, file_id: FileId, change_kind: ChangeKind) {
-        self.state.get_mut().changes.push((file_id, change_kind));
-    }
-    pub(crate) fn set_file_resolver(&mut self, file_resolver: FileResolverImp) {
-        self.state.get_mut().file_resolver = file_resolver;
-    }
-    pub fn module2file(&self, m: ModuleId) -> FileId {
-        m.0
-    }
-    pub fn file2module(&self, file_id: FileId) -> ModuleId {
-        ModuleId(file_id)
-    }
-    pub fn child_module_by_name<'a>(
-        &self,
-        parent_mod: ModuleId,
-        child_mod: &str,
-        syntax_provider: &SyntaxProvider,
-    ) -> Vec<ModuleId> {
-        self.links(syntax_provider)
-            .links
-            .iter()
-            .filter(|link| link.owner == parent_mod)
-            .filter(|link| link.name() == child_mod)
-            .filter_map(|it| it.points_to.first())
-            .map(|&it| it)
-            .collect()
-    }
-
-    pub fn parent_modules(
-        &self,
-        m: ModuleId,
-        syntax_provider: &SyntaxProvider,
-    ) -> Vec<(ModuleId, SmolStr, SyntaxNode)> {
-        let mut res = Vec::new();
-        self.for_each_parent_link(m, syntax_provider, |link| {
-            res.push(
-                (link.owner, link.name().clone(), link.syntax.clone())
-            )
-        });
-        res
-    }
-
-    pub fn parent_module_ids(
-        &self,
-        m: ModuleId,
-        syntax_provider: &SyntaxProvider,
-    ) -> Vec<ModuleId> {
-        let mut res = Vec::new();
-        self.for_each_parent_link(m, syntax_provider, |link| res.push(link.owner));
-        res
-    }
-
-    fn for_each_parent_link(
-        &self,
-        m: ModuleId,
-        syntax_provider: &SyntaxProvider,
-        f: impl FnMut(&Link)
-    ) {
-        self.links(syntax_provider)
-            .links
-            .iter()
-            .filter(move |link| link.points_to.iter().any(|&it| it == m))
-            .for_each(f)
-    }
-
-    pub fn problems(
-        &self,
-        file: FileId,
-        syntax_provider: &SyntaxProvider,
-        mut cb: impl FnMut(ast::Name, &Problem),
-    ) {
-        let module = self.file2module(file);
-        let links = self.links(syntax_provider);
-        links
-            .links
-            .iter()
-            .filter(|link| link.owner == module)
-            .filter_map(|link| {
-                let problem = link.problem.as_ref()?;
-                Some((link, problem))
-            })
-            .for_each(|(link, problem)| cb(link.name_node(), problem))
-    }
-
-    fn links(
-        &self,
-        syntax_provider: &SyntaxProvider,
-    ) -> RwLockReadGuard<State> {
-        {
-            let guard = self.state.read();
-            if guard.changes.is_empty() {
-                return guard;
-            }
-        }
-        let mut guard = self.state.write();
-        if !guard.changes.is_empty() {
-            guard.apply_changes(syntax_provider);
-        }
-        assert!(guard.changes.is_empty());
-        RwLockWriteGuard::downgrade(guard)
-    }
+pub(crate) fn module_tree(ctx: QueryCtx) -> Arc<ModuleTreeDescriptor> {
+    ctx.get(MODULE_TREE, ())
 }
 
-impl State {
-    pub fn apply_changes(
-        &mut self,
-        syntax_provider: &SyntaxProvider,
-    ) {
-        let mut reresolve = false;
-        for (file_id, kind) in self.changes.drain(..) {
-            let mod_id = ModuleId(file_id);
-            self.links.retain(|link| link.owner != mod_id);
-            match kind {
-                ChangeKind::Delete => {
-                    for link in self.links.iter_mut() {
-                        link.points_to.retain(|&x| x != mod_id);
-                    }
-                }
-                ChangeKind::Insert => {
-                    let file = syntax_provider(file_id);
-                    self.links.extend(
-                        file
-                            .ast()
-                            .modules()
-                            .filter_map(|it| Link::new(mod_id, it))
-                    );
-                    reresolve = true;
-                }
-                ChangeKind::Update => {
-                    let file = syntax_provider(file_id);
-                    let resolver = &self.file_resolver;
-                    self.links.extend(
-                        file
-                            .ast()
-                            .modules()
-                            .filter_map(|it| Link::new(mod_id, it))
-                            .map(|mut link| {
-                                link.resolve(resolver);
-                                link
-                            })
-                    );
-                }
+const MODULE_DESCR: Query<FileId, ModuleDescriptor> = Query(30, |ctx, &file_id| {
+    let file = file_syntax(ctx, file_id);
+    ModuleDescriptor::new(file.ast())
+});
+
+const MODULE_TREE: Query<(), ModuleTreeDescriptor> = Query(31, |ctx, _| {
+    let file_set = file_set(ctx);
+    let mut files = Vec::new();
+    for &file_id in file_set.0.iter() {
+        let module_descr = ctx.get(MODULE_DESCR, file_id);
+        files.push((file_id, module_descr));
+    }
+    ModuleTreeDescriptor::new(files.iter().map(|(file_id, descr)| (*file_id, &**descr)), &file_set.1)
+});
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use im;
+    use relative_path::{RelativePath, RelativePathBuf};
+    use {
+        db::{Db},
+        imp::FileResolverImp,
+        FileId, FileResolver,
+    };
+    use super::*;
+
+    #[derive(Debug)]
+    struct FileMap(im::HashMap<FileId, RelativePathBuf>);
+
+    impl FileResolver for FileMap {
+        fn file_stem(&self, file_id: FileId) -> String {
+            self.0[&file_id].file_stem().unwrap().to_string()
+        }
+        fn resolve(&self, file_id: FileId, rel: &RelativePath) -> Option<FileId> {
+            let path = self.0[&file_id].join(rel).normalize();
+            self.0.iter()
+                .filter_map(|&(id, ref p)| Some(id).filter(|_| p == &path))
+                .next()
+        }
+    }
+
+    struct Fixture {
+        next_file_id: u32,
+        fm: im::HashMap<FileId, RelativePathBuf>,
+        db: Db,
+    }
+
+    impl Fixture {
+        fn new() -> Fixture {
+            Fixture {
+                next_file_id: 1,
+                fm: im::HashMap::new(),
+                db: Db::new(),
             }
         }
-        if reresolve {
-            for link in self.links.iter_mut() {
-                link.resolve(&self.file_resolver)
+        fn add_file(&mut self, path: &str, text: &str) -> FileId {
+            assert!(path.starts_with("/"));
+            let file_id = FileId(self.next_file_id);
+            self.next_file_id += 1;
+            self.fm.insert(file_id, RelativePathBuf::from(&path[1..]));
+            let mut new_state = self.db.state().clone();
+            new_state.file_map.insert(file_id, Arc::new(text.to_string()));
+            new_state.file_resolver = FileResolverImp::new(
+                Arc::new(FileMap(self.fm.clone()))
+            );
+            self.db = self.db.with_changes(new_state, &[file_id], true);
+            file_id
+        }
+        fn remove_file(&mut self, file_id: FileId) {
+            self.fm.remove(&file_id);
+            let mut new_state = self.db.state().clone();
+            new_state.file_map.remove(&file_id);
+            new_state.file_resolver = FileResolverImp::new(
+                Arc::new(FileMap(self.fm.clone()))
+            );
+            self.db = self.db.with_changes(new_state, &[file_id], true);
+        }
+        fn change_file(&mut self, file_id: FileId, new_text: &str) {
+            let mut new_state = self.db.state().clone();
+            new_state.file_map.insert(file_id, Arc::new(new_text.to_string()));
+            self.db = self.db.with_changes(new_state, &[file_id], false);
+        }
+        fn check_parent_modules(
+            &self,
+            file_id: FileId,
+            expected: &[FileId],
+            queries: &[(&'static str, u64)]
+        ) {
+            let (tree, events) = self.db.trace_query(|ctx| module_tree(ctx));
+            let actual = tree.parent_modules(file_id)
+                .into_iter()
+                .map(|link| link.owner(&tree))
+                .collect::<Vec<_>>();
+            assert_eq!(actual.as_slice(), expected);
+            let mut counts = HashMap::new();
+            events.into_iter()
+               .for_each(|event| *counts.entry(event).or_insert(0) += 1);
+            for &(query_id, expected_count) in queries.iter() {
+                let actual_count = *counts.get(&query_id).unwrap_or(&0);
+                assert_eq!(
+                    actual_count,
+                    expected_count,
+                    "counts for {} differ",
+                    query_id,
+                )
             }
+
         }
     }
-}
 
-impl Link {
-    fn new(owner: ModuleId, module: ast::Module) -> Option<Link> {
-        if module.name().is_none() {
-            return None;
-        }
-        let link = Link {
-            owner,
-            syntax: module.syntax().owned(),
-            points_to: Vec::new(),
-            problem: None,
-        };
-        Some(link)
-    }
+    #[test]
+    fn test_parent_module() {
+        let mut f = Fixture::new();
+        let foo = f.add_file("/foo.rs", "");
+        f.check_parent_modules(foo, &[], &[("MODULE_DESCR", 1)]);
 
-    fn name(&self) -> SmolStr {
-        self.name_node().text()
-    }
+        let lib = f.add_file("/lib.rs", "mod foo;");
+        f.check_parent_modules(foo, &[lib], &[("MODULE_DESCR", 1)]);
+        f.check_parent_modules(foo, &[lib], &[("MODULE_DESCR", 0)]);
 
-    fn name_node(&self) -> ast::Name {
-        self.ast().name().unwrap()
-    }
+        f.change_file(lib, "");
+        f.check_parent_modules(foo, &[], &[("MODULE_DESCR", 1)]);
 
-    fn ast(&self) -> ast::Module {
-        ast::Module::cast(self.syntax.borrowed())
-            .unwrap()
-    }
+        f.change_file(lib, "mod foo;");
+        f.check_parent_modules(foo, &[lib], &[("MODULE_DESCR", 1)]);
 
-    fn resolve(&mut self, file_resolver: &FileResolverImp) {
-        if !self.ast().has_semi() {
-            self.problem = None;
-            self.points_to = Vec::new();
-            return;
-        }
+        f.change_file(lib, "mod bar;");
+        f.check_parent_modules(foo, &[], &[("MODULE_DESCR", 1)]);
 
-        let mod_name = file_resolver.file_stem(self.owner.0);
-        let is_dir_owner =
-            mod_name == "mod" || mod_name == "lib" || mod_name == "main";
+        f.change_file(lib, "mod foo;");
+        f.check_parent_modules(foo, &[lib], &[("MODULE_DESCR", 1)]);
 
-        let file_mod = RelativePathBuf::from(format!("../{}.rs", self.name()));
-        let dir_mod = RelativePathBuf::from(format!("../{}/mod.rs", self.name()));
-        if is_dir_owner {
-            self.points_to = [&file_mod, &dir_mod].iter()
-                .filter_map(|path| file_resolver.resolve(self.owner.0, path))
-                .map(ModuleId)
-                .collect();
-            self.problem = if self.points_to.is_empty() {
-                Some(Problem::UnresolvedModule {
-                    candidate: file_mod,
-                })
-            } else {
-                None
-            }
-        } else {
-            self.points_to = Vec::new();
-            self.problem = Some(Problem::NotDirOwner {
-                move_to: RelativePathBuf::from(format!("../{}/mod.rs", mod_name)),
-                candidate: file_mod,
-            });
-        }
+        f.remove_file(lib);
+        f.check_parent_modules(foo, &[], &[("MODULE_DESCR", 0)]);
     }
 }

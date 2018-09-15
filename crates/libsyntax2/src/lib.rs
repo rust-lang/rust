@@ -61,7 +61,7 @@ use {
     yellow::{GreenNode, SyntaxRoot},
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash)]
 pub struct File {
     root: SyntaxNode
 }

@@ -17,7 +17,7 @@ log = "0.4.3"
 url_serde = "0.2.0"
 languageserver-types = "0.49.0"
 walkdir = "2.2.0"
-im = { version = "11.0.1", features = ["arc"] }
+im = "12.0.0"
 cargo_metadata = "0.6.0"
 text_unit = { version = "0.1.2", features = ["serde"] }
 smol_str = { version = "0.1.5", features = ["serde"] }

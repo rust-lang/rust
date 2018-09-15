@@ -9,12 +9,17 @@ extern crate rayon;
 extern crate relative_path;
 #[macro_use]
 extern crate crossbeam_channel;
+extern crate im;
+extern crate salsa;
 
 mod symbol_index;
 mod module_map;
 mod imp;
 mod job;
 mod roots;
+mod db;
+mod queries;
+mod descriptors;
 
 use std::{
     sync::Arc,
@@ -161,8 +166,8 @@ impl Analysis {
     pub fn file_syntax(&self, file_id: FileId) -> File {
         self.imp.file_syntax(file_id).clone()
     }
-    pub fn file_line_index(&self, file_id: FileId) -> LineIndex {
-        self.imp.file_line_index(file_id).clone()
+    pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
+        self.imp.file_line_index(file_id)
     }
     pub fn extend_selection(&self, file: &File, range: TextRange) -> TextRange {
         libeditor::extend_selection(file, range).unwrap_or(range)
@@ -172,19 +177,19 @@ impl Analysis {
     }
     pub fn syntax_tree(&self, file_id: FileId) -> String {
         let file = self.imp.file_syntax(file_id);
-        libeditor::syntax_tree(file)
+        libeditor::syntax_tree(&file)
     }
     pub fn join_lines(&self, file_id: FileId, range: TextRange) -> SourceChange {
         let file = self.imp.file_syntax(file_id);
-        SourceChange::from_local_edit(file_id, "join lines", libeditor::join_lines(file, range))
+        SourceChange::from_local_edit(file_id, "join lines", libeditor::join_lines(&file, range))
     }
     pub fn on_eq_typed(&self, file_id: FileId, offset: TextUnit) -> Option<SourceChange> {
         let file = self.imp.file_syntax(file_id);
-        Some(SourceChange::from_local_edit(file_id, "add semicolon", libeditor::on_eq_typed(file, offset)?))
+        Some(SourceChange::from_local_edit(file_id, "add semicolon", libeditor::on_eq_typed(&file, offset)?))
     }
     pub fn file_structure(&self, file_id: FileId) -> Vec<StructureNode> {
         let file = self.imp.file_syntax(file_id);
-        libeditor::file_structure(file)
+        libeditor::file_structure(&file)
     }
     pub fn symbol_search(&self, query: Query, token: &JobToken) -> Vec<(FileId, FileSymbol)> {
         self.imp.world_symbols(query, token)
@@ -203,15 +208,15 @@ impl Analysis {
     }
     pub fn runnables(&self, file_id: FileId) -> Vec<Runnable> {
         let file = self.imp.file_syntax(file_id);
-        libeditor::runnables(file)
+        libeditor::runnables(&file)
     }
     pub fn highlight(&self, file_id: FileId) -> Vec<HighlightedRange> {
         let file = self.imp.file_syntax(file_id);
-        libeditor::highlight(file)
+        libeditor::highlight(&file)
     }
     pub fn completions(&self, file_id: FileId, offset: TextUnit) -> Option<Vec<CompletionItem>> {
         let file = self.imp.file_syntax(file_id);
-        libeditor::scope_completion(file, offset)
+        libeditor::scope_completion(&file, offset)
     }
     pub fn assists(&self, file_id: FileId, range: TextRange) -> Vec<SourceChange> {
         self.imp.assists(file_id, range)

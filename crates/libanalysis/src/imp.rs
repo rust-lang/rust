@@ -5,6 +5,7 @@ use std::{
     },
     fmt,
     collections::{HashSet, VecDeque},
+    iter,
 };
 
 use relative_path::RelativePath;
@@ -18,8 +19,8 @@ use libsyntax2::{
 use {
     FileId, FileResolver, Query, Diagnostic, SourceChange, SourceFileEdit, Position, FileSystemEdit,
     JobToken, CrateGraph, CrateId,
-    module_map::{ModuleMap, Problem},
     roots::{SourceRoot, ReadonlySourceRoot, WritableSourceRoot},
+    descriptors::{ModuleTreeDescriptor, Problem},
 };
 
 
@@ -75,14 +76,12 @@ impl AnalysisHostImpl {
     }
     pub fn change_files(&mut self, changes: &mut dyn Iterator<Item=(FileId, Option<String>)>) {
         let data = self.data_mut();
-        for (file_id, text) in changes {
-            data.root.update(file_id, text);
-        }
+        data.root = Arc::new(data.root.apply_changes(changes, None));
     }
     pub fn set_file_resolver(&mut self, resolver: FileResolverImp) {
         let data = self.data_mut();
         data.file_resolver = resolver.clone();
-        data.root.set_file_resolver(resolver);
+        data.root = Arc::new(data.root.apply_changes(&mut iter::empty(), Some(resolver)));
     }
     pub fn set_crate_graph(&mut self, graph: CrateGraph) {
         let mut visited = HashSet::new();
@@ -124,18 +123,17 @@ impl Clone for AnalysisImpl {
 impl AnalysisImpl {
     fn root(&self, file_id: FileId) -> &SourceRoot {
         if self.data.root.contains(file_id) {
-            return &self.data.root;
+            return &*self.data.root;
         }
         &**self.data.libs.iter().find(|it| it.contains(file_id)).unwrap()
     }
-    pub fn file_syntax(&self, file_id: FileId) -> &File {
+    pub fn file_syntax(&self, file_id: FileId) -> File {
         self.root(file_id).syntax(file_id)
     }
-    pub fn file_line_index(&self, file_id: FileId) -> &LineIndex {
+    pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
         self.root(file_id).lines(file_id)
     }
     pub fn world_symbols(&self, query: Query, token: &JobToken) -> Vec<(FileId, FileSymbol)> {
-        self.reindex();
         let mut buf = Vec::new();
         if query.libs {
             self.data.libs.iter()
@@ -148,25 +146,24 @@ impl AnalysisImpl {
     }
     pub fn parent_module(&self, file_id: FileId) -> Vec<(FileId, FileSymbol)> {
         let root = self.root(file_id);
-        let module_map = root.module_map();
-        let id = module_map.file2module(file_id);
-        module_map
-            .parent_modules(id, &|file_id| root.syntax(file_id))
-            .into_iter()
-            .map(|(id, name, node)| {
-                let id = module_map.module2file(id);
+        let module_tree = root.module_tree();
+        module_tree.parent_modules(file_id)
+            .iter()
+            .map(|link| {
+                let file_id = link.owner(&module_tree);
+                let syntax = root.syntax(file_id);
+                let decl = link.bind_source(&module_tree, syntax.ast());
                 let sym = FileSymbol {
-                    name,
-                    node_range: node.range(),
+                    name: link.name(&module_tree),
+                    node_range: decl.syntax().range(),
                     kind: MODULE,
                 };
-                (id, sym)
+                (file_id, sym)
             })
             .collect()
     }
-
     pub fn crate_for(&self, file_id: FileId) -> Vec<CrateId> {
-        let module_map = self.root(file_id).module_map();
+        let module_tree = self.root(file_id).module_tree();
         let crate_graph = &self.data.crate_graph;
         let mut res = Vec::new();
         let mut work = VecDeque::new();
@@ -177,11 +174,10 @@ impl AnalysisImpl {
                 res.push(crate_id);
                 continue;
             }
-            let mid = module_map.file2module(id);
-            let parents = module_map
-                .parent_module_ids(mid, &|file_id| self.file_syntax(file_id))
+            let parents = module_tree
+                .parent_modules(id)
                 .into_iter()
-                .map(|id| module_map.module2file(id))
+                .map(|link| link.owner(&module_tree))
                 .filter(|&id| visited.insert(id));
             work.extend(parents);
         }
@@ -197,7 +193,7 @@ impl AnalysisImpl {
         token: &JobToken,
     ) -> Vec<(FileId, FileSymbol)> {
         let root = self.root(file_id);
-        let module_map = root.module_map();
+        let module_tree = root.module_tree();
         let file = root.syntax(file_id);
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, offset) {
@@ -206,7 +202,7 @@ impl AnalysisImpl {
         if let Some(name) = find_node_at_offset::<ast::Name>(syntax, offset) {
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
                 if module.has_semi() {
-                    let file_ids = self.resolve_module(module_map, file_id, module);
+                    let file_ids = self.resolve_module(&*module_tree, file_id, module);
 
                     let res = file_ids.into_iter().map(|id| {
                         let name = module.name()
@@ -229,7 +225,7 @@ impl AnalysisImpl {
 
     pub fn diagnostics(&self, file_id: FileId) -> Vec<Diagnostic> {
         let root = self.root(file_id);
-        let module_map = root.module_map();
+        let module_tree  = root.module_tree();
         let syntax = root.syntax(file_id);
 
         let mut res = libeditor::diagnostics(&syntax)
@@ -237,47 +233,43 @@ impl AnalysisImpl {
             .map(|d| Diagnostic { range: d.range, message: d.msg, fix: None })
             .collect::<Vec<_>>();
 
-        module_map.problems(
-            file_id,
-            &|file_id| self.file_syntax(file_id),
-            |name_node, problem| {
-                let diag = match problem {
-                    Problem::UnresolvedModule { candidate } => {
-                        let create_file = FileSystemEdit::CreateFile {
-                            anchor: file_id,
-                            path: candidate.clone(),
-                        };
-                        let fix = SourceChange {
-                            label: "create module".to_string(),
-                            source_file_edits: Vec::new(),
-                            file_system_edits: vec![create_file],
-                            cursor_position: None,
-                        };
-                        Diagnostic {
-                            range: name_node.syntax().range(),
-                            message: "unresolved module".to_string(),
-                            fix: Some(fix),
-                        }
+        for (name_node, problem) in module_tree.problems(file_id, syntax.ast()) {
+            let diag = match problem {
+                Problem::UnresolvedModule { candidate } => {
+                    let create_file = FileSystemEdit::CreateFile {
+                        anchor: file_id,
+                        path: candidate.clone(),
+                    };
+                    let fix = SourceChange {
+                        label: "create module".to_string(),
+                        source_file_edits: Vec::new(),
+                        file_system_edits: vec![create_file],
+                        cursor_position: None,
+                    };
+                    Diagnostic {
+                        range: name_node.syntax().range(),
+                        message: "unresolved module".to_string(),
+                        fix: Some(fix),
                     }
-                    Problem::NotDirOwner { move_to, candidate } => {
-                        let move_file = FileSystemEdit::MoveFile { file: file_id, path: move_to.clone() };
-                        let create_file = FileSystemEdit::CreateFile { anchor: file_id, path: move_to.join(candidate) };
-                        let fix = SourceChange {
-                            label: "move file and create module".to_string(),
-                            source_file_edits: Vec::new(),
-                            file_system_edits: vec![move_file, create_file],
-                            cursor_position: None,
-                        };
-                        Diagnostic {
-                            range: name_node.syntax().range(),
-                            message: "can't declare module at this location".to_string(),
-                            fix: Some(fix),
-                        }
+                }
+                Problem::NotDirOwner { move_to, candidate } => {
+                    let move_file = FileSystemEdit::MoveFile { file: file_id, path: move_to.clone() };
+                    let create_file = FileSystemEdit::CreateFile { anchor: file_id, path: move_to.join(candidate) };
+                    let fix = SourceChange {
+                        label: "move file and create module".to_string(),
+                        source_file_edits: Vec::new(),
+                        file_system_edits: vec![move_file, create_file],
+                        cursor_position: None,
+                    };
+                    Diagnostic {
+                        range: name_node.syntax().range(),
+                        message: "can't declare module at this location".to_string(),
+                        fix: Some(fix),
                     }
-                };
-                res.push(diag)
-            }
-        );
+                }
+            };
+            res.push(diag)
+        }
         res
     }
 
@@ -307,26 +299,12 @@ impl AnalysisImpl {
         self.world_symbols(query, token)
     }
 
-    fn resolve_module(&self, module_map: &ModuleMap, file_id: FileId, module: ast::Module) -> Vec<FileId> {
+    fn resolve_module(&self, module_tree: &ModuleTreeDescriptor, file_id: FileId, module: ast::Module) -> Vec<FileId> {
         let name = match module.name() {
             Some(name) => name.text(),
             None => return Vec::new(),
         };
-        let id = module_map.file2module(file_id);
-        module_map
-            .child_module_by_name(
-                id, name.as_str(),
-                &|file_id| self.file_syntax(file_id),
-            )
-            .into_iter()
-            .map(|id| module_map.module2file(id))
-            .collect()
-    }
-
-    fn reindex(&self) {
-        if self.needs_reindex.compare_and_swap(true, false, SeqCst) {
-            self.data.root.reindex();
-        }
+        module_tree.child_module_by_name(file_id, name.as_str())
     }
 }
 
@@ -334,7 +312,7 @@ impl AnalysisImpl {
 struct WorldData {
     file_resolver: FileResolverImp,
     crate_graph: CrateGraph,
-    root: WritableSourceRoot,
+    root: Arc<WritableSourceRoot>,
     libs: Vec<Arc<ReadonlySourceRoot>>,
 }
 

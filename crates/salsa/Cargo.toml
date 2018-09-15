@@ -1,0 +1,8 @@
+[package]
+name = "salsa"
+version = "0.1.0"
+authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+
+[dependencies]
+parking_lot = "0.6.3"
+im = "12.0.0"
