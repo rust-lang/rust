@@ -271,7 +271,7 @@ impl<'test> TestCx<'test> {
 
     fn should_compile_successfully(&self) -> bool {
         match self.config.mode {
-            CompileFail => false,
+            ParseFail | CompileFail => false,
             RunPass => true,
             Ui => self.props.compile_pass,
             mode => panic!("unimplemented for mode {:?}", mode),
