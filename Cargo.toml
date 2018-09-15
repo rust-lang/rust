@@ -1,5 +1,3 @@
-cargo-features = ["edition"]
-
 [package]
 name = "rustc_codegen_cranelift"
 version = "0.1.0"

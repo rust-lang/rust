@@ -33,7 +33,7 @@ fn get_pass_mode<'a, 'tcx: 'a>(
             .unwrap()
             .is_unsized()
     );
-    if ty.sty == tcx.mk_nil().sty {
+    if ty.sty == tcx.mk_unit().sty {
         if is_return {
             //if false {
             PassMode::NoPass
@@ -609,7 +609,7 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 }
             };
 
-            let nil_ty = fx.tcx.mk_nil();
+            let nil_ty = fx.tcx.mk_unit();
             let u64_layout = fx.layout_of(fx.tcx.types.u64);
             let usize_layout = fx.layout_of(fx.tcx.types.usize);
 
