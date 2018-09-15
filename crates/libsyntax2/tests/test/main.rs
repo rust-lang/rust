@@ -27,7 +27,7 @@ fn lexer_tests() {
 fn reparse_test() {
     fn do_check(before: &str, replace_with: &str) {
         let (range, before) = extract_range(before);
-        let after = libsyntax2::replace_range(before.clone(), range, replace_with);
+        let after = libsyntax2::text_utils::replace_range(before.clone(), range, replace_with);
 
         let fully_reparsed = File::parse(&after);
         let incrementally_reparsed = {
