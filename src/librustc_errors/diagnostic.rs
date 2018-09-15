@@ -278,10 +278,11 @@ impl Diagnostic {
         self
     }
 
-    pub fn multipart_suggestion(
+    pub fn multipart_suggestion_with_applicability(
         &mut self,
         msg: &str,
         suggestion: Vec<(Span, String)>,
+        applicability: Applicability,
     ) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitutions: vec![Substitution {
@@ -292,9 +293,21 @@ impl Diagnostic {
             }],
             msg: msg.to_owned(),
             show_code_when_inline: true,
-            applicability: Applicability::Unspecified,
+            applicability,
         });
         self
+    }
+
+    pub fn multipart_suggestion(
+        &mut self,
+        msg: &str,
+        suggestion: Vec<(Span, String)>,
+    ) -> &mut Self {
+        self.multipart_suggestion_with_applicability(
+                                                     msg, 
+                                                     suggestion,
+                                                     Applicability::Unspecified
+                                                    )
     }
 
     /// Prints out a message with multiple suggested edits of the code.

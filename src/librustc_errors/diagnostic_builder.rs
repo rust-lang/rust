@@ -187,6 +187,23 @@ impl<'a> DiagnosticBuilder<'a> {
                                      msg: &str,
                                      suggestions: Vec<String>)
                                      -> &mut Self);
+
+    pub fn multipart_suggestion_with_applicability(&mut self,
+                                              msg: &str,
+                                              suggestion: Vec<(Span, String)>,
+                                              applicability: Applicability)
+                                              -> &mut Self {
+        if !self.allow_suggestions {
+            return self
+        }
+        self.diagnostic.multipart_suggestion_with_applicability(
+            msg,
+            suggestion,
+            applicability,
+        );
+        self
+    }
+
     pub fn span_suggestion_with_applicability(&mut self,
                                               sp: Span,
                                               msg: &str,
