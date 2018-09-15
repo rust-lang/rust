@@ -1562,8 +1562,9 @@ impl<'a> Parser<'a> {
             impl_dyn_multi = bounds.len() > 1 || self.prev_token_kind == PrevTokenKind::Plus;
             TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds)
         } else if self.check_keyword(keywords::Dyn) &&
-                  self.look_ahead(1, |t| t.can_begin_bound() &&
-                                         !can_continue_type_after_non_fn_ident(t)) {
+                  (self.span.edition() == Edition::Edition2018 ||
+                   self.look_ahead(1, |t| t.can_begin_bound() &&
+                                         !can_continue_type_after_non_fn_ident(t))) {
             self.bump(); // `dyn`
             // Always parse bounds greedily for better error recovery.
             let bounds = self.parse_generic_bounds()?;
