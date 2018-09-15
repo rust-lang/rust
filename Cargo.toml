@@ -1,3 +1,5 @@
+cargo-features = ["edition"]
+
 [package]
 name = "clippy"
 version = "0.0.212"
