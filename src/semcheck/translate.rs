@@ -164,11 +164,11 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
         use rustc::ty::{AdtDef, Binder, ExistentialProjection, ExistentialTraitRef};
         use rustc::ty::ExistentialPredicate::*;
         use rustc::ty::TypeAndMut;
-        use rustc::ty::TypeVariants::*;
+        use rustc::ty::TyKind;
 
         orig.fold_with(&mut BottomUpFolder { tcx: self.tcx, fldop: |ty| {
             match ty.sty {
-                TyAdt(&AdtDef { ref did, .. }, substs) if self.needs_translation(*did) => {
+                TyKind::Adt(&AdtDef { ref did, .. }, substs) if self.needs_translation(*did) => {
                     // we fold bottom-up, so the code above is invalid, as it assumes the
                     // substs (that have been folded already) are yet untranslated
                     if let Some(target_def_id) = (self.translate_orig)(self.id_mapping, *did) {
@@ -178,13 +178,13 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                         ty
                     }
                 },
-                TyRef(region, ty, mutbl) => {
+                TyKind::Ref(region, ty, mutbl) => {
                     let ty_and_mut = TypeAndMut { ty, mutbl };
                     self.tcx.mk_ref(self.translate_region(region), ty_and_mut)
                 },
-                TyFnDef(did, substs) => {
+                TyKind::FnDef(did, substs) => {
                     // TODO: this might be buggy as *technically* the substs are
-                    // already translated (see TyAdt for a possible fix)
+                    // already translated (see TyKind::Adt for a possible fix)
                     if let Some((target_def_id, target_substs)) =
                         self.translate_orig_substs(index_map, did, substs)
                     {
@@ -193,7 +193,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                         ty
                     }
                 },
-                TyDynamic(preds, region) => {
+                TyKind::Dynamic(preds, region) => {
                     // hacky error catching mechanism
                     use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
                     use std::cell::Cell;
@@ -259,7 +259,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                         ty
                     }
                 },
-                TyProjection(proj) => {
+                TyKind::Projection(proj) => {
                     if let Some((target_def_id, target_substs)) =
                         self.translate_orig_substs(index_map,
                                                    proj.item_def_id,
@@ -269,16 +269,16 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                         ty
                     }
                 },
-                TyAnon(did, substs) => {
+                TyKind::Opaque(did, substs) => {
                     if let Some((target_def_id, target_substs)) =
                         self.translate_orig_substs(index_map, did, substs)
                     {
-                        self.tcx.mk_anon(target_def_id, target_substs)
+                        self.tcx.mk_opaque(target_def_id, target_substs)
                     } else {
                         ty
                     }
                 },
-                TyParam(param) => {
+                TyKind::Param(param) => {
                     // FIXME: we should check `has_self` if this gets used again!
                     if param.idx != 0 && self.translate_params { // `Self` is special
                         let orig_def_id = index_map[&param.idx];
@@ -518,15 +518,15 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceCleanupFolder<'a, 'gcx,
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         use rustc::ty::TypeAndMut;
-        use rustc::ty::TypeVariants::{TyError, TyInfer, TyRef};
+        use rustc::ty::TyKind;
 
         let t1 = ty.super_fold_with(self);
         match t1.sty {
-            TyRef(region, ty, mutbl) if region.needs_infer() => {
+            TyKind::Ref(region, ty, mutbl) if region.needs_infer() => {
                 let ty_and_mut = TypeAndMut { ty, mutbl };
                 self.infcx.tcx.mk_ref(self.infcx.tcx.types.re_erased, ty_and_mut)
             },
-            TyInfer(_) => self.infcx.tcx.mk_ty(TyError),
+            TyKind::Infer(_) => self.infcx.tcx.mk_ty(TyKind::Error),
             _ => t1,
         }
     }

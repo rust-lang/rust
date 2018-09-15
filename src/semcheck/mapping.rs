@@ -315,7 +315,7 @@ impl NameMapping {
             Trait(_) |
             Existential(_) |
             TyAlias(_) |
-            TyForeign(_) |
+            ForeignTy(_) |
             TraitAlias(_) | // TODO: will need some handling later on.
             AssociatedTy(_) |
             AssociatedExistential(_) |
@@ -327,6 +327,7 @@ impl NameMapping {
             Const(_) |
             Static(_, _) |
             StructCtor(_, _) |
+            SelfCtor(_) |
             VariantCtor(_, _) |
             Method(_) |
             AssociatedConst(_) |

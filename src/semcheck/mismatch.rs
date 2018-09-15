@@ -107,7 +107,7 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
     }
 
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-        use rustc::ty::TypeVariants::*;
+        use rustc::ty::TyKind;
 
         if self.current_old_types.contains(a) || self.current_new_types.contains(b) {
             return Ok(self.tcx.types.err);
@@ -118,7 +118,7 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
 
         debug!("tys: mismatch relation: a: {:?}, b: {:?}", a, b);
         let matching = match (&a.sty, &b.sty) {
-            (&TyAdt(a_def, a_substs), &TyAdt(b_def, b_substs)) => {
+            (&TyKind::Adt(a_def, a_substs), &TyKind::Adt(b_def, b_substs)) => {
                 if self.check_substs(a_substs, b_substs) {
                     let _ = self.relate_item_substs(a_def.did, a_substs, b_substs)?;
                     let a_adt = self.tcx.adt_def(a_def.did);
@@ -148,21 +148,21 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
                     None
                 }
             },
-            (&TyArray(a_t, _), &TyArray(b_t, _)) |
-            (&TySlice(a_t), &TySlice(b_t)) => {
+            (&TyKind::Array(a_t, _), &TyKind::Array(b_t, _)) |
+            (&TyKind::Slice(a_t), &TyKind::Slice(b_t)) => {
                 let _ = self.relate(&a_t, &b_t)?;
                 None
             },
-            (&TyRawPtr(a_mt), &TyRawPtr(b_mt)) => {
+            (&TyKind::RawPtr(a_mt), &TyKind::RawPtr(b_mt)) => {
                 let _ = self.relate(&a_mt, &b_mt)?;
                 None
             },
-            (&TyRef(a_r, a_ty, _), &TyRef(b_r, b_ty, _)) => {
+            (&TyKind::Ref(a_r, a_ty, _), &TyKind::Ref(b_r, b_ty, _)) => {
                 let _ = self.relate(&a_r, &b_r)?;
                 let _ = self.relate(&a_ty, &b_ty)?;
                 None
             },
-            (&TyFnDef(a_def_id, a_substs), &TyFnDef(b_def_id, b_substs)) => {
+            (&TyKind::FnDef(a_def_id, a_substs), &TyKind::FnDef(b_def_id, b_substs)) => {
                 if self.check_substs(a_substs, b_substs) {
                     let a_sig = a.fn_sig(self.tcx);
                     let b_sig = b.fn_sig(self.tcx);
@@ -172,11 +172,11 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
 
                 Some((a_def_id, b_def_id))
             },
-            (&TyFnPtr(a_fty), &TyFnPtr(b_fty)) => {
+            (&TyKind::FnPtr(a_fty), &TyKind::FnPtr(b_fty)) => {
                 let _ = self.relate(&a_fty, &b_fty)?;
                 None
             },
-            (&TyDynamic(a_obj, a_r), &TyDynamic(b_obj, b_r)) => {
+            (&TyKind::Dynamic(a_obj, a_r), &TyKind::Dynamic(b_obj, b_r)) => {
                 let _ = self.relate(&a_r, &b_r)?;
 
                 match (a_obj.principal(), b_obj.principal()) {
@@ -188,22 +188,22 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
                     _ => None,
                 }
             },
-            (&TyTuple(as_), &TyTuple(bs)) => {
+            (&TyKind::Tuple(as_), &TyKind::Tuple(bs)) => {
                 let _ = as_.iter().zip(bs).map(|(a, b)| self.relate(a, b));
                 None
             },
-            (&TyProjection(a_data), &TyProjection(b_data)) => {
+            (&TyKind::Projection(a_data), &TyKind::Projection(b_data)) => {
                 let _ = self.relate(&a_data, &b_data)?;
                 Some((a_data.item_def_id, b_data.item_def_id))
             },
-            (&TyAnon(a_def_id, a_substs), &TyAnon(b_def_id, b_substs)) => {
+            (&TyKind::Opaque(a_def_id, a_substs), &TyKind::Opaque(b_def_id, b_substs)) => {
                 if self.check_substs(a_substs, b_substs) {
                     let _ = ty::relate::relate_substs(self, None, a_substs, b_substs)?;
                 }
 
                 Some((a_def_id, b_def_id))
             },
-            (&TyInfer(_), _) | (_, &TyInfer(_)) => {
+            (&TyKind::Infer(_), _) | (_, &TyKind::Infer(_)) => {
                 // As the original function this is ripped off of, we don't handle these cases.
                 panic!("var types encountered in MismatchRelation::tys")
             },

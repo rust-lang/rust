@@ -498,7 +498,7 @@ fn diff_traits(changes: &mut ChangeSet,
                output: bool) {
     use rustc::hir::Unsafety::Unsafe;
     use rustc::ty::subst::UnpackedKind::Type;
-    use rustc::ty::{ParamTy, Predicate, TyS, TypeVariants::*};
+    use rustc::ty::{ParamTy, Predicate, TyS, TyKind};
 
     debug!("diff_traits: old: {:?}, new: {:?}, output: {:?}", old, new, output);
 
@@ -525,7 +525,7 @@ fn diff_traits(changes: &mut ChangeSet,
 
                 if id_mapping.is_private_trait(&trait_ref.def_id) &&
                         trait_ref.substs.len() == 1 {
-                    if let Type(&TyS { sty: TyParam(ParamTy { idx: 0, ..}), ..}) =
+                    if let Type(&TyS { sty: TyKind::Param(ParamTy { idx: 0, ..}), ..}) =
                             trait_ref.substs[0].unpack() {
                         old_sealed = true;
                     }
