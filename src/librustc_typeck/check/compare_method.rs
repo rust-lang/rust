@@ -16,6 +16,7 @@ use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::error::{ExpectedFound, TypeError};
 use rustc::ty::subst::{Subst, Substs};
 use rustc::util::common::ErrorReported;
+use errors::Applicability;
 
 use syntax_pos::Span;
 
@@ -321,10 +322,11 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 if let Some(trait_err_span) = trait_err_span {
                     if let Ok(trait_err_str) = tcx.sess.source_map().
                                                span_to_snippet(trait_err_span) {
-                        diag.span_suggestion(
+                        diag.span_suggestion_with_applicability(
                             impl_err_span,
                             "consider change the type to match the mutability in trait",
                             format!("{}", trait_err_str),
+                            Applicability::Unspecified,
                         );
                     }
                 }

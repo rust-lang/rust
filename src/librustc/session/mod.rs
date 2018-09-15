@@ -28,7 +28,7 @@ use rustc_data_structures::base_n;
 use rustc_data_structures::sync::{self, Lrc, Lock, LockCell, OneThread, Once, RwLock};
 
 use syntax::ast::NodeId;
-use errors::{self, DiagnosticBuilder, DiagnosticId};
+use errors::{self, DiagnosticBuilder, DiagnosticId, Applicability};
 use errors::emitter::{Emitter, EmitterWriter};
 use syntax::edition::Edition;
 use syntax::json::JsonEmitter;
@@ -431,8 +431,9 @@ impl Session {
                     diag_builder.span_note(span, message);
                 }
                 DiagnosticBuilderMethod::SpanSuggestion(suggestion) => {
-                    let span = span_maybe.expect("span_suggestion needs a span");
-                    diag_builder.span_suggestion(span, message, suggestion);
+                    let span = span_maybe.expect("span_suggestion_* needs a span");
+                    diag_builder.span_suggestion_with_applicability(span, message, suggestion,
+                                                                    Applicability::Unspecified);
                 }
             }
         }

@@ -3299,9 +3299,11 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                         err.span_label(base_span,
                                        "expecting a type here because of type ascription");
                         if line_sp != line_base_sp {
-                            err.span_suggestion_short(sp,
+                            err.span_suggestion_short_with_applicability(sp,
                                                       "did you mean to use `;` here instead?",
-                                                      ";".to_string());
+                                                      ";".to_string(),
+                                                      Applicability::Unspecified,
+                                                      );
                         }
                         break;
                     } else if snippet.trim().len() != 0  {
@@ -4826,7 +4828,8 @@ fn show_candidates(err: &mut DiagnosticBuilder,
             *candidate = format!("use {};\n{}", candidate, additional_newline);
         }
 
-        err.span_suggestions(span, &msg, path_strings);
+        err.span_suggestions_with_applicability(span, &msg, path_strings,
+                                                Applicability::Unspecified);
     } else {
         let mut msg = msg;
         msg.push(':');

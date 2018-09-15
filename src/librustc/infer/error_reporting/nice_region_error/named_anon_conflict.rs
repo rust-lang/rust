@@ -13,6 +13,7 @@
 use infer::error_reporting::nice_region_error::NiceRegionError;
 use ty;
 use util::common::ErrorReported;
+use errors::Applicability;
 
 impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     /// When given a `ConcreteFailure` for a function with arguments containing a named region and
@@ -111,10 +112,11 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             E0621,
             "explicit lifetime required in {}",
             error_var
-        ).span_suggestion(
+        ).span_suggestion_with_applicability(
             new_ty_span,
             &format!("add explicit lifetime `{}` to {}", named, span_label_var),
-            new_ty.to_string()
+            new_ty.to_string(),
+            Applicability::Unspecified,
         )
             .span_label(span, format!("lifetime `{}` required", named))
             .emit();

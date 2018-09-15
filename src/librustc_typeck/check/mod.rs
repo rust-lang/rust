@@ -3348,7 +3348,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         let base = self.tcx.hir.node_to_pretty_string(base.id);
                         let msg = format!("`{}` is a native pointer; try dereferencing it", base);
                         let suggestion = format!("(*{}).{}", base, field);
-                        err.span_suggestion(field.span, &msg, suggestion);
+                        err.span_suggestion_with_applicability(field.span, &msg, suggestion,
+                                                               Applicability::Unspecified);
                     }
                     _ => {}
                 }
@@ -4716,7 +4717,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         found: Ty<'tcx>,
     ) {
         if let Some((sp, msg, suggestion)) = self.check_ref(expr, found, expected) {
-            err.span_suggestion(sp, msg, suggestion);
+            err.span_suggestion_with_applicability(sp, msg, suggestion,
+                                                   Applicability::Unspecified);
         } else if !self.check_for_cast(err, expr, found, expected) {
             let methods = self.get_conversion_methods(expr.span, expected, found);
             if let Ok(expr_text) = self.sess().source_map().span_to_snippet(expr.span) {
@@ -4746,7 +4748,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                     }) .collect::<Vec<_>>();
                 if !suggestions.is_empty() {
-                    err.span_suggestions(expr.span, "try using a conversion method", suggestions);
+                    err.span_suggestions_with_applicability(expr.span,
+                                                            "try using a conversion method",
+                                                            suggestions,
+                                                            Applicability::Unspecified,
+                                                            );
                 }
             }
         }
