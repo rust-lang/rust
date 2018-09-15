@@ -188,29 +188,51 @@ fn merge_errors(
 }
 
 #[cfg(test)]
-use super::{File, text_utils, test_utils, utils};
-
-#[cfg(test)]
 mod tests {
-    use super::{*, utils::dump_tree};
+    use super::{
+        super::{
+            File,
+            test_utils::extract_range,
+            text_utils::replace_range,
+            utils::dump_tree,
+        },
+        reparse_leaf, reparse_block, AtomEdit, GreenNode, SyntaxError, SyntaxNodeRef,
+    };
+
+    fn do_check<F>(
+        before: &str,
+        replace_with: &str,
+        reparser: F,
+    ) where
+        for<'a> F: Fn(
+            SyntaxNodeRef<'a>,
+            &AtomEdit,
+        ) -> Option<(SyntaxNodeRef<'a>, GreenNode, Vec<SyntaxError>)>
+    {
+        let (range, before) = extract_range(before);
+        let after = replace_range(before.clone(), range, replace_with);
+
+        let fully_reparsed = File::parse(&after);
+        let incrementally_reparsed = {
+            let f = File::parse(&before);
+            let edit = AtomEdit { delete: range, insert: replace_with.to_string() };
+            let (node, green, new_errors) =
+                reparser(f.syntax(), &edit).expect("cannot incrementally reparse");
+            let green_root = node.replace_with(green);
+            let errors = super::merge_errors(f.errors(), new_errors, node, &edit);
+            File::new(green_root, errors)
+        };
+
+        assert_eq_text!(
+            &dump_tree(fully_reparsed.syntax()),
+            &dump_tree(incrementally_reparsed.syntax()),
+        )
+    }
 
     #[test]
-    fn reparse_test() {
-        fn do_check(before: &str, replace_with: &str) {
-            let (range, before) = test_utils::extract_range(before);
-            let after = text_utils::replace_range(before.clone(), range, replace_with);
-
-            let fully_reparsed = File::parse(&after);
-            let incrementally_reparsed = {
-                let f = File::parse(&before);
-                let edit = AtomEdit { delete: range, insert: replace_with.to_string() };
-                f.incremental_reparse(&edit).expect("cannot incrementally reparse")
-            };
-            assert_eq_text!(
-                &dump_tree(fully_reparsed.syntax()),
-                &dump_tree(incrementally_reparsed.syntax()),
-            )
-        }
+    fn reparse_block_tests() {
+        let do_check = |before, replace_to|
+            do_check(before, replace_to, reparse_block);
 
         do_check(r"
 fn foo() {
@@ -245,11 +267,6 @@ trait Foo {
 }
 ", "Output");
         do_check(r"
-trait Foo {
-    type<|> Foo<|>;
-}
-", "Output");
-        do_check(r"
 impl IntoIterator<Item=i32> for Foo {
     f<|><|>
 }
@@ -275,43 +292,37 @@ extern {
     fn<|>;<|>
 }
 ", " exit(code: c_int)");
+    }
+
+    #[test]
+    fn reparse_leaf_tests() {
+        let do_check = |before, replace_to|
+            do_check(before, replace_to, reparse_leaf);
+
         do_check(r"<|><|>
-fn foo() -> i32 {
-    1
-}
+fn foo() -> i32 { 1 }
 ", "\n\n\n   \n");
         do_check(r"
 fn foo() -> <|><|> {}
 ", "  \n");
         do_check(r"
-fn <|>foo<|>() -> i32 {
-    1
-}
+fn <|>foo<|>() -> i32 { 1 }
 ", "bar");
         do_check(r"
-fn aa<|><|>bb() {
-
-}
-", "foofoo");
+fn foo<|><|>foo() {  }
+", "bar");
         do_check(r"
-fn aabb /* <|><|> */ () {
-
-}
+fn foo /* <|><|> */ () {}
 ", "some comment");
         do_check(r"
-fn aabb <|><|> () {
-
-}
+fn baz <|><|> () {}
 ", "    \t\t\n\n");
         do_check(r"
-trait foo {
-// comment <|><|>
-}
-", "\n");
+fn baz <|><|> () {}
+", "    \t\t\n\n");
         do_check(r"
-/// good <|><|>omment
-mod {
-}
+/// foo <|><|>omment
+mod { }
 ", "c");
         do_check(r#"
 fn -> &str { "Hello<|><|>" }
@@ -319,5 +330,14 @@ fn -> &str { "Hello<|><|>" }
         do_check(r#"
 fn -> &str { // "Hello<|><|>"
 "#, ", world");
+        do_check(r##"
+fn -> &str { r#"Hello<|><|>"#
+"##, ", world");
+        do_check(r"
+#[derive(<|>Copy<|>)]
+enum Foo {
+
+}
+", "Clone");
     }
 }
