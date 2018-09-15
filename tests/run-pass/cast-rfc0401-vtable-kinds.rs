@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-// FIXME: remove the next line when https://github.com/rust-lang/rust/issues/43358 is resolved
-// compile-flags: -Zmir-opt-level=0
-
 // Check that you can cast between different pointers to trait objects
 // whose vtable have the same kind (both lengths, or both trait pointers).
 

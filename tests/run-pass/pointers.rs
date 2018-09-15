@@ -55,7 +55,11 @@ fn main() {
     assert_eq!(basic_ref_mut_var(), 3);
     assert_eq!(tuple_ref_mut(), (10, 22));
     assert_eq!(match_ref_mut(), 42);
-    // FIXME: improve this test... how?
+
+    // Compare even dangling pointers with NULL, and with others in the same allocation.
     assert!(dangling_pointer() != std::ptr::null());
     assert!(match dangling_pointer() as usize { 0 => false, _ => true });
+    let dangling = dangling_pointer();
+    assert!(dangling == dangling);
+    assert!(dangling.wrapping_add(1) != dangling);
 }
