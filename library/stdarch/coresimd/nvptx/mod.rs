@@ -123,7 +123,6 @@ pub unsafe fn _thread_idx_z() -> i32 {
 }
 
 /// Generates the trap instruction `TRAP`
-#[cfg_attr(test, assert_instr(trap))]
 #[inline]
 pub unsafe fn trap() -> ! {
     ::_core::intrinsics::abort()
