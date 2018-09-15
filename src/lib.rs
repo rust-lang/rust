@@ -60,7 +60,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
     let main_mir = ecx.load_mir(main_instance.def)?;
 
-    if !main_mir.return_ty().is_nil() || main_mir.arg_count != 0 {
+    if !main_mir.return_ty().is_unit() || main_mir.arg_count != 0 {
         return err!(Unimplemented(
             "miri does not support main functions without `fn()` type signatures"
                 .to_owned(),
