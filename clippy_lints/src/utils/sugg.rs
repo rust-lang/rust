@@ -15,6 +15,7 @@ use crate::syntax::util::parser::AssocOp;
 use crate::syntax::ast;
 use crate::utils::{higher, snippet, snippet_opt};
 use crate::syntax_pos::{BytePos, Pos};
+use crate::rustc_errors::Applicability;
 
 /// A helper type to build suggestion correctly handling parenthesis.
 pub enum Sugg<'a> {
@@ -496,7 +497,12 @@ impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_error
         if let Some(indent) = indentation(cx, item) {
             let span = item.with_hi(item.lo());
 
-            self.span_suggestion(span, msg, format!("{}\n{}", attr, indent));
+            self.span_suggestion_with_applicability(
+                        span,
+                        msg,
+                        format!("{}\n{}", attr, indent),
+                        Applicability::Unspecified,
+                        );
         }
     }
 
@@ -517,7 +523,12 @@ impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_error
                 })
                 .collect::<String>();
 
-            self.span_suggestion(span, msg, format!("{}\n{}", new_item, indent));
+            self.span_suggestion_with_applicability(
+                        span,
+                        msg,
+                        format!("{}\n{}", new_item, indent),
+                        Applicability::Unspecified,
+                        );
         }
     }
 
@@ -534,6 +545,11 @@ impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_error
             }
         }
 
-        self.span_suggestion(remove_span, msg, String::new());
+        self.span_suggestion_with_applicability(
+                    remove_span,
+                    msg,
+                    String::new(),
+                    Applicability::Unspecified,
+                    );
     }
 }

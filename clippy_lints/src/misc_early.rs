@@ -7,6 +7,7 @@ use crate::syntax::ast::*;
 use crate::syntax::source_map::Span;
 use crate::syntax::visit::FnKind;
 use crate::utils::{constants, snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_then};
+use crate::rustc_errors::Applicability;
 
 /// **What it does:** Checks for structure field patterns bound to wildcards.
 ///
@@ -307,7 +308,12 @@ impl EarlyLintPass for MiscEarly {
                         "Try not to call a closure in the expression where it is declared.",
                         |db| if decl.inputs.is_empty() {
                             let hint = snippet(cx, block.span, "..").into_owned();
-                            db.span_suggestion(expr.span, "Try doing something like: ", hint);
+                            db.span_suggestion_with_applicability(
+                                    expr.span,
+                                    "Try doing something like: ",
+                                    hint,
+                                    Applicability::Unspecified,
+                                    );
                         },
                     );
                 }
@@ -392,15 +398,17 @@ impl MiscEarly {
                                         lit.span,
                                         "this is a decimal constant",
                                         |db| {
-                        db.span_suggestion(
+                        db.span_suggestion_with_applicability(
                             lit.span,
                             "if you mean to use a decimal constant, remove the `0` to remove confusion",
                             src.trim_left_matches(|c| c == '_' || c == '0').to_string(),
+                            Applicability::Unspecified,
                         );
-                        db.span_suggestion(
+                        db.span_suggestion_with_applicability(
                             lit.span,
                             "if you mean to use an octal constant, use `0o`",
                             format!("0o{}", src.trim_left_matches(|c| c == '_' || c == '0')),
+                            Applicability::Unspecified,
                         );
                     });
                 }

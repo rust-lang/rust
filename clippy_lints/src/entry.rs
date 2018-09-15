@@ -6,6 +6,7 @@ use if_chain::if_chain;
 use crate::syntax::source_map::Span;
 use crate::utils::SpanlessEq;
 use crate::utils::{get_item_name, match_type, paths, snippet, span_lint_and_then, walk_ptrs_ty};
+use crate::rustc_errors::Applicability;
 
 /// **What it does:** Checks for uses of `contains_key` + `insert` on `HashMap`
 /// or `BTreeMap`.
@@ -139,14 +140,24 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
                                            snippet(self.cx, params[1].span, ".."),
                                            snippet(self.cx, params[2].span, ".."));
 
-                        db.span_suggestion(self.span, "consider using", help);
+                        db.span_suggestion_with_applicability(
+                                self.span,
+                                "consider using",
+                                help,
+                                Applicability::Unspecified,
+                                );
                     }
                     else {
                         let help = format!("{}.entry({})",
                                            snippet(self.cx, self.map.span, "map"),
                                            snippet(self.cx, params[1].span, ".."));
 
-                        db.span_suggestion(self.span, "consider using", help);
+                        db.span_suggestion_with_applicability(
+                                self.span,
+                                "consider using",
+                                help,
+                                Applicability::Unspecified,
+                                );
                     }
                 });
             }

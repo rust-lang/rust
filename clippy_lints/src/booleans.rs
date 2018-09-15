@@ -6,6 +6,7 @@ use crate::syntax::ast::{LitKind, NodeId, DUMMY_NODE_ID};
 use crate::syntax::source_map::{dummy_spanned, Span, DUMMY_SP};
 use crate::rustc_data_structures::thin_vec::ThinVec;
 use crate::utils::{in_macro, paths, match_type, snippet_opt, span_lint_and_then, SpanlessEq, get_trait_def_id, implements_trait};
+use crate::rustc_errors::Applicability;
 
 /// **What it does:** Checks for boolean expressions that can be written more
 /// concisely.
@@ -390,10 +391,11 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                                     "this expression can be optimized out by applying boolean operations to the \
                                      outer expression",
                                 );
-                                db.span_suggestion(
+                                db.span_suggestion_with_applicability(
                                     e.span,
                                     "it would look like the following",
                                     suggest(self.cx, suggestion, &h2q.terminals).0,
+                                    Applicability::Unspecified,
                                 );
                             },
                         );

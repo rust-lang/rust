@@ -6,6 +6,7 @@ use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use crate::syntax::ast;
+use crate::rustc_errors::Applicability;
 
 /// **What it does:** Checks for `a = a op b` or `a = b commutative_op a`
 /// patterns.
@@ -78,7 +79,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                         let r = &sugg::Sugg::hir(cx, rhs, "..");
                                         let long =
                                             format!("{} = {}", snip_a, sugg::make_binop(higher::binop(op.node), a, r));
-                                        db.span_suggestion(
+                                        db.span_suggestion_with_applicability(
                                             expr.span,
                                             &format!(
                                                 "Did you mean {} = {} {} {} or {}? Consider replacing it with",
@@ -89,8 +90,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                                 long
                                             ),
                                             format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),
+                                            Applicability::Unspecified,
                                         );
-                                        db.span_suggestion(expr.span, "or", long);
+                                        db.span_suggestion_with_applicability(
+                                            expr.span, 
+                                            "or", 
+                                            long,
+                                            Applicability::Unspecified,
+                                            );
                                     }
                                 },
                             );
@@ -172,10 +179,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                     if let (Some(snip_a), Some(snip_r)) =
                                         (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs.span))
                                     {
-                                        db.span_suggestion(
+                                        db.span_suggestion_with_applicability(
                                             expr.span,
                                             "replace it with",
                                             format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),
+                                            Applicability::Unspecified,
                                         );
                                     }
                                 },

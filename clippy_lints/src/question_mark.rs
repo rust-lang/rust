@@ -8,6 +8,7 @@ use crate::syntax::ptr::P;
 
 use crate::utils::{match_def_path, match_type, span_lint_and_then};
 use crate::utils::paths::*;
+use crate::rustc_errors::Applicability;
 
 /// **What it does:** Checks for expressions that could be replaced by the question mark operator
 ///
@@ -70,10 +71,11 @@ impl QuestionMarkPass {
                     |db| {
                         let receiver_str = &Sugg::hir(cx, subject, "..");
 
-                        db.span_suggestion(
+                        db.span_suggestion_with_applicability(
                             expr.span,
                             "replace_it_with",
                             format!("{}?;", receiver_str),
+                            Applicability::Unspecified,
                         );
                     }
                 )

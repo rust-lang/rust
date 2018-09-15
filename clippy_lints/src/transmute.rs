@@ -7,6 +7,7 @@ use std::borrow::Cow;
 use crate::syntax::ast;
 use crate::utils::{last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_then};
 use crate::utils::{opt_def_id, sugg};
+use crate::rustc_errors::Applicability;
 
 /// **What it does:** Checks for transmutes that can't ever be correct on any
 /// architecture.
@@ -245,7 +246,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                         arg.as_ty(cx.tcx.mk_ptr(rty_and_mut)).as_ty(to_ty)
                                     };
 
-                                    db.span_suggestion(e.span, "try", sugg.to_string());
+                                    db.span_suggestion_with_applicability(
+                                                e.span,
+                                                "try",
+                                                sugg.to_string(),
+                                                Applicability::Unspecified,
+                                                );
                                 },
                             ),
                             (&ty::Int(_), &ty::RawPtr(_)) | (&ty::Uint(_), &ty::RawPtr(_)) => {
@@ -255,7 +261,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     e.span,
                                     "transmute from an integer to a pointer",
                                     |db| if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
-                                        db.span_suggestion(e.span, "try", arg.as_ty(&to_ty.to_string()).to_string());
+                                        db.span_suggestion_with_applicability(
+                                                e.span,
+                                                "try",
+                                                arg.as_ty(&to_ty.to_string()).to_string(),
+                                                Applicability::Unspecified,
+                                                );
                                     },
                                 )
                             },
@@ -312,7 +323,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                         arg.as_ty(&format!("{} {}", cast, get_type_snippet(cx, qpath, to_ref_ty)))
                                     };
 
-                                    db.span_suggestion(e.span, "try", sugg::make_unop(deref, arg).to_string());
+                                    db.span_suggestion_with_applicability(
+                                                e.span,
+                                                "try",
+                                                sugg::make_unop(deref, arg).to_string(),
+                                                Applicability::Unspecified,
+                                                );
                                 },
                             ),
                             (&ty::Int(ast::IntTy::I32), &ty::Char) |
@@ -328,10 +344,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     } else {
                                         arg
                                     };
-                                    db.span_suggestion(
+                                    db.span_suggestion_with_applicability(
                                         e.span,
                                         "consider using",
                                         format!("std::char::from_u32({}).unwrap()", arg.to_string()),
+                                        Applicability::Unspecified,
                                     );
                                 },
                             ),
@@ -353,7 +370,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                             e.span,
                                             &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
                                             |db| {
-                                                db.span_suggestion(
+                                                db.span_suggestion_with_applicability(
                                                     e.span,
                                                     "consider using",
                                                     format!(
@@ -361,6 +378,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                                         postfix,
                                                         snippet(cx, args[0].span, ".."),
                                                     ),
+                                                    Applicability::Unspecified,
                                                 );
                                             }
                                         )
@@ -380,7 +398,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                                     } else {
                                                         sugg_paren.addr_deref()
                                                     };
-                                                    db.span_suggestion(e.span, "try", sugg.to_string());
+                                                    db.span_suggestion_with_applicability(
+                                                            e.span,
+                                                            "try",
+                                                            sugg.to_string(),
+                                                            Applicability::Unspecified,
+                                                            );
                                                 },
                                             )
                                         }
@@ -394,7 +417,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                 "transmute from a pointer to a pointer",
                                 |db| if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
                                     let sugg = arg.as_ty(cx.tcx.mk_ptr(to_ty));
-                                    db.span_suggestion(e.span, "try", sugg.to_string());
+                                    db.span_suggestion_with_applicability(
+                                            e.span,
+                                            "try",
+                                            sugg.to_string(),
+                                            Applicability::Unspecified,
+                                            );
                                 },
                             ),
                             (&ty::Int(ast::IntTy::I8), &ty::Bool) | (&ty::Uint(ast::UintTy::U8), &ty::Bool) => {
@@ -406,10 +434,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     |db| {
                                         let arg = sugg::Sugg::hir(cx, &args[0], "..");
                                         let zero = sugg::Sugg::NonParen(Cow::from("0"));
-                                        db.span_suggestion(
+                                        db.span_suggestion_with_applicability(
                                             e.span,
                                             "consider using",
                                             sugg::make_binop(ast::BinOpKind::Ne, &arg, &zero).to_string(),
+                                            Applicability::Unspecified,
                                         );
                                     },
                                 )
@@ -432,10 +461,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                         } else {
                                             arg
                                         };
-                                        db.span_suggestion(
+                                        db.span_suggestion_with_applicability(
                                             e.span,
                                             "consider using",
                                             format!("{}::from_bits({})", to_ty, arg.to_string()),
+                                            Applicability::Unspecified,
                                         );
                                     },
                                 )

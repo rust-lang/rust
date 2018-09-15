@@ -5,6 +5,7 @@ use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc::hir::*;
 use crate::utils::{snippet_opt, span_lint_and_then};
 use crate::rustc::ty::layout::LayoutOf;
+use crate::rustc_errors::Applicability;
 
 /// **What it does:** Checks for large size differences between variants on
 /// `enum`s.
@@ -96,11 +97,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
                                     VariantData::Unit(_) => unreachable!(),
                                 };
                                 if let Some(snip) = snippet_opt(cx, span) {
-                                    db.span_suggestion(
+                                    db.span_suggestion_with_applicability(
                                         span,
                                         "consider boxing the large fields to reduce the total size of the \
                                          enum",
                                         format!("Box<{}>", snip),
+                                        Applicability::Unspecified,
                                     );
                                     return;
                                 }

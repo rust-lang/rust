@@ -7,6 +7,7 @@ use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use crate::rustc::hir::{BindingAnnotation, MutImmutable, Pat, PatKind};
 use crate::utils::{in_macro, snippet, span_lint_and_then};
+use crate::rustc_errors::Applicability;
 
 /// **What it does:** Checks for useless borrowed references.
 ///
@@ -77,7 +78,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrowedRef {
                                    "this pattern takes a reference on something that is being de-referenced",
                                    |db| {
                                        let hint = snippet(cx, spanned_name.span, "..").into_owned();
-                                       db.span_suggestion(pat.span, "try removing the `&ref` part and just keep", hint);
+                                       db.span_suggestion_with_applicability(
+                                            pat.span, 
+                                            "try removing the `&ref` part and just keep",
+                                            hint,
+                                            Applicability::Unspecified,
+                                            );
                                    });
             }
         }

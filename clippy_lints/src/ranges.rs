@@ -7,6 +7,7 @@ use crate::syntax::source_map::Spanned;
 use crate::utils::{is_integer_literal, paths, snippet, span_lint, span_lint_and_then, snippet_opt};
 use crate::utils::{get_trait_def_id, higher, implements_trait, SpanlessEq};
 use crate::utils::sugg::Sugg;
+use crate::rustc_errors::Applicability;
 
 /// **What it does:** Checks for calling `.step_by(0)` on iterators,
 /// which never terminates.
@@ -150,13 +151,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         let end = Sugg::hir(cx, y, "y");
                         if let Some(is_wrapped) = &snippet_opt(cx, expr.span) {
                             if is_wrapped.starts_with('(') && is_wrapped.ends_with(')') {
-                                db.span_suggestion(expr.span,
+                                db.span_suggestion_with_applicability(expr.span,
                                            "use",
-                                           format!("({}..={})", start, end));
+                                           format!("({}..={})", start, end),
+                                           Applicability::Unspecified,
+                                           );
                             } else {
-                                db.span_suggestion(expr.span,
+                                db.span_suggestion_with_applicability(expr.span,
                                            "use",
-                                           format!("{}..={}", start, end));
+                                           format!("{}..={}", start, end),
+                                           Applicability::Unspecified,
+                                           );
                             }
                         }
                     },
@@ -177,9 +182,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     |db| {
                         let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").to_string());
                         let end = Sugg::hir(cx, y, "y");
-                        db.span_suggestion(expr.span,
+                        db.span_suggestion_with_applicability(expr.span,
                                            "use",
-                                           format!("{}..{}", start, end));
+                                           format!("{}..{}", start, end),
+                                           Applicability::Unspecified,
+                                           );
                     },
                 );
             }

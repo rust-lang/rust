@@ -228,7 +228,12 @@ fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt, expr: &hir::Expr
                                          snippet(cx, binding.pat.span, "_"),
                                          snippet(cx, var_arg.span, "_"),
                                          snippet(cx, reduced_expr_span, "_"));
-                db.span_suggestion(stmt.span, "try this", suggestion);
+                db.span_suggestion_with_applicability(
+                        stmt.span,
+                        "try this",
+                        suggestion,
+                        Applicability::Unspecified,
+                        );
             } else {
                 let suggestion = format!("if let {0}({1}) = {2} {{ ... }}",
                                          variant,

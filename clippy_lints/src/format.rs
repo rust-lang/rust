@@ -7,6 +7,7 @@ use crate::syntax::ast::LitKind;
 use crate::syntax_pos::Span;
 use crate::utils::paths;
 use crate::utils::{in_macro, is_expn_of, last_path_segment, match_def_path, match_type, opt_def_id, resolve_node, snippet, span_lint_and_then, walk_ptrs_ty};
+use crate::rustc_errors::Applicability;
 
 /// **What it does:** Checks for the use of `format!("string literal with no
 /// argument")` and `format!("{}", foo)` where `foo` is a string.
@@ -60,7 +61,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         then {
                             let sugg = format!("{}.to_string()", snippet(cx, format_arg, "<arg>").into_owned());
                             span_lint_and_then(cx, USELESS_FORMAT, span, "useless use of `format!`", |db| {
-                                db.span_suggestion(expr.span, "consider using .to_string()", sugg);
+                                db.span_suggestion_with_applicability(
+                                        expr.span,
+                                        "consider using .to_string()",
+                                        sugg,
+                                        Applicability::Unspecified,
+                                        );
                             });
                         }
                     }
@@ -70,7 +76,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     if tup.is_empty() {
                         let sugg = format!("{}.to_string()", snippet(cx, expr.span, "<expr>").into_owned());
                         span_lint_and_then(cx, USELESS_FORMAT, span, "useless use of `format!`", |db| {
-                            db.span_suggestion(span, "consider using .to_string()", sugg);
+                            db.span_suggestion_with_applicability(
+                                    span,
+                                    "consider using .to_string()",
+                                    sugg,
+                                    Applicability::Unspecified,
+                                    );
                         });
                     }
                 },

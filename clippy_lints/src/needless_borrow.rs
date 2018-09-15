@@ -9,6 +9,7 @@ use crate::rustc::hir::{BindingAnnotation, Expr, ExprKind, MutImmutable, Pat, Pa
 use crate::rustc::ty;
 use crate::rustc::ty::adjustment::{Adjust, Adjustment};
 use crate::utils::{in_macro, snippet_opt, span_lint_and_then};
+use crate::rustc_errors::Applicability;
 
 /// **What it does:** Checks for address of operations (`&`) that are going to
 /// be dereferenced immediately by the compiler.
@@ -75,7 +76,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
                              by the compiler",
                             |db| {
                                 if let Some(snippet) = snippet_opt(cx, inner.span) {
-                                    db.span_suggestion(e.span, "change this to", snippet);
+                                    db.span_suggestion_with_applicability(
+                                                e.span, 
+                                                "change this to",
+                                                snippet,
+                                                Applicability::Unspecified,
+                                                );
                                 }
                             },
                         );
@@ -103,7 +109,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
                     "this pattern creates a reference to a reference",
                     |db| {
                         if let Some(snippet) = snippet_opt(cx, name.span) {
-                            db.span_suggestion(pat.span, "change this to", snippet);
+                            db.span_suggestion_with_applicability(
+                                    pat.span,
+                                    "change this to",
+                                    snippet,
+                                    Applicability::Unspecified,
+                                    );
                         }
                     }
                 )

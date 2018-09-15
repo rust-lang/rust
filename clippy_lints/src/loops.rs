@@ -1196,7 +1196,7 @@ fn check_for_loop_reverse_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx
                         expr.span,
                         "this range is empty so this for loop will never run",
                         |db| {
-                            db.span_suggestion(
+                            db.span_suggestion_with_applicability(
                                 arg.span,
                                 "consider using the following if you are attempting to iterate over this \
                                  range in reverse",
@@ -1206,6 +1206,7 @@ fn check_for_loop_reverse_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx
                                     dots = dots,
                                     start = start_snippet
                                 ),
+                                Applicability::Unspecified,
                             );
                         },
                     );
