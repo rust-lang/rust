@@ -13,22 +13,34 @@ use stdsimd_test::assert_instr;
 ///
 /// `val` is a compile-time constant integer whose range is:
 ///
-/// - `0...65535` if you are compiling source as A32 code.
+/// - `0...65535` if you are compiling source as A32 or A64 code.
 /// - `0...255` if you are compiling source as T32 code.
 ///
 /// [ARM's documentation](https://developer.arm.com/docs/100067/latest/compiler-specific-intrinsics/__breakpoint-intrinsic)
 ///
-/// **NOTE**: Due to compiler limitations this function only supports the range `0...255` in A32
-/// mode.
-#[cfg_attr(test, assert_instr(bkpt, val = 0))]
+/// **NOTE**: Due to compiler limitations this function only supports the range `0...255` in A32 and
+/// A64 mode.
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(bkpt, val = 0))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(brk, val = 0))]
 #[inline(always)]
 #[rustc_args_required_const(0)]
 pub unsafe fn __breakpoint(val: i32) {
+    #[cfg(target_arch = "arm")]
     macro_rules! call {
         ($imm8:expr) => {
             asm!(concat!("BKPT ", stringify!($imm8)) : : : : "volatile")
         }
     }
+
+    #[cfg(target_arch = "aarch64")]
+    macro_rules! call {
+        ($imm8:expr) => {
+            asm!(concat!("BRK ", stringify!($imm8)) : : : : "volatile")
+        }
+    }
+
+    // validate range
+    assert!(val >= 0 && val <= 255);
 
     constify_imm8!(val, call);
 }
