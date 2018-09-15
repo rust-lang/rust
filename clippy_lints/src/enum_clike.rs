@@ -1,16 +1,16 @@
 //! lint on C-like enums that are `repr(isize/usize)` and have values that
 //! don't fit into an `i32`
 
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use rustc::hir::*;
-use rustc::ty;
-use rustc::ty::subst::Substs;
-use syntax::ast::{IntTy, UintTy};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::*;
+use crate::rustc::ty;
+use crate::rustc::ty::subst::Substs;
+use crate::syntax::ast::{IntTy, UintTy};
 use crate::utils::span_lint;
 use crate::consts::{Constant, miri_to_const};
-use rustc::ty::util::IntTypeExt;
-use rustc::mir::interpret::GlobalId;
+use crate::rustc::ty::util::IntTypeExt;
+use crate::rustc::mir::interpret::GlobalId;
 
 /// **What it does:** Checks for C-like enumerations that are
 /// `repr(isize/usize)` and have values that don't fit into an `i32`.

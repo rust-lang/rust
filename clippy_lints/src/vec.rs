@@ -1,9 +1,9 @@
-use rustc::hir::*;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::*;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use rustc::ty::{self, Ty};
-use syntax::source_map::Span;
+use crate::rustc::ty::{self, Ty};
+use crate::syntax::source_map::Span;
 use crate::utils::{higher, is_copy, snippet, span_lint_and_sugg};
 use crate::consts::constant;
 

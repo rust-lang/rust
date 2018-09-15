@@ -6,7 +6,11 @@
 #![allow(clippy::missing_docs_in_private_items)]
 #![warn(rust_2018_idioms)]
 
-use rustc_plugin::Registry;
+// FIXME: switch to something more ergonomic here, once available.
+// (currently there is no way to opt into sysroot crates w/o `extern crate`)
+#[allow(unused_extern_crates)]
+extern crate rustc_plugin;
+use self::rustc_plugin::Registry;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry<'_>) {

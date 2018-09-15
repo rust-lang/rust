@@ -1,11 +1,11 @@
 use crate::utils::{in_macro, span_lint_and_sugg};
 use if_chain::if_chain;
-use rustc::hir::intravisit::{walk_path, walk_ty, NestedVisitorMap, Visitor};
-use rustc::hir::*;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::ty;
-use rustc::{declare_tool_lint, lint_array};
-use syntax_pos::symbol::keywords::SelfType;
+use crate::rustc::hir::intravisit::{walk_path, walk_ty, NestedVisitorMap, Visitor};
+use crate::rustc::hir::*;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::ty;
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::syntax_pos::symbol::keywords::SelfType;
 
 /// **What it does:** Checks for unnecessary repetition of structure name when a
 /// replacement with `Self` is applicable.

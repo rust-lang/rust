@@ -4,8 +4,14 @@
 #![feature(tool_lints)]
 #![allow(unknown_lints, clippy::missing_docs_in_private_items)]
 
-use rustc_driver::{self, driver::CompileController, Compilation};
-use rustc_plugin;
+// FIXME: switch to something more ergonomic here, once available.
+// (currently there is no way to opt into sysroot crates w/o `extern crate`)
+#[allow(unused_extern_crates)]
+extern crate rustc_driver;
+#[allow(unused_extern_crates)]
+extern crate rustc_plugin;
+use self::rustc_driver::{driver::CompileController, Compilation};
+
 use std::path::Path;
 use std::process::{exit, Command};
 

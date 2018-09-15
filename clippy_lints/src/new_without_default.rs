@@ -1,10 +1,10 @@
-use rustc::hir::def_id::DefId;
-use rustc::hir;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::def_id::DefId;
+use crate::rustc::hir;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
+use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use rustc::ty::{self, Ty};
-use syntax::source_map::Span;
+use crate::rustc::ty::{self, Ty};
+use crate::syntax::source_map::Span;
 use crate::utils::paths;
 use crate::utils::{get_trait_def_id, implements_trait, return_ty, same_tys, span_lint_and_then};
 use crate::utils::sugg::DiagnosticBuilderExt;

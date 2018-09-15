@@ -1,10 +1,10 @@
 use crate::utils::{snippet, span_lint, span_lint_and_sugg};
-use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use std::borrow::Cow;
-use syntax::ast::*;
-use syntax::parse::{parser, token};
-use syntax::tokenstream::{ThinTokenStream, TokenStream};
+use crate::syntax::ast::*;
+use crate::syntax::parse::{parser, token};
+use crate::syntax::tokenstream::{ThinTokenStream, TokenStream};
 
 /// **What it does:** This lint warns when you use `println!("")` to
 /// print a newline.
@@ -264,7 +264,7 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
         Ok(token) => token.0.to_string(),
         Err(_) => return (None, expr),
     };
-    use fmt_macros::*;
+    use crate::fmt_macros::*;
     let tmp = fmtstr.clone();
     let mut args = vec![];
     let mut fmt_parser = Parser::new(&tmp, None);

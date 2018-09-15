@@ -4,9 +4,9 @@
 #![deny(clippy::missing_docs_in_private_items)]
 
 use if_chain::if_chain;
-use rustc::{hir, ty};
-use rustc::lint::LateContext;
-use syntax::ast;
+use crate::rustc::{hir, ty};
+use crate::rustc::lint::LateContext;
+use crate::syntax::ast;
 use crate::utils::{is_expn_of, match_def_path, match_qpath, opt_def_id, paths, resolve_node};
 
 /// Convert a hir binary operator to the corresponding `ast` type.

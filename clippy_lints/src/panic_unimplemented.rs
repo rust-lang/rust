@@ -1,10 +1,10 @@
-use rustc::hir::*;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::*;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use syntax::ast::LitKind;
-use syntax::ptr::P;
-use syntax::ext::quote::rt::Span;
+use crate::syntax::ast::LitKind;
+use crate::syntax::ptr::P;
+use crate::syntax::ext::quote::rt::Span;
 use crate::utils::{is_direct_expn_of, is_expn_of, match_def_path, opt_def_id, paths, resolve_node, span_lint};
 
 /// **What it does:** Checks for missing parameters in `panic!`.

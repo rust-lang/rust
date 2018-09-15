@@ -1,10 +1,10 @@
-use rustc::lint::{LintArray, LintPass, EarlyContext, EarlyLintPass};
-use rustc::{declare_tool_lint, lint_array};
-use syntax::source_map::Span;
-use syntax::symbol::LocalInternedString;
-use syntax::ast::*;
-use syntax::attr;
-use syntax::visit::{walk_block, walk_expr, walk_pat, Visitor};
+use crate::rustc::lint::{LintArray, LintPass, EarlyContext, EarlyLintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::syntax::source_map::Span;
+use crate::syntax::symbol::LocalInternedString;
+use crate::syntax::ast::*;
+use crate::syntax::attr;
+use crate::syntax::visit::{walk_block, walk_expr, walk_pat, Visitor};
 use crate::utils::{span_lint, span_lint_and_then};
 
 /// **What it does:** Checks for names that are very similar and thus confusing.

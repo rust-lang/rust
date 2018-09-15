@@ -2,12 +2,12 @@
 //!
 //! This lint is **warn** by default
 
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use rustc::hir::{BindingAnnotation, Expr, ExprKind, MutImmutable, Pat, PatKind};
-use rustc::ty;
-use rustc::ty::adjustment::{Adjust, Adjustment};
+use crate::rustc::hir::{BindingAnnotation, Expr, ExprKind, MutImmutable, Pat, PatKind};
+use crate::rustc::ty;
+use crate::rustc::ty::adjustment::{Adjust, Adjustment};
 use crate::utils::{in_macro, snippet_opt, span_lint_and_then};
 
 /// **What it does:** Checks for address of operations (`&`) that are going to

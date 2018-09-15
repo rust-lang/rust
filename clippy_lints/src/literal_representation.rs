@@ -1,11 +1,11 @@
 //! Lints concerned with the grouping of digits with underscores in integral or
 //! floating-point literal expressions.
 
-use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass, in_external_macro, LintContext};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass, in_external_macro, LintContext};
+use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use syntax::ast::*;
-use syntax_pos;
+use crate::syntax::ast::*;
+use crate::syntax_pos;
 use crate::utils::{snippet_opt, span_lint_and_sugg};
 
 /// **What it does:** Warns if a long integral or floating-point constant does

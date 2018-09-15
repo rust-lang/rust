@@ -3,13 +3,13 @@
 
 #![allow(clippy::print_stdout, clippy::use_debug)]
 
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use rustc::hir;
-use rustc::hir::{Expr, ExprKind, QPath, TyKind, Pat, PatKind, BindingAnnotation, StmtKind, DeclKind, Stmt};
-use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
-use rustc_data_structures::fx::FxHashMap;
-use syntax::ast::{Attribute, LitKind, DUMMY_NODE_ID};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir;
+use crate::rustc::hir::{Expr, ExprKind, QPath, TyKind, Pat, PatKind, BindingAnnotation, StmtKind, DeclKind, Stmt};
+use crate::rustc::hir::intravisit::{NestedVisitorMap, Visitor};
+use crate::rustc_data_structures::fx::FxHashMap;
+use crate::syntax::ast::{Attribute, LitKind, DUMMY_NODE_ID};
 use crate::utils::get_attr;
 
 /// **What it does:** Generates clippy code that detects the offending pattern

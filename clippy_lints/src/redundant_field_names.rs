@@ -1,6 +1,6 @@
-use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use syntax::ast::*;
+use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::syntax::ast::*;
 use crate::utils::{span_lint_and_sugg};
 
 /// **What it does:** Checks for fields in struct literals where shorthands

@@ -1,6 +1,6 @@
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use rustc::hir::*;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::*;
 use crate::utils::{match_qpath, paths, snippet, span_lint_and_then};
 
 /// **What it does:** Lint for redundant pattern matching over `Result` or

@@ -1,17 +1,17 @@
 use crate::reexport::*;
 use matches::matches;
-use rustc::hir::*;
-use rustc::hir::intravisit::FnKind;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::*;
+use crate::rustc::hir::intravisit::FnKind;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use rustc::ty;
-use syntax::source_map::{ExpnFormat, Span};
+use crate::rustc::ty;
+use crate::syntax::source_map::{ExpnFormat, Span};
 use crate::utils::{get_item_name, get_parent_expr, implements_trait, in_constant, in_macro, is_integer_literal,
             iter_input_pats, last_path_segment, match_qpath, match_trait_method, paths, snippet, span_lint,
             span_lint_and_then, walk_ptrs_ty, SpanlessEq};
 use crate::utils::sugg::Sugg;
-use syntax::ast::{LitKind, CRATE_NODE_ID};
+use crate::syntax::ast::{LitKind, CRATE_NODE_ID};
 use crate::consts::{constant, Constant};
 
 /// **What it does:** Checks for function arguments and let bindings denoted as

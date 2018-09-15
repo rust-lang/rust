@@ -1,13 +1,13 @@
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, EarlyContext, EarlyLintPass};
-use rustc::{declare_tool_lint, lint_array};
-use rustc::hir::*;
-use rustc::hir;
-use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, EarlyContext, EarlyLintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::*;
+use crate::rustc::hir;
+use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use crate::rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use crate::utils::{match_qpath, paths, span_lint, span_lint_and_sugg};
-use syntax::symbol::LocalInternedString;
-use syntax::ast::{Crate as AstCrate, Ident, ItemKind, Name};
-use syntax::source_map::Span;
+use crate::syntax::symbol::LocalInternedString;
+use crate::syntax::ast::{Crate as AstCrate, Ident, ItemKind, Name};
+use crate::syntax::source_map::Span;
 
 
 /// **What it does:** Checks for various things we like to keep tidy in clippy.

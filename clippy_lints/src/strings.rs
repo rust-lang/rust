@@ -1,7 +1,7 @@
-use rustc::hir::*;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use syntax::source_map::Spanned;
+use crate::rustc::hir::*;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::syntax::source_map::Spanned;
 use crate::utils::SpanlessEq;
 use crate::utils::{get_parent_expr, is_allowed, match_type, paths, span_lint, span_lint_and_sugg, walk_ptrs_ty};
 
@@ -145,7 +145,7 @@ impl LintPass for StringLitAsBytes {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        use syntax::ast::LitKind;
+        use crate::syntax::ast::LitKind;
         use crate::utils::{in_macro, snippet};
 
         if let ExprKind::MethodCall(ref path, _, ref args) = e.node {

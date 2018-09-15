@@ -1,6 +1,6 @@
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use rustc::hir::{Expr, ExprKind};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::{Expr, ExprKind};
 use crate::utils::{match_def_path, opt_def_id, paths, span_lint};
 
 /// **What it does:** Checks for usage of `std::mem::forget(t)` where `t` is

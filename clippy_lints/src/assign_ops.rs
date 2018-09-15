@@ -1,11 +1,11 @@
 use crate::utils::{get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, SpanlessEq};
 use crate::utils::{higher, sugg};
-use rustc::hir;
-use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir;
+use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use syntax::ast;
+use crate::syntax::ast;
 
 /// **What it does:** Checks for `a = a op b` or `a = b commutative_op a`
 /// patterns.
@@ -220,7 +220,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
 }
 
 fn is_commutative(op: hir::BinOpKind) -> bool {
-    use rustc::hir::BinOpKind::*;
+    use crate::rustc::hir::BinOpKind::*;
     match op {
         Add | Mul | And | Or | BitXor | BitAnd | BitOr | Eq | Ne => true,
         Sub | Div | Rem | Shl | Shr | Lt | Le | Ge | Gt => false,

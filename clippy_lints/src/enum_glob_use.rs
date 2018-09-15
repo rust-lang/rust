@@ -1,11 +1,11 @@
 //! lint on `use`ing all variants of an enum
 
-use rustc::hir::*;
-use rustc::hir::def::Def;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use syntax::ast::NodeId;
-use syntax::source_map::Span;
+use crate::rustc::hir::*;
+use crate::rustc::hir::def::Def;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::syntax::ast::NodeId;
+use crate::syntax::source_map::Span;
 use crate::utils::span_lint;
 
 /// **What it does:** Checks for `use Enum::*`.

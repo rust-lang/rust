@@ -2,11 +2,11 @@
 //!
 //! This lint is **warn** by default
 
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use rustc::hir::*;
-use syntax::ast::LitKind;
-use syntax::source_map::Spanned;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::*;
+use crate::syntax::ast::LitKind;
+use crate::syntax::source_map::Spanned;
 use crate::utils::{snippet, span_lint, span_lint_and_sugg};
 use crate::utils::sugg::Sugg;
 

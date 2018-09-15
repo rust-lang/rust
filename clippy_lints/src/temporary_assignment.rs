@@ -1,6 +1,6 @@
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use rustc::hir::{Expr, ExprKind};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::{Expr, ExprKind};
 use crate::utils::is_adjusted;
 use crate::utils::span_lint;
 

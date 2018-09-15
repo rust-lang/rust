@@ -1,10 +1,10 @@
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
-use rustc::hir::*;
-use rustc::hir::intravisit::*;
-use syntax::ast::{LitKind, NodeId, DUMMY_NODE_ID};
-use syntax::source_map::{dummy_spanned, Span, DUMMY_SP};
-use rustc_data_structures::thin_vec::ThinVec;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::*;
+use crate::rustc::hir::intravisit::*;
+use crate::syntax::ast::{LitKind, NodeId, DUMMY_NODE_ID};
+use crate::syntax::source_map::{dummy_spanned, Span, DUMMY_SP};
+use crate::rustc_data_structures::thin_vec::ThinVec;
 use crate::utils::{in_macro, paths, match_type, snippet_opt, span_lint_and_then, SpanlessEq, get_trait_def_id, implements_trait};
 
 /// **What it does:** Checks for boolean expressions that can be written more

@@ -1,18 +1,18 @@
 use std::cmp;
 
 use matches::matches;
-use rustc::hir;
-use rustc::hir::*;
-use rustc::hir::intravisit::FnKind;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir;
+use crate::rustc::hir::*;
+use crate::rustc::hir::intravisit::FnKind;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use rustc::ty::TyKind;
-use rustc::session::config::Config as SessionConfig;
-use rustc_target::spec::abi::Abi;
-use rustc_target::abi::LayoutOf;
-use syntax::ast::NodeId;
-use syntax_pos::Span;
+use crate::rustc::ty::TyKind;
+use crate::rustc::session::config::Config as SessionConfig;
+use crate::rustc_target::spec::abi::Abi;
+use crate::rustc_target::abi::LayoutOf;
+use crate::syntax::ast::NodeId;
+use crate::syntax_pos::Span;
 use crate::utils::{in_macro, is_copy, is_self, span_lint_and_sugg, snippet};
 
 /// **What it does:** Checks for functions taking arguments by reference, where

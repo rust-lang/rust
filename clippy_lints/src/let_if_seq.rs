@@ -1,10 +1,10 @@
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use rustc::hir;
-use rustc::hir::BindingAnnotation;
-use rustc::hir::def::Def;
-use syntax::ast;
+use crate::rustc::hir;
+use crate::rustc::hir::BindingAnnotation;
+use crate::rustc::hir::def::Def;
+use crate::syntax::ast;
 use crate::utils::{snippet, span_lint_and_then};
 
 /// **What it does:** Checks for variable declarations immediately followed by a
