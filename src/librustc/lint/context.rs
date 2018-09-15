@@ -69,8 +69,9 @@ pub struct LintStore {
 
     /// Map of registered lint groups to what lints they expand to. The first
     /// bool is true if the lint group was added by a plugin. The optional string
-    /// is used to store the new names of deprecated lint group names.
-    lint_groups: FxHashMap<&'static str, (Vec<LintId>, bool, Option<&'static str>)>,
+    /// is used to store the new names of deprecated lint group names and is paired
+    /// with `true` if the deprecation is silent.
+    lint_groups: FxHashMap<&'static str, (Vec<LintId>, bool, Option<(&'static str, bool)>)>,
 
     /// Extra info for future incompatibility lints, describing the
     /// issue or RFC that caused the incompatibility.
@@ -160,9 +161,9 @@ impl LintStore {
     }
 
     pub fn get_lint_groups<'t>(&'t self) -> Vec<(&'static str, Vec<LintId>, bool)> {
-        self.lint_groups.iter().map(|(k, v)| (*k,
-                                              v.0.clone(),
-                                              v.1)).collect()
+        self.lint_groups.iter()
+            .filter(|(_, (_, _, d))| d.is_none()) // Don't display deprecated lint groups.
+            .map(|(k, v)| (*k, v.0.clone(), v.1)).collect()
     }
 
     pub fn register_early_pass(&mut self,
@@ -245,6 +246,14 @@ impl LintStore {
         self.future_incompatible.get(&id)
     }
 
+    pub fn register_group_alias(
+        &mut self,
+        lint_name: &'static str,
+        alias: &'static str,
+    ) {
+        self.lint_groups.insert(alias, (vec![], false, Some((lint_name, true))));
+    }
+
     pub fn register_group(
         &mut self,
         sess: Option<&Session>,
@@ -259,7 +268,7 @@ impl LintStore {
             .is_none();
         if let Some(deprecated) = deprecated_name {
             self.lint_groups
-                .insert(deprecated, (vec![], from_plugin, Some(name)));
+                .insert(deprecated, (vec![], from_plugin, Some((name, false))));
         }
 
         if !new {
@@ -392,12 +401,16 @@ impl LintStore {
                 None => self.check_tool_name_for_backwards_compat(&complete_name, "clippy"),
                 Some(ids) => {
                     // Check if the lint group name is deprecated
-                    if let Some(new_name) = ids.2 {
+                    if let Some((new_name, silent)) = ids.2 {
                         let lint_ids = self.lint_groups.get(new_name).unwrap();
-                        return CheckLintNameResult::Tool(Err((
-                            Some(&lint_ids.0),
-                            new_name.to_string(),
-                        )));
+                        return if silent {
+                            CheckLintNameResult::Ok(&lint_ids.0)
+                        } else {
+                            CheckLintNameResult::Tool(Err((
+                                Some(&lint_ids.0),
+                                new_name.to_string(),
+                            )))
+                        };
                     }
                     CheckLintNameResult::Ok(&ids.0)
                 }
@@ -417,13 +430,17 @@ impl LintStore {
                 // Now we are sure, that this lint exists nowhere
                 None => CheckLintNameResult::NoLint,
                 Some(ids) => {
-                    // Reaching this would be weird, but lets cover this case anyway
-                    if let Some(new_name) = ids.2 {
+                    // Reaching this would be weird, but let's cover this case anyway
+                    if let Some((new_name, silent)) = ids.2 {
                         let lint_ids = self.lint_groups.get(new_name).unwrap();
-                        return CheckLintNameResult::Tool(Err((
-                            Some(&lint_ids.0),
-                            new_name.to_string(),
-                        )));
+                        return if silent {
+                            CheckLintNameResult::Tool(Err((Some(&lint_ids.0), complete_name)))
+                        } else {
+                            CheckLintNameResult::Tool(Err((
+                                Some(&lint_ids.0),
+                                new_name.to_string(),
+                            )))
+                        };
                     }
                     CheckLintNameResult::Tool(Err((Some(&ids.0), complete_name)))
                 }
