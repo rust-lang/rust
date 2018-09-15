@@ -7,7 +7,7 @@
 //! since moving an object with pointers to itself will invalidate them,
 //! which could cause undefined behavior.
 //!
-//! In order to prevent objects from moving, they must be *pinned*,
+//! In order to prevent objects from moving, they must be pinned
 //! by wrapping a pointer to the data in the [`Pin`] type. A pointer wrapped
 //! in a `Pin` is otherwise equivalent to its normal version, e.g. `Pin<Box<T>>`
 //! and `Box<T>` work the same way except that the first is pinning the value
@@ -15,7 +15,7 @@
 //!
 //! First of all, these are pointer types because pinned data mustn't be passed around by value
 //! (that would change its location in memory).
-//! Secondly, since data can be moved out of `&mut` and [`Box`] with functions such as [`swap`],
+//! Secondly, since data can be moved out of `&mut` and `Box` with functions such as [`swap`],
 //! which causes their contents to swap places in memory,
 //! we need dedicated types that prohibit such operations.
 //!
@@ -28,7 +28,7 @@
 //! [`Pin`]: struct.Pin.html
 //! [`Unpin`]: trait.Unpin.html
 //! [`swap`]: ../../std/mem/fn.swap.html
-//! [`Box`]: ../boxed/struct.Box.html
+//! [`Box`]: ../../std/boxed/struct.Box.html
 //!
 //! # Examples
 //!
@@ -66,7 +66,7 @@
 //!
 //!         let slice = NonNull::from(&boxed.data);
 //!         // we know this is safe because modifying a field doesn't move the whole struct
-//!         unsafe { 
+//!         unsafe {
 //!             let mut_ref: Pin<&mut Self> = Pin::as_mut(&mut boxed);
 //!             Pin::get_mut_unchecked(mut_ref).slice = slice;
 //!         }
@@ -90,8 +90,11 @@
 #![unstable(feature = "pin", issue = "49150")]
 
 use fmt;
-use marker::{Sized, Unpin, Unsize};
+use marker::Sized;
 use ops::{Deref, DerefMut, CoerceUnsized};
+
+#[doc(inline)]
+pub use marker::Unpin;
 
 /// A pinned pointer.
 ///
@@ -103,6 +106,9 @@ use ops::{Deref, DerefMut, CoerceUnsized};
 ///
 /// [`Unpin`]: ../../std/marker/trait.Unpin.html
 /// [`pin` module]: ../../std/pin/index.html
+//
+// Note: the derives below are allowed because they all only use `&P`, so they
+// cannot move the value behind `pointer`.
 #[unstable(feature = "pin", issue = "49150")]
 #[fundamental]
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
@@ -110,64 +116,68 @@ pub struct Pin<P> {
     pointer: P,
 }
 
-impl<P, T> Pin<P> where
-    P: Deref<Target = T>,
-    T: ?Sized + Unpin,
+impl<P: Deref> Pin<P>
+where
+    P::Target: Unpin,
 {
     /// Construct a new `Pin` around a pointer to some data of a type that
     /// implements `Unpin`.
     #[unstable(feature = "pin", issue = "49150")]
+    #[inline(always)]
     pub fn new(pointer: P) -> Pin<P> {
+        // Safety: the value pointed to is `Unpin`, and so has no requirements
+        // around pinning.
         unsafe { Pin::new_unchecked(pointer) }
     }
 }
 
-impl<P, T> Pin<P> where
-    P: Deref<Target = T>,
-    T: ?Sized,
-{
+impl<P: Deref> Pin<P> {
     /// Construct a new `Pin` around a reference to some data of a type that
     /// may or may not implement `Unpin`.
     ///
     /// # Safety
     ///
-    /// This constructor is unsafe because we cannot guarantee that the target data
-    /// is properly pinned by this pointer. If the constructed `Pin<P>` does not guarantee
-    /// that the data is "pinned," constructing a `Pin<P>` is undefined behavior and could lead
-    /// to segmentation faults or worse.
+    /// This constructor is unsafe because we cannot guarantee that the data
+    /// pointed to by `pointer` is pinned. If the constructed `Pin<P>` does
+    /// not guarantee that the data `P` points to is pinned, constructing a
+    /// `Pin<P>` is undefined behavior.
+    ///
+    /// If `pointer` dereferences to an `Unpin` type, `Pin::new` should be used
+    /// instead.
     #[unstable(feature = "pin", issue = "49150")]
+    #[inline(always)]
     pub unsafe fn new_unchecked(pointer: P) -> Pin<P> {
         Pin { pointer }
     }
 
-
     /// Get a pinned shared reference from this pinned pointer.
     #[unstable(feature = "pin", issue = "49150")]
-    pub fn as_ref(this: &Pin<P>) -> Pin<&T> {
-        unsafe { Pin::new_unchecked(&**this) }
+    #[inline(always)]
+    pub fn as_ref(self: &Pin<P>) -> Pin<&P::Target> {
+        unsafe { Pin::new_unchecked(&**self) }
     }
 }
 
-impl<P, T> Pin<P> where
-    P: DerefMut<Target = T>,
-    T: ?Sized,
-{
+impl<P: DerefMut> Pin<P> {
     /// Get a pinned mutable reference from this pinned pointer.
     #[unstable(feature = "pin", issue = "49150")]
-    pub fn as_mut(this: &mut Pin<P>) -> Pin<&mut T> {
-        unsafe { Pin::new_unchecked(&mut *this.pointer) }
+    #[inline(always)]
+    pub fn as_mut(self: &mut Pin<P>) -> Pin<&mut P::Target> {
+        unsafe { Pin::new_unchecked(&mut *self.pointer) }
     }
 
     /// Assign a new value to the memory behind the pinned reference.
     #[unstable(feature = "pin", issue = "49150")]
-    pub fn set(this: Pin<&mut T>, value: T)
-        where T: Sized,
+    #[inline(always)]
+    pub fn set(mut self: Pin<P>, value: P::Target)
+    where
+        P::Target: Sized,
     {
-        *this.pointer = value;
+        *self.pointer = value;
     }
 }
 
-impl<'a, T> Pin<&'a T> {
+impl<'a, T: ?Sized> Pin<&'a T> {
     /// Construct a new pin by mapping the interior value.
     ///
     /// For example, if you  wanted to get a `Pin` of a field of something,
@@ -188,14 +198,45 @@ impl<'a, T> Pin<&'a T> {
         Pin::new_unchecked(new_pointer)
     }
 
-    /// Get a safe reference out of a pin.
+    /// Get a shared reference out of a pin.
+    ///
+    /// Note: `Pin` also implements `Deref` to the target, which can be used
+    /// to access the inner value. However, `Deref` only provides a reference
+    /// that lives for as long as the borrow of the `Pin`, not the lifetime of
+    /// the `Pin` itself. This method allows turning the `Pin` into a reference
+    /// with the same lifetime as the original `Pin`.
     #[unstable(feature = "pin", issue = "49150")]
-    pub fn get(this: Pin<&'a T>) -> &'a T {
+    #[inline(always)]
+    pub fn get_ref(this: Pin<&'a T>) -> &'a T {
         this.pointer
     }
 }
 
 impl<'a, T> Pin<&'a mut T> {
+    /// Convert this `Pin<&mut T>` into a `Pin<&T>` with the same lifetime.
+    #[unstable(feature = "pin", issue = "49150")]
+    #[inline(always)]
+    pub fn into_ref(this: Pin<&'a mut T>) -> Pin<&'a T> {
+        Pin { pointer: this.pointer }
+    }
+
+    /// Get a mutable reference to the data inside of this `Pin`.
+    ///
+    /// This requires that the data inside this `Pin` is `Unpin`.
+    ///
+    /// Note: `Pin` also implements `DerefMut` to the data, which can be used
+    /// to access the inner value. However, `DerefMut` only provides a reference
+    /// that lives for as long as the borrow of the `Pin`, not the lifetime of
+    /// the `Pin` itself. This method allows turning the `Pin` into a reference
+    /// with the same lifetime as the original `Pin`.
+    #[unstable(feature = "pin", issue = "49150")]
+    #[inline(always)]
+    pub fn get_mut(this: Pin<&'a mut T>) -> &'a mut T
+        where T: Unpin,
+    {
+        this.pointer
+    }
+
     /// Get a mutable reference to the data inside of this `Pin`.
     ///
     /// # Safety
@@ -203,7 +244,11 @@ impl<'a, T> Pin<&'a mut T> {
     /// This function is unsafe. You must guarantee that you will never move
     /// the data out of the mutable reference you receive when you call this
     /// function, so that the invariants on the `Pin` type can be upheld.
+    ///
+    /// If the underlying data is `Unpin`, `Pin::get_mut` should be used
+    /// instead.
     #[unstable(feature = "pin", issue = "49150")]
+    #[inline(always)]
     pub unsafe fn get_mut_unchecked(this: Pin<&'a mut T>) -> &'a mut T {
         this.pointer
     }
@@ -230,22 +275,19 @@ impl<'a, T> Pin<&'a mut T> {
 }
 
 #[unstable(feature = "pin", issue = "49150")]
-impl<P, T> Deref for Pin<P> where
-    P: Deref<Target = T>,
-    T: ?Sized,
-{
-    type Target = T;
-    fn deref(&self) -> &T {
+impl<P: Deref> Deref for Pin<P> {
+    type Target = P::Target;
+    fn deref(&self) -> &P::Target {
         &*self.pointer
     }
 }
 
 #[unstable(feature = "pin", issue = "49150")]
-impl<P, T> DerefMut for Pin<P> where
-    P: DerefMut<Target = T>,
-    T: ?Sized + Unpin,
+impl<P: DerefMut> DerefMut for Pin<P>
+where
+    P::Target: Unpin
 {
-    fn deref_mut(&mut self) -> &mut T {
+    fn deref_mut(&mut self) -> &mut P::Target {
         &mut *self.pointer
     }
 }
@@ -271,14 +313,16 @@ impl<'a, P: fmt::Pointer> fmt::Pointer for Pin<P> {
     }
 }
 
+// Note: this means that any impl of `CoerceUnsized` that allows coercing from
+// a type that impls `Deref<Target=impl !Unpin>` to a type that impls
+// `Deref<Target=Unpin>` is unsound. Any such impl would probably be unsound
+// for other reasons, though, so we just need to take care not to allow such
+// impls to land in std.
 #[unstable(feature = "pin", issue = "49150")]
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Pin<&'a U>> for Pin<&'a T> {}
+impl<'a, P, U> CoerceUnsized<Pin<U>> for Pin<P>
+where
+    P: CoerceUnsized<U>,
+{}
 
 #[unstable(feature = "pin", issue = "49150")]
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Pin<&'a mut U>> for Pin<&'a mut T> {}
-
-#[unstable(feature = "pin", issue = "49150")]
-impl<'a, T: ?Sized> Unpin for Pin<&'a T> {}
-
-#[unstable(feature = "pin", issue = "49150")]
-impl<'a, T: ?Sized> Unpin for Pin<&'a mut T> {}
+impl<'a, P> Unpin for Pin<P> {}

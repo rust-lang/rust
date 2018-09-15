@@ -98,8 +98,9 @@ impl<T> Box<T> {
     }
 
     #[unstable(feature = "pin", issue = "49150")]
+    #[inline(always)]
     pub fn pinned(x: T) -> Pin<Box<T>> {
-        unsafe { Pin::new_unchecked(box x) }
+        (box x).into()
     }
 }
 
@@ -434,6 +435,9 @@ impl<T> From<T> for Box<T> {
 #[unstable(feature = "pin", issue = "49150")]
 impl<T> From<Box<T>> for Pin<Box<T>> {
     fn from(boxed: Box<T>) -> Self {
+        // It's not possible to move or replace the insides of a `Pin<Box<T>>`
+        // when `T: !Unpin`,  so it's safe to pin it directly without any
+        // additional requirements.
         unsafe { Pin::new_unchecked(boxed) }
     }
 }

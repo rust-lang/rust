@@ -104,14 +104,14 @@ impl<'a, F: ?Sized + Future + Unpin> Future for &'a mut F {
     }
 }
 
-impl<P, F> Future for Pin<P> where
-    P: ops::DerefMut<Target = F> + Unpin,
-    F: Future + ?Sized,
+impl<P> Future for Pin<P>
+where
+    P: ops::DerefMut,
+    P::Target: Future,
 {
-    type Output = F::Output;
+    type Output = <<P as ops::Deref>::Target as Future>::Output;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut task::Context) -> Poll<Self::Output> {
-        let pin: Pin<&mut F> = Pin::as_mut(&mut *self);
-        F::poll(pin, cx)
+    fn poll(self: Pin<&mut Self>, cx: &mut task::Context) -> Poll<Self::Output> {
+        Pin::get_mut(self).as_mut().poll(cx)
     }
 }
