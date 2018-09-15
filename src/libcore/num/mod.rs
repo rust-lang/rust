@@ -93,6 +93,13 @@ assert_eq!(size_of::<Option<std::num::", stringify!($Ty), ">>(), size_of::<", st
 
             }
 
+            #[stable(feature = "nonzero", since = "1.28.0")]
+            impl From<$Ty> for $Int {
+                fn from(nonzero: $Ty) -> Self {
+                    nonzero.0 .0
+                }
+            }
+
             impl_nonzero_fmt! {
                 (Debug, Display, Binary, Octal, LowerHex, UpperHex) for $Ty
             }
