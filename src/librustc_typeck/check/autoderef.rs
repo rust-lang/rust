@@ -19,7 +19,7 @@ use rustc::ty::{ToPredicate, TypeFoldable};
 use rustc::ty::adjustment::{Adjustment, Adjust, OverloadedDeref};
 
 use syntax_pos::Span;
-use syntax::ast::{NodeId, Ident};
+use syntax::ast::{self, Ident};
 
 use std::iter;
 
@@ -31,7 +31,7 @@ enum AutoderefKind {
 
 pub struct Autoderef<'a, 'gcx: 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    body_id: NodeId,
+    body_id: ast::NodeId,
     param_env: ty::ParamEnv<'tcx>,
     steps: Vec<(Ty<'tcx>, AutoderefKind)>,
     cur_ty: Ty<'tcx>,
@@ -107,6 +107,26 @@ impl<'a, 'gcx, 'tcx> Iterator for Autoderef<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+               param_env: ty::ParamEnv<'tcx>,
+               body_id: ast::NodeId,
+               span: Span,
+               base_ty: Ty<'tcx>)
+               -> Autoderef<'a, 'gcx, 'tcx>
+    {
+        Autoderef {
+            infcx,
+            body_id,
+            param_env,
+            steps: vec![],
+            cur_ty: infcx.resolve_type_vars_if_possible(&base_ty),
+            obligations: vec![],
+            at_start: true,
+            include_raw_pointers: false,
+            span,
+        }
+    }
+
     fn overloaded_deref_ty(&mut self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
         debug!("overloaded_deref_ty({:?})", ty);
 
@@ -231,17 +251,7 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn autoderef(&'a self, span: Span, base_ty: Ty<'tcx>) -> Autoderef<'a, 'gcx, 'tcx> {
-        Autoderef {
-            infcx: &self.infcx,
-            body_id: self.body_id,
-            param_env: self.param_env,
-            steps: vec![],
-            cur_ty: self.resolve_type_vars_if_possible(&base_ty),
-            obligations: vec![],
-            at_start: true,
-            include_raw_pointers: false,
-            span,
-        }
+        Autoderef::new(self, self.param_env, self.body_id, span, base_ty)
     }
 
     pub fn try_overloaded_deref(&self,

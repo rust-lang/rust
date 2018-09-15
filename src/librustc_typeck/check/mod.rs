@@ -102,10 +102,11 @@ use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use middle::lang_items;
 use namespace::Namespace;
+use rustc::infer::{self, InferCtxt, InferOk, InferResult, RegionVariableOrigin};
+use rustc::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::abi::Abi;
-use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
 use rustc::infer::opaque_types::OpaqueTypeDecl;
 use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region;
@@ -5348,6 +5349,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             enclosing_breakables.stack.pop().expect("missing breakable context")
         };
         (ctxt, result)
+    }
+
+    /// Instantiate a QueryResponse in a probe context, without a
+    /// good ObligationCause.
+    fn probe_instantiate_query_response(
+        &self,
+        span: Span,
+        original_values: &OriginalQueryValues<'tcx>,
+        query_result: &Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>,
+    ) -> InferResult<'tcx, Ty<'tcx>>
+    {
+        self.instantiate_query_response_and_region_obligations(
+            &traits::ObligationCause::misc(span, self.body_id),
+            self.param_env,
+            original_values,
+            query_result)
     }
 }
 
