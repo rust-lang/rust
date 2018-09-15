@@ -122,9 +122,6 @@ impl QueryRegistry {
         let config = config.with_query(id, q.f());
         self.config= Some(config);
     }
-    pub(super) fn finish(mut self) -> salsa::QueryConfig<State, Data> {
-        self.config.take().unwrap()
-    }
 }
 
 fn hash<T: Hash>(x: &T) -> u64 {

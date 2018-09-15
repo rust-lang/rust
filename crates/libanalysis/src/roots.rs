@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    time::Instant,
     sync::Arc,
     panic,
 };
@@ -13,83 +12,74 @@ use libsyntax2::File;
 use {
     FileId,
     imp::FileResolverImp,
-    module_map::{ModuleMap, ChangeKind},
     symbol_index::SymbolIndex,
     descriptors::{ModuleDescriptor, ModuleTreeDescriptor},
+    db::Db,
 };
 
 pub(crate) trait SourceRoot {
     fn contains(&self, file_id: FileId) -> bool;
-    fn module_tree(&self) -> Arc<ModuleTreeDescriptor> {
-        unimplemented!()
-    }
-    // fn module_map(&self) -> &ModuleMap;
-    fn lines(&self, file_id: FileId) -> &LineIndex;
-    fn syntax(&self, file_id: FileId) -> &File;
+    fn module_tree(&self) -> Arc<ModuleTreeDescriptor>;
+    fn lines(&self, file_id: FileId) -> Arc<LineIndex>;
+    fn syntax(&self, file_id: FileId) -> File;
     fn symbols<'a>(&'a self, acc: &mut Vec<&'a SymbolIndex>);
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Default, Debug)]
 pub(crate) struct WritableSourceRoot {
-    file_map: HashMap<FileId, Arc<(FileData, OnceCell<SymbolIndex>)>>,
-    module_map: ModuleMap,
+    db: Db,
 }
 
 impl WritableSourceRoot {
-    pub fn update(&mut self, file_id: FileId, text: Option<String>) {
-        let change_kind = if self.file_map.remove(&file_id).is_some() {
-            if text.is_some() {
-                ChangeKind::Update
-            } else {
-                ChangeKind::Delete
-            }
-        } else {
-            ChangeKind::Insert
-        };
-        self.module_map.update_file(file_id, change_kind);
-        self.file_map.remove(&file_id);
-        if let Some(text) = text {
-            let file_data = FileData::new(text);
-            self.file_map.insert(file_id, Arc::new((file_data, Default::default())));
-        }
-    }
-    pub fn set_file_resolver(&mut self, file_resolver: FileResolverImp) {
-        self.module_map.set_file_resolver(file_resolver)
-    }
-    pub fn reindex(&self) {
-        let now = Instant::now();
-        self.file_map
-            .par_iter()
-            .for_each(|(&file_id, data)| {
-                symbols(file_id, data);
-            });
-        info!("parallel indexing took {:?}", now.elapsed());
+    pub fn apply_changes(
+        &self,
+        changes: &mut dyn Iterator<Item=(FileId, Option<String>)>,
+        file_resolver: Option<FileResolverImp>,
+    ) -> WritableSourceRoot {
+        let resolver_changed = file_resolver.is_some();
+        let mut changed_files = Vec::new();
+        let mut new_state = self.db.state().clone();
 
-    }
-    fn data(&self, file_id: FileId) -> &FileData {
-        match self.file_map.get(&file_id) {
-            Some(data) => &data.0,
-            None => panic!("unknown file: {:?}", file_id),
+        for (file_id, text) in changes {
+            changed_files.push(file_id);
+            match text {
+                Some(text) => {
+                    new_state.file_map.insert(file_id, Arc::new(text));
+                },
+                None => {
+                    new_state.file_map.remove(&file_id);
+                }
+            }
+        }
+        if let Some(file_resolver) = file_resolver {
+            new_state.file_resolver = file_resolver
+        }
+        WritableSourceRoot {
+            db: self.db.with_changes(new_state, &changed_files, resolver_changed)
         }
     }
 }
 
 impl SourceRoot for WritableSourceRoot {
+    fn module_tree(&self) -> Arc<ModuleTreeDescriptor> {
+        self.db.make_query(::module_map::module_tree)
+    }
+
     fn contains(&self, file_id: FileId) -> bool {
-        self.file_map.contains_key(&file_id)
+        self.db.state().file_map.contains_key(&file_id)
     }
-    fn lines(&self, file_id: FileId) -> &LineIndex {
-        self.data(file_id).lines()
+    fn lines(&self, file_id: FileId) -> Arc<LineIndex> {
+        self.db.make_query(|ctx| ::queries::file_lines(ctx, file_id))
     }
-    fn syntax(&self, file_id: FileId) -> &File {
-        self.data(file_id).syntax()
+    fn syntax(&self, file_id: FileId) -> File {
+        self.db.make_query(|ctx| ::queries::file_syntax(ctx, file_id))
     }
     fn symbols<'a>(&'a self, acc: &mut Vec<&'a SymbolIndex>) {
-        acc.extend(
-            self.file_map
-                .iter()
-                .map(|(&file_id, data)| symbols(file_id, data))
-        )
+        // acc.extend(
+        //     self.file_map
+        //         .iter()
+        //         .map(|(&file_id, data)| symbols(file_id, data))
+        // )
     }
 }
 
@@ -101,7 +91,7 @@ fn symbols(file_id: FileId, (data, symbols): &(FileData, OnceCell<SymbolIndex>))
 #[derive(Debug)]
 struct FileData {
     text: String,
-    lines: OnceCell<LineIndex>,
+    lines: OnceCell<Arc<LineIndex>>,
     syntax: OnceCell<File>,
 }
 
@@ -113,8 +103,8 @@ impl FileData {
             lines: OnceCell::new(),
         }
     }
-    fn lines(&self) -> &LineIndex {
-        self.lines.get_or_init(|| LineIndex::new(&self.text))
+    fn lines(&self) -> &Arc<LineIndex> {
+        self.lines.get_or_init(|| Arc::new(LineIndex::new(&self.text)))
     }
     fn syntax(&self) -> &File {
         let text = &self.text;
@@ -126,10 +116,6 @@ impl FileData {
                 panic::resume_unwind(err)
             }
         }
-    }
-    fn syntax_transient(&self) -> File {
-        self.syntax.get().map(|s| s.clone())
-            .unwrap_or_else(|| File::parse(&self.text))
     }
 }
 
@@ -184,11 +170,11 @@ impl SourceRoot for ReadonlySourceRoot {
     fn contains(&self, file_id: FileId) -> bool {
         self.file_map.contains_key(&file_id)
     }
-    fn lines(&self, file_id: FileId) -> &LineIndex {
-        self.data(file_id).lines()
+    fn lines(&self, file_id: FileId) -> Arc<LineIndex> {
+        Arc::clone(self.data(file_id).lines())
     }
-    fn syntax(&self, file_id: FileId) -> &File {
-        self.data(file_id).syntax()
+    fn syntax(&self, file_id: FileId) -> File {
+        self.data(file_id).syntax().clone()
     }
     fn symbols<'a>(&'a self, acc: &mut Vec<&'a SymbolIndex>) {
         acc.push(&self.symbol_index)

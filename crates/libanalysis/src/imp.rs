@@ -5,6 +5,7 @@ use std::{
     },
     fmt,
     collections::{HashSet, VecDeque},
+    iter,
 };
 
 use relative_path::RelativePath;
@@ -75,14 +76,12 @@ impl AnalysisHostImpl {
     }
     pub fn change_files(&mut self, changes: &mut dyn Iterator<Item=(FileId, Option<String>)>) {
         let data = self.data_mut();
-        for (file_id, text) in changes {
-            data.root.update(file_id, text);
-        }
+        data.root = Arc::new(data.root.apply_changes(changes, None));
     }
     pub fn set_file_resolver(&mut self, resolver: FileResolverImp) {
         let data = self.data_mut();
         data.file_resolver = resolver.clone();
-        data.root.set_file_resolver(resolver);
+        data.root = Arc::new(data.root.apply_changes(&mut iter::empty(), Some(resolver)));
     }
     pub fn set_crate_graph(&mut self, graph: CrateGraph) {
         let mut visited = HashSet::new();
@@ -124,18 +123,17 @@ impl Clone for AnalysisImpl {
 impl AnalysisImpl {
     fn root(&self, file_id: FileId) -> &SourceRoot {
         if self.data.root.contains(file_id) {
-            return &self.data.root;
+            return &*self.data.root;
         }
         &**self.data.libs.iter().find(|it| it.contains(file_id)).unwrap()
     }
-    pub fn file_syntax(&self, file_id: FileId) -> &File {
+    pub fn file_syntax(&self, file_id: FileId) -> File {
         self.root(file_id).syntax(file_id)
     }
-    pub fn file_line_index(&self, file_id: FileId) -> &LineIndex {
+    pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
         self.root(file_id).lines(file_id)
     }
     pub fn world_symbols(&self, query: Query, token: &JobToken) -> Vec<(FileId, FileSymbol)> {
-        self.reindex();
         let mut buf = Vec::new();
         if query.libs {
             self.data.libs.iter()
@@ -308,19 +306,13 @@ impl AnalysisImpl {
         };
         module_tree.child_module_by_name(file_id, name.as_str())
     }
-
-    fn reindex(&self) {
-        if self.needs_reindex.compare_and_swap(true, false, SeqCst) {
-            self.data.root.reindex();
-        }
-    }
 }
 
 #[derive(Default, Clone, Debug)]
 struct WorldData {
     file_resolver: FileResolverImp,
     crate_graph: CrateGraph,
-    root: WritableSourceRoot,
+    root: Arc<WritableSourceRoot>,
     libs: Vec<Arc<ReadonlySourceRoot>>,
 }
 

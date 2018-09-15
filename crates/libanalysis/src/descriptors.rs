@@ -140,7 +140,7 @@ impl ModuleTreeDescriptor {
             .links
             .iter()
             .filter(|it| it.name(self) == name)
-            .map(|link| link.owner(self))
+            .flat_map(|link| link.points_to(self).iter().map(|&node| self.node(node).file_id))
             .collect()
     }
     pub(crate) fn problems<'a, 'b>(&'b self, file_id: FileId, root: ast::Root<'a>) -> Vec<(ast::Name<'a>, &'b Problem)> {
@@ -171,6 +171,9 @@ impl Link {
     pub(crate) fn owner(self, tree: &ModuleTreeDescriptor) -> FileId {
         let owner = tree.link(self).owner;
         tree.node(owner).file_id
+    }
+    fn points_to(self, tree: &ModuleTreeDescriptor) -> &[Node] {
+        &tree.link(self).points_to
     }
     pub(crate) fn bind_source<'a>(self, tree: &ModuleTreeDescriptor, root: ast::Root<'a>) -> ast::Module<'a> {
         modules(root)
