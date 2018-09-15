@@ -98,7 +98,7 @@ mod tests {
             Fixture {
                 next_file_id: 1,
                 fm: im::HashMap::new(),
-                db: Db::new(State::default()),
+                db: Db::new(),
             }
         }
         fn add_file(&mut self, path: &str, text: &str) -> FileId {

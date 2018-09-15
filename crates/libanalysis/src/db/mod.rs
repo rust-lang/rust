@@ -43,7 +43,8 @@ pub(crate) struct Query<T, R> {
 }
 
 impl Db {
-    pub(crate) fn new(state: State) -> Db {
+    pub(crate) fn new() -> Db {
+        let state = Default::default();
         Db { inner: salsa::Db::new(query_config(), state) }
     }
     pub(crate) fn state(&self) -> &State {
