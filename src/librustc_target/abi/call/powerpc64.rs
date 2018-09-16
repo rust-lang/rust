@@ -75,7 +75,9 @@ fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<'a, Ty>, abi: ABI)
     let size = ret.layout.size;
     let bits = size.bits();
     if bits <= 128 {
-        let unit = if bits <= 8 {
+        let unit = if cx.data_layout().endian == Endian::Big {
+            Reg { kind: RegKind::Integer, size }
+        } else if bits <= 8 {
             Reg::i8()
         } else if bits <= 16 {
             Reg::i16()
@@ -110,22 +112,15 @@ fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>, abi: ABI)
     }
 
     let size = arg.layout.size;
-    let (unit, total) = match abi {
-        ELFv1 => {
-            // In ELFv1, aggregates smaller than a doubleword should appear in
-            // the least-significant bits of the parameter doubleword.  The rest
-            // should be padded at their tail to fill out multiple doublewords.
-            if size.bits() <= 64 {
-                (Reg { kind: RegKind::Integer, size }, size)
-            } else {
-                let align = Align::from_bits(64, 64).unwrap();
-                (Reg::i64(), size.abi_align(align))
-            }
-        },
-        ELFv2 => {
-            // In ELFv2, we can just cast directly.
-            (Reg::i64(), size)
-        },
+    let (unit, total) = if size.bits() <= 64 {
+        // Aggregates smaller than a doubleword should appear in
+        // the least-significant bits of the parameter doubleword.
+        (Reg { kind: RegKind::Integer, size }, size)
+    } else {
+        // Aggregates larger than a doubleword should be padded
+        // at the tail to fill out a whole number of doublewords.
+        let align = Align::from_bits(64, 64).unwrap();
+        (Reg::i64(), size.abi_align(align))
     };
 
     arg.cast_to(Uniform {
