@@ -49,7 +49,7 @@ fn get_pass_mode<'a, 'tcx: 'a>(
         PassMode::ByVal(ret_ty)
     } else {
         if abi == Abi::C {
-            unimplemented!("Non scalars are not yet supported for \"C\" abi");
+            unimpl!("Non scalars are not yet supported for \"C\" abi ({:?}) is_return: {:?}", ty, is_return);
         }
         PassMode::ByRef
     }
