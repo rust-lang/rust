@@ -30,7 +30,8 @@ fn show_help() {
 }
 
 fn show_version() {
-    println!("{}", env!("CARGO_PKG_VERSION"));
+    println!("miri {} ({} {})",
+        env!("CARGO_PKG_VERSION"), env!("VERGEN_SHA_SHORT"), env!("VERGEN_COMMIT_DATE"));
 }
 
 fn main() {
