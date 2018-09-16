@@ -1,0 +1,54 @@
+error: expected `{`, found `and`
+  --> $DIR/issue-54109-and_instead_of_ampersands.rs:14:10
+   |
+LL |     if a and b {
+   |     --   ^^^ help: use `&&` instead of `and` for the boolean operator
+   |     |
+   |     this `if` statement has a condition, but no block
+
+error: expected `{`, found `or`
+  --> $DIR/issue-54109-and_instead_of_ampersands.rs:23:10
+   |
+LL |     if a or b {
+   |     --   ^^ help: use `||` instead of `or` for the boolean operator
+   |     |
+   |     this `if` statement has a condition, but no block
+
+error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `{`, or an operator, found `and`
+  --> $DIR/issue-54109-and_instead_of_ampersands.rs:32:11
+   |
+LL |     if (a and b) {
+   |           ^^^
+   |           |
+   |           expected one of 8 possible tokens here
+   |           help: use `&&` instead of `and` for the boolean operator
+
+error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `{`, or an operator, found `or`
+  --> $DIR/issue-54109-and_instead_of_ampersands.rs:41:11
+   |
+LL |     if (a or b) {
+   |           ^^
+   |           |
+   |           expected one of 8 possible tokens here
+   |           help: use `||` instead of `or` for the boolean operator
+
+error: expected one of `!`, `.`, `::`, `?`, `{`, or an operator, found `and`
+  --> $DIR/issue-54109-and_instead_of_ampersands.rs:50:13
+   |
+LL |     while a and b {
+   |             ^^^
+   |             |
+   |             expected one of `!`, `.`, `::`, `?`, `{`, or an operator here
+   |             help: use `&&` instead of `and` for the boolean operator
+
+error: expected one of `!`, `.`, `::`, `?`, `{`, or an operator, found `or`
+  --> $DIR/issue-54109-and_instead_of_ampersands.rs:59:13
+   |
+LL |     while a or b {
+   |             ^^
+   |             |
+   |             expected one of `!`, `.`, `::`, `?`, `{`, or an operator here
+   |             help: use `||` instead of `or` for the boolean operator
+
+error: aborting due to 6 previous errors
+
