@@ -742,7 +742,9 @@ impl<K, V> RawTable<K, V> {
     ) -> Result<RawTable<K, V>, CollectionAllocErr> {
         unsafe {
             let ret = RawTable::new_uninitialized_internal(capacity, fallibility)?;
-            ptr::write_bytes(ret.hashes.ptr(), 0, capacity);
+            if capacity > 0 {
+                ptr::write_bytes(ret.hashes.ptr(), 0, capacity);
+            }
             Ok(ret)
         }
     }
