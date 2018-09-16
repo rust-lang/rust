@@ -167,36 +167,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         _rx: mpsc::Receiver<Box<Any + Send>>,
     ) -> Box<Any> {
-        use rustc_mir::monomorphize::item::MonoItem;
-
-        rustc_codegen_utils::check_for_rustc_errors_attr(tcx);
-        rustc_codegen_utils::symbol_names_test::report_symbol_names(tcx);
-        rustc_incremental::assert_dep_graph(tcx);
-        rustc_incremental::assert_module_sources::assert_module_sources(tcx);
-        rustc_mir::monomorphize::assert_symbols_are_distinct(
-            tcx,
-            collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager)
-                .0
-                .iter(),
-        );
-        //::rustc::middle::dependency_format::calculate(tcx);
-        let _ = tcx.link_args(LOCAL_CRATE);
-        let _ = tcx.native_libraries(LOCAL_CRATE);
-        for mono_item in
-            collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager).0
-        {
-            match mono_item {
-                MonoItem::Fn(inst) => {
-                    let def_id = inst.def_id();
-                    if def_id.is_local() {
-                        let _ = inst.def.is_inline(tcx);
-                        let _ = tcx.codegen_fn_attrs(def_id);
-                    }
-                }
-                _ => {}
-            }
-        }
-
         if !tcx.sess.crate_types.get().contains(&CrateType::Executable)
             && std::env::var("SHOULD_RUN").is_ok()
         {
