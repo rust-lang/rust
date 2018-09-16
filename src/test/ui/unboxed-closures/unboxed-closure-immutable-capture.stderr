@@ -2,7 +2,7 @@ error[E0595]: closure cannot assign to immutable local variable `x`
   --> $DIR/unboxed-closure-immutable-capture.rs:23:5
    |
 LL |     let x = 0;
-   |         - consider changing this to `mut x`
+   |         - help: make this binding mutable: `mut x`
 ...
 LL |     || x = 1; //~ ERROR cannot assign
    |     ^^ cannot borrow mutably
@@ -11,7 +11,7 @@ error[E0595]: closure cannot assign to immutable local variable `x`
   --> $DIR/unboxed-closure-immutable-capture.rs:25:5
    |
 LL |     let x = 0;
-   |         - consider changing this to `mut x`
+   |         - help: make this binding mutable: `mut x`
 ...
 LL |     || set(&mut x); //~ ERROR cannot assign
    |     ^^ cannot borrow mutably
@@ -20,7 +20,7 @@ error[E0595]: closure cannot assign to immutable local variable `x`
   --> $DIR/unboxed-closure-immutable-capture.rs:26:5
    |
 LL |     let x = 0;
-   |         - consider changing this to `mut x`
+   |         - help: make this binding mutable: `mut x`
 ...
 LL |     || x = 1; //~ ERROR cannot assign
    |     ^^ cannot borrow mutably
@@ -29,7 +29,7 @@ error[E0595]: closure cannot assign to immutable local variable `x`
   --> $DIR/unboxed-closure-immutable-capture.rs:28:5
    |
 LL |     let x = 0;
-   |         - consider changing this to `mut x`
+   |         - help: make this binding mutable: `mut x`
 ...
 LL |     || set(&mut x); //~ ERROR cannot assign
    |     ^^ cannot borrow mutably

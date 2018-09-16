@@ -13,7 +13,8 @@
 
 fn test() {
     let v: isize;
-    //[mir]~^ NOTE consider changing this to `mut v`
+    //[mir]~^ HELP make this binding mutable
+    //[mir]~| SUGGESTION mut v
     v = 1; //[ast]~ NOTE first assignment
            //[mir]~^ NOTE first assignment
     println!("v={}", v);

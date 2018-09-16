@@ -5,7 +5,7 @@ LL |     let &mut x = foo;
    |              -
    |              |
    |              first assignment to `x`
-   |              consider changing this to `mut x`
+   |              help: make this binding mutable: `mut x`
 LL |     x += 1; //[ast]~ ERROR cannot assign twice to immutable variable
    |     ^^^^^^ cannot assign twice to immutable variable
 

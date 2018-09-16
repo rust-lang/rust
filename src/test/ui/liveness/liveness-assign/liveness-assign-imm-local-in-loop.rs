@@ -13,7 +13,8 @@
 
 fn test() {
     let v: isize;
-    //[mir]~^ NOTE consider changing this to `mut v`
+    //[mir]~^ HELP make this binding mutable
+    //[mir]~| SUGGESTION mut v
     loop {
         v = 1; //[ast]~ ERROR cannot assign twice to immutable variable
                //[mir]~^ ERROR cannot assign twice to immutable variable `v`

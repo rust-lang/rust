@@ -1,9 +1,9 @@
 error[E0384]: cannot assign twice to immutable variable `v`
-  --> $DIR/assign-imm-local-twice.rs:20:5
+  --> $DIR/assign-imm-local-twice.rs:21:5
    |
 LL |     let v: isize;
-   |         - consider changing this to `mut v`
-LL |     //[mir]~^ NOTE consider changing this to `mut v`
+   |         - help: make this binding mutable: `mut v`
+...
 LL |     v = 1; //[ast]~ NOTE first assignment
    |     ----- first assignment to `v`
 ...

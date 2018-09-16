@@ -230,7 +230,7 @@ error[E0596]: cannot borrow immutable argument `x` as mutable
   --> $DIR/mutability-errors.rs:64:10
    |
 LL | fn imm_local(x: (i32,)) {
-   |              - consider changing this to `mut x`
+   |              - help: make this binding mutable: `mut x`
 LL |     &mut x; //~ ERROR
    |          ^ cannot borrow mutably
 
@@ -238,7 +238,7 @@ error[E0596]: cannot borrow field `x.0` of immutable binding as mutable
   --> $DIR/mutability-errors.rs:65:10
    |
 LL | fn imm_local(x: (i32,)) {
-   |              - consider changing this to `mut x`
+   |              - help: make this binding mutable: `mut x`
 LL |     &mut x; //~ ERROR
 LL |     &mut x.0; //~ ERROR
    |          ^^^ cannot mutably borrow field of immutable binding
@@ -247,7 +247,7 @@ error[E0595]: closure cannot assign to immutable argument `x`
   --> $DIR/mutability-errors.rs:69:5
    |
 LL | fn imm_capture(x: (i32,)) {
-   |                - consider changing this to `mut x`
+   |                - help: make this binding mutable: `mut x`
 LL |     || { //~ ERROR
    |     ^^ cannot borrow mutably
 

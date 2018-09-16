@@ -2,7 +2,7 @@ error[E0596]: cannot borrow immutable `Box` content `*a` as mutable
   --> $DIR/borrowck-borrow-immut-deref-of-box-as-mut.rs:22:5
    |
 LL |     let a: Box<_> = box A;
-   |         - consider changing this to `mut a`
+   |         - help: make this binding mutable: `mut a`
 LL |     a.foo();
    |     ^ cannot borrow as mutable
 

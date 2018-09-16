@@ -45,7 +45,7 @@ use rustc_data_structures::sync::Lrc;
 use std::hash::{Hash, Hasher};
 use syntax::ast;
 use syntax_pos::{MultiSpan, Span};
-use errors::{DiagnosticBuilder, DiagnosticId};
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 
 use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor};
@@ -1299,9 +1299,11 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         snippet
                     );
                 } else {
-                    db.span_label(
+                    db.span_suggestion_with_applicability(
                         let_span,
-                        format!("consider changing this to `mut {}`", snippet),
+                        "make this binding mutable",
+                        format!("mut {}", snippet),
+                        Applicability::MachineApplicable,
                     );
                 }
             }
