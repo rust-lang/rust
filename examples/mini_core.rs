@@ -12,6 +12,7 @@ pub trait Unsize<T: ?Sized> {}
 pub trait CoerceUnsized<T> {}
 
 impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
 
 #[lang = "copy"]
@@ -168,6 +169,9 @@ impl<T: ?Sized> PartialEq for *const T {
         *self != *other
     }
 }
+
+#[lang = "phantom_data"]
+pub struct PhantomData<T: ?Sized>;
 
 #[lang = "fn_once"]
 #[rustc_paren_sugar]

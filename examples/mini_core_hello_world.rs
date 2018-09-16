@@ -102,6 +102,13 @@ macro_rules! assert_eq {
     }
 }
 
+struct Unique<T: ?Sized> {
+    pointer: *const T,
+    _marker: PhantomData<T>,
+}
+
+impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> {}
+
 fn main() {
     unsafe {
         let hello: &[u8] = b"Hello\0" as &[u8; 6];
@@ -133,6 +140,11 @@ fn main() {
 
         assert!(!intrinsics::needs_drop::<u8>());
         assert!(intrinsics::needs_drop::<NoisyDrop>());
+
+        Unique {
+            pointer: 0 as *const &str,
+            _marker: PhantomData,
+        } as Unique<dyn SomeTrait>;
     }
 
     let _ = NoisyDrop {

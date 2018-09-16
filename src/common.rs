@@ -259,6 +259,17 @@ impl<'tcx> CValue<'tcx> {
                 for idx in 0..field_count {
                     let field_dest = dest.place_field(fx, mir::Field::new(idx));
                     let field_src = self.value_field(fx, mir::Field::new(idx));
+                    if field_src.layout().ty.is_phantom_data() {
+                        // Ignore PhantomData so for example `Unique<()>` can coerce to `Unique<Debug>`
+                        //
+                        // ```rust
+                        // struct Unique<T: ?Sized> {
+                        //     pointer: NonZero<*const T>,
+                        //     _marker: PhantomData<T>,
+                        // }
+                        // ```
+                        continue;
+                    }
                     if field_src.layout().ty != field_dest.layout().ty {
                         assert!(!found_unsize_field);
                         found_unsize_field = true;
