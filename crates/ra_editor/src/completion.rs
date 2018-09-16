@@ -82,6 +82,7 @@ fn complete_name_ref(file: &File, name_ref: ast::NameRef, acc: &mut Vec<Completi
             if let Some(fn_def) = ast::FnDef::cast(node) {
                 visited_fn = true;
                 complete_expr_keywords(&file, fn_def, name_ref, acc);
+                complete_expr_snippets(acc);
                 let scopes = FnScopes::new(fn_def);
                 complete_fn(name_ref, &scopes, acc);
             }
@@ -199,6 +200,21 @@ fn keyword(kw: &str, snip: &str) -> CompletionItem {
         lookup: None,
         snippet: Some(snip.to_string()),
     }
+}
+
+fn complete_expr_snippets(acc: &mut Vec<CompletionItem>) {
+    acc.push(CompletionItem {
+            label: "pd".to_string(),
+            lookup: None,
+            snippet: Some("eprintln!(\"$0 = {:?}\", $0);".to_string()),
+        }
+    );
+    acc.push(CompletionItem {
+            label: "ppd".to_string(),
+            lookup: None,
+            snippet: Some("eprintln!(\"$0 = {:#?}\", $0);".to_string()),
+        }
+    );
 }
 
 fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<CompletionItem>) {
@@ -363,7 +379,9 @@ mod tests {
                    CompletionItem { label: "match", lookup: None, snippet: Some("match $0 {}") },
                    CompletionItem { label: "while", lookup: None, snippet: Some("while $0 {}") },
                    CompletionItem { label: "loop", lookup: None, snippet: Some("loop {$0}") },
-                   CompletionItem { label: "return", lookup: None, snippet: Some("return") }]"#);
+                   CompletionItem { label: "return", lookup: None, snippet: Some("return") },
+                   CompletionItem { label: "pd", lookup: None, snippet: Some("eprintln!(\"$0 = {:?}\", $0);") },
+                   CompletionItem { label: "ppd", lookup: None, snippet: Some("eprintln!(\"$0 = {:#?}\", $0);") }]"#);
     }
 
     #[test]
@@ -380,7 +398,9 @@ mod tests {
                    CompletionItem { label: "loop", lookup: None, snippet: Some("loop {$0}") },
                    CompletionItem { label: "else", lookup: None, snippet: Some("else {$0}") },
                    CompletionItem { label: "else if", lookup: None, snippet: Some("else if $0 {}") },
-                   CompletionItem { label: "return", lookup: None, snippet: Some("return") }]"#);
+                   CompletionItem { label: "return", lookup: None, snippet: Some("return") },
+                   CompletionItem { label: "pd", lookup: None, snippet: Some("eprintln!(\"$0 = {:?}\", $0);") },
+                   CompletionItem { label: "ppd", lookup: None, snippet: Some("eprintln!(\"$0 = {:#?}\", $0);") }]"#);
     }
 
     #[test]
@@ -394,7 +414,9 @@ mod tests {
                    CompletionItem { label: "match", lookup: None, snippet: Some("match $0 {}") },
                    CompletionItem { label: "while", lookup: None, snippet: Some("while $0 {}") },
                    CompletionItem { label: "loop", lookup: None, snippet: Some("loop {$0}") },
-                   CompletionItem { label: "return", lookup: None, snippet: Some("return $0;") }]"#);
+                   CompletionItem { label: "return", lookup: None, snippet: Some("return $0;") },
+                   CompletionItem { label: "pd", lookup: None, snippet: Some("eprintln!(\"$0 = {:?}\", $0);") },
+                   CompletionItem { label: "ppd", lookup: None, snippet: Some("eprintln!(\"$0 = {:#?}\", $0);") }]"#);
         check_snippet_completion(r"
             fn quux() {
                 <|>
@@ -404,7 +426,9 @@ mod tests {
                    CompletionItem { label: "match", lookup: None, snippet: Some("match $0 {}") },
                    CompletionItem { label: "while", lookup: None, snippet: Some("while $0 {}") },
                    CompletionItem { label: "loop", lookup: None, snippet: Some("loop {$0}") },
-                   CompletionItem { label: "return", lookup: None, snippet: Some("return;") }]"#);
+                   CompletionItem { label: "return", lookup: None, snippet: Some("return;") },
+                   CompletionItem { label: "pd", lookup: None, snippet: Some("eprintln!(\"$0 = {:?}\", $0);") },
+                   CompletionItem { label: "ppd", lookup: None, snippet: Some("eprintln!(\"$0 = {:#?}\", $0);") }]"#);
     }
 
     #[test]
@@ -419,7 +443,9 @@ mod tests {
                    CompletionItem { label: "match", lookup: None, snippet: Some("match $0 {}") },
                    CompletionItem { label: "while", lookup: None, snippet: Some("while $0 {}") },
                    CompletionItem { label: "loop", lookup: None, snippet: Some("loop {$0}") },
-                   CompletionItem { label: "return", lookup: None, snippet: Some("return $0") }]"#);
+                   CompletionItem { label: "return", lookup: None, snippet: Some("return $0") },
+                   CompletionItem { label: "pd", lookup: None, snippet: Some("eprintln!(\"$0 = {:?}\", $0);") },
+                   CompletionItem { label: "ppd", lookup: None, snippet: Some("eprintln!(\"$0 = {:#?}\", $0);") }]"#);
     }
 
     #[test]
@@ -434,7 +460,9 @@ mod tests {
                    CompletionItem { label: "loop", lookup: None, snippet: Some("loop {$0}") },
                    CompletionItem { label: "continue", lookup: None, snippet: Some("continue") },
                    CompletionItem { label: "break", lookup: None, snippet: Some("break") },
-                   CompletionItem { label: "return", lookup: None, snippet: Some("return $0") }]"#);
+                   CompletionItem { label: "return", lookup: None, snippet: Some("return $0") },
+                   CompletionItem { label: "pd", lookup: None, snippet: Some("eprintln!(\"$0 = {:?}\", $0);") },
+                   CompletionItem { label: "ppd", lookup: None, snippet: Some("eprintln!(\"$0 = {:#?}\", $0);") }]"#);
         check_snippet_completion(r"
             fn quux() -> i32 {
                 loop { || { <|> } }
@@ -443,7 +471,9 @@ mod tests {
                    CompletionItem { label: "match", lookup: None, snippet: Some("match $0 {}") },
                    CompletionItem { label: "while", lookup: None, snippet: Some("while $0 {}") },
                    CompletionItem { label: "loop", lookup: None, snippet: Some("loop {$0}") },
-                   CompletionItem { label: "return", lookup: None, snippet: Some("return $0") }]"#);
+                   CompletionItem { label: "return", lookup: None, snippet: Some("return $0") },
+                   CompletionItem { label: "pd", lookup: None, snippet: Some("eprintln!(\"$0 = {:?}\", $0);") },
+                   CompletionItem { label: "ppd", lookup: None, snippet: Some("eprintln!(\"$0 = {:#?}\", $0);") }]"#);
     }
 
     #[test]
