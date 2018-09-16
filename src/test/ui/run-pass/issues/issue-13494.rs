@@ -14,7 +14,7 @@
 // This test may not always fail, but it can be flaky if the race it used to
 // expose is still present.
 
-#![feature(mpsc_select)]
+#![feature(mpsc_select_maybe_to_be_deprecated)]
 
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::thread;
