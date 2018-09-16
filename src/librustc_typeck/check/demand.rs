@@ -422,12 +422,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let suffix_suggestion = format!(
                 "{}{}{}{}",
                 if needs_paren { "(" } else { "" },
-                {
-                    // 42u8
-                    // ^^
-                    let lit_offset = src.len() - checked_ty.to_string().len();
-                    &src[..lit_offset]
-                },
+                src.trim_right_matches(&checked_ty.to_string()),
                 expected_ty,
                 if needs_paren { ")" } else { "" },
             );
