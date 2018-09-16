@@ -157,7 +157,7 @@ fn trait_is_same_or_supertrait(cx: &DocContext, child: DefId,
         return true
     }
     let predicates = cx.tcx.super_predicates_of(child).predicates;
-    predicates.iter().filter_map(|pred| {
+    predicates.iter().filter_map(|(pred, _)| {
         if let ty::Predicate::Trait(ref pred) = *pred {
             if pred.skip_binder().trait_ref.self_ty().is_self() {
                 Some(pred.def_id())

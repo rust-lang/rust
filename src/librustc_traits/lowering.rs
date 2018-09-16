@@ -260,7 +260,10 @@ fn program_clauses_for_trait<'a, 'tcx>(
 
     let clauses = iter::once(Clause::ForAll(ty::Binder::dummy(implemented_from_env)));
 
-    let where_clauses = &tcx.predicates_defined_on(def_id).predicates;
+    let where_clauses = &tcx.predicates_defined_on(def_id).predicates
+        .into_iter()
+        .map(|(wc, _)| wc.lower())
+        .collect::<Vec<_>>();
 
     // Rule Implied-Bound-From-Trait
     //
@@ -273,8 +276,8 @@ fn program_clauses_for_trait<'a, 'tcx>(
 
     // `FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn>)`, for each where clause WC
     let implied_bound_clauses = where_clauses
-        .into_iter()
-        .map(|wc| wc.lower())
+        .iter()
+        .cloned()
 
         // `FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn>)`
         .map(|wc| wc.map_bound(|goal| ProgramClause {
@@ -296,8 +299,8 @@ fn program_clauses_for_trait<'a, 'tcx>(
     let wf_conditions = iter::once(ty::Binder::dummy(trait_pred.lower()))
         .chain(
             where_clauses
-                .into_iter()
-                .map(|wc| wc.lower())
+                .iter()
+                .cloned()
                 .map(|wc| wc.map_bound(|goal| goal.into_well_formed_goal()))
         );
 
@@ -338,7 +341,10 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
     let trait_pred = ty::TraitPredicate { trait_ref }.lower();
 
     // `WC`
-    let where_clauses = tcx.predicates_of(def_id).predicates.lower();
+    let where_clauses = tcx.predicates_of(def_id).predicates
+        .into_iter()
+        .map(|(wc, _)| wc.lower())
+        .collect::<Vec<_>>();
 
     // `Implemented(A0: Trait<A1..An>) :- WC`
     let clause = ProgramClause {
@@ -370,7 +376,10 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
     let ty = tcx.type_of(def_id);
 
     // `WC`
-    let where_clauses = tcx.predicates_of(def_id).predicates.lower();
+    let where_clauses = tcx.predicates_of(def_id).predicates
+        .into_iter()
+        .map(|(wc, _)| wc.lower())
+        .collect::<Vec<_>>();
 
     // `WellFormed(Ty<...>) :- WC1, ..., WCm`
     let well_formed = ProgramClause {

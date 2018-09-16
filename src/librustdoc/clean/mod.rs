@@ -1571,7 +1571,9 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
             }
         }).collect::<Vec<GenericParamDef>>();
 
-        let mut where_predicates = preds.predicates.to_vec().clean(cx);
+        let mut where_predicates = preds.predicates.iter()
+            .map(|(p, _)| p.clean(cx))
+            .collect::<Vec<_>>();
 
         // Type parameters and have a Sized bound by default unless removed with
         // ?Sized. Scan through the predicates and mark any type parameter with

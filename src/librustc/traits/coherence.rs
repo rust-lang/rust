@@ -96,10 +96,10 @@ fn with_fresh_ty_vars<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, '
 
     let header = ty::ImplHeader {
         impl_def_id,
-        self_ty: tcx.type_of(impl_def_id),
-        trait_ref: tcx.impl_trait_ref(impl_def_id),
-        predicates: tcx.predicates_of(impl_def_id).predicates
-    }.subst(tcx, impl_substs);
+        self_ty: tcx.type_of(impl_def_id).subst(tcx, impl_substs),
+        trait_ref: tcx.impl_trait_ref(impl_def_id).subst(tcx, impl_substs),
+        predicates: tcx.predicates_of(impl_def_id).instantiate(tcx, impl_substs).predicates,
+    };
 
     let Normalized { value: mut header, obligations } =
         traits::normalize(selcx, param_env, ObligationCause::dummy(), &header);

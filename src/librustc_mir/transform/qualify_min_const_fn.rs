@@ -15,7 +15,7 @@ pub fn is_min_const_fn(
     let mut current = def_id;
     loop {
         let predicates = tcx.predicates_of(current);
-        for predicate in &predicates.predicates {
+        for (predicate, _) in &predicates.predicates {
             match predicate {
                 | Predicate::RegionOutlives(_)
                 | Predicate::TypeOutlives(_)

@@ -109,8 +109,9 @@ pub fn encode_predicates<'tcx, E, C>(encoder: &mut E,
 {
     predicates.parent.encode(encoder)?;
     predicates.predicates.len().encode(encoder)?;
-    for predicate in &predicates.predicates {
-        encode_with_shorthand(encoder, predicate, &cache)?
+    for (predicate, span) in &predicates.predicates {
+        encode_with_shorthand(encoder, predicate, &cache)?;
+        span.encode(encoder)?;
     }
     Ok(())
 }
@@ -178,7 +179,7 @@ pub fn decode_predicates<'a, 'tcx, D>(decoder: &mut D)
         parent: Decodable::decode(decoder)?,
         predicates: (0..decoder.read_usize()?).map(|_| {
                 // Handle shorthands first, if we have an usize > 0x80.
-                if decoder.positioned_at_shorthand() {
+                let predicate = if decoder.positioned_at_shorthand() {
                     let pos = decoder.read_usize()?;
                     assert!(pos >= SHORTHAND_OFFSET);
                     let shorthand = pos - SHORTHAND_OFFSET;
@@ -186,7 +187,8 @@ pub fn decode_predicates<'a, 'tcx, D>(decoder: &mut D)
                     decoder.with_position(shorthand, ty::Predicate::decode)
                 } else {
                     ty::Predicate::decode(decoder)
-                }
+                }?;
+                Ok((predicate, Decodable::decode(decoder)?))
             })
             .collect::<Result<Vec<_>, _>>()?,
     })

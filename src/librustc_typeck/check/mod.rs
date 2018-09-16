@@ -1875,14 +1875,17 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         let index = generics.param_def_id_to_index[&def_id];
         ty::GenericPredicates {
             parent: None,
-            predicates: self.param_env.caller_bounds.iter().filter(|predicate| {
-                match **predicate {
-                    ty::Predicate::Trait(ref data) => {
-                        data.skip_binder().self_ty().is_param(index)
+            predicates: self.param_env.caller_bounds.iter().filter_map(|&predicate| {
+                match predicate {
+                    ty::Predicate::Trait(ref data)
+                    if data.skip_binder().self_ty().is_param(index) => {
+                        // HACK(eddyb) should get the original `Span`.
+                        let span = tcx.def_span(def_id);
+                        Some((predicate, span))
                     }
-                    _ => false
+                    _ => None
                 }
-            }).cloned().collect()
+            }).collect()
         }
     }
 

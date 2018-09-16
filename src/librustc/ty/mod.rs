@@ -982,7 +982,7 @@ impl<'a, 'gcx, 'tcx> Generics {
 #[derive(Clone, Default)]
 pub struct GenericPredicates<'tcx> {
     pub parent: Option<DefId>,
-    pub predicates: Vec<Predicate<'tcx>>,
+    pub predicates: Vec<(Predicate<'tcx>, Span)>,
 }
 
 impl<'tcx> serialize::UseSpecializedEncodable for GenericPredicates<'tcx> {}
@@ -998,7 +998,7 @@ impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
     pub fn instantiate_own(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, substs: &Substs<'tcx>)
                            -> InstantiatedPredicates<'tcx> {
         InstantiatedPredicates {
-            predicates: self.predicates.subst(tcx, substs)
+            predicates: self.predicates.iter().map(|(p, _)| p.subst(tcx, substs)).collect(),
         }
     }
 
@@ -1008,7 +1008,9 @@ impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
         if let Some(def_id) = self.parent {
             tcx.predicates_of(def_id).instantiate_into(tcx, instantiated, substs);
         }
-        instantiated.predicates.extend(self.predicates.iter().map(|p| p.subst(tcx, substs)))
+        instantiated.predicates.extend(
+            self.predicates.iter().map(|(p, _)| p.subst(tcx, substs)),
+        );
     }
 
     pub fn instantiate_identity(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>)
@@ -1023,7 +1025,7 @@ impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
         if let Some(def_id) = self.parent {
             tcx.predicates_of(def_id).instantiate_identity_into(tcx, instantiated);
         }
-        instantiated.predicates.extend(&self.predicates)
+        instantiated.predicates.extend(self.predicates.iter().map(|&(p, _)| p))
     }
 
     pub fn instantiate_supertrait(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
@@ -1032,7 +1034,7 @@ impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
     {
         assert_eq!(self.parent, None);
         InstantiatedPredicates {
-            predicates: self.predicates.iter().map(|pred| {
+            predicates: self.predicates.iter().map(|(pred, _)| {
                 pred.subst_supertrait(tcx, poly_trait_ref)
             }).collect()
         }
@@ -2351,7 +2353,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                     substs: tcx.mk_substs_trait(ty, &[])
                 }).to_predicate();
                 let predicates = tcx.predicates_of(self.did).predicates;
-                if predicates.into_iter().any(|p| p == sized_predicate) {
+                if predicates.into_iter().any(|(p, _)| p == sized_predicate) {
                     vec![]
                 } else {
                     vec![ty]
