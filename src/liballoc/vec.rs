@@ -2410,8 +2410,8 @@ impl<T> Iterator for IntoIter<T> {
                     // same pointer.
                     self.ptr = arith_offset(self.ptr as *const i8, 1) as *mut T;
 
-                    // Read from a properly aligned pointer to make up a value of this ZST.
-                    Some(ptr::read(NonNull::dangling().as_ptr()))
+                    // Make up a value of this ZST.
+                    Some(mem::zeroed())
                 } else {
                     let old = self.ptr;
                     self.ptr = self.ptr.offset(1);
@@ -2450,8 +2450,8 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
                     // See above for why 'ptr.offset' isn't used
                     self.end = arith_offset(self.end as *const i8, -1) as *mut T;
 
-                    // Read from a properly aligned pointer to make up a value of this ZST.
-                    Some(ptr::read(NonNull::dangling().as_ptr()))
+                    // Make up a value of this ZST.
+                    Some(mem::zeroed())
                 } else {
                     self.end = self.end.offset(-1);
 
