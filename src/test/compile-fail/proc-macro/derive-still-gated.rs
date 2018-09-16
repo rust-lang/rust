@@ -15,7 +15,7 @@
 #[macro_use]
 extern crate derive_a;
 
-#[derive_A] //~ ERROR: attributes of the form `#[derive_*]` are reserved for the compiler
+#[derive_A] //~ ERROR attribute `derive_A` is currently unknown
 struct A;
 
 fn main() {}
