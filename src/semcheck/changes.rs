@@ -948,6 +948,7 @@ pub mod tests {
     impl Arbitrary for ChangeType_ {
         fn arbitrary<G: Gen>(g: &mut G) -> ChangeType_ {
             use self::ChangeType_::*;
+            use ::rand::Rng;
 
             let b1 = Arbitrary::arbitrary(g);
             let b2 = Arbitrary::arbitrary(g);
