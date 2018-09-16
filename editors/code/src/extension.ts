@@ -77,6 +77,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         let doc = await vscode.workspace.openTextDocument(uri)
         let e = await vscode.window.showTextDocument(doc)
+        e.selection = new vscode.Selection(range.start, range.start)
         e.revealRange(range, vscode.TextEditorRevealType.InCenter)
     })
 
