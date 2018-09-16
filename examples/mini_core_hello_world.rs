@@ -19,7 +19,7 @@ unsafe extern "C" fn my_puts(s: *const u8) {
 
 // TODO remove when jit supports linking rlibs
 #[cfg(jit)]
-fn panic<T>(_: T) {
+extern "C" fn panic<T>(_: T) -> ! {
     unsafe {
         intrinsics::abort();
     }

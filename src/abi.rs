@@ -33,9 +33,14 @@ fn get_pass_mode<'a, 'tcx: 'a>(
             .unwrap()
             .is_unsized()
     );
-    if ty.sty == tcx.mk_unit().sty {
+    if let ty::Never = ty.sty {
         if is_return {
-            //if false {
+            PassMode::NoPass
+        } else {
+            PassMode::ByRef
+        }
+    } else if ty.sty == tcx.mk_unit().sty {
+        if is_return {
             PassMode::NoPass
         } else {
             PassMode::ByRef
