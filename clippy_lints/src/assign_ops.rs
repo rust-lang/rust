@@ -93,11 +93,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                             Applicability::Unspecified,
                                         );
                                         db.span_suggestion_with_applicability(
-                                            expr.span, 
-                                            "or", 
+                                            expr.span,
+                                            "or",
                                             long,
                                             Applicability::Unspecified,
-                                            );
+                                        );
                                     }
                                 },
                             );

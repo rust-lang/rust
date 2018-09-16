@@ -209,7 +209,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
                                                     "if you just forgot a `!`, use",
                                                     sugg,
                                                     Applicability::Unspecified,
-                                                    );
+                                                );
                                             },
                                         );
                                     }
