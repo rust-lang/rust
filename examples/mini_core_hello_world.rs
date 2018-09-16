@@ -151,4 +151,10 @@ fn main() {
         text: "Outer got dropped!\0",
         inner: NoisyDropInner,
     };
+
+    const FUNC_REF: Option<fn()> = Some(main);
+    match FUNC_REF {
+        Some(_) => {},
+        None => assert!(false),
+    }
 }

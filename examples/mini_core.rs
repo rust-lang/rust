@@ -170,6 +170,13 @@ impl<T: ?Sized> PartialEq for *const T {
     }
 }
 
+pub enum Option<T> {
+    Some(T),
+    None,
+}
+
+pub use Option::*;
+
 #[lang = "phantom_data"]
 pub struct PhantomData<T: ?Sized>;
 
