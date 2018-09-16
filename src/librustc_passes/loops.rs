@@ -141,7 +141,8 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                                 .span_label(e.span,
                                             "can only break with a value inside \
                                             `loop` or breakable block")
-                                .span_suggestion_with_applicability(e.span,
+                                .span_suggestion_with_applicability(
+                                                 e.span,
                                                  &format!("instead, use `break` on its own \
                                                            without a value inside this `{}` loop",
                                                           kind.name()),

@@ -432,8 +432,12 @@ impl Session {
                 }
                 DiagnosticBuilderMethod::SpanSuggestion(suggestion) => {
                     let span = span_maybe.expect("span_suggestion_* needs a span");
-                    diag_builder.span_suggestion_with_applicability(span, message, suggestion,
-                                                                    Applicability::Unspecified);
+                    diag_builder.span_suggestion_with_applicability(
+                                                                    span,
+                                                                    message,
+                                                                    suggestion,
+                                                                    Applicability::Unspecified,
+                                                                    );
                 }
             }
         }

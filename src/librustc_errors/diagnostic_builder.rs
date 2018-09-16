@@ -172,9 +172,10 @@ impl<'a> DiagnosticBuilder<'a> {
                                                   -> &mut Self);
 
     #[deprecated(note = "Use `span_suggestion_short_with_applicability`")]
-    forward!(pub fn span_suggestion_short(&mut self,
-                                          sp: Span,
-                                          msg: &str,
+    forward!(pub fn span_suggestion_short(
+                                      &mut self,
+                                      sp: Span,
+                                      msg: &str,
                                           suggestion: String)
                                           -> &mut Self);
 

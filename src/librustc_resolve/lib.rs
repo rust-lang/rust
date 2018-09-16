@@ -3299,7 +3299,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                         err.span_label(base_span,
                                        "expecting a type here because of type ascription");
                         if line_sp != line_base_sp {
-                            err.span_suggestion_short_with_applicability(sp,
+                            err.span_suggestion_short_with_applicability(
+                                                      sp,
                                                       "did you mean to use `;` here instead?",
                                                       ";".to_string(),
                                                       Applicability::Unspecified,
