@@ -18,17 +18,20 @@
 //! Considering the following code, operating on some global static variables:
 //!
 //! ```rust
-//! # static mut A: u32 = 0;
-//! # static mut B: u32 = 0;
-//! # static mut C: u32 = 0;
-//! # unsafe {
-//! A = 3;
-//! B = 4;
-//! A = A + B;
-//! C = B;
-//! println!("{} {} {}", A, B, C);
-//! C = A;
-//! # }
+//! static mut A: u32 = 0;
+//! static mut B: u32 = 0;
+//! static mut C: u32 = 0;
+//!
+//! fn main() {
+//!     unsafe {
+//!         A = 3;
+//!         B = 4;
+//!         A = A + B;
+//!         C = B;
+//!         println!("{} {} {}", A, B, C);
+//!         C = A;
+//!     }
+//! }
 //! ```
 //!
 //! It appears _as if_ some variables stored in memory are changed, an addition
@@ -41,8 +44,6 @@
 //!
 //! - first store to `C` might be moved before the store to `A` or `B`,
 //!   _as if_ we had written `C = 4; A = 3; B = 4;`
-//!
-//! - last store to `C` might be removed, since we never read from it again.
 //!
 //! - assignment of `A + B` to `A` might be removed, the sum can be stored in a
 //!   in a register until it gets printed, and the global variable never gets
