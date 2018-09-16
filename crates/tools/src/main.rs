@@ -86,7 +86,7 @@ fn render_template(template: &str) -> Result<String> {
     let mut tera = tera::Tera::default();
     tera.add_raw_template("grammar", &template)
         .map_err(|e| format_err!("template error: {:?}", e))?;
-    tera.register_global_function("concat", Box::new(concat));
+    tera.register_function("concat", Box::new(concat));
     tera.register_filter("camel", |arg, _| {
         Ok(arg.as_str().unwrap().to_camel_case().into())
     });
@@ -193,7 +193,7 @@ fn install_code_extension() -> Result<()> {
     run("cargo install --path crates/server --force", ".")?;
     if cfg!(windows) {
         run(r"cmd.exe /c npm.cmd install", "./code")?;
-    } else { 
+    } else {
         run(r"npm install", "./code")?;
     }
     run(r"node ./node_modules/vsce/out/vsce package", "./code")?;
