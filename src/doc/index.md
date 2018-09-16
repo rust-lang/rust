@@ -43,6 +43,13 @@ Rust's standard library has [extensive API documentation](std/index.html),
 with explanations of how to use various things, as well as example code for
 accomplishing various tasks.
 
+<div>
+  <form action="std/index.html" method="get">
+    <input type="search" name="search"/>
+    <button>Search</button>
+  </form>
+</div>
+
 ## The Rustc Book
 
 [The Rustc Book](rustc/index.html) describes the Rust compiler, `rustc`.
