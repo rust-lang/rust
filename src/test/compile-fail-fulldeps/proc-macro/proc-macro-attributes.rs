@@ -16,12 +16,12 @@
 #[macro_use]
 extern crate derive_b;
 
-#[derive(B)]
 #[B] //~ ERROR `B` is a derive mode
 #[C]
 #[B(D)]
 #[B(E = "foo")]
 #[B(arbitrary tokens)]
+#[derive(B)]
 struct B;
 
 fn main() {}

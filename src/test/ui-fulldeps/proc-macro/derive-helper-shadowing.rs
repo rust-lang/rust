@@ -3,8 +3,8 @@
 extern crate derive_helper_shadowing;
 use derive_helper_shadowing::*;
 
-#[derive(MyTrait)]
 #[my_attr] //~ ERROR `my_attr` is ambiguous
+#[derive(MyTrait)]
 struct S;
 
 fn main() {}

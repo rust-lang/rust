@@ -38,7 +38,7 @@
 
 use std::fmt::{self, Display, Debug};
 use std::iter::FromIterator;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::{mem, ptr, slice, vec};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
@@ -100,6 +100,12 @@ impl<T: ?Sized> Deref for P<T> {
 
     fn deref(&self) -> &T {
         &self.ptr
+    }
+}
+
+impl<T: ?Sized> DerefMut for P<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        &mut self.ptr
     }
 }
 

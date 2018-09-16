@@ -49,7 +49,7 @@ pub fn expand_test_or_bench(
     // If we're not in test configuration, remove the annotated item
     if !cx.ecfg.should_test { return vec![]; }
 
-    let item =
+    let mut item =
         if let Annotatable::Item(i) = item { i }
         else {
             cx.parse_sess.span_diagnostic.span_fatal(item.span(),
@@ -191,6 +191,12 @@ pub fn expand_test_or_bench(
     );
 
     debug!("Synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
+
+    // Temporarily add another marker to the original item for error reporting
+    let marker2 = cx.attribute(
+        attr_sp, cx.meta_word(attr_sp, Symbol::intern("rustc_test_marker2"))
+    );
+    item.attrs.push(marker2);
 
     vec![
         // Access to libtest under a gensymed name
