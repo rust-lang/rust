@@ -868,19 +868,19 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                             db.note(fn_closure_msg);
                                         } else {
                                             db.span_suggestion_with_applicability(
-                                                                                  sp,
-                                                                                  msg,
-                                                                                  suggestion,
-                                                                                  Applicability::Unspecified,
-                                                                                  );
+                                                                      sp,
+                                                                      msg,
+                                                                      suggestion,
+                                                                      Applicability::Unspecified,
+                                                                      );
                                         }
                                     } else {
                                         db.span_suggestion_with_applicability(
-                                                                              sp,
-                                                                              msg,
-                                                                              suggestion,
-                                                                              Applicability::Unspecified,
-                                                                              );
+                                                                      sp,
+                                                                      msg,
+                                                                      suggestion,
+                                                                      Applicability::Unspecified,
+                                                                      );
                                     }
                                 }
                                 _ => {
