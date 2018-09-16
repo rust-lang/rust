@@ -4,6 +4,23 @@
 nav {
     display: none;
 }
+#search-input {
+    width: calc(100% - 58px);
+}
+#search-but {
+    cursor: pointer;
+}
+#search-but, #search-input {
+    padding: 4px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    outline: none;
+    font-size: 0.7em;
+    background-color: #fff;
+}
+#search-but:hover, #search-input:focus {
+    border-color: #55a9ff;
+}
 </style>
 
 Welcome to an overview of the documentation provided by the Rust project.
@@ -45,8 +62,9 @@ accomplishing various tasks.
 
 <div>
   <form action="std/index.html" method="get">
-    <input type="search" name="search"/>
-    <button>Search</button>
+    <input id="search-input" type="search" name="search"
+           placeholder="Search through the standard library"/>
+    <button id="search-but">Search</button>
   </form>
 </div>
 
