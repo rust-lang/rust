@@ -12,7 +12,8 @@ use crates_io::{Crate, Registry};
 
 use cargo::exit_with_error;
 use cargo::core::{Package, PackageId, Source, SourceId, Workspace};
-use cargo::ops::{compile, CompileMode, CompileOptions};
+use cargo::core::compiler::CompileMode;
+use cargo::ops::{compile, CompileOptions};
 use cargo::util::{CargoError, CargoResult, CliError};
 use cargo::util::config::Config;
 use cargo::util::important_paths::find_root_manifest_for_wd;
@@ -141,7 +142,7 @@ impl<'a> WorkInfo<'a> {
     fn rlib_and_dep_output(&self, config: &'a Config, name: &str, current: bool)
         -> CargoResult<(PathBuf, PathBuf)>
     {
-        let opts = CompileOptions::default(config, CompileMode::Build);
+        let opts = CompileOptions::new(config, CompileMode::Build).unwrap();
 
         if current {
             env::set_var("RUSTFLAGS", "-C metadata=new");

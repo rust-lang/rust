@@ -7,6 +7,7 @@ extern crate log;
 #[cfg(test)]
 extern crate quickcheck;
 
+extern crate rand;
 extern crate rustc;
 extern crate semver;
 extern crate syntax;
