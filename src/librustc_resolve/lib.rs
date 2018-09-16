@@ -1429,8 +1429,6 @@ pub struct Resolver<'a, 'b: 'a> {
     ambiguity_errors: Vec<AmbiguityError<'a>>,
     /// `use` injections are delayed for better placement and deduplication
     use_injections: Vec<UseError<'a>>,
-    /// `use` injections for proc macros wrongly imported with #[macro_use]
-    proc_mac_errors: Vec<macros::ProcMacError>,
     /// crate-local macro expanded `macro_export` referred to by a module-relative path
     macro_expanded_macro_export_errors: BTreeSet<(Span, Span)>,
 
@@ -1457,9 +1455,6 @@ pub struct Resolver<'a, 'b: 'a> {
 
     /// Avoid duplicated errors for "name already defined".
     name_already_seen: FxHashMap<Name, Span>,
-
-    /// A set of procedural macros imported by `#[macro_use]` that have already been warned about
-    warned_proc_macros: FxHashSet<Name>,
 
     potentially_unused_imports: Vec<&'a ImportDirective<'a>>,
 
@@ -1744,7 +1739,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             privacy_errors: Vec::new(),
             ambiguity_errors: Vec::new(),
             use_injections: Vec::new(),
-            proc_mac_errors: Vec::new(),
             macro_expanded_macro_export_errors: BTreeSet::new(),
 
             arenas,
@@ -1766,7 +1760,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             local_macro_def_scopes: FxHashMap(),
             name_already_seen: FxHashMap(),
             whitelisted_legacy_custom_derives: Vec::new(),
-            warned_proc_macros: FxHashSet(),
             potentially_unused_imports: Vec::new(),
             struct_constructors: DefIdMap(),
             found_unresolved_macro: false,
@@ -4602,7 +4595,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
     fn report_errors(&mut self, krate: &Crate) {
         self.report_with_use_injections(krate);
-        self.report_proc_macro_import(krate);
         let mut reported_spans = FxHashSet();
 
         for &(span_use, span_def) in &self.macro_expanded_macro_export_errors {
