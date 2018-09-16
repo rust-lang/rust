@@ -99,7 +99,8 @@ To preserve the section you can use a linker script like the one shown below.
 /* file: keep-stack-sizes.x */
 SECTIONS
 {
-  .stack_sizes :
+  /* `INFO` makes the section not allocatable so it won't be loaded into memory */
+  .stack_sizes (INFO) :
   {
     KEEP(*(.stack_sizes));
   }
@@ -133,19 +134,28 @@ $ RUSTFLAGS="-Z emit-stack-sizes" cargo rustc --release -- \
     -C link-arg=-N
 
 $ size -A target/release/hello | grep stack_sizes
-.stack_sizes                               90   205368
+.stack_sizes                               90   176272
+
+$ # non-allocatable section (flags don't contain the "A" (alloc) flag)
+$ readelf -S target/release/hello
+Section Headers:
+  [Nr]   Name              Type             Address           Offset
+       Size              EntSize            Flags  Link  Info  Align
+(..)
+  [1031] .stack_sizes      PROGBITS         000000000002b090  0002b0f0
+       000000000000005a  0000000000000000   L       5     0     1
 
 $ objdump -s -j .stack_sizes target/release/hello
 
 target/release/hello:     file format elf64-x86-64
 
 Contents of section .stack_sizes:
- 32238 c0040000 00000000 08f00400 00000000  ................
- 32248 00080005 00000000 00000810 05000000  ................
- 32258 00000000 20050000 00000000 10400500  .... ........@..
- 32268 00000000 00087005 00000000 00000080  ......p.........
- 32278 05000000 00000000 90050000 00000000  ................
- 32288 00a00500 00000000 0000               ..........
+ 2b090 c0040000 00000000 08f00400 00000000  ................
+ 2b0a0 00080005 00000000 00000810 05000000  ................
+ 2b0b0 00000000 20050000 00000000 10400500  .... ........@..
+ 2b0c0 00000000 00087005 00000000 00000080  ......p.........
+ 2b0d0 05000000 00000000 90050000 00000000  ................
+ 2b0e0 00a00500 00000000 0000               ..........
 ```
 
 > Author note: I'm not entirely sure why, in *this* case, `-N` is required in
