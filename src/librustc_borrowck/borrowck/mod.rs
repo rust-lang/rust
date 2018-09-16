@@ -45,7 +45,7 @@ use rustc_data_structures::sync::Lrc;
 use std::hash::{Hash, Hasher};
 use syntax::ast;
 use syntax_pos::{MultiSpan, Span};
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId, Applicability};
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 
 use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor};
