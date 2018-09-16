@@ -250,10 +250,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         }
 
         if let hir::StmtKind::Semi(ref expr, _) = stmt.node {
-            if let hir::ExprKind::MethodCall(_, _, _) = expr.node {
-                if let Some(arglists) = method_chain_args(expr, &["map"]) {
-                    lint_map_unit_fn(cx, stmt, expr, arglists[0]);
-                }
+            if let Some(arglists) = method_chain_args(expr, &["map"]) {
+                lint_map_unit_fn(cx, stmt, expr, arglists[0]);
             }
         }
     }
