@@ -419,6 +419,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                           if needs_paren { "(" } else { "" },
                                           src,
                                           if needs_paren { ")" } else { "" });
+            let suffix_suggestion = format!(
+                "{}{}{}{}",
+                if needs_paren { "(" } else { "" },
+                src,
+                expected_ty,
+                if needs_paren { ")" } else { "" },
+            );
+
+            let is_suffixed = |expr: &hir::Expr| {
+                if let hir::ExprKind::Lit(lit) = &expr.node {
+                    lit.node.is_suffixed()
+                } else {
+                    false
+                }
+            };
 
             match (&expected_ty.sty, &checked_ty.sty) {
                 (&ty::Int(ref exp), &ty::Int(ref found)) => {
@@ -444,12 +459,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             }
                         }
                         _ => {
-                            err.span_suggestion_with_applicability(
-                                expr.span,
-                                &format!("{}, which {}", msg, will_sign_extend),
-                                into_suggestion,
-                                Applicability::MachineApplicable
-                            );
+                            if is_suffixed(expr) {
+                                err.span_suggestion_with_applicability(
+                                    expr.span,
+                                    &format!(
+                                        "change the type of the numeric literal from `{}` to `{}`",
+                                        checked_ty,
+                                        expected_ty,
+                                    ),
+                                    suffix_suggestion,
+                                    Applicability::MaybeIncorrect,
+                                );
+                            } else {
+                                err.span_suggestion_with_applicability(
+                                    expr.span,
+                                    &format!("{}, which {}", msg, will_sign_extend),
+                                    into_suggestion,
+                                    Applicability::MachineApplicable
+                                );
+                            }
                         }
                     }
                     true
@@ -477,12 +505,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             }
                         }
                         _ => {
-                            err.span_suggestion_with_applicability(
-                                expr.span,
-                                &format!("{}, which {}", msg, will_zero_extend),
-                                into_suggestion,
-                                Applicability::MachineApplicable
-                            );
+                            if is_suffixed(expr) {
+                                err.span_suggestion_with_applicability(
+                                    expr.span,
+                                    &format!(
+                                        "change the type of the numeric literal from `{}` to `{}`",
+                                        checked_ty,
+                                        expected_ty,
+                                    ),
+                                    suffix_suggestion,
+                                    Applicability::MaybeIncorrect,
+                                );
+                            } else {
+                                err.span_suggestion_with_applicability(
+                                    expr.span,
+                                    &format!("{}, which {}", msg, will_zero_extend),
+                                    into_suggestion,
+                                    Applicability::MachineApplicable
+                                );
+                            }
                         }
                     }
                     true
@@ -583,12 +624,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 (&ty::Float(ref exp), &ty::Float(ref found)) => {
                     if found.bit_width() < exp.bit_width() {
-                        err.span_suggestion_with_applicability(
-                            expr.span,
-                            &format!("{} in a lossless way", msg),
-                            into_suggestion,
-                            Applicability::MachineApplicable
-                        );
+                        if is_suffixed(expr) {
+                            err.span_suggestion_with_applicability(
+                                expr.span,
+                                &format!(
+                                    "change the type of the numeric literal from `{}` to `{}`",
+                                    checked_ty,
+                                    expected_ty,
+                                ),
+                                suffix_suggestion,
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            err.span_suggestion_with_applicability(
+                                expr.span,
+                                &format!("{} in a lossless way", msg),
+                                into_suggestion,
+                                Applicability::MachineApplicable
+                            );
+                        }
                     } else if can_cast {
                         err.span_suggestion_with_applicability(
                             expr.span,
