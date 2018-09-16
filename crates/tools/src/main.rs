@@ -19,13 +19,13 @@ use tools::{collect_tests, Test};
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
 
-const GRAMMAR_DIR: &str = "./crates/libsyntax2/src/grammar";
-const INLINE_TESTS_DIR: &str = "./crates/libsyntax2/tests/data/parser/inline";
-const GRAMMAR: &str = "./crates/libsyntax2/src/grammar.ron";
-const SYNTAX_KINDS: &str = "./crates/libsyntax2/src/syntax_kinds/generated.rs";
-const SYNTAX_KINDS_TEMPLATE: &str = "./crates/libsyntax2/src/syntax_kinds/generated.rs.tera";
-const AST: &str = "./crates/libsyntax2/src/ast/generated.rs";
-const AST_TEMPLATE: &str = "./crates/libsyntax2/src/ast/generated.rs.tera";
+const GRAMMAR_DIR: &str = "./crates/ra_syntax/src/grammar";
+const INLINE_TESTS_DIR: &str = "./crates/ra_syntax/tests/data/parser/inline";
+const GRAMMAR: &str = "./crates/ra_syntax/src/grammar.ron";
+const SYNTAX_KINDS: &str = "./crates/ra_syntax/src/syntax_kinds/generated.rs";
+const SYNTAX_KINDS_TEMPLATE: &str = "./crates/ra_syntax/src/syntax_kinds/generated.rs.tera";
+const AST: &str = "./crates/ra_syntax/src/ast/generated.rs";
+const AST_TEMPLATE: &str = "./crates/ra_syntax/src/ast/generated.rs.tera";
 
 fn main() -> Result<()> {
     let matches = App::new("tasks")
@@ -190,17 +190,17 @@ fn existing_tests(dir: &Path) -> Result<HashMap<String, (PathBuf, Test)>> {
 }
 
 fn install_code_extension() -> Result<()> {
-    run("cargo install --path crates/server --force", ".")?;
+    run("cargo install --path crates/ra_lsp_server --force", ".")?;
     if cfg!(windows) {
-        run(r"cmd.exe /c npm.cmd install", "./code")?;
+        run(r"cmd.exe /c npm.cmd install", "./editors/code")?;
     } else {
-        run(r"npm install", "./code")?;
+        run(r"npm install", "./editors/code")?;
     }
-    run(r"node ./node_modules/vsce/out/vsce package", "./code")?;
+    run(r"node ./node_modules/vsce/out/vsce package", "./editors/code")?;
     if cfg!(windows) {
-        run(r"cmd.exe /c code.cmd --install-extension ./rcf-lsp-0.0.1.vsix", "./code")?;
+        run(r"cmd.exe /c code.cmd --install-extension ./ra-lsp-0.0.1.vsix", "./editors/code")?;
     } else {
-        run(r"code --install-extension ./rcf-lsp-0.0.1.vsix", "./code")?;
+        run(r"code --install-extension ./ra-lsp-0.0.1.vsix", "./editors/code")?;
     }
     Ok(())
 }

@@ -1,0 +1,15 @@
+[package]
+name = "ra_editor"
+version = "0.1.0"
+authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+publish = false
+
+[dependencies]
+itertools = "0.7.8"
+superslice = "0.1.0"
+join_to_string = "0.1.1"
+
+ra_syntax = { path = "../ra_syntax" }
+
+[dev-dependencies]
+test_utils = { path = "../test_utils" }

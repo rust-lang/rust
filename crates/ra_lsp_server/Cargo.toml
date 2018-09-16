@@ -1,0 +1,31 @@
+[package]
+name = "ra_lsp_server"
+version = "0.1.0"
+authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+
+[dependencies]
+rayon = "1.0.2"
+relative-path = "0.3.7"
+failure = "0.1.2"
+serde_json = "1.0.24"
+serde = "1.0.71"
+serde_derive = "1.0.71"
+drop_bomb = "0.1.0"
+crossbeam-channel = "0.2.4"
+flexi_logger = "0.9.1"
+log = "0.4.3"
+url_serde = "0.2.0"
+languageserver-types = "0.50.0"
+walkdir = "2.2.0"
+im = "12.0.0"
+cargo_metadata = "0.6.0"
+text_unit = { version = "0.1.2", features = ["serde"] }
+smol_str = { version = "0.1.5", features = ["serde"] }
+
+ra_syntax = { path = "../ra_syntax" }
+ra_editor = { path = "../ra_editor" }
+ra_analysis = { path = "../ra_analysis" }
+gen_lsp_server = { path = "../gen_lsp_server" }
+
+[dev-dependencies]
+tempdir = "0.3.7"

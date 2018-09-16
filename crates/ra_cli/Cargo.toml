@@ -1,0 +1,12 @@
+[package]
+name = "ra_cli"
+version = "0.1.0"
+authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+publish = false
+
+[dependencies]
+clap = "2.32.0"
+failure = "0.1.1"
+ra_syntax = { path = "../ra_syntax" }
+ra_editor = { path = "../ra_editor" }
+tools = { path = "../tools" }

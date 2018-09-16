@@ -1,0 +1,149 @@
+{
+    "name": "ra-lsp",
+    "displayName": "ra-lsp",
+    "description": "",
+    "version": "0.0.1",
+    "publisher": "matklad",
+    "repository": {
+        "url": "https://github.com/matklad/rust-analyzer/"
+    },
+    "categories": [
+        "Other"
+    ],
+    "engines": {
+        "vscode": "^1.26.0"
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "postinstall": "node ./node_modules/vscode/bin/install"
+    },
+    "dependencies": {
+        "vscode-languageclient": "^4.4.0"
+    },
+    "devDependencies": {
+        "typescript": "^2.6.1",
+        "vscode": "^1.1.21",
+        "vsce": "^1.42.0",
+        "@types/node": "^8.10.25",
+        "@types/mocha": "^2.2.42"
+    },
+    "activationEvents": [
+        "onLanguage:rust"
+    ],
+    "main": "./out/extension",
+    "contributes": {
+        "taskDefinitions": [
+            {
+                "type": "cargo",
+                "required": [
+                    "command"
+                ],
+                "properties": {
+                    "label": {
+                        "type": "string"
+                    },
+                    "command": {
+                        "type": "string"
+                    },
+                    "args": {
+                        "type": "array"
+                    },
+                    "env": {
+                        "type": "object"
+                    }
+                }
+            }
+        ],
+        "commands": [
+            {
+                "command": "ra-lsp.createFile",
+                "title": "Show Rust syntax tree"
+            },
+            {
+                "command": "ra-lsp.syntaxTree",
+                "title": "Show Rust syntax tree"
+            },
+            {
+                "command": "ra-lsp.extendSelection",
+                "title": "Rust Extend Selection"
+            },
+            {
+                "command": "ra-lsp.matchingBrace",
+                "title": "Rust Matching Brace"
+            },
+            {
+                "command": "ra-lsp.parentModule",
+                "title": "Rust Parent Module"
+            },
+            {
+                "command": "ra-lsp.joinLines",
+                "title": "Rust Join Lines"
+            },
+            {
+                "command": "ra-lsp.run",
+                "title": "Rust Run"
+            }
+        ],
+        "keybindings": [
+            {
+                "command": "ra-lsp.parentModule",
+                "key": "ctrl+u",
+                "when": "editorTextFocus && editorLangId == rust"
+            },
+            {
+                "command": "ra-lsp.matchingBrace",
+                "key": "ctrl+shift+m",
+                "when": "editorTextFocus && editorLangId == rust"
+            },
+            {
+                "command": "ra-lsp.extendSelection",
+                "key": "ctrl+w",
+                "when": "editorTextFocus && editorLangId == rust"
+            },
+            {
+                "command": "ra-lsp.joinLines",
+                "key": "ctrl+shift+j",
+                "when": "editorTextFocus && editorLangId == rust"
+            },
+            {
+                "command": "ra-lsp.run",
+                "key": "ctrl+r",
+                "when": "editorTextFocus && editorLangId == rust"
+            }
+        ],
+        "problemMatchers": [
+            {
+                "name": "rustc",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceRoot}"
+                ],
+                "pattern": [
+                    {
+                        "regexp": "^(warning|warn|error)(\\[(.*)\\])?: (.*)$",
+                        "severity": 1,
+                        "message": 4,
+                        "code": 3
+                    },
+                    {
+                        "regexp": "^([\\s->=]*(.*):(\\d*):(\\d*)|.*)$",
+                        "file": 2,
+                        "line": 3,
+                        "column": 4
+                    },
+                    {
+                        "regexp": "^.*$"
+                    },
+                    {
+                        "regexp": "^([\\s->=]*(.*):(\\d*):(\\d*)|.*)$",
+                        "file": 2,
+                        "line": 3,
+                        "column": 4
+                    }
+                ]
+            }
+        ]
+    }
+}
