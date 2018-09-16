@@ -1582,7 +1582,6 @@ impl<'test> TestCx<'test> {
                 None
             } else if self.config.target.contains("cloudabi")
                 || self.config.target.contains("emscripten")
-                || (self.config.target.contains("musl") && !aux_props.force_host)
                 || self.config.target.contains("wasm32")
             {
                 // We primarily compile all auxiliary libraries as dynamic libraries
@@ -1590,10 +1589,8 @@ impl<'test> TestCx<'test> {
                 // for the test suite (otherwise including libstd statically in all
                 // executables takes up quite a bit of space).
                 //
-                // For targets like MUSL or Emscripten, however, there is no support for
-                // dynamic libraries so we just go back to building a normal library. Note,
-                // however, that for MUSL if the library is built with `force_host` then
-                // it's ok to be a dylib as the host should always support dylibs.
+                // For targets like Emscripten, however, there is no support for
+                // dynamic libraries so we just go back to building a normal library.
                 Some("lib")
             } else {
                 Some("dylib")
