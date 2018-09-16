@@ -1,13 +1,18 @@
-# libsyntax2.0
+# Rust Analyzer
 
-[![Build Status](https://travis-ci.org/matklad/libsyntax2.svg?branch=master)](https://travis-ci.org/matklad/libsyntax2)
-[![Build status](https://ci.appveyor.com/api/projects/status/j56x1hbje8rdg6xk/branch/master?svg=true)](https://ci.appveyor.com/project/matklad/libsyntax2/branch/master)
+[![Build Status](https://travis-ci.org/matklad/rust-analyzer.svg?branch=master)](https://travis-ci.org/matklad/rust-analyzer)
+[![Build status](https://ci.appveyor.com/api/projects/status/j56x1hbje8rdg6xk/branch/master?svg=true)](https://ci.appveyor.com/project/matklad/rust-analyzer/branch/master)
 
 
-libsyntax2.0 is an **experimental** parser of the Rust language,
-intended for the use in IDEs.
-[RFC](https://github.com/rust-lang/rfcs/pull/2256).
+Rust Analyzer is an **experimental** modular compiler frontend for the
+Rust language, which aims to lay a foundation for excellent IDE
+support.
 
+It doesn't implement much of compiler functionality yet, but the
+white-space preserving Rust parser works, and there are significant
+chunks of overall architecture (indexing, on-demand & lazy
+computation, snapshotable world view) in place. Some basic IDE
+functionality is provided via a language server.
 
 ## Quick Start
 
@@ -15,7 +20,6 @@ intended for the use in IDEs.
 $ cargo test
 $ cargo parse < crates/libsyntax2/src/lib.rs
 ```
-
 
 ## Trying It Out
 
@@ -61,6 +65,42 @@ doesn't hurt too much :-)
 
 * **Go to definition** ("correct" for `mod foo;` decls, index-based for functions).
 
+## Current Status and Plans
+
+Rust analyzer aims to fill the same niche as the official [Rust
+Language Server](https://github.com/rust-lang-nursery/rls), but
+better. It was created because @matklad is not satisfied with RLS
+original starting point and current direction. More details can be
+found [in this
+thread](https://internals.rust-lang.org/t/2019-strategy-for-rustc-and-the-rls/8361).
+The core issue is that RLS works in the "wait until user stops typing,
+run the build process, save the results of the analysis" mode, which
+arguably is the wrong foundation for IDE (see the thread for details).
+
+Rust Analyzer is a hobby project at the moment, there's exactly zero
+guarantees that it becomes production-ready one day.
+
+The near/mid term plan is to work independently of the main rustc
+compiler and implement at least simplistic versions of name
+resolution, macro expansion and type inference. The purpose is two
+fold:
+
+* to quickly bootstrap usable and useful language server: solution
+  that covers 80% of Rust code will be useful for IDEs, and will be
+  vastly simpler than 100% solution.
+  
+* to understand how the consumer-side of compiler API should look like
+  (especially it's on-demand aspects). If you have
+  `get_expression_type` function, you can write a ton of purely-IDE
+  features on top of it, even if the function is only partially
+  correct. Plugin in the precise function afterwards should just make
+  IDE features more reliable.
+  
+The long term plan is to merge with the mainline rustc compiler,
+probably around the HIR boundary? That is, use rust analyzer for
+parsing, macro expansion and related bits of name resolution, but
+leave the rest (including type inference and trait selection) to the
+existing rustc.
 
 ## Code Walk-Through
 
