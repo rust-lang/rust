@@ -133,6 +133,7 @@ pub mod map_clone;
 pub mod map_unit_fn;
 pub mod matches;
 pub mod mem_forget;
+pub mod mem_replace;
 pub mod methods;
 pub mod minmax;
 pub mod misc;
@@ -380,6 +381,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box neg_multiply::NegMultiply);
     reg.register_early_lint_pass(box unsafe_removed_from_name::UnsafeNameRemoval);
     reg.register_late_lint_pass(box mem_forget::MemForget);
+    reg.register_late_lint_pass(box mem_replace::MemReplace);
     reg.register_late_lint_pass(box arithmetic::Arithmetic::default());
     reg.register_late_lint_pass(box assign_ops::AssignOps);
     reg.register_late_lint_pass(box let_if_seq::LetIfSeq);
@@ -748,6 +750,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         matches::MATCH_REF_PATS,
         matches::MATCH_WILD_ERR_ARM,
         matches::SINGLE_MATCH,
+        mem_replace::MEM_REPLACE_OPTION_WITH_NONE,
         methods::CHARS_LAST_CMP,
         methods::GET_UNWRAP,
         methods::ITER_CLONED_COLLECT,
