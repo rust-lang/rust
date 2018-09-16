@@ -4,27 +4,10 @@ Date: Thu, 23 Aug 2018 11:15:01 +0200
 Subject: [PATCH] Disable some more unsupported stuff in libcore
 
 ---
- src/libcore/cell.rs    | 6 +++---
  src/libcore/cmp.rs     | 5 ++++-
  src/libcore/num/mod.rs | 8 ++++++--
- src/libcore/str/mod.rs | 6 +++---
- 4 files changed, 16 insertions(+), 9 deletions(-)
+ 2 files changed, 9 insertions(+), 3 deletions(-)
 
-diff --git a/src/libcore/cell.rs b/src/libcore/cell.rs
-index 009aba5..2aa76e3 100644
---- a/src/libcore/cell.rs
-+++ b/src/libcore/cell.rs
-@@ -1532,7 +1532,7 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<UnsafeCell<U>> for UnsafeCell<T> {}
- 
- #[allow(unused)]
- fn assert_coerce_unsized(a: UnsafeCell<&i32>, b: Cell<&i32>, c: RefCell<&i32>) {
--    let _: UnsafeCell<&dyn Send> = a;
--    let _: Cell<&dyn Send> = b;
--    let _: RefCell<&dyn Send> = c;
-+    //let _: UnsafeCell<&dyn Send> = a;
-+    //let _: Cell<&dyn Send> = b;
-+    //let _: RefCell<&dyn Send> = c;
- }
 diff --git a/src/libcore/cmp.rs b/src/libcore/cmp.rs
 index a6e6496..f9374ea 100644
 --- a/src/libcore/cmp.rs
@@ -32,7 +15,7 @@ index a6e6496..f9374ea 100644
 @@ -496,6 +496,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
  #[stable(feature = "rust1", since = "1.0.0")]
  impl Eq for Ordering {}
- 
+
 +/*
  #[stable(feature = "rust1", since = "1.0.0")]
  impl Ord for Ordering {
@@ -42,7 +25,7 @@ index a6e6496..f9374ea 100644
      }
  }
 +*/
- 
+
  #[stable(feature = "rust1", since = "1.0.0")]
  impl PartialOrd for Ordering {
      #[inline]
@@ -52,7 +35,7 @@ index a6e6496..f9374ea 100644
 +        None
      }
  }
- 
+
 diff --git a/src/libcore/num/mod.rs b/src/libcore/num/mod.rs
 index 5d00949..f077f1d 100644
 --- a/src/libcore/num/mod.rs
@@ -67,7 +50,7 @@ index 5d00949..f077f1d 100644
 +                0
              }
          }
- 
+
 @@ -2295,7 +2297,9 @@ assert_eq!(m, ", $reversed, ");
              #[unstable(feature = "reverse_bits", issue = "48763")]
              #[rustc_const_unstable(feature = "const_int_conversion")]
@@ -80,24 +63,5 @@ index 5d00949..f077f1d 100644
 +                0
              }
          }
- 
-diff --git a/src/libcore/str/mod.rs b/src/libcore/str/mod.rs
-index 810d19d..4c68370 100644
---- a/src/libcore/str/mod.rs
-+++ b/src/libcore/str/mod.rs
-@@ -26,9 +26,9 @@ use mem;
- 
- pub mod pattern;
- 
--#[unstable(feature = "str_internals", issue = "0")]
--#[allow(missing_docs)]
--pub mod lossy;
-+//#[unstable(feature = "str_internals", issue = "0")]
-+//#[allow(missing_docs)]
-+//pub mod lossy;
- 
- /// A trait to abstract the idea of creating a new instance of a type from a
- /// string.
--- 
+--
 2.11.0
-

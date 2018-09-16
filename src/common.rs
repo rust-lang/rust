@@ -447,14 +447,15 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
         field: mir::Field,
     ) -> CPlace<'tcx> {
-        let layout = self.layout();
-        if layout.is_unsized() {
-            unimpl!("unsized place_field");
+        match self {
+            CPlace::Var(var, layout) => {
+                bug!("Tried to project {:?}, which is put in SSA var {:?}", layout.ty, var);
+            }
+            CPlace::Addr(base, extra, layout) => {
+                let (field_ptr, field_layout) = codegen_field(fx, base, layout, field);
+                CPlace::Addr(field_ptr, extra, field_layout)
+            }
         }
-
-        let base = self.expect_addr();
-        let (field_ptr, field_layout) = codegen_field(fx, base, layout, field);
-        CPlace::Addr(field_ptr, None, field_layout)
     }
 
     pub fn place_index(

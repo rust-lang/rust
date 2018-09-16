@@ -184,3 +184,11 @@ fn some_promoted_tuple() -> &'static (&'static str, &'static str) {
 fn index_slice(s: &[u8]) -> u8 {
     s[2]
 }
+
+pub struct StrWrapper {
+    s: str,
+}
+
+fn str_wrapper_get(w: &StrWrapper) -> &str {
+    &w.s
+}
