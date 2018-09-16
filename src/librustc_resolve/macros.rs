@@ -11,7 +11,7 @@
 use {AmbiguityError, CrateLint, Resolver, ResolutionError, is_known_tool, resolve_error};
 use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult, ToNameBinding};
 use ModuleOrUniformRoot;
-use Namespace::{self, TypeNS, MacroNS};
+use Namespace::{self, *};
 use build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
 use resolve_imports::ImportResolver;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, DefIndex,
@@ -547,7 +547,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         // 1. Not controlled (user-defined) names should have higher priority than controlled names
         //    built into the language or standard library. This way we can add new names into the
         //    language or standard library without breaking user code.
-        // 2. "Closed set" below means new names can appear after the current resolution attempt.
+        // 2. "Closed set" below means new names cannot appear after the current resolution attempt.
         // Places to search (in order of decreasing priority):
         // (Type NS)
         // 1. FIXME: Ribs (type parameters), there's no necessary infrastructure yet
@@ -558,6 +558,12 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         // 4. Tool modules (closed, controlled right now, but not in the future).
         // 5. Standard library prelude (de-facto closed, controlled).
         // 6. Language prelude (closed, controlled).
+        // (Value NS)
+        // 1. FIXME: Ribs (local variables), there's no necessary infrastructure yet
+        //    (open set, not controlled).
+        // 2. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
+        //    (open, not controlled).
+        // 3. Standard library prelude (de-facto closed, controlled).
         // (Macro NS)
         // 0. Derive helpers (open, not controlled). All ambiguities with other names
         //    are currently reported as errors. They should be higher in priority than preludes
@@ -584,7 +590,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         // N (unordered). Legacy plugin helpers (open, not controlled). Similar to derive helpers,
         //    but introduced by legacy plugins using `register_attribute`.
 
-        assert!(ns == TypeNS  || ns == MacroNS);
         assert!(force || !record_used); // `record_used` implies `force`
         ident = ident.modern();
 
@@ -746,10 +751,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                             Some(parent_module) => WhereToResolve::Module(parent_module),
                             None => {
                                 use_prelude = !module.no_implicit_prelude;
-                                if ns == MacroNS {
-                                    WhereToResolve::MacroUsePrelude
-                                } else {
-                                    WhereToResolve::ExternPrelude
+                                match ns {
+                                    TypeNS => WhereToResolve::ExternPrelude,
+                                    ValueNS => WhereToResolve::StdLibPrelude,
+                                    MacroNS => WhereToResolve::MacroUsePrelude,
                                 }
                             }
                         }
@@ -761,7 +766,11 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     WhereToResolve::LegacyPluginHelpers => break, // nowhere else to search
                     WhereToResolve::ExternPrelude => WhereToResolve::ToolPrelude,
                     WhereToResolve::ToolPrelude => WhereToResolve::StdLibPrelude,
-                    WhereToResolve::StdLibPrelude => WhereToResolve::BuiltinTypes,
+                    WhereToResolve::StdLibPrelude => match ns {
+                        TypeNS => WhereToResolve::BuiltinTypes,
+                        ValueNS => break, // nowhere else to search
+                        MacroNS => unreachable!(),
+                    }
                     WhereToResolve::BuiltinTypes => break, // nowhere else to search
                 };
 
