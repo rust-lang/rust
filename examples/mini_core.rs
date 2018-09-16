@@ -12,6 +12,7 @@ pub trait Unsize<T: ?Sized> {}
 pub trait CoerceUnsized<T> {}
 
 impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
 
 #[lang = "copy"]
 pub unsafe trait Copy {}
@@ -203,7 +204,9 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 }
 
 #[lang = "owned_box"]
-pub struct Box<T>(*mut T);
+pub struct Box<T: ?Sized>(*mut T);
+
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
 
 static mut MY_TINY_HEAP: [u8; 16] = [0; 16];
 

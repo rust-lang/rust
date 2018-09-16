@@ -252,7 +252,22 @@ impl<'tcx> CValue<'tcx> {
                 };
                 dest.write_cvalue(fx, CValue::ByValPair(ptr, extra, dest.layout()));
             }
-            ty => unimpl!("unsize of non ptr {:?}", ty),
+            _ => {
+                assert!(!self.layout().ty.is_enum(), "Tried to unsize enum");
+                let field_count = self.layout().fields.count();
+                let mut found_unsize_field = false;
+                for idx in 0..field_count {
+                    let field_dest = dest.place_field(fx, mir::Field::new(idx));
+                    let field_src = self.value_field(fx, mir::Field::new(idx));
+                    if field_src.layout().ty != field_dest.layout().ty {
+                        assert!(!found_unsize_field);
+                        found_unsize_field = true;
+                        field_src.unsize_value(fx, field_dest);
+                    } else {
+                        field_dest.write_cvalue(fx, field_src);
+                    }
+                }
+            }
         }
     }
 

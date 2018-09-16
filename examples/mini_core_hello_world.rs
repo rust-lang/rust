@@ -111,8 +111,9 @@ fn main() {
         // TODO remove when jit supports linking rlibs
         #[cfg(not(jit))]
         {
-            let world = box "World!\0";
+            let world: Box<&str> = box "World!\0";
             puts(*world as *const str as *const u8);
+            world as Box<SomeTrait>;
         }
 
         assert_eq!(intrinsics::size_of_val(hello) as u8, 6);
