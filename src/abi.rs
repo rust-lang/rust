@@ -857,6 +857,38 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                     let needs_drop = CValue::const_val(fx, fx.tcx.types.bool, needs_drop);
                     ret.write_cvalue(fx, needs_drop);
                 }
+                _ if intrinsic.starts_with("atomic_fence") => {}
+                _ if intrinsic.starts_with("atomic_load") => {
+                    assert_eq!(args.len(), 1);
+                    let inner_layout = fx.layout_of(args[0].layout().ty.builtin_deref(true).unwrap().ty);
+                    let val = CValue::ByRef(args[0].load_value(fx), inner_layout);
+                    ret.write_cvalue(fx, val);
+                }
+                _ if intrinsic.starts_with("atomic_store") => {
+                    assert_eq!(args.len(), 2);
+                    let dest = CPlace::Addr(args[0].load_value(fx), None, args[1].layout());
+                    dest.write_cvalue(fx, args[1]);
+                }
+                _ if intrinsic.starts_with("atomic_xadd") => {
+                    assert_eq!(args.len(), 2);
+                    let clif_ty = fx.cton_type(substs.type_at(0)).unwrap();
+                    let ptr = args[0].load_value(fx);
+                    let amount = args[1].load_value(fx);
+                    let old = fx.bcx.ins().load(clif_ty, MemFlags::new(), ptr, 0);
+                    let new = fx.bcx.ins().iadd(old, amount);
+                    fx.bcx.ins().store(MemFlags::new(), ptr, new, 0);
+                    ret.write_cvalue(fx, CValue::ByVal(old, fx.layout_of(substs.type_at(0))));
+                }
+                _ if intrinsic.starts_with("atomic_xsub") => {
+                    assert_eq!(args.len(), 2);
+                    let clif_ty = fx.cton_type(substs.type_at(0)).unwrap();
+                    let ptr = args[0].load_value(fx);
+                    let amount = args[1].load_value(fx);
+                    let old = fx.bcx.ins().load(clif_ty, MemFlags::new(), ptr, 0);
+                    let new = fx.bcx.ins().isub(old, amount);
+                    fx.bcx.ins().store(MemFlags::new(), ptr, new, 0);
+                    ret.write_cvalue(fx, CValue::ByVal(old, fx.layout_of(substs.type_at(0))));
+                }
                 _ => unimpl!("unsupported intrinsic {}", intrinsic),
             }
 
