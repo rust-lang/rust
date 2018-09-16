@@ -16,54 +16,28 @@ functionality is provided via a language server.
 
 ## Quick Start
 
+Rust analyzer builds on stable Rust >= 1.29.0.
+
 ```
+# run tests
 $ cargo test
-$ cargo parse < crates/libsyntax2/src/lib.rs
+
+# show syntax tree of a Rust file
+$ cargo run --package ra_cli parse < crates/ra_syntax/src/lib.rs
+
+# show symbols of a Rust file
+$ cargo run --package ra_cli symbols < crates/ra_syntax/src/lib.rs
 ```
 
-## Trying It Out
+To try out the language server, see [these
+instructions](./editors/README.md). Please note that the server is not
+ready for general use yet. If you are looking for a Rust IDE that
+works, use [IntelliJ
+Rust](https://github.com/intellij-rust/intellij-rust) or
+[RLS](https://github.com/rust-lang-nursery/rls). That being said, the
+basic stuff works, and rust analyzer is developed in the rust analyzer
+powered editor.
 
-This installs experimental VS Code plugin
-
-```
-$ cargo install-code
-```
-
-It's better to remove existing Rust plugins to avoid interference.
-Warning: plugin is not intended for general use, has a lot of rough
-edges and missing features (notably, no code completion). That said,
-while originally libsyntax2 was developed in IntelliJ, @matklad now
-uses this plugin (and thus, libsytax2) to develop libsyntax2, and it
-doesn't hurt too much :-)
-
-
-### Features:
-
-* syntax highlighting (LSP does not have API for it, so impl is hacky
-  and sometimes fall-backs to the horrible built-in highlighting)
-
-* commands (`ctrl+shift+p` or keybindings)
-  - **Show Rust Syntax Tree** (use it to verify that plugin works)
-  - **Rust Extend Selection** (works with multiple cursors)
-  - **Rust Matching Brace** (knows the difference between `<` and `<`)
-  - **Rust Parent Module**
-  - **Rust Join Lines** (deals with trailing commas)
-
-* **Go to symbol in file**
-
-* **Go to symbol in workspace**
-  - `#Foo` searches for `Foo` type in the current workspace
-  - `#foo#` searches for `foo` function in the current workspace
-  - `#Foo*` searches for `Foo` type among dependencies, excluding `stdlib`
-  - Sorry for a weired UI, neither LSP, not VSCode have any sane API for filtering! :)
-
-* code actions:
-  - Flip `,` in comma separated lists
-  - Add `#[derive]` to struct/enum
-  - Add `impl` block to struct/enum
-  - Run tests at caret
-
-* **Go to definition** ("correct" for `mod foo;` decls, index-based for functions).
 
 ## Current Status and Plans
 
@@ -104,7 +78,11 @@ existing rustc.
 
 ## Code Walk-Through
 
-### `crates/libsyntax2`
+### `crates/ra_syntax`
+
+Rust syntax tree structure and parser. See
+[RFC](https://github.com/rust-lang/rfcs/pull/2256) for some design
+notes.
 
 - `yellow`, red/green syntax tree, heavily inspired [by this](https://github.com/apple/swift/tree/ab68f0d4cbf99cdfa672f8ffe18e433fddc8b371/lib/Syntax)
 - `grammar`, the actual parser
@@ -117,24 +95,35 @@ existing rustc.
   `Visitor` works, you understand libsyntax2).
 
 
-### `crates/libeditor`
+### `crates/ra_editor`
 
-Most of IDE features leave here, unlike `libanalysis`, `libeditor` is
-single-file and is basically a bunch of pure functions.
+All IDE features which can be implemented if you only have access to a
+single file. `ra_editor` could be used to enhance editing of Rust code
+without the need to fiddle with build-systems, file
+synchronization and such.
+
+In a sense, `ra_editor` is just a bunch of pure functions which take a
+syntax tree as an input.
+
+### `crates/salsa`
+
+An implementation of red-green incremental compilation algorithm from
+rust compiler. It makes all rust-analyzer features on-demand.
 
 
-### `crates/libanalysis`
+### `crates/ra_analysis`
 
 A stateful library for analyzing many Rust files as they change.
-`WorldState` is a mutable entity (clojure's atom) which holds current
-state, incorporates changes and handles out `World`s --- immutable
-consistent snapshots of `WorldState`, which actually power analysis.
+`AnalysisHost` is a mutable entity (clojure's atom) which holds
+current state, incorporates changes and handles out `Analysis` --- an
+immutable consistent snapshot of world state at a point in time, which
+actually powers analysis.
 
 
-### `crates/server`
+### `crates/ra_lsp_server`
 
-An LSP implementation which uses `libanalysis` for managing state and
-`libeditor` for actually doing useful stuff.
+An LSP implementation which uses `ra_analysis` for managing state and
+`ra_editor` for actually doing useful stuff.
 
 
 ### `crates/cli`
@@ -149,7 +138,7 @@ Code-gen tasks, used to develop libsyntax2:
 - `cargo gen-tests` -- collect inline tests from grammar
 - `cargo install-code` -- build and install VS Code extension and server
 
-### `code`
+### `editors/code`
 
 VS Code plugin
 
@@ -159,10 +148,10 @@ VS Code plugin
 Non-incremental, but seems pretty fast:
 
 ```
-$ cargo build --release --package cli
+$ cargo build --release --package ra_cli
 $ wc -l ~/projects/rust/src/libsyntax/parse/parser.rs
 7546 /home/matklad/projects/rust/src/libsyntax/parse/parser.rs
-$ ./target/release/cli parse < ~/projects/rust/src/libsyntax/parse/parser.rs --no-dump  > /dev/null
+$ ./target/release/ra_cli parse < ~/projects/rust/src/libsyntax/parse/parser.rs --no-dump  > /dev/null
 parsing: 21.067065ms
 ```
 
@@ -175,7 +164,7 @@ parsing: 21.067065ms
 
 ## License
 
-libsyntax2 is primarily distributed under the terms of both the MIT license
-and the Apache License (Version 2.0).
+Rust analyzer is primarily distributed under the terms of both the MIT
+license and the Apache License (Version 2.0).
 
 See LICENSE-APACHE and LICENSE-MIT for details.
