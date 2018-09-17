@@ -441,7 +441,7 @@ impl<'a, 'tcx> LoanPath<'tcx> {
             LpUpvar(upvar_id) => {
                 let block_id = closure_to_block(upvar_id.closure_expr_id, bccx.tcx);
                 let hir_id = bccx.tcx.hir.node_to_hir_id(block_id);
-                region::Scope::Node(hir_id.local_id)
+                region::Scope { id: hir_id.local_id, data: region::ScopeData::Node }
             }
             LpDowncast(ref base, _) |
             LpExtend(ref base, ..) => base.kill_scope(bccx),

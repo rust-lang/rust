@@ -27,7 +27,10 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
             cx.region_scope_tree.opt_destruction_scope(self.hir_id.local_id);
         Block {
             targeted_by_break: self.targeted_by_break,
-            region_scope: region::Scope::Node(self.hir_id.local_id),
+            region_scope: region::Scope {
+                id: self.hir_id.local_id,
+                data: region::ScopeData::Node
+            },
             opt_destruction_scope,
             span: self.span,
             stmts,
@@ -59,7 +62,10 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             hir::StmtKind::Semi(ref expr, _) => {
                 result.push(StmtRef::Mirror(Box::new(Stmt {
                     kind: StmtKind::Expr {
-                        scope: region::Scope::Node(hir_id.local_id),
+                        scope: region::Scope {
+                            id: hir_id.local_id,
+                            data: region::ScopeData::Node
+                        },
                         expr: expr.to_ref(),
                     },
                     opt_destruction_scope: opt_dxn_ext,
@@ -71,10 +77,11 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         // ignore for purposes of the MIR
                     }
                     hir::DeclKind::Local(ref local) => {
-                        let remainder_scope = region::Scope::Remainder(
-                            block_id,
-                            region::FirstStatementIndex::new(index),
-                        );
+                        let remainder_scope = region::Scope {
+                            id: block_id,
+                            data: region::ScopeData::Remainder(
+                                region::FirstStatementIndex::new(index)),
+                        };
 
                         let mut pattern = cx.pattern_from_hir(&local.pat);
 
@@ -94,7 +101,10 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         result.push(StmtRef::Mirror(Box::new(Stmt {
                             kind: StmtKind::Let {
                                 remainder_scope: remainder_scope,
-                                init_scope: region::Scope::Node(hir_id.local_id),
+                                init_scope: region::Scope {
+                                    id: hir_id.local_id,
+                                    data: region::ScopeData::Node
+                                },
                                 pattern,
                                 initializer: local.init.to_ref(),
                                 lint_level: cx.lint_level_of(local.id),

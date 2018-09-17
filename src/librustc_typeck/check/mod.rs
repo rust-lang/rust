@@ -622,7 +622,10 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
         let body_id = item_id.and_then(|id| tcx.hir.maybe_body_owned_by(id));
         let implicit_region_bound = body_id.map(|body_id| {
             let body = tcx.hir.body(body_id);
-            tcx.mk_region(ty::ReScope(region::Scope::CallSite(body.value.hir_id.local_id)))
+            tcx.mk_region(ty::ReScope(region::Scope {
+                id: body.value.hir_id.local_id,
+                data: region::ScopeData::CallSite
+            }))
         });
 
         Inherited {

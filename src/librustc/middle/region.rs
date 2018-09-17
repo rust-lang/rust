@@ -102,8 +102,8 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 /// generated via deriving here.
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Copy, RustcEncodable, RustcDecodable)]
 pub struct Scope {
-    pub(crate) id: hir::ItemLocalId,
-    pub(crate) data: ScopeData,
+    pub id: hir::ItemLocalId,
+    pub data: ScopeData,
 }
 
 impl fmt::Debug for Scope {
@@ -172,48 +172,6 @@ impl_stable_hash_for!(struct ::middle::region::FirstStatementIndex { private });
 #[cfg(not(stage0))]
 static ASSERT: () = [()][!(mem::size_of::<ScopeData>() == 4) as usize];
 
-#[allow(non_snake_case)]
-impl Scope {
-    #[inline]
-    pub fn data(self) -> ScopeData {
-        self.data
-    }
-
-    #[inline]
-    pub fn new(id: hir::ItemLocalId, data: ScopeData) -> Self {
-        Scope { id, data }
-    }
-
-    #[inline]
-    pub fn Node(id: hir::ItemLocalId) -> Self {
-        Self::new(id, ScopeData::Node)
-    }
-
-    #[inline]
-    pub fn CallSite(id: hir::ItemLocalId) -> Self {
-        Self::new(id, ScopeData::CallSite)
-    }
-
-    #[inline]
-    pub fn Arguments(id: hir::ItemLocalId) -> Self {
-        Self::new(id, ScopeData::Arguments)
-    }
-
-    #[inline]
-    pub fn Destruction(id: hir::ItemLocalId) -> Self {
-        Self::new(id, ScopeData::Destruction)
-    }
-
-    #[inline]
-    pub fn Remainder(
-        id: hir::ItemLocalId,
-        first: FirstStatementIndex,
-    ) -> Self {
-        Self::new(id, ScopeData::Remainder(first))
-    }
-}
-
-
 impl Scope {
     /// Returns a item-local id associated with this scope.
     ///
@@ -244,7 +202,7 @@ impl Scope {
             return DUMMY_SP;
         }
         let span = tcx.hir.span(node_id);
-        if let ScopeData::Remainder(first_statement_index) = self.data() {
+        if let ScopeData::Remainder(first_statement_index) = self.data {
             if let Node::Block(ref blk) = tcx.hir.get(node_id) {
                 // Want span for scope starting after the
                 // indexed statement and ending at end of
@@ -498,7 +456,7 @@ impl<'tcx> ScopeTree {
         }
 
         // record the destruction scopes for later so we can query them
-        if let ScopeData::Destruction = child.data() {
+        if let ScopeData::Destruction = child.data {
             self.destruction_scopes.insert(child.item_local_id(), child);
         }
     }
@@ -578,10 +536,10 @@ impl<'tcx> ScopeTree {
         // if there's one. Static items, for instance, won't
         // have an enclosing scope, hence no scope will be
         // returned.
-        let mut id = Scope::Node(expr_id);
+        let mut id = Scope { id: expr_id, data: ScopeData::Node };
 
         while let Some(&(p, _)) = self.parent_map.get(&id) {
-            match p.data() {
+            match p.data {
                 ScopeData::Destruction => {
                     debug!("temporary_scope({:?}) = {:?} [enclosing]",
                            expr_id, id);
@@ -637,7 +595,7 @@ impl<'tcx> ScopeTree {
     /// Returns the id of the innermost containing body
     pub fn containing_body(&self, mut scope: Scope)-> Option<hir::ItemLocalId> {
         loop {
-            if let ScopeData::CallSite = scope.data() {
+            if let ScopeData::CallSite = scope.data {
                 return Some(scope.item_local_id());
             }
 
@@ -730,7 +688,7 @@ impl<'tcx> ScopeTree {
             self.root_body.unwrap().local_id
         });
 
-        Scope::CallSite(scope)
+        Scope { id: scope, data: ScopeData::CallSite }
     }
 
     /// Assuming that the provided region was defined within this `ScopeTree`,
@@ -750,7 +708,7 @@ impl<'tcx> ScopeTree {
 
         let param_owner_id = tcx.hir.as_local_node_id(param_owner).unwrap();
         let body_id = tcx.hir.body_owned_by(param_owner_id);
-        Scope::CallSite(tcx.hir.body(body_id).value.hir_id.local_id)
+        Scope { id: tcx.hir.body(body_id).value.hir_id.local_id, data: ScopeData::CallSite }
     }
 
     /// Checks whether the given scope contains a `yield`. If so,
@@ -854,7 +812,10 @@ fn resolve_block<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, blk:
                 // except for the first such subscope, which has the
                 // block itself as a parent.
                 visitor.enter_scope(
-                    Scope::Remainder(blk.hir_id.local_id, FirstStatementIndex::new(i))
+                    Scope {
+                        id: blk.hir_id.local_id,
+                        data: ScopeData::Remainder(FirstStatementIndex::new(i))
+                    }
                 );
                 visitor.cx.var_parent = visitor.cx.parent;
             }
@@ -879,7 +840,7 @@ fn resolve_arm<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, arm: &
 }
 
 fn resolve_pat<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, pat: &'tcx hir::Pat) {
-    visitor.record_child_scope(Scope::Node(pat.hir_id.local_id));
+    visitor.record_child_scope(Scope { id: pat.hir_id.local_id, data: ScopeData::Node });
 
     // If this is a binding then record the lifetime of that binding.
     if let PatKind::Binding(..) = pat.node {
@@ -1008,7 +969,7 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
 
     if let hir::ExprKind::Yield(..) = expr.node {
         // Mark this expr's scope and all parent scopes as containing `yield`.
-        let mut scope = Scope::Node(expr.hir_id.local_id);
+        let mut scope = Scope { id: expr.hir_id.local_id, data: ScopeData::Node };
         loop {
             visitor.scope_tree.yield_in_scope.insert(scope,
                 (expr.span, visitor.expr_and_pat_count));
@@ -1016,7 +977,7 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
             // Keep traversing up while we can.
             match visitor.scope_tree.parent_map.get(&scope) {
                 // Don't cross from closure bodies to their parent.
-                Some(&(superscope, _)) => match superscope.data() {
+                Some(&(superscope, _)) => match superscope.data {
                     ScopeData::CallSite => break,
                     _ => scope = superscope
                 },
@@ -1280,9 +1241,9 @@ impl<'a, 'tcx> RegionResolutionVisitor<'a, 'tcx> {
         // account for the destruction scope representing the scope of
         // the destructors that run immediately after it completes.
         if self.terminating_scopes.contains(&id) {
-            self.enter_scope(Scope::Destruction(id));
+            self.enter_scope(Scope { id, data: ScopeData::Destruction });
         }
-        self.enter_scope(Scope::Node(id));
+        self.enter_scope(Scope { id, data: ScopeData::Node });
     }
 }
 
@@ -1315,8 +1276,8 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
         }
         self.cx.root_id = Some(body.value.hir_id.local_id);
 
-        self.enter_scope(Scope::CallSite(body.value.hir_id.local_id));
-        self.enter_scope(Scope::Arguments(body.value.hir_id.local_id));
+        self.enter_scope(Scope { id: body.value.hir_id.local_id, data: ScopeData::CallSite });
+        self.enter_scope(Scope { id: body.value.hir_id.local_id, data: ScopeData::Arguments });
 
         // The arguments and `self` are parented to the fn.
         self.cx.var_parent = self.cx.parent.take();
