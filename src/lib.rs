@@ -27,14 +27,14 @@ use std::any::Any;
 use std::fs::File;
 use std::sync::{mpsc, Arc};
 
-use rustc::dep_graph::DepGraph;
-use rustc::middle::cstore::MetadataLoader;
-use rustc::session::{config::OutputFilenames, CompileIncomplete};
-use rustc::ty::query::Providers;
-use rustc_codegen_utils::codegen_backend::CodegenBackend;
-use rustc_codegen_utils::link::out_filename;
-use rustc_data_structures::svh::Svh;
-use syntax::symbol::Symbol;
+use crate::rustc::dep_graph::DepGraph;
+use crate::rustc::middle::cstore::MetadataLoader;
+use crate::rustc::session::{config::OutputFilenames, CompileIncomplete};
+use crate::rustc::ty::query::Providers;
+use crate::rustc_codegen_utils::codegen_backend::CodegenBackend;
+use crate::rustc_codegen_utils::link::out_filename;
+use crate::rustc_data_structures::svh::Svh;
+use crate::syntax::symbol::Symbol;
 
 use cranelift::codegen::settings;
 use cranelift_faerie::*;
@@ -60,24 +60,24 @@ mod prelude {
     pub use std::any::Any;
     pub use std::collections::{HashMap, HashSet};
 
-    pub use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-    pub use rustc::mir;
-    pub use rustc::mir::interpret::AllocId;
-    pub use rustc::mir::*;
-    pub use rustc::session::{config::CrateType, Session};
-    pub use rustc::ty::layout::{self, Abi, LayoutOf, Scalar, Size, TyLayout};
-    pub use rustc::ty::{
+    pub use crate::rustc::hir::def_id::{DefId, LOCAL_CRATE};
+    pub use crate::rustc::mir;
+    pub use crate::rustc::mir::interpret::AllocId;
+    pub use crate::rustc::mir::*;
+    pub use crate::rustc::session::{config::CrateType, Session};
+    pub use crate::rustc::ty::layout::{self, Abi, LayoutOf, Scalar, Size, TyLayout};
+    pub use crate::rustc::ty::{
         self, subst::Substs, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt,
         TypeAndMut, TypeFoldable,
     };
-    pub use rustc_data_structures::{
+    pub use crate::rustc_data_structures::{
         fx::{FxHashMap, FxHashSet},
         indexed_vec::Idx,
         sync::Lrc,
     };
-    pub use rustc_mir::monomorphize::{collector, MonoItem};
-    pub use syntax::ast::{FloatTy, IntTy, UintTy};
-    pub use syntax::source_map::DUMMY_SP;
+    pub use crate::rustc_mir::monomorphize::{collector, MonoItem};
+    pub use crate::syntax::ast::{FloatTy, IntTy, UintTy};
+    pub use crate::syntax::source_map::DUMMY_SP;
 
     pub use cranelift::codegen::ir::{
         condcodes::IntCC, function::Function, ExternalName, FuncRef, Inst, StackSlot,
@@ -373,8 +373,8 @@ fn maybe_create_entry_wrapper<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     module: &mut Module<impl Backend + 'static>,
 ) {
-    use rustc::middle::lang_items::StartFnLangItem;
-    use rustc::session::config::EntryFnType;
+    use crate::rustc::middle::lang_items::StartFnLangItem;
+    use crate::rustc::session::config::EntryFnType;
 
     let (main_def_id, use_start_lang_item) = match *tcx.sess.entry_fn.borrow() {
         Some((id, _, entry_ty)) => (

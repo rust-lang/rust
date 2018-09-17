@@ -27,7 +27,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
                         if inst.def_id().krate == LOCAL_CRATE =>
                     {
                         let mut mir = ::std::io::Cursor::new(Vec::new());
-                        ::rustc_mir::util::write_mir_pretty(tcx, Some(inst.def_id()), &mut mir)
+                        crate::rustc_mir::util::write_mir_pretty(tcx, Some(inst.def_id()), &mut mir)
                             .unwrap();
                         String::from_utf8(mir.into_inner()).unwrap()
                     }
@@ -242,7 +242,7 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
             } => {
                 let ty = location.ty(fx.mir, fx.tcx).to_ty(fx.tcx);
                 let ty = fx.monomorphize(&ty);
-                let drop_fn = ::rustc_mir::monomorphize::resolve_drop_in_place(fx.tcx, ty);
+                let drop_fn = crate::rustc_mir::monomorphize::resolve_drop_in_place(fx.tcx, ty);
 
                 if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
                     // we don't actually need to drop anything
@@ -254,7 +254,7 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
                             &ty::RegionKind::ReErased,
                             TypeAndMut {
                                 ty,
-                                mutbl: ::rustc::hir::Mutability::MutMutable,
+                                mutbl: crate::rustc::hir::Mutability::MutMutable,
                             },
                         ),
                     );
@@ -580,7 +580,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     lval.write_cvalue(fx, CValue::ByVal(size, usize_layout));
                 }
                 Rvalue::NullaryOp(NullOp::Box, content_ty) => {
-                    use rustc::middle::lang_items::ExchangeMallocFnLangItem;
+                    use crate::rustc::middle::lang_items::ExchangeMallocFnLangItem;
 
                     let usize_type = fx.cton_type(fx.tcx.types.usize).unwrap();
                     let (size, align) = fx.layout_of(content_ty).size_and_align();

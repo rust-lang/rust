@@ -1,10 +1,10 @@
 use cranelift_module::*;
 use crate::prelude::*;
-use rustc::mir::interpret::{
+use crate::rustc::mir::interpret::{
     read_target_uint, AllocId, AllocType, Allocation, ConstValue, EvalResult, GlobalId,
 };
-use rustc::ty::Const;
-use rustc_mir::interpret::{CompileTimeEvaluator, EvalContext, Memory, MemoryKind};
+use crate::rustc::ty::Const;
+use crate::rustc_mir::interpret::{CompileTimeEvaluator, EvalContext, Memory, MemoryKind};
 
 #[derive(Default)]
 pub struct ConstantCx {
@@ -154,7 +154,7 @@ fn data_id_for_static<'a, 'tcx: 'a, B: Backend>(
     def_id: DefId,
 ) -> DataId {
     let symbol_name = tcx.symbol_name(Instance::mono(tcx, def_id)).as_str();
-    let is_mutable = if let ::rustc::hir::Mutability::MutMutable = tcx.is_static(def_id).unwrap() {
+    let is_mutable = if let crate::rustc::hir::Mutability::MutMutable = tcx.is_static(def_id).unwrap() {
         true
     } else {
         !tcx.type_of(def_id)

@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-use rustc::mir::StatementKind::*;
+use crate::rustc::mir::StatementKind::*;
 
 bitflags! {
     pub struct Flags: u8 {

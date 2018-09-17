@@ -1,5 +1,5 @@
-use rustc::middle::cstore::MetadataLoader;
-use rustc_data_structures::owning_ref::{self, OwningRef};
+use crate::rustc::middle::cstore::MetadataLoader;
+use crate::rustc_data_structures::owning_ref::{self, OwningRef};
 use std::fs::File;
 use std::path::Path;
 
@@ -8,7 +8,7 @@ pub struct CraneliftMetadataLoader;
 impl MetadataLoader for CraneliftMetadataLoader {
     fn get_rlib_metadata(
         &self,
-        _target: &::rustc_target::spec::Target,
+        _target: &crate::rustc_target::spec::Target,
         path: &Path,
     ) -> Result<owning_ref::ErasedBoxRef<[u8]>, String> {
         let mut archive = ar::Archive::new(File::open(path).map_err(|e| format!("{:?}", e))?);
@@ -33,7 +33,7 @@ impl MetadataLoader for CraneliftMetadataLoader {
 
     fn get_dylib_metadata(
         &self,
-        _target: &::rustc_target::spec::Target,
+        _target: &crate::rustc_target::spec::Target,
         _path: &Path,
     ) -> Result<owning_ref::ErasedBoxRef<[u8]>, String> {
         Err("dylib metadata loading is not yet supported".to_string())

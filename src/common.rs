@@ -1,6 +1,6 @@
 use std::fmt;
 
-use rustc_target::spec::{HasTargetSpec, Target};
+use crate::rustc_target::spec::{HasTargetSpec, Target};
 
 use cranelift_module::Module;
 
@@ -372,7 +372,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
     pub fn write_cvalue(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>, from: CValue<'tcx>) {
         match (&self.layout().ty.sty, &from.layout().ty.sty) {
             (ty::Ref(_, t, dest_mut), ty::Ref(_, u, src_mut))
-                if (if *dest_mut != ::rustc::hir::Mutability::MutImmutable && src_mut != dest_mut {
+                if (if *dest_mut != crate::rustc::hir::Mutability::MutImmutable && src_mut != dest_mut {
                     false
                 } else if t != u {
                     false

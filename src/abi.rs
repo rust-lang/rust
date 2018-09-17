@@ -1,7 +1,7 @@
 use std::iter;
 
-use rustc::hir;
-use rustc_target::spec::abi::Abi;
+use crate::rustc::hir;
+use crate::rustc_target::spec::abi::Abi;
 
 use crate::prelude::*;
 
