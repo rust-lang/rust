@@ -12,9 +12,48 @@ pub use fortanix_sgx_abi::*;
 
 use io::{Error as IoError, Result as IoResult};
 
-mod alloc;
+pub mod alloc;
 #[macro_use]
 mod raw;
+
+pub(crate) fn copy_user_buffer(buf: &alloc::UserRef<ByteBuffer>) -> Vec<u8> {
+    unsafe {
+        let buf = buf.to_enclave();
+        alloc::User::from_raw_parts(buf.data as _, buf.len).to_enclave()
+    }
+}
+
+pub fn read(fd: Fd, buf: &mut [u8]) -> IoResult<usize> {
+    unsafe {
+        let mut userbuf = alloc::User::<[u8]>::uninitialized(buf.len());
+        let len = raw::read(fd, userbuf.as_mut_ptr(), userbuf.len()).from_sgx_result()?;
+        userbuf[..len].copy_to_enclave(&mut buf[..len]);
+        Ok(len)
+    }
+}
+
+pub fn read_alloc(fd: Fd) -> IoResult<Vec<u8>> {
+    unsafe {
+        let mut userbuf = alloc::User::<ByteBuffer>::uninitialized();
+        raw::read_alloc(fd, userbuf.as_raw_mut_ptr()).from_sgx_result()?;
+        Ok(copy_user_buffer(&userbuf))
+    }
+}
+
+pub fn write(fd: Fd, buf: &[u8]) -> IoResult<usize> {
+    unsafe {
+        let userbuf = alloc::User::new_from_enclave(buf);
+        raw::write(fd, userbuf.as_ptr(), userbuf.len()).from_sgx_result()
+    }
+}
+
+pub fn flush(fd: Fd) -> IoResult<()> {
+    unsafe { raw::flush(fd).from_sgx_result() }
+}
+
+pub fn close(fd: Fd) {
+    unsafe { raw::close(fd) }
+}
 
 pub fn launch_thread() -> IoResult<()> {
     unsafe { raw::launch_thread().from_sgx_result() }

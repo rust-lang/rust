@@ -1,4 +1,4 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,64 +8,72 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use io;
-use sys::unsupported;
+use fortanix_sgx_abi as abi;
 
-pub struct Stdin;
-pub struct Stdout;
-pub struct Stderr;
+use io;
+use sys::fd::FileDesc;
+
+pub struct Stdin(());
+pub struct Stdout(());
+pub struct Stderr(());
+
+fn with_std_fd<F: FnOnce(&FileDesc) -> R, R>(fd: abi::Fd, f: F) -> R {
+    let fd = FileDesc::new(fd);
+    let ret = f(&fd);
+    fd.into_raw();
+    ret
+}
 
 impl Stdin {
-    pub fn new() -> io::Result<Stdin> {
-        Ok(Stdin)
-    }
+    pub fn new() -> io::Result<Stdin> { Ok(Stdin(())) }
 
-    pub fn read(&self, _data: &mut [u8]) -> io::Result<usize> {
-        unsupported()
+    pub fn read(&self, data: &mut [u8]) -> io::Result<usize> {
+        with_std_fd(abi::FD_STDIN, |fd| fd.read(data))
     }
 }
 
 impl Stdout {
-    pub fn new() -> io::Result<Stdout> {
-        Ok(Stdout)
-    }
+    pub fn new() -> io::Result<Stdout> { Ok(Stdout(())) }
 
-    pub fn write(&self, _data: &[u8]) -> io::Result<usize> {
-        unsupported()
+    pub fn write(&self, data: &[u8]) -> io::Result<usize> {
+        with_std_fd(abi::FD_STDOUT, |fd| fd.write(data))
     }
 
     pub fn flush(&self) -> io::Result<()> {
-        Ok(())
+        with_std_fd(abi::FD_STDOUT, |fd| fd.flush())
     }
 }
 
 impl Stderr {
-    pub fn new() -> io::Result<Stderr> {
-        Ok(Stderr)
-    }
+    pub fn new() -> io::Result<Stderr> { Ok(Stderr(())) }
 
-    pub fn write(&self, _data: &[u8]) -> io::Result<usize> {
-        unsupported()
+    pub fn write(&self, data: &[u8]) -> io::Result<usize> {
+        with_std_fd(abi::FD_STDERR, |fd| fd.write(data))
     }
 
     pub fn flush(&self) -> io::Result<()> {
-        Ok(())
+        with_std_fd(abi::FD_STDERR, |fd| fd.flush())
     }
 }
 
+// FIXME: right now this raw stderr handle is used in a few places because
+//        std::io::stderr_raw isn't exposed, but once that's exposed this impl
+//        should go away
 impl io::Write for Stderr {
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-        (&*self).write(data)
+        Stderr::write(self, data)
     }
+
     fn flush(&mut self) -> io::Result<()> {
-        (&*self).flush()
+        Stderr::flush(self)
     }
 }
 
-pub const STDIN_BUF_SIZE: usize = 0;
+pub const STDIN_BUF_SIZE: usize = ::sys_common::io::DEFAULT_BUF_SIZE;
 
-pub fn is_ebadf(_err: &io::Error) -> bool {
-    true
+pub fn is_ebadf(err: &io::Error) -> bool {
+    // FIXME: Rust normally maps Unix EBADF to `Other`
+    err.raw_os_error() == Some(abi::Error::BrokenPipe as _)
 }
 
 pub fn panic_output() -> Option<impl io::Write> {
