@@ -3160,11 +3160,11 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             // parser issue where a struct literal is being used on an expression
                             // where a brace being opened means a block is being started. Look
                             // ahead for the next text to see if `span` is followed by a `{`.
-                            let cm = this.session.source_map();
+                            let sm = this.session.source_map();
                             let mut sp = span;
                             loop {
-                                sp = cm.next_point(sp);
-                                match cm.span_to_snippet(sp) {
+                                sp = sm.next_point(sp);
+                                match sm.span_to_snippet(sp) {
                                     Ok(ref snippet) => {
                                         if snippet.chars().any(|c| { !c.is_whitespace() }) {
                                             break;
@@ -3173,20 +3173,51 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                     _ => break,
                                 }
                             }
-                            let followed_by_brace = match cm.span_to_snippet(sp) {
+                            let followed_by_brace = match sm.span_to_snippet(sp) {
                                 Ok(ref snippet) if snippet == "{" => true,
                                 _ => false,
                             };
-                            if let (PathSource::Expr(None), true) = (source, followed_by_brace) {
-                                err.span_label(
-                                    span,
-                                    format!("did you mean `({} {{ /* fields */ }})`?", path_str),
-                                );
-                            } else {
-                                err.span_label(
-                                    span,
-                                    format!("did you mean `{} {{ /* fields */ }}`?", path_str),
-                                );
+                            match source {
+                                PathSource::Expr(Some(parent)) => {
+                                    match parent.node {
+                                        ExprKind::MethodCall(ref path_assignment, _)  => {
+                                            err.span_suggestion_with_applicability(
+                                                sm.start_point(parent.span)
+                                                  .to(path_assignment.ident.span),
+                                                "use `::` to access an associated function",
+                                                format!("{}::{}",
+                                                        path_str,
+                                                        path_assignment.ident),
+                                                Applicability::MaybeIncorrect
+                                            );
+                                            return (err, candidates);
+                                        },
+                                        _ => {
+                                            err.span_label(
+                                                span,
+                                                format!("did you mean `{} {{ /* fields */ }}`?",
+                                                        path_str),
+                                            );
+                                            return (err, candidates);
+                                        },
+                                    }
+                                },
+                                PathSource::Expr(None) if followed_by_brace == true => {
+                                    err.span_label(
+                                        span,
+                                        format!("did you mean `({} {{ /* fields */ }})`?",
+                                                path_str),
+                                    );
+                                    return (err, candidates);
+                                },
+                                _ => {
+                                    err.span_label(
+                                        span,
+                                        format!("did you mean `{} {{ /* fields */ }}`?",
+                                                path_str),
+                                    );
+                                    return (err, candidates);
+                                },
                             }
                         }
                         return (err, candidates);
