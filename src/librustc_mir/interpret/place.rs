@@ -612,7 +612,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         // wrong type.
 
         // Nothing to do for ZSTs, other than checking alignment
-        if dest.layout.size.bytes() == 0 {
+        if dest.layout.is_zst() {
             self.memory.check_align(ptr, ptr_align)?;
             return Ok(());
         }

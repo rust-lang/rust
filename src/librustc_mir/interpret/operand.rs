@@ -219,7 +219,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         }
         let (ptr, ptr_align) = mplace.to_scalar_ptr_align();
 
-        if mplace.layout.size.bytes() == 0 {
+        if mplace.layout.is_zst() {
             // Not all ZSTs have a layout we would handle below, so just short-circuit them
             // all here.
             self.memory.check_align(ptr, ptr_align)?;
@@ -376,14 +376,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         })
     }
 
-    // Take an operand, representing a pointer, and dereference it -- that
+    // Take an operand, representing a pointer, and dereference it to a place -- that
     // will always be a MemPlace.
     pub(super) fn deref_operand(
         &self,
         src: OpTy<'tcx>,
     ) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
         let val = self.read_value(src)?;
-        trace!("deref to {} on {:?}", val.layout.ty, val);
+        trace!("deref to {} on {:?}", val.layout.ty, *val);
         Ok(self.ref_to_mplace(val)?)
     }
 
