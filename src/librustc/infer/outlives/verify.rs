@@ -72,22 +72,26 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
         VerifyBound::AnyRegion(param_bounds)
     }
 
-    /// Searches the where clauses in scope for regions that
-    /// `projection_ty` is known to outlive. Currently requires an
-    /// exact match.
-    pub fn projection_declared_bounds(
+    /// Given a projection like `T::Item`, searches the environment
+    /// for where-clauses like `T::Item: 'a`. Returns the set of
+    /// regions `'a` that it finds.  This is a "conservative" check --
+    /// it may not find all applicable bounds, but all the bounds it
+    /// returns can be relied upon.
+    pub fn projection_declared_bounds_from_env(
         &self,
         projection_ty: ty::ProjectionTy<'tcx>,
     ) -> Vec<ty::Region<'tcx>> {
-        // First assemble bounds from where clauses and traits.
+        self.declared_generic_bounds_from_env(GenericKind::Projection(projection_ty))
+    }
 
-        let mut declared_bounds =
-            self.declared_generic_bounds_from_env(GenericKind::Projection(projection_ty));
-
-        declared_bounds
-            .extend_from_slice(&self.declared_projection_bounds_from_trait(projection_ty));
-
-        declared_bounds
+    /// Searches the where clauses in scope for regions that
+    /// `projection_ty` is known to outlive. Currently requires an
+    /// exact match.
+    pub fn projection_declared_bounds_from_trait(
+        &self,
+        projection_ty: ty::ProjectionTy<'tcx>,
+    ) -> Vec<ty::Region<'tcx>> {
+        self.declared_projection_bounds_from_trait(projection_ty)
     }
 
     pub fn projection_bound(
@@ -99,7 +103,12 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
             projection_ty
         );
 
-        let declared_bounds = self.projection_declared_bounds(projection_ty);
+        let mut declared_bounds =
+            self.projection_declared_bounds_from_env(projection_ty);
+
+        declared_bounds.extend(
+            self.projection_declared_bounds_from_trait(projection_ty)
+        );
 
         debug!("projection_bound: declared_bounds = {:?}", declared_bounds);
 

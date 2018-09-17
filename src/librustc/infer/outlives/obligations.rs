@@ -391,16 +391,18 @@ where
         // Compute the bounds we can derive from the environment or trait
         // definition.  We know that the projection outlives all the
         // regions in this list.
-        let env_bounds = self.verify_bound.projection_declared_bounds(projection_ty);
+        let mut declared_bounds = self.verify_bound
+            .projection_declared_bounds_from_env(projection_ty);
 
-        debug!("projection_must_outlive: env_bounds={:?}", env_bounds);
+        declared_bounds.extend(
+            self.verify_bound
+                .projection_declared_bounds_from_trait(projection_ty),
+        );
 
-        // If we know that the projection outlives 'static, then we're
-        // done here.
-        if env_bounds.contains(&&ty::ReStatic) {
-            debug!("projection_must_outlive: 'static as declared bound");
-            return;
-        }
+        debug!(
+            "projection_must_outlive: declared_bounds={:?}",
+            declared_bounds
+        );
 
         // If declared bounds list is empty, the only applicable rule is
         // OutlivesProjectionComponent. If there are inference variables,
@@ -417,7 +419,7 @@ where
         // inference variables, we use a verify constraint instead of adding
         // edges, which winds up enforcing the same condition.
         let needs_infer = projection_ty.needs_infer();
-        if env_bounds.is_empty() && needs_infer {
+        if declared_bounds.is_empty() && needs_infer {
             debug!("projection_must_outlive: no declared bounds");
 
             for component_ty in projection_ty.substs.types() {
@@ -440,8 +442,12 @@ where
         // the requirement that `'b:'r`
         // - OutlivesProjectionComponent: this would require `'b:'r` in addition to
         // other conditions
-        if !env_bounds.is_empty() && env_bounds[1..].iter().all(|b| *b == env_bounds[0]) {
-            let unique_bound = env_bounds[0];
+        if !declared_bounds.is_empty()
+            && declared_bounds[1..]
+                .iter()
+                .all(|b| *b == declared_bounds[0])
+        {
+            let unique_bound = declared_bounds[0];
             debug!(
                 "projection_must_outlive: unique declared bound = {:?}",
                 unique_bound
@@ -449,7 +455,7 @@ where
             if projection_ty
                 .substs
                 .regions()
-                .any(|r| env_bounds.contains(&r))
+                .any(|r| declared_bounds.contains(&r))
             {
                 debug!("projection_must_outlive: unique declared bound appears in trait ref");
                 self.delegate
