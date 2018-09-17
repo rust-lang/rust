@@ -1848,7 +1848,7 @@ impl<'a> Parser<'a> {
             P(Ty {
                 id: ast::DUMMY_NODE_ID,
                 node: TyKind::Infer,
-                span: self.span,
+                span: self.prev_span,
             })
         };
         Ok(Arg {

@@ -25,7 +25,7 @@ error[E0597]: `y` does not live long enough
   --> $DIR/regions-nested-fns.rs:19:15
    |
 LL |     ignore::<Box<for<'z> FnMut(&'z isize)>>(Box::new(|z| {
-   |                                                        - has type `&'0 isize`
+   |                                                       - has type `&'0 isize`
 LL |         ay = x;
 LL |         ay = &y;
    |               ^ `y` would have to be valid for `'0`

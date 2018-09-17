@@ -2,7 +2,7 @@ error[E0597]: `y` does not live long enough
   --> $DIR/regions-nested-fns-2.rs:18:25
    |
 LL |         |z| {
-   |           - has type `&'0 isize`
+   |          - has type `&'0 isize`
 LL |             //~^ ERROR E0373
 LL |             if false { &y } else { z }
    |                         ^ `y` would have to be valid for `'0`
