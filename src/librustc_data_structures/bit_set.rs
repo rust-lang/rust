@@ -28,7 +28,7 @@ pub const WORD_BITS: usize = WORD_BYTES * 8;
 /// just be `usize`.
 #[derive(Clone, Eq, PartialEq)]
 pub struct BitSet<T: Idx> {
-    data: Vec<Word>,
+    words: Vec<Word>,
     marker: PhantomData<T>,
 }
 
@@ -37,7 +37,7 @@ impl<T: Idx> BitSet<T> {
     pub fn new_empty(domain_size: usize) -> BitSet<T> {
         let num_words = num_words(domain_size);
         BitSet {
-            data: vec![0; num_words],
+            words: vec![0; num_words],
             marker: PhantomData,
         }
     }
@@ -46,7 +46,7 @@ impl<T: Idx> BitSet<T> {
     pub fn new_filled(domain_size: usize) -> BitSet<T> {
         let num_words = num_words(domain_size);
         let mut result = BitSet {
-            data: vec![!0; num_words],
+            words: vec![!0; num_words],
             marker: PhantomData,
         };
         result.clear_above(domain_size);
@@ -55,14 +55,14 @@ impl<T: Idx> BitSet<T> {
 
     #[inline]
     pub fn clear(&mut self) {
-        for word in &mut self.data {
+        for word in &mut self.words {
             *word = 0;
         }
     }
 
     /// Sets all elements up to and including `size`.
     pub fn set_up_to(&mut self, bit: usize) {
-        for word in &mut self.data {
+        for word in &mut self.words {
             *word = !0;
         }
         self.clear_above(bit);
@@ -72,14 +72,14 @@ impl<T: Idx> BitSet<T> {
     fn clear_above(&mut self, bit: usize) {
         let first_clear_block = bit / WORD_BITS;
 
-        if first_clear_block < self.data.len() {
+        if first_clear_block < self.words.len() {
             // Within `first_clear_block`, the `bit % WORD_BITS` LSBs should
             // remain.
             let mask = (1 << (bit % WORD_BITS)) - 1;
-            self.data[first_clear_block] &= mask;
+            self.words[first_clear_block] &= mask;
 
             // All the blocks above `first_clear_block` are fully cleared.
-            for word in &mut self.data[first_clear_block + 1..] {
+            for word in &mut self.words[first_clear_block + 1..] {
                 *word = 0;
             }
         }
@@ -88,50 +88,50 @@ impl<T: Idx> BitSet<T> {
     /// Efficiently overwrite `self` with `other`. Panics if `self` and `other`
     /// don't have the same length.
     pub fn overwrite(&mut self, other: &BitSet<T>) {
-        self.words_mut().clone_from_slice(other.words());
+        self.words.clone_from_slice(&other.words);
     }
 
     /// Count the number of set bits in the set.
     pub fn count(&self) -> usize {
-        self.data.iter().map(|e| e.count_ones() as usize).sum()
+        self.words.iter().map(|e| e.count_ones() as usize).sum()
     }
 
     /// True if `self` contains the bit `bit`.
     #[inline]
     pub fn contains(&self, bit: T) -> bool {
-        let (word, mask) = word_mask(bit);
-        (self.data[word] & mask) != 0
+        let (word_index, mask) = word_index_and_mask(bit);
+        (self.words[word_index] & mask) != 0
     }
 
     /// True if `self` is a (non-strict) superset of `other`.
     ///
-    /// The two vectors must have the same length.
+    /// The two sets must have the same domain_size.
     #[inline]
     pub fn superset(&self, other: &BitSet<T>) -> bool {
-        assert_eq!(self.data.len(), other.data.len());
-        self.data.iter().zip(&other.data).all(|(a, b)| (a & b) == *b)
+        assert_eq!(self.words.len(), other.words.len());
+        self.words.iter().zip(&other.words).all(|(a, b)| (a & b) == *b)
     }
 
     /// Is the set empty?
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.data.iter().all(|a| *a == 0)
+        self.words.iter().all(|a| *a == 0)
     }
 
     /// Insert a bit. Returns true if the bit has changed.
     #[inline]
     pub fn insert(&mut self, bit: T) -> bool {
-        let (word, mask) = word_mask(bit);
-        let data = &mut self.data[word];
-        let value = *data;
-        let new_value = value | mask;
-        *data = new_value;
-        new_value != value
+        let (word_index, mask) = word_index_and_mask(bit);
+        let word_ref = &mut self.words[word_index];
+        let word = *word_ref;
+        let new_word = word | mask;
+        *word_ref = new_word;
+        new_word != word
     }
 
     /// Sets all bits to true.
     pub fn insert_all(&mut self) {
-        for word in &mut self.data {
+        for word in &mut self.words {
             *word = !0;
         }
     }
@@ -139,12 +139,12 @@ impl<T: Idx> BitSet<T> {
     /// Returns true if the bit has changed.
     #[inline]
     pub fn remove(&mut self, bit: T) -> bool {
-        let (word, mask) = word_mask(bit);
-        let data = &mut self.data[word];
-        let value = *data;
-        let new_value = value & !mask;
-        *data = new_value;
-        new_value != value
+        let (word_index, mask) = word_index_and_mask(bit);
+        let word_ref = &mut self.words[word_index];
+        let word = *word_ref;
+        let new_word = word & !mask;
+        *word_ref = new_word;
+        new_word != word
     }
 
     /// Set `self = self | other` and return true if `self` changed
@@ -162,17 +162,12 @@ impl<T: Idx> BitSet<T> {
     /// Set `self = self & other` and return true if `self` changed.
     /// (i.e., if any bits were removed).
     pub fn intersect(&mut self, other: &BitSet<T>) -> bool {
-        bitwise(self.words_mut(), other.words(), |a, b| { a & b })
+        bitwise(&mut self.words, &other.words, |a, b| { a & b })
     }
 
     /// Get a slice of the underlying words.
     pub fn words(&self) -> &[Word] {
-        &self.data
-    }
-
-    /// Get a mutable slice of the underlying words.
-    pub fn words_mut(&mut self) -> &mut [Word] {
-        &mut self.data
+        &self.words
     }
 
     /// Iterates over the indices of set bits in a sorted order.
@@ -180,7 +175,7 @@ impl<T: Idx> BitSet<T> {
     pub fn iter<'a>(&'a self) -> BitIter<'a, T> {
         BitIter {
             cur: None,
-            iter: self.data.iter().enumerate(),
+            iter: self.words.iter().enumerate(),
             marker: PhantomData,
         }
     }
@@ -189,7 +184,7 @@ impl<T: Idx> BitSet<T> {
     pub fn to_hybrid(&self) -> HybridBitSet<T> {
         // This domain_size may be slightly larger than the one specified
         // upon creation, due to rounding up to a whole word. That's ok.
-        let domain_size = self.words().len() * WORD_BITS;
+        let domain_size = self.words.len() * WORD_BITS;
 
         // Note: we currently don't bother trying to make a Sparse set.
         HybridBitSet::Dense(self.to_owned(), domain_size)
@@ -203,19 +198,19 @@ impl<T: Idx> BitSet<T> {
 
         // i tracks how many bits we have printed so far.
         let mut i = 0;
-        for word in &self.data {
-            let mut v = *word;
-            for _ in 0..WORD_BYTES { // for each byte in `v`:
+        for word in &self.words {
+            let mut word = *word;
+            for _ in 0..WORD_BYTES { // for each byte in `word`:
                 let remain = bits - i;
                 // If less than a byte remains, then mask just that many bits.
                 let mask = if remain <= 8 { (1 << remain) - 1 } else { 0xFF };
                 assert!(mask <= 0xFF);
-                let byte = v & mask;
+                let byte = word & mask;
 
                 result.push_str(&format!("{}{:02x}", sep, byte));
 
                 if remain <= 8 { break; }
-                v >>= 8;
+                word >>= 8;
                 i += 8;
                 sep = '-';
             }
@@ -243,13 +238,13 @@ pub trait SubtractFromBitSet<T: Idx> {
 
 impl<T: Idx> UnionIntoBitSet<T> for BitSet<T> {
     fn union_into(&self, other: &mut BitSet<T>) -> bool {
-        bitwise(other.words_mut(), self.words(), |a, b| { a | b })
+        bitwise(&mut other.words, &self.words, |a, b| { a | b })
     }
 }
 
 impl<T: Idx> SubtractFromBitSet<T> for BitSet<T> {
     fn subtract_from(&self, other: &mut BitSet<T>) -> bool {
-        bitwise(other.words_mut(), self.words(), |a, b| { a & !b })
+        bitwise(&mut other.words, &self.words, |a, b| { a & !b })
     }
 }
 
@@ -263,7 +258,7 @@ impl<T: Idx> fmt::Debug for BitSet<T> {
 
 impl<T: Idx> rustc_serialize::Encodable for BitSet<T> {
     fn encode<E: rustc_serialize::Encoder>(&self, encoder: &mut E) -> Result<(), E::Error> {
-        self.data.encode(encoder)
+        self.words.encode(encoder)
     }
 }
 
@@ -271,7 +266,7 @@ impl<T: Idx> rustc_serialize::Decodable for BitSet<T> {
     fn decode<D: rustc_serialize::Decoder>(d: &mut D) -> Result<BitSet<T>, D::Error> {
         let words: Vec<Word> = rustc_serialize::Decodable::decode(d)?;
         Ok(BitSet {
-            data: words,
+            words,
             marker: PhantomData,
         })
     }
@@ -539,8 +534,8 @@ pub struct GrowableBitSet<T: Idx> {
 impl<T: Idx> GrowableBitSet<T> {
     pub fn grow(&mut self, domain_size: T) {
         let num_words = num_words(domain_size);
-        if self.bit_set.data.len() <= num_words {
-            self.bit_set.data.resize(num_words + 1, 0)
+        if self.bit_set.words.len() <= num_words {
+            self.bit_set.words.resize(num_words + 1, 0)
         }
     }
 
@@ -561,8 +556,8 @@ impl<T: Idx> GrowableBitSet<T> {
 
     #[inline]
     pub fn contains(&self, bit: T) -> bool {
-        let (word, mask) = word_mask(bit);
-        if let Some(word) = self.bit_set.data.get(word) {
+        let (word_index, mask) = word_index_and_mask(bit);
+        if let Some(word) = self.bit_set.words.get(word_index) {
             (word & mask) != 0
         } else {
             false
@@ -578,7 +573,7 @@ impl<T: Idx> GrowableBitSet<T> {
 #[derive(Clone, Debug)]
 pub struct BitMatrix<R: Idx, C: Idx> {
     columns: usize,
-    vector: Vec<Word>,
+    words: Vec<Word>,
     marker: PhantomData<(R, C)>,
 }
 
@@ -590,7 +585,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
         let words_per_row = num_words(columns);
         BitMatrix {
             columns,
-            vector: vec![0; rows * words_per_row],
+            words: vec![0; rows * words_per_row],
             marker: PhantomData,
         }
     }
@@ -609,12 +604,12 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     /// Returns true if this changed the matrix, and false otherwise.
     pub fn insert(&mut self, row: R, column: R) -> bool {
         let (start, _) = self.range(row);
-        let (word, mask) = word_mask(column);
-        let vector = &mut self.vector[..];
-        let v1 = vector[start + word];
-        let v2 = v1 | mask;
-        vector[start + word] = v2;
-        v1 != v2
+        let (word_index, mask) = word_index_and_mask(column);
+        let words = &mut self.words[..];
+        let word = words[start + word_index];
+        let new_word = word | mask;
+        words[start + word_index] = new_word;
+        word != new_word
     }
 
     /// Do the bits from `row` contain `column`? Put another way, is
@@ -623,8 +618,8 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     /// `row` reach `column`?
     pub fn contains(&self, row: R, column: R) -> bool {
         let (start, _) = self.range(row);
-        let (word, mask) = word_mask(column);
-        (self.vector[start + word] & mask) != 0
+        let (word_index, mask) = word_index_and_mask(column);
+        (self.words[start + word_index] & mask) != 0
     }
 
     /// Returns those indices that are true in rows `a` and `b`.  This
@@ -636,7 +631,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
         let (b_start, b_end) = self.range(b);
         let mut result = Vec::with_capacity(self.columns);
         for (base, (i, j)) in (a_start..a_end).zip(b_start..b_end).enumerate() {
-            let mut v = self.vector[i] & self.vector[j];
+            let mut v = self.words[i] & self.words[j];
             for bit in 0..WORD_BITS {
                 if v == 0 {
                     break;
@@ -660,13 +655,13 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     pub fn union_rows(&mut self, read: R, write: R) -> bool {
         let (read_start, read_end) = self.range(read);
         let (write_start, write_end) = self.range(write);
-        let vector = &mut self.vector[..];
+        let words = &mut self.words[..];
         let mut changed = false;
         for (read_index, write_index) in (read_start..read_end).zip(write_start..write_end) {
-            let v1 = vector[write_index];
-            let v2 = v1 | vector[read_index];
-            vector[write_index] = v2;
-            changed |= v1 != v2;
+            let word = words[write_index];
+            let new_word = word | words[read_index];
+            words[write_index] = new_word;
+            changed |= word != new_word;
         }
         changed
     }
@@ -677,7 +672,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
         let (start, end) = self.range(row);
         BitIter {
             cur: None,
-            iter: self.vector[start..end].iter().enumerate(),
+            iter: self.words[start..end].iter().enumerate(),
             marker: PhantomData,
         }
     }
@@ -795,11 +790,11 @@ fn num_words<T: Idx>(elements: T) -> usize {
 }
 
 #[inline]
-fn word_mask<T: Idx>(index: T) -> (usize, Word) {
+fn word_index_and_mask<T: Idx>(index: T) -> (usize, Word) {
     let index = index.index();
-    let word = index / WORD_BITS;
+    let word_index = index / WORD_BITS;
     let mask = 1 << (index % WORD_BITS);
-    (word, mask)
+    (word_index, mask)
 }
 
 #[test]
