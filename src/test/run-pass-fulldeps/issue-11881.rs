@@ -15,6 +15,7 @@
 #![feature(rustc_private)]
 
 extern crate serialize;
+use serialize as rustc_serialize;
 
 use std::io::Cursor;
 use std::io::prelude::*;
@@ -25,12 +26,12 @@ use serialize::{Encodable, Encoder};
 use serialize::json;
 use serialize::opaque;
 
-#[derive(Encodable)]
+#[derive(RustcEncodable)]
 struct Foo {
     baz: bool,
 }
 
-#[derive(Encodable)]
+#[derive(RustcEncodable)]
 struct Bar {
     froboz: usize,
 }

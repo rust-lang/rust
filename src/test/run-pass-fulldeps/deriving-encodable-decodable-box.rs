@@ -14,11 +14,12 @@
 #![feature(rustc_private)]
 
 extern crate serialize;
+use serialize as rustc_serialize;
 
 use serialize::{Encodable, Decodable};
 use serialize::json;
 
-#[derive(Encodable, Decodable)]
+#[derive(RustcEncodable, RustcDecodable)]
 struct A {
     foo: Box<[bool]>,
 }
