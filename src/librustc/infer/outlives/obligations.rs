@@ -388,20 +388,24 @@ where
         // rule might not apply (but another rule might). For now, we err
         // on the side of adding too few edges into the graph.
 
-        // Compute the bounds we can derive from the environment or trait
-        // definition.  We know that the projection outlives all the
-        // regions in this list.
-        let mut declared_bounds = self.verify_bound
-            .projection_declared_bounds_from_env(projection_ty);
-
-        declared_bounds.extend(
-            self.verify_bound
-                .projection_declared_bounds_from_trait(projection_ty),
+        // Compute the bounds we can derive from the environment. This
+        // is an "approximate" match -- in some cases, these bounds
+        // may not apply.
+        let approx_env_bounds = self.verify_bound
+            .projection_approx_declared_bounds_from_env(projection_ty);
+        debug!(
+            "projection_must_outlive: approx_env_bounds={:?}",
+            approx_env_bounds
         );
 
+        // Compute the bounds we can derive from the trait definition.
+        // These are guaranteed to apply, no matter the inference
+        // results.
+        let trait_bounds = self.verify_bound
+            .projection_declared_bounds_from_trait(projection_ty);
         debug!(
-            "projection_must_outlive: declared_bounds={:?}",
-            declared_bounds
+            "projection_must_outlive: trait_bounds={:?}",
+            trait_bounds
         );
 
         // If declared bounds list is empty, the only applicable rule is
@@ -419,7 +423,7 @@ where
         // inference variables, we use a verify constraint instead of adding
         // edges, which winds up enforcing the same condition.
         let needs_infer = projection_ty.needs_infer();
-        if declared_bounds.is_empty() && needs_infer {
+        if approx_env_bounds.is_empty() && trait_bounds.is_empty() && needs_infer {
             debug!("projection_must_outlive: no declared bounds");
 
             for component_ty in projection_ty.substs.types() {
@@ -434,34 +438,31 @@ where
             return;
         }
 
-        // If we find that there is a unique declared bound `'b`, and this bound
-        // appears in the trait reference, then the best action is to require that `'b:'r`,
-        // so do that. This is best no matter what rule we use:
+        // If we found a unique bound `'b` from the trait, and we
+        // found nothing else from the environment, then the best
+        // action is to require that `'b: 'r`, so do that.
         //
-        // - OutlivesProjectionEnv or OutlivesProjectionTraitDef: these would translate to
-        // the requirement that `'b:'r`
-        // - OutlivesProjectionComponent: this would require `'b:'r` in addition to
-        // other conditions
-        if !declared_bounds.is_empty()
-            && declared_bounds[1..]
+        // This is best no matter what rule we use:
+        //
+        // - OutlivesProjectionEnv: these would translate to the requirement that `'b:'r`
+        // - OutlivesProjectionTraitDef: these would translate to the requirement that `'b:'r`
+        // - OutlivesProjectionComponent: this would require `'b:'r`
+        //   in addition to other conditions
+        if !trait_bounds.is_empty()
+            && trait_bounds[1..]
                 .iter()
-                .all(|b| *b == declared_bounds[0])
+                .chain(&approx_env_bounds)
+                .all(|b| *b == trait_bounds[0])
         {
-            let unique_bound = declared_bounds[0];
+            let unique_bound = trait_bounds[0];
             debug!(
-                "projection_must_outlive: unique declared bound = {:?}",
+                "projection_must_outlive: unique trait bound = {:?}",
                 unique_bound
             );
-            if projection_ty
-                .substs
-                .regions()
-                .any(|r| declared_bounds.contains(&r))
-            {
-                debug!("projection_must_outlive: unique declared bound appears in trait ref");
-                self.delegate
-                    .push_sub_region_constraint(origin.clone(), region, unique_bound);
-                return;
-            }
+            debug!("projection_must_outlive: unique declared bound appears in trait ref");
+            self.delegate
+                .push_sub_region_constraint(origin.clone(), region, unique_bound);
+            return;
         }
 
         // Fallback to verifying after the fact that there exists a

@@ -74,10 +74,18 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
 
     /// Given a projection like `T::Item`, searches the environment
     /// for where-clauses like `T::Item: 'a`. Returns the set of
-    /// regions `'a` that it finds.  This is a "conservative" check --
-    /// it may not find all applicable bounds, but all the bounds it
-    /// returns can be relied upon.
-    pub fn projection_declared_bounds_from_env(
+    /// regions `'a` that it finds.
+    ///
+    /// This is an "approximate" check -- it may not find all
+    /// applicable bounds, and not all the bounds it returns can be
+    /// relied upon. In particular, this check ignores region
+    /// identity.  So, for example, if we have `<T as
+    /// Trait<'0>>::Item` where `'0` is a region variable, and the
+    /// user has `<T as Trait<'a>>::Item: 'b` in the environment, then
+    /// the clause from the environment only applies if `'0 = 'a`,
+    /// which we don't know yet. But we would still include `'b` in
+    /// this list.
+    pub fn projection_approx_declared_bounds_from_env(
         &self,
         projection_ty: ty::ProjectionTy<'tcx>,
     ) -> Vec<ty::Region<'tcx>> {
@@ -103,9 +111,11 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
             projection_ty
         );
 
+        // Search the env for where clauses like `P: 'a`.
         let mut declared_bounds =
-            self.projection_declared_bounds_from_env(projection_ty);
+            self.declared_generic_bounds_from_env(GenericKind::Projection(projection_ty));
 
+        // Extend with bounds that we can find from the trait.
         declared_bounds.extend(
             self.projection_declared_bounds_from_trait(projection_ty)
         );
@@ -139,6 +149,12 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
         }
     }
 
+    /// Searches the environment for where-clauses like `G: 'a` where
+    /// `G` is either some type parameter `T` or a projection like
+    /// `T::Item`. Returns a vector of the `'a` bounds it can find.
+    ///
+    /// This is a conservative check -- it may not find all applicable
+    /// bounds, but all the bounds it returns can be relied upon.
     fn declared_generic_bounds_from_env(
         &self,
         generic: GenericKind<'tcx>,
