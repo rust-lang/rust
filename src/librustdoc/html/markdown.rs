@@ -532,8 +532,10 @@ impl fmt::Display for TestableCodeError {
     }
 }
 
-pub fn find_testable_code(
-    doc: &str, tests: &mut test::Collector, error_codes: ErrorCodes,
+pub fn find_testable_code<T: test::Tester>(
+    doc: &str,
+    tests: &mut T,
+    error_codes: ErrorCodes,
 ) -> Result<(), TestableCodeError> {
     let mut parser = Parser::new(doc);
     let mut prev_offset = 0;
