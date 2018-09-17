@@ -271,7 +271,7 @@ impl<'test> TestCx<'test> {
 
     fn should_compile_successfully(&self) -> bool {
         match self.config.mode {
-            ParseFail | CompileFail => false,
+            ParseFail | CompileFail => self.props.compile_pass,
             RunPass => true,
             Ui => self.props.compile_pass,
             Incremental => {
