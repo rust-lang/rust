@@ -153,7 +153,10 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
         // like `<T as Foo<'a>>::Item`.
         let generic_ty = generic.to_ty(tcx);
         let c_b = self.param_env.caller_bounds;
-        let mut param_bounds = self.collect_outlives_from_predicate_list(generic_ty, c_b);
+        let mut param_bounds = self.collect_outlives_from_predicate_list(
+            |ty| ty == generic_ty,
+            c_b,
+        );
 
         // Next, collect regions we scraped from the well-formedness
         // constraints in the fn signature. To do that, we walk the list
@@ -241,7 +244,7 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
         let identity_substs = Substs::identity_for_item(tcx, assoc_item_def_id);
         let identity_proj = tcx.mk_projection(assoc_item_def_id, identity_substs);
         self.collect_outlives_from_predicate_list(
-            identity_proj,
+            |ty| ty == identity_proj,
             traits::elaborate_predicates(tcx, trait_predicates.predicates),
         )
     }
@@ -252,20 +255,16 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
     /// when comparing `ty` for equality, so `ty` must be something
     /// that does not involve inference variables and where you
     /// otherwise want a precise match.
-    fn collect_outlives_from_predicate_list<I, P>(
+    fn collect_outlives_from_predicate_list(
         &self,
-        ty: Ty<'tcx>,
-        predicates: I,
-    ) -> Vec<ty::Region<'tcx>>
-    where
-        I: IntoIterator<Item = P>,
-        P: AsRef<ty::Predicate<'tcx>>,
-    {
+        compare_ty: impl Fn(Ty<'tcx>) -> bool,
+        predicates: impl IntoIterator<Item = impl AsRef<ty::Predicate<'tcx>>>,
+    ) -> Vec<ty::Region<'tcx>> {
         predicates
             .into_iter()
             .filter_map(|p| p.as_ref().to_opt_type_outlives())
             .filter_map(|p| p.no_late_bound_regions())
-            .filter(|p| p.0 == ty)
+            .filter(|p| compare_ty(p.0))
             .map(|p| p.1)
             .collect()
     }
