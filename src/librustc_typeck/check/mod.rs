@@ -3344,6 +3344,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 }
                             };
                     }
+                    ty::Array(ty, _) if ty.is_numeric() => {
+                        let base = self.tcx.hir.node_to_pretty_string(base.id);
+                        let msg = format!("attempting to use tuple indexing on an array; try");
+                        let suggestion = format!("{}[{}]", base, field);
+                        err.span_suggestion(field.span, &msg, suggestion);
+                    },
                     ty::RawPtr(..) => {
                         let base = self.tcx.hir.node_to_pretty_string(base.id);
                         let msg = format!("`{}` is a native pointer; try dereferencing it", base);
