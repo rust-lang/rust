@@ -39,7 +39,7 @@ pub struct DiagnosticBuilder<'a> {
 /// it easy to declare such methods on the builder.
 macro_rules! forward {
     // Forward pattern for &self -> &Self
-    (pub fn $n:ident(&self, $($name:ident: $ty:ty,)*) -> &Self) => {
+    (pub fn $n:ident(&self, $($name:ident: $ty:ty),* $(,)*) -> &Self) => {
         pub fn $n(&self, $($name: $ty),*) -> &Self {
             #[allow(deprecated)]
             self.diagnostic.$n($($name),*);
@@ -48,7 +48,7 @@ macro_rules! forward {
     };
 
     // Forward pattern for &mut self -> &mut Self
-    (pub fn $n:ident(&mut self, $($name:ident: $ty:ty,)*) -> &mut Self) => {
+    (pub fn $n:ident(&mut self, $($name:ident: $ty:ty),* $(,)*) -> &mut Self) => {
         pub fn $n(&mut self, $($name: $ty),*) -> &mut Self {
             #[allow(deprecated)]
             self.diagnostic.$n($($name),*);
@@ -58,8 +58,11 @@ macro_rules! forward {
 
     // Forward pattern for &mut self -> &mut Self, with S: Into<MultiSpan>
     // type parameter. No obvious way to make this more generic.
-    (pub fn $n:ident<S: Into<MultiSpan>>(&mut self, $($name:ident: $ty:ty,)*) -> &mut Self) => {
-        pub fn $n<S: Into<MultiSpan>>(&mut self, $($name: $ty,)*) -> &mut Self {
+    (pub fn $n:ident<S: Into<MultiSpan>>(
+                    &mut self,
+                    $($name:ident: $ty:ty),*
+                    $(,)*) -> &mut Self) => {
+        pub fn $n<S: Into<MultiSpan>>(&mut self, $($name: $ty),*) -> &mut Self {
             #[allow(deprecated)]
             self.diagnostic.$n($($name),*);
             self
@@ -158,14 +161,14 @@ impl<'a> DiagnosticBuilder<'a> {
                                               found_extra: &dyn fmt::Display,
                                               ) -> &mut Self);
 
-    forward!(pub fn note(&mut self, msg: &str,) -> &mut Self);
+    forward!(pub fn note(&mut self, msg: &str) -> &mut Self);
     forward!(pub fn span_note<S: Into<MultiSpan>>(&mut self,
                                                   sp: S,
                                                   msg: &str,
                                                   ) -> &mut Self);
-    forward!(pub fn warn(&mut self, msg: &str,) -> &mut Self);
-    forward!(pub fn span_warn<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str,) -> &mut Self);
-    forward!(pub fn help(&mut self , msg: &str,) -> &mut Self);
+    forward!(pub fn warn(&mut self, msg: &str) -> &mut Self);
+    forward!(pub fn span_warn<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self);
+    forward!(pub fn help(&mut self , msg: &str) -> &mut Self);
     forward!(pub fn span_help<S: Into<MultiSpan>>(&mut self,
                                                   sp: S,
                                                   msg: &str,
@@ -269,8 +272,8 @@ impl<'a> DiagnosticBuilder<'a> {
         );
         self
     }
-    forward!(pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S,) -> &mut Self);
-    forward!(pub fn code(&mut self, s: DiagnosticId,) -> &mut Self);
+    forward!(pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self);
+    forward!(pub fn code(&mut self, s: DiagnosticId) -> &mut Self);
 
     pub fn allow_suggestions(&mut self, allow: bool) -> &mut Self {
         self.allow_suggestions = allow;
