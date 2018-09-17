@@ -19,61 +19,11 @@ use Mode;
 use Compiler;
 use builder::{Step, RunConfig, ShouldRun, Builder};
 use util::{exe, add_lib_path};
-use compile::{self, libtest_stamp, libstd_stamp, librustc_stamp};
+use compile;
 use native;
 use channel::GitInfo;
 use cache::Interned;
 use toolstate::ToolState;
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct CleanTools {
-    pub compiler: Compiler,
-    pub target: Interned<String>,
-    pub cause: Mode,
-}
-
-impl Step for CleanTools {
-    type Output = ();
-
-    fn should_run(run: ShouldRun) -> ShouldRun {
-        run.never()
-    }
-
-    fn run(self, builder: &Builder) {
-        let compiler = self.compiler;
-        let target = self.target;
-        let cause = self.cause;
-
-        // This is for the original compiler, but if we're forced to use stage 1, then
-        // std/test/rustc stamps won't exist in stage 2, so we need to get those from stage 1, since
-        // we copy the libs forward.
-        let tools_dir = builder.stage_out(compiler, Mode::ToolRustc);
-        let compiler = if builder.force_use_stage1(compiler, target) {
-            builder.compiler(1, compiler.host)
-        } else {
-            compiler
-        };
-
-        for &cur_mode in &[Mode::Std, Mode::Test, Mode::Rustc] {
-            let stamp = match cur_mode {
-                Mode::Std => libstd_stamp(builder, compiler, target),
-                Mode::Test => libtest_stamp(builder, compiler, target),
-                Mode::Rustc => librustc_stamp(builder, compiler, target),
-                _ => panic!(),
-            };
-
-            if builder.clear_if_dirty(&tools_dir, &stamp) {
-                break;
-            }
-
-            // If we are a rustc tool, and std changed, we also need to clear ourselves out -- our
-            // dependencies depend on std. Therefore, we iterate up until our own mode.
-            if cause == cur_mode {
-                break;
-            }
-        }
-    }
-}
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {

@@ -32,7 +32,6 @@ use serde_json;
 use util::{exe, libdir, is_dylib, CiEnv};
 use {Compiler, Mode, GitRepo};
 use native;
-use tool;
 
 use cache::{INTERNER, Interned};
 use builder::{Step, RunConfig, ShouldRun, Builder};
@@ -107,8 +106,6 @@ impl Step for Std {
             copy_musl_third_party_objects(builder, target, &libdir);
         }
 
-        let out_dir = builder.cargo_out(compiler, Mode::Std, target);
-        builder.clear_if_dirty(&out_dir, &builder.rustc(compiler));
         let mut cargo = builder.cargo(compiler, Mode::Std, target, "build");
         std_cargo(builder, &compiler, target, &mut cargo);
 
@@ -246,11 +243,7 @@ impl Step for StdLink {
             copy_apple_sanitizer_dylibs(builder, &builder.native_dir(target), "osx", &libdir);
         }
 
-        builder.ensure(tool::CleanTools {
-            compiler: target_compiler,
-            target,
-            cause: Mode::Std,
-        });
+        builder.cargo(target_compiler, Mode::ToolStd, target, "clean");
     }
 }
 
@@ -387,8 +380,6 @@ impl Step for Test {
             return;
         }
 
-        let out_dir = builder.cargo_out(compiler, Mode::Test, target);
-        builder.clear_if_dirty(&out_dir, &libstd_stamp(builder, compiler, target));
         let mut cargo = builder.cargo(compiler, Mode::Test, target, "build");
         test_cargo(builder, &compiler, target, &mut cargo);
 
@@ -448,11 +439,8 @@ impl Step for TestLink {
                 target));
         add_to_sysroot(builder, &builder.sysroot_libdir(target_compiler, target),
                     &libtest_stamp(builder, compiler, target));
-        builder.ensure(tool::CleanTools {
-            compiler: target_compiler,
-            target,
-            cause: Mode::Test,
-        });
+
+        builder.cargo(target_compiler, Mode::ToolTest, target, "clean");
     }
 }
 
@@ -519,9 +507,6 @@ impl Step for Rustc {
             compiler: builder.compiler(self.compiler.stage, builder.config.build),
             target: builder.config.build,
         });
-        let cargo_out = builder.cargo_out(compiler, Mode::Rustc, target);
-        builder.clear_if_dirty(&cargo_out, &libstd_stamp(builder, compiler, target));
-        builder.clear_if_dirty(&cargo_out, &libtest_stamp(builder, compiler, target));
 
         let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "build");
         rustc_cargo(builder, &mut cargo);
@@ -613,11 +598,7 @@ impl Step for RustcLink {
                  target));
         add_to_sysroot(builder, &builder.sysroot_libdir(target_compiler, target),
                        &librustc_stamp(builder, compiler, target));
-        builder.ensure(tool::CleanTools {
-            compiler: target_compiler,
-            target,
-            cause: Mode::Rustc,
-        });
+        builder.cargo(target_compiler, Mode::ToolRustc, target, "clean");
     }
 }
 
@@ -674,7 +655,6 @@ impl Step for CodegenBackend {
         }
 
         let out_dir = builder.cargo_out(compiler, Mode::Codegen, target);
-        builder.clear_if_dirty(&out_dir, &librustc_stamp(builder, compiler, target));
 
         let mut cargo = builder.cargo(compiler, Mode::Codegen, target, "rustc");
         cargo.arg("--manifest-path")

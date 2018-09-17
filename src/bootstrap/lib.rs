@@ -352,6 +352,7 @@ pub enum Mode {
     /// Compile a tool which uses all libraries we compile (up to rustc).
     /// Doesn't use the stage0 compiler libraries like "other", and includes
     /// tools like rustdoc, cargo, rls, etc.
+    ToolTest,
     ToolStd,
     ToolRustc,
 }
@@ -572,6 +573,7 @@ impl Build {
             Mode::Codegen => "-codegen",
             Mode::ToolBootstrap => "-bootstrap-tools",
             Mode::ToolStd => "-tools",
+            Mode::ToolTest => "-tools",
             Mode::ToolRustc => "-tools",
         };
         self.out.join(&*compiler.host)
