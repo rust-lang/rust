@@ -129,7 +129,7 @@ impl<'a> StripUnconfigured<'a> {
                                                            "expected syntax is",
                                                            suggestion.into(),
                                                            Applicability::MaybeIncorrect,
-                                                           );
+                    );
                 }
                 err.emit();
                 true

@@ -449,7 +449,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                            msg,
                                                            format!("{}.to_owned()", lstring),
                                                            Applicability::MachineApplicable,
-                                                           ),
+                        ),
                         _ => err.help(msg),
                     };
                 }

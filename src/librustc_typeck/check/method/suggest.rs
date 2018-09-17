@@ -251,7 +251,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 let snippet = tcx.sess.source_map().span_to_snippet(lit.span)
                                     .unwrap_or("<numeric literal>".to_string());
 
-                                err.span_suggestion_with_applicability(lit.span,
+                                err.span_suggestion_with_applicability(
+                                                    lit.span,
                                                     &format!("you must specify a concrete type for \
                                                               this numeric value, like `{}`",
                                                              concrete_type),
@@ -259,7 +260,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                             snippet,
                                                             concrete_type),
                                                     Applicability::MaybeIncorrect,
-                                                    );
+                                );
                             }
                             hir::ExprKind::Path(ref qpath) => {  // local binding
                                 if let &hir::QPath::Resolved(_, ref path) = &qpath {
@@ -524,7 +525,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                     &msg,
                                                     path_strings,
                                                     Applicability::MaybeIncorrect,
-                                                    );
+            );
         } else {
             let limit = if candidates.len() == 5 { 5 } else { 4 };
             for (i, trait_did) in candidates.iter().take(limit).enumerate() {
