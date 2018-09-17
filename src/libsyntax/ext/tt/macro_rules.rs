@@ -189,10 +189,10 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                         err.note("you might be missing a comma");
                     } else {
                         err.span_suggestion_short_with_applicability(
-                                                comma_span,
-                                                "missing comma here",
-                                                ", ".to_string(),
-                                                Applicability::MachineApplicable,
+                            comma_span,
+                            "missing comma here",
+                            ", ".to_string(),
+                            Applicability::MachineApplicable,
                         );
                     }
                 }

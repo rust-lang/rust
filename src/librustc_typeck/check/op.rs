@@ -445,10 +445,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                    "`+` can't be used to concatenate two `&str` strings");
                     match source_map.span_to_snippet(lhs_expr.span) {
                         Ok(lstring) => err.span_suggestion_with_applicability(
-                                                           lhs_expr.span,
-                                                           msg,
-                                                           format!("{}.to_owned()", lstring),
-                                                           Applicability::MachineApplicable,
+                            lhs_expr.span,
+                            msg,
+                            format!("{}.to_owned()", lstring),
+                            Applicability::MachineApplicable,
                         ),
                         _ => err.help(msg),
                     };
@@ -466,12 +466,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 ) {
                     (Ok(l), Ok(r), false) => {
                         err.multipart_suggestion_with_applicability(
-                                        msg,
-                                        vec![
-                                            (lhs_expr.span, format!("{}.to_owned()", l)),
-                                            (rhs_expr.span, format!("&{}", r)),
-                                        ],
-                                        Applicability::MachineApplicable,
+                            msg,
+                            vec![
+                                (lhs_expr.span, format!("{}.to_owned()", l)),
+                                (rhs_expr.span, format!("&{}", r)),
+                            ],
+                            Applicability::MachineApplicable,
                         );
                     }
                     _ => {

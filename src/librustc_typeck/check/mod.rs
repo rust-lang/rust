@@ -3349,11 +3349,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         let msg = format!("`{}` is a native pointer; try dereferencing it", base);
                         let suggestion = format!("(*{}).{}", base, field);
                         err.span_suggestion_with_applicability(
-                                                               field.span,
-                                                               &msg,
-                                                               suggestion,
-                                                               Applicability::MaybeIncorrect,
-                                                               );
+                            field.span,
+                            &msg,
+                            suggestion,
+                            Applicability::MaybeIncorrect,
+                        );
                     }
                     _ => {}
                 }
@@ -4722,11 +4722,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     ) {
         if let Some((sp, msg, suggestion)) = self.check_ref(expr, found, expected) {
             err.span_suggestion_with_applicability(
-                                                   sp,
-                                                   msg,
-                                                   suggestion,
-                                                   Applicability::MachineApplicable,
-                                                   );
+                sp,
+                msg,
+                suggestion,
+                Applicability::MachineApplicable,
+            );
         } else if !self.check_for_cast(err, expr, found, expected) {
             let methods = self.get_conversion_methods(expr.span, expected, found);
             if let Ok(expr_text) = self.sess().source_map().span_to_snippet(expr.span) {
@@ -4757,11 +4757,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }) .collect::<Vec<_>>();
                 if !suggestions.is_empty() {
                     err.span_suggestions_with_applicability(
-                                                            expr.span,
-                                                            "try using a conversion method",
-                                                            suggestions,
-                                                            Applicability::MaybeIncorrect,
-                                                            );
+                        expr.span,
+                        "try using a conversion method",
+                        suggestions,
+                        Applicability::MaybeIncorrect,
+                    );
                 }
             }
         }

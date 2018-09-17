@@ -133,10 +133,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let suggestions = compatible_variants.iter()
                     .map(|v| format!("{}({})", v, expr_text)).collect::<Vec<_>>();
                 err.span_suggestions_with_applicability(
-                                                 expr.span,
-                                                 "try using a variant of the expected type",
-                                                 suggestions,
-                                                 Applicability::MaybeIncorrect,
+                     expr.span,
+                     "try using a variant of the expected type",
+                     suggestions,
+                     Applicability::MaybeIncorrect,
                 );
             }
         }

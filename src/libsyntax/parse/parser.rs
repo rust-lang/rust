@@ -3883,11 +3883,11 @@ impl<'a> Parser<'a> {
                     // If the struct looks otherwise well formed, recover and continue.
                     if let Some(sp) = comma_sp {
                         err.span_suggestion_short_with_applicability(
-                                                                 sp,
-                                                                 "remove this comma",
-                                                                 String::new(),
-                                                                 Applicability::MachineApplicable,
-                                                                 );
+                            sp,
+                            "remove this comma",
+                            String::new(),
+                            Applicability::MachineApplicable,
+                        );
                     }
                     err.emit();
                     break;

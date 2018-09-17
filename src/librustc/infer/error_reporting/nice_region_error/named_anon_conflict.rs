@@ -118,8 +118,8 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             new_ty.to_string(),
             Applicability::Unspecified,
         )
-            .span_label(span, format!("lifetime `{}` required", named))
-            .emit();
+        .span_label(span, format!("lifetime `{}` required", named))
+        .emit();
         return Some(ErrorReported);
     }
 

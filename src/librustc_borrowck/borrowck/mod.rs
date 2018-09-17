@@ -868,19 +868,19 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                             db.note(fn_closure_msg);
                                         } else {
                                             db.span_suggestion_with_applicability(
-                                                                      sp,
-                                                                      msg,
-                                                                      suggestion,
-                                                                      Applicability::Unspecified,
-                                                                      );
+                                                sp,
+                                                msg,
+                                                suggestion,
+                                                Applicability::Unspecified,
+                                            );
                                         }
                                     } else {
                                         db.span_suggestion_with_applicability(
-                                                                      sp,
-                                                                      msg,
-                                                                      suggestion,
-                                                                      Applicability::Unspecified,
-                                                                      );
+                                            sp,
+                                            msg,
+                                            suggestion,
+                                            Applicability::Unspecified,
+                                        );
                                     }
                                 }
                                 _ => {
@@ -1344,13 +1344,13 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                   capture_span,
                                                   Origin::Ast)
             .span_suggestion_with_applicability(
-                                         err.span,
-                                         &format!("to force the closure to take ownership of {} \
-                                                   (and any other referenced variables), \
-                                                   use the `move` keyword",
-                                                   cmt_path_or_string),
-                                         suggestion,
-                                         Applicability::MachineApplicable,
+                 err.span,
+                 &format!("to force the closure to take ownership of {} \
+                           (and any other referenced variables), \
+                           use the `move` keyword",
+                           cmt_path_or_string),
+                 suggestion,
+                 Applicability::MachineApplicable,
             )
             .emit();
         self.signal_error();

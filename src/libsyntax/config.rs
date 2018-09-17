@@ -125,10 +125,10 @@ impl<'a> StripUnconfigured<'a> {
                 let mut err = self.sess.span_diagnostic.struct_span_err(span, msg);
                 if !suggestion.is_empty() {
                     err.span_suggestion_with_applicability(
-                                                           span,
-                                                           "expected syntax is",
-                                                           suggestion.into(),
-                                                           Applicability::MaybeIncorrect,
+                        span,
+                        "expected syntax is",
+                        suggestion.into(),
+                        Applicability::MaybeIncorrect,
                     );
                 }
                 err.emit();

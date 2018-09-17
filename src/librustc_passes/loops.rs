@@ -142,12 +142,14 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                                             "can only break with a value inside \
                                             `loop` or breakable block")
                                 .span_suggestion_with_applicability(
-                                                 e.span,
-                                                 &format!("instead, use `break` on its own \
-                                                           without a value inside this `{}` loop",
-                                                          kind.name()),
-                                                 "break".to_string(),
-                                                 Applicability::MaybeIncorrect,
+                                    e.span,
+                                    &format!(
+                                        "instead, use `break` on its own \
+                                        without a value inside this `{}` loop",
+                                        kind.name()
+                                    ),
+                                    "break".to_string(),
+                                    Applicability::MaybeIncorrect,
                                 )
                                 .emit();
                         }

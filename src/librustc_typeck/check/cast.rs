@@ -299,11 +299,12 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                 err.note("The type information given here is insufficient to check whether \
                           the pointer cast is valid");
                 if unknown_cast_to {
-                    err.span_suggestion_short_with_applicability(self.cast_span,
-                                              "consider giving more type information",
-                                              String::new(),
-                                              Applicability::Unspecified,
-                                              );
+                    err.span_suggestion_short_with_applicability(
+                        self.cast_span,
+                        "consider giving more type information",
+                        String::new(),
+                        Applicability::Unspecified,
+                    );
                 }
                 err.emit();
             }
@@ -329,11 +330,12 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                 if self.cast_ty.is_trait() {
                     match fcx.tcx.sess.source_map().span_to_snippet(self.cast_span) {
                         Ok(s) => {
-                            err.span_suggestion_with_applicability(self.cast_span,
-                                                "try casting to a reference instead",
-                                                format!("&{}{}", mtstr, s),
-                                                Applicability::MachineApplicable,
-                                                );
+                            err.span_suggestion_with_applicability(
+                                self.cast_span,
+                                "try casting to a reference instead",
+                                format!("&{}{}", mtstr, s),
+                                Applicability::MachineApplicable,
+                            );
                         }
                         Err(_) => {
                             span_help!(err, self.cast_span, "did you mean `&{}{}`?", mtstr, tstr)
@@ -350,11 +352,12 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             ty::Adt(def, ..) if def.is_box() => {
                 match fcx.tcx.sess.source_map().span_to_snippet(self.cast_span) {
                     Ok(s) => {
-                        err.span_suggestion_with_applicability(self.cast_span,
-                                            "try casting to a `Box` instead",
-                                            format!("Box<{}>", s),
-                                            Applicability::MachineApplicable,
-                                            );
+                        err.span_suggestion_with_applicability(
+                            self.cast_span,
+                            "try casting to a `Box` instead",
+                            format!("Box<{}>", s),
+                            Applicability::MachineApplicable,
+                        );
                     }
                     Err(_) => span_help!(err, self.cast_span, "did you mean `Box<{}>`?", tstr),
                 }
