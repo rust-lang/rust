@@ -326,7 +326,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             impl_err_span,
                             "consider change the type to match the mutability in trait",
                             format!("{}", trait_err_str),
-                            Applicability::Unspecified,
+                            Applicability::MachineApplicable,
                         );
                     }
                 }
@@ -811,7 +811,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 // of the generics, but it works for the common case
                                 (generics_span, new_generics),
                             ],
-                            Applicability::Unspecified,
+                            Applicability::MaybeIncorrect,
                         );
                         Some(())
                     })();
@@ -881,7 +881,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 // replace param usage with `impl Trait`
                                 (span, format!("impl {}", bounds)),
                             ],
-                            Applicability::Unspecified,
+                            Applicability::MaybeIncorrect,
                         );
                         Some(())
                     })();

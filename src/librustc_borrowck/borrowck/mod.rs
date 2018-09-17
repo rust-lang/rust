@@ -1250,6 +1250,11 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                 let_span,
                                 "use a mutable reference instead",
                                 replace_str,
+                                // I believe this can be machine applicable,
+                                // but if there are multiple attempted uses of an immutable
+                                // reference, I don't know how rustfix handles it, it might
+                                // attempt fixing them multiple times.
+                                //                              @estebank
                                 Applicability::Unspecified,
                             );
                         }
@@ -1308,7 +1313,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         "consider removing the `&mut`, as it is an \
                         immutable binding to a mutable reference",
                         snippet,
-                        Applicability::Unspecified,
+                        Applicability::MachineApplicable,
                     );
                 } else {
                     db.span_suggestion_with_applicability(
@@ -1345,7 +1350,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                    use the `move` keyword",
                                                    cmt_path_or_string),
                                          suggestion,
-                                         Applicability::Unspecified,
+                                         Applicability::MachineApplicable,
             )
             .emit();
         self.signal_error();

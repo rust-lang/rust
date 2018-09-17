@@ -147,7 +147,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                                                            without a value inside this `{}` loop",
                                                           kind.name()),
                                                  "break".to_string(),
-                                                 Applicability::Unspecified,
+                                                 Applicability::MaybeIncorrect,
                                 )
                                 .emit();
                         }

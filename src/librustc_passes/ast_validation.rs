@@ -184,7 +184,7 @@ impl<'a> AstValidator<'a> {
             if let Ok(snippet) = self.session.source_map().span_to_snippet(span) {
                 err.span_suggestion_with_applicability(
                     span, "consider adding parentheses", format!("({})", snippet),
-                    Applicability::Unspecified,
+                    Applicability::MachineApplicable,
                 );
             }
 

@@ -232,7 +232,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     local_decl.source_info.span,
                     "consider changing this to be mutable",
                     format!("mut {}", local_decl.name.unwrap()),
-                    Applicability::Unspecified,
+                    Applicability::MachineApplicable,
                 );
             }
 
@@ -263,7 +263,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                             upvar_ident.span,
                             "consider changing this to be mutable",
                             format!("mut {}", upvar_ident.name),
-                            Applicability::Unspecified,
+                            Applicability::MachineApplicable,
                         );
                     }
                 }
@@ -358,7 +358,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         err_help_span,
                         &format!("consider changing this to be a mutable {}", pointer_desc),
                         suggested_code,
-                        Applicability::Unspecified,
+                        Applicability::MachineApplicable,
                     );
                 }
 

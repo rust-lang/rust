@@ -135,7 +135,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 err.span_suggestions_with_applicability(expr.span,
                                      "try using a variant of the expected type",
                                      suggestions,
-                                     Applicability::Unspecified,
+                                     Applicability::MaybeIncorrect,
                                      );
             }
         }

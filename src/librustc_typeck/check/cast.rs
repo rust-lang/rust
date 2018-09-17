@@ -332,7 +332,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                             err.span_suggestion_with_applicability(self.cast_span,
                                                 "try casting to a reference instead",
                                                 format!("&{}{}", mtstr, s),
-                                                Applicability::Unspecified,
+                                                Applicability::MachineApplicable,
                                                 );
                         }
                         Err(_) => {
@@ -353,7 +353,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                         err.span_suggestion_with_applicability(self.cast_span,
                                             "try casting to a `Box` instead",
                                             format!("Box<{}>", s),
-                                            Applicability::Unspecified,
+                                            Applicability::MachineApplicable,
                                             );
                     }
                     Err(_) => span_help!(err, self.cast_span, "did you mean `Box<{}>`?", tstr),

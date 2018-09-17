@@ -3303,7 +3303,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                                       sp,
                                                       "did you mean to use `;` here instead?",
                                                       ";".to_string(),
-                                                      Applicability::Unspecified,
+                                                      Applicability::MaybeIncorrect,
                                                       );
                         }
                         break;

@@ -426,7 +426,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 span,
                 &format!("consider removing the `{}`", to_remove),
                 suggestion,
-                Applicability::Unspecified,
+                Applicability::MachineApplicable,
             );
         }
     }

@@ -258,7 +258,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                     format!("{}_{}",
                                                             snippet,
                                                             concrete_type),
-                                                    Applicability::Unspecified,
+                                                    Applicability::MaybeIncorrect,
                                                     );
                             }
                             hir::ExprKind::Path(ref qpath) => {  // local binding
@@ -290,7 +290,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                         .unwrap_or(span)),
                                                     &msg,
                                                     format!("{}: {}", snippet, concrete_type),
-                                                    Applicability::Unspecified,
+                                                    Applicability::MaybeIncorrect,
                                                 );
                                             }
                                             _ => {
@@ -519,8 +519,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 format!("use {};\n{}", self.tcx.item_path_str(*did), additional_newline)
             }).collect();
 
-            err.span_suggestions_with_applicability(span, &msg, path_strings,
-                                                    Applicability::Unspecified);
+            err.span_suggestions_with_applicability(
+                                                    span,
+                                                    &msg,
+                                                    path_strings,
+                                                    Applicability::MaybeIncorrect,
+                                                    );
         } else {
             let limit = if candidates.len() == 5 { 5 } else { 4 };
             for (i, trait_did) in candidates.iter().take(limit).enumerate() {
