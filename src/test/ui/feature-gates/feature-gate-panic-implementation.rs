@@ -15,7 +15,7 @@
 
 use core::panic::PanicInfo;
 
-#[panic_implementation] //~ ERROR This attribute was renamed to `panic_handler` (see issue #44489)
+#[panic_implementation] //~ ERROR this attribute was renamed to `panic_handler` (see issue #44489)
 fn panic(info: &PanicInfo) -> ! {
     loop {}
 }
