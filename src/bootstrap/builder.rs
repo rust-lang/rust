@@ -750,11 +750,10 @@ impl<'a> Builder<'a> {
             }
             let rustdoc = self.rustdoc(compiler.host);
             self.clear_if_dirty(&my_out, &rustdoc);
-        } else {
+        } else if cmd != "test" {
             match mode {
                 Mode::Std => {
                     self.clear_if_dirty(&my_out, &self.rustc(compiler));
-                    self.clear_if_dirty(&my_out, &libstd_stamp);
                 },
                 Mode::Test => {
                     self.clear_if_dirty(&my_out, &libstd_stamp);
@@ -765,9 +764,7 @@ impl<'a> Builder<'a> {
                     self.clear_if_dirty(&my_out, &libtest_stamp);
                 },
                 Mode::Codegen => {
-                    self.clear_if_dirty(&my_out, &self.rustc(compiler));
-                    self.clear_if_dirty(&my_out, &libstd_stamp);
-                    self.clear_if_dirty(&my_out, &libtest_stamp);
+                    self.clear_if_dirty(&my_out, &librustc_stamp);
                 },
                 Mode::ToolBootstrap => { },
                 Mode::ToolStd => {

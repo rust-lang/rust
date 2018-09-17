@@ -655,7 +655,6 @@ impl Step for CodegenBackend {
         }
 
         let out_dir = builder.cargo_out(compiler, Mode::Codegen, target);
-        builder.clear_if_dirty(&out_dir, &librustc_stamp(builder, compiler, target));
 
         let mut cargo = builder.cargo(compiler, Mode::Codegen, target, "rustc");
         cargo.arg("--manifest-path")
