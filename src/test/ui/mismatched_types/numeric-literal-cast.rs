@@ -9,7 +9,12 @@
 // except according to those terms.
 
 fn foo(_: u16) {}
+fn foo1(_: f64) {}
+fn foo2(_: i32) {}
+
 fn main() {
-    foo(8u8);
+    foo(1u8);
+    foo1(2f32);
+    foo2(3i16);
 }
 
