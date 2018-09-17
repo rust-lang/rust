@@ -821,6 +821,10 @@ pub enum FullCodeCharKind {
     InComment,
     /// Last character of a comment, '\n' for a line comment, '/' for a block comment.
     EndComment,
+    /// Start of a mutlitine string
+    StartString,
+    /// End of a mutlitine string
+    EndString,
     /// Inside a string.
     InString,
 }
@@ -836,7 +840,7 @@ impl FullCodeCharKind {
     }
 
     pub fn is_string(self) -> bool {
-        self == FullCodeCharKind::InString
+        self == FullCodeCharKind::InString || self == FullCodeCharKind::StartString
     }
 
     fn to_codecharkind(self) -> CodeCharKind {
@@ -924,17 +928,14 @@ where
                     _ => CharClassesStatus::Normal, // Unreachable
                 }
             }
-            CharClassesStatus::LitString => match chr {
-                '"' => CharClassesStatus::Normal,
-                '\\' => {
-                    char_kind = FullCodeCharKind::InString;
-                    CharClassesStatus::LitStringEscape
+            CharClassesStatus::LitString => {
+                char_kind = FullCodeCharKind::InString;
+                match chr {
+                    '"' => CharClassesStatus::Normal,
+                    '\\' => CharClassesStatus::LitStringEscape,
+                    _ => CharClassesStatus::LitString,
                 }
-                _ => {
-                    char_kind = FullCodeCharKind::InString;
-                    CharClassesStatus::LitString
-                }
-            },
+            }
             CharClassesStatus::LitStringEscape => {
                 char_kind = FullCodeCharKind::InString;
                 CharClassesStatus::LitString
@@ -1052,9 +1053,22 @@ impl<'a> Iterator for LineClasses<'a> {
 
         let mut line = String::new();
 
+        let start_class = match self.base.peek() {
+            Some((kind, _)) => *kind,
+            None => FullCodeCharKind::Normal,
+        };
+
         while let Some((kind, c)) = self.base.next() {
-            self.kind = kind;
             if c == '\n' {
+                self.kind = match (start_class, kind) {
+                    (FullCodeCharKind::Normal, FullCodeCharKind::InString) => {
+                        FullCodeCharKind::StartString
+                    }
+                    (FullCodeCharKind::InString, FullCodeCharKind::Normal) => {
+                        FullCodeCharKind::EndString
+                    }
+                    _ => kind,
+                };
                 break;
             } else {
                 line.push(c);
@@ -1227,7 +1241,10 @@ pub fn recover_comment_removed(
 pub fn filter_normal_code(code: &str) -> String {
     let mut buffer = String::with_capacity(code.len());
     LineClasses::new(code).for_each(|(kind, line)| match kind {
-        FullCodeCharKind::Normal | FullCodeCharKind::InString => {
+        FullCodeCharKind::Normal
+        | FullCodeCharKind::StartString
+        | FullCodeCharKind::InString
+        | FullCodeCharKind::EndString => {
             buffer.push_str(&line);
             buffer.push('\n');
         }
