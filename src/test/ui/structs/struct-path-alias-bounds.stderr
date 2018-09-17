@@ -1,15 +1,12 @@
-error[E0277]: the trait bound `NoClone: std::clone::Clone` is not satisfied
-  --> $DIR/struct-path-alias-bounds.rs:19:13
+error: the trait bound `NoClone: std::clone::Clone` is not satisfied
+  --> $DIR/struct-path-alias-bounds.rs:16:10
    |
-LL |     let s = A { a: NoClone };
-   |             ^ the trait `std::clone::Clone` is not implemented for `NoClone`
+LL | type A = S<NoClone>;
+   |          ^^^^^^^^^^ the trait `std::clone::Clone` is not implemented for `NoClone`
    |
-note: required by `S`
-  --> $DIR/struct-path-alias-bounds.rs:13:1
-   |
-LL | struct S<T: Clone> { a: T }
-   | ^^^^^^^^^^^^^^^^^^
+   = note: #[deny(type_alias_missing_bounds)] on by default
+   = help: missing bounds in type aliases were previously allowed
+   = help: this is a hard error in Rust 2018
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.

@@ -46,7 +46,8 @@ use std::path::{Path, PathBuf};
 use transform::MirSource;
 use util::pretty::{dump_enabled, write_basic_block, write_mir_intro};
 
-pub type LiveVarSet<V> = BitSet<V>;
+#[allow(type_alias_bounds)]
+pub type LiveVarSet<V: Idx> = BitSet<V>;
 
 /// This gives the result of the liveness analysis at the boundary of
 /// basic blocks.

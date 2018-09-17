@@ -129,6 +129,22 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
                 vec![] // no implied bounds in a static/const
             });
         }
+        hir::ItemKind::Ty(ref hir_ty, _) => {
+            let code = ObligationCauseCode::TypeAliasMissingBound(item.id);
+            for_item(tcx, item).with_fcx(code.clone(), |fcx, _this| {
+                let cause = traits::ObligationCause::new(hir_ty.span, fcx.body_id, code.clone());
+
+                let def_id = fcx.tcx.hir.local_def_id(item.id);
+                let ty = fcx.tcx.type_of(def_id);
+                let item_ty = fcx.inh.normalize_associated_types_in(cause, fcx.param_env, &ty);
+
+                fcx.register_wf_obligation(item_ty, hir_ty.span, code.clone());
+
+                check_where_clauses(tcx, fcx, item.span, def_id, None, code);
+
+                vec![item_ty]
+            });
+        }
         hir::ItemKind::Struct(ref struct_def, ref ast_generics) => {
             check_type_defn(tcx, item, false, |fcx| {
                 vec![fcx.non_enum_variant(struct_def)]

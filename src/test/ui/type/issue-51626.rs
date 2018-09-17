@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue_3907.rs
-extern crate issue_3907;
+pub trait Trait {}
 
-type Foo = issue_3907::Foo+'static;
-//~^ ERROR E0038
+pub struct Foo<T: Trait>(T);
 
-struct S {
-    name: isize
-}
+pub struct Qux;
 
-fn bar(_x: Foo) {}
-//~^ ERROR E0038
+pub type Bar<T = Qux> = Foo<T>;
+//~^ ERROR the trait bound `T: Trait` is not satisfied
+
+pub type Baz<T: Trait = Qux> = Foo<T>;
+//~^ ERROR the trait bound `Qux: Trait` is not satisfied
 
 fn main() {}

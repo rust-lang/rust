@@ -140,6 +140,15 @@ enum Elaborate {
 
 impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
     fn cause(&mut self, code: traits::ObligationCauseCode<'tcx>) -> traits::ObligationCause<'tcx> {
+        let code = match self.parent_cause.code {
+            traits::ObligationCauseCode::TypeAliasMissingBound(_) => {
+                // FIXME(eddyb) We're not chaining obligation causes here,
+                // so in the case of cause codes that turn errors into lints,
+                // we have to replace our cause `code` with the parent one.
+                self.parent_cause.code.clone()
+            }
+            _ => code,
+        };
         traits::ObligationCause::new(self.parent_cause.span, self.parent_cause.body_id, code)
     }
 

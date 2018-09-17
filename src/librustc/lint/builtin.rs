@@ -338,6 +338,12 @@ declare_lint! {
      cannot be referred to by absolute paths"
 }
 
+declare_lint! {
+    pub TYPE_ALIAS_MISSING_BOUNDS,
+    Deny,
+    "type aliases missing bounds required by the type being aliased, are now deprecated"
+}
+
 /// Some lints that are buffered from `libsyntax`. See `syntax::early_buffered_lints`.
 pub mod parser {
     declare_lint! {
@@ -406,6 +412,7 @@ impl LintPass for HardwiredLints {
             PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
             MACRO_USE_EXTERN_CRATE,
             MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
+            TYPE_ALIAS_MISSING_BOUNDS,
             parser::QUESTION_MARK_MACRO_SEP,
         )
     }

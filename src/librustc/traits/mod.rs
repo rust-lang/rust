@@ -251,6 +251,10 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// #[feature(trivial_bounds)] is not enabled
     TrivialBound,
+
+    /// `type` alias is missing bounds required by the type being aliased
+    /// (lint in Rust 2015, error since Rust 2018).
+    TypeAliasMissingBound(ast::NodeId),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

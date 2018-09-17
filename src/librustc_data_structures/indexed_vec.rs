@@ -486,7 +486,8 @@ impl<I: Idx, T: fmt::Debug> fmt::Debug for IndexVec<I, T> {
     }
 }
 
-pub type Enumerated<I, J> = iter::Map<iter::Enumerate<J>, IntoIdx<I>>;
+#[allow(type_alias_bounds)]
+pub type Enumerated<I: Idx, J> = iter::Map<iter::Enumerate<J>, IntoIdx<I>>;
 
 impl<I: Idx, T> IndexVec<I, T> {
     #[inline]

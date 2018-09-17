@@ -574,8 +574,10 @@ impl<'a> LabelText<'a> {
     }
 }
 
-pub type Nodes<'a,N> = Cow<'a,[N]>;
-pub type Edges<'a,E> = Cow<'a,[E]>;
+#[allow(type_alias_bounds)]
+pub type Nodes<'a,N: Clone> = Cow<'a,[N]>;
+#[allow(type_alias_bounds)]
+pub type Edges<'a,E: Clone> = Cow<'a,[E]>;
 
 // (The type parameters in GraphWalk should be associated items,
 // when/if Rust supports such.)

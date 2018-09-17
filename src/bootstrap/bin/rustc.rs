@@ -304,6 +304,11 @@ fn main() {
     {
         cmd.arg("-Dwarnings");
         cmd.arg("-Dbare_trait_objects");
+        if !(stage == "0" || target.is_none() && version.is_none()) {
+            // HACK(eddyb) allow bootstrapping while we're testing with
+            // the lint on `deny` by default. Remove before merging.
+            cmd.arg("-Atype_alias_missing_bounds");
+        }
     }
 
     if verbose > 1 {

@@ -584,6 +584,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ObligationCauseCode::ImplDerivedObligation(data) => {
                 self.get_lint_from_cause_code(&data.parent_code)
             }
+            &ObligationCauseCode::TypeAliasMissingBound(id) => {
+                if self.tcx.sess.rust_2018() {
+                    // Error since Rust 2018.
+                    None
+                } else {
+                    Some((::lint::builtin::TYPE_ALIAS_MISSING_BOUNDS, id))
+                }
+            }
             _ => None,
         }
     }
@@ -1610,6 +1618,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     err.help("add #![feature(trivial_bounds)] to the \
                               crate attributes to enable",
                     );
+                }
+            }
+            ObligationCauseCode::TypeAliasMissingBound(_) => {
+                err.help("missing bounds in type aliases were previously allowed");
+                if !self.tcx.sess.rust_2018() {
+                    err.help("this is a hard error in Rust 2018");
                 }
             }
         }

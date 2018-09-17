@@ -1,0 +1,24 @@
+error: `T` cannot be sent between threads safely
+  --> $DIR/type-alias-bounds-err.rs:18:22
+   |
+LL | type MySendable<T> = Sendable<T>;
+   |                      ^^^^^^^^^^^ `T` cannot be sent between threads safely
+   |
+   = note: #[deny(type_alias_missing_bounds)] on by default
+   = help: the trait `std::marker::Send` is not implemented for `T`
+   = help: consider adding a `where T: std::marker::Send` bound
+   = help: missing bounds in type aliases were previously allowed
+   = help: this is a hard error in Rust 2018
+
+error: the trait bound `U: Bound` is not satisfied
+  --> $DIR/type-alias-bounds-err.rs:22:14
+   |
+LL | type T4<U> = <U as Bound>::Assoc;
+   |              ^^^^^^^^^^^^^^^^^^^ the trait `Bound` is not implemented for `U`
+   |
+   = help: consider adding a `where U: Bound` bound
+   = help: missing bounds in type aliases were previously allowed
+   = help: this is a hard error in Rust 2018
+
+error: aborting due to 2 previous errors
+

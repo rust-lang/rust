@@ -17,4 +17,5 @@ pub struct S {
     s: Cell<usize>
 }
 
+#[allow(type_alias_missing_bounds)] // HACK(eddyb) remove before merge
 pub type _S = [usize; 0 - (mem::size_of::<S>() != 4) as usize];

@@ -49,8 +49,8 @@ fn foo<'a>(y: &'a i32) {
 }
 
 // Bounds are not checked either, i.e. the definition is not necessarily well-formed
-struct Sendable<T: Send>(T);
-type MySendable<T> = Sendable<T>; // no error here!
+// struct Sendable<T: Send>(T); // NOTE(eddyb) moved to `type-alias-bounds-err.rs`
+// type MySendable<T> = Sendable<T>; // no error here!
 
 // However, bounds *are* taken into account when accessing associated types
 trait Bound { type Assoc; }
@@ -60,7 +60,7 @@ type T2<U> where U: Bound = U::Assoc;  //~ WARN not enforced in type aliases
 // This errors
 // type T3<U> = U::Assoc;
 // Do this instead
-type T4<U> = <U as Bound>::Assoc;
+// type T4<U> = <U as Bound>::Assoc; // NOTE(eddyb) moved to `type-alias-bounds-err.rs`
 
 // Make sure the help about associatd types is not shown incorrectly
 type T5<U: Bound> = <U as Bound>::Assoc;  //~ WARN not enforced in type aliases

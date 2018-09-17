@@ -128,10 +128,12 @@ pub struct QueryResult<'tcx, R> {
     pub value: R,
 }
 
-pub type Canonicalized<'gcx, V> = Canonical<'gcx, <V as Lift<'gcx>>::Lifted>;
+#[allow(type_alias_bounds)]
+pub type Canonicalized<'gcx, V: Lift<'gcx>> = Canonical<'gcx, V::Lifted>;
 
-pub type CanonicalizedQueryResult<'gcx, T> =
-    Lrc<Canonical<'gcx, QueryResult<'gcx, <T as Lift<'gcx>>::Lifted>>>;
+#[allow(type_alias_bounds)]
+pub type CanonicalizedQueryResult<'gcx, T: Lift<'gcx>> =
+    Lrc<Canonical<'gcx, QueryResult<'gcx, T::Lifted>>>;
 
 /// Indicates whether or not we were able to prove the query to be
 /// true.

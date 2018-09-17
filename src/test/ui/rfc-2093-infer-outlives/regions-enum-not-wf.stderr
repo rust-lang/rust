@@ -1,4 +1,18 @@
 error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/regions-enum-not-wf.rs:25:31
+   |
+LL | type RequireOutlives<'a, T> = <T as Dummy<'a>>::Out; //~ ERROR the parameter type `T` may not live long enough
+   |                          -    ^^^^^^^^^^^^^^^^^^^^^
+   |                          |
+   |                          help: consider adding an explicit lifetime bound `T: 'a`...
+   |
+note: ...so that the type `T` will meet its required lifetime bounds
+  --> $DIR/regions-enum-not-wf.rs:25:31
+   |
+LL | type RequireOutlives<'a, T> = <T as Dummy<'a>>::Out; //~ ERROR the parameter type `T` may not live long enough
+   |                               ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/regions-enum-not-wf.rs:28:18
    |
 LL | enum Ref1<'a, T> {
@@ -62,6 +76,6 @@ note: ...so that the type `T` will meet its required lifetime bounds
 LL |     RefDoubleVariant1(&'a RequireOutlives<'b, T>)
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0309`.

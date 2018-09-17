@@ -1,26 +1,22 @@
-warning: this constant cannot be used
-  --> $DIR/pub_const_err_bin.rs:14:1
-   |
-LL | pub const Z: u32 = 0 - 1;
-   | ^^^^^^^^^^^^^^^^^^^-----^
-   |                    |
-   |                    attempt to subtract with overflow
-   |
-note: lint level defined here
-  --> $DIR/pub_const_err_bin.rs:12:9
-   |
-LL | #![warn(const_err)]
-   |         ^^^^^^^^^
-
-warning: attempt to subtract with overflow
-  --> $DIR/pub_const_err_bin.rs:17:22
+error: attempt to subtract with overflow
+  --> $DIR/pub_const_err_bin.rs:11:22
    |
 LL | pub type Foo = [i32; 0 - 1];
    |                      ^^^^^
+   |
+   = note: #[deny(const_err)] on by default
 
-warning: this array length cannot be used
-  --> $DIR/pub_const_err_bin.rs:17:22
+error: could not evaluate constant expression
+  --> $DIR/pub_const_err_bin.rs:11:16
    |
 LL | pub type Foo = [i32; 0 - 1];
-   |                      ^^^^^ attempt to subtract with overflow
+   |                ^^^^^^-----^
+   |                      |
+   |                      attempt to subtract with overflow
+   |
+   = note: #[deny(type_alias_missing_bounds)] on by default
+   = help: missing bounds in type aliases were previously allowed
+   = help: this is a hard error in Rust 2018
+
+error: aborting due to 2 previous errors
 
