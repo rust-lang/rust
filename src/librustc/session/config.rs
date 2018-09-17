@@ -600,7 +600,7 @@ impl Default for Options {
             incremental: None,
             debugging_opts: basic_debugging_options(),
             prints: Vec::new(),
-            borrowck_mode: BorrowckMode::Ast,
+            borrowck_mode: BorrowckMode::Mir,
             cg: basic_codegen_options(),
             error_format: ErrorOutputType::default(),
             externs: Externs(BTreeMap::new()),
@@ -1153,7 +1153,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "emit EndRegion as part of MIR; enable transforms that solely process EndRegion"),
     borrowck: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "select which borrowck is used (`ast`, `mir`, `migrate`, or `compare`)"),
-    two_phase_borrows: bool = (false, parse_bool, [UNTRACKED],
+    two_phase_borrows: bool = (true, parse_bool, [UNTRACKED],
         "use two-phase reserved/active distinction for `&mut` borrows in MIR borrowck"),
     two_phase_beyond_autoref: bool = (false, parse_bool, [UNTRACKED],
         "when using two-phase-borrows, allow two phases even for non-autoref `&mut` borrows"),
@@ -2198,8 +2198,8 @@ pub fn build_session_options_and_crate_config(
     }));
 
     let borrowck_mode = match debugging_opts.borrowck.as_ref().map(|s| &s[..]) {
-        None | Some("ast") => BorrowckMode::Ast,
-        Some("mir") => BorrowckMode::Mir,
+        Some("ast") => BorrowckMode::Ast,
+        None | Some("mir") => BorrowckMode::Mir,
         Some("compare") => BorrowckMode::Compare,
         Some("migrate") => BorrowckMode::Migrate,
         Some(m) => early_error(error_format, &format!("unknown borrowck mode `{}`", m)),
