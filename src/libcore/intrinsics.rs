@@ -1118,7 +1118,7 @@ extern "rust-intrinsic" {
     ///
     /// * `dst` must be properly aligned.
     ///
-    /// Additionally, the caller should ensure that writing `count *
+    /// Additionally, the caller must ensure that writing `count *
     /// size_of::<T>()` bytes to the given region of memory results in a valid
     /// value of `T`. Using a region of memory typed as a `T` that contains an
     /// invalid value of `T` is undefined behavior.
@@ -1153,7 +1153,7 @@ extern "rust-intrinsic" {
     /// unsafe {
     ///     // Leaks the previously held value by overwriting the `Box<T>` with
     ///     // a null pointer.
-    ///     ptr::write_bytes(&mut v, 0, 1);
+    ///     ptr::write_bytes(&mut v as *mut Box<i32>, 0, 1);
     /// }
     ///
     /// // At this point, using or dropping `v` results in undefined behavior.
@@ -1164,7 +1164,7 @@ extern "rust-intrinsic" {
     ///
     /// unsafe {
     ///     // Let us instead put in a valid value
-    ///     ptr::write(&mut v, Box::new(42i32));
+    ///     ptr::write(&mut v as *mut Box<i32>, Box::new(42i32));
     /// }
     ///
     /// // Now the box is fine

@@ -117,7 +117,6 @@ pub use intrinsics::write_bytes;
 ///
 /// * `to_drop` must be properly aligned.  See the example below for how to drop
 ///   an unaligned pointer.
-
 ///
 /// Additionally, if `T` is not [`Copy`], using the pointed-to value after
 /// calling `drop_in_place` can cause undefined behavior. Note that `*to_drop =
@@ -185,6 +184,10 @@ pub use intrinsics::write_bytes;
 ///     mem::forget(p);
 /// }
 /// ```
+///
+/// Notice that the compiler performs this copy automatically when dropping packed structs,
+/// i.e., you do not usually have to worry about such issues unless you call `drop_in_place`
+/// manually.
 #[stable(feature = "drop_in_place", since = "1.8.0")]
 #[lang = "drop_in_place"]
 #[allow(unconditional_recursion)]
@@ -547,6 +550,9 @@ pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 ///
 ///         // Move `tmp` into `b`.
 ///         ptr::write(b, tmp);
+///
+///         // `tmp` has been moved (`write` takes ownership of its second argument),
+///         // so nothing is dropped implicitly here.
 ///     }
 /// }
 ///
@@ -688,9 +694,26 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
 ///
 /// fn swap<T>(a: &mut T, b: &mut T) {
 ///     unsafe {
+///         // Create a bitwise copy of the value at `a` in `tmp`.
 ///         let tmp = ptr::read(a);
+///
+///         // Exiting at this point (either by explicitly returning or by
+///         // calling a function which panics) would cause the value in `tmp` to
+///         // be dropped while the same value is still referenced by `a`. This
+///         // could trigger undefined behavior if `T` is not `Copy`.
+///
+///         // Create a bitwise copy of the value at `b` in `a`.
+///         // This is safe because mutable references cannot alias.
 ///         ptr::copy_nonoverlapping(b, a, 1);
+///
+///         // As above, exiting here could trigger undefined behavior because
+///         // the same value is referenced by `a` and `b`.
+///
+///         // Move `tmp` into `b`.
 ///         ptr::write(b, tmp);
+///
+///         // `tmp` has been moved (`write` takes ownership of its second argument),
+///         // so nothing is dropped implicitly here.
 ///     }
 /// }
 ///
