@@ -1,11 +1,11 @@
-error[E0597]: `*s.0` does not live long enough
+error[E0713]: borrow may still be in use when destructor runs
   --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:63:5
    |
-LL |     &mut *s.0 //[nll]~ ERROR `*s.0` does not live long enough [E0597]
-   |     ^^^^^^^^^ borrowed value does not live long enough
+LL |     &mut *s.0 //[nll]~ ERROR borrow may still be in use when destructor runs [E0713]
+   |     ^^^^^^^^^
 ...
 LL | }
-   | - `*s.0` dropped here while still borrowed
+   | - here, drop of `s` needs exclusive access to `*s.0`, because the type `Scribble<'_>` implements the `Drop` trait
    |
 note: borrowed value must be valid for the lifetime 'a as defined on the function body at 62:14...
   --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:62:14
@@ -13,14 +13,14 @@ note: borrowed value must be valid for the lifetime 'a as defined on the functio
 LL | fn scribbled<'a>(s: Scribble<'a>) -> &'a mut u32 {
    |              ^^
 
-error[E0597]: `*s.0` does not live long enough
+error[E0713]: borrow may still be in use when destructor runs
   --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:73:5
    |
-LL |     &mut *(*s).0 //[nll]~ ERROR `*s.0` does not live long enough [E0597]
-   |     ^^^^^^^^^^^^ borrowed value does not live long enough
+LL |     &mut *(*s).0 //[nll]~ ERROR borrow may still be in use when destructor runs [E0713]
+   |     ^^^^^^^^^^^^
 ...
 LL | }
-   | - `*s.0` dropped here while still borrowed
+   | - here, drop of `*s` needs exclusive access to `*s.0`, because the type `Scribble<'_>` implements the `Drop` trait
    |
 note: borrowed value must be valid for the lifetime 'a as defined on the function body at 72:20...
   --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:72:20
@@ -28,14 +28,14 @@ note: borrowed value must be valid for the lifetime 'a as defined on the functio
 LL | fn boxed_scribbled<'a>(s: Box<Scribble<'a>>) -> &'a mut u32 {
    |                    ^^
 
-error[E0597]: `*s.0` does not live long enough
+error[E0713]: borrow may still be in use when destructor runs
   --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:83:5
    |
-LL |     &mut *(**s).0 //[nll]~ ERROR `*s.0` does not live long enough [E0597]
-   |     ^^^^^^^^^^^^^ borrowed value does not live long enough
+LL |     &mut *(**s).0 //[nll]~ ERROR borrow may still be in use when destructor runs [E0713]
+   |     ^^^^^^^^^^^^^
 ...
 LL | }
-   | - `*s.0` dropped here while still borrowed
+   | - here, drop of `**s` needs exclusive access to `*s.0`, because the type `Scribble<'_>` implements the `Drop` trait
    |
 note: borrowed value must be valid for the lifetime 'a as defined on the function body at 82:26...
   --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:82:26
@@ -45,4 +45,4 @@ LL | fn boxed_boxed_scribbled<'a>(s: Box<Box<Scribble<'a>>>) -> &'a mut u32 {
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0713`.

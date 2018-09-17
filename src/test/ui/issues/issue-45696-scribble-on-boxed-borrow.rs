@@ -60,8 +60,8 @@ fn boxed_boxed_borrowed_scribble<'a>(s: Box<Box<&'a mut Scribble>>) -> &'a mut u
 // this should be an error. (Which is perhaps the essence of why
 // rust-lang/rust#45696 arose in the first place.)
 fn scribbled<'a>(s: Scribble<'a>) -> &'a mut u32 {
-    &mut *s.0 //[nll]~ ERROR `*s.0` does not live long enough [E0597]
-    //[migrate]~^ WARNING `*s.0` does not live long enough [E0597]
+    &mut *s.0 //[nll]~ ERROR borrow may still be in use when destructor runs [E0713]
+    //[migrate]~^ WARNING borrow may still be in use when destructor runs [E0713]
     //[migrate]~| WARNING This error has been downgraded to a warning for backwards compatibility
 }
 
@@ -70,8 +70,8 @@ fn scribbled<'a>(s: Scribble<'a>) -> &'a mut u32 {
 // (But again, AST-borrowck was not smart enogh to know that this
 // should be an error.)
 fn boxed_scribbled<'a>(s: Box<Scribble<'a>>) -> &'a mut u32 {
-    &mut *(*s).0 //[nll]~ ERROR `*s.0` does not live long enough [E0597]
-    //[migrate]~^ WARNING `*s.0` does not live long enough [E0597]
+    &mut *(*s).0 //[nll]~ ERROR borrow may still be in use when destructor runs [E0713]
+    //[migrate]~^ WARNING borrow may still be in use when destructor runs [E0713]
     //[migrate]~| WARNING This error has been downgraded to a warning for backwards compatibility
 }
 
@@ -80,8 +80,8 @@ fn boxed_scribbled<'a>(s: Box<Scribble<'a>>) -> &'a mut u32 {
 // (But again, AST-borrowck was not smart enogh to know that this
 // should be an error.)
 fn boxed_boxed_scribbled<'a>(s: Box<Box<Scribble<'a>>>) -> &'a mut u32 {
-    &mut *(**s).0 //[nll]~ ERROR `*s.0` does not live long enough [E0597]
-    //[migrate]~^ WARNING `*s.0` does not live long enough [E0597]
+    &mut *(**s).0 //[nll]~ ERROR borrow may still be in use when destructor runs [E0713]
+    //[migrate]~^ WARNING borrow may still be in use when destructor runs [E0713]
     //[migrate]~| WARNING This error has been downgraded to a warning for backwards compatibility
 }
 
