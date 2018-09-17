@@ -24,7 +24,7 @@ use syntax::attr;
 use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Determinacy, MultiModifier, MultiDecorator};
 use syntax::ext::base::{MacroKind, SyntaxExtension, Resolver as SyntaxResolver};
-use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
+use syntax::ext::expand::{AstFragment, Invocation, InvocationKind, TogetherWith};
 use syntax::ext::hygiene::{self, Mark};
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{self, feature_err, emit_feature_err, is_builtin_attr_name, GateIssue};
@@ -332,21 +332,30 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
 
     fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: Mark, force: bool)
                                 -> Result<Option<Lrc<SyntaxExtension>>, Determinacy> {
-        let (path, kind, derives_in_scope) = match invoc.kind {
+        let (path, kind, derives_in_scope, together_with) = match invoc.kind {
             InvocationKind::Attr { attr: None, .. } =>
                 return Ok(None),
-            InvocationKind::Attr { attr: Some(ref attr), ref traits, .. } =>
-                (&attr.path, MacroKind::Attr, traits.clone()),
+            InvocationKind::Attr { attr: Some(ref attr), ref traits, together_with, .. } =>
+                (&attr.path, MacroKind::Attr, traits.clone(), together_with),
             InvocationKind::Bang { ref mac, .. } =>
-                (&mac.node.path, MacroKind::Bang, Vec::new()),
+                (&mac.node.path, MacroKind::Bang, Vec::new(), TogetherWith::None),
             InvocationKind::Derive { ref path, .. } =>
-                (path, MacroKind::Derive, Vec::new()),
+                (path, MacroKind::Derive, Vec::new(), TogetherWith::None),
         };
 
         let parent_scope = self.invoc_parent_scope(invoc_id, derives_in_scope);
         let (def, ext) = self.resolve_macro_to_def(path, kind, &parent_scope, force)?;
 
         if let Def::Macro(def_id, _) = def {
+            match together_with {
+                TogetherWith::Derive =>
+                    self.session.span_err(invoc.span(),
+                        "macro attributes must be placed before `#[derive]`"),
+                TogetherWith::TestBench if !self.session.features_untracked().plugin =>
+                    self.session.span_err(invoc.span(),
+                        "macro attributes cannot be used together with `#[test]` or `#[bench]`"),
+                _ => {}
+            }
             self.macro_defs.insert(invoc.expansion_data.mark, def_id);
             let normal_module_def_id =
                 self.macro_def_scope(invoc.expansion_data.mark).normal_ancestor_id;

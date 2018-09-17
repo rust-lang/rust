@@ -1,0 +1,32 @@
+error: macro attributes must be placed before `#[derive]`
+  --> $DIR/attribute-order-restricted.rs:15:1
+   |
+LL | #[attr_proc_macro] //~ ERROR macro attributes must be placed before `#[derive]`
+   | ^^^^^^^^^^^^^^^^^^
+
+error: macro attributes cannot be used together with `#[test]` or `#[bench]`
+  --> $DIR/attribute-order-restricted.rs:18:1
+   |
+LL | #[attr_proc_macro] //~ ERROR macro attributes cannot be used together with `#[test]` or `#[bench]`
+   | ^^^^^^^^^^^^^^^^^^
+
+error: macro attributes cannot be used together with `#[test]` or `#[bench]`
+  --> $DIR/attribute-order-restricted.rs:23:1
+   |
+LL | #[attr_proc_macro] //~ ERROR macro attributes cannot be used together with `#[test]` or `#[bench]`
+   | ^^^^^^^^^^^^^^^^^^
+
+error: macro attributes cannot be used together with `#[test]` or `#[bench]`
+  --> $DIR/attribute-order-restricted.rs:26:1
+   |
+LL | #[attr_proc_macro] //~ ERROR macro attributes cannot be used together with `#[test]` or `#[bench]`
+   | ^^^^^^^^^^^^^^^^^^
+
+error: macro attributes cannot be used together with `#[test]` or `#[bench]`
+  --> $DIR/attribute-order-restricted.rs:31:1
+   |
+LL | #[attr_proc_macro] //~ ERROR macro attributes cannot be used together with `#[test]` or `#[bench]`
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
