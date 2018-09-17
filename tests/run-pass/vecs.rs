@@ -1,5 +1,3 @@
-//ignore-msvc
-
 fn make_vec() -> Vec<u8> {
     let mut v = Vec::with_capacity(4);
     v.push(1);

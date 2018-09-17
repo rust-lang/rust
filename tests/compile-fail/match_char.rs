@@ -1,4 +1,4 @@
-// ignore-test FIXME: we are not checking these things on match any more?
+//ignore-test FIXME: do some basic validation of invariants for all values in flight
 //This does currently not get caught becuase it compiles to SwitchInt, which
 //has no knowledge about data invariants.
 

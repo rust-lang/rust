@@ -2,12 +2,12 @@ use rustc::mir;
 use rustc::ty::layout::{self, LayoutOf, Size};
 use rustc::ty;
 
-use rustc::mir::interpret::{EvalResult, Scalar, ScalarMaybeUndef};
+use rustc::mir::interpret::{EvalResult, Scalar, ScalarMaybeUndef, PointerArithmetic};
 use rustc_mir::interpret::{
     PlaceTy, EvalContext, OpTy, Value
 };
 
-use super::{ScalarExt, FalibleScalarExt, OperatorEvalContextExt};
+use super::{FalibleScalarExt, OperatorEvalContextExt};
 
 pub trait EvalContextExt<'tcx> {
     fn call_intrinsic(
@@ -33,39 +33,6 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
 
         let intrinsic_name = &self.tcx.item_name(instance.def_id()).as_str()[..];
         match intrinsic_name {
-            "add_with_overflow" => {
-                let l = self.read_value(args[0])?;
-                let r = self.read_value(args[1])?;
-                self.binop_with_overflow(
-                    mir::BinOp::Add,
-                    l,
-                    r,
-                    dest,
-                )?
-            }
-
-            "sub_with_overflow" => {
-                let l = self.read_value(args[0])?;
-                let r = self.read_value(args[1])?;
-                self.binop_with_overflow(
-                    mir::BinOp::Sub,
-                    l,
-                    r,
-                    dest,
-                )?
-            }
-
-            "mul_with_overflow" => {
-                let l = self.read_value(args[0])?;
-                let r = self.read_value(args[1])?;
-                self.binop_with_overflow(
-                    mir::BinOp::Mul,
-                    l,
-                    r,
-                    dest,
-                )?
-            }
-
             "arith_offset" => {
                 let offset = self.read_scalar(args[1])?.to_isize(&self)?;
                 let ptr = self.read_scalar(args[0])?.not_undef()?;
@@ -116,11 +83,11 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
 
             _ if intrinsic_name.starts_with("atomic_cxchg") => {
                 let ptr = self.ref_to_mplace(self.read_value(args[0])?)?;
-                let expect_old = self.read_value(args[1])?; // read as value for the sake of `binary_op()`
+                let expect_old = self.read_value(args[1])?; // read as value for the sake of `binary_op_val()`
                 let new = self.read_scalar(args[2])?;
-                let old = self.read_value(ptr.into())?; // read as value for the sake of `binary_op()`
-                // binary_op will bail if either of them is not a scalar
-                let (eq, _) = self.binary_op(mir::BinOp::Eq, old, expect_old)?;
+                let old = self.read_value(ptr.into())?; // read as value for the sake of `binary_op_val()`
+                // binary_op_val will bail if either of them is not a scalar
+                let (eq, _) = self.binary_op_val(mir::BinOp::Eq, old, expect_old)?;
                 let res = Value::ScalarPair(old.to_scalar_or_undef(), eq.into());
                 self.write_value(res, dest)?; // old value is returned
                 // update ptr depending on comparison
@@ -167,8 +134,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                     _ => bug!(),
                 };
                 // FIXME: what do atomics do on overflow?
-                let (val, _) = self.binary_op(op, old, rhs)?;
-                self.write_scalar(val, ptr.into())?;
+                self.binop_ignore_overflow(op, old, rhs, ptr.into())?;
             }
 
             "breakpoint" => unimplemented!(), // halt miri
@@ -200,8 +166,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
 
             "sinf32" | "fabsf32" | "cosf32" | "sqrtf32" | "expf32" | "exp2f32" | "logf32" |
             "log10f32" | "log2f32" | "floorf32" | "ceilf32" | "truncf32" => {
-                let f = self.read_scalar(args[0])?.to_bytes()?;
-                let f = f32::from_bits(f as u32);
+                let f = self.read_scalar(args[0])?.to_f32()?;
                 let f = match intrinsic_name {
                     "sinf32" => f.sin(),
                     "fabsf32" => f.abs(),
@@ -222,8 +187,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
 
             "sinf64" | "fabsf64" | "cosf64" | "sqrtf64" | "expf64" | "exp2f64" | "logf64" |
             "log10f64" | "log2f64" | "floorf64" | "ceilf64" | "truncf64" => {
-                let f = self.read_scalar(args[0])?.to_bytes()?;
-                let f = f64::from_bits(f as u64);
+                let f = self.read_scalar(args[0])?.to_f64()?;
                 let f = match intrinsic_name {
                     "sinf64" => f.sin(),
                     "fabsf64" => f.abs(),
@@ -253,8 +217,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                     "frem_fast" => mir::BinOp::Rem,
                     _ => bug!(),
                 };
-                let result = self.binary_op(op, a, b)?;
-                self.write_scalar(result.0, dest)?;
+                self.binop_ignore_overflow(op, a, b, dest)?;
             }
 
             "exact_div" => {
@@ -263,11 +226,10 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let a = self.read_value(args[0])?;
                 let b = self.read_value(args[1])?;
                 // check x % y != 0
-                if !self.binary_op(mir::BinOp::Rem, a, b)?.0.is_null() {
+                if !self.binary_op_val(mir::BinOp::Rem, a, b)?.0.is_null() {
                     return err!(ValidationFailure(format!("exact_div: {:?} cannot be divided by {:?}", a, b)));
                 }
-                let result = self.binary_op(mir::BinOp::Div, a, b)?;
-                self.write_scalar(result.0, dest)?;
+                self.binop_ignore_overflow(mir::BinOp::Div, a, b, dest)?;
             },
 
             "likely" | "unlikely" | "forget" => {}
@@ -278,12 +240,12 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 if !dest.layout.is_zst() { // notzhing to do for ZST
                     match dest.layout.abi {
                         layout::Abi::Scalar(ref s) => {
-                            let x = Scalar::null(s.value.size(&self));
+                            let x = Scalar::from_int(0, s.value.size(&self));
                             self.write_value(Value::Scalar(x.into()), dest)?;
                         }
                         layout::Abi::ScalarPair(ref s1, ref s2) => {
-                            let x = Scalar::null(s1.value.size(&self));
-                            let y = Scalar::null(s2.value.size(&self));
+                            let x = Scalar::from_int(0, s1.value.size(&self));
+                            let y = Scalar::from_int(0, s2.value.size(&self));
                             self.write_value(Value::ScalarPair(x.into(), y.into()), dest)?;
                         }
                         _ => {
@@ -300,7 +262,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let ty = substs.type_at(0);
                 let layout = self.layout_of(ty)?;
                 let align = layout.align.pref();
-                let ptr_size = self.memory.pointer_size();
+                let ptr_size = self.pointer_size();
                 let align_val = Scalar::from_uint(align as u128, ptr_size);
                 self.write_scalar(align_val, dest)?;
             }
@@ -327,44 +289,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 self.write_scalar(result_ptr, dest)?;
             }
 
-            "overflowing_sub" => {
-                let l = self.read_value(args[0])?;
-                let r = self.read_value(args[1])?;
-                self.binop_ignore_overflow(
-                    mir::BinOp::Sub,
-                    l,
-                    r,
-                    dest,
-                )?;
-            }
-
-            "overflowing_mul" => {
-                let l = self.read_value(args[0])?;
-                let r = self.read_value(args[1])?;
-                self.binop_ignore_overflow(
-                    mir::BinOp::Mul,
-                    r,
-                    l,
-                    dest,
-                )?;
-            }
-
-            "overflowing_add" => {
-                let l = self.read_value(args[0])?;
-                let r = self.read_value(args[1])?;
-                self.binop_ignore_overflow(
-                    mir::BinOp::Add,
-                    r,
-                    l,
-                    dest,
-                )?;
-            }
-
             "powf32" => {
-                let f = self.read_scalar(args[0])?.to_bits(Size::from_bits(32))?;
-                let f = f32::from_bits(f as u32);
-                let f2 = self.read_scalar(args[1])?.to_bits(Size::from_bits(32))?;
-                let f2 = f32::from_bits(f2 as u32);
+                let f = self.read_scalar(args[0])?.to_f32()?;
+                let f2 = self.read_scalar(args[1])?.to_f32()?;
                 self.write_scalar(
                     Scalar::from_f32(f.powf(f2)),
                     dest,
@@ -372,10 +299,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             "powf64" => {
-                let f = self.read_scalar(args[0])?.to_bits(Size::from_bits(64))?;
-                let f = f64::from_bits(f as u64);
-                let f2 = self.read_scalar(args[1])?.to_bits(Size::from_bits(64))?;
-                let f2 = f64::from_bits(f2 as u64);
+                let f = self.read_scalar(args[0])?.to_f64()?;
+                let f2 = self.read_scalar(args[1])?.to_f64()?;
                 self.write_scalar(
                     Scalar::from_f64(f.powf(f2)),
                     dest,
@@ -383,12 +308,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             "fmaf32" => {
-                let a = self.read_scalar(args[0])?.to_bits(Size::from_bits(32))?;
-                let a = f32::from_bits(a as u32);
-                let b = self.read_scalar(args[1])?.to_bits(Size::from_bits(32))?;
-                let b = f32::from_bits(b as u32);
-                let c = self.read_scalar(args[2])?.to_bits(Size::from_bits(32))?;
-                let c = f32::from_bits(c as u32);
+                let a = self.read_scalar(args[0])?.to_f32()?;
+                let b = self.read_scalar(args[1])?.to_f32()?;
+                let c = self.read_scalar(args[2])?.to_f32()?;
                 self.write_scalar(
                     Scalar::from_f32(a * b + c),
                     dest,
@@ -396,12 +318,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             "fmaf64" => {
-                let a = self.read_scalar(args[0])?.to_bits(Size::from_bits(64))?;
-                let a = f64::from_bits(a as u64);
-                let b = self.read_scalar(args[1])?.to_bits(Size::from_bits(64))?;
-                let b = f64::from_bits(b as u64);
-                let c = self.read_scalar(args[2])?.to_bits(Size::from_bits(64))?;
-                let c = f64::from_bits(c as u64);
+                let a = self.read_scalar(args[0])?.to_f64()?;
+                let b = self.read_scalar(args[1])?.to_f64()?;
+                let c = self.read_scalar(args[2])?.to_f64()?;
                 self.write_scalar(
                     Scalar::from_f64(a * b + c),
                     dest,
@@ -409,8 +328,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             "powif32" => {
-                let f = self.read_scalar(args[0])?.to_bits(Size::from_bits(32))?;
-                let f = f32::from_bits(f as u32);
+                let f = self.read_scalar(args[0])?.to_f32()?;
                 let i = self.read_scalar(args[1])?.to_i32()?;
                 self.write_scalar(
                     Scalar::from_f32(f.powi(i)),
@@ -419,8 +337,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             "powif64" => {
-                let f = self.read_scalar(args[0])?.to_bits(Size::from_bits(64))?;
-                let f = f64::from_bits(f as u64);
+                let f = self.read_scalar(args[0])?.to_f64()?;
                 let i = self.read_scalar(args[1])?.to_i32()?;
                 self.write_scalar(
                     Scalar::from_f64(f.powi(i)),
@@ -431,7 +348,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "size_of_val" => {
                 let mplace = self.ref_to_mplace(self.read_value(args[0])?)?;
                 let (size, _) = self.size_and_align_of_mplace(mplace)?;
-                let ptr_size = self.memory.pointer_size();
+                let ptr_size = self.pointer_size();
                 self.write_scalar(
                     Scalar::from_uint(size.bytes() as u128, ptr_size),
                     dest,
@@ -442,7 +359,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "align_of_val" => {
                 let mplace = self.ref_to_mplace(self.read_value(args[0])?)?;
                 let (_, align) = self.size_and_align_of_mplace(mplace)?;
-                let ptr_size = self.memory.pointer_size();
+                let ptr_size = self.pointer_size();
                 self.write_scalar(
                     Scalar::from_uint(align.abi(), ptr_size),
                     dest,
@@ -454,50 +371,6 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let ty_name = ty.to_string();
                 let value = self.str_to_value(&ty_name)?;
                 self.write_value(value, dest)?;
-            }
-
-            "transmute" => {
-                // Go through an allocation, to make sure the completely different layouts
-                // do not pose a problem.  (When the user transmutes through a union,
-                // there will not be a layout mismatch.)
-                let dest = self.force_allocation(dest)?;
-                self.copy_op(args[0], dest.into())?;
-            }
-
-            "unchecked_shl" => {
-                let bits = dest.layout.size.bytes() as u128 * 8;
-                let l = self.read_value(args[0])?;
-                let r = self.read_value(args[1])?;
-                let rval = r.to_scalar()?.to_bytes()?;
-                if rval >= bits {
-                    return err!(Intrinsic(
-                        format!("Overflowing shift by {} in unchecked_shl", rval),
-                    ));
-                }
-                self.binop_ignore_overflow(
-                    mir::BinOp::Shl,
-                    l,
-                    r,
-                    dest,
-                )?;
-            }
-
-            "unchecked_shr" => {
-                let bits = dest.layout.size.bytes() as u128 * 8;
-                let l = self.read_value(args[0])?;
-                let r = self.read_value(args[1])?;
-                let rval = r.to_scalar()?.to_bytes()?;
-                if rval >= bits {
-                    return err!(Intrinsic(
-                        format!("Overflowing shift by {} in unchecked_shr", rval),
-                    ));
-                }
-                self.binop_ignore_overflow(
-                    mir::BinOp::Shr,
-                    l,
-                    r,
-                    dest,
-                )?;
             }
 
             "unchecked_div" => {

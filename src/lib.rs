@@ -18,14 +18,11 @@ use rustc::ty::layout::{TyLayout, LayoutOf, Size};
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 
-use rustc_data_structures::fx::FxHasher;
-
 use syntax::ast::Mutability;
 use syntax::attr;
 
 use std::marker::PhantomData;
-use std::collections::{HashMap, BTreeMap};
-use std::hash::{Hash, Hasher};
+use std::collections::HashMap;
 
 pub use rustc::mir::interpret::*;
 pub use rustc_mir::interpret::*;
@@ -43,10 +40,10 @@ use fn_call::EvalContextExt as MissingFnsEvalContextExt;
 use operator::EvalContextExt as OperatorEvalContextExt;
 use intrinsic::EvalContextExt as IntrinsicEvalContextExt;
 use tls::EvalContextExt as TlsEvalContextExt;
-use memory::MemoryKind as MiriMemoryKind;
+use memory::{MemoryKind as MiriMemoryKind, TlsKey, TlsEntry, MemoryData};
 use locks::LockInfo;
 use range_map::RangeMap;
-use helpers::{ScalarExt, FalibleScalarExt};
+use helpers::FalibleScalarExt;
 
 pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -63,7 +60,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
     let main_mir = ecx.load_mir(main_instance.def)?;
 
-    if !main_mir.return_ty().is_nil() || main_mir.arg_count != 0 {
+    if !main_mir.return_ty().is_unit() || main_mir.arg_count != 0 {
         return err!(Unimplemented(
             "miri does not support main functions without `fn()` type signatures"
                 .to_owned(),
@@ -214,75 +211,12 @@ pub struct Evaluator<'tcx> {
     _dummy : PhantomData<&'tcx ()>,
 }
 
-impl<'tcx> Hash for Evaluator<'tcx> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        let Evaluator {
-            env_vars,
-            _dummy: _,
-        } = self;
-
-        env_vars.iter()
-            .map(|(env, ptr)| {
-                let mut h = FxHasher::default();
-                env.hash(&mut h);
-                ptr.hash(&mut h);
-                h.finish()
-            })
-            .fold(0u64, |acc, hash| acc.wrapping_add(hash))
-            .hash(state);
-    }
-}
-
-pub type TlsKey = u128;
-
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub struct TlsEntry<'tcx> {
-    data: Scalar, // Will eventually become a map from thread IDs to `Scalar`s, if we ever support more than one thread.
-    dtor: Option<ty::Instance<'tcx>>,
-}
-
-#[derive(Clone, PartialEq, Eq)]
-pub struct MemoryData<'tcx> {
-    /// The Key to use for the next thread-local allocation.
-    next_thread_local: TlsKey,
-
-    /// pthreads-style thread-local storage.
-    thread_local: BTreeMap<TlsKey, TlsEntry<'tcx>>,
-
-    /// Memory regions that are locked by some function
-    ///
-    /// Only mutable (static mut, heap, stack) allocations have an entry in this map.
-    /// The entry is created when allocating the memory and deleted after deallocation.
-    locks: HashMap<AllocId, RangeMap<LockInfo<'tcx>>>,
-}
-
-impl<'tcx> MemoryData<'tcx> {
-    fn new() -> Self {
-        MemoryData {
-            next_thread_local: 1, // start with 1 as we must not use 0 on Windows
-            thread_local: BTreeMap::new(),
-            locks: HashMap::new(),
-        }
-    }
-}
-
-impl<'tcx> Hash for MemoryData<'tcx> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        let MemoryData {
-            next_thread_local: _,
-            thread_local,
-            locks: _,
-        } = self;
-
-        thread_local.hash(state);
-    }
-}
-
 impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
-    type MemoryData = MemoryData<'tcx>;
+    type MemoryData = memory::MemoryData<'tcx>;
     type MemoryKinds = memory::MemoryKind;
 
     const MUT_STATIC_KIND: Option<memory::MemoryKind> = Some(memory::MemoryKind::MutStatic);
+    const DETECT_LOOPS: bool = false;
 
     /// Returns Ok() when the function was handled, fail otherwise
     fn find_fn<'a>(
@@ -304,14 +238,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ecx.call_intrinsic(instance, args, dest)
     }
 
-    fn try_ptr_op<'a>(
+    fn ptr_op<'a>(
         ecx: &rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: Scalar,
         left_layout: TyLayout<'tcx>,
         right: Scalar,
         right_layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, Option<(Scalar, bool)>> {
+    ) -> EvalResult<'tcx, (Scalar, bool)> {
         ecx.ptr_op(bin_op, left, left_layout, right, right_layout)
     }
 

@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//ignore-msvc
+//ignore-windows: Causes a stack overflow?!? Likely a rustc bug: https://github.com/rust-lang/rust/issues/53820
+//Once that bug is fixed, increase the size to 16*1024 and enable on all platforms.
 
 #![feature(slice_patterns)]
 
