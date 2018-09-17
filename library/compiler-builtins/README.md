@@ -129,7 +129,7 @@ features = ["c"]
 - [x] arm/softfloat-alias.list
 - [x] arm/subdf3vfp.S
 - [x] arm/subsf3vfp.S
-- [ ] arm/truncdfsf2vfp.S
+- [x] arm/truncdfsf2vfp.S
 - [ ] arm/udivmodsi4.S (generic version is done)
 - [ ] arm/udivsi3.S (generic version is done)
 - [ ] arm/umodsi3.S (generic version is done)
@@ -186,7 +186,7 @@ features = ["c"]
 - [x] subdf3.c
 - [x] subsf3.c
 - [ ] truncdfhf2.c
-- [ ] truncdfsf2.c
+- [x] truncdfsf2.c
 - [ ] truncsfhf2.c
 - [x] udivdi3.c
 - [x] udivmoddi4.c

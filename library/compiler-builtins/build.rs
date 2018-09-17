@@ -174,7 +174,6 @@ mod c {
                 "subvdi3.c",
                 "subvsi3.c",
                 "truncdfhf2.c",
-                "truncdfsf2.c",
                 "truncsfhf2.c",
                 "ucmpdi2.c",
             ],
