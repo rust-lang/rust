@@ -2,7 +2,7 @@ error: use of deprecated attribute `panic_implementation`: this attribute was re
   --> $DIR/panic-implementation-deprecated.rs:19:1
    |
 LL | #[panic_implementation]
-   | ^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^^^^^^^^^^^^^^ help: replace this attribute with `#[panic_handler]`
    |
 note: lint level defined here
   --> $DIR/panic-implementation-deprecated.rs:13:9

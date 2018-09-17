@@ -711,7 +711,7 @@ pub enum AttributeGate {
 impl AttributeGate {
     fn is_deprecated(&self) -> bool {
         match *self {
-            Gated(Stability::Deprecated(_), ..) => true,
+            Gated(Stability::Deprecated(_, _), ..) => true,
             _ => false,
         }
     }
@@ -720,8 +720,9 @@ impl AttributeGate {
 #[derive(Copy, Clone, Debug)]
 pub enum Stability {
     Unstable,
-    // Argument is tracking issue link.
-    Deprecated(&'static str),
+    // First argument is tracking issue link; second argument is an optional
+    // help message, which defaults to "remove this attribute"
+    Deprecated(&'static str, Option<&'static str>),
 }
 
 // fn() is not Debug
@@ -1044,7 +1045,7 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
     ("no_builtins", Whitelisted, Ungated),
     ("no_mangle", Whitelisted, Ungated),
     ("no_debug", Whitelisted, Gated(
-        Stability::Deprecated("https://github.com/rust-lang/rust/issues/29721"),
+        Stability::Deprecated("https://github.com/rust-lang/rust/issues/29721", None),
         "no_debug",
         "the `#[no_debug]` attribute was an experimental feature that has been \
          deprecated due to lack of demand",
@@ -1057,7 +1058,8 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                                        cfg_fn!(omit_gdb_pretty_printer_section))),
     ("unsafe_destructor_blind_to_params",
      Normal,
-     Gated(Stability::Deprecated("https://github.com/rust-lang/rust/issues/34761"),
+     Gated(Stability::Deprecated("https://github.com/rust-lang/rust/issues/34761",
+                                 Some("replace this attribute with `#[may_dangle]`")),
            "dropck_parametricity",
            "unsafe_destructor_blind_to_params has been replaced by \
             may_dangle and will be removed in the future",
@@ -1136,7 +1138,8 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
     ("panic_implementation",
      Normal,
      Gated(Stability::Deprecated("https://github.com/rust-lang/rust/issues/44489\
-                                  #issuecomment-415140224"),
+                                  #issuecomment-415140224",
+                                 Some("replace this attribute with `#[panic_handler]`")),
            "panic_implementation",
            "this attribute was renamed to `panic_handler`",
            cfg_fn!(panic_implementation))),
