@@ -145,21 +145,17 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let elem_layout = self.layout_of(elem_ty)?;
                 let elem_size = elem_layout.size.bytes();
                 let count = self.read_scalar(args[2])?.to_usize(&self)?;
-                if count * elem_size != 0 {
-                    // TODO: We do not even validate alignment for the 0-bytes case.  libstd relies on this in vec::IntoIter::next.
-                    // Also see the write_bytes intrinsic.
-                    let elem_align = elem_layout.align;
-                    let src = self.read_scalar(args[0])?.not_undef()?;
-                    let dest = self.read_scalar(args[1])?.not_undef()?;
-                    self.memory.copy(
-                        src,
-                        elem_align,
-                        dest,
-                        elem_align,
-                        Size::from_bytes(count * elem_size),
-                        intrinsic_name.ends_with("_nonoverlapping"),
-                    )?;
-                }
+                let elem_align = elem_layout.align;
+                let src = self.read_scalar(args[0])?.not_undef()?;
+                let dest = self.read_scalar(args[1])?.not_undef()?;
+                self.memory.copy(
+                    src,
+                    elem_align,
+                    dest,
+                    elem_align,
+                    Size::from_bytes(count * elem_size),
+                    intrinsic_name.ends_with("_nonoverlapping"),
+                )?;
             }
 
             "discriminant_value" => {
@@ -436,12 +432,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let val_byte = self.read_scalar(args[1])?.to_u8()?;
                 let ptr = self.read_scalar(args[0])?.not_undef()?;
                 let count = self.read_scalar(args[2])?.to_usize(&self)?;
-                if count > 0 {
-                    // HashMap relies on write_bytes on a NULL ptr with count == 0 to work
-                    // TODO: Should we, at least, validate the alignment? (Also see the copy intrinsic)
-                    self.memory.check_align(ptr, ty_layout.align)?;
-                    self.memory.write_repeat(ptr, val_byte, ty_layout.size * count)?;
-                }
+                self.memory.check_align(ptr, ty_layout.align)?;
+                self.memory.write_repeat(ptr, val_byte, ty_layout.size * count)?;
             }
 
             name => return err!(Unimplemented(format!("unimplemented intrinsic: {}", name))),
