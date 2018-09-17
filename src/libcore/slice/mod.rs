@@ -3852,8 +3852,8 @@ unsafe impl<'a, T> TrustedRandomAccess for ExactChunksMut<'a, T> {
 /// them from other data. You can obtain a pointer that is usable as `data`
 /// for zero-length slices using [`NonNull::dangling()`].
 ///
-/// The total size of the slice must lower than `isize::MAX` **bytes** in
-/// memory. See the safety documentation of [`pointer::offset`].
+/// The total size of the slice must be no larger than `isize::MAX` **bytes**
+/// in memory. See the safety documentation of [`pointer::offset`].
 ///
 /// # Caveat
 ///
@@ -3892,8 +3892,8 @@ pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
 /// This function is unsafe for the same reasons as [`from_raw_parts`], as well
 /// as not being able to provide a non-aliasing guarantee of the returned
 /// mutable slice. `data` must be non-null and aligned even for zero-length
-/// slices as with [`from_raw_parts`]. The total size of the slice must be
-/// lower than `isize::MAX` **bytes** in memory. See the safety documentation
+/// slices as with [`from_raw_parts`]. The total size of the slice must be no
+/// larger than `isize::MAX` **bytes** in memory. See the safety documentation
 /// of [`pointer::offset`].
 ///
 /// See the documentation of [`from_raw_parts`] for more details.
