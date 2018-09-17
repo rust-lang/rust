@@ -472,47 +472,6 @@ pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 ///
 /// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
 ///
-/// ## Ownership of the Returned Value
-///
-/// `read` creates a bitwise copy of `T`, regardless of whether `T` is [`Copy`].
-/// If `T` is not [`Copy`], using both the returned value and the value at
-/// `*src` can violate memory safety.  Note that assigning to `src` counts as a
-/// use because it will attempt to drop the value at `*src`.
-///
-/// [`write`] can be used to overwrite data without causing it to be dropped.
-///
-/// [valid]: ../ptr/index.html#safety
-/// [`Copy`]: ../marker/trait.Copy.html
-/// [`read_unaligned`]: ./fn.read_unaligned.html
-/// [`write`]: ./fn.write.html
-///
-/// ```
-/// use std::ptr;
-///
-/// let mut s = String::from("foo");
-/// unsafe {
-///     // `s2` now points to the same underlying memory as `s`.
-///     let mut s2: String = ptr::read(&s);
-///
-///     assert_eq!(s2, "foo");
-///
-///     // Assigning to `s2` causes its original value to be dropped. Beyond
-///     // this point, `s` must no longer be used, as the underlying memory has
-///     // been freed.
-///     s2 = String::default();
-///     assert_eq!(s2, "");
-///
-///     // Assigning to `s` would cause the old value to be dropped again,
-///     // resulting in undefined behavior.
-///     // s = String::from("bar"); // ERROR
-///
-///     // `ptr::write` can be used to overwrite a value without dropping it.
-///     ptr::write(&mut s, String::from("bar"));
-/// }
-///
-/// assert_eq!(s, "bar");
-/// ```
-///
 /// # Examples
 ///
 /// Basic usage:
@@ -565,7 +524,47 @@ pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 /// assert_eq!(bar, "foo");
 /// ```
 ///
+/// ## Ownership of the Returned Value
+///
+/// `read` creates a bitwise copy of `T`, regardless of whether `T` is [`Copy`].
+/// If `T` is not [`Copy`], using both the returned value and the value at
+/// `*src` can violate memory safety.  Note that assigning to `*src` counts as a
+/// use because it will attempt to drop the value at `*src`.
+///
+/// [`write`] can be used to overwrite data without causing it to be dropped.
+///
+/// ```
+/// use std::ptr;
+///
+/// let mut s = String::from("foo");
+/// unsafe {
+///     // `s2` now points to the same underlying memory as `s`.
+///     let mut s2: String = ptr::read(&s);
+///
+///     assert_eq!(s2, "foo");
+///
+///     // Assigning to `s2` causes its original value to be dropped. Beyond
+///     // this point, `s` must no longer be used, as the underlying memory has
+///     // been freed.
+///     s2 = String::default();
+///     assert_eq!(s2, "");
+///
+///     // Assigning to `s` would cause the old value to be dropped again,
+///     // resulting in undefined behavior.
+///     // s = String::from("bar"); // ERROR
+///
+///     // `ptr::write` can be used to overwrite a value without dropping it.
+///     ptr::write(&mut s, String::from("bar"));
+/// }
+///
+/// assert_eq!(s, "bar");
+/// ```
+///
 /// [`mem::swap`]: ../mem/fn.swap.html
+/// [valid]: ../ptr/index.html#safety
+/// [`Copy`]: ../marker/trait.Copy.html
+/// [`read_unaligned`]: ./fn.read_unaligned.html
+/// [`write`]: ./fn.write.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn read<T>(src: *const T) -> T {
