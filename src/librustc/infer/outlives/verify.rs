@@ -102,23 +102,15 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
         self.declared_projection_bounds_from_trait(projection_ty)
     }
 
-    pub fn projection_bound(
-        &self,
-        projection_ty: ty::ProjectionTy<'tcx>,
-    ) -> VerifyBound<'tcx> {
-        debug!(
-            "projection_bound(projection_ty={:?})",
-            projection_ty
-        );
+    pub fn projection_bound(&self, projection_ty: ty::ProjectionTy<'tcx>) -> VerifyBound<'tcx> {
+        debug!("projection_bound(projection_ty={:?})", projection_ty);
 
         // Search the env for where clauses like `P: 'a`.
         let mut declared_bounds =
             self.declared_generic_bounds_from_env(GenericKind::Projection(projection_ty));
 
         // Extend with bounds that we can find from the trait.
-        declared_bounds.extend(
-            self.projection_declared_bounds_from_trait(projection_ty)
-        );
+        declared_bounds.extend(self.projection_declared_bounds_from_trait(projection_ty));
 
         debug!("projection_bound: declared_bounds = {:?}", declared_bounds);
 
@@ -159,6 +151,14 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
         &self,
         generic: GenericKind<'tcx>,
     ) -> Vec<ty::Region<'tcx>> {
+        let generic_ty = generic.to_ty(self.tcx);
+        self.declared_generic_bounds_from_env_with_compare_fn(|ty| ty == generic_ty)
+    }
+
+    fn declared_generic_bounds_from_env_with_compare_fn(
+        &self,
+        compare_ty: impl Fn(Ty<'tcx>) -> bool,
+    ) -> Vec<ty::Region<'tcx>> {
         let tcx = self.tcx;
 
         // To start, collect bounds from user environment. Note that
@@ -167,12 +167,8 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
         // dubious for projections, but it will work for simple cases
         // like `T` and `T::Item`. It may not work as well for things
         // like `<T as Foo<'a>>::Item`.
-        let generic_ty = generic.to_ty(tcx);
         let c_b = self.param_env.caller_bounds;
-        let mut param_bounds = self.collect_outlives_from_predicate_list(
-            |ty| ty == generic_ty,
-            c_b,
-        );
+        let mut param_bounds = self.collect_outlives_from_predicate_list(&compare_ty, c_b);
 
         // Next, collect regions we scraped from the well-formedness
         // constraints in the fn signature. To do that, we walk the list
@@ -186,8 +182,11 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
         // well-formed, then, A must be lower-generic by `'a`, but we
         // don't know that this holds from first principles.
         for &(r, p) in self.region_bound_pairs {
-            debug!("generic={:?} p={:?}", generic, p);
-            if generic == p {
+            debug!(
+                "declared_generic_bounds_from_env_with_compare_fn: region_bound_pair = {:?}",
+                (r, p)
+            );
+            if compare_ty(p.to_ty(tcx)) {
                 param_bounds.push(r);
             }
         }
