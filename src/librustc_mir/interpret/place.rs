@@ -316,7 +316,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         };
 
         let ptr = base.ptr.ptr_offset(offset, self)?;
-        let align = base.align.min(field_layout.align); // only use static information
+        let align = base.align
+            // We do not look at `base.layout.align` nor `field_layout.align`, unlike
+            // codegen -- mostly to see if we can get away with that
+            .restrict_for_offset(offset); // must be last thing that happens
 
         Ok(MPlaceTy { mplace: MemPlace { ptr, align, extra }, layout: field_layout })
     }
