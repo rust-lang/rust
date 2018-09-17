@@ -93,7 +93,7 @@ assert_eq!(size_of::<Option<std::num::", stringify!($Ty), ">>(), size_of::<", st
 
             }
 
-            #[stable(feature = "nonzero", since = "1.28.0")]
+            #[stable(feature = "from_nonzero", since = "1.31.0")]
             impl From<$Ty> for $Int {
                 fn from(nonzero: $Ty) -> Self {
                     nonzero.0 .0
