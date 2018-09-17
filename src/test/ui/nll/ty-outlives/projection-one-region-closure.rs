@@ -85,8 +85,7 @@ where
     // can do better here with a more involved verification step.
 
     with_signature(cell, t, |cell, t| require(cell, t));
-    //~^ ERROR the parameter type `T` may not live long enough
-    //~| ERROR
+    //~^ ERROR
 }
 
 #[rustc_regions]

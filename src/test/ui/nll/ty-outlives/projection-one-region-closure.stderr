@@ -119,8 +119,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
            ]
    = note: number of external vids: 4
-   = note: where T: '_#3r
-   = note: where '_#2r: '_#3r
+   = note: where <T as Anything<ReClosureBound('_#2r)>>::AssocType: '_#3r
 
 note: No external requirements
   --> $DIR/projection-one-region-closure.rs:72:1
@@ -130,7 +129,7 @@ LL | | where
 LL | |     T: Anything<'b>,
 LL | |     T::AssocType: 'a,
 ...  |
-LL | |     //~| ERROR
+LL | |     //~^ ERROR
 LL | | }
    | |_^
    |
@@ -140,27 +139,16 @@ LL | | }
                T
            ]
 
-error[E0309]: the parameter type `T` may not live long enough
+error[E0309]: the associated type `<T as Anything<'_#5r>>::AssocType` may not live long enough
   --> $DIR/projection-one-region-closure.rs:87:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
-
-error: unsatisfied lifetime constraints
-  --> $DIR/projection-one-region-closure.rs:87:29
-   |
-LL | fn projection_outlives<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
-   |                        --  -- lifetime `'b` defined here
-   |                        |
-   |                        lifetime `'a` defined here
-...
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^ closure body requires that `'b` must outlive `'a`
+   = help: consider adding an explicit lifetime bound `<T as Anything<'_#5r>>::AssocType: ReEarlyBound(0, 'a)`...
 
 note: External requirements
-  --> $DIR/projection-one-region-closure.rs:99:29
+  --> $DIR/projection-one-region-closure.rs:98:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -177,7 +165,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: where '_#2r: '_#3r
 
 note: No external requirements
-  --> $DIR/projection-one-region-closure.rs:93:1
+  --> $DIR/projection-one-region-closure.rs:92:1
    |
 LL | / fn elements_outlive<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
@@ -194,6 +182,6 @@ LL | | }
                T
            ]
 
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0309`.

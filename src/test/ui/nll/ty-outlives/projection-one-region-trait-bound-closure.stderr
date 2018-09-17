@@ -101,7 +101,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
            ]
    = note: number of external vids: 4
-   = note: where '_#2r: '_#3r
+   = note: where <T as Anything<ReClosureBound('_#2r)>>::AssocType: '_#3r
 
 note: No external requirements
   --> $DIR/projection-one-region-trait-bound-closure.rs:62:1
@@ -121,16 +121,13 @@ LL | | }
                T
            ]
 
-error: unsatisfied lifetime constraints
+error[E0309]: the associated type `<T as Anything<'_#5r>>::AssocType` may not live long enough
   --> $DIR/projection-one-region-trait-bound-closure.rs:77:29
    |
-LL | fn projection_outlives<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
-   |                        --  -- lifetime `'b` defined here
-   |                        |
-   |                        lifetime `'a` defined here
-...
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^ closure body requires that `'b` must outlive `'a`
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<T as Anything<'_#5r>>::AssocType: ReEarlyBound(0, 'a)`...
 
 note: External requirements
   --> $DIR/projection-one-region-trait-bound-closure.rs:87:29
@@ -200,3 +197,4 @@ LL | | }
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0309`.
