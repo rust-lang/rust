@@ -622,7 +622,8 @@ mod tests {
             Ok(lh) => lh,
             Err(e) => panic!("couldn't resolve `localhost': {}", e)
         };
-        let _na = lh.map(|sa| *addrs.entry(sa).or_insert(0) += 1).count();
-        assert!(addrs.values().filter(|&&v| v > 1).count() == 0);
+        for sa in lh { *addrs.entry(sa).or_insert(0) += 1; };
+        assert_eq!(addrs.iter().filter(|&(_, &v)| v > 1).collect::<Vec<_>>(), vec![],
+                   "There should be no duplicate localhost entries");
     }
 }
