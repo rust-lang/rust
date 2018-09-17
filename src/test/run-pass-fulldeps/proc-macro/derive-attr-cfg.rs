@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(dead_code)]
 // aux-build:derive-attr-cfg.rs
 // ignore-stage1
 

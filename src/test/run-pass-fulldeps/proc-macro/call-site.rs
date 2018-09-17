@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_variables)]
+#![allow(unused_imports)]
 // aux-build:call-site.rs
 // ignore-stage1
 

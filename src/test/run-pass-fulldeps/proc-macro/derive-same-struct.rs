@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(path_statements)]
+#![allow(dead_code)]
 // aux-build:derive-same-struct.rs
 // ignore-stage1
 
