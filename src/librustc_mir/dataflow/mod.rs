@@ -10,7 +10,7 @@
 
 use syntax::ast::{self, MetaItem};
 
-use rustc_data_structures::bit_set::{bitwise, BitwiseOperator, BitSet, HybridBitSet};
+use rustc_data_structures::bit_set::{BitSet, BitSetOperator, HybridBitSet};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::work_queue::WorkQueue;
 
@@ -561,7 +561,7 @@ pub trait InitialFlow {
     fn bottom_value() -> bool;
 }
 
-pub trait BitDenotation: BitwiseOperator {
+pub trait BitDenotation: BitSetOperator {
     /// Specifies what index type is used to access the bitvector.
     type Idx: Idx;
 
@@ -830,10 +830,8 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
                                          in_out: &BitSet<D::Idx>,
                                          bb: mir::BasicBlock,
                                          dirty_queue: &mut WorkQueue<mir::BasicBlock>) {
-        let entry_set = self.flow_state.sets.for_block(bb.index()).on_entry;
-        let set_changed = bitwise(entry_set.words_mut(),
-                                  in_out.words(),
-                                  &self.flow_state.operator);
+        let entry_set = &mut self.flow_state.sets.for_block(bb.index()).on_entry;
+        let set_changed = self.flow_state.operator.join(entry_set, &in_out);
         if set_changed {
             dirty_queue.insert(bb);
         }

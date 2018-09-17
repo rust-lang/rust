@@ -162,7 +162,7 @@ impl<T: Idx> BitSet<T> {
     /// Set `self = self & other` and return true if `self` changed.
     /// (i.e., if any bits were removed).
     pub fn intersect(&mut self, other: &BitSet<T>) -> bool {
-        bitwise(self.words_mut(), other.words(), &Intersect)
+        bitwise(self.words_mut(), other.words(), |a, b| { a & b })
     }
 
     /// Get a slice of the underlying words.
@@ -243,13 +243,13 @@ pub trait SubtractFromBitSet<T: Idx> {
 
 impl<T: Idx> UnionIntoBitSet<T> for BitSet<T> {
     fn union_into(&self, other: &mut BitSet<T>) -> bool {
-        bitwise(other.words_mut(), self.words(), &Union)
+        bitwise(other.words_mut(), self.words(), |a, b| { a | b })
     }
 }
 
 impl<T: Idx> SubtractFromBitSet<T> for BitSet<T> {
     fn subtract_from(&self, other: &mut BitSet<T>) -> bool {
-        bitwise(other.words_mut(), self.words(), &Subtract)
+        bitwise(other.words_mut(), self.words(), |a, b| { a & !b })
     }
 }
 
@@ -302,41 +302,24 @@ impl<'a, T: Idx> Iterator for BitIter<'a, T> {
     }
 }
 
-pub trait BitwiseOperator {
-    /// Applies some bit-operation pointwise to each of the bits in the two inputs.
-    fn join(&self, pred1: Word, pred2: Word) -> Word;
+pub trait BitSetOperator {
+    /// Combine one bitset into another.
+    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool;
 }
 
 #[inline]
-pub fn bitwise<Op: BitwiseOperator>(out_vec: &mut [Word], in_vec: &[Word], op: &Op) -> bool
+fn bitwise<Op>(out_vec: &mut [Word], in_vec: &[Word], op: Op) -> bool
+    where Op: Fn(Word, Word) -> Word
 {
     assert_eq!(out_vec.len(), in_vec.len());
     let mut changed = false;
     for (out_elem, in_elem) in out_vec.iter_mut().zip(in_vec.iter()) {
         let old_val = *out_elem;
-        let new_val = op.join(old_val, *in_elem);
+        let new_val = op(old_val, *in_elem);
         *out_elem = new_val;
         changed |= old_val != new_val;
     }
     changed
-}
-
-pub struct Intersect;
-impl BitwiseOperator for Intersect {
-    #[inline]
-    fn join(&self, a: Word, b: Word) -> Word { a & b }
-}
-
-pub struct Union;
-impl BitwiseOperator for Union {
-    #[inline]
-    fn join(&self, a: Word, b: Word) -> Word { a | b }
-}
-
-pub struct Subtract;
-impl BitwiseOperator for Subtract {
-    #[inline]
-    fn join(&self, a: Word, b: Word) -> Word { a & !b }
 }
 
 const SPARSE_MAX: usize = 8;

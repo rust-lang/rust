@@ -80,10 +80,10 @@ impl<'a, 'tcx> BitDenotation for HaveBeenBorrowedLocals<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BitwiseOperator for HaveBeenBorrowedLocals<'a, 'tcx> {
+impl<'a, 'tcx> BitSetOperator for HaveBeenBorrowedLocals<'a, 'tcx> {
     #[inline]
-    fn join(&self, pred1: Word, pred2: Word) -> Word {
-        pred1 | pred2 // "maybe" means we union effects of both preds
+    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
+        inout_set.union(in_set) // "maybe" means we union effects of both preds
     }
 }
 

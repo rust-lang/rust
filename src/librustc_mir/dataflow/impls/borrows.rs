@@ -20,9 +20,9 @@ use rustc::ty::TyCtxt;
 use rustc::ty::{RegionKind, RegionVid};
 use rustc::ty::RegionKind::ReScope;
 
-use rustc_data_structures::bit_set::{BitSet, BitwiseOperator, Word};
+use rustc_data_structures::bit_set::{BitSet, BitSetOperator};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::sync::Lrc;
 
 use dataflow::{BitDenotation, BlockSets, InitialFlow};
@@ -410,10 +410,10 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitwiseOperator for Borrows<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitSetOperator for Borrows<'a, 'gcx, 'tcx> {
     #[inline]
-    fn join(&self, pred1: Word, pred2: Word) -> Word {
-        pred1 | pred2 // union effects of preds when computing reservations
+    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
+        inout_set.union(in_set) // "maybe" means we union effects of both preds
     }
 }
 

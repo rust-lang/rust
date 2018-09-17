@@ -14,7 +14,7 @@
 
 use rustc::ty::TyCtxt;
 use rustc::mir::{self, Mir, Location};
-use rustc_data_structures::bit_set::{BitSet, BitwiseOperator, Word};
+use rustc_data_structures::bit_set::{BitSet, BitSetOperator};
 use rustc_data_structures::indexed_vec::Idx;
 
 use super::MoveDataParamEnv;
@@ -549,31 +549,31 @@ impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedPlaces<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitwiseOperator for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitSetOperator for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
-    fn join(&self, pred1: Word, pred2: Word) -> Word {
-        pred1 | pred2 // "maybe" means we union effects of both preds
+    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
+        inout_set.union(in_set) // "maybe" means we union effects of both preds
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitwiseOperator for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitSetOperator for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
-    fn join(&self, pred1: Word, pred2: Word) -> Word {
-        pred1 | pred2 // "maybe" means we union effects of both preds
+    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
+        inout_set.union(in_set) // "maybe" means we union effects of both preds
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitwiseOperator for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitSetOperator for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
-    fn join(&self, pred1: Word, pred2: Word) -> Word {
-        pred1 & pred2 // "definitely" means we intersect effects of both preds
+    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
+        inout_set.intersect(in_set) // "definitely" means we intersect effects of both preds
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitwiseOperator for EverInitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitSetOperator for EverInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
-    fn join(&self, pred1: Word, pred2: Word) -> Word {
-        pred1 | pred2 // inits from both preds are in scope
+    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
+        inout_set.union(in_set) // inits from both preds are in scope
     }
 }
 
