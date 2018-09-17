@@ -22,7 +22,7 @@ where T: 'a
 {
   type Out = ();
 }
-type RequireOutlives<'a, T> = <T as Dummy<'a>>::Out;
+type RequireOutlives<'a, T> = <T as Dummy<'a>>::Out; //~ ERROR the parameter type `T` may not live long enough
 
 enum Ref1<'a, T> {
     Ref1Variant1(RequireOutlives<'a, T>) //~ ERROR the parameter type `T` may not live long enough

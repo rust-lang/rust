@@ -22,5 +22,5 @@ pub trait AsExpression<T> {
 }
 
 // @has foo/type.AsExprOf.html
-// @has - '//*[@class="rust typedef"]' 'type AsExprOf<Item, Type> = <Item as AsExpression<Type>>::Expression;'
-pub type AsExprOf<Item, Type> = <Item as AsExpression<Type>>::Expression;
+// @has - '//*[@class="rust typedef"]' 'type AsExprOf<Item: AsExpression<Type>, Type> = <Item as AsExpression<Type>>::Expression;'
+pub type AsExprOf<Item: AsExpression<Type>, Type> = <Item as AsExpression<Type>>::Expression;

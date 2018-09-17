@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue_3907.rs
-extern crate issue_3907;
+// compile-pass
+#![warn(const_err)]
 
-type Foo = issue_3907::Foo+'static;
-//~^ ERROR E0038
-
-struct S {
-    name: isize
-}
-
-fn bar(_x: Foo) {}
-//~^ ERROR E0038
+pub const Z: u32 = 0 - 1;
+//~^ WARN this constant cannot be used
 
 fn main() {}

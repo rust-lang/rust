@@ -9,7 +9,7 @@ path = "lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
-ena = "0.9.3"
+ena = "0.10.1"
 log = "0.4"
 rustc_cratesio_shim = { path = "../librustc_cratesio_shim" }
 serialize = { path = "../libserialize" }

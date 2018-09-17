@@ -25,7 +25,7 @@ trait T where i32: Foo {} //~ ERROR
 
 union U where i32: Foo { f: i32 } //~ ERROR
 
-type Y where i32: Foo = (); // OK - bound is ignored
+type Y where i32: Foo = (); //~ ERROR
 
 impl Foo for () where i32: Foo { //~ ERROR
     fn test(&self) {

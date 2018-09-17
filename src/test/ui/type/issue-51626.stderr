@@ -1,0 +1,22 @@
+error: the trait bound `T: Trait` is not satisfied
+  --> $DIR/issue-51626.rs:17:25
+   |
+LL | pub type Bar<T = Qux> = Foo<T>;
+   |                         ^^^^^^ the trait `Trait` is not implemented for `T`
+   |
+   = note: #[deny(type_alias_missing_bounds)] on by default
+   = help: consider adding a `where T: Trait` bound
+   = help: missing bounds in type aliases were previously allowed
+   = help: this is a hard error in Rust 2018
+
+error: the trait bound `Qux: Trait` is not satisfied
+  --> $DIR/issue-51626.rs:20:1
+   |
+LL | pub type Baz<T: Trait = Qux> = Foo<T>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `Qux`
+   |
+   = help: missing bounds in type aliases were previously allowed
+   = help: this is a hard error in Rust 2018
+
+error: aborting due to 2 previous errors
+

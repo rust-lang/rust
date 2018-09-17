@@ -8,14 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-pass
-#![warn(const_err)]
-
-pub const Z: u32 = 0 - 1;
-//~^ WARN this constant cannot be used
-
 pub type Foo = [i32; 0 - 1];
-//~^ WARN attempt to subtract with overflow
-//~| WARN this array length cannot be used
+//~^ ERROR could not evaluate constant expression
+//~| attempt to subtract with overflow
 
 fn main() {}
