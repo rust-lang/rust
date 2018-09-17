@@ -10,6 +10,9 @@ LL |         &x
    |         ^^ `x` would have to be valid for `'0`
 LL |     }
    |     - ...but `x` is only valid for the duration of the `bar` function, so it is dropped here while still borrowed
+   |
+   = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-references-and-borrowing.html#dangling-references>
 
 error[E0597]: `x` does not live long enough
   --> $DIR/issue-52534-1.rs:25:5
@@ -23,6 +26,9 @@ LL |     &x
    |     ^^ `x` would have to be valid for `'0`
 LL | }
    | - ...but `x` is only valid for the duration of the `foo` function, so it is dropped here while still borrowed
+   |
+   = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-references-and-borrowing.html#dangling-references>
 
 error[E0597]: `x` does not live long enough
   --> $DIR/issue-52534-1.rs:30:6
@@ -36,6 +42,9 @@ LL |     &&x
    |      ^^ `x` would have to be valid for `'0`
 LL | }
    | - ...but `x` is only valid for the duration of the `baz` function, so it is dropped here while still borrowed
+   |
+   = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-references-and-borrowing.html#dangling-references>
 
 error[E0597]: borrowed value does not live long enough
   --> $DIR/issue-52534-1.rs:30:6

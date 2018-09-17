@@ -530,6 +530,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         self.infcx.tcx.hir.name(fn_node_id),
                     )
                 );
+
+                err.note(
+                    "functions cannot return a borrow to data owned within the function's scope, \
+                     functions can only return borrows to data passed as arguments",
+                );
+                err.note(
+                    "to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-\
+                     references-and-borrowing.html#dangling-references>",
+                );
             } else {
                 err.span_label(
                     drop_span,

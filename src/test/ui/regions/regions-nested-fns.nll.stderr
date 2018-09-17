@@ -32,6 +32,9 @@ LL |         ay = &y;
 ...
 LL | }
    | - ...but `y` is only valid for the duration of the `nested` function, so it is dropped here while still borrowed
+   |
+   = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-references-and-borrowing.html#dangling-references>
 
 error: unsatisfied lifetime constraints
   --> $DIR/regions-nested-fns.rs:23:68
