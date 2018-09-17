@@ -154,7 +154,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         format!("borrow later used here, when `{}` is dropped", local_name),
                     );
 
-                    if let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place {
+                    if let Some((WriteKind::StorageDeadOrDrop(_), place)) = kind_place {
                         if let Place::Local(borrowed_local) = place {
                             let dropped_local_scope = mir.local_decls[local].visibility_scope;
                             let borrowed_local_scope =
