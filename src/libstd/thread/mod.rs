@@ -800,9 +800,12 @@ pub fn park() {
     match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
         Ok(_) => {}
         Err(NOTIFIED) => {
-            // We must read again here, even though we know it will be NOTIFY,
-            // to synchronize with an write in `unpark` that occurred since we
-            // last read.
+            // We must read here, even though we know it will be `NOTIFIED`.
+            // This is because `unpark` may have been called again since we read
+            // `NOTIFIED` in the `compare_exchange` above. We must perform an
+            // acquire operation that synchronizes with that `unpark` to observe
+            // any writes it made before the call to unpark. To do that we must
+            // read from the write it made to `state`.
             let old = thread.inner.state.swap(EMPTY, SeqCst);
             assert_eq!(old, NOTIFIED, "park state changed unexpectedly");
             return;
@@ -893,9 +896,7 @@ pub fn park_timeout(dur: Duration) {
     match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
         Ok(_) => {}
         Err(NOTIFIED) => {
-            // We must read again here, even though we know it will be NOTIFY,
-            // to synchronize with an write in `unpark` that occurred since we
-            // last read.
+            // We must read again here, see `park`.
             let old = thread.inner.state.swap(EMPTY, SeqCst);
             assert_eq!(old, NOTIFIED, "park state changed unexpectedly");
             return;
@@ -1066,8 +1067,12 @@ impl Thread {
     /// [park]: fn.park.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn unpark(&self) {
-        // We must unconditionally write NOTIFIED here to
-        // synchronize with a read in `park`.
+        // To ensure the unparked thread will observe any writes we made
+        // before this call, we must perform a release operation that `park`
+        // can synchronize with. To do that we must write `NOTIFIED` even if
+        // `state` is already `NOTIFIED`. That is why this must be a swap
+        // rather than a compare-and-swap that returns if it reads `NOTIFIED`
+        // on failure.
         match self.inner.state.swap(NOTIFIED, SeqCst) {
             EMPTY => return, // no one was waiting
             NOTIFIED => return, // already unparked
