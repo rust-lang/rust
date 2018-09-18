@@ -2194,13 +2194,15 @@ lifetime of a type that implements the `Drop` trait.
 Example of erroneous code:
 
 ```compile_fail,E0713
+#![feature(nll)]
+
 pub struct S<'a> { data: &'a mut String }
 
 impl<'a> Drop for S<'a> {
     fn drop(&mut self) { self.data.push_str("being dropped"); }
 }
 
-fn demo(s: S) -> &mut String { let p = &mut *s.data; p }
+fn demo<'a>(s: S<'a>) -> &'a mut String { let p = &mut *s.data; p }
 ```
 
 Here, `demo` tries to borrow the string data held within its
@@ -2222,14 +2224,24 @@ not run while the string-data is borrowed; for example by taking `S`
 by reference:
 
 ```
+#![feature(nll)]
+
 pub struct S<'a> { data: &'a mut String }
 
 impl<'a> Drop for S<'a> {
     fn drop(&mut self) { self.data.push_str("being dropped"); }
 }
 
-fn demo(s: &mut S) -> &mut String { let p = &mut *(*s).data; p }
+fn demo<'a>(s: &'a mut S<'a>) -> &'a mut String { let p = &mut *(*s).data; p }
 ```
+
+Note that this approach needs a reference to S with lifetime `'a`.
+Nothing shorter than `'a` will suffice: a shorter lifetime would imply
+that after `demo` finishes excuting, something else (such as the
+destructor!) could access `s.data` after the end of that shorter
+lifetime, which would again violate the `&mut`-borrow's exclusive
+access.
+
 "##,
 
 }
