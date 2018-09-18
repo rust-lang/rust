@@ -61,21 +61,21 @@ impl<T: Idx> BitSet<T> {
     }
 
     /// Sets all elements up to and including `size`.
-    pub fn set_up_to(&mut self, bit: usize) {
+    pub fn set_up_to(&mut self, elem: usize) {
         for word in &mut self.words {
             *word = !0;
         }
-        self.clear_above(bit);
+        self.clear_above(elem);
     }
 
-    /// Clear all elements above `bit`.
-    fn clear_above(&mut self, bit: usize) {
-        let first_clear_block = bit / WORD_BITS;
+    /// Clear all elements above `elem`.
+    fn clear_above(&mut self, elem: usize) {
+        let first_clear_block = elem / WORD_BITS;
 
         if first_clear_block < self.words.len() {
-            // Within `first_clear_block`, the `bit % WORD_BITS` LSBs should
+            // Within `first_clear_block`, the `elem % WORD_BITS` LSBs should
             // remain.
-            let mask = (1 << (bit % WORD_BITS)) - 1;
+            let mask = (1 << (elem % WORD_BITS)) - 1;
             self.words[first_clear_block] &= mask;
 
             // All the blocks above `first_clear_block` are fully cleared.
@@ -96,10 +96,10 @@ impl<T: Idx> BitSet<T> {
         self.words.iter().map(|e| e.count_ones() as usize).sum()
     }
 
-    /// True if `self` contains the bit `bit`.
+    /// True if `self` contains `elem`.
     #[inline]
-    pub fn contains(&self, bit: T) -> bool {
-        let (word_index, mask) = word_index_and_mask(bit);
+    pub fn contains(&self, elem: T) -> bool {
+        let (word_index, mask) = word_index_and_mask(elem);
         (self.words[word_index] & mask) != 0
     }
 
@@ -118,10 +118,10 @@ impl<T: Idx> BitSet<T> {
         self.words.iter().all(|a| *a == 0)
     }
 
-    /// Insert a bit. Returns true if the bit has changed.
+    /// Insert `elem`. Returns true if the set has changed.
     #[inline]
-    pub fn insert(&mut self, bit: T) -> bool {
-        let (word_index, mask) = word_index_and_mask(bit);
+    pub fn insert(&mut self, elem: T) -> bool {
+        let (word_index, mask) = word_index_and_mask(elem);
         let word_ref = &mut self.words[word_index];
         let word = *word_ref;
         let new_word = word | mask;
@@ -136,10 +136,10 @@ impl<T: Idx> BitSet<T> {
         }
     }
 
-    /// Returns true if the bit has changed.
+    /// Returns true if the set has changed.
     #[inline]
-    pub fn remove(&mut self, bit: T) -> bool {
-        let (word_index, mask) = word_index_and_mask(bit);
+    pub fn remove(&mut self, elem: T) -> bool {
+        let (word_index, mask) = word_index_and_mask(elem);
         let word_ref = &mut self.words[word_index];
         let word = *word_ref;
         let new_word = word & !mask;
@@ -547,16 +547,16 @@ impl<T: Idx> GrowableBitSet<T> {
         GrowableBitSet { bit_set: BitSet::new_empty(bits) }
     }
 
-    /// Returns true if the bit has changed.
+    /// Returns true if the set has changed.
     #[inline]
-    pub fn insert(&mut self, bit: T) -> bool {
-        self.grow(bit);
-        self.bit_set.insert(bit)
+    pub fn insert(&mut self, elem: T) -> bool {
+        self.grow(elem);
+        self.bit_set.insert(elem)
     }
 
     #[inline]
-    pub fn contains(&self, bit: T) -> bool {
-        let (word_index, mask) = word_index_and_mask(bit);
+    pub fn contains(&self, elem: T) -> bool {
+        let (word_index, mask) = word_index_and_mask(elem);
         if let Some(word) = self.bit_set.words.get(word_index) {
             (word & mask) != 0
         } else {
