@@ -7,6 +7,7 @@ publish = false
 [dependencies]
 clap = "2.32.0"
 failure = "0.1.1"
+join_to_string = "0.1.1"
 ra_syntax = { path = "../ra_syntax" }
 ra_editor = { path = "../ra_editor" }
 tools = { path = "../tools" }

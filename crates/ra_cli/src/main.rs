@@ -1,6 +1,7 @@
 extern crate clap;
 #[macro_use]
 extern crate failure;
+extern crate join_to_string;
 extern crate ra_syntax;
 extern crate ra_editor;
 extern crate tools;
@@ -10,9 +11,10 @@ use std::{
     time::Instant
 };
 use clap::{App, Arg, SubCommand};
+use join_to_string::join;
 use tools::collect_tests;
-use ra_syntax::File;
-use ra_editor::{syntax_tree, file_structure};
+use ra_syntax::{TextRange, File};
+use ra_editor::{syntax_tree, file_structure, extend_selection};
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
 
@@ -39,6 +41,10 @@ fn main() -> Result<()> {
                 .arg(Arg::with_name("no-dump").long("--no-dump"))
         )
         .subcommand(SubCommand::with_name("symbols"))
+        .subcommand(SubCommand::with_name("extend-selection")
+            .arg(Arg::with_name("start"))
+            .arg(Arg::with_name("end"))
+        )
         .get_matches();
     match matches.subcommand() {
         ("parse", Some(matches)) => {
@@ -64,6 +70,13 @@ fn main() -> Result<()> {
             let line = line - 1;
             let (test, tree) = render_test(file, line)?;
             println!("{}\n{}", test, tree);
+        }
+        ("extend-selection", Some(matches)) => {
+            let start: u32 = matches.value_of("start").unwrap().parse()?;
+            let end: u32 = matches.value_of("end").unwrap().parse()?;
+            let file = file()?;
+            let sels = selections(&file, start, end);
+            println!("{}", sels)
         }
         _ => unreachable!(),
     }
@@ -94,4 +107,20 @@ fn render_test(file: &Path, line: usize) -> Result<(String, String)> {
     let file = File::parse(&test.text);
     let tree = syntax_tree(&file);
     Ok((test.text, tree))
+}
+
+fn selections(file: &File, start: u32, end: u32) -> String {
+    let mut ranges = Vec::new();
+    let mut cur = Some(TextRange::from_to((start - 1).into(), (end - 1).into()));
+    while let Some(r) = cur {
+        ranges.push(r);
+        cur = extend_selection(&file, r);
+    }
+    let ranges = ranges.iter()
+        .map(|r| (1 + u32::from(r.start()), 1 + u32::from(r.end())))
+        .map(|(s, e)| format!("({} {})", s, e));
+    join(ranges)
+        .separator(" ")
+        .surround_with("(", ")")
+        .to_string()
 }

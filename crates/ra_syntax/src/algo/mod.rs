@@ -78,7 +78,11 @@ impl<'f> Iterator for LeafAtOffset<'f> {
 }
 
 pub fn find_covering_node(root: SyntaxNodeRef, range: TextRange) -> SyntaxNodeRef {
-    assert!(is_subrange(root.range(), range));
+    assert!(
+        is_subrange(root.range(), range),
+        "node range: {:?}, target range: {:?}",
+        root.range(), range,
+    );
     let (left, right) = match (
         find_leaf_at_offset(root, range.start()).right_biased(),
         find_leaf_at_offset(root, range.end()).left_biased()
