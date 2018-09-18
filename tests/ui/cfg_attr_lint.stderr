@@ -6,5 +6,11 @@ error: `cfg_attr` is deprecated for rustfmt and got replaced by tool_attributes
   |
   = note: `-D clippy::deprecated-cfg-attr` implied by `-D warnings`
 
-error: aborting due to previous error
+error: `cfg_attr` is deprecated for rustfmt and got replaced by tool_attributes
+  --> $DIR/cfg_attr_lint.rs:14:5
+   |
+14 |     #![cfg_attr(rustfmt, rustfmt_skip)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `#![rustfmt::skip]`
+
+error: aborting due to 2 previous errors
 

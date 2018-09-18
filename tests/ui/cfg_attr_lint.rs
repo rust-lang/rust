@@ -6,4 +6,12 @@
 #![cfg_attr(rustfmt, rustfmt_skip)]
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
-fn main() {}
+fn main() {
+    foo::f();
+}
+
+mod foo {
+    #![cfg_attr(rustfmt, rustfmt_skip)]
+
+    pub fn f() {}
+}
