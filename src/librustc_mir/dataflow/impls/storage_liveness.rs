@@ -36,7 +36,7 @@ impl<'a, 'tcx> BitDenotation for MaybeStorageLive<'a, 'tcx> {
         self.mir.local_decls.len()
     }
 
-    fn start_block_effect(&self, _sets: &mut IdxSet<Local>) {
+    fn start_block_effect(&self, _sets: &mut BitSet<Local>) {
         // Nothing is live on function entry
     }
 
@@ -46,8 +46,8 @@ impl<'a, 'tcx> BitDenotation for MaybeStorageLive<'a, 'tcx> {
         let stmt = &self.mir[loc.block].statements[loc.statement_index];
 
         match stmt.kind {
-            StatementKind::StorageLive(l) => sets.gen(&l),
-            StatementKind::StorageDead(l) => sets.kill(&l),
+            StatementKind::StorageLive(l) => sets.gen(l),
+            StatementKind::StorageDead(l) => sets.kill(l),
             _ => (),
         }
     }
@@ -59,7 +59,7 @@ impl<'a, 'tcx> BitDenotation for MaybeStorageLive<'a, 'tcx> {
     }
 
     fn propagate_call_return(&self,
-                             _in_out: &mut IdxSet<Local>,
+                             _in_out: &mut BitSet<Local>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
                              _dest_place: &mir::Place) {
@@ -67,10 +67,10 @@ impl<'a, 'tcx> BitDenotation for MaybeStorageLive<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BitwiseOperator for MaybeStorageLive<'a, 'tcx> {
+impl<'a, 'tcx> BitSetOperator for MaybeStorageLive<'a, 'tcx> {
     #[inline]
-    fn join(&self, pred1: Word, pred2: Word) -> Word {
-        pred1 | pred2 // "maybe" means we union effects of both preds
+    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
+        inout_set.union(in_set) // "maybe" means we union effects of both preds
     }
 }
 

@@ -37,7 +37,7 @@ use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::mir::Local;
 use rustc::mir::*;
 use rustc::ty::{item_path, TyCtxt};
-use rustc_data_structures::indexed_set::IdxSet;
+use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::work_queue::WorkQueue;
 use std::fs;
@@ -46,7 +46,7 @@ use std::path::{Path, PathBuf};
 use transform::MirSource;
 use util::pretty::{dump_enabled, write_basic_block, write_mir_intro};
 
-pub type LiveVarSet<V> = IdxSet<V>;
+pub type LiveVarSet<V> = BitSet<V>;
 
 /// This gives the result of the liveness analysis at the boundary of
 /// basic blocks.
@@ -243,8 +243,8 @@ impl<V: Idx> DefsUses<V> {
         //     X = 5
         //     // Defs = {}, Uses = {X}
         //     use(X)
-        self.uses.remove(&index);
-        self.defs.add(&index);
+        self.uses.remove(index);
+        self.defs.insert(index);
     }
 
     fn add_use(&mut self, index: V) {
@@ -258,8 +258,8 @@ impl<V: Idx> DefsUses<V> {
         //     X = 5
         //     // Defs = {}, Uses = {X}
         //     use(X)
-        self.defs.remove(&index);
-        self.uses.add(&index);
+        self.defs.remove(index);
+        self.uses.insert(index);
     }
 }
 

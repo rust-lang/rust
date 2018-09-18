@@ -12,7 +12,6 @@
 
 use syntax::ast::NodeId;
 use rustc::mir::{BasicBlock, Mir};
-use rustc_data_structures::bitvec::bits_to_string;
 
 use dot;
 use dot::IntoCow;
@@ -223,7 +222,7 @@ where MWF: MirWithFlowState<'tcx>,
 
         // Entry
         let set = flow.sets.on_entry_set_for(i);
-        write!(w, "<td>{:?}</td>", dot::escape_html(&bits_to_string(set.words(), bits_per_block)))?;
+        write!(w, "<td>{:?}</td>", dot::escape_html(&set.to_string(bits_per_block)))?;
 
         // Terminator
         write!(w, "<td>")?;

@@ -14,7 +14,7 @@ use syntax_pos::Span;
 
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::{self, Mir, Location};
-use rustc_data_structures::indexed_set::IdxSet;
+use rustc_data_structures::bit_set::BitSet;
 use transform::{MirPass, MirSource};
 
 use dataflow::{do_dataflow, DebugFormatted};
@@ -46,7 +46,7 @@ impl MirPass for SanityCheck {
         let param_env = tcx.param_env(def_id);
         let move_data = MoveData::gather_moves(mir, tcx).unwrap();
         let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
-        let dead_unwinds = IdxSet::new_empty(mir.basic_blocks().len());
+        let dead_unwinds = BitSet::new_empty(mir.basic_blocks().len());
         let flow_inits =
             do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
                         MaybeInitializedPlaces::new(tcx, mir, &mdpe),
@@ -175,7 +175,7 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 // Okay, our search is over.
                 match move_data.rev_lookup.find(peeking_at_place) {
                     LookupResult::Exact(peek_mpi) => {
-                        let bit_state = sets.on_entry.contains(&peek_mpi);
+                        let bit_state = sets.on_entry.contains(peek_mpi);
                         debug!("rustc_peek({:?} = &{:?}) bit_state: {}",
                                place, peeking_at_place, bit_state);
                         if !bit_state {

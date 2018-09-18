@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use indexed_set::IdxSet;
+use bit_set::BitSet;
 use indexed_vec::Idx;
 use std::collections::VecDeque;
 
@@ -20,7 +20,7 @@ use std::collections::VecDeque;
 /// and also use a bit set to track occupancy.
 pub struct WorkQueue<T: Idx> {
     deque: VecDeque<T>,
-    set: IdxSet<T>,
+    set: BitSet<T>,
 }
 
 impl<T: Idx> WorkQueue<T> {
@@ -29,7 +29,7 @@ impl<T: Idx> WorkQueue<T> {
     pub fn with_all(len: usize) -> Self {
         WorkQueue {
             deque: (0..len).map(T::new).collect(),
-            set: IdxSet::new_filled(len),
+            set: BitSet::new_filled(len),
         }
     }
 
@@ -38,14 +38,14 @@ impl<T: Idx> WorkQueue<T> {
     pub fn with_none(len: usize) -> Self {
         WorkQueue {
             deque: VecDeque::with_capacity(len),
-            set: IdxSet::new_empty(len),
+            set: BitSet::new_empty(len),
         }
     }
 
     /// Attempt to enqueue `element` in the work queue. Returns false if it was already present.
     #[inline]
     pub fn insert(&mut self, element: T) -> bool {
-        if self.set.add(&element) {
+        if self.set.insert(element) {
             self.deque.push_back(element);
             true
         } else {
@@ -57,7 +57,7 @@ impl<T: Idx> WorkQueue<T> {
     #[inline]
     pub fn pop(&mut self) -> Option<T> {
         if let Some(element) = self.deque.pop_front() {
-            self.set.remove(&element);
+            self.set.remove(element);
             Some(element)
         } else {
             None

@@ -21,7 +21,7 @@ use libc::c_uint;
 
 use syntax_pos::Pos;
 
-use rustc_data_structures::bitvec::BitArray;
+use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
 use syntax_pos::BytePos;
@@ -64,7 +64,7 @@ pub fn create_mir_scopes(
     };
 
     // Find all the scopes with variables defined in them.
-    let mut has_variables = BitArray::new(mir.source_scopes.len());
+    let mut has_variables = BitSet::new_empty(mir.source_scopes.len());
     for var in mir.vars_iter() {
         let decl = &mir.local_decls[var];
         has_variables.insert(decl.visibility_scope);
@@ -81,7 +81,7 @@ pub fn create_mir_scopes(
 
 fn make_mir_scope(cx: &CodegenCx<'ll, '_>,
                   mir: &Mir,
-                  has_variables: &BitArray<SourceScope>,
+                  has_variables: &BitSet<SourceScope>,
                   debug_context: &FunctionDebugContextData<'ll>,
                   scope: SourceScope,
                   scopes: &mut IndexVec<SourceScope, MirDebugScope<'ll>>) {

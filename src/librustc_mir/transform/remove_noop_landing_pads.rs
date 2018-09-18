@@ -10,7 +10,7 @@
 
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
-use rustc_data_structures::bitvec::BitArray;
+use rustc_data_structures::bit_set::BitSet;
 use transform::{MirPass, MirSource};
 use util::patch::MirPatch;
 
@@ -45,7 +45,7 @@ impl RemoveNoopLandingPads {
         &self,
         bb: BasicBlock,
         mir: &Mir,
-        nop_landing_pads: &BitArray<BasicBlock>,
+        nop_landing_pads: &BitSet<BasicBlock>,
     ) -> bool {
         for stmt in &mir[bb].statements {
             match stmt.kind {
@@ -111,7 +111,7 @@ impl RemoveNoopLandingPads {
 
         let mut jumps_folded = 0;
         let mut landing_pads_removed = 0;
-        let mut nop_landing_pads = BitArray::new(mir.basic_blocks().len());
+        let mut nop_landing_pads = BitSet::new_empty(mir.basic_blocks().len());
 
         // This is a post-order traversal, so that if A post-dominates B
         // then A will be visited before B.

@@ -20,10 +20,9 @@ use rustc::ty::TyCtxt;
 use rustc::ty::{RegionKind, RegionVid};
 use rustc::ty::RegionKind::ReScope;
 
-use rustc_data_structures::bitvec::{BitwiseOperator, Word};
+use rustc_data_structures::bit_set::{BitSet, BitSetOperator};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_set::IdxSet;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::sync::Lrc;
 
 use dataflow::{BitDenotation, BlockSets, InitialFlow};
@@ -230,7 +229,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
         self.borrow_set.borrows.len() * 2
     }
 
-    fn start_block_effect(&self, _entry_set: &mut IdxSet<BorrowIndex>) {
+    fn start_block_effect(&self, _entry_set: &mut BitSet<BorrowIndex>) {
         // no borrows of code region_scopes have been taken prior to
         // function execution, so this method has no effect on
         // `_sets`.
@@ -289,7 +288,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                         debug!("Borrows::statement_effect_on_borrows \
                                 location: {:?} stmt: {:?} has empty region, killing {:?}",
                                location, stmt.kind, index);
-                        sets.kill(&index);
+                        sets.kill(*index);
                         return
                     } else {
                         debug!("Borrows::statement_effect_on_borrows location: {:?} stmt: {:?}",
@@ -299,7 +298,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                     assert!(self.borrow_set.region_map.get(region).unwrap_or_else(|| {
                         panic!("could not find BorrowIndexs for region {:?}", region);
                     }).contains(&index));
-                    sets.gen(&index);
+                    sets.gen(*index);
 
                     // Issue #46746: Two-phase borrows handles
                     // stmts of form `Tmp = &mut Borrow` ...
@@ -311,7 +310,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                             // e.g. `box (&mut _)`. Current
                             // conservative solution: force
                             // immediate activation here.
-                            sets.gen(&index);
+                            sets.gen(*index);
                         }
                     }
                 }
@@ -381,7 +380,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                             if *scope != root_scope &&
                                 self.scope_tree.is_subscope_of(*scope, root_scope)
                             {
-                                sets.kill(&borrow_index);
+                                sets.kill(borrow_index);
                             }
                         }
                     }
@@ -402,7 +401,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
     }
 
     fn propagate_call_return(&self,
-                             _in_out: &mut IdxSet<BorrowIndex>,
+                             _in_out: &mut BitSet<BorrowIndex>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
                              _dest_place: &mir::Place) {
@@ -414,10 +413,10 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitwiseOperator for Borrows<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitSetOperator for Borrows<'a, 'gcx, 'tcx> {
     #[inline]
-    fn join(&self, pred1: Word, pred2: Word) -> Word {
-        pred1 | pred2 // union effects of preds when computing reservations
+    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
+        inout_set.union(in_set) // "maybe" means we union effects of both preds
     }
 }
 

@@ -44,8 +44,8 @@ use ty::relate::TypeRelation;
 use middle::lang_items;
 use mir::interpret::{GlobalId};
 
+use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::sync::Lock;
-use rustc_data_structures::bitvec::BitArray;
 use std::iter;
 use std::cmp;
 use std::fmt;
@@ -3069,7 +3069,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 } else {
                     return Err(Unimplemented);
                 };
-                let mut ty_params = BitArray::new(substs_a.types().count());
+                let mut ty_params = BitSet::new_empty(substs_a.types().count());
                 let mut found = false;
                 for ty in field.walk() {
                     if let ty::Param(p) = ty.sty {

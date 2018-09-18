@@ -14,8 +14,7 @@
 //! The Qualif flags below can be used to also provide better
 //! diagnostics as to why a constant rvalue wasn't promoted.
 
-use rustc_data_structures::bitvec::BitArray;
-use rustc_data_structures::indexed_set::IdxSet;
+use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashSet;
 use rustc::hir;
@@ -116,7 +115,7 @@ struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     param_env: ty::ParamEnv<'tcx>,
     local_qualif: IndexVec<Local, Option<Qualif>>,
     qualif: Qualif,
-    const_fn_arg_vars: BitArray<Local>,
+    const_fn_arg_vars: BitSet<Local>,
     temp_promotion_state: IndexVec<Local, TempState>,
     promotion_candidates: Vec<Candidate>
 }
@@ -151,7 +150,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             param_env,
             local_qualif,
             qualif: Qualif::empty(),
-            const_fn_arg_vars: BitArray::new(mir.local_decls.len()),
+            const_fn_arg_vars: BitSet::new_empty(mir.local_decls.len()),
             temp_promotion_state: temps,
             promotion_candidates: vec![]
         }
@@ -280,12 +279,12 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     }
 
     /// Qualify a whole const, static initializer or const fn.
-    fn qualify_const(&mut self) -> (Qualif, Lrc<IdxSet<Local>>) {
+    fn qualify_const(&mut self) -> (Qualif, Lrc<BitSet<Local>>) {
         debug!("qualifying {} {:?}", self.mode, self.def_id);
 
         let mir = self.mir;
 
-        let mut seen_blocks = BitArray::new(mir.basic_blocks().len());
+        let mut seen_blocks = BitSet::new_empty(mir.basic_blocks().len());
         let mut bb = START_BLOCK;
         loop {
             seen_blocks.insert(bb.index());
@@ -383,14 +382,14 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
 
         // Collect all the temps we need to promote.
-        let mut promoted_temps = IdxSet::new_empty(self.temp_promotion_state.len());
+        let mut promoted_temps = BitSet::new_empty(self.temp_promotion_state.len());
 
         for candidate in &self.promotion_candidates {
             match *candidate {
                 Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
                     match self.mir[bb].statements[stmt_idx].kind {
                         StatementKind::Assign(_, Rvalue::Ref(_, _, Place::Local(index))) => {
-                            promoted_temps.add(&index);
+                            promoted_temps.insert(index);
                         }
                         _ => {}
                     }
@@ -1121,7 +1120,7 @@ pub fn provide(providers: &mut Providers) {
 
 fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               def_id: DefId)
-                              -> (u8, Lrc<IdxSet<Local>>) {
+                              -> (u8, Lrc<BitSet<Local>>) {
     // NB: This `borrow()` is guaranteed to be valid (i.e., the value
     // cannot yet be stolen), because `mir_validated()`, which steals
     // from `mir_const(), forces this query to execute before
@@ -1130,7 +1129,7 @@ fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     if mir.return_ty().references_error() {
         tcx.sess.delay_span_bug(mir.span, "mir_const_qualif: Mir had errors");
-        return (Qualif::NOT_CONST.bits(), Lrc::new(IdxSet::new_empty(0)));
+        return (Qualif::NOT_CONST.bits(), Lrc::new(BitSet::new_empty(0)));
     }
 
     let mut qualifier = Qualifier::new(tcx, def_id, mir, Mode::Const);
@@ -1220,7 +1219,7 @@ impl MirPass for QualifyAndPromoteConstants {
                 block.statements.retain(|statement| {
                     match statement.kind {
                         StatementKind::StorageDead(index) => {
-                            !promoted_temps.contains(&index)
+                            !promoted_temps.contains(index)
                         }
                         _ => true
                     }
@@ -1228,7 +1227,7 @@ impl MirPass for QualifyAndPromoteConstants {
                 let terminator = block.terminator_mut();
                 match terminator.kind {
                     TerminatorKind::Drop { location: Place::Local(index), target, .. } => {
-                        if promoted_temps.contains(&index) {
+                        if promoted_temps.contains(index) {
                             terminator.kind = TerminatorKind::Goto {
                                 target,
                             };

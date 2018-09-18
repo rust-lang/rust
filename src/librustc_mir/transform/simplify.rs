@@ -37,7 +37,7 @@
 //! naively generate still contains the `_a = ()` write in the unreachable block "after" the
 //! return.
 
-use rustc_data_structures::bitvec::BitArray;
+use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
@@ -249,7 +249,7 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
 }
 
 pub fn remove_dead_blocks(mir: &mut Mir) {
-    let mut seen = BitArray::new(mir.basic_blocks().len());
+    let mut seen = BitSet::new_empty(mir.basic_blocks().len());
     for (bb, _) in traversal::preorder(mir) {
         seen.insert(bb.index());
     }
@@ -285,7 +285,7 @@ impl MirPass for SimplifyLocals {
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _: MirSource,
                           mir: &mut Mir<'tcx>) {
-        let mut marker = DeclMarker { locals: BitArray::new(mir.local_decls.len()) };
+        let mut marker = DeclMarker { locals: BitSet::new_empty(mir.local_decls.len()) };
         marker.visit_mir(mir);
         // Return pointer and arguments are always live
         marker.locals.insert(RETURN_PLACE);
@@ -310,7 +310,7 @@ impl MirPass for SimplifyLocals {
 /// Construct the mapping while swapping out unused stuff out from the `vec`.
 fn make_local_map<'tcx, V>(
     vec: &mut IndexVec<Local, V>,
-    mask: BitArray<Local>,
+    mask: BitSet<Local>,
 ) -> IndexVec<Local, Option<Local>> {
     let mut map: IndexVec<Local, Option<Local>> = IndexVec::from_elem(None, &*vec);
     let mut used = Local::new(0);
@@ -326,7 +326,7 @@ fn make_local_map<'tcx, V>(
 }
 
 struct DeclMarker {
-    pub locals: BitArray<Local>,
+    pub locals: BitSet<Local>,
 }
 
 impl<'tcx> Visitor<'tcx> for DeclMarker {

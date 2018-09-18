@@ -210,7 +210,7 @@ use rustc::util::common::time;
 
 use monomorphize::item::{MonoItemExt, DefPathBasedNames, InstantiationMode};
 
-use rustc_data_structures::bitvec::BitVector;
+use rustc_data_structures::bit_set::GrowableBitSet;
 use rustc_data_structures::sync::{MTRef, MTLock, ParallelIterator, par_iter};
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
@@ -231,7 +231,7 @@ pub struct InliningMap<'tcx> {
 
     // Contains one bit per mono item in the `targets` field. That bit
     // is true if that mono item needs to be inlined into every CGU.
-    inlines: BitVector<usize>,
+    inlines: GrowableBitSet<usize>,
 }
 
 impl<'tcx> InliningMap<'tcx> {
@@ -240,7 +240,7 @@ impl<'tcx> InliningMap<'tcx> {
         InliningMap {
             index: FxHashMap(),
             targets: Vec::new(),
-            inlines: BitVector::with_capacity(1024),
+            inlines: GrowableBitSet::with_capacity(1024),
         }
     }
 

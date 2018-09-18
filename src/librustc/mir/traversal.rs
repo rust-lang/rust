@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc_data_structures::bitvec::BitArray;
+use rustc_data_structures::bit_set::BitSet;
 
 use super::*;
 
@@ -32,7 +32,7 @@ use super::*;
 #[derive(Clone)]
 pub struct Preorder<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
-    visited: BitArray<BasicBlock>,
+    visited: BitSet<BasicBlock>,
     worklist: Vec<BasicBlock>,
 }
 
@@ -42,7 +42,7 @@ impl<'a, 'tcx> Preorder<'a, 'tcx> {
 
         Preorder {
             mir,
-            visited: BitArray::new(mir.basic_blocks().len()),
+            visited: BitSet::new_empty(mir.basic_blocks().len()),
             worklist,
         }
     }
@@ -104,7 +104,7 @@ impl<'a, 'tcx> ExactSizeIterator for Preorder<'a, 'tcx> {}
 /// A Postorder traversal of this graph is `D B C A` or `D C B A`
 pub struct Postorder<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
-    visited: BitArray<BasicBlock>,
+    visited: BitSet<BasicBlock>,
     visit_stack: Vec<(BasicBlock, Successors<'a>)>
 }
 
@@ -112,7 +112,7 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
     pub fn new(mir: &'a Mir<'tcx>, root: BasicBlock) -> Postorder<'a, 'tcx> {
         let mut po = Postorder {
             mir,
-            visited: BitArray::new(mir.basic_blocks().len()),
+            visited: BitSet::new_empty(mir.basic_blocks().len()),
             visit_stack: Vec::new()
         };
 

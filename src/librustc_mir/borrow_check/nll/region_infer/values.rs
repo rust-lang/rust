@@ -10,7 +10,7 @@
 
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::ty::{self, RegionVid};
-use rustc_data_structures::bitvec::{BitArray, SparseBitMatrix};
+use rustc_data_structures::bit_set::{BitSet, SparseBitMatrix};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::fmt::Debug;
@@ -179,19 +179,19 @@ impl<N: Idx> LivenessValues<N> {
     crate fn add_element(&mut self, row: N, location: Location) -> bool {
         debug!("LivenessValues::add(r={:?}, location={:?})", row, location);
         let index = self.elements.point_from_location(location);
-        self.points.add(row, index)
+        self.points.insert(row, index)
     }
 
     /// Adds all the elements in the given bit array into the given
     /// region. Returns true if any of them are newly added.
-    crate fn add_elements(&mut self, row: N, locations: &BitArray<PointIndex>) -> bool {
+    crate fn add_elements(&mut self, row: N, locations: &BitSet<PointIndex>) -> bool {
         debug!("LivenessValues::add_elements(row={:?}, locations={:?})", row, locations);
-        self.points.merge_into(row, locations)
+        self.points.union_into_row(row, locations)
     }
 
     /// Adds all the control-flow points to the values for `r`.
     crate fn add_all_points(&mut self, row: N) {
-        self.points.add_all(row);
+        self.points.insert_all_into_row(row);
     }
 
     /// True if the region `r` contains the given element.
@@ -270,15 +270,15 @@ impl<N: Idx> RegionValues<N> {
 
     /// Adds all the control-flow points to the values for `r`.
     crate fn add_all_points(&mut self, r: N) {
-        self.points.add_all(r);
+        self.points.insert_all_into_row(r);
     }
 
     /// Add all elements in `r_from` to `r_to` (because e.g. `r_to:
     /// r_from`).
     crate fn add_region(&mut self, r_to: N, r_from: N) -> bool {
-        self.points.merge(r_from, r_to)
-            | self.free_regions.merge(r_from, r_to)
-            | self.placeholders.merge(r_from, r_to)
+        self.points.union_rows(r_from, r_to)
+            | self.free_regions.union_rows(r_from, r_to)
+            | self.placeholders.union_rows(r_from, r_to)
     }
 
     /// True if the region `r` contains the given element.
@@ -291,7 +291,7 @@ impl<N: Idx> RegionValues<N> {
     /// the region `to` in `self`.
     crate fn merge_liveness<M: Idx>(&mut self, to: N, from: M, values: &LivenessValues<M>) {
         if let Some(set) = values.points.row(from) {
-            self.points.merge_into(to, set);
+            self.points.union_into_row(to, set);
         }
     }
 
@@ -300,7 +300,7 @@ impl<N: Idx> RegionValues<N> {
     crate fn contains_points(&self, sup_region: N, sub_region: N) -> bool {
         if let Some(sub_row) = self.points.row(sub_region) {
             if let Some(sup_row) = self.points.row(sup_region) {
-                sup_row.contains_all(sub_row)
+                sup_row.superset(sub_row)
             } else {
                 // sup row is empty, so sub row must be empty
                 sub_row.is_empty()
@@ -378,7 +378,7 @@ crate trait ToElementIndex: Debug + Copy {
 impl ToElementIndex for Location {
     fn add_to_row<N: Idx>(self, values: &mut RegionValues<N>, row: N) -> bool {
         let index = values.elements.point_from_location(self);
-        values.points.add(row, index)
+        values.points.insert(row, index)
     }
 
     fn contained_in_row<N: Idx>(self, values: &RegionValues<N>, row: N) -> bool {
@@ -389,7 +389,7 @@ impl ToElementIndex for Location {
 
 impl ToElementIndex for RegionVid {
     fn add_to_row<N: Idx>(self, values: &mut RegionValues<N>, row: N) -> bool {
-        values.free_regions.add(row, self)
+        values.free_regions.insert(row, self)
     }
 
     fn contained_in_row<N: Idx>(self, values: &RegionValues<N>, row: N) -> bool {
@@ -400,7 +400,7 @@ impl ToElementIndex for RegionVid {
 impl ToElementIndex for ty::UniverseIndex {
     fn add_to_row<N: Idx>(self, values: &mut RegionValues<N>, row: N) -> bool {
         let index = PlaceholderIndex::new(self.as_usize() - 1);
-        values.placeholders.add(row, index)
+        values.placeholders.insert(row, index)
     }
 
     fn contained_in_row<N: Idx>(self, values: &RegionValues<N>, row: N) -> bool {

@@ -14,8 +14,7 @@
 
 use rustc::ty::TyCtxt;
 use rustc::mir::{self, Mir, Location};
-use rustc_data_structures::bitvec::{BitwiseOperator, Word};
-use rustc_data_structures::indexed_set::{IdxSet};
+use rustc_data_structures::bit_set::{BitSet, BitSetOperator};
 use rustc_data_structures::indexed_vec::Idx;
 
 use super::MoveDataParamEnv;
@@ -266,8 +265,8 @@ impl<'a, 'gcx, 'tcx> MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
                    state: DropFlagState)
     {
         match state {
-            DropFlagState::Absent => sets.kill(&path),
-            DropFlagState::Present => sets.gen(&path),
+            DropFlagState::Absent => sets.kill(path),
+            DropFlagState::Present => sets.gen(path),
         }
     }
 }
@@ -277,8 +276,8 @@ impl<'a, 'gcx, 'tcx> MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
                    state: DropFlagState)
     {
         match state {
-            DropFlagState::Absent => sets.gen(&path),
-            DropFlagState::Present => sets.kill(&path),
+            DropFlagState::Absent => sets.gen(path),
+            DropFlagState::Present => sets.kill(path),
         }
     }
 }
@@ -288,8 +287,8 @@ impl<'a, 'gcx, 'tcx> DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
                    state: DropFlagState)
     {
         match state {
-            DropFlagState::Absent => sets.kill(&path),
-            DropFlagState::Present => sets.gen(&path),
+            DropFlagState::Absent => sets.kill(path),
+            DropFlagState::Present => sets.gen(path),
         }
     }
 }
@@ -301,12 +300,12 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
         self.move_data().move_paths.len()
     }
 
-    fn start_block_effect(&self, entry_set: &mut IdxSet<MovePathIndex>) {
+    fn start_block_effect(&self, entry_set: &mut BitSet<MovePathIndex>) {
         drop_flag_effects_for_function_entry(
             self.tcx, self.mir, self.mdpe,
             |path, s| {
                 assert!(s == DropFlagState::Present);
-                entry_set.add(&path);
+                entry_set.insert(path);
             });
     }
 
@@ -333,7 +332,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     }
 
     fn propagate_call_return(&self,
-                             in_out: &mut IdxSet<MovePathIndex>,
+                             in_out: &mut BitSet<MovePathIndex>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
                              dest_place: &mir::Place) {
@@ -341,7 +340,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
         // the bits for that dest_place to 1 (initialized).
         on_lookup_result_bits(self.tcx, self.mir, self.move_data(),
                               self.move_data().rev_lookup.find(dest_place),
-                              |mpi| { in_out.add(&mpi); });
+                              |mpi| { in_out.insert(mpi); });
     }
 }
 
@@ -353,7 +352,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> 
     }
 
     // sets on_entry bits for Arg places
-    fn start_block_effect(&self, entry_set: &mut IdxSet<MovePathIndex>) {
+    fn start_block_effect(&self, entry_set: &mut BitSet<MovePathIndex>) {
         // set all bits to 1 (uninit) before gathering counterevidence
         entry_set.set_up_to(self.bits_per_block());
 
@@ -361,7 +360,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> 
             self.tcx, self.mir, self.mdpe,
             |path, s| {
                 assert!(s == DropFlagState::Present);
-                entry_set.remove(&path);
+                entry_set.remove(path);
             });
     }
 
@@ -388,7 +387,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> 
     }
 
     fn propagate_call_return(&self,
-                             in_out: &mut IdxSet<MovePathIndex>,
+                             in_out: &mut BitSet<MovePathIndex>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
                              dest_place: &mir::Place) {
@@ -396,7 +395,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> 
         // the bits for that dest_place to 0 (initialized).
         on_lookup_result_bits(self.tcx, self.mir, self.move_data(),
                               self.move_data().rev_lookup.find(dest_place),
-                              |mpi| { in_out.remove(&mpi); });
+                              |mpi| { in_out.remove(mpi); });
     }
 }
 
@@ -408,14 +407,14 @@ impl<'a, 'gcx, 'tcx> BitDenotation for DefinitelyInitializedPlaces<'a, 'gcx, 'tc
     }
 
     // sets on_entry bits for Arg places
-    fn start_block_effect(&self, entry_set: &mut IdxSet<MovePathIndex>) {
+    fn start_block_effect(&self, entry_set: &mut BitSet<MovePathIndex>) {
         entry_set.clear();
 
         drop_flag_effects_for_function_entry(
             self.tcx, self.mir, self.mdpe,
             |path, s| {
                 assert!(s == DropFlagState::Present);
-                entry_set.add(&path);
+                entry_set.insert(path);
             });
     }
 
@@ -442,7 +441,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for DefinitelyInitializedPlaces<'a, 'gcx, 'tc
     }
 
     fn propagate_call_return(&self,
-                             in_out: &mut IdxSet<MovePathIndex>,
+                             in_out: &mut BitSet<MovePathIndex>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
                              dest_place: &mir::Place) {
@@ -450,7 +449,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for DefinitelyInitializedPlaces<'a, 'gcx, 'tc
         // the bits for that dest_place to 1 (initialized).
         on_lookup_result_bits(self.tcx, self.mir, self.move_data(),
                               self.move_data().rev_lookup.find(dest_place),
-                              |mpi| { in_out.add(&mpi); });
+                              |mpi| { in_out.insert(mpi); });
     }
 }
 
@@ -461,9 +460,9 @@ impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedPlaces<'a, 'gcx, 'tcx> {
         self.move_data().inits.len()
     }
 
-    fn start_block_effect(&self, entry_set: &mut IdxSet<InitIndex>) {
+    fn start_block_effect(&self, entry_set: &mut BitSet<InitIndex>) {
         for arg_init in 0..self.mir.arg_count {
-            entry_set.add(&InitIndex::new(arg_init));
+            entry_set.insert(InitIndex::new(arg_init));
         }
     }
 
@@ -531,7 +530,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedPlaces<'a, 'gcx, 'tcx> {
     }
 
     fn propagate_call_return(&self,
-                             in_out: &mut IdxSet<InitIndex>,
+                             in_out: &mut BitSet<InitIndex>,
                              call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
                              _dest_place: &mir::Place) {
@@ -545,36 +544,36 @@ impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedPlaces<'a, 'gcx, 'tcx> {
         };
         for init_index in &init_loc_map[call_loc] {
             assert!(init_index.index() < bits_per_block);
-            in_out.add(init_index);
+            in_out.insert(*init_index);
         }
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitwiseOperator for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitSetOperator for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
-    fn join(&self, pred1: Word, pred2: Word) -> Word {
-        pred1 | pred2 // "maybe" means we union effects of both preds
+    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
+        inout_set.union(in_set) // "maybe" means we union effects of both preds
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitwiseOperator for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitSetOperator for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
-    fn join(&self, pred1: Word, pred2: Word) -> Word {
-        pred1 | pred2 // "maybe" means we union effects of both preds
+    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
+        inout_set.union(in_set) // "maybe" means we union effects of both preds
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitwiseOperator for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitSetOperator for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
-    fn join(&self, pred1: Word, pred2: Word) -> Word {
-        pred1 & pred2 // "definitely" means we intersect effects of both preds
+    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
+        inout_set.intersect(in_set) // "definitely" means we intersect effects of both preds
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitwiseOperator for EverInitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitSetOperator for EverInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
-    fn join(&self, pred1: Word, pred2: Word) -> Word {
-        pred1 | pred2 // inits from both preds are in scope
+    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
+        inout_set.union(in_set) // inits from both preds are in scope
     }
 }
 

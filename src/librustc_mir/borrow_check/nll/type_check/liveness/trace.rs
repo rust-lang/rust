@@ -22,7 +22,7 @@ use rustc::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc::traits::query::type_op::outlives::DropckOutlives;
 use rustc::traits::query::type_op::TypeOp;
 use rustc::ty::{Ty, TypeFoldable};
-use rustc_data_structures::bitvec::BitArray;
+use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::FxHashMap;
 use std::rc::Rc;
 use util::liveness::LiveVariableMap;
@@ -121,16 +121,16 @@ where
     cx: LivenessContext<'me, 'typeck, 'flow, 'gcx, 'tcx>,
 
     /// Set of points that define the current local.
-    defs: BitArray<PointIndex>,
+    defs: BitSet<PointIndex>,
 
     /// Points where the current variable is "use live" -- meaning
     /// that there is a future "full use" that may use its value.
-    use_live_at: BitArray<PointIndex>,
+    use_live_at: BitSet<PointIndex>,
 
     /// Points where the current variable is "drop live" -- meaning
     /// that there is no future "full use" that may use its value, but
     /// there is a future drop.
-    drop_live_at: BitArray<PointIndex>,
+    drop_live_at: BitSet<PointIndex>,
 
     /// Locations where drops may occur.
     drop_locations: Vec<Location>,
@@ -144,9 +144,9 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
         let num_points = cx.elements.num_points();
         LivenessResults {
             cx,
-            defs: BitArray::new(num_points),
-            use_live_at: BitArray::new(num_points),
-            drop_live_at: BitArray::new(num_points),
+            defs: BitSet::new_empty(num_points),
+            use_live_at: BitSet::new_empty(num_points),
+            drop_live_at: BitSet::new_empty(num_points),
             drop_locations: vec![],
             stack: vec![],
         }
@@ -448,7 +448,7 @@ impl LivenessContext<'_, '_, '_, '_, 'tcx> {
     fn add_use_live_facts_for(
         &mut self,
         value: impl TypeFoldable<'tcx>,
-        live_at: &BitArray<PointIndex>,
+        live_at: &BitSet<PointIndex>,
     ) {
         debug!("add_use_live_facts_for(value={:?})", value);
 
@@ -465,7 +465,7 @@ impl LivenessContext<'_, '_, '_, '_, 'tcx> {
         dropped_local: Local,
         dropped_ty: Ty<'tcx>,
         drop_locations: &[Location],
-        live_at: &BitArray<PointIndex>,
+        live_at: &BitSet<PointIndex>,
     ) {
         debug!(
             "add_drop_live_constraint(\
@@ -508,7 +508,7 @@ impl LivenessContext<'_, '_, '_, '_, 'tcx> {
         elements: &RegionValueElements,
         typeck: &mut TypeChecker<'_, '_, 'tcx>,
         value: impl TypeFoldable<'tcx>,
-        live_at: &BitArray<PointIndex>,
+        live_at: &BitSet<PointIndex>,
     ) {
         debug!("make_all_regions_live(value={:?})", value);
         debug!(

@@ -26,9 +26,9 @@ use rustc::ty::query::Providers;
 use rustc::ty::{self, ParamEnv, TyCtxt, Ty};
 
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, Level};
-use rustc_data_structures::graph::dominators::Dominators;
+use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::indexed_set::IdxSet;
+use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::indexed_vec::Idx;
 use smallvec::SmallVec;
 
@@ -167,7 +167,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         _ => Some(tcx.hir.body_owned_by(id)),
     };
 
-    let dead_unwinds = IdxSet::new_empty(mir.basic_blocks().len());
+    let dead_unwinds = BitSet::new_empty(mir.basic_blocks().len());
     let mut flow_inits = FlowAtLocation::new(do_dataflow(
         tcx,
         mir,
@@ -1595,7 +1595,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // Check if any of the initializiations of `local` have happened yet:
         let mpi = self.move_data.rev_lookup.find_local(local);
         let init_indices = &self.move_data.init_path_map[mpi];
-        let first_init_index = init_indices.iter().find(|ii| flow_state.ever_inits.contains(ii));
+        let first_init_index = init_indices.iter().find(|&ii| flow_state.ever_inits.contains(*ii));
         if let Some(&init_index) = first_init_index {
             // And, if so, report an error.
             let init = &self.move_data.inits[init_index];
@@ -1653,7 +1653,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         debug!("check_if_full_path_is_moved place: {:?}", place_span.0);
         match self.move_path_closest_to(place_span.0) {
             Ok(mpi) => {
-                if maybe_uninits.contains(&mpi) {
+                if maybe_uninits.contains(mpi) {
                     self.report_use_of_moved_or_uninitialized(
                         context,
                         desired_action,
@@ -1969,7 +1969,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     // keyword, since the mutation may be a possible reassignment.
                     let mpi = self.move_data.rev_lookup.find_local(*local);
                     let ii = &self.move_data.init_path_map[mpi];
-                    for index in ii {
+                    for &index in ii {
                         if flow_state.ever_inits.contains(index) {
                             self.used_mut.insert(*local);
                             break;
