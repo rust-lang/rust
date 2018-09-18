@@ -189,7 +189,7 @@ See [Configurations.md](Configurations.md) for details.
   Example:
 
   ```
-  cargo fmt --emit files
+  cargo fmt -- --emit files
   ```
 
   Options:
@@ -197,7 +197,7 @@ See [Configurations.md](Configurations.md) for details.
   | Flag |Description| Nightly Only |
   |:---:|:---:|:---:|
   | files | overwrites output to files | No |
-  | stdout | writes output to stdout | No | 
+  | stdout | writes output to stdout | No |
   | coverage | displays how much of the input file was processed | Yes |
   | checkstyle | emits in a checkstyle format | Yes |
 
