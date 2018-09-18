@@ -92,6 +92,8 @@ fn place_components_conflict<'gcx, 'tcx>(
     //  - If we didn't run out of access to match, our borrow and access are comparable
     //    and either equal or disjoint.
     //  - If we did run out of access, the borrow can access a part of it.
+
+    let mut saw_drop_impl = false;
     loop {
         // loop invariant: borrow_c is always either equal to access_c or disjoint from it.
         if let Some(borrow_c) = borrow_components.next() {
@@ -155,6 +157,15 @@ fn place_components_conflict<'gcx, 'tcx>(
                 };
                 let base_ty = base.ty(mir, tcx).to_ty(tcx);
 
+                // record for future reference if we see destructor
+                // applicable to `x.y.z` while traversing borrow of
+                // path like `x.y.z.w`.
+                if let ty::Adt(def, _substs) = &base_ty.sty {
+                    if def.is_struct() && def.has_dtor(tcx) {
+                        saw_drop_impl = true;
+                    }
+                }
+
                 match (elem, &base_ty.sty, access) {
                     (_, _, Shallow(Some(ArtificialField::Discriminant)))
                     | (_, _, Shallow(Some(ArtificialField::ArrayLength))) => {
@@ -178,6 +189,15 @@ fn place_components_conflict<'gcx, 'tcx>(
                         debug!("places_conflict: shallow access behind ptr");
                         return false;
                     }
+                    (ProjectionElem::Deref, _, Deep { is_drop: true }) if !saw_drop_impl => {
+                        // e.g. a borrow of `*(x.0 as Ok).0` during
+                        // access `drop(x)` where `x` is
+                        // `(Result<&u32, D1>, D2)`. Then dropping `x`
+                        // cannot observe borrowed state.
+                        debug!("places_conflict: access behind ptr of non-drop path");
+                        return false;
+                    }
+
                     (ProjectionElem::Deref, ty::Ref(_, _, hir::MutImmutable), _) => {
                         // the borrow goes through a dereference of a shared reference.
                         //
@@ -188,7 +208,7 @@ fn place_components_conflict<'gcx, 'tcx>(
                         return false;
                     }
 
-                    (ProjectionElem::Deref, _, Deep)
+                    (ProjectionElem::Deref, _, Deep { .. })
                     | (ProjectionElem::Field { .. }, _, _)
                     | (ProjectionElem::Index { .. }, _, _)
                     | (ProjectionElem::ConstantIndex { .. }, _, _)
