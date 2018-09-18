@@ -40,7 +40,8 @@ thread_local! {
 thread_local! {
     /// Mechanism for highlighting of specific regions for display in NLL's 'borrow does not live
     /// long enough' errors. Contains a region to highlight and a counter to use.
-    static HIGHLIGHT_REGION_FOR_REGION: Cell<Option<(ty::BoundRegion, usize)>> = Cell::new(None)
+    static HIGHLIGHT_REGION_FOR_BOUND_REGION: Cell<Option<(ty::BoundRegion, usize)>> =
+        Cell::new(None)
 }
 
 macro_rules! gen_display_debug_body {
@@ -588,16 +589,16 @@ pub fn with_highlight_region_for_regionvid<R>(
     })
 }
 
-fn get_highlight_region_for_region() -> Option<(ty::BoundRegion, usize)> {
-    HIGHLIGHT_REGION_FOR_REGION.with(|hr| hr.get())
+fn get_highlight_region_for_bound_region() -> Option<(ty::BoundRegion, usize)> {
+    HIGHLIGHT_REGION_FOR_BOUND_REGION.with(|hr| hr.get())
 }
 
-pub fn with_highlight_region_for_region<R>(
+pub fn with_highlight_region_for_bound_region<R>(
     r: ty::BoundRegion,
     counter: usize,
     op: impl Fn() -> R
 ) -> R {
-    HIGHLIGHT_REGION_FOR_REGION.with(|hr| {
+    HIGHLIGHT_REGION_FOR_BOUND_REGION.with(|hr| {
         assert_eq!(hr.get(), None);
         hr.set(Some((r, counter)));
         let r = op();
@@ -754,7 +755,7 @@ define_print! {
                 return self.print_debug(f, cx);
             }
 
-            if let Some((region, counter)) = get_highlight_region_for_region() {
+            if let Some((region, counter)) = get_highlight_region_for_bound_region() {
                 if *self == region {
                     return match *self {
                         BrNamed(_, name) => write!(f, "{}", name),

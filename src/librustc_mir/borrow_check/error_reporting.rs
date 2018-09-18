@@ -22,7 +22,7 @@ use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};
-use rustc::util::ppaux::with_highlight_region_for_region;
+use rustc::util::ppaux::with_highlight_region_for_bound_region;
 use syntax_pos::Span;
 
 use super::borrow_set::BorrowData;
@@ -1358,6 +1358,8 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
         }
     }
 
+    /// Return the name of the provided `Ty` (that must be a reference) with a synthesized lifetime
+    /// name where required.
     fn get_name_for_ty(&self, ty: ty::Ty<'tcx>, counter: usize) -> String {
         // We need to add synthesized lifetimes where appropriate. We do
         // this by hooking into the pretty printer and telling it to label the
@@ -1365,17 +1367,19 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
         match ty.sty {
             ty::TyKind::Ref(ty::RegionKind::ReLateBound(_, br), _, _) |
             ty::TyKind::Ref(ty::RegionKind::ReSkolemized(_, br), _, _) =>
-                with_highlight_region_for_region(*br, counter, || format!("{}", ty)),
+                with_highlight_region_for_bound_region(*br, counter, || format!("{}", ty)),
             _ => format!("{}", ty),
         }
     }
 
+    /// Return the name of the provided `Ty` (that must be a reference)'s region with a
+    /// synthesized lifetime name where required.
     fn get_region_name_for_ty(&self, ty: ty::Ty<'tcx>, counter: usize) -> String {
         match ty.sty {
             ty::TyKind::Ref(region, _, _) => match region {
                 ty::RegionKind::ReLateBound(_, br) |
                 ty::RegionKind::ReSkolemized(_, br) =>
-                    with_highlight_region_for_region(*br, counter, || format!("{}", region)),
+                    with_highlight_region_for_bound_region(*br, counter, || format!("{}", region)),
                 _ => format!("{}", region),
             }
             _ => bug!("ty for annotation of borrow region is not a reference"),
