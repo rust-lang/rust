@@ -1126,6 +1126,7 @@ fn indent_macro_snippet(
             } else {
                 Some(get_prefix_space_width(context, &line))
             };
+
             let line = if veto_trim || (kind.is_string() && !line.ends_with('\\')) {
                 veto_trim = kind.is_string() && !line.ends_with('\\');
                 trimmed = false;
@@ -1134,7 +1135,12 @@ fn indent_macro_snippet(
                 line.trim().to_owned()
             };
             trimmed_lines.push((trimmed, line, prefix_space_width));
-            prefix_space_width
+
+            // when computing the minimum, do not consider lines within a string
+            match kind {
+                FullCodeCharKind::InString | FullCodeCharKind::EndString => None,
+                _ => prefix_space_width,
+            }
         }).min()?;
 
     Some(
@@ -1147,7 +1153,7 @@ fn indent_macro_snippet(
                         let new_indent_width = indent.width() + original_indent_width
                             .saturating_sub(min_prefix_space_width);
                         let new_indent = Indent::from_width(context.config, new_indent_width);
-                        format!("{}{}", new_indent.to_string(context.config), line.trim())
+                        format!("{}{}", new_indent.to_string(context.config), line)
                     }
                     None => String::new(),
                 },
