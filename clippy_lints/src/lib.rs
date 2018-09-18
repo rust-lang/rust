@@ -593,6 +593,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         matches::MATCH_REF_PATS,
         matches::MATCH_WILD_ERR_ARM,
         matches::SINGLE_MATCH,
+        mem_replace::MEM_REPLACE_OPTION_WITH_NONE,
         methods::CHARS_LAST_CMP,
         methods::CHARS_NEXT_CMP,
         methods::CLONE_DOUBLE_REF,
