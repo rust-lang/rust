@@ -47,6 +47,14 @@ debuginfo-lines = true
 use-jemalloc = false
 ```
 
+### what is x.py?
+
+x.py is the script used to orchestrate the tooling in the rustc repository. 
+It is the script that can build docs, run tests, and compile rustc. 
+It is the now preferred way to build rustc and it replaces the old makefiles 
+from before. Below are the different ways to utilize x.py in order to 
+effectively deal with the repo for various common tasks.
+
 ### Running x.py and building a stage1 compiler
 
 One thing to keep in mind is that `rustc` is a _bootstrapping_
@@ -79,6 +87,52 @@ compiling `rustc` is done in stages:
 - _(Optional)_ **Stage 3**: to sanity check of our new compiler, we
   can build the libraries with the stage2 compiler. The result ought
   to be identical to before, unless something has broken.
+
+
+#### Build Flags
+
+There are other flags you can pass to the build portion of x.py that can be 
+beneficial to cutting down compile times or fitting other things you might 
+need to change. They are:
+
+```bash
+Options:
+    -v, --verbose       use verbose output (-vv for very verbose)
+    -i, --incremental   use incremental compilation
+        --config FILE   TOML configuration file for build
+        --build BUILD   build target of the stage0 compiler
+        --host HOST     host targets to build
+        --target TARGET target targets to build
+        --on-fail CMD   command to run on failure
+        --stage N       stage to build
+        --keep-stage N  stage to keep without recompiling
+        --src DIR       path to the root of the rust checkout
+    -j, --jobs JOBS     number of jobs to run in parallel
+    -h, --help          print this help message
+```
+
+One thing to keep in mind is that `rustc` is a _bootstrapping_ compiler. That
+is, since `rustc` is written in Rust, we need to use an older version of the
+compiler to compile the newer version. In particular, the newer version of the
+compiler, `libstd`, and other tooling may use some unstable features
+internally. The result is the compiling `rustc` is done in stages.
+
+- **Stage 0:** the stage0 compiler can be your existing
+  (perhaps older version of)
+  Rust compiler, the current _beta_ compiler or you may download the binary
+  from the internet.
+- **Stage 1:** the code in your clone (for new version)
+  is then compiled with the stage0
+  compiler to produce the stage1 compiler.
+  However, it was built with an older compiler (stage0),
+  so to optimize the stage1 compiler we go to next stage.
+- **Stage 2:** we rebuild our stage1 compiler with itself
+  to produce the stage2 compiler (i.e. it builds
+  itself) to have all the _latest optimizations_.
+- _(Optional)_ **Stage 3**: to sanity check of our new compiler,
+  we can build it again
+  with stage2 compiler which must be identical to itself,
+  unless something has broken.
 
 For hacking, often building the stage 1 compiler is enough, but for
 final testing and release, the stage 2 compiler is used.
@@ -134,37 +188,25 @@ build`) has quite a few more steps:
 
 <a name=toolchain></a>
 
-### Build different stages
-
-  `./x.py build --stage 0`
-
-  # Stage 1 is typically enough to test out all of your changes
-  # to the compiler
-    
-  `./x.py build --stage 1`
-
-  # Equivalent to ./x.py build
-    
-  `./x.py build --stage 2`
-
-You can pass the --stage flag with what stage you want to build to. 
-It is recommended that you build to Stage 1 as this is enough to know 
-your changes can successfully compile and should let you run tests 
-with your changes.
-
 ### Build specific components
 
    Build only the libcore library
 
-   `./x.py build src/libcore`
+```bash
+> ./x.py build src/libcore
+```
 
    Build the libcore and libproc_macro library only
 
-   `./x.py build src/libcore src/libproc_macro`
+```bash
+> ./x.py build src/libcore src/libproc_macro
+```
 
    Build only libcore up to Stage 1
 
-   `./x.py build src/libcore --stage 1`
+```bash
+> ./x.py build src/libcore --stage 1
+```
 
 Sometimes you might just want to test if the part you’re working on can 
 compile. Using these commands you can test that it compiles before doing 
@@ -183,8 +225,8 @@ you will likely need to build at some point; for example, if you want
 to run the entire test suite).
 
 ```bash
-  rustup toolchain link stage1 build/<host-triple>/stage1
-  rustup toolchain link stage2 build/<host-triple>/stage2
+> rustup toolchain link stage1 build/<host-triple>/stage1
+> rustup toolchain link stage2 build/<host-triple>/stage2
 ```
 
 The `<host-triple>` would typically be one of the following:
@@ -309,4 +351,6 @@ If you need to run this then rustbuild is most likely not acting right and
 you should file a bug as to what is going wrong. If you do need to clean 
 everything up then you only need to run one command!
 
-   `./x.py clean`
+   ```bash
+   > ./x.py clean
+   ```

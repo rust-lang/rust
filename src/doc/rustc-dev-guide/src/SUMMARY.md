@@ -3,6 +3,8 @@
 - [About this guide](./about-this-guide.md)
 - [About the compiler team](./compiler-team.md)
 - [How to build the compiler and run what you built](./how-to-build-and-run.md)
+    - [Build and Install distribution artifacts](./build-install-distribution-artifacts.md)
+    - [Documenting Compiler](./compiler-documenting.md)
 - [Coding conventions](./conventions.md)
 - [Walkthrough: a typical contribution](./walkthrough.md)
 - [The compiler testing framework](./tests/intro.md)

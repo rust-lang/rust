@@ -93,23 +93,21 @@ This is much faster, but doesn't always work. For example, some tests
 include directives that specify specific compiler flags, or which rely
 on other crates, and they may not run the same without those options.
 
-### Run specific tests
-
-# Run only the tidy script
+### Run only the tidy script
 ```bash
 > ./x.py test src/tools/tidy
 ```
-# Run tests on the standard library
+### Run tests on the standard library
 ```bash
 > ./x.py test src/libstd
 ```
 
-# Run tests on the standard library and run the tidy script
+### Run tests on the standard library and run the tidy script
 ```bash
 > ./x.py test src/libstd src/tools/tidy
 ```
 
-# Run tests on the standard library using a stage 1 compiler
+### Run tests on the standard library using a stage 1 compiler
 ```bash
 >   ./x.py test src/libstd --stage 1
 ```
