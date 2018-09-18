@@ -1830,8 +1830,8 @@ impl Context {
             *slot.borrow_mut() = self.current.clone();
         });
 
-        let mut title = if it.is_primitive() {
-            // No need to include the namespace for primitive types
+        let mut title = if it.is_primitive() || it.is_keyword() {
+            // No need to include the namespace for primitive types and keywords
             String::new()
         } else {
             self.current.join("::")
