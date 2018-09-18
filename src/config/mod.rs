@@ -49,6 +49,7 @@ create_config! {
     comment_width: usize, 80, false,
         "Maximum length of comments. No effect unless wrap_comments = true";
     normalize_comments: bool, false, false, "Convert /* */ comments to // comments where possible";
+    normalize_doc_attributes: bool, false, false, "Normalize doc attributes as doc comments";
     license_template_path: String, String::default(), false,
         "Beginning of file must match license template";
     format_strings: bool, false, false, "Format string literals where necessary";

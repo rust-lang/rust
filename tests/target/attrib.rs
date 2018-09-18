@@ -33,6 +33,7 @@ impl Bar {
     /// Blah blah blooo.
     /// Blah blah blooo.
     #[an_attribute]
+    #[doc = "an attribute that shouldn't be normalized to a doc comment"]
     fn foo(&mut self) -> isize {}
 
     /// Blah blah bing.

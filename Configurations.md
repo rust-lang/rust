@@ -2188,6 +2188,32 @@ If you want to format code that requires edition 2018, add the following to your
 edition = "2018"
 ```
 
+## `normalize_doc_attributes`
+
+Convert `#![doc]` and `#[doc]` attributes to `//!` and `///` doc comments.
+
+- **Default value**: `false`
+- **Possible values**: `true`, `false`
+- **Stable**: No
+
+#### `false` (default):
+
+```rust
+#![doc = "Example documentation"]
+
+#[doc = "Example item documentation"]
+pub enum Foo {}
+```
+
+#### `true`:
+
+```rust
+//! Example documentation
+
+/// Example item documentation
+pub enum Foo {}
+```
+
 ## `emit_mode`
 
 Internal option
