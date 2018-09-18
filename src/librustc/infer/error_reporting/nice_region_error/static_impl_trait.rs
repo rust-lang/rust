@@ -27,9 +27,9 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                     sup_origin,
                     sup_r,
                 ) => {
-                    let anon_reg_sup = self.is_suitable_region(sup_r)?;
+                    let anon_reg_sup = self.tcx.is_suitable_region(sup_r)?;
                     if sub_r == &RegionKind::ReStatic &&
-                        self.is_return_type_impl_trait(anon_reg_sup.def_id)
+                        self.tcx.return_type_impl_trait(anon_reg_sup.def_id).is_some()
                     {
                         let sp = var_origin.span();
                         let return_sp = sub_origin.span();

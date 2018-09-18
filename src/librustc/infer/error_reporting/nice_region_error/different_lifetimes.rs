@@ -56,9 +56,9 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         let (span, sub, sup) = self.get_regions();
 
         // Determine whether the sub and sup consist of both anonymous (elided) regions.
-        let anon_reg_sup = self.is_suitable_region(sup)?;
+        let anon_reg_sup = self.tcx.is_suitable_region(sup)?;
 
-        let anon_reg_sub = self.is_suitable_region(sub)?;
+        let anon_reg_sub = self.tcx.is_suitable_region(sub)?;
         let scope_def_id_sup = anon_reg_sup.def_id;
         let bregion_sup = anon_reg_sup.boundregion;
         let scope_def_id_sub = anon_reg_sub.def_id;
