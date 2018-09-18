@@ -243,8 +243,10 @@ macro_rules! eprintln {
 /// to give up ownership, you can instead borrow with `dbg!(&expr)`
 /// for some expression `expr`.
 ///
-///  and should be avoided
-/// for longer periods in version control
+/// Note that the macro is intended as a debugging tool and therefore you
+/// should avoid having uses of it in version control for longer periods.
+/// Use cases involving debug output that should be added to version control
+/// may be better served by macros such as `debug!` from the `log` crate.
 ///
 /// # Stability
 ///
@@ -261,7 +263,7 @@ macro_rules! eprintln {
 ///
 /// ```rust
 /// #![feature(dbg_macro)]
-/// 
+///
 /// fn foo(n: usize) {
 ///     if let Some(_) = dbg!(n.checked_sub(4)) {
 ///         // ...
