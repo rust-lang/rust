@@ -61,7 +61,9 @@ pub fn main() {
             break Default::default()
         };
     };
-    assert_eq!(trait_unified_2, [""]);
+    // compare lengths; ptr comparison is not deterministic
+    assert_eq!(trait_unified_2.len(), 1);
+    assert_eq!(trait_unified_2[0].len(), 0);
 
     let trait_unified_3 = loop {
         break if false {

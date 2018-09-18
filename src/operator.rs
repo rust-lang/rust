@@ -152,18 +152,50 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             (Scalar::Ptr(ptr), Scalar::Bits { bits, size }) |
             (Scalar::Bits { bits, size }, Scalar::Ptr(ptr)) => {
                 assert_eq!(size as u64, self.pointer_size().bytes());
+                let bits = bits as u64;
+                let (alloc_size, alloc_align) = self.memory.get_size_and_align(ptr.alloc_id)?;
 
+                // Case I: Comparing with NULL
                 if bits == 0 {
-                    // Nothing equals 0, not even dangling pointers. Ideally we would
-                    // require them to be in-bounds of their (possilby dead) allocation,
-                    // but with the allocation gonew e cannot check that.
-                    false
-                } else {
-                    // Live pointers cannot equal an integer, but again do not
-                    // allow comparing dead pointers.
-                    self.memory.check_bounds(ptr, false)?;
-                    false
+                    // Test if the ptr is in-bounds. Then it cannot be NULL.
+                    if ptr.offset <= alloc_size {
+                        return Ok(false);
+                    }
                 }
+                // Case II: Alignment gives it away
+                if ptr.offset.bytes() % alloc_align.abi() == 0 {
+                    // The offset maintains the allocation alignment, so we know `base+offset`
+                    // is aligned by `alloc_align`.
+                    // FIXME: We could be even more general, e.g. offset 2 into a 4-aligned
+                    // allocation cannot equal 3.
+                    if bits % alloc_align.abi() != 0 {
+                        // The integer is *not* aligned. So they cannot be equal.
+                        return Ok(false);
+                    }
+                }
+                // Case III: The integer is too big, and the allocation goes on a bit
+                // without wrapping around the address space.
+                {
+                    // Compute the highest address at which this allocation could live.
+                    // Substract one more, because it must be possible to add the size
+                    // to the base address without overflowing -- IOW, the very last address
+                    // of the address space is never dereferencable (but it can be in-bounds, i.e.,
+                    // one-past-the-end).
+                    let max_base_addr =
+                        ((1u128 << self.pointer_size().bits())
+                         - u128::from(alloc_size.bytes())
+                         - 1
+                        ) as u64;
+                    if let Some(max_addr) = max_base_addr.checked_add(ptr.offset.bytes()) {
+                        if bits > max_addr {
+                            // The integer is too big, this cannot possibly be equal
+                            return Ok(false)
+                        }
+                    }
+                }
+
+                // None of the supported cases.
+                return err!(InvalidPointerMath);
             }
         })
     }
