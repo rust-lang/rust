@@ -125,7 +125,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                                                 span,
                                                 "it is more idiomatic to write",
                                                 sug,
-                                                Applicability::MaybeIncorrect,
+                                                Applicability::HasPlaceholders,
                                             );
                                            if !mutability.is_empty() {
                                                db.note("you might not need `mut` at all");
