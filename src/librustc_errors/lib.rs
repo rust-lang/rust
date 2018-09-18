@@ -303,9 +303,20 @@ thread_local!(pub static TRACK_DIAGNOSTICS: Cell<fn(&Diagnostic)> =
 
 #[derive(Default)]
 pub struct HandlerFlags {
+    /// If false, warning-level lints are suppressed.
+    /// (rustc: see `--allow warnings` and `--cap-lints`)
     pub can_emit_warnings: bool,
+    /// If true, error-level diagnostics are upgraded to bug-level.
+    /// (rustc: see `-Z treat-err-as-bug`)
     pub treat_err_as_bug: bool,
+    /// If true, immediately emit diagnostics that would otherwise be buffered.
+    /// (rustc: see `-Z dont-buffer-diagnostics` and `-Z treat-err-as-bug`)
+    pub dont_buffer_diagnostics: bool,
+    /// If true, immediately print bugs registered with `delay_span_bug`.
+    /// (rustc: see `-Z report-delayed-bugs`)
     pub report_delayed_bugs: bool,
+    /// show macro backtraces even for non-local macros.
+    /// (rustc: see `-Z external-macro-backtrace`)
     pub external_macro_backtrace: bool,
 }
 
