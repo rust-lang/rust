@@ -2,7 +2,7 @@ error: use of deprecated attribute `dropck_parametricity`: unsafe_destructor_bli
   --> $DIR/feature-gate-dropck-ugeh-2.rs:17:5
    |
 LL |     #[unsafe_destructor_blind_to_params]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace this attribute with `#[may_dangle]`
    |
 note: lint level defined here
   --> $DIR/feature-gate-dropck-ugeh-2.rs:11:9

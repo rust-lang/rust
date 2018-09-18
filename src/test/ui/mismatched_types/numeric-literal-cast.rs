@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-C panic=abort
+fn foo(_: u16) {}
+fn foo1(_: f64) {}
+fn foo2(_: i32) {}
 
-#![no_std]
-#![no_main]
-
-use core::panic::PanicInfo;
-
-#[panic_implementation] //~ ERROR this attribute was renamed to `panic_handler` (see issue #44489)
-fn panic(info: &PanicInfo) -> ! {
-    loop {}
+fn main() {
+    foo(1u8);
+    foo1(2f32);
+    foo2(3i16);
 }
+

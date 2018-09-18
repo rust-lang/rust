@@ -260,9 +260,10 @@ impl DocAccessLevels for AccessLevels<DefId> {
 ///
 /// If the given `error_format` is `ErrorOutputType::Json` and no `SourceMap` is given, a new one
 /// will be created for the handler.
-pub fn new_handler(error_format: ErrorOutputType, source_map: Option<Lrc<source_map::SourceMap>>)
-    -> errors::Handler
-{
+pub fn new_handler(error_format: ErrorOutputType,
+                   source_map: Option<Lrc<source_map::SourceMap>>,
+                   treat_err_as_bug: bool,
+) -> errors::Handler {
     // rustdoc doesn't override (or allow to override) anything from this that is relevant here, so
     // stick to the defaults
     let sessopts = Options::default();
@@ -299,7 +300,7 @@ pub fn new_handler(error_format: ErrorOutputType, source_map: Option<Lrc<source_
         emitter,
         errors::HandlerFlags {
             can_emit_warnings: true,
-            treat_err_as_bug: false,
+            treat_err_as_bug,
             report_delayed_bugs: false,
             external_macro_backtrace: false,
             ..Default::default()
@@ -323,9 +324,9 @@ pub fn run_core(search_paths: SearchPaths,
                 lint_cap: Option<lint::Level>,
                 describe_lints: bool,
                 mut manual_passes: Vec<String>,
-                mut default_passes: passes::DefaultPassOption)
-    -> (clean::Crate, RenderInfo, Vec<String>)
-{
+                mut default_passes: passes::DefaultPassOption,
+                treat_err_as_bug: bool,
+) -> (clean::Crate, RenderInfo, Vec<String>) {
     // Parse, resolve, and typecheck the given crate.
 
     let cpath = match input {
@@ -388,7 +389,9 @@ pub fn run_core(search_paths: SearchPaths,
     };
     driver::spawn_thread_pool(sessopts, move |sessopts| {
         let source_map = Lrc::new(source_map::SourceMap::new(sessopts.file_path_mapping()));
-        let diagnostic_handler = new_handler(error_format, Some(source_map.clone()));
+        let diagnostic_handler = new_handler(error_format,
+                                             Some(source_map.clone()),
+                                             treat_err_as_bug);
 
         let mut sess = session::build_session_(
             sessopts, cpath, diagnostic_handler, source_map,

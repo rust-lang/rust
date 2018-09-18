@@ -21,6 +21,10 @@ use std::thread::panicking;
 use syntax_pos::{MultiSpan, Span};
 
 /// Used for emitting structured error messages and other diagnostic information.
+///
+/// If there is some state in a downstream crate you would like to
+/// access in the methods of `DiagnosticBuilder` here, consider
+/// extending `HandlerFlags`, accessed via `self.handler.flags`.
 #[must_use]
 #[derive(Clone)]
 pub struct DiagnosticBuilder<'a> {
@@ -89,8 +93,14 @@ impl<'a> DiagnosticBuilder<'a> {
         self.cancel();
     }
 
-    /// Buffers the diagnostic for later emission.
-    pub fn buffer(self, buffered_diagnostics: &mut Vec<Diagnostic>) {
+    /// Buffers the diagnostic for later emission, unless handler
+    /// has disabled such buffering.
+    pub fn buffer(mut self, buffered_diagnostics: &mut Vec<Diagnostic>) {
+        if self.handler.flags.dont_buffer_diagnostics || self.handler.flags.treat_err_as_bug {
+            self.emit();
+            return;
+        }
+
         // We need to use `ptr::read` because `DiagnosticBuilder`
         // implements `Drop`.
         let diagnostic;

@@ -415,10 +415,55 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                           src,
                                           if needs_paren { ")" } else { "" },
                                           expected_ty);
-            let into_suggestion = format!("{}{}{}.into()",
-                                          if needs_paren { "(" } else { "" },
-                                          src,
-                                          if needs_paren { ")" } else { "" });
+            let into_suggestion = format!(
+                "{}{}{}.into()",
+                if needs_paren { "(" } else { "" },
+                src,
+                if needs_paren { ")" } else { "" },
+            );
+            let literal_is_ty_suffixed = |expr: &hir::Expr| {
+                if let hir::ExprKind::Lit(lit) = &expr.node {
+                    lit.node.is_suffixed()
+                } else {
+                    false
+                }
+            };
+
+            let into_sugg = into_suggestion.clone();
+            let suggest_to_change_suffix_or_into = |err: &mut DiagnosticBuilder,
+                                                    note: Option<&str>| {
+                let suggest_msg = if literal_is_ty_suffixed(expr) {
+                    format!(
+                        "change the type of the numeric literal from `{}` to `{}`",
+                        checked_ty,
+                        expected_ty,
+                    )
+                } else {
+                    match note {
+                        Some(note) => format!("{}, which {}", msg, note),
+                        _ => format!("{} in a lossless way", msg),
+                    }
+                };
+
+                let suffix_suggestion = format!(
+                    "{}{}{}{}",
+                    if needs_paren { "(" } else { "" },
+                    src.trim_right_matches(&checked_ty.to_string()),
+                    expected_ty,
+                    if needs_paren { ")" } else { "" },
+                );
+
+                err.span_suggestion_with_applicability(
+                    expr.span,
+                    &suggest_msg,
+                    if literal_is_ty_suffixed(expr) {
+                        suffix_suggestion
+                    } else {
+                        into_sugg
+                    },
+                    Applicability::MachineApplicable,
+                );
+            };
 
             match (&expected_ty.sty, &checked_ty.sty) {
                 (&ty::Int(ref exp), &ty::Int(ref found)) => {
@@ -444,11 +489,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             }
                         }
                         _ => {
-                            err.span_suggestion_with_applicability(
-                                expr.span,
-                                &format!("{}, which {}", msg, will_sign_extend),
-                                into_suggestion,
-                                Applicability::MachineApplicable
+                            suggest_to_change_suffix_or_into(
+                                err,
+                                Some(will_sign_extend),
                             );
                         }
                     }
@@ -477,12 +520,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             }
                         }
                         _ => {
-                            err.span_suggestion_with_applicability(
-                                expr.span,
-                                &format!("{}, which {}", msg, will_zero_extend),
-                                into_suggestion,
-                                Applicability::MachineApplicable
-                            );
+                           suggest_to_change_suffix_or_into(
+                               err,
+                               Some(will_zero_extend),
+                           );
                         }
                     }
                     true
@@ -583,12 +624,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 (&ty::Float(ref exp), &ty::Float(ref found)) => {
                     if found.bit_width() < exp.bit_width() {
-                        err.span_suggestion_with_applicability(
-                            expr.span,
-                            &format!("{} in a lossless way", msg),
-                            into_suggestion,
-                            Applicability::MachineApplicable
-                        );
+                       suggest_to_change_suffix_or_into(
+                           err,
+                           None,
+                       );
                     } else if can_cast {
                         err.span_suggestion_with_applicability(
                             expr.span,

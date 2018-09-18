@@ -783,7 +783,7 @@ impl EarlyLintPass for DeprecatedAttr {
     fn check_attribute(&mut self, cx: &EarlyContext, attr: &ast::Attribute) {
         for &&(n, _, ref g) in &self.depr_attrs {
             if attr.name() == n {
-                if let &AttributeGate::Gated(Stability::Deprecated(link),
+                if let &AttributeGate::Gated(Stability::Deprecated(link, suggestion),
                                              ref name,
                                              ref reason,
                                              _) = g {
@@ -792,7 +792,7 @@ impl EarlyLintPass for DeprecatedAttr {
                     let mut err = cx.struct_span_lint(DEPRECATED, attr.span, &msg);
                     err.span_suggestion_short_with_applicability(
                         attr.span,
-                        "remove this attribute",
+                        suggestion.unwrap_or("remove this attribute"),
                         String::new(),
                         Applicability::MachineApplicable
                     );
