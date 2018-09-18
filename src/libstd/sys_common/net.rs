@@ -20,6 +20,7 @@ use sys::net::{cvt, cvt_r, cvt_gai, Socket, init, wrlen_t};
 use sys::net::netc as c;
 use sys_common::{AsInner, FromInner, IntoInner};
 use time::Duration;
+use convert::{TryFrom, TryInto};
 
 #[cfg(any(target_os = "dragonfly", target_os = "freebsd",
           target_os = "ios", target_os = "macos",
@@ -129,6 +130,13 @@ fn to_ipv6mr_interface(value: u32) -> ::libc::c_uint {
 pub struct LookupHost {
     original: *mut c::addrinfo,
     cur: *mut c::addrinfo,
+    port: u16
+}
+
+impl LookupHost {
+    pub fn port(&self) -> u16 {
+        self.port
+    }
 }
 
 impl Iterator for LookupHost {
@@ -158,17 +166,45 @@ impl Drop for LookupHost {
     }
 }
 
-pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
-    init();
+impl<'a> TryFrom<&'a str> for LookupHost {
+    type Error = io::Error;
 
-    let c_host = CString::new(host)?;
-    let mut hints: c::addrinfo = unsafe { mem::zeroed() };
-    hints.ai_socktype = c::SOCK_STREAM;
-    let mut res = ptr::null_mut();
-    unsafe {
-        cvt_gai(c::getaddrinfo(c_host.as_ptr(), ptr::null(), &hints, &mut res)).map(|_| {
-            LookupHost { original: res, cur: res }
-        })
+    fn try_from(s: &str) -> io::Result<LookupHost> {
+        macro_rules! try_opt {
+            ($e:expr, $msg:expr) => (
+                match $e {
+                    Some(r) => r,
+                    None => return Err(io::Error::new(io::ErrorKind::InvalidInput,
+                                                      $msg)),
+                }
+            )
+        }
+
+        // split the string by ':' and convert the second part to u16
+        let mut parts_iter = s.rsplitn(2, ':');
+        let port_str = try_opt!(parts_iter.next(), "invalid socket address");
+        let host = try_opt!(parts_iter.next(), "invalid socket address");
+        let port: u16 = try_opt!(port_str.parse().ok(), "invalid port value");
+
+        (host, port).try_into()
+    }
+}
+
+impl<'a> TryFrom<(&'a str, u16)> for LookupHost {
+    type Error = io::Error;
+
+    fn try_from((host, port): (&'a str, u16)) -> io::Result<LookupHost> {
+        init();
+
+        let c_host = CString::new(host)?;
+        let mut hints: c::addrinfo = unsafe { mem::zeroed() };
+        hints.ai_socktype = c::SOCK_STREAM;
+        let mut res = ptr::null_mut();
+        unsafe {
+            cvt_gai(c::getaddrinfo(c_host.as_ptr(), ptr::null(), &hints, &mut res)).map(|_| {
+                LookupHost { original: res, cur: res, port }
+            })
+        }
     }
 }
 
@@ -181,7 +217,9 @@ pub struct TcpStream {
 }
 
 impl TcpStream {
-    pub fn connect(addr: &SocketAddr) -> io::Result<TcpStream> {
+    pub fn connect(addr: io::Result<&SocketAddr>) -> io::Result<TcpStream> {
+        let addr = addr?;
+
         init();
 
         let sock = Socket::new(addr, c::SOCK_STREAM)?;
@@ -317,7 +355,9 @@ pub struct TcpListener {
 }
 
 impl TcpListener {
-    pub fn bind(addr: &SocketAddr) -> io::Result<TcpListener> {
+    pub fn bind(addr: io::Result<&SocketAddr>) -> io::Result<TcpListener> {
+        let addr = addr?;
+
         init();
 
         let sock = Socket::new(addr, c::SOCK_STREAM)?;
@@ -418,7 +458,9 @@ pub struct UdpSocket {
 }
 
 impl UdpSocket {
-    pub fn bind(addr: &SocketAddr) -> io::Result<UdpSocket> {
+    pub fn bind(addr: io::Result<&SocketAddr>) -> io::Result<UdpSocket> {
+        let addr = addr?;
+
         init();
 
         let sock = Socket::new(addr, c::SOCK_DGRAM)?;
@@ -584,8 +626,8 @@ impl UdpSocket {
         Ok(ret as usize)
     }
 
-    pub fn connect(&self, addr: &SocketAddr) -> io::Result<()> {
-        let (addrp, len) = addr.into_inner();
+    pub fn connect(&self, addr: io::Result<&SocketAddr>) -> io::Result<()> {
+        let (addrp, len) = addr?.into_inner();
         cvt_r(|| unsafe { c::connect(*self.inner.as_inner(), addrp, len) }).map(|_| ())
     }
 }
@@ -618,7 +660,7 @@ mod tests {
     #[test]
     fn no_lookup_host_duplicates() {
         let mut addrs = HashMap::new();
-        let lh = match lookup_host("localhost") {
+        let lh = match LookupHost::try_from(("localhost", 0)) {
             Ok(lh) => lh,
             Err(e) => panic!("couldn't resolve `localhost': {}", e)
         };

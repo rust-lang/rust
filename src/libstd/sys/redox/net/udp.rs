@@ -25,8 +25,8 @@ use super::{path_to_peer_addr, path_to_local_addr};
 pub struct UdpSocket(File, UnsafeCell<Option<SocketAddr>>);
 
 impl UdpSocket {
-    pub fn bind(addr: &SocketAddr) -> Result<UdpSocket> {
-        let path = format!("udp:/{}", addr);
+    pub fn bind(addr: Result<&SocketAddr>) -> Result<UdpSocket> {
+        let path = format!("udp:/{}", addr?);
         let mut options = OpenOptions::new();
         options.read(true);
         options.write(true);
@@ -37,8 +37,8 @@ impl UdpSocket {
         unsafe { &mut *(self.1.get()) }
     }
 
-    pub fn connect(&self, addr: &SocketAddr) -> Result<()> {
-        unsafe { *self.1.get() = Some(*addr) };
+    pub fn connect(&self, addr: Result<&SocketAddr>) -> Result<()> {
+        unsafe { *self.1.get() = Some(*addr?) };
         Ok(())
     }
 
