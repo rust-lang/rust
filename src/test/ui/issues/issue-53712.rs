@@ -4,6 +4,6 @@ fn main() {
     let arr = [10, 20, 30, 40, 50];
     arr.0;
     //~^ ERROR no field `0` on type `[{integer}; 5]` [E0609]
-    //~| HELP attempting to use tuple indexing on an array; try
+    //~| HELP instead of using tuple indexing, use array indexing
     //~| SUGGESTION arr[0]
 }
