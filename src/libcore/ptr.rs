@@ -236,7 +236,7 @@ pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 ///
 /// * The two pointed-to values may overlap. If the values do overlap, then the
 ///   overlapping region of memory from `x` will be used. This is demonstrated
-///   in the examples below.
+///   in the second example below.
 ///
 /// [`mem::swap`]: ../mem/fn.swap.html
 ///
@@ -261,8 +261,8 @@ pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 ///
 /// let mut array = [0, 1, 2, 3];
 ///
-/// let x = array[0..].as_mut_ptr() as *mut [u32; 2];
-/// let y = array[2..].as_mut_ptr() as *mut [u32; 2];
+/// let x = array[0..].as_mut_ptr() as *mut [u32; 2]; // this is `array[0..2]`
+/// let y = array[2..].as_mut_ptr() as *mut [u32; 2]; // this is `array[2..4]`
 ///
 /// unsafe {
 ///     ptr::swap(x, y);
@@ -277,11 +277,16 @@ pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 ///
 /// let mut array = [0, 1, 2, 3];
 ///
-/// let x = array[0..].as_mut_ptr() as *mut [u32; 3];
-/// let y = array[1..].as_mut_ptr() as *mut [u32; 3];
+/// let x = array[0..].as_mut_ptr() as *mut [u32; 3]; // this is `array[0..3]`
+/// let y = array[1..].as_mut_ptr() as *mut [u32; 3]; // this is `array[1..4]`
 ///
 /// unsafe {
 ///     ptr::swap(x, y);
+///     // The indices `1..3` of the slice overlap between `x` and `y`.
+///     // Reasonable results would be for to them be `[2, 3]`, so that indices `0..3` are
+///     // `[1, 2, 3]` (matching `y` before the `swap`); or for them to be `[0, 1]`
+///     // so that indices `1..4` are `[0, 1, 2]` (matching `x` before the `swap`).
+///     // This implementation is defined to make the latter choice.
 ///     assert_eq!([1, 0, 1, 2], array);
 /// }
 /// ```
