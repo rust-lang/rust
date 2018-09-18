@@ -1,5 +1,5 @@
 error: reaching this expression at runtime will panic or abort
-  --> $DIR/promoted_const_fn_fail_deny_const_err.rs:33:26
+  --> $DIR/promoted_const_fn_fail_deny_const_err.rs:31:26
    |
 LL |         Bar { a: &42 }.b as u8
    |         ---------------------- a raw memory access tried to access part of a pointer value as raw bytes
@@ -16,4 +16,3 @@ LL | #![deny(const_err)]
    |         ^^^^^^^^^
 
 error: aborting due to previous error
-
