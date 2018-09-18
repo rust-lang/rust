@@ -1,21 +1,4 @@
 error[E0659]: `panic` is ambiguous
-  --> $DIR/shadow_builtin_macros.rs:43:5
-   |
-LL |     panic!(); //~ ERROR `panic` is ambiguous
-   |     ^^^^^ ambiguous name
-   |
-note: `panic` could refer to the name defined here
-  --> $DIR/shadow_builtin_macros.rs:40:9
-   |
-LL |         macro_rules! panic { () => {} }
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |     } }
-LL |     m!();
-   |     ----- in this macro invocation
-   = note: `panic` is also a builtin macro
-   = note: macro-expanded macros do not shadow
-
-error[E0659]: `panic` is ambiguous
   --> $DIR/shadow_builtin_macros.rs:25:14
    |
 LL |     fn f() { panic!(); } //~ ERROR ambiguous
@@ -42,6 +25,23 @@ LL |     ::two_macros::m!(use foo::panic;);
    |                          ^^^^^^^^^^
    = note: `panic` is also a builtin macro
    = note: macro-expanded macro imports do not shadow
+
+error[E0659]: `panic` is ambiguous
+  --> $DIR/shadow_builtin_macros.rs:43:5
+   |
+LL |     panic!(); //~ ERROR `panic` is ambiguous
+   |     ^^^^^ ambiguous name
+   |
+note: `panic` could refer to the name defined here
+  --> $DIR/shadow_builtin_macros.rs:40:9
+   |
+LL |         macro_rules! panic { () => {} }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     } }
+LL |     m!();
+   |     ----- in this macro invocation
+   = note: `panic` is also a builtin macro
+   = note: macro-expanded macros do not shadow
 
 error[E0659]: `n` is ambiguous
   --> $DIR/shadow_builtin_macros.rs:59:5

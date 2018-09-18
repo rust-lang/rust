@@ -334,7 +334,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
         // expansion. With restricted shadowing names from globs and macro expansions cannot
         // shadow names from outer scopes, so we can freely fallback from module search to search
         // in outer scopes. To continue search in outer scopes we have to lie a bit and return
-        // `Determined` to `resolve_lexical_macro_path_segment` even if the correct answer
+        // `Determined` to `early_resolve_ident_in_lexical_scope` even if the correct answer
         // for in-module resolution could be `Undetermined`.
         if restricted_shadowing {
             return Err(Determined);
