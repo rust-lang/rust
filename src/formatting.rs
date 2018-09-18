@@ -175,7 +175,7 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
         }
 
         self.handler
-            .handle_formatted_file(path, visitor.buffer, &mut self.report)
+            .handle_formatted_file(path, visitor.buffer.to_owned(), &mut self.report)
     }
 }
 

@@ -60,6 +60,7 @@ impl<'a> SnippetProvider<'a> {
 }
 
 pub struct FmtVisitor<'a> {
+    parent_context: Option<&'a RewriteContext<'a>>,
     pub parse_session: &'a ParseSess,
     pub source_map: &'a SourceMap,
     pub buffer: String,
@@ -75,7 +76,21 @@ pub struct FmtVisitor<'a> {
     pub(crate) report: FormatReport,
 }
 
+impl<'a> Drop for FmtVisitor<'a> {
+    fn drop(&mut self) {
+        if let Some(ctx) = self.parent_context {
+            if self.macro_rewrite_failure {
+                ctx.macro_rewrite_failure.replace(true);
+            }
+        }
+    }
+}
+
 impl<'b, 'a: 'b> FmtVisitor<'a> {
+    fn set_parent_context(&mut self, context: &'a RewriteContext) {
+        self.parent_context = Some(context);
+    }
+
     pub fn shape(&self) -> Shape {
         Shape::indented(self.block_indent, self.config)
     }
@@ -97,7 +112,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 if contains_skip(get_attrs_from_stmt(stmt)) {
                     self.push_skipped_with_span(stmt.span());
                 } else {
-                    let rewrite = stmt.rewrite(&self.get_context(), self.shape());
+                    let shape = self.shape().clone();
+                    let rewrite = self.with_context(|ctx| stmt.rewrite(&ctx, shape));
                     self.push_rewrite(stmt.span(), rewrite)
                 }
             }
@@ -350,11 +366,14 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 let where_span_end = snippet
                     .find_uncommented("{")
                     .map(|x| BytePos(x as u32) + source!(self, item.span).lo());
-                let rw = format_impl(&self.get_context(), item, self.block_indent, where_span_end);
+                let block_indent = self.block_indent.clone();
+                let rw =
+                    self.with_context(|ctx| format_impl(&ctx, item, block_indent, where_span_end));
                 self.push_rewrite(item.span, rw);
             }
             ast::ItemKind::Trait(..) => {
-                let rw = format_trait(&self.get_context(), item, self.block_indent);
+                let block_indent = self.block_indent.clone();
+                let rw = self.with_context(|ctx| format_trait(&ctx, item, block_indent));
                 self.push_rewrite(item.span, rw);
             }
             ast::ItemKind::TraitAlias(ref generics, ref generic_bounds) => {
@@ -575,12 +594,14 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     }
 
     pub fn from_context(ctx: &'a RewriteContext) -> FmtVisitor<'a> {
-        FmtVisitor::from_source_map(
+        let mut visitor = FmtVisitor::from_source_map(
             ctx.parse_session,
             ctx.config,
             ctx.snippet_provider,
             ctx.report.clone(),
-        )
+        );
+        visitor.set_parent_context(ctx);
+        visitor
     }
 
     pub(crate) fn from_source_map(
@@ -590,6 +611,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         report: FormatReport,
     ) -> FmtVisitor<'a> {
         FmtVisitor {
+            parent_context: None,
             parse_session,
             source_map: parse_session.source_map(),
             buffer: String::with_capacity(snippet_provider.big_snippet.len() * 2),
