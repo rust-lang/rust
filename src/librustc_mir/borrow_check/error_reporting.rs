@@ -17,6 +17,7 @@ use rustc::mir::{
     LocalDecl, LocalKind, Location, Operand, Place, ProjectionElem, Rvalue, Statement,
     StatementKind, VarBindingForm,
 };
+use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
@@ -524,10 +525,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 err.span_label(
                     drop_span,
                     format!(
-                        "...but `{}` is only valid for the duration of the `{}` function, so it \
-                         is dropped here while still borrowed",
-                        name,
-                        self.infcx.tcx.hir.name(fn_node_id),
+                        "but `{}` will be dropped here, when the function `{}` returns",
+                        name, self.infcx.tcx.hir.name(fn_node_id),
                     )
                 );
 
@@ -1235,67 +1234,137 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let fn_node_id = self.infcx.tcx.hir.as_local_node_id(did)?;
         let fn_decl = self.infcx.tcx.hir.fn_decl(fn_node_id)?;
 
-        // If there is one argument and this error is being reported, that means
-        // that the lifetime of the borrow could not be made to match the single
-        // argument's lifetime. We can highlight it.
+        // We need to work out which arguments to highlight. We do this by looking
+        // at the return type, where there are three cases:
         //
-        // If there is more than one argument and this error is being reported, that
-        // means there must be a self parameter - as otherwise there would be an error
-        // from lifetime elision and not this. So we highlight the self parameter.
-        let argument_span = fn_decl.inputs.first()?.span;
-        let argument_ty = sig.inputs().skip_binder().first()?;
-        if is_closure {
-            // Closure arguments are wrapped in a tuple, so we need to get the first
-            // from that.
-            let argument_ty = if let ty::TyKind::Tuple(elems) = argument_ty.sty {
-                let argument_ty = elems.first()?;
-                if let ty::TyKind::Ref(_, _, _) = argument_ty.sty {
-                    argument_ty
-                } else {
+        // 1. If there are named arguments, then we should highlight the return type and
+        //    highlight any of the arguments that are also references with that lifetime.
+        //    If there are no arguments that have the same lifetime as the return type,
+        //    then don't highlight anything.
+        // 2. The return type is a reference with an anonymous lifetime. If this is
+        //    the case, then we can take advantage of (and teach) the lifetime elision
+        //    rules.
+        //
+        //    We know that an error is being reported. So the arguments and return type
+        //    must satisfy the elision rules. Therefore, if there is a single argument
+        //    then that means the return type and first (and only) argument have the same
+        //    lifetime and the borrow isn't meeting that, we can highlight the argument
+        //    and return type.
+        //
+        //    If there are multiple arguments then the first argument must be self (else
+        //    it would not satisfy the elision rules), so we can highlight self and the
+        //    return type.
+        // 3. The return type is not a reference. In this case, we don't highlight
+        //    anything.
+        let return_ty = sig.output();
+        match return_ty.skip_binder().sty {
+            ty::TyKind::Ref(return_region, _, _) if return_region.has_name() && !is_closure => {
+                // This is case 1 from above, return type is a named reference so we need to
+                // search for relevant arguments.
+                let mut arguments = Vec::new();
+                for (index, argument) in sig.inputs().skip_binder().iter().enumerate() {
+                    if let ty::TyKind::Ref(argument_region, _, _) = argument.sty {
+                        if argument_region == return_region {
+                            // Need to use the `rustc::ty` types to compare against the
+                            // `return_region`. Then use the `rustc::hir` type to get only
+                            // the lifetime span.
+                            match &fn_decl.inputs[index].node {
+                                hir::TyKind::Rptr(lifetime, _) => {
+                                    // With access to the lifetime, we can get
+                                    // the span of it.
+                                    arguments.push((*argument, lifetime.span));
+                                },
+                                _ => bug!("ty type is a ref but hir type is not"),
+                            }
+                        }
+                    }
+                }
+
+                // We need to have arguments. This shouldn't happen, but it's worth checking.
+                if arguments.is_empty() {
                     return None;
                 }
-            } else {
-                return None
-            };
 
-            Some(AnnotatedBorrowFnSignature::Closure {
-                argument_ty,
-                argument_span,
-            })
-        } else if let ty::TyKind::Ref(argument_region, _, _) = argument_ty.sty {
-            // We only consider the return type for functions.
-            let return_span = fn_decl.output.span();
+                // We use a mix of the HIR and the Ty types to get information
+                // as the HIR doesn't have full types for closure arguments.
+                let return_ty = *sig.output().skip_binder();
+                let mut return_span = fn_decl.output.span();
+                if let hir::FunctionRetTy::Return(ty) = fn_decl.output {
+                    if let hir::TyKind::Rptr(lifetime, _) = ty.into_inner().node {
+                        return_span = lifetime.span;
+                    }
+                }
 
-            let return_ty = sig.output();
-            let (return_region, return_ty) = if let ty::TyKind::Ref(
-                return_region, _, _
-            ) = return_ty.skip_binder().sty {
-                (return_region, *return_ty.skip_binder())
-            } else {
-                return None;
-            };
+                Some(AnnotatedBorrowFnSignature::NamedFunction {
+                    arguments,
+                    return_ty,
+                    return_span,
+                })
+            },
+            ty::TyKind::Ref(_, _, _) if is_closure => {
+                // This is case 2 from above but only for closures, return type is anonymous
+                // reference so we select
+                // the first argument.
+                let argument_span = fn_decl.inputs.first()?.span;
+                let argument_ty = sig.inputs().skip_binder().first()?;
 
-            Some(AnnotatedBorrowFnSignature::Function {
-                argument_ty,
-                argument_span,
-                return_ty,
-                return_span,
-                regions_equal: return_region == argument_region,
-            })
-        } else {
-            None
+                // Closure arguments are wrapped in a tuple, so we need to get the first
+                // from that.
+                if let ty::TyKind::Tuple(elems) = argument_ty.sty {
+                    let argument_ty = elems.first()?;
+                    if let ty::TyKind::Ref(_, _, _) = argument_ty.sty {
+                        return Some(AnnotatedBorrowFnSignature::Closure {
+                            argument_ty,
+                            argument_span,
+                        });
+                    }
+                }
+
+                None
+            },
+            ty::TyKind::Ref(_, _, _) => {
+                // This is also case 2 from above but for functions, return type is still an
+                // anonymous reference so we select the first argument.
+                let argument_span = fn_decl.inputs.first()?.span;
+                let argument_ty = sig.inputs().skip_binder().first()?;
+
+                let return_span = fn_decl.output.span();
+                let return_ty = *sig.output().skip_binder();
+
+                // We expect the first argument to be a reference.
+                match argument_ty.sty {
+                    ty::TyKind::Ref(_, _, _) => {},
+                    _ => return None,
+                }
+
+                Some(AnnotatedBorrowFnSignature::AnonymousFunction {
+                    argument_ty,
+                    argument_span,
+                    return_ty,
+                    return_span,
+                })
+            },
+            _ => {
+                // This is case 3 from above, return type is not a reference so don't highlight
+                // anything.
+                None
+            },
         }
     }
 }
 
 #[derive(Debug)]
 enum AnnotatedBorrowFnSignature<'tcx> {
-    Function {
+    NamedFunction {
+        arguments: Vec<(ty::Ty<'tcx>, Span)>,
+        return_ty: ty::Ty<'tcx>,
+        return_span: Span,
+    },
+    AnonymousFunction {
         argument_ty: ty::Ty<'tcx>,
         argument_span: Span,
         return_ty: ty::Ty<'tcx>,
         return_span: Span,
-        regions_equal: bool,
     },
     Closure {
         argument_ty: ty::Ty<'tcx>,
@@ -1304,57 +1373,86 @@ enum AnnotatedBorrowFnSignature<'tcx> {
 }
 
 impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
+    /// Annotate the provided diagnostic with information about borrow from the fn signature that
+    /// helps explain.
     fn emit(
         &self,
         diag: &mut DiagnosticBuilder<'_>
     ) -> String {
-        let (argument_ty, argument_span) = match self {
-            AnnotatedBorrowFnSignature::Function {
+        match self {
+            AnnotatedBorrowFnSignature::Closure { argument_ty, argument_span } => {
+                diag.span_label(
+                    *argument_span,
+                    format!("has type `{}`", self.get_name_for_ty(argument_ty, 0)),
+                );
+
+                self.get_region_name_for_ty(argument_ty, 0)
+            },
+            AnnotatedBorrowFnSignature::AnonymousFunction {
                 argument_ty,
                 argument_span,
-                ..
-            } => (argument_ty, argument_span),
-            AnnotatedBorrowFnSignature::Closure {
-                argument_ty,
-                argument_span,
-            } => (argument_ty, argument_span),
-        };
+                return_ty,
+                return_span,
+            } => {
+                let argument_ty_name = self.get_name_for_ty(argument_ty, 0);
+                diag.span_label(
+                    *argument_span,
+                    format!("has type `{}`", argument_ty_name)
+                );
 
-        let (argument_region_name, argument_ty_name) = (
-            self.get_region_name_for_ty(argument_ty, 0),
-            self.get_name_for_ty(argument_ty, 0),
-        );
-        diag.span_label(
-            *argument_span,
-            format!("has type `{}`", argument_ty_name)
-        );
+                let return_ty_name = self.get_name_for_ty(return_ty, 0);
+                let types_equal = return_ty_name == argument_ty_name;
+                diag.span_label(
+                    *return_span,
+                    format!(
+                        "{}has type `{}`",
+                        if types_equal { "also " } else { "" },
+                        return_ty_name,
+                    )
+                );
 
-        // Only emit labels for the return value when we're annotating a function.
-        if let AnnotatedBorrowFnSignature::Function {
-            return_ty,
-            return_span,
-            regions_equal,
-            ..
-        } = self {
-            let counter = if *regions_equal { 0 } else { 1 };
-            let (return_region_name, return_ty_name) = (
-                self.get_region_name_for_ty(return_ty, counter),
-                self.get_name_for_ty(return_ty, counter)
-            );
+                diag.note(
+                    "argument and return type have the same lifetime due to lifetime elision rules",
+                );
+                diag.note(
+                    "to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch10-03-\
+                     lifetime-syntax.html#lifetime-elision>",
+                );
 
-            let types_equal = return_ty_name == argument_ty_name;
-            diag.span_label(
-                *return_span,
-                format!(
-                    "{}has type `{}`",
-                    if types_equal { "also " } else { "" },
-                    return_ty_name,
-                )
-            );
+                self.get_region_name_for_ty(return_ty, 0)
+            },
+            AnnotatedBorrowFnSignature::NamedFunction {
+                arguments,
+                return_ty,
+                return_span,
+            } => {
+                // Region of return type and arguments checked to be the same earlier.
+                let region_name = self.get_region_name_for_ty(return_ty, 0);
+                for (_, argument_span) in arguments {
+                    diag.span_label(
+                        *argument_span,
+                        format!("has lifetime `{}`", region_name)
+                    );
+                }
 
-            return_region_name
-        } else {
-            argument_region_name
+                diag.span_label(
+                    *return_span,
+                    format!(
+                        "also has lifetime `{}`",
+                        region_name,
+                    )
+                );
+
+                diag.help(
+                    &format!(
+                        "use data from the highlighted arguments which match the `{}` lifetime of \
+                         the return type",
+                         region_name,
+                    ),
+                );
+
+                region_name
+            },
         }
     }
 

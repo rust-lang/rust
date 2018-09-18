@@ -1324,6 +1324,23 @@ impl_stable_hash_for!(struct DebruijnIndex { private });
 
 /// Region utilities
 impl RegionKind {
+    /// Is this region named by the user?
+    pub fn has_name(&self) -> bool {
+        match *self {
+            RegionKind::ReEarlyBound(ebr) => ebr.has_name(),
+            RegionKind::ReLateBound(_, br) => br.is_named(),
+            RegionKind::ReFree(fr) => fr.bound_region.is_named(),
+            RegionKind::ReScope(..) => false,
+            RegionKind::ReStatic => true,
+            RegionKind::ReVar(..) => false,
+            RegionKind::ReSkolemized(_, br) => br.is_named(),
+            RegionKind::ReEmpty => false,
+            RegionKind::ReErased => false,
+            RegionKind::ReClosureBound(..) => false,
+            RegionKind::ReCanonical(..) => false,
+        }
+    }
+
     pub fn is_late_bound(&self) -> bool {
         match *self {
             ty::ReLateBound(..) => true,

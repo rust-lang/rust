@@ -25,16 +25,15 @@ error[E0597]: `y` does not live long enough
   --> $DIR/regions-nested-fns.rs:19:15
    |
 LL |     ignore::<Box<for<'z> FnMut(&'z isize)>>(Box::new(|z| {
-   |                                                       - has type `&'0 isize`
+   |                                                      --- value captured here
 LL |         ay = x;
 LL |         ay = &y;
-   |               ^ `y` would have to be valid for `'0`
+   |               ^ borrowed value does not live long enough
 ...
 LL | }
-   | - ...but `y` is only valid for the duration of the `nested` function, so it is dropped here while still borrowed
+   | - `y` dropped here while still borrowed
    |
-   = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-references-and-borrowing.html#dangling-references>
+   = note: borrowed value must be valid for the static lifetime...
 
 error: unsatisfied lifetime constraints
   --> $DIR/regions-nested-fns.rs:23:68
