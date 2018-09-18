@@ -154,7 +154,7 @@ impl<P: Deref> Pin<P> {
     #[unstable(feature = "pin", issue = "49150")]
     #[inline(always)]
     pub fn as_ref(self: &Pin<P>) -> Pin<&P::Target> {
-        unsafe { Pin::new_unchecked(&**self) }
+        unsafe { Pin::new_unchecked(&*self.pointer) }
     }
 }
 
@@ -212,7 +212,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     }
 }
 
-impl<'a, T> Pin<&'a mut T> {
+impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// Convert this `Pin<&mut T>` into a `Pin<&T>` with the same lifetime.
     #[unstable(feature = "pin", issue = "49150")]
     #[inline(always)]
@@ -278,7 +278,7 @@ impl<'a, T> Pin<&'a mut T> {
 impl<P: Deref> Deref for Pin<P> {
     type Target = P::Target;
     fn deref(&self) -> &P::Target {
-        &*self.pointer
+        Pin::get_ref(Pin::as_ref(self))
     }
 }
 
@@ -288,7 +288,7 @@ where
     P::Target: Unpin
 {
     fn deref_mut(&mut self) -> &mut P::Target {
-        &mut *self.pointer
+        Pin::get_mut(Pin::as_mut(self))
     }
 }
 
