@@ -30,16 +30,7 @@ pub const ATTR_IF_THIS_CHANGED: &'static str = "rustc_if_this_changed";
 pub const ATTR_THEN_THIS_WOULD_NEED: &'static str = "rustc_then_this_would_need";
 pub const ATTR_PARTITION_REUSED: &'static str = "rustc_partition_reused";
 pub const ATTR_PARTITION_CODEGENED: &'static str = "rustc_partition_codegened";
-
-
-pub const DEP_GRAPH_ASSERT_ATTRS: &'static [&'static str] = &[
-    ATTR_IF_THIS_CHANGED,
-    ATTR_THEN_THIS_WOULD_NEED,
-    ATTR_DIRTY,
-    ATTR_CLEAN,
-    ATTR_PARTITION_REUSED,
-    ATTR_PARTITION_CODEGENED,
-];
+pub const ATTR_EXPECTED_CGU_REUSE: &'static str = "rustc_expected_cgu_reuse";
 
 pub const IGNORED_ATTRIBUTES: &'static [&'static str] = &[
     "cfg",
@@ -49,4 +40,5 @@ pub const IGNORED_ATTRIBUTES: &'static [&'static str] = &[
     ATTR_CLEAN,
     ATTR_PARTITION_REUSED,
     ATTR_PARTITION_CODEGENED,
+    ATTR_EXPECTED_CGU_REUSE,
 ];

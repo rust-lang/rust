@@ -11,6 +11,7 @@
 pub use self::code_stats::{DataTypeKind, SizeKind, FieldInfo, VariantInfo};
 use self::code_stats::CodeStats;
 
+use dep_graph::cgu_reuse_tracker::CguReuseTracker;
 use hir::def_id::CrateNum;
 use rustc_data_structures::fingerprint::Fingerprint;
 
@@ -124,6 +125,9 @@ pub struct Session {
     pub imported_macro_spans: OneThread<RefCell<FxHashMap<Span, (String, Span)>>>,
 
     incr_comp_session: OneThread<RefCell<IncrCompSession>>,
+    /// Used for incremental compilation tests. Will only be populated if
+    /// `-Zquery-dep-graph` is specified.
+    pub cgu_reuse_tracker: CguReuseTracker,
 
     /// Used by -Z profile-queries in util::common
     pub profile_channel: Lock<Option<mpsc::Sender<ProfileQueriesMsg>>>,
@@ -1109,6 +1113,12 @@ pub fn build_session_(
     };
     let working_dir = file_path_mapping.map_prefix(working_dir);
 
+    let cgu_reuse_tracker = if sopts.debugging_opts.query_dep_graph {
+        CguReuseTracker::new()
+    } else {
+        CguReuseTracker::new_disabled()
+    };
+
     let sess = Session {
         target: target_cfg,
         host,
@@ -1139,6 +1149,7 @@ pub fn build_session_(
         injected_panic_runtime: Once::new(),
         imported_macro_spans: OneThread::new(RefCell::new(FxHashMap::default())),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
+        cgu_reuse_tracker,
         self_profiling: Lock::new(SelfProfiler::new()),
         profile_channel: Lock::new(None),
         perf_stats: PerfStats {
