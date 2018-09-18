@@ -676,7 +676,7 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                             fx.bcx.ins().imul_imm(len, elem_size as i64)
                         }
                         ty::Dynamic(..) => crate::vtable::size_of_obj(fx, args[0]),
-                        ty => unimplemented!("size_of_val for {:?}", ty),
+                        ty => bug!("size_of_val for unknown unsized type {:?}", ty),
                     };
                     ret.write_cvalue(fx, CValue::ByVal(size, usize_layout));
                 }
