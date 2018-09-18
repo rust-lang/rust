@@ -506,21 +506,19 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
             def
         } else {
-            let def = match self.early_resolve_ident_in_lexical_scope(path[0], MacroNS, Some(kind),
-                                                                      parent_scope, false, force,
-                                                                      span) {
-                Ok(binding) => Ok(binding.def_ignoring_ambiguity()),
+            let binding = self.early_resolve_ident_in_lexical_scope(
+                path[0], MacroNS, Some(kind), parent_scope, false, force, span
+            );
+            match binding {
+                Ok(..) => {}
+                Err(Determinacy::Determined) => self.found_unresolved_macro = true,
                 Err(Determinacy::Undetermined) => return Err(Determinacy::Undetermined),
-                Err(Determinacy::Determined) => {
-                    self.found_unresolved_macro = true;
-                    Err(Determinacy::Determined)
-                }
-            };
+            }
 
             parent_scope.module.legacy_macro_resolutions.borrow_mut()
-                .push((path[0], kind, parent_scope.clone(), def.ok()));
+                .push((path[0], kind, parent_scope.clone(), binding.ok()));
 
-            def
+            binding.map(|binding| binding.def_ignoring_ambiguity())
         }
     }
 
@@ -866,15 +864,16 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
         let legacy_macro_resolutions =
             mem::replace(&mut *module.legacy_macro_resolutions.borrow_mut(), Vec::new());
-        for (ident, kind, parent_scope, initial_def) in legacy_macro_resolutions {
+        for (ident, kind, parent_scope, initial_binding) in legacy_macro_resolutions {
             let binding = self.early_resolve_ident_in_lexical_scope(
                 ident, MacroNS, Some(kind), &parent_scope, true, true, ident.span
             );
             match binding {
                 Ok(binding) => {
-                    self.record_use(ident, MacroNS, binding);
                     let def = binding.def_ignoring_ambiguity();
-                    if let Some(initial_def) = initial_def {
+                    if let Some(initial_binding) = initial_binding {
+                        self.record_use(ident, MacroNS, initial_binding);
+                        let initial_def = initial_binding.def_ignoring_ambiguity();
                         if self.ambiguity_errors.is_empty() &&
                            def != initial_def && def != Def::Err {
                             // Make sure compilation does not succeed if preferred macro resolution
@@ -894,7 +893,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     }
                 }
                 Err(..) => {
-                    assert!(initial_def.is_none());
+                    assert!(initial_binding.is_none());
                     let bang = if kind == MacroKind::Bang { "!" } else { "" };
                     let msg =
                         format!("cannot find {} `{}{}` in this scope", kind.descr(), ident, bang);

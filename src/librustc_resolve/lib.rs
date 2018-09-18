@@ -1014,7 +1014,8 @@ pub struct ModuleData<'a> {
     normal_ancestor_id: DefId,
 
     resolutions: RefCell<FxHashMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>,
-    legacy_macro_resolutions: RefCell<Vec<(Ident, MacroKind, ParentScope<'a>, Option<Def>)>>,
+    legacy_macro_resolutions: RefCell<Vec<(Ident, MacroKind, ParentScope<'a>,
+                                           Option<&'a NameBinding<'a>>)>>,
     macro_resolutions: RefCell<Vec<(Box<[Ident]>, Span)>>,
     builtin_attrs: RefCell<Vec<(Ident, ParentScope<'a>)>>,
 
