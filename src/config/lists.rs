@@ -95,11 +95,13 @@ impl SeparatorPlace {
     ) -> SeparatorPlace {
         match tactic {
             DefinitiveListTactic::Vertical => default,
-            _ => if sep == "," {
-                SeparatorPlace::Back
-            } else {
-                default
-            },
+            _ => {
+                if sep == "," {
+                    SeparatorPlace::Back
+                } else {
+                    default
+                }
+            }
         }
     }
 }

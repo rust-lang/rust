@@ -20,7 +20,7 @@ use comment::{combine_strs_with_missing_comments, rewrite_comment};
 use config::{Config, ControlBraceStyle, IndentStyle};
 use expr::{
     format_expr, is_empty_block, is_simple_block, is_unsafe_block, prefer_next_line,
-    rewrite_multiple_patterns, ExprType, RhsTactics, ToExpr,
+    rewrite_multiple_patterns, ExprType, RhsTactics,
 };
 use lists::{itemize_list, write_list, ListFormatting};
 use rewrite::{Rewrite, RewriteContext};
@@ -314,23 +314,21 @@ fn block_can_be_flattened<'a>(
 // @extend: true if the arm body can be put next to `=>`
 // @body: flattened body, if the body is block with a single expression
 fn flatten_arm_body<'a>(context: &'a RewriteContext, body: &'a ast::Expr) -> (bool, &'a ast::Expr) {
+    let can_extend =
+        |expr| !context.config.force_multiline_blocks() && can_flatten_block_around_this(expr);
+
     if let Some(ref block) = block_can_be_flattened(context, body) {
         if let ast::StmtKind::Expr(ref expr) = block.stmts[0].node {
             if let ast::ExprKind::Block(..) = expr.node {
                 flatten_arm_body(context, expr)
             } else {
-                let can_extend_expr =
-                    !context.config.force_multiline_blocks() && can_flatten_block_around_this(expr);
-                (can_extend_expr, &*expr)
+                (can_extend(expr), &*expr)
             }
         } else {
             (false, &*body)
         }
     } else {
-        (
-            !context.config.force_multiline_blocks() && body.can_be_overflowed(context, 1),
-            &*body,
-        )
+        (can_extend(body), &*body)
     }
 }
 
