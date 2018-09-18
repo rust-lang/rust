@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use array_vec::ArrayVec;
 use indexed_vec::{Idx, IndexVec};
 use rustc_serialize;
+use smallvec::SmallVec;
 use std::fmt;
 use std::iter;
 use std::marker::PhantomData;
@@ -320,16 +320,17 @@ fn bitwise<Op>(out_vec: &mut [Word], in_vec: &[Word], op: Op) -> bool
 const SPARSE_MAX: usize = 8;
 
 /// A fixed-size bitset type with a sparse representation and a maximum of
-/// SPARSE_MAX elements. The elements are stored as an unsorted vector with no
-/// duplicates.
+/// `SPARSE_MAX` elements. The elements are stored as a sorted `SmallVec` with
+/// no duplicates; although `SmallVec` can spill its elements to the heap, that
+/// never happens within this type because of the `SPARSE_MAX` limit.
 ///
-/// This type is used by HybridBitSet; do not use directly.
+/// This type is used by `HybridBitSet`; do not use directly.
 #[derive(Clone, Debug)]
-pub struct SparseBitSet<T: Idx>(ArrayVec<[T; SPARSE_MAX]>);
+pub struct SparseBitSet<T: Idx>(SmallVec<[T; SPARSE_MAX]>);
 
 impl<T: Idx> SparseBitSet<T> {
     fn new_empty() -> Self {
-        SparseBitSet(ArrayVec::new())
+        SparseBitSet(SmallVec::new())
     }
 
     fn len(&self) -> usize {
@@ -341,10 +342,18 @@ impl<T: Idx> SparseBitSet<T> {
     }
 
     fn insert(&mut self, elem: T) -> bool {
-        // Ensure there are no duplicates.
-        if self.0.contains(&elem) {
-            false
+        assert!(self.len() < SPARSE_MAX);
+        if let Some(i) = self.0.iter().position(|&e| e >= elem) {
+            if self.0[i] == elem {
+                // `elem` is already in the set.
+                false
+            } else {
+                // `elem` is smaller than one or more existing elements.
+                self.0.insert(i, elem);
+                true
+            }
         } else {
+            // `elem` is larger than all existing elements.
             self.0.push(elem);
             true
         }
@@ -352,10 +361,7 @@ impl<T: Idx> SparseBitSet<T> {
 
     fn remove(&mut self, elem: T) -> bool {
         if let Some(i) = self.0.iter().position(|&e| e == elem) {
-            // Swap the found element to the end, then pop it.
-            let len = self.0.len();
-            self.0.swap(i, len - 1);
-            self.0.pop();
+            self.0.remove(i);
             true
         } else {
             false
@@ -396,8 +402,8 @@ impl<T: Idx> SubtractFromBitSet<T> for SparseBitSet<T> {
 }
 
 /// A fixed-size bitset type with a hybrid representation: sparse when there
-/// are up to a SPARSE_MAX elements in the set, but dense when there are more
-/// than SPARSE_MAX.
+/// are up to a `SPARSE_MAX` elements in the set, but dense when there are more
+/// than `SPARSE_MAX`.
 ///
 /// This type is especially efficient for sets that typically have a small
 /// number of elements, but a large `domain_size`, and are cleared frequently.
@@ -479,7 +485,6 @@ impl<T: Idx> HybridBitSet<T> {
         }
     }
 
-    /// Iteration order is unspecified.
     pub fn iter(&self) -> HybridIter<T> {
         match self {
             HybridBitSet::Sparse(sparse, _) => HybridIter::Sparse(sparse.iter()),
