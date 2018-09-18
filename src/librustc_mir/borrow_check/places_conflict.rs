@@ -188,7 +188,7 @@ fn place_components_conflict<'gcx, 'tcx>(
                         return false;
                     }
 
-                    (ProjectionElem::Deref, _, Deep)
+                    (ProjectionElem::Deref, _, Deep { .. })
                     | (ProjectionElem::Field { .. }, _, _)
                     | (ProjectionElem::Index { .. }, _, _)
                     | (ProjectionElem::ConstantIndex { .. }, _, _)

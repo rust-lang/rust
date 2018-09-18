@@ -482,7 +482,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 self.access_place(
                     ContextKind::ReadForMatch.new(location),
                     (place, span),
-                    (Deep, Read(ReadKind::Borrow(BorrowKind::Shared))),
+                    (Deep { is_drop: false }, Read(ReadKind::Borrow(BorrowKind::Shared))),
                     LocalMutationIsAllowed::No,
                     flow_state,
                 );
@@ -512,7 +512,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                         self.access_place(
                             context,
                             (output, span),
-                            (Deep, Read(ReadKind::Copy)),
+                            (Deep { is_drop: false }, Read(ReadKind::Copy)),
                             LocalMutationIsAllowed::No,
                             flow_state,
                         );
@@ -526,7 +526,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                         self.mutate_place(
                             context,
                             (output, span),
-                            if o.is_rw { Deep } else { Shallow(None) },
+                            if o.is_rw { Deep { is_drop: false } } else { Shallow(None) },
                             if o.is_rw { WriteAndRead } else { JustWrite },
                             flow_state,
                         );
@@ -617,7 +617,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 self.mutate_place(
                     ContextKind::DropAndReplace.new(loc),
                     (drop_place, span),
-                    Deep,
+                    Deep { is_drop: true },
                     JustWrite,
                     flow_state,
                 );
@@ -645,7 +645,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                     self.mutate_place(
                         ContextKind::CallDest.new(loc),
                         (dest, span),
-                        Deep,
+                        Deep { is_drop: true },
                         JustWrite,
                         flow_state,
                     );
@@ -743,7 +743,12 @@ enum ShallowOrDeep {
     /// From the RFC: "A *deep* access means that all data reachable
     /// through the given place may be invalidated or accesses by
     /// this action."
-    Deep,
+    ///
+    /// If `is_drop` is true, then this access is due to a drop, which
+    /// follows a recursive traversal until it hits types that
+    /// implement the `Drop` trait (and then runs the code associated
+    /// with those impls of `Drop`).
+    Deep { is_drop: bool },
 }
 
 /// Kind of access to a value: read or write
@@ -1012,7 +1017,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     self.access_place(
                         ContextKind::Drop.new(loc),
                         (drop_place, span),
-                        (Deep, Write(WriteKind::StorageDeadOrDrop)),
+                        (Deep { is_drop: true },
+                         Write(WriteKind::StorageDeadOrDrop)),
                         LocalMutationIsAllowed::Yes,
                         flow_state,
                     );
@@ -1300,13 +1306,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         match *rvalue {
             Rvalue::Ref(_ /*rgn*/, bk, ref place) => {
                 let access_kind = match bk {
-                    BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
+                    BorrowKind::Shared => (Deep { is_drop: false },
+                                           Read(ReadKind::Borrow(bk))),
                     BorrowKind::Unique | BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
                         if allow_two_phase_borrow(&self.tcx, bk) {
-                            (Deep, Reservation(wk))
+                            (Deep { is_drop: false }, Reservation(wk))
                         } else {
-                            (Deep, Write(wk))
+                            (Deep { is_drop: false }, Write(wk))
                         }
                     }
                 };
@@ -1429,7 +1436,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 self.access_place(
                     context,
                     (place, span),
-                    (Deep, Read(ReadKind::Copy)),
+                    (Deep { is_drop: false }, Read(ReadKind::Copy)),
                     LocalMutationIsAllowed::No,
                     flow_state,
                 );
@@ -1447,7 +1454,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 self.access_place(
                     context,
                     (place, span),
-                    (Deep, Write(WriteKind::Move)),
+                    (Deep { is_drop: false }, Write(WriteKind::Move)),
                     LocalMutationIsAllowed::Yes,
                     flow_state,
                 );
@@ -1509,7 +1516,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         // FIXME: replace this with a proper borrow_conflicts_with_place when
         // that is merged.
-        let sd = if might_be_alive { Deep } else { Shallow(None) };
+        let sd = if might_be_alive { Deep { is_drop: true } } else { Shallow(None) };
 
         if places_conflict::places_conflict(self.tcx, self.mir, place, root_place, sd) {
             debug!("check_for_invalidation_at_exit({:?}): INVALID", place);
@@ -1569,7 +1576,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 ContextKind::Activation.new(location),
                 (&borrow.borrowed_place, span),
                 (
-                    Deep,
+                    Deep { is_drop: false },
                     Activation(WriteKind::MutableBorrow(borrow.kind), borrow_index),
                 ),
                 LocalMutationIsAllowed::No,

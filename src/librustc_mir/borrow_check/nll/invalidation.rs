@@ -97,7 +97,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tc
                 self.access_place(
                     ContextKind::ReadForMatch.new(location),
                     place,
-                    (Deep, Read(ReadKind::Borrow(BorrowKind::Shared))),
+                    (Deep { is_drop: false }, Read(ReadKind::Borrow(BorrowKind::Shared))),
                     LocalMutationIsAllowed::No,
                 );
             }
@@ -125,14 +125,14 @@ impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tc
                         self.access_place(
                             context,
                             output,
-                            (Deep, Read(ReadKind::Copy)),
+                            (Deep { is_drop: false }, Read(ReadKind::Copy)),
                             LocalMutationIsAllowed::No,
                         );
                     } else {
                         self.mutate_place(
                             context,
                             output,
-                            if o.is_rw { Deep } else { Shallow(None) },
+                            if o.is_rw { Deep { is_drop: false } } else { Shallow(None) },
                             if o.is_rw { WriteAndRead } else { JustWrite },
                         );
                     }
@@ -199,7 +199,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tc
                 self.mutate_place(
                     ContextKind::DropAndReplace.new(location),
                     drop_place,
-                    Deep,
+                    Deep { is_drop: true },
                     JustWrite,
                 );
                 self.consume_operand(
@@ -221,7 +221,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tc
                     self.mutate_place(
                         ContextKind::CallDest.new(location),
                         dest,
-                        Deep,
+                        Deep { is_drop: true },
                         JustWrite,
                     );
                 }
@@ -347,7 +347,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
                     self.access_place(
                         ContextKind::Drop.new(loc),
                         drop_place,
-                        (Deep, Write(WriteKind::StorageDeadOrDrop)),
+                        (Deep { is_drop: true }, Write(WriteKind::StorageDeadOrDrop)),
                         LocalMutationIsAllowed::Yes,
                     );
                 }
@@ -382,7 +382,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
                 self.access_place(
                     context,
                     place,
-                    (Deep, Read(ReadKind::Copy)),
+                    (Deep { is_drop: false }, Read(ReadKind::Copy)),
                     LocalMutationIsAllowed::No,
                 );
             }
@@ -390,7 +390,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
                 self.access_place(
                     context,
                     place,
-                    (Deep, Write(WriteKind::Move)),
+                    (Deep { is_drop: false }, Write(WriteKind::Move)),
                     LocalMutationIsAllowed::Yes,
                 );
             }
@@ -407,13 +407,14 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
         match *rvalue {
             Rvalue::Ref(_ /*rgn*/, bk, ref place) => {
                 let access_kind = match bk {
-                    BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
+                    BorrowKind::Shared => (Deep { is_drop: false },
+                                           Read(ReadKind::Borrow(bk))),
                     BorrowKind::Unique | BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
                         if allow_two_phase_borrow(&self.infcx.tcx, bk) {
-                            (Deep, Reservation(wk))
+                            (Deep { is_drop: false }, Reservation(wk))
                         } else {
-                            (Deep, Write(wk))
+                            (Deep { is_drop: false }, Write(wk))
                         }
                     }
                 };
