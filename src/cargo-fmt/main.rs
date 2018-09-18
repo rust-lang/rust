@@ -373,9 +373,6 @@ fn run_rustfmt(
 fn get_cargo_metadata(manifest_path: Option<&Path>) -> Result<cargo_metadata::Metadata, io::Error> {
     match cargo_metadata::metadata(manifest_path) {
         Ok(metadata) => Ok(metadata),
-        Err(..) => Err(io::Error::new(
-            io::ErrorKind::Other,
-            "`cargo manifest` failed.",
-        )),
+        Err(error) => Err(io::Error::new(io::ErrorKind::Other, error.to_string())),
     }
 }
