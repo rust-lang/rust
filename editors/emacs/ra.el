@@ -2,9 +2,10 @@
 ;;; Commentary:
 ;;; Small utilities for interacting with Rust analyzer.
 ;;; Run
-;;;   cargo install --git https://github.com/matklad/rust-analyzer/ --bin ra_cli
-;;; to install the binary, copy-paste the bellow code to your `.init.el` and use
-;;; `ra-extend-selection` and `ra-shrink-selection` functions
+;;;   cargo install --git https://github.com/matklad/rust-analyzer/ ra_cli
+;;; to install the analyzer binary. Then copy-paste the bellow code to
+;;; your `.init.el` and use `ra-extend-selection` and
+;;; `ra-shrink-selection` functions.
 ;;; Code:
 
 
