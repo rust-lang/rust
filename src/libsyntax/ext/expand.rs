@@ -220,14 +220,6 @@ pub struct Invocation {
     pub expansion_data: ExpansionData,
 }
 
-// Needed for feature-gating attributes used after derives or together with test/bench
-#[derive(Clone, Copy, PartialEq)]
-pub enum TogetherWith {
-    None,
-    Derive,
-    TestBench,
-}
-
 pub enum InvocationKind {
     Bang {
         mac: ast::Mac,
@@ -238,7 +230,8 @@ pub enum InvocationKind {
         attr: Option<ast::Attribute>,
         traits: Vec<Path>,
         item: Annotatable,
-        together_with: TogetherWith,
+        // We temporarily report errors for attribute macros placed after derives
+        after_derive: bool,
     },
     Derive {
         path: Path,
@@ -1084,19 +1077,17 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     traits: Vec<Path>,
                     item: Annotatable,
                     kind: AstFragmentKind,
-                    together_with: TogetherWith)
+                    after_derive: bool)
                     -> AstFragment {
-        self.collect(kind, InvocationKind::Attr { attr, traits, item, together_with })
+        self.collect(kind, InvocationKind::Attr { attr, traits, item, after_derive })
     }
 
-    fn find_attr_invoc(&self, attrs: &mut Vec<ast::Attribute>, together_with: &mut TogetherWith)
+    fn find_attr_invoc(&self, attrs: &mut Vec<ast::Attribute>, after_derive: &mut bool)
                        -> Option<ast::Attribute> {
         let attr = attrs.iter()
                         .position(|a| {
                             if a.path == "derive" {
-                                *together_with = TogetherWith::Derive
-                            } else if a.path == "rustc_test_marker2" {
-                                *together_with = TogetherWith::TestBench
+                                *after_derive = true;
                             }
                             !attr::is_known(a) && !is_builtin_attr(a)
                         })
@@ -1109,19 +1100,15 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                                  "non-builtin inner attributes are unstable");
             }
         }
-        if together_with == &TogetherWith::None &&
-           attrs.iter().any(|a| a.path == "rustc_test_marker2") {
-            *together_with = TogetherWith::TestBench;
-        }
         attr
     }
 
     /// If `item` is an attr invocation, remove and return the macro attribute and derive traits.
     fn classify_item<T>(&mut self, mut item: T)
-                        -> (Option<ast::Attribute>, Vec<Path>, T, TogetherWith)
+                        -> (Option<ast::Attribute>, Vec<Path>, T, /* after_derive */ bool)
         where T: HasAttrs,
     {
-        let (mut attr, mut traits, mut together_with) = (None, Vec::new(), TogetherWith::None);
+        let (mut attr, mut traits, mut after_derive) = (None, Vec::new(), false);
 
         item = item.map_attrs(|mut attrs| {
             if let Some(legacy_attr_invoc) = self.cx.resolver.find_legacy_attr_invoc(&mut attrs,
@@ -1130,20 +1117,20 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 return attrs;
             }
 
-            attr = self.find_attr_invoc(&mut attrs, &mut together_with);
+            attr = self.find_attr_invoc(&mut attrs, &mut after_derive);
             traits = collect_derives(&mut self.cx, &mut attrs);
             attrs
         });
 
-        (attr, traits, item, together_with)
+        (attr, traits, item, after_derive)
     }
 
     /// Alternative of `classify_item()` that ignores `#[derive]` so invocations fallthrough
     /// to the unused-attributes lint (making it an error on statements and expressions
     /// is a breaking change)
     fn classify_nonitem<T: HasAttrs>(&mut self, mut item: T)
-                                     -> (Option<ast::Attribute>, T, TogetherWith) {
-        let (mut attr, mut together_with) = (None, TogetherWith::None);
+                                     -> (Option<ast::Attribute>, T, /* after_derive */ bool) {
+        let (mut attr, mut after_derive) = (None, false);
 
         item = item.map_attrs(|mut attrs| {
             if let Some(legacy_attr_invoc) = self.cx.resolver.find_legacy_attr_invoc(&mut attrs,
@@ -1152,11 +1139,11 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 return attrs;
             }
 
-            attr = self.find_attr_invoc(&mut attrs, &mut together_with);
+            attr = self.find_attr_invoc(&mut attrs, &mut after_derive);
             attrs
         });
 
-        (attr, item, together_with)
+        (attr, item, after_derive)
     }
 
     fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
@@ -1195,7 +1182,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
         expr.node = self.cfg.configure_expr_kind(expr.node);
 
         // ignore derives so they remain unused
-        let (attr, expr, together_with) = self.classify_nonitem(expr);
+        let (attr, expr, after_derive) = self.classify_nonitem(expr);
 
         if attr.is_some() {
             // collect the invoc regardless of whether or not attributes are permitted here
@@ -1204,7 +1191,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
             // AstFragmentKind::Expr requires the macro to emit an expression
             return self.collect_attr(attr, vec![], Annotatable::Expr(P(expr)),
-                                     AstFragmentKind::Expr, together_with).make_expr();
+                                     AstFragmentKind::Expr, after_derive).make_expr();
         }
 
         if let ast::ExprKind::Mac(mac) = expr.node {
@@ -1220,13 +1207,13 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
         expr.node = self.cfg.configure_expr_kind(expr.node);
 
         // ignore derives so they remain unused
-        let (attr, expr, together_with) = self.classify_nonitem(expr);
+        let (attr, expr, after_derive) = self.classify_nonitem(expr);
 
         if attr.is_some() {
             attr.as_ref().map(|a| self.cfg.maybe_emit_expr_attr_err(a));
 
             return self.collect_attr(attr, vec![], Annotatable::Expr(P(expr)),
-                                     AstFragmentKind::OptExpr, together_with).make_opt_expr();
+                                     AstFragmentKind::OptExpr, after_derive).make_opt_expr();
         }
 
         if let ast::ExprKind::Mac(mac) = expr.node {
@@ -1258,18 +1245,18 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
         // we'll expand attributes on expressions separately
         if !stmt.is_expr() {
-            let (attr, derives, stmt_, together_with) = if stmt.is_item() {
+            let (attr, derives, stmt_, after_derive) = if stmt.is_item() {
                 self.classify_item(stmt)
             } else {
                 // ignore derives on non-item statements so it falls through
                 // to the unused-attributes lint
-                let (attr, stmt, together_with) = self.classify_nonitem(stmt);
-                (attr, vec![], stmt, together_with)
+                let (attr, stmt, after_derive) = self.classify_nonitem(stmt);
+                (attr, vec![], stmt, after_derive)
             };
 
             if attr.is_some() || !derives.is_empty() {
                 return self.collect_attr(attr, derives, Annotatable::Stmt(P(stmt_)),
-                                         AstFragmentKind::Stmts, together_with).make_stmts();
+                                         AstFragmentKind::Stmts, after_derive).make_stmts();
             }
 
             stmt = stmt_;
@@ -1311,10 +1298,10 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     fn fold_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         let item = configure!(self, item);
 
-        let (attr, traits, item, together_with) = self.classify_item(item);
+        let (attr, traits, item, after_derive) = self.classify_item(item);
         if attr.is_some() || !traits.is_empty() {
             return self.collect_attr(attr, traits, Annotatable::Item(item),
-                                     AstFragmentKind::Items, together_with).make_items();
+                                     AstFragmentKind::Items, after_derive).make_items();
         }
 
         match item.node {
@@ -1386,10 +1373,10 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     fn fold_trait_item(&mut self, item: ast::TraitItem) -> SmallVec<[ast::TraitItem; 1]> {
         let item = configure!(self, item);
 
-        let (attr, traits, item, together_with) = self.classify_item(item);
+        let (attr, traits, item, after_derive) = self.classify_item(item);
         if attr.is_some() || !traits.is_empty() {
             return self.collect_attr(attr, traits, Annotatable::TraitItem(P(item)),
-                                     AstFragmentKind::TraitItems, together_with).make_trait_items()
+                                     AstFragmentKind::TraitItems, after_derive).make_trait_items()
         }
 
         match item.node {
@@ -1405,10 +1392,10 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     fn fold_impl_item(&mut self, item: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]> {
         let item = configure!(self, item);
 
-        let (attr, traits, item, together_with) = self.classify_item(item);
+        let (attr, traits, item, after_derive) = self.classify_item(item);
         if attr.is_some() || !traits.is_empty() {
             return self.collect_attr(attr, traits, Annotatable::ImplItem(P(item)),
-                                     AstFragmentKind::ImplItems, together_with).make_impl_items();
+                                     AstFragmentKind::ImplItems, after_derive).make_impl_items();
         }
 
         match item.node {
@@ -1440,11 +1427,11 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     fn fold_foreign_item(&mut self, foreign_item: ast::ForeignItem)
         -> SmallVec<[ast::ForeignItem; 1]>
     {
-        let (attr, traits, foreign_item, together_with) = self.classify_item(foreign_item);
+        let (attr, traits, foreign_item, after_derive) = self.classify_item(foreign_item);
 
         if attr.is_some() || !traits.is_empty() {
             return self.collect_attr(attr, traits, Annotatable::ForeignItem(P(foreign_item)),
-                                     AstFragmentKind::ForeignItems, together_with)
+                                     AstFragmentKind::ForeignItems, after_derive)
                                      .make_foreign_items();
         }
 

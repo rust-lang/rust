@@ -19,8 +19,8 @@
 #[macro_use] #[no_link]
 extern crate macro_crate_test;
 
-#[derive(PartialEq, Clone, Debug)]
 #[rustc_into_multi_foo]
+#[derive(PartialEq, Clone, Debug)]
 fn foo() -> AnotherFakeTypeThatHadBetterGoAway {}
 
 // Check that the `#[into_multi_foo]`-generated `foo2` is configured away
