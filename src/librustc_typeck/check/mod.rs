@@ -3358,7 +3358,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 Applicability::MaybeIncorrect
                             };
                             err.span_suggestion_with_applicability(
-                                field.span, help, suggestion, applicability
+                                expr.span, help, suggestion, applicability
                             );
                         }
                     }
