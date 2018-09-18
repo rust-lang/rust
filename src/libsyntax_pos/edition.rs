@@ -12,7 +12,7 @@ use std::fmt;
 use std::str::FromStr;
 
 /// The edition of the compiler (RFC 2052)
-#[derive(Clone, Copy, Hash, PartialEq, PartialOrd, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Hash, PartialEq, PartialOrd, Debug, RustcEncodable, RustcDecodable, Eq)]
 #[non_exhaustive]
 pub enum Edition {
     // editions must be kept in order, oldest to newest

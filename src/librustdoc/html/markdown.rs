@@ -37,6 +37,7 @@ use std::fmt::{self, Write};
 use std::borrow::Cow;
 use std::ops::Range;
 use std::str;
+use syntax::edition::Edition;
 
 use html::toc::TocBuilder;
 use html::highlight;
@@ -577,6 +578,7 @@ pub struct LangString {
     pub compile_fail: bool,
     pub error_codes: Vec<String>,
     pub allow_fail: bool,
+    pub edition: Option<Edition>
 }
 
 impl LangString {
@@ -591,6 +593,7 @@ impl LangString {
             compile_fail: false,
             error_codes: Vec::new(),
             allow_fail: false,
+            edition: None,
         }
     }
 
@@ -624,6 +627,11 @@ impl LangString {
                     data.compile_fail = true;
                     seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     data.no_run = true;
+                }
+                x if allow_error_code_check && x.starts_with("edition") => {
+                    // allow_error_code_check is true if we're on nightly, which
+                    // is needed for edition support
+                    data.edition = x[7..].parse::<Edition>().ok();
                 }
                 x if allow_error_code_check && x.starts_with("E") && x.len() == 5 => {
                     if x[1..].parse::<u32>().is_ok() {
@@ -925,12 +933,14 @@ mod tests {
     use super::{ErrorCodes, LangString, Markdown, MarkdownHtml, IdMap};
     use super::plain_summary_line;
     use std::cell::RefCell;
+    use syntax::edition::Edition;
 
     #[test]
     fn test_lang_string_parse() {
         fn t(s: &str,
             should_panic: bool, no_run: bool, ignore: bool, rust: bool, test_harness: bool,
-            compile_fail: bool, allow_fail: bool, error_codes: Vec<String>) {
+            compile_fail: bool, allow_fail: bool, error_codes: Vec<String>,
+             edition: Option<Edition>) {
             assert_eq!(LangString::parse(s, ErrorCodes::Yes), LangString {
                 should_panic,
                 no_run,
@@ -941,6 +951,7 @@ mod tests {
                 error_codes,
                 original: s.to_owned(),
                 allow_fail,
+                edition,
             })
         }
 
@@ -948,23 +959,26 @@ mod tests {
             Vec::new()
         }
 
-        // marker                | should_panic| no_run| ignore| rust | test_harness| compile_fail
-        //                       | allow_fail | error_codes
-        t("",                      false,        false,  false,  true,  false, false, false, v());
-        t("rust",                  false,        false,  false,  true,  false, false, false, v());
-        t("sh",                    false,        false,  false,  false, false, false, false, v());
-        t("ignore",                false,        false,  true,   true,  false, false, false, v());
-        t("should_panic",          true,         false,  false,  true,  false, false, false, v());
-        t("no_run",                false,        true,   false,  true,  false, false, false, v());
-        t("test_harness",          false,        false,  false,  true,  true,  false, false, v());
-        t("compile_fail",          false,        true,   false,  true,  false, true,  false, v());
-        t("allow_fail",            false,        false,  false,  true,  false, false, true,  v());
-        t("{.no_run .example}",    false,        true,   false,  true,  false, false, false, v());
-        t("{.sh .should_panic}",   true,         false,  false,  false, false, false, false, v());
-        t("{.example .rust}",      false,        false,  false,  true,  false, false, false, v());
-        t("{.test_harness .rust}", false,        false,  false,  true,  true,  false, false, v());
-        t("text, no_run",          false,        true,   false,  false, false, false, false, v());
-        t("text,no_run",           false,        true,   false,  false, false, false, false, v());
+        // ignore-tidy-linelength
+        // marker                | should_panic | no_run | ignore | rust | test_harness
+        //                       | compile_fail | allow_fail | error_codes | edition
+        t("",                      false,         false,   false,   true,  false, false, false, v(), None);
+        t("rust",                  false,         false,   false,   true,  false, false, false, v(), None);
+        t("sh",                    false,         false,   false,   false, false, false, false, v(), None);
+        t("ignore",                false,         false,   true,    true,  false, false, false, v(), None);
+        t("should_panic",          true,          false,   false,   true,  false, false, false, v(), None);
+        t("no_run",                false,         true,    false,   true,  false, false, false, v(), None);
+        t("test_harness",          false,         false,   false,   true,  true,  false, false, v(), None);
+        t("compile_fail",          false,         true,    false,   true,  false, true,  false, v(), None);
+        t("allow_fail",            false,         false,   false,   true,  false, false, true,  v(), None);
+        t("{.no_run .example}",    false,         true,    false,   true,  false, false, false, v(), None);
+        t("{.sh .should_panic}",   true,          false,   false,   false, false, false, false, v(), None);
+        t("{.example .rust}",      false,         false,   false,   true,  false, false, false, v(), None);
+        t("{.test_harness .rust}", false,         false,   false,   true,  true,  false, false, v(), None);
+        t("text, no_run",          false,         true,    false,   false, false, false, false, v(), None);
+        t("text,no_run",           false,         true,    false,   false, false, false, false, v(), None);
+        t("edition2015",           false,         false,   false,   true,  false, false, false, v(), Some(Edition::Edition2015));
+        t("edition2018",           false,         false,   false,   true,  false, false, false, v(), Some(Edition::Edition2018));
     }
 
     #[test]
