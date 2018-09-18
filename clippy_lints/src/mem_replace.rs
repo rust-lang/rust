@@ -15,12 +15,12 @@ use if_chain::if_chain;
 ///
 /// **Example:**
 /// ```rust
-/// let an_option = Some(0);
+/// let mut an_option = Some(0);
 /// let replaced = mem::replace(&mut an_option, None);
 /// ```
 /// Is better expressed with:
 /// ```rust
-/// let an_option = Some(0);
+/// let mut an_option = Some(0);
 /// let taken = an_option.take();
 /// ```
 declare_clippy_lint! {
