@@ -77,11 +77,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
                             |db| {
                                 if let Some(snippet) = snippet_opt(cx, inner.span) {
                                     db.span_suggestion_with_applicability(
-                                                e.span, 
-                                                "change this to",
-                                                snippet,
-                                                Applicability::Unspecified,
-                                                );
+                                        e.span, 
+                                        "change this to",
+                                        snippet,
+                                        Applicability::Unspecified,
+                                    );
                                 }
                             },
                         );
@@ -110,11 +110,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
                     |db| {
                         if let Some(snippet) = snippet_opt(cx, name.span) {
                             db.span_suggestion_with_applicability(
-                                    pat.span,
-                                    "change this to",
-                                    snippet,
-                                    Applicability::Unspecified,
-                                    );
+                                pat.span,
+                                "change this to",
+                                snippet,
+                                Applicability::Unspecified,
+                            );
                         }
                     }
                 )

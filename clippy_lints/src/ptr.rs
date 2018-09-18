@@ -212,11 +212,11 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: NodeId, opt_body_id:
                         "writing `&String` instead of `&str` involves a new object where a slice will do.",
                         |db| {
                             db.span_suggestion_with_applicability(
-                                    arg.span,
-                                    "change this to",
-                                    "&str".into(),
-                                    Applicability::Unspecified,
-                                    );
+                                arg.span,
+                                "change this to",
+                                "&str".into(),
+                                Applicability::Unspecified,
+                            );
                             for (clonespan, suggestion) in spans {
                                 db.span_suggestion_short_with_applicability(
                                     clonespan,
@@ -253,11 +253,11 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: NodeId, opt_body_id:
                                 "using a reference to `Cow` is not recommended.",
                                 |db| {
                                     db.span_suggestion_with_applicability(
-                                            arg.span,
-                                            "change this to",
-                                            "&".to_owned() + &r,
-                                            Applicability::Unspecified,
-                                            );
+                                        arg.span,
+                                        "change this to",
+                                        "&".to_owned() + &r,
+                                        Applicability::Unspecified,
+                                    );
                                 },
                             );
                         }

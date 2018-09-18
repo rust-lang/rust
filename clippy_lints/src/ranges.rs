@@ -151,17 +151,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         let end = Sugg::hir(cx, y, "y");
                         if let Some(is_wrapped) = &snippet_opt(cx, expr.span) {
                             if is_wrapped.starts_with('(') && is_wrapped.ends_with(')') {
-                                db.span_suggestion_with_applicability(expr.span,
-                                           "use",
-                                           format!("({}..={})", start, end),
-                                           Applicability::Unspecified,
-                                           );
+                                db.span_suggestion_with_applicability(
+                                    expr.span,
+                                    "use",
+                                    format!("({}..={})", start, end),
+                                    Applicability::Unspecified,
+                                );
                             } else {
-                                db.span_suggestion_with_applicability(expr.span,
-                                           "use",
-                                           format!("{}..={}", start, end),
-                                           Applicability::Unspecified,
-                                           );
+                                db.span_suggestion_with_applicability(
+                                    expr.span,
+                                    "use",
+                                    format!("{}..={}", start, end),
+                                    Applicability::Unspecified,
+                                );
                             }
                         }
                     },
@@ -182,11 +184,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     |db| {
                         let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").to_string());
                         let end = Sugg::hir(cx, y, "y");
-                        db.span_suggestion_with_applicability(expr.span,
-                                           "use",
-                                           format!("{}..{}", start, end),
-                                           Applicability::Unspecified,
-                                           );
+                        db.span_suggestion_with_applicability(
+                            expr.span,
+                            "use",
+                            format!("{}..{}", start, end),
+                            Applicability::Unspecified,
+                        );
                     },
                 );
             }

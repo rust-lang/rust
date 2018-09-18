@@ -546,10 +546,10 @@ impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_error
         }
 
         self.span_suggestion_with_applicability(
-                    remove_span,
-                    msg,
-                    String::new(),
-                    applicability,
-                    );
+            remove_span,
+            msg,
+            String::new(),
+            applicability,
+        );
     }
 }

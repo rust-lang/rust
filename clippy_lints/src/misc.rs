@@ -295,14 +295,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         l.pat.span,
                         "`ref` on an entire `let` pattern is discouraged, take a reference with `&` instead",
                         |db| {
-                            db.span_suggestion_with_applicability(s.span,
-                                               "try",
-                                               format!("let {name}{tyopt} = {initref};",
-                                                       name=snippet(cx, i.span, "_"),
-                                                       tyopt=tyopt,
-                                                       initref=initref),
-                                               Applicability::Unspecified,
-                                               );
+                            db.span_suggestion_with_applicability(
+                                s.span,
+                                "try",
+                                format!(
+                                    "let {name}{tyopt} = {initref};",
+                                    name=snippet(cx, i.span, "_"),
+                                    tyopt=tyopt,
+                                    initref=initref,
+                                ),
+                                Applicability::Unspecified,
+                            );
                         }
                     );
                 }
@@ -321,13 +324,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     |db| {
                         let sugg = if binop.node == BinOpKind::Or { !sugg } else { sugg };
                         db.span_suggestion_with_applicability(
-                                           s.span, 
-                                           "replace it with",
-                                           format!("if {} {{ {}; }}",
-                                                sugg, 
-                                                &snippet(cx, b.span, "..")),
-                                           Applicability::Unspecified,
-                                           );
+                            s.span, 
+                            "replace it with",
+                            format!(
+                                "if {} {{ {}; }}",
+                                sugg, 
+                                &snippet(cx, b.span, ".."),
+                            ),
+                            Applicability::Unspecified,
+                        );
                     });
             }
         };
@@ -545,11 +550,11 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
                 }
             }
             db.span_suggestion_with_applicability(
-                        expr.span, 
-                        "try",
-                        snip.to_string(),
-                        Applicability::Unspecified,
-                        );
+                expr.span, 
+                "try",
+                snip.to_string(),
+                Applicability::Unspecified,
+            );
         },
     );
 }

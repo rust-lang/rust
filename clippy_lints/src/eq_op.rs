@@ -115,11 +115,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                             span_lint_and_then(cx, OP_REF, e.span, "needlessly taken reference of left operand", |db| {
                                 let lsnip = snippet(cx, l.span, "...").to_string();
                                 db.span_suggestion_with_applicability(
-                                        left.span,
-                                        "use the left value directly",
-                                        lsnip,
-                                        Applicability::Unspecified,
-                                        );
+                                    left.span,
+                                    "use the left value directly",
+                                    lsnip,
+                                    Applicability::Unspecified,
+                                );
                             })
                         } else if !lcpy && rcpy && implements_trait(cx, cx.tables.expr_ty(left), trait_id, &[rty.into()]) {
                             span_lint_and_then(
@@ -133,7 +133,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                                         right.span,
                                         "use the right value directly",
                                         rsnip,
-                                        Applicability::Unspecified,);
+                                        Applicability::Unspecified,
+                                    );
                                 },
                             )
                         }
@@ -146,11 +147,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                             span_lint_and_then(cx, OP_REF, e.span, "needlessly taken reference of left operand", |db| {
                                 let lsnip = snippet(cx, l.span, "...").to_string();
                                 db.span_suggestion_with_applicability(
-                                        left.span,
-                                        "use the left value directly",
-                                        lsnip,
-                                        Applicability::Unspecified,
-                                        );
+                                    left.span,
+                                    "use the left value directly",
+                                    lsnip,
+                                    Applicability::Unspecified,
+                                );
                             })
                         }
                     },
@@ -162,11 +163,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                             span_lint_and_then(cx, OP_REF, e.span, "taken reference of right operand", |db| {
                                 let rsnip = snippet(cx, r.span, "...").to_string();
                                 db.span_suggestion_with_applicability(
-                                        right.span,
-                                        "use the right value directly",
-                                        rsnip,
-                                        Applicability::Unspecified,
-                                        );
+                                    right.span,
+                                    "use the right value directly",
+                                    rsnip,
+                                    Applicability::Unspecified,
+                                );
                             })
                         }
                     },

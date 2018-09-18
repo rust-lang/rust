@@ -138,11 +138,11 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
                                    |db| {
                                        if !sugg.is_empty() {
                                            db.span_suggestion_with_applicability(
-                                                        span,
-                                                        "try",
-                                                        sugg,
-                                                        Applicability::Unspecified,
-                                                        );
+                                               span,
+                                               "try",
+                                               sugg,
+                                               Applicability::Unspecified,
+                                           );
 
                                            if replace {
                                                db.note("or maybe you should use `std::mem::replace`?");
@@ -187,13 +187,15 @@ fn check_suspicious_swap(cx: &LateContext<'_, '_>, block: &Block) {
                                    |db| {
                                        if !what.is_empty() {
                                            db.span_suggestion_with_applicability(
-                                                              span,
-                                                              "try",
-                                                              format!("std::mem::swap({}, {})",
-                                                                    lhs,
-                                                                    rhs),
-                                                              Applicability::Unspecified,
-                                                              );
+                                               span,
+                                               "try",
+                                               format!(
+                                                   "std::mem::swap({}, {})",
+                                                   lhs,
+                                                   rhs,
+                                               ),
+                                               Applicability::Unspecified,
+                                           );
                                            db.note("or maybe you should use `std::mem::replace`?");
                                        }
                                    });

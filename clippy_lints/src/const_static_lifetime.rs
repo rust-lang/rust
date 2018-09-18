@@ -66,7 +66,7 @@ impl StaticConst {
                                             "consider removing `'static`",
                                             sugg,
                                             Applicability::Unspecified,
-                                            );
+                                        );
                                     },
                                 );
                             }

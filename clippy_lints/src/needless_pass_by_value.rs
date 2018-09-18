@@ -229,11 +229,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                             then {
                                 let slice_ty = format!("&[{}]", snippet(cx, elem_ty.span, "_"));
                                 db.span_suggestion_with_applicability(
-                                                input.span,
-                                                "consider changing the type to",
-                                                slice_ty,
-                                                Applicability::Unspecified,
-                                                );
+                                    input.span,
+                                    "consider changing the type to",
+                                    slice_ty,
+                                    Applicability::Unspecified,
+                                );
 
                                 for (span, suggestion) in clone_spans {
                                     db.span_suggestion_with_applicability(
@@ -258,11 +258,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                             if let Some(clone_spans) =
                                 get_spans(cx, Some(body.id()), idx, &[("clone", ".to_string()"), ("as_str", "")]) {
                                 db.span_suggestion_with_applicability(
-                                            input.span,
-                                            "consider changing the type to",
-                                            "&str".to_string(),
-                                            Applicability::Unspecified,
-                                            );
+                                    input.span,
+                                    "consider changing the type to",
+                                    "&str".to_string(),
+                                    Applicability::Unspecified,
+                                );
 
                                 for (span, suggestion) in clone_spans {
                                     db.span_suggestion_with_applicability(

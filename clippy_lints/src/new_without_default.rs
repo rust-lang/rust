@@ -131,12 +131,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                             &format!("you should consider deriving a `Default` implementation for `{}`", self_ty),
                                             |db| {
                                                 db.suggest_item_with_attr(
-                                                        cx,
-                                                        sp,
-                                                        "try this",
-                                                        "#[derive(Default)]",
-                                                        Applicability::Unspecified,
-                                                        );
+                                                    cx,
+                                                    sp,
+                                                    "try this",
+                                                    "#[derive(Default)]",
+                                                    Applicability::Unspecified,
+                                                );
                                             });
                                     } else {
                                         span_lint_and_then(

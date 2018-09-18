@@ -110,11 +110,11 @@ impl ReturnPass {
         span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded return statement", |db| {
             if let Some(snippet) = snippet_opt(cx, inner_span) {
                 db.span_suggestion_with_applicability(
-                            ret_span,
-                            "remove `return` as shown",
-                            snippet,
-                            Applicability::Unspecified,
-                            );
+                    ret_span,
+                    "remove `return` as shown",
+                    snippet,
+                    Applicability::Unspecified,
+                );
             }
         });
     }

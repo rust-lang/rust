@@ -247,11 +247,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     };
 
                                     db.span_suggestion_with_applicability(
-                                                e.span,
-                                                "try",
-                                                sugg.to_string(),
-                                                Applicability::Unspecified,
-                                                );
+                                        e.span,
+                                        "try",
+                                        sugg.to_string(),
+                                        Applicability::Unspecified,
+                                    );
                                 },
                             ),
                             (&ty::Int(_), &ty::RawPtr(_)) | (&ty::Uint(_), &ty::RawPtr(_)) => {
@@ -262,11 +262,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     "transmute from an integer to a pointer",
                                     |db| if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
                                         db.span_suggestion_with_applicability(
-                                                e.span,
-                                                "try",
-                                                arg.as_ty(&to_ty.to_string()).to_string(),
-                                                Applicability::Unspecified,
-                                                );
+                                            e.span,
+                                            "try",
+                                            arg.as_ty(&to_ty.to_string()).to_string(),
+                                            Applicability::Unspecified,
+                                        );
                                     },
                                 )
                             },
@@ -324,11 +324,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     };
 
                                     db.span_suggestion_with_applicability(
-                                                e.span,
-                                                "try",
-                                                sugg::make_unop(deref, arg).to_string(),
-                                                Applicability::Unspecified,
-                                                );
+                                        e.span,
+                                        "try",
+                                        sugg::make_unop(deref, arg).to_string(),
+                                        Applicability::Unspecified,
+                                    );
                                 },
                             ),
                             (&ty::Int(ast::IntTy::I32), &ty::Char) |
@@ -399,11 +399,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                                         sugg_paren.addr_deref()
                                                     };
                                                     db.span_suggestion_with_applicability(
-                                                            e.span,
-                                                            "try",
-                                                            sugg.to_string(),
-                                                            Applicability::Unspecified,
-                                                            );
+                                                        e.span,
+                                                        "try",
+                                                        sugg.to_string(),
+                                                        Applicability::Unspecified,
+                                                    );
                                                 },
                                             )
                                         }
@@ -418,11 +418,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                 |db| if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
                                     let sugg = arg.as_ty(cx.tcx.mk_ptr(to_ty));
                                     db.span_suggestion_with_applicability(
-                                            e.span,
-                                            "try",
-                                            sugg.to_string(),
-                                            Applicability::Unspecified,
-                                            );
+                                        e.span,
+                                        "try",
+                                        sugg.to_string(),
+                                        Applicability::Unspecified,
+                                    );
                                 },
                             ),
                             (&ty::Int(ast::IntTy::I8), &ty::Bool) | (&ty::Uint(ast::UintTy::U8), &ty::Bool) => {

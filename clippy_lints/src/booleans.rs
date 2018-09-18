@@ -418,12 +418,14 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                     NONMINIMAL_BOOL,
                     e.span,
                     "this boolean expression can be simplified",
-                    |db| { db.span_suggestions_with_applicability(
+                    |db| {
+                        db.span_suggestions_with_applicability(
                             e.span,
                             "try",
                             suggestions,
                             Applicability::Unspecified,
-                            ); },
+                        );
+                    },
                 );
             };
             if improvements.is_empty() {

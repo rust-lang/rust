@@ -79,11 +79,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrowedRef {
                                    |db| {
                                        let hint = snippet(cx, spanned_name.span, "..").into_owned();
                                        db.span_suggestion_with_applicability(
-                                            pat.span, 
-                                            "try removing the `&ref` part and just keep",
-                                            hint,
-                                            Applicability::Unspecified,
-                                            );
+                                           pat.span, 
+                                           "try removing the `&ref` part and just keep",
+                                           hint,
+                                           Applicability::Unspecified,
+                                       );
                                    });
             }
         }

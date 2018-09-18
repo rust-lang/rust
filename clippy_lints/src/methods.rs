@@ -1129,17 +1129,17 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
                     let derefs: String = iter::repeat('*').take(n).collect();
                     let explicit = format!("{}{}::clone({})", refs, ty, snip);
                     db.span_suggestion_with_applicability(
-                            expr.span,
-                            "try dereferencing it",
-                            format!("{}({}{}).clone()", refs, derefs, snip.deref()),
-                            Applicability::Unspecified,
-                            );
+                        expr.span,
+                        "try dereferencing it",
+                        format!("{}({}{}).clone()", refs, derefs, snip.deref()),
+                        Applicability::Unspecified,
+                    );
                     db.span_suggestion_with_applicability(
-                            expr.span, 
-                            "or try being explicit about what type to clone", 
-                            explicit,
-                            Applicability::Unspecified,
-                            );
+                        expr.span, 
+                        "or try being explicit about what type to clone", 
+                        explicit,
+                        Applicability::Unspecified,
+                    );
                 },
             );
             return; // don't report clone_on_copy
@@ -1185,7 +1185,7 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
                     text,
                     snip,
                     Applicability::Unspecified,
-                    );
+                );
             }
         });
     }
@@ -1656,11 +1656,11 @@ fn lint_map_or_none<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr,
             let hint = format!("{0}.and_then({1})", map_or_self_snippet, map_or_func_snippet);
             span_lint_and_then(cx, OPTION_MAP_OR_NONE, expr.span, msg, |db| {
                 db.span_suggestion_with_applicability(
-                        expr.span,
-                        "try using and_then instead",
-                        hint,
-                        Applicability::Unspecified,
-                        );
+                    expr.span,
+                    "try using and_then instead",
+                    hint,
+                    Applicability::Unspecified,
+                );
             });
         }
     }

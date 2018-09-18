@@ -141,11 +141,11 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
                                            snippet(self.cx, params[2].span, ".."));
 
                         db.span_suggestion_with_applicability(
-                                self.span,
-                                "consider using",
-                                help,
-                                Applicability::Unspecified,
-                                );
+                            self.span,
+                            "consider using",
+                            help,
+                            Applicability::Unspecified,
+                        );
                     }
                     else {
                         let help = format!("{}.entry({})",
@@ -153,11 +153,11 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
                                            snippet(self.cx, params[1].span, ".."));
 
                         db.span_suggestion_with_applicability(
-                                self.span,
-                                "consider using",
-                                help,
-                                Applicability::Unspecified,
-                                );
+                            self.span,
+                            "consider using",
+                            help,
+                            Applicability::Unspecified,
+                        );
                     }
                 });
             }

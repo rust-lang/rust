@@ -62,11 +62,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                             let sugg = format!("{}.to_string()", snippet(cx, format_arg, "<arg>").into_owned());
                             span_lint_and_then(cx, USELESS_FORMAT, span, "useless use of `format!`", |db| {
                                 db.span_suggestion_with_applicability(
-                                        expr.span,
-                                        "consider using .to_string()",
-                                        sugg,
-                                        Applicability::Unspecified,
-                                        );
+                                    expr.span,
+                                    "consider using .to_string()",
+                                    sugg,
+                                    Applicability::Unspecified,
+                                );
                             });
                         }
                     }
@@ -77,11 +77,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         let sugg = format!("{}.to_string()", snippet(cx, expr.span, "<expr>").into_owned());
                         span_lint_and_then(cx, USELESS_FORMAT, span, "useless use of `format!`", |db| {
                             db.span_suggestion_with_applicability(
-                                    span,
-                                    "consider using .to_string()",
-                                    sugg,
-                                    Applicability::Unspecified,
-                                    );
+                                span,
+                                "consider using .to_string()",
+                                sugg,
+                                Applicability::Unspecified,
+                            );
                         });
                     }
                 },

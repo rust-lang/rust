@@ -309,11 +309,11 @@ impl EarlyLintPass for MiscEarly {
                         |db| if decl.inputs.is_empty() {
                             let hint = snippet(cx, block.span, "..").into_owned();
                             db.span_suggestion_with_applicability(
-                                    expr.span,
-                                    "Try doing something like: ",
-                                    hint,
-                                    Applicability::Unspecified,
-                                    );
+                                expr.span,
+                                "Try doing something like: ",
+                                hint,
+                                Applicability::Unspecified,
+                            );
                         },
                     );
                 }
