@@ -75,7 +75,7 @@ impl QuestionMarkPass {
                             expr.span,
                             "replace_it_with",
                             format!("{}?;", receiver_str),
-                            Applicability::Unspecified,
+                            Applicability::MachineApplicable, // snippet
                         );
                     }
                 )

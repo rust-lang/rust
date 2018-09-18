@@ -57,7 +57,7 @@ fn check_attrs(cx: &LateContext<'_, '_>, name: Name, attrs: &[Attribute]) {
             attr.span,
             &format!("use of `#[inline]` on trait method `{}` which has no body", name),
             |db| {
-                db.suggest_remove_item(cx, attr.span, "remove", Applicability::Unspecified);
+                db.suggest_remove_item(cx, attr.span, "remove", Applicability::MachineApplicable);
             },
         );
     }

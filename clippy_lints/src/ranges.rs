@@ -155,14 +155,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                     expr.span,
                                     "use",
                                     format!("({}..={})", start, end),
-                                    Applicability::Unspecified,
+                                    Applicability::MaybeIncorrect,
                                 );
                             } else {
                                 db.span_suggestion_with_applicability(
                                     expr.span,
                                     "use",
                                     format!("{}..={}", start, end),
-                                    Applicability::Unspecified,
+                                    Applicability::MachineApplicable, // snippet
                                 );
                             }
                         }
@@ -188,7 +188,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                             expr.span,
                             "use",
                             format!("{}..{}", start, end),
-                            Applicability::Unspecified,
+                            Applicability::MachineApplicable, // snippet
                         );
                     },
                 );

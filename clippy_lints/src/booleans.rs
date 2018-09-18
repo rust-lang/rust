@@ -395,6 +395,8 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                                     e.span,
                                     "it would look like the following",
                                     suggest(self.cx, suggestion, &h2q.terminals).0,
+                                    // nonminimal_bool can produce minimal but
+                                    // not human readable expressions (#3141)
                                     Applicability::Unspecified,
                                 );
                             },
@@ -423,6 +425,8 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                             e.span,
                             "try",
                             suggestions,
+                            // nonminimal_bool can produce minimal but
+                            // not human readable expressions (#3141)
                             Applicability::Unspecified,
                         );
                     },

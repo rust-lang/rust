@@ -101,7 +101,7 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr) {
                         expr.span,
                         "remove closure as shown",
                         snippet,
-                        Applicability::Unspecified,
+                        Applicability::MachineApplicable,
                     );
                 }
             });

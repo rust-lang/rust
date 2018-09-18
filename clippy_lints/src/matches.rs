@@ -344,7 +344,7 @@ fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Ex
                                 expr.span,
                                 "consider using an if/else expression",
                                 sugg,
-                                Applicability::Unspecified,
+                                Applicability::MaybeIncorrect, // not sure
                             );
                         }
                     }

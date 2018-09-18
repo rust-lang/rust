@@ -144,7 +144,7 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
                             self.span,
                             "consider using",
                             help,
-                            Applicability::Unspecified,
+                            Applicability::MachineApplicable, // snippet
                         );
                     }
                     else {
@@ -156,7 +156,7 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
                             self.span,
                             "consider using",
                             help,
-                            Applicability::Unspecified,
+                            Applicability::MachineApplicable, // snippet
                         );
                     }
                 });

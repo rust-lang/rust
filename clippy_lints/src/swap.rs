@@ -194,7 +194,7 @@ fn check_suspicious_swap(cx: &LateContext<'_, '_>, block: &Block) {
                                                    lhs,
                                                    rhs,
                                                ),
-                                               Applicability::Unspecified,
+                                               Applicability::MaybeIncorrect,
                                            );
                                            db.note("or maybe you should use `std::mem::replace`?");
                                        }

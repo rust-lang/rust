@@ -143,7 +143,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BitMask {
                         e.span,
                         "try",
                         format!("{}.trailing_zeros() >= {}", sugg, n.count_ones()),
-                        Applicability::Unspecified,
+                        Applicability::MaybeIncorrect,
                     );
                 });
             }

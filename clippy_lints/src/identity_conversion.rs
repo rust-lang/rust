@@ -68,7 +68,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
                                 e.span,
                                 "consider removing `.into()`",
                                 sugg,
-                                Applicability::Unspecified,
+                                Applicability::MachineApplicable, // snippet
                             );
                         });
                     }
@@ -83,7 +83,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
                                 e.span,
                                 "consider removing `.into_iter()`",
                                 sugg,
-                                Applicability::Unspecified,
+                                Applicability::MachineApplicable, // snippet
                             );
                         });
                     }
@@ -103,7 +103,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
                                     e.span,
                                     &sugg_msg,
                                     sugg,
-                                    Applicability::Unspecified,
+                                    Applicability::MachineApplicable, // snippet
                                 );
                             });
                         }

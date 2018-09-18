@@ -113,7 +113,7 @@ impl ReturnPass {
                     ret_span,
                     "remove `return` as shown",
                     snippet,
-                    Applicability::Unspecified,
+                    Applicability::MachineApplicable,
                 );
             }
         });

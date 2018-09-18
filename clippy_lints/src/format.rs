@@ -65,7 +65,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                     expr.span,
                                     "consider using .to_string()",
                                     sugg,
-                                    Applicability::Unspecified,
+                                    Applicability::MachineApplicable,
                                 );
                             });
                         }
@@ -80,7 +80,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                 span,
                                 "consider using .to_string()",
                                 sugg,
-                                Applicability::Unspecified,
+                                Applicability::MachineApplicable, // snippet
                             );
                         });
                     }

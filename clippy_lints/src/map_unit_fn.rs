@@ -232,7 +232,7 @@ fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt, expr: &hir::Expr
                     stmt.span,
                     "try this",
                     suggestion,
-                    Applicability::Unspecified,
+                    Applicability::MachineApplicable, // snippet
                 );
             } else {
                 let suggestion = format!("if let {0}({1}) = {2} {{ ... }}",

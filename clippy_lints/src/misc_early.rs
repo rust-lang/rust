@@ -312,7 +312,7 @@ impl EarlyLintPass for MiscEarly {
                                 expr.span,
                                 "Try doing something like: ",
                                 hint,
-                                Applicability::Unspecified,
+                                Applicability::MachineApplicable, // snippet
                             );
                         },
                     );
@@ -402,13 +402,13 @@ impl MiscEarly {
                             lit.span,
                             "if you mean to use a decimal constant, remove the `0` to remove confusion",
                             src.trim_left_matches(|c| c == '_' || c == '0').to_string(),
-                            Applicability::Unspecified,
+                            Applicability::MaybeIncorrect,
                         );
                         db.span_suggestion_with_applicability(
                             lit.span,
                             "if you mean to use an octal constant, use `0o`",
                             format!("0o{}", src.trim_left_matches(|c| c == '_' || c == '0')),
-                            Applicability::Unspecified,
+                            Applicability::MaybeIncorrect,
                         );
                     });
                 }

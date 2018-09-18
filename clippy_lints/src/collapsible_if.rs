@@ -142,7 +142,7 @@ fn check_collapsible_no_if_let(cx: &EarlyContext<'_>, expr: &ast::Expr, check: &
                         lhs.and(&rhs),
                         snippet_block(cx, content.span, ".."),
                     ),
-                    Applicability::Unspecified,
+                    Applicability::MachineApplicable, // snippet
                 );
             });
         }

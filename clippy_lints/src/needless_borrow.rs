@@ -80,7 +80,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
                                         e.span, 
                                         "change this to",
                                         snippet,
-                                        Applicability::Unspecified,
+                                        Applicability::MachineApplicable,
                                     );
                                 }
                             },
@@ -113,7 +113,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
                                 pat.span,
                                 "change this to",
                                 snippet,
-                                Applicability::Unspecified,
+                                Applicability::MachineApplicable,
                             );
                         }
                     }

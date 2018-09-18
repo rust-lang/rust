@@ -1206,7 +1206,7 @@ fn check_for_loop_reverse_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx
                                     dots = dots,
                                     start = start_snippet
                                 ),
-                                Applicability::Unspecified,
+                                Applicability::MaybeIncorrect,
                             );
                         },
                     );

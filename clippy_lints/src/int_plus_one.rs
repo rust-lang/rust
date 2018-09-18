@@ -157,7 +157,7 @@ impl IntPlusOne {
                 block.span,
                 "change `>= y + 1` to `> y` as shown",
                 recommendation,
-                Applicability::Unspecified,
+                Applicability::MachineApplicable, // snippet
             );
         });
     }

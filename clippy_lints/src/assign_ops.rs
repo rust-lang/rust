@@ -90,13 +90,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                                 long
                                             ),
                                             format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),
-                                            Applicability::Unspecified,
+                                            Applicability::MachineApplicable,
                                         );
                                         db.span_suggestion_with_applicability(
                                             expr.span,
                                             "or",
                                             long,
-                                            Applicability::Unspecified,
+                                            Applicability::MachineApplicable, // snippet
                                         );
                                     }
                                 },
@@ -183,7 +183,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                             expr.span,
                                             "replace it with",
                                             format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),
-                                            Applicability::Unspecified,
+                                            Applicability::MachineApplicable,
                                         );
                                     }
                                 },

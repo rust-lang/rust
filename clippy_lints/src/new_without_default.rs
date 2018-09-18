@@ -135,7 +135,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                                     sp,
                                                     "try this",
                                                     "#[derive(Default)]",
-                                                    Applicability::Unspecified,
+                                                    Applicability::MaybeIncorrect,
                                                 );
                                             });
                                     } else {
@@ -150,7 +150,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                                     item.span,
                                                     "try this",
                                                     &create_new_without_default_suggest_msg(self_ty),
-                                                    Applicability::Unspecified,
+                                                    Applicability::MaybeIncorrect,
                                                 );
                                             },
                                         );

@@ -118,7 +118,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                                     left.span,
                                     "use the left value directly",
                                     lsnip,
-                                    Applicability::Unspecified,
+                                    Applicability::MachineApplicable, // snippet
                                 );
                             })
                         } else if !lcpy && rcpy && implements_trait(cx, cx.tables.expr_ty(left), trait_id, &[rty.into()]) {
@@ -133,7 +133,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                                         right.span,
                                         "use the right value directly",
                                         rsnip,
-                                        Applicability::Unspecified,
+                                        Applicability::MachineApplicable, // snippet
                                     );
                                 },
                             )
@@ -150,7 +150,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                                     left.span,
                                     "use the left value directly",
                                     lsnip,
-                                    Applicability::Unspecified,
+                                    Applicability::MachineApplicable, // snippet
                                 );
                             })
                         }
@@ -166,7 +166,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                                     right.span,
                                     "use the right value directly",
                                     rsnip,
-                                    Applicability::Unspecified,
+                                    Applicability::MachineApplicable, // snippet
                                 );
                             })
                         }

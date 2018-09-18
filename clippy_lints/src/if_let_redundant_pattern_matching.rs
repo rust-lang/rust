@@ -82,7 +82,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                             span,
                             "try this",
                             format!("if {}.{}", snippet(cx, op.span, "_"), good_method),
-                            Applicability::Unspecified,
+                            Applicability::MachineApplicable, // snippet
                         );
                     },
                 );

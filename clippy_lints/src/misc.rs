@@ -304,7 +304,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                     tyopt=tyopt,
                                     initref=initref,
                                 ),
-                                Applicability::Unspecified,
+                                Applicability::MachineApplicable, // snippet
                             );
                         }
                     );
@@ -331,7 +331,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                 sugg, 
                                 &snippet(cx, b.span, ".."),
                             ),
-                            Applicability::Unspecified,
+                            Applicability::MachineApplicable, // snippet
                         );
                     });
             }
@@ -381,7 +381,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                             expr.span,
                             "consider comparing them within some error",
                             format!("({}).abs() < error", lhs - rhs),
-                            Applicability::Unspecified,
+                            Applicability::MachineApplicable, // snippet
                         );
                         db.span_note(expr.span, "std::f32::EPSILON and std::f64::EPSILON are available.");
                     });
@@ -553,7 +553,7 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
                 expr.span, 
                 "try",
                 snip.to_string(),
-                Applicability::Unspecified,
+                Applicability::MachineApplicable, // snippet
             );
         },
     );

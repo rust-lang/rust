@@ -1132,13 +1132,13 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
                         expr.span,
                         "try dereferencing it",
                         format!("{}({}{}).clone()", refs, derefs, snip.deref()),
-                        Applicability::Unspecified,
+                        Applicability::MaybeIncorrect,
                     );
                     db.span_suggestion_with_applicability(
                         expr.span, 
                         "or try being explicit about what type to clone", 
                         explicit,
-                        Applicability::Unspecified,
+                        Applicability::MaybeIncorrect,
                     );
                 },
             );
@@ -1659,7 +1659,7 @@ fn lint_map_or_none<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr,
                     expr.span,
                     "try using and_then instead",
                     hint,
-                    Applicability::Unspecified,
+                    Applicability::MachineApplicable, // snippet
                 );
             });
         }

@@ -65,7 +65,7 @@ impl StaticConst {
                                             ty.span, 
                                             "consider removing `'static`",
                                             sugg,
-                                            Applicability::Unspecified,
+                                            Applicability::MachineApplicable, //snippet
                                         );
                                     },
                                 );

@@ -82,7 +82,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrowedRef {
                                            pat.span, 
                                            "try removing the `&ref` part and just keep",
                                            hint,
-                                           Applicability::Unspecified,
+                                           Applicability::MachineApplicable, // snippet
                                        );
                                    });
             }
