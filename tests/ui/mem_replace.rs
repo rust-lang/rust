@@ -6,4 +6,6 @@ use std::mem;
 fn main() {
     let mut an_option = Some(1);
     let _ = mem::replace(&mut an_option, None);
+    let an_option = &mut Some(1);
+    let _ = mem::replace(an_option, None);
 }
