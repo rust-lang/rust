@@ -614,6 +614,12 @@ impl<'a> ChainFormatterShared<'a> {
             }
         }
 
+        let last_shape = if context.use_block_indent() {
+            last_shape
+        } else {
+            child_shape.sub_width(shape.rhs_overhead(context.config) + last.tries)?
+        };
+
         last_subexpr_str = last_subexpr_str.or_else(|| last.rewrite(context, last_shape));
         self.rewrites.push(last_subexpr_str?);
         Some(())
