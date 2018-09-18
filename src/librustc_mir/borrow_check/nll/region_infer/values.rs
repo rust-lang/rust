@@ -10,7 +10,7 @@
 
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::ty::{self, RegionVid};
-use rustc_data_structures::bit_set::{BitSet, SparseBitMatrix};
+use rustc_data_structures::bit_set::{HybridBitSet, SparseBitMatrix};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::fmt::Debug;
@@ -184,7 +184,7 @@ impl<N: Idx> LivenessValues<N> {
 
     /// Adds all the elements in the given bit array into the given
     /// region. Returns true if any of them are newly added.
-    crate fn add_elements(&mut self, row: N, locations: &BitSet<PointIndex>) -> bool {
+    crate fn add_elements(&mut self, row: N, locations: &HybridBitSet<PointIndex>) -> bool {
         debug!("LivenessValues::add_elements(row={:?}, locations={:?})", row, locations);
         self.points.union_into_row(row, locations)
     }
