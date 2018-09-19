@@ -1486,7 +1486,12 @@ fn rewrite_index(
             .offset_left(offset)
             .and_then(|shape| shape.sub_width(1 + rhs_overhead))
     } else {
-        shape.visual_indent(offset).sub_width(offset + 1)
+        match context.config.indent_style() {
+            IndentStyle::Block => shape
+                .offset_left(offset)
+                .and_then(|shape| shape.sub_width(1)),
+            IndentStyle::Visual => shape.visual_indent(offset).sub_width(offset + 1),
+        }
     };
     let orig_index_rw = index_shape.and_then(|s| index.rewrite(context, s));
 
