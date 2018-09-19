@@ -401,12 +401,9 @@ where
         // Compute the bounds we can derive from the trait definition.
         // These are guaranteed to apply, no matter the inference
         // results.
-        let trait_bounds = self.verify_bound
-            .projection_declared_bounds_from_trait(projection_ty);
-        debug!(
-            "projection_must_outlive: trait_bounds={:?}",
-            trait_bounds
-        );
+        let trait_bounds: Vec<_> = self.verify_bound
+            .projection_declared_bounds_from_trait(projection_ty)
+            .collect();
 
         // If declared bounds list is empty, the only applicable rule is
         // OutlivesProjectionComponent. If there are inference variables,
@@ -451,7 +448,7 @@ where
         if !trait_bounds.is_empty()
             && trait_bounds[1..]
                 .iter()
-                .chain(&approx_env_bounds)
+                .chain(approx_env_bounds.iter().map(|b| &b.1))
                 .all(|b| *b == trait_bounds[0])
         {
             let unique_bound = trait_bounds[0];
