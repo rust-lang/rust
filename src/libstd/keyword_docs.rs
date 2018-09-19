@@ -514,32 +514,66 @@ mod impl_keyword { }
 
 #[doc(keyword = "let")]
 //
-/// The `let` keyword.
+/// The variable binding keyword.
 ///
-/// The `let` keyword is used to declare a variable.
-///
-/// Example:
-///
-/// ```rust
-/// # #![allow(unused_assignments)]
-/// let x = 3; // We create a variable named `x` with the value `3`.
-/// ```
-///
-/// By default, all variables are **not** mutable. If you want a mutable variable,
-/// you'll have to use the `mut` keyword.
-///
-/// Example:
+/// The primary use for the `let` keyword is in `let` statements, which are used to introduce a new
+/// set of variables into the current scope, as given by a pattern.
 ///
 /// ```rust
 /// # #![allow(unused_assignments)]
-/// let mut x = 3; // We create a mutable variable named `x` with the value `3`.
+/// let thing1: i32 = 100;
+/// let thing2 = 200 + thing1;
 ///
-/// x += 4; // `x` is now equal to `7`.
+/// let mut changing_thing = true;
+/// changing_thing = false;
+///
+/// let (part1, part2) = ("first", "second");
+///
+/// struct Example {
+///     a: bool,
+///     b: u64,
+/// }
+///
+/// let Example { a, b: _ } = Example {
+///     a: true,
+///     b: 10004,
+/// };
+/// assert!(a);
 /// ```
 ///
-/// For more information about the `let` keyword, take a look at the [Rust Book][book].
+/// The pattern is most commonly a single variable, which means no pattern matching is done and
+/// the expression given is bound to the variable. Apart from that, patterns used in `let` bindings
+/// can be as complicated as needed, given that the pattern is exhaustive. See the [Rust
+/// book][book1] for more information on pattern matching. The type of the pattern is optionally
+/// given afterwards, but if left blank is automatically inferred by the compiler if possible.
 ///
-/// [book]: https://doc.rust-lang.org/book/second-edition/ch03-01-variables-and-mutability.html
+/// Variables in Rust are immutable by default, and require the [`mut`] keyword to be made mutable.
+///
+/// Multiple variables can be defined with the same name, known as shadowing. This doesn't affect
+/// the original variable in any way beyond being unable to directly access it beyond the point of
+/// shadowing. It continues to remain in scope, getting dropped only when it falls out of scope.
+/// Shadowed variables don't need to have the same type as the variables shadowing them.
+///
+/// ```rust
+/// let shadowing_example = true;
+/// let shadowing_example = 123.4;
+/// let shadowing_example = shadowing_example as u32;
+/// let mut shadowing_example = format!("cool! {}", shadowing_example);
+/// shadowing_example += " something else!"; // not shadowing
+/// ```
+///
+/// Other places the `let` keyword is used include along with [`if`], in the form of `if let`
+/// expressions. They're useful if the pattern being matched isn't exhaustive, such as with
+/// enumerations.
+///
+/// For more information on the `let` keyword, see the [Rust book] or the [Reference]
+///
+/// [book1]: https://doc.rust-lang.org/stable/book/2018-edition/ch06-02-match.html
+/// [`mut`]: keyword.mut.html
+/// [`if`]: keyword.if.html
+/// [book2]:
+/// https://doc.rust-lang.org/stable/book/2018-edition/ch18-01-all-the-places-for-patterns.html#let-statements
+/// [Reference]: https://doc.rust-lang.org/reference/statements.html#let-statements
 mod let_keyword { }
 
 #[doc(keyword = "struct")]
