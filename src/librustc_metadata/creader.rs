@@ -256,6 +256,7 @@ impl<'a> CrateLoader<'a> {
 
         let cmeta = cstore::CrateMetadata {
             name: crate_root.name,
+            imported_name: ident,
             extern_crate: Lock::new(None),
             def_path_table: Lrc::new(def_path_table),
             trait_impls,

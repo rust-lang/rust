@@ -60,7 +60,7 @@ LL |       define_panic!();
    = note: macro-expanded macros do not shadow
 
 error[E0659]: `panic` is ambiguous
-  --> <panic macros>:1:13
+  --> <::std::macros::panic macros>:1:13
    |
 LL | (  ) => ( { panic ! ( "explicit panic" ) } ) ; ( $ msg : expr ) => (
    |             ^^^^^ ambiguous name

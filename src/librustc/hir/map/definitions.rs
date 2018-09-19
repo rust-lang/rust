@@ -287,6 +287,31 @@ impl DefPath {
         s
     }
 
+    /// Return filename friendly string of the DefPah with the
+    /// crate-prefix.
+    pub fn to_string_friendly<F>(&self, crate_imported_name: F) -> String
+        where F: FnOnce(CrateNum) -> Symbol
+    {
+        let crate_name_str = crate_imported_name(self.krate).as_str();
+        let mut s = String::with_capacity(crate_name_str.len() + self.data.len() * 16);
+
+        write!(s, "::{}", crate_name_str).unwrap();
+
+        for component in &self.data {
+            if component.disambiguator == 0 {
+                write!(s, "::{}", component.data.as_interned_str()).unwrap();
+            } else {
+                write!(s,
+                       "{}[{}]",
+                       component.data.as_interned_str(),
+                       component.disambiguator)
+                    .unwrap();
+            }
+        }
+
+        s
+    }
+
     /// Return filename friendly string of the DefPah without
     /// the crate-prefix. This method is useful if you don't have
     /// a TyCtxt available.
