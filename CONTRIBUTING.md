@@ -9,7 +9,7 @@ are some areas where contributions would be **especially** welcome:
   constraints, it's an open question how to satisfy them in the
   optimal way. See `ARCHITECTURE.md` for current design questions.
 
-* Porting libsyntax parser to libsyntax2: currently libsyntax2 parses
+* Porting libsyntax parser to rust-analyzer: currently rust-analyzer parses
   only a tiny subset of Rust. This should be fixed by porting parsing
   functions from libsyntax one by one. Take a look at the
   [libsyntax parser](https://github.com/rust-lang/rust/blob/6b99adeb11313197f409b4f7c4083c2ceca8a4fe/src/libsyntax/parse/parser.rs)
@@ -17,23 +17,22 @@ are some areas where contributions would be **especially** welcome:
   [Kotlin parser](https://github.com/JetBrains/kotlin/blob/4d951de616b20feca92f3e9cc9679b2de9e65195/compiler/frontend/src/org/jetbrains/kotlin/parsing/KotlinParsing.java)
   for "how to port".
 
-* Writing validators: by design, libsyntax2 is very lax about the
+* Writing validators: by design, rust-analyzer is very lax about the
   input. For example, the lexer happily accepts unclosed strings. The
   idea is that there should be a higher level visitor, which walks the
   syntax tree after parsing and produces all the warnings. Alas,
   there's no such visitor yet :( Would you like to write one? :)
 
 * Creating tests: it would be tremendously helpful to read each of
-  libsyntax and libsyntax2 parser functions and crate a small separate
+  libsyntax and rust-analyzer parser functions and crate a small separate
   test cases to cover each and every edge case.
 
-* Building stuff with libsyntax2: it would be really cool to compile
-  libsyntax2 to WASM and add *client side* syntax validation to rust
+* Building stuff with rust-analyzer: it would be really cool to compile
+  rust-analyzer to WASM and add *client side* syntax validation to rust
   playground!
 
 
-Do take a look at the issue tracker, and try to read other docs in
-the [./docs](https://github.com/matklad/libsyntax2/tree/master/docs) folder!
+Do take a look at the issue tracker.
 
 If you don't know where to start, or have *any* questions or suggestions,
 don't hesitate to chat at [Gitter](https://gitter.im/libsyntax2/Lobby)!

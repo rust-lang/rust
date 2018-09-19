@@ -92,7 +92,7 @@ notes.
 - `algo`: generic tree algorithms, including `walk` for O(1) stack
   space tree traversal (this is cool) and `visit` for type-driven
   visiting the nodes (this is double plus cool, if you understand how
-  `Visitor` works, you understand libsyntax2).
+  `Visitor` works, you understand rust-analyzer).
 
 
 ### `crates/ra_editor`
@@ -132,7 +132,7 @@ A CLI interface to libsyntax
 
 ### `crate/tools`
 
-Code-gen tasks, used to develop libsyntax2:
+Code-gen tasks, used to develop rust-analyzer:
 
 - `cargo gen-kinds` -- generate `ast` and `syntax_kinds`
 - `cargo gen-tests` -- collect inline tests from grammar

@@ -407,7 +407,7 @@ pub fn publish_diagnostics(
             range: d.range.conv_with(&line_index),
             severity: Some(DiagnosticSeverity::Error),
             code: None,
-            source: Some("libsyntax2".to_string()),
+            source: Some("rust-analyzer".to_string()),
             message: d.message,
             related_information: None,
         }).collect();
