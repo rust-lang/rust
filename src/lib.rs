@@ -21,17 +21,16 @@ use rustc::mir;
 use syntax::ast::Mutability;
 use syntax::attr;
 
-use std::marker::PhantomData;
 use std::collections::HashMap;
 
 pub use rustc::mir::interpret::*;
 pub use rustc_mir::interpret::*;
+pub use rustc_mir::interpret;
 
 mod fn_call;
 mod operator;
 mod intrinsic;
 mod helpers;
-mod memory;
 mod tls;
 mod locks;
 mod range_map;
@@ -39,9 +38,7 @@ mod range_map;
 use fn_call::EvalContextExt as MissingFnsEvalContextExt;
 use operator::EvalContextExt as OperatorEvalContextExt;
 use intrinsic::EvalContextExt as IntrinsicEvalContextExt;
-use tls::EvalContextExt as TlsEvalContextExt;
-use memory::{MemoryKind as MiriMemoryKind, TlsKey, TlsEntry, MemoryData};
-use locks::LockInfo;
+use tls::{EvalContextExt as TlsEvalContextExt, TlsData};
 use range_map::RangeMap;
 use helpers::FalibleScalarExt;
 
@@ -54,7 +51,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
         Default::default(),
-        MemoryData::new()
+        Default::default(),
     );
 
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
@@ -201,21 +198,41 @@ pub fn eval_main<'a, 'tcx: 'a>(
     }
 }
 
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum MiriMemoryKind {
+    /// `__rust_alloc` memory
+    Rust,
+    /// `malloc` memory
+    C,
+    /// Part of env var emulation
+    Env,
+    /// mutable statics
+    MutStatic,
+}
+
+impl Into<MemoryKind<MiriMemoryKind>> for MiriMemoryKind {
+    fn into(self) -> MemoryKind<MiriMemoryKind> {
+        MemoryKind::Machine(self)
+    }
+}
+
+
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct Evaluator<'tcx> {
     /// Environment variables set by `setenv`
     /// Miri does not expose env vars from the host to the emulated program
     pub(crate) env_vars: HashMap<Vec<u8>, Pointer>,
 
-    /// Use the lifetime
-    _dummy : PhantomData<&'tcx ()>,
+    /// TLS state
+    pub(crate) tls: TlsData<'tcx>,
 }
 
 impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
-    type MemoryData = memory::MemoryData<'tcx>;
-    type MemoryKinds = memory::MemoryKind;
+    type MemoryData = ();
+    type MemoryKinds = MiriMemoryKind;
 
-    const MUT_STATIC_KIND: Option<memory::MemoryKind> = Some(memory::MemoryKind::MutStatic);
+    const MUT_STATIC_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::MutStatic);
     const DETECT_LOOPS: bool = false;
 
     /// Returns Ok() when the function was handled, fail otherwise

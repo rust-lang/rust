@@ -8,10 +8,6 @@ use std::mem;
 
 use super::*;
 
-use tls::MemoryExt;
-
-use super::memory::MemoryKind;
-
 pub trait EvalContextExt<'tcx, 'mir> {
     /// Emulate calling a foreign item, fail if the item is not supported.
     /// This function will handle `goto_block` if needed.
@@ -129,7 +125,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
                     self.write_null(dest)?;
                 } else {
                     let align = self.tcx.data_layout.pointer_align;
-                    let ptr = self.memory.allocate(Size::from_bytes(size), align, MemoryKind::C.into())?;
+                    let ptr = self.memory.allocate(Size::from_bytes(size), align, MiriMemoryKind::C.into())?;
                     self.write_scalar(Scalar::Ptr(ptr), dest)?;
                 }
             }
@@ -140,7 +136,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
                     self.memory.deallocate(
                         ptr.to_ptr()?,
                         None,
-                        MemoryKind::C.into(),
+                        MiriMemoryKind::C.into(),
                     )?;
                 }
             }
@@ -156,7 +152,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
                 }
                 let ptr = self.memory.allocate(Size::from_bytes(size),
                                                Align::from_bytes(align, align).unwrap(),
-                                               MemoryKind::Rust.into())?;
+                                               MiriMemoryKind::Rust.into())?;
                 self.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
             "__rust_alloc_zeroed" => {
@@ -170,7 +166,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
                 }
                 let ptr = self.memory.allocate(Size::from_bytes(size),
                                                Align::from_bytes(align, align).unwrap(),
-                                               MemoryKind::Rust.into())?;
+                                               MiriMemoryKind::Rust.into())?;
                 self.memory.write_repeat(ptr.into(), 0, Size::from_bytes(size))?;
                 self.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
@@ -187,7 +183,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
                 self.memory.deallocate(
                     ptr,
                     Some((Size::from_bytes(old_size), Align::from_bytes(align, align).unwrap())),
-                    MemoryKind::Rust.into(),
+                    MiriMemoryKind::Rust.into(),
                 )?;
             }
             "__rust_realloc" => {
@@ -207,7 +203,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
                     Align::from_bytes(align, align).unwrap(),
                     Size::from_bytes(new_size),
                     Align::from_bytes(align, align).unwrap(),
-                    MemoryKind::Rust.into(),
+                    MiriMemoryKind::Rust.into(),
                 )?;
                 self.write_scalar(Scalar::Ptr(new_ptr), dest)?;
             }
@@ -365,7 +361,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
                 }
                 if let Some(old) = success {
                     if let Some(var) = old {
-                        self.memory.deallocate(var, None, MemoryKind::Env.into())?;
+                        self.memory.deallocate(var, None, MiriMemoryKind::Env.into())?;
                     }
                     self.write_null(dest)?;
                 } else {
@@ -391,7 +387,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
                     let value_copy = self.memory.allocate(
                         Size::from_bytes((value.len() + 1) as u64),
                         Align::from_bytes(1, 1).unwrap(),
-                        MemoryKind::Env.into(),
+                        MiriMemoryKind::Env.into(),
                     )?;
                     self.memory.write_bytes(value_copy.into(), &value)?;
                     let trailing_zero_ptr = value_copy.offset(Size::from_bytes(value.len() as u64), &self)?.into();
@@ -401,7 +397,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
                         value_copy,
                     )
                     {
-                        self.memory.deallocate(var, None, MemoryKind::Env.into())?;
+                        self.memory.deallocate(var, None, MiriMemoryKind::Env.into())?;
                     }
                     self.write_null(dest)?;
                 } else {
@@ -504,7 +500,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
                 let key_layout = self.layout_of(key_type)?;
 
                 // Create key and write it into the memory where key_ptr wants it
-                let key = self.memory.create_tls_key(dtor) as u128;
+                let key = self.machine.tls.create_tls_key(dtor, *self.tcx) as u128;
                 if key_layout.size.bits() < 128 && key >= (1u128 << key_layout.size.bits() as u128) {
                     return err!(OutOfTls);
                 }
@@ -520,19 +516,19 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
             }
             "pthread_key_delete" => {
                 let key = self.read_scalar(args[0])?.to_bytes()?;
-                self.memory.delete_tls_key(key)?;
+                self.machine.tls.delete_tls_key(key)?;
                 // Return success (0)
                 self.write_null(dest)?;
             }
             "pthread_getspecific" => {
                 let key = self.read_scalar(args[0])?.to_bytes()?;
-                let ptr = self.memory.load_tls(key)?;
+                let ptr = self.machine.tls.load_tls(key)?;
                 self.write_scalar(ptr, dest)?;
             }
             "pthread_setspecific" => {
                 let key = self.read_scalar(args[0])?.to_bytes()?;
                 let new_ptr = self.read_scalar(args[1])?.not_undef()?;
-                self.memory.store_tls(key, new_ptr)?;
+                self.machine.tls.store_tls(key, new_ptr)?;
 
                 // Return success (0)
                 self.write_null(dest)?;
@@ -607,7 +603,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
                 // This just creates a key; Windows does not natively support TLS dtors.
 
                 // Create key and return it
-                let key = self.memory.create_tls_key(None) as u128;
+                let key = self.machine.tls.create_tls_key(None, *self.tcx) as u128;
 
                 // Figure out how large a TLS key actually is. This is c::DWORD.
                 if dest.layout.size.bits() < 128 && key >= (1u128 << dest.layout.size.bits() as u128) {
@@ -617,13 +613,13 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
             }
             "TlsGetValue" => {
                 let key = self.read_scalar(args[0])?.to_bytes()?;
-                let ptr = self.memory.load_tls(key)?;
+                let ptr = self.machine.tls.load_tls(key)?;
                 self.write_scalar(ptr, dest)?;
             }
             "TlsSetValue" => {
                 let key = self.read_scalar(args[0])?.to_bytes()?;
                 let new_ptr = self.read_scalar(args[1])?.not_undef()?;
-                self.memory.store_tls(key, new_ptr)?;
+                self.machine.tls.store_tls(key, new_ptr)?;
 
                 // Return success (1)
                 self.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
