@@ -573,6 +573,22 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         self.cancel_if_wrong_origin(err, o)
     }
 
+    fn cannot_borrow_across_destructor(
+        self,
+        borrow_span: Span,
+        o: Origin,
+    ) -> DiagnosticBuilder<'cx> {
+        let err = struct_span_err!(
+            self,
+            borrow_span,
+            E0713,
+            "borrow may still be in use when destructor runs{OGN}",
+            OGN = o
+        );
+
+        self.cancel_if_wrong_origin(err, o)
+    }
+
     fn path_does_not_live_long_enough(
         self,
         span: Span,
