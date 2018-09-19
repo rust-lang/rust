@@ -35,6 +35,15 @@ LL | union U where i32: Foo { f: i32 } //~ ERROR
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
 error[E0277]: the trait bound `i32: Foo` is not satisfied
+  --> $DIR/feature-gate-trivial_bounds.rs:28:1
+   |
+LL | type Y where i32: Foo = (); //~ ERROR
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `i32`
+   |
+   = help: see issue #48214
+   = help: add #![feature(trivial_bounds)] to the crate attributes to enable
+
+error[E0277]: the trait bound `i32: Foo` is not satisfied
   --> $DIR/feature-gate-trivial_bounds.rs:30:1
    |
 LL | / impl Foo for () where i32: Foo { //~ ERROR
@@ -125,6 +134,6 @@ LL | | }
    = help: see issue #48214
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
-error: aborting due to 11 previous errors
+error: aborting due to 12 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

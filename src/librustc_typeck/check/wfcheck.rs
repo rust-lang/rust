@@ -124,6 +124,13 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
         hir::ItemKind::Const(..) => {
             check_item_type(tcx, item);
         }
+        hir::ItemKind::Ty(..) => {
+            for_item(tcx, item).with_fcx(|fcx, _this| {
+                let def_id = fcx.tcx.hir.local_def_id(item.id);
+                check_where_clauses(tcx, fcx, item.span, def_id, None);
+                vec![]
+            });
+        }
         hir::ItemKind::Struct(ref struct_def, ref ast_generics) => {
             check_type_defn(tcx, item, false, |fcx| {
                 vec![fcx.non_enum_variant(struct_def)]
