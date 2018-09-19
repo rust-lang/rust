@@ -1975,31 +1975,37 @@ pub trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
 
     /// Returns a shared reference to the output at this location, if in
     /// bounds.
+    #[doc(hidden)]
     #[unstable(feature = "slice_index_methods", issue = "0")]
     fn get(self, slice: &T) -> Option<&Self::Output>;
 
     /// Returns a mutable reference to the output at this location, if in
     /// bounds.
+    #[doc(hidden)]
     #[unstable(feature = "slice_index_methods", issue = "0")]
     fn get_mut(self, slice: &mut T) -> Option<&mut Self::Output>;
 
     /// Returns a shared reference to the output at this location, without
     /// performing any bounds checking.
+    #[doc(hidden)]
     #[unstable(feature = "slice_index_methods", issue = "0")]
     unsafe fn get_unchecked(self, slice: &T) -> &Self::Output;
 
     /// Returns a mutable reference to the output at this location, without
     /// performing any bounds checking.
+    #[doc(hidden)]
     #[unstable(feature = "slice_index_methods", issue = "0")]
     unsafe fn get_unchecked_mut(self, slice: &mut T) -> &mut Self::Output;
 
     /// Returns a shared reference to the output at this location, panicking
     /// if out of bounds.
+    #[doc(hidden)]
     #[unstable(feature = "slice_index_methods", issue = "0")]
     fn index(self, slice: &T) -> &Self::Output;
 
     /// Returns a mutable reference to the output at this location, panicking
     /// if out of bounds.
+    #[doc(hidden)]
     #[unstable(feature = "slice_index_methods", issue = "0")]
     fn index_mut(self, slice: &mut T) -> &mut Self::Output;
 }
