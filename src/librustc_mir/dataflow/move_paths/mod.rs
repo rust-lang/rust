@@ -97,6 +97,20 @@ pub struct MovePath<'tcx> {
     pub place: Place<'tcx>,
 }
 
+impl<'tcx> MovePath<'tcx> {
+    pub fn parents(&self, move_paths: &IndexVec<MovePathIndex, MovePath>) -> Vec<MovePathIndex> {
+        let mut parents = Vec::new();
+
+        let mut curr_parent = self.parent;
+        while let Some(parent_mpi) = curr_parent {
+            parents.push(parent_mpi);
+            curr_parent = move_paths[parent_mpi].parent;
+        }
+
+        parents
+    }
+}
+
 impl<'tcx> fmt::Debug for MovePath<'tcx> {
     fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
         write!(w, "MovePath {{")?;
