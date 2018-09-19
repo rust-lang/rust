@@ -35,7 +35,8 @@
 ///
 /// For more information on what `as` is capable of, see the [Reference]
 ///
-/// [Reference]: https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions
+/// [Reference]:
+/// https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions
 /// [`crate`]: keyword.crate.html
 /// [`use`]: keyword.use.html
 mod as_keyword { }
@@ -90,7 +91,8 @@ mod as_keyword { }
 ///
 /// [`static`]: keyword.static.html
 /// [pointer]: primitive.pointer.html
-/// [Rust Book]: https://doc.rust-lang.org/stable/book/2018-edition/ch03-01-variables-and-mutability.html#differences-between-variables-and-constants
+/// [Rust Book]:
+/// https://doc.rust-lang.org/stable/book/2018-edition/ch03-01-variables-and-mutability.html#differences-between-variables-and-constants
 /// [Reference]: https://doc.rust-lang.org/reference/items/constant-items.html
 mod const_keyword { }
 
@@ -221,7 +223,8 @@ mod enum_keyword { }
 ///
 /// For more information on FFI, check the [Rust book] or the [Reference].
 ///
-/// [Rust book]: https://doc.rust-lang.org/book/second-edition/ch19-01-unsafe-rust.html#using-extern-functions-to-call-external-code
+/// [Rust book]:
+/// https://doc.rust-lang.org/book/second-edition/ch19-01-unsafe-rust.html#using-extern-functions-to-call-external-code
 /// [Reference]: https://doc.rust-lang.org/reference/items/external-blocks.html
 mod extern_keyword { }
 
@@ -364,7 +367,8 @@ mod fn_keyword { }
 /// [`impl`]: keyword.impl.html
 /// [`break`]: keyword.break.html
 /// [`IntoIterator`]: iter/trait.IntoIterator.html
-/// [Rust book]: https://doc.rust-lang.org/book/2018-edition/ch03-05-control-flow.html#looping-through-a-collection-with-for
+/// [Rust book]:
+/// https://doc.rust-lang.org/book/2018-edition/ch03-05-control-flow.html#looping-through-a-collection-with-for
 /// [Reference]: https://doc.rust-lang.org/reference/expressions/loop-expr.html#iterator-loops
 mod for_keyword { }
 
@@ -442,9 +446,71 @@ mod for_keyword { }
 ///
 /// [`match`]: keyword.match.html
 /// [`let`]: keyword.let.html
-/// [Rust book]: https://doc.rust-lang.org/stable/book/2018-edition/ch03-05-control-flow.html#if-expressions
+/// [Rust book]:
+/// https://doc.rust-lang.org/stable/book/2018-edition/ch03-05-control-flow.html#if-expressions
 /// [Reference]: https://doc.rust-lang.org/reference/expressions/if-expr.html
 mod if_keyword { }
+
+#[doc(keyword = "impl")]
+//
+/// The implementation-defining keyword.
+///
+/// The `impl` keyword is primarily used for defining implementations on types. There are two kinds
+/// of implementations: Inherent implementations and trait implementations. Inherent
+/// implementations define functions that operate on a type, known in object-oriented languages as
+/// methods. Trait implementations are used to give a type a trait, and implement any of the
+/// required associated items or methods that it requires.
+///
+/// ```rust
+/// struct Example {
+///     number: i32,
+/// }
+///
+/// impl Example {
+///     fn boo() {
+///         println!("boo! Example::boo() was called!");
+///     }
+///
+///     fn answer(&mut self) {
+///         self.number += 42;
+///     }
+///
+///     fn get_number(&self) -> i32 {
+///         self.number
+///     }
+/// }
+///
+/// trait Thingy {
+///     fn do_thingy(&self);
+/// }
+///
+/// impl Thingy for Example {
+///     fn do_thingy(&self) {
+///         println!("doing a thing! also, number is {}!", self.number);
+///     }
+/// }
+/// ```
+///
+/// For more information on implementations, see the [Rust book][book1] or the [Reference].
+///
+/// The other use of the `impl` keyword is in `impl Trait` syntax, which can be seen as a shorthand
+/// for "a concrete type that implements this trait". Its primary use is working with closures,
+/// which have type definitions generated at compile time that can't be simply typed out.
+///
+/// ```rust
+/// fn thing_returning_closure() -> impl Fn(i32) -> bool {
+///     println!("here's a closure for you!");
+///     |x: i32| x % 3 == 0
+/// }
+/// ```
+///
+/// For more information on `impl Trait` syntax, see the [Rust book][book2].
+///
+/// [book1]: https://doc.rust-lang.org/stable/book/2018-edition/ch05-03-method-syntax.html
+/// [Reference]: https://doc.rust-lang.org/reference/items/implementations.html
+/// [book2]:
+/// https://doc.rust-lang.org/stable/book/2018-edition/ch10-02-traits.html#returning-traits
+mod impl_keyword { }
 
 #[doc(keyword = "let")]
 //
