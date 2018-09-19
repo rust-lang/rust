@@ -1,14 +1,16 @@
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, EarlyContext, EarlyLintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc::hir::*;
+use crate::utils::{
+    match_qpath, match_type, paths, span_help_and_lint, span_lint, span_lint_and_sugg, walk_ptrs_ty,
+};
+use if_chain::if_chain;
 use crate::rustc::hir;
 use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use crate::rustc::hir::*;
+use crate::rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use crate::utils::{match_qpath, paths, span_lint, span_lint_and_sugg};
-use crate::syntax::symbol::LocalInternedString;
 use crate::syntax::ast::{Crate as AstCrate, Ident, ItemKind, Name};
 use crate::syntax::source_map::Span;
-
+use crate::syntax::symbol::LocalInternedString;
 
 /// **What it does:** Checks for various things we like to keep tidy in clippy.
 ///
@@ -22,7 +24,6 @@ declare_clippy_lint! {
     internal,
     "various things that will negatively affect your clippy experience"
 }
-
 
 /// **What it does:** Ensures every lint is associated to a `LintPass`.
 ///
@@ -53,7 +54,6 @@ declare_clippy_lint! {
     "declaring a lint without associating it in a LintPass"
 }
 
-
 /// **What it does:** Checks for the presence of the default hash types "HashMap" or "HashSet"
 /// and recommends the FxHash* variants.
 ///
@@ -65,6 +65,29 @@ declare_clippy_lint! {
     "forbid HashMap and HashSet and suggest the FxHash* variants"
 }
 
+/// **What it does:** Checks for calls to `cx.span_lint*` and suggests to use the `utils::*`
+/// variant of the function.
+///
+/// **Why is this bad?** The `utils::*` variants also add a link to the Clippy documentation to the
+/// warning/error messages.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// Bad:
+/// ```rust
+/// cx.span_lint(LINT_NAME, "message");
+/// ```
+///
+/// Good:
+/// ```rust
+/// utils::span_lint(cx, LINT_NAME, "message");
+/// ```
+declare_clippy_lint! {
+    pub COMPILER_LINT_FUNCTIONS,
+    internal,
+    "usage of the lint functions of the compiler instead of the utils::* variant"
+}
 
 #[derive(Copy, Clone)]
 pub struct Clippy;
@@ -119,7 +142,6 @@ pub struct LintWithoutLintPass {
     registered_lints: FxHashSet<Name>,
 }
 
-
 impl LintPass for LintWithoutLintPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(LINT_WITHOUT_LINT_PASS)
@@ -171,7 +193,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
     }
 }
 
-
 fn is_lint_ref_type(ty: &Ty) -> bool {
     if let TyKind::Rptr(
         _,
@@ -187,7 +208,6 @@ fn is_lint_ref_type(ty: &Ty) -> bool {
     }
     false
 }
-
 
 fn is_lint_array_type(ty: &Ty) -> bool {
     if let TyKind::Path(ref path) = ty.node {
@@ -224,8 +244,8 @@ pub struct DefaultHashTypes {
 impl DefaultHashTypes {
     pub fn default() -> Self {
         let mut map = FxHashMap::default();
-        map.insert("HashMap".to_owned(), "FxHashMap".to_owned());
-        map.insert("HashSet".to_owned(), "FxHashSet".to_owned());
+        map.insert("HashMap".to_string(), "FxHashMap".to_string());
+        map.insert("HashSet".to_string(), "FxHashSet".to_string());
         Self { map }
     }
 }
@@ -240,8 +260,62 @@ impl EarlyLintPass for DefaultHashTypes {
     fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: Ident) {
         let ident_string = ident.to_string();
         if let Some(replace) = self.map.get(&ident_string) {
-            let msg = format!("Prefer {} over {}, it has better performance and we don't need any collision prevention in clippy", replace, ident_string);
-            span_lint_and_sugg(cx, DEFAULT_HASH_TYPES, ident.span, &msg, "use", replace.to_owned());
+            let msg = format!("Prefer {} over {}, it has better performance \
+                              and we don't need any collision prevention in clippy",
+                              replace, ident_string);
+            span_lint_and_sugg(
+                cx,
+                DEFAULT_HASH_TYPES,
+                ident.span,
+                &msg,
+                "use",
+                replace.to_string(),
+            );
+        }
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct CompilerLintFunctions {
+    map: FxHashMap<String, String>,
+}
+
+impl CompilerLintFunctions {
+    pub fn new() -> Self {
+        let mut map = FxHashMap::default();
+        map.insert("span_lint".to_string(), "utils::span_lint".to_string());
+        map.insert("struct_span_lint".to_string(), "utils::span_lint".to_string());
+        map.insert("lint".to_string(), "utils::span_lint".to_string());
+        map.insert("span_lint_note".to_string(), "utils::span_note_and_lint".to_string());
+        map.insert("span_lint_help".to_string(), "utils::span_help_and_lint".to_string());
+        Self { map }
+    }
+}
+
+impl LintPass for CompilerLintFunctions {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(COMPILER_LINT_FUNCTIONS)
+    }
+}
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CompilerLintFunctions {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+        if_chain! {
+            if let ExprKind::MethodCall(ref path, _, ref args) = expr.node;
+            let fn_name = path.ident.as_str().to_string();
+            if let Some(sugg) = self.map.get(&fn_name);
+            let ty = walk_ptrs_ty(cx.tables.expr_ty(&args[0]));
+            if match_type(cx, ty, &paths::EARLY_CONTEXT)
+                || match_type(cx, ty, &paths::LATE_CONTEXT);
+            then {
+                span_help_and_lint(
+                    cx,
+                    COMPILER_LINT_FUNCTIONS,
+                    path.ident.span,
+                    "usage of a compiler lint function",
+                    &format!("Please use the Clippy variant of this function: `{}`", sugg),
+                );
+            }
         }
     }
 }
