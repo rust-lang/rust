@@ -54,7 +54,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemReplace {
             then {
                 // Since this is a late pass (already type-checked),
                 // and we already know that the second argument is an
-                // `Option`, we do not need to check if the first
+                // `Option`, we do not need to check the first
                 // argument's type. All that's left is to get
                 // replacee's path.
                 let replaced_path = match func_args[0].node {
