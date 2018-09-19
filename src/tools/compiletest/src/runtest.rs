@@ -262,11 +262,12 @@ impl<'test> TestCx<'test> {
     }
 
     fn should_run_successfully(&self) -> bool {
-        match self.config.mode {
-            RunPass => !self.props.skip_codegen,
+        let run_pass = match self.config.mode {
+            RunPass => true,
             Ui => self.props.run_pass,
             _ => unimplemented!(),
-        }
+        };
+        return run_pass && !self.props.skip_codegen;
     }
 
     fn should_compile_successfully(&self) -> bool {
