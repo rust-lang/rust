@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use array_vec::ArrayVec;
 use indexed_vec::{Idx, IndexVec};
 use rustc_serialize;
+use smallvec::SmallVec;
 use std::fmt;
 use std::iter;
 use std::marker::PhantomData;
@@ -61,21 +61,21 @@ impl<T: Idx> BitSet<T> {
     }
 
     /// Sets all elements up to and including `size`.
-    pub fn set_up_to(&mut self, bit: usize) {
+    pub fn set_up_to(&mut self, elem: usize) {
         for word in &mut self.words {
             *word = !0;
         }
-        self.clear_above(bit);
+        self.clear_above(elem);
     }
 
-    /// Clear all elements above `bit`.
-    fn clear_above(&mut self, bit: usize) {
-        let first_clear_block = bit / WORD_BITS;
+    /// Clear all elements above `elem`.
+    fn clear_above(&mut self, elem: usize) {
+        let first_clear_block = elem / WORD_BITS;
 
         if first_clear_block < self.words.len() {
-            // Within `first_clear_block`, the `bit % WORD_BITS` LSBs should
+            // Within `first_clear_block`, the `elem % WORD_BITS` LSBs should
             // remain.
-            let mask = (1 << (bit % WORD_BITS)) - 1;
+            let mask = (1 << (elem % WORD_BITS)) - 1;
             self.words[first_clear_block] &= mask;
 
             // All the blocks above `first_clear_block` are fully cleared.
@@ -96,10 +96,10 @@ impl<T: Idx> BitSet<T> {
         self.words.iter().map(|e| e.count_ones() as usize).sum()
     }
 
-    /// True if `self` contains the bit `bit`.
+    /// True if `self` contains `elem`.
     #[inline]
-    pub fn contains(&self, bit: T) -> bool {
-        let (word_index, mask) = word_index_and_mask(bit);
+    pub fn contains(&self, elem: T) -> bool {
+        let (word_index, mask) = word_index_and_mask(elem);
         (self.words[word_index] & mask) != 0
     }
 
@@ -118,10 +118,10 @@ impl<T: Idx> BitSet<T> {
         self.words.iter().all(|a| *a == 0)
     }
 
-    /// Insert a bit. Returns true if the bit has changed.
+    /// Insert `elem`. Returns true if the set has changed.
     #[inline]
-    pub fn insert(&mut self, bit: T) -> bool {
-        let (word_index, mask) = word_index_and_mask(bit);
+    pub fn insert(&mut self, elem: T) -> bool {
+        let (word_index, mask) = word_index_and_mask(elem);
         let word_ref = &mut self.words[word_index];
         let word = *word_ref;
         let new_word = word | mask;
@@ -136,10 +136,10 @@ impl<T: Idx> BitSet<T> {
         }
     }
 
-    /// Returns true if the bit has changed.
+    /// Returns true if the set has changed.
     #[inline]
-    pub fn remove(&mut self, bit: T) -> bool {
-        let (word_index, mask) = word_index_and_mask(bit);
+    pub fn remove(&mut self, elem: T) -> bool {
+        let (word_index, mask) = word_index_and_mask(elem);
         let word_ref = &mut self.words[word_index];
         let word = *word_ref;
         let new_word = word & !mask;
@@ -320,20 +320,25 @@ fn bitwise<Op>(out_vec: &mut [Word], in_vec: &[Word], op: Op) -> bool
 const SPARSE_MAX: usize = 8;
 
 /// A fixed-size bitset type with a sparse representation and a maximum of
-/// SPARSE_MAX elements. The elements are stored as an unsorted vector with no
-/// duplicates.
+/// `SPARSE_MAX` elements. The elements are stored as a sorted `SmallVec` with
+/// no duplicates; although `SmallVec` can spill its elements to the heap, that
+/// never happens within this type because of the `SPARSE_MAX` limit.
 ///
-/// This type is used by HybridBitSet; do not use directly.
+/// This type is used by `HybridBitSet`; do not use directly.
 #[derive(Clone, Debug)]
-pub struct SparseBitSet<T: Idx>(ArrayVec<[T; SPARSE_MAX]>);
+pub struct SparseBitSet<T: Idx>(SmallVec<[T; SPARSE_MAX]>);
 
 impl<T: Idx> SparseBitSet<T> {
     fn new_empty() -> Self {
-        SparseBitSet(ArrayVec::new())
+        SparseBitSet(SmallVec::new())
     }
 
     fn len(&self) -> usize {
         self.0.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.0.len() == 0
     }
 
     fn contains(&self, elem: T) -> bool {
@@ -341,10 +346,18 @@ impl<T: Idx> SparseBitSet<T> {
     }
 
     fn insert(&mut self, elem: T) -> bool {
-        // Ensure there are no duplicates.
-        if self.0.contains(&elem) {
-            false
+        assert!(self.len() < SPARSE_MAX);
+        if let Some(i) = self.0.iter().position(|&e| e >= elem) {
+            if self.0[i] == elem {
+                // `elem` is already in the set.
+                false
+            } else {
+                // `elem` is smaller than one or more existing elements.
+                self.0.insert(i, elem);
+                true
+            }
         } else {
+            // `elem` is larger than all existing elements.
             self.0.push(elem);
             true
         }
@@ -352,10 +365,7 @@ impl<T: Idx> SparseBitSet<T> {
 
     fn remove(&mut self, elem: T) -> bool {
         if let Some(i) = self.0.iter().position(|&e| e == elem) {
-            // Swap the found element to the end, then pop it.
-            let len = self.0.len();
-            self.0.swap(i, len - 1);
-            self.0.pop();
+            self.0.remove(i);
             true
         } else {
             false
@@ -396,8 +406,8 @@ impl<T: Idx> SubtractFromBitSet<T> for SparseBitSet<T> {
 }
 
 /// A fixed-size bitset type with a hybrid representation: sparse when there
-/// are up to a SPARSE_MAX elements in the set, but dense when there are more
-/// than SPARSE_MAX.
+/// are up to a `SPARSE_MAX` elements in the set, but dense when there are more
+/// than `SPARSE_MAX`.
 ///
 /// This type is especially efficient for sets that typically have a small
 /// number of elements, but a large `domain_size`, and are cleared frequently.
@@ -411,15 +421,28 @@ pub enum HybridBitSet<T: Idx> {
 }
 
 impl<T: Idx> HybridBitSet<T> {
+    // FIXME: This function is used in conjunction with `mem::replace()` in
+    // several pieces of awful code below. I can't work out how else to appease
+    // the borrow checker.
+    fn dummy() -> Self {
+        // The cheapest HybridBitSet to construct, which is only used to get
+        // around the borrow checker.
+        HybridBitSet::Sparse(SparseBitSet::new_empty(), 0)
+    }
+
     pub fn new_empty(domain_size: usize) -> Self {
         HybridBitSet::Sparse(SparseBitSet::new_empty(), domain_size)
     }
 
-    pub fn clear(&mut self) {
-        let domain_size = match *self {
+    pub fn domain_size(&self) -> usize {
+        match *self {
             HybridBitSet::Sparse(_, size) => size,
             HybridBitSet::Dense(_, size) => size,
-        };
+        }
+    }
+
+    pub fn clear(&mut self) {
+        let domain_size = self.domain_size();
         *self = HybridBitSet::new_empty(domain_size);
     }
 
@@ -427,6 +450,22 @@ impl<T: Idx> HybridBitSet<T> {
         match self {
             HybridBitSet::Sparse(sparse, _) => sparse.contains(elem),
             HybridBitSet::Dense(dense, _) => dense.contains(elem),
+        }
+    }
+
+    pub fn superset(&self, other: &HybridBitSet<T>) -> bool {
+        match (self, other) {
+            (HybridBitSet::Dense(self_dense, _), HybridBitSet::Dense(other_dense, _)) => {
+                self_dense.superset(other_dense)
+            }
+            _ => other.iter().all(|elem| self.contains(elem)),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        match self {
+            HybridBitSet::Sparse(sparse, _) => sparse.is_empty(),
+            HybridBitSet::Dense(dense, _) => dense.is_empty(),
         }
     }
 
@@ -443,23 +482,30 @@ impl<T: Idx> HybridBitSet<T> {
             }
             HybridBitSet::Sparse(_, _) => {
                 // The set is sparse and full. Convert to a dense set.
-                //
-                // FIXME: This code is awful, but I can't work out how else to
-                //        appease the borrow checker.
-                let dummy = HybridBitSet::Sparse(SparseBitSet::new_empty(), 0);
-                match mem::replace(self, dummy) {
+                match mem::replace(self, HybridBitSet::dummy()) {
                     HybridBitSet::Sparse(sparse, domain_size) => {
                         let mut dense = sparse.to_dense(domain_size);
                         let changed = dense.insert(elem);
                         assert!(changed);
-                        mem::replace(self, HybridBitSet::Dense(dense, domain_size));
+                        *self = HybridBitSet::Dense(dense, domain_size);
                         changed
                     }
-                    _ => panic!("impossible"),
+                    _ => unreachable!()
                 }
             }
 
             HybridBitSet::Dense(dense, _) => dense.insert(elem),
+        }
+    }
+
+    pub fn insert_all(&mut self) {
+        let domain_size = self.domain_size();
+        match self {
+            HybridBitSet::Sparse(_, _) => {
+                let dense = BitSet::new_filled(domain_size);
+                *self = HybridBitSet::Dense(dense, domain_size);
+            }
+            HybridBitSet::Dense(dense, _) => dense.insert_all(),
         }
     }
 
@@ -471,6 +517,42 @@ impl<T: Idx> HybridBitSet<T> {
         }
     }
 
+    pub fn union(&mut self, other: &HybridBitSet<T>) -> bool {
+        match self {
+            HybridBitSet::Sparse(_, _) => {
+                match other {
+                    HybridBitSet::Sparse(other_sparse, _) => {
+                        // Both sets are sparse. Add the elements in
+                        // `other_sparse` to `self_hybrid` one at a time. This
+                        // may or may not cause `self_hybrid` to be densified.
+                        let mut self_hybrid = mem::replace(self, HybridBitSet::dummy());
+                        let mut changed = false;
+                        for elem in other_sparse.iter() {
+                            changed |= self_hybrid.insert(*elem);
+                        }
+                        *self = self_hybrid;
+                        changed
+                    }
+                    HybridBitSet::Dense(other_dense, _) => {
+                        // `self` is sparse and `other` is dense. Densify
+                        // `self` and then do the bitwise union.
+                        match mem::replace(self, HybridBitSet::dummy()) {
+                            HybridBitSet::Sparse(self_sparse, self_domain_size) => {
+                                let mut new_dense = self_sparse.to_dense(self_domain_size);
+                                let changed = new_dense.union(other_dense);
+                                *self = HybridBitSet::Dense(new_dense, self_domain_size);
+                                changed
+                            }
+                            _ => unreachable!()
+                        }
+                    }
+                }
+            }
+
+            HybridBitSet::Dense(self_dense, _) => self_dense.union(other),
+        }
+    }
+
     /// Converts to a dense set, consuming itself in the process.
     pub fn to_dense(self) -> BitSet<T> {
         match self {
@@ -479,7 +561,6 @@ impl<T: Idx> HybridBitSet<T> {
         }
     }
 
-    /// Iteration order is unspecified.
     pub fn iter(&self) -> HybridIter<T> {
         match self {
             HybridBitSet::Sparse(sparse, _) => HybridIter::Sparse(sparse.iter()),
@@ -547,16 +628,16 @@ impl<T: Idx> GrowableBitSet<T> {
         GrowableBitSet { bit_set: BitSet::new_empty(bits) }
     }
 
-    /// Returns true if the bit has changed.
+    /// Returns true if the set has changed.
     #[inline]
-    pub fn insert(&mut self, bit: T) -> bool {
-        self.grow(bit);
-        self.bit_set.insert(bit)
+    pub fn insert(&mut self, elem: T) -> bool {
+        self.grow(elem);
+        self.bit_set.insert(elem)
     }
 
     #[inline]
-    pub fn contains(&self, bit: T) -> bool {
-        let (word_index, mask) = word_index_and_mask(bit);
+    pub fn contains(&self, elem: T) -> bool {
+        let (word_index, mask) = word_index_and_mask(elem);
         if let Some(word) = self.bit_set.words.get(word_index) {
             (word & mask) != 0
         } else {
@@ -682,11 +763,10 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
 /// sparse representation.
 ///
 /// Initially, every row has no explicit representation. If any bit within a
-/// row is set, the entire row is instantiated as
-/// `Some(<full-column-width-BitSet>)`. Furthermore, any previously
-/// uninstantiated rows prior to it will be instantiated as `None`. Those prior
-/// rows may themselves become fully instantiated later on if any of their bits
-/// are set.
+/// row is set, the entire row is instantiated as `Some(<HybridBitSet>)`.
+/// Furthermore, any previously uninstantiated rows prior to it will be
+/// instantiated as `None`. Those prior rows may themselves become fully
+/// instantiated later on if any of their bits are set.
 ///
 /// `R` and `C` are index types used to identify rows and columns respectively;
 /// typically newtyped `usize` wrappers, but they can also just be `usize`.
@@ -697,7 +777,7 @@ where
     C: Idx,
 {
     num_columns: usize,
-    rows: IndexVec<R, Option<BitSet<C>>>,
+    rows: IndexVec<R, Option<HybridBitSet<C>>>,
 }
 
 impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
@@ -709,14 +789,14 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         }
     }
 
-    fn ensure_row(&mut self, row: R) -> &mut BitSet<C> {
+    fn ensure_row(&mut self, row: R) -> &mut HybridBitSet<C> {
         // Instantiate any missing rows up to and including row `row` with an
-        // empty BitSet.
+        // empty HybridBitSet.
         self.rows.ensure_contains_elem(row, || None);
 
-        // Then replace row `row` with a full BitSet if necessary.
+        // Then replace row `row` with a full HybridBitSet if necessary.
         let num_columns = self.num_columns;
-        self.rows[row].get_or_insert_with(|| BitSet::new_empty(num_columns))
+        self.rows[row].get_or_insert_with(|| HybridBitSet::new_empty(num_columns))
     }
 
     /// Sets the cell at `(row, column)` to true. Put another way, insert
@@ -755,8 +835,8 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         }
     }
 
-    /// Merge a row, `from`, into the `into` row.
-    pub fn union_into_row(&mut self, into: R, from: &BitSet<C>) -> bool {
+    /// Union a row, `from`, into the `into` row.
+    pub fn union_into_row(&mut self, into: R, from: &HybridBitSet<C>) -> bool {
         self.ensure_row(into).union(from)
     }
 
@@ -775,7 +855,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         self.row(row).into_iter().flat_map(|r| r.iter())
     }
 
-    pub fn row(&self, row: R) -> Option<&BitSet<C>> {
+    pub fn row(&self, row: R) -> Option<&HybridBitSet<C>> {
         if let Some(Some(row)) = self.rows.get(row) {
             Some(row)
         } else {
@@ -866,7 +946,7 @@ fn bitset_iter_works_2() {
 }
 
 #[test]
-fn union_two_vecs() {
+fn union_two_sets() {
     let mut set1: BitSet<usize> = BitSet::new_empty(65);
     let mut set2: BitSet<usize> = BitSet::new_empty(65);
     assert!(set1.insert(3));
@@ -880,6 +960,74 @@ fn union_two_vecs() {
     assert!(set1.contains(5));
     assert!(!set1.contains(63));
     assert!(set1.contains(64));
+}
+
+#[test]
+fn hybrid_bitset() {
+    let mut sparse038: HybridBitSet<usize> = HybridBitSet::new_empty(256);
+    assert!(sparse038.is_empty());
+    assert!(sparse038.insert(0));
+    assert!(sparse038.insert(1));
+    assert!(sparse038.insert(8));
+    assert!(sparse038.insert(3));
+    assert!(!sparse038.insert(3));
+    assert!(sparse038.remove(1));
+    assert!(!sparse038.is_empty());
+    assert_eq!(sparse038.iter().collect::<Vec<_>>(), [0, 3, 8]);
+
+    for i in 0..256 {
+        if i == 0 || i == 3 || i == 8 {
+            assert!(sparse038.contains(i));
+        } else {
+            assert!(!sparse038.contains(i));
+        }
+    }
+
+    let mut sparse01358 = sparse038.clone();
+    assert!(sparse01358.insert(1));
+    assert!(sparse01358.insert(5));
+    assert_eq!(sparse01358.iter().collect::<Vec<_>>(), [0, 1, 3, 5, 8]);
+
+    let mut dense10 = HybridBitSet::new_empty(256);
+    for i in 0..10 {
+        assert!(dense10.insert(i));
+    }
+    assert!(!dense10.is_empty());
+    assert_eq!(dense10.iter().collect::<Vec<_>>(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+
+    let mut dense256 = HybridBitSet::new_empty(256);
+    assert!(dense256.is_empty());
+    dense256.insert_all();
+    assert!(!dense256.is_empty());
+    for i in 0..256 {
+        assert!(dense256.contains(i));
+    }
+
+    assert!(sparse038.superset(&sparse038));    // sparse + sparse (self)
+    assert!(sparse01358.superset(&sparse038));  // sparse + sparse
+    assert!(dense10.superset(&sparse038));      // dense + sparse
+    assert!(dense10.superset(&dense10));        // dense + dense (self)
+    assert!(dense256.superset(&dense10));       // dense + dense
+
+    let mut hybrid = sparse038;
+    assert!(!sparse01358.union(&hybrid));       // no change
+    assert!(hybrid.union(&sparse01358));
+    assert!(hybrid.superset(&sparse01358) && sparse01358.superset(&hybrid));
+    assert!(!dense10.union(&sparse01358));
+    assert!(!dense256.union(&dense10));
+    let mut dense = dense10;
+    assert!(dense.union(&dense256));
+    assert!(dense.superset(&dense256) && dense256.superset(&dense));
+    assert!(hybrid.union(&dense256));
+    assert!(hybrid.superset(&dense256) && dense256.superset(&hybrid));
+
+    assert_eq!(dense256.iter().count(), 256);
+    let mut dense0 = dense256;
+    for i in 0..256 {
+        assert!(dense0.remove(i));
+    }
+    assert!(!dense0.remove(0));
+    assert!(dense0.is_empty());
 }
 
 #[test]

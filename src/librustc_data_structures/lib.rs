@@ -60,7 +60,6 @@ extern crate rustc_cratesio_shim;
 pub use rustc_serialize::hex::ToHex;
 
 pub mod svh;
-pub mod array_vec;
 pub mod base_n;
 pub mod bit_set;
 pub mod const_cstr;
