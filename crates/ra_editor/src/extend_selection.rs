@@ -64,7 +64,7 @@ fn pick_best<'a>(l: SyntaxNodeRef<'a>, r: SyntaxNodeRef<'a>) -> SyntaxNodeRef<'a
     fn priority(n: SyntaxNodeRef) -> usize {
         match n.kind() {
             WHITESPACE => 0,
-            IDENT | SELF_KW | SUPER_KW | CRATE_KW => 2,
+            IDENT | SELF_KW | SUPER_KW | CRATE_KW | LIFETIME => 2,
             _ => 1,
         }
     }
@@ -162,6 +162,18 @@ fn main() { foo<|>+bar;}
 fn main() { foo+<|>bar;}
     "#,
             &["bar", "foo+bar"]
+        );
+    }
+
+    #[test]
+    fn test_extend_selection_prefer_lifetimes() {
+        do_check(
+            r#"fn foo<<|>'a>() {}"#,
+            &["'a", "<'a>"]
+        );
+        do_check(
+            r#"fn foo<'a<|>>() {}"#,
+            &["'a", "<'a>"]
         );
     }
 }
