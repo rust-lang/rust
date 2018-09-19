@@ -846,7 +846,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     "could not evaluate constant expression",
                 ) {
                     Some(err) => err,
-                    None => return,
+                    None => {
+                        self.tcx.sess.delay_span_bug(span,
+                            &format!("constant in type had an ignored error: {:?}", err));
+                        return;
+                    }
                 }
             }
 
