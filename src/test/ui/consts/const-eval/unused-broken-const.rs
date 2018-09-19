@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(const_err)]
+// make sure that an *unused* broken const triggers an error even in a check build
 
-const FOO: &'static[u32] = &[1, 2, 3];
-const BAR: u32 = FOO[5];
-//~^ index out of bounds: the len is 3 but the index is 5
-//~| ERROR any use of this value will cause an error
+// compile-flags: --emit=dep-info,metadata
 
-fn main() {
-    let _ = BAR;
-}
+const FOO: i32 = [][0];
+//~^ ERROR any use of this value will cause an error
+
+fn main() {}

@@ -8,12 +8,5 @@ LL | const BAR: u32 = FOO[5];
    |
    = note: #[deny(const_err)] on by default
 
-error[E0080]: erroneous constant used
-  --> $DIR/const-slice-oob.rs:19:13
-   |
-LL |     let _ = BAR;
-   |             ^^^ referenced constant has errors
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0080`.

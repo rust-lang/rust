@@ -14,5 +14,5 @@ const B: i32 = (&A)[1];
 //~| ERROR any use of this value will cause an error
 
 fn main() {
-    let _ = B; //~ ERROR erroneous constant used
+    let _ = B;
 }

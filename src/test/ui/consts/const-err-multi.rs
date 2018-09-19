@@ -21,5 +21,4 @@ pub const D: i8 = 50 - A;
 
 fn main() {
     let _ = (A, B, C, D);
-    //~^ ERROR erroneous constant used
 }

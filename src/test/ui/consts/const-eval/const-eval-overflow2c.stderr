@@ -82,54 +82,5 @@ LL | |      u64::MAX * 2,
 LL | |      );
    | |_______^
 
-error[E0080]: erroneous constant used
-  --> $DIR/const-eval-overflow2c.rs:63:5
-   |
-LL |     foo(VALS_I8); //~ ERROR erroneous constant used
-   |     ^^^^^^^^^^^^ referenced constant has errors
+error: aborting due to 8 previous errors
 
-error[E0080]: erroneous constant used
-  --> $DIR/const-eval-overflow2c.rs:64:5
-   |
-LL |     foo(VALS_I16); //~ ERROR erroneous constant used
-   |     ^^^^^^^^^^^^^ referenced constant has errors
-
-error[E0080]: erroneous constant used
-  --> $DIR/const-eval-overflow2c.rs:65:5
-   |
-LL |     foo(VALS_I32); //~ ERROR erroneous constant used
-   |     ^^^^^^^^^^^^^ referenced constant has errors
-
-error[E0080]: erroneous constant used
-  --> $DIR/const-eval-overflow2c.rs:66:5
-   |
-LL |     foo(VALS_I64); //~ ERROR erroneous constant used
-   |     ^^^^^^^^^^^^^ referenced constant has errors
-
-error[E0080]: erroneous constant used
-  --> $DIR/const-eval-overflow2c.rs:68:5
-   |
-LL |     foo(VALS_U8); //~ ERROR erroneous constant used
-   |     ^^^^^^^^^^^^ referenced constant has errors
-
-error[E0080]: erroneous constant used
-  --> $DIR/const-eval-overflow2c.rs:69:5
-   |
-LL |     foo(VALS_U16); //~ ERROR erroneous constant used
-   |     ^^^^^^^^^^^^^ referenced constant has errors
-
-error[E0080]: erroneous constant used
-  --> $DIR/const-eval-overflow2c.rs:70:5
-   |
-LL |     foo(VALS_U32); //~ ERROR erroneous constant used
-   |     ^^^^^^^^^^^^^ referenced constant has errors
-
-error[E0080]: erroneous constant used
-  --> $DIR/const-eval-overflow2c.rs:71:5
-   |
-LL |     foo(VALS_U64); //~ ERROR erroneous constant used
-   |     ^^^^^^^^^^^^^ referenced constant has errors
-
-error: aborting due to 16 previous errors
-
-For more information about this error, try `rustc --explain E0080`.

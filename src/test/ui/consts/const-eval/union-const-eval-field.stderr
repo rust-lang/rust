@@ -6,25 +6,5 @@ LL |     const FIELD3: Field3 = unsafe { UNION.field3 }; //~ ERROR any use of th
    |
    = note: #[deny(const_err)] on by default
 
-error[E0080]: erroneous constant used
-  --> $DIR/union-const-eval-field.rs:38:5
-   |
-LL |     FIELD3
-   |     ^^^^^^ referenced constant has errors
+error: aborting due to previous error
 
-error[E0080]: evaluation of constant expression failed
-  --> $DIR/union-const-eval-field.rs:45:5
-   |
-LL |     FIELD3
-   |     ------ referenced constant has errors
-...
-LL |     assert_eq!(read_field3(), unsafe { UNION.field3 });
-   |     ^^^^^^^^^^^-------------^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                |
-   |                inside call to `read_field3`
-   |
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0080`.

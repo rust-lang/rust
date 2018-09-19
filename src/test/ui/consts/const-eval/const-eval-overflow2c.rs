@@ -60,15 +60,15 @@ const VALS_U64: (u64,) = //~ ERROR any use of this value will cause an error
      );
 
 fn main() {
-    foo(VALS_I8); //~ ERROR erroneous constant used
-    foo(VALS_I16); //~ ERROR erroneous constant used
-    foo(VALS_I32); //~ ERROR erroneous constant used
-    foo(VALS_I64); //~ ERROR erroneous constant used
+    foo(VALS_I8);
+    foo(VALS_I16);
+    foo(VALS_I32);
+    foo(VALS_I64);
 
-    foo(VALS_U8); //~ ERROR erroneous constant used
-    foo(VALS_U16); //~ ERROR erroneous constant used
-    foo(VALS_U32); //~ ERROR erroneous constant used
-    foo(VALS_U64); //~ ERROR erroneous constant used
+    foo(VALS_U8);
+    foo(VALS_U16);
+    foo(VALS_U32);
+    foo(VALS_U64);
 }
 
 fn foo<T>(_: T) {

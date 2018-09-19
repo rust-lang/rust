@@ -1607,17 +1607,6 @@ fn check_const(cx: &LateContext, body_id: hir::BodyId) {
     let _ = cx.tcx.const_eval(param_env.and(cid));
 }
 
-struct UnusedBrokenConstVisitor<'a, 'tcx: 'a>(&'a LateContext<'a, 'tcx>);
-
-impl<'a, 'tcx, 'v> hir::intravisit::Visitor<'v> for UnusedBrokenConstVisitor<'a, 'tcx> {
-    fn visit_nested_body(&mut self, id: hir::BodyId) {
-        check_const(self.0, id);
-    }
-    fn nested_visit_map<'this>(&'this mut self) -> hir::intravisit::NestedVisitorMap<'this, 'v> {
-        hir::intravisit::NestedVisitorMap::None
-    }
-}
-
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedBrokenConst {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
@@ -1627,10 +1616,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedBrokenConst {
             hir::ItemKind::Static(_, _, body_id) => {
                 check_const(cx, body_id);
             },
-            hir::ItemKind::Ty(ref ty, _) => hir::intravisit::walk_ty(
-                &mut UnusedBrokenConstVisitor(cx),
-                ty
-            ),
             _ => {},
         }
     }
