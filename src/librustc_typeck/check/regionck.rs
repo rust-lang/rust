@@ -947,8 +947,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn check_safety_of_rvalue_destructor_if_necessary(&mut self, cmt: &mc::cmt_<'tcx>, span: Span) {
-        match cmt.cat {
-            Categorization::Rvalue(region) => match *region {
+        if let Categorization::Rvalue(region) = cmt.cat {
+            match *region {
                 ty::ReScope(rvalue_scope) => {
                     let typ = self.resolve_type(cmt.ty);
                     let body_id = self.body_id;
@@ -969,8 +969,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                         region
                     );
                 }
-            },
-            _ => {}
+            }
         }
     }
 
@@ -1118,25 +1117,22 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         );
         ignore_err!(self.with_mc(|mc| {
             mc.cat_pattern(discr_cmt, root_pat, |sub_cmt, sub_pat| {
-                match sub_pat.node {
-                    // `ref x` pattern
-                    PatKind::Binding(..) => {
-                        if let Some(&bm) = mc.tables.pat_binding_modes().get(sub_pat.hir_id) {
-                            if let ty::BindByReference(mutbl) = bm {
-                                self.link_region_from_node_type(
-                                    sub_pat.span,
-                                    sub_pat.hir_id,
-                                    mutbl,
-                                    &sub_cmt,
-                                );
-                            }
-                        } else {
-                            self.tcx
-                                .sess
-                                .delay_span_bug(sub_pat.span, "missing binding mode");
+                // `ref x` pattern
+                if let PatKind::Binding(..) = sub_pat.node {
+                    if let Some(&bm) = mc.tables.pat_binding_modes().get(sub_pat.hir_id) {
+                        if let ty::BindByReference(mutbl) = bm {
+                            self.link_region_from_node_type(
+                                sub_pat.span,
+                                sub_pat.hir_id,
+                                mutbl,
+                                &sub_cmt,
+                            );
                         }
+                    } else {
+                        self.tcx
+                            .sess
+                            .delay_span_bug(sub_pat.span, "missing binding mode");
                     }
-                    _ => {}
                 }
             })
         }));

@@ -219,11 +219,11 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                 let cast_ty = fcx.ty_to_string(self.cast_ty);
                 err.span_label(error_span,
                                format!("cannot cast `{}` as `{}`",
-                                        fcx.ty_to_string(self.expr_ty),
-                                        cast_ty));
+                                       fcx.ty_to_string(self.expr_ty),
+                                       cast_ty));
                 if let Ok(snippet) = fcx.sess().source_map().span_to_snippet(self.expr.span) {
                     err.span_help(self.expr.span,
-                                   &format!("did you mean `*{}`?", snippet));
+                        &format!("did you mean `*{}`?", snippet));
                 }
                 err.emit();
             }
@@ -267,16 +267,16 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             }
             CastError::CastToChar => {
                 type_error_struct!(fcx.tcx.sess, self.span, self.expr_ty, E0604,
-                                 "only `u8` can be cast as `char`, not `{}`", self.expr_ty).emit();
+                    "only `u8` can be cast as `char`, not `{}`", self.expr_ty).emit();
             }
             CastError::NonScalar => {
                 type_error_struct!(fcx.tcx.sess, self.span, self.expr_ty, E0605,
-                                 "non-primitive cast: `{}` as `{}`",
-                                 self.expr_ty,
-                                 fcx.ty_to_string(self.cast_ty))
-                                .note("an `as` expression can only be used to convert between \
-                                       primitive types. Consider using the `From` trait")
-                                .emit();
+                                   "non-primitive cast: `{}` as `{}`",
+                                   self.expr_ty,
+                                   fcx.ty_to_string(self.cast_ty))
+                                  .note("an `as` expression can only be used to convert between \
+                                         primitive types. Consider using the `From` trait")
+                                  .emit();
             }
             CastError::SizedUnsizedCast => {
                 use structured_errors::{SizedUnsizedCastError, StructuredDiagnostic};
@@ -445,7 +445,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                                              self.expr_ty,
                                              fcx.tcx.mk_fn_ptr(f),
                                              AllowTwoPhase::No);
-                    if !res.is_ok() {
+                    if res.is_err() {
                         return Err(CastError::NonScalar);
                     }
                     (FnPtr, t_cast)

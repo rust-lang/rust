@@ -115,19 +115,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // field is of the found type, suggest such variants. See Issue
         // #42764.
         if let ty::Adt(expected_adt, substs) = expected.sty {
-            let mut compatible_variants = vec![];
-            for variant in &expected_adt.variants {
-                if variant.fields.len() == 1 {
-                    let sole_field = &variant.fields[0];
-                    let sole_field_ty = sole_field.ty(self.tcx, substs);
-                    if self.can_coerce(expr_ty, sole_field_ty) {
-                        let mut variant_path = self.tcx.item_path_str(variant.did);
-                        variant_path = variant_path.trim_left_matches("std::prelude::v1::")
-                            .to_string();
-                        compatible_variants.push(variant_path);
-                    }
+            let compatible_variants = expected_adt.variants
+                                                  .iter()
+                                                  .filter(|variant| variant.fields.len() == 1)
+                                                  .filter_map(|variant| {
+                let sole_field = &variant.fields[0];
+                let sole_field_ty = sole_field.ty(self.tcx, substs);
+                if self.can_coerce(expr_ty, sole_field_ty) {
+                    let variant_path = self.tcx.item_path_str(variant.did);
+                    Some(variant_path.trim_left_matches("std::prelude::v1::").to_string())
+                } else {
+                    None
                 }
-            }
+            }).collect::<Vec<_>>();
+
             if !compatible_variants.is_empty() {
                 let expr_text = print::to_string(print::NO_ANN, |s| s.print_expr(expr));
                 let suggestions = compatible_variants.iter()
@@ -380,15 +381,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                       expected_ty: Ty<'tcx>)
                       -> bool {
         let parent_id = self.tcx.hir.get_parent_node(expr.id);
-        match self.tcx.hir.find(parent_id) {
-            Some(parent) => {
-                // Shouldn't suggest `.into()` on `const`s.
-                if let Node::Item(Item { node: ItemKind::Const(_, _), .. }) = parent {
-                    // FIXME(estebank): modify once we decide to suggest `as` casts
-                    return false;
-                }
+        if let Some(parent) = self.tcx.hir.find(parent_id) {
+            // Shouldn't suggest `.into()` on `const`s.
+            if let Node::Item(Item { node: ItemKind::Const(_, _), .. }) = parent {
+                // FIXME(estebank): modify once we decide to suggest `as` casts
+                return false;
             }
-            None => {}
         };
 
         let will_truncate = "will truncate the source value";
@@ -662,7 +660,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             expr.span,
                             &format!("{}, producing the floating point representation of the \
                                       integer",
-                                      msg),
+                                     msg),
                             into_suggestion,
                             Applicability::MachineApplicable
                         );
@@ -670,7 +668,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         err.span_suggestion_with_applicability(expr.span,
                             &format!("{}, producing the floating point representation of the \
                                       integer, rounded if necessary",
-                                      msg),
+                                     msg),
                             cast_suggestion,
                             Applicability::MaybeIncorrect  // lossy conversion
                         );
@@ -684,7 +682,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             expr.span,
                             &format!("{}, producing the floating point representation of the \
                                       integer",
-                                      msg),
+                                     msg),
                             into_suggestion,
                             Applicability::MachineApplicable
                         );
@@ -693,7 +691,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             expr.span,
                             &format!("{}, producing the floating point representation of the \
                                       integer, rounded if necessary",
-                                      msg),
+                                     msg),
                             cast_suggestion,
                             Applicability::MaybeIncorrect  // lossy conversion
                         );

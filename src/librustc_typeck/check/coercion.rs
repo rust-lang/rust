@@ -144,8 +144,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
     fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
         self.commit_if_ok(|_| {
             if self.use_lub {
-                self.at(&self.cause, self.fcx.param_env)
-                    .lub(b, a)
+                self.at(&self.cause, self.fcx.param_env).lub(b, a)
             } else {
                 self.at(&self.cause, self.fcx.param_env)
                     .sup(b, a)
@@ -256,8 +255,8 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                                b: Ty<'tcx>,
                                r_b: ty::Region<'tcx>,
                                mt_b: TypeAndMut<'tcx>)
-                               -> CoerceResult<'tcx> {
-
+                               -> CoerceResult<'tcx>
+    {
         debug!("coerce_borrowed_pointer(a={:?}, b={:?})", a, b);
 
         // If we have a parameter of type `&M T_a` and the value
@@ -591,9 +590,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 }
 
                 Ok(Some(vtable)) => {
-                    for obligation in vtable.nested_obligations() {
-                        queue.push_back(obligation);
-                    }
+                    queue.extend(vtable.nested_obligations())
                 }
             }
         }
@@ -620,12 +617,11 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
               G: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>
     {
         if let ty::FnPtr(fn_ty_b) = b.sty {
-            match (fn_ty_a.unsafety(), fn_ty_b.unsafety()) {
-                (hir::Unsafety::Normal, hir::Unsafety::Unsafe) => {
-                    let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
-                    return self.unify_and(unsafe_a, b, to_unsafe);
-                }
-                _ => {}
+            if let (hir::Unsafety::Normal, hir::Unsafety::Unsafe)
+                = (fn_ty_a.unsafety(), fn_ty_b.unsafety())
+            {
+                let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
+                return self.unify_and(unsafe_a, b, to_unsafe);
             }
         }
         self.unify_and(a, b, normal)
@@ -653,7 +649,6 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                            -> CoerceResult<'tcx> {
         //! Attempts to coerce from the type of a Rust function item
         //! into a closure or a `proc`.
-        //!
 
         let b = self.shallow_resolve(b);
         debug!("coerce_from_fn_item(a={:?}, b={:?})", a, b);
@@ -724,9 +719,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         let (is_ref, mt_a) = match a.sty {
             ty::Ref(_, ty, mutbl) => (true, ty::TypeAndMut { ty, mutbl }),
             ty::RawPtr(mt) => (false, mt),
-            _ => {
-                return self.unify_and(a, b, identity);
-            }
+            _ => return self.unify_and(a, b, identity)
         };
 
         // Check that the types which they point at are compatible.
@@ -896,10 +889,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
 
             if !noop {
-                return self.commit_if_ok(|_| {
+                return self.commit_if_ok(|_|
                     self.at(cause, self.param_env)
                         .lub(prev_ty, new_ty)
-                }).map(|ok| self.register_infer_ok_obligations(ok));
+                ).map(|ok| self.register_infer_ok_obligations(ok));
             }
         }
 
@@ -909,10 +902,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let Some(e) = first_error {
                     Err(e)
                 } else {
-                    self.commit_if_ok(|_| {
+                    self.commit_if_ok(|_|
                         self.at(cause, self.param_env)
                             .lub(prev_ty, new_ty)
-                    }).map(|ok| self.register_infer_ok_obligations(ok))
+                    ).map(|ok| self.register_infer_ok_obligations(ok))
                 }
             }
             Ok(ok) => {
@@ -1005,7 +998,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     /// needlessly cloning the slice.
     pub fn with_coercion_sites(expected_ty: Ty<'tcx>,
                                coercion_sites: &'exprs [E])
-                      -> Self {
+                               -> Self {
         Self::make(expected_ty, Expressions::UpFront(coercion_sites))
     }
 

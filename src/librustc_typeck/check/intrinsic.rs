@@ -57,7 +57,7 @@ fn equate_intrinsic_type<'a, 'tcx>(
 
         struct_span_err!(tcx.sess, span, E0094,
                         "intrinsic has wrong number of type \
-                        parameters: found {}, expected {}",
+                         parameters: found {}, expected {}",
                         i_n_tps, n_tps)
             .span_label(span, format!("expected {} type parameter", n_tps))
             .emit();
@@ -83,7 +83,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let name = it.name.as_str();
     let (n_tps, inputs, output, unsafety) = if name.starts_with("atomic_") {
         let split : Vec<&str> = name.split('_').collect();
-        assert!(split.len() >= 2, "Atomic intrinsic not correct format");
+        assert!(split.len() >= 2, "Atomic intrinsic in an incorrect format");
 
         //We only care about the operation here
         let (n_tps, inputs, output) = match split[1] {
@@ -127,8 +127,8 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             "size_of_val" |  "min_align_of_val" => {
                 (1, vec![
                     tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::INNERMOST,
-                                                                  ty::BrAnon(0))),
-                                    param(0))
+                                                                 ty::BrAnon(0))),
+                                   param(0))
                  ], tcx.types.usize)
             }
             "rustc_peek" => (1, vec![param(0)], param(0)),
@@ -306,7 +306,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             "discriminant_value" => (1, vec![
                     tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::INNERMOST,
-                                                                  ty::BrAnon(0))),
+                                                                 ty::BrAnon(0))),
                                    param(0))], tcx.types.u64),
 
             "try" => {
@@ -327,10 +327,10 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             ref other => {
                 struct_span_err!(tcx.sess, it.span, E0093,
-                                "unrecognized intrinsic function: `{}`",
-                                *other)
-                                .span_label(it.span, "unrecognized intrinsic")
-                                .emit();
+                                 "unrecognized intrinsic function: `{}`",
+                                 *other)
+                                 .span_label(it.span, "unrecognized intrinsic")
+                                 .emit();
                 return;
             }
         };
