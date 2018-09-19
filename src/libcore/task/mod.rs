@@ -14,12 +14,6 @@
 
 //! Types and Traits for working with asynchronous tasks.
 
-mod context;
-pub use self::context::Context;
-
-mod spawn;
-pub use self::spawn::{Spawn, SpawnErrorKind, SpawnObjError, SpawnLocalObjError};
-
 mod poll;
 pub use self::poll::Poll;
 
