@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Just check we don't get an ICE for the S type.
+// Just check we don't get an ICE for `N`.
 
 use std::cell::Cell;
 use std::mem;
