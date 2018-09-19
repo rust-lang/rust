@@ -66,7 +66,7 @@ use core::iter::FusedIterator;
 use core::marker::{Unpin, Unsize};
 use core::mem;
 use core::pin::PinMut;
-use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
+use core::ops::{CoerceUnsized, CoerceSized, Deref, DerefMut, Generator, GeneratorState};
 use core::ptr::{self, NonNull, Unique};
 use core::task::{Context, Poll, Spawn, SpawnErrorKind, SpawnObjError};
 
@@ -669,6 +669,9 @@ impl<'a, A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + Send + 'a> {
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
+
+#[unstable(feature = "coerce_sized", issue = "0")]
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceSized<Box<T>> for Box<U> {}
 
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
 impl<T: Clone> Clone for Box<[T]> {

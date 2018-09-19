@@ -25,7 +25,7 @@ use core::cmp::Ordering;
 use core::intrinsics::abort;
 use core::mem::{self, align_of_val, size_of_val};
 use core::ops::Deref;
-use core::ops::CoerceUnsized;
+use core::ops::{CoerceUnsized, CoerceSized};
 use core::ptr::{self, NonNull};
 use core::marker::{Unpin, Unsize, PhantomData};
 use core::hash::{Hash, Hasher};
@@ -212,6 +212,9 @@ unsafe impl<T: ?Sized + Sync + Send> Sync for Arc<T> {}
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 
+#[unstable(feature = "coerce_sized", issue = "0")]
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceSized<Arc<T>> for Arc<U> {}
+
 /// `Weak` is a version of [`Arc`] that holds a non-owning reference to the
 /// managed value. The value is accessed by calling [`upgrade`] on the `Weak`
 /// pointer, which returns an [`Option`]`<`[`Arc`]`<T>>`.
@@ -252,6 +255,8 @@ unsafe impl<T: ?Sized + Sync + Send> Sync for Weak<T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
+#[unstable(feature = "coerce_sized", issue = "0")]
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceSized<Weak<T>> for Weak<U> {}
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {

@@ -10,7 +10,7 @@ use fmt;
 use future::{Future, UnsafeFutureObj};
 use marker::{Sized, Unpin, Unsize};
 use task::{Context, Poll};
-use ops::{Deref, DerefMut, CoerceUnsized};
+use ops::{Deref, DerefMut, CoerceUnsized, CoerceSized};
 
 /// A pinned reference.
 ///
@@ -140,6 +140,9 @@ impl<'a, T: ?Sized> fmt::Pointer for PinMut<'a, T> {
 
 #[unstable(feature = "pin", issue = "49150")]
 impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<PinMut<'a, U>> for PinMut<'a, T> {}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceSized<PinMut<'a, T>> for PinMut<'a, U> {}
 
 #[unstable(feature = "pin", issue = "49150")]
 impl<'a, T: ?Sized> Unpin for PinMut<'a, T> {}

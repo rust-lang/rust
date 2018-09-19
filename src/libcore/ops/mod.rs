@@ -201,3 +201,6 @@ pub use self::generator::{Generator, GeneratorState};
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 pub use self::unsize::CoerceUnsized;
+
+#[unstable(feature = "coerce_sized", issue = "0")]
+pub use self::unsize::CoerceSized;

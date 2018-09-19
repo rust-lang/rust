@@ -92,7 +92,7 @@ use core::convert::From;
 use core::fmt;
 use core::future::{Future, FutureObj, LocalFutureObj, UnsafeFutureObj};
 use core::marker::Unsize;
-use core::ops::{CoerceUnsized, Deref, DerefMut};
+use core::ops::{CoerceUnsized, CoerceSized, Deref, DerefMut};
 use core::task::{Context, Poll};
 
 use boxed::Box;
@@ -255,6 +255,11 @@ impl<T: ?Sized> fmt::Pointer for PinBox<T> {
 
 #[unstable(feature = "pin", issue = "49150")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<PinBox<U>> for PinBox<T> {}
+
+#[unstable(feature = "coerce_sized", issue = "0")]
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceSized<PinBox<T>> for PinBox<U> {}
+
+
 
 #[unstable(feature = "pin", issue = "49150")]
 impl<T: ?Sized> Unpin for PinBox<T> {}

@@ -316,7 +316,11 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                 // pointer, so we'd have to "dig down" to find `*dyn Trait`.
                 let pointee = layout.ty.builtin_deref(true)
                     .unwrap_or_else(|| {
-                        bug!("FnType::new_vtable: non-pointer self {:?}", layout)
+                        // builtin_deref only works for basic pointer types,
+                        // i.e. &Self, *const Self, Box<Self>
+                        // If it fails, then this is a custom receiver like Rc<Self>
+                        unimplemented!("dynamic dispatch on custom receivers is not \
+                                        yet implemented in #![feature(arbitrary_self_types)]");
                     }).ty;
                 let fat_ptr_ty = cx.tcx.mk_mut_ptr(pointee);
                 layout = cx.layout_of(fat_ptr_ty).field(cx, 0);

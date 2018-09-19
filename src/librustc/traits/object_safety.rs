@@ -13,7 +13,8 @@
 //! object if all of their methods meet certain criteria. In particular,
 //! they must:
 //!
-//!   - have a suitable receiver from which we can extract a vtable;
+//!   - have a suitable receiver from which we can extract a vtable and coerce to a "thin" version
+//!     that doesn't contain the vtable;
 //!   - not reference the erased type `Self` except for in this receiver;
 //!   - not have generic type parameters
 
@@ -21,11 +22,12 @@ use super::elaborate_predicates;
 
 use hir::def_id::DefId;
 use lint;
-use traits;
-use ty::{self, Ty, TyCtxt, TypeFoldable};
-use ty::util::ExplicitSelf;
+use traits::{self, Obligation, ObligationCause};
+use ty::{self, Ty, TyCtxt, TypeFoldable, Predicate, ToPredicate};
+use ty::subst::{Subst, Substs};
 use std::borrow::Cow;
-use syntax::ast;
+use std::iter::{self};
+use syntax::ast::{self, Name};
 use syntax_pos::Span;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -62,8 +64,8 @@ impl ObjectSafetyViolation {
                 format!("method `{}` references the `Self` type in where clauses", name).into(),
             ObjectSafetyViolation::Method(name, MethodViolationCode::Generic) =>
                 format!("method `{}` has generic type parameters", name).into(),
-            ObjectSafetyViolation::Method(name, MethodViolationCode::NonStandardSelfType) =>
-                format!("method `{}` has a non-standard `self` type", name).into(),
+            ObjectSafetyViolation::Method(name, MethodViolationCode::UncoercibleReceiver) =>
+                format!("method `{}` has an uncoercible receiver type", name).into(),
             ObjectSafetyViolation::AssociatedConst(name) =>
                 format!("the trait cannot contain associated consts like `{}`", name).into(),
         }
@@ -85,11 +87,11 @@ pub enum MethodViolationCode {
     /// e.g., `fn foo<A>()`
     Generic,
 
-    /// arbitrary `self` type, e.g. `self: Rc<Self>`
-    NonStandardSelfType,
+    /// the self argument can't be coerced from Self=dyn Trait to Self=T where T: Trait
+    UncoercibleReceiver,
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
     /// Returns the object safety violations that affect
     /// astconv - currently, Self in supertraits. This is needed
@@ -113,6 +115,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn object_safety_violations(self, trait_def_id: DefId)
                                     -> Vec<ObjectSafetyViolation>
     {
+        debug!("object_safety_violations: {:?}", trait_def_id);
+
         traits::supertrait_def_ids(self, trait_def_id)
             .flat_map(|def_id| self.object_safety_violations_for_trait(def_id))
             .collect()
@@ -277,23 +281,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                          method: &ty::AssociatedItem)
                                          -> Option<MethodViolationCode>
     {
-        // The method's first parameter must be something that derefs (or
-        // autorefs) to `&self`. For now, we only accept `self`, `&self`
-        // and `Box<Self>`.
+        // The method's first parameter must be named `self`
         if !method.method_has_self_argument {
             return Some(MethodViolationCode::StaticMethod);
         }
 
         let sig = self.fn_sig(method.def_id);
 
-        let self_ty = self.mk_self_type();
-        let self_arg_ty = sig.skip_binder().inputs()[0];
-        if let ExplicitSelf::Other = ExplicitSelf::determine(self_arg_ty, |ty| ty == self_ty) {
-            return Some(MethodViolationCode::NonStandardSelfType);
-        }
-
-        // The `Self` type is erased, so it should not appear in list of
-        // arguments or return type apart from the receiver.
         for input_ty in &sig.skip_binder().inputs()[1..] {
             if self.contains_illegal_self_type_reference(trait_def_id, input_ty) {
                 return Some(MethodViolationCode::ReferencesSelf);
@@ -320,7 +314,132 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             return Some(MethodViolationCode::WhereClauseReferencesSelf(span));
         }
 
+        let receiver_ty = self.liberate_late_bound_regions(
+            method.def_id,
+            &sig.map_bound(|sig| sig.inputs()[0]),
+        );
+
+        // until we get by-value DST, `self: Self` can't be coerced
+        // but we allow this as a special case.
+        // maybe instead we should also check for
+        // for (U) { if (Self: Unsize<U>) { Receiver: Unsize<Receiver<Self=Self>>}}
+        if receiver_ty != self.mk_self_type() {
+            if !self.receiver_is_coercible(method, receiver_ty) {
+                return Some(MethodViolationCode::UncoercibleReceiver);
+            }
+        }
+
         None
+    }
+
+    /// checks the method's receiver (the `self` argument) can be coerced from
+    /// a fat pointer, including the trait object vtable, to a thin pointer.
+    /// e.g. from `Rc<dyn Trait>` to `Rc<T>`, where `T` is the erased type of the underlying object.
+    /// More formally:
+    /// - let `Receiver` be the type of the `self` argument, i.e `Self`, `&Self`, `Rc<Self>`
+    /// - require the following bound:
+    ///       forall(T: Trait) {
+    ///           Receiver[Self => dyn Trait]: CoerceSized<Receiver[Self => T]>
+    ///       }
+    ///   where `Foo[X => Y]` means "the same type as `Foo`, but with `X` replaced with `Y`"
+    ///   (substitution notation).
+    ///
+    /// some examples of receiver types and their required obligation
+    /// - `self` requires `dyn Trait: CoerceSized<T>`
+    /// - `&'a mut self` requires `&'a mut dyn Trait: CoerceSized<&'a mut T>`
+    /// - `self: Rc<Self>` requires `Rc<dyn Trait>: CoerceSized<Rc<T>>`
+    ///
+    /// The only case where the receiver is not coercible, but is still a valid receiver
+    /// type (just not object-safe), is when there is more than one level of pointer indirection.
+    /// e.g. `self: &&Self`, `self: &Rc<Self>`, `self: Box<Box<Self>>`. In these cases, there
+    /// is no way, or at least no inexpensive way, to coerce the receiver, because the object that
+    /// needs to be coerced is behind a pointer.
+    ///
+    /// In practice, there are issues with the above bound: `where` clauses that apply to `Self`
+    /// would have to apply to `T`, and trait object types have a lot of parameters that need to
+    /// be filled in (lifetime and type parameters, and the lifetime of the actual object). So in
+    /// the implementation, we use the following, more general bound:
+    ///     forall (U: ?Sized) {
+    ///         if (Self: Unsize<U>) {
+    ///             Receiver[Self => U]: CoerceSized<Receiver>
+    ///         }
+    ///     }
+    ///
+    /// for `self: Self`, this means `U: CoerceSized<Self>`
+    /// for `self: &'a mut Self`, this means `&'a mut U: CoerceSized<&'a mut Self>`
+    /// for `self: Rc<Self>`, this means `Rc<U>: CoerceSized<Rc<Self>>`
+    #[allow(dead_code)]
+    fn receiver_is_coercible(
+        self,
+        method: &ty::AssociatedItem,
+        receiver_ty: Ty<'tcx>,
+    ) -> bool {
+        debug!("receiver_is_coercible: method = {:?}, receiver_ty = {:?}", method, receiver_ty);
+
+        let traits = (self.lang_items().unsize_trait(),
+                      self.lang_items().coerce_sized_trait());
+        let (unsize_did, coerce_sized_did) = if let (Some(u), Some(cu)) = traits {
+            (u, cu)
+        } else {
+            debug!("receiver_is_coercible: Missing Unsize or CoerceSized traits");
+            return false;
+        };
+
+        // use a bogus type parameter to mimick a forall(U) query
+        // using u32::MAX for now. This is a hack that will be replaced when we have real forall
+        // queries
+        let target_self_ty: Ty<'tcx> = self.mk_ty_param(
+            ::std::u32::MAX,
+            Name::intern("RustaceansAreAwesome").as_interned_str(),
+        );
+
+        // create a modified param env, with
+        // `Self: Unsize<U>` added to the caller bounds
+        let param_env = {
+            let mut param_env = self.param_env(method.def_id);
+
+            let predicate = ty::TraitRef {
+                def_id: unsize_did,
+                substs: self.mk_substs_trait(self.mk_self_type(), &[target_self_ty.into()]),
+            }.to_predicate();
+
+            let caller_bounds: Vec<Predicate<'tcx>> = param_env.caller_bounds.iter().cloned()
+                .chain(iter::once(predicate))
+                .collect();
+
+            param_env.caller_bounds = self.intern_predicates(&caller_bounds);
+
+            param_env
+        };
+
+        let receiver_substs = Substs::for_item(self, method.def_id, |param, _| {
+            if param.index == 0 {
+                target_self_ty.into()
+            } else {
+                self.mk_param_from_def(param)
+            }
+        });
+        // the type `Receiver[Self => U]` in the query
+        let unsized_receiver_ty = receiver_ty.subst(self, receiver_substs);
+
+        // Receiver[Self => U]: CoerceSized<Receiver>
+        let obligation = {
+            let predicate = ty::TraitRef {
+                def_id: coerce_sized_did,
+                substs: self.mk_substs_trait(unsized_receiver_ty, &[receiver_ty.into()]),
+            }.to_predicate();
+
+            Obligation::new(
+                ObligationCause::dummy(),
+                param_env,
+                predicate,
+            )
+        };
+
+        self.infer_ctxt().enter(|ref infcx| {
+            // the receiver is coercible iff the obligation holds
+            infcx.predicate_must_hold(&obligation)
+        })
     }
 
     fn contains_illegal_self_type_reference(self,

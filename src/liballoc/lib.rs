@@ -87,6 +87,7 @@
 #![feature(box_syntax)]
 #![feature(cfg_target_has_atomic)]
 #![feature(coerce_unsized)]
+#![feature(coerce_sized)]
 #![cfg_attr(stage0, feature(const_fn))]
 #![cfg_attr(not(stage0), feature(min_const_fn))]
 #![feature(core_intrinsics)]

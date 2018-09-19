@@ -255,7 +255,7 @@ use core::marker;
 use core::marker::{Unpin, Unsize, PhantomData};
 use core::mem::{self, align_of_val, forget, size_of_val};
 use core::ops::Deref;
-use core::ops::CoerceUnsized;
+use core::ops::{CoerceUnsized, CoerceSized};
 use core::ptr::{self, NonNull};
 use core::convert::From;
 use core::usize;
@@ -294,6 +294,9 @@ impl<T: ?Sized> !marker::Sync for Rc<T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
+
+#[unstable(feature = "coerce_sized", issue = "0")]
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceSized<Rc<T>> for Rc<U> {}
 
 impl<T> Rc<T> {
     /// Constructs a new `Rc<T>`.
@@ -1168,6 +1171,9 @@ impl<T: ?Sized> !marker::Sync for Weak<T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
+
+#[unstable(feature = "coerce_sized", issue = "0")]
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceSized<Weak<T>> for Weak<U> {}
 
 impl<T> Weak<T> {
     /// Constructs a new `Weak<T>`, without allocating any memory.
