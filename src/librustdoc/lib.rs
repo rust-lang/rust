@@ -407,8 +407,11 @@ fn main_args(args: &[String]) -> isize {
     let treat_err_as_bug = matches.opt_strs("Z").iter().any(|x| {
         *x == "treat-err-as-bug"
     });
+    let ui_testing = matches.opt_strs("Z").iter().any(|x| {
+        *x == "ui-testing"
+    });
 
-    let diag = core::new_handler(error_format, None, treat_err_as_bug);
+    let diag = core::new_handler(error_format, None, treat_err_as_bug, ui_testing);
 
     // check for deprecated options
     check_deprecated_options(&matches, &diag);
@@ -563,7 +566,7 @@ fn main_args(args: &[String]) -> isize {
     let res = acquire_input(PathBuf::from(input), externs, edition, cg, &matches, error_format,
                             move |out| {
         let Output { krate, passes, renderinfo } = out;
-        let diag = core::new_handler(error_format, None, treat_err_as_bug);
+        let diag = core::new_handler(error_format, None, treat_err_as_bug, ui_testing);
         info!("going to format");
         match output_format.as_ref().map(|s| &**s) {
             Some("html") | None => {
@@ -700,6 +703,9 @@ where R: 'static + Send,
     let treat_err_as_bug = matches.opt_strs("Z").iter().any(|x| {
         *x == "treat-err-as-bug"
     });
+    let ui_testing = matches.opt_strs("Z").iter().any(|x| {
+        *x == "ui-testing"
+    });
 
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -713,7 +719,7 @@ where R: 'static + Send,
                            display_warnings, crate_name.clone(),
                            force_unstable_if_unmarked, edition, cg, error_format,
                            lint_opts, lint_cap, describe_lints, manual_passes, default_passes,
-                           treat_err_as_bug);
+                           treat_err_as_bug, ui_testing);
 
         info!("finished with rustc");
 

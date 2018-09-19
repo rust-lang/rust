@@ -263,6 +263,7 @@ impl DocAccessLevels for AccessLevels<DefId> {
 pub fn new_handler(error_format: ErrorOutputType,
                    source_map: Option<Lrc<source_map::SourceMap>>,
                    treat_err_as_bug: bool,
+                   ui_testing: bool,
 ) -> errors::Handler {
     // rustdoc doesn't override (or allow to override) anything from this that is relevant here, so
     // stick to the defaults
@@ -274,7 +275,7 @@ pub fn new_handler(error_format: ErrorOutputType,
                 source_map.map(|cm| cm as _),
                 false,
                 sessopts.debugging_opts.teach,
-            ).ui_testing(sessopts.debugging_opts.ui_testing)
+            ).ui_testing(ui_testing)
         ),
         ErrorOutputType::Json(pretty) => {
             let source_map = source_map.unwrap_or_else(
@@ -284,7 +285,7 @@ pub fn new_handler(error_format: ErrorOutputType,
                     None,
                     source_map,
                     pretty,
-                ).ui_testing(sessopts.debugging_opts.ui_testing)
+                ).ui_testing(ui_testing)
             )
         },
         ErrorOutputType::Short(color_config) => Box::new(
@@ -326,6 +327,7 @@ pub fn run_core(search_paths: SearchPaths,
                 mut manual_passes: Vec<String>,
                 mut default_passes: passes::DefaultPassOption,
                 treat_err_as_bug: bool,
+                ui_testing: bool,
 ) -> (clean::Crate, RenderInfo, Vec<String>) {
     // Parse, resolve, and typecheck the given crate.
 
@@ -380,6 +382,8 @@ pub fn run_core(search_paths: SearchPaths,
         actually_rustdoc: true,
         debugging_opts: config::DebuggingOptions {
             force_unstable_if_unmarked,
+            treat_err_as_bug,
+            ui_testing,
             ..config::basic_debugging_options()
         },
         error_format,
@@ -391,7 +395,8 @@ pub fn run_core(search_paths: SearchPaths,
         let source_map = Lrc::new(source_map::SourceMap::new(sessopts.file_path_mapping()));
         let diagnostic_handler = new_handler(error_format,
                                              Some(source_map.clone()),
-                                             treat_err_as_bug);
+                                             treat_err_as_bug,
+                                             ui_testing);
 
         let mut sess = session::build_session_(
             sessopts, cpath, diagnostic_handler, source_map,
