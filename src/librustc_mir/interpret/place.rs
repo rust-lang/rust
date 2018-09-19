@@ -125,6 +125,12 @@ impl<Tag> MemPlace<Tag> {
         }
     }
 
+    /// Produces a Place that will error if attempted to be read from or written to
+    #[inline(always)]
+    pub fn null(cx: impl HasDataLayout) -> Self {
+        Self::from_scalar_ptr(Scalar::ptr_null(cx), Align::from_bytes(1, 1).unwrap())
+    }
+
     #[inline(always)]
     pub fn from_ptr(ptr: Pointer<Tag>, align: Align) -> Self {
         Self::from_scalar_ptr(ptr.into(), align)
@@ -209,17 +215,17 @@ impl<'tcx, Tag: ::std::fmt::Debug> OpTy<'tcx, Tag> {
 
 impl<'tcx, Tag: ::std::fmt::Debug> Place<Tag> {
     /// Produces a Place that will error if attempted to be read from or written to
-    #[inline]
+    #[inline(always)]
     pub fn null(cx: impl HasDataLayout) -> Self {
-        Self::from_scalar_ptr(Scalar::ptr_null(cx), Align::from_bytes(1, 1).unwrap())
+        Place::Ptr(MemPlace::null(cx))
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn from_scalar_ptr(ptr: Scalar<Tag>, align: Align) -> Self {
         Place::Ptr(MemPlace::from_scalar_ptr(ptr, align))
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn from_ptr(ptr: Pointer<Tag>, align: Align) -> Self {
         Place::Ptr(MemPlace::from_ptr(ptr, align))
     }
@@ -882,10 +888,8 @@ where
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         if layout.is_unsized() {
             assert!(self.tcx.features().unsized_locals, "cannot alloc memory for unsized type");
-            // allocate a fat pointer slot instead
-            let fat = self.tcx.mk_mut_ptr(layout.ty);
-            let fat = self.layout_of(fat)?;
-            self.allocate(fat, kind)
+            // FIXME: What should we do here?
+            Ok(MPlaceTy::dangling(layout, &self))
         } else {
             let ptr = self.memory.allocate(layout.size, layout.align, kind)?;
             Ok(MPlaceTy::from_aligned_ptr(ptr, layout))
