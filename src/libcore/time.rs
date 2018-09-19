@@ -30,7 +30,7 @@ const NANOS_PER_MILLI: u32 = 1_000_000;
 const NANOS_PER_MICRO: u32 = 1_000;
 const MILLIS_PER_SEC: u64 = 1_000;
 const MICROS_PER_SEC: u64 = 1_000_000;
-const MAX_NANOS_F64: f64 = ((u64::MAX as u128 + 1)*(NANOS_PER_SEC as u128) - 1) as f64;
+const MAX_NANOS_F64: f64 = ((u64::MAX as u128 + 1)*(NANOS_PER_SEC as u128)) as f64;
 
 /// A `Duration` type to represent a span of time, typically used for system
 /// timeouts.
@@ -472,7 +472,7 @@ impl Duration {
     /// let dur = Duration::new(2, 700_000_000);
     /// assert_eq!(dur.as_float_secs(), 2.7);
     /// ```
-    #[unstable(feature = "duration_float", issue = "0")]
+    #[unstable(feature = "duration_float", issue = "54361")]
     #[inline]
     pub fn as_float_secs(&self) -> f64 {
         (self.secs as f64) + (self.nanos as f64) / (NANOS_PER_SEC as f64)
@@ -491,14 +491,14 @@ impl Duration {
     /// let dur = Duration::from_float_secs(2.7);
     /// assert_eq!(dur, Duration::new(2, 700_000_000));
     /// ```
-    #[unstable(feature = "duration_float", issue = "0")]
+    #[unstable(feature = "duration_float", issue = "54361")]
     #[inline]
     pub fn from_float_secs(secs: f64) -> Duration {
         let nanos =  secs * (NANOS_PER_SEC as f64);
         if !nanos.is_finite() {
             panic!("got non-finite value when converting float to duration");
         }
-        if nanos > MAX_NANOS_F64 {
+        if nanos >= MAX_NANOS_F64 {
             panic!("overflow when converting float to duration");
         }
         if nanos < 0.0 {
@@ -525,7 +525,7 @@ impl Duration {
     /// assert_eq!(dur.mul_f64(3.14), Duration::new(8, 478_000_000));
     /// assert_eq!(dur.mul_f64(3.14e5), Duration::new(847_800, 0));
     /// ```
-    #[unstable(feature = "duration_float", issue = "0")]
+    #[unstable(feature = "duration_float", issue = "54361")]
     #[inline]
     pub fn mul_f64(self, rhs: f64) -> Duration {
         Duration::from_float_secs(rhs * self.as_float_secs())
@@ -546,7 +546,7 @@ impl Duration {
     /// // note that truncation is used, not rounding
     /// assert_eq!(dur.div_f64(3.14e5), Duration::new(0, 8_598));
     /// ```
-    #[unstable(feature = "duration_float", issue = "0")]
+    #[unstable(feature = "duration_float", issue = "54361")]
     #[inline]
     pub fn div_f64(self, rhs: f64) -> Duration {
         Duration::from_float_secs(self.as_float_secs() / rhs)
@@ -563,7 +563,7 @@ impl Duration {
     /// let dur2 = Duration::new(5, 400_000_000);
     /// assert_eq!(dur1.div_duration(dur2), 0.5);
     /// ```
-    #[unstable(feature = "duration_float", issue = "0")]
+    #[unstable(feature = "duration_float", issue = "54361")]
     #[inline]
     pub fn div_duration(self, rhs: Duration) -> f64 {
         self.as_float_secs() / rhs.as_float_secs()
@@ -611,7 +611,7 @@ impl Mul<u32> for Duration {
     }
 }
 
-#[stable(feature = "symmetric_u32_duration_mul", since = "1.30.0")]
+#[stable(feature = "symmetric_u32_duration_mul", since = "1.31.0")]
 impl Mul<Duration> for u32 {
     type Output = Duration;
 
