@@ -25,11 +25,11 @@ use rustc_data_structures::graph::implementation::{
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use std::fmt;
 use std::u32;
-use ty::{self, TyCtxt};
+use ty::fold::TypeFoldable;
+use ty::{self, Ty, TyCtxt};
 use ty::{ReEarlyBound, ReEmpty, ReErased, ReFree, ReStatic};
 use ty::{ReLateBound, ReScope, ReSkolemized, ReVar};
 use ty::{Region, RegionVid};
-use ty::fold::TypeFoldable;
 
 mod graphviz;
 
@@ -421,7 +421,8 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
                 continue;
             }
 
-            if self.bound_is_met(&verify.bound, var_data, sub) {
+            let verify_kind_ty = verify.kind.to_ty(self.tcx());
+            if self.bound_is_met(&verify.bound, var_data, verify_kind_ty, sub) {
                 continue;
             }
 
@@ -713,9 +714,15 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
         &self,
         bound: &VerifyBound<'tcx>,
         var_values: &LexicalRegionResolutions<'tcx>,
+        generic_ty: Ty<'tcx>,
         min: ty::Region<'tcx>,
     ) -> bool {
         match bound {
+            VerifyBound::IfEq(k, b) => {
+                (var_values.normalize(self.region_rels.tcx, *k) == generic_ty)
+                    && self.bound_is_met(b, var_values, generic_ty, min)
+            }
+
             VerifyBound::AnyRegion(rs) => rs.iter()
                 .map(|&r| var_values.normalize(self.tcx(), r))
                 .any(|r| self.region_rels.is_subregion_of(min, r)),
@@ -724,9 +731,11 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
                 .map(|&r| var_values.normalize(self.tcx(), r))
                 .all(|r| self.region_rels.is_subregion_of(min, r)),
 
-            VerifyBound::AnyBound(bs) => bs.iter().any(|b| self.bound_is_met(b, var_values, min)),
+            VerifyBound::AnyBound(bs) => bs.iter()
+                .any(|b| self.bound_is_met(b, var_values, generic_ty, min)),
 
-            VerifyBound::AllBounds(bs) => bs.iter().all(|b| self.bound_is_met(b, var_values, min)),
+            VerifyBound::AllBounds(bs) => bs.iter()
+                .all(|b| self.bound_is_met(b, var_values, generic_ty, min)),
         }
     }
 }
