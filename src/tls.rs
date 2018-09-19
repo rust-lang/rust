@@ -1,31 +1,52 @@
-use rustc::{ty, mir};
+use std::collections::BTreeMap;
 
-use super::{TlsKey, TlsEntry, EvalResult, EvalErrorKind, Scalar, Memory, Evaluator,
+use rustc::{ty, ty::layout::HasDataLayout, mir};
+
+use super::{EvalResult, EvalErrorKind, Scalar, Evaluator,
             Place, StackPopCleanup, EvalContext};
 
-pub trait MemoryExt<'tcx> {
-    fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>) -> TlsKey;
-    fn delete_tls_key(&mut self, key: TlsKey) -> EvalResult<'tcx>;
-    fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, Scalar>;
-    fn store_tls(&mut self, key: TlsKey, new_data: Scalar) -> EvalResult<'tcx>;
-    fn fetch_tls_dtor(
-        &mut self,
-        key: Option<TlsKey>,
-    ) -> Option<(ty::Instance<'tcx>, Scalar, TlsKey)>;
+pub type TlsKey = u128;
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct TlsEntry<'tcx> {
+    pub(crate) data: Scalar, // Will eventually become a map from thread IDs to `Scalar`s, if we ever support more than one thread.
+    pub(crate) dtor: Option<ty::Instance<'tcx>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TlsData<'tcx> {
+    /// The Key to use for the next thread-local allocation.
+    pub(crate) next_key: TlsKey,
+
+    /// pthreads-style thread-local storage.
+    pub(crate) keys: BTreeMap<TlsKey, TlsEntry<'tcx>>,
+}
+
+impl<'tcx> Default for TlsData<'tcx> {
+    fn default() -> Self {
+        TlsData {
+            next_key: 1, // start with 1 as we must not use 0 on Windows
+            keys: Default::default(),
+        }
+    }
 }
 
 pub trait EvalContextExt<'tcx> {
     fn run_tls_dtors(&mut self) -> EvalResult<'tcx>;
 }
 
-impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evaluator<'tcx>> {
-    fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>) -> TlsKey {
-        let new_key = self.data.next_thread_local;
-        self.data.next_thread_local += 1;
-        self.data.thread_local.insert(
+impl<'tcx> TlsData<'tcx> {
+    pub fn create_tls_key(
+        &mut self,
+        dtor: Option<ty::Instance<'tcx>>,
+        cx: impl HasDataLayout,
+    ) -> TlsKey {
+        let new_key = self.next_key;
+        self.next_key += 1;
+        self.keys.insert(
             new_key,
             TlsEntry {
-                data: Scalar::ptr_null(*self.tcx).into(),
+                data: Scalar::ptr_null(cx).into(),
                 dtor,
             },
         );
@@ -33,8 +54,8 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
         new_key
     }
 
-    fn delete_tls_key(&mut self, key: TlsKey) -> EvalResult<'tcx> {
-        match self.data.thread_local.remove(&key) {
+    pub fn delete_tls_key(&mut self, key: TlsKey) -> EvalResult<'tcx> {
+        match self.keys.remove(&key) {
             Some(_) => {
                 trace!("TLS key {} removed", key);
                 Ok(())
@@ -43,8 +64,8 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
         }
     }
 
-    fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, Scalar> {
-        match self.data.thread_local.get(&key) {
+    pub fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, Scalar> {
+        match self.keys.get(&key) {
             Some(&TlsEntry { data, .. }) => {
                 trace!("TLS key {} loaded: {:?}", key, data);
                 Ok(data)
@@ -53,8 +74,8 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
         }
     }
 
-    fn store_tls(&mut self, key: TlsKey, new_data: Scalar) -> EvalResult<'tcx> {
-        match self.data.thread_local.get_mut(&key) {
+    pub fn store_tls(&mut self, key: TlsKey, new_data: Scalar) -> EvalResult<'tcx> {
+        match self.keys.get_mut(&key) {
             Some(&mut TlsEntry { ref mut data, .. }) => {
                 trace!("TLS key {} stored: {:?}", key, new_data);
                 *data = new_data;
@@ -85,10 +106,11 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
     fn fetch_tls_dtor(
         &mut self,
         key: Option<TlsKey>,
+        cx: impl HasDataLayout,
     ) -> Option<(ty::Instance<'tcx>, Scalar, TlsKey)> {
         use std::collections::Bound::*;
 
-        let thread_local = &mut self.data.thread_local;
+        let thread_local = &mut self.keys;
         let start = match key {
             Some(key) => Excluded(key),
             None => Unbounded,
@@ -99,7 +121,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
             if !data.is_null() {
                 if let Some(dtor) = dtor {
                     let ret = Some((dtor, *data, key));
-                    *data = Scalar::ptr_null(*self.tcx);
+                    *data = Scalar::ptr_null(cx);
                     return ret;
                 }
             }
@@ -110,7 +132,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
 
 impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>> {
     fn run_tls_dtors(&mut self) -> EvalResult<'tcx> {
-        let mut dtor = self.memory.fetch_tls_dtor(None);
+        let mut dtor = self.machine.tls.fetch_tls_dtor(None, *self.tcx);
         // FIXME: replace loop by some structure that works with stepping
         while let Some((instance, ptr, key)) = dtor {
             trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
@@ -134,9 +156,9 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             // step until out of stackframes
             self.run()?;
 
-            dtor = match self.memory.fetch_tls_dtor(Some(key)) {
+            dtor = match self.machine.tls.fetch_tls_dtor(Some(key), *self.tcx) {
                 dtor @ Some(_) => dtor,
-                None => self.memory.fetch_tls_dtor(None),
+                None => self.machine.tls.fetch_tls_dtor(None, *self.tcx),
             };
         }
         // FIXME: On a windows target, call `unsafe extern "system" fn on_tls_callback`.
