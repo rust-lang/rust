@@ -9,6 +9,8 @@ cargo build --features debugging
 cargo test --features debugging
 cd clippy_lints && cargo test && cd ..
 cd rustc_tools_util && cargo test && cd ..
+# check that the lint lists are up-to-date
+./util/update_lints.py -c
 mkdir -p ~/rust/cargo/bin
 cp target/debug/cargo-clippy ~/rust/cargo/bin/cargo-clippy
 cp target/debug/clippy-driver ~/rust/cargo/bin/clippy-driver
