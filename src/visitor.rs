@@ -497,6 +497,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 let rewrite = rewrite_associated_type(
                     ti.ident,
                     type_default.as_ref(),
+                    &ti.generics,
                     Some(generic_bounds),
                     &self.get_context(),
                     self.block_indent,
@@ -535,6 +536,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     ii.ident,
                     ii.defaultness,
                     Some(ty),
+                    &ii.generics,
                     &self.get_context(),
                     self.block_indent,
                 );
@@ -544,6 +546,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 let rewrite = rewrite_existential_impl_type(
                     &self.get_context(),
                     ii.ident,
+                    &ii.generics,
                     generic_bounds,
                     self.block_indent,
                 );
