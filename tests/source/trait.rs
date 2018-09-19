@@ -97,3 +97,12 @@ trait FooBar = Foo
 auto trait Example {}
 pub auto trait PubExample {}
 pub unsafe auto trait PubUnsafeExample {}
+
+// #3006
+trait Foo<'a> {
+    type Bar<  'a  >;
+}
+
+impl<'a> Foo<'a> for i32 {
+    type Bar<  'a  > = i32;
+}
