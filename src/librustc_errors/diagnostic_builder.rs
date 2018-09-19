@@ -108,6 +108,9 @@ impl<'a> DiagnosticBuilder<'a> {
             diagnostic = ::std::ptr::read(&self.diagnostic);
             ::std::mem::forget(self);
         };
+        // Logging here is useful to help track down where in logs an error was
+        // actually emitted.
+        debug!("buffer: diagnostic={:?}", diagnostic);
         buffered_diagnostics.push(diagnostic);
     }
 
