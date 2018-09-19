@@ -435,7 +435,7 @@ pub use alloc_crate::fmt;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::format;
 #[unstable(feature = "pin", issue = "49150")]
-pub use alloc_crate::pin;
+pub use core::pin;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::slice;
 #[stable(feature = "rust1", since = "1.0.0")]

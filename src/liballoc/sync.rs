@@ -26,6 +26,7 @@ use core::intrinsics::abort;
 use core::mem::{self, align_of_val, size_of_val};
 use core::ops::Deref;
 use core::ops::CoerceUnsized;
+use core::pin::Pin;
 use core::ptr::{self, NonNull};
 use core::marker::{Unpin, Unsize, PhantomData};
 use core::hash::{Hash, Hasher};
@@ -295,6 +296,11 @@ impl<T> Arc<T> {
             data,
         };
         Arc { ptr: Box::into_raw_non_null(x), phantom: PhantomData }
+    }
+
+    #[unstable(feature = "pin", issue = "49150")]
+    pub fn pinned(data: T) -> Pin<Arc<T>> {
+        unsafe { Pin::new_unchecked(Arc::new(data)) }
     }
 
     /// Returns the contained value, if the `Arc` has exactly one strong reference.

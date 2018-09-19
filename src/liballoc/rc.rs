@@ -256,6 +256,7 @@ use core::marker::{Unpin, Unsize, PhantomData};
 use core::mem::{self, align_of_val, forget, size_of_val};
 use core::ops::Deref;
 use core::ops::CoerceUnsized;
+use core::pin::Pin;
 use core::ptr::{self, NonNull};
 use core::convert::From;
 use core::usize;
@@ -319,6 +320,11 @@ impl<T> Rc<T> {
             }),
             phantom: PhantomData,
         }
+    }
+
+    #[unstable(feature = "pin", issue = "49150")]
+    pub fn pinned(value: T) -> Pin<Rc<T>> {
+        unsafe { Pin::new_unchecked(Rc::new(value)) }
     }
 
     /// Returns the contained value, if the `Rc` has exactly one strong reference.

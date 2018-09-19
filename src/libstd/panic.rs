@@ -16,7 +16,7 @@ use any::Any;
 use cell::UnsafeCell;
 use fmt;
 use future::Future;
-use pin::PinMut;
+use pin::Pin;
 use ops::{Deref, DerefMut};
 use panicking;
 use ptr::{Unique, NonNull};
@@ -327,9 +327,9 @@ impl<T: fmt::Debug> fmt::Debug for AssertUnwindSafe<T> {
 impl<'a, F: Future> Future for AssertUnwindSafe<F> {
     type Output = F::Output;
 
-    fn poll(self: PinMut<Self>, cx: &mut task::Context) -> Poll<Self::Output> {
-        let pinned_field = unsafe { PinMut::map_unchecked(self, |x| &mut x.0) };
-        pinned_field.poll(cx)
+    fn poll(self: Pin<&mut Self>, cx: &mut task::Context) -> Poll<Self::Output> {
+        let pinned_field = unsafe { Pin::map_unchecked_mut(self, |x| &mut x.0) };
+        F::poll(pinned_field, cx)
     }
 }
 

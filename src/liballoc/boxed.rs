@@ -65,13 +65,12 @@ use core::hash::{Hash, Hasher};
 use core::iter::FusedIterator;
 use core::marker::{Unpin, Unsize};
 use core::mem;
-use core::pin::PinMut;
+use core::pin::Pin;
 use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
 use core::ptr::{self, NonNull, Unique};
 use core::task::{Context, Poll, Spawn, SpawnErrorKind, SpawnObjError};
 
 use raw_vec::RawVec;
-use pin::PinBox;
 use str::from_boxed_utf8_unchecked;
 
 /// A pointer type for heap allocation.
@@ -96,6 +95,12 @@ impl<T> Box<T> {
     #[inline(always)]
     pub fn new(x: T) -> Box<T> {
         box x
+    }
+
+    #[unstable(feature = "pin", issue = "49150")]
+    #[inline(always)]
+    pub fn pinned(x: T) -> Pin<Box<T>> {
+        (box x).into()
     }
 }
 
@@ -424,6 +429,16 @@ impl<T: ?Sized + Hasher> Hasher for Box<T> {
 impl<T> From<T> for Box<T> {
     fn from(t: T) -> Self {
         Box::new(t)
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T> From<Box<T>> for Pin<Box<T>> {
+    fn from(boxed: Box<T>) -> Self {
+        // It's not possible to move or replace the insides of a `Pin<Box<T>>`
+        // when `T: !Unpin`,  so it's safe to pin it directly without any
+        // additional requirements.
+        unsafe { Pin::new_unchecked(boxed) }
     }
 }
 
@@ -789,8 +804,8 @@ impl<T> Generator for Box<T>
 impl<F: ?Sized + Future + Unpin> Future for Box<F> {
     type Output = F::Output;
 
-    fn poll(mut self: PinMut<Self>, cx: &mut Context) -> Poll<Self::Output> {
-        PinMut::new(&mut **self).poll(cx)
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+        F::poll(Pin::new(&mut *self), cx)
     }
 }
 
@@ -804,8 +819,8 @@ unsafe impl<'a, T, F> UnsafeFutureObj<'a, T> for Box<F>
 
     unsafe fn poll(ptr: *mut (), cx: &mut Context) -> Poll<T> {
         let ptr = ptr as *mut F;
-        let pin: PinMut<F> = PinMut::new_unchecked(&mut *ptr);
-        pin.poll(cx)
+        let pin: Pin<&mut F> = Pin::new_unchecked(&mut *ptr);
+        F::poll(pin, cx)
     }
 
     unsafe fn drop(ptr: *mut ()) {
@@ -843,9 +858,16 @@ impl<'a, F: Future<Output = ()> + 'a> From<Box<F>> for LocalFutureObj<'a, ()> {
     }
 }
 
-#[unstable(feature = "pin", issue = "49150")]
-impl<T: Unpin + ?Sized> From<PinBox<T>> for Box<T> {
-    fn from(pinned: PinBox<T>) -> Box<T> {
-        unsafe { PinBox::unpin(pinned) }
+#[unstable(feature = "futures_api", issue = "50547")]
+impl<'a, F: Future<Output = ()> + Send + 'a> From<Pin<Box<F>>> for FutureObj<'a, ()> {
+    fn from(boxed: Pin<Box<F>>) -> Self {
+        FutureObj::new(boxed)
+    }
+}
+
+#[unstable(feature = "futures_api", issue = "50547")]
+impl<'a, F: Future<Output = ()> + 'a> From<Pin<Box<F>>> for LocalFutureObj<'a, ()> {
+    fn from(boxed: Pin<Box<F>>) -> Self {
+        LocalFutureObj::new(boxed)
     }
 }
