@@ -80,7 +80,6 @@ use utils::{
 
 use std::borrow::Cow;
 use std::cmp::min;
-use std::iter;
 
 use syntax::source_map::{BytePos, Span};
 use syntax::{ast, ptr};
@@ -132,8 +131,8 @@ impl ChainItemKind {
     fn is_block_like(&self, context: &RewriteContext, reps: &str) -> bool {
         match self {
             ChainItemKind::Parent(ref expr) => is_block_expr(context, expr, reps),
-            ChainItemKind::MethodCall(..) => reps.contains('\n'),
-            ChainItemKind::StructField(..)
+            ChainItemKind::MethodCall(..)
+            | ChainItemKind::StructField(..)
             | ChainItemKind::TupleField(..)
             | ChainItemKind::Comment(..) => false,
         }
@@ -559,7 +558,8 @@ impl<'a> ChainFormatterShared<'a> {
             shape.width
         } else {
             min(shape.width, context.config.width_heuristics().chain_width)
-        }.saturating_sub(almost_total);
+        }
+        .saturating_sub(almost_total);
 
         let all_in_one_line = !self.children.iter().any(ChainItem::is_comment)
             && self.rewrites.iter().all(|s| !s.contains('\n'))
@@ -625,12 +625,7 @@ impl<'a> ChainFormatterShared<'a> {
         Some(())
     }
 
-    fn join_rewrites(
-        &self,
-        context: &RewriteContext,
-        child_shape: Shape,
-        block_like_iter: impl Iterator<Item = bool>,
-    ) -> Option<String> {
+    fn join_rewrites(&self, context: &RewriteContext, child_shape: Shape) -> Option<String> {
         let connector = if self.fits_single_line {
             // Yay, we can put everything on one line.
             Cow::from("")
@@ -645,17 +640,13 @@ impl<'a> ChainFormatterShared<'a> {
         let mut rewrite_iter = self.rewrites.iter();
         let mut result = rewrite_iter.next().unwrap().clone();
         let children_iter = self.children.iter();
-        let iter = rewrite_iter.zip(block_like_iter).zip(children_iter);
+        let iter = rewrite_iter.zip(children_iter);
 
-        for ((rewrite, prev_is_block_like), chain_item) in iter {
+        for (rewrite, chain_item) in iter {
             match chain_item.kind {
                 ChainItemKind::Comment(_, CommentPosition::Back) => result.push(' '),
                 ChainItemKind::Comment(_, CommentPosition::Top) => result.push_str(&connector),
-                _ => {
-                    if !prev_is_block_like {
-                        result.push_str(&connector);
-                    }
-                }
+                _ => result.push_str(&connector),
             }
             result.push_str(&rewrite);
         }
@@ -667,15 +658,14 @@ impl<'a> ChainFormatterShared<'a> {
 // Formats a chain using block indent.
 struct ChainFormatterBlock<'a> {
     shared: ChainFormatterShared<'a>,
-    // For each rewrite, whether the corresponding item is block-like.
-    is_block_like: Vec<bool>,
+    root_ends_with_block: bool,
 }
 
 impl<'a> ChainFormatterBlock<'a> {
     fn new(chain: &'a Chain) -> ChainFormatterBlock<'a> {
         ChainFormatterBlock {
             shared: ChainFormatterShared::new(chain),
-            is_block_like: Vec::with_capacity(chain.children.len() + 1),
+            root_ends_with_block: false,
         }
     }
 }
@@ -703,33 +693,32 @@ impl<'a> ChainFormatter for ChainFormatterBlock<'a> {
                 None => break,
             }
 
-            root_ends_with_block = item.kind.is_block_like(context, &root_rewrite);
+            root_ends_with_block = last_line_extendable(&root_rewrite);
 
             self.shared.children = &self.shared.children[1..];
             if self.shared.children.is_empty() {
                 break;
             }
         }
-        self.is_block_like.push(root_ends_with_block);
         self.shared.rewrites.push(root_rewrite);
+        self.root_ends_with_block = root_ends_with_block;
         Some(())
     }
 
     fn child_shape(&self, context: &RewriteContext, shape: Shape) -> Option<Shape> {
         Some(
-            if self.is_block_like[0] {
+            if self.root_ends_with_block {
                 shape.block_indent(0)
             } else {
                 shape.block_indent(context.config.tab_spaces())
-            }.with_max_width(context.config),
+            }
+            .with_max_width(context.config),
         )
     }
 
     fn format_children(&mut self, context: &RewriteContext, child_shape: Shape) -> Option<()> {
         for item in &self.shared.children[..self.shared.children.len() - 1] {
             let rewrite = item.rewrite(context, child_shape)?;
-            self.is_block_like
-                .push(item.kind.is_block_like(context, &rewrite));
             self.shared.rewrites.push(rewrite);
         }
         Some(())
@@ -746,8 +735,7 @@ impl<'a> ChainFormatter for ChainFormatterBlock<'a> {
     }
 
     fn join_rewrites(&self, context: &RewriteContext, child_shape: Shape) -> Option<String> {
-        self.shared
-            .join_rewrites(context, child_shape, self.is_block_like.iter().cloned())
+        self.shared.join_rewrites(context, child_shape)
     }
 
     fn pure_root(&mut self) -> Option<String> {
@@ -841,8 +829,7 @@ impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
     }
 
     fn join_rewrites(&self, context: &RewriteContext, child_shape: Shape) -> Option<String> {
-        self.shared
-            .join_rewrites(context, child_shape, iter::repeat(false))
+        self.shared.join_rewrites(context, child_shape)
     }
 
     fn pure_root(&mut self) -> Option<String> {

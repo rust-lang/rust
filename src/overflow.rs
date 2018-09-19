@@ -52,7 +52,8 @@ where
         item_max_width,
         force_separator_tactic,
         None,
-    ).rewrite(shape)
+    )
+    .rewrite(shape)
 }
 
 pub fn rewrite_with_angle_brackets<T>(
@@ -76,7 +77,8 @@ where
         context.config.max_width(),
         None,
         None,
-    ).rewrite(shape)
+    )
+    .rewrite(shape)
 }
 
 pub fn rewrite_with_square_brackets<T>(
@@ -107,7 +109,8 @@ where
         context.config.width_heuristics().array_width,
         force_separator_tactic,
         Some(("[", "]")),
-    ).rewrite(shape)
+    )
+    .rewrite(shape)
 }
 
 struct Context<'a, T: 'a> {
@@ -242,7 +245,8 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
                 list_items,
                 self.one_line_shape,
                 self.item_max_width,
-            ).and_then(|arg_shape| {
+            )
+            .and_then(|arg_shape| {
                 self.rewrite_last_item_with_overflow(
                     &mut list_items[self.items.len() - 1],
                     arg_shape,
@@ -495,7 +499,8 @@ where
     Shape {
         width: min(args_max_width, shape.width),
         ..shape
-    }.offset_left(offset)
+    }
+    .offset_left(offset)
 }
 
 fn shape_from_indent_style(

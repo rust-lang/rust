@@ -1029,7 +1029,8 @@ impl<'a> Rewrite for ControlFlow<'a> {
                         false,
                         true,
                         mk_sp(else_block.span.lo(), self.span.hi()),
-                    ).rewrite(context, shape)
+                    )
+                    .rewrite(context, shape)
                 }
                 ast::ExprKind::If(ref cond, ref if_block, ref next_else_block) => {
                     ControlFlow::new_if(
@@ -1040,7 +1041,8 @@ impl<'a> Rewrite for ControlFlow<'a> {
                         false,
                         true,
                         mk_sp(else_block.span.lo(), self.span.hi()),
-                    ).rewrite(context, shape)
+                    )
+                    .rewrite(context, shape)
                 }
                 _ => {
                     last_in_chain = true;
@@ -1237,7 +1239,8 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
                             new_indent.to_string(context.config),
                             line.trim_left()
                         )
-                    }).collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>()
                     .join("\n")
                     .trim_left(),
             );
@@ -1486,7 +1489,12 @@ fn rewrite_index(
             .offset_left(offset)
             .and_then(|shape| shape.sub_width(1 + rhs_overhead))
     } else {
-        shape.visual_indent(offset).sub_width(offset + 1)
+        match context.config.indent_style() {
+            IndentStyle::Block => shape
+                .offset_left(offset)
+                .and_then(|shape| shape.sub_width(1)),
+            IndentStyle::Visual => shape.visual_indent(offset).sub_width(offset + 1),
+        }
     };
     let orig_index_rw = index_shape.and_then(|s| index.rewrite(context, s));
 

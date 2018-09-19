@@ -216,7 +216,8 @@ impl FileLines {
                 .map(|(file, range)| JsonSpan {
                     file: file.to_owned(),
                     range: (range.lo, range.hi),
-                }).collect(),
+                })
+                .collect(),
         }
     }
 

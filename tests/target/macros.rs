@@ -173,7 +173,8 @@ fn issue1739() {
         ..,
         init_size[1] - extreeeeeeeeeeeeeeeeeeeeeeeem..init_size[1],
         ..
-    ]).par_map_inplace(|el| *el = 0.);
+    ])
+    .par_map_inplace(|el| *el = 0.);
 }
 
 fn issue_1885() {
@@ -183,7 +184,8 @@ fn issue_1885() {
             chan_select! {
                 rx.recv() => {}
             }
-        }).collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>();
 }
 
 fn issue_1917() {

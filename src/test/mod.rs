@@ -514,7 +514,8 @@ fn read_significant_comments(file_name: &Path) -> HashMap<String, String> {
                         .to_owned(),
                 )
             })
-        }).collect()
+        })
+        .collect()
 }
 
 // Compare output to input.
@@ -882,7 +883,8 @@ fn configuration_snippet_tests() {
         let mut file_iter = BufReader::new(
             fs::File::open(Path::new(CONFIGURATIONS_FILE_NAME))
                 .expect(&format!("Couldn't read file {}", CONFIGURATIONS_FILE_NAME)),
-        ).lines()
+        )
+        .lines()
         .map(|l| l.unwrap())
         .enumerate();
         let mut code_blocks: Vec<ConfigCodeBlock> = Vec::new();
@@ -970,6 +972,7 @@ fn verify_check_works() {
         rustfmt().to_str().unwrap(),
         "--check",
         temp_file.path.to_str().unwrap(),
-    ]).succeeds()
+    ])
+    .succeeds()
     .unwrap();
 }

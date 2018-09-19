@@ -460,7 +460,8 @@ impl<'a> FmtVisitor<'a> {
             self.block_indent,
             mk_sp(span.lo(), body_start),
             last_line_width(&enum_header),
-        ).unwrap();
+        )
+        .unwrap();
         self.push_str(&generics_str);
 
         self.last_pos = body_start;
@@ -517,7 +518,8 @@ impl<'a> FmtVisitor<'a> {
                 body_lo,
                 body_hi,
                 false,
-            ).collect()
+            )
+            .collect()
         };
         let mut items: Vec<_> =
             itemize_list_with(self.config.width_heuristics().struct_variant_width);
@@ -1705,7 +1707,8 @@ fn rewrite_static(
             lhs,
             &**expr,
             Shape::legacy(remaining_width, offset.block_only()),
-        ).and_then(|res| recover_comment_removed(res, static_parts.span, context))
+        )
+        .and_then(|res| recover_comment_removed(res, static_parts.span, context))
         .map(|s| if s.ends_with(';') { s } else { s + ";" })
     } else {
         Some(format!("{}{};", prefix, ty_str))
@@ -2240,7 +2243,8 @@ fn rewrite_args(
         .map(|arg| {
             arg.rewrite(context, Shape::legacy(multi_line_budget, arg_indent))
                 .unwrap_or_else(|| context.snippet(arg.span()).to_owned())
-        }).collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>();
 
     // Account for sugary self.
     // FIXME: the comment for the self argument is dropped. This is blocked
@@ -2822,7 +2826,8 @@ impl Rewrite for ast::ForeignItem {
                 span,
                 false,
                 false,
-            ).map(|(s, _)| format!("{};", s)),
+            )
+            .map(|(s, _)| format!("{};", s)),
             ast::ForeignItemKind::Static(ref ty, is_mutable) => {
                 // FIXME(#21): we're dropping potential comments in between the
                 // function keywords here.

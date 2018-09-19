@@ -200,12 +200,14 @@ fn struct_field_prefix_max_min_width<T: AlignedItem>(
                     Some(field_str.len())
                 }
             })
-        }).fold(Some((0, ::std::usize::MAX)), |acc, len| match (acc, len) {
+        })
+        .fold(Some((0, ::std::usize::MAX)), |acc, len| match (acc, len) {
             (Some((max_len, min_len)), Some(len)) => {
                 Some((cmp::max(max_len, len), cmp::min(min_len, len)))
             }
             _ => None,
-        }).unwrap_or((0, 0))
+        })
+        .unwrap_or((0, 0))
 }
 
 fn rewrite_aligned_items_inner<T: AlignedItem>(
@@ -236,7 +238,8 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
         span.lo(),
         span.hi(),
         false,
-    ).collect::<Vec<_>>();
+    )
+    .collect::<Vec<_>>();
 
     let tactic = definitive_tactic(
         &items,

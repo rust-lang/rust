@@ -240,7 +240,8 @@ impl FormattingError {
                     fl.file
                         .get_line(fl.lines[0].line_index)
                         .map(|l| l.into_owned())
-                }).unwrap_or_else(String::new),
+                })
+                .unwrap_or_else(String::new),
         }
     }
 

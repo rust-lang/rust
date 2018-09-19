@@ -52,7 +52,8 @@ fn main() {
                         assert!(row_sum_a > 0);
                         (item_b, (item_a, num_cooccurrences, row_sum_a))
                     },
-                ).join_map(
+                )
+                .join_map(
                     &row_sums,
                     |&item_b, &(item_a, num_cooccurrences, row_sum_a), &row_sum_b| {
                         assert!(row_sum_a > 0);
@@ -159,5 +160,6 @@ fn main() {
                 worker.step();
             }
         }
-    }).unwrap();
+    })
+    .unwrap();
 }

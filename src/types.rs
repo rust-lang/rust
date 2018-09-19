@@ -844,7 +844,8 @@ fn rewrite_lifetime_param(
         .filter(|p| match p.kind {
             ast::GenericParamKind::Lifetime => true,
             _ => false,
-        }).map(|lt| lt.rewrite(context, shape))
+        })
+        .map(|lt| lt.rewrite(context, shape))
         .collect::<Option<Vec<_>>>()?
         .join(", ");
     if result.is_empty() {

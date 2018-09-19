@@ -421,7 +421,8 @@ fn determine_operation(matches: &Matches) -> Result<Operation, ErrorKind> {
             // we will do comparison later, so here tries to canonicalize first
             // to get the expected behavior.
             p.canonicalize().unwrap_or(p)
-        }).collect();
+        })
+        .collect();
 
     Ok(Operation::Format {
         files,

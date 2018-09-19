@@ -287,7 +287,8 @@ pub fn rewrite_macro_inner(
                 } else {
                     Some(SeparatorTactic::Never)
                 },
-            ).map(|rw| match position {
+            )
+            .map(|rw| match position {
                 MacroPosition::Item => format!("{};", rw),
                 _ => rw,
             })
@@ -418,7 +419,8 @@ pub fn rewrite_macro_def(
         context.snippet_provider.span_after(span, "{"),
         span.hi(),
         false,
-    ).collect::<Vec<_>>();
+    )
+    .collect::<Vec<_>>();
 
     let fmt = ListFormatting::new(arm_shape, context.config)
         .separator(if def.legacy { ";" } else { "" })
@@ -1141,7 +1143,8 @@ fn indent_macro_snippet(
                 FullCodeCharKind::InString | FullCodeCharKind::EndString => None,
                 _ => prefix_space_width,
             }
-        }).min()?;
+        })
+        .min()?;
 
     Some(
         first_line + "\n" + &trimmed_lines
@@ -1157,7 +1160,8 @@ fn indent_macro_snippet(
                     }
                     None => String::new(),
                 },
-            ).collect::<Vec<_>>()
+            )
+            .collect::<Vec<_>>()
             .join("\n"),
     )
 }
@@ -1322,7 +1326,8 @@ impl MacroBranch {
                     }
                     (s + l + "\n", !kind.is_string() || l.ends_with('\\'))
                 },
-            ).0;
+            )
+            .0;
 
         // Undo our replacement of macro variables.
         // FIXME: this could be *much* more efficient.

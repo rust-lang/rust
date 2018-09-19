@@ -38,7 +38,8 @@ fn main() {
         .method_call_a(aaaaa, bbbbb, |c| {
             let x = c;
             x
-        }).method_call_b(aaaaa, bbbbb, |c| {
+        })
+        .method_call_b(aaaaa, bbbbb, |c| {
             let x = c;
             x
         });
@@ -55,7 +56,8 @@ fn main() {
     body.fold(Body::new(), |mut body, chunk| {
         body.extend(chunk);
         Ok(body)
-    }).and_then(move |body| {
+    })
+    .and_then(move |body| {
         let req = Request::from_parts(parts, body);
         f(req).map_err(|_| io::Error::new(io::ErrorKind::Other, ""))
     });
@@ -64,7 +66,8 @@ fn main() {
         .map(|x| {
             x += 1;
             x
-        }).filter(some_mod::some_filter)
+        })
+        .filter(some_mod::some_filter)
 }
 
 fn floaters() {
@@ -76,14 +79,16 @@ fn floaters() {
     let x = Foo {
         field1: val1,
         field2: val2,
-    }.method_call()
+    }
+    .method_call()
     .method_call();
 
     let y = if cond {
         val1
     } else {
         val2
-    }.method_call();
+    }
+    .method_call();
 
     {
         match x {
@@ -91,9 +96,10 @@ fn floaters() {
                 // params are 1-indexed
                 stack.push(
                     mparams[match cur.to_digit(10) {
-                                Some(d) => d as usize - 1,
-                                None => return Err("bad param number".to_owned()),
-                            }].clone(),
+                        Some(d) => d as usize - 1,
+                        None => return Err("bad param number".to_owned()),
+                    }]
+                    .clone(),
                 );
             }
         }
@@ -103,28 +109,34 @@ fn floaters() {
         some();
     } else {
         none();
-    }.bar()
+    }
+    .bar()
     .baz();
 
     Foo {
         x: val,
-    }.baz(|| {
+    }
+    .baz(|| {
         force();
         multiline();
-    }).quux();
+    })
+    .quux();
 
     Foo {
         y: i_am_multi_line,
         z: ok,
-    }.baz(|| {
+    }
+    .baz(|| {
         force();
         multiline();
-    }).quux();
+    })
+    .quux();
 
     a + match x {
         true => "yay!",
         false => "boo!",
-    }.bar()
+    }
+    .bar()
 }
 
 fn is_replaced_content() -> bool {
@@ -184,7 +196,8 @@ fn issue1392() {
         else {
             b();
         }
-        "#.trim(),
+        "#
+        .trim(),
     );
 }
 
@@ -234,7 +247,8 @@ impl Foo {
                         }
                     }
                 })
-            }).collect();
+            })
+            .collect();
     }
 }
 
@@ -247,8 +261,10 @@ fn issue2415() {
         Ok((|| {
             // stuff
             Some(value.to_string())
-        })().ok_or("")?)
-    })().unwrap_or_else(|_: Box<::std::error::Error>| String::from(""));
+        })()
+        .ok_or("")?)
+    })()
+    .unwrap_or_else(|_: Box<::std::error::Error>| String::from(""));
 }
 
 impl issue_2786 {
@@ -256,10 +272,12 @@ impl issue_2786 {
         foo(|a| {
             println!("a");
             println!("b");
-        }).bar(|c| {
+        })
+        .bar(|c| {
             println!("a");
             println!("b");
-        }).baz(|c| {
+        })
+        .baz(|c| {
             println!("a");
             println!("b");
         })
@@ -271,10 +289,12 @@ fn issue_2773() {
     bar.or_else(|| {
         // do stuff
         None
-    }).or_else(|| {
+    })
+    .or_else(|| {
         // do other stuff
         None
-    }).and_then(|val| {
+    })
+    .and_then(|val| {
         // do this stuff
         None
     });
