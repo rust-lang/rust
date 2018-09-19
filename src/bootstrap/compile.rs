@@ -667,6 +667,7 @@ impl Step for CodegenBackend {
 
         if builder.config.llvm_thin_lto {
             cargo_tails_args.push("--".to_string());
+            cargo_tails_args.push("-Zcross-lang-lto".to_string());
 
             let num_jobs = builder.jobs();
 
