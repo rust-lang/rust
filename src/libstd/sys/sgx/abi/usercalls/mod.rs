@@ -55,6 +55,61 @@ pub fn close(fd: Fd) {
     unsafe { raw::close(fd) }
 }
 
+fn string_from_bytebuffer(buf: &alloc::UserRef<ByteBuffer>, usercall: &str, arg: &str) -> String {
+    String::from_utf8(copy_user_buffer(buf))
+        .unwrap_or_else(|_| panic!("Usercall {}: expected {} to be valid UTF-8", usercall, arg))
+}
+
+pub fn bind_stream(addr: &str) -> IoResult<(Fd, String)> {
+    unsafe {
+        let addr_user = alloc::User::new_from_enclave(addr.as_bytes());
+        let mut local = alloc::User::<ByteBuffer>::uninitialized();
+        let fd = raw::bind_stream(
+            addr_user.as_ptr(),
+            addr_user.len(),
+            local.as_raw_mut_ptr()
+        ).from_sgx_result()?;
+        let local = string_from_bytebuffer(&local, "bind_stream", "local_addr");
+        Ok((fd, local))
+    }
+}
+
+pub fn accept_stream(fd: Fd) -> IoResult<(Fd, String, String)> {
+    unsafe {
+        let mut bufs = alloc::User::<[ByteBuffer; 2]>::uninitialized();
+        let mut buf_it = alloc::UserRef::iter_mut(&mut *bufs); // FIXME: can this be done
+                                                               // without forcing coercion?
+        let (local, peer) = (buf_it.next().unwrap(), buf_it.next().unwrap());
+        let fd = raw::accept_stream(
+            fd,
+            local.as_raw_mut_ptr(),
+            peer.as_raw_mut_ptr()
+        ).from_sgx_result()?;
+        let local = string_from_bytebuffer(&local, "accept_stream", "local_addr");
+        let peer = string_from_bytebuffer(&peer, "accept_stream", "peer_addr");
+        Ok((fd, local, peer))
+    }
+}
+
+pub fn connect_stream(addr: &str) -> IoResult<(Fd, String, String)> {
+    unsafe {
+        let addr_user = alloc::User::new_from_enclave(addr.as_bytes());
+        let mut bufs = alloc::User::<[ByteBuffer; 2]>::uninitialized();
+        let mut buf_it = alloc::UserRef::iter_mut(&mut *bufs); // FIXME: can this be done
+                                                               // without forcing coercion?
+        let (local, peer) = (buf_it.next().unwrap(), buf_it.next().unwrap());
+        let fd = raw::connect_stream(
+            addr_user.as_ptr(),
+            addr_user.len(),
+            local.as_raw_mut_ptr(),
+            peer.as_raw_mut_ptr()
+        ).from_sgx_result()?;
+        let local = string_from_bytebuffer(&local, "connect_stream", "local_addr");
+        let peer = string_from_bytebuffer(&peer, "connect_stream", "peer_addr");
+        Ok((fd, local, peer))
+    }
+}
+
 pub fn launch_thread() -> IoResult<()> {
     unsafe { raw::launch_thread().from_sgx_result() }
 }
