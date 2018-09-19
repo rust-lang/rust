@@ -299,7 +299,7 @@ impl<'a> LintLevelsBuilder<'a> {
                                     "change it to",
                                     new_lint_name.to_string(),
                                     Applicability::MachineApplicable,
-                                ).emit();
+                                ).cancel();
 
                                 let src = LintSource::Node(Symbol::intern(&new_lint_name), li.span);
                                 for id in ids {
