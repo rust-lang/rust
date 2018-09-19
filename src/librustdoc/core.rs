@@ -26,7 +26,7 @@ use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
 use rustc_target::spec::TargetTriple;
 
-use syntax::ast::{self, Ident};
+use syntax::ast::{self, Ident, NodeId};
 use syntax::source_map;
 use syntax::edition::Edition;
 use syntax::feature_gate::UnstableFeatures;
@@ -161,6 +161,16 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocContext<'a, 'tcx, 'rcx, 'cstore> {
         self.all_fake_def_ids.borrow_mut().insert(def_id);
 
         def_id.clone()
+    }
+
+    /// Like the function of the same name on the HIR map, but skips calling it on fake DefIds.
+    /// (This avoids a slice-index-out-of-bounds panic.)
+    pub fn as_local_node_id(&self, def_id: DefId) -> Option<NodeId> {
+        if self.all_fake_def_ids.borrow().contains(&def_id) {
+            None
+        } else {
+            self.tcx.hir.as_local_node_id(def_id)
+        }
     }
 
     pub fn get_real_ty<F>(&self,
