@@ -2,16 +2,15 @@ error[E0597]: `y` does not live long enough
   --> $DIR/regions-nested-fns-2.rs:18:25
    |
 LL |         |z| {
-   |          - has type `&'0 isize`
+   |         --- value captured here
 LL |             //~^ ERROR E0373
 LL |             if false { &y } else { z }
-   |                         ^ `y` would have to be valid for `'0`
+   |                         ^ borrowed value does not live long enough
 LL |         });
 LL | }
-   | - but `y` will be dropped here, when the function `nested` returns
+   | - `y` dropped here while still borrowed
    |
-   = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-references-and-borrowing.html#dangling-references>
+   = note: borrowed value must be valid for the static lifetime...
 
 error: aborting due to previous error
 

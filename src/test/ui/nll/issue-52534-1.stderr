@@ -7,9 +7,9 @@ LL |     fn bar(&self, x: &u32) -> &u32 {
    |            has type `&'0 Test`
 LL |         let x = 22;
 LL |         &x
-   |         ^^ `x` would have to be valid for `'0`
+   |         ^^ `x` would have to be valid for `'0`...
 LL |     }
-   |     - but `x` will be dropped here, when the function `bar` returns
+   |     - ...but `x` will be dropped here, when the function `bar` returns
    |
    = note: argument and return type have the same lifetime due to lifetime elision rules
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch10-03-lifetime-syntax.html#lifetime-elision>
@@ -25,9 +25,9 @@ LL | fn foo(x: &u32) -> &u32 {
    |           has type `&'0 u32`
 LL |     let x = 22;
 LL |     &x
-   |     ^^ `x` would have to be valid for `'0`
+   |     ^^ `x` would have to be valid for `'0`...
 LL | }
-   | - but `x` will be dropped here, when the function `foo` returns
+   | - ...but `x` will be dropped here, when the function `foo` returns
    |
    = note: argument and return type have the same lifetime due to lifetime elision rules
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch10-03-lifetime-syntax.html#lifetime-elision>
@@ -43,9 +43,9 @@ LL | fn baz(x: &u32) -> &&u32 {
    |           has type `&'0 u32`
 LL |     let x = 22;
 LL |     &&x
-   |      ^^ `x` would have to be valid for `'0`
+   |      ^^ `x` would have to be valid for `'0`...
 LL | }
-   | - but `x` will be dropped here, when the function `baz` returns
+   | - ...but `x` will be dropped here, when the function `baz` returns
    |
    = note: argument and return type have the same lifetime due to lifetime elision rules
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch10-03-lifetime-syntax.html#lifetime-elision>
@@ -78,9 +78,9 @@ LL | fn foobazbar<'a>(x: u32, y: &'a u32) -> &'a u32 {
    |                              has lifetime `'a`
 LL |     let x = 22;
 LL |     &x
-   |     ^^ `x` would have to be valid for `'a`
+   |     ^^ `x` would have to be valid for `'a`...
 LL | }
-   | - but `x` will be dropped here, when the function `foobazbar` returns
+   | - ...but `x` will be dropped here, when the function `foobazbar` returns
    |
    = help: use data from the highlighted arguments which match the `'a` lifetime of the return type
    = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
@@ -95,9 +95,9 @@ LL | fn foobar<'a>(x: &'a u32) -> &'a u32 {
    |                   has lifetime `'a`
 LL |     let x = 22;
 LL |     &x
-   |     ^^ `x` would have to be valid for `'a`
+   |     ^^ `x` would have to be valid for `'a`...
 LL | }
-   | - but `x` will be dropped here, when the function `foobar` returns
+   | - ...but `x` will be dropped here, when the function `foobar` returns
    |
    = help: use data from the highlighted arguments which match the `'a` lifetime of the return type
    = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
@@ -110,9 +110,9 @@ LL | fn foobaz<'a, 'b>(x: &'a u32, y: &'b u32) -> &'a u32 {
    |                       -- has lifetime `'a`    -- also has lifetime `'a`
 LL |     let x = 22;
 LL |     &x
-   |     ^^ `x` would have to be valid for `'a`
+   |     ^^ `x` would have to be valid for `'a`...
 LL | }
-   | - but `x` will be dropped here, when the function `foobaz` returns
+   | - ...but `x` will be dropped here, when the function `foobaz` returns
    |
    = help: use data from the highlighted arguments which match the `'a` lifetime of the return type
    = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
@@ -127,9 +127,9 @@ LL | fn foobarbaz<'a, 'b>(x: &'a u32, y: &'b u32, z: &'a u32) -> &'a u32 {
    |                          has lifetime `'a`       has lifetime `'a`
 LL |     let x = 22;
 LL |     &x
-   |     ^^ `x` would have to be valid for `'a`
+   |     ^^ `x` would have to be valid for `'a`...
 LL | }
-   | - but `x` will be dropped here, when the function `foobarbaz` returns
+   | - ...but `x` will be dropped here, when the function `foobarbaz` returns
    |
    = help: use data from the highlighted arguments which match the `'a` lifetime of the return type
    = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments

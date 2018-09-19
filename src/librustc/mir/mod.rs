@@ -1883,6 +1883,18 @@ impl<'tcx> Place<'tcx> {
     pub fn elem(self, elem: PlaceElem<'tcx>) -> Place<'tcx> {
         Place::Projection(Box::new(PlaceProjection { base: self, elem }))
     }
+
+    /// Find the innermost `Local` from this `Place`.
+    pub fn local(&self) -> Option<Local> {
+        match self {
+            Place::Local(local) |
+            Place::Projection(box Projection {
+                base: Place::Local(local),
+                elem: ProjectionElem::Deref,
+            }) => Some(*local),
+            _ => None,
+        }
+    }
 }
 
 impl<'tcx> Debug for Place<'tcx> {

@@ -7,10 +7,10 @@ LL | fn silly<'y, 'z>(_s: &'y Test<'z>) -> &'y <Test<'z> as Trait>::Out where 'z
    |                       has lifetime `'y`
 LL |     let x = Test { s: "this cannot last" };
 LL |     &x
-   |     ^^ `x` would have to be valid for `'y`
+   |     ^^ `x` would have to be valid for `'y`...
 LL |     //~^ ERROR: `x` does not live long enough
 LL | }
-   | - but `x` will be dropped here, when the function `silly` returns
+   | - ...but `x` will be dropped here, when the function `silly` returns
    |
    = help: use data from the highlighted arguments which match the `'y` lifetime of the return type
    = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments

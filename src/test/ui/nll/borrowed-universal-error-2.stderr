@@ -7,10 +7,10 @@ LL | fn foo<'a>(x: &'a (u32,)) -> &'a u32 {
    |                has lifetime `'a`
 LL |     let v = 22;
 LL |     &v
-   |     ^^ `v` would have to be valid for `'a`
+   |     ^^ `v` would have to be valid for `'a`...
 LL |     //~^ ERROR `v` does not live long enough [E0597]
 LL | }
-   | - but `v` will be dropped here, when the function `foo` returns
+   | - ...but `v` will be dropped here, when the function `foo` returns
    |
    = help: use data from the highlighted arguments which match the `'a` lifetime of the return type
    = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
