@@ -172,28 +172,19 @@ pub struct TypeTest<'tcx> {
 /// conveniently include disjuction ("a or b must be true").
 #[derive(Clone, Debug)]
 pub enum RegionTest {
-    /// The subject region `'x` must by outlived by *some* region in
-    /// the given set of regions.
+    /// The subject region `'x` must by outlived by the given region.
+    ///
+    /// This test comes from e.g. a where clause like `T: 'a`, which
+    /// implies that we know that `T: 'a`. Therefore, if we are trying
+    /// to prove that `T: 'x`, we can do so by showing that `'a: 'x`.
+    IsOutlivedBy(RegionVid),
+
+    /// Any of the given tests are true.
     ///
     /// This test comes from e.g. a where clause like `T: 'a + 'b`,
     /// which implies that we know that `T: 'a` and that `T:
     /// 'b`. Therefore, if we are trying to prove that `T: 'x`, we can
     /// do so by showing that `'a: 'x` *or* `'b: 'x`.
-    IsOutlivedByAnyRegionIn(Vec<RegionVid>),
-
-    /// The subject region `'x` must by outlived by *all* regions in
-    /// the given set of regions.
-    ///
-    /// This test comes from e.g. a projection type like `T = <u32 as
-    /// Trait<'a, 'b>>::Foo`, which must outlive `'a` or `'b`, and
-    /// maybe both. Therefore we can prove that `T: 'x` if we know
-    /// that `'a: 'x` *and* `'b: 'x`.
-    IsOutlivedByAllRegionsIn(Vec<RegionVid>),
-
-    /// Any of the given tests are true.
-    ///
-    /// This arises from projections, for which there are multiple
-    /// ways to prove an outlives relationship.
     Any(Vec<RegionTest>),
 
     /// All of the given tests are true.
@@ -895,13 +886,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         );
 
         match test {
-            RegionTest::IsOutlivedByAllRegionsIn(regions) => regions
-                .iter()
-                .all(|&r| self.eval_outlives(mir, r, lower_bound)),
-
-            RegionTest::IsOutlivedByAnyRegionIn(regions) => regions
-                .iter()
-                .any(|&r| self.eval_outlives(mir, r, lower_bound)),
+            RegionTest::IsOutlivedBy(r) => self.eval_outlives(mir, *r, lower_bound),
 
             RegionTest::Any(tests) => tests
                 .iter()

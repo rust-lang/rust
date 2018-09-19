@@ -63,13 +63,23 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
     fn param_bound(&self, param_ty: ty::ParamTy) -> VerifyBound<'tcx> {
         debug!("param_bound(param_ty={:?})", param_ty);
 
-        let mut param_bounds = self.declared_generic_bounds_from_env(GenericKind::Param(param_ty));
+        // Start with anything like `T: 'a` we can scrape from the
+        // environment
+        let param_bounds =
+            self.declared_generic_bounds_from_env(GenericKind::Param(param_ty))
+            .into_iter();
 
         // Add in the default bound of fn body that applies to all in
         // scope type parameters:
-        param_bounds.extend(self.implicit_region_bound);
+        let param_bounds =
+            param_bounds
+            .chain(self.implicit_region_bound);
 
-        VerifyBound::AnyRegion(param_bounds)
+        VerifyBound::AnyBound(
+            param_bounds
+                .map(|r| VerifyBound::OutlivedBy(r))
+                .collect()
+        )
     }
 
     /// Given a projection like `T::Item`, searches the environment
@@ -115,20 +125,23 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
         debug!("projection_bound(projection_ty={:?})", projection_ty);
 
         // Search the env for where clauses like `P: 'a`.
-        let mut declared_bounds =
-            self.declared_generic_bounds_from_env(GenericKind::Projection(projection_ty));
+        let env_bounds =
+            self.declared_generic_bounds_from_env(GenericKind::Projection(projection_ty))
+            .into_iter();
 
         // Extend with bounds that we can find from the trait.
-        declared_bounds.extend(self.projection_declared_bounds_from_trait(projection_ty));
-
-        debug!("projection_bound: declared_bounds = {:?}", declared_bounds);
+        let trait_bounds =
+            self.projection_declared_bounds_from_trait(projection_ty)
+            .into_iter();
 
         // see the extensive comment in projection_must_outlive
         let ty = self.tcx
             .mk_projection(projection_ty.item_def_id, projection_ty.substs);
         let recursive_bound = self.recursive_type_bound(ty);
 
-        VerifyBound::AnyRegion(declared_bounds).or(recursive_bound)
+        VerifyBound::AnyBound(
+            env_bounds.chain(trait_bounds).map(|r| VerifyBound::OutlivedBy(r)).collect()
+        ).or(recursive_bound)
     }
 
     fn recursive_type_bound(&self, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
@@ -138,7 +151,11 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
 
         let mut regions = ty.regions();
         regions.retain(|r| !r.is_late_bound()); // ignore late-bound regions
-        bounds.push(VerifyBound::AllRegions(regions));
+        bounds.push(
+            VerifyBound::AllBounds(
+                regions.into_iter().map(|r| VerifyBound::OutlivedBy(r)).collect()
+            )
+        );
 
         // remove bounds that must hold, since they are not interesting
         bounds.retain(|b| !b.must_hold());

@@ -158,15 +158,11 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
         match verify_bound {
             VerifyBound::IfEq(..) => {
                 // FIXME: always false right now
-                RegionTest::IsOutlivedByAnyRegionIn(vec![])
+                RegionTest::Any(vec![])
             }
 
-            VerifyBound::AnyRegion(regions) => RegionTest::IsOutlivedByAnyRegionIn(
-                regions.iter().map(|r| self.to_region_vid(r)).collect(),
-            ),
-
-            VerifyBound::AllRegions(regions) => RegionTest::IsOutlivedByAllRegionsIn(
-                regions.iter().map(|r| self.to_region_vid(r)).collect(),
+            VerifyBound::OutlivedBy(r) => RegionTest::IsOutlivedBy(
+                self.to_region_vid(r)
             ),
 
             VerifyBound::AnyBound(bounds) => RegionTest::Any(

@@ -213,33 +213,25 @@ pub enum VerifyBound<'tcx> {
     /// (after inference), and `'a: min`, then `G: min`.
     IfEq(Ty<'tcx>, Box<VerifyBound<'tcx>>),
 
-    /// Given a set of regions `R`, expands to the function:
+    /// Given a region `R`, expands to the function:
     ///
     ///     fn(min) -> bool {
-    ///       exists (r in R) { r: min }
+    ///       R: min
     ///     }
     ///
-    /// In other words, if some r in R outlives min, then G outlives
-    /// min.  This is used when G is known to outlive all the regions
-    /// in R.
-    AnyRegion(Vec<Region<'tcx>>),
-
-    /// Given a set of regions `R`, expands to the function:
-    ///
-    ///     fn(min) -> bool {
-    ///       forall (r in R) { r: min }
-    ///     }
-    ///
-    /// In other words, if all r in R outlives min, then G outlives
-    /// min. This is used when G is known to outlive some region in
-    /// R, but we don't know which.
-    AllRegions(Vec<Region<'tcx>>),
+    /// This is used when we can establish that `G: R` -- therefore,
+    /// if `R: min`, then by transitivity `G: min`.
+    OutlivedBy(Region<'tcx>),
 
     /// Given a set of bounds `B`, expands to the function:
     ///
     ///     fn(min) -> bool {
     ///       exists (b in B) { b(min) }
     ///     }
+    ///
+    /// In other words, if we meet some bound in `B`, that suffices.
+    /// This is used when all the bounds in `B` are known to apply to
+    /// G.
     AnyBound(Vec<VerifyBound<'tcx>>),
 
     /// Given a set of bounds `B`, expands to the function:
@@ -247,6 +239,10 @@ pub enum VerifyBound<'tcx> {
     ///     fn(min) -> bool {
     ///       forall (b in B) { b(min) }
     ///     }
+    ///
+    /// In other words, if we meet *all* bounds in `B`, that suffices.
+    /// This is used when *some* bound in `B` is known to suffice, but
+    /// we don't know which.
     AllBounds(Vec<VerifyBound<'tcx>>),
 }
 
@@ -954,8 +950,8 @@ impl<'a, 'gcx, 'tcx> VerifyBound<'tcx> {
     pub fn must_hold(&self) -> bool {
         match self {
             VerifyBound::IfEq(..) => false,
-            VerifyBound::AnyRegion(bs) => bs.contains(&&ty::ReStatic),
-            VerifyBound::AllRegions(bs) => bs.is_empty(),
+            VerifyBound::OutlivedBy(ty::ReStatic) => true,
+            VerifyBound::OutlivedBy(_) => false,
             VerifyBound::AnyBound(bs) => bs.iter().any(|b| b.must_hold()),
             VerifyBound::AllBounds(bs) => bs.iter().all(|b| b.must_hold()),
         }
@@ -964,8 +960,8 @@ impl<'a, 'gcx, 'tcx> VerifyBound<'tcx> {
     pub fn cannot_hold(&self) -> bool {
         match self {
             VerifyBound::IfEq(_, b) => b.cannot_hold(),
-            VerifyBound::AnyRegion(bs) => bs.is_empty(),
-            VerifyBound::AllRegions(bs) => bs.contains(&&ty::ReEmpty),
+            VerifyBound::OutlivedBy(ty::ReEmpty) => true,
+            VerifyBound::OutlivedBy(_) => false,
             VerifyBound::AnyBound(bs) => bs.iter().all(|b| b.cannot_hold()),
             VerifyBound::AllBounds(bs) => bs.iter().any(|b| b.cannot_hold()),
         }

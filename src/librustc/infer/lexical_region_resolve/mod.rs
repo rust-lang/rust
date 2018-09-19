@@ -723,13 +723,11 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
                     && self.bound_is_met(b, var_values, generic_ty, min)
             }
 
-            VerifyBound::AnyRegion(rs) => rs.iter()
-                .map(|&r| var_values.normalize(self.tcx(), r))
-                .any(|r| self.region_rels.is_subregion_of(min, r)),
-
-            VerifyBound::AllRegions(rs) => rs.iter()
-                .map(|&r| var_values.normalize(self.tcx(), r))
-                .all(|r| self.region_rels.is_subregion_of(min, r)),
+            VerifyBound::OutlivedBy(r) =>
+                self.region_rels.is_subregion_of(
+                    min,
+                    var_values.normalize(self.tcx(), r),
+                ),
 
             VerifyBound::AnyBound(bs) => bs.iter()
                 .any(|b| self.bound_is_met(b, var_values, generic_ty, min)),
