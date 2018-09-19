@@ -91,14 +91,14 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
     ) -> Vec<ty::Region<'tcx>> {
         let projection_ty = GenericKind::Projection(projection_ty).to_ty(self.tcx);
         let erased_projection_ty = self.tcx.erase_regions(&projection_ty);
-        self.declared_generic_bounds_from_env_with_compare_fn(
-            |ty| if let ty::Projection(..) = ty.sty {
+        self.declared_generic_bounds_from_env_with_compare_fn(|ty| {
+            if let ty::Projection(..) = ty.sty {
                 let erased_ty = self.tcx.erase_regions(&ty);
                 erased_ty == erased_projection_ty
             } else {
                 false
-            },
-        )
+            }
+        })
     }
 
     /// Searches the where clauses in scope for regions that
@@ -177,7 +177,7 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
         // like `T` and `T::Item`. It may not work as well for things
         // like `<T as Foo<'a>>::Item`.
         let c_b = self.param_env.caller_bounds;
-        let mut param_bounds = self.collect_outlives_from_predicate_list(&compare_ty, c_b);
+        let param_bounds = self.collect_outlives_from_predicate_list(&compare_ty, c_b);
 
         // Next, collect regions we scraped from the well-formedness
         // constraints in the fn signature. To do that, we walk the list
@@ -190,17 +190,19 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
         // The problem is that the type of `x` is `&'a A`. To be
         // well-formed, then, A must be lower-generic by `'a`, but we
         // don't know that this holds from first principles.
-        for &(r, p) in self.region_bound_pairs {
+        let from_region_bound_pairs = self.region_bound_pairs.iter().filter_map(|&(r, p)| {
             debug!(
                 "declared_generic_bounds_from_env_with_compare_fn: region_bound_pair = {:?}",
                 (r, p)
             );
             if compare_ty(p.to_ty(tcx)) {
-                param_bounds.push(r);
+                Some(r)
+            } else {
+                None
             }
-        }
+        });
 
-        param_bounds
+        param_bounds.chain(from_region_bound_pairs).collect()
     }
 
     /// Given a projection like `<T as Foo<'x>>::Bar`, returns any bounds
@@ -268,9 +270,9 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
         let identity_substs = Substs::identity_for_item(tcx, assoc_item_def_id);
         let identity_proj = tcx.mk_projection(assoc_item_def_id, identity_substs);
         self.collect_outlives_from_predicate_list(
-            |ty| ty == identity_proj,
+            move |ty| ty == identity_proj,
             traits::elaborate_predicates(tcx, trait_predicates.predicates),
-        )
+        ).collect()
     }
 
     /// Searches through a predicate list for a predicate `T: 'a`.
@@ -283,13 +285,12 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
         &self,
         compare_ty: impl Fn(Ty<'tcx>) -> bool,
         predicates: impl IntoIterator<Item = impl AsRef<ty::Predicate<'tcx>>>,
-    ) -> Vec<ty::Region<'tcx>> {
+    ) -> impl Iterator<Item = ty::Region<'tcx>> {
         predicates
             .into_iter()
             .filter_map(|p| p.as_ref().to_opt_type_outlives())
             .filter_map(|p| p.no_late_bound_regions())
-            .filter(|p| compare_ty(p.0))
+            .filter(move |p| compare_ty(p.0))
             .map(|p| p.1)
-            .collect()
     }
 }
