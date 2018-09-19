@@ -59,10 +59,10 @@ impl NonCamelCaseTypes {
 
         fn is_camel_case(name: ast::Name) -> bool {
             let name = name.as_str();
+            let name = name.trim_matches('_');
             if name.is_empty() {
                 return true;
             }
-            let name = name.trim_matches('_');
 
             // start with a non-lowercase letter rather than non-uppercase
             // ones (some scripts don't have a concept of upper/lowercase)
