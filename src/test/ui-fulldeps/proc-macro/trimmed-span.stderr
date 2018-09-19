@@ -1,0 +1,98 @@
+error: found 'hi's
+  --> $DIR/trimmed-span.rs:25:5
+   |
+LL |     trimmed!("hi"); //~ ERROR found 'hi's
+   |     ^^^^^^^^^^^^^^^
+   |
+note: here
+  --> $DIR/trimmed-span.rs:25:15
+   |
+LL |     trimmed!("hi"); //~ ERROR found 'hi's
+   |               ^^
+
+error: found 'hi's
+  --> $DIR/trimmed-span.rs:28:5
+   |
+LL |     trimmed!("hihi"); //~ ERROR found 'hi's
+   |     ^^^^^^^^^^^^^^^^^
+   |
+note: here
+  --> $DIR/trimmed-span.rs:28:15
+   |
+LL |     trimmed!("hihi"); //~ ERROR found 'hi's
+   |               ^^^^
+
+error: found 'hi's
+  --> $DIR/trimmed-span.rs:31:5
+   |
+LL |     trimmed!("hihihi"); //~ ERROR found 'hi's
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+note: here
+  --> $DIR/trimmed-span.rs:31:15
+   |
+LL |     trimmed!("hihihi"); //~ ERROR found 'hi's
+   |               ^^^^^^
+
+error: found 'hi's
+  --> $DIR/trimmed-span.rs:34:5
+   |
+LL |     trimmed!("why I hide? hi!"); //~ ERROR found 'hi's
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: here
+  --> $DIR/trimmed-span.rs:34:21
+   |
+LL |     trimmed!("why I hide? hi!"); //~ ERROR found 'hi's
+   |                     ^^    ^^
+
+error: found 'hi's
+  --> $DIR/trimmed-span.rs:35:5
+   |
+LL |     trimmed!("hey, hi, hidy, hidy, hi hi"); //~ ERROR found 'hi's
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: here
+  --> $DIR/trimmed-span.rs:35:20
+   |
+LL |     trimmed!("hey, hi, hidy, hidy, hi hi"); //~ ERROR found 'hi's
+   |                    ^^  ^^    ^^    ^^ ^^
+
+error: found 'hi's
+  --> $DIR/trimmed-span.rs:36:5
+   |
+LL |     trimmed!("this is a hi, and this is another hi"); //~ ERROR found 'hi's
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: here
+  --> $DIR/trimmed-span.rs:36:16
+   |
+LL |     trimmed!("this is a hi, and this is another hi"); //~ ERROR found 'hi's
+   |                ^^       ^^       ^^             ^^
+
+error: found 'hi's
+  --> $DIR/trimmed-span.rs:37:5
+   |
+LL |     trimmed!("how are you this evening"); //~ ERROR found 'hi's
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: here
+  --> $DIR/trimmed-span.rs:37:28
+   |
+LL |     trimmed!("how are you this evening"); //~ ERROR found 'hi's
+   |                            ^^
+
+error: found 'hi's
+  --> $DIR/trimmed-span.rs:38:5
+   |
+LL |     trimmed!("this is highly eradic"); //~ ERROR found 'hi's
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: here
+  --> $DIR/trimmed-span.rs:38:16
+   |
+LL |     trimmed!("this is highly eradic"); //~ ERROR found 'hi's
+   |                ^^     ^^
+
+error: aborting due to 8 previous errors
+

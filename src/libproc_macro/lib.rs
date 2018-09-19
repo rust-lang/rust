@@ -59,7 +59,7 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::parse::{self, token};
 use syntax::symbol::Symbol;
 use syntax::tokenstream::{self, DelimSpan};
-use syntax_pos::{Pos, FileName};
+use syntax_pos::{Pos, BytePos, FileName};
 
 /// The main type provided by this crate, representing an abstract stream of
 /// tokens, or, more specifically, a sequence of token trees.
@@ -282,6 +282,12 @@ macro_rules! diagnostic_method {
 }
 
 impl Span {
+    /// Returns the length, in bytes of the span.
+    #[unstable(feature = "proc_macro_span", issue = "38356")]
+    pub fn len(&self) -> usize {
+        self.0.hi().to_usize() - self.0.lo().to_usize()
+    }
+
     /// A span that resolves at the macro definition site.
     #[unstable(feature = "proc_macro_span", issue = "38356")]
     pub fn def_site() -> Span {
@@ -351,6 +357,38 @@ impl Span {
         if self_loc.file.name != other_loc.file.name { return None }
 
         Some(Span(self.0.to(other.0)))
+    }
+
+    /// Creates a new span by trimming `self` on the left by `left` bytes and on
+    /// the right by `right` bytes. Returns `None` if the would-be trimmed span
+    /// is outside the bounds of `self`.
+    #[unstable(feature = "proc_macro_span", issue = "38356")]
+    pub fn trimmed(&self, left: usize, right: usize) -> Option<Span> {
+        if left > u32::max_value() as usize || right > u32::max_value() as usize {
+            return None;
+        }
+
+        // Ensure that the addition won't overflow.
+        let (inner, left, right) = (self.0, left as u32, right as u32);
+        if u32::max_value() - left < inner.lo().to_u32() {
+            return None;
+        }
+
+        // Ensure that the subtraction won't underflow.
+        if right > inner.hi().to_u32() {
+            return None;
+        }
+
+        // Compute the new lo and hi.
+        let new_lo = inner.lo() + BytePos::from_u32(left);
+        let new_hi = inner.hi() - BytePos::from_u32(right);
+
+        // Ensure we're still inside the old `Span` and didn't cross paths.
+        if new_lo >= new_hi {
+            return None;
+        }
+
+        Some(Span(inner.with_lo(new_lo).with_hi(new_hi)))
     }
 
     /// Creates a new span with the same line/column information as `self` but
