@@ -87,7 +87,7 @@ scoped_thread_local!(pub static GLOBALS: Globals);
 #[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, RustcDecodable, RustcEncodable)]
 pub enum FileName {
     Real(PathBuf),
-    /// e.g. "std" macros
+    /// A macro.  This includes the full name of the macro, so that there are no clashes.
     Macros(String),
     /// call to `quote!`
     QuoteExpansion,

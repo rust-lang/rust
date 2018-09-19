@@ -447,8 +447,7 @@ impl cstore::CStore {
         let data = self.get_crate_data(id.krate);
         if let Some(ref proc_macros) = data.proc_macros {
             return LoadedMacro::ProcMacro(proc_macros[id.index.to_proc_macro_index()].1.clone());
-        } else if data.name == "proc_macro" &&
-                  self.get_crate_data(id.krate).item_name(id.index) == "quote" {
+        } else if data.name == "proc_macro" && data.item_name(id.index) == "quote" {
             use syntax::ext::base::SyntaxExtension;
             use syntax_ext::proc_macro_impl::BangProcMacro;
 
@@ -460,8 +459,9 @@ impl cstore::CStore {
             return LoadedMacro::ProcMacro(Lrc::new(ext));
         }
 
-        let (name, def) = data.get_macro(id.index);
-        let source_name = FileName::Macros(name.to_string());
+        let def = data.get_macro(id.index);
+        let macro_full_name = data.def_path(id.index).to_string_friendly(|_| data.imported_name);
+        let source_name = FileName::Macros(macro_full_name);
 
         let source_file = sess.parse_sess.source_map().new_source_file(source_name, def.body);
         let local_span = Span::new(source_file.start_pos, source_file.end_pos, NO_EXPANSION);
