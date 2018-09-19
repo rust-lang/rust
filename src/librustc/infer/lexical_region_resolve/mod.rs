@@ -29,6 +29,7 @@ use ty::{self, TyCtxt};
 use ty::{ReEarlyBound, ReEmpty, ReErased, ReFree, ReStatic};
 use ty::{ReLateBound, ReScope, ReSkolemized, ReVar};
 use ty::{Region, RegionVid};
+use ty::fold::TypeFoldable;
 
 mod graphviz;
 
@@ -110,11 +111,15 @@ struct LexicalResolver<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
 }
 
 impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'cx, 'gcx, 'tcx> {
+        self.region_rels.tcx
+    }
+
     fn infer_variable_values(
         &mut self,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
     ) -> LexicalRegionResolutions<'tcx> {
-        let mut var_data = self.construct_var_data(self.region_rels.tcx);
+        let mut var_data = self.construct_var_data(self.tcx());
 
         // Dorky hack to cause `dump_constraints` to only get called
         // if debug mode is enabled:
@@ -255,7 +260,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
     }
 
     fn lub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> Region<'tcx> {
-        let tcx = self.region_rels.tcx;
+        let tcx = self.tcx();
         match (a, b) {
             (&ty::ReCanonical(..), _)
             | (_, &ty::ReCanonical(..))
@@ -296,10 +301,10 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
                 let fr_scope = match (a, b) {
                     (&ReEarlyBound(ref br), _) | (_, &ReEarlyBound(ref br)) => self.region_rels
                         .region_scope_tree
-                        .early_free_scope(self.region_rels.tcx, br),
+                        .early_free_scope(self.tcx(), br),
                     (&ReFree(ref fr), _) | (_, &ReFree(ref fr)) => self.region_rels
                         .region_scope_tree
-                        .free_scope(self.region_rels.tcx, fr),
+                        .free_scope(self.tcx(), fr),
                     _ => bug!(),
                 };
                 let r_id = self.region_rels
@@ -408,7 +413,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
 
         for verify in &self.data.verifys {
             debug!("collect_errors: verify={:?}", verify);
-            let sub = var_data.normalize(verify.region);
+            let sub = var_data.normalize(self.tcx(), verify.region);
 
             // This was an inference variable which didn't get
             // constrained, therefore it can be assume to hold.
@@ -712,11 +717,11 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
     ) -> bool {
         match bound {
             VerifyBound::AnyRegion(rs) => rs.iter()
-                .map(|&r| var_values.normalize(r))
+                .map(|&r| var_values.normalize(self.tcx(), r))
                 .any(|r| self.region_rels.is_subregion_of(min, r)),
 
             VerifyBound::AllRegions(rs) => rs.iter()
-                .map(|&r| var_values.normalize(r))
+                .map(|&r| var_values.normalize(self.tcx(), r))
                 .all(|r| self.region_rels.is_subregion_of(min, r)),
 
             VerifyBound::AnyBound(bs) => bs.iter().any(|b| self.bound_is_met(b, var_values, min)),
@@ -733,11 +738,14 @@ impl<'tcx> fmt::Debug for RegionAndOrigin<'tcx> {
 }
 
 impl<'tcx> LexicalRegionResolutions<'tcx> {
-    fn normalize(&self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match *r {
-            ty::ReVar(rid) => self.resolve_var(rid),
+    fn normalize<T>(&self, tcx: TyCtxt<'_, '_, 'tcx>, value: T) -> T
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        tcx.fold_regions(&value, &mut false, |r, _db| match r {
+            ty::ReVar(rid) => self.resolve_var(*rid),
             _ => r,
-        }
+        })
     }
 
     fn value(&self, rid: RegionVid) -> &VarValue<'tcx> {
