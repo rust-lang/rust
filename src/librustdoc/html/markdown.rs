@@ -171,6 +171,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
         let event = self.inner.next();
         let compile_fail;
         let ignore;
+        let edition;
         if let Some(Event::Start(Tag::CodeBlock(lang))) = event {
             let parse_result = LangString::parse(&lang, self.check_error_codes);
             if !parse_result.rust {
@@ -178,6 +179,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
             }
             compile_fail = parse_result.compile_fail;
             ignore = parse_result.ignore;
+            edition = parse_result.edition;
         } else {
             return event;
         }
@@ -213,6 +215,17 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                 } else {
                     ""
                 };
+
+                let edition_string = if let Some(e @ Edition::Edition2018) = edition {
+                    format!("&amp;edition={}{}", e,
+                            if channel == "&amp;version=nightly" { "" }
+                            else { "&amp;version=nightly" })
+                } else if let Some(e) = edition {
+                    format!("&amp;edition={}", e)
+                } else {
+                    "".to_owned()
+                };
+
                 // These characters don't need to be escaped in a URI.
                 // FIXME: use a library function for percent encoding.
                 fn dont_escape(c: u8) -> bool {
@@ -232,26 +245,44 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                     }
                 }
                 Some(format!(
-                    r#"<a class="test-arrow" target="_blank" href="{}?code={}{}">Run</a>"#,
-                    url, test_escaped, channel
+                    r#"<a class="test-arrow" target="_blank" href="{}?code={}{}{}">Run</a>"#,
+                    url, test_escaped, channel, edition_string
                 ))
             });
+
             let tooltip = if ignore {
-                Some(("This example is not tested", "ignore"))
+                Some(("This example is not tested".to_owned(), "ignore"))
             } else if compile_fail {
-                Some(("This example deliberately fails to compile", "compile_fail"))
+                Some(("This example deliberately fails to compile".to_owned(), "compile_fail"))
+            } else if let Some(e) = edition {
+                Some((format!("This code runs with edition {}", e), "edition"))
             } else {
                 None
             };
-            s.push_str(&highlight::render_with_highlighting(
-                        &text,
-                        Some(&format!("rust-example-rendered{}",
-                                      if ignore { " ignore" }
-                                      else if compile_fail { " compile_fail" }
-                                      else { "" })),
-                        playground_button.as_ref().map(String::as_str),
-                        tooltip));
-            Some(Event::Html(s.into()))
+
+            if let Some((s1, s2)) = tooltip {
+                s.push_str(&highlight::render_with_highlighting(
+                    &text,
+                    Some(&format!("rust-example-rendered{}",
+                                  if ignore { " ignore" }
+                                  else if compile_fail { " compile_fail" }
+                                  else if edition.is_some() { " edition " }
+                                  else { "" })),
+                    playground_button.as_ref().map(String::as_str),
+                    Some((s1.as_str(), s2))));
+                Some(Event::Html(s.into()))
+            } else {
+                s.push_str(&highlight::render_with_highlighting(
+                    &text,
+                    Some(&format!("rust-example-rendered{}",
+                                  if ignore { " ignore" }
+                                  else if compile_fail { " compile_fail" }
+                                  else if edition.is_some() { " edition " }
+                                  else { "" })),
+                    playground_button.as_ref().map(String::as_str),
+                    None));
+                Some(Event::Html(s.into()))
+            }
         })
     }
 }
