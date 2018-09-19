@@ -29,7 +29,8 @@ fn main() {
                     expr.rewrite(
                         inner_context,
                         &Constraints::new(try_opt!(v_budget.checked_sub(2)), indent + 2),
-                    ).map(|s| format!("..{}", s))
+                    )
+                    .map(|s| format!("..{}", s))
                 }
             }
         },

@@ -171,7 +171,8 @@ fn issue1329() {
         .map(|x| {
             x += 1;
             x
-        }).filter
+        })
+        .filter
 }
 
 fn issue325() {
