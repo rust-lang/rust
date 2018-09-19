@@ -826,6 +826,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     fn pick(mut self) -> PickResult<'tcx> {
         assert!(self.method_name.is_some());
 
+        debug!("probe: pick {}; about to pick_core", self.method_name.unwrap());
+
         if let Some(r) = self.pick_core() {
             return r;
         }
@@ -836,6 +838,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         // things failed, so lets look at all traits, for diagnostic purposes now:
         self.reset();
+
+        debug!("probe: pick {}; pick_core failed, continuing", self.method_name.unwrap());
 
         let span = self.span;
         let tcx = self.tcx;
@@ -870,9 +874,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             _ => vec![],
         };
 
+        debug!("probe: out of scope traits: {:?}, private_candidate: {:?}", out_of_scope_traits, private_candidate);
+
         if let Some(def) = private_candidate {
             return Err(MethodError::PrivateMatch(def, out_of_scope_traits));
         }
+        debug!("probe: about to check levenshtein");
         let lev_candidate = self.probe_for_lev_candidate()?;
 
         Err(MethodError::NoMatch(NoMatchData::new(static_candidates,
@@ -1287,24 +1294,36 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                                             self.return_type, steps, IsSuggestion(true));
             pcx.allow_similar_names = true;
             pcx.assemble_inherent_candidates();
-            pcx.assemble_extension_candidates_for_traits_in_scope(ast::DUMMY_NODE_ID)?;
+            pcx.assemble_extension_candidates_for_all_traits()?;
 
             let method_names = pcx.candidate_method_names();
             pcx.allow_similar_names = false;
+            debug!("probe: candidate method names: {:?}", method_names);
             let applicable_close_candidates: Vec<ty::AssociatedItem> = method_names
                 .iter()
                 .filter_map(|&method_name| {
                     pcx.reset();
                     pcx.method_name = Some(method_name);
                     pcx.assemble_inherent_candidates();
-                    pcx.assemble_extension_candidates_for_traits_in_scope(ast::DUMMY_NODE_ID)
-                        .ok().map_or(None, |_| {
-                            pcx.pick_core()
-                                .and_then(|pick| pick.ok())
-                                .and_then(|pick| Some(pick.item))
-                        })
+                    pcx.assemble_extension_candidates_for_all_traits().ok();
+                    let result = pcx.pick_core();
+                    debug!("probe: pick_core result: {:?}", result);
+
+                    result.and_then(|pick| pick.ok())
+                          .and_then(|pick| {
+                              let item = pick.item;
+                              debug!("probe: {:?}", self.tcx.used_trait_imports(item.def_id));
+                              let def_scope = self.tcx.adjust_ident(method_name, item.container.id(), self.fcx.body_id).1;
+                              if item.vis.is_accessible_from(def_scope, self.tcx) {
+                                  Some(item)
+                              } else {
+                                  None
+                              }
+                          })
                 })
                .collect();
+
+            debug!("probe: applicable close candidates: {:?}", applicable_close_candidates);
 
             if applicable_close_candidates.is_empty() {
                 Ok(None)
