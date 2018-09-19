@@ -1715,11 +1715,16 @@ fn rewrite_static(
 pub fn rewrite_associated_type(
     ident: ast::Ident,
     ty_opt: Option<&ptr::P<ast::Ty>>,
+    generics: &ast::Generics,
     generic_bounds_opt: Option<&ast::GenericBounds>,
     context: &RewriteContext,
     indent: Indent,
 ) -> Option<String> {
-    let prefix = format!("type {}", rewrite_ident(context, ident));
+    let ident_str = rewrite_ident(context, ident);
+    // 5 = "type "
+    let generics_shape = Shape::indented(indent, context.config).offset_left(5)?;
+    let generics_str = rewrite_generics(context, ident_str, generics, generics_shape)?;
+    let prefix = format!("type {}", generics_str);
 
     let type_bounds_str = if let Some(bounds) = generic_bounds_opt {
         if bounds.is_empty() {
@@ -1746,10 +1751,11 @@ pub fn rewrite_associated_type(
 pub fn rewrite_existential_impl_type(
     context: &RewriteContext,
     ident: ast::Ident,
+    generics: &ast::Generics,
     generic_bounds: &ast::GenericBounds,
     indent: Indent,
 ) -> Option<String> {
-    rewrite_associated_type(ident, None, Some(generic_bounds), context, indent)
+    rewrite_associated_type(ident, None, generics, Some(generic_bounds), context, indent)
         .map(|s| format!("existential {}", s))
 }
 
@@ -1757,10 +1763,11 @@ pub fn rewrite_associated_impl_type(
     ident: ast::Ident,
     defaultness: ast::Defaultness,
     ty_opt: Option<&ptr::P<ast::Ty>>,
+    generics: &ast::Generics,
     context: &RewriteContext,
     indent: Indent,
 ) -> Option<String> {
-    let result = rewrite_associated_type(ident, ty_opt, None, context, indent)?;
+    let result = rewrite_associated_type(ident, ty_opt, generics, None, context, indent)?;
 
     match defaultness {
         ast::Defaultness::Default => Some(format!("default {}", result)),
