@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use time::Duration;
-use sys::unsupported_err;
+use super::abi::usercalls;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct Instant(Duration);
@@ -21,7 +21,7 @@ pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::from_secs(0));
 
 impl Instant {
     pub fn now() -> Instant {
-        panic!("{}", unsupported_err());
+        Instant(usercalls::insecure_time())
     }
 
     pub fn sub_instant(&self, other: &Instant) -> Duration {
@@ -39,7 +39,7 @@ impl Instant {
 
 impl SystemTime {
     pub fn now() -> SystemTime {
-        panic!("{}", unsupported_err());
+        SystemTime(usercalls::insecure_time())
     }
 
     pub fn sub_time(&self, other: &SystemTime)

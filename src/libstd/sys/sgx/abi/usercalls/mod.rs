@@ -11,6 +11,7 @@
 pub use fortanix_sgx_abi::*;
 
 use io::{Error as IoError, Result as IoResult};
+use time::Duration;
 
 pub mod alloc;
 #[macro_use]
@@ -124,6 +125,11 @@ pub fn wait(event_mask: u64, timeout: u64) -> IoResult<u64> {
 
 pub fn send(event_set: u64, tcs: Option<Tcs>) -> IoResult<()> {
     unsafe { raw::send(event_set, tcs).from_sgx_result() }
+}
+
+pub fn insecure_time() -> Duration {
+    let t = unsafe { raw::insecure_time() };
+    Duration::new(t / 1_000_000_000, (t % 1_000_000_000) as _)
 }
 
 pub fn alloc(size: usize, alignment: usize) -> IoResult<*mut u8> {
