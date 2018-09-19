@@ -764,6 +764,7 @@ All notable changes to this project will be documented in this file.
 [`needless_bool`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#needless_bool
 [`needless_borrow`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#needless_borrow
 [`needless_borrowed_reference`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#needless_borrowed_reference
+[`needless_collect`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#needless_collect
 [`needless_continue`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#needless_continue
 [`needless_lifetimes`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#needless_lifetimes
 [`needless_pass_by_value`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#needless_pass_by_value
