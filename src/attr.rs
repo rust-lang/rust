@@ -229,7 +229,8 @@ impl Rewrite for ast::MetaItem {
                                 None,
                                 &inner_meta_item.ident,
                                 shape,
-                            ).map_or(false, |s| s.len() + path.len() + 2 <= shape.width),
+                            )
+                            .map_or(false, |s| s.len() + path.len() + 2 <= shape.width),
                             _ => false,
                         }
                     }

@@ -558,7 +558,8 @@ impl<'a> ChainFormatterShared<'a> {
             shape.width
         } else {
             min(shape.width, context.config.width_heuristics().chain_width)
-        }.saturating_sub(almost_total);
+        }
+        .saturating_sub(almost_total);
 
         let all_in_one_line = !self.children.iter().any(ChainItem::is_comment)
             && self.rewrites.iter().all(|s| !s.contains('\n'))
@@ -710,7 +711,8 @@ impl<'a> ChainFormatter for ChainFormatterBlock<'a> {
                 shape.block_indent(0)
             } else {
                 shape.block_indent(context.config.tab_spaces())
-            }.with_max_width(context.config),
+            }
+            .with_max_width(context.config),
         )
     }
 

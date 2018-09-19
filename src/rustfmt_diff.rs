@@ -207,7 +207,8 @@ where
             out,
             "{} {} {}",
             mismatch.line_number_orig, num_removed, num_added
-        ).unwrap();
+        )
+        .unwrap();
 
         for line in mismatch.lines {
             match line {

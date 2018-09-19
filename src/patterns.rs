@@ -397,7 +397,8 @@ fn count_wildcard_suffix_len(
         context.snippet_provider.span_after(span, "("),
         span.hi() - BytePos(1),
         false,
-    ).collect();
+    )
+    .collect();
 
     for item in items.iter().rev().take_while(|i| match i.item {
         Some(ref internal_string) if internal_string == "_" => true,

@@ -158,7 +158,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                         item.attrs.first()
                     } else {
                         first_stmt.attrs().first()
-                    }.and_then(|attr| {
+                    }
+                    .and_then(|attr| {
                         // Some stmts can have embedded attributes.
                         // e.g. `match { #![attr] ... }`
                         let attr_lo = attr.span.lo();

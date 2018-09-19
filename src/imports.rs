@@ -44,7 +44,8 @@ impl<'a> FmtVisitor<'a> {
             Some(item.vis.clone()),
             Some(item.span.lo()),
             Some(item.attrs.clone()),
-        ).rewrite_top_level(&self.get_context(), shape);
+        )
+        .rewrite_top_level(&self.get_context(), shape);
         match rw {
             Some(ref s) if s.is_empty() => {
                 // Format up to last newline
@@ -291,7 +292,8 @@ impl UseTree {
                     } else {
                         Some(item.attrs.clone())
                     },
-                ).normalize(),
+                )
+                .normalize(),
             ),
             _ => None,
         }
@@ -345,13 +347,15 @@ impl UseTree {
                     context.snippet_provider.span_after(a.span, "{"),
                     a.span.hi(),
                     false,
-                ).collect();
+                )
+                .collect();
                 result.path.push(UseSegment::List(
                     list.iter()
                         .zip(items.into_iter())
                         .map(|(t, list_item)| {
                             Self::from_ast(context, &t.0, Some(list_item), None, None, None)
-                        }).collect(),
+                        })
+                        .collect(),
                 ));
             }
             UseTreeKind::Simple(ref rename, ..) => {

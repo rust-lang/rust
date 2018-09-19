@@ -163,7 +163,8 @@ fn format_crate(
             if verbosity == Verbosity::Verbose {
                 println!("[{}] {:?}", t.kind, t.path)
             }
-        }).map(|t| t.path)
+        })
+        .map(|t| t.path)
         .collect();
 
     run_rustfmt(&files, &rustfmt_args, verbosity)
