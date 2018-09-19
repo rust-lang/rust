@@ -16,3 +16,4 @@ LL | #![deny(const_err)]
    |         ^^^^^^^^^
 
 error: aborting due to previous error
+
