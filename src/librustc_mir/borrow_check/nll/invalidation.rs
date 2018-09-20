@@ -16,7 +16,7 @@ use borrow_check::{ReadOrWrite, Activation, Read, Reservation, Write};
 use borrow_check::{Context, ContextKind};
 use borrow_check::{LocalMutationIsAllowed, MutateMode};
 use borrow_check::ArtificialField;
-use borrow_check::{ReadKind, WriteKind};
+use borrow_check::{ReadKind, WriteKind, StorageDeadOrDrop};
 use borrow_check::nll::facts::AllFacts;
 use borrow_check::path_utils::*;
 use dataflow::move_paths::indexes::BorrowIndex;
@@ -154,7 +154,8 @@ impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tc
                 self.access_place(
                     ContextKind::StorageDead.new(location),
                     &Place::Local(local),
-                    (Shallow(None), Write(WriteKind::StorageDeadOrDrop)),
+                    (Shallow(None), Write(WriteKind::StorageDeadOrDrop(
+                        StorageDeadOrDrop::LocalStorageDead))),
                     LocalMutationIsAllowed::Yes,
                 );
             }
@@ -347,7 +348,8 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
                     self.access_place(
                         ContextKind::Drop.new(loc),
                         drop_place,
-                        (Deep, Write(WriteKind::StorageDeadOrDrop)),
+                        (Deep, Write(WriteKind::StorageDeadOrDrop(
+                            StorageDeadOrDrop::Destructor))),
                         LocalMutationIsAllowed::Yes,
                     );
                 }

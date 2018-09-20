@@ -1,11 +1,11 @@
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/borrowck-ref-into-rvalue.rs:13:11
+error[E0713]: borrow may still be in use when destructor runs
+  --> $DIR/borrowck-ref-into-rvalue.rs:14:14
    |
-LL |     match Some("Hello".to_string()) {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
+LL |         Some(ref m) => {
+   |              ^^^^^
 ...
 LL |     }
-   |     - temporary value only lives until here
+   |     - drop of temporary value occurs here
 LL |     println!("{}", *msg);
    |                    ---- borrow later used here
    |
@@ -13,4 +13,4 @@ LL |     println!("{}", *msg);
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0713`.

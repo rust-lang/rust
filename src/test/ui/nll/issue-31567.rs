@@ -19,7 +19,7 @@ struct VecWrapper<'a>(&'a mut S);
 struct S(Box<u32>);
 
 fn get_dangling<'a>(v: VecWrapper<'a>) -> &'a u32 {
-    let s_inner: &'a S = &*v.0; //~ ERROR `*v.0` does not live long enough
+    let s_inner: &'a S = &*v.0; //~ ERROR borrow may still be in use when destructor runs [E0713]
     &s_inner.0
 }
 

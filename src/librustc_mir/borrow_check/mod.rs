@@ -574,7 +574,8 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 self.access_place(
                     ContextKind::StorageDead.new(location),
                     (&Place::Local(local), span),
-                    (Shallow(None), Write(WriteKind::StorageDeadOrDrop)),
+                    (Shallow(None), Write(WriteKind::StorageDeadOrDrop(
+                        StorageDeadOrDrop::LocalStorageDead))),
                     LocalMutationIsAllowed::Yes,
                     flow_state,
                 );
@@ -801,10 +802,19 @@ enum ReadKind {
 /// (For informational purposes only)
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum WriteKind {
-    StorageDeadOrDrop,
+    StorageDeadOrDrop(StorageDeadOrDrop),
     MutableBorrow(BorrowKind),
     Mutate,
     Move,
+}
+
+/// Specify whether which case a StorageDeadOrDrop is in.
+/// (For informational purposes only)
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum StorageDeadOrDrop {
+    LocalStorageDead,
+    BoxedStorageDead,
+    Destructor,
 }
 
 /// When checking permissions for a place access, this flag is used to indicate that an immutable
@@ -1035,7 +1045,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     self.access_place(
                         ContextKind::Drop.new(loc),
                         (drop_place, span),
-                        (Deep, Write(WriteKind::StorageDeadOrDrop)),
+                        (Deep, Write(WriteKind::StorageDeadOrDrop(
+                            StorageDeadOrDrop::Destructor))),
                         LocalMutationIsAllowed::Yes,
                         flow_state,
                     );
@@ -1062,15 +1073,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     //   Why? Because we do not schedule/emit
                     //   `Drop(x)` in the MIR unless `x` needs drop in
                     //   the first place.
-                    //
-                    // FIXME: Its possible this logic actually should
-                    // be attached to the `StorageDead` statement
-                    // rather than the `Drop`. See discussion on PR
-                    // #52782.
                     self.access_place(
                         ContextKind::Drop.new(loc),
                         (drop_place, span),
-                        (Shallow(None), Write(WriteKind::StorageDeadOrDrop)),
+                        (Shallow(None), Write(WriteKind::StorageDeadOrDrop(
+                            // rust-lang/rust#52059: distinguish
+                            // between invaliding the backing storage
+                            // vs running a destructor.
+                            //
+                            // See also: rust-lang/rust#52782,
+                            // specifically #discussion_r206658948
+                            StorageDeadOrDrop::BoxedStorageDead))),
                         LocalMutationIsAllowed::Yes,
                         flow_state,
                     );
@@ -1238,14 +1251,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             error_reported = true;
                             this.report_conflicting_borrow(context, place_span, bk, &borrow)
                         }
-                        WriteKind::StorageDeadOrDrop => {
+                        WriteKind::StorageDeadOrDrop(_) => {
                             error_reported = true;
                             this.report_borrowed_value_does_not_live_long_enough(
                                 context,
                                 borrow,
                                 place_span,
-                                Some(kind),
-                            );
+                                Some(kind))
                         }
                         WriteKind::Mutate => {
                             error_reported = true;
@@ -1487,7 +1499,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
     }
 
-    /// Returns whether a borrow of this place is invalidated when the function
+    /// Checks whether a borrow of this place is invalidated when the function
     /// exits
     fn check_for_invalidation_at_exit(
         &mut self,
@@ -1912,9 +1924,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             Reservation(wk @ WriteKind::Move)
             | Write(wk @ WriteKind::Move)
-            | Reservation(wk @ WriteKind::StorageDeadOrDrop)
+            | Reservation(wk @ WriteKind::StorageDeadOrDrop(_))
             | Reservation(wk @ WriteKind::MutableBorrow(BorrowKind::Shared))
-            | Write(wk @ WriteKind::StorageDeadOrDrop)
+            | Write(wk @ WriteKind::StorageDeadOrDrop(_))
             | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shared)) => {
                 if let Err(_place_err) = self.is_mutable(place, is_local_mutation_allowed) {
                     if self.tcx.migrate_borrowck() {
@@ -1929,7 +1941,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         error_access = match wk {
                             WriteKind::MutableBorrow(_) => AccessKind::MutableBorrow,
                             WriteKind::Move => AccessKind::Move,
-                            WriteKind::StorageDeadOrDrop |
+                            WriteKind::StorageDeadOrDrop(_) |
                             WriteKind::Mutate => AccessKind::Mutate,
                         };
                         self.report_mutability_error(
