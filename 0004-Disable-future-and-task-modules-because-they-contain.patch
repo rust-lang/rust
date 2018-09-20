@@ -1,6 +1,6 @@
-From 9db209102bf5f7850ccd456be0d5af09405ee950 Mon Sep 17 00:00:00 2001
+From 8838226899913c8636fa00f4dfbc7497c685abc5 Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Thu, 30 Aug 2018 20:47:12 +0200
+Date: Thu, 20 Sep 2018 18:16:25 +0200
 Subject: [PATCH] Disable future and task modules, because they contain unsized
  types
 
@@ -10,10 +10,10 @@ Subject: [PATCH] Disable future and task modules, because they contain unsized
  2 files changed, 6 insertions(+), 2 deletions(-)
 
 diff --git a/src/libcore/lib.rs b/src/libcore/lib.rs
-index 9b64b7d..9d2e230 100644
+index 09f5035..f129254 100644
 --- a/src/libcore/lib.rs
 +++ b/src/libcore/lib.rs
-@@ -188,7 +188,7 @@ pub mod cell;
+@@ -194,7 +194,7 @@ pub mod cell;
  pub mod char;
  pub mod panic;
  pub mod panicking;
@@ -22,7 +22,7 @@ index 9b64b7d..9d2e230 100644
  pub mod iter;
  pub mod option;
  pub mod raw;
-@@ -202,9 +202,11 @@ pub mod time;
+@@ -209,9 +209,11 @@ pub mod time;
  
  pub mod unicode;
  
@@ -35,28 +35,28 @@ index 9b64b7d..9d2e230 100644
  /* Heap memory allocator trait */
  #[allow(missing_docs)]
 diff --git a/src/libcore/option.rs b/src/libcore/option.rs
-index 3879abb..16204a8 100644
+index 58bf6be..902d38f 100644
 --- a/src/libcore/option.rs
 +++ b/src/libcore/option.rs
 @@ -147,7 +147,7 @@
  
  use iter::{FromIterator, FusedIterator, TrustedLen};
  use {hint, mem, ops::{self, Deref}};
--use pin::PinMut;
-+//use pin::PinMut;
+-use pin::Pin;
++//use pin::Pin;
  
  // Note that this is not a lang item per se, but it has a hidden dependency on
  // `Iterator`, which is one. The compiler assumes that the `next` method of
-@@ -270,6 +270,7 @@ impl<T> Option<T> {
-         }
+@@ -271,6 +271,7 @@ impl<T> Option<T> {
      }
  
+ 
 +    /*
-     /// Converts from `Option<T>` to `Option<PinMut<'_, T>>`
+     /// Converts from `Pin<&Option<T>>` to `Option<Pin<&T>>`
      #[inline]
      #[unstable(feature = "pin", issue = "49150")]
-@@ -278,6 +279,7 @@ impl<T> Option<T> {
-             PinMut::get_mut_unchecked(self).as_mut().map(|x| PinMut::new_unchecked(x))
+@@ -288,6 +289,7 @@ impl<T> Option<T> {
+             Pin::get_mut_unchecked(self).as_mut().map(|x| Pin::new_unchecked(x))
          }
      }
 +    */
