@@ -10,20 +10,17 @@
 
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
-use rustc::ty::layout::{self, LayoutOf};
+use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, TyLayout};
 use rustc::mir;
 use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 use rustc_apfloat::{ieee, Float, Status, Round};
 use std::{u128, i128};
 
 use base;
-use builder::Builder;
 use callee;
 use common::{self, IntPredicate, RealPredicate};
 use monomorphize;
-use type_::Type;
 use type_of::LayoutLlvmExt;
-use value::Value;
 
 use interfaces::*;
 
@@ -31,13 +28,15 @@ use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
 
-impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
-    pub fn codegen_rvalue(&mut self,
-                        bx: Builder<'a, 'll, 'tcx, &'ll Value>,
-                        dest: PlaceRef<'tcx, &'ll Value>,
-                        rvalue: &mir::Rvalue<'tcx>)
-                        -> Builder<'a, 'll, 'tcx, &'ll Value>
-    {
+impl<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> FunctionCx<'a, 'll, 'tcx, Cx>
+    where &'a Cx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
+    pub fn codegen_rvalue<Bx: BuilderMethods<'a, 'll, 'tcx, CodegenCx=Cx>>(
+        &mut self,
+        bx: Bx,
+        dest: PlaceRef<'tcx, Cx::Value>,
+        rvalue: &mir::Rvalue<'tcx>
+    ) -> Bx {
         debug!("codegen_rvalue(dest.llval={:?}, rvalue={:?})",
                dest.llval, rvalue);
 
@@ -177,11 +176,11 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
         }
     }
 
-    pub fn codegen_rvalue_unsized(&mut self,
-                        bx: Builder<'a, 'll, 'tcx, &'ll Value>,
-                        indirect_dest: PlaceRef<'tcx, &'ll Value>,
+    pub fn codegen_rvalue_unsized<Bx: BuilderMethods<'a, 'll, 'tcx, CodegenCx=Cx>>(&mut self,
+                        bx: Bx,
+                        indirect_dest: PlaceRef<'tcx, Cx::Value>,
                         rvalue: &mir::Rvalue<'tcx>)
-                        -> Builder<'a, 'll, 'tcx, &'ll Value>
+                        -> Bx
     {
         debug!("codegen_rvalue_unsized(indirect_dest.llval={:?}, rvalue={:?})",
                indirect_dest.llval, rvalue);
@@ -197,11 +196,11 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
         }
     }
 
-    pub fn codegen_rvalue_operand(
+    pub fn codegen_rvalue_operand<Bx: BuilderMethods<'a, 'll, 'tcx, CodegenCx=Cx>>(
         &mut self,
-        bx: Builder<'a, 'll, 'tcx, &'ll Value>,
+        bx: Bx,
         rvalue: &mir::Rvalue<'tcx>
-    ) -> (Builder<'a, 'll, 'tcx, &'ll Value>, OperandRef<'tcx, &'ll Value>) {
+    ) -> (Bx, OperandRef<'tcx, Cx::Value>) {
         assert!(self.rvalue_creates_operand(rvalue), "cannot codegen {:?} to operand", rvalue);
 
         match *rvalue {
@@ -214,7 +213,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                     mir::CastKind::ReifyFnPointer => {
                         match operand.layout.ty.sty {
                             ty::FnDef(def_id, substs) => {
-                                if bx.cx().tcx.has_attr(def_id, "rustc_args_required_const") {
+                                if bx.cx().tcx().has_attr(def_id, "rustc_args_required_const") {
                                     bug!("reifying a fn ptr that requires \
                                           const arguments");
                                 }
@@ -230,8 +229,8 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                         match operand.layout.ty.sty {
                             ty::Closure(def_id, substs) => {
                                 let instance = monomorphize::resolve_closure(
-                                    bx.cx().tcx, def_id, substs, ty::ClosureKind::FnOnce);
-                                OperandValue::Immediate(callee::get_fn(bx.cx(), instance))
+                                    *bx.cx().tcx(), def_id, substs, ty::ClosureKind::FnOnce);
+                                OperandValue::Immediate(bx.cx().get_fn(instance))
                             }
                             _ => {
                                 bug!("{} cannot be cast to a fn ptr", operand.layout.ty)
@@ -254,7 +253,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                                 // HACK(eddyb) have to bitcast pointers
                                 // until LLVM removes pointee types.
                                 let lldata = bx.pointercast(lldata,
-                                    cast.scalar_pair_element_llvm_type(bx.cx(), 0, true));
+                                    bx.cx().scalar_pair_element_backend_type(&cast, 0, true));
                                 OperandValue::Pair(lldata, llextra)
                             }
                             OperandValue::Immediate(lldata) => {
@@ -273,12 +272,12 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                         if let OperandValue::Pair(data_ptr, meta) = operand.val {
                             if cast.is_llvm_scalar_pair() {
                                 let data_cast = bx.pointercast(data_ptr,
-                                    cast.scalar_pair_element_llvm_type(bx.cx(), 0, true));
+                                    bx.cx().scalar_pair_element_backend_type(&cast, 0, true));
                                 OperandValue::Pair(data_cast, meta)
                             } else { // cast to thin-ptr
                                 // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and
                                 // pointer-cast of that pointer to desired pointer type.
-                                let llcast_ty = cast.immediate_llvm_type(bx.cx());
+                                let llcast_ty = bx.cx().immediate_backend_type(&cast);
                                 let llval = bx.pointercast(data_ptr, llcast_ty);
                                 OperandValue::Immediate(llval)
                             }
@@ -288,7 +287,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                     }
                     mir::CastKind::Misc => {
                         assert!(cast.is_llvm_immediate());
-                        let ll_t_out = cast.immediate_llvm_type(bx.cx());
+                        let ll_t_out = bx.cx().immediate_backend_type(&cast);
                         if operand.layout.abi.is_uninhabited() {
                             let val = OperandValue::Immediate(bx.cx().const_undef(ll_t_out));
                             return (bx, OperandRef {
@@ -299,12 +298,12 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                         let r_t_in = CastTy::from_ty(operand.layout.ty)
                             .expect("bad input type for cast");
                         let r_t_out = CastTy::from_ty(cast.ty).expect("bad output type for cast");
-                        let ll_t_in = operand.layout.immediate_llvm_type(bx.cx());
+                        let ll_t_in = bx.cx().immediate_backend_type(&operand.layout);
                         match operand.layout.variants {
                             layout::Variants::Single { index } => {
                                 if let Some(def) = operand.layout.ty.ty_adt_def() {
                                     let discr_val = def
-                                        .discriminant_for_variant(bx.cx().tcx, index)
+                                        .discriminant_for_variant(*bx.cx().tcx(), index)
                                         .val;
                                     let discr = bx.cx().const_uint_big(ll_t_out, discr_val);
                                     return (bx, OperandRef {
@@ -366,7 +365,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                             (CastTy::FnPtr, CastTy::Int(_)) =>
                                 bx.ptrtoint(llval, ll_t_out),
                             (CastTy::Int(_), CastTy::Ptr(_)) => {
-                                let usize_llval = bx.intcast(llval, bx.cx().isize_ty, signed);
+                                let usize_llval = bx.intcast(llval, bx.cx().type_isize(), signed);
                                 bx.inttoptr(usize_llval, ll_t_out)
                             }
                             (CastTy::Int(_), CastTy::Float) =>
@@ -400,8 +399,8 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                 };
                 (bx, OperandRef {
                     val,
-                    layout: self.cx.layout_of(self.cx.tcx.mk_ref(
-                        self.cx.tcx.types.re_erased,
+                    layout: self.cx.layout_of(self.cx.tcx().mk_ref(
+                        self.cx.tcx().types.re_erased,
                         ty::TypeAndMut { ty, mutbl: bk.to_mutbl_lossy() }
                     )),
                 })
@@ -488,7 +487,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
 
             mir::Rvalue::NullaryOp(mir::NullOp::SizeOf, ty) => {
                 assert!(bx.cx().type_is_sized(ty));
-                let val = bx.cx().const_usize(bx.cx().size_of(ty).bytes());
+                let val = bx.cx().const_usize(bx.cx().layout_of(ty).size.bytes());
                 let tcx = bx.tcx();
                 (bx, OperandRef {
                     val: OperandValue::Immediate(val),
@@ -498,21 +497,21 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
 
             mir::Rvalue::NullaryOp(mir::NullOp::Box, content_ty) => {
                 let content_ty: Ty<'tcx> = self.monomorphize(&content_ty);
-                let (size, align) = bx.cx().size_and_align_of(content_ty);
+                let (size, align) = bx.cx().layout_of(content_ty).size_and_align();
                 let llsize = bx.cx().const_usize(size.bytes());
                 let llalign = bx.cx().const_usize(align.abi());
                 let box_layout = bx.cx().layout_of(bx.tcx().mk_box(content_ty));
-                let llty_ptr = box_layout.llvm_type(bx.cx());
+                let llty_ptr = bx.cx().backend_type(&box_layout);
 
                 // Allocate space:
                 let def_id = match bx.tcx().lang_items().require(ExchangeMallocFnLangItem) {
                     Ok(id) => id,
                     Err(s) => {
-                        bx.sess().fatal(&format!("allocation of `{}` {}", box_layout.ty, s));
+                        bx.cx().sess().fatal(&format!("allocation of `{}` {}", box_layout.ty, s));
                     }
                 };
                 let instance = ty::Instance::mono(bx.tcx(), def_id);
-                let r = callee::get_fn(bx.cx(), instance);
+                let r = bx.cx().get_fn(instance);
                 let val = bx.pointercast(bx.call(r, &[llsize, llalign], None), llty_ptr);
 
                 let operand = OperandRef {
@@ -529,41 +528,41 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
             mir::Rvalue::Aggregate(..) => {
                 // According to `rvalue_creates_operand`, only ZST
                 // aggregate rvalues are allowed to be operands.
-                let ty = rvalue.ty(self.mir, self.cx.tcx);
+                let ty = rvalue.ty(self.mir, *self.cx.tcx());
                 (bx, OperandRef::new_zst(self.cx,
                     self.cx.layout_of(self.monomorphize(&ty))))
             }
         }
     }
 
-    fn evaluate_array_len(
+    fn evaluate_array_len<Bx: BuilderMethods<'a, 'll, 'tcx, CodegenCx=Cx>>(
         &mut self,
-        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+        bx: &Bx,
         place: &mir::Place<'tcx>,
-    ) -> &'ll Value {
+    ) -> Cx::Value {
         // ZST are passed as operands and require special handling
         // because codegen_place() panics if Local is operand.
         if let mir::Place::Local(index) = *place {
             if let LocalRef::Operand(Some(op)) = self.locals[index] {
                 if let ty::Array(_, n) = op.layout.ty.sty {
-                    let n = n.unwrap_usize(bx.cx().tcx);
+                    let n = n.unwrap_usize(*bx.cx().tcx());
                     return bx.cx().const_usize(n);
                 }
             }
         }
         // use common size calculation for non zero-sized types
-        let cg_value = self.codegen_place(&bx, place);
+        let cg_value = self.codegen_place(bx, place);
         return cg_value.len(bx.cx());
     }
 
-    pub fn codegen_scalar_binop(
+    pub fn codegen_scalar_binop<Bx: BuilderMethods<'a, 'll, 'tcx, CodegenCx=Cx>>(
         &mut self,
-        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+        bx: &Bx,
         op: mir::BinOp,
-        lhs: &'ll Value,
-        rhs: &'ll Value,
+        lhs: Cx::Value,
+        rhs: Cx::Value,
         input_ty: Ty<'tcx>,
-    ) -> &'ll Value {
+    ) -> Cx::Value {
         let is_float = input_ty.is_fp();
         let is_signed = input_ty.is_signed();
         let is_unit = input_ty.is_unit();
@@ -624,16 +623,16 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
         }
     }
 
-    pub fn codegen_fat_ptr_binop(
+    pub fn codegen_fat_ptr_binop<Bx: BuilderMethods<'a, 'll, 'tcx, CodegenCx=Cx>>(
         &mut self,
-        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+        bx: &Bx,
         op: mir::BinOp,
-        lhs_addr: &'ll Value,
-        lhs_extra: &'ll Value,
-        rhs_addr: &'ll Value,
-        rhs_extra: &'ll Value,
+        lhs_addr: Cx::Value,
+        lhs_extra: Cx::Value,
+        rhs_addr: Cx::Value,
+        rhs_extra: Cx::Value,
         _input_ty: Ty<'tcx>,
-    ) -> &'ll Value {
+    ) -> Cx::Value {
         match op {
             mir::BinOp::Eq => {
                 bx.and(
@@ -672,17 +671,19 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
         }
     }
 
-    pub fn codegen_scalar_checked_binop(&mut self,
-                                      bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-                                      op: mir::BinOp,
-                                      lhs: &'ll Value,
-                                      rhs: &'ll Value,
-                                      input_ty: Ty<'tcx>) -> OperandValue<&'ll Value> {
+    pub fn codegen_scalar_checked_binop<Bx: BuilderMethods<'a, 'll, 'tcx, CodegenCx=Cx>>(
+        &mut self,
+        bx: &Bx,
+        op: mir::BinOp,
+        lhs: Cx::Value,
+        rhs: Cx::Value,
+        input_ty: Ty<'tcx>
+    ) -> OperandValue<Cx::Value> {
         // This case can currently arise only from functions marked
         // with #[rustc_inherit_overflow_checks] and inlined from
         // another crate (mostly core::num generic/#[inline] fns),
         // while the current crate doesn't use overflow checks.
-        if !bx.cx().check_overflow {
+        if !bx.cx().check_overflow() {
             let val = self.codegen_scalar_binop(bx, op, lhs, rhs, input_ty);
             return OperandValue::Pair(val, bx.cx().const_bool(false));
         }
@@ -705,7 +706,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
             mir::BinOp::Shl | mir::BinOp::Shr => {
                 let lhs_llty = bx.cx().val_ty(lhs);
                 let rhs_llty = bx.cx().val_ty(rhs);
-                let invert_mask = common::shift_mask_val(&bx, lhs_llty, rhs_llty, true);
+                let invert_mask = common::shift_mask_val(bx, lhs_llty, rhs_llty, true);
                 let outer_bits = bx.and(rhs, invert_mask);
 
                 let of = bx.icmp(IntPredicate::IntNE, outer_bits, bx.cx().const_null(rhs_llty));
@@ -720,7 +721,11 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
 
         OperandValue::Pair(val, of)
     }
+}
 
+impl<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> FunctionCx<'a, 'll, 'tcx, Cx>
+    where &'a Cx : LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>) -> bool {
         match *rvalue {
             mir::Rvalue::Ref(..) |
@@ -735,7 +740,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                 true,
             mir::Rvalue::Repeat(..) |
             mir::Rvalue::Aggregate(..) => {
-                let ty = rvalue.ty(self.mir, self.cx.tcx);
+                let ty = rvalue.ty(self.mir, *self.cx.tcx());
                 let ty = self.monomorphize(&ty);
                 self.cx.layout_of(ty).is_zst()
             }
@@ -750,11 +755,11 @@ enum OverflowOp {
     Add, Sub, Mul
 }
 
-fn get_overflow_intrinsic(
+fn get_overflow_intrinsic<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     oop: OverflowOp,
-    bx: &Builder<'_, 'll, '_, &'ll Value>,
+    bx: &Bx,
     ty: Ty
-) -> &'ll Value {
+) -> <Bx::CodegenCx as Backend>::Value {
     use syntax::ast::IntTy::*;
     use syntax::ast::UintTy::*;
     use rustc::ty::{Int, Uint};
@@ -819,11 +824,13 @@ fn get_overflow_intrinsic(
     bx.cx().get_intrinsic(&name)
 }
 
-fn cast_int_to_float(bx: &Builder<'_, 'll, '_, &'ll Value>,
-                     signed: bool,
-                     x: &'ll Value,
-                     int_ty: &'ll Type,
-                     float_ty: &'ll Type) -> &'ll Value {
+fn cast_int_to_float<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
+    bx: &Bx,
+    signed: bool,
+    x: <Bx::CodegenCx as Backend>::Value,
+    int_ty: <Bx::CodegenCx as Backend>::Type,
+    float_ty: <Bx::CodegenCx as Backend>::Type
+) -> <Bx::CodegenCx as Backend>::Value {
     // Most integer types, even i128, fit into [-f32::MAX, f32::MAX] after rounding.
     // It's only u128 -> f32 that can cause overflows (i.e., should yield infinity).
     // LLVM's uitofp produces undef in those cases, so we manually check for that case.
@@ -851,18 +858,20 @@ fn cast_int_to_float(bx: &Builder<'_, 'll, '_, &'ll Value>,
     }
 }
 
-fn cast_float_to_int(bx: &Builder<'_, 'll, '_, &'ll Value>,
-                     signed: bool,
-                     x: &'ll Value,
-                     float_ty: &'ll Type,
-                     int_ty: &'ll Type) -> &'ll Value {
+fn cast_float_to_int<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
+    bx: &Bx,
+    signed: bool,
+    x: <Bx::CodegenCx as Backend>::Value,
+    float_ty: <Bx::CodegenCx as Backend>::Type,
+    int_ty: <Bx::CodegenCx as Backend>::Type
+) -> <Bx::CodegenCx as Backend>::Value {
     let fptosui_result = if signed {
         bx.fptosi(x, int_ty)
     } else {
         bx.fptoui(x, int_ty)
     };
 
-    if !bx.sess().opts.debugging_opts.saturating_float_casts {
+    if !bx.cx().sess().opts.debugging_opts.saturating_float_casts {
         return fptosui_result;
     }
     // LLVM's fpto[su]i returns undef when the input x is infinite, NaN, or does not fit into the
@@ -884,7 +893,7 @@ fn cast_float_to_int(bx: &Builder<'_, 'll, '_, &'ll Value>,
     // On the other hand, f_max works even if int_ty::MAX is greater than float_ty::MAX. Because
     // we're rounding towards zero, we just get float_ty::MAX (which is always an integer).
     // This already happens today with u128::MAX = 2^128 - 1 > f32::MAX.
-    let int_max = |signed: bool, int_ty: &'ll Type| -> u128 {
+    let int_max = |signed: bool, int_ty: <Bx::CodegenCx as Backend>::Type| -> u128 {
         let shift_amount = 128 - bx.cx().int_width(int_ty);
         if signed {
             i128::MAX as u128 >> shift_amount
@@ -892,7 +901,7 @@ fn cast_float_to_int(bx: &Builder<'_, 'll, '_, &'ll Value>,
             u128::MAX >> shift_amount
         }
     };
-    let int_min = |signed: bool, int_ty: &'ll Type| -> i128 {
+    let int_min = |signed: bool, int_ty: <Bx::CodegenCx as Backend>::Type| -> i128 {
         if signed {
             i128::MIN >> (128 - bx.cx().int_width(int_ty))
         } else {
@@ -900,14 +909,16 @@ fn cast_float_to_int(bx: &Builder<'_, 'll, '_, &'ll Value>,
         }
     };
 
-    let compute_clamp_bounds_single = |signed: bool, int_ty: &'ll Type| -> (u128, u128) {
+    let compute_clamp_bounds_single =
+    |signed: bool, int_ty: <Bx::CodegenCx as Backend>::Type| -> (u128, u128) {
         let rounded_min = ieee::Single::from_i128_r(int_min(signed, int_ty), Round::TowardZero);
         assert_eq!(rounded_min.status, Status::OK);
         let rounded_max = ieee::Single::from_u128_r(int_max(signed, int_ty), Round::TowardZero);
         assert!(rounded_max.value.is_finite());
         (rounded_min.value.to_bits(), rounded_max.value.to_bits())
     };
-    let compute_clamp_bounds_double = |signed: bool, int_ty: &'ll Type| -> (u128, u128) {
+    let compute_clamp_bounds_double =
+    |signed: bool, int_ty: <Bx::CodegenCx as Backend>::Type| -> (u128, u128) {
         let rounded_min = ieee::Double::from_i128_r(int_min(signed, int_ty), Round::TowardZero);
         assert_eq!(rounded_min.status, Status::OK);
         let rounded_max = ieee::Double::from_u128_r(int_max(signed, int_ty), Round::TowardZero);

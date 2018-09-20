@@ -14,10 +14,9 @@ use llvm;
 
 use common::CodegenCx;
 use builder::Builder;
-use declare;
 use rustc::session::config::DebugInfo;
 use value::Value;
-use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods};
+use interfaces::*;
 
 use syntax::attr;
 
@@ -58,7 +57,7 @@ pub fn get_or_insert_gdb_debug_scripts_section_global(cx: &CodegenCx<'ll, '_, &'
             let llvm_type = cx.type_array(cx.type_i8(),
                                         section_contents.len() as u64);
 
-            let section_var = declare::define_global(cx, section_var_name,
+            let section_var = cx.define_global(section_var_name,
                                                      llvm_type).unwrap_or_else(||{
                 bug!("symbol `{}` is already defined", section_var_name)
             });

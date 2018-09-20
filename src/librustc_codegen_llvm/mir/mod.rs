@@ -9,21 +9,18 @@
 // except according to those terms.
 
 use libc::c_uint;
-use llvm::{self, BasicBlock};
-use llvm::debuginfo::DIScope;
+use llvm;
 use rustc::ty::{self, Ty, TypeFoldable, UpvarSubsts};
-use rustc::ty::layout::{LayoutOf, TyLayout};
+use rustc::ty::layout::{LayoutOf, TyLayout, HasTyCtxt};
 use rustc::mir::{self, Mir};
 use rustc::ty::subst::Substs;
 use rustc::session::config::DebugInfo;
 use base;
-use builder::Builder;
-use common::{CodegenCx, Funclet};
-use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebugContext};
+use common::Funclet;
+use debuginfo::{self, VariableAccess, VariableKind, FunctionDebugContext};
 use monomorphize::Instance;
-use abi::{ArgTypeExt, FnType, FnTypeExt, PassMode};
-use value::Value;
-use interfaces::{BuilderMethods, ConstMethods, DerivedTypeMethods};
+use abi::{FnType, PassMode};
+use interfaces::*;
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
 use syntax::symbol::keywords;
@@ -42,16 +39,16 @@ use rustc::mir::traversal;
 use self::operand::{OperandRef, OperandValue};
 
 /// Master context for codegenning from MIR.
-pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll, V> {
+pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll, Cx: 'a +  CodegenMethods<'ll, 'tcx>> {
     instance: Instance<'tcx>,
 
     mir: &'a mir::Mir<'tcx>,
 
     debug_context: FunctionDebugContext<'ll>,
 
-    llfn: V,
+    llfn: Cx::Value,
 
-    cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>,
+    cx: &'a Cx,
 
     fn_ty: FnType<'tcx, Ty<'tcx>>,
 
@@ -62,10 +59,10 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll, V> {
     /// don't really care about it very much. Anyway, this value
     /// contains an alloca into which the personality is stored and
     /// then later loaded when generating the DIVERGE_BLOCK.
-    personality_slot: Option<PlaceRef<'tcx, V>>,
+    personality_slot: Option<PlaceRef<'tcx, Cx::Value,>>,
 
     /// A `Block` for each MIR `BasicBlock`
-    blocks: IndexVec<mir::BasicBlock, &'ll BasicBlock>,
+    blocks: IndexVec<mir::BasicBlock, Cx::BasicBlock>,
 
     /// The funclet status of each basic block
     cleanup_kinds: IndexVec<mir::BasicBlock, analyze::CleanupKind>,
@@ -73,14 +70,14 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll, V> {
     /// When targeting MSVC, this stores the cleanup info for each funclet
     /// BB. Thisrustup component add rustfmt-preview is initialized as we compute the funclets'
     /// head block in RPO.
-    funclets: &'a IndexVec<mir::BasicBlock, Option<Funclet<'ll>>>,
+    funclets: &'a IndexVec<mir::BasicBlock, Option<Funclet<'ll, Cx::Value>>>,
 
     /// This stores the landing-pad block for a given BB, computed lazily on GNU
     /// and eagerly on MSVC.
-    landing_pads: IndexVec<mir::BasicBlock, Option<&'ll BasicBlock>>,
+    landing_pads: IndexVec<mir::BasicBlock, Option<Cx::BasicBlock>>,
 
     /// Cached unreachable block
-    unreachable_block: Option<&'ll BasicBlock>,
+    unreachable_block: Option<Cx::BasicBlock>,
 
     /// The location where each MIR arg/var/tmp/ret is stored. This is
     /// usually an `PlaceRef` representing an alloca, but not always:
@@ -97,36 +94,42 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll, V> {
     ///
     /// Avoiding allocs can also be important for certain intrinsics,
     /// notably `expect`.
-    locals: IndexVec<mir::Local, LocalRef<'tcx, V>>,
+    locals: IndexVec<mir::Local, LocalRef<'tcx, Cx::Value>>,
 
     /// Debug information for MIR scopes.
-    scopes: IndexVec<mir::SourceScope, debuginfo::MirDebugScope<'ll>>,
+    scopes: IndexVec<mir::SourceScope, debuginfo::MirDebugScope<Cx::DIScope>>,
 
     /// If this function is being monomorphized, this contains the type substitutions used.
     param_substs: &'tcx Substs<'tcx>,
 }
 
-impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
+impl<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
+    FunctionCx<'a, 'll, 'tcx, Cx>
+{
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TypeFoldable<'tcx>
     {
-        self.cx.tcx.subst_and_normalize_erasing_regions(
+        self.cx.tcx().subst_and_normalize_erasing_regions(
             self.param_substs,
             ty::ParamEnv::reveal_all(),
             value,
         )
     }
+}
 
-    pub fn set_debug_loc(
+impl<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
+    FunctionCx<'a, 'll, 'tcx, Cx>
+{
+    pub fn set_debug_loc<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         &mut self,
-        bx: &Builder<'_, 'll, '_, &'ll Value>,
+        bx: &Bx,
         source_info: mir::SourceInfo
-    ) {
+    ) where Bx::CodegenCx : DebugInfoMethods<'ll, 'tcx, DIScope = Cx::DIScope> {
         let (scope, span) = self.debug_loc(source_info);
-        debuginfo::set_source_location(&self.debug_context, bx, scope, span);
+        bx.set_source_location(&self.debug_context, scope, span);
     }
 
-    pub fn debug_loc(&mut self, source_info: mir::SourceInfo) -> (Option<&'ll DIScope>, Span) {
+    pub fn debug_loc(&mut self, source_info: mir::SourceInfo) -> (Option<Cx::DIScope>, Span) {
         // Bail out if debug info emission is not enabled.
         match self.debug_context {
             FunctionDebugContext::DebugInfoDisabled |
@@ -166,16 +169,17 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
     // corresponding to span's containing source scope.  If so, we need to create a DIScope
     // "extension" into that file.
     fn scope_metadata_for_loc(&self, scope_id: mir::SourceScope, pos: BytePos)
-                              -> Option<&'ll DIScope> {
+                              -> Option<Cx::DIScope> {
         let scope_metadata = self.scopes[scope_id].scope_metadata;
         if pos < self.scopes[scope_id].file_start_pos ||
            pos >= self.scopes[scope_id].file_end_pos {
             let cm = self.cx.sess().source_map();
             let defining_crate = self.debug_context.get_ref(DUMMY_SP).defining_crate;
-            Some(debuginfo::extend_scope_to_file(self.cx,
-                                                 scope_metadata.unwrap(),
-                                                 &cm.lookup_char_pos(pos).file,
-                                                 defining_crate))
+            Some(self.cx.extend_scope_to_file(
+                scope_metadata.unwrap(),
+                &cm.lookup_char_pos(pos).file,
+                defining_crate
+            ))
         } else {
             scope_metadata
         }
@@ -192,11 +196,11 @@ enum LocalRef<'tcx, V> {
     Operand(Option<OperandRef<'tcx, V>>),
 }
 
-impl LocalRef<'tcx, &'ll Value> {
-    fn new_operand(
-        cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
+impl<'ll, 'tcx: 'll, V : CodegenObject> LocalRef<'tcx, V> {
+    fn new_operand<Cx: CodegenMethods<'ll, 'tcx>>(
+        cx: &Cx,
         layout: TyLayout<'tcx>
-    ) -> LocalRef<'tcx, &'ll Value> {
+    ) -> LocalRef<'tcx, V> where Cx: Backend<Value=V> {
         if layout.is_zst() {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
@@ -210,18 +214,18 @@ impl LocalRef<'tcx, &'ll Value> {
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub fn codegen_mir(
-    cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>,
-    llfn: &'ll Value,
+pub fn codegen_mir<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
+    cx: &'a Bx::CodegenCx,
+    llfn: <Bx::CodegenCx as Backend>::Value,
     mir: &'a Mir<'tcx>,
     instance: Instance<'tcx>,
     sig: ty::FnSig<'tcx>,
-) {
-    let fn_ty = FnType::new(cx, sig, &[]);
+) where &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx> {
+    let fn_ty = cx.new_fn_type(sig, &[]);
     debug!("fn_ty: {:?}", fn_ty);
     let debug_context =
-        debuginfo::create_function_debug_context(cx, instance, sig, llfn, mir);
-    let bx = Builder::new_block(cx, llfn, "start");
+        cx.create_function_debug_context(instance, sig, llfn, mir);
+    let bx = Bx::new_block(cx, llfn, "start");
 
     if mir.basic_blocks().iter().any(|bb| bb.is_cleanup) {
         bx.set_personality_fn(cx.eh_personality());
@@ -231,7 +235,7 @@ pub fn codegen_mir(
     // Allocate a `Block` for every basic block, except
     // the start block, if nothing loops back to it.
     let reentrant_start_block = !mir.predecessors_for(mir::START_BLOCK).is_empty();
-    let block_bxs: IndexVec<mir::BasicBlock, &'ll BasicBlock> =
+    let block_bxs: IndexVec<mir::BasicBlock, <Bx::CodegenCx as Backend>::BasicBlock> =
         mir.basic_blocks().indices().map(|bb| {
             if bb == mir::START_BLOCK && !reentrant_start_block {
                 bx.llbb()
@@ -241,7 +245,7 @@ pub fn codegen_mir(
         }).collect();
 
     // Compute debuginfo scopes from MIR scopes.
-    let scopes = debuginfo::create_mir_scopes(cx, mir, &debug_context);
+    let scopes = cx.create_mir_scopes(mir, &debug_context);
     let (landing_pads, funclets) = create_funclets(mir, &bx, &cleanup_kinds, &block_bxs);
 
     let mut fx = FunctionCx {
@@ -279,7 +283,7 @@ pub fn codegen_mir(
             if let Some(name) = decl.name {
                 // User variable
                 let debug_scope = fx.scopes[decl.visibility_scope];
-                let dbg = debug_scope.is_valid() && bx.sess().opts.debuginfo == DebugInfo::Full;
+                let dbg = debug_scope.is_valid() && bx.cx().sess().opts.debuginfo == DebugInfo::Full;
 
                 if !memory_locals.contains(local) && !dbg {
                     debug!("alloc: {:?} ({}) -> operand", local, name);
@@ -299,7 +303,7 @@ pub fn codegen_mir(
                             span: decl.source_info.span,
                             scope: decl.visibility_scope,
                         });
-                        declare_local(&bx, &fx.debug_context, name, layout.ty, scope.unwrap(),
+                        bx.declare_local(&fx.debug_context, name, layout.ty, scope.unwrap(),
                             VariableAccess::DirectVariable { alloca: place.llval },
                             VariableKind::LocalVariable, span);
                     }
@@ -309,7 +313,7 @@ pub fn codegen_mir(
                 // Temporary or return place
                 if local == mir::RETURN_PLACE && fx.fn_ty.ret.is_indirect() {
                     debug!("alloc: {:?} (return place) -> place", local);
-                    let llretptr = llvm::get_param(llfn, 0);
+                    let llretptr = fx.cx.get_param(llfn, 0);
                     LocalRef::Place(PlaceRef::new_sized(llretptr, layout, layout.align))
                 } else if memory_locals.contains(local) {
                     debug!("alloc: {:?} -> place", local);
@@ -353,7 +357,7 @@ pub fn codegen_mir(
     // Codegen the body of each block using reverse postorder
     for (bb, _) in rpo {
         visited.insert(bb.index());
-        fx.codegen_block(bb);
+        fx.codegen_block::<Bx>(bb);
     }
 
     // Remove blocks that haven't been visited, or have no
@@ -362,24 +366,22 @@ pub fn codegen_mir(
         // Unreachable block
         if !visited.contains(bb.index()) {
             debug!("codegen_mir: block {:?} was not visited", bb);
-            unsafe {
-                llvm::LLVMDeleteBasicBlock(fx.blocks[bb]);
-            }
+            bx.delete_basic_block(fx.blocks[bb]);
         }
     }
 }
 
-fn create_funclets(
+fn create_funclets<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     mir: &'a Mir<'tcx>,
-    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+    bx: &Bx,
     cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
-    block_bxs: &IndexVec<mir::BasicBlock, &'ll BasicBlock>)
-    -> (IndexVec<mir::BasicBlock, Option<&'ll BasicBlock>>,
-        IndexVec<mir::BasicBlock, Option<Funclet<'ll>>>)
+    block_bxs: &IndexVec<mir::BasicBlock, <Bx::CodegenCx as Backend>::BasicBlock>)
+    -> (IndexVec<mir::BasicBlock, Option<<Bx::CodegenCx as Backend>::BasicBlock>>,
+        IndexVec<mir::BasicBlock, Option<Funclet<'ll, <Bx::CodegenCx as Backend>::Value>>>)
 {
     block_bxs.iter_enumerated().zip(cleanup_kinds).map(|((bb, &llbb), cleanup_kind)| {
         match *cleanup_kind {
-            CleanupKind::Funclet if base::wants_msvc_seh(bx.sess()) => {}
+            CleanupKind::Funclet if base::wants_msvc_seh(bx.cx().sess()) => {}
             _ => return (None, None)
         }
 
@@ -438,12 +440,17 @@ fn create_funclets(
 /// Produce, for each argument, a `Value` pointing at the
 /// argument's value. As arguments are places, these are always
 /// indirect.
-fn arg_local_refs(
-    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-    fx: &FunctionCx<'a, 'll, 'tcx, &'ll Value>,
-    scopes: &IndexVec<mir::SourceScope, debuginfo::MirDebugScope<'ll>>,
+fn arg_local_refs<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
+    bx: &Bx,
+    fx: &FunctionCx<'a, 'll, 'tcx, Bx::CodegenCx>,
+    scopes: &IndexVec<
+        mir::SourceScope,
+        debuginfo::MirDebugScope<<Bx::CodegenCx as DebugInfoMethods<'ll, 'tcx>>::DIScope>
+    >,
     memory_locals: &BitSet<mir::Local>,
-) -> Vec<LocalRef<'tcx, &'ll Value>> {
+) -> Vec<LocalRef<'tcx, <Bx::CodegenCx as Backend>::Value>>
+    where &'a Bx::CodegenCx : LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     let mir = fx.mir;
     let tcx = bx.tcx();
     let mut idx = 0;
@@ -451,7 +458,7 @@ fn arg_local_refs(
 
     // Get the argument scope, if it exists and if we need it.
     let arg_scope = scopes[mir::OUTERMOST_SOURCE_SCOPE];
-    let arg_scope = if bx.sess().opts.debuginfo == DebugInfo::Full {
+    let arg_scope = if bx.cx().sess().opts.debuginfo == DebugInfo::Full {
         arg_scope.scope_metadata
     } else {
         None
@@ -485,7 +492,7 @@ fn arg_local_refs(
                 if arg.pad.is_some() {
                     llarg_idx += 1;
                 }
-                arg.store_fn_arg(bx, &mut llarg_idx, place.project_field(bx, i));
+                bx.store_fn_arg(arg, &mut llarg_idx, place.project_field(bx, i));
             }
 
             // Now that we have one alloca that contains the aggregate value,
@@ -494,8 +501,7 @@ fn arg_local_refs(
                 let variable_access = VariableAccess::DirectVariable {
                     alloca: place.llval
                 };
-                declare_local(
-                    bx,
+                bx.declare_local(
                     &fx.debug_context,
                     arg_decl.name.unwrap_or(keywords::Invalid.name()),
                     arg_ty, scope,
@@ -524,18 +530,18 @@ fn arg_local_refs(
                     return local(OperandRef::new_zst(bx.cx(), arg.layout));
                 }
                 PassMode::Direct(_) => {
-                    let llarg = llvm::get_param(bx.llfn(), llarg_idx as c_uint);
+                    let llarg = bx.cx().get_param(bx.llfn(), llarg_idx as c_uint);
                     bx.set_value_name(llarg, &name);
                     llarg_idx += 1;
                     return local(
                         OperandRef::from_immediate_or_packed_pair(bx, llarg, arg.layout));
                 }
                 PassMode::Pair(..) => {
-                    let a = llvm::get_param(bx.llfn(), llarg_idx as c_uint);
+                    let a = bx.cx().get_param(bx.llfn(), llarg_idx as c_uint);
                     bx.set_value_name(a, &(name.clone() + ".0"));
                     llarg_idx += 1;
 
-                    let b = llvm::get_param(bx.llfn(), llarg_idx as c_uint);
+                    let b = bx.cx().get_param(bx.llfn(), llarg_idx as c_uint);
                     bx.set_value_name(b, &(name + ".1"));
                     llarg_idx += 1;
 
@@ -552,16 +558,16 @@ fn arg_local_refs(
             // Don't copy an indirect argument to an alloca, the caller
             // already put it in a temporary alloca and gave it up.
             // FIXME: lifetimes
-            let llarg = llvm::get_param(bx.llfn(), llarg_idx as c_uint);
+            let llarg = bx.cx().get_param(bx.llfn(), llarg_idx as c_uint);
             bx.set_value_name(llarg, &name);
             llarg_idx += 1;
             PlaceRef::new_sized(llarg, arg.layout, arg.layout.align)
         } else if arg.is_unsized_indirect() {
             // As the storage for the indirect argument lives during
             // the whole function call, we just copy the fat pointer.
-            let llarg = llvm::get_param(bx.llfn(), llarg_idx as c_uint);
+            let llarg = bx.cx().get_param(bx.llfn(), llarg_idx as c_uint);
             llarg_idx += 1;
-            let llextra = llvm::get_param(bx.llfn(), llarg_idx as c_uint);
+            let llextra = bx.cx().get_param(bx.llfn(), llarg_idx as c_uint);
             llarg_idx += 1;
             let indirect_operand = OperandValue::Pair(llarg, llextra);
 
@@ -570,7 +576,7 @@ fn arg_local_refs(
             tmp
         } else {
             let tmp = PlaceRef::alloca(bx, arg.layout, &name);
-            arg.store_fn_arg(bx, &mut llarg_idx, tmp);
+            bx.store_fn_arg(arg, &mut llarg_idx, tmp);
             tmp
         };
         arg_scope.map(|scope| {
@@ -584,8 +590,7 @@ fn arg_local_refs(
                     alloca: place.llval
                 };
 
-                declare_local(
-                    bx,
+                bx.declare_local(
                     &fx.debug_context,
                     arg_decl.name.unwrap_or(keywords::Invalid.name()),
                     arg.layout.ty,
@@ -657,8 +662,7 @@ fn arg_local_refs(
                     alloca: env_ptr,
                     address_operations: &ops
                 };
-                declare_local(
-                    bx,
+                bx.declare_local(
                     &fx.debug_context,
                     decl.debug_name,
                     ty,
@@ -679,7 +683,7 @@ fn arg_local_refs(
 
 mod analyze;
 mod block;
-mod constant;
+pub mod constant;
 pub mod place;
 pub mod operand;
 mod rvalue;

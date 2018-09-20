@@ -10,8 +10,12 @@
 
 use super::Backend;
 use syntax::symbol::LocalInternedString;
+use rustc::ty::layout;
+use rustc::mir::interpret::Scalar;
+use rustc::mir::interpret::Allocation;
+use mir::place::PlaceRef;
 
-pub trait ConstMethods : Backend {
+pub trait ConstMethods<'tcx> : Backend {
     // Constant constructors
     fn const_null(&self, t: Self::Type) -> Self::Value;
     fn const_undef(&self, t: Self::Type) -> Self::Value;
@@ -51,4 +55,17 @@ pub trait ConstMethods : Backend {
 
     fn is_const_integral(&self, v: Self::Value) -> bool;
     fn is_const_real(&self, v: Self::Value) -> bool;
+
+    fn scalar_to_backend(
+        &self,
+        cv: Scalar,
+        layout: &layout::Scalar,
+        llty: Self::Type,
+    ) -> Self::Value;
+    fn from_const_alloc(
+        &self,
+        layout: layout::TyLayout<'tcx>,
+        alloc: &Allocation,
+        offset: layout::Size,
+    ) -> PlaceRef<'tcx, Self::Value>;
 }

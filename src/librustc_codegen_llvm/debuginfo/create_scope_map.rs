@@ -28,15 +28,15 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use syntax_pos::BytePos;
 
 #[derive(Clone, Copy, Debug)]
-pub struct MirDebugScope<'ll> {
-    pub scope_metadata: Option<&'ll DIScope>,
+pub struct MirDebugScope<D> {
+    pub scope_metadata: Option<D>,
     // Start and end offsets of the file to which this DIScope belongs.
     // These are used to quickly determine whether some span refers to the same file.
     pub file_start_pos: BytePos,
     pub file_end_pos: BytePos,
 }
 
-impl MirDebugScope<'ll> {
+impl<D> MirDebugScope<D> {
     pub fn is_valid(&self) -> bool {
         self.scope_metadata.is_some()
     }
@@ -48,7 +48,7 @@ pub fn create_mir_scopes(
     cx: &CodegenCx<'ll, '_, &'ll Value>,
     mir: &Mir,
     debug_context: &FunctionDebugContext<'ll>,
-) -> IndexVec<SourceScope, MirDebugScope<'ll>> {
+) -> IndexVec<SourceScope, MirDebugScope<&'ll DIScope>> {
     let null_scope = MirDebugScope {
         scope_metadata: None,
         file_start_pos: BytePos(0),
@@ -85,7 +85,7 @@ fn make_mir_scope(cx: &CodegenCx<'ll, '_, &'ll Value>,
                   has_variables: &BitSet<SourceScope>,
                   debug_context: &FunctionDebugContextData<'ll>,
                   scope: SourceScope,
-                  scopes: &mut IndexVec<SourceScope, MirDebugScope<'ll>>) {
+                  scopes: &mut IndexVec<SourceScope, MirDebugScope<&'ll DIScope>>) {
     if scopes[scope].is_valid() {
         return;
     }

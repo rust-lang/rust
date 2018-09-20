@@ -14,11 +14,9 @@
 //! item-path. This is used for unit testing the code that generates
 //! paths etc in all kinds of annoying scenarios.
 
-use asm;
 use attributes;
 use base;
 use context::CodegenCx;
-use declare;
 use llvm;
 use monomorphize::Instance;
 use type_of::LayoutLlvmExt;
@@ -30,7 +28,7 @@ use rustc::ty::TypeFoldable;
 use rustc::ty::layout::LayoutOf;
 use std::fmt;
 use value::Value;
-use interfaces::StaticMethods;
+use interfaces::*;
 
 pub use rustc::mir::mono::MonoItem;
 
@@ -60,7 +58,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
             MonoItem::GlobalAsm(node_id) => {
                 let item = cx.tcx.hir.expect_item(node_id);
                 if let hir::ItemKind::GlobalAsm(ref ga) = item.node {
-                    asm::codegen_global_asm(cx, ga);
+                    cx.codegen_global_asm(ga);
                 } else {
                     span_bug!(item.span, "Mismatch between hir::Item type and MonoItem type")
                 }
@@ -133,7 +131,7 @@ fn predefine_static<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx, &'a Value>,
     let ty = instance.ty(cx.tcx);
     let llty = cx.layout_of(ty).llvm_type(cx);
 
-    let g = declare::define_global(cx, symbol_name, llty).unwrap_or_else(|| {
+    let g = cx.define_global(symbol_name, llty).unwrap_or_else(|| {
         cx.sess().span_fatal(cx.tcx.def_span(def_id),
             &format!("symbol `{}` is already defined", symbol_name))
     });
@@ -156,7 +154,7 @@ fn predefine_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx, &'a Value>,
 
     let mono_ty = instance.ty(cx.tcx);
     let attrs = cx.tcx.codegen_fn_attrs(instance.def_id());
-    let lldecl = declare::declare_fn(cx, symbol_name, mono_ty);
+    let lldecl = cx.declare_fn(symbol_name, mono_ty);
     unsafe { llvm::LLVMRustSetLinkage(lldecl, base::linkage_to_llvm(linkage)) };
     base::set_link_section(lldecl, &attrs);
     if linkage == Linkage::LinkOnceODR ||

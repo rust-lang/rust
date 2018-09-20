@@ -12,10 +12,14 @@ use common::*;
 use libc::c_char;
 use rustc::ty::TyCtxt;
 use rustc::ty::layout::{Align, Size};
-use rustc::session::Session;
 use builder::MemFlags;
 use super::backend::Backend;
 use super::CodegenMethods;
+use super::debuginfo::DebugInfoBuilderMethods;
+use super::intrinsic::IntrinsicCallMethods;
+use super::type_::ArgTypeMethods;
+use super::abi::AbiBuilderMethods;
+use super::asm::AsmBuilderMethods;
 use mir::place::PlaceRef;
 use mir::operand::OperandRef;
 
@@ -27,7 +31,11 @@ pub trait HasCodegen<'a, 'll: 'a, 'tcx :'ll> {
     type CodegenCx : 'a + CodegenMethods<'ll, 'tcx>;
 }
 
-pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> {
+pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> +
+    DebugInfoBuilderMethods<'a, 'll, 'tcx> + ArgTypeMethods<'a, 'll, 'tcx> +
+    AbiBuilderMethods<'a, 'll, 'tcx> + IntrinsicCallMethods<'a, 'll, 'tcx> +
+    AsmBuilderMethods<'a, 'll, 'tcx>
+{
     fn new_block<'b>(
         cx: &'a Self::CodegenCx,
         llfn: <Self::CodegenCx as Backend>::Value,
@@ -35,7 +43,6 @@ pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> {
     ) -> Self;
     fn with_cx(cx: &'a Self::CodegenCx) -> Self;
     fn build_sibling_block<'b>(&self, name: &'b str) -> Self;
-    fn sess(&self) -> &Session;
     fn cx(&self) -> &'a Self::CodegenCx;
     fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx>;
     fn llfn(&self) -> <Self::CodegenCx as Backend>::Value;
@@ -614,4 +621,7 @@ pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> {
         val: <Self::CodegenCx as Backend>::Value,
         dest_ty: <Self::CodegenCx as Backend>::Type
     ) -> <Self::CodegenCx as Backend>::Value;
+
+    fn delete_basic_block(&self, bb: <Self::CodegenCx as Backend>::BasicBlock);
+    fn do_not_inline(&self, llret: <Self::CodegenCx as Backend>::Value);
 }

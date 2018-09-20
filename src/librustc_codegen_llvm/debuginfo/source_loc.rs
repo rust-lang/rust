@@ -17,7 +17,7 @@ use super::FunctionDebugContext;
 use llvm;
 use llvm::debuginfo::DIScope;
 use builder::Builder;
-use interfaces::BuilderMethods;
+use interfaces::*;
 
 use libc::c_uint;
 use syntax_pos::{Span, Pos};
@@ -42,7 +42,7 @@ pub fn set_source_location(
     };
 
     let dbg_loc = if function_debug_context.source_locations_enabled.get() {
-        debug!("set_source_location: {}", bx.sess().source_map().span_to_string(span));
+        debug!("set_source_location: {}", bx.cx().sess().source_map().span_to_string(span));
         let loc = span_start(bx.cx(), span);
         InternalDebugLocation::new(scope.unwrap(), loc.line, loc.col.to_usize())
     } else {

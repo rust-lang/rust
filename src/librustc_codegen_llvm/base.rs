@@ -58,7 +58,6 @@ use rustc_mir::monomorphize::item::DefPathBasedNames;
 use common::{self, IntPredicate, RealPredicate, TypeKind};
 use context::CodegenCx;
 use debuginfo;
-use declare;
 use meth;
 use mir;
 use monomorphize::Instance;
@@ -395,15 +394,18 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
     sess.target.target.options.is_like_msvc
 }
 
-pub fn call_assume(bx: &Builder<'_, 'll, '_, &'ll Value>, val: &'ll Value) {
+pub fn call_assume<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll ,'tcx>>(
+    bx: &Bx,
+    val: <Bx::CodegenCx as Backend>::Value
+) {
     let assume_intrinsic = bx.cx().get_intrinsic("llvm.assume");
     bx.call(assume_intrinsic, &[val], None);
 }
 
-pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll, Builder : BuilderMethods<'a, 'll ,'tcx>>(
-    bx: &Builder,
-    val: <Builder::CodegenCx as Backend>::Value
-) -> <Builder::CodegenCx as Backend>::Value {
+pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll ,'tcx>>(
+    bx: &Bx,
+    val: <Bx::CodegenCx as Backend>::Value
+) -> <Bx::CodegenCx as Backend>::Value {
     if bx.cx().val_ty(val) == bx.cx().type_i1() {
         bx.zext(val, bx.cx().type_i8())
     } else {
@@ -449,7 +451,7 @@ pub fn memcpy_ty<'a, 'll: 'a, 'tcx: 'll, Builder : BuilderMethods<'a, 'll, 'tcx>
     bx.call_memcpy(dst, src, bx.cx().const_usize(size), align, flags);
 }
 
-pub fn codegen_instance<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx, &'a Value>, instance: Instance<'tcx>) {
+pub fn codegen_instance<'a, 'll: 'a, 'tcx: 'll>(cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>, instance: Instance<'tcx>) {
     let _s = if cx.sess().codegen_stats() {
         let mut instance_name = String::new();
         DefPathBasedNames::new(cx.tcx, true, true)
@@ -474,7 +476,7 @@ pub fn codegen_instance<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx, &'a Value>, instance:
     cx.stats.borrow_mut().n_closures += 1;
 
     let mir = cx.tcx.instance_mir(instance.def);
-    mir::codegen_mir(cx, lldecl, &mir, instance, sig);
+    mir::codegen_mir::<'a, 'll, 'tcx, Builder<'a, 'll, 'tcx, &'ll Value>>(cx, lldecl, &mir, instance, sig);
 }
 
 pub fn set_link_section(llval: &Value, attrs: &CodegenFnAttrs) {
@@ -535,7 +537,7 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx<'ll, '_, &'ll Value>) {
             &main_ret_ty.no_late_bound_regions().unwrap(),
         );
 
-        if declare::get_defined_value(cx, "main").is_some() {
+        if cx.get_defined_value("main").is_some() {
             // FIXME: We should be smart and show a better diagnostic here.
             cx.sess().struct_span_err(sp, "entry symbol `main` defined multiple times")
                      .help("did you use #[no_mangle] on `fn main`? Use #[start] instead")
@@ -543,7 +545,7 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx<'ll, '_, &'ll Value>) {
             cx.sess().abort_if_errors();
             bug!();
         }
-        let llfn = declare::declare_cfn(cx, "main", llfty);
+        let llfn = cx.declare_cfn("main", llfty);
 
         // `main` should respect same config for frame pointer elimination as rest of code
         attributes::set_frame_pointer_elimination(cx, llfn);

@@ -15,12 +15,10 @@
 //! closure.
 
 use attributes;
-use common::{self, CodegenCx};
-use consts;
-use declare;
+use common;
 use llvm;
 use monomorphize::Instance;
-use type_of::LayoutLlvmExt;
+use context::CodegenCx;
 use value::Value;
 use interfaces::*;
 
@@ -40,7 +38,7 @@ pub fn get_fn(
     cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
     instance: Instance<'tcx>,
 ) -> &'ll Value {
-    let tcx = cx.tcx;
+    let tcx = cx.tcx();
 
     debug!("get_fn(instance={:?})", instance);
 
@@ -48,8 +46,8 @@ pub fn get_fn(
     assert!(!instance.substs.has_escaping_regions());
     assert!(!instance.substs.has_param_types());
 
-    let fn_ty = instance.ty(cx.tcx);
-    if let Some(&llfn) = cx.instances.borrow().get(&instance) {
+    let fn_ty = instance.ty(*cx.tcx());
+    if let Some(&llfn) = cx.instances().borrow().get(&instance) {
         return llfn;
     }
 
@@ -58,9 +56,9 @@ pub fn get_fn(
 
     // Create a fn pointer with the substituted signature.
     let fn_ptr_ty = tcx.mk_fn_ptr(common::ty_fn_sig(cx, fn_ty));
-    let llptrty = cx.layout_of(fn_ptr_ty).llvm_type(cx);
+    let llptrty = cx.backend_type(&cx.layout_of(fn_ptr_ty));
 
-    let llfn = if let Some(llfn) = declare::get_declared_value(cx, &sym) {
+    let llfn = if let Some(llfn) = cx.get_declared_value(&sym) {
         // This is subtle and surprising, but sometimes we have to bitcast
         // the resulting fn pointer.  The reason has to do with external
         // functions.  If you have two crates that both bind the same C
@@ -86,17 +84,17 @@ pub fn get_fn(
         // other weird situations. Annoying.
         if cx.val_ty(llfn) != llptrty {
             debug!("get_fn: casting {:?} to {:?}", llfn, llptrty);
-            consts::ptrcast(llfn, llptrty)
+            cx.static_ptrcast(llfn, llptrty)
         } else {
             debug!("get_fn: not casting pointer!");
             llfn
         }
     } else {
-        let llfn = declare::declare_fn(cx, &sym, fn_ty);
+        let llfn = cx.declare_fn(&sym, fn_ty);
         assert_eq!(cx.val_ty(llfn), llptrty);
         debug!("get_fn: not casting pointer!");
 
-        if instance.def.is_inline(tcx) {
+        if instance.def.is_inline(*tcx) {
             attributes::inline(cx, llfn, attributes::InlineAttr::Hint);
         }
         attributes::from_fn_attrs(cx, llfn, Some(instance.def.def_id()));

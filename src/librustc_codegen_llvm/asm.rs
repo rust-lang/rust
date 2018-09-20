@@ -15,7 +15,7 @@ use builder::Builder;
 use value::Value;
 
 use rustc::hir;
-use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods};
+use interfaces::*;
 
 use mir::place::PlaceRef;
 use mir::operand::OperandValue;
@@ -23,33 +23,35 @@ use mir::operand::OperandValue;
 use std::ffi::CString;
 use libc::{c_uint, c_char};
 
-// Take an inline assembly expression and splat it out via LLVM
-pub fn codegen_inline_asm(
-    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-    ia: &hir::InlineAsm,
-    outputs: Vec<PlaceRef<'tcx, &'ll Value>>,
-    mut inputs: Vec<&'ll Value>
-) -> bool {
-    let mut ext_constraints = vec![];
-    let mut output_types = vec![];
 
-    // Prepare the output operands
-    let mut indirect_outputs = vec![];
-    for (i, (out, place)) in ia.outputs.iter().zip(&outputs).enumerate() {
-        if out.is_rw {
-            inputs.push(bx.load_ref(place).immediate());
-            ext_constraints.push(i.to_string());
+impl AsmBuilderMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> {
+    // Take an inline assembly expression and splat it out via LLVM
+    fn codegen_inline_asm(
+        &self,
+        ia: &hir::InlineAsm,
+        outputs: Vec<PlaceRef<'tcx, &'ll Value>>,
+        mut inputs: Vec<&'ll Value>
+    ) -> bool {
+        let mut ext_constraints = vec![];
+        let mut output_types = vec![];
+
+        // Prepare the output operands
+        let mut indirect_outputs = vec![];
+        for (i, (out, place)) in ia.outputs.iter().zip(&outputs).enumerate() {
+            if out.is_rw {
+                inputs.push(self.load_ref(place).immediate());
+                ext_constraints.push(i.to_string());
+            }
+            if out.is_indirect {
+                indirect_outputs.push(self.load_ref(place).immediate());
+            } else {
+                output_types.push(place.layout.llvm_type(self.cx()));
+            }
         }
-        if out.is_indirect {
-            indirect_outputs.push(bx.load_ref(place).immediate());
-        } else {
-            output_types.push(place.layout.llvm_type(bx.cx()));
+        if !indirect_outputs.is_empty() {
+            indirect_outputs.extend_from_slice(&inputs);
+            inputs = indirect_outputs;
         }
-    }
-    if !indirect_outputs.is_empty() {
-        indirect_outputs.extend_from_slice(&inputs);
-        inputs = indirect_outputs;
-    }
 
     let clobbers = ia.clobbers.iter()
                               .map(|s| format!("~{{{}}}", &s));
@@ -103,26 +105,28 @@ pub fn codegen_inline_asm(
         OperandValue::Immediate(v).store(bx, place);
     }
 
-    // Store mark in a metadata node so we can map LLVM errors
-    // back to source locations.  See #17552.
-    unsafe {
-        let key = "srcloc";
-        let kind = llvm::LLVMGetMDKindIDInContext(bx.cx().llcx,
-            key.as_ptr() as *const c_char, key.len() as c_uint);
+        // Store mark in a metadata node so we can map LLVM errors
+        // back to source locations.  See #17552.
+        unsafe {
+            let key = "srcloc";
+            let kind = llvm::LLVMGetMDKindIDInContext(self.cx().llcx,
+                key.as_ptr() as *const c_char, key.len() as c_uint);
 
-        let val: &'ll Value = bx.cx().const_i32(ia.ctxt.outer().as_u32() as i32);
+            let val: &'ll Value = self.cx().const_i32(ia.ctxt.outer().as_u32() as i32);
 
-        llvm::LLVMSetMetadata(r, kind,
-            llvm::LLVMMDNodeInContext(bx.cx().llcx, &val, 1));
+            llvm::LLVMSetMetadata(r, kind,
+                llvm::LLVMMDNodeInContext(self.cx().llcx, &val, 1));
+        }
     }
 
     return true;
 }
 
-pub fn codegen_global_asm<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx, &'a Value>,
-                                  ga: &hir::GlobalAsm) {
-    let asm = CString::new(ga.asm.as_str().as_bytes()).unwrap();
-    unsafe {
-        llvm::LLVMRustAppendModuleInlineAsm(cx.llmod, asm.as_ptr());
+impl AsmMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
+    fn codegen_global_asm(&self, ga: &hir::GlobalAsm) {
+        let asm = CString::new(ga.asm.as_str().as_bytes()).unwrap();
+        unsafe {
+            llvm::LLVMRustAppendModuleInlineAsm(self.llmod, asm.as_ptr());
+        }
     }
 }

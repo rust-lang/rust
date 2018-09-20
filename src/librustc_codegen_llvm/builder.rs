@@ -18,7 +18,7 @@ use value::Value;
 use libc::{c_uint, c_char};
 use rustc::ty::TyCtxt;
 use rustc::ty::layout::{self, Align, Size};
-use rustc::session::{config, Session};
+use rustc::session::config;
 use rustc_data_structures::small_c_str::SmallCStr;
 use interfaces::*;
 use syntax;
@@ -97,10 +97,6 @@ impl BuilderMethods<'a, 'll, 'tcx>
 
     fn build_sibling_block<'b>(&self, name: &'b str) -> Self {
         Builder::new_block(self.cx, self.llfn(), name)
-    }
-
-    fn sess(&self) -> &Session {
-        self.cx.sess()
     }
 
     fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
@@ -605,7 +601,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
 
 
     fn range_metadata(&self, load: &'ll Value, range: Range<u128>) {
-        if self.sess().target.target.arch == "amdgpu" {
+        if self.cx().sess().target.target.arch == "amdgpu" {
             // amdgpu/LLVM does something weird and thinks a i64 value is
             // split into a v2i32, halving the bitwidth LLVM expects,
             // tripping an assertion. So, for now, just disable this
@@ -1381,7 +1377,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
             return;
         }
         let cx = &self.cx();
-        let ptr_width = &self.sess().target.target.target_pointer_width;
+        let ptr_width = &self.cx().sess().target.target.target_pointer_width;
         let key = format!("llvm.memcpy.p0i8.p0i8.i{}", ptr_width);
         let memcpy = cx.get_intrinsic(&key);
         let src_ptr = &self.pointercast(src, cx.type_i8p());
@@ -1400,7 +1396,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
         align: &'ll Value,
         volatile: bool,
     ) -> &'ll Value {
-        let ptr_width = &self.sess().target.target.target_pointer_width;
+        let ptr_width = &self.cx().sess().target.target.target_pointer_width;
         let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
         let llintrinsicfn = &self.cx().get_intrinsic(&intrinsic_key);
         let volatile = &self.cx().const_bool(volatile);
@@ -1424,5 +1420,15 @@ impl BuilderMethods<'a, 'll, 'tcx>
 
     fn cx(&self) -> &'a CodegenCx<'ll, 'tcx, &'ll Value> {
         &self.cx
+    }
+
+    fn delete_basic_block(&self, bb: &'ll BasicBlock) {
+        unsafe {
+            llvm::LLVMDeleteBasicBlock(bb);
+        }
+    }
+
+    fn do_not_inline(&self, llret: &'ll Value) {
+        llvm::Attribute::NoInline.apply_callsite(llvm::AttributePlace::Function, llret);
     }
 }

@@ -17,24 +17,26 @@ use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::LangItem;
 use abi;
 use base;
-use builder::Builder;
 use consts;
-use declare;
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
-use interfaces::{Backend, ConstMethods, BaseTypeMethods};
+use interfaces::*;
 
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::{HasDataLayout, LayoutOf};
+use rustc::ty::layout::{HasDataLayout, LayoutOf, self, TyLayout, Size};
+use rustc::mir::interpret::{Scalar, AllocType, Allocation};
 use rustc::hir;
 use interfaces::BuilderMethods;
+use mir::constant::const_alloc_to_llvm;
+use mir::place::PlaceRef;
 
 use libc::{c_uint, c_char};
 use std::iter;
 
 use rustc_target::spec::abi::Abi;
 use syntax::symbol::LocalInternedString;
+use syntax::ast::Mutability;
 use syntax_pos::{Span, DUMMY_SP};
 
 pub use context::CodegenCx;
@@ -51,13 +53,13 @@ pub fn type_is_freeze<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bo
     ty.is_freeze(tcx, ty::ParamEnv::reveal_all(), DUMMY_SP)
 }
 
-pub struct OperandBundleDef<'a, Value> {
+pub struct OperandBundleDef<'a, V> {
     pub name: &'a str,
-    pub val: Value
+    pub val: V
 }
 
-impl OperandBundleDef<'ll, &'ll Value> {
-    pub fn new(name: &'ll str, val: &'ll Value) -> Self {
+impl<V> OperandBundleDef<'ll, V> {
+    pub fn new(name: &'ll str, val: V) -> Self {
         OperandBundleDef {
             name,
             val
@@ -193,24 +195,24 @@ pub enum TypeKind {
 /// When inside of a landing pad, each function call in LLVM IR needs to be
 /// annotated with which landing pad it's a part of. This is accomplished via
 /// the `OperandBundleDef` value created for MSVC landing pads.
-pub struct Funclet<'ll> {
-    cleanuppad: &'ll Value,
-    operand: OperandBundleDef<'ll, &'ll Value>,
+pub struct Funclet<'ll, V> {
+    cleanuppad: V,
+    operand: OperandBundleDef<'ll, V>,
 }
 
-impl Funclet<'ll> {
-    pub fn new(cleanuppad: &'ll Value) -> Self {
+impl<'ll, V : CodegenObject> Funclet<'ll, V> {
+    pub fn new(cleanuppad: V) -> Self {
         Funclet {
             cleanuppad,
             operand: OperandBundleDef::new("funclet", cleanuppad),
         }
     }
 
-    pub fn cleanuppad(&self) -> &'ll Value {
+    pub fn cleanuppad(&self) -> V {
         self.cleanuppad
     }
 
-    pub fn bundle(&self) -> &OperandBundleDef<'ll, &'ll Value> {
+    pub fn bundle(&self) -> &OperandBundleDef<'ll, V> {
         &self.operand
     }
 }
@@ -222,7 +224,7 @@ impl Backend for CodegenCx<'ll, 'tcx, &'ll Value> {
     type Context = &'ll llvm::Context;
 }
 
-impl<'ll, 'tcx : 'll> ConstMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
+impl<'ll, 'tcx : 'll> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
 
     // LLVM constant constructors.
     fn const_null(&self, t: &'ll Type) -> &'ll Value {
@@ -304,7 +306,7 @@ impl<'ll, 'tcx : 'll> ConstMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
                                                     s.len() as c_uint,
                                                     !null_terminated as Bool);
             let sym = &self.generate_local_symbol_name("str");
-            let g = declare::define_global(&self, &sym[..], &self.val_ty(sc)).unwrap_or_else(||{
+            let g = &self.define_global(&sym[..], &self.val_ty(sc)).unwrap_or_else(||{
                 bug!("symbol `{}` is already defined", sym);
             });
             llvm::LLVMSetInitializer(g, sc);
@@ -419,6 +421,79 @@ impl<'ll, 'tcx : 'll> ConstMethods for CodegenCx<'ll, 'tcx, &'ll Value> {
             }
         }
     }
+
+    fn scalar_to_backend(
+        &self,
+        cv: Scalar,
+        layout: &layout::Scalar,
+        llty: &'ll Type,
+    ) -> &'ll Value {
+        let bitsize = if layout.is_bool() { 1 } else { layout.value.size(self).bits() };
+        match cv {
+            Scalar::Bits { size: 0, .. } => {
+                assert_eq!(0, layout.value.size(self).bytes());
+                self.const_undef(self.type_ix(0))
+            },
+            Scalar::Bits { bits, size } => {
+                assert_eq!(size as u64, layout.value.size(self).bytes());
+                let llval = self.const_uint_big(self.type_ix(bitsize), bits);
+                if layout.value == layout::Pointer {
+                    unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
+                } else {
+                    self.static_bitcast(llval, llty)
+                }
+            },
+            Scalar::Ptr(ptr) => {
+                let alloc_type = self.tcx.alloc_map.lock().get(ptr.alloc_id);
+                let base_addr = match alloc_type {
+                    Some(AllocType::Memory(alloc)) => {
+                        let init = const_alloc_to_llvm(self, alloc);
+                        if alloc.mutability == Mutability::Mutable {
+                            self.static_addr_of_mut(init, alloc.align, None)
+                        } else {
+                            self.static_addr_of(init, alloc.align, None)
+                        }
+                    }
+                    Some(AllocType::Function(fn_instance)) => {
+                        self.get_fn(fn_instance)
+                    }
+                    Some(AllocType::Static(def_id)) => {
+                        assert!(self.tcx.is_static(def_id).is_some());
+                        self.get_static(def_id)
+                    }
+                    None => bug!("missing allocation {:?}", ptr.alloc_id),
+                };
+                let llval = unsafe { llvm::LLVMConstInBoundsGEP(
+                    self.static_bitcast(base_addr, self.type_i8p()),
+                    &self.const_usize(ptr.offset.bytes()),
+                    1,
+                ) };
+                if layout.value != layout::Pointer {
+                    unsafe { llvm::LLVMConstPtrToInt(llval, llty) }
+                } else {
+                    self.static_bitcast(llval, llty)
+                }
+            }
+        }
+    }
+
+    fn from_const_alloc(
+        &self,
+        layout: TyLayout<'tcx>,
+        alloc: &Allocation,
+        offset: Size,
+    ) -> PlaceRef<'tcx, &'ll Value> {
+        let init = const_alloc_to_llvm(self, alloc);
+        let base_addr = self.static_addr_of(init, layout.align, None);
+
+        let llval = unsafe { llvm::LLVMConstInBoundsGEP(
+            self.static_bitcast(base_addr, self.type_i8p()),
+            &self.const_usize(offset.bytes()),
+            1,
+        )};
+        let llval = self.static_bitcast(llval, self.type_ptr_to(layout.llvm_type(self)));
+        PlaceRef::new_sized(llval, layout, alloc.align)
+    }
 }
 
 pub fn val_ty(v: &'ll Value) -> &'ll Type {
@@ -470,20 +545,23 @@ pub fn langcall(tcx: TyCtxt,
 // all shifts). For 32- and 64-bit types, this matches the semantics
 // of Java. (See related discussion on #1877 and #10183.)
 
-pub fn build_unchecked_lshift(
-    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-    lhs: &'ll Value,
-    rhs: &'ll Value
-) -> &'ll Value {
+pub fn build_unchecked_lshift<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
+    bx: &Bx,
+    lhs: <Bx::CodegenCx as Backend>::Value,
+    rhs: <Bx::CodegenCx as Backend>::Value
+) -> <Bx::CodegenCx as Backend>::Value {
     let rhs = base::cast_shift_expr_rhs(bx, hir::BinOpKind::Shl, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
     let rhs = shift_mask_rhs(bx, rhs);
     bx.shl(lhs, rhs)
 }
 
-pub fn build_unchecked_rshift(
-    bx: &Builder<'a, 'll, 'tcx, &'ll Value>, lhs_t: Ty<'tcx>, lhs: &'ll Value, rhs: &'ll Value
-) -> &'ll Value {
+pub fn build_unchecked_rshift<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
+    bx: &Bx,
+    lhs_t: Ty<'tcx>,
+    lhs: <Bx::CodegenCx as Backend>::Value,
+    rhs: <Bx::CodegenCx as Backend>::Value
+) -> <Bx::CodegenCx as Backend>::Value {
     let rhs = base::cast_shift_expr_rhs(bx, hir::BinOpKind::Shr, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
     let rhs = shift_mask_rhs(bx, rhs);
@@ -495,26 +573,29 @@ pub fn build_unchecked_rshift(
     }
 }
 
-fn shift_mask_rhs(bx: &Builder<'a, 'll, 'tcx, &'ll Value>, rhs: &'ll Value) -> &'ll Value {
+fn shift_mask_rhs<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
+    bx: &Bx,
+    rhs: <Bx::CodegenCx as Backend>::Value
+) -> <Bx::CodegenCx as Backend>::Value {
     let rhs_llty = bx.cx().val_ty(rhs);
     bx.and(rhs, shift_mask_val(bx, rhs_llty, rhs_llty, false))
 }
 
-pub fn shift_mask_val(
-    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-    llty: &'ll Type,
-    mask_llty: &'ll Type,
+pub fn shift_mask_val<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
+    bx: &Bx,
+    llty: <Bx::CodegenCx as Backend>::Type,
+    mask_llty: <Bx::CodegenCx as Backend>::Type,
     invert: bool
-) -> &'ll Value {
+) -> <Bx::CodegenCx as Backend>::Value {
     let kind = bx.cx().type_kind(llty);
     match kind {
         TypeKind::Integer => {
             // i8/u8 can shift by at most 7, i16/u16 by at most 15, etc.
             let val = bx.cx().int_width(llty) - 1;
             if invert {
-                bx.cx.const_int(mask_llty, !val as i64)
+                bx.cx().const_int(mask_llty, !val as i64)
             } else {
-                bx.cx.const_uint(mask_llty, val)
+                bx.cx().const_uint(mask_llty, val)
             }
         },
         TypeKind::Vector => {
@@ -530,16 +611,16 @@ pub fn shift_mask_val(
     }
 }
 
-pub fn ty_fn_sig<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx, &'a Value>,
-                           ty: Ty<'tcx>)
-                           -> ty::PolyFnSig<'tcx>
-{
+pub fn ty_fn_sig<'ll, 'tcx:'ll, Cx: CodegenMethods<'ll, 'tcx>>(
+    cx: &Cx,
+    ty: Ty<'tcx>
+) -> ty::PolyFnSig<'tcx> {
     match ty.sty {
         ty::FnDef(..) |
         // Shims currently have type FnPtr. Not sure this should remain.
-        ty::FnPtr(_) => ty.fn_sig(cx.tcx),
+        ty::FnPtr(_) => ty.fn_sig(*cx.tcx()),
         ty::Closure(def_id, substs) => {
-            let tcx = cx.tcx;
+            let tcx = *cx.tcx();
             let sig = substs.closure_sig(def_id, tcx);
 
             let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
@@ -552,8 +633,8 @@ pub fn ty_fn_sig<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx, &'a Value>,
             ))
         }
         ty::Generator(def_id, substs, _) => {
-            let tcx = cx.tcx;
-            let sig = substs.poly_sig(def_id, cx.tcx);
+            let tcx = *cx.tcx();
+            let sig = substs.poly_sig(def_id, tcx);
 
             let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
             let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);

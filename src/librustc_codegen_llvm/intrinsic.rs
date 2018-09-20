@@ -19,7 +19,6 @@ use mir::operand::{OperandRef, OperandValue};
 use base::*;
 use common::*;
 use context::CodegenCx;
-use declare;
 use glue;
 use type_::Type;
 use type_of::LayoutLlvmExt;
@@ -412,7 +411,7 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
             },
 
             "discriminant_value" => {
-                args[0].deref(cx).codegen_get_discr(&self, ret_ty)
+                args[0].deref(cx).codegen_get_discr(self, ret_ty)
             }
 
             name if name.starts_with("simd_") => {
@@ -677,8 +676,7 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
 
                 let val = match intr.definition {
                     intrinsics::IntrinsicDef::Named(name) => {
-                        let f = declare::declare_cfn(cx,
-                                                     name,
+                        let f = cx.declare_cfn(                                                     name,
                                                      cx.type_func(&inputs, outputs));
                         self.call(f, &llargs, None)
                     }
@@ -706,7 +704,7 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
                 let ptr = &self.pointercast(result.llval, cx.type_ptr_to(ty.llvm_type(cx)));
                 &self.store(llval, ptr, result.align);
             } else {
-                OperandRef::from_immediate_or_packed_pair(&self, llval, result.layout)
+                OperandRef::from_immediate_or_packed_pair(self, llval, result.layout)
                     .val.store(self, result);
             }
         }
@@ -773,11 +771,11 @@ fn try_intrinsic(
     local_ptr: &'ll Value,
     dest: &'ll Value,
 ) {
-    if bx.sess().no_landing_pads() {
+    if bx.cx().sess().no_landing_pads() {
         bx.call(func, &[data], None);
         let ptr_align = bx.tcx().data_layout.pointer_align;
         bx.store(cx.const_null(cx.type_i8p()), dest, ptr_align);
-    } else if wants_msvc_seh(bx.sess()) {
+    } else if wants_msvc_seh(bx.cx().sess()) {
         codegen_msvc_try(bx, cx, func, data, local_ptr, dest);
     } else {
         codegen_gnu_try(bx, cx, func, data, local_ptr, dest);
@@ -975,7 +973,7 @@ fn gen_fn<'ll, 'tcx>(
         hir::Unsafety::Unsafe,
         Abi::Rust
     )));
-    let llfn = declare::define_internal_fn(cx, name, rust_fn_ty);
+    let llfn = cx.define_internal_fn(name, rust_fn_ty);
     attributes::from_fn_attrs(cx, llfn, None);
     let bx = Builder::new_block(cx, llfn, "entry-block");
     codegen(bx);
@@ -1030,7 +1028,7 @@ fn generic_simd_intrinsic(
         };
         ($msg: tt, $($fmt: tt)*) => {
             span_invalid_monomorphization_error(
-                bx.sess(), span,
+                bx.cx().sess(), span,
                 &format!(concat!("invalid monomorphization of `{}` intrinsic: ", $msg),
                          name, $($fmt)*));
         }
@@ -1201,7 +1199,7 @@ fn generic_simd_intrinsic(
             };
             ($msg: tt, $($fmt: tt)*) => {
                 span_invalid_monomorphization_error(
-                    bx.sess(), span,
+                    bx.cx().sess(), span,
                     &format!(concat!("invalid monomorphization of `{}` intrinsic: ", $msg),
                              name, $($fmt)*));
             }
@@ -1419,7 +1417,7 @@ fn generic_simd_intrinsic(
 
         let llvm_intrinsic = format!("llvm.masked.gather.{}.{}",
                                      llvm_elem_vec_str, llvm_pointer_vec_str);
-        let f = declare::declare_cfn(bx.cx(), &llvm_intrinsic,
+        let f = bx.cx().declare_cfn(&llvm_intrinsic,
                                      bx.cx().type_func(&[
                                          llvm_pointer_vec_ty,
                                          alignment_ty,
@@ -1521,7 +1519,7 @@ fn generic_simd_intrinsic(
 
         let llvm_intrinsic = format!("llvm.masked.scatter.{}.{}",
                                      llvm_elem_vec_str, llvm_pointer_vec_str);
-        let f = declare::declare_cfn(bx.cx(), &llvm_intrinsic,
+        let f = bx.cx().declare_cfn(&llvm_intrinsic,
                                      bx.cx().type_func(&[llvm_elem_vec_ty,
                                                   llvm_pointer_vec_ty,
                                                   alignment_ty,

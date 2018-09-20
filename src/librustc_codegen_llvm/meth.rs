@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::{FnType, FnTypeExt};
+use abi::FnType;
 use callee;
-use builder::Builder;
 use monomorphize;
-use value::Value;
 
 use interfaces::*;
 
@@ -31,15 +29,18 @@ impl<'a, 'tcx> VirtualIndex {
         VirtualIndex(index as u64 + 3)
     }
 
-    pub fn get_fn(self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-                  llvtable: &'ll Value,
-                  fn_ty: &FnType<'tcx, Ty<'tcx>>) -> &'ll Value {
+    pub fn get_fn<Bx: BuilderMethods<'a, 'll, 'tcx>>(
+        self,
+        bx: &Bx,
+        llvtable: <Bx::CodegenCx as Backend>::Value,
+        fn_ty: &FnType<'tcx, Ty<'tcx>>
+    ) -> <Bx::CodegenCx as Backend>::Value {
         // Load the data pointer from the object.
         debug!("get_fn({:?}, {:?})", llvtable, self);
 
         let llvtable = bx.pointercast(
             llvtable,
-            bx.cx().type_ptr_to(bx.cx().type_ptr_to(fn_ty.llvm_type(bx.cx())))
+            bx.cx().type_ptr_to(bx.cx().type_ptr_to(bx.cx().fn_backend_type(fn_ty)))
         );
         let ptr_align = bx.tcx().data_layout.pointer_align;
         let ptr = bx.load(

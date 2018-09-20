@@ -12,7 +12,7 @@ use super::CodegenObject;
 
 pub trait Backend {
     type Value : CodegenObject;
-    type BasicBlock;
+    type BasicBlock : Copy;
     type Type : CodegenObject;
     type Context;
 }

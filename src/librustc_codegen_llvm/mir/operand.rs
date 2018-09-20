@@ -11,14 +11,12 @@
 use rustc::mir::interpret::{ConstValue, ConstEvalErr};
 use rustc::mir;
 use rustc::ty;
-use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
+use rustc::ty::layout::{self, Align, LayoutOf, TyLayout, HasTyCtxt};
 use rustc_data_structures::sync::Lrc;
 
 use base;
-use common::CodegenCx;
 use builder::{Builder, MemFlags};
 use value::Value;
-use type_of::LayoutLlvmExt;
 use glue;
 
 use interfaces::*;
@@ -26,7 +24,6 @@ use interfaces::*;
 use std::fmt;
 
 use super::{FunctionCx, LocalRef};
-use super::constant::scalar_to_llvm;
 use super::place::PlaceRef;
 
 /// The representation of a Rust value. The enum variant is in fact
@@ -62,13 +59,13 @@ pub struct OperandRef<'tcx, V> {
     pub layout: TyLayout<'tcx>,
 }
 
-impl fmt::Debug for OperandRef<'tcx, &'ll Value> {
+impl<V : CodegenObject> fmt::Debug for OperandRef<'tcx, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "OperandRef({:?} @ {:?})", self.val, self.layout)
     }
 }
 
-impl<'ll, 'tcx: 'll, V : CodegenObject> OperandRef<'tcx, V> {
+impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> OperandRef<'tcx, V> {
     pub fn new_zst<Cx: CodegenMethods<'ll, 'tcx>>(
         cx: &Cx,
         layout: TyLayout<'tcx>
@@ -79,12 +76,14 @@ impl<'ll, 'tcx: 'll, V : CodegenObject> OperandRef<'tcx, V> {
             layout
         }
     }
-}
 
-impl OperandRef<'tcx, &'ll Value> {
-    pub fn from_const(bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-                      val: &'tcx ty::Const<'tcx>)
-                      -> Result<OperandRef<'tcx, &'ll Value>, Lrc<ConstEvalErr<'tcx>>> {
+    pub fn from_const<Bx: BuilderMethods<'a, 'll, 'tcx>>(
+        bx: &Bx,
+        val: &'tcx ty::Const<'tcx>
+    ) -> Result<OperandRef<'tcx, V>, Lrc<ConstEvalErr<'tcx>>> where
+        Bx::CodegenCx : Backend<Value = V>,
+        &'a Bx::CodegenCx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+    {
         let layout = bx.cx().layout_of(val.ty);
 
         if layout.is_zst() {
@@ -98,11 +97,10 @@ impl OperandRef<'tcx, &'ll Value> {
                     layout::Abi::Scalar(ref x) => x,
                     _ => bug!("from_const: invalid ByVal layout: {:#?}", layout)
                 };
-                let llval = scalar_to_llvm(
-                    bx.cx(),
+                let llval = bx.cx().scalar_to_backend(
                     x,
                     scalar,
-                    layout.immediate_llvm_type(bx.cx()),
+                    bx.cx().immediate_backend_type(&layout),
                 );
                 OperandValue::Immediate(llval)
             },
@@ -111,13 +109,12 @@ impl OperandRef<'tcx, &'ll Value> {
                     layout::Abi::ScalarPair(ref a, ref b) => (a, b),
                     _ => bug!("from_const: invalid ScalarPair layout: {:#?}", layout)
                 };
-                let a_llval = scalar_to_llvm(
-                    bx.cx(),
+                let a_llval = bx.cx().scalar_to_backend(
                     a,
                     a_scalar,
-                    layout.scalar_pair_element_llvm_type(bx.cx(), 0, true),
+                    bx.cx().scalar_pair_element_backend_type(&layout, 0, true),
                 );
-                let b_layout = layout.scalar_pair_element_llvm_type(bx.cx(), 1, true);
+                let b_layout = bx.cx().scalar_pair_element_backend_type(&layout, 1, true);
                 let b_llval = scalar_to_llvm(
                     bx.cx(),
                     b,
@@ -127,7 +124,7 @@ impl OperandRef<'tcx, &'ll Value> {
                 OperandValue::Pair(a_llval, b_llval)
             },
             ConstValue::ByRef(_, alloc, offset) => {
-                return Ok(bx.load_ref(&PlaceRef::from_const_alloc(bx, layout, alloc, offset)));
+                return Ok(bx.load_ref(&bx.cx().from_const_alloc(layout, alloc, offset)));
             },
         };
 
@@ -136,17 +133,25 @@ impl OperandRef<'tcx, &'ll Value> {
             layout
         })
     }
+}
 
+impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> OperandRef<'tcx, V> {
     /// Asserts that this operand refers to a scalar and returns
     /// a reference to its value.
-    pub fn immediate(self) -> &'ll Value {
+    pub fn immediate(self) -> V {
         match self.val {
             OperandValue::Immediate(s) => s,
             _ => bug!("not immediate: {:?}", self)
         }
     }
 
-    pub fn deref(self, cx: &CodegenCx<'ll, 'tcx, &'ll Value>) -> PlaceRef<'tcx, &'ll Value> {
+    pub fn deref<Cx: 'a + CodegenMethods<'ll, 'tcx>>(
+        self,
+        cx: &'a Cx
+    ) -> PlaceRef<'tcx, V> where
+        Cx: Backend<Value=V>,
+        &'a Cx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+    {
         let projected_ty = self.layout.ty.builtin_deref(true)
             .unwrap_or_else(|| bug!("deref of non-pointer {:?}", self)).ty;
         let (llptr, llextra) = match self.val {
@@ -165,9 +170,12 @@ impl OperandRef<'tcx, &'ll Value> {
 
     /// If this operand is a `Pair`, we return an aggregate with the two values.
     /// For other cases, see `immediate`.
-    pub fn immediate_or_packed_pair(self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>) -> &'ll Value {
+    pub fn immediate_or_packed_pair<Bx: BuilderMethods<'a, 'll, 'tcx>>(
+        self,
+        bx: &Bx
+    ) -> V where Bx::CodegenCx : Backend<Value=V> {
         if let OperandValue::Pair(a, b) = self.val {
-            let llty = self.layout.llvm_type(bx.cx());
+            let llty = bx.cx().backend_type(&self.layout);
             debug!("Operand::immediate_or_packed_pair: packing {:?} into {:?}",
                    self, llty);
             // Reconstruct the immediate aggregate.
@@ -181,10 +189,13 @@ impl OperandRef<'tcx, &'ll Value> {
     }
 
     /// If the type is a pair, we return a `Pair`, otherwise, an `Immediate`.
-    pub fn from_immediate_or_packed_pair(bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-                                         llval: &'ll Value,
-                                         layout: TyLayout<'tcx>)
-                                         -> OperandRef<'tcx, &'ll Value> {
+    pub fn from_immediate_or_packed_pair<Bx: BuilderMethods<'a, 'll, 'tcx>>(
+        bx: &Bx,
+        llval: <Bx::CodegenCx as Backend>::Value,
+        layout: TyLayout<'tcx>
+    ) -> OperandRef<'tcx, <Bx::CodegenCx as Backend>::Value>
+        where Bx::CodegenCx : Backend<Value=V>
+    {
         let val = if let layout::Abi::ScalarPair(ref a, ref b) = layout.abi {
             debug!("Operand::from_immediate_or_packed_pair: unpacking {:?} @ {:?}",
                     llval, layout);
@@ -199,10 +210,13 @@ impl OperandRef<'tcx, &'ll Value> {
         OperandRef { val, layout }
     }
 
-    pub fn extract_field(
-        &self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+    pub fn extract_field<Bx: BuilderMethods<'a, 'll, 'tcx>>(
+        &self, bx: &Bx,
         i: usize
-    ) -> OperandRef<'tcx, &'ll Value> {
+    ) -> OperandRef<'tcx, <Bx::CodegenCx as Backend>::Value> where
+        Bx::CodegenCx : Backend<Value=V>,
+        &'a Bx::CodegenCx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+    {
         let field = self.layout.field(bx.cx(), i);
         let offset = self.layout.fields.offset(i);
 
@@ -244,11 +258,11 @@ impl OperandRef<'tcx, &'ll Value> {
         // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
         match val {
             OperandValue::Immediate(ref mut llval) => {
-                *llval = bx.bitcast(*llval, field.immediate_llvm_type(bx.cx()));
+                *llval = bx.bitcast(*llval, bx.cx().immediate_backend_type(&field));
             }
             OperandValue::Pair(ref mut a, ref mut b) => {
-                *a = bx.bitcast(*a, field.scalar_pair_element_llvm_type(bx.cx(), 0, true));
-                *b = bx.bitcast(*b, field.scalar_pair_element_llvm_type(bx.cx(), 1, true));
+                *a = bx.bitcast(*a, bx.cx().scalar_pair_element_backend_type(&field, 0, true));
+                *b = bx.bitcast(*b, bx.cx().scalar_pair_element_backend_type(&field, 1, true));
             }
             OperandValue::Ref(..) => bug!()
         }
@@ -333,14 +347,14 @@ impl<V : CodegenObject> OperandValue<V> {
             }
         }
     }
-}
-
-impl OperandValue<&'ll Value> {
-    pub fn store_unsized(
+    pub fn store_unsized<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
         self,
-        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-        indirect_dest: PlaceRef<'tcx, &'ll Value>
-    ) {
+        bx: &Bx,
+        indirect_dest: PlaceRef<'tcx, V>
+    ) where
+        Bx::CodegenCx : Backend<Value = V>,
+        &'a Bx::CodegenCx: LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
+    {
         debug!("OperandRef::store_unsized: operand={:?}, indirect_dest={:?}", self, indirect_dest);
         let flags = MemFlags::empty();
 
@@ -370,11 +384,13 @@ impl OperandValue<&'ll Value> {
     }
 }
 
-impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
-    fn maybe_codegen_consume_direct(&mut self,
-                                  bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-                                  place: &mir::Place<'tcx>)
-                                   -> Option<OperandRef<'tcx, &'ll Value>>
+impl<'a, 'll: 'a, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>> FunctionCx<'a, 'll, 'tcx, Cx> {
+    fn maybe_codegen_consume_direct<Bx: BuilderMethods<'a, 'll, 'tcx, CodegenCx=Cx>>(
+        &mut self,
+        bx: &Bx,
+        place: &mir::Place<'tcx>
+    ) -> Option<OperandRef<'tcx, Cx::Value>> where
+        &'a Bx::CodegenCx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
     {
         debug!("maybe_codegen_consume_direct(place={:?})", place);
 
@@ -419,10 +435,12 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
         None
     }
 
-    pub fn codegen_consume(&mut self,
-                         bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-                         place: &mir::Place<'tcx>)
-                         -> OperandRef<'tcx, &'ll Value>
+    pub fn codegen_consume<Bx: BuilderMethods<'a, 'll, 'tcx, CodegenCx=Cx>>(
+        &mut self,
+        bx: &Bx,
+        place: &mir::Place<'tcx>
+    ) -> OperandRef<'tcx, Cx::Value> where
+        &'a Bx::CodegenCx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
     {
         debug!("codegen_consume(place={:?})", place);
 
@@ -443,10 +461,13 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
         bx.load_ref(&self.codegen_place(bx, place))
     }
 
-    pub fn codegen_operand(&mut self,
-                         bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-                         operand: &mir::Operand<'tcx>)
-                         -> OperandRef<'tcx, &'ll Value>
+    pub fn codegen_operand<Bx : BuilderMethods<'a, 'll, 'tcx>>(
+        &mut self,
+        bx: &Bx,
+        operand: &mir::Operand<'tcx>
+    ) -> OperandRef<'tcx, Cx::Value> where
+        Bx : BuilderMethods<'a, 'll, 'tcx, CodegenCx=Cx>,
+        &'a Bx::CodegenCx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
     {
         debug!("codegen_operand(operand={:?})", operand);
 
@@ -472,7 +493,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                         // We've errored, so we don't have to produce working code.
                         let layout = bx.cx().layout_of(ty);
                         bx.load_ref(&PlaceRef::new_sized(
-                            bx.cx().const_undef(bx.cx().type_ptr_to(layout.llvm_type(bx.cx()))),
+                            bx.cx().const_undef(bx.cx().type_ptr_to(bx.cx().backend_type(&layout))),
                             layout,
                             layout.align,
                         ))

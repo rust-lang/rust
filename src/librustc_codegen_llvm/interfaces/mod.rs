@@ -16,20 +16,28 @@ mod intrinsic;
 mod statics;
 mod misc;
 mod debuginfo;
+mod abi;
+mod declare;
+mod asm;
 
 pub use self::builder::{BuilderMethods, HasCodegen};
 pub use self::backend::Backend;
 pub use self::consts::ConstMethods;
-pub use self::type_::{TypeMethods, BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods};
+pub use self::type_::{TypeMethods, BaseTypeMethods, DerivedTypeMethods,
+    LayoutTypeMethods, ArgTypeMethods};
 pub use self::intrinsic::{IntrinsicCallMethods, IntrinsicDeclarationMethods};
 pub use self::statics::StaticMethods;
 pub use self::misc::MiscMethods;
-pub use self::debuginfo::DebugInfoMethods;
+pub use self::debuginfo::{DebugInfoMethods, DebugInfoBuilderMethods};
+pub use self::abi::{AbiMethods, AbiBuilderMethods};
+pub use self::declare::DeclareMethods;
+pub use self::asm::{AsmMethods, AsmBuilderMethods};
 
 use std::fmt;
 
 pub trait CodegenMethods<'ll, 'tcx: 'll> :
-    Backend + TypeMethods<'ll, 'tcx> + MiscMethods<'tcx> + ConstMethods +
-    StaticMethods<'tcx> + DebugInfoMethods<'tcx> {}
+    Backend + TypeMethods<'ll, 'tcx> + MiscMethods<'tcx> + ConstMethods<'tcx> +
+    StaticMethods<'tcx> + DebugInfoMethods<'ll, 'tcx> + AbiMethods<'tcx> +
+    IntrinsicDeclarationMethods + DeclareMethods<'tcx> + AsmMethods {}
 
 pub trait CodegenObject : Copy + PartialEq + fmt::Debug {}
