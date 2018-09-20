@@ -20,5 +20,4 @@ fn main() {
     (box 10 as Box<bar>).dup();
     //~^ ERROR E0038
     //~| ERROR E0038
-    //~| ERROR E0277
 }
