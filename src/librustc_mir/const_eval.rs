@@ -362,9 +362,10 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
             }
         }
 
+        let span = ecx.frame().span;
         ecx.machine.loop_detector.observe_and_analyze(
             &ecx.tcx,
-            ecx.frame().span,
+            span,
             &ecx.memory,
             &ecx.stack[..],
         )
