@@ -48,7 +48,7 @@ pub mod rustc;
 mod diagnostic;
 
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-pub use diagnostic::{Diagnostic, Level};
+pub use diagnostic::{Diagnostic, Level, MultiSpan};
 
 use std::{ascii, fmt, iter};
 use std::path::PathBuf;
