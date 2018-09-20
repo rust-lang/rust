@@ -279,7 +279,8 @@ pub fn create_function_debug_context(
         }
         None => {}
     };
-    if cx.layout_of(sig.output()).abi == ty::layout::Abi::Uninhabited {
+    // Tell LLVM that functions that return uninhabited types will not return.
+    if sig.output().conservative_is_uninhabited() {
         flags = flags | DIFlags::FlagNoReturn;
     }
 
