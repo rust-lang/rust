@@ -136,9 +136,25 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
 
                 let def_id = fcx.tcx.hir.local_def_id(item.id);
                 let ty = fcx.tcx.type_of(def_id);
-                let item_ty = fcx.inh.normalize_associated_types_in(cause, fcx.param_env, &ty);
+                let item_ty = fcx.inh.normalize_associated_types_in(
+                    cause.clone(),
+                    fcx.param_env,
+                    &ty,
+                );
 
-                fcx.register_wf_obligation(item_ty, hir_ty.span, code.clone());
+                let wf_obligations = ty::wf::obligations(fcx,
+                                                         fcx.param_env,
+                                                         &cause,
+                                                         item_ty)
+                    .unwrap_or(vec![]);
+
+                for mut obligation in wf_obligations {
+                    // Produce hard errors for monomorphic/"global" obligations.
+                    if obligation.predicate.is_global() {
+                        obligation.cause.code = ObligationCauseCode::MiscObligation;
+                    }
+                    fcx.register_predicate(obligation);
+                }
 
                 check_where_clauses(tcx, fcx, item.span, def_id, None, code);
 

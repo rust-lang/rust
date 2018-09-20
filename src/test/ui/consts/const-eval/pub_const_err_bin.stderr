@@ -6,17 +6,14 @@ LL | pub type Foo = [i32; 0 - 1];
    |
    = note: #[deny(const_err)] on by default
 
-error: could not evaluate constant expression
+error[E0080]: could not evaluate constant expression
   --> $DIR/pub_const_err_bin.rs:11:16
    |
 LL | pub type Foo = [i32; 0 - 1];
    |                ^^^^^^-----^
    |                      |
    |                      attempt to subtract with overflow
-   |
-   = note: #[deny(type_alias_missing_bounds)] on by default
-   = help: missing bounds in type aliases were previously allowed
-   = help: this is a hard error in Rust 2018
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0080`.
