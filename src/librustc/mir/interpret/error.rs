@@ -29,7 +29,7 @@ use syntax_pos::Span;
 use syntax::ast;
 use syntax::symbol::Symbol;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ErrorHandled {
     /// Already reported a lint or an error for this evaluation
     Reported,

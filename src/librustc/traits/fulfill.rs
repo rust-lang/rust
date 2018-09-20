@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use infer::InferCtxt;
-use mir::interpret::GlobalId;
+use mir::interpret::{GlobalId, ErrorHandled};
 use ty::{self, Ty, TypeFoldable, ToPolyTraitRef, ToPredicate};
 use ty::error::ExpectedFound;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, ObligationForest};
@@ -489,11 +489,13 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
                                     match self.selcx.tcx().at(obligation.cause.span)
                                                           .const_eval(param_env.and(cid)) {
                                         Ok(_) => ProcessResult::Changed(vec![]),
-                                        Err(_) => ProcessResult::Error(
-                                            CodeSelectionError(ConstEvalFailure))
+                                        Err(err) => ProcessResult::Error(
+                                            CodeSelectionError(ConstEvalFailure(err)))
                                     }
                                 } else {
-                                    ProcessResult::Error(CodeSelectionError(ConstEvalFailure))
+                                    ProcessResult::Error(CodeSelectionError(
+                                        ConstEvalFailure(ErrorHandled::TooGeneric)
+                                    ))
                                 }
                             },
                             None => {

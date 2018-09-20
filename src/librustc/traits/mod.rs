@@ -23,6 +23,7 @@ use hir::def_id::DefId;
 use infer::SuppressRegionErrors;
 use infer::outlives::env::OutlivesEnvironment;
 use middle::region;
+use mir::interpret::ErrorHandled;
 use ty::subst::Substs;
 use ty::{self, AdtKind, List, Ty, TyCtxt, GenericParamDefKind, ToPredicate};
 use ty::error::{ExpectedFound, TypeError};
@@ -437,7 +438,7 @@ pub enum SelectionError<'tcx> {
                                 ty::PolyTraitRef<'tcx>,
                                 ty::error::TypeError<'tcx>),
     TraitNotObjectSafe(DefId),
-    ConstEvalFailure,
+    ConstEvalFailure(ErrorHandled),
     Overflow,
 }
 
