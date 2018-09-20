@@ -204,14 +204,15 @@ That's why the `else_if_without_else` example uses the `register_early_lint_pass
 
 ### Fixing build failures caused by Rust
 
-Clippy will sometimes break because it still depends on unstable internal Rust features. Most of the times we have to adapt to the changes and only very rarely there's an actual bug in Rust.
+Clippy will sometimes break because it still depends on unstable internal Rust features. Most of the times we have to adapt to the changes and only very rarely there's an actual bug in Rust. Fixing build failures caused by Rust updates, can be a good way to learn about Rust internals.
 
 In order to find out why Clippy does not work properly with a new Rust commit, you can use the [rust-toolstate commit history][toolstate_commit_history].
 You will then have to look for the last commit that contains `test-pass -> build-fail` or `test-pass` -> `test-fail` for the `clippy-driver` component. [Here][toolstate_commit] is an example.
 
 The commit message contains a link to the PR. The PRs are usually small enough to discover the breaking API change and if they are bigger, they likely include some discussion that may help you to fix Clippy.
 
-Fixing build failures caused by Rust updates, can also be a good way to learn about Rust internals.
+To check if Clippy is available for a specific target platform, you can check
+the [rustup component history][rustup_component_history].
 
 If you decide to make Clippy work again with a Rust commit that breaks it,
 you probably want to install the latest Rust from master locally and run Clippy
@@ -249,3 +250,4 @@ All code in this repository is under the [Mozilla Public License, 2.0](https://w
 [toolstate_commit_history]: https://github.com/rust-lang-nursery/rust-toolstate/commits/master
 [toolstate_commit]: https://github.com/rust-lang-nursery/rust-toolstate/commit/6ce0459f6bfa7c528ae1886492a3e0b5ef0ee547
 [rtim]: https://github.com/kennytm/rustup-toolchain-install-master
+[rustup_component_history]: https://mexus.github.io/rustup-components-history
