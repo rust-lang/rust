@@ -504,7 +504,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             .sig
             .inputs()
             .iter()
-            .map(|ty| ArgKind::from_expected_ty(ty))
+            .map(|ty| ArgKind::from_expected_ty(ty, None))
             .collect();
         let (closure_span, found_args) = self.get_fn_like_arguments(expr_map_node);
         let expected_span = expected_sig.cause_span.unwrap_or(closure_span);

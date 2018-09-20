@@ -124,20 +124,21 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // Check methods for violations.
         let mut violations: Vec<_> = self.associated_items(trait_def_id)
             .filter(|item| item.kind == ty::AssociatedKind::Method)
-            .filter_map(|item| {
+            .filter_map(|item|
                 self.object_safety_violation_for_method(trait_def_id, &item)
                     .map(|code| ObjectSafetyViolation::Method(item.ident.name, code))
-            }).filter(|violation| {
+            ).filter(|violation| {
                 if let ObjectSafetyViolation::Method(_,
-                                MethodViolationCode::WhereClauseReferencesSelf(span)) = violation {
-                    // Using`CRATE_NODE_ID` is wrong, but it's hard to get a more precise id.
+                    MethodViolationCode::WhereClauseReferencesSelf(span)) = violation
+                {
+                    // Using `CRATE_NODE_ID` is wrong, but it's hard to get a more precise id.
                     // It's also hard to get a use site span, so we use the method definition span.
                     self.lint_node_note(
                         lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY,
                         ast::CRATE_NODE_ID,
                         *span,
                         &format!("the trait `{}` cannot be made into an object",
-                                self.item_path_str(trait_def_id)),
+                                 self.item_path_str(trait_def_id)),
                         &violation.error_msg());
                     false
                 } else {
@@ -213,24 +214,23 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let predicates = self.predicates_of(def_id);
         let predicates = predicates.instantiate_identity(self).predicates;
         elaborate_predicates(self, predicates)
-            .any(|predicate| {
-                match predicate {
-                    ty::Predicate::Trait(ref trait_pred) if trait_pred.def_id() == sized_def_id => {
-                        trait_pred.skip_binder().self_ty().is_self()
-                    }
-                    ty::Predicate::Projection(..) |
-                    ty::Predicate::Trait(..) |
-                    ty::Predicate::Subtype(..) |
-                    ty::Predicate::RegionOutlives(..) |
-                    ty::Predicate::WellFormed(..) |
-                    ty::Predicate::ObjectSafe(..) |
-                    ty::Predicate::ClosureKind(..) |
-                    ty::Predicate::TypeOutlives(..) |
-                    ty::Predicate::ConstEvaluatable(..) => {
-                        false
-                    }
+            .any(|predicate| match predicate {
+                ty::Predicate::Trait(ref trait_pred) if trait_pred.def_id() == sized_def_id => {
+                    trait_pred.skip_binder().self_ty().is_self()
                 }
-            })
+                ty::Predicate::Projection(..) |
+                ty::Predicate::Trait(..) |
+                ty::Predicate::Subtype(..) |
+                ty::Predicate::RegionOutlives(..) |
+                ty::Predicate::WellFormed(..) |
+                ty::Predicate::ObjectSafe(..) |
+                ty::Predicate::ClosureKind(..) |
+                ty::Predicate::TypeOutlives(..) |
+                ty::Predicate::ConstEvaluatable(..) => {
+                    false
+                }
+            }
+        )
     }
 
     /// Returns `Some(_)` if this method makes the containing trait not object safe.

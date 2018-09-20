@@ -57,22 +57,19 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
         debug!("c_ty = {:?}", c_ty);
         match &gcx.dropck_outlives(c_ty) {
             Ok(result) if result.is_proven() => {
-                match self.infcx.instantiate_query_result_and_region_obligations(
+                if let Ok(InferOk { value, obligations }) =
+                    self.infcx.instantiate_query_result_and_region_obligations(
                     self.cause,
                     self.param_env,
                     &orig_values,
-                    result,
-                ) {
-                    Ok(InferOk { value, obligations }) => {
-                        let ty = self.infcx.resolve_type_vars_if_possible(&ty);
-                        let kinds = value.into_kinds_reporting_overflows(tcx, span, ty);
-                        return InferOk {
-                            value: kinds,
-                            obligations,
-                        };
-                    }
-
-                    Err(_) => { /* fallthrough to error-handling code below */ }
+                    result)
+                {
+                    let ty = self.infcx.resolve_type_vars_if_possible(&ty);
+                    let kinds = value.into_kinds_reporting_overflows(tcx, span, ty);
+                    return InferOk {
+                        value: kinds,
+                        obligations,
+                    };
                 }
             }
 
@@ -161,12 +158,7 @@ impl<'tcx> FromIterator<DtorckConstraint<'tcx>> for DtorckConstraint<'tcx> {
     fn from_iter<I: IntoIterator<Item = DtorckConstraint<'tcx>>>(iter: I) -> Self {
         let mut result = Self::empty();
 
-        for DtorckConstraint {
-            outlives,
-            dtorck_types,
-            overflows,
-        } in iter
-        {
+        for DtorckConstraint { outlives, dtorck_types, overflows } in iter {
             result.outlives.extend(outlives);
             result.dtorck_types.extend(dtorck_types);
             result.overflows.extend(overflows);
@@ -254,7 +246,7 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) ->
             }
         }
 
-        // The following *might* require a destructor: it would deeper inspection to tell.
+        // The following *might* require a destructor: needs deeper inspection.
         ty::Dynamic(..)
         | ty::Projection(..)
         | ty::Param(_)

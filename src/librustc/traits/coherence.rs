@@ -115,9 +115,7 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
                             b_def_id: DefId)
                             -> Option<OverlapResult<'tcx>>
 {
-    debug!("overlap(a_def_id={:?}, b_def_id={:?})",
-           a_def_id,
-           b_def_id);
+    debug!("overlap(a_def_id={:?}, b_def_id={:?})", a_def_id, b_def_id);
 
     // For the purposes of this check, we don't bring any skolemized
     // types into scope; instead, we replace the generic types with
@@ -133,10 +131,9 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
 
     // Do `a` and `b` unify? If not, no overlap.
     let obligations = match selcx.infcx().at(&ObligationCause::dummy(), param_env)
-                                         .eq_impl_headers(&a_impl_header, &b_impl_header) {
-        Ok(InferOk { obligations, value: () }) => {
-            obligations
-        }
+                                         .eq_impl_headers(&a_impl_header, &b_impl_header)
+    {
+        Ok(InferOk { obligations, value: () }) => obligations,
         Err(_) => return None
     };
 
@@ -164,7 +161,7 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
         return None
     }
 
-    let impl_header =  selcx.infcx().resolve_type_vars_if_possible(&a_impl_header);
+    let impl_header = selcx.infcx().resolve_type_vars_if_possible(&a_impl_header);
     let intercrate_ambiguity_causes = selcx.take_intercrate_ambiguity_causes();
     debug!("overlap: intercrate_ambiguity_causes={:#?}", intercrate_ambiguity_causes);
     Some(OverlapResult { impl_header, intercrate_ambiguity_causes })
@@ -471,14 +468,12 @@ fn ty_is_local_constructor(ty: Ty, in_crate: InCrate) -> bool {
         ty::Foreign(did) => def_id_is_local(did, in_crate),
 
         ty::Dynamic(ref tt, ..) => {
-            tt.principal().map_or(false, |p| {
+            tt.principal().map_or(false, |p|
                 def_id_is_local(p.def_id(), in_crate)
-            })
+            )
         }
 
-        ty::Error => {
-            true
-        }
+        ty::Error => true,
 
         ty::Closure(..) |
         ty::Generator(..) |

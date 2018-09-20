@@ -171,7 +171,7 @@ impl<'tcx> ProjectionTyCandidateSet<'tcx> {
                 match (current, candidate) {
                     (ParamEnv(..), ParamEnv(..)) => convert_to_ambiguous = (),
                     (ParamEnv(..), _) => return false,
-                    (_, ParamEnv(..)) => { unreachable!(); }
+                    (_, ParamEnv(..)) => unreachable!(),
                     (_, _) => convert_to_ambiguous = (),
                 }
             }
@@ -419,9 +419,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
                 normalized_ty
             }
 
-            _ => {
-                ty
-            }
+            _ => ty
         }
     }
 
@@ -437,12 +435,9 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
                             instance,
                             promoted: None
                         };
-                        match tcx.const_eval(param_env.and(cid)) {
-                            Ok(evaluated) => {
-                                let evaluated = evaluated.subst(self.tcx(), substs);
-                                return self.fold_const(evaluated);
-                            }
-                            Err(_) => {}
+                        if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
+                            let evaluated = evaluated.subst(self.tcx(), substs);
+                            return self.fold_const(evaluated);
                         }
                     }
                 } else {
@@ -453,9 +448,8 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
                                 instance,
                                 promoted: None
                             };
-                            match tcx.const_eval(param_env.and(cid)) {
-                                Ok(evaluated) => return self.fold_const(evaluated),
-                                Err(_) => {}
+                            if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
+                                return self.fold_const(evaluated)
                             }
                         }
                     }
@@ -993,7 +987,7 @@ fn assemble_candidates_from_trait_def<'cx, 'gcx, 'tcx>(
             candidate_set.mark_ambiguous();
             return;
         }
-        _ => { return; }
+        _ => return
     };
 
     // If so, extract what we know from the trait and try to come up with a good answer.
@@ -1023,33 +1017,30 @@ fn assemble_candidates_from_predicates<'cx, 'gcx, 'tcx, I>(
     for predicate in env_predicates {
         debug!("assemble_candidates_from_predicates: predicate={:?}",
                predicate);
-        match predicate {
-            ty::Predicate::Projection(data) => {
-                let same_def_id = data.projection_def_id() == obligation.predicate.item_def_id;
+        if let ty::Predicate::Projection(data) = predicate {
+            let same_def_id = data.projection_def_id() == obligation.predicate.item_def_id;
 
-                let is_match = same_def_id && infcx.probe(|_| {
-                    let data_poly_trait_ref =
-                        data.to_poly_trait_ref(infcx.tcx);
-                    let obligation_poly_trait_ref =
-                        obligation_trait_ref.to_poly_trait_ref();
-                    infcx.at(&obligation.cause, obligation.param_env)
-                         .sup(obligation_poly_trait_ref, data_poly_trait_ref)
-                         .map(|InferOk { obligations: _, value: () }| {
-                             // FIXME(#32730) -- do we need to take obligations
-                             // into account in any way? At the moment, no.
-                         })
-                         .is_ok()
-                });
+            let is_match = same_def_id && infcx.probe(|_| {
+                let data_poly_trait_ref =
+                    data.to_poly_trait_ref(infcx.tcx);
+                let obligation_poly_trait_ref =
+                    obligation_trait_ref.to_poly_trait_ref();
+                infcx.at(&obligation.cause, obligation.param_env)
+                     .sup(obligation_poly_trait_ref, data_poly_trait_ref)
+                     .map(|InferOk { obligations: _, value: () }| {
+                         // FIXME(#32730) -- do we need to take obligations
+                         // into account in any way? At the moment, no.
+                     })
+                     .is_ok()
+            });
 
-                debug!("assemble_candidates_from_predicates: candidate={:?} \
-                                                             is_match={} same_def_id={}",
-                       data, is_match, same_def_id);
+            debug!("assemble_candidates_from_predicates: candidate={:?} \
+                    is_match={} same_def_id={}",
+                   data, is_match, same_def_id);
 
-                if is_match {
-                    candidate_set.push_candidate(ctor(data));
-                }
+            if is_match {
+                candidate_set.push_candidate(ctor(data));
             }
-            _ => {}
         }
     }
 }
@@ -1072,8 +1063,7 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                 return Err(());
             }
             Err(e) => {
-                debug!("assemble_candidates_from_impls: selection error {:?}",
-                       e);
+                debug!("assemble_candidates_from_impls: selection error {:?}", e);
                 candidate_set.mark_error(e);
                 return Err(());
             }
@@ -1295,11 +1285,11 @@ fn confirm_object_candidate<'cx, 'gcx, 'tcx>(
         let mut env_predicates = env_predicates.filter(|data| {
             let data_poly_trait_ref = data.to_poly_trait_ref(selcx.tcx());
             let obligation_poly_trait_ref = obligation_trait_ref.to_poly_trait_ref();
-            selcx.infcx().probe(|_| {
+            selcx.infcx().probe(|_|
                 selcx.infcx().at(&obligation.cause, obligation.param_env)
                              .sup(obligation_poly_trait_ref, data_poly_trait_ref)
                              .is_ok()
-            })
+            )
         });
 
         // select the first matching one; there really ought to be one or
@@ -1447,7 +1437,7 @@ fn confirm_callable_candidate<'cx, 'gcx, 'tcx>(
                                               obligation.predicate.self_ty(),
                                               fn_sig,
                                               flag)
-        .map_bound(|(trait_ref, ret_type)| {
+        .map_bound(|(trait_ref, ret_type)|
             ty::ProjectionPredicate {
                 projection_ty: ty::ProjectionTy::from_ref_and_name(
                     tcx,
@@ -1456,7 +1446,7 @@ fn confirm_callable_candidate<'cx, 'gcx, 'tcx>(
                 ),
                 ty: ret_type
             }
-        });
+        );
 
     confirm_param_env_candidate(selcx, obligation, predicate)
 }

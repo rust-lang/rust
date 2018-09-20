@@ -166,10 +166,10 @@ impl<'a, 'tcx> Lift<'tcx> for traits::SelectionError<'a> {
         match *self {
             super::Unimplemented => Some(super::Unimplemented),
             super::OutputTypeParameterMismatch(a, b, ref err) => {
-                tcx.lift(&(a, b)).and_then(|(a, b)| {
+                tcx.lift(&(a, b)).and_then(|(a, b)|
                     tcx.lift(err)
                         .map(|err| super::OutputTypeParameterMismatch(a, b, err))
-                })
+                )
             }
             super::TraitNotObjectSafe(def_id) => Some(super::TraitNotObjectSafe(def_id)),
             super::ConstEvalFailure(ref err) => tcx.lift(&**err).map(|err| super::ConstEvalFailure(
@@ -193,10 +193,10 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::ReferenceOutlivesReferent(ty) => {
                 tcx.lift(&ty).map(super::ReferenceOutlivesReferent)
             }
-            super::ObjectTypeBound(ty, r) => tcx.lift(&ty).and_then(|ty| {
+            super::ObjectTypeBound(ty, r) => tcx.lift(&ty).and_then(|ty|
                 tcx.lift(&r)
-                    .and_then(|r| Some(super::ObjectTypeBound(ty, r)))
-            }),
+                   .and_then(|r| Some(super::ObjectTypeBound(ty, r)))
+            ),
             super::ObjectCastObligation(ty) => tcx.lift(&ty).map(super::ObjectCastObligation),
             super::AssignmentLhsSized => Some(super::AssignmentLhsSized),
             super::TupleInitializerSized => Some(super::TupleInitializerSized),
@@ -245,13 +245,13 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
 impl<'a, 'tcx> Lift<'tcx> for traits::DerivedObligationCause<'a> {
     type Lifted = traits::DerivedObligationCause<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&self.parent_trait_ref).and_then(|trait_ref| {
+        tcx.lift(&self.parent_trait_ref).and_then(|trait_ref|
             tcx.lift(&*self.parent_code)
-                .map(|code| traits::DerivedObligationCause {
-                    parent_trait_ref: trait_ref,
-                    parent_code: Rc::new(code),
-                })
-        })
+               .map(|code| traits::DerivedObligationCause {
+                   parent_trait_ref: trait_ref,
+                   parent_code: Rc::new(code),
+               })
+        )
     }
 }
 
@@ -275,40 +275,40 @@ impl<'a, 'tcx> Lift<'tcx> for traits::Vtable<'a, ()> {
                 impl_def_id,
                 substs,
                 nested,
-            }) => tcx.lift(&substs).map(|substs| {
+            }) => tcx.lift(&substs).map(|substs|
                 traits::VtableImpl(traits::VtableImplData {
                     impl_def_id,
                     substs,
                     nested,
                 })
-            }),
+            ),
             traits::VtableAutoImpl(t) => Some(traits::VtableAutoImpl(t)),
             traits::VtableGenerator(traits::VtableGeneratorData {
                 generator_def_id,
                 substs,
                 nested,
-            }) => tcx.lift(&substs).map(|substs| {
+            }) => tcx.lift(&substs).map(|substs|
                 traits::VtableGenerator(traits::VtableGeneratorData {
                     generator_def_id: generator_def_id,
                     substs: substs,
                     nested: nested,
                 })
-            }),
+            ),
             traits::VtableClosure(traits::VtableClosureData {
                 closure_def_id,
                 substs,
                 nested,
-            }) => tcx.lift(&substs).map(|substs| {
+            }) => tcx.lift(&substs).map(|substs|
                 traits::VtableClosure(traits::VtableClosureData {
                     closure_def_id,
                     substs,
                     nested,
                 })
-            }),
+            ),
             traits::VtableFnPointer(traits::VtableFnPointerData { fn_ty, nested }) => {
-                tcx.lift(&fn_ty).map(|fn_ty| {
+                tcx.lift(&fn_ty).map(|fn_ty|
                     traits::VtableFnPointer(traits::VtableFnPointerData { fn_ty, nested })
-                })
+                )
             }
             traits::VtableParam(n) => Some(traits::VtableParam(n)),
             traits::VtableBuiltin(n) => Some(traits::VtableBuiltin(n)),
@@ -316,13 +316,13 @@ impl<'a, 'tcx> Lift<'tcx> for traits::Vtable<'a, ()> {
                 upcast_trait_ref,
                 vtable_base,
                 nested,
-            }) => tcx.lift(&upcast_trait_ref).map(|trait_ref| {
+            }) => tcx.lift(&upcast_trait_ref).map(|trait_ref|
                 traits::VtableObject(traits::VtableObjectData {
                     upcast_trait_ref: trait_ref,
                     vtable_base,
                     nested,
                 })
-            }),
+            ),
         }
     }
 }

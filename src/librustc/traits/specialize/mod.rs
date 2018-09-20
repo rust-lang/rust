@@ -100,10 +100,10 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
             }
 
             fulfill_implication(infcx, param_env, source_trait_ref, target_impl)
-                .unwrap_or_else(|_| {
+                .unwrap_or_else(|_|
                     bug!("When translating substitutions for specialization, the expected \
                           specialization failed to hold")
-                })
+                )
         }
         specialization_graph::Node::Trait(..) => source_trait_ref.substs,
     };
@@ -137,17 +137,15 @@ pub fn find_associated_item<'a, 'tcx>(
                 let substs = translate_substs(&infcx, param_env, impl_data.impl_def_id,
                                               substs, node_item.node);
                 let substs = infcx.tcx.erase_regions(&substs);
-                tcx.lift(&substs).unwrap_or_else(|| {
+                tcx.lift(&substs).unwrap_or_else(||
                     bug!("find_method: translate_substs \
                           returned {:?} which contains inference types/regions",
-                         substs);
-                })
+                         substs)
+                )
             });
             (node_item.item.def_id, substs)
         }
-        None => {
-            bug!("{:?} not found in {:?}", item, impl_data.impl_def_id)
-        }
+        None => bug!("{:?} not found in {:?}", item, impl_data.impl_def_id)
     }
 }
 
@@ -312,8 +310,7 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
                                                       -> Lrc<specialization_graph::Graph> {
     let mut sg = specialization_graph::Graph::new();
 
-    let mut trait_impls = Vec::new();
-    tcx.for_each_impl(trait_id, |impl_did| trait_impls.push(impl_did));
+    let mut trait_impls = tcx.all_impls(trait_id);
 
     // The coherence checking implementation seems to rely on impls being
     // iterated over (roughly) in definition order, so we are sorting by
@@ -367,9 +364,9 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
                                        "first implementation here".to_string());
                         err.span_label(impl_span,
                                        format!("conflicting implementation{}",
-                                                overlap.self_desc
-                                                    .map_or(String::new(),
-                                                            |ty| format!(" for `{}`", ty))));
+                                               overlap.self_desc
+                                                      .map_or(String::new(),
+                                                          |ty| format!(" for `{}`", ty))));
                     }
                     Err(cname) => {
                         let msg = match to_pretty_impl_header(tcx, overlap.with_impl) {
@@ -428,7 +425,9 @@ fn to_pretty_impl_header(tcx: TyCtxt, impl_def_id: DefId) -> Option<String> {
     // The predicates will contain default bounds like `T: Sized`. We need to
     // remove these bounds, and add `T: ?Sized` to any untouched type parameters.
     let predicates = tcx.predicates_of(impl_def_id).predicates;
-    let mut pretty_predicates = Vec::with_capacity(predicates.len());
+    let mut pretty_predicates = Vec::with_capacity(
+        predicates.len() + types_without_default_bounds.len());
+
     for p in predicates {
         if let Some(poly_trait_ref) = p.to_opt_poly_trait_ref() {
             if Some(poly_trait_ref.def_id()) == sized_trait {
@@ -438,9 +437,11 @@ fn to_pretty_impl_header(tcx: TyCtxt, impl_def_id: DefId) -> Option<String> {
         }
         pretty_predicates.push(p.to_string());
     }
+
     pretty_predicates.extend(
         types_without_default_bounds.iter().map(|ty| format!("{}: ?Sized", ty))
     );
+
     if !pretty_predicates.is_empty() {
         write!(w, "\n  where {}", pretty_predicates.join(", ")).unwrap();
     }

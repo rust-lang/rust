@@ -390,11 +390,12 @@ impl Iterator for Ancestors {
         let cur = self.current_source.take();
         if let Some(Node::Impl(cur_impl)) = cur {
             let parent = self.specialization_graph.parent(cur_impl);
-            if parent == self.trait_def_id {
-                self.current_source = Some(Node::Trait(parent));
+
+            self.current_source = if parent == self.trait_def_id {
+                Some(Node::Trait(parent))
             } else {
-                self.current_source = Some(Node::Impl(parent));
-            }
+                Some(Node::Impl(parent))
+            };
         }
         cur
     }
