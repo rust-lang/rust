@@ -77,7 +77,7 @@ pub fn mk_eval_cx<'a, 'tcx>(
     Ok(ecx)
 }
 
-pub fn eval_promoted<'a, 'mir, 'tcx>(
+pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     cid: GlobalId<'tcx>,
     mir: &'mir mir::Mir<'tcx>,

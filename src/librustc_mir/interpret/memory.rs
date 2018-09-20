@@ -57,7 +57,8 @@ pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
     /// that do not exist any more.
     dead_alloc_map: FxHashMap<AllocId, (Size, Align)>,
 
-    pub tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
+    /// Lets us implement `HasDataLayout`, which is awfully convenient.
+    pub(super) tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
 }
 
 impl<'b, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
