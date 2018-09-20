@@ -775,7 +775,7 @@ fn main() {
 assert_eq!(2+2, 4);
 }".to_string();
         let output = make_test(input, None, false, &opts);
-        assert_eq!(output, (expected.clone(), 2));
+        assert_eq!(output, (expected, 2));
     }
 
     #[test]
@@ -973,7 +973,7 @@ fn main() {
 assert_eq!(2+2, 4);
 }".to_string();
         let output = make_test(input, None, false, &opts);
-        assert_eq!(output, (expected.clone(), 2));
+        assert_eq!(output, (expected, 2));
     }
 
     #[test]
@@ -988,7 +988,7 @@ assert_eq!(2+2, 4);";
 //Ceci n'est pas une `fn main`
 assert_eq!(2+2, 4);".to_string();
         let output = make_test(input, None, true, &opts);
-        assert_eq!(output, (expected.clone(), 1));
+        assert_eq!(output, (expected, 1));
     }
 
     #[test]
@@ -1003,6 +1003,6 @@ assert_eq!(2+2, 4);".to_string();
 assert_eq!(2+2, 4);
 }".to_string();
         let output = make_test(input, None, false, &opts);
-        assert_eq!(output, (expected.clone(), 1));
+        assert_eq!(output, (expected, 1));
     }
 }
