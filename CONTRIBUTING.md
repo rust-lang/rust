@@ -204,16 +204,16 @@ That's why the `else_if_without_else` example uses the `register_early_lint_pass
 
 ### Fixing build failures caused by Rust
 
-Clippy will sometimes break because Clippy still depends on unstable internal Rust features. Most of the times we have to adapt to the changes and only very rarely there's an actual bug in rust.
+Clippy will sometimes break because it still depends on unstable internal Rust features. Most of the times we have to adapt to the changes and only very rarely there's an actual bug in Rust.
 
 In order to find out why Clippy does not work properly with a new Rust commit, you can use the [rust-toolstate commit history][toolstate_commit_history].
 You will then have to look for the last commit that contains `test-pass -> build-fail` or `test-pass` -> `test-fail` for the `clippy-driver` component. [Here][toolstate_commit] is an example.
 
 The commit message contains a link to the PR. The PRs are usually small enough to discover the breaking API change and if they are bigger, they likely include some discussion that may help you to fix Clippy.
 
-Fixing build failures caused by rustc changes is also a good way to learn about actual rustc internals.
+Fixing build failures caused by rustc updates, can also be a good way to learn about rustc internals.
 
-If you decide to make Clippy work again with a Rust commit that breaks Clippy,
+If you decide to make Clippy work again with a Rust commit that breaks it,
 you probably want to install the latest Rust from master locally and run Clippy
 using that version of Rust.
 
