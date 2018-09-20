@@ -19,7 +19,7 @@ use syntax::{ast, ptr};
 use comment::{combine_strs_with_missing_comments, rewrite_comment};
 use config::{Config, ControlBraceStyle, IndentStyle};
 use expr::{
-    format_expr, is_empty_block, is_simple_block, is_unsafe_block, prefer_next_line,
+    format_expr, is_empty_block, is_simple_block, is_unsafe_block, prefer_next_line, rewrite_cond,
     rewrite_multiple_patterns, ExprType, RhsTactics,
 };
 use lists::{itemize_list, write_list, ListFormatting};
@@ -231,7 +231,7 @@ fn rewrite_match_arm(
 ) -> Option<String> {
     let (missing_span, attrs_str) = if !arm.attrs.is_empty() {
         if contains_skip(&arm.attrs) {
-            let (_, body) = flatten_arm_body(context, &arm.body);
+            let (_, body) = flatten_arm_body(context, &arm.body, None);
             // `arm.span()` does not include trailing comma, add it manually.
             return Some(format!(
                 "{}{}",
@@ -313,16 +313,27 @@ fn block_can_be_flattened<'a>(
 // (extend, body)
 // @extend: true if the arm body can be put next to `=>`
 // @body: flattened body, if the body is block with a single expression
-fn flatten_arm_body<'a>(context: &'a RewriteContext, body: &'a ast::Expr) -> (bool, &'a ast::Expr) {
+fn flatten_arm_body<'a>(
+    context: &'a RewriteContext,
+    body: &'a ast::Expr,
+    opt_shape: Option<Shape>,
+) -> (bool, &'a ast::Expr) {
     let can_extend =
         |expr| !context.config.force_multiline_blocks() && can_flatten_block_around_this(expr);
 
     if let Some(ref block) = block_can_be_flattened(context, body) {
         if let ast::StmtKind::Expr(ref expr) = block.stmts[0].node {
             if let ast::ExprKind::Block(..) = expr.node {
-                flatten_arm_body(context, expr)
+                flatten_arm_body(context, expr, None)
             } else {
-                (can_extend(expr), &*expr)
+                let cond_becomes_muti_line = opt_shape
+                    .and_then(|shape| rewrite_cond(context, expr, shape))
+                    .map_or(false, |cond| cond.contains('\n'));
+                if cond_becomes_muti_line {
+                    (false, &*body)
+                } else {
+                    (can_extend(expr), &*expr)
+                }
             }
         } else {
             (false, &*body)
@@ -341,7 +352,11 @@ fn rewrite_match_body(
     arrow_span: Span,
     is_last: bool,
 ) -> Option<String> {
-    let (extend, body) = flatten_arm_body(context, body);
+    let (extend, body) = flatten_arm_body(
+        context,
+        body,
+        shape.offset_left(extra_offset(pats_str, shape) + 4),
+    );
     let (is_block, is_empty_block) = if let ast::ExprKind::Block(ref block, _) = body.node {
         (
             true,
