@@ -211,7 +211,7 @@ You will then have to look for the last commit that contains `test-pass -> build
 
 The commit message contains a link to the PR. The PRs are usually small enough to discover the breaking API change and if they are bigger, they likely include some discussion that may help you to fix Clippy.
 
-Fixing build failures caused by rustc updates, can also be a good way to learn about rustc internals.
+Fixing build failures caused by Rust updates, can also be a good way to learn about Rust internals.
 
 If you decide to make Clippy work again with a Rust commit that breaks it,
 you probably want to install the latest Rust from master locally and run Clippy
