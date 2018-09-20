@@ -568,7 +568,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
         self.infer_ctxt().enter(|ref infcx| {
             // the receiver is dispatchable iff the obligation holds
-            infcx.predicate_must_hold(&obligation)
+            infcx.predicate_must_hold_modulo_regions(&obligation)
         })
     }
 

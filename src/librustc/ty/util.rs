@@ -851,11 +851,13 @@ fn is_copy_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::CopyTraitLangItem);
     tcx.infer_ctxt()
-       .enter(|infcx| traits::type_known_to_meet_bound(&infcx,
-                                                       param_env,
-                                                       ty,
-                                                       trait_def_id,
-                                                       DUMMY_SP))
+        .enter(|infcx| traits::type_known_to_meet_bound_modulo_regions(
+            &infcx,
+            param_env,
+            ty,
+            trait_def_id,
+            DUMMY_SP,
+        ))
 }
 
 fn is_sized_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -865,11 +867,13 @@ fn is_sized_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::SizedTraitLangItem);
     tcx.infer_ctxt()
-       .enter(|infcx| traits::type_known_to_meet_bound(&infcx,
-                                                       param_env,
-                                                       ty,
-                                                       trait_def_id,
-                                                       DUMMY_SP))
+        .enter(|infcx| traits::type_known_to_meet_bound_modulo_regions(
+            &infcx,
+            param_env,
+            ty,
+            trait_def_id,
+            DUMMY_SP,
+        ))
 }
 
 fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -879,11 +883,13 @@ fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::FreezeTraitLangItem);
     tcx.infer_ctxt()
-       .enter(|infcx| traits::type_known_to_meet_bound(&infcx,
-                                                       param_env,
-                                                       ty,
-                                                       trait_def_id,
-                                                       DUMMY_SP))
+        .enter(|infcx| traits::type_known_to_meet_bound_modulo_regions(
+            &infcx,
+            param_env,
+            ty,
+            trait_def_id,
+            DUMMY_SP,
+        ))
 }
 
 fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

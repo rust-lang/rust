@@ -327,7 +327,8 @@ enum BuiltinImplConditions<'tcx> {
 /// evaluations.
 ///
 /// The evaluation results are ordered:
-///     - `EvaluatedToOk` implies `EvaluatedToAmbig` implies `EvaluatedToUnknown`
+///     - `EvaluatedToOk` implies `EvaluatedToOkModuloRegions`
+///       implies `EvaluatedToAmbig` implies `EvaluatedToUnknown`
 ///     - `EvaluatedToErr` implies `EvaluatedToRecur`
 ///     - the "union" of evaluation results is equal to their maximum -
 ///     all the "potential success" candidates can potentially succeed,
@@ -336,6 +337,8 @@ enum BuiltinImplConditions<'tcx> {
 pub enum EvaluationResult {
     /// Evaluation successful
     EvaluatedToOk,
+    /// Evaluation successful, but there were unevaluated region obligations
+    EvaluatedToOkModuloRegions,
     /// Evaluation is known to be ambiguous - it *might* hold for some
     /// assignment of inference variables, but it might not.
     ///
@@ -399,9 +402,23 @@ pub enum EvaluationResult {
 }
 
 impl EvaluationResult {
+    /// True if this evaluation result is known to apply, even
+    /// considering outlives constraints.
+    pub fn must_apply_considering_regions(self) -> bool {
+        self == EvaluatedToOk
+    }
+
+    /// True if this evaluation result is known to apply, ignoring
+    /// outlives constraints.
+    pub fn must_apply_modulo_regions(self) -> bool {
+        self <= EvaluatedToOkModuloRegions
+    }
+
     pub fn may_apply(self) -> bool {
         match self {
-            EvaluatedToOk | EvaluatedToAmbig | EvaluatedToUnknown => true,
+            EvaluatedToOk | EvaluatedToOkModuloRegions | EvaluatedToAmbig | EvaluatedToUnknown => {
+                true
+            }
 
             EvaluatedToErr | EvaluatedToRecur => false,
         }
@@ -411,13 +428,14 @@ impl EvaluationResult {
         match self {
             EvaluatedToUnknown | EvaluatedToRecur => true,
 
-            EvaluatedToOk | EvaluatedToAmbig | EvaluatedToErr => false,
+            EvaluatedToOk | EvaluatedToOkModuloRegions | EvaluatedToAmbig | EvaluatedToErr => false,
         }
     }
 }
 
 impl_stable_hash_for!(enum self::EvaluationResult {
     EvaluatedToOk,
+    EvaluatedToOkModuloRegions,
     EvaluatedToAmbig,
     EvaluatedToUnknown,
     EvaluatedToRecur,
@@ -686,92 +704,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 None => Ok(EvaluatedToAmbig),
             },
 
-            ty::Predicate::TypeOutlives(ref binder) => {
-                assert!(!binder.has_escaping_bound_vars());
-                // Check if the type has higher-ranked vars.
-                if binder.skip_binder().0.has_escaping_bound_vars() {
-                    // If so, this obligation is an error (for now). Eventually we should be
-                    // able to support additional cases here, like `for<'a> &'a str: 'a`.
-
-                    // NOTE: this hack is implemented in both trait fulfillment and
-                    // evaluation. If you fix it in one place, make sure you fix it
-                    // in the other.
-
-                    // We don't want to allow this sort of reasoning in intercrate
-                    // mode, for backwards-compatibility reasons.
-                    if self.intercrate.is_some() {
-                        Ok(EvaluatedToAmbig)
-                    } else {
-                        Ok(EvaluatedToErr)
-                    }
-                } else {
-                    // If the type has no late bound vars, then if we assign all
-                    // the inference variables in it to be 'static, then the type
-                    // will be 'static itself.
-                    //
-                    // Therefore, `staticize(T): 'a` holds for any `'a`, so this
-                    // obligation is fulfilled. Because evaluation works with
-                    // staticized types (yes I know this is involved with #21974),
-                    // we are 100% OK here.
-                    Ok(EvaluatedToOk)
-                }
-            }
-
-            ty::Predicate::RegionOutlives(ref binder) => {
-                let ty::OutlivesPredicate(r_a, r_b) = binder.skip_binder();
-
-                if r_a == r_b {
-                    // for<'a> 'a: 'a. OK
-                    Ok(EvaluatedToOk)
-                } else if **r_a == ty::ReStatic {
-                    // 'static: 'x always holds.
-                    //
-                    // This special case is handled somewhat inconsistently - if we
-                    // have an inference variable that is supposed to be equal to
-                    // `'static`, then we don't allow it to be equated to an LBR,
-                    // but if we have a literal `'static`, then we *do*.
-                    //
-                    // This is actually consistent with how our region inference works.
-                    //
-                    // It would appear that this sort of inconsistency would
-                    // cause "instability" problems with evaluation caching. However,
-                    // evaluation caching is only for trait predicates, and when
-                    // trait predicates create nested obligations, they contain
-                    // inference variables for all the regions in the trait - the
-                    // only way this codepath can be reached from trait predicate
-                    // evaluation is when the user typed an explicit `where 'static: 'a`
-                    // lifetime bound (in which case we want to return EvaluatedToOk).
-                    //
-                    // If we ever want to handle inference variables that might be
-                    // equatable with ReStatic, we need to make sure we are not confused by
-                    // technically-allowed-by-RFC-447-but-probably-should-not-be
-                    // impls such as
-                    // ```Rust
-                    // impl<'a, 's, T> X<'s> for T where T: Debug + 'a, 'a: 's
-                    // ```
-                    Ok(EvaluatedToOk)
-                } else if r_a.is_late_bound() || r_b.is_late_bound() {
-                    // There is no current way to prove `for<'a> 'a: 'x`
-                    // unless `'a = 'x`, because there are no bounds involving
-                    // lifetimes.
-
-                    // It might be possible to prove `for<'a> 'x: 'a` by forcing `'x`
-                    // to be `'static`. However, this is not currently done by type
-                    // inference unless `'x` is literally ReStatic. See the comment
-                    // above.
-
-                    // We don't want to allow this sort of reasoning in intercrate
-                    // mode, for backwards-compatibility reasons.
-                    if self.intercrate.is_some() {
-                        Ok(EvaluatedToAmbig)
-                    } else {
-                        Ok(EvaluatedToErr)
-                    }
-                } else {
-                    // Relating 2 inference variable regions. These will
-                    // always hold if our query is "staticized".
-                    Ok(EvaluatedToOk)
-                }
+            ty::Predicate::TypeOutlives(..) | ty::Predicate::RegionOutlives(..) => {
+                // we do not consider region relationships when
+                // evaluating trait matches
+                Ok(EvaluatedToOkModuloRegions)
             }
 
             ty::Predicate::ObjectSafe(trait_def_id) => {
@@ -985,6 +921,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         {
             debug!("evaluate_stack({:?}) --> recursive", stack.fresh_trait_ref);
 
+            // Subtle: when checking for a coinductive cycle, we do
+            // not compare using the "freshened trait refs" (which
+            // have erased regions) but rather the fully explicit
+            // trait refs. This is important because it's only a cycle
+            // if the regions match exactly.
             let cycle = stack.iter().skip(1).take(rec_index + 1);
             let cycle = cycle.map(|stack| ty::Predicate::Trait(stack.obligation.predicate));
             if self.coinductive_match(cycle) {
@@ -2324,7 +2265,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 // See if we can toss out `victim` based on specialization.
                 // This requires us to know *for sure* that the `other` impl applies
                 // i.e., EvaluatedToOk:
-                if other.evaluation == EvaluatedToOk {
+                if other.evaluation.must_apply_modulo_regions() {
                     match victim.candidate {
                         ImplCandidate(victim_def) => {
                             let tcx = self.tcx().global_tcx();
@@ -2351,7 +2292,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     ParamCandidate(ref cand) => {
                         // Prefer these to a global where-clause bound
                         // (see issue #50825)
-                        is_global(cand) && other.evaluation == EvaluatedToOk
+                        is_global(cand) && other.evaluation.must_apply_modulo_regions()
                     }
                     _ => false,
                 }

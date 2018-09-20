@@ -628,14 +628,14 @@ pub fn predicates_for_generics<'tcx>(cause: ObligationCause<'tcx>,
 /// `bound` or is not known to meet bound (note that this is
 /// conservative towards *no impl*, which is the opposite of the
 /// `evaluate` methods).
-pub fn type_known_to_meet_bound<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                                param_env: ty::ParamEnv<'tcx>,
-                                                ty: Ty<'tcx>,
-                                                def_id: DefId,
-                                                span: Span)
--> bool
-{
-    debug!("type_known_to_meet_bound(ty={:?}, bound={:?})",
+pub fn type_known_to_meet_bound_modulo_regions<'a, 'gcx, 'tcx>(
+    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+    def_id: DefId,
+    span: Span,
+) -> bool {
+    debug!("type_known_to_meet_bound_modulo_regions(ty={:?}, bound={:?})",
            ty,
            infcx.tcx.item_path_str(def_id));
 
@@ -650,7 +650,7 @@ pub fn type_known_to_meet_bound<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx
         predicate: trait_ref.to_predicate(),
     };
 
-    let result = infcx.predicate_must_hold(&obligation);
+    let result = infcx.predicate_must_hold_modulo_regions(&obligation);
     debug!("type_known_to_meet_ty={:?} bound={} => {:?}",
            ty, infcx.tcx.item_path_str(def_id), result);
 
@@ -677,13 +677,13 @@ pub fn type_known_to_meet_bound<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx
         // assume it is move; linear is always ok.
         match fulfill_cx.select_all_or_error(infcx) {
             Ok(()) => {
-                debug!("type_known_to_meet_bound: ty={:?} bound={} success",
+                debug!("type_known_to_meet_bound_modulo_regions: ty={:?} bound={} success",
                        ty,
                        infcx.tcx.item_path_str(def_id));
                 true
             }
             Err(e) => {
-                debug!("type_known_to_meet_bound: ty={:?} bound={} errors={:?}",
+                debug!("type_known_to_meet_bound_modulo_regions: ty={:?} bound={} errors={:?}",
                        ty,
                        infcx.tcx.item_path_str(def_id),
                        e);

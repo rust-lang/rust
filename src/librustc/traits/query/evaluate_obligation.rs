@@ -16,11 +16,26 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// Evaluates whether the predicate can be satisfied in the given
     /// `ParamEnv`, and returns `false` if not certain. However, this is
     /// not entirely accurate if inference variables are involved.
-    pub fn predicate_must_hold(
+    ///
+    /// This version may conservatively fail when outlives obligations
+    /// are required.
+    pub fn predicate_must_hold_considering_regions(
         &self,
         obligation: &PredicateObligation<'tcx>,
     ) -> bool {
-        self.evaluate_obligation_no_overflow(obligation) == EvaluationResult::EvaluatedToOk
+        self.evaluate_obligation_no_overflow(obligation).must_apply_considering_regions()
+    }
+
+    /// Evaluates whether the predicate can be satisfied in the given
+    /// `ParamEnv`, and returns `false` if not certain. However, this is
+    /// not entirely accurate if inference variables are involved.
+    ///
+    /// This version ignores all outlives constraints.
+    pub fn predicate_must_hold_modulo_regions(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+    ) -> bool {
+        self.evaluate_obligation_no_overflow(obligation).must_apply_modulo_regions()
     }
 
     /// Evaluate a given predicate, capturing overflow and propagating it back.
