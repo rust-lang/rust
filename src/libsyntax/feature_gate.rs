@@ -394,17 +394,11 @@ declare_features! (
     // Allows trait methods with arbitrary self types
     (active, arbitrary_self_types, "1.23.0", Some(44874), None),
 
-    // `crate` in paths
-    (active, crate_in_paths, "1.23.0", Some(45477), Some(Edition::Edition2018)),
-
     // In-band lifetime bindings (e.g. `fn foo(x: &'a u8) -> &'a u8`)
     (active, in_band_lifetimes, "1.23.0", Some(44524), None),
 
     // Generic associated types (RFC 1598)
     (active, generic_associated_types, "1.23.0", Some(44265), None),
-
-    // Resolve absolute paths as paths from other crates
-    (active, extern_absolute_paths, "1.24.0", Some(44660), Some(Edition::Edition2018)),
 
     // `extern` in paths
     (active, extern_in_paths, "1.23.0", Some(44660), None),
@@ -454,9 +448,6 @@ declare_features! (
 
     // #[doc(alias = "...")]
     (active, doc_alias, "1.27.0", Some(50146), None),
-
-    // Access to crate names passed via `--extern` through prelude
-    (active, extern_prelude, "1.27.0", Some(44660), Some(Edition::Edition2018)),
 
     // Scoped lints
     (active, tool_lints, "1.28.0", Some(44690), None),
@@ -677,7 +668,12 @@ declare_features! (
     (accepted, panic_handler, "1.30.0", Some(44489), None),
     // Used to preserve symbols (see llvm.used)
     (accepted, used, "1.30.0", Some(40289), None),
-
+    // `crate` in paths
+    (accepted, crate_in_paths, "1.30.0", Some(45477), None),
+    // Resolve absolute paths as paths from other crates
+    (accepted, extern_absolute_paths, "1.30.0", Some(44660), None),
+    // Access to crate names passed via `--extern` through prelude
+    (accepted, extern_prelude, "1.30.0", Some(44660), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1883,10 +1879,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             // cannot be kept in identifiers, so it's kept in paths instead and we take it from
             // there while keeping location info from the ident span.
             let span = segment.ident.span.with_ctxt(path.span.ctxt());
-            if segment.ident.name == keywords::Crate.name() {
-                gate_feature_post!(&self, crate_in_paths, span,
-                                   "`crate` in paths is experimental");
-            } else if segment.ident.name == keywords::Extern.name() {
+            if segment.ident.name == keywords::Extern.name() {
                 gate_feature_post!(&self, extern_in_paths, span,
                                    "`extern` in paths is experimental");
             }
