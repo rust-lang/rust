@@ -102,7 +102,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
                                         "consider boxing the large fields to reduce the total size of the \
                                          enum",
                                         format!("Box<{}>", snip),
-                                        Applicability::Unspecified,
+                                        Applicability::MaybeIncorrect,
                                     );
                                     return;
                                 }
