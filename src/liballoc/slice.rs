@@ -392,6 +392,10 @@ impl<T> [T] {
 
     /// Creates a vector by repeating a slice `n` times.
     ///
+    /// # Panics
+    ///
+    /// This function will panic if the capacity would overflow.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -401,6 +405,16 @@ impl<T> [T] {
     ///
     /// fn main() {
     ///     assert_eq!([1, 2].repeat(3), vec![1, 2, 1, 2, 1, 2]);
+    /// }
+    /// ```
+    ///
+    /// A panic upon overflow:
+    ///
+    /// ```should_panic
+    /// #![feature(repeat_generic_slice)]
+    /// fn main() {
+    ///     // this will panic at runtime
+    ///     b"0123456789abcdef".repeat(usize::max_value());
     /// }
     /// ```
     #[unstable(feature = "repeat_generic_slice",
@@ -417,7 +431,7 @@ impl<T> [T] {
         // and `rem` is the remaining part of `n`.
 
         // Using `Vec` to access `set_len()`.
-        let mut buf = Vec::with_capacity(self.len() * n);
+        let mut buf = Vec::with_capacity(self.len().checked_mul(n).expect("capacity overflow"));
 
         // `2^expn` repetition is done by doubling `buf` `expn`-times.
         buf.extend(self);
