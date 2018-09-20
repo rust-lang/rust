@@ -86,6 +86,7 @@
 #![feature(box_syntax)]
 #![feature(cfg_target_has_atomic)]
 #![feature(coerce_unsized)]
+#![feature(coerce_sized)]
 #![feature(core_intrinsics)]
 #![feature(custom_attribute)]
 #![feature(dropck_eyepatch)]
