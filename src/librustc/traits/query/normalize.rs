@@ -48,6 +48,13 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
             value,
             self.param_env,
         );
+        if !value.has_projections() {
+            return Ok(Normalized {
+                value: value.clone(),
+                obligations: vec![],
+            });
+        }
+
         let mut normalizer = QueryNormalizer {
             infcx: self.infcx,
             cause: self.cause,
@@ -56,12 +63,6 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
             error: false,
             anon_depth: 0,
         };
-        if !value.has_projections() {
-            return Ok(Normalized {
-                value: value.clone(),
-                obligations: vec![],
-            });
-        }
 
         let value1 = value.fold_with(&mut normalizer);
         if normalizer.error {
@@ -154,8 +155,8 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                 let gcx = self.infcx.tcx.global_tcx();
 
                 let mut orig_values = SmallVec::new();
-                let c_data = self.infcx
-                    .canonicalize_query(&self.param_env.and(*data), &mut orig_values);
+                let c_data = self.infcx.canonicalize_query(
+                    &self.param_env.and(*data), &mut orig_values);
                 debug!("QueryNormalizer: c_data = {:#?}", c_data);
                 debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
                 match gcx.normalize_projection_ty(c_data) {
@@ -170,12 +171,9 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                             self.cause,
                             self.param_env,
                             &orig_values,
-                            &result,
-                        ) {
-                            Ok(InferOk {
-                                value: result,
-                                obligations,
-                            }) => {
+                            &result)
+                        {
+                            Ok(InferOk { value: result, obligations }) => {
                                 debug!("QueryNormalizer: result = {:#?}", result);
                                 debug!("QueryNormalizer: obligations = {:#?}", obligations);
                                 self.obligations.extend(obligations);
@@ -212,12 +210,9 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                             instance,
                             promoted: None,
                         };
-                        match tcx.const_eval(param_env.and(cid)) {
-                            Ok(evaluated) => {
-                                let evaluated = evaluated.subst(self.tcx(), substs);
-                                return self.fold_const(evaluated);
-                            }
-                            Err(_) => {}
+                        if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
+                            let evaluated = evaluated.subst(self.tcx(), substs);
+                            return self.fold_const(evaluated);
                         }
                     }
                 } else {
@@ -228,9 +223,8 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                                 instance,
                                 promoted: None,
                             };
-                            match tcx.const_eval(param_env.and(cid)) {
-                                Ok(evaluated) => return self.fold_const(evaluated),
-                                Err(_) => {}
+                            if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
+                                return self.fold_const(evaluated)
                             }
                         }
                     }

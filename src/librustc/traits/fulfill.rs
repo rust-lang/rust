@@ -526,7 +526,7 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
         if self.selcx.coinductive_match(cycle.clone().map(|s| s.obligation.predicate)) {
             debug!("process_child_obligations: coinductive match");
         } else {
-            let cycle : Vec<_> = cycle.map(|c| c.obligation.clone()).collect();
+            let cycle: Vec<_> = cycle.map(|c| c.obligation.clone()).collect();
             self.selcx.infcx().report_overflow_error_cycle(&cycle);
         }
     }

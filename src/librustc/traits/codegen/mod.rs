@@ -39,7 +39,7 @@ pub fn codegen_fulfill_obligation<'a, 'tcx>(ty: TyCtxt<'a, 'tcx, 'tcx>,
     let trait_ref = ty.erase_regions(&trait_ref);
 
     debug!("codegen_fulfill_obligation(trait_ref={:?}, def_id={:?})",
-            (param_env, trait_ref), trait_ref.def_id());
+        (param_env, trait_ref), trait_ref.def_id());
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
@@ -48,8 +48,8 @@ pub fn codegen_fulfill_obligation<'a, 'tcx>(ty: TyCtxt<'a, 'tcx, 'tcx>,
 
         let obligation_cause = ObligationCause::dummy();
         let obligation = Obligation::new(obligation_cause,
-                                            param_env,
-                                            trait_ref.to_poly_trait_predicate());
+                                         param_env,
+                                         trait_ref.to_poly_trait_predicate());
 
         let selection = match selcx.select(&obligation) {
             Ok(Some(selection)) => selection,
@@ -61,12 +61,11 @@ pub fn codegen_fulfill_obligation<'a, 'tcx>(ty: TyCtxt<'a, 'tcx, 'tcx>,
                 // overflow bug, since I believe this is the only case
                 // where ambiguity can result.
                 bug!("Encountered ambiguity selecting `{:?}` during codegen, \
-                        presuming due to overflow",
-                        trait_ref)
+                      presuming due to overflow",
+                      trait_ref)
             }
             Err(e) => {
-                bug!("Encountered error `{:?}` selecting `{:?}` during codegen",
-                            e, trait_ref)
+                bug!("Encountered error `{:?}` selecting `{:?}` during codegen", e, trait_ref)
             }
         };
 
@@ -163,22 +162,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // In principle, we only need to do this so long as `result`
         // contains unbound type parameters. It could be a slight
         // optimization to stop iterating early.
-        match fulfill_cx.select_all_or_error(self) {
-            Ok(()) => { }
-            Err(errors) => {
-                span_bug!(span, "Encountered errors `{:?}` resolving bounds after type-checking",
-                          errors);
-            }
+        if let Err(errors) = fulfill_cx.select_all_or_error(self) {
+            span_bug!(span, "Encountered errors `{:?}` resolving bounds after type-checking",
+                      errors);
         }
 
         let result = self.resolve_type_vars_if_possible(result);
         let result = self.tcx.erase_regions(&result);
 
-        match self.tcx.lift_to_global(&result) {
-            Some(result) => result,
-            None => {
-                span_bug!(span, "Uninferred types/regions in `{:?}`", result);
-            }
-        }
+        self.tcx.lift_to_global(&result).unwrap_or_else(||
+            span_bug!(span, "Uninferred types/regions in `{:?}`", result)
+        )
     }
 }

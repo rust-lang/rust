@@ -74,17 +74,17 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
         let condition = if is_root {
             None
         } else {
-            let cond = item_iter.next().ok_or_else(|| {
+            let cond = item_iter.next().ok_or_else(||
                 parse_error(tcx, span,
                             "empty `on`-clause in `#[rustc_on_unimplemented]`",
                             "empty on-clause here",
                             None)
-            })?.meta_item().ok_or_else(|| {
+            )?.meta_item().ok_or_else(||
                 parse_error(tcx, span,
                             "invalid `on`-clause in `#[rustc_on_unimplemented]`",
                             "invalid on-clause here",
                             None)
-            })?;
+            )?;
             attr::eval_condition(cond, &tcx.sess.parse_sess, &mut |_| true);
             Some(cond.clone())
         };
@@ -259,9 +259,9 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
                     // `{from_desugaring}` is allowed
                     Position::ArgumentNamed(s) if s == "from_desugaring" => (),
                     // So is `{A}` if A is a type parameter
-                    Position::ArgumentNamed(s) => match generics.params.iter().find(|param| {
+                    Position::ArgumentNamed(s) => match generics.params.iter().find(|param|
                         param.name == s
-                    }) {
+                    ) {
                         Some(_) => (),
                         None => {
                             span_err!(tcx.sess, span, E0230,
@@ -304,7 +304,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
         let empty_string = String::new();
 
         let parser = Parser::new(&self.0, None);
-        parser.map(|p| {
+        parser.map(|p|
             match p {
                 Piece::String(s) => s,
                 Piece::NextArgument(a) => match a.position {
@@ -326,11 +326,9 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
                             }
                         }
                     },
-                    _ => {
-                        bug!("broken on_unimplemented {:?} - bad format arg", self.0)
-                    }
+                    _ => bug!("broken on_unimplemented {:?} - bad format arg", self.0)
                 }
             }
-        }).collect()
+        ).collect()
     }
 }

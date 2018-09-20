@@ -8,16 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME: Rename 'DIGlobalVariable' to 'DIGlobalVariableExpression'
-// once support for LLVM 3.9 is dropped.
-//
-// This method was changed in this LLVM patch:
-// https://reviews.llvm.org/D26769
-
 use super::debuginfo::{
     DIBuilder, DIDescriptor, DIFile, DILexicalBlock, DISubprogram, DIType,
     DIBasicType, DIDerivedType, DICompositeType, DIScope, DIVariable,
-    DIGlobalVariable, DIArray, DISubrange, DITemplateTypeParameter, DIEnumerator,
+    DIGlobalVariableExpression, DIArray, DISubrange, DITemplateTypeParameter, DIEnumerator,
     DINameSpace, DIFlags,
 };
 
@@ -447,7 +441,7 @@ pub mod debuginfo {
     pub type DIDerivedType = DIType;
     pub type DICompositeType = DIDerivedType;
     pub type DIVariable = DIDescriptor;
-    pub type DIGlobalVariable = DIDescriptor;
+    pub type DIGlobalVariableExpression = DIDescriptor;
     pub type DIArray = DIDescriptor;
     pub type DISubrange = DIDescriptor;
     pub type DIEnumerator = DIDescriptor;
@@ -1330,7 +1324,7 @@ extern "C" {
                                                  Val: &'a Value,
                                                  Decl: Option<&'a DIDescriptor>,
                                                  AlignInBits: u32)
-                                                 -> &'a DIGlobalVariable;
+                                                 -> &'a DIGlobalVariableExpression;
 
     pub fn LLVMRustDIBuilderCreateVariable(Builder: &DIBuilder<'a>,
                                            Tag: c_uint,

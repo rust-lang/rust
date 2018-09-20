@@ -301,7 +301,7 @@ after_failure:
       EXE=$(echo $CORE | sed 's|obj/cores/core\.[0-9]*\.!checkout!\(.*\)|\1|;y|!|/|');
       if [ -f "$EXE" ]; then
         printf travis_fold":start:crashlog\n\033[31;1m%s\033[0m\n" "$CORE";
-        gdb -q -c "$CORE" "$EXE"
+        gdb --batch -q -c "$CORE" "$EXE"
           -iex 'set auto-load off'
           -iex 'dir src/'
           -iex 'set sysroot .'

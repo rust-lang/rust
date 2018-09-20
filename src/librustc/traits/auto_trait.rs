@@ -112,6 +112,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 orig_params,
                 trait_pred.to_poly_trait_predicate(),
             ));
+
             match result {
                 Ok(Some(Vtable::VtableImpl(_))) => {
                     debug!(
@@ -119,10 +120,10 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                          manual impl found, bailing out",
                         did, trait_did, generics
                     );
-                    return true;
+                    true
                 }
-                _ => return false,
-            };
+                _ => false
+            }
         });
 
         // If an explicit impl exists, it always takes priority over an auto impl
@@ -426,6 +427,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     if new_trait.def_id() == old_trait.def_id() {
                         let new_substs = new_trait.skip_binder().trait_ref.substs;
                         let old_substs = old_trait.skip_binder().trait_ref.substs;
+
                         if !new_substs.types().eq(old_substs.types()) {
                             // We can't compare lifetimes if the types are different,
                             // so skip checking old_pred
@@ -489,12 +491,12 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
     pub fn get_lifetime(&self, region: Region, names_map: &FxHashMap<String, String>) -> String {
         self.region_name(region)
-            .map(|name| {
-                names_map.get(&name).unwrap_or_else(|| {
+            .map(|name|
+                names_map.get(&name).unwrap_or_else(||
                     panic!("Missing lifetime with name {:?} for {:?}", name, region)
-                })
-            })
-            .unwrap_or(&"'static".to_string())
+                )
+            )
+            .unwrap_or(&"'static".to_owned())
             .clone()
     }
 
