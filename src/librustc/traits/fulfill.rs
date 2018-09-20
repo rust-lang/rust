@@ -293,10 +293,10 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
             ty::Predicate::Trait(ref data) => {
                 let trait_obligation = obligation.with(data.clone());
 
-                if data.is_global() && !data.has_late_bound_regions() {
+                if data.is_global() {
                     // no type variables present, can use evaluation for better caching.
                     // FIXME: consider caching errors too.
-                    if self.selcx.infcx().predicate_must_hold(&obligation) {
+                    if self.selcx.infcx().predicate_must_hold_considering_regions(&obligation) {
                         debug!("selecting trait `{:?}` at depth {} evaluated to holds",
                                data, obligation.recursion_depth);
                         return ProcessResult::Changed(vec![])

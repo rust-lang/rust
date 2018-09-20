@@ -315,7 +315,7 @@ enum BuiltinImplConditions<'tcx> {
 /// evaluations.
 ///
 /// The evaluation results are ordered:
-///     - `EvaluatedToOk` implies `EvaluatedToAmbig` implies `EvaluatedToUnknown`
+///     - `EvaluatedToOk` implies `EvaluatedToOkModuloRegions` implies `EvaluatedToAmbig` implies `EvaluatedToUnknown`
 ///     - `EvaluatedToErr` implies `EvaluatedToRecur`
 ///     - the "union" of evaluation results is equal to their maximum -
 ///     all the "potential success" candidates can potentially succeed,
@@ -324,6 +324,8 @@ enum BuiltinImplConditions<'tcx> {
 pub enum EvaluationResult {
     /// Evaluation successful
     EvaluatedToOk,
+    /// Evaluation successful, but there were unevaluated region obligations
+    EvaluatedToOkModuloRegions,
     /// Evaluation is known to be ambiguous - it *might* hold for some
     /// assignment of inference variables, but it might not.
     ///
@@ -387,9 +389,22 @@ pub enum EvaluationResult {
 }
 
 impl EvaluationResult {
+    /// True if this evaluation result is known to apply, even
+    /// considering outlives constraints.
+    pub fn must_apply_considering_regions(self) -> bool {
+        self == EvaluatedToOk
+    }
+
+    /// True if this evaluation result is known to apply, ignoring
+    /// outlives constraints.
+    pub fn must_apply_modulo_regions(self) -> bool {
+        self <= EvaluatedToOkModuloRegions
+    }
+
     pub fn may_apply(self) -> bool {
         match self {
             EvaluatedToOk |
+            EvaluatedToOkModuloRegions |
             EvaluatedToAmbig |
             EvaluatedToUnknown => true,
 
@@ -404,6 +419,7 @@ impl EvaluationResult {
             EvaluatedToRecur => true,
 
             EvaluatedToOk |
+            EvaluatedToOkModuloRegions |
             EvaluatedToAmbig |
             EvaluatedToErr => false,
         }
@@ -412,6 +428,7 @@ impl EvaluationResult {
 
 impl_stable_hash_for!(enum self::EvaluationResult {
     EvaluatedToOk,
+    EvaluatedToOkModuloRegions,
     EvaluatedToAmbig,
     EvaluatedToUnknown,
     EvaluatedToRecur,
@@ -693,7 +710,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::Predicate::TypeOutlives(..) | ty::Predicate::RegionOutlives(..) => {
                 // we do not consider region relationships when
                 // evaluating trait matches
-                Ok(EvaluatedToOk)
+                Ok(EvaluatedToOkModuloRegions)
             }
 
             ty::Predicate::ObjectSafe(trait_def_id) => {
@@ -900,7 +917,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         {
             debug!("evaluate_stack({:?}) --> recursive",
                    stack.fresh_trait_ref);
-            let cycle = stack.iter().skip(1).take(rec_index + 1);
+
+            // Subtle: when checking for a coinductive cycle, we do
+            // not compare using the "freshened trait refs" (which
+            // have erased regions) but rather the fully explicit
+            // trait refs. This is important because it's only a cycle
+            // if the regions match exactly.
+            let cycle = stack.iter().skip(1).take(rec_index+1);
             let cycle = cycle.map(|stack| ty::Predicate::Trait(stack.obligation.predicate));
             if self.coinductive_match(cycle) {
                 debug!("evaluate_stack({:?}) --> recursive, coinductive",
@@ -2095,7 +2118,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 // See if we can toss out `victim` based on specialization.
                 // This requires us to know *for sure* that the `other` impl applies
                 // i.e. EvaluatedToOk:
-                if other.evaluation == EvaluatedToOk {
+                if other.evaluation.must_apply_modulo_regions() {
                     match victim.candidate {
                         ImplCandidate(victim_def) => {
                             let tcx = self.tcx().global_tcx();
@@ -2122,7 +2145,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     ParamCandidate(ref cand) => {
                         // Prefer these to a global where-clause bound
                         // (see issue #50825)
-                        is_global(cand) && other.evaluation == EvaluatedToOk
+                        is_global(cand) && other.evaluation.must_apply_modulo_regions()
                     }
                     _ => false,
                 }
