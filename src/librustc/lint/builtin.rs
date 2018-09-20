@@ -340,7 +340,7 @@ declare_lint! {
 
 declare_lint! {
     pub TYPE_ALIAS_MISSING_BOUNDS,
-    Deny,
+    Warn,
     "type aliases missing bounds required by the type being aliased, are now deprecated"
 }
 

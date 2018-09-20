@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![allow(dead_code)]
+#![deny(type_alias_missing_bounds)]
 
 // This test contains examples originally in `type-alias-bounds.rs`,
 // that now produce errors instead of being silently accepted.

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deny(type_alias_missing_bounds)]
+
 pub trait Trait {}
 
 pub struct Foo<T: Trait>(T);
