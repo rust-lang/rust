@@ -1,0 +1,17 @@
+error[E0279]: the requirement `for<'de> 'de : ` is not satisfied (`expected bound lifetime parameter 'de, found concrete lifetime`)
+  --> $DIR/hrtb-cache-issue-54302.rs:19:5
+   |
+LL |     assert_deserialize_owned::<&'static str>(); //~ ERROR
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: required because of the requirements on the impl of `for<'de> Deserialize<'de>` for `&'static str`
+   = note: required because of the requirements on the impl of `DeserializeOwned` for `&'static str`
+note: required by `main::assert_deserialize_owned`
+  --> $DIR/hrtb-cache-issue-54302.rs:18:5
+   |
+LL |     fn assert_deserialize_owned<T: DeserializeOwned>() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0279`.

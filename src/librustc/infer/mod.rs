@@ -1455,7 +1455,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // rightly refuses to work with inference variables, but
         // moves_by_default has a cache, which we want to use in other
         // cases.
-        !traits::type_known_to_meet_bound(self, param_env, ty, copy_def_id, span)
+        !traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, copy_def_id, span)
     }
 
     /// Obtains the latest type of the given closure; this may be a
