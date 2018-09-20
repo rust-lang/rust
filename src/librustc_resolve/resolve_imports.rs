@@ -957,17 +957,13 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 return None;
             }
             PathResult::Failed(span, msg, true) => {
-                let (mut self_path, mut self_result) = (module_path.clone(), None);
-                let is_special = |ident: Ident| ident.is_path_segment_keyword() &&
-                                                ident.name != keywords::CrateRoot.name();
-                if !self_path.is_empty() && !is_special(self_path[0]) &&
-                   !(self_path.len() > 1 && is_special(self_path[1])) {
-                    self_path[0].name = keywords::SelfValue.name();
-                    self_result = Some(self.resolve_path(None, &self_path, None, false,
-                                                         span, CrateLint::No));
-                }
-                return if let Some(PathResult::Module(..)) = self_result {
-                    Some((span, format!("Did you mean `{}`?", names_to_string(&self_path[..]))))
+                return if let Some(suggested_path) = self.make_path_suggestion(
+                    span, module_path.clone()
+                ) {
+                    Some((
+                        span,
+                        format!("Did you mean `{}`?", names_to_string(&suggested_path[..]))
+                    ))
                 } else {
                     Some((span, msg))
                 };
