@@ -20,7 +20,7 @@ name = "alloc_jemalloc"
 version = "0.0.0"
 dependencies = [
  "build_helper 0.1.0",
- "cc 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cc 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "compiler_builtins 0.0.0",
  "core 0.0.0",
  "libc 0.0.0",
@@ -112,7 +112,7 @@ name = "backtrace-sys"
 version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "cc 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cc 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.43 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -131,7 +131,7 @@ name = "bootstrap"
 version = "0.0.0"
 dependencies = [
  "build_helper 0.1.0",
- "cc 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cc 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "cmake 0.1.33 (registry+https://github.com/rust-lang/crates.io-index)",
  "filetime 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "getopts 0.2.17 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -240,7 +240,7 @@ version = "0.1.0"
 
 [[package]]
 name = "cc"
-version = "1.0.22"
+version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -356,7 +356,7 @@ name = "cmake"
 version = "0.1.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "cc 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cc 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -387,7 +387,7 @@ dependencies = [
 name = "compiler_builtins"
 version = "0.0.0"
 dependencies = [
- "cc 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cc 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
 ]
 
@@ -564,7 +564,7 @@ name = "curl-sys"
 version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "cc 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cc 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.43 (registry+https://github.com/rust-lang/crates.io-index)",
  "libz-sys 1.0.20 (registry+https://github.com/rust-lang/crates.io-index)",
  "openssl-sys 0.9.35 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1076,7 +1076,7 @@ name = "libgit2-sys"
 version = "0.7.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "cc 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cc 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "cmake 0.1.33 (registry+https://github.com/rust-lang/crates.io-index)",
  "curl-sys 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.43 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1104,7 +1104,7 @@ name = "libz-sys"
 version = "1.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "cc 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cc 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.43 (registry+https://github.com/rust-lang/crates.io-index)",
  "pkg-config 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "vcpkg 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1152,7 +1152,7 @@ name = "lzma-sys"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "cc 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cc 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "filetime 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.43 (registry+https://github.com/rust-lang/crates.io-index)",
  "pkg-config 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1256,7 +1256,7 @@ name = "miniz-sys"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "cc 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cc 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.43 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1365,7 +1365,7 @@ name = "openssl-src"
 version = "110.0.7+1.1.0i"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "cc 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cc 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1373,7 +1373,7 @@ name = "openssl-sys"
 version = "0.9.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "cc 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cc 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.43 (registry+https://github.com/rust-lang/crates.io-index)",
  "openssl-src 110.0.7+1.1.0i (registry+https://github.com/rust-lang/crates.io-index)",
  "pkg-config 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1580,7 +1580,7 @@ dependencies = [
 name = "profiler_builtins"
 version = "0.0.0"
 dependencies = [
- "cc 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cc 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "compiler_builtins 0.0.0",
  "core 0.0.0",
 ]
@@ -2094,7 +2094,7 @@ dependencies = [
 name = "rustc_codegen_llvm"
 version = "0.0.0"
 dependencies = [
- "cc 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cc 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "memmap 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-demangle 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2228,7 +2228,7 @@ name = "rustc_llvm"
 version = "0.0.0"
 dependencies = [
  "build_helper 0.1.0",
- "cc 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cc 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2631,7 +2631,7 @@ dependencies = [
  "alloc_jemalloc 0.0.0",
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
- "cc 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cc 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "compiler_builtins 0.0.0",
  "core 0.0.0",
  "libc 0.0.0",
@@ -3145,7 +3145,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum bufstream 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "f2f382711e76b9de6c744cc00d0497baba02fb00a787f088c879f01d09468e32"
 "checksum byteorder 1.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "74c0b906e9446b0a2e4f760cdb3fa4b2c48cdc6db8766a845c54b6ff063fd2e9"
 "checksum cargo_metadata 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2d6809b327f87369e6f3651efd2c5a96c49847a3ed2559477ecba79014751ee1"
-"checksum cc 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)" = "4a6007c146fdd28d4512a794b07ffe9d8e89e6bf86e2e0c4ddff2e1fb54a0007"
+"checksum cc 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)" = "70f2a88c2e69ceee91c209d8ef25b81fc1a65f42c7f14dfd59d1fed189e514d1"
 "checksum cfg-if 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "0c4e7bb64a8ebb0d856483e1e682ea3422f883c5f5615a90d51a2c82fe87fdd3"
 "checksum chalk-engine 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "25ce2f28f55ed544a2a3756b7acf41dd7d6f27acffb2086439950925506af7d0"
 "checksum chalk-macros 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "295635afd6853aa9f20baeb7f0204862440c0fe994c5a253d5f479dac41d047e"

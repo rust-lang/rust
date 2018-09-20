@@ -10,6 +10,8 @@
 
 use spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 
+// This target is for musl Linux on ARMv7 without thumb-mode or NEON.
+
 pub fn target() -> TargetResult {
     let base = super::linux_musl_base::opts();
     Ok(Target {
