@@ -3084,6 +3084,80 @@ containing the unsized type is the last and only unsized type field in the
 struct.
 "##,
 
+E0378: r##"
+The `CoerceSized` trait currently can only be implemented for builtin pointer
+types and structs that are newtype wrappers around them — that is, the struct
+must have only one field (except for`PhantomData`), and that field must itself
+implement `CoerceSized`.
+
+Examples:
+
+```
+#![feature(coerce_sized, unsize)]
+use std::{
+    marker::Unsize,
+    ops::CoerceSized,
+};
+
+struct Ptr<T: ?Sized>(*const T);
+
+impl<T: ?Sized, U: ?Sized> CoerceUnsized<Ptr<U>> for Ptr<T>
+where
+    T: Unsize<U>,
+{}
+
+impl<T: ?Sized, U: ?Sized> CoerceSized<Ptr<T>> for Ptr<U>
+where
+    T: Unsize<U>,
+{}
+```
+
+```
+#![feature(coerce_unsized, coerce_sized)]
+use std::ops::{CoerceUnsized, CoerceSized};
+
+struct Wrapper<T> {
+    ptr: T,
+    _phantom: PhantomData<()>,
+}
+
+impl<T, U> CoerceUnsized<Wrapper<U>> for Wrapper<T>
+where
+    T: CoerceUnsized<U>,
+{}
+
+impl<T, U> CoerceSized<Wrapper<T>> for Wrapper<U>
+where
+    T: CoerceUnsized<U>,
+    U: CoerceSized<T>,
+{}
+```
+
+Example of illegal CoerceSized implementation
+(illegal because of extra field)
+
+```compile-fail,E0378
+#![feature(coerce_unsized, coerce_sized)]
+use std::ops::{CoerceUnsized, CoerceSized};
+
+struct WrapperWithExtraField<T> {
+    ptr: T,
+    extra_stuff: i32,
+}
+
+impl<T, U> CoerceUnsized<WrapperWithExtraField<U>> for WrapperWithExtraField<T>
+where
+    T: CoerceUnsized<U>,
+{}
+
+impl<T, U> CoerceSized<WrapperWithExtraField<T>> for WrapperWithExtraField<U>
+where
+    T: CoerceUnsized<U>,
+    U: CoerceSized<T>,
+{}
+```
+"##,
+
 E0390: r##"
 You tried to implement methods for a primitive type. Erroneous code example:
 

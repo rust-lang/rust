@@ -642,14 +642,42 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     (&args[..], None)
                 };
 
-                for (i, arg) in first_args.iter().enumerate() {
+                'make_args: for (i, arg) in first_args.iter().enumerate() {
                     let mut op = self.codegen_operand(&bx, arg);
+
                     if let (0, Some(ty::InstanceDef::Virtual(_, idx))) = (i, def) {
-                        if let Pair(data_ptr, meta) = op.val {
-                            llfn = Some(meth::VirtualIndex::from_index(idx)
-                                .get_fn(&bx, meta, &fn_ty));
-                            llargs.push(data_ptr);
-                            continue;
+                        if let Pair(..) = op.val {
+                            // descend through newtype wrappers until `op` is a builtin pointer to
+                            // `dyn Trait`, e.g. `*const dyn Trait`, `&mut dyn Trait`
+                            'descend_newtypes: while !op.layout.ty.is_unsafe_ptr()
+                                            && !op.layout.ty.is_region_ptr()
+                            {
+                                'iter_fields: for i in 0..op.layout.fields.count() {
+                                    let field = op.extract_field(&bx, i);
+                                    if !field.layout.is_zst() {
+                                        // we found the one non-zero-sized field that is allowed
+                                        // now find *its* non-zero-sized field, or stop if it's a
+                                        // pointer
+                                        op = field;
+                                        continue 'descend_newtypes
+                                    }
+                                }
+
+                                span_bug!(span, "receiver has no non-zero-sized fields {:?}", op);
+                            }
+
+                            // now that we have `*dyn Trait` or `&dyn Trait`, split it up into its
+                            // data pointer and vtable. Look up the method in the vtable, and pass
+                            // the data pointer as the first argument
+                            match op.val {
+                                Pair(data_ptr, meta) => {
+                                    llfn = Some(meth::VirtualIndex::from_index(idx)
+                                        .get_fn(&bx, meta, &fn_ty));
+                                    llargs.push(data_ptr);
+                                    continue 'make_args
+                                }
+                                other => bug!("expected a Pair, got {:?}", other)
+                            }
                         } else if let Ref(data_ptr, Some(meta), _) = op.val {
                             // by-value dynamic dispatch
                             llfn = Some(meth::VirtualIndex::from_index(idx)
