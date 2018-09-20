@@ -1574,10 +1574,9 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
                 }
             }
             ty::Ref(..) => {
-                // Though references to uninhabited types are trivially uninhabited
-                // theoretically, null references are permitted in unsafe code (as
-                // long as the value is not dereferenced), so we treat all references
-                // as inhabited.
+                // References to uninitialised memory is valid for any type, including
+                // uninhabited types, in unsafe code, so we treat all references as
+                // inhabited.
                 false
             }
             _ => false,
