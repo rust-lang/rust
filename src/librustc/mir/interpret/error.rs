@@ -15,9 +15,7 @@ use ty::{Ty, layout};
 use ty::layout::{Size, Align, LayoutError};
 use rustc_target::spec::abi::Abi;
 
-use super::{
-    Pointer, Lock, AccessKind
-};
+use super::Pointer;
 
 use backtrace::Backtrace;
 
@@ -274,29 +272,6 @@ pub enum EvalErrorKind<'tcx, O> {
         required: Align,
         has: Align,
     },
-    MemoryLockViolation {
-        ptr: Pointer,
-        len: u64,
-        frame: usize,
-        access: AccessKind,
-        lock: Lock,
-    },
-    MemoryAcquireConflict {
-        ptr: Pointer,
-        len: u64,
-        kind: AccessKind,
-        lock: Lock,
-    },
-    InvalidMemoryLockRelease {
-        ptr: Pointer,
-        len: u64,
-        frame: usize,
-        lock: Lock,
-    },
-    DeallocatedLockedMemory {
-        ptr: Pointer,
-        lock: Lock,
-    },
     ValidationFailure(String),
     CalledClosureAsFunction,
     VtableForArgumentlessMethod,
@@ -360,16 +335,8 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
                 "pointer offset outside bounds of allocation",
             InvalidNullPointerUsage =>
                 "invalid use of NULL pointer",
-            MemoryLockViolation { .. } =>
-                "memory access conflicts with lock",
-            MemoryAcquireConflict { .. } =>
-                "new memory lock conflicts with existing lock",
             ValidationFailure(..) =>
                 "type validation failed",
-            InvalidMemoryLockRelease { .. } =>
-                "invalid attempt to release write lock",
-            DeallocatedLockedMemory { .. } =>
-                "tried to deallocate memory in conflict with a lock",
             ReadPointerAsBytes =>
                 "a raw memory access tried to access part of a pointer value as raw bytes",
             ReadBytesAsPointer =>
@@ -495,22 +462,6 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for EvalErrorKind<'tcx, O> {
                        if access { "memory access" } else { "pointer computed" },
                        ptr.offset.bytes(), ptr.alloc_id, allocation_size.bytes())
             },
-            MemoryLockViolation { ptr, len, frame, access, ref lock } => {
-                write!(f, "{:?} access by frame {} at {:?}, size {}, is in conflict with lock {:?}",
-                       access, frame, ptr, len, lock)
-            }
-            MemoryAcquireConflict { ptr, len, kind, ref lock } => {
-                write!(f, "new {:?} lock at {:?}, size {}, is in conflict with lock {:?}",
-                       kind, ptr, len, lock)
-            }
-            InvalidMemoryLockRelease { ptr, len, frame, ref lock } => {
-                write!(f, "frame {} tried to release memory write lock at {:?}, size {}, but \
-                       cannot release lock {:?}", frame, ptr, len, lock)
-            }
-            DeallocatedLockedMemory { ptr, ref lock } => {
-                write!(f, "tried to deallocate memory at {:?} in conflict with lock {:?}",
-                       ptr, lock)
-            }
             ValidationFailure(ref err) => {
                 write!(f, "type validation failed: {}", err)
             }

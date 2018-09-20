@@ -183,11 +183,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                     | InvalidDiscriminant(..)
                     | PointerOutOfBounds { .. }
                     | InvalidNullPointerUsage
-                    | MemoryLockViolation { .. }
-                    | MemoryAcquireConflict { .. }
                     | ValidationFailure(..)
-                    | InvalidMemoryLockRelease { .. }
-                    | DeallocatedLockedMemory { .. }
                     | InvalidPointerMath
                     | ReadUndefBytes(_)
                     | DeadLocal
