@@ -14,7 +14,6 @@ use std::mem;
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
 use rustc::hir::map::definitions::DefPathData;
-use rustc::ich::StableHashingContext;
 use rustc::mir;
 use rustc::ty::layout::{
     self, Size, Align, HasDataLayout, LayoutOf, TyLayout
@@ -23,7 +22,6 @@ use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::query::TyCtxtAt;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 use rustc::mir::interpret::{
     GlobalId, Scalar, FrameInfo, AllocId,
     EvalResult, EvalErrorKind,
@@ -38,9 +36,7 @@ use super::{
     Memory, Machine
 };
 
-use super::snapshot::InfiniteLoopDetector;
-
-pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
+pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
     /// Stores the `Machine` instance.
     pub machine: M,
 
@@ -55,19 +51,6 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
 
     /// The virtual call stack.
     pub(crate) stack: Vec<Frame<'mir, 'tcx>>,
-
-    /// The maximum number of stack frames allowed
-    pub(super) stack_limit: usize,
-
-    /// When this value is negative, it indicates the number of interpreter
-    /// steps *until* the loop detector is enabled. When it is positive, it is
-    /// the number of steps after the detector has been enabled modulo the loop
-    /// detector period.
-    pub(super) steps_since_detector_enabled: isize,
-
-    /// Extra state to detect loops.
-    /// FIXME: Move this to the CTFE machine's state, out of the general miri engine.
-    pub(super) loop_detector: InfiniteLoopDetector<'a, 'mir, 'tcx, M>,
 }
 
 /// A stack frame.
@@ -112,29 +95,6 @@ pub struct Frame<'mir, 'tcx: 'mir> {
     pub stmt: usize,
 }
 
-// Not using the macro because that does not support types depending on 'tcx
-impl<'a, 'mir, 'tcx: 'mir> HashStable<StableHashingContext<'a>> for Frame<'mir, 'tcx> {
-    fn hash_stable<W: StableHasherResult>(
-        &self,
-        hcx: &mut StableHashingContext<'a>,
-        hasher: &mut StableHasher<W>) {
-
-        let Frame {
-            mir,
-            instance,
-            span,
-            return_to_block,
-            return_place,
-            locals,
-            block,
-            stmt,
-        } = self;
-
-        (mir, instance, span, return_to_block).hash_stable(hcx, hasher);
-        (return_place, locals, block, stmt).hash_stable(hcx, hasher);
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum StackPopCleanup {
     /// Jump to the next block in the caller, or cause UB if None (that's a function
@@ -145,21 +105,6 @@ pub enum StackPopCleanup {
     /// wants them leaked to intern what they need (and just throw away
     /// the entire `ecx` when it is done).
     None { cleanup: bool },
-}
-
-// Can't use the macro here because that does not support named enum fields.
-impl<'a> HashStable<StableHashingContext<'a>> for StackPopCleanup {
-    fn hash_stable<W: StableHasherResult>(
-        &self,
-        hcx: &mut StableHashingContext<'a>,
-        hasher: &mut StableHasher<W>)
-    {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-        match self {
-            StackPopCleanup::Goto(ref block) => block.hash_stable(hcx, hasher),
-            StackPopCleanup::None { cleanup } => cleanup.hash_stable(hcx, hasher),
-        }
-    }
 }
 
 // State of a local variable
@@ -189,19 +134,16 @@ impl<'tcx> LocalValue {
     }
 }
 
-impl_stable_hash_for!(enum self::LocalValue {
-    Dead,
-    Live(x),
-});
-
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for &'a EvalContext<'a, 'mir, 'tcx, M> {
+impl<'b, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
+    for &'b EvalContext<'a, 'mir, 'tcx, M>
+{
     #[inline]
     fn data_layout(&self) -> &layout::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout
+impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
     for &'c &'b mut EvalContext<'a, 'mir, 'tcx, M>
 {
     #[inline]
@@ -210,24 +152,27 @@ impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout
     }
 }
 
-impl<'a, 'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for &'a EvalContext<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>
+impl<'b, 'a, 'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for &'b EvalContext<'a, 'mir, 'tcx, M>
+    where M: Machine<'a, 'mir, 'tcx>
 {
-    #[inline]
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
-        *self.tcx
-    }
-}
-
-impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> layout::HasTyCtxt<'tcx>
-    for &'c &'b mut EvalContext<'a, 'mir, 'tcx, M> {
     #[inline]
     fn tcx<'d>(&'d self) -> TyCtxt<'d, 'tcx, 'tcx> {
         *self.tcx
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for &'a EvalContext<'a, 'mir, 'tcx, M> {
+impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> layout::HasTyCtxt<'tcx>
+    for &'c &'b mut EvalContext<'a, 'mir, 'tcx, M>
+{
+    #[inline]
+    fn tcx<'d>(&'d self) -> TyCtxt<'d, 'tcx, 'tcx> {
+        *self.tcx
+    }
+}
+
+impl<'b, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> LayoutOf
+    for &'b EvalContext<'a, 'mir, 'tcx, M>
+{
     type Ty = Ty<'tcx>;
     type TyLayout = EvalResult<'tcx, TyLayout<'tcx>>;
 
@@ -238,8 +183,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for &'a EvalContext<'a, 'm
     }
 }
 
-impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf
-    for &'c &'b mut EvalContext<'a, 'mir, 'tcx, M> {
+impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> LayoutOf
+    for &'c &'b mut EvalContext<'a, 'mir, 'tcx, M>
+{
     type Ty = Ty<'tcx>;
     type TyLayout = EvalResult<'tcx, TyLayout<'tcx>>;
 
@@ -249,9 +195,7 @@ impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf
     }
 }
 
-const STEPS_UNTIL_DETECTOR_ENABLED: isize = 1_000_000;
-
-impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub fn new(
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -264,20 +208,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             param_env,
             memory: Memory::new(tcx, memory_data),
             stack: Vec::new(),
-            stack_limit: tcx.sess.const_eval_stack_frame_limit,
-            loop_detector: Default::default(),
-            steps_since_detector_enabled: -STEPS_UNTIL_DETECTOR_ENABLED,
         }
-    }
-
-    pub(crate) fn with_fresh_body<F: FnOnce(&mut Self) -> R, R>(&mut self, f: F) -> R {
-        let stack = mem::replace(&mut self.stack, Vec::new());
-        let steps = mem::replace(&mut self.steps_since_detector_enabled,
-                                 -STEPS_UNTIL_DETECTOR_ENABLED);
-        let r = f(self);
-        self.stack = stack;
-        self.steps_since_detector_enabled = steps;
-        r
     }
 
     pub fn memory(&self) -> &Memory<'a, 'mir, 'tcx, M> {
@@ -553,7 +484,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             self.frame_mut().locals = locals;
         }
 
-        if self.stack.len() > self.stack_limit {
+        if self.stack.len() > self.tcx.sess.const_eval_stack_frame_limit {
             err!(StackFrameLimitReached)
         } else {
             Ok(())

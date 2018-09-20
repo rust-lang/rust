@@ -2,7 +2,11 @@
 //! during const-evaluation by taking snapshots of the state of the interpreter
 //! at regular intervals.
 
+// This lives in `interpret` because it needs access to all sots of private state.  However,
+// it is not used by the general miri engine, just by CTFE.
+
 use std::hash::{Hash, Hasher};
+use std::mem;
 
 use rustc::ich::{StableHashingContext, StableHashingContextProvider};
 use rustc::mir;
@@ -21,9 +25,18 @@ use syntax::ast::Mutability;
 use syntax::source_map::Span;
 
 use super::eval_context::{LocalValue, StackPopCleanup};
-use super::{Frame, Memory, Machine, Operand, MemPlace, Place, Value};
+use super::{Frame, Memory, Operand, MemPlace, Place, Value};
+use const_eval::CompileTimeEvaluator;
 
-pub(super) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
+/// Number of steps until the detector even starts doing anything.
+/// Also, a warning is shown to the user when this number is reached.
+pub(crate) const STEPS_UNTIL_DETECTOR_ENABLED: isize = 1_000_000;
+/// The number of steps between loop detector snapshots.
+/// Should be a power of two for performance reasons.
+pub(crate) const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
+
+#[derive(Default)]
+pub(crate) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir> {
     /// The set of all `EvalSnapshot` *hashes* observed by this detector.
     ///
     /// When a collision occurs in this table, we store the full snapshot in
@@ -35,34 +48,20 @@ pub(super) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mi
     /// An `EvalSnapshot` will only be fully cloned once it has caused a
     /// collision in `hashes`. As a result, the detector must observe at least
     /// *two* full cycles of an infinite loop before it triggers.
-    snapshots: FxHashSet<EvalSnapshot<'a, 'mir, 'tcx, M>>,
+    snapshots: FxHashSet<EvalSnapshot<'a, 'mir, 'tcx>>,
 }
 
-impl<'a, 'mir, 'tcx, M> Default for InfiniteLoopDetector<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>,
-          'tcx: 'a + 'mir,
-{
-    fn default() -> Self {
-        InfiniteLoopDetector {
-            hashes: FxHashSet::default(),
-            snapshots: FxHashSet::default(),
-        }
-    }
-}
-
-impl<'a, 'mir, 'tcx, M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>,
-          'tcx: 'a + 'mir,
+impl<'a, 'mir, 'tcx> InfiniteLoopDetector<'a, 'mir, 'tcx>
 {
     /// Returns `true` if the loop detector has not yet observed a snapshot.
     pub fn is_empty(&self) -> bool {
         self.hashes.is_empty()
     }
 
-    pub fn observe_and_analyze(
+    pub fn observe_and_analyze<'b>(
         &mut self,
         tcx: &TyCtxt<'b, 'tcx, 'tcx>,
-        memory: &Memory<'a, 'mir, 'tcx, M>,
+        memory: &Memory<'a, 'mir, 'tcx, CompileTimeEvaluator<'a, 'mir, 'tcx>>,
         stack: &[Frame<'mir, 'tcx>],
     ) -> EvalResult<'tcx, ()> {
 
@@ -179,7 +178,7 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for AllocId
 
 impl_snapshot_for!(struct Pointer {
     alloc_id,
-    offset -> *offset,
+    offset -> *offset, // just copy offset verbatim
 });
 
 impl<'a, Ctx> Snapshot<'a, Ctx> for Scalar
@@ -203,12 +202,34 @@ impl_snapshot_for!(enum ScalarMaybeUndef {
     Undef,
 });
 
+impl_stable_hash_for!(struct ::interpret::MemPlace {
+    ptr,
+    align,
+    extra,
+});
 impl_snapshot_for!(struct MemPlace {
     ptr,
     extra,
-    align -> *align,
+    align -> *align, // just copy alignment verbatim
 });
 
+// Can't use the macro here because that does not support named enum fields.
+impl<'a> HashStable<StableHashingContext<'a>> for Place {
+    fn hash_stable<W: StableHasherResult>(
+        &self, hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>)
+    {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match self {
+            Place::Ptr(mem_place) => mem_place.hash_stable(hcx, hasher),
+
+            Place::Local { frame, local } => {
+                frame.hash_stable(hcx, hasher);
+                local.hash_stable(hcx, hasher);
+            },
+        }
+    }
+}
 impl<'a, Ctx> Snapshot<'a, Ctx> for Place
     where Ctx: SnapshotContext<'a>,
 {
@@ -226,16 +247,28 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for Place
     }
 }
 
+impl_stable_hash_for!(enum ::interpret::Value {
+    Scalar(x),
+    ScalarPair(x, y),
+});
 impl_snapshot_for!(enum Value {
     Scalar(s),
     ScalarPair(s, t),
 });
 
+impl_stable_hash_for!(enum ::interpret::Operand {
+    Immediate(x),
+    Indirect(x),
+});
 impl_snapshot_for!(enum Operand {
     Immediate(v),
     Indirect(m),
 });
 
+impl_stable_hash_for!(enum ::interpret::LocalValue {
+    Dead,
+    Live(x),
+});
 impl_snapshot_for!(enum LocalValue {
     Live(v),
     Dead,
@@ -280,6 +313,21 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for &'a Allocation
     }
 }
 
+// Can't use the macro here because that does not support named enum fields.
+impl<'a> HashStable<StableHashingContext<'a>> for StackPopCleanup {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>)
+    {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match self {
+            StackPopCleanup::Goto(ref block) => block.hash_stable(hcx, hasher),
+            StackPopCleanup::None { cleanup } => cleanup.hash_stable(hcx, hasher),
+        }
+    }
+}
+
 #[derive(Eq, PartialEq)]
 struct FrameSnapshot<'a, 'tcx: 'a> {
     instance: &'a ty::Instance<'tcx>,
@@ -291,6 +339,28 @@ struct FrameSnapshot<'a, 'tcx: 'a> {
     stmt: usize,
 }
 
+// Not using the macro because that does not support types depending on 'tcx
+impl<'a, 'mir, 'tcx: 'mir> HashStable<StableHashingContext<'a>> for Frame<'mir, 'tcx> {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>) {
+
+        let Frame {
+            mir,
+            instance,
+            span,
+            return_to_block,
+            return_place,
+            locals,
+            block,
+            stmt,
+        } = self;
+
+        (mir, instance, span, return_to_block).hash_stable(hcx, hasher);
+        (return_place, locals, block, stmt).hash_stable(hcx, hasher);
+    }
+}
 impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
     where Ctx: SnapshotContext<'a>,
 {
@@ -320,22 +390,8 @@ impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
     }
 }
 
-#[derive(Eq, PartialEq)]
-struct MemorySnapshot<'a, 'mir: 'a, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx> + 'a> {
-    data: &'a M::MemoryData,
-}
-
-impl<'a, 'mir, 'tcx, M> Memory<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>,
-{
-    fn snapshot<'b: 'a>(&'b self) -> MemorySnapshot<'b, 'mir, 'tcx, M> {
-        let Memory { data, .. } = self;
-        MemorySnapshot { data }
-    }
-}
-
-impl<'a, 'b, 'mir, 'tcx, M> SnapshotContext<'b> for Memory<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>,
+impl<'a, 'b, 'mir, 'tcx: 'a+'mir> SnapshotContext<'b>
+    for Memory<'a, 'mir, 'tcx, CompileTimeEvaluator<'a, 'mir, 'tcx>>
 {
     fn resolve(&'b self, id: &AllocId) -> Option<&'b Allocation> {
         self.get(*id).ok()
@@ -343,16 +399,17 @@ impl<'a, 'b, 'mir, 'tcx, M> SnapshotContext<'b> for Memory<'a, 'mir, 'tcx, M>
 }
 
 /// The virtual machine state during const-evaluation at a given point in time.
-struct EvalSnapshot<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
-    memory: Memory<'a, 'mir, 'tcx, M>,
+/// We assume the `CompileTimeEvaluator` has no interesting extra state that
+/// is worth considering here.
+struct EvalSnapshot<'a, 'mir, 'tcx: 'a + 'mir> {
+    memory: Memory<'a, 'mir, 'tcx, CompileTimeEvaluator<'a, 'mir, 'tcx>>,
     stack: Vec<Frame<'mir, 'tcx>>,
 }
 
-impl<'a, 'mir, 'tcx, M> EvalSnapshot<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>,
+impl<'a, 'mir, 'tcx: 'a + 'mir> EvalSnapshot<'a, 'mir, 'tcx>
 {
     fn new(
-        memory: &Memory<'a, 'mir, 'tcx, M>,
+        memory: &Memory<'a, 'mir, 'tcx, CompileTimeEvaluator<'a, 'mir, 'tcx>>,
         stack: &[Frame<'mir, 'tcx>]
     ) -> Self {
         EvalSnapshot {
@@ -361,16 +418,17 @@ impl<'a, 'mir, 'tcx, M> EvalSnapshot<'a, 'mir, 'tcx, M>
         }
     }
 
-    fn snapshot<'b: 'a>(&'b self)
-        -> (MemorySnapshot<'b, 'mir, 'tcx, M>, Vec<FrameSnapshot<'a, 'tcx>>)
+    // Used to compare two snapshots
+    fn snapshot(&'b self)
+        -> Vec<FrameSnapshot<'b, 'tcx>>
     {
-        let EvalSnapshot{ memory, stack } = self;
-        (memory.snapshot(), stack.iter().map(|frame| frame.snapshot(memory)).collect())
+        // Start with the stack, iterate and recursively snapshot
+        self.stack.iter().map(|frame| frame.snapshot(&self.memory)).collect()
     }
+
 }
 
-impl<'a, 'mir, 'tcx, M> Hash for EvalSnapshot<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>,
+impl<'a, 'mir, 'tcx> Hash for EvalSnapshot<'a, 'mir, 'tcx>
 {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // Implement in terms of hash stable, so that k1 == k2 -> hash(k1) == hash(k2)
@@ -383,26 +441,24 @@ impl<'a, 'mir, 'tcx, M> Hash for EvalSnapshot<'a, 'mir, 'tcx, M>
 
 // Not using the macro because we need special handling for `memory`, which the macro
 // does not support at the same time as the extra bounds on the type.
-impl<'a, 'b, 'mir, 'tcx, M> HashStable<StableHashingContext<'b>>
-    for EvalSnapshot<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>,
+impl<'a, 'b, 'mir, 'tcx> HashStable<StableHashingContext<'b>>
+    for EvalSnapshot<'a, 'mir, 'tcx>
 {
     fn hash_stable<W: StableHasherResult>(
         &self,
         hcx: &mut StableHashingContext<'b>,
         hasher: &mut StableHasher<W>)
     {
+        // Not hashing memory: Avoid hashing memory all the time during execution
         let EvalSnapshot{ memory: _, stack } = self;
         stack.hash_stable(hcx, hasher);
     }
 }
 
-impl<'a, 'mir, 'tcx, M> Eq for EvalSnapshot<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>,
+impl<'a, 'mir, 'tcx> Eq for EvalSnapshot<'a, 'mir, 'tcx>
 {}
 
-impl<'a, 'mir, 'tcx, M> PartialEq for EvalSnapshot<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>,
+impl<'a, 'mir, 'tcx> PartialEq for EvalSnapshot<'a, 'mir, 'tcx>
 {
     fn eq(&self, other: &Self) -> bool {
         self.snapshot() == other.snapshot()

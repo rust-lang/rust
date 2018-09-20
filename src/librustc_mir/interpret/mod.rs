@@ -17,7 +17,7 @@ mod operand;
 mod machine;
 mod memory;
 mod operator;
-mod snapshot;
+pub(crate) mod snapshot; // for const_eval
 mod step;
 mod terminator;
 mod traits;

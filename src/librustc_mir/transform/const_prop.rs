@@ -69,7 +69,7 @@ type Const<'tcx> = (OpTy<'tcx>, Span);
 
 /// Finds optimization opportunities on the MIR.
 struct ConstPropagator<'b, 'a, 'tcx:'a+'b> {
-    ecx: EvalContext<'a, 'b, 'tcx, CompileTimeEvaluator>,
+    ecx: EvalContext<'a, 'b, 'tcx, CompileTimeEvaluator<'a, 'b, 'tcx>>,
     mir: &'b Mir<'tcx>,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     source: MirSource,
@@ -310,7 +310,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 // cannot use `const_eval` here, because that would require having the MIR
                 // for the current function available, but we're producing said MIR right now
                 let res = self.use_ecx(source_info, |this| {
-                    eval_promoted(&mut this.ecx, cid, this.mir, this.param_env)
+                    eval_promoted(this.tcx, cid, this.mir, this.param_env)
                 })?;
                 trace!("evaluated promoted {:?} to {:?}", promoted, res);
                 Some((res, source_info.span))
