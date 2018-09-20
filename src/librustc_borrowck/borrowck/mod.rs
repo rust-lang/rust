@@ -867,10 +867,20 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                         }) = cmt.cat {
                                             db.note(fn_closure_msg);
                                         } else {
-                                            db.span_suggestion(sp, msg, suggestion);
+                                            db.span_suggestion_with_applicability(
+                                                sp,
+                                                msg,
+                                                suggestion,
+                                                Applicability::Unspecified,
+                                            );
                                         }
                                     } else {
-                                        db.span_suggestion(sp, msg, suggestion);
+                                        db.span_suggestion_with_applicability(
+                                            sp,
+                                            msg,
+                                            suggestion,
+                                            Applicability::Unspecified,
+                                        );
                                     }
                                 }
                                 _ => {
@@ -1236,10 +1246,16 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         let let_span = self.tcx.hir.span(node_id);
                         let suggestion = suggest_ref_mut(self.tcx, let_span);
                         if let Some(replace_str) = suggestion {
-                            db.span_suggestion(
+                            db.span_suggestion_with_applicability(
                                 let_span,
                                 "use a mutable reference instead",
                                 replace_str,
+                                // I believe this can be machine applicable,
+                                // but if there are multiple attempted uses of an immutable
+                                // reference, I don't know how rustfix handles it, it might
+                                // attempt fixing them multiple times.
+                                //                              @estebank
+                                Applicability::Unspecified,
                             );
                         }
                     }
@@ -1292,11 +1308,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 )) = ty.map(|t| &t.node)
                 {
                     let borrow_expr_id = self.tcx.hir.get_parent_node(borrowed_node_id);
-                    db.span_suggestion(
+                    db.span_suggestion_with_applicability(
                         self.tcx.hir.span(borrow_expr_id),
                         "consider removing the `&mut`, as it is an \
                         immutable binding to a mutable reference",
-                        snippet
+                        snippet,
+                        Applicability::MachineApplicable,
                     );
                 } else {
                     db.span_suggestion_with_applicability(
@@ -1326,12 +1343,15 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                   &cmt_path_or_string,
                                                   capture_span,
                                                   Origin::Ast)
-            .span_suggestion(err.span,
-                             &format!("to force the closure to take ownership of {} \
-                                       (and any other referenced variables), \
-                                       use the `move` keyword",
-                                       cmt_path_or_string),
-                             suggestion)
+            .span_suggestion_with_applicability(
+                 err.span,
+                 &format!("to force the closure to take ownership of {} \
+                           (and any other referenced variables), \
+                           use the `move` keyword",
+                           cmt_path_or_string),
+                 suggestion,
+                 Applicability::MachineApplicable,
+            )
             .emit();
         self.signal_error();
     }

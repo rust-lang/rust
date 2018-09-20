@@ -996,9 +996,10 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
                         ));
                     }
                     if suggestions.len() > 0 {
-                        diag.multipart_suggestion(
+                        diag.multipart_suggestion_with_applicability(
                             "format specifiers use curly braces",
                             suggestions,
+                            Applicability::MachineApplicable,
                         );
                     }
                 }};

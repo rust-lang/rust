@@ -3882,7 +3882,12 @@ impl<'a> Parser<'a> {
                 if self.token == token::CloseDelim(token::Brace) {
                     // If the struct looks otherwise well formed, recover and continue.
                     if let Some(sp) = comma_sp {
-                        err.span_suggestion_short(sp, "remove this comma", String::new());
+                        err.span_suggestion_short_with_applicability(
+                            sp,
+                            "remove this comma",
+                            String::new(),
+                            Applicability::MachineApplicable,
+                        );
                     }
                     err.emit();
                     break;

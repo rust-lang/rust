@@ -32,6 +32,7 @@ use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 
 use rustc_data_structures::sync::Lrc;
+use errors::Applicability;
 
 pub struct ParserAnyMacro<'a> {
     parser: Parser<'a>,
@@ -187,10 +188,11 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                     if comma_span == DUMMY_SP {
                         err.note("you might be missing a comma");
                     } else {
-                        err.span_suggestion_short(
+                        err.span_suggestion_short_with_applicability(
                             comma_span,
                             "missing comma here",
                             ", ".to_string(),
+                            Applicability::MachineApplicable,
                         );
                     }
                 }

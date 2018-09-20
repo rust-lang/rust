@@ -16,6 +16,7 @@ use source_map::Spanned;
 use edition::Edition;
 use parse::{token, ParseSess};
 use OneVector;
+use errors::Applicability;
 
 use ptr::P;
 
@@ -123,7 +124,12 @@ impl<'a> StripUnconfigured<'a> {
             let error = |span, msg, suggestion: &str| {
                 let mut err = self.sess.span_diagnostic.struct_span_err(span, msg);
                 if !suggestion.is_empty() {
-                    err.span_suggestion(span, "expected syntax is", suggestion.into());
+                    err.span_suggestion_with_applicability(
+                        span,
+                        "expected syntax is",
+                        suggestion.into(),
+                        Applicability::MaybeIncorrect,
+                    );
                 }
                 err.emit();
                 true

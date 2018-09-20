@@ -43,16 +43,18 @@ pub struct DiagnosticBuilder<'a> {
 /// it easy to declare such methods on the builder.
 macro_rules! forward {
     // Forward pattern for &self -> &Self
-    (pub fn $n:ident(&self, $($name:ident: $ty:ty),*) -> &Self) => {
+    (pub fn $n:ident(&self, $($name:ident: $ty:ty),* $(,)*) -> &Self) => {
         pub fn $n(&self, $($name: $ty),*) -> &Self {
+            #[allow(deprecated)]
             self.diagnostic.$n($($name),*);
             self
         }
     };
 
     // Forward pattern for &mut self -> &mut Self
-    (pub fn $n:ident(&mut self, $($name:ident: $ty:ty),*) -> &mut Self) => {
+    (pub fn $n:ident(&mut self, $($name:ident: $ty:ty),* $(,)*) -> &mut Self) => {
         pub fn $n(&mut self, $($name: $ty),*) -> &mut Self {
+            #[allow(deprecated)]
             self.diagnostic.$n($($name),*);
             self
         }
@@ -60,8 +62,12 @@ macro_rules! forward {
 
     // Forward pattern for &mut self -> &mut Self, with S: Into<MultiSpan>
     // type parameter. No obvious way to make this more generic.
-    (pub fn $n:ident<S: Into<MultiSpan>>(&mut self, $($name:ident: $ty:ty),*) -> &mut Self) => {
+    (pub fn $n:ident<S: Into<MultiSpan>>(
+                    &mut self,
+                    $($name:ident: $ty:ty),*
+                    $(,)*) -> &mut Self) => {
         pub fn $n<S: Into<MultiSpan>>(&mut self, $($name: $ty),*) -> &mut Self {
+            #[allow(deprecated)]
             self.diagnostic.$n($($name),*);
             self
         }
@@ -157,49 +163,75 @@ impl<'a> DiagnosticBuilder<'a> {
     forward!(pub fn note_expected_found(&mut self,
                                         label: &dyn fmt::Display,
                                         expected: DiagnosticStyledString,
-                                        found: DiagnosticStyledString)
-                                        -> &mut Self);
+                                        found: DiagnosticStyledString,
+                                        ) -> &mut Self);
 
     forward!(pub fn note_expected_found_extra(&mut self,
                                               label: &dyn fmt::Display,
                                               expected: DiagnosticStyledString,
                                               found: DiagnosticStyledString,
                                               expected_extra: &dyn fmt::Display,
-                                              found_extra: &dyn fmt::Display)
-                                              -> &mut Self);
+                                              found_extra: &dyn fmt::Display,
+                                              ) -> &mut Self);
 
     forward!(pub fn note(&mut self, msg: &str) -> &mut Self);
     forward!(pub fn span_note<S: Into<MultiSpan>>(&mut self,
                                                   sp: S,
-                                                  msg: &str)
-                                                  -> &mut Self);
+                                                  msg: &str,
+                                                  ) -> &mut Self);
     forward!(pub fn warn(&mut self, msg: &str) -> &mut Self);
     forward!(pub fn span_warn<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self);
     forward!(pub fn help(&mut self , msg: &str) -> &mut Self);
     forward!(pub fn span_help<S: Into<MultiSpan>>(&mut self,
                                                   sp: S,
-                                                  msg: &str)
-                                                  -> &mut Self);
-    forward!(pub fn span_suggestion_short(&mut self,
-                                          sp: Span,
-                                          msg: &str,
-                                          suggestion: String)
-                                          -> &mut Self);
+                                                  msg: &str,
+                                                  ) -> &mut Self);
+
+    #[deprecated(note = "Use `span_suggestion_short_with_applicability`")]
+    forward!(pub fn span_suggestion_short(
+                                      &mut self,
+                                      sp: Span,
+                                      msg: &str,
+                                      suggestion: String,
+                                      ) -> &mut Self);
+
+    #[deprecated(note = "Use `multipart_suggestion_with_applicability`")]
     forward!(pub fn multipart_suggestion(
         &mut self,
         msg: &str,
-        suggestion: Vec<(Span, String)>
+        suggestion: Vec<(Span, String)>,
     ) -> &mut Self);
+
+    #[deprecated(note = "Use `span_suggestion_with_applicability`")]
     forward!(pub fn span_suggestion(&mut self,
                                     sp: Span,
                                     msg: &str,
-                                    suggestion: String)
-                                    -> &mut Self);
+                                    suggestion: String,
+                                    ) -> &mut Self);
+
+    #[deprecated(note = "Use `span_suggestions_with_applicability`")]
     forward!(pub fn span_suggestions(&mut self,
                                      sp: Span,
                                      msg: &str,
-                                     suggestions: Vec<String>)
-                                     -> &mut Self);
+                                     suggestions: Vec<String>,
+                                     ) -> &mut Self);
+
+    pub fn multipart_suggestion_with_applicability(&mut self,
+                                              msg: &str,
+                                              suggestion: Vec<(Span, String)>,
+                                              applicability: Applicability,
+                                              ) -> &mut Self {
+        if !self.allow_suggestions {
+            return self
+        }
+        self.diagnostic.multipart_suggestion_with_applicability(
+            msg,
+            suggestion,
+            applicability,
+        );
+        self
+    }
+
     pub fn span_suggestion_with_applicability(&mut self,
                                               sp: Span,
                                               msg: &str,

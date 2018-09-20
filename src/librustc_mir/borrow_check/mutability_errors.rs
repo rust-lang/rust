@@ -22,6 +22,7 @@ use borrow_check::MirBorrowckCtxt;
 use util::borrowck_errors::{BorrowckErrors, Origin};
 use util::collect_writes::FindAssignments;
 use util::suggest_ref_mut;
+use rustc_errors::Applicability;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(super) enum AccessKind {
@@ -227,10 +228,11 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 assert_eq!(local_decl.mutability, Mutability::Not);
 
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
-                err.span_suggestion(
+                err.span_suggestion_with_applicability(
                     local_decl.source_info.span,
                     "consider changing this to be mutable",
                     format!("mut {}", local_decl.name.unwrap()),
+                    Applicability::MachineApplicable,
                 );
             }
 
@@ -257,10 +259,11 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         _,
                     ) = pat.node
                     {
-                        err.span_suggestion(
+                        err.span_suggestion_with_applicability(
                             upvar_ident.span,
                             "consider changing this to be mutable",
                             format!("mut {}", upvar_ident.name),
+                            Applicability::MachineApplicable,
                         );
                     }
                 }
@@ -351,10 +354,11 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 };
 
                 if let Some((err_help_span, suggested_code)) = suggestion {
-                    err.span_suggestion(
+                    err.span_suggestion_with_applicability(
                         err_help_span,
                         &format!("consider changing this to be a mutable {}", pointer_desc),
                         suggested_code,
+                        Applicability::MachineApplicable,
                     );
                 }
 

@@ -251,13 +251,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 let snippet = tcx.sess.source_map().span_to_snippet(lit.span)
                                     .unwrap_or("<numeric literal>".to_string());
 
-                                err.span_suggestion(lit.span,
+                                err.span_suggestion_with_applicability(
+                                                    lit.span,
                                                     &format!("you must specify a concrete type for \
                                                               this numeric value, like `{}`",
                                                              concrete_type),
                                                     format!("{}_{}",
                                                             snippet,
-                                                            concrete_type));
+                                                            concrete_type),
+                                                    Applicability::MaybeIncorrect,
+                                );
                             }
                             hir::ExprKind::Path(ref qpath) => {  // local binding
                                 if let &hir::QPath::Resolved(_, ref path) = &qpath {
@@ -281,13 +284,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                 ty,
                                                 ..
                                             })) => {
-                                                err.span_suggestion(
+                                                err.span_suggestion_with_applicability(
                                                     // account for `let x: _ = 42;`
                                                     //                  ^^^^
                                                     span.to(ty.as_ref().map(|ty| ty.span)
                                                         .unwrap_or(span)),
                                                     &msg,
                                                     format!("{}: {}", snippet, concrete_type),
+                                                    Applicability::MaybeIncorrect,
                                                 );
                                             }
                                             _ => {
@@ -516,7 +520,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 format!("use {};\n{}", self.tcx.item_path_str(*did), additional_newline)
             }).collect();
 
-            err.span_suggestions(span, &msg, path_strings);
+            err.span_suggestions_with_applicability(
+                                                    span,
+                                                    &msg,
+                                                    path_strings,
+                                                    Applicability::MaybeIncorrect,
+            );
         } else {
             let limit = if candidates.len() == 5 { 5 } else { 4 };
             for (i, trait_did) in candidates.iter().take(limit).enumerate() {

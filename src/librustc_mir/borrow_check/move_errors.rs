@@ -11,7 +11,7 @@
 use core::unicode::property::Pattern_White_Space;
 use rustc::mir::*;
 use rustc::ty;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::{DiagnosticBuilder,Applicability};
 use syntax_pos::Span;
 
 use borrow_check::MirBorrowckCtxt;
@@ -350,16 +350,18 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     // expressions `a[b]`, which roughly desugar to
                     // `*Index::index(&a, b)` or
                     // `*IndexMut::index_mut(&mut a, b)`.
-                    err.span_suggestion(
+                    err.span_suggestion_with_applicability(
                         span,
                         "consider removing the `*`",
                         snippet[1..].to_owned(),
+                        Applicability::Unspecified,
                     );
                 } else {
-                    err.span_suggestion(
+                    err.span_suggestion_with_applicability(
                         span,
                         "consider borrowing here",
                         format!("&{}", snippet),
+                        Applicability::Unspecified,
                     );
                 }
 
@@ -420,10 +422,11 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         suggestions.sort_unstable_by_key(|&(span, _, _)| span);
         suggestions.dedup_by_key(|&mut (span, _, _)| span);
         for (span, to_remove, suggestion) in suggestions {
-            err.span_suggestion(
+            err.span_suggestion_with_applicability(
                 span,
                 &format!("consider removing the `{}`", to_remove),
-                suggestion
+                suggestion,
+                Applicability::MachineApplicable,
             );
         }
     }

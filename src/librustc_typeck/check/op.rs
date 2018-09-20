@@ -16,7 +16,7 @@ use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::TyKind::{Ref, Adt, Str, Uint, Never, Tuple, Char, Array};
 use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::infer::type_variable::TypeVariableOrigin;
-use errors;
+use errors::{self,Applicability};
 use syntax_pos::Span;
 use syntax::ast::Ident;
 use rustc::hir;
@@ -444,9 +444,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     err.span_label(expr.span,
                                    "`+` can't be used to concatenate two `&str` strings");
                     match source_map.span_to_snippet(lhs_expr.span) {
-                        Ok(lstring) => err.span_suggestion(lhs_expr.span,
-                                                           msg,
-                                                           format!("{}.to_owned()", lstring)),
+                        Ok(lstring) => err.span_suggestion_with_applicability(
+                            lhs_expr.span,
+                            msg,
+                            format!("{}.to_owned()", lstring),
+                            Applicability::MachineApplicable,
+                        ),
                         _ => err.help(msg),
                     };
                 }
@@ -462,10 +465,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     is_assign,
                 ) {
                     (Ok(l), Ok(r), false) => {
-                        err.multipart_suggestion(msg, vec![
-                            (lhs_expr.span, format!("{}.to_owned()", l)),
-                            (rhs_expr.span, format!("&{}", r)),
-                        ]);
+                        err.multipart_suggestion_with_applicability(
+                            msg,
+                            vec![
+                                (lhs_expr.span, format!("{}.to_owned()", l)),
+                                (rhs_expr.span, format!("&{}", r)),
+                            ],
+                            Applicability::MachineApplicable,
+                        );
                     }
                     _ => {
                         err.help(msg);
