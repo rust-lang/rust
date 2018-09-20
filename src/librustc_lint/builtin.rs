@@ -1612,7 +1612,7 @@ fn validate_const<'a, 'tcx>(
     gid: ::rustc::mir::interpret::GlobalId<'tcx>,
     what: &str,
 ) {
-    let ecx = ::rustc_mir::interpret::mk_eval_cx(tcx, gid.instance, param_env).unwrap();
+    let ecx = ::rustc_mir::const_eval::mk_eval_cx(tcx, gid.instance, param_env).unwrap();
     let result = (|| {
         let op = ecx.const_to_op(constant)?;
         let mut todo = vec![(op, Vec::new())];

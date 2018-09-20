@@ -16,7 +16,7 @@ mod check_match;
 pub use self::check_match::check_crate;
 pub(crate) use self::check_match::check_match;
 
-use interpret::{const_field, const_variant_index};
+use const_eval::{const_field, const_variant_index};
 
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};

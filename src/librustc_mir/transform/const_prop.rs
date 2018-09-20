@@ -21,8 +21,8 @@ use rustc::mir::interpret::{
     ConstEvalErr, EvalErrorKind, ScalarMaybeUndef, Scalar, GlobalId, EvalResult
 };
 use rustc::ty::{TyCtxt, self, Instance};
-use interpret::{EvalContext, CompileTimeEvaluator, eval_promoted, mk_borrowck_eval_cx};
-use interpret::{self, Value, OpTy, MemoryKind};
+use interpret::{self, EvalContext, Value, OpTy, MemoryKind};
+use const_eval::{CompileTimeInterpreter, eval_promoted, mk_borrowck_eval_cx};
 use transform::{MirPass, MirSource};
 use syntax::source_map::{Span, DUMMY_SP};
 use rustc::ty::subst::Substs;
@@ -69,7 +69,7 @@ type Const<'tcx> = (OpTy<'tcx>, Span);
 
 /// Finds optimization opportunities on the MIR.
 struct ConstPropagator<'b, 'a, 'tcx:'a+'b> {
-    ecx: EvalContext<'a, 'b, 'tcx, CompileTimeEvaluator<'a, 'b, 'tcx>>,
+    ecx: EvalContext<'a, 'b, 'tcx, CompileTimeInterpreter<'a, 'b, 'tcx>>,
     mir: &'b Mir<'tcx>,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     source: MirSource,

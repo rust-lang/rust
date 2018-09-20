@@ -26,7 +26,7 @@ use syntax::source_map::Span;
 
 use super::eval_context::{LocalValue, StackPopCleanup};
 use super::{Frame, Memory, Operand, MemPlace, Place, Value};
-use const_eval::CompileTimeEvaluator;
+use const_eval::CompileTimeInterpreter;
 
 /// Number of steps until the detector even starts doing anything.
 /// Also, a warning is shown to the user when this number is reached.
@@ -61,7 +61,7 @@ impl<'a, 'mir, 'tcx> InfiniteLoopDetector<'a, 'mir, 'tcx>
     pub fn observe_and_analyze<'b>(
         &mut self,
         tcx: &TyCtxt<'b, 'tcx, 'tcx>,
-        memory: &Memory<'a, 'mir, 'tcx, CompileTimeEvaluator<'a, 'mir, 'tcx>>,
+        memory: &Memory<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
         stack: &[Frame<'mir, 'tcx>],
     ) -> EvalResult<'tcx, ()> {
 
@@ -391,7 +391,7 @@ impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
 }
 
 impl<'a, 'b, 'mir, 'tcx: 'a+'mir> SnapshotContext<'b>
-    for Memory<'a, 'mir, 'tcx, CompileTimeEvaluator<'a, 'mir, 'tcx>>
+    for Memory<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>
 {
     fn resolve(&'b self, id: &AllocId) -> Option<&'b Allocation> {
         self.get(*id).ok()
@@ -399,17 +399,17 @@ impl<'a, 'b, 'mir, 'tcx: 'a+'mir> SnapshotContext<'b>
 }
 
 /// The virtual machine state during const-evaluation at a given point in time.
-/// We assume the `CompileTimeEvaluator` has no interesting extra state that
+/// We assume the `CompileTimeInterpreter` has no interesting extra state that
 /// is worth considering here.
 struct EvalSnapshot<'a, 'mir, 'tcx: 'a + 'mir> {
-    memory: Memory<'a, 'mir, 'tcx, CompileTimeEvaluator<'a, 'mir, 'tcx>>,
+    memory: Memory<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
     stack: Vec<Frame<'mir, 'tcx>>,
 }
 
 impl<'a, 'mir, 'tcx: 'a + 'mir> EvalSnapshot<'a, 'mir, 'tcx>
 {
     fn new(
-        memory: &Memory<'a, 'mir, 'tcx, CompileTimeEvaluator<'a, 'mir, 'tcx>>,
+        memory: &Memory<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
         stack: &[Frame<'mir, 'tcx>]
     ) -> Self {
         EvalSnapshot {

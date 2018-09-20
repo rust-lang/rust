@@ -42,7 +42,7 @@ pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
 ) -> EvalResult<'tcx, CompileTimeEvalContext<'a, 'mir, 'tcx>> {
     debug!("mk_borrowck_eval_cx: {:?}", instance);
     let param_env = tcx.param_env(instance.def_id());
-    let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeEvaluator::new(), ());
+    let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new(), ());
     // insert a stack frame so any queries have the correct substs
     ecx.stack.push(interpret::Frame {
         block: mir::START_BLOCK,
@@ -64,7 +64,7 @@ pub fn mk_eval_cx<'a, 'tcx>(
 ) -> EvalResult<'tcx, CompileTimeEvalContext<'a, 'tcx, 'tcx>> {
     debug!("mk_eval_cx: {:?}, {:?}", instance, param_env);
     let span = tcx.def_span(instance.def_id());
-    let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeEvaluator::new(), ());
+    let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new(), ());
     let mir = ecx.load_mir(instance.def)?;
     // insert a stack frame so any queries have the correct substs
     ecx.push_stack_frame(
@@ -133,7 +133,7 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
     // and try improving it down the road when more information is available
     let span = tcx.def_span(cid.instance.def_id());
     let span = mir.map(|mir| mir.span).unwrap_or(span);
-    let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeEvaluator::new(), ());
+    let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new(), ());
     let r = eval_body_using_ecx(&mut ecx, cid, mir, param_env);
     (r, ecx)
 }
@@ -230,7 +230,7 @@ impl Error for ConstEvalError {
 }
 
 // Extra machine state for CTFE, and the Machine instance
-pub struct CompileTimeEvaluator<'a, 'mir, 'tcx: 'a+'mir> {
+pub struct CompileTimeInterpreter<'a, 'mir, 'tcx: 'a+'mir> {
     /// When this value is negative, it indicates the number of interpreter
     /// steps *until* the loop detector is enabled. When it is positive, it is
     /// the number of steps after the detector has been enabled modulo the loop
@@ -241,9 +241,9 @@ pub struct CompileTimeEvaluator<'a, 'mir, 'tcx: 'a+'mir> {
     pub(super) loop_detector: snapshot::InfiniteLoopDetector<'a, 'mir, 'tcx>,
 }
 
-impl<'a, 'mir, 'tcx> CompileTimeEvaluator<'a, 'mir, 'tcx> {
+impl<'a, 'mir, 'tcx> CompileTimeInterpreter<'a, 'mir, 'tcx> {
     fn new() -> Self {
-        CompileTimeEvaluator {
+        CompileTimeInterpreter {
             loop_detector: Default::default(),
             steps_since_detector_enabled: -snapshot::STEPS_UNTIL_DETECTOR_ENABLED,
         }
@@ -251,10 +251,10 @@ impl<'a, 'mir, 'tcx> CompileTimeEvaluator<'a, 'mir, 'tcx> {
 }
 
 type CompileTimeEvalContext<'a, 'mir, 'tcx> =
-    EvalContext<'a, 'mir, 'tcx, CompileTimeEvaluator<'a, 'mir, 'tcx>>;
+    EvalContext<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>;
 
 impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
-    for CompileTimeEvaluator<'a, 'mir, 'tcx>
+    for CompileTimeInterpreter<'a, 'mir, 'tcx>
 {
     type MemoryData = ();
     type MemoryKinds = !;

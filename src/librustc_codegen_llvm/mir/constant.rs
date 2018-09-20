@@ -10,7 +10,7 @@
 
 use llvm;
 use rustc::mir::interpret::{ConstEvalErr, read_target_uint};
-use rustc_mir::interpret::{const_field};
+use rustc_mir::const_eval::const_field;
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
