@@ -41,7 +41,7 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
     pub machine: M,
 
     /// The results of the type checker, from rustc.
-    pub(crate) tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
+    pub tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
 
     /// Bounds in scope for polymorphic evaluations.
     pub(crate) param_env: ty::ParamEnv<'tcx>,
