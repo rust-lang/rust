@@ -8,8 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name = "foo"]
+// when implementing the fix for traits-in-bodies, there was an ICE when documenting private items
+// and a trait was defined in non-module scope
 
-include!("primitive/primitive-generic-impl.rs");
+// compile-flags:--document-private-items
 
-// @has foo/primitive.i32.html '//h3[@id="impl-ToString"]//code' 'impl<T> ToString for T'
+// @has traits_in_bodies_private/struct.SomeStruct.html
+// @!has - '//code' 'impl HiddenTrait for SomeStruct'
+pub struct SomeStruct;
+
+fn __implementation_details() {
+    trait HiddenTrait {}
+    impl HiddenTrait for SomeStruct {}
+}

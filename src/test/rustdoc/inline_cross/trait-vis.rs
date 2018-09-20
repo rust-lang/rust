@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-stage1
+// aux-build:trait-vis.rs
 
-// Issue #52129: ICE when trying to document the `quote` proc-macro from proc_macro
+extern crate inner;
 
-// As of this writing, we don't currently attempt to document proc-macros. However, we shouldn't
-// crash when we try.
-
-extern crate proc_macro;
-
-pub use proc_macro::*;
+// @has trait_vis/struct.SomeStruct.html
+// @has - '//code' 'impl Clone for SomeStruct'
+pub use inner::SomeStruct;

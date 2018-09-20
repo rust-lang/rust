@@ -69,16 +69,21 @@ impl<'a, 'tcx, 'rcx, 'cstore> LinkCollector<'a, 'tcx, 'rcx, 'cstore> {
     /// Resolve a given string as a path, along with whether or not it is
     /// in the value namespace. Also returns an optional URL fragment in the case
     /// of variants and methods
-    fn resolve(&self, path_str: &str, is_val: bool, current_item: &Option<String>)
+    fn resolve(&self,
+               path_str: &str,
+               is_val: bool,
+               current_item: &Option<String>,
+               parent_id: Option<NodeId>)
         -> Result<(Def, Option<String>), ()>
     {
         let cx = self.cx;
 
         // In case we're in a module, try to resolve the relative
         // path
-        if let Some(id) = self.mod_ids.last() {
+        if let Some(id) = parent_id.or(self.mod_ids.last().cloned()) {
+            // FIXME: `with_scope` requires the NodeId of a module
             let result = cx.resolver.borrow_mut()
-                                    .with_scope(*id,
+                                    .with_scope(id,
                 |resolver| {
                     resolver.resolve_str_path_error(DUMMY_SP,
                                                     &path_str, is_val)
@@ -129,8 +134,9 @@ impl<'a, 'tcx, 'rcx, 'cstore> LinkCollector<'a, 'tcx, 'rcx, 'cstore> {
                 }
             }
 
+            // FIXME: `with_scope` requires the NodeId of a module
             let ty = cx.resolver.borrow_mut()
-                                .with_scope(*id,
+                                .with_scope(id,
                 |resolver| {
                     resolver.resolve_str_path_error(DUMMY_SP, &path, false)
             })?;
@@ -218,6 +224,20 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
             None
         };
 
+        // FIXME: get the resolver to work with non-local resolve scopes
+        let parent_node = self.cx.as_local_node_id(item.def_id).and_then(|node_id| {
+            // FIXME: this fails hard for impls in non-module scope, but is necessary for the
+            // current resolve() implementation
+            match self.cx.tcx.hir.get_module_parent_node(node_id) {
+                id if id != node_id => Some(id),
+                _ => None,
+            }
+        });
+
+        if parent_node.is_some() {
+            debug!("got parent node for {} {:?}, id {:?}", item.type_(), item.name, item.def_id);
+        }
+
         let current_item = match item.inner {
             ModuleItem(..) => {
                 if item.attrs.inner_docs {
@@ -227,10 +247,10 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
                         None
                     }
                 } else {
-                    match self.mod_ids.last() {
-                        Some(parent) if *parent != NodeId::new(0) => {
+                    match parent_node.or(self.mod_ids.last().cloned()) {
+                        Some(parent) if parent != NodeId::new(0) => {
                             //FIXME: can we pull the parent module's name from elsewhere?
-                            Some(self.cx.tcx.hir.name(*parent).to_string())
+                            Some(self.cx.tcx.hir.name(parent).to_string())
                         }
                         _ => None,
                     }
@@ -294,7 +314,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
 
                 match kind {
                     PathKind::Value => {
-                        if let Ok(def) = self.resolve(path_str, true, &current_item) {
+                        if let Ok(def) = self.resolve(path_str, true, &current_item, parent_node) {
                             def
                         } else {
                             resolution_failure(cx, &item.attrs, path_str, &dox, link_range);
@@ -305,7 +325,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
                         }
                     }
                     PathKind::Type => {
-                        if let Ok(def) = self.resolve(path_str, false, &current_item) {
+                        if let Ok(def) = self.resolve(path_str, false, &current_item, parent_node) {
                             def
                         } else {
                             resolution_failure(cx, &item.attrs, path_str, &dox, link_range);
@@ -316,16 +336,18 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
                     PathKind::Unknown => {
                         // try everything!
                         if let Some(macro_def) = macro_resolve(cx, path_str) {
-                            if let Ok(type_def) = self.resolve(path_str, false, &current_item) {
+                            if let Ok(type_def) =
+                                self.resolve(path_str, false, &current_item, parent_node)
+                            {
                                 let (type_kind, article, type_disambig)
                                     = type_ns_kind(type_def.0, path_str);
                                 ambiguity_error(cx, &item.attrs, path_str,
                                                 article, type_kind, &type_disambig,
                                                 "a", "macro", &format!("macro@{}", path_str));
                                 continue;
-                            } else if let Ok(value_def) = self.resolve(path_str,
-                                                                       true,
-                                                                       &current_item) {
+                            } else if let Ok(value_def) =
+                                self.resolve(path_str, true, &current_item, parent_node)
+                            {
                                 let (value_kind, value_disambig)
                                     = value_ns_kind(value_def.0, path_str)
                                         .expect("struct and mod cases should have been \
@@ -335,12 +357,16 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
                                                 "a", "macro", &format!("macro@{}", path_str));
                             }
                             (macro_def, None)
-                        } else if let Ok(type_def) = self.resolve(path_str, false, &current_item) {
+                        } else if let Ok(type_def) =
+                            self.resolve(path_str, false, &current_item, parent_node)
+                        {
                             // It is imperative we search for not-a-value first
                             // Otherwise we will find struct ctors for when we are looking
                             // for structs, and the link won't work.
                             // if there is something in both namespaces
-                            if let Ok(value_def) = self.resolve(path_str, true, &current_item) {
+                            if let Ok(value_def) =
+                                self.resolve(path_str, true, &current_item, parent_node)
+                            {
                                 let kind = value_ns_kind(value_def.0, path_str);
                                 if let Some((value_kind, value_disambig)) = kind {
                                     let (type_kind, article, type_disambig)
@@ -352,7 +378,9 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
                                 }
                             }
                             type_def
-                        } else if let Ok(value_def) = self.resolve(path_str, true, &current_item) {
+                        } else if let Ok(value_def) =
+                            self.resolve(path_str, true, &current_item, parent_node)
+                        {
                             value_def
                         } else {
                             resolution_failure(cx, &item.attrs, path_str, &dox, link_range);

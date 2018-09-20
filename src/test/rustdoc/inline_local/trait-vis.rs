@@ -8,8 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name = "foo"]
+pub trait ThisTrait {}
 
-include!("primitive/primitive-generic-impl.rs");
+mod asdf {
+    use ThisTrait;
 
-// @has foo/primitive.i32.html '//h3[@id="impl-ToString"]//code' 'impl<T> ToString for T'
+    pub struct SomeStruct;
+
+    impl ThisTrait for SomeStruct {}
+
+    trait PrivateTrait {}
+
+    impl PrivateTrait for SomeStruct {}
+}
+
+// @has trait_vis/struct.SomeStruct.html
+// @has - '//code' 'impl ThisTrait for SomeStruct'
+// !@has - '//code' 'impl PrivateTrait for SomeStruct'
+pub use asdf::SomeStruct;
