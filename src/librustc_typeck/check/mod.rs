@@ -2447,59 +2447,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn is_place_expr(&self, expr: &hir::Expr) -> bool {
-         match expr.node {
-            hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
-                match path.def {
-                    Def::Local(..) | Def::Upvar(..) | Def::Static(..) | Def::Err => true,
-                    _ => false,
-                }
-            }
-
-            hir::ExprKind::Type(ref e, _) => {
-                self.is_place_expr(e)
-            }
-
-            hir::ExprKind::Unary(hir::UnDeref, _) |
-            hir::ExprKind::Field(..) |
-            hir::ExprKind::Index(..) => {
-                true
-            }
-
-            // Partially qualified paths in expressions can only legally
-            // refer to associated items which are always rvalues.
-            hir::ExprKind::Path(hir::QPath::TypeRelative(..)) |
-
-            hir::ExprKind::Call(..) |
-            hir::ExprKind::MethodCall(..) |
-            hir::ExprKind::Struct(..) |
-            hir::ExprKind::Tup(..) |
-            hir::ExprKind::If(..) |
-            hir::ExprKind::Match(..) |
-            hir::ExprKind::Closure(..) |
-            hir::ExprKind::Block(..) |
-            hir::ExprKind::Repeat(..) |
-            hir::ExprKind::Array(..) |
-            hir::ExprKind::Break(..) |
-            hir::ExprKind::Continue(..) |
-            hir::ExprKind::Ret(..) |
-            hir::ExprKind::While(..) |
-            hir::ExprKind::Loop(..) |
-            hir::ExprKind::Assign(..) |
-            hir::ExprKind::InlineAsm(..) |
-            hir::ExprKind::AssignOp(..) |
-            hir::ExprKind::Lit(_) |
-            hir::ExprKind::Unary(..) |
-            hir::ExprKind::Box(..) |
-            hir::ExprKind::AddrOf(..) |
-            hir::ExprKind::Binary(..) |
-            hir::ExprKind::Yield(..) |
-            hir::ExprKind::Cast(..) => {
-                false
-            }
-        }
-    }
-
     /// For the overloaded place expressions (`*x`, `x[3]`), the trait
     /// returns a type of `&T`, but the actual type we assign to the
     /// *expression* is `T`. So this function just peels off the return
@@ -3762,10 +3709,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         ty
     }
 
-    fn check_expr_kind(&self,
-                       expr: &'gcx hir::Expr,
-                       expected: Expectation<'tcx>,
-                       needs: Needs) -> Ty<'tcx> {
+    fn check_expr_kind(
+        &self,
+        expr: &'gcx hir::Expr,
+        expected: Expectation<'tcx>,
+        needs: Needs
+    ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let id = expr.id;
         match expr.node {
@@ -3862,7 +3811,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
                     match ty.sty {
                         ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
-                            if self.is_place_expr(&oprnd) {
+                            if oprnd.is_place_expr() {
                                 // Places may legitimately have unsized types.
                                 // For example, dereferences of a fat pointer and
                                 // the last field of a struct can be unsized.
@@ -4041,7 +3990,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     _ => {
                         // Only check this if not in an `if` condition, as the
                         // mistyped comparison help is more appropriate.
-                        if !self.is_place_expr(&lhs) {
+                        if !lhs.is_place_expr() {
                             struct_span_err!(self.tcx.sess, expr.span, E0070,
                                                 "invalid left-hand side expression")
                                 .span_label(expr.span, "left-hand of expression not valid")

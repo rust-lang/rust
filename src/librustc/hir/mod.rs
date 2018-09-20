@@ -1345,6 +1345,59 @@ impl Expr {
             ExprKind::Yield(..) => ExprPrecedence::Yield,
         }
     }
+
+    pub fn is_place_expr(&self) -> bool {
+         match self.node {
+            ExprKind::Path(QPath::Resolved(_, ref path)) => {
+                match path.def {
+                    Def::Local(..) | Def::Upvar(..) | Def::Static(..) | Def::Err => true,
+                    _ => false,
+                }
+            }
+
+            ExprKind::Type(ref e, _) => {
+                e.is_place_expr()
+            }
+
+            ExprKind::Unary(UnDeref, _) |
+            ExprKind::Field(..) |
+            ExprKind::Index(..) => {
+                true
+            }
+
+            // Partially qualified paths in expressions can only legally
+            // refer to associated items which are always rvalues.
+            ExprKind::Path(QPath::TypeRelative(..)) |
+
+            ExprKind::Call(..) |
+            ExprKind::MethodCall(..) |
+            ExprKind::Struct(..) |
+            ExprKind::Tup(..) |
+            ExprKind::If(..) |
+            ExprKind::Match(..) |
+            ExprKind::Closure(..) |
+            ExprKind::Block(..) |
+            ExprKind::Repeat(..) |
+            ExprKind::Array(..) |
+            ExprKind::Break(..) |
+            ExprKind::Continue(..) |
+            ExprKind::Ret(..) |
+            ExprKind::While(..) |
+            ExprKind::Loop(..) |
+            ExprKind::Assign(..) |
+            ExprKind::InlineAsm(..) |
+            ExprKind::AssignOp(..) |
+            ExprKind::Lit(_) |
+            ExprKind::Unary(..) |
+            ExprKind::Box(..) |
+            ExprKind::AddrOf(..) |
+            ExprKind::Binary(..) |
+            ExprKind::Yield(..) |
+            ExprKind::Cast(..) => {
+                false
+            }
+        }
+    }
 }
 
 impl fmt::Debug for Expr {
