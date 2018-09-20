@@ -682,14 +682,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 }
                 WhereToResolve::ExternPrelude => {
                     if use_prelude && self.extern_prelude.contains(&ident.name) {
-                        if !self.session.features_untracked().extern_prelude &&
-                           !self.ignore_extern_prelude_feature {
-                            feature_err(&self.session.parse_sess, "extern_prelude",
-                                        ident.span, GateIssue::Language,
-                                        "access to extern crates through prelude is experimental")
-                                        .emit();
-                        }
-
                         let crate_id =
                             self.crate_loader.process_path_extern(ident.name, ident.span);
                         let crate_root =
