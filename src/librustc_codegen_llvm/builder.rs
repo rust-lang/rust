@@ -18,7 +18,7 @@ use value::Value;
 use libc::{c_uint, c_char};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, Size, TyLayout};
-use rustc::session::{config, Session};
+use rustc::session::config;
 use rustc_data_structures::small_c_str::SmallCStr;
 use interfaces::*;
 use syntax;
@@ -59,11 +59,13 @@ bitflags! {
     }
 }
 
-impl BackendTypes for Builder<'_, 'll, '_> {
-    type Value = &'ll Value;
-    type BasicBlock = &'ll BasicBlock;
-    type Type = &'ll Type;
-    type Context = &'ll llvm::Context;
+impl BackendTypes for Builder<'_, 'll, 'tcx> {
+    type Value = <CodegenCx<'ll, 'tcx> as BackendTypes>::Value;
+    type BasicBlock = <CodegenCx<'ll, 'tcx> as BackendTypes>::BasicBlock;
+    type Type = <CodegenCx<'ll, 'tcx> as BackendTypes>::Type;
+    type Context = <CodegenCx<'ll, 'tcx> as BackendTypes>::Context;
+
+    type DIScope = <CodegenCx<'ll, 'tcx> as BackendTypes>::DIScope;
 }
 
 impl ty::layout::HasDataLayout for Builder<'_, '_, '_> {
@@ -124,10 +126,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn build_sibling_block<'b>(&self, name: &'b str) -> Self {
         Builder::new_block(self.cx, self.llfn(), name)
-    }
-
-    fn sess(&self) -> &Session {
-        self.cx.sess()
     }
 
     fn llfn(&self) -> &'ll Value {
@@ -223,7 +221,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                   args: &[&'ll Value],
                   then: &'ll BasicBlock,
                   catch: &'ll BasicBlock,
-                  bundle: Option<&common::OperandBundleDef<&'ll Value>>) -> &'ll Value {
+                  funclet: Option<&common::Funclet<&'ll Value>>) -> &'ll Value {
         self.count_insn("invoke");
 
         debug!("Invoke {:?} with args ({:?})",
@@ -231,6 +229,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                args);
 
         let args = self.check_call("invoke", llfn, args);
+        let bundle = funclet.map(|funclet| funclet.bundle());
         let bundle = bundle.map(OperandBundleDef::from_generic);
         let bundle = bundle.as_ref().map(|b| &*b.raw);
 
@@ -610,7 +609,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
 
     fn range_metadata(&self, load: &'ll Value, range: Range<u128>) {
-        if self.sess().target.target.arch == "amdgpu" {
+        if self.cx().sess().target.target.arch == "amdgpu" {
             // amdgpu/LLVM does something weird and thinks a i64 value is
             // split into a v2i32, halving the bitwidth LLVM expects,
             // tripping an assertion. So, for now, just disable this
@@ -920,7 +919,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         align: Align,
         flags: MemFlags,
     ) {
-        let ptr_width = &self.sess().target.target.target_pointer_width;
+        let ptr_width = &self.cx().sess().target.target.target_pointer_width;
         let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
         let llintrinsicfn = self.cx().get_intrinsic(&intrinsic_key);
         let ptr = self.pointercast(ptr, self.cx().type_i8p());
@@ -1362,7 +1361,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn call(&self, llfn: &'ll Value, args: &[&'ll Value],
-                bundle: Option<&common::OperandBundleDef<&'ll Value>>) -> &'ll Value {
+                funclet: Option<&common::Funclet<&'ll Value>>) -> &'ll Value {
         self.count_insn("call");
 
         debug!("Call {:?} with args ({:?})",
@@ -1370,6 +1369,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                args);
 
         let args = self.check_call("call", llfn, args);
+        let bundle = funclet.map(|funclet| funclet.bundle());
         let bundle = bundle.map(OperandBundleDef::from_generic);
         let bundle = bundle.as_ref().map(|b| &*b.raw);
 
@@ -1399,7 +1399,17 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn cx(&self) -> &'a CodegenCx<'ll, 'tcx> {
+    fn cx(&self) -> &CodegenCx<'ll, 'tcx> {
         self.cx
+    }
+
+    fn delete_basic_block(&self, bb: &'ll BasicBlock) {
+        unsafe {
+            llvm::LLVMDeleteBasicBlock(bb);
+        }
+    }
+
+    fn do_not_inline(&self, llret: &'ll Value) {
+        llvm::Attribute::NoInline.apply_callsite(llvm::AttributePlace::Function, llret);
     }
 }

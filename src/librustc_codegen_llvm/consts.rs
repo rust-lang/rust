@@ -16,7 +16,6 @@ use debuginfo;
 use base;
 use monomorphize::MonoItem;
 use common::CodegenCx;
-use declare;
 use monomorphize::Instance;
 use syntax_pos::Span;
 use syntax_pos::symbol::LocalInternedString;
@@ -24,7 +23,7 @@ use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
 use rustc::ty::{self, Ty};
-use interfaces::{BaseTypeMethods, DerivedTypeMethods, StaticMethods};
+use interfaces::*;
 
 use rustc::ty::layout::{Align, LayoutOf};
 
@@ -79,7 +78,7 @@ fn check_and_apply_linkage(
         };
         unsafe {
             // Declare a symbol `foo` with the desired linkage.
-            let g1 = declare::declare_global(cx, &sym, llty2);
+            let g1 = cx.declare_global(&sym, llty2);
             llvm::LLVMRustSetLinkage(g1, base::linkage_to_llvm(linkage));
 
             // Declare an internal global `extern_with_linkage_foo` which
@@ -90,7 +89,7 @@ fn check_and_apply_linkage(
             // zero.
             let mut real_name = "_rust_extern_with_linkage_".to_string();
             real_name.push_str(&sym);
-            let g2 = declare::define_global(cx, &real_name, llty).unwrap_or_else(||{
+            let g2 = cx.define_global(&real_name, llty).unwrap_or_else(||{
                 if let Some(span) = span {
                     cx.sess().span_fatal(
                         span,
@@ -107,7 +106,7 @@ fn check_and_apply_linkage(
     } else {
         // Generate an external declaration.
         // FIXME(nagisa): investigate whether it can be changed into define_global
-        declare::declare_global(cx, &sym, llty)
+        cx.declare_global(&sym, llty)
     }
 }
 
@@ -139,14 +138,14 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             let gv = match kind {
                 Some(kind) if !self.tcx.sess.fewer_names() => {
                     let name = self.generate_local_symbol_name(kind);
-                    let gv = declare::define_global(&self, &name[..],
+                    let gv = self.define_global(&name[..],
                         self.val_ty(cv)).unwrap_or_else(||{
                             bug!("symbol `{}` is already defined", name);
                     });
                     llvm::LLVMRustSetLinkage(gv, llvm::Linkage::PrivateLinkage);
                     gv
                 },
-                _ => declare::define_private_global(&self, self.val_ty(cv)),
+                _ => self.define_private_global(self.val_ty(cv)),
             };
             llvm::LLVMSetInitializer(gv, cv);
             set_global_alignment(&self, gv, align);
@@ -206,11 +205,11 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 Node::Item(&hir::Item {
                     ref attrs, span, node: hir::ItemKind::Static(..), ..
                 }) => {
-                    if declare::get_declared_value(&self, &sym[..]).is_some() {
+                    if self.get_declared_value(&sym[..]).is_some() {
                         span_bug!(span, "Conflicting symbol names for static?");
                     }
 
-                    let g = declare::define_global(&self, &sym[..], llty).unwrap();
+                    let g = self.define_global(&sym[..], llty).unwrap();
 
                     if !self.tcx.is_reachable_non_generic(def_id) {
                         unsafe {

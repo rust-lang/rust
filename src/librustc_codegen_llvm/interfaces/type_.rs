@@ -9,11 +9,14 @@
 // except according to those terms.
 
 use super::backend::Backend;
+use super::HasCodegen;
 use common::TypeKind;
+use mir::place::PlaceRef;
 use rustc::ty::layout::TyLayout;
 use rustc::ty::layout::{self, Align, Size};
 use rustc::ty::Ty;
 use rustc::util::nodemap::FxHashMap;
+use rustc_target::abi::call::{ArgType, CastTarget, FnType, Reg};
 use std::cell::RefCell;
 use syntax::ast;
 
@@ -70,6 +73,10 @@ pub trait DerivedTypeMethods<'tcx>: Backend<'tcx> {
 
 pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
     fn backend_type(&self, layout: TyLayout<'tcx>) -> Self::Type;
+    fn cast_backend_type(&self, ty: &CastTarget) -> Self::Type;
+    fn fn_backend_type(&self, ty: &FnType<'tcx, Ty<'tcx>>) -> Self::Type;
+    fn fn_ptr_backend_type(&self, ty: &FnType<'tcx, Ty<'tcx>>) -> Self::Type;
+    fn reg_backend_type(&self, ty: &Reg) -> Self::Type;
     fn immediate_backend_type(&self, layout: TyLayout<'tcx>) -> Self::Type;
     fn is_backend_immediate(&self, layout: TyLayout<'tcx>) -> bool;
     fn scalar_pair_element_backend_type<'a>(
@@ -78,6 +85,22 @@ pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
         index: usize,
         immediate: bool,
     ) -> Self::Type;
+}
+
+pub trait ArgTypeMethods<'tcx>: HasCodegen<'tcx> {
+    fn store_fn_arg(
+        &self,
+        ty: &ArgType<'tcx, Ty<'tcx>>,
+        idx: &mut usize,
+        dst: PlaceRef<'tcx, Self::Value>,
+    );
+    fn store_arg_ty(
+        &self,
+        ty: &ArgType<'tcx, Ty<'tcx>>,
+        val: Self::Value,
+        dst: PlaceRef<'tcx, Self::Value>,
+    );
+    fn memory_ty(&self, ty: &ArgType<'tcx, Ty<'tcx>>) -> Self::Type;
 }
 
 pub trait TypeMethods<'tcx>:

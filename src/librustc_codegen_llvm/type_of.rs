@@ -16,7 +16,7 @@ use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
 use rustc_target::abi::FloatTy;
 use rustc_mir::monomorphize::item::DefPathBasedNames;
 use type_::Type;
-use interfaces::{BaseTypeMethods, DerivedTypeMethods};
+use interfaces::*;
 
 use std::fmt::Write;
 
@@ -266,7 +266,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                         ty::ParamEnv::reveal_all(),
                         &sig,
                     );
-                    FnType::new(cx, sig, &[]).ptr_to_llvm_type(cx)
+                    cx.fn_ptr_backend_type(&FnType::new(cx, sig, &[]))
                 }
                 _ => self.scalar_llvm_type_at(cx, scalar, Size::ZERO)
             };

@@ -10,20 +10,18 @@
 
 use rustc::mir;
 
-use asm;
-use builder::Builder;
 use interfaces::BuilderMethods;
-
 use super::FunctionCx;
 use super::LocalRef;
 use super::OperandValue;
-use value::Value;
+use interfaces::*;
 
-impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
-    pub fn codegen_statement(&mut self,
-                           bx: Builder<'a, 'll, 'tcx>,
-                           statement: &mir::Statement<'tcx>)
-                           -> Builder<'a, 'll, 'tcx> {
+impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+    pub fn codegen_statement(
+        &mut self,
+        bx: Bx,
+        statement: &mir::Statement<'tcx>
+    ) -> Bx {
         debug!("codegen_statement(statement={:?})", statement);
 
         self.set_debug_loc(&bx, statement.source_info);
@@ -91,16 +89,16 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                         if let OperandValue::Immediate(_) = op.val {
                             acc.push(op.immediate());
                         } else {
-                            span_err!(bx.sess(), span.to_owned(), E0669,
+                            span_err!(bx.cx().sess(), span.to_owned(), E0669,
                                      "invalid value for constraint in inline assembly");
                         }
                         acc
                 });
 
                 if input_vals.len() == inputs.len() {
-                    let res = asm::codegen_inline_asm(&bx, asm, outputs, input_vals);
+                    let res = bx.codegen_inline_asm(asm, outputs, input_vals);
                     if !res {
-                        span_err!(bx.sess(), statement.source_info.span, E0668,
+                        span_err!(bx.cx().sess(), statement.source_info.span, E0668,
                                   "malformed inline assembly");
                     }
                 }

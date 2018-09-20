@@ -8,25 +8,35 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use super::abi::AbiBuilderMethods;
+use super::asm::AsmBuilderMethods;
+use super::debuginfo::DebugInfoBuilderMethods;
+use super::intrinsic::IntrinsicCallMethods;
+use super::type_::ArgTypeMethods;
 use super::HasCodegen;
 use builder::MemFlags;
 use common::*;
 use libc::c_char;
 use mir::operand::OperandRef;
 use mir::place::PlaceRef;
-use rustc::session::Session;
 use rustc::ty::layout::{Align, Size};
 
 use std::borrow::Cow;
 use std::ops::Range;
 use syntax::ast::AsmDialect;
 
-pub trait BuilderMethods<'a, 'tcx: 'a>: HasCodegen<'tcx> {
+pub trait BuilderMethods<'a, 'tcx: 'a>:
+    HasCodegen<'tcx>
+    + DebugInfoBuilderMethods<'tcx>
+    + ArgTypeMethods<'tcx>
+    + AbiBuilderMethods<'tcx>
+    + IntrinsicCallMethods<'tcx>
+    + AsmBuilderMethods<'tcx>
+{
     fn new_block<'b>(cx: &'a Self::CodegenCx, llfn: Self::Value, name: &'b str) -> Self;
     fn with_cx(cx: &'a Self::CodegenCx) -> Self;
     fn build_sibling_block<'b>(&self, name: &'b str) -> Self;
-    fn sess(&self) -> &Session;
-    fn cx(&self) -> &'a Self::CodegenCx; // FIXME(eddyb) remove 'a
+    fn cx(&self) -> &Self::CodegenCx;
     fn llfn(&self) -> Self::Value;
     fn llbb(&self) -> Self::BasicBlock;
     fn count_insn(&self, category: &str);
@@ -45,7 +55,7 @@ pub trait BuilderMethods<'a, 'tcx: 'a>: HasCodegen<'tcx> {
         args: &[Self::Value],
         then: Self::BasicBlock,
         catch: Self::BasicBlock,
-        bundle: Option<&OperandBundleDef<Self::Value>>,
+        funclet: Option<&Funclet<Self::Value>>,
     ) -> Self::Value;
     fn unreachable(&self);
     fn add(&self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
@@ -252,7 +262,10 @@ pub trait BuilderMethods<'a, 'tcx: 'a>: HasCodegen<'tcx> {
         &self,
         llfn: Self::Value,
         args: &[Self::Value],
-        bundle: Option<&OperandBundleDef<Self::Value>>,
+        funclet: Option<&Funclet<Self::Value>>,
     ) -> Self::Value;
     fn zext(&self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+
+    fn delete_basic_block(&self, bb: Self::BasicBlock);
+    fn do_not_inline(&self, llret: Self::Value);
 }

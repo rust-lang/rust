@@ -16,11 +16,12 @@ use mir::operand::OperandValue;
 use type_::Type;
 use type_of::{LayoutLlvmExt, PointerKind};
 use value::Value;
+use rustc_target::abi::call::ArgType;
 
-use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods, DerivedTypeMethods};
+use interfaces::*;
 
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TyLayout, Abi as LayoutAbi};
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, Instance};
 use rustc::ty::layout;
 
 use libc::c_uint;
@@ -277,6 +278,27 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                 self.store(bx, next(), dst);
             }
         }
+    }
+}
+
+impl ArgTypeMethods<'tcx> for Builder<'a, 'll, 'tcx> {
+    fn store_fn_arg(
+        &self,
+        ty: &ArgType<'tcx, Ty<'tcx>>,
+        idx: &mut usize, dst: PlaceRef<'tcx, Self::Value>
+    ) {
+        ty.store_fn_arg(self, idx, dst)
+    }
+    fn store_arg_ty(
+        &self,
+        ty: &ArgType<'tcx, Ty<'tcx>>,
+        val: &'ll Value,
+        dst: PlaceRef<'tcx, &'ll Value>
+    ) {
+        ty.store(self, val, dst)
+    }
+    fn memory_ty(&self, ty: &ArgType<'tcx, Ty<'tcx>>) -> &'ll Type {
+        ty.memory_ty(self.cx())
     }
 }
 
@@ -788,5 +810,31 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         if cconv != llvm::CCallConv {
             llvm::SetInstructionCallConv(callsite, cconv);
         }
+    }
+}
+
+impl AbiMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+    fn new_fn_type(&self, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> FnType<'tcx, Ty<'tcx>> {
+        FnType::new(&self, sig, extra_args)
+    }
+    fn new_vtable(
+        &self,
+        sig: ty::FnSig<'tcx>,
+        extra_args: &[Ty<'tcx>]
+    ) -> FnType<'tcx, Ty<'tcx>> {
+        FnType::new_vtable(&self, sig, extra_args)
+    }
+    fn fn_type_of_instance(&self, instance: &Instance<'tcx>) -> FnType<'tcx, Ty<'tcx>> {
+        FnType::of_instance(&self, instance)
+    }
+}
+
+impl AbiBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
+    fn apply_attrs_callsite(
+        &self,
+        ty: &FnType<'tcx, Ty<'tcx>>,
+        callsite: Self::Value
+    ) {
+        ty.apply_attrs_callsite(self, callsite)
     }
 }

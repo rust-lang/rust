@@ -10,23 +10,18 @@
 
 use super::backend::Backend;
 use super::HasCodegen;
-use abi::FnType;
-use mir::operand::OperandRef;
-use rustc::ty::Ty;
-use syntax_pos::Span;
+use mir::place::PlaceRef;
+use rustc::hir::{GlobalAsm, InlineAsm};
 
-pub trait IntrinsicCallMethods<'tcx>: HasCodegen<'tcx> {
-    fn codegen_intrinsic_call(
+pub trait AsmBuilderMethods<'tcx>: HasCodegen<'tcx> {
+    fn codegen_inline_asm(
         &self,
-        callee_ty: Ty<'tcx>,
-        fn_ty: &FnType<'tcx, Ty<'tcx>>,
-        args: &[OperandRef<'tcx, Self::Value>],
-        llresult: Self::Value,
-        span: Span,
-    );
+        ia: &InlineAsm,
+        outputs: Vec<PlaceRef<'tcx, Self::Value>>,
+        inputs: Vec<Self::Value>,
+    ) -> bool;
 }
 
-pub trait IntrinsicDeclarationMethods<'tcx>: Backend<'tcx> {
-    fn get_intrinsic(&self, key: &str) -> Self::Value;
-    fn declare_intrinsic(&self, key: &str) -> Option<Self::Value>;
+pub trait AsmMethods<'tcx>: Backend<'tcx> {
+    fn codegen_global_asm(&self, ga: &GlobalAsm);
 }

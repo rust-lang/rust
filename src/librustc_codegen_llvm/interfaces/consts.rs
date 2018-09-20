@@ -9,6 +9,10 @@
 // except according to those terms.
 
 use super::Backend;
+use mir::place::PlaceRef;
+use rustc::mir::interpret::Allocation;
+use rustc::mir::interpret::Scalar;
+use rustc::ty::layout;
 use syntax::symbol::LocalInternedString;
 
 pub trait ConstMethods<'tcx>: Backend<'tcx> {
@@ -39,4 +43,17 @@ pub trait ConstMethods<'tcx>: Backend<'tcx> {
 
     fn is_const_integral(&self, v: Self::Value) -> bool;
     fn is_const_real(&self, v: Self::Value) -> bool;
+
+    fn scalar_to_backend(
+        &self,
+        cv: Scalar,
+        layout: &layout::Scalar,
+        llty: Self::Type,
+    ) -> Self::Value;
+    fn from_const_alloc(
+        &self,
+        layout: layout::TyLayout<'tcx>,
+        alloc: &Allocation,
+        offset: layout::Size,
+    ) -> PlaceRef<'tcx, Self::Value>;
 }

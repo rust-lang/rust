@@ -18,13 +18,14 @@ use rustc::mir::{self, Location, TerminatorKind};
 use rustc::mir::visit::{Visitor, PlaceContext, MutatingUseContext, NonMutatingUseContext};
 use rustc::mir::traversal;
 use rustc::ty;
-use rustc::ty::layout::LayoutOf;
+use rustc::ty::layout::{LayoutOf, HasTyCtxt};
 use type_of::LayoutLlvmExt;
 use super::FunctionCx;
-use value::Value;
 use interfaces::*;
 
-pub fn non_ssa_locals(fx: &FunctionCx<'a, 'll, 'tcx, &'ll Value>) -> BitSet<mir::Local> {
+pub fn non_ssa_locals<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+    fx: &FunctionCx<'a, 'tcx, Bx>
+) -> BitSet<mir::Local> {
     let mir = fx.mir;
     let mut analyzer = LocalAnalyzer::new(fx);
 
@@ -53,8 +54,8 @@ pub fn non_ssa_locals(fx: &FunctionCx<'a, 'll, 'tcx, &'ll Value>) -> BitSet<mir:
     analyzer.non_ssa_locals
 }
 
-struct LocalAnalyzer<'mir, 'a: 'mir, 'll: 'a, 'tcx: 'll, V: 'll> {
-    fx: &'mir FunctionCx<'a, 'll, 'tcx, V>,
+struct LocalAnalyzer<'mir, 'a: 'mir, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> {
+    fx: &'mir FunctionCx<'a, 'tcx, Bx>,
     dominators: Dominators<mir::BasicBlock>,
     non_ssa_locals: BitSet<mir::Local>,
     // The location of the first visited direct assignment to each
@@ -62,8 +63,8 @@ struct LocalAnalyzer<'mir, 'a: 'mir, 'll: 'a, 'tcx: 'll, V: 'll> {
     first_assignment: IndexVec<mir::Local, Location>
 }
 
-impl LocalAnalyzer<'mir, 'a, 'll, 'tcx, &'ll Value> {
-    fn new(fx: &'mir FunctionCx<'a, 'll, 'tcx, &'ll Value>) -> Self {
+impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
+    fn new(fx: &'mir FunctionCx<'a, 'tcx, Bx>) -> Self {
         let invalid_location =
             mir::BasicBlock::new(fx.mir.basic_blocks().len()).start_location();
         let mut analyzer = LocalAnalyzer {
@@ -104,7 +105,8 @@ impl LocalAnalyzer<'mir, 'a, 'll, 'tcx, &'ll Value> {
     }
 }
 
-impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx, &'ll Value> {
+impl<'mir, 'a: 'mir, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
+    for LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
     fn visit_assign(&mut self,
                     block: mir::BasicBlock,
                     place: &mir::Place<'tcx>,
@@ -143,7 +145,7 @@ impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx, &'ll Value> {
             _ => None,
         };
         if let Some((def_id, args)) = check {
-            if Some(def_id) == self.fx.cx.tcx.lang_items().box_free_fn() {
+            if Some(def_id) == self.fx.cx.tcx().lang_items().box_free_fn() {
                 // box_free(x) shares with `drop x` the property that it
                 // is not guaranteed to be statically dominated by the
                 // definition of x, so x must always be in an alloca.
@@ -175,20 +177,20 @@ impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx, &'ll Value> {
                 _ => false
             };
             if is_consume {
-                let base_ty = proj.base.ty(self.fx.mir, cx.tcx);
+                let base_ty = proj.base.ty(self.fx.mir, cx.tcx());
                 let base_ty = self.fx.monomorphize(&base_ty);
 
                 // ZSTs don't require any actual memory access.
                 let elem_ty = base_ty
-                    .projection_ty(cx.tcx, &proj.elem)
-                    .to_ty(cx.tcx);
+                    .projection_ty(cx.tcx(), &proj.elem)
+                    .to_ty(cx.tcx());
                 let elem_ty = self.fx.monomorphize(&elem_ty);
                 if cx.layout_of(elem_ty).is_zst() {
                     return;
                 }
 
                 if let mir::ProjectionElem::Field(..) = proj.elem {
-                    let layout = cx.layout_of(base_ty.to_ty(cx.tcx));
+                    let layout = cx.layout_of(base_ty.to_ty(cx.tcx()));
                     if layout.is_llvm_immediate() || layout.is_llvm_scalar_pair() {
                         // Recurse with the same context, instead of `Projection`,
                         // potentially stopping at non-operand projections,
@@ -254,8 +256,8 @@ impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx, &'ll Value> {
             }
 
             PlaceContext::MutatingUse(MutatingUseContext::Drop) => {
-                let ty = mir::Place::Local(local).ty(self.fx.mir, self.fx.cx.tcx);
-                let ty = self.fx.monomorphize(&ty.to_ty(self.fx.cx.tcx));
+                let ty = mir::Place::Local(local).ty(self.fx.mir, self.fx.cx.tcx());
+                let ty = self.fx.monomorphize(&ty.to_ty(self.fx.cx.tcx()));
 
                 // Only need the place if we're actually dropping it.
                 if self.fx.cx.type_needs_drop(ty) {

@@ -15,9 +15,11 @@ use super::CodegenObject;
 
 pub trait BackendTypes {
     type Value: CodegenObject;
-    type BasicBlock;
+    type BasicBlock: Copy;
     type Type: CodegenObject;
     type Context;
+
+    type DIScope: Copy;
 }
 
 pub trait Backend<'tcx>:

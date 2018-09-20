@@ -24,9 +24,11 @@ use rustc::ty::layout::{self, Align, Size, HasTyCtxt};
 use rustc::util::nodemap::FxHashMap;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::TyLayout;
+use rustc_target::abi::call::{CastTarget, FnType, Reg};
 use rustc_data_structures::small_c_str::SmallCStr;
 use common::{self, TypeKind};
 use type_of::LayoutLlvmExt;
+use abi::{LlvmType, FnTypeExt};
 
 use std::fmt;
 use std::cell::RefCell;
@@ -395,7 +397,7 @@ impl DerivedTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
 impl LayoutTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn backend_type(&self, layout: TyLayout<'tcx>) -> &'ll Type {
-        layout.llvm_type(&self)
+        layout.llvm_type(self)
     }
     fn immediate_backend_type(&self, layout: TyLayout<'tcx>) -> &'ll Type {
         layout.immediate_llvm_type(self)
@@ -410,5 +412,17 @@ impl LayoutTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         immediate: bool
     ) -> &'ll Type {
         layout.scalar_pair_element_llvm_type(self, index, immediate)
+    }
+    fn cast_backend_type(&self, ty: &CastTarget) -> &'ll Type {
+        ty.llvm_type(self)
+    }
+    fn fn_backend_type(&self, ty: &FnType<'tcx, Ty<'tcx>>) -> &'ll Type {
+        ty.llvm_type(self)
+    }
+    fn fn_ptr_backend_type(&self, ty: &FnType<'tcx, Ty<'tcx>>) -> &'ll Type {
+        ty.ptr_to_llvm_type(self)
+    }
+    fn reg_backend_type(&self, ty: &Reg) -> &'ll Type {
+        ty.llvm_type(self)
     }
 }

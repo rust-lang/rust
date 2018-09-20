@@ -8,81 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm;
 use rustc::mir::interpret::{ErrorHandled, read_target_uint};
 use rustc_mir::const_eval::const_field;
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc::mir::interpret::{GlobalId, Pointer, Scalar, Allocation, ConstValue, AllocType};
+use rustc::mir::interpret::{GlobalId, Pointer, Allocation, ConstValue};
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Size, HasTyCtxt};
-use builder::Builder;
-use common::{CodegenCx};
-use type_of::LayoutLlvmExt;
-use type_::Type;
-use syntax::ast::Mutability;
+use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Size};
+use common::CodegenCx;
 use syntax::source_map::Span;
 use value::Value;
-use interfaces::{BuilderMethods, ConstMethods, BaseTypeMethods, DerivedTypeMethods, StaticMethods};
+use interfaces::*;
 
-use super::super::callee;
 use super::FunctionCx;
-
-pub fn scalar_to_llvm(
-    cx: &CodegenCx<'ll, '_>,
-    cv: Scalar,
-    layout: &layout::Scalar,
-    llty: &'ll Type,
-) -> &'ll Value {
-    let bitsize = if layout.is_bool() { 1 } else { layout.value.size(cx).bits() };
-    match cv {
-        Scalar::Bits { size: 0, .. } => {
-            assert_eq!(0, layout.value.size(cx).bytes());
-            cx.const_undef(cx.type_ix(0))
-        },
-        Scalar::Bits { bits, size } => {
-            assert_eq!(size as u64, layout.value.size(cx).bytes());
-            let llval = cx.const_uint_big(cx.type_ix(bitsize), bits);
-            if layout.value == layout::Pointer {
-                unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
-            } else {
-                cx.static_bitcast(llval, llty)
-            }
-        },
-        Scalar::Ptr(ptr) => {
-            let alloc_type = cx.tcx.alloc_map.lock().get(ptr.alloc_id);
-            let base_addr = match alloc_type {
-                Some(AllocType::Memory(alloc)) => {
-                    let init = const_alloc_to_llvm(cx, alloc);
-                    if alloc.mutability == Mutability::Mutable {
-                        cx.static_addr_of_mut(init, alloc.align, None)
-                    } else {
-                        cx.static_addr_of(init, alloc.align, None)
-                    }
-                }
-                Some(AllocType::Function(fn_instance)) => {
-                    callee::get_fn(cx, fn_instance)
-                }
-                Some(AllocType::Static(def_id)) => {
-                    assert!(cx.tcx.is_static(def_id).is_some());
-                    cx.get_static(def_id)
-                }
-                None => bug!("missing allocation {:?}", ptr.alloc_id),
-            };
-            let llval = unsafe { llvm::LLVMConstInBoundsGEP(
-                cx.static_bitcast(base_addr, cx.type_i8p()),
-                &cx.const_usize(ptr.offset.bytes()),
-                1,
-            ) };
-            if layout.value != layout::Pointer {
-                unsafe { llvm::LLVMConstPtrToInt(llval, llty) }
-            } else {
-                cx.static_bitcast(llval, llty)
-            }
-        }
-    }
-}
 
 pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll Value {
     let mut llvals = Vec::with_capacity(alloc.relocations.len() + 1);
@@ -101,8 +40,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll 
             dl.endian,
             &alloc.bytes[offset..(offset + pointer_size)],
         ).expect("const_alloc_to_llvm: could not read relocation pointer") as u64;
-        llvals.push(scalar_to_llvm(
-            cx,
+        llvals.push(cx.scalar_to_backend(
             Pointer::new(alloc_id, Size::from_bytes(ptr_offset)).into(),
             &layout::Scalar {
                 value: layout::Primitive::Pointer,
@@ -138,10 +76,10 @@ pub fn codegen_static_initializer(
     Ok((const_alloc_to_llvm(cx, alloc), alloc))
 }
 
-impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
+impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn fully_evaluate(
         &mut self,
-        bx: &Builder<'a, 'll, 'tcx>,
+        bx: &Bx,
         constant: &'tcx ty::Const<'tcx>,
     ) -> Result<&'tcx ty::Const<'tcx>, ErrorHandled> {
         match constant.val {
@@ -161,7 +99,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
 
     pub fn eval_mir_constant(
         &mut self,
-        bx: &Builder<'a, 'll, 'tcx>,
+        bx: &Bx,
         constant: &mir::Constant<'tcx>,
     ) -> Result<&'tcx ty::Const<'tcx>, ErrorHandled> {
         let c = self.monomorphize(&constant.literal);
@@ -171,11 +109,11 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
     /// process constant containing SIMD shuffle indices
     pub fn simd_shuffle_indices(
         &mut self,
-        bx: &Builder<'a, 'll, 'tcx>,
+        bx: &Bx,
         span: Span,
         ty: Ty<'tcx>,
         constant: Result<&'tcx ty::Const<'tcx>, ErrorHandled>,
-    ) -> (&'ll Value, Ty<'tcx>) {
+    ) -> (Bx::Value, Ty<'tcx>) {
         constant
             .and_then(|c| {
                 let field_ty = c.ty.builtin_index().unwrap();
@@ -198,9 +136,9 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                             layout::Abi::Scalar(ref x) => x,
                             _ => bug!("from_const: invalid ByVal layout: {:#?}", layout)
                         };
-                        Ok(scalar_to_llvm(
-                            bx.cx(), prim, scalar,
-                            layout.immediate_llvm_type(bx.cx()),
+                        Ok(bx.cx().scalar_to_backend(
+                            prim, scalar,
+                            bx.cx().immediate_backend_type(layout),
                         ))
                     } else {
                         bug!("simd shuffle field {:?}", field)
@@ -216,7 +154,7 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
                 );
                 // We've errored, so we don't have to produce working code.
                 let ty = self.monomorphize(&ty);
-                let llty = bx.cx().layout_of(ty).llvm_type(bx.cx());
+                let llty = bx.cx().backend_type(bx.cx().layout_of(ty));
                 (bx.cx().const_undef(llty), ty)
             })
     }

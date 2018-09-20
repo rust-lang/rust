@@ -8,16 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::{FnType, FnTypeExt};
+use abi::FnType;
 use callee;
-use builder::Builder;
 use monomorphize;
-use value::Value;
 
 use interfaces::*;
 
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::HasTyCtxt;
 
 #[derive(Copy, Clone, Debug)]
 pub struct VirtualIndex(u64);
@@ -31,15 +28,18 @@ impl<'a, 'tcx: 'a> VirtualIndex {
         VirtualIndex(index as u64 + 3)
     }
 
-    pub fn get_fn(self, bx: &Builder<'a, 'll, 'tcx>,
-                  llvtable: &'ll Value,
-                  fn_ty: &FnType<'tcx, Ty<'tcx>>) -> &'ll Value {
+    pub fn get_fn<Bx: BuilderMethods<'a, 'tcx>>(
+        self,
+        bx: &Bx,
+        llvtable: Bx::Value,
+        fn_ty: &FnType<'tcx, Ty<'tcx>>
+    ) -> Bx::Value {
         // Load the data pointer from the object.
         debug!("get_fn({:?}, {:?})", llvtable, self);
 
         let llvtable = bx.pointercast(
             llvtable,
-            bx.cx().type_ptr_to(fn_ty.ptr_to_llvm_type(bx.cx()))
+            bx.cx().type_ptr_to(bx.cx().fn_ptr_backend_type(fn_ty))
         );
         let ptr_align = bx.tcx().data_layout.pointer_align;
         let ptr = bx.load(

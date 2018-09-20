@@ -15,7 +15,6 @@ use rustc::hir;
 use debuginfo;
 use callee;
 use base;
-use declare;
 use monomorphize::Instance;
 use value::Value;
 
@@ -23,6 +22,7 @@ use monomorphize::partitioning::CodegenUnit;
 use type_::Type;
 use type_of::PointeeInfo;
 use interfaces::*;
+use libc::c_uint;
 
 use rustc_data_structures::base_n;
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -315,20 +315,107 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
     }
 }
 
-impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
-    pub fn sess<'a>(&'a self) -> &'a Session {
-        &self.tcx.sess
-    }
-}
-
 impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn vtables(&self) -> &RefCell<FxHashMap<(Ty<'tcx>,
                                 ty::PolyExistentialTraitRef<'tcx>), &'ll Value>>
     {
         &self.vtables
     }
+
+    fn instances(&self) -> &RefCell<FxHashMap<Instance<'tcx>, &'ll Value>> {
+        &self.instances
+    }
+
     fn get_fn(&self, instance: Instance<'tcx>) -> &'ll Value {
         callee::get_fn(&&self,instance)
+    }
+
+    fn get_param(&self, llfn: &'ll Value, index: c_uint) -> &'ll Value {
+        llvm::get_param(llfn, index)
+    }
+
+    fn eh_personality(&self) -> &'ll Value {
+        // The exception handling personality function.
+        //
+        // If our compilation unit has the `eh_personality` lang item somewhere
+        // within it, then we just need to codegen that. Otherwise, we're
+        // building an rlib which will depend on some upstream implementation of
+        // this function, so we just codegen a generic reference to it. We don't
+        // specify any of the types for the function, we just make it a symbol
+        // that LLVM can later use.
+        //
+        // Note that MSVC is a little special here in that we don't use the
+        // `eh_personality` lang item at all. Currently LLVM has support for
+        // both Dwarf and SEH unwind mechanisms for MSVC targets and uses the
+        // *name of the personality function* to decide what kind of unwind side
+        // tables/landing pads to emit. It looks like Dwarf is used by default,
+        // injecting a dependency on the `_Unwind_Resume` symbol for resuming
+        // an "exception", but for MSVC we want to force SEH. This means that we
+        // can't actually have the personality function be our standard
+        // `rust_eh_personality` function, but rather we wired it up to the
+        // CRT's custom personality function, which forces LLVM to consider
+        // landing pads as "landing pads for SEH".
+        if let Some(llpersonality) = self.eh_personality.get() {
+            return llpersonality
+        }
+        let tcx = self.tcx;
+        let llfn = match tcx.lang_items().eh_personality() {
+            Some(def_id) if !base::wants_msvc_seh(self.sess()) => {
+                callee::resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]))
+            }
+            _ => {
+                let name = if base::wants_msvc_seh(self.sess()) {
+                    "__CxxFrameHandler3"
+                } else {
+                    "rust_eh_personality"
+                };
+                let fty = self.type_variadic_func(&[], self.type_i32());
+                self.declare_cfn(name, fty)
+            }
+        };
+        attributes::apply_target_cpu_attr(self, llfn);
+        self.eh_personality.set(Some(llfn));
+        llfn
+    }
+
+    // Returns a Value of the "eh_unwind_resume" lang item if one is defined,
+    // otherwise declares it as an external function.
+    fn eh_unwind_resume(&self) -> &'ll Value {
+        use attributes;
+        let unwresume = &self.eh_unwind_resume;
+        if let Some(llfn) = unwresume.get() {
+            return llfn;
+        }
+
+        let tcx = self.tcx;
+        assert!(self.sess().target.target.options.custom_unwind_resume);
+        if let Some(def_id) = tcx.lang_items().eh_unwind_resume() {
+            let llfn = callee::resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]));
+            unwresume.set(Some(llfn));
+            return llfn;
+        }
+
+        let sig = ty::Binder::bind(tcx.mk_fn_sig(
+            iter::once(tcx.mk_mut_ptr(tcx.types.u8)),
+            tcx.types.never,
+            false,
+            hir::Unsafety::Unsafe,
+            Abi::C
+        ));
+
+        let llfn = self.declare_fn("rust_eh_unwind_resume", sig);
+        attributes::unwind(llfn, true);
+        attributes::apply_target_cpu_attr(self, llfn);
+        unwresume.set(Some(llfn));
+        llfn
+    }
+
+    fn sess(&self) -> &Session {
+        &self.tcx.sess
+    }
+
+    fn check_overflow(&self) -> bool {
+        self.check_overflow
     }
 }
 
@@ -349,7 +436,7 @@ impl IntrinsicDeclarationMethods<'tcx> for CodegenCx<'b, 'tcx> {
         macro_rules! ifn {
             ($name:expr, fn() -> $ret:expr) => (
                 if key == $name {
-                    let f = declare::declare_cfn(&self, $name, self.type_func(&[], $ret));
+                    let f = self.declare_cfn($name, self.type_func(&[], $ret));
                     llvm::SetUnnamedAddr(f, false);
                     self.intrinsics.borrow_mut().insert($name, f.clone());
                     return Some(f);
@@ -357,7 +444,7 @@ impl IntrinsicDeclarationMethods<'tcx> for CodegenCx<'b, 'tcx> {
             );
             ($name:expr, fn(...) -> $ret:expr) => (
                 if key == $name {
-                    let f = declare::declare_cfn(&self, $name, self.type_variadic_func(&[], $ret));
+                    let f = self.declare_cfn($name, self.type_variadic_func(&[], $ret));
                     llvm::SetUnnamedAddr(f, false);
                     self.intrinsics.borrow_mut().insert($name, f.clone());
                     return Some(f);
@@ -365,7 +452,7 @@ impl IntrinsicDeclarationMethods<'tcx> for CodegenCx<'b, 'tcx> {
             );
             ($name:expr, fn($($arg:expr),*) -> $ret:expr) => (
                 if key == $name {
-                    let f = declare::declare_cfn(&self, $name, self.type_func(&[$($arg),*], $ret));
+                    let f = self.declare_cfn($name, self.type_func(&[$($arg),*], $ret));
                     llvm::SetUnnamedAddr(f, false);
                     self.intrinsics.borrow_mut().insert($name, f.clone());
                     return Some(f);
@@ -668,83 +755,6 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         base_n::push_str(idx as u128, base_n::ALPHANUMERIC_ONLY, &mut name);
         name
     }
-
-    pub fn eh_personality(&self) -> &'b Value {
-        // The exception handling personality function.
-        //
-        // If our compilation unit has the `eh_personality` lang item somewhere
-        // within it, then we just need to codegen that. Otherwise, we're
-        // building an rlib which will depend on some upstream implementation of
-        // this function, so we just codegen a generic reference to it. We don't
-        // specify any of the types for the function, we just make it a symbol
-        // that LLVM can later use.
-        //
-        // Note that MSVC is a little special here in that we don't use the
-        // `eh_personality` lang item at all. Currently LLVM has support for
-        // both Dwarf and SEH unwind mechanisms for MSVC targets and uses the
-        // *name of the personality function* to decide what kind of unwind side
-        // tables/landing pads to emit. It looks like Dwarf is used by default,
-        // injecting a dependency on the `_Unwind_Resume` symbol for resuming
-        // an "exception", but for MSVC we want to force SEH. This means that we
-        // can't actually have the personality function be our standard
-        // `rust_eh_personality` function, but rather we wired it up to the
-        // CRT's custom personality function, which forces LLVM to consider
-        // landing pads as "landing pads for SEH".
-        if let Some(llpersonality) = self.eh_personality.get() {
-            return llpersonality
-        }
-        let tcx = self.tcx;
-        let llfn = match tcx.lang_items().eh_personality() {
-            Some(def_id) if !base::wants_msvc_seh(self.sess()) => {
-                callee::resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]))
-            }
-            _ => {
-                let name = if base::wants_msvc_seh(self.sess()) {
-                    "__CxxFrameHandler3"
-                } else {
-                    "rust_eh_personality"
-                };
-                let fty = self.type_variadic_func(&[], self.type_i32());
-                declare::declare_cfn(self, name, fty)
-            }
-        };
-        attributes::apply_target_cpu_attr(self, llfn);
-        self.eh_personality.set(Some(llfn));
-        llfn
-    }
-
-    // Returns a Value of the "eh_unwind_resume" lang item if one is defined,
-    // otherwise declares it as an external function.
-    pub fn eh_unwind_resume(&self) -> &'b Value {
-        use attributes;
-        let unwresume = &self.eh_unwind_resume;
-        if let Some(llfn) = unwresume.get() {
-            return llfn;
-        }
-
-        let tcx = self.tcx;
-        assert!(self.sess().target.target.options.custom_unwind_resume);
-        if let Some(def_id) = tcx.lang_items().eh_unwind_resume() {
-            let llfn = callee::resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]));
-            unwresume.set(Some(llfn));
-            return llfn;
-        }
-
-        let sig = ty::Binder::bind(tcx.mk_fn_sig(
-            iter::once(tcx.mk_mut_ptr(tcx.types.u8)),
-            tcx.types.never,
-            false,
-            hir::Unsafety::Unsafe,
-            Abi::C
-        ));
-
-        let llfn = declare::declare_fn(self, "rust_eh_unwind_resume", sig);
-        attributes::unwind(llfn, true);
-        attributes::apply_target_cpu_attr(self, llfn);
-        unwresume.set(Some(llfn));
-        llfn
-    }
-
 }
 
 impl ty::layout::HasDataLayout for CodegenCx<'ll, 'tcx> {

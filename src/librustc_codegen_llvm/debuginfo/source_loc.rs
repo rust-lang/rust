@@ -17,7 +17,7 @@ use super::FunctionDebugContext;
 use llvm;
 use llvm::debuginfo::DIScope;
 use builder::Builder;
-use interfaces::BuilderMethods;
+use interfaces::*;
 
 use libc::c_uint;
 use syntax_pos::{Span, Pos};
@@ -25,8 +25,8 @@ use syntax_pos::{Span, Pos};
 /// Sets the current debug location at the beginning of the span.
 ///
 /// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...).
-pub fn set_source_location(
-    debug_context: &FunctionDebugContext<'ll>,
+pub fn set_source_location<D>(
+    debug_context: &FunctionDebugContext<D>,
     bx: &Builder<'_, 'll, '_>,
     scope: Option<&'ll DIScope>,
     span: Span,
@@ -41,7 +41,7 @@ pub fn set_source_location(
     };
 
     let dbg_loc = if function_debug_context.source_locations_enabled.get() {
-        debug!("set_source_location: {}", bx.sess().source_map().span_to_string(span));
+        debug!("set_source_location: {}", bx.cx().sess().source_map().span_to_string(span));
         let loc = span_start(bx.cx(), span);
         InternalDebugLocation::new(scope.unwrap(), loc.line, loc.col.to_usize())
     } else {
@@ -56,7 +56,7 @@ pub fn set_source_location(
 /// they are disabled when beginning to codegen a new function. This functions
 /// switches source location emitting on and must therefore be called before the
 /// first real statement/expression of the function is codegened.
-pub fn start_emitting_source_locations(dbg_context: &FunctionDebugContext<'ll>) {
+pub fn start_emitting_source_locations<D>(dbg_context: &FunctionDebugContext<D>) {
     if let FunctionDebugContext::RegularContext(ref data) = *dbg_context {
         data.source_locations_enabled.set(true);
     }
