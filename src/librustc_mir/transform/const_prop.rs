@@ -68,9 +68,9 @@ impl MirPass for ConstProp {
 type Const<'tcx> = (OpTy<'tcx>, Span);
 
 /// Finds optimization opportunities on the MIR.
-struct ConstPropagator<'b, 'a, 'tcx:'a+'b> {
-    ecx: EvalContext<'a, 'b, 'tcx, CompileTimeInterpreter<'a, 'b, 'tcx>>,
-    mir: &'b Mir<'tcx>,
+struct ConstPropagator<'a, 'mir, 'tcx:'a+'mir> {
+    ecx: EvalContext<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
+    mir: &'mir Mir<'tcx>,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     source: MirSource,
     places: IndexVec<Local, Option<Const<'tcx>>>,
@@ -101,12 +101,12 @@ impl<'a, 'b, 'tcx> HasTyCtxt<'tcx> for &'a ConstPropagator<'a, 'b, 'tcx> {
     }
 }
 
-impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
+impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
     fn new(
-        mir: &'b Mir<'tcx>,
+        mir: &'mir Mir<'tcx>,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         source: MirSource,
-    ) -> ConstPropagator<'b, 'a, 'tcx> {
+    ) -> ConstPropagator<'a, 'mir, 'tcx> {
         let param_env = tcx.param_env(source.def_id);
         let substs = Substs::identity_for_item(tcx, source.def_id);
         let instance = Instance::new(source.def_id, substs);

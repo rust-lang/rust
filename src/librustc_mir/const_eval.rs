@@ -34,6 +34,13 @@ use interpret::{self,
     snapshot,
 };
 
+/// Number of steps until the detector even starts doing anything.
+/// Also, a warning is shown to the user when this number is reached.
+const STEPS_UNTIL_DETECTOR_ENABLED: isize = 1_000_000;
+/// The number of steps between loop detector snapshots.
+/// Should be a power of two for performance reasons.
+const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
+
 pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
@@ -245,7 +252,7 @@ impl<'a, 'mir, 'tcx> CompileTimeInterpreter<'a, 'mir, 'tcx> {
     fn new() -> Self {
         CompileTimeInterpreter {
             loop_detector: Default::default(),
-            steps_since_detector_enabled: -snapshot::STEPS_UNTIL_DETECTOR_ENABLED,
+            steps_since_detector_enabled: -STEPS_UNTIL_DETECTOR_ENABLED,
         }
     }
 }
@@ -349,22 +356,15 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
                 return Ok(());
             }
 
-            *steps %= snapshot::DETECTOR_SNAPSHOT_PERIOD;
+            *steps %= DETECTOR_SNAPSHOT_PERIOD;
             if *steps != 0 {
                 return Ok(());
             }
         }
 
-        if ecx.machine.loop_detector.is_empty() {
-            // First run of the loop detector
-
-            // FIXME(#49980): make this warning a lint
-            ecx.tcx.sess.span_warn(ecx.frame().span,
-                "Constant evaluating a complex constant, this might take some time");
-        }
-
         ecx.machine.loop_detector.observe_and_analyze(
             &ecx.tcx,
+            ecx.frame().span,
             &ecx.memory,
             &ecx.stack[..],
         )

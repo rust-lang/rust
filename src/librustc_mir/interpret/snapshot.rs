@@ -28,13 +28,6 @@ use super::eval_context::{LocalValue, StackPopCleanup};
 use super::{Frame, Memory, Operand, MemPlace, Place, Value};
 use const_eval::CompileTimeInterpreter;
 
-/// Number of steps until the detector even starts doing anything.
-/// Also, a warning is shown to the user when this number is reached.
-pub(crate) const STEPS_UNTIL_DETECTOR_ENABLED: isize = 1_000_000;
-/// The number of steps between loop detector snapshots.
-/// Should be a power of two for performance reasons.
-pub(crate) const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
-
 #[derive(Default)]
 pub(crate) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir> {
     /// The set of all `EvalSnapshot` *hashes* observed by this detector.
@@ -53,28 +46,31 @@ pub(crate) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir> {
 
 impl<'a, 'mir, 'tcx> InfiniteLoopDetector<'a, 'mir, 'tcx>
 {
-    /// Returns `true` if the loop detector has not yet observed a snapshot.
-    pub fn is_empty(&self) -> bool {
-        self.hashes.is_empty()
-    }
-
     pub fn observe_and_analyze<'b>(
         &mut self,
         tcx: &TyCtxt<'b, 'tcx, 'tcx>,
+        span: Span,
         memory: &Memory<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
         stack: &[Frame<'mir, 'tcx>],
     ) -> EvalResult<'tcx, ()> {
-
+        // Compute stack's hash before copying anything
         let mut hcx = tcx.get_stable_hashing_context();
         let mut hasher = StableHasher::<u64>::new();
         stack.hash_stable(&mut hcx, &mut hasher);
         let hash = hasher.finish();
 
+        // Check if we know that hash already
+        if self.hashes.is_empty() {
+            // FIXME(#49980): make this warning a lint
+            tcx.sess.span_warn(span,
+                "Constant evaluating a complex constant, this might take some time");
+        }
         if self.hashes.insert(hash) {
             // No collision
             return Ok(())
         }
 
+        // We need to make a full copy. NOW things that to get really expensive.
         info!("snapshotting the state of the interpreter");
 
         if self.snapshots.insert(EvalSnapshot::new(memory, stack)) {
@@ -461,6 +457,9 @@ impl<'a, 'mir, 'tcx> Eq for EvalSnapshot<'a, 'mir, 'tcx>
 impl<'a, 'mir, 'tcx> PartialEq for EvalSnapshot<'a, 'mir, 'tcx>
 {
     fn eq(&self, other: &Self) -> bool {
+        // FIXME: This looks to be a *ridicolously expensive* comparison operation.
+        // Doesn't this make tons of copies?  Either `snapshot` is very badly named,
+        // or it does!
         self.snapshot() == other.snapshot()
     }
 }
