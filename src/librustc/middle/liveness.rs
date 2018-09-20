@@ -64,10 +64,10 @@
 //! methods.  It effectively does a reverse walk of the AST; whenever we
 //! reach a loop node, we iterate until a fixed point is reached.
 //!
-//! ## The `Users` struct
+//! ## The `users_*` fields
 //!
 //! At each live node `N`, we track three pieces of information for each
-//! variable `V` (these are encapsulated in the `Users` struct):
+//! variable `V` (these are in the `users_*` fields):
 //!
 //! - `reader`: the `LiveNode` ID of some node which will read the value
 //!    that `V` holds on entry to `N`.  Formally: a node `M` such
@@ -536,21 +536,6 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
 // Actually we compute just a bit more than just liveness, but we use
 // the same basic propagation framework in all cases.
 
-#[derive(Clone, Copy)]
-struct Users {
-    reader: LiveNode,
-    writer: LiveNode,
-    used: bool
-}
-
-fn invalid_users() -> Users {
-    Users {
-        reader: invalid_node(),
-        writer: invalid_node(),
-        used: false
-    }
-}
-
 #[derive(Copy, Clone)]
 struct Specials {
     exit_ln: LiveNode,
@@ -567,7 +552,14 @@ struct Liveness<'a, 'tcx: 'a> {
     tables: &'a ty::TypeckTables<'tcx>,
     s: Specials,
     successors: Vec<LiveNode>,
-    users: Vec<Users>,
+
+    // We used to have a single `users: Vec<Users>` field here, where `Users`
+    // had `reader`, `writer` and `used` fields. But the number of users can
+    // get very large, and it's more compact to store the data in three
+    // separate `Vec`s so that no space is wasted for padding.
+    users_reader: Vec<LiveNode>,
+    users_writer: Vec<LiveNode>,
+    users_used: Vec<bool>,
 
     // mappings from loop node ID to LiveNode
     // ("break" label should map to loop node ID,
@@ -592,13 +584,16 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         let num_live_nodes = ir.num_live_nodes;
         let num_vars = ir.num_vars;
+        let num_users = num_live_nodes * num_vars;
 
         Liveness {
             ir,
             tables,
             s: specials,
             successors: vec![invalid_node(); num_live_nodes],
-            users: vec![invalid_users(); num_live_nodes * num_vars],
+            users_reader: vec![invalid_node(); num_users],
+            users_writer: vec![invalid_node(); num_users],
+            users_used: vec![false; num_users],
             break_ln: NodeMap(),
             cont_ln: NodeMap(),
         }
@@ -665,7 +660,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn live_on_entry(&self, ln: LiveNode, var: Variable)
                       -> Option<LiveNodeKind> {
         assert!(ln.is_valid());
-        let reader = self.users[self.idx(ln, var)].reader;
+        let reader = self.users_reader[self.idx(ln, var)];
         if reader.is_valid() {Some(self.ir.lnk(reader))} else {None}
     }
 
@@ -680,13 +675,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn used_on_entry(&self, ln: LiveNode, var: Variable) -> bool {
         assert!(ln.is_valid());
-        self.users[self.idx(ln, var)].used
+        self.users_used[self.idx(ln, var)]
     }
 
     fn assigned_on_entry(&self, ln: LiveNode, var: Variable)
                          -> Option<LiveNodeKind> {
         assert!(ln.is_valid());
-        let writer = self.users[self.idx(ln, var)].writer;
+        let writer = self.users_writer[self.idx(ln, var)];
         if writer.is_valid() {Some(self.ir.lnk(writer))} else {None}
     }
 
@@ -730,9 +725,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         {
             let wr = &mut wr as &mut dyn Write;
             write!(wr, "[ln({:?}) of kind {:?} reads", ln.get(), self.ir.lnk(ln));
-            self.write_vars(wr, ln, |idx| self.users[idx].reader);
+            self.write_vars(wr, ln, |idx| self.users_reader[idx]);
             write!(wr, "  writes");
-            self.write_vars(wr, ln, |idx| self.users[idx].writer);
+            self.write_vars(wr, ln, |idx| self.users_writer[idx]);
             write!(wr, "  precedes {:?}]", self.successors[ln.get()]);
         }
         String::from_utf8(wr).unwrap()
@@ -747,7 +742,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // only grow during iterations.
         //
         // self.indices(ln) { |idx|
-        //     self.users[idx] = invalid_users();
+        //     self.users_reader[idx] = invalid_node();
+        //     self.users_writer[idx] = invalid_node();
+        //     self.users_used[idx] = false;
         // }
     }
 
@@ -756,7 +753,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         self.successors[ln.get()] = succ_ln;
 
         self.indices2(ln, succ_ln, |this, idx, succ_idx| {
-            this.users[idx] = this.users[succ_idx]
+            this.users_reader[idx] = this.users_reader[succ_idx];
+            this.users_writer[idx] = this.users_writer[succ_idx];
+            this.users_used[idx] = this.users_used[succ_idx];
         });
         debug!("init_from_succ(ln={}, succ={})",
                self.ln_str(ln), self.ln_str(succ_ln));
@@ -771,12 +770,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         let mut changed = false;
         self.indices2(ln, succ_ln, |this, idx, succ_idx| {
-            changed |= copy_if_invalid(this.users[succ_idx].reader,
-                                       &mut this.users[idx].reader);
-            changed |= copy_if_invalid(this.users[succ_idx].writer,
-                                       &mut this.users[idx].writer);
-            if this.users[succ_idx].used && !this.users[idx].used {
-                this.users[idx].used = true;
+            changed |= copy_if_invalid(this.users_reader[succ_idx], &mut this.users_reader[idx]);
+            changed |= copy_if_invalid(this.users_writer[succ_idx], &mut this.users_writer[idx]);
+            if this.users_used[succ_idx] && !this.users_used[idx] {
+                this.users_used[idx] = true;
                 changed = true;
             }
         });
@@ -800,8 +797,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     // this) so we just clear out all the data.
     fn define(&mut self, writer: LiveNode, var: Variable) {
         let idx = self.idx(writer, var);
-        self.users[idx].reader = invalid_node();
-        self.users[idx].writer = invalid_node();
+        self.users_reader[idx] = invalid_node();
+        self.users_writer[idx] = invalid_node();
 
         debug!("{:?} defines {:?} (idx={}): {}", writer, var,
                idx, self.ln_str(writer));
@@ -813,21 +810,20 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                ln, acc, var, self.ln_str(ln));
 
         let idx = self.idx(ln, var);
-        let user = &mut self.users[idx];
 
         if (acc & ACC_WRITE) != 0 {
-            user.reader = invalid_node();
-            user.writer = ln;
+            self.users_reader[idx] = invalid_node();
+            self.users_writer[idx] = ln;
         }
 
         // Important: if we both read/write, must do read second
         // or else the write will override.
         if (acc & ACC_READ) != 0 {
-            user.reader = ln;
+            self.users_reader[idx] = ln;
         }
 
         if (acc & ACC_USE) != 0 {
-            user.used = true;
+            self.users_used[idx] = true;
         }
     }
 
