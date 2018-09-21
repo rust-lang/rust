@@ -94,8 +94,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 // Only consider direct calls to functions
                 let terminator = bb_data.terminator();
                 if let TerminatorKind::Call {
-                    func: Operand::Constant(ref f), .. } = terminator.kind {
-                        if let ty::FnDef(callee_def_id, substs) = f.ty.sty {
+                    func: ref op, .. } = terminator.kind {
+                        if let ty::FnDef(callee_def_id, substs) = op.ty(caller_mir, self.tcx).sty {
                             if let Some(instance) = Instance::resolve(self.tcx,
                                                                       param_env,
                                                                       callee_def_id,
