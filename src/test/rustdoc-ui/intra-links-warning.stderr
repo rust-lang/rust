@@ -1,7 +1,7 @@
 warning: `[Foo::baz]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:13:23
    |
-13 |        //! Test with [Foo::baz], [Bar::foo], ...
+LL |        //! Test with [Foo::baz], [Bar::foo], ...
    |                       ^^^^^^^^ cannot be resolved, ignoring
    |
    = note: #[warn(intra_doc_link_resolution_failure)] on by default
@@ -10,7 +10,7 @@ warning: `[Foo::baz]` cannot be resolved, ignoring it...
 warning: `[Bar::foo]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:13:35
    |
-13 |        //! Test with [Foo::baz], [Bar::foo], ...
+LL |        //! Test with [Foo::baz], [Bar::foo], ...
    |                                   ^^^^^^^^ cannot be resolved, ignoring
    |
    = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
@@ -18,7 +18,7 @@ warning: `[Bar::foo]` cannot be resolved, ignoring it...
 warning: `[Uniooon::X]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:14:13
    |
-14 |      //! , [Uniooon::X] and [Qux::Z].
+LL |      //! , [Uniooon::X] and [Qux::Z].
    |             ^^^^^^^^^^ cannot be resolved, ignoring
    |
    = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
@@ -26,7 +26,7 @@ warning: `[Uniooon::X]` cannot be resolved, ignoring it...
 warning: `[Qux::Z]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:14:30
    |
-14 |      //! , [Uniooon::X] and [Qux::Z].
+LL |      //! , [Uniooon::X] and [Qux::Z].
    |                              ^^^^^^ cannot be resolved, ignoring
    |
    = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
@@ -34,7 +34,7 @@ warning: `[Qux::Z]` cannot be resolved, ignoring it...
 warning: `[Uniooon::X]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:16:14
    |
-16 |       //! , [Uniooon::X] and [Qux::Z].
+LL |       //! , [Uniooon::X] and [Qux::Z].
    |              ^^^^^^^^^^ cannot be resolved, ignoring
    |
    = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
@@ -42,7 +42,7 @@ warning: `[Uniooon::X]` cannot be resolved, ignoring it...
 warning: `[Qux::Z]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:16:31
    |
-16 |       //! , [Uniooon::X] and [Qux::Z].
+LL |       //! , [Uniooon::X] and [Qux::Z].
    |                               ^^^^^^ cannot be resolved, ignoring
    |
    = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
@@ -50,7 +50,7 @@ warning: `[Qux::Z]` cannot be resolved, ignoring it...
 warning: `[Qux:Y]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:18:13
    |
-18 |        /// [Qux:Y]
+LL |        /// [Qux:Y]
    |             ^^^^^ cannot be resolved, ignoring
    |
    = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
@@ -58,7 +58,7 @@ warning: `[Qux:Y]` cannot be resolved, ignoring it...
 warning: `[BarA]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:24:10
    |
-24 | /// bar [BarA] bar
+LL | /// bar [BarA] bar
    |          ^^^^ cannot be resolved, ignoring
    |
    = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
@@ -66,11 +66,11 @@ warning: `[BarA]` cannot be resolved, ignoring it...
 warning: `[BarB]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:28:1
    |
-28 | / /**
-29 | |  * Foo
-30 | |  * bar [BarB] bar
-31 | |  * baz
-32 | |  */
+LL | / /**
+LL | |  * Foo
+LL | |  * bar [BarB] bar
+LL | |  * baz
+LL | |  */
    | |___^
    |
    = note: the link appears in this line:
@@ -82,13 +82,13 @@ warning: `[BarB]` cannot be resolved, ignoring it...
 warning: `[BarC]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:35:1
    |
-35 | / /** Foo
-36 | |
-37 | | bar [BarC] bar
-38 | | baz
+LL | / /** Foo
+LL | |
+LL | | bar [BarC] bar
+LL | | baz
 ...  |
-44 | |
-45 | | */
+LL | |
+LL | | */
    | |__^
    |
    = note: the link appears in this line:
@@ -100,7 +100,7 @@ warning: `[BarC]` cannot be resolved, ignoring it...
 warning: `[BarD]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:48:1
    |
-48 | #[doc = "Foo/nbar [BarD] bar/nbaz"]
+LL | #[doc = "Foo/nbar [BarD] bar/nbaz"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the link appears in this line:
@@ -112,10 +112,10 @@ warning: `[BarD]` cannot be resolved, ignoring it...
 warning: `[BarF]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:53:9
    |
-53 |         #[doc = $f]
+LL |         #[doc = $f]
    |         ^^^^^^^^^^^
 ...
-57 | f!("Foo/nbar [BarF] bar/nbaz");
+LL | f!("Foo/nbar [BarF] bar/nbaz");
    | ------------------------------- in this macro invocation
    |
    = note: the link appears in this line:
