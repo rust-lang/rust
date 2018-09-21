@@ -10,7 +10,7 @@
 
 //! See docs in build/expr/mod.rs
 
-use build::{BlockAnd, BlockAndExtension, Builder};
+use build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use hair::*;
 use rustc::middle::region;
 use rustc::mir::*;
@@ -59,14 +59,30 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
 
         let expr_ty = expr.ty;
-        let temp = if mutability == Mutability::Not {
-            this.local_decls
-                .push(LocalDecl::new_immutable_temp(expr_ty, expr_span))
-        } else {
-            this.local_decls
-                .push(LocalDecl::new_temp(expr_ty, expr_span))
-        };
+        let temp = {
+            let mut local_decl = LocalDecl::new_temp(expr_ty, expr_span);
+            if mutability == Mutability::Not {
+                local_decl = local_decl.immutable();
+            }
 
+            debug!("creating temp {:?} with block_context: {:?}", local_decl, this.block_context);
+            // Find out whether this temp is being created within the
+            // tail expression of a block whose result is ignored.
+            for bf in this.block_context.iter().rev() {
+                match bf {
+                    BlockFrame::SubExpr => continue,
+                    BlockFrame::Statement { .. } => break,
+                    &BlockFrame::TailExpr { tail_result_is_ignored } => {
+                        local_decl = local_decl.block_tail(BlockTailInfo {
+                            tail_result_is_ignored
+                        });
+                        break;
+                    }
+                }
+            }
+
+            this.local_decls.push(local_decl)
+        };
         if !expr_ty.is_never() {
             this.cfg.push(
                 block,

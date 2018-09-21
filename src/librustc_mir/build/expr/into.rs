@@ -11,7 +11,7 @@
 //! See docs in build/expr/mod.rs
 
 use build::expr::category::{Category, RvalueFunc};
-use build::{BlockAnd, BlockAndExtension, Builder};
+use build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use hair::*;
 use rustc::mir::*;
 use rustc::ty;
@@ -39,7 +39,17 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
 
-        match expr.kind {
+        let expr_is_block_or_scope = match expr.kind {
+            ExprKind::Block { .. } => true,
+            ExprKind::Scope { .. } => true,
+            _ => false,
+        };
+
+        if !expr_is_block_or_scope {
+            this.block_context.push(BlockFrame::SubExpr);
+        }
+
+        let block_and = match expr.kind {
             ExprKind::Scope {
                 region_scope,
                 lint_level,
@@ -302,6 +312,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         visibility_scope: source_info.scope,
                         internal: true,
                         is_user_variable: None,
+                        is_block_tail: None,
                     });
                     let ptr_temp = Place::Local(ptr_temp);
                     let block = unpack!(this.into(&ptr_temp, block, ptr));
@@ -414,6 +425,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     .push_assign(block, source_info, destination, rvalue);
                 block.unit()
             }
+        };
+
+        if !expr_is_block_or_scope {
+            let popped = this.block_context.pop();
+            assert!(popped.is_some());
         }
+
+        block_and
     }
 }

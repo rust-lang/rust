@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use build::scope::BreakableScope;
-use build::{BlockAnd, BlockAndExtension, Builder};
+use build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use hair::*;
 use rustc::mir::*;
 
@@ -40,19 +40,22 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // is better for borrowck interaction with overloaded
                 // operators like x[j] = x[i].
 
+                this.block_context.push(BlockFrame::SubExpr);
+
                 // Generate better code for things that don't need to be
                 // dropped.
                 if this.hir.needs_drop(lhs.ty) {
                     let rhs = unpack!(block = this.as_local_operand(block, rhs));
                     let lhs = unpack!(block = this.as_place(block, lhs));
                     unpack!(block = this.build_drop_and_replace(block, lhs_span, lhs, rhs));
-                    block.unit()
                 } else {
                     let rhs = unpack!(block = this.as_local_rvalue(block, rhs));
                     let lhs = unpack!(block = this.as_place(block, lhs));
                     this.cfg.push_assign(block, source_info, &lhs, rhs);
-                    block.unit()
                 }
+
+                this.block_context.pop();
+                block.unit()
             }
             ExprKind::AssignOp { op, lhs, rhs } => {
                 // FIXME(#28160) there is an interesting semantics
@@ -65,6 +68,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 let lhs = this.hir.mirror(lhs);
                 let lhs_ty = lhs.ty;
+
+                this.block_context.push(BlockFrame::SubExpr);
 
                 // As above, RTL.
                 let rhs = unpack!(block = this.as_local_operand(block, rhs));
@@ -85,6 +90,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 );
                 this.cfg.push_assign(block, source_info, &lhs, result);
 
+                this.block_context.pop();
                 block.unit()
             }
             ExprKind::Continue { label } => {
@@ -114,7 +120,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     (break_block, region_scope, break_destination.clone())
                 };
                 if let Some(value) = value {
-                    unpack!(block = this.into(&destination, block, value))
+                    this.block_context.push(BlockFrame::SubExpr);
+                    unpack!(block = this.into(&destination, block, value));
+                    this.block_context.pop();
                 } else {
                     this.cfg.push_assign_unit(block, source_info, &destination)
                 }
@@ -123,7 +131,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             ExprKind::Return { value } => {
                 block = match value {
-                    Some(value) => unpack!(this.into(&Place::Local(RETURN_PLACE), block, value)),
+                    Some(value) => {
+                        this.block_context.push(BlockFrame::SubExpr);
+                        let result = unpack!(this.into(&Place::Local(RETURN_PLACE), block, value));
+                        this.block_context.pop();
+                        result
+                    }
                     None => {
                         this.cfg
                             .push_assign_unit(block, source_info, &Place::Local(RETURN_PLACE));
@@ -140,6 +153,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 outputs,
                 inputs,
             } => {
+                this.block_context.push(BlockFrame::SubExpr);
                 let outputs = outputs
                     .into_iter()
                     .map(|output| unpack!(block = this.as_place(block, output)))
@@ -161,6 +175,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         },
                     },
                 );
+                this.block_context.pop();
                 block.unit()
             }
             _ => {
