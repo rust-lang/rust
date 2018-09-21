@@ -42,10 +42,5 @@ fn main() {
     let t = Top::new();
     let x: &Bottom = &t;
     //~^ ERROR mismatched types
-    //~| NOTE expected type `&Bottom`
-    //~| NOTE found type `&Top`
-    //~| NOTE expected struct `Bottom`, found struct `Top`
     //~| ERROR reached the recursion limit while auto-dereferencing I
-    //~| NOTE deref recursion limit reached
-    //~| NOTE consider adding a `#![recursion_limit="20"]` attribute to your crate
 }
