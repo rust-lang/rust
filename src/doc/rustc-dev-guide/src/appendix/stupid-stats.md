@@ -74,7 +74,7 @@ and a bunch of other crates with the 'librustc_' prefix.
 Next is translation, this translates the AST (and all those side tables) into
 LLVM IR (intermediate representation). We do this by calling into the LLVM
 libraries, rather than actually writing IR directly to a file. The code for
-this is in [librustc_trans](https://github.com/rust-lang/rust/tree/master/src/librustc_trans).
+this is in librustc_trans.
 
 The next phase is running the LLVM backend. This runs LLVM's optimisation passes
 on the generated IR and then generates machine code. The result is object files.
@@ -83,17 +83,22 @@ interface between LLVM and rustc is in [librustc_llvm](https://github.com/rust-l
 
 Finally, we link the object files into an executable. Again we outsource this to
 other programs and it's not really part of the rust compiler. The interface is
-in [librustc_back](https://github.com/rust-lang/rust/tree/master/src/librustc_back)
-(which also contains some things used primarily during translation).
+in librustc_back (which also contains some things used primarily during
+translation).
+
+> NOTE: `librustc_trans` and `librustc_back` no longer exist, and we don't
+> translate AST or HIR directly to LLVM IR anymore.  Instead, see
+> [`librustc_codegen_llvm`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/index.html)
+> and [`librustc_codegen_utils`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_utils/index.html).
 
 All these phases are coordinated by the driver. To see the exact sequence, look
 at [the `compile_input` function in `librustc_driver`][compile-input].
-The driver handles all the highest level coordination of compilation - 
-    1. handling command-line arguments 
+The driver handles all the highest level coordination of compilation -
+    1. handling command-line arguments
     2. maintaining compilation state (primarily in the `Session`)
     3. calling the appropriate code to run each phase of compilation
     4. handles high level coordination of pretty printing and testing.
-To create a drop-in compiler replacement or a compiler replacement, 
+To create a drop-in compiler replacement or a compiler replacement,
 we leave most of compilation alone and customise the driver using its APIs.
 
 [compile-input]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/driver/fn.compile_input.html

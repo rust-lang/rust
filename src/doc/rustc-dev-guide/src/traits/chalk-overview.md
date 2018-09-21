@@ -141,7 +141,7 @@ See [The SLG Solver][slg].
 [clause]: https://github.com/rust-lang-nursery/chalk/blob/master/GLOSSARY.md#clause
 [goals-and-clauses]: ./goals-and-clauses.html
 [well-formedness-checks]: https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/ir/lowering.rs#L230-L232
-[ir-code]: https://github.com/rust-lang-nursery/chalk/blob/master/src/ir.rs
+[ir-code]: https://github.com/rust-lang-nursery/chalk/tree/master/chalk-ir
 [HIR]: ../hir.html
 [binders-struct]: https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/ir.rs#L661
 [rules-environment]: https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/rules.rs#L9

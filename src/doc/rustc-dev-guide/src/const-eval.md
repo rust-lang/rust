@@ -35,4 +35,4 @@ integer or fat pointer, it will directly yield the value (via `Value::ByVal` or
 memory allocation (via `Value::ByRef`). This means that the `const_eval`
 function cannot be used to create miri-pointers to the evaluated constant or
 static. If you need that, you need to directly work with the functions in
-[src/librustc_mir/interpret/const_eval.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/interpret/const_eval/).
+[src/librustc_mir/const_eval.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/const_eval/index.html).
