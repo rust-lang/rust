@@ -532,6 +532,7 @@ fn main_args(args: &[String]) -> isize {
     let sort_modules_alphabetically = !matches.opt_present("sort-modules-by-appearance");
     let resource_suffix = matches.opt_str("resource-suffix");
     let enable_minification = !matches.opt_present("disable-minification");
+    let document_private_items = matches.opt_present("document-private-items");
 
     let edition = matches.opt_str("edition").unwrap_or("2015".to_string());
     let edition = match edition.parse() {
@@ -551,7 +552,8 @@ fn main_args(args: &[String]) -> isize {
         }
         (true, false) => {
             return test::run(Path::new(input), cfgs, libs, externs, test_args, crate_name,
-                             maybe_sysroot, display_warnings, linker, edition, cg)
+                             maybe_sysroot, display_warnings, linker, edition, cg,
+                             document_private_items)
         }
         (false, true) => return markdown::render(Path::new(input),
                                                  output.unwrap_or(PathBuf::from("doc")),

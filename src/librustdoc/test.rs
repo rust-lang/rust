@@ -12,6 +12,7 @@ use std::env;
 use std::ffi::OsString;
 use std::io::prelude::*;
 use std::io;
+use std::mem;
 use std::path::{Path, PathBuf};
 use std::panic::{self, AssertUnwindSafe};
 use std::process::Command;
@@ -41,7 +42,7 @@ use syntax_pos::{BytePos, DUMMY_SP, Pos, Span, FileName};
 use errors;
 use errors::emitter::ColorConfig;
 
-use clean::Attributes;
+use clean::{Attributes, AttributesExt, NestedAttributesExt};
 use html::markdown::{self, ErrorCodes, LangString};
 
 #[derive(Clone, Default)]
@@ -51,6 +52,8 @@ pub struct TestOptions {
     /// Whether to emit compilation warnings when compiling doctests. Setting this will suppress
     /// the default `#![allow(unused)]`.
     pub display_warnings: bool,
+    /// Whether to run doctests on private items.
+    pub document_private_items: bool,
     /// Additional crate-level attributes to add to doctests.
     pub attrs: Vec<String>,
 }
@@ -65,7 +68,8 @@ pub fn run(input_path: &Path,
            display_warnings: bool,
            linker: Option<PathBuf>,
            edition: Edition,
-           cg: CodegenOptions)
+           cg: CodegenOptions,
+           document_private_items: bool)
            -> isize {
     let input = config::Input::File(input_path.to_owned());
 
@@ -124,6 +128,7 @@ pub fn run(input_path: &Path,
         });
         let mut opts = scrape_test_config(hir_forest.krate());
         opts.display_warnings |= display_warnings;
+        opts.document_private_items |= document_private_items;
         let mut collector = Collector::new(
             crate_name,
             cfgs,
@@ -147,8 +152,9 @@ pub fn run(input_path: &Path,
                 collector: &mut collector,
                 map: &map,
                 codes: ErrorCodes::from(sess.opts.unstable_features.is_nightly_build()),
+                current_vis: true,
             };
-            hir_collector.visit_testable("".to_string(), &krate.attrs, |this| {
+            hir_collector.visit_testable("".to_string(), &krate.attrs, true, |this| {
                 intravisit::walk_crate(this, krate);
             });
         }
@@ -169,8 +175,11 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
     let mut opts = TestOptions {
         no_crate_inject: false,
         display_warnings: false,
+        document_private_items: false,
         attrs: Vec::new(),
     };
+
+    opts.document_private_items = krate.attrs.lists("doc").has_word("document_private_items");
 
     let test_attrs: Vec<_> = krate.attrs.iter()
         .filter(|a| a.check_name("doc"))
@@ -664,16 +673,33 @@ struct HirCollector<'a, 'hir: 'a> {
     collector: &'a mut Collector,
     map: &'a hir::map::Map<'hir>,
     codes: ErrorCodes,
+    current_vis: bool,
 }
 
 impl<'a, 'hir> HirCollector<'a, 'hir> {
     fn visit_testable<F: FnOnce(&mut Self)>(&mut self,
                                             name: String,
                                             attrs: &[ast::Attribute],
+                                            item_is_pub: bool,
                                             nested: F) {
         let mut attrs = Attributes::from_ast(self.sess.diagnostic(), attrs);
         if let Some(ref cfg) = attrs.cfg {
             if !cfg.matches(&self.sess.parse_sess, Some(&self.sess.features_untracked())) {
+                return;
+            }
+        }
+
+        let old_vis = if attrs.has_doc_flag("hidden") {
+            Some(mem::replace(&mut self.current_vis, false))
+        } else {
+            None
+        };
+
+        if !self.collector.opts.document_private_items {
+            if !(self.current_vis && item_is_pub) {
+                if let Some(old_vis) = old_vis {
+                    self.current_vis = old_vis;
+                }
                 return;
             }
         }
@@ -698,6 +724,10 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
 
         nested(self);
 
+        if let Some(old_vis) = old_vis {
+            self.current_vis = old_vis;
+        }
+
         if has_name {
             self.collector.names.pop();
         }
@@ -710,31 +740,50 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
     }
 
     fn visit_item(&mut self, item: &'hir hir::Item) {
+        let is_public = item.vis.node.is_pub();
+
         let name = if let hir::ItemKind::Impl(.., ref ty, _) = item.node {
             self.map.node_to_pretty_string(ty.id)
         } else {
             item.name.to_string()
         };
 
-        self.visit_testable(name, &item.attrs, |this| {
+        let old_vis = if let hir::ItemKind::Mod(..) = item.node {
+            let old_vis = self.current_vis;
+            self.current_vis &= is_public;
+            Some(old_vis)
+        } else {
+            None
+        };
+
+        self.visit_testable(name, &item.attrs, is_public, |this| {
             intravisit::walk_item(this, item);
         });
+
+        if let Some(old_vis) = old_vis {
+            self.current_vis = old_vis;
+        }
     }
 
     fn visit_trait_item(&mut self, item: &'hir hir::TraitItem) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, |this| {
+        self.visit_testable(item.ident.to_string(), &item.attrs, true, |this| {
             intravisit::walk_trait_item(this, item);
         });
     }
 
     fn visit_impl_item(&mut self, item: &'hir hir::ImplItem) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, |this| {
+        let is_public = item.vis.node.is_pub();
+        self.visit_testable(item.ident.to_string(), &item.attrs, is_public, |this| {
             intravisit::walk_impl_item(this, item);
         });
     }
 
     fn visit_foreign_item(&mut self, item: &'hir hir::ForeignItem) {
-        self.visit_testable(item.name.to_string(), &item.attrs, |this| {
+        let is_public = item.vis.node.is_pub();
+        self.visit_testable(item.name.to_string(),
+                            &item.attrs,
+                            is_public,
+                            |this| {
             intravisit::walk_foreign_item(this, item);
         });
     }
@@ -743,19 +792,25 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
                      v: &'hir hir::Variant,
                      g: &'hir hir::Generics,
                      item_id: ast::NodeId) {
-        self.visit_testable(v.node.name.to_string(), &v.node.attrs, |this| {
+        self.visit_testable(v.node.name.to_string(), &v.node.attrs, true, |this| {
             intravisit::walk_variant(this, v, g, item_id);
         });
     }
 
     fn visit_struct_field(&mut self, f: &'hir hir::StructField) {
-        self.visit_testable(f.ident.to_string(), &f.attrs, |this| {
+        let is_public = f.vis.node.is_pub();
+        self.visit_testable(f.ident.to_string(),
+                            &f.attrs,
+                            is_public,
+                            |this| {
             intravisit::walk_struct_field(this, f);
         });
     }
 
     fn visit_macro_def(&mut self, macro_def: &'hir hir::MacroDef) {
-        self.visit_testable(macro_def.name.to_string(), &macro_def.attrs, |_| ());
+        // FIXME(misdreavus): does macro export status surface to us? is it in AccessLevels, does
+        // its #[macro_export] attribute show up here?
+        self.visit_testable(macro_def.name.to_string(), &macro_def.attrs, true, |_| ());
     }
 }
 
