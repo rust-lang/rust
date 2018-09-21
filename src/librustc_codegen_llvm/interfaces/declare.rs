@@ -10,6 +10,9 @@
 
 use rustc::ty::Ty;
 use super::backend::Backend;
+use rustc::hir::def_id::DefId;
+use rustc::mir::mono::{Linkage, Visibility};
+use monomorphize::Instance;
 
 pub trait DeclareMethods<'ll, 'tcx: 'll> : Backend<'ll> {
     fn declare_global(
@@ -44,4 +47,21 @@ pub trait DeclareMethods<'ll, 'tcx: 'll> : Backend<'ll> {
     ) -> Self::Value;
     fn get_declared_value(&self, name: &str) -> Option<Self::Value>;
     fn get_defined_value(&self, name: &str) -> Option<Self::Value>;
+}
+
+pub trait PreDefineMethods<'ll, 'tcx: 'll> : Backend<'ll> {
+    fn predefine_static(
+        &self,
+        def_id: DefId,
+        linkage: Linkage,
+        visibility: Visibility,
+        symbol_name: &str
+    );
+    fn predefine_fn(
+        &self,
+        instance: Instance<'tcx>,
+        linkage: Linkage,
+        visibility: Visibility,
+        symbol_name: &str
+    );
 }

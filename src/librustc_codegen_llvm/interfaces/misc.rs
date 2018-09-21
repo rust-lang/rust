@@ -14,6 +14,9 @@ use rustc::ty::{Ty, self, Instance};
 use super::backend::Backend;
 use rustc::session::Session;
 use libc::c_uint;
+use rustc::mir::mono::Stats;
+use std::sync::Arc;
+use monomorphize::partitioning::CodegenUnit;
 
 pub trait MiscMethods<'ll, 'tcx: 'll> : Backend<'ll> {
     fn vtables(&self) -> &RefCell<FxHashMap<(Ty<'tcx>,
@@ -25,4 +28,6 @@ pub trait MiscMethods<'ll, 'tcx: 'll> : Backend<'ll> {
     fn eh_personality(&self) -> Self::Value;
     fn eh_unwind_resume(&self) -> Self::Value;
     fn sess(&self) -> &Session;
+    fn stats(&self) -> &RefCell<Stats>;
+    fn codegen_unit(&self) -> &Arc<CodegenUnit<'tcx>>;
 }

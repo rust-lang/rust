@@ -24,26 +24,30 @@ use rustc::hir;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::mono::{Linkage, Visibility};
-use rustc::ty::TypeFoldable;
-use rustc::ty::layout::LayoutOf;
+use rustc::ty::{TypeFoldable, Ty};
+use rustc::ty::layout::{LayoutOf, HasTyCtxt, TyLayout};
 use std::fmt;
 use value::Value;
+use builder::Builder;
 use interfaces::*;
 
 pub use rustc::mir::mono::MonoItem;
 
 pub use rustc_mir::monomorphize::item::MonoItemExt as BaseMonoItemExt;
 
-pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
-    fn define(&self, cx: &CodegenCx<'a, 'tcx, &'a Value>) {
+pub trait MonoItemExt<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>> :
+    fmt::Debug + BaseMonoItemExt<'ll, 'tcx> where
+    &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
+    fn define(&self, cx: &'a Bx::CodegenCx) {
         debug!("BEGIN IMPLEMENTING '{} ({})' in cgu {}",
-               self.to_string(cx.tcx),
+               self.to_string(*cx.tcx()),
                self.to_raw_string(),
-               cx.codegen_unit.name());
+               cx.codegen_unit().name());
 
         match *self.as_mono_item() {
             MonoItem::Static(def_id) => {
-                let tcx = cx.tcx;
+                let tcx = *cx.tcx();
                 let is_mutable = match tcx.describe_def(def_id) {
                     Some(Def::Static(_, is_mutable)) => is_mutable,
                     Some(other) => {
@@ -56,7 +60,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
                 cx.codegen_static(def_id, is_mutable);
             }
             MonoItem::GlobalAsm(node_id) => {
-                let item = cx.tcx.hir.expect_item(node_id);
+                let item = cx.tcx().hir.expect_item(node_id);
                 if let hir::ItemKind::GlobalAsm(ref ga) = item.node {
                     cx.codegen_global_asm(ga);
                 } else {
@@ -64,43 +68,43 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
                 }
             }
             MonoItem::Fn(instance) => {
-                base::codegen_instance(&cx, instance);
+                base::codegen_instance::<'a, 'll, 'tcx, Bx>(&cx, instance);
             }
         }
 
         debug!("END IMPLEMENTING '{} ({})' in cgu {}",
-               self.to_string(cx.tcx),
+               self.to_string(*cx.tcx()),
                self.to_raw_string(),
-               cx.codegen_unit.name());
+               cx.codegen_unit().name());
     }
 
     fn predefine(&self,
-                 cx: &CodegenCx<'a, 'tcx, &'a Value>,
+                 cx: &'a Bx::CodegenCx,
                  linkage: Linkage,
                  visibility: Visibility) {
         debug!("BEGIN PREDEFINING '{} ({})' in cgu {}",
-               self.to_string(cx.tcx),
+               self.to_string(*cx.tcx()),
                self.to_raw_string(),
-               cx.codegen_unit.name());
+               cx.codegen_unit().name());
 
-        let symbol_name = self.symbol_name(cx.tcx).as_str();
+        let symbol_name = self.symbol_name(*cx.tcx()).as_str();
 
         debug!("symbol {}", &symbol_name);
 
         match *self.as_mono_item() {
             MonoItem::Static(def_id) => {
-                predefine_static(cx, def_id, linkage, visibility, &symbol_name);
+                cx.predefine_static(def_id, linkage, visibility, &symbol_name);
             }
             MonoItem::Fn(instance) => {
-                predefine_fn(cx, instance, linkage, visibility, &symbol_name);
+                cx.predefine_fn(instance, linkage, visibility, &symbol_name);
             }
             MonoItem::GlobalAsm(..) => {}
         }
 
         debug!("END PREDEFINING '{} ({})' in cgu {}",
-               self.to_string(cx.tcx),
+               self.to_string(*cx.tcx()),
                self.to_raw_string(),
-               cx.codegen_unit.name());
+               cx.codegen_unit().name());
     }
 
     fn to_raw_string(&self) -> String {
@@ -120,68 +124,71 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {}
+impl<'a, 'll:'a, 'tcx: 'll> MonoItemExt<'a, 'll, 'tcx, Builder<'a, 'll, 'tcx, &'ll Value>>
+    for MonoItem<'tcx> {}
 
-fn predefine_static<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx, &'a Value>,
-                              def_id: DefId,
+impl<'ll, 'tcx: 'll> PreDefineMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
+    fn predefine_static(&self,
+                                  def_id: DefId,
+                                  linkage: Linkage,
+                                  visibility: Visibility,
+                                  symbol_name: &str) {
+        let instance = Instance::mono(self.tcx, def_id);
+        let ty = instance.ty(self.tcx);
+        let llty = self.layout_of(ty).llvm_type(self);
+
+        let g = self.define_global(symbol_name, llty).unwrap_or_else(|| {
+            self.sess().span_fatal(self.tcx.def_span(def_id),
+                &format!("symbol `{}` is already defined", symbol_name))
+        });
+
+        unsafe {
+            llvm::LLVMRustSetLinkage(g, base::linkage_to_llvm(linkage));
+            llvm::LLVMRustSetVisibility(g, base::visibility_to_llvm(visibility));
+        }
+
+        self.instances.borrow_mut().insert(instance, g);
+    }
+
+    fn predefine_fn(&self,
+                              instance: Instance<'tcx>,
                               linkage: Linkage,
                               visibility: Visibility,
                               symbol_name: &str) {
-    let instance = Instance::mono(cx.tcx, def_id);
-    let ty = instance.ty(cx.tcx);
-    let llty = cx.layout_of(ty).llvm_type(cx);
+        assert!(!instance.substs.needs_infer() &&
+                !instance.substs.has_param_types());
 
-    let g = cx.define_global(symbol_name, llty).unwrap_or_else(|| {
-        cx.sess().span_fatal(cx.tcx.def_span(def_id),
-            &format!("symbol `{}` is already defined", symbol_name))
-    });
-
-    unsafe {
-        llvm::LLVMRustSetLinkage(g, base::linkage_to_llvm(linkage));
-        llvm::LLVMRustSetVisibility(g, base::visibility_to_llvm(visibility));
-    }
-
-    cx.instances.borrow_mut().insert(instance, g);
-}
-
-fn predefine_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx, &'a Value>,
-                          instance: Instance<'tcx>,
-                          linkage: Linkage,
-                          visibility: Visibility,
-                          symbol_name: &str) {
-    assert!(!instance.substs.needs_infer() &&
-            !instance.substs.has_param_types());
-
-    let mono_ty = instance.ty(cx.tcx);
-    let attrs = cx.tcx.codegen_fn_attrs(instance.def_id());
-    let lldecl = cx.declare_fn(symbol_name, mono_ty);
-    unsafe { llvm::LLVMRustSetLinkage(lldecl, base::linkage_to_llvm(linkage)) };
-    base::set_link_section(lldecl, &attrs);
-    if linkage == Linkage::LinkOnceODR ||
-        linkage == Linkage::WeakODR {
-        llvm::SetUniqueComdat(cx.llmod, lldecl);
-    }
-
-    // If we're compiling the compiler-builtins crate, e.g. the equivalent of
-    // compiler-rt, then we want to implicitly compile everything with hidden
-    // visibility as we're going to link this object all over the place but
-    // don't want the symbols to get exported.
-    if linkage != Linkage::Internal && linkage != Linkage::Private &&
-       cx.tcx.is_compiler_builtins(LOCAL_CRATE) {
-        unsafe {
-            llvm::LLVMRustSetVisibility(lldecl, llvm::Visibility::Hidden);
+        let mono_ty = instance.ty(self.tcx);
+        let attrs = self.tcx.codegen_fn_attrs(instance.def_id());
+        let lldecl = self.declare_fn(symbol_name, mono_ty);
+        unsafe { llvm::LLVMRustSetLinkage(lldecl, base::linkage_to_llvm(linkage)) };
+        base::set_link_section(lldecl, &attrs);
+        if linkage == Linkage::LinkOnceODR ||
+            linkage == Linkage::WeakODR {
+            llvm::SetUniqueComdat(self.llmod, lldecl);
         }
-    } else {
-        unsafe {
-            llvm::LLVMRustSetVisibility(lldecl, base::visibility_to_llvm(visibility));
+
+        // If we're compiling the compiler-builtins crate, e.g. the equivalent of
+        // compiler-rt, then we want to implicitly compile everything with hidden
+        // visibility as we're going to link this object all over the place but
+        // don't want the symbols to get exported.
+        if linkage != Linkage::Internal && linkage != Linkage::Private &&
+           self.tcx.is_compiler_builtins(LOCAL_CRATE) {
+            unsafe {
+                llvm::LLVMRustSetVisibility(lldecl, llvm::Visibility::Hidden);
+            }
+        } else {
+            unsafe {
+                llvm::LLVMRustSetVisibility(lldecl, base::visibility_to_llvm(visibility));
+            }
         }
-    }
 
-    debug!("predefine_fn: mono_ty = {:?} instance = {:?}", mono_ty, instance);
-    if instance.def.is_inline(cx.tcx) {
-        attributes::inline(cx, lldecl, attributes::InlineAttr::Hint);
-    }
-    attributes::from_fn_attrs(cx, lldecl, Some(instance.def.def_id()));
+        debug!("predefine_fn: mono_ty = {:?} instance = {:?}", mono_ty, instance);
+        if instance.def.is_inline(self.tcx) {
+            attributes::inline(self, lldecl, attributes::InlineAttr::Hint);
+        }
+        attributes::from_fn_attrs(self, lldecl, Some(instance.def.def_id()));
 
-    cx.instances.borrow_mut().insert(instance, lldecl);
+        self.instances.borrow_mut().insert(instance, lldecl);
+    }
 }

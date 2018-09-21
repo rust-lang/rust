@@ -89,28 +89,33 @@ use value::Value;
 use mir::operand::OperandValue;
 
 use rustc_codegen_utils::check_for_rustc_errors_attr;
+use std::marker::PhantomData;
 
-pub struct StatRecorder<'a, 'll: 'a, 'tcx: 'll> {
-    cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>,
+pub struct StatRecorder<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> {
+    cx: &'a Cx,
     name: Option<String>,
     istart: usize,
+    phantom: PhantomData<(&'ll (), &'tcx ())>
 }
 
-impl StatRecorder<'a, 'll, 'tcx> {
-    pub fn new(cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>, name: String) -> Self {
-        let istart = cx.stats.borrow().n_llvm_insns;
+impl<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> StatRecorder<'a, 'll, 'tcx, Cx> {
+    pub fn new(cx: &'a Cx, name: String) -> Self {
+        let istart = cx.stats().borrow().n_llvm_insns;
         StatRecorder {
             cx,
             name: Some(name),
             istart,
+            phantom: PhantomData
         }
     }
 }
 
-impl Drop for StatRecorder<'a, 'll, 'tcx> {
+impl<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> Drop for
+    StatRecorder<'a, 'll, 'tcx, Cx>
+{
     fn drop(&mut self) {
         if self.cx.sess().codegen_stats() {
-            let mut stats = self.cx.stats.borrow_mut();
+            let mut stats = self.cx.stats().borrow_mut();
             let iend = stats.n_llvm_insns;
             stats.fn_stats.push((self.name.take().unwrap(), iend - self.istart));
             stats.n_fns += 1;
@@ -451,13 +456,13 @@ pub fn memcpy_ty<'a, 'll: 'a, 'tcx: 'll, Builder : BuilderMethods<'a, 'll, 'tcx>
     bx.call_memcpy(dst, src, bx.cx().const_usize(size), align, flags);
 }
 
-pub fn codegen_instance<'a, 'll: 'a, 'tcx: 'll>(
-    cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>,
+pub fn codegen_instance<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
+    cx: &'a Bx::CodegenCx,
     instance: Instance<'tcx>
-) {
+) where &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx> {
     let _s = if cx.sess().codegen_stats() {
         let mut instance_name = String::new();
-        DefPathBasedNames::new(cx.tcx, true, true)
+        DefPathBasedNames::new(*cx.tcx(), true, true)
             .push_def_path(instance.def_id(), &mut instance_name);
         Some(StatRecorder::new(cx, instance_name))
     } else {
@@ -469,17 +474,17 @@ pub fn codegen_instance<'a, 'll: 'a, 'tcx: 'll>(
     // release builds.
     info!("codegen_instance({})", instance);
 
-    let fn_ty = instance.ty(cx.tcx);
+    let fn_ty = instance.ty(*cx.tcx());
     let sig = common::ty_fn_sig(cx, fn_ty);
-    let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
+    let sig = cx.tcx().normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
 
-    let lldecl = cx.instances.borrow().get(&instance).cloned().unwrap_or_else(||
+    let lldecl = cx.instances().borrow().get(&instance).cloned().unwrap_or_else(||
         bug!("Instance `{:?}` not already declared", instance));
 
-    cx.stats.borrow_mut().n_closures += 1;
+    cx.stats().borrow_mut().n_closures += 1;
 
-    let mir = cx.tcx.instance_mir(instance.def);
-    mir::codegen_mir::<'a, 'll, 'tcx, Builder<'a, 'll, 'tcx, &'ll Value>>(
+    let mir = cx.tcx().instance_mir(instance.def);
+    mir::codegen_mir::<'a, 'll, 'tcx, Bx>(
         cx, lldecl, &mir, instance, sig
     );
 }
