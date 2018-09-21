@@ -166,6 +166,9 @@ macro_rules! bitand_trunc_impl {
 }
 
 bitand_trunc_impl! {
+    usize:u32
+    usize:u16
+    usize:u8
     u128:u64
     u128:u32
     u128:u16
@@ -177,6 +180,9 @@ bitand_trunc_impl! {
     u32:u8
     u16:u8
 
+    isize:i32
+    isize:i16
+    isize:i8
     i128:i64
     i128:i32
     i128:i16
