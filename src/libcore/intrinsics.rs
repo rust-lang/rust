@@ -1162,6 +1162,10 @@ extern "rust-intrinsic" {
     /// // Even leaking `v` "uses" it, and hence is undefined behavior.
     /// // mem::forget(v); // ERROR
     ///
+    /// // In fact, `v` is invalid according to basic type layout invariants, so *any*
+    /// // operation touching it is undefined behavior.
+    /// // let v2 = v; // ERROR
+    ///
     /// unsafe {
     ///     // Let us instead put in a valid value
     ///     ptr::write(&mut v as *mut Box<i32>, Box::new(42i32));
