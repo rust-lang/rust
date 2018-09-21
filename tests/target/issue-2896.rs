@@ -91,23 +91,23 @@ fn main() {
 
             let probe = cooccurrences_with_row_sums.probe();
             /*
-      // produce the (item, item) collection
-      let cooccurrences = occurrences
-        .join_map(&occurrences, |_user, &item_a, &item_b| (item_a, item_b));
-      // count the occurrences of each item.
-      let counts = cooccurrences
-        .map(|(item_a,_)| item_a)
-        .count();
-      // produce ((item1, item2), count1, count2, count12) tuples
-      let cooccurrences_with_counts = cooccurrences
-        .join_map(&counts, |&item_a, &item_b, &count_item_a| (item_b, (item_a, count_item_a)))
-        .join_map(&counts, |&item_b, &(item_a, count_item_a), &count_item_b| {
-          ((item_a, item_b), count_item_a, count_item_b)
-        });
-      let probe = cooccurrences_with_counts
-        .inspect(|x| println!("change: {:?}", x))
-        .probe();
-*/
+                  // produce the (item, item) collection
+                  let cooccurrences = occurrences
+                    .join_map(&occurrences, |_user, &item_a, &item_b| (item_a, item_b));
+                  // count the occurrences of each item.
+                  let counts = cooccurrences
+                    .map(|(item_a,_)| item_a)
+                    .count();
+                  // produce ((item1, item2), count1, count2, count12) tuples
+                  let cooccurrences_with_counts = cooccurrences
+                    .join_map(&counts, |&item_a, &item_b, &count_item_a| (item_b, (item_a, count_item_a)))
+                    .join_map(&counts, |&item_b, &(item_a, count_item_a), &count_item_b| {
+                      ((item_a, item_b), count_item_a, count_item_b)
+                    });
+                  let probe = cooccurrences_with_counts
+                    .inspect(|x| println!("change: {:?}", x))
+                    .probe();
+            */
             (input, probe)
         });
 
