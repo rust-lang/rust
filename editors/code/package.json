@@ -58,10 +58,6 @@
         ],
         "commands": [
             {
-                "command": "ra-lsp.createFile",
-                "title": "Show Rust syntax tree"
-            },
-            {
                 "command": "ra-lsp.syntaxTree",
                 "title": "Show Rust syntax tree"
             },
