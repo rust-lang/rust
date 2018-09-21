@@ -955,11 +955,8 @@ assert_eq!(2+2, 4);
     fn make_test_no_crate_inject() {
         //even if you do use the crate within the test, setting `opts.no_crate_inject` will skip
         //adding it anyway
-        let opts = TestOptions {
-            no_crate_inject: true,
-            display_warnings: false,
-            attrs: vec![],
-        };
+        let mut opts = TestOptions::default();
+        opts.no_crate_inject = true;
         let input =
 "use asdf::qwop;
 assert_eq!(2+2, 4);";
