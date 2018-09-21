@@ -25,6 +25,8 @@ CRATE := cortex-m
 CRATE_URL := https://github.com/rust-embedded/cortex-m
 CRATE_SHA1 := a448e9156e2cb1e556e5441fd65426952ef4b927 # 0.5.0
 
+export RUSTFLAGS := --cap-lints=allow
+
 all:
 	env
 	mkdir -p $(WORK_DIR)
