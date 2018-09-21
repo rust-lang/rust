@@ -25,11 +25,13 @@ static_assert!(PLACE_TY_IS_3_PTRS_LARGE:
     mem::size_of::<PlaceTy<'_>>() <= 24
 );
 
-impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
-    pub fn from_ty(ty: Ty<'tcx>) -> PlaceTy<'tcx> {
+impl From<Ty<'tcx>> for PlaceTy<'tcx> {
+    fn from(ty: Ty<'tcx>) -> Self {
         PlaceTy::Ty { ty }
     }
+}
 
+impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     pub fn to_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match *self {
             PlaceTy::Ty { ty } =>
@@ -168,38 +170,162 @@ impl<'tcx> Place<'tcx> {
         }
     }
 
+    // If this is a field projection, and the field is being projected from a closure type,
+    // then returns the index of the field being projected. Note that this closure will always
+    // be `self` in the current MIR, because that is the only time we directly access the fields
+    // of a closure type.
+    //pub fn is_upvar_field_projection<'cx, 'gcx>(&self, mir: &'cx Mir<'tcx>,
+    //                                            tcx: &TyCtxt<'cx, 'gcx, 'tcx>) -> Option<Field> {
+    //    let (place, by_ref) = if let Place::Projection(ref proj) = self {
+    //        if let ProjectionElem::Deref = proj.elem {
+    //            (&proj.base, true)
+    //        } else {
+    //            (self, false)
+    //        }
+    //    } else {
+    //        (self, false)
+    //    };
+
+    //    match place {
+    //        Place::Projection(ref proj) => match proj.elem {
+    //            ProjectionElem::Field(field, _ty) => {
+    //                let base_ty = proj.base.ty(mir, *tcx).to_ty(*tcx);
+
+    //                if (base_ty.is_closure() || base_ty.is_generator()) &&
+    //                    (!by_ref || mir.upvar_decls[field.index()].by_ref)
+    //                {
+    //                    Some(field)
+    //                } else {
+    //                    None
+    //                }
+    //            },
+    //            _ => None,
+    //        }
+    //        _ => None,
+    //    }
+    //}
+}
+
+impl<'tcx> PlaceBase<'tcx> {
+    pub fn ty(&self, local_decls: &impl HasLocalDecls<'tcx>) -> Ty<'tcx> {
+        match self {
+            PlaceBase::Local(index) => local_decls.local_decls()[*index].ty,
+            PlaceBase::Promoted(data) => data.1,
+            PlaceBase::Static(data) => data.ty,
+        }
+    }
+}
+
+impl<'tcx> NeoPlace<'tcx> {
+    pub fn ty<'a, 'gcx>(
+        &self,
+        local_decls: &impl HasLocalDecls<'tcx>,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    ) -> PlaceTy<'tcx> {
+        // the PlaceTy is the *final* type with all projection applied
+        // if there is no projection, that just refers to `base`:
+        //
+        // Place: base.[a, b, c]
+        //                    ^-- projection
+        //                    ^-- PlaceTy
+        //
+        // Place: base.[]
+        //             ^^-- no projection
+        //        ^^^^-- PlaceTy
+
+        let mut place_ty = PlaceTy::from(self.base.ty(local_decls));
+
+        // apply .projection_ty() to all elems but only returns the final one.
+        for elem in self.elems.iter() {
+            place_ty = place_ty.projection_ty(tcx, elem);
+        }
+
+        place_ty
+    }
+
     /// If this is a field projection, and the field is being projected from a closure type,
     /// then returns the index of the field being projected. Note that this closure will always
     /// be `self` in the current MIR, because that is the only time we directly access the fields
     /// of a closure type.
-    pub fn is_upvar_field_projection<'cx, 'gcx>(&self, mir: &'cx Mir<'tcx>,
-                                                tcx: &TyCtxt<'cx, 'gcx, 'tcx>) -> Option<Field> {
-        let (place, by_ref) = if let Place::Projection(ref proj) = self {
-            if let ProjectionElem::Deref = proj.elem {
-                (&proj.base, true)
+    pub fn is_upvar_field_projection<'cx, 'gcx>(
+        &self,
+        mir: &'cx Mir<'tcx>,
+        tcx: &TyCtxt<'cx, 'gcx, 'tcx>,
+    ) -> Option<Field> {
+        // Look for either *(Place.field) or Place.field,
+        // where P is a place with closure type,
+        // these sorts of places represent accesses to the closure's captured upvars.
+
+        // unwrap inner place when Deref matched.
+        // *(closure.field)
+        // ^         ^^^^^ inner projection_elem
+        // |-- Deref
+        let (elems, by_ref) =
+            if let Some(ProjectionElem::Deref) = self.elems.last() {
+                (&self.elems[..self.elems.len()-1], true)
+        } else {
+            (&self.elems[..], false)
+        };
+        let mut elems = elems.iter().rev();
+
+        // closure.field
+        //         ^^^^^
+        if let Some(ProjectionElem::Field(field, _ty)) = elems.next() {
+            let base_ty = self.base.ty_with_projections(mir, *tcx, elems.rev());
+            if (base_ty.is_closure() || base_ty.is_generator()) &&
+                (!by_ref || mir.upvar_decls[field.index()].by_ref)
+            {
+                Some(*field)
             } else {
-                (self, false)
+                None
             }
         } else {
-            (self, false)
-        };
+            None
+        }
+    }
 
-        match place {
-            Place::Projection(ref proj) => match proj.elem {
-                ProjectionElem::Field(field, _ty) => {
-                    let base_ty = proj.base.ty(mir, *tcx).to_ty(*tcx);
-
-                    if (base_ty.is_closure() || base_ty.is_generator()) &&
-                        (!by_ref || mir.upvar_decls[field.index()].by_ref)
-                    {
-                        Some(field)
-                    } else {
-                        None
-                    }
+    // for Place:
+    //    (Base.[a, b, c])
+    //     ^^^^^^^^^^  ^-- projection
+    //     |-- base_place
+    //
+    //     Base.[]
+    //     ^^^^ ^^-- no projection(empty)
+    //     |-- base_place
+    pub fn split_projection<'cx, 'gcx>(
+        &self,
+        tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+    ) -> (NeoPlace<'tcx>, Option<&'tcx PlaceElem<'tcx>>) {
+        // split place_elems
+        // Base.[a, b, c]
+        //       ^^^^  ^-- projection(projection lives in the last elem)
+        //       |-- place_elems
+        match self.elems.split_last() {
+            Some((projection, place_elems)) => (
+                NeoPlace {
+                    base: self.clone().base,
+                    elems: tcx.intern_place_elems(place_elems),
                 },
-                _ => None,
-            }
-            _ => None,
+                Some(projection),
+            ),
+            _ => (self.clone(), None)
+        }
+    }
+
+    pub fn has_no_projection(&self) -> bool {
+        self.elems.is_empty()
+    }
+
+    // for projection returns the base place;
+    //     Base.[a, b, c] => Base.[a, b]
+    //                 ^-- projection
+    // if no projection returns the place itself,
+    //     Base.[] => Base.[]
+    //          ^^-- no projection
+    pub fn projection_base<'cx, 'gcx>(&self, tcx: TyCtxt<'cx, 'gcx, 'tcx>) -> NeoPlace<'tcx> {
+        match self.split_projection(tcx) {
+            (place, Some(_)) => place,
+            (_, None) => self.clone(),
         }
     }
 }

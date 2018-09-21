@@ -66,7 +66,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 ));
 
                 item_msg = format!("`{}`", access_place_desc.unwrap());
-                if access_place.is_upvar_field_projection(self.mir, &self.infcx.tcx).is_some() {
+                let neo_place = self.infcx.tcx.as_new_place(access_place);
+                if neo_place.is_upvar_field_projection(self.mir, &self.infcx.tcx).is_some() {
                     reason = ", as it is not declared as mutable".to_string();
                 } else {
                     let name = self.mir.upvar_decls[upvar_index.index()].debug_name;
@@ -84,8 +85,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     debug_assert!(is_closure_or_generator(
                         the_place_err.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx)
                     ));
-
-                    reason = if access_place.is_upvar_field_projection(self.mir,
+                    let neo_place = self.infcx.tcx.as_new_place(access_place);
+                    reason = if neo_place.is_upvar_field_projection(self.mir,
                                                                        &self.infcx.tcx).is_some() {
                         ", as it is a captured variable in a `Fn` closure".to_string()
                     } else {

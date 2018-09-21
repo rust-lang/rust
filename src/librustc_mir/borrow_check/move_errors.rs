@@ -254,9 +254,12 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     },
                 };
             let origin = Origin::Mir;
+            let neo_place = self.infcx.tcx.as_new_place(original_path);
+            let upvar_field_projection =
+                neo_place.is_upvar_field_projection(self.mir, &self.infcx.tcx);
             debug!("report: original_path={:?} span={:?}, kind={:?} \
                    original_path.is_upvar_field_projection={:?}", original_path, span, kind,
-                   original_path.is_upvar_field_projection(self.mir, &self.infcx.tcx));
+                   upvar_field_projection);
             (
                 match kind {
                     IllegalMoveOriginKind::Static => {
@@ -269,6 +272,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         let ty = place.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
                         let is_upvar_field_projection =
                             self.prefixes(&original_path, PrefixSet::All)
+                            .map(|p| self.infcx.tcx.as_new_place(&p))
                             .any(|p| p.is_upvar_field_projection(self.mir, &self.infcx.tcx)
                                  .is_some());
                         debug!("report: ty={:?}", ty);
@@ -303,6 +307,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                     span, place_description, origin);
 
                                 for prefix in self.prefixes(&original_path, PrefixSet::All) {
+                                    let prefix = self.infcx.tcx.as_new_place(prefix);
                                     if let Some(field) = prefix.is_upvar_field_projection(
                                             self.mir, &self.infcx.tcx) {
                                         let upvar_decl = &self.mir.upvar_decls[field.index()];
