@@ -739,8 +739,57 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
         intravisit::NestedVisitorMap::All(&self.map)
     }
 
-    fn visit_item(&mut self, item: &'hir hir::Item) {
+    fn visit_item(&mut self, mut item: &'hir hir::Item) {
         let is_public = item.vis.node.is_pub();
+        if let hir::ItemKind::Use(ref path, hir::UseKind::Single) = item.node {
+            if is_public {
+                if let Some(node) = self.map.get_if_local(path.def.def_id()) {
+                    // load doctests from the actual item, not the use statement
+                    // TODO(misdreavus): this will run some doctests multiple times if an item is
+                    // re-exported multiple times (say, into a prelude)
+                    match node {
+                        // if we've re-exported an item, continue with the new item, using the
+                        // exported visibility
+                        hir::Node::Item(new_item) => item = new_item,
+                        // forward anything else we handle specially to our visitor
+                        hir::Node::TraitItem(item) => {
+                            self.visit_trait_item(item);
+                            return;
+                        }
+                        hir::Node::ImplItem(item) => {
+                            self.visit_impl_item(item);
+                            return;
+                        }
+                        hir::Node::ForeignItem(item) => {
+                            self.visit_foreign_item(item);
+                            return;
+                        }
+                        hir::Node::Field(f) => {
+                            self.visit_struct_field(f);
+                            return;
+                        }
+                        hir::Node::MacroDef(def) => {
+                            self.visit_macro_def(def);
+                            return;
+                        }
+                        hir::Node::Variant(v) => {
+                            // we need the Generics and NodeId of the parent enum
+                            let variant_node_id =
+                                self.map.local_def_id_to_node_id(path.def.def_id().to_local());
+                            let enum_node_id = self.map.get_parent(variant_node_id);
+                            let enum_def_id = self.map.local_def_id(enum_node_id);
+                            let generics = self.map.get_generics(enum_def_id)
+                                                   .expect("enums always have a Generics struct");
+
+                            self.visit_variant(v, generics, enum_node_id);
+                            return;
+                        }
+                        // we don't care about any other kind of node, so bail early
+                        _ => return,
+                    }
+                }
+            }
+        }
 
         let name = if let hir::ItemKind::Impl(.., ref ty, _) = item.node {
             self.map.node_to_pretty_string(ty.id)
