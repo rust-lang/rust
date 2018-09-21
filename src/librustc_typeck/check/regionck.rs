@@ -107,7 +107,7 @@ use rustc::hir::{self, PatKind};
 macro_rules! ignore_err {
     ($e:expr) => (match $e { Ok(e) => e, Err(_) => {
         debug!("ignoring mem-categorization error!");
-        return ()
+        return;
     }})
 }
 

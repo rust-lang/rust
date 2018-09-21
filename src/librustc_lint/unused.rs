@@ -332,6 +332,7 @@ impl EarlyLintPass for UnusedParens {
             WhileLet(_, ref cond, ..) => (cond, "`while let` head expression", true),
             ForLoop(_, ref cond, ..) => (cond, "`for` head expression", true),
             Match(ref head, _) => (head, "`match` head expression", true),
+            Break(_, Some(ref value)) => (value, "`break` value", false),
             Ret(Some(ref value)) => (value, "`return` value", false),
             Assign(_, ref value) => (value, "assigned value", false),
             AssignOp(.., ref value) => (value, "assigned value", false),
@@ -368,6 +369,34 @@ impl EarlyLintPass for UnusedParens {
                 return;
             }
         };
+        match e.node {
+            Ret(Some(ref value)) |
+            Break(_, Some(ref value)) => {
+                if let Tup(ref vals) = value.node {
+                    if vals.is_empty() {
+                        if e.span.ctxt().outer().expn_info()
+                            .map_or(false, |info| info.call_site.ctxt().outer()
+                                    .expn_info().is_some()) {
+                                return;
+                        }
+                        let mut err = cx.struct_span_lint(
+                            UNUSED_PARENS,
+                            value.span,
+                            "unnecessary parentheses",
+                        );
+                        err.span_suggestion_short_with_applicability(
+                            value.span,
+                            "remove these parentheses",
+                            String::from(""),
+                            Applicability::MachineApplicable,
+                        );
+                        err.emit();
+                        return;
+                    }
+                }
+            }
+            _ => ()
+        }
         self.check_unused_parens_core(cx, &value, msg, struct_lit_needs_parens);
     }
 

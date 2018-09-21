@@ -1,0 +1,176 @@
+{
+  "message": "unnecessary parentheses",
+  "code": {
+    "code": "unused_parens",
+    "explanation": null
+  },
+  "level": "warning",
+  "spans": [
+    {
+      "file_name": "$DIR/unused_parens_break_return.rs",
+      "byte_start": 941,
+      "byte_end": 943,
+      "line_start": 23,
+      "line_end": 23,
+      "column_start": 14,
+      "column_end": 16,
+      "is_primary": true,
+      "text": [
+        {
+          "text": "        break();",
+          "highlight_start": 14,
+          "highlight_end": 16
+        }
+      ],
+      "label": null,
+      "suggested_replacement": null,
+      "suggestion_applicability": null,
+      "expansion": null
+    }
+  ],
+  "children": [
+    {
+      "message": "lint level defined here",
+      "code": null,
+      "level": "note",
+      "spans": [
+        {
+          "file_name": "$DIR/unused_parens_break_return.rs",
+          "byte_start": 889,
+          "byte_end": 902,
+          "line_start": 20,
+          "line_end": 20,
+          "column_start": 9,
+          "column_end": 22,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "#![warn(unused_parens)]",
+              "highlight_start": 9,
+              "highlight_end": 22
+            }
+          ],
+          "label": null,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "expansion": null
+        }
+      ],
+      "children": [],
+      "rendered": null
+    },
+    {
+      "message": "remove these parentheses",
+      "code": null,
+      "level": "help",
+      "spans": [
+        {
+          "file_name": "$DIR/unused_parens_break_return.rs",
+          "byte_start": 941,
+          "byte_end": 943,
+          "line_start": 23,
+          "line_end": 23,
+          "column_start": 14,
+          "column_end": 16,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "        break();",
+              "highlight_start": 14,
+              "highlight_end": 16
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "",
+          "suggestion_applicability": "MachineApplicable",
+          "expansion": null
+        }
+      ],
+      "children": [],
+      "rendered": null
+    }
+  ],
+  "rendered": "warning: unnecessary parentheses
+  --> $DIR/unused_parens_break_return.rs:23:14
+   |
+LL |         break();
+   |              ^^ help: remove these parentheses
+   |
+note: lint level defined here
+  --> $DIR/unused_parens_break_return.rs:20:9
+   |
+LL | #![warn(unused_parens)]
+   |         ^^^^^^^^^^^^^
+
+"
+}
+{
+  "message": "unnecessary parentheses",
+  "code": {
+    "code": "unused_parens",
+    "explanation": null
+  },
+  "level": "warning",
+  "spans": [
+    {
+      "file_name": "$DIR/unused_parens_break_return.rs",
+      "byte_start": 961,
+      "byte_end": 963,
+      "line_start": 25,
+      "line_end": 25,
+      "column_start": 11,
+      "column_end": 13,
+      "is_primary": true,
+      "text": [
+        {
+          "text": "    return();",
+          "highlight_start": 11,
+          "highlight_end": 13
+        }
+      ],
+      "label": null,
+      "suggested_replacement": null,
+      "suggestion_applicability": null,
+      "expansion": null
+    }
+  ],
+  "children": [
+    {
+      "message": "remove these parentheses",
+      "code": null,
+      "level": "help",
+      "spans": [
+        {
+          "file_name": "$DIR/unused_parens_break_return.rs",
+          "byte_start": 961,
+          "byte_end": 963,
+          "line_start": 25,
+          "line_end": 25,
+          "column_start": 11,
+          "column_end": 13,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "    return();",
+              "highlight_start": 11,
+              "highlight_end": 13
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "",
+          "suggestion_applicability": "MachineApplicable",
+          "expansion": null
+        }
+      ],
+      "children": [],
+      "rendered": null
+    }
+  ],
+  "rendered": "warning: unnecessary parentheses
+  --> $DIR/unused_parens_break_return.rs:25:11
+   |
+LL |     return();
+   |           ^^ help: remove these parentheses
+
+"
+}
