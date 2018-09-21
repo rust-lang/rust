@@ -335,7 +335,7 @@ struct FrameSnapshot<'a, 'tcx: 'a> {
     stmt: usize,
 }
 
-// Not using the macro because that does not support types depending on 'tcx
+// Not using the macro because that does not support types depending on two lifetimes
 impl<'a, 'mir, 'tcx: 'mir> HashStable<StableHashingContext<'a>> for Frame<'mir, 'tcx> {
     fn hash_stable<W: StableHasherResult>(
         &self,
