@@ -26,7 +26,7 @@ pub use self::backend::{Backend, BackendTypes};
 pub use self::builder::BuilderMethods;
 pub use self::consts::ConstMethods;
 pub use self::debuginfo::{DebugInfoBuilderMethods, DebugInfoMethods};
-pub use self::declare::DeclareMethods;
+pub use self::declare::{DeclareMethods, PreDefineMethods};
 pub use self::intrinsic::{IntrinsicCallMethods, IntrinsicDeclarationMethods};
 pub use self::misc::MiscMethods;
 pub use self::statics::StaticMethods;
@@ -47,6 +47,7 @@ pub trait CodegenMethods<'tcx>:
     + IntrinsicDeclarationMethods<'tcx>
     + DeclareMethods<'tcx>
     + AsmMethods<'tcx>
+    + PreDefineMethods<'tcx>
 {
 }
 
@@ -61,6 +62,7 @@ impl<'tcx, T> CodegenMethods<'tcx> for T where
         + IntrinsicDeclarationMethods<'tcx>
         + DeclareMethods<'tcx>
         + AsmMethods<'tcx>
+        + PreDefineMethods<'tcx>
 {}
 
 pub trait HasCodegen<'tcx>: Backend<'tcx> {

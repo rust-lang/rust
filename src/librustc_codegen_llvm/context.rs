@@ -417,6 +417,14 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn check_overflow(&self) -> bool {
         self.check_overflow
     }
+
+    fn stats(&self) -> &RefCell<Stats> {
+        &self.stats
+    }
+
+    fn codegen_unit(&self) -> &Arc<CodegenUnit<'tcx>> {
+        &self.codegen_unit
+    }
 }
 
 impl IntrinsicDeclarationMethods<'tcx> for CodegenCx<'b, 'tcx> {

@@ -10,10 +10,13 @@
 
 use super::backend::Backend;
 use libc::c_uint;
+use monomorphize::partitioning::CodegenUnit;
+use rustc::mir::mono::Stats;
 use rustc::session::Session;
 use rustc::ty::{self, Instance, Ty};
 use rustc::util::nodemap::FxHashMap;
 use std::cell::RefCell;
+use std::sync::Arc;
 
 pub trait MiscMethods<'tcx>: Backend<'tcx> {
     fn vtables(
@@ -26,4 +29,6 @@ pub trait MiscMethods<'tcx>: Backend<'tcx> {
     fn eh_personality(&self) -> Self::Value;
     fn eh_unwind_resume(&self) -> Self::Value;
     fn sess(&self) -> &Session;
+    fn stats(&self) -> &RefCell<Stats>;
+    fn codegen_unit(&self) -> &Arc<CodegenUnit<'tcx>>;
 }

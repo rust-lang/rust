@@ -9,6 +9,9 @@
 // except according to those terms.
 
 use super::backend::Backend;
+use monomorphize::Instance;
+use rustc::hir::def_id::DefId;
+use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty;
 
 pub trait DeclareMethods<'tcx>: Backend<'tcx> {
@@ -21,4 +24,21 @@ pub trait DeclareMethods<'tcx>: Backend<'tcx> {
     fn define_internal_fn(&self, name: &str, fn_sig: ty::PolyFnSig<'tcx>) -> Self::Value;
     fn get_declared_value(&self, name: &str) -> Option<Self::Value>;
     fn get_defined_value(&self, name: &str) -> Option<Self::Value>;
+}
+
+pub trait PreDefineMethods<'tcx>: Backend<'tcx> {
+    fn predefine_static(
+        &self,
+        def_id: DefId,
+        linkage: Linkage,
+        visibility: Visibility,
+        symbol_name: &str,
+    );
+    fn predefine_fn(
+        &self,
+        instance: Instance<'tcx>,
+        linkage: Linkage,
+        visibility: Visibility,
+        symbol_name: &str,
+    );
 }
