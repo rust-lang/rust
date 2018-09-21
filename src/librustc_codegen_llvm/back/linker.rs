@@ -1222,9 +1222,10 @@ impl<'a> L4Bender<'a> {
             L4Bender::split_cmd_args(&mut cmd, &l4_ld_opts);
         }
 
-        L4Bender { cmd: cmd,
-        sess: sess,
-        hinted_static: false,
+        L4Bender {
+            cmd: cmd,
+            sess: sess,
+            hinted_static: false,
         }
     }
 

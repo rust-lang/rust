@@ -10,7 +10,6 @@
 
 use spec::{LinkArgs, LinkerFlavor, PanicStrategy, TargetOptions};
 use std::default::Default;
-//use std::process::Command;
 
 pub fn opts() -> TargetOptions {
     let mut args = LinkArgs::new();
