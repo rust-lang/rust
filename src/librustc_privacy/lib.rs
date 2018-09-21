@@ -166,7 +166,14 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..) |
             hir::ItemKind::Existential(..) |
             hir::ItemKind::Ty(..) | hir::ItemKind::Union(..) | hir::ItemKind::Use(..) => {
-                if item.vis.node.is_pub() { self.prev_level } else { None }
+                // `#[export_name]` and `#[no_mangle]` items are at least Reachable
+                if item.attrs.iter().any(|attr| {
+                    attr.check_name("export_name") || attr.check_name("no_mangle")
+                }) {
+                    cmp::max(Some(AccessLevel::Reachable), self.prev_level)
+                } else {
+                    if item.vis.node.is_pub() { self.prev_level } else { None }
+                }
             }
         };
 
