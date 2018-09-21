@@ -42,14 +42,13 @@ powered editor.
 ## Current Status and Plans
 
 Rust analyzer aims to fill the same niche as the official [Rust
-Language Server](https://github.com/rust-lang-nursery/rls), but
-better. It was created because @matklad is not satisfied with RLS
-original starting point and current direction. More details can be
-found [in this
-thread](https://internals.rust-lang.org/t/2019-strategy-for-rustc-and-the-rls/8361).
-The core issue is that RLS works in the "wait until user stops typing,
-run the build process, save the results of the analysis" mode, which
-arguably is the wrong foundation for IDE (see the thread for details).
+Language Server](https://github.com/rust-lang-nursery/rls), but uses a
+significantly different architecture. More details can be found [in
+this
+thread](https://internals.rust-lang.org/t/2019-strategy-for-rustc-and-the-rls/8361),
+but the core issue is that RLS works in the "wait until user stops
+typing, run the build process, save the results of the analysis" mode,
+which arguably is the wrong foundation for IDE.
 
 Rust Analyzer is a hobby project at the moment, there's exactly zero
 guarantees that it becomes production-ready one day.
