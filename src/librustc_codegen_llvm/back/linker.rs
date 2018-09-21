@@ -1245,10 +1245,10 @@ impl<'a> L4Bender<'a> {
                 '"' | '\'' => quoted = !quoted,
                 _ => arg.push(character),
             };
-            if arg.len() > 0 {
-                cmd.arg(&arg);
-                arg.clear();
-            }
+        }
+        if arg.len() > 0 {
+            cmd.arg(&arg);
+            arg.clear();
         }
     }
 
