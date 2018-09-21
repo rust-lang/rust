@@ -17,6 +17,11 @@ use io;
 use path::{self, PathBuf};
 use str;
 use sys::{unsupported, Void, sgx_ineffective, decode_error_kind};
+use collections::HashMap;
+use vec;
+use sync::Mutex;
+use sync::atomic::{AtomicUsize, Ordering};
+use sync::Once;
 
 pub fn errno() -> i32 {
     RESULT_SUCCESS
@@ -78,29 +83,51 @@ pub fn current_exe() -> io::Result<PathBuf> {
     unsupported()
 }
 
-pub struct Env;
+static ENV: AtomicUsize = AtomicUsize::new(0);
+static ENV_INIT: Once = Once::new();
+type EnvStore = Mutex<HashMap<OsString, OsString>>;
 
-impl Iterator for Env {
-    type Item = (OsString, OsString);
-    fn next(&mut self) -> Option<(OsString, OsString)> {
-        None
+fn get_env_store() -> Option<&'static EnvStore> {
+    unsafe { (ENV.load(Ordering::Relaxed) as *const EnvStore).as_ref() }
+}
+
+fn create_env_store() -> &'static EnvStore {
+    ENV_INIT.call_once(|| {
+        ENV.store(Box::into_raw(Box::new(EnvStore::default())) as _, Ordering::Relaxed)
+    });
+    unsafe {
+        &*(ENV.load(Ordering::Relaxed) as *const EnvStore)
     }
 }
 
+pub type Env = vec::IntoIter<(OsString, OsString)>;
+
 pub fn env() -> Env {
-    Env
+    let clone_to_vec = |map: &HashMap<OsString, OsString>| -> Vec<_> {
+        map.iter().map(|(k, v)| (k.clone(), v.clone()) ).collect()
+    };
+
+    get_env_store()
+        .map(|env| clone_to_vec(&env.lock().unwrap()) )
+        .unwrap_or_default()
+        .into_iter()
 }
 
-pub fn getenv(_k: &OsStr) -> io::Result<Option<OsString>> {
-    Ok(None)
+pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
+    Ok(get_env_store().and_then(|s| s.lock().unwrap().get(k).cloned() ))
 }
 
-pub fn setenv(_k: &OsStr, _v: &OsStr) -> io::Result<()> {
-    sgx_ineffective(()) // FIXME: this could trigger a panic higher up the stack
+pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
+    let (k, v) = (k.to_owned(), v.to_owned());
+    create_env_store().lock().unwrap().insert(k, v);
+    Ok(())
 }
 
-pub fn unsetenv(_k: &OsStr) -> io::Result<()> {
-    sgx_ineffective(()) // FIXME: this could trigger a panic higher up the stack
+pub fn unsetenv(k: &OsStr) -> io::Result<()> {
+    if let Some(env) = get_env_store() {
+        env.lock().unwrap().remove(k);
+    }
+    Ok(())
 }
 
 pub fn temp_dir() -> PathBuf {
