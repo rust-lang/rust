@@ -11,7 +11,7 @@
 use borrow_check::location::LocationTable;
 use borrow_check::nll::constraints::{ConstraintCategory, ConstraintSet, OutlivesConstraint};
 use borrow_check::nll::facts::AllFacts;
-use borrow_check::nll::region_infer::{RegionTest, TypeTest};
+use borrow_check::nll::region_infer::TypeTest;
 use borrow_check::nll::type_check::Locations;
 use borrow_check::nll::universal_regions::UniversalRegions;
 use rustc::infer::canonical::QueryRegionConstraint;
@@ -140,44 +140,15 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
         &self,
         generic_kind: GenericKind<'tcx>,
         region: ty::Region<'tcx>,
-        bound: VerifyBound<'tcx>,
+        verify_bound: VerifyBound<'tcx>,
     ) -> TypeTest<'tcx> {
         let lower_bound = self.to_region_vid(region);
-
-        let test = self.verify_bound_to_region_test(&bound);
 
         TypeTest {
             generic_kind,
             lower_bound,
             locations: self.locations,
-            test,
-        }
-    }
-
-    fn verify_bound_to_region_test(&self, verify_bound: &VerifyBound<'tcx>) -> RegionTest {
-        match verify_bound {
-            VerifyBound::IfEq(..) => {
-                // FIXME: always false right now
-                RegionTest::Any(vec![])
-            }
-
-            VerifyBound::OutlivedBy(r) => RegionTest::IsOutlivedBy(
-                self.to_region_vid(r)
-            ),
-
-            VerifyBound::AnyBound(bounds) => RegionTest::Any(
-                bounds
-                    .iter()
-                    .map(|b| self.verify_bound_to_region_test(b))
-                    .collect(),
-            ),
-
-            VerifyBound::AllBounds(bounds) => RegionTest::All(
-                bounds
-                    .iter()
-                    .map(|b| self.verify_bound_to_region_test(b))
-                    .collect(),
-            ),
+            verify_bound,
         }
     }
 

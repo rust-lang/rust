@@ -16,7 +16,7 @@ use borrow_check::nll::type_check::free_region_relations::UniversalRegionRelatio
 use borrow_check::nll::type_check::Locations;
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraint;
-use rustc::infer::region_constraints::{GenericKind, VarInfos};
+use rustc::infer::region_constraints::{GenericKind, VarInfos, VerifyBound};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin, RegionVariableOrigin};
 use rustc::mir::{
     ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements, Local, Location,
@@ -160,33 +160,7 @@ pub struct TypeTest<'tcx> {
 
     /// A test which, if met by the region `'x`, proves that this type
     /// constraint is satisfied.
-    pub test: RegionTest,
-}
-
-/// A "test" that can be applied to some "subject region" `'x`. These are used to
-/// describe type constraints. Tests do not presently affect the
-/// region values that get inferred for each variable; they only
-/// examine the results *after* inference.  This means they can
-/// conveniently include disjuction ("a or b must be true").
-#[derive(Clone, Debug)]
-pub enum RegionTest {
-    /// The subject region `'x` must by outlived by the given region.
-    ///
-    /// This test comes from e.g. a where clause like `T: 'a`, which
-    /// implies that we know that `T: 'a`. Therefore, if we are trying
-    /// to prove that `T: 'x`, we can do so by showing that `'a: 'x`.
-    IsOutlivedBy(RegionVid),
-
-    /// Any of the given tests are true.
-    ///
-    /// This test comes from e.g. a where clause like `T: 'a + 'b`,
-    /// which implies that we know that `T: 'a` and that `T:
-    /// 'b`. Therefore, if we are trying to prove that `T: 'x`, we can
-    /// do so by showing that `'a: 'x` *or* `'b: 'x`.
-    Any(Vec<RegionTest>),
-
-    /// All of the given tests are true.
-    All(Vec<RegionTest>),
+    pub verify_bound: VerifyBound<'tcx>,
 }
 
 impl<'tcx> RegionInferenceContext<'tcx> {
@@ -571,7 +545,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for type_test in &self.type_tests {
             debug!("check_type_test: {:?}", type_test);
 
-            if self.eval_region_test(mir, type_test.lower_bound, &type_test.test) {
+            if self.eval_verify_bound(mir, type_test.lower_bound, &type_test.verify_bound) {
                 continue;
             }
 
@@ -678,7 +652,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             generic_kind,
             lower_bound,
             locations,
-            test: _,
+            verify_bound: _,
         } = type_test;
 
         let generic_ty = generic_kind.to_ty(tcx);
@@ -705,7 +679,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // where `ur` is a local bound -- we are sometimes in a
             // position to prove things that our caller cannot.  See
             // #53570 for an example.
-            if self.eval_region_test(mir, ur, &type_test.test) {
+            if self.eval_verify_bound(mir, ur, &type_test.verify_bound) {
                 continue;
             }
 
@@ -877,22 +851,32 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     /// Test if `test` is true when applied to `lower_bound` at
     /// `point`, and returns true or false.
-    fn eval_region_test(&self, mir: &Mir<'tcx>, lower_bound: RegionVid, test: &RegionTest) -> bool {
+    fn eval_verify_bound(
+        &self,
+        mir: &Mir<'tcx>,
+        lower_bound: RegionVid,
+        verify_bound: &VerifyBound<'tcx>,
+    ) -> bool {
         debug!(
-            "eval_region_test(lower_bound={:?}, test={:?})",
-            lower_bound, test
+            "eval_verify_bound(lower_bound={:?}, verify_bound={:?})",
+            lower_bound, verify_bound
         );
 
-        match test {
-            RegionTest::IsOutlivedBy(r) => self.eval_outlives(mir, *r, lower_bound),
+        match verify_bound {
+            VerifyBound::IfEq(..) => false, // FIXME
 
-            RegionTest::Any(tests) => tests
-                .iter()
-                .any(|test| self.eval_region_test(mir, lower_bound, test)),
+            VerifyBound::OutlivedBy(r) => {
+                let r_vid = self.to_region_vid(r);
+                self.eval_outlives(mir, r_vid, lower_bound)
+            }
 
-            RegionTest::All(tests) => tests
+            VerifyBound::AnyBound(verify_bounds) => verify_bounds
                 .iter()
-                .all(|test| self.eval_region_test(mir, lower_bound, test)),
+                .any(|verify_bound| self.eval_verify_bound(mir, lower_bound, verify_bound)),
+
+            VerifyBound::AllBounds(verify_bounds) => verify_bounds
+                .iter()
+                .all(|verify_bound| self.eval_verify_bound(mir, lower_bound, verify_bound)),
         }
     }
 
