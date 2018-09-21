@@ -73,7 +73,7 @@
 #![cfg_attr(not(stage0), feature(impl_header_lifetime_elision))]
 #![feature(in_band_lifetimes)]
 #![feature(macro_at_most_once_rep)]
-#![feature(crate_in_paths)]
+#![cfg_attr(stage0, feature(crate_in_paths))]
 #![feature(crate_visibility_modifier)]
 
 #![recursion_limit="512"]

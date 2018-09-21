@@ -65,7 +65,6 @@ use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, GenericParamKind, Generi
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Label, Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
-use syntax::feature_gate::{feature_err, GateIssue};
 use syntax::ptr::P;
 
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
@@ -1466,9 +1465,6 @@ pub struct Resolver<'a, 'b: 'a> {
     current_type_ascription: Vec<Span>,
 
     injected_crate: Option<Module<'a>>,
-
-    /// Only supposed to be used by rustdoc, otherwise should be false.
-    pub ignore_extern_prelude_feature: bool,
 }
 
 /// Nothing really interesting here, it just provides memory for the rest of the crate.
@@ -1766,7 +1762,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             unused_macros: FxHashSet(),
             current_type_ascription: Vec::new(),
             injected_crate: None,
-            ignore_extern_prelude_feature: false,
         }
     }
 
@@ -1969,13 +1964,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         if !module.no_implicit_prelude {
             // `record_used` means that we don't try to load crates during speculative resolution
             if record_used && ns == TypeNS && self.extern_prelude.contains(&ident.name) {
-                if !self.session.features_untracked().extern_prelude &&
-                   !self.ignore_extern_prelude_feature {
-                    feature_err(&self.session.parse_sess, "extern_prelude",
-                                ident.span, GateIssue::Language,
-                                "access to extern crates through prelude is experimental").emit();
-                }
-
                 let crate_id = self.crate_loader.process_path_extern(ident.name, ident.span);
                 let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
                 self.populate_module_if_necessary(&crate_root);
@@ -3573,7 +3561,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     }
                     if name == keywords::Extern.name() ||
                        name == keywords::CrateRoot.name() &&
-                       self.session.features_untracked().extern_absolute_paths &&
                        self.session.rust_2018() {
                         module = Some(ModuleOrUniformRoot::UniformRoot(name));
                         continue;
@@ -3709,12 +3696,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
     ) {
         // In the 2018 edition this lint is a hard error, so nothing to do
         if self.session.rust_2018() {
-            return
-        }
-
-        // In the 2015 edition there's no use in emitting lints unless the
-        // crate's already enabled the feature that we're going to suggest
-        if !self.session.features_untracked().crate_in_paths {
             return
         }
 
@@ -4414,7 +4395,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             )
         );
 
-        if self.session.features_untracked().extern_prelude {
+        if self.session.rust_2018() {
             let extern_prelude_names = self.extern_prelude.clone();
             for &name in extern_prelude_names.iter() {
                 let ident = Ident::with_empty_ctxt(name);
