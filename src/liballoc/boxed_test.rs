@@ -16,6 +16,10 @@ use core::result::Result::{Err, Ok};
 use core::clone::Clone;
 use core::f64;
 use core::i64;
+use core::future::{Future, FutureObj};
+use core::pin::Pin;
+use core::sync::atomic::{AtomicBool, Ordering};
+use core::task::{self, Poll};
 
 use std::boxed::Box;
 
@@ -139,4 +143,40 @@ fn str_slice() {
     let s = "Hello, world!";
     let boxed: Box<str> = Box::from(s);
     assert_eq!(&*boxed, s)
+}
+
+struct Drops<'a>(&'a AtomicBool);
+
+impl<'a> Drop for Drops<'a> {
+    fn drop(&mut self) {
+        self.0.store(true, Ordering::SeqCst);
+    }
+}
+
+impl<'a> Future for Drops<'a> {
+    type Output = ();
+
+    fn poll(self: Pin<&mut Self>, _cx: &mut task::Context) -> Poll<()> {
+        Poll::Ready(())
+    }
+}
+
+#[test]
+fn unsafe_future_obj_into_raw() {
+    let dropped = AtomicBool::new(false);
+    let drop_box = Box::new(Drops(&dropped));
+    let future_obj: FutureObj<'_, _> = drop_box.into();
+    assert!(!dropped.load(Ordering::SeqCst), "boxed value should not be dropped");
+    drop(future_obj);
+    assert!(dropped.load(Ordering::SeqCst), "boxed value should be dropped");
+}
+
+#[test]
+fn unsafe_future_obj_into_raw_pinned() {
+    let dropped = AtomicBool::new(false);
+    let drop_box = Box::pinned(Drops(&dropped));
+    let future_obj: FutureObj<'_, _> = drop_box.into();
+    assert!(!dropped.load(Ordering::SeqCst), "pinned value should not be dropped");
+    drop(future_obj);
+    assert!(dropped.load(Ordering::SeqCst), "pinned value should be dropped");
 }
