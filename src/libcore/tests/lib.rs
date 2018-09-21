@@ -39,6 +39,7 @@
 #![feature(inner_deref)]
 #![feature(slice_internals)]
 #![feature(option_replace)]
+#![feature(copy_within)]
 
 extern crate core;
 extern crate test;

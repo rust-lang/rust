@@ -1000,3 +1000,49 @@ fn test_align_to_empty_mid() {
         assert_eq!(mid.as_ptr() as usize % mem::align_of::<Chunk>(), 0);
     }
 }
+
+#[test]
+fn test_copy_within() {
+    // Start to end, with a RangeTo.
+    let mut bytes = *b"Hello, World!";
+    bytes.copy_within(..3, 10);
+    assert_eq!(&bytes, b"Hello, WorHel");
+
+    // End to start, with a RangeFrom.
+    let mut bytes = *b"Hello, World!";
+    bytes.copy_within(10.., 0);
+    assert_eq!(&bytes, b"ld!lo, World!");
+
+    // Overlapping, with a RangeInclusive.
+    let mut bytes = *b"Hello, World!";
+    bytes.copy_within(0..=11, 1);
+    assert_eq!(&bytes, b"HHello, World");
+
+    // Whole slice, with a RangeFull.
+    let mut bytes = *b"Hello, World!";
+    bytes.copy_within(.., 0);
+    assert_eq!(&bytes, b"Hello, World!");
+}
+
+#[test]
+#[should_panic(expected = "src is out of bounds")]
+fn test_copy_within_panics_src_too_long() {
+    let mut bytes = *b"Hello, World!";
+    // The length is only 13, so 14 is out of bounds.
+    bytes.copy_within(10..14, 0);
+}
+
+#[test]
+#[should_panic(expected = "dest is out of bounds")]
+fn test_copy_within_panics_dest_too_long() {
+    let mut bytes = *b"Hello, World!";
+    // The length is only 13, so a slice of length 4 starting at index 10 is out of bounds.
+    bytes.copy_within(0..4, 10);
+}
+#[test]
+#[should_panic(expected = "src end is before src start")]
+fn test_copy_within_panics_src_inverted() {
+    let mut bytes = *b"Hello, World!";
+    // 2 is greater than 1, so this range is invalid.
+    bytes.copy_within(2..1, 0);
+}
