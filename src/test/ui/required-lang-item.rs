@@ -13,6 +13,7 @@
 
 #[lang="copy"] pub trait Copy { }
 #[lang="sized"] pub trait Sized { }
+#[lang="sync"] pub trait Sync { }
 
 // error-pattern:requires `start` lang_item
 

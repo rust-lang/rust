@@ -1,4 +1,4 @@
-error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
+error[E0492]: cannot borrow a constant which may contain interior mutability or non-`Sync` data. If your data is `Sync`, create a static instead
   --> $DIR/E0492.rs:14:34
    |
 LL | static B: &'static AtomicUsize = &A; //~ ERROR E0492

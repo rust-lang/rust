@@ -16,6 +16,7 @@
 // pretty-expanded FIXME #23616
 
 #![allow(non_camel_case_types)]
+#![recursion_limit="128"]
 
 pub fn noop_fold_impl_item() -> SmallVector<ImplItem> {
     loop  { }

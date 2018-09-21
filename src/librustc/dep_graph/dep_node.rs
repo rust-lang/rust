@@ -538,6 +538,7 @@ define_dep_nodes!( <'tcx>
     [] IsCopy { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
     [] IsSized { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
     [] IsFreeze { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
+    [] IsSync { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
     [] NeedsDrop { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
     [] Layout { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
 

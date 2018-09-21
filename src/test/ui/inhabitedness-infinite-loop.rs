@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // error-pattern:reached recursion limit
+// ignore-test FIXME #54419
 
 #![feature(never_type)]
 #![feature(exhaustive_patterns)]

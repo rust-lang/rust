@@ -68,7 +68,7 @@ union DynTransmute {
     repr: DynRepr,
     repr2: DynRepr2,
     bad: BadDynRepr,
-    rust: &'static Trait,
+    rust: &'static (Trait+Sync),
 }
 
 trait Trait {}

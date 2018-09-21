@@ -153,6 +153,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
         debug!("type_promotability({})", ty);
 
         if ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) &&
+            ty.is_sync(self.tcx, self.param_env, DUMMY_SP) &&
             !ty.needs_drop(self.tcx, self.param_env) {
             Promotable
         } else {
@@ -288,6 +289,11 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         let node_ty = self.tables.node_id_to_type(ex.hir_id);
         let mut outer = check_expr_kind(self, ex, node_ty);
         outer &= check_adjustments(self, ex);
+
+        // Avoid non-Sync types
+        if !self.tables.expr_ty(ex).is_sync(self.tcx, self.param_env, DUMMY_SP) {
+            outer = NotPromotable;
+        }
 
         // Handle borrows on (or inside the autorefs of) this expression.
         if self.mut_rvalue_borrows.remove(&ex.id) {

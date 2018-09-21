@@ -46,8 +46,10 @@ bitflags! {
     // they have none of these qualifications, with
     // the exception of `STATIC_REF` (in statics only).
     struct Qualif: u8 {
-        // Constant containing interior mutability (UnsafeCell).
-        const MUTABLE_INTERIOR  = 1 << 0;
+        // Constant containing interior mutability (UnsafeCell) or non-Sync data.
+        // Both of these prevent sound re-use of the same global static memory for
+        // the same data across multiple threads.
+        const UNSHAREABLE_INTERIOR  = 1 << 0;
 
         // Constant containing an ADT that implements Drop.
         const NEEDS_DROP        = 1 << 1;
@@ -63,9 +65,9 @@ bitflags! {
         // promote_consts decided they weren't simple enough.
         const NOT_PROMOTABLE    = 1 << 4;
 
-        // Const items can only have MUTABLE_INTERIOR
+        // Const items can only have UNSHAREABLE_INTERIOR
         // and NOT_PROMOTABLE without producing an error.
-        const CONST_ERROR       = !Qualif::MUTABLE_INTERIOR.bits &
+        const CONST_ERROR       = !Qualif::UNSHAREABLE_INTERIOR.bits &
                                   !Qualif::NOT_PROMOTABLE.bits;
     }
 }
@@ -75,8 +77,8 @@ impl<'a, 'tcx> Qualif {
     fn restrict(&mut self, ty: Ty<'tcx>,
                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 param_env: ty::ParamEnv<'tcx>) {
-        if ty.is_freeze(tcx, param_env, DUMMY_SP) {
-            *self = *self - Qualif::MUTABLE_INTERIOR;
+        if ty.is_freeze(tcx, param_env, DUMMY_SP) && ty.is_sync(tcx, param_env, DUMMY_SP) {
+            *self = *self - Qualif::UNSHAREABLE_INTERIOR;
         }
         if !ty.needs_drop(tcx, param_env) {
             *self = *self - Qualif::NEEDS_DROP;
@@ -206,7 +208,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
     /// Add the given type's qualification to self.qualif.
     fn add_type(&mut self, ty: Ty<'tcx>) {
-        self.add(Qualif::MUTABLE_INTERIOR | Qualif::NEEDS_DROP);
+        self.add(Qualif::UNSHAREABLE_INTERIOR | Qualif::NEEDS_DROP);
         self.qualif.restrict(ty, self.tcx, self.param_env);
     }
 
@@ -679,18 +681,19 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     // Constants cannot be borrowed if they contain interior mutability as
                     // it means that our "silent insertion of statics" could change
                     // initializer values (very bad).
-                    if self.qualif.contains(Qualif::MUTABLE_INTERIOR) {
-                        // A reference of a MUTABLE_INTERIOR place is instead
+                    if self.qualif.contains(Qualif::UNSHAREABLE_INTERIOR) {
+                        // A reference of a UNSHAREABLE_INTERIOR place is instead
                         // NOT_CONST (see `if forbidden_mut` below), to avoid
                         // duplicate errors (from reborrowing, for example).
-                        self.qualif = self.qualif - Qualif::MUTABLE_INTERIOR;
+                        self.qualif = self.qualif - Qualif::UNSHAREABLE_INTERIOR;
                         if self.mode != Mode::Fn {
                             span_err!(self.tcx.sess, self.span, E0492,
                                       "cannot borrow a constant which may contain \
-                                       interior mutability, create a static instead");
+                                       interior mutability or non-`Sync` data. If your \
+                                       data is `Sync`, create a static instead");
                         }
                     } else {
-                        // We allow immutable borrows of frozen data.
+                        // We allow immutable borrows of frozen non-Sync data.
                         forbidden_mut = false;
                     }
                 }
@@ -712,11 +715,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         if self.mir.local_kind(local) == LocalKind::Temp {
                             if let Some(qualif) = self.local_qualif[local] {
                                 // `forbidden_mut` is false, so we can safely ignore
-                                // `MUTABLE_INTERIOR` from the local's qualifications.
+                                // `UNSHAREABLE_INTERIOR` from the local's qualifications.
                                 // This allows borrowing fields which don't have
-                                // `MUTABLE_INTERIOR`, from a type that does, e.g.:
+                                // `UNSHAREABLE_INTERIOR`, from a type that does, e.g.:
                                 // `let _: &'static _ = &(Cell::new(1), 2).1;`
-                                if (qualif - Qualif::MUTABLE_INTERIOR).is_empty() {
+                                if (qualif - Qualif::UNSHAREABLE_INTERIOR).is_empty() {
                                     self.promotion_candidates.push(candidate);
                                 }
                             }
@@ -794,10 +797,17 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         self.add(Qualif::NEEDS_DROP);
                     }
 
-                    if Some(def.did) == self.tcx.lang_items().unsafe_cell_type() {
-                        let ty = rvalue.ty(self.mir, self.tcx);
-                        self.add_type(ty);
-                        assert!(self.qualif.contains(Qualif::MUTABLE_INTERIOR));
+                    // We are looking at a concrete type constructor, and we know
+                    // the only way to construct "fresh" non-Freeze data is `UnsafeCell`.
+                    // So we can check for that instead of `Freeze`.
+                    // There is no similar shortcut for Sync, though.
+                    let ty = rvalue.ty(self.mir, self.tcx);
+                    let freeze = Some(def.did) != self.tcx.lang_items().unsafe_cell_type();
+                    let sync = ty.is_sync(self.tcx, self.param_env, DUMMY_SP);
+                    if !(freeze && sync)
+                    {
+                        // Not freeze and sync? Be careful.
+                        self.add(Qualif::UNSHAREABLE_INTERIOR);
                     }
                 }
             }
@@ -1248,6 +1258,7 @@ impl MirPass for QualifyAndPromoteConstants {
                 }
             }
             let ty = mir.return_ty();
+            // Not using ty.is_sync() to get the right kind of error message
             tcx.infer_ctxt().enter(|infcx| {
                 let param_env = ty::ParamEnv::empty();
                 let cause = traits::ObligationCause::new(mir.span, id, traits::SharedStatic);
