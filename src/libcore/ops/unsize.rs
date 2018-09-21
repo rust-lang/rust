@@ -85,10 +85,10 @@ impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
 ///  where `Self = dyn Trait` to the version where `Self = T`, the erased, sized type
 /// of the underlying object.
 ///
-/// CoerceSized is implemented for:
-/// - &[T] is CoerceSized<&[T; N]> for any N
-/// - &Trait is CoerceSized<&T> for any T: Trait
-/// - and similarly for &mut T, *const T, *mut T, Box<T>, Rc<T>, Arc<T>
+/// `CoerceSized` is implemented for:
+/// - `&[T]` is `CoerceSized<&[T; N]>` for any `N`
+/// - `&Trait` is `CoerceSized<&T>` for any `T: Trait`
+/// - and similarly for `&mut T`, `*const T`, `*mut T`, `Box<T>`, `Rc<T>`, `Arc<T>`
 #[unstable(feature = "coerce_sized", issue = "0")]
 #[cfg_attr(not(stage0), lang = "coerce_sized")]
 pub trait CoerceSized<T> where T: CoerceUnsized<Self> {
