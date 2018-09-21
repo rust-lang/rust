@@ -535,6 +535,13 @@ impl<I: Idx, T> IndexVec<I, T> {
         self.raw.len()
     }
 
+    /// Gives the next index that will be assigned when `push` is
+    /// called.
+    #[inline]
+    pub fn next_index(&self) -> I {
+        I::new(self.len())
+    }
+
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.raw.is_empty()
