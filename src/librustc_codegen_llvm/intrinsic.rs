@@ -676,8 +676,10 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
 
                 let val = match intr.definition {
                     intrinsics::IntrinsicDef::Named(name) => {
-                        let f = cx.declare_cfn(                                                     name,
-                                                     cx.type_func(&inputs, outputs));
+                        let f = cx.declare_cfn(
+                            name,
+                            cx.type_func(&inputs, outputs)
+                        );
                         self.call(f, &llargs, None)
                     }
                 };

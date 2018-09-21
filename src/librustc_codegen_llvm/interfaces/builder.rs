@@ -201,9 +201,18 @@ pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> +
         lhs: <Self::CodegenCx as Backend<'ll>>::Value,
         rhs: <Self::CodegenCx as Backend<'ll>>::Value
     ) -> <Self::CodegenCx as Backend<'ll>>::Value;
-    fn neg(&self, v: <Self::CodegenCx as Backend<'ll>>::Value) -> <Self::CodegenCx as Backend<'ll>>::Value;
-    fn fneg(&self, v: <Self::CodegenCx as Backend<'ll>>::Value) -> <Self::CodegenCx as Backend<'ll>>::Value;
-    fn not(&self, v: <Self::CodegenCx as Backend<'ll>>::Value) -> <Self::CodegenCx as Backend<'ll>>::Value;
+    fn neg(
+        &self,
+        v: <Self::CodegenCx as Backend<'ll>>::Value
+    ) -> <Self::CodegenCx as Backend<'ll>>::Value;
+    fn fneg(
+        &self,
+        v: <Self::CodegenCx as Backend<'ll>>::Value
+    ) -> <Self::CodegenCx as Backend<'ll>>::Value;
+    fn not(
+        &self,
+        v: <Self::CodegenCx as Backend<'ll>>::Value
+    ) -> <Self::CodegenCx as Backend<'ll>>::Value;
 
     fn alloca(
         &self,

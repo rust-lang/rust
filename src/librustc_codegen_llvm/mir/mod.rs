@@ -283,7 +283,8 @@ pub fn codegen_mir<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
             if let Some(name) = decl.name {
                 // User variable
                 let debug_scope = fx.scopes[decl.visibility_scope];
-                let dbg = debug_scope.is_valid() && bx.cx().sess().opts.debuginfo == DebugInfo::Full;
+                let dbg =
+                    debug_scope.is_valid() && bx.cx().sess().opts.debuginfo == DebugInfo::Full;
 
                 if !memory_locals.contains(local) && !dbg {
                     debug!("alloc: {:?} ({}) -> operand", local, name);

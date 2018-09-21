@@ -28,8 +28,9 @@ use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
 
-impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> FunctionCx<'a, 'f, 'll, 'tcx, Cx>
-    where &'a Cx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
+    FunctionCx<'a, 'f, 'll, 'tcx, Cx> where
+    &'a Cx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
     pub fn codegen_rvalue<Bx: BuilderMethods<'a, 'll, 'tcx, CodegenCx=Cx>>(
         &mut self,
@@ -723,8 +724,9 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> Functi
     }
 }
 
-impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> FunctionCx<'a, 'f, 'll, 'tcx, Cx>
-    where &'a Cx : LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
+impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
+    FunctionCx<'a, 'f, 'll, 'tcx, Cx> where
+    &'a Cx : LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
     pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>) -> bool {
         match *rvalue {

@@ -56,7 +56,10 @@ pub fn non_ssa_locals<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'
     analyzer.non_ssa_locals
 }
 
-struct LocalAnalyzer<'mir, 'a: 'mir, 'f: 'mir, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> {
+struct LocalAnalyzer<
+    'mir, 'a: 'mir, 'f: 'mir, 'll: 'a + 'f, 'tcx: 'll,
+    Cx: 'a + CodegenMethods<'ll, 'tcx>
+    > {
     fx: &'mir FunctionCx<'a, 'f, 'll, 'tcx, Cx>,
     dominators: Dominators<mir::BasicBlock>,
     non_ssa_locals: BitSet<mir::Local>,
@@ -109,9 +112,9 @@ impl<Cx: 'a + CodegenMethods<'ll, 'tcx>> LocalAnalyzer<'mir, 'a, 'f, 'll, 'tcx, 
     }
 }
 
-impl<'mir, 'a: 'mir, 'f: 'mir, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> Visitor<'tcx>
-    for LocalAnalyzer<'mir, 'a, 'f, 'll, 'tcx, Cx>
-    where &'a Cx : LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
+impl<'mir, 'a: 'mir, 'f: 'mir, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
+    Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'f, 'll, 'tcx, Cx> where
+    &'a Cx : LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
     fn visit_assign(&mut self,
                     block: mir::BasicBlock,

@@ -474,7 +474,9 @@ impl<'ll, 'tcx: 'll> DebugInfoMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll V
                     name_to_append_suffix_to.push_str(",");
                 }
 
-                let actual_type = cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), actual_type);
+                let actual_type = cx.tcx.normalize_erasing_regions(
+                    ParamEnv::reveal_all(), actual_type
+                );
                 // Add actual type name to <...> clause of function name
                 let actual_type_name = compute_debuginfo_type_name(cx,
                                                                    actual_type,
@@ -488,7 +490,9 @@ impl<'ll, 'tcx: 'll> DebugInfoMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll V
                 let names = get_parameter_names(cx, generics);
                 substs.iter().zip(names).filter_map(|(kind, name)| {
                     if let UnpackedKind::Type(ty) = kind.unpack() {
-                        let actual_type = cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
+                        let actual_type = cx.tcx.normalize_erasing_regions(
+                            ParamEnv::reveal_all(), ty
+                        );
                         let actual_type_metadata =
                             type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
                         let name = SmallCStr::new(&name.as_str());

@@ -451,7 +451,10 @@ pub fn memcpy_ty<'a, 'll: 'a, 'tcx: 'll, Builder : BuilderMethods<'a, 'll, 'tcx>
     bx.call_memcpy(dst, src, bx.cx().const_usize(size), align, flags);
 }
 
-pub fn codegen_instance<'a, 'll: 'a, 'tcx: 'll>(cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>, instance: Instance<'tcx>) {
+pub fn codegen_instance<'a, 'll: 'a, 'tcx: 'll>(
+    cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>,
+    instance: Instance<'tcx>
+) {
     let _s = if cx.sess().codegen_stats() {
         let mut instance_name = String::new();
         DefPathBasedNames::new(cx.tcx, true, true)
@@ -476,7 +479,9 @@ pub fn codegen_instance<'a, 'll: 'a, 'tcx: 'll>(cx: &'a CodegenCx<'ll, 'tcx, &'l
     cx.stats.borrow_mut().n_closures += 1;
 
     let mir = cx.tcx.instance_mir(instance.def);
-    mir::codegen_mir::<'a, 'll, 'tcx, Builder<'a, 'll, 'tcx, &'ll Value>>(cx, lldecl, &mir, instance, sig);
+    mir::codegen_mir::<'a, 'll, 'tcx, Builder<'a, 'll, 'tcx, &'ll Value>>(
+        cx, lldecl, &mir, instance, sig
+    );
 }
 
 pub fn set_link_section(llval: &Value, attrs: &CodegenFnAttrs) {
