@@ -31,8 +31,8 @@ use super::place::PlaceRef;
 use super::operand::OperandRef;
 use super::operand::OperandValue::{Pair, Ref, Immediate};
 
-impl<'a, 'll: 'a, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
-    FunctionCx<'a, 'll, 'tcx, Cx>
+impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
+    FunctionCx<'a, 'f, 'll, 'tcx, Cx>
     where &'a Cx: LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
     pub fn codegen_block<Bx: BuilderMethods<'a, 'll, 'tcx>>(&mut self, bb: mir::BasicBlock)

@@ -395,7 +395,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
     }
 }
 
-impl<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> FunctionCx<'a, 'll, 'tcx, Cx>
+impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> FunctionCx<'a, 'f, 'll, 'tcx, Cx>
     where &'a Cx: LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
     pub fn codegen_place<Bx: BuilderMethods<'a, 'll, 'tcx, CodegenCx=Cx>>(

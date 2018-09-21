@@ -384,7 +384,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandValue<V> {
     }
 }
 
-impl<'a, 'll: 'a, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>> FunctionCx<'a, 'll, 'tcx, Cx> {
+impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>> FunctionCx<'a, 'f, 'll, 'tcx, Cx> {
     fn maybe_codegen_consume_direct<Bx: BuilderMethods<'a, 'll, 'tcx, CodegenCx=Cx>>(
         &mut self,
         bx: &Bx,

@@ -28,7 +28,7 @@ use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
 
-impl<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> FunctionCx<'a, 'll, 'tcx, Cx>
+impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> FunctionCx<'a, 'f, 'll, 'tcx, Cx>
     where &'a Cx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
     pub fn codegen_rvalue<Bx: BuilderMethods<'a, 'll, 'tcx, CodegenCx=Cx>>(
@@ -723,7 +723,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> FunctionCx<'a, 
     }
 }
 
-impl<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> FunctionCx<'a, 'll, 'tcx, Cx>
+impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> FunctionCx<'a, 'f, 'll, 'tcx, Cx>
     where &'a Cx : LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
     pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>) -> bool {

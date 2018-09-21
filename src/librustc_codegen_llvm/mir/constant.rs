@@ -77,7 +77,7 @@ pub fn codegen_static_initializer(
     Ok((const_alloc_to_llvm(cx, alloc), alloc))
 }
 
-impl<'a, 'll: 'a, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>> FunctionCx<'a, 'll, 'tcx, Cx>
+impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>> FunctionCx<'a, 'f, 'll, 'tcx, Cx>
     where &'a Cx: LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
     fn fully_evaluate<Bx: BuilderMethods<'a, 'll, 'tcx, CodegenCx=Cx>>(

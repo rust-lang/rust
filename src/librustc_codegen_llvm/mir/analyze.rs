@@ -23,8 +23,8 @@ use type_of::LayoutLlvmExt;
 use super::FunctionCx;
 use interfaces::*;
 
-pub fn non_ssa_locals<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>(
-    fx: &FunctionCx<'a, 'll, 'tcx, Cx>
+pub fn non_ssa_locals<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>(
+    fx: &FunctionCx<'a, 'f, 'll, 'tcx, Cx>
 ) -> BitSet<mir::Local>
     where &'a Cx : LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
@@ -56,8 +56,8 @@ pub fn non_ssa_locals<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>
     analyzer.non_ssa_locals
 }
 
-struct LocalAnalyzer<'mir, 'a: 'mir, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> {
-    fx: &'mir FunctionCx<'a, 'll, 'tcx, Cx>,
+struct LocalAnalyzer<'mir, 'a: 'mir, 'f: 'mir, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> {
+    fx: &'mir FunctionCx<'a, 'f, 'll, 'tcx, Cx>,
     dominators: Dominators<mir::BasicBlock>,
     non_ssa_locals: BitSet<mir::Local>,
     // The location of the first visited direct assignment to each
@@ -65,10 +65,10 @@ struct LocalAnalyzer<'mir, 'a: 'mir, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods
     first_assignment: IndexVec<mir::Local, Location>
 }
 
-impl<Cx: 'a + CodegenMethods<'ll, 'tcx>> LocalAnalyzer<'mir, 'a, 'll, 'tcx, Cx>
+impl<Cx: 'a + CodegenMethods<'ll, 'tcx>> LocalAnalyzer<'mir, 'a, 'f, 'll, 'tcx, Cx>
     where &'a Cx : LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
-    fn new(fx: &'mir FunctionCx<'a, 'll, 'tcx, Cx>) -> Self {
+    fn new(fx: &'mir FunctionCx<'a, 'f, 'll, 'tcx, Cx>) -> Self {
         let invalid_location =
             mir::BasicBlock::new(fx.mir.basic_blocks().len()).start_location();
         let mut analyzer = LocalAnalyzer {
@@ -109,8 +109,8 @@ impl<Cx: 'a + CodegenMethods<'ll, 'tcx>> LocalAnalyzer<'mir, 'a, 'll, 'tcx, Cx>
     }
 }
 
-impl<'mir, 'a: 'mir, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> Visitor<'tcx>
-    for LocalAnalyzer<'mir, 'a, 'll, 'tcx, Cx>
+impl<'mir, 'a: 'mir, 'f: 'mir, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> Visitor<'tcx>
+    for LocalAnalyzer<'mir, 'a, 'f, 'll, 'tcx, Cx>
     where &'a Cx : LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
     fn visit_assign(&mut self,

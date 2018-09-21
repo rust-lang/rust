@@ -39,7 +39,7 @@ use rustc::mir::traversal;
 use self::operand::{OperandRef, OperandValue};
 
 /// Master context for codegenning from MIR.
-pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll, Cx: 'a +  CodegenMethods<'ll, 'tcx>> {
+pub struct FunctionCx<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a +  CodegenMethods<'ll, 'tcx>> {
     instance: Instance<'tcx>,
 
     mir: &'a mir::Mir<'tcx>,
@@ -70,7 +70,7 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll, Cx: 'a +  CodegenMethods<'ll, 'tcx
     /// When targeting MSVC, this stores the cleanup info for each funclet
     /// BB. Thisrustup component add rustfmt-preview is initialized as we compute the funclets'
     /// head block in RPO.
-    funclets: &'ll IndexVec<mir::BasicBlock, Option<Funclet<'ll, Cx::Value>>>,
+    funclets: &'f IndexVec<mir::BasicBlock, Option<Funclet<'ll, Cx::Value>>>,
 
     /// This stores the landing-pad block for a given BB, computed lazily on GNU
     /// and eagerly on MSVC.
@@ -103,8 +103,8 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll, Cx: 'a +  CodegenMethods<'ll, 'tcx
     param_substs: &'tcx Substs<'tcx>,
 }
 
-impl<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
-    FunctionCx<'a, 'll, 'tcx, Cx>
+impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
+    FunctionCx<'a, 'f, 'll, 'tcx, Cx>
 {
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TypeFoldable<'tcx>
@@ -117,8 +117,8 @@ impl<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
     }
 }
 
-impl<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
-    FunctionCx<'a, 'll, 'tcx, Cx>
+impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
+    FunctionCx<'a, 'f, 'll, 'tcx, Cx>
 {
     pub fn set_debug_loc<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         &mut self,
@@ -440,9 +440,9 @@ fn create_funclets<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
 /// Produce, for each argument, a `Value` pointing at the
 /// argument's value. As arguments are places, these are always
 /// indirect.
-fn arg_local_refs<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
+fn arg_local_refs<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     bx: &Bx,
-    fx: &FunctionCx<'a, 'll, 'tcx, Bx::CodegenCx>,
+    fx: &FunctionCx<'a, 'f, 'll, 'tcx, Bx::CodegenCx>,
     scopes: &IndexVec<
         mir::SourceScope,
         debuginfo::MirDebugScope<<Bx::CodegenCx as DebugInfoMethods<'ll, 'tcx>>::DIScope>
