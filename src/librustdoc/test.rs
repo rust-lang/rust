@@ -27,6 +27,7 @@ use rustc::hir::intravisit;
 use rustc::session::{self, CompileIncomplete, config};
 use rustc::session::config::{OutputType, OutputTypes, Externs, CodegenOptions};
 use rustc::session::search_paths::{SearchPaths, PathKind};
+use rustc::util::nodemap::FxHashSet;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
 use tempfile::Builder as TempFileBuilder;
 use rustc_driver::{self, driver, target_features, Compilation};
@@ -152,6 +153,7 @@ pub fn run(input_path: &Path,
                 collector: &mut collector,
                 map: &map,
                 codes: ErrorCodes::from(sess.opts.unstable_features.is_nightly_build()),
+                tested_items: FxHashSet(),
                 current_vis: true,
             };
             hir_collector.visit_testable("".to_string(), &krate.attrs, true, |this| {
@@ -673,6 +675,7 @@ struct HirCollector<'a, 'hir: 'a> {
     collector: &'a mut Collector,
     map: &'a hir::map::Map<'hir>,
     codes: ErrorCodes,
+    tested_items: FxHashSet<ast::NodeId>,
     current_vis: bool,
 }
 
@@ -745,8 +748,6 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
             if is_public {
                 if let Some(node) = self.map.get_if_local(path.def.def_id()) {
                     // load doctests from the actual item, not the use statement
-                    // TODO(misdreavus): this will run some doctests multiple times if an item is
-                    // re-exported multiple times (say, into a prelude)
                     match node {
                         // if we've re-exported an item, continue with the new item, using the
                         // exported visibility
@@ -791,6 +792,11 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
             }
         }
 
+        if !self.tested_items.insert(item.id) {
+            // item's been tested already, don't run them again
+            return;
+        }
+
         let name = if let hir::ItemKind::Impl(.., ref ty, _) = item.node {
             self.map.node_to_pretty_string(ty.id)
         } else {
@@ -815,12 +821,22 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
     }
 
     fn visit_trait_item(&mut self, item: &'hir hir::TraitItem) {
+        if !self.tested_items.insert(item.id) {
+            // item's been tested already, don't run them again
+            return;
+        }
+
         self.visit_testable(item.ident.to_string(), &item.attrs, true, |this| {
             intravisit::walk_trait_item(this, item);
         });
     }
 
     fn visit_impl_item(&mut self, item: &'hir hir::ImplItem) {
+        if !self.tested_items.insert(item.id) {
+            // item's been tested already, don't run them again
+            return;
+        }
+
         let is_public = item.vis.node.is_pub();
         self.visit_testable(item.ident.to_string(), &item.attrs, is_public, |this| {
             intravisit::walk_impl_item(this, item);
@@ -828,6 +844,11 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
     }
 
     fn visit_foreign_item(&mut self, item: &'hir hir::ForeignItem) {
+        if !self.tested_items.insert(item.id) {
+            // item's been tested already, don't run them again
+            return;
+        }
+
         let is_public = item.vis.node.is_pub();
         self.visit_testable(item.name.to_string(),
                             &item.attrs,
@@ -841,12 +862,20 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
                      v: &'hir hir::Variant,
                      g: &'hir hir::Generics,
                      item_id: ast::NodeId) {
+        // FIXME(misdreavus): variants don't have their own NodeId so we can't insert them into the
+        // set
+
         self.visit_testable(v.node.name.to_string(), &v.node.attrs, true, |this| {
             intravisit::walk_variant(this, v, g, item_id);
         });
     }
 
     fn visit_struct_field(&mut self, f: &'hir hir::StructField) {
+        if !self.tested_items.insert(f.id) {
+            // item's been tested already, don't run them again
+            return;
+        }
+
         let is_public = f.vis.node.is_pub();
         self.visit_testable(f.ident.to_string(),
                             &f.attrs,
@@ -857,6 +886,11 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
     }
 
     fn visit_macro_def(&mut self, macro_def: &'hir hir::MacroDef) {
+        if !self.tested_items.insert(macro_def.id) {
+            // item's been tested already, don't run them again
+            return;
+        }
+
         // FIXME(misdreavus): does macro export status surface to us? is it in AccessLevels, does
         // its #[macro_export] attribute show up here?
         self.visit_testable(macro_def.name.to_string(), &macro_def.attrs, true, |_| ());
