@@ -1215,7 +1215,7 @@ impl<'a> L4Bender<'a> {
         if let Ok(l4bender_args) = env::var("L4_BENDER_ARGS") {
             L4Bender::split_cmd_args(&mut cmd, &l4bender_args);
         }
-        
+
         cmd.arg("--"); // separate direct l4-bender args from linker args
 
         if let Ok(l4_ld_opts) = env::var("L4_LD_OPTIONS") {
@@ -1229,7 +1229,7 @@ impl<'a> L4Bender<'a> {
     }
 
     /// This parses a shell-escaped string and unquotes the arguments. It doesn't attempt to
-    /// completely understand shell, but should instead allow passing arguments like 
+    /// completely understand shell, but should instead allow passing arguments like
     /// `-Dlinker="ld -m x86_64"`, and a copy without quotes, but spaces preserved, is added as an
     /// argument to the given Command. This means that constructs as \" are not understood, so
     /// quote wisely.
