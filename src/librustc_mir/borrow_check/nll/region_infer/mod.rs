@@ -10,9 +10,7 @@
 
 use super::universal_regions::UniversalRegions;
 use borrow_check::nll::constraints::graph::NormalConstraintGraph;
-use borrow_check::nll::constraints::{
-    ConstraintSccIndex, ConstraintSet, OutlivesConstraint,
-};
+use borrow_check::nll::constraints::{ConstraintSccIndex, ConstraintSet, OutlivesConstraint};
 use borrow_check::nll::region_infer::values::{RegionElement, ToElementIndex};
 use borrow_check::nll::type_check::free_region_relations::UniversalRegionRelations;
 use borrow_check::nll::type_check::Locations;
@@ -29,7 +27,7 @@ use rustc::util::common;
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_errors::{DiagnosticBuilder, Diagnostic};
+use rustc_errors::{Diagnostic, DiagnosticBuilder};
 
 use std::rc::Rc;
 
