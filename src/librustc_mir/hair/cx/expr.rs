@@ -718,7 +718,23 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 ExprKind::Cast { source }
             }
         }
-        hir::ExprKind::Type(ref source, _) => return source.make_mirror(cx),
+        hir::ExprKind::Type(ref source, ref ty) => {
+            let user_provided_tys = cx.tables.user_provided_tys();
+            let user_ty = *user_provided_tys
+                .get(ty.hir_id)
+                .expect(&format!("{:?} not found in user_provided_tys, source: {:?}", ty, source));
+            if source.is_place_expr() {
+                ExprKind::PlaceTypeAscription {
+                    source: source.to_ref(),
+                    user_ty,
+                }
+            } else {
+                ExprKind::ValueTypeAscription {
+                    source: source.to_ref(),
+                    user_ty,
+                }
+            }
+        }
         hir::ExprKind::Box(ref value) => {
             ExprKind::Box {
                 value: value.to_ref(),

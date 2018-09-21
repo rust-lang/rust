@@ -4118,6 +4118,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             hir::ExprKind::Type(ref e, ref t) => {
                 let ty = self.to_ty(&t);
                 self.check_expr_eq_type(&e, ty);
+                let c_ty = self.infcx.canonicalize_response(&ty);
+                self.tables.borrow_mut().user_provided_tys_mut().insert(t.hir_id, c_ty);
                 ty
             }
             hir::ExprKind::Array(ref args) => {

@@ -391,7 +391,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             | ExprKind::Adt { .. }
             | ExprKind::Closure { .. }
             | ExprKind::Literal { .. }
-            | ExprKind::Yield { .. } => {
+            | ExprKind::Yield { .. }
+            | ExprKind::PlaceTypeAscription { .. }
+            | ExprKind::ValueTypeAscription { .. } => {
                 debug_assert!(match Category::of(&expr.kind).unwrap() {
                     Category::Rvalue(RvalueFunc::Into) => false,
                     _ => true,
