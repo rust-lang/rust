@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_must_use)]
+#![allow(stable_features)]
+#![allow(deprecated)]
+#![allow(unused_imports)]
 // compile-flags:--test
 // ignore-cloudabi no processes
 // ignore-emscripten no processes

@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(dead_code)]
+#![allow(unused_assignments)]
+#![allow(unknown_lints)]
 // pretty-expanded FIXME #23616
 
 #![allow(dead_assignment)]

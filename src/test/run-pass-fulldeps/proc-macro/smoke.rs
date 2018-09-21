@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_must_use)]
+#![allow(path_statements)]
 // aux-build:derive-a.rs
 // ignore-stage1
 

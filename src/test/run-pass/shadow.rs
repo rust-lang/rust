@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(non_camel_case_types)]
+#![allow(dead_code)]
 fn foo(c: Vec<isize> ) {
     let a: isize = 5;
     let mut b: Vec<isize> = Vec::new();

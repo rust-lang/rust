@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(path_statements)]
 // aux-build:issue-50061.rs
 // ignore-stage1
 

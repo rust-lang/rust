@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(stable_features)]
+
 #![feature(allocator_api, nonnull)]
 
 use std::alloc::{Alloc, Global, Layout, handle_alloc_error};

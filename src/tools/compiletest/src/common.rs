@@ -21,6 +21,7 @@ pub enum Mode {
     CompileFail,
     ParseFail,
     RunFail,
+    /// This now behaves like a `ui` test that has an implict `// run-pass`.
     RunPass,
     RunPassValgrind,
     Pretty,

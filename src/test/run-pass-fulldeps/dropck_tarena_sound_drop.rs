@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unknown_lints)]
 // Check that an arena (TypedArena) can carry elements whose drop
 // methods might access borrowed data, as long as the borrowed data
 // has lifetime that strictly outlives the arena itself.

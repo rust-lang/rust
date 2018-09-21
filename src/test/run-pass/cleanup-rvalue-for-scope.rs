@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(non_snake_case)]
+#![allow(dead_code)]
+#![allow(unused_variables)]
 // Test that the lifetime of rvalues in for loops is extended
 // to the for loop itself.
 

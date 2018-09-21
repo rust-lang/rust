@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(stable_features)]
+#![allow(unused_variables)]
+
 // #45662
 
 #![feature(repr_align)]

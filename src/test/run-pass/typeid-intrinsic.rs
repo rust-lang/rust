@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(deprecated)]
 // aux-build:typeid-intrinsic-aux1.rs
 // aux-build:typeid-intrinsic-aux2.rs
 

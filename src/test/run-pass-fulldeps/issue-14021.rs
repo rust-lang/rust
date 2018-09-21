@@ -8,14 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_mut)]
+#![allow(unused_imports)]
 #![feature(rustc_private)]
 
 extern crate serialize;
+extern crate serialize as rustc_serialize;
 
 use serialize::{Encodable, Decodable};
 use serialize::json;
 
-#[derive(Encodable, Decodable, PartialEq, Debug)]
+#[derive(RustcEncodable, RustcDecodable, PartialEq, Debug)]
 struct UnitLikeStruct;
 
 pub fn main() {

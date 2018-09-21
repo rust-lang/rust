@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(stable_features)]
 // pretty-expanded FIXME #23616
 
 #![allow(unused_imports)]

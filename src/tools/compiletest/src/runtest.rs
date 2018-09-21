@@ -247,7 +247,6 @@ impl<'test> TestCx<'test> {
         match self.config.mode {
             CompileFail | ParseFail => self.run_cfail_test(),
             RunFail => self.run_rfail_test(),
-            RunPass => self.run_rpass_test(),
             RunPassValgrind => self.run_valgrind_test(),
             Pretty => self.run_pretty_test(),
             DebugInfoGdb => self.run_debuginfo_gdb_test(),
@@ -257,13 +256,43 @@ impl<'test> TestCx<'test> {
             CodegenUnits => self.run_codegen_units_test(),
             Incremental => self.run_incremental_test(),
             RunMake => self.run_rmake_test(),
-            Ui => self.run_ui_test(),
+            RunPass | Ui => self.run_ui_test(),
             MirOpt => self.run_mir_opt_test(),
         }
     }
 
+    fn should_run_successfully(&self) -> bool {
+        let run_pass = match self.config.mode {
+            RunPass => true,
+            Ui => self.props.run_pass,
+            _ => unimplemented!(),
+        };
+        return run_pass && !self.props.skip_codegen;
+    }
+
+    fn should_compile_successfully(&self) -> bool {
+        match self.config.mode {
+            ParseFail | CompileFail => self.props.compile_pass,
+            RunPass => true,
+            Ui => self.props.compile_pass,
+            Incremental => {
+                let revision = self.revision
+                    .expect("incremental tests require a list of revisions");
+                if revision.starts_with("rpass") || revision.starts_with("rfail") {
+                    true
+                } else if revision.starts_with("cfail") {
+                    // FIXME: would be nice if incremental revs could start with "cpass"
+                    self.props.compile_pass
+                } else {
+                    panic!("revision name must begin with rpass, rfail, or cfail");
+                }
+            }
+            mode => panic!("unimplemented for mode {:?}", mode),
+        }
+    }
+
     fn check_if_test_should_compile(&self, proc_res: &ProcRes) {
-        if self.props.compile_pass {
+        if self.should_compile_successfully() {
             if !proc_res.status.success() {
                 self.fatal_proc_rec("test compilation failed although it shouldn't!", proc_res);
             }
@@ -1677,7 +1706,7 @@ impl<'test> TestCx<'test> {
                     rustc.arg("-Zui-testing");
                 }
             }
-            Ui => {
+            RunPass | Ui => {
                 if !self
                     .props
                     .compile_flags
@@ -1706,7 +1735,7 @@ impl<'test> TestCx<'test> {
 
                 rustc.arg(dir_opt);
             }
-            RunPass | RunFail | RunPassValgrind | Pretty | DebugInfoGdb | DebugInfoLldb
+            RunFail | RunPassValgrind | Pretty | DebugInfoGdb | DebugInfoLldb
             | Codegen | Rustdoc | RunMake | CodegenUnits => {
                 // do not use JSON output
             }
@@ -2638,8 +2667,12 @@ impl<'test> TestCx<'test> {
         let normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
 
         let mut errors = 0;
-        errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
-        errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
+        if !self.props.dont_check_compiler_stdout {
+            errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
+        }
+        if !self.props.dont_check_compiler_stderr {
+            errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
+        }
 
         let modes_to_prune = vec![CompareMode::Nll];
         self.prune_duplicate_outputs(&modes_to_prune);
@@ -2691,7 +2724,7 @@ impl<'test> TestCx<'test> {
 
         let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
 
-        if self.props.run_pass {
+        if self.should_run_successfully() {
             let proc_res = self.exec_compiled_test();
 
             if !proc_res.status.success() {

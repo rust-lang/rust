@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(non_upper_case_globals)]
+#![allow(dead_code)]
+#![allow(unused_assignments)]
+#![allow(unused_variables)]
 // Test a scenario where we generate a constraint like `?1 <: &?2`.
 // In such a case, it is important that we instantiate `?1` with `&?3`
 // where `?3 <: ?2`, and not with `&?2`. This is a regression test for

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(stable_features)]
 // min-llvm-version 6.0
 // ^ needs MCSubtargetInfo::checkFeatures()
 // ignore-cloudabi no std::env

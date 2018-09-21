@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(dead_code)]
 // aux-build:custom_derive_plugin.rs
 // ignore-stage1
 

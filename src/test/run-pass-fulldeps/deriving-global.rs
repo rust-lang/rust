@@ -11,6 +11,7 @@
 #![feature(rustc_private)]
 
 extern crate serialize;
+use serialize as rustc_serialize;
 
 mod submod {
     // if any of these are implemented without global calls for any
@@ -20,21 +21,21 @@ mod submod {
                Hash,
                Clone,
                Debug,
-               Encodable, Decodable)]
+               RustcEncodable, RustcDecodable)]
     enum A { A1(usize), A2(isize) }
 
     #[derive(PartialEq, PartialOrd, Eq, Ord,
                Hash,
                Clone,
                Debug,
-               Encodable, Decodable)]
+               RustcEncodable, RustcDecodable)]
     struct B { x: usize, y: isize }
 
     #[derive(PartialEq, PartialOrd, Eq, Ord,
                Hash,
                Clone,
                Debug,
-               Encodable, Decodable)]
+               RustcEncodable, RustcDecodable)]
     struct C(usize, isize);
 
 }

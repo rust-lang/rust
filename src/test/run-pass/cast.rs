@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_assignments)]
+#![allow(unused_variables)]
 
 pub fn main() {
     let i: isize = 'Q' as isize;

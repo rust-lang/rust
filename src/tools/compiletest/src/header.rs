@@ -199,6 +199,10 @@ pub struct TestProps {
     pub force_host: bool,
     // Check stdout for error-pattern output as well as stderr
     pub check_stdout: bool,
+    // For UI tests, allows compiler to generate arbitrary output to stdout
+    pub dont_check_compiler_stdout: bool,
+    // For UI tests, allows compiler to generate arbitrary output to stderr
+    pub dont_check_compiler_stderr: bool,
     // Don't force a --crate-type=dylib flag on the command line
     pub no_prefer_dynamic: bool,
     // Run --pretty expanded when running pretty printing tests
@@ -249,6 +253,8 @@ impl TestProps {
             build_aux_docs: false,
             force_host: false,
             check_stdout: false,
+            dont_check_compiler_stdout: false,
+            dont_check_compiler_stderr: false,
             no_prefer_dynamic: false,
             pretty_expanded: false,
             pretty_mode: "normal".to_string(),
@@ -325,6 +331,14 @@ impl TestProps {
 
             if !self.check_stdout {
                 self.check_stdout = config.parse_check_stdout(ln);
+            }
+
+            if !self.dont_check_compiler_stdout {
+                self.dont_check_compiler_stdout = config.parse_dont_check_compiler_stdout(ln);
+            }
+
+            if !self.dont_check_compiler_stderr {
+                self.dont_check_compiler_stderr = config.parse_dont_check_compiler_stderr(ln);
             }
 
             if !self.no_prefer_dynamic {
@@ -508,6 +522,14 @@ impl Config {
 
     fn parse_check_stdout(&self, line: &str) -> bool {
         self.parse_name_directive(line, "check-stdout")
+    }
+
+    fn parse_dont_check_compiler_stdout(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "dont-check-compiler-stdout")
+    }
+
+    fn parse_dont_check_compiler_stderr(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "dont-check-compiler-stderr")
     }
 
     fn parse_no_prefer_dynamic(&self, line: &str) -> bool {

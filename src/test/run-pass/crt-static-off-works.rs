@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(stable_features)]
 // compile-flags:-C target-feature=-crt-static -Z unstable-options
 // ignore-musl - requires changing the linker which is hard
 

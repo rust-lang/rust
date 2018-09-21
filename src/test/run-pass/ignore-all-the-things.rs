@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(non_shorthand_field_patterns)]
+#![allow(dead_code)]
+#![allow(unused_variables)]
 // pretty-expanded FIXME #23616
 
 #![feature(slice_patterns)]

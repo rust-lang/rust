@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_imports)]
+#![allow(unused_must_use)]
 // pretty-expanded FIXME #23616
 
 #![feature(rustc_private)]

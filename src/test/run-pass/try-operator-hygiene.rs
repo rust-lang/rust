@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(non_upper_case_globals)]
+#![allow(dead_code)]
 // `expr?` expands to:
 //
 // match expr {

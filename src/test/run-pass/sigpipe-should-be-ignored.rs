@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_must_use)]
 // Be sure that when a SIGPIPE would have been received that the entire process
 // doesn't die in a ball of fire, but rather it's gracefully handled.
 

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(dead_code)]
 // aux-build:derive-two-attrs.rs
 
 extern crate derive_two_attrs as foo;

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(non_camel_case_types)]
 // ignore-emscripten no threads support
 
 use std::sync::mpsc::{channel, Sender};

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(dead_code)]
 struct Foo<'a>(&'a u8);
 
 fn foo(x: &u8) -> Foo<'_> {

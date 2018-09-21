@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(non_camel_case_types)]
 enum clam<T> { a(T, isize), b, }
 
 fn uhoh<T>(v: Vec<clam<T>> ) {

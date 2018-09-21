@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(non_shorthand_field_patterns)]
 
 #[derive(Copy, Clone)]
 struct Pair { x: isize, y: isize }

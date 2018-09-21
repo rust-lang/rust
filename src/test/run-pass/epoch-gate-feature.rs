@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(dead_code)]
+#![allow(unused_variables)]
 // Checks if the correct registers are being used to pass arguments
 // when the sysv64 ABI is specified.
 

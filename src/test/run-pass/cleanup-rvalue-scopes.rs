@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(non_snake_case)]
+#![allow(unused_variables)]
 // Test that destructors for rvalue temporaries run either at end of
 // statement or end of block, as appropriate given the temporary
 // lifetime rules.

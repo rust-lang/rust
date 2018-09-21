@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_variables)]
 // Test coercions between pointers which don't do anything fancy like unsizing.
 
 // pretty-expanded FIXME #23616

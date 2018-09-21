@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(stable_features)]
 // ignore-windows - this is a unix-specific test
 // ignore-pretty issue #37199
 // ignore-cloudabi no processes

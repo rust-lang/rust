@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_must_use)]
+#![allow(deprecated)]
 // ignore-cloudabi no process support
 // ignore-emscripten no threads support
 

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(plugin_as_library)]
+#![allow(dead_code)]
 // aux-build:macro_crate_test.rs
 // ignore-stage1
 

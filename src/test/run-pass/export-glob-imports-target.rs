@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(non_upper_case_globals)]
+#![allow(dead_code)]
 // Test that a glob-export functions as an import
 // when referenced within its own local scope.
 
