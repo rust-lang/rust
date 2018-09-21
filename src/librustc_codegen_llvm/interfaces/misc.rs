@@ -15,7 +15,7 @@ use super::backend::Backend;
 use rustc::session::Session;
 use libc::c_uint;
 
-pub trait MiscMethods<'tcx> : Backend {
+pub trait MiscMethods<'ll, 'tcx: 'll> : Backend<'ll> {
     fn vtables(&self) -> &RefCell<FxHashMap<(Ty<'tcx>,
                                 Option<ty::PolyExistentialTraitRef<'tcx>>), Self::Value>>;
     fn check_overflow(&self) -> bool;

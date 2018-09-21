@@ -284,7 +284,7 @@ impl<'a, 'll: 'a, 'tcx: 'll> ArgTypeMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 
     fn store_fn_arg(
         &self,
         ty: &ArgType<'tcx, Ty<'tcx>>,
-        idx: &mut usize, dst: PlaceRef<'tcx, <Self::CodegenCx as Backend>::Value>
+        idx: &mut usize, dst: PlaceRef<'tcx, <Self::CodegenCx as Backend<'ll>>::Value>
     ) {
         ty.store_fn_arg(&self, idx, dst)
     }
@@ -797,7 +797,7 @@ impl AbiBuilderMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> {
     fn apply_attrs_callsite(
         &self,
         ty: &FnType<'tcx, Ty<'tcx>>,
-        callsite: <Self::CodegenCx as Backend>::Value
+        callsite: <Self::CodegenCx as Backend<'ll>>::Value
     ) {
         ty.apply_attrs_callsite(&self, callsite)
     }

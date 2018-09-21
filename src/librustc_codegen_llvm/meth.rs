@@ -32,9 +32,9 @@ impl<'a, 'tcx> VirtualIndex {
     pub fn get_fn<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         self,
         bx: &Bx,
-        llvtable: <Bx::CodegenCx as Backend>::Value,
+        llvtable: <Bx::CodegenCx as Backend<'ll>>::Value,
         fn_ty: &FnType<'tcx, Ty<'tcx>>
-    ) -> <Bx::CodegenCx as Backend>::Value {
+    ) -> <Bx::CodegenCx as Backend<'ll>>::Value {
         // Load the data pointer from the object.
         debug!("get_fn({:?}, {:?})", llvtable, self);
 
@@ -56,8 +56,8 @@ impl<'a, 'tcx> VirtualIndex {
     pub fn get_usize<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         self,
         bx: &Bx,
-        llvtable: <Bx::CodegenCx as Backend>::Value
-    ) -> <Bx::CodegenCx as Backend>::Value {
+        llvtable: <Bx::CodegenCx as Backend<'ll>>::Value
+    ) -> <Bx::CodegenCx as Backend<'ll>>::Value {
         // Load the data pointer from the object.
         debug!("get_int({:?}, {:?})", llvtable, self);
 

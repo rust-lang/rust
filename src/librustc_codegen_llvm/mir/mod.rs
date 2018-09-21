@@ -70,7 +70,7 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll, Cx: 'a +  CodegenMethods<'ll, 'tcx
     /// When targeting MSVC, this stores the cleanup info for each funclet
     /// BB. Thisrustup component add rustfmt-preview is initialized as we compute the funclets'
     /// head block in RPO.
-    funclets: &'a IndexVec<mir::BasicBlock, Option<Funclet<'ll, Cx::Value>>>,
+    funclets: &'ll IndexVec<mir::BasicBlock, Option<Funclet<'ll, Cx::Value>>>,
 
     /// This stores the landing-pad block for a given BB, computed lazily on GNU
     /// and eagerly on MSVC.
@@ -196,11 +196,11 @@ enum LocalRef<'tcx, V> {
     Operand(Option<OperandRef<'tcx, V>>),
 }
 
-impl<'ll, 'tcx: 'll, V : CodegenObject> LocalRef<'tcx, V> {
+impl<'ll, 'tcx: 'll, V : 'll + CodegenObject> LocalRef<'tcx, V> {
     fn new_operand<Cx: CodegenMethods<'ll, 'tcx>>(
         cx: &Cx,
         layout: TyLayout<'tcx>
-    ) -> LocalRef<'tcx, V> where Cx: Backend<Value=V> {
+    ) -> LocalRef<'tcx, V> where Cx: Backend<'ll, Value=V> {
         if layout.is_zst() {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
@@ -216,7 +216,7 @@ impl<'ll, 'tcx: 'll, V : CodegenObject> LocalRef<'tcx, V> {
 
 pub fn codegen_mir<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     cx: &'a Bx::CodegenCx,
-    llfn: <Bx::CodegenCx as Backend>::Value,
+    llfn: <Bx::CodegenCx as Backend<'ll>>::Value,
     mir: &'a Mir<'tcx>,
     instance: Instance<'tcx>,
     sig: ty::FnSig<'tcx>,
@@ -235,7 +235,7 @@ pub fn codegen_mir<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     // Allocate a `Block` for every basic block, except
     // the start block, if nothing loops back to it.
     let reentrant_start_block = !mir.predecessors_for(mir::START_BLOCK).is_empty();
-    let block_bxs: IndexVec<mir::BasicBlock, <Bx::CodegenCx as Backend>::BasicBlock> =
+    let block_bxs: IndexVec<mir::BasicBlock, <Bx::CodegenCx as Backend<'ll>>::BasicBlock> =
         mir.basic_blocks().indices().map(|bb| {
             if bb == mir::START_BLOCK && !reentrant_start_block {
                 bx.llbb()
@@ -375,9 +375,9 @@ fn create_funclets<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     mir: &'a Mir<'tcx>,
     bx: &Bx,
     cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
-    block_bxs: &IndexVec<mir::BasicBlock, <Bx::CodegenCx as Backend>::BasicBlock>)
-    -> (IndexVec<mir::BasicBlock, Option<<Bx::CodegenCx as Backend>::BasicBlock>>,
-        IndexVec<mir::BasicBlock, Option<Funclet<'ll, <Bx::CodegenCx as Backend>::Value>>>)
+    block_bxs: &IndexVec<mir::BasicBlock, <Bx::CodegenCx as Backend<'ll>>::BasicBlock>)
+    -> (IndexVec<mir::BasicBlock, Option<<Bx::CodegenCx as Backend<'ll>>::BasicBlock>>,
+        IndexVec<mir::BasicBlock, Option<Funclet<'ll, <Bx::CodegenCx as Backend<'ll>>::Value>>>)
 {
     block_bxs.iter_enumerated().zip(cleanup_kinds).map(|((bb, &llbb), cleanup_kind)| {
         match *cleanup_kind {
@@ -448,7 +448,7 @@ fn arg_local_refs<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
         debuginfo::MirDebugScope<<Bx::CodegenCx as DebugInfoMethods<'ll, 'tcx>>::DIScope>
     >,
     memory_locals: &BitSet<mir::Local>,
-) -> Vec<LocalRef<'tcx, <Bx::CodegenCx as Backend>::Value>>
+) -> Vec<LocalRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>>
     where &'a Bx::CodegenCx : LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
     let mir = fx.mir;

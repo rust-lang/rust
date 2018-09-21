@@ -65,11 +65,11 @@ impl<V : CodegenObject> fmt::Debug for OperandRef<'tcx, V> {
     }
 }
 
-impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> OperandRef<'tcx, V> {
+impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandRef<'tcx, V> {
     pub fn new_zst<Cx: CodegenMethods<'ll, 'tcx>>(
         cx: &Cx,
         layout: TyLayout<'tcx>
-    ) -> OperandRef<'tcx, V> where Cx : Backend<Value = V> {
+    ) -> OperandRef<'tcx, V> where Cx : Backend<'ll, Value = V> {
         assert!(layout.is_zst());
         OperandRef {
             val: OperandValue::Immediate(cx.const_undef(cx.immediate_backend_type(&layout))),
@@ -81,7 +81,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> OperandRef<'tcx, V> {
         bx: &Bx,
         val: &'tcx ty::Const<'tcx>
     ) -> Result<OperandRef<'tcx, V>, Lrc<ConstEvalErr<'tcx>>> where
-        Bx::CodegenCx : Backend<Value = V>,
+        Bx::CodegenCx : Backend<'ll, Value = V>,
         &'a Bx::CodegenCx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
     {
         let layout = bx.cx().layout_of(val.ty);
@@ -135,7 +135,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> OperandRef<'tcx, V> {
     }
 }
 
-impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> OperandRef<'tcx, V> {
+impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandRef<'tcx, V> {
     /// Asserts that this operand refers to a scalar and returns
     /// a reference to its value.
     pub fn immediate(self) -> V {
@@ -149,7 +149,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> OperandRef<'tcx, V> {
         self,
         cx: &'a Cx
     ) -> PlaceRef<'tcx, V> where
-        Cx: Backend<Value=V>,
+        Cx: Backend<'ll, Value=V>,
         &'a Cx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
     {
         let projected_ty = self.layout.ty.builtin_deref(true)
@@ -173,7 +173,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> OperandRef<'tcx, V> {
     pub fn immediate_or_packed_pair<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         self,
         bx: &Bx
-    ) -> V where Bx::CodegenCx : Backend<Value=V> {
+    ) -> V where Bx::CodegenCx : Backend<'ll, Value=V> {
         if let OperandValue::Pair(a, b) = self.val {
             let llty = bx.cx().backend_type(&self.layout);
             debug!("Operand::immediate_or_packed_pair: packing {:?} into {:?}",
@@ -191,10 +191,10 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> OperandRef<'tcx, V> {
     /// If the type is a pair, we return a `Pair`, otherwise, an `Immediate`.
     pub fn from_immediate_or_packed_pair<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         bx: &Bx,
-        llval: <Bx::CodegenCx as Backend>::Value,
+        llval: <Bx::CodegenCx as Backend<'ll>>::Value,
         layout: TyLayout<'tcx>
-    ) -> OperandRef<'tcx, <Bx::CodegenCx as Backend>::Value>
-        where Bx::CodegenCx : Backend<Value=V>
+    ) -> OperandRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>
+        where Bx::CodegenCx : Backend<'ll, Value=V>
     {
         let val = if let layout::Abi::ScalarPair(ref a, ref b) = layout.abi {
             debug!("Operand::from_immediate_or_packed_pair: unpacking {:?} @ {:?}",
@@ -213,8 +213,8 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> OperandRef<'tcx, V> {
     pub fn extract_field<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         &self, bx: &Bx,
         i: usize
-    ) -> OperandRef<'tcx, <Bx::CodegenCx as Backend>::Value> where
-        Bx::CodegenCx : Backend<Value=V>,
+    ) -> OperandRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value> where
+        Bx::CodegenCx : Backend<'ll, Value=V>,
         &'a Bx::CodegenCx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
     {
         let field = self.layout.field(bx.cx(), i);
@@ -274,12 +274,12 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> OperandRef<'tcx, V> {
     }
 }
 
-impl<V : CodegenObject> OperandValue<V> {
-    pub fn store<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
+impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandValue<V> {
+    pub fn store<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         self,
         bx: &Bx,
-        dest: PlaceRef<'tcx, <Bx::CodegenCx as Backend>::Value>
-    ) where Bx::CodegenCx : Backend<Value = V> {
+        dest: PlaceRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>
+    ) where Bx::CodegenCx : Backend<'ll, Value = V> {
         self.store_with_flags(bx, dest, MemFlags::empty());
     }
 }
@@ -313,13 +313,13 @@ impl<'a, 'll: 'a, 'tcx: 'll> OperandValue<&'ll Value> {
     }
 }
 
-impl<V : CodegenObject> OperandValue<V> {
-    fn store_with_flags<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
+impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandValue<V> {
+    fn store_with_flags<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         self,
         bx: &Bx,
-        dest: PlaceRef<'tcx, <Bx::CodegenCx as Backend>::Value>,
+        dest: PlaceRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>,
         flags: MemFlags,
-    ) where Bx::CodegenCx : Backend<Value = V> {
+    ) where Bx::CodegenCx : Backend<'ll, Value = V> {
         debug!("OperandRef::store: operand={:?}, dest={:?}", self, dest);
         // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
         // value is through `undef`, and store itself is useless.
@@ -347,12 +347,12 @@ impl<V : CodegenObject> OperandValue<V> {
             }
         }
     }
-    pub fn store_unsized<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
+    pub fn store_unsized<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         self,
         bx: &Bx,
         indirect_dest: PlaceRef<'tcx, V>
     ) where
-        Bx::CodegenCx : Backend<Value = V>,
+        Bx::CodegenCx : Backend<'ll, Value = V>,
         &'a Bx::CodegenCx: LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
     {
         debug!("OperandRef::store_unsized: operand={:?}, indirect_dest={:?}", self, indirect_dest);

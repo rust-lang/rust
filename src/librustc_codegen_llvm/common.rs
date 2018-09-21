@@ -217,14 +217,14 @@ impl<'ll, V : CodegenObject> Funclet<'ll, V> {
     }
 }
 
-impl Backend for CodegenCx<'ll, 'tcx, &'ll Value> {
+impl Backend<'ll> for CodegenCx<'ll, 'tcx, &'ll Value> {
     type Value = &'ll Value;
     type BasicBlock = &'ll BasicBlock;
     type Type = &'ll Type;
     type Context = &'ll llvm::Context;
 }
 
-impl<'ll, 'tcx : 'll> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
+impl<'ll, 'tcx : 'll> ConstMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
 
     // LLVM constant constructors.
     fn const_null(&self, t: &'ll Type) -> &'ll Value {
@@ -547,9 +547,9 @@ pub fn langcall(tcx: TyCtxt,
 
 pub fn build_unchecked_lshift<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     bx: &Bx,
-    lhs: <Bx::CodegenCx as Backend>::Value,
-    rhs: <Bx::CodegenCx as Backend>::Value
-) -> <Bx::CodegenCx as Backend>::Value {
+    lhs: <Bx::CodegenCx as Backend<'ll>>::Value,
+    rhs: <Bx::CodegenCx as Backend<'ll>>::Value
+) -> <Bx::CodegenCx as Backend<'ll>>::Value {
     let rhs = base::cast_shift_expr_rhs(bx, hir::BinOpKind::Shl, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
     let rhs = shift_mask_rhs(bx, rhs);
@@ -559,9 +559,9 @@ pub fn build_unchecked_lshift<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll
 pub fn build_unchecked_rshift<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     bx: &Bx,
     lhs_t: Ty<'tcx>,
-    lhs: <Bx::CodegenCx as Backend>::Value,
-    rhs: <Bx::CodegenCx as Backend>::Value
-) -> <Bx::CodegenCx as Backend>::Value {
+    lhs: <Bx::CodegenCx as Backend<'ll>>::Value,
+    rhs: <Bx::CodegenCx as Backend<'ll>>::Value
+) -> <Bx::CodegenCx as Backend<'ll>>::Value {
     let rhs = base::cast_shift_expr_rhs(bx, hir::BinOpKind::Shr, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
     let rhs = shift_mask_rhs(bx, rhs);
@@ -575,18 +575,18 @@ pub fn build_unchecked_rshift<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll
 
 fn shift_mask_rhs<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     bx: &Bx,
-    rhs: <Bx::CodegenCx as Backend>::Value
-) -> <Bx::CodegenCx as Backend>::Value {
+    rhs: <Bx::CodegenCx as Backend<'ll>>::Value
+) -> <Bx::CodegenCx as Backend<'ll>>::Value {
     let rhs_llty = bx.cx().val_ty(rhs);
     bx.and(rhs, shift_mask_val(bx, rhs_llty, rhs_llty, false))
 }
 
 pub fn shift_mask_val<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     bx: &Bx,
-    llty: <Bx::CodegenCx as Backend>::Type,
-    mask_llty: <Bx::CodegenCx as Backend>::Type,
+    llty: <Bx::CodegenCx as Backend<'ll>>::Type,
+    mask_llty: <Bx::CodegenCx as Backend<'ll>>::Type,
     invert: bool
-) -> <Bx::CodegenCx as Backend>::Value {
+) -> <Bx::CodegenCx as Backend<'ll>>::Value {
     let kind = bx.cx().type_kind(llty);
     match kind {
         TypeKind::Integer => {

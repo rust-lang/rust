@@ -20,13 +20,13 @@ pub trait IntrinsicCallMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tc
         &self,
         callee_ty: Ty<'tcx>,
         fn_ty: &FnType<'tcx, Ty<'tcx>>,
-        args: &[OperandRef<'tcx, <Self::CodegenCx as Backend>::Value>],
-        llresult: <Self::CodegenCx as Backend>::Value,
+        args: &[OperandRef<'tcx, <Self::CodegenCx as Backend<'ll>>::Value>],
+        llresult: <Self::CodegenCx as Backend<'ll>>::Value,
         span: Span,
     );
 }
 
-pub trait IntrinsicDeclarationMethods : Backend {
+pub trait IntrinsicDeclarationMethods<'ll> : Backend<'ll> {
     fn get_intrinsic(&self, key: &str) -> Self::Value;
     fn declare_intrinsic(
         &self,

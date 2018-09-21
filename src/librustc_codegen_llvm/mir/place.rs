@@ -36,7 +36,7 @@ pub struct PlaceRef<'tcx, V> {
     pub align: Align,
 }
 
-impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> PlaceRef<'tcx, V> {
+impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
     pub fn new_sized(
         llval: V,
         layout: TyLayout<'tcx>,
@@ -55,7 +55,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> PlaceRef<'tcx, V> {
         bx: &Bx,
         layout: TyLayout<'tcx>,
         name: &str
-    ) -> PlaceRef<'tcx, V> where Bx::CodegenCx : Backend<Value=V> {
+    ) -> PlaceRef<'tcx, V> where Bx::CodegenCx : Backend<'ll, Value=V> {
         debug!("alloca({:?}: {:?})", name, layout);
         assert!(!layout.is_unsized(), "tried to statically allocate unsized place");
         let tmp = bx.alloca(bx.cx().backend_type(&layout), name, layout.align);
@@ -69,7 +69,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> PlaceRef<'tcx, V> {
         name: &str
     ) -> PlaceRef<'tcx, V>
         where &'a Bx::CodegenCx: LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>,
-        Bx::CodegenCx : Backend<Value=V>
+        Bx::CodegenCx : Backend<'ll, Value=V>
     {
         debug!("alloca_unsized_indirect({:?}: {:?})", name, layout);
         assert!(layout.is_unsized(), "tried to allocate indirect place for sized values");
@@ -81,7 +81,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> PlaceRef<'tcx, V> {
     pub fn len<Cx: CodegenMethods<'ll, 'tcx>>(
         &self,
         cx: &Cx
-    ) -> V where Cx : Backend<Value=V> {
+    ) -> V where Cx : Backend<'ll, Value=V> {
         if let layout::FieldPlacement::Array { count, .. } = self.layout.fields {
             if self.layout.is_unsized() {
                 assert_eq!(count, 0);
@@ -96,14 +96,14 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> PlaceRef<'tcx, V> {
 
 }
 
-impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> PlaceRef<'tcx, V> {
+impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
     /// Access a field, at a point when the value's case is known.
     pub fn project_field<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         self, bx: &Bx,
         ix: usize
-    ) -> PlaceRef<'tcx, <Bx::CodegenCx as Backend>::Value>
+    ) -> PlaceRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>
         where
-            Bx::CodegenCx : Backend<Value = V>,
+            Bx::CodegenCx : Backend<'ll, Value = V>,
             &'a Bx::CodegenCx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
     {
         let cx = bx.cx();
@@ -214,7 +214,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> PlaceRef<'tcx, V> {
         bx: &Bx,
         cast_to: Ty<'tcx>
     ) -> V where
-        Bx::CodegenCx : Backend<Value = V>,
+        Bx::CodegenCx : Backend<'ll, Value = V>,
         &'a Bx::CodegenCx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
     {
         let cast_to = bx.cx().immediate_backend_type(&bx.cx().layout_of(cast_to));
@@ -285,7 +285,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> PlaceRef<'tcx, V> {
         bx: &Bx,
         variant_index: usize
     ) where
-        Bx::CodegenCx : Backend<Value=V>,
+        Bx::CodegenCx : Backend<'ll, Value=V>,
         &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
     {
         if self.layout.for_variant(bx.cx(), variant_index).abi.is_uninhabited() {
@@ -345,13 +345,13 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> PlaceRef<'tcx, V> {
     }
 }
 
-impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> PlaceRef<'tcx, V> {
+impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
     pub fn project_index<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         &self,
         bx: &Bx,
         llindex: V
     ) -> PlaceRef<'tcx, V> where
-        Bx::CodegenCx : Backend<Value=V>,
+        Bx::CodegenCx : Backend<'ll, Value=V>,
         &'a Bx::CodegenCx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
     {
         PlaceRef {
@@ -367,7 +367,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> PlaceRef<'tcx, V> {
         bx: &Bx,
         variant_index: usize
     ) -> PlaceRef<'tcx, V> where
-        Bx::CodegenCx : Backend<Value=V>,
+        Bx::CodegenCx : Backend<'ll, Value=V>,
         &'a Bx::CodegenCx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
     {
         let mut downcast = *self;
@@ -381,15 +381,15 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> PlaceRef<'tcx, V> {
     }
 }
 
-impl<'a, 'll: 'a, 'tcx: 'll, V : CodegenObject> PlaceRef<'tcx, V> {
+impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
     pub fn storage_live<Bx: BuilderMethods<'a, 'll, 'tcx>>(&self, bx: &Bx)
-        where Bx::CodegenCx : Backend<Value = V>
+        where Bx::CodegenCx : Backend<'ll, Value = V>
     {
         bx.lifetime_start(self.llval, self.layout.size);
     }
 
     pub fn storage_dead<Bx: BuilderMethods<'a, 'll, 'tcx>>(&self, bx: &Bx)
-        where Bx::CodegenCx : Backend<Value = V>
+        where Bx::CodegenCx : Backend<'ll, Value = V>
     {
         bx.lifetime_end(self.llval, self.layout.size);
     }

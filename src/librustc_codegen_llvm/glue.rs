@@ -25,8 +25,8 @@ pub fn size_and_align_of_dst<'a, 'll: 'a, 'tcx: 'll,
     >(
     bx: &Bx,
     t: Ty<'tcx>,
-    info: Option<<Bx::CodegenCx as Backend>::Value>
-) -> (<Bx::CodegenCx as Backend>::Value, <Bx::CodegenCx as Backend>::Value)  where
+    info: Option<<Bx::CodegenCx as Backend<'ll>>::Value>
+) -> (<Bx::CodegenCx as Backend<'ll>>::Value, <Bx::CodegenCx as Backend<'ll>>::Value)  where
     &'a Bx::CodegenCx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
     debug!("calculate size of DST: {}; with lost info: {:?}",

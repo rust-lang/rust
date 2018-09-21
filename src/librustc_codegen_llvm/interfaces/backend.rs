@@ -10,8 +10,8 @@
 
 use super::CodegenObject;
 
-pub trait Backend {
-    type Value : CodegenObject;
+pub trait Backend<'ll> {
+    type Value : 'll + CodegenObject;
     type BasicBlock : Copy;
     type Type : CodegenObject;
     type Context;

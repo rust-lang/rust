@@ -759,7 +759,7 @@ fn get_overflow_intrinsic<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 't
     oop: OverflowOp,
     bx: &Bx,
     ty: Ty
-) -> <Bx::CodegenCx as Backend>::Value {
+) -> <Bx::CodegenCx as Backend<'ll>>::Value {
     use syntax::ast::IntTy::*;
     use syntax::ast::UintTy::*;
     use rustc::ty::{Int, Uint};
@@ -827,10 +827,10 @@ fn get_overflow_intrinsic<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 't
 fn cast_int_to_float<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     bx: &Bx,
     signed: bool,
-    x: <Bx::CodegenCx as Backend>::Value,
-    int_ty: <Bx::CodegenCx as Backend>::Type,
-    float_ty: <Bx::CodegenCx as Backend>::Type
-) -> <Bx::CodegenCx as Backend>::Value {
+    x: <Bx::CodegenCx as Backend<'ll>>::Value,
+    int_ty: <Bx::CodegenCx as Backend<'ll>>::Type,
+    float_ty: <Bx::CodegenCx as Backend<'ll>>::Type
+) -> <Bx::CodegenCx as Backend<'ll>>::Value {
     // Most integer types, even i128, fit into [-f32::MAX, f32::MAX] after rounding.
     // It's only u128 -> f32 that can cause overflows (i.e., should yield infinity).
     // LLVM's uitofp produces undef in those cases, so we manually check for that case.
@@ -861,10 +861,10 @@ fn cast_int_to_float<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
 fn cast_float_to_int<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     bx: &Bx,
     signed: bool,
-    x: <Bx::CodegenCx as Backend>::Value,
-    float_ty: <Bx::CodegenCx as Backend>::Type,
-    int_ty: <Bx::CodegenCx as Backend>::Type
-) -> <Bx::CodegenCx as Backend>::Value {
+    x: <Bx::CodegenCx as Backend<'ll>>::Value,
+    float_ty: <Bx::CodegenCx as Backend<'ll>>::Type,
+    int_ty: <Bx::CodegenCx as Backend<'ll>>::Type
+) -> <Bx::CodegenCx as Backend<'ll>>::Value {
     let fptosui_result = if signed {
         bx.fptosi(x, int_ty)
     } else {
@@ -893,7 +893,7 @@ fn cast_float_to_int<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     // On the other hand, f_max works even if int_ty::MAX is greater than float_ty::MAX. Because
     // we're rounding towards zero, we just get float_ty::MAX (which is always an integer).
     // This already happens today with u128::MAX = 2^128 - 1 > f32::MAX.
-    let int_max = |signed: bool, int_ty: <Bx::CodegenCx as Backend>::Type| -> u128 {
+    let int_max = |signed: bool, int_ty: <Bx::CodegenCx as Backend<'ll>>::Type| -> u128 {
         let shift_amount = 128 - bx.cx().int_width(int_ty);
         if signed {
             i128::MAX as u128 >> shift_amount
@@ -901,7 +901,7 @@ fn cast_float_to_int<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
             u128::MAX >> shift_amount
         }
     };
-    let int_min = |signed: bool, int_ty: <Bx::CodegenCx as Backend>::Type| -> i128 {
+    let int_min = |signed: bool, int_ty: <Bx::CodegenCx as Backend<'ll>>::Type| -> i128 {
         if signed {
             i128::MIN >> (128 - bx.cx().int_width(int_ty))
         } else {
@@ -910,7 +910,7 @@ fn cast_float_to_int<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     };
 
     let compute_clamp_bounds_single =
-    |signed: bool, int_ty: <Bx::CodegenCx as Backend>::Type| -> (u128, u128) {
+    |signed: bool, int_ty: <Bx::CodegenCx as Backend<'ll>>::Type| -> (u128, u128) {
         let rounded_min = ieee::Single::from_i128_r(int_min(signed, int_ty), Round::TowardZero);
         assert_eq!(rounded_min.status, Status::OK);
         let rounded_max = ieee::Single::from_u128_r(int_max(signed, int_ty), Round::TowardZero);
@@ -918,7 +918,7 @@ fn cast_float_to_int<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
         (rounded_min.value.to_bits(), rounded_max.value.to_bits())
     };
     let compute_clamp_bounds_double =
-    |signed: bool, int_ty: <Bx::CodegenCx as Backend>::Type| -> (u128, u128) {
+    |signed: bool, int_ty: <Bx::CodegenCx as Backend<'ll>>::Type| -> (u128, u128) {
         let rounded_min = ieee::Double::from_i128_r(int_min(signed, int_ty), Round::TowardZero);
         assert_eq!(rounded_min.status, Status::OK);
         let rounded_max = ieee::Double::from_u128_r(int_max(signed, int_ty), Round::TowardZero);

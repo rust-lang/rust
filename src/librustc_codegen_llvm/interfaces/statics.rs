@@ -12,7 +12,7 @@ use rustc::ty::layout::Align;
 use rustc::hir::def_id::DefId;
 use super::backend::Backend;
 
-pub trait StaticMethods<'tcx> : Backend {
+pub trait StaticMethods<'ll> : Backend<'ll> {
     fn static_ptrcast(&self, val: Self::Value, ty: Self::Type) -> Self::Value;
     fn static_bitcast(&self, val: Self::Value, ty: Self::Type) -> Self::Value;
     fn static_addr_of_mut(

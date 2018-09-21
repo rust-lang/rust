@@ -19,7 +19,7 @@ use syntax_pos;
 use rustc::hir::def_id::CrateNum;
 use syntax::ast::Name;
 
-pub trait DebugInfoMethods<'ll, 'tcx: 'll> : Backend {
+pub trait DebugInfoMethods<'ll, 'tcx: 'll> : Backend<'ll> {
     type DIScope : 'll + Copy;
 
     fn create_vtable_metadata(
@@ -54,7 +54,7 @@ pub trait DebugInfoBuilderMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 
         variable_name: Name,
         variable_type: Ty<'tcx>,
         scope_metadata: <Self::CodegenCx as DebugInfoMethods<'ll, 'tcx>>::DIScope,
-        variable_access: VariableAccess<'_, <Self::CodegenCx as Backend>::Value>,
+        variable_access: VariableAccess<'_, <Self::CodegenCx as Backend<'ll>>::Value>,
         variable_kind: VariableKind,
         span: syntax_pos::Span,
     );

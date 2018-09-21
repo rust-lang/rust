@@ -205,7 +205,7 @@ pub fn get_fn(
 }
 
 pub fn resolve_and_get_fn<'ll, 'tcx: 'll,
-    Cx : Backend + MiscMethods<'tcx> + TypeMethods<'ll, 'tcx>
+    Cx : Backend<'ll> + MiscMethods<'ll, 'tcx> + TypeMethods<'ll, 'tcx>
     >(
     cx: &Cx,
     def_id: DefId,

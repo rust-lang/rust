@@ -156,12 +156,12 @@ pub fn bin_op_to_fcmp_predicate(op: hir::BinOpKind) -> RealPredicate {
 
 pub fn compare_simd_types<'a, 'll:'a, 'tcx:'ll, Builder : BuilderMethods<'a, 'll, 'tcx>>(
     bx: &Builder,
-    lhs: <Builder::CodegenCx as Backend>::Value,
-    rhs: <Builder::CodegenCx as Backend>::Value,
+    lhs: <Builder::CodegenCx as Backend<'ll>>::Value,
+    rhs: <Builder::CodegenCx as Backend<'ll>>::Value,
     t: Ty<'tcx>,
-    ret_ty: <Builder::CodegenCx as Backend>::Type,
+    ret_ty: <Builder::CodegenCx as Backend<'ll>>::Type,
     op: hir::BinOpKind
-) -> <Builder::CodegenCx as Backend>::Value {
+) -> <Builder::CodegenCx as Backend<'ll>>::Value {
     let signed = match t.sty {
         ty::Float(_) => {
             let cmp = bin_op_to_fcmp_predicate(op);
@@ -218,10 +218,10 @@ pub fn unsized_info<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>(
 /// Coerce `src` to `dst_ty`. `src_ty` must be a thin pointer.
 pub fn unsize_thin_ptr<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     bx: &Bx,
-    src: <Bx::CodegenCx as Backend>::Value,
+    src: <Bx::CodegenCx as Backend<'ll>>::Value,
     src_ty: Ty<'tcx>,
     dst_ty: Ty<'tcx>
-) -> (<Bx::CodegenCx as Backend>::Value, <Bx::CodegenCx as Backend>::Value) where
+) -> (<Bx::CodegenCx as Backend<'ll>>::Value, <Bx::CodegenCx as Backend<'ll>>::Value) where
     &'a Bx::CodegenCx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
     debug!("unsize_thin_ptr: {:?} => {:?}", src_ty, dst_ty);
@@ -275,8 +275,8 @@ pub fn unsize_thin_ptr<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>
 /// to a value of type `dst_ty` and store the result in `dst`
 pub fn coerce_unsized_into<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     bx: &Bx,
-    src: PlaceRef<'tcx, <Bx::CodegenCx as Backend>::Value>,
-    dst: PlaceRef<'tcx, <Bx::CodegenCx as Backend>::Value>
+    src: PlaceRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>,
+    dst: PlaceRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>
 ) where &'a Bx::CodegenCx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
     let src_ty = src.layout.ty;
@@ -336,28 +336,28 @@ pub fn coerce_unsized_into<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, '
 pub fn cast_shift_expr_rhs<'a, 'll: 'a, 'tcx: 'll, Builder : BuilderMethods<'a, 'll, 'tcx>>(
     bx: &Builder,
     op: hir::BinOpKind,
-    lhs: <Builder::CodegenCx as Backend>::Value,
-    rhs: <Builder::CodegenCx as Backend>::Value
-) -> <Builder::CodegenCx as Backend>::Value {
+    lhs: <Builder::CodegenCx as Backend<'ll>>::Value,
+    rhs: <Builder::CodegenCx as Backend<'ll>>::Value
+) -> <Builder::CodegenCx as Backend<'ll>>::Value {
     cast_shift_rhs(bx, op, lhs, rhs, |a, b| bx.trunc(a, b), |a, b| bx.zext(a, b))
 }
 
 fn cast_shift_rhs<'a, 'll :'a, 'tcx : 'll, F, G, Builder : BuilderMethods<'a, 'll, 'tcx>>(
     bx: &Builder,
     op: hir::BinOpKind,
-    lhs: <Builder::CodegenCx as Backend>::Value,
-    rhs: <Builder::CodegenCx as Backend>::Value,
+    lhs: <Builder::CodegenCx as Backend<'ll>>::Value,
+    rhs: <Builder::CodegenCx as Backend<'ll>>::Value,
     trunc: F,
     zext: G
-) -> <Builder::CodegenCx as Backend>::Value
+) -> <Builder::CodegenCx as Backend<'ll>>::Value
     where F: FnOnce(
-        <Builder::CodegenCx as Backend>::Value,
-        <Builder::CodegenCx as Backend>::Type
-    ) -> <Builder::CodegenCx as Backend>::Value,
+        <Builder::CodegenCx as Backend<'ll>>::Value,
+        <Builder::CodegenCx as Backend<'ll>>::Type
+    ) -> <Builder::CodegenCx as Backend<'ll>>::Value,
     G: FnOnce(
-        <Builder::CodegenCx as Backend>::Value,
-        <Builder::CodegenCx as Backend>::Type
-    ) -> <Builder::CodegenCx as Backend>::Value
+        <Builder::CodegenCx as Backend<'ll>>::Value,
+        <Builder::CodegenCx as Backend<'ll>>::Type
+    ) -> <Builder::CodegenCx as Backend<'ll>>::Value
 {
     // Shifts may have any size int on the rhs
     if op.is_shift() {
@@ -396,7 +396,7 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
 
 pub fn call_assume<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll ,'tcx>>(
     bx: &Bx,
-    val: <Bx::CodegenCx as Backend>::Value
+    val: <Bx::CodegenCx as Backend<'ll>>::Value
 ) {
     let assume_intrinsic = bx.cx().get_intrinsic("llvm.assume");
     bx.call(assume_intrinsic, &[val], None);
@@ -404,8 +404,8 @@ pub fn call_assume<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll ,'tcx>>(
 
 pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll ,'tcx>>(
     bx: &Bx,
-    val: <Bx::CodegenCx as Backend>::Value
-) -> <Bx::CodegenCx as Backend>::Value {
+    val: <Bx::CodegenCx as Backend<'ll>>::Value
+) -> <Bx::CodegenCx as Backend<'ll>>::Value {
     if bx.cx().val_ty(val) == bx.cx().type_i1() {
         bx.zext(val, bx.cx().type_i8())
     } else {
@@ -415,9 +415,9 @@ pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll ,'tcx>
 
 pub fn to_immediate<'a, 'll: 'a, 'tcx: 'll, Builder : BuilderMethods<'a, 'll, 'tcx>>(
     bx: &Builder,
-    val: <Builder::CodegenCx as Backend>::Value,
+    val: <Builder::CodegenCx as Backend<'ll>>::Value,
     layout: layout::TyLayout,
-) -> <Builder::CodegenCx as Backend>::Value {
+) -> <Builder::CodegenCx as Backend<'ll>>::Value {
     if let layout::Abi::Scalar(ref scalar) = layout.abi {
         return to_immediate_scalar(bx, val, scalar);
     }
@@ -426,9 +426,9 @@ pub fn to_immediate<'a, 'll: 'a, 'tcx: 'll, Builder : BuilderMethods<'a, 'll, 't
 
 pub fn to_immediate_scalar<'a, 'll :'a, 'tcx :'ll, Builder : BuilderMethods<'a, 'll, 'tcx>>(
     bx: &Builder,
-    val: <Builder::CodegenCx as Backend>::Value,
+    val: <Builder::CodegenCx as Backend<'ll>>::Value,
     scalar: &layout::Scalar,
-) -> <Builder::CodegenCx as Backend>::Value {
+) -> <Builder::CodegenCx as Backend<'ll>>::Value {
     if scalar.is_bool() {
         return bx.trunc(val, bx.cx().type_i1());
     }
@@ -437,8 +437,8 @@ pub fn to_immediate_scalar<'a, 'll :'a, 'tcx :'ll, Builder : BuilderMethods<'a, 
 
 pub fn memcpy_ty<'a, 'll: 'a, 'tcx: 'll, Builder : BuilderMethods<'a, 'll, 'tcx>>(
     bx: &Builder,
-    dst: <Builder::CodegenCx as Backend>::Value,
-    src: <Builder::CodegenCx as Backend>::Value,
+    dst: <Builder::CodegenCx as Backend<'ll>>::Value,
+    src: <Builder::CodegenCx as Backend<'ll>>::Value,
     layout: TyLayout<'tcx>,
     align: Align,
     flags: MemFlags,

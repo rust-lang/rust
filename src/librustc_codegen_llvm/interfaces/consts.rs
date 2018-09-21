@@ -15,7 +15,7 @@ use rustc::mir::interpret::Scalar;
 use rustc::mir::interpret::Allocation;
 use mir::place::PlaceRef;
 
-pub trait ConstMethods<'tcx> : Backend {
+pub trait ConstMethods<'ll, 'tcx: 'll> : Backend<'ll> {
     // Constant constructors
     fn const_null(&self, t: Self::Type) -> Self::Value;
     fn const_undef(&self, t: Self::Type) -> Self::Value;

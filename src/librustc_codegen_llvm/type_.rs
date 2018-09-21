@@ -280,7 +280,7 @@ impl Type {
     }
 }
 
-impl DerivedTypeMethods<'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
+impl DerivedTypeMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
 
     fn type_bool(&self) -> &'ll Type {
         &self.type_i8()
@@ -405,7 +405,7 @@ impl DerivedTypeMethods<'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
     }
 }
 
-impl LayoutTypeMethods<'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
+impl LayoutTypeMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
     fn backend_type(&self, ty: &TyLayout<'tcx>) -> &'ll Type {
         ty.llvm_type(&self)
     }

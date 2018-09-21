@@ -21,7 +21,7 @@ use rustc_target::abi::call::{ArgType, CastTarget, FnType, Reg};
 use mir::place::PlaceRef;
 
 
-pub trait BaseTypeMethods<'a, 'tcx: 'a> : Backend {
+pub trait BaseTypeMethods<'ll, 'tcx: 'll> : Backend<'ll> {
     fn type_void(&self) -> Self::Type;
     fn type_metadata(&self) -> Self::Type;
     fn type_i1(&self) -> Self::Type;
@@ -52,10 +52,10 @@ pub trait BaseTypeMethods<'a, 'tcx: 'a> : Backend {
 
     fn val_ty(&self, v: Self::Value) -> Self::Type;
     fn scalar_lltypes(&self) -> &RefCell<FxHashMap<Ty<'tcx>, Self::Type>>;
-    fn tcx(&self) -> &TyCtxt<'a, 'tcx, 'tcx>;
+    fn tcx(&self) -> &TyCtxt<'ll, 'tcx, 'tcx>;
 }
 
-pub trait DerivedTypeMethods<'tcx> : Backend {
+pub trait DerivedTypeMethods<'ll, 'tcx: 'll> : Backend<'ll> {
     fn type_bool(&self) -> Self::Type;
     fn type_char(&self) -> Self::Type;
     fn type_i8p(&self) -> Self::Type;
@@ -87,7 +87,7 @@ pub trait DerivedTypeMethods<'tcx> : Backend {
     fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool;
 }
 
-pub trait LayoutTypeMethods<'tcx> : Backend {
+pub trait LayoutTypeMethods<'ll, 'tcx> : Backend<'ll> {
     fn backend_type(&self, ty: &TyLayout<'tcx>) -> Self::Type;
     fn cast_backend_type(&self, ty: &CastTarget) -> Self::Type;
     fn fn_backend_type(&self, ty: &FnType<'tcx, Ty<'tcx>>) -> Self::Type;
@@ -106,16 +106,16 @@ pub trait ArgTypeMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> {
     fn store_fn_arg(
         &self,
         ty: &ArgType<'tcx, Ty<'tcx>>,
-        idx: &mut usize, dst: PlaceRef<'tcx, <Self::CodegenCx as Backend>::Value>
+        idx: &mut usize, dst: PlaceRef<'tcx, <Self::CodegenCx as Backend<'ll>>::Value>
     );
     fn store_arg_ty(
         &self,
         ty: &ArgType<'tcx, Ty<'tcx>>,
-        val: <Self::CodegenCx as Backend>::Value,
-        dst: PlaceRef<'tcx, <Self::CodegenCx as Backend>::Value>
+        val: <Self::CodegenCx as Backend<'ll>>::Value,
+        dst: PlaceRef<'tcx, <Self::CodegenCx as Backend<'ll>>::Value>
     );
-    fn memory_ty(&self, ty: &ArgType<'tcx, Ty<'tcx>>) -> <Self::CodegenCx as Backend>::Type;
+    fn memory_ty(&self, ty: &ArgType<'tcx, Ty<'tcx>>) -> <Self::CodegenCx as Backend<'ll>>::Type;
 }
 
-pub trait TypeMethods<'a, 'tcx: 'a> :
-    BaseTypeMethods<'a, 'tcx> + DerivedTypeMethods<'tcx> + LayoutTypeMethods<'tcx> {}
+pub trait TypeMethods<'ll, 'tcx: 'll> :
+    BaseTypeMethods<'ll, 'tcx> + DerivedTypeMethods<'ll, 'tcx> + LayoutTypeMethods<'ll, 'tcx> {}

@@ -36,8 +36,8 @@ pub use self::asm::{AsmMethods, AsmBuilderMethods};
 use std::fmt;
 
 pub trait CodegenMethods<'ll, 'tcx: 'll> :
-    Backend + TypeMethods<'ll, 'tcx> + MiscMethods<'tcx> + ConstMethods<'tcx> +
-    StaticMethods<'tcx> + DebugInfoMethods<'ll, 'tcx> + AbiMethods<'tcx> +
-    IntrinsicDeclarationMethods + DeclareMethods<'tcx> + AsmMethods {}
+    Backend<'ll> + TypeMethods<'ll, 'tcx> + MiscMethods<'ll, 'tcx> + ConstMethods<'ll, 'tcx> +
+    StaticMethods<'ll> + DebugInfoMethods<'ll, 'tcx> + AbiMethods<'tcx> +
+    IntrinsicDeclarationMethods<'ll> + DeclareMethods<'ll, 'tcx> + AsmMethods {}
 
 pub trait CodegenObject : Copy + PartialEq + fmt::Debug {}

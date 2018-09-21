@@ -11,7 +11,7 @@
 use rustc::ty::Ty;
 use super::backend::Backend;
 
-pub trait DeclareMethods<'tcx> : Backend{
+pub trait DeclareMethods<'ll, 'tcx: 'll> : Backend<'ll> {
     fn declare_global(
         &self,
         name: &str, ty: Self::Type
