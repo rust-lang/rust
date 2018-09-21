@@ -151,6 +151,44 @@ macro_rules! bitand_impl {
 
 bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
+macro_rules! bitand_trunc_impl {
+    ($($t:ty:$u:ty)*) => ($(
+        #[unstable(feature = "bitand_trunc", issue = "000000")]
+        impl BitAnd<$u> for $t {
+            type Output = $u;
+
+            #[inline]
+            fn bitand(self, rhs: $u) -> $u { self as $u & rhs }
+        }
+
+        forward_ref_binop! { impl BitAnd, bitand for $t, $u }
+    )*)
+}
+
+bitand_trunc_impl! {
+    u128:u64
+    u128:u32
+    u128:u16
+    u128:u8
+    u64:u32
+    u64:u16
+    u64:u8
+    u32:u16
+    u32:u8
+    u16:u8
+
+    i128:i64
+    i128:i32
+    i128:i16
+    i128:i8
+    i64:i32
+    i64:i16
+    i64:i8
+    i32:i16
+    i32:i8
+    i16:i8
+}
+
 /// The bitwise OR operator `|`.
 ///
 /// Note that `RHS` is `Self` by default, but this is not mandatory.
