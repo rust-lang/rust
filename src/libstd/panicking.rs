@@ -519,6 +519,9 @@ pub fn update_count_then_panic(msg: Box<dyn Any + Send>) -> ! {
 /// A private no-mangle function on which to slap yer breakpoints.
 #[no_mangle]
 #[allow(private_no_mangle_fns)] // yes we get it, but we like breakpoints
+#[unstable(feature = "libstd_sys_internals",
+           reason = "used by the panic! macro",
+           issue = "0")]
 pub fn rust_panic(mut msg: &mut dyn BoxMeUp) -> ! {
     let code = unsafe {
         let obj = &mut msg as *mut &mut dyn BoxMeUp;
