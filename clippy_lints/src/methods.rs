@@ -1,22 +1,24 @@
-use matches::matches;
 use crate::rustc::hir;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, Lint, LintContext};
-use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
-use crate::rustc::ty::{self, Ty};
 use crate::rustc::hir::def::Def;
+use crate::rustc::lint::{in_external_macro, LateContext, LateLintPass, Lint, LintArray, LintContext, LintPass};
+use crate::rustc::ty::{self, Ty};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
+use crate::syntax::ast;
+use crate::syntax::source_map::{BytePos, Span};
+use crate::utils::paths;
+use crate::utils::sugg;
+use crate::utils::{
+    get_arg_name, get_trait_def_id, implements_trait, in_macro, is_copy, is_expn_of, is_self, is_self_ty,
+    iter_input_pats, last_path_segment, match_def_path, match_path, match_qpath, match_trait_method, match_type,
+    match_var, method_chain_args, remove_blocks, return_ty, same_tys, single_segment_path, snippet, span_lint,
+    span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
+};
+use if_chain::if_chain;
+use matches::matches;
 use std::borrow::Cow;
 use std::fmt;
 use std::iter;
-use crate::syntax::ast;
-use crate::syntax::source_map::{Span, BytePos};
-use crate::utils::{get_arg_name, get_trait_def_id, implements_trait, in_macro, is_copy, is_expn_of, is_self,
-            is_self_ty, iter_input_pats, last_path_segment, match_def_path, match_path, match_qpath, match_trait_method,
-            match_type, method_chain_args, match_var, return_ty, remove_blocks, same_tys, single_segment_path, snippet,
-            span_lint, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq};
-use crate::utils::paths;
-use crate::utils::sugg;
-use crate::rustc_errors::Applicability;
 
 #[derive(Clone)]
 pub struct Pass;
@@ -245,6 +247,24 @@ declare_clippy_lint! {
     pub FILTER_NEXT,
     complexity,
     "using `filter(p).next()`, which is more succinctly expressed as `.find(p)`"
+}
+
+/// **What it does:** Checks for usage of `_.map(_).flatten(_)`,
+///
+/// **Why is this bad?** Readability, this can be written more concisely as a
+/// single method call.
+///
+/// **Known problems:**
+///
+/// **Example:**
+/// ```rust
+/// iter.map(|x| x.iter()).flatten()
+/// ```
+declare_clippy_lint! {
+    pub MAP_FLATTEN,
+    pedantic,
+    "using combinations of `flatten` and `map` which can usually be written as a \
+     single method call"
 }
 
 /// **What it does:** Checks for usage of `_.filter(_).map(_)`,
@@ -698,6 +718,7 @@ impl LintPass for Pass {
             TEMPORARY_CSTRING_AS_PTR,
             FILTER_NEXT,
             FILTER_MAP,
+            MAP_FLATTEN,
             ITER_NTH,
             ITER_SKIP_NEXT,
             GET_UNWRAP,
@@ -744,6 +765,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     lint_filter_flat_map(cx, expr, arglists[0], arglists[1]);
                 } else if let Some(arglists) = method_chain_args(expr, &["filter_map", "flat_map"]) {
                     lint_filter_map_flat_map(cx, expr, arglists[0], arglists[1]);
+                } else if let Some(arglists) = method_chain_args(expr, &["map", "flatten"]) {
+                    lint_map_flatten(cx, expr, arglists[0]);
                 } else if let Some(arglists) = method_chain_args(expr, &["find", "is_some"]) {
                     lint_search_is_some(cx, expr, "find", arglists[0], arglists[1]);
                 } else if let Some(arglists) = method_chain_args(expr, &["position", "is_some"]) {
@@ -1574,6 +1597,30 @@ fn lint_map_unwrap_or(cx: &LateContext<'_, '_>, expr: &hir::Expr, map_args: &[hi
         } else if same_span && multiline {
             span_lint(cx, OPTION_MAP_UNWRAP_OR, expr.span, msg);
         };
+    }
+}
+
+/// lint use of `map().flatten()` for `Iterators`
+fn lint_map_flatten<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    expr: &'tcx hir::Expr,
+    map_args: &'tcx [hir::Expr],
+) {
+    // lint if caller of `.map().flatten()` is an Iterator
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
+        let msg = "called `map(..).flatten()` on an `Iterator`. \
+                   This is more succinctly expressed by calling `.flat_map(..)`";
+        let self_snippet = snippet(cx, map_args[0].span, "..");
+        let func_snippet = snippet(cx, map_args[1].span, "..");
+        let hint = format!("{0}.flat_map({1})", self_snippet, func_snippet);
+        span_lint_and_then(cx, MAP_FLATTEN, expr.span, msg, |db| {
+            db.span_suggestion_with_applicability(
+                expr.span,
+                "try using flat_map instead",
+                hint,
+                Applicability::MachineApplicable,
+            );
+        });
     }
 }
 

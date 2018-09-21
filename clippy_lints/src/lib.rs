@@ -473,6 +473,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         loops::EXPLICIT_ITER_LOOP,
         matches::SINGLE_MATCH_ELSE,
         methods::FILTER_MAP,
+        methods::MAP_FLATTEN,
         methods::OPTION_MAP_UNWRAP_OR,
         methods::OPTION_MAP_UNWRAP_OR_ELSE,
         methods::RESULT_MAP_UNWRAP_OR_ELSE,
