@@ -536,3 +536,19 @@ fn issue_2377() {
         Tok::TypeOf if prec <= 16 => {}
     }
 }
+
+// #3040
+fn issue_3040() {
+    {
+        match foo {
+            DevtoolScriptControlMsg::WantsLiveNotifications(id, to_send) => {
+                match documents.find_window(id) {
+                    Some(window) => {
+                        devtools::handle_wants_live_notifications(window.upcast(), to_send)
+                    }
+                    None => return warn!("Message sent to closed pipeline {}.", id),
+                }
+            }
+        }
+    }
+}
