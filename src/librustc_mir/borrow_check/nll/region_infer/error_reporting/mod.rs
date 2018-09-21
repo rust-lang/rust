@@ -22,6 +22,7 @@ use std::collections::VecDeque;
 use std::fmt;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
+use syntax::errors::Applicability;
 
 mod region_name;
 mod var_name;
@@ -540,7 +541,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                             RegionName::Named(name) => format!("{}", name),
                             RegionName::Synthesized(_) => "'_".to_string(),
                         };
-                        diag.span_suggestion(
+                        diag.span_suggestion_with_applicability(
                             span,
                             &format!(
                                 "to allow this impl Trait to capture borrowed data with lifetime \
@@ -548,6 +549,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                                 fr_name, suggestable_fr_name,
                             ),
                             format!("{} + {}", snippet, suggestable_fr_name),
+                            Applicability::MachineApplicable,
                         );
                     }
                 }
