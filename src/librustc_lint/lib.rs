@@ -32,6 +32,7 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(macro_at_most_once_rep)]
 
+#[macro_use]
 extern crate syntax;
 #[macro_use]
 extern crate rustc;
@@ -61,6 +62,7 @@ use syntax::edition::Edition;
 use lint::LintId;
 use lint::FutureIncompatibleInfo;
 
+mod diagnostics;
 mod nonstandard_style;
 pub mod builtin;
 mod types;

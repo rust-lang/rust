@@ -1934,20 +1934,52 @@ impl EarlyLintPass for KeywordIdents {
         self.check_tokens(cx, mac.node.tts.clone().into());
     }
     fn check_ident(&mut self, cx: &EarlyContext, ident: ast::Ident) {
-        let next_edition = match cx.sess.edition() {
+        let ident_str = &ident.as_str()[..];
+        let cur_edition = cx.sess.edition();
+        let is_raw_ident = |ident: ast::Ident| {
+            cx.sess.parse_sess.raw_identifier_spans.borrow().contains(&ident.span)
+        };
+        let next_edition = match cur_edition {
             Edition::Edition2015 => {
-                match &ident.as_str()[..] {
+                match ident_str {
                     "async" | "try" | "dyn" => Edition::Edition2018,
+                    // Only issue warnings for `await` if the `async_await`
+                    // feature isn't being used. Otherwise, users need
+                    // to keep using `await` for the macro exposed by std.
+                    "await" if !cx.sess.features_untracked().async_await => Edition::Edition2018,
                     _ => return,
                 }
             }
 
             // no new keywords yet for 2018 edition and beyond
-            _ => return,
+            // However, `await` is a "false" keyword in the 2018 edition,
+            // and can only be used if the `async_await` feature is enabled.
+            // Otherwise, we emit an error.
+            _ => {
+                if "await" == ident_str
+                    && !cx.sess.features_untracked().async_await
+                    && !is_raw_ident(ident)
+                {
+                    let mut err = struct_span_err!(
+                        cx.sess,
+                        ident.span,
+                        E0721,
+                        "`await` is a keyword in the {} edition", cur_edition,
+                    );
+                    err.span_suggestion_with_applicability(
+                        ident.span,
+                        "you can use a raw identifier to stay compatible",
+                        "r#await".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                    err.emit();
+                }
+                return
+            },
         };
 
         // don't lint `r#foo`
-        if cx.sess.parse_sess.raw_identifier_spans.borrow().contains(&ident.span) {
+        if is_raw_ident(ident) {
             return;
         }
 
