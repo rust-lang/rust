@@ -23,6 +23,7 @@ mod terminator;
 mod traits;
 mod validity;
 mod intrinsics;
+mod mono_hash_map;
 
 pub use self::eval_context::{
     EvalContext, Frame, StackPopCleanup, LocalValue,
@@ -37,3 +38,5 @@ pub use self::machine::Machine;
 pub use self::operand::{ScalarMaybeUndef, Value, ValTy, Operand, OpTy};
 
 pub use self::validity::RefTracking;
+
+pub use self::mono_hash_map::MonoHashMap;

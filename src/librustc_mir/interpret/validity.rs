@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::fmt::Write;
+use std::hash::Hash;
 
 use syntax_pos::symbol::Symbol;
 use rustc::ty::layout::{self, Size, Align, TyLayout};
@@ -80,13 +81,13 @@ pub enum PathElem {
 }
 
 /// State for tracking recursive validation of references
-pub struct RefTracking<'tcx> {
-    pub seen: FxHashSet<(OpTy<'tcx>)>,
-    pub todo: Vec<(OpTy<'tcx>, Vec<PathElem>)>,
+pub struct RefTracking<'tcx, Tag> {
+    pub seen: FxHashSet<(OpTy<'tcx, Tag>)>,
+    pub todo: Vec<(OpTy<'tcx, Tag>, Vec<PathElem>)>,
 }
 
-impl<'tcx> RefTracking<'tcx> {
-    pub fn new(op: OpTy<'tcx>) -> Self {
+impl<'tcx, Tag: Copy+Eq+Hash> RefTracking<'tcx, Tag> {
+    pub fn new(op: OpTy<'tcx, Tag>) -> Self {
         let mut ref_tracking = RefTracking {
             seen: FxHashSet(),
             todo: vec![(op, Vec::new())],
@@ -128,7 +129,7 @@ fn path_format(path: &Vec<PathElem>) -> String {
     out
 }
 
-fn scalar_format(value: ScalarMaybeUndef) -> String {
+fn scalar_format<Tag>(value: ScalarMaybeUndef<Tag>) -> String {
     match value {
         ScalarMaybeUndef::Undef =>
             "uninitialized bytes".to_owned(),
@@ -143,9 +144,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     /// Make sure that `value` is valid for `ty`, *assuming* `ty` is a primitive type.
     fn validate_primitive_type(
         &self,
-        value: ValTy<'tcx>,
+        value: ValTy<'tcx, M::PointerTag>,
         path: &Vec<PathElem>,
-        ref_tracking: Option<&mut RefTracking<'tcx>>,
+        ref_tracking: Option<&mut RefTracking<'tcx, M::PointerTag>>,
         const_mode: bool,
     ) -> EvalResult<'tcx> {
         // Go over all the primitive types
@@ -272,7 +273,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     /// Make sure that `value` matches the
     fn validate_scalar_layout(
         &self,
-        value: ScalarMaybeUndef,
+        value: ScalarMaybeUndef<M::PointerTag>,
         size: Size,
         path: &Vec<PathElem>,
         layout: &layout::Scalar,
@@ -363,9 +364,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     /// validation (e.g., pointer values are fine in integers at runtime).
     pub fn validate_operand(
         &self,
-        dest: OpTy<'tcx>,
+        dest: OpTy<'tcx, M::PointerTag>,
         path: &mut Vec<PathElem>,
-        mut ref_tracking: Option<&mut RefTracking<'tcx>>,
+        mut ref_tracking: Option<&mut RefTracking<'tcx, M::PointerTag>>,
         const_mode: bool,
     ) -> EvalResult<'tcx> {
         trace!("validate_operand: {:?}, {:?}", *dest, dest.layout.ty);

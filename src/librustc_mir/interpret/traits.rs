@@ -12,8 +12,6 @@ use rustc::ty::{self, Ty};
 use rustc::ty::layout::{Size, Align, LayoutOf};
 use rustc::mir::interpret::{Scalar, Pointer, EvalResult, PointerArithmetic};
 
-use syntax::ast::Mutability;
-
 use super::{EvalContext, Machine, MemoryKind};
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
@@ -27,8 +25,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         &mut self,
         ty: Ty<'tcx>,
         trait_ref: ty::PolyTraitRef<'tcx>,
-    ) -> EvalResult<'tcx, Pointer> {
+    ) -> EvalResult<'tcx, Pointer<M::PointerTag>> {
         debug!("get_vtable(trait_ref={:?})", trait_ref);
+
+        // FIXME: Cache this!
 
         let layout = self.layout_of(trait_ref.self_ty())?;
         assert!(!layout.is_unsized(), "can't create a vtable for an unsized type");
@@ -41,7 +41,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         let vtable = self.memory.allocate(
             ptr_size * (3 + methods.len() as u64),
             ptr_align,
-            MemoryKind::Stack,
+            MemoryKind::Vtable,
         )?;
 
         let drop = ::monomorphize::resolve_drop_in_place(*self.tcx, ty);
@@ -63,10 +63,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             }
         }
 
-        self.memory.intern_static(
-            vtable.alloc_id,
-            Mutability::Immutable,
-        )?;
+        self.memory.mark_immutable(vtable.alloc_id)?;
 
         Ok(vtable)
     }
@@ -74,7 +71,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     /// Return the drop fn instance as well as the actual dynamic type
     pub fn read_drop_type_from_vtable(
         &self,
-        vtable: Pointer,
+        vtable: Pointer<M::PointerTag>,
     ) -> EvalResult<'tcx, (ty::Instance<'tcx>, ty::Ty<'tcx>)> {
         // we don't care about the pointee type, we just want a pointer
         let pointer_align = self.tcx.data_layout.pointer_align;
@@ -90,7 +87,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
     pub fn read_size_and_align_from_vtable(
         &self,
-        vtable: Pointer,
+        vtable: Pointer<M::PointerTag>,
     ) -> EvalResult<'tcx, (Size, Align)> {
         let pointer_size = self.pointer_size();
         let pointer_align = self.tcx.data_layout.pointer_align;

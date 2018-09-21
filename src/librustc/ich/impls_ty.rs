@@ -391,10 +391,39 @@ for ::mir::interpret::ConstValue<'gcx> {
     }
 }
 
-impl_stable_hash_for!(struct mir::interpret::Pointer {
-    alloc_id,
-    offset
-});
+impl<'a, Tag> HashStable<StableHashingContext<'a>>
+for ::mir::interpret::Pointer<Tag>
+where Tag: HashStable<StableHashingContext<'a>>
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        let ::mir::interpret::Pointer { alloc_id, offset, tag } = self;
+        alloc_id.hash_stable(hcx, hasher);
+        offset.hash_stable(hcx, hasher);
+        tag.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'a, Tag> HashStable<StableHashingContext<'a>>
+for ::mir::interpret::Scalar<Tag>
+where Tag: HashStable<StableHashingContext<'a>>
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        use mir::interpret::Scalar::*;
+
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match self {
+            Bits { bits, size } => {
+                bits.hash_stable(hcx, hasher);
+                size.hash_stable(hcx, hasher);
+            },
+            Ptr(ptr) => ptr.hash_stable(hcx, hasher),
+        }
+    }
+}
 
 impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
     fn hash_stable<W: StableHasherResult>(
@@ -448,25 +477,6 @@ impl_stable_hash_for!(enum ::syntax::ast::Mutability {
     Immutable,
     Mutable
 });
-
-
-impl<'a> HashStable<StableHashingContext<'a>>
-for ::mir::interpret::Scalar {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        use mir::interpret::Scalar::*;
-
-        mem::discriminant(self).hash_stable(hcx, hasher);
-        match *self {
-            Bits { bits, size } => {
-                bits.hash_stable(hcx, hasher);
-                size.hash_stable(hcx, hasher);
-            },
-            Ptr(ptr) => ptr.hash_stable(hcx, hasher),
-        }
-    }
-}
 
 impl_stable_hash_for!(struct ty::Const<'tcx> {
     ty,

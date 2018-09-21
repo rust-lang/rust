@@ -33,9 +33,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
     pub fn cast(
         &mut self,
-        src: OpTy<'tcx>,
+        src: OpTy<'tcx, M::PointerTag>,
         kind: CastKind,
-        dest: PlaceTy<'tcx>,
+        dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
         let src_layout = src.layout;
         let dst_layout = dest.layout;
@@ -143,10 +143,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
     pub(super) fn cast_scalar(
         &self,
-        val: Scalar,
+        val: Scalar<M::PointerTag>,
         src_layout: TyLayout<'tcx>,
         dest_layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, Scalar> {
+    ) -> EvalResult<'tcx, Scalar<M::PointerTag>> {
         use rustc::ty::TyKind::*;
         trace!("Casting {:?}: {:?} to {:?}", val, src_layout.ty, dest_layout.ty);
 
@@ -182,7 +182,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         v: u128,
         src_layout: TyLayout<'tcx>,
         dest_layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, Scalar> {
+    ) -> EvalResult<'tcx, Scalar<M::PointerTag>> {
         let signed = src_layout.abi.is_signed();
         let v = if signed {
             self.sign_extend(v, src_layout)
@@ -239,7 +239,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         bits: u128,
         fty: FloatTy,
         dest_ty: Ty<'tcx>
-    ) -> EvalResult<'tcx, Scalar> {
+    ) -> EvalResult<'tcx, Scalar<M::PointerTag>> {
         use rustc::ty::TyKind::*;
         use rustc_apfloat::FloatConvert;
         match dest_ty.sty {
@@ -283,7 +283,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         }
     }
 
-    fn cast_from_ptr(&self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Scalar> {
+    fn cast_from_ptr(
+        &self,
+        ptr: Pointer<M::PointerTag>,
+        ty: Ty<'tcx>
+    ) -> EvalResult<'tcx, Scalar<M::PointerTag>> {
         use rustc::ty::TyKind::*;
         match ty.sty {
             // Casting to a reference or fn pointer is not permitted by rustc,
@@ -298,8 +302,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
     fn unsize_into_ptr(
         &mut self,
-        src: OpTy<'tcx>,
-        dest: PlaceTy<'tcx>,
+        src: OpTy<'tcx, M::PointerTag>,
+        dest: PlaceTy<'tcx, M::PointerTag>,
         // The pointee types
         sty: Ty<'tcx>,
         dty: Ty<'tcx>,
@@ -339,8 +343,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
     fn unsize_into(
         &mut self,
-        src: OpTy<'tcx>,
-        dest: PlaceTy<'tcx>,
+        src: OpTy<'tcx, M::PointerTag>,
+        dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
         match (&src.layout.ty.sty, &dest.layout.ty.sty) {
             (&ty::Ref(_, s, _), &ty::Ref(_, d, _)) |

@@ -138,53 +138,81 @@ impl<T: layout::HasDataLayout> PointerArithmetic for T {}
 /// each context.
 ///
 /// Defaults to the index based and loosely coupled AllocId.
+///
+/// Pointer is also generic over the `Tag` associated with each pointer,
+/// which is used to do provenance tracking during execution.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
-pub struct Pointer<Id=AllocId> {
+pub struct Pointer<Tag=(),Id=AllocId> {
     pub alloc_id: Id,
     pub offset: Size,
+    pub tag: Tag,
 }
 
 /// Produces a `Pointer` which points to the beginning of the Allocation
 impl From<AllocId> for Pointer {
+    #[inline(always)]
     fn from(alloc_id: AllocId) -> Self {
         Pointer::new(alloc_id, Size::ZERO)
     }
 }
 
-impl<'tcx> Pointer {
+impl<'tcx> Pointer<()> {
+    #[inline(always)]
     pub fn new(alloc_id: AllocId, offset: Size) -> Self {
-        Pointer { alloc_id, offset }
+        Pointer { alloc_id, offset, tag: () }
+    }
+
+    #[inline(always)]
+    pub fn with_default_tag<Tag>(self) -> Pointer<Tag>
+        where Tag: Default
+    {
+        Pointer::new_with_tag(self.alloc_id, self.offset, Default::default())
+    }
+}
+
+impl<'tcx, Tag> Pointer<Tag> {
+    #[inline(always)]
+    pub fn new_with_tag(alloc_id: AllocId, offset: Size, tag: Tag) -> Self {
+        Pointer { alloc_id, offset, tag }
     }
 
     pub fn wrapping_signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> Self {
-        Pointer::new(
+        Pointer::new_with_tag(
             self.alloc_id,
             Size::from_bytes(cx.data_layout().wrapping_signed_offset(self.offset.bytes(), i)),
+            self.tag,
         )
     }
 
     pub fn overflowing_signed_offset<C: HasDataLayout>(self, i: i128, cx: C) -> (Self, bool) {
         let (res, over) = cx.data_layout().overflowing_signed_offset(self.offset.bytes(), i);
-        (Pointer::new(self.alloc_id, Size::from_bytes(res)), over)
+        (Pointer::new_with_tag(self.alloc_id, Size::from_bytes(res), self.tag), over)
     }
 
     pub fn signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
-        Ok(Pointer::new(
+        Ok(Pointer::new_with_tag(
             self.alloc_id,
             Size::from_bytes(cx.data_layout().signed_offset(self.offset.bytes(), i)?),
+            self.tag,
         ))
     }
 
     pub fn overflowing_offset<C: HasDataLayout>(self, i: Size, cx: C) -> (Self, bool) {
         let (res, over) = cx.data_layout().overflowing_offset(self.offset.bytes(), i.bytes());
-        (Pointer::new(self.alloc_id, Size::from_bytes(res)), over)
+        (Pointer::new_with_tag(self.alloc_id, Size::from_bytes(res), self.tag), over)
     }
 
     pub fn offset<C: HasDataLayout>(self, i: Size, cx: C) -> EvalResult<'tcx, Self> {
-        Ok(Pointer::new(
+        Ok(Pointer::new_with_tag(
             self.alloc_id,
             Size::from_bytes(cx.data_layout().offset(self.offset.bytes(), i.bytes())?),
+            self.tag
         ))
+    }
+
+    #[inline]
+    pub fn erase_tag(self) -> Pointer {
+        Pointer { alloc_id: self.alloc_id, offset: self.offset, tag: () }
     }
 }
 
@@ -496,15 +524,15 @@ impl<'tcx, M: fmt::Debug + Eq + Hash + Clone> AllocMap<'tcx, M> {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
-pub struct Allocation {
+pub struct Allocation<Tag=()> {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer
     pub bytes: Vec<u8>,
-    /// Maps from byte addresses to allocations.
+    /// Maps from byte addresses to extra data for each pointer.
     /// Only the first byte of a pointer is inserted into the map; i.e.,
     /// every entry in this map applies to `pointer_size` consecutive bytes starting
     /// at the given offset.
-    pub relocations: Relocations,
+    pub relocations: Relocations<Tag>,
     /// Denotes undefined memory. Reading from undefined memory is forbidden in miri
     pub undef_mask: UndefMask,
     /// The alignment of the allocation to detect unaligned reads.
@@ -515,7 +543,7 @@ pub struct Allocation {
     pub mutability: Mutability,
 }
 
-impl Allocation {
+impl<Tag> Allocation<Tag> {
     /// Creates a read-only allocation initialized by the given bytes
     pub fn from_bytes(slice: &[u8], align: Align) -> Self {
         let mut undef_mask = UndefMask::new(Size::ZERO);
@@ -548,29 +576,29 @@ impl Allocation {
 impl<'tcx> ::serialize::UseSpecializedDecodable for &'tcx Allocation {}
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub struct Relocations<Id=AllocId>(SortedMap<Size, Id>);
+pub struct Relocations<Tag=(), Id=AllocId>(SortedMap<Size, (Tag, Id)>);
 
-impl<Id> Relocations<Id> {
+impl<Tag, Id> Relocations<Tag, Id> {
     pub fn new() -> Self {
         Relocations(SortedMap::new())
     }
 
     // The caller must guarantee that the given relocations are already sorted
     // by address and contain no duplicates.
-    pub fn from_presorted(r: Vec<(Size, Id)>) -> Self {
+    pub fn from_presorted(r: Vec<(Size, (Tag, Id))>) -> Self {
         Relocations(SortedMap::from_presorted_elements(r))
     }
 }
 
-impl Deref for Relocations {
-    type Target = SortedMap<Size, AllocId>;
+impl<Tag> Deref for Relocations<Tag> {
+    type Target = SortedMap<Size, (Tag, AllocId)>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl DerefMut for Relocations {
+impl<Tag> DerefMut for Relocations<Tag> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }

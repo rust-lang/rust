@@ -12,6 +12,7 @@
 
 use std::fmt;
 use std::error::Error;
+use std::borrow::Cow;
 
 use rustc::hir::{self, def_id::DefId};
 use rustc::mir::interpret::ConstEvalErr;
@@ -272,8 +273,9 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
 {
     type MemoryData = ();
     type MemoryKinds = !;
+    type PointerTag = ();
 
-    const MUT_STATIC_KIND: Option<!> = None; // no mutating of statics allowed
+    const STATIC_KIND: Option<!> = None; // no copying of statics allowed
     const ENFORCE_VALIDITY: bool = false; // for now, we don't
 
     fn find_fn(
@@ -339,8 +341,16 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     fn find_foreign_static(
         _tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         _def_id: DefId,
-    ) -> EvalResult<'tcx, &'tcx Allocation> {
+    ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
         err!(ReadForeignStatic)
+    }
+
+    #[inline(always)]
+    fn static_with_default_tag(
+        alloc: &'_ Allocation
+    ) -> Cow<'_, Allocation<Self::PointerTag>> {
+        // We do not use a tag so we can just cheapyl forward the reference
+        Cow::Borrowed(alloc)
     }
 
     fn box_alloc(
