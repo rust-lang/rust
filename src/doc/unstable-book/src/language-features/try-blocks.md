@@ -9,9 +9,7 @@ The tracking issue for this feature is: [#31436]
 The `try_blocks` feature adds support for `try` blocks. A `try`
 block creates a new scope one can use the `?` operator in.
 
-```rust,ignore
-// This code needs the 2018 edition
-
+```rust,edition2018
 #![feature(try_blocks)]
 
 use std::num::ParseIntError;

@@ -216,13 +216,12 @@ where MWF: MirWithFlowState<'tcx>,
         let i = n.index();
 
         let flow = self.mbcx.flow_state();
-        let bits_per_block = flow.sets.bits_per_block();
 
         write!(w, "<tr>")?;
 
         // Entry
         let set = flow.sets.on_entry_set_for(i);
-        write!(w, "<td>{:?}</td>", dot::escape_html(&set.to_string(bits_per_block)))?;
+        write!(w, "<td>{:?}</td>", dot::escape_html(&set.to_string()))?;
 
         // Terminator
         write!(w, "<td>")?;

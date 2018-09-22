@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use indexed_vec::{Idx, IndexVec};
-use rustc_serialize;
 use smallvec::SmallVec;
 use std::fmt;
 use std::iter;
@@ -26,33 +25,48 @@ pub const WORD_BITS: usize = WORD_BYTES * 8;
 ///
 /// `T` is an index type, typically a newtyped `usize` wrapper, but it can also
 /// just be `usize`.
-#[derive(Clone, Eq, PartialEq)]
+///
+/// All operations that involve an element will panic if the element is equal
+/// to or greater than the domain size. All operations that involve two bitsets
+/// will panic if the bitsets have differing domain sizes.
+#[derive(Clone, Eq, PartialEq, RustcDecodable, RustcEncodable)]
 pub struct BitSet<T: Idx> {
+    domain_size: usize,
     words: Vec<Word>,
     marker: PhantomData<T>,
 }
 
 impl<T: Idx> BitSet<T> {
+    /// Create a new, empty bitset with a given `domain_size`.
     #[inline]
     pub fn new_empty(domain_size: usize) -> BitSet<T> {
         let num_words = num_words(domain_size);
         BitSet {
+            domain_size,
             words: vec![0; num_words],
             marker: PhantomData,
         }
     }
 
+    /// Create a new, filled bitset with a given `domain_size`.
     #[inline]
     pub fn new_filled(domain_size: usize) -> BitSet<T> {
         let num_words = num_words(domain_size);
         let mut result = BitSet {
+            domain_size,
             words: vec![!0; num_words],
             marker: PhantomData,
         };
-        result.clear_above(domain_size);
+        result.clear_excess_bits();
         result
     }
 
+    /// Get the domain size.
+    pub fn domain_size(&self) -> usize {
+        self.domain_size
+    }
+
+    /// Clear all elements.
     #[inline]
     pub fn clear(&mut self) {
         for word in &mut self.words {
@@ -60,34 +74,19 @@ impl<T: Idx> BitSet<T> {
         }
     }
 
-    /// Sets all elements up to and including `size`.
-    pub fn set_up_to(&mut self, elem: usize) {
-        for word in &mut self.words {
-            *word = !0;
-        }
-        self.clear_above(elem);
-    }
-
-    /// Clear all elements above `elem`.
-    fn clear_above(&mut self, elem: usize) {
-        let first_clear_block = elem / WORD_BITS;
-
-        if first_clear_block < self.words.len() {
-            // Within `first_clear_block`, the `elem % WORD_BITS` LSBs should
-            // remain.
-            let mask = (1 << (elem % WORD_BITS)) - 1;
-            self.words[first_clear_block] &= mask;
-
-            // All the blocks above `first_clear_block` are fully cleared.
-            for word in &mut self.words[first_clear_block + 1..] {
-                *word = 0;
-            }
+    /// Clear excess bits in the final word.
+    fn clear_excess_bits(&mut self) {
+        let num_bits_in_final_word = self.domain_size % WORD_BITS;
+        if num_bits_in_final_word > 0 {
+            let mask = (1 << num_bits_in_final_word) - 1;
+            let final_word_idx = self.words.len() - 1;
+            self.words[final_word_idx] &= mask;
         }
     }
 
-    /// Efficiently overwrite `self` with `other`. Panics if `self` and `other`
-    /// don't have the same length.
+    /// Efficiently overwrite `self` with `other`.
     pub fn overwrite(&mut self, other: &BitSet<T>) {
+        assert!(self.domain_size == other.domain_size);
         self.words.clone_from_slice(&other.words);
     }
 
@@ -99,16 +98,15 @@ impl<T: Idx> BitSet<T> {
     /// True if `self` contains `elem`.
     #[inline]
     pub fn contains(&self, elem: T) -> bool {
+        assert!(elem.index() < self.domain_size);
         let (word_index, mask) = word_index_and_mask(elem);
         (self.words[word_index] & mask) != 0
     }
 
-    /// True if `self` is a (non-strict) superset of `other`.
-    ///
-    /// The two sets must have the same domain_size.
+    /// Is `self` is a (non-strict) superset of `other`?
     #[inline]
     pub fn superset(&self, other: &BitSet<T>) -> bool {
-        assert_eq!(self.words.len(), other.words.len());
+        assert_eq!(self.domain_size, other.domain_size);
         self.words.iter().zip(&other.words).all(|(a, b)| (a & b) == *b)
     }
 
@@ -121,6 +119,7 @@ impl<T: Idx> BitSet<T> {
     /// Insert `elem`. Returns true if the set has changed.
     #[inline]
     pub fn insert(&mut self, elem: T) -> bool {
+        assert!(elem.index() < self.domain_size);
         let (word_index, mask) = word_index_and_mask(elem);
         let word_ref = &mut self.words[word_index];
         let word = *word_ref;
@@ -134,11 +133,13 @@ impl<T: Idx> BitSet<T> {
         for word in &mut self.words {
             *word = !0;
         }
+        self.clear_excess_bits();
     }
 
     /// Returns true if the set has changed.
     #[inline]
     pub fn remove(&mut self, elem: T) -> bool {
+        assert!(elem.index() < self.domain_size);
         let (word_index, mask) = word_index_and_mask(elem);
         let word_ref = &mut self.words[word_index];
         let word = *word_ref;
@@ -162,6 +163,7 @@ impl<T: Idx> BitSet<T> {
     /// Set `self = self & other` and return true if `self` changed.
     /// (i.e., if any bits were removed).
     pub fn intersect(&mut self, other: &BitSet<T>) -> bool {
+        assert_eq!(self.domain_size, other.domain_size);
         bitwise(&mut self.words, &other.words, |a, b| { a & b })
     }
 
@@ -182,43 +184,8 @@ impl<T: Idx> BitSet<T> {
 
     /// Duplicates the set as a hybrid set.
     pub fn to_hybrid(&self) -> HybridBitSet<T> {
-        // This domain_size may be slightly larger than the one specified
-        // upon creation, due to rounding up to a whole word. That's ok.
-        let domain_size = self.words.len() * WORD_BITS;
-
         // Note: we currently don't bother trying to make a Sparse set.
-        HybridBitSet::Dense(self.to_owned(), domain_size)
-    }
-
-    pub fn to_string(&self, bits: usize) -> String {
-        let mut result = String::new();
-        let mut sep = '[';
-
-        // Note: this is a little endian printout of bytes.
-
-        // i tracks how many bits we have printed so far.
-        let mut i = 0;
-        for word in &self.words {
-            let mut word = *word;
-            for _ in 0..WORD_BYTES { // for each byte in `word`:
-                let remain = bits - i;
-                // If less than a byte remains, then mask just that many bits.
-                let mask = if remain <= 8 { (1 << remain) - 1 } else { 0xFF };
-                assert!(mask <= 0xFF);
-                let byte = word & mask;
-
-                result.push_str(&format!("{}{:02x}", sep, byte));
-
-                if remain <= 8 { break; }
-                word >>= 8;
-                i += 8;
-                sep = '-';
-            }
-            sep = '|';
-        }
-        result.push(']');
-
-        result
+        HybridBitSet::Dense(self.to_owned())
     }
 }
 
@@ -238,12 +205,14 @@ pub trait SubtractFromBitSet<T: Idx> {
 
 impl<T: Idx> UnionIntoBitSet<T> for BitSet<T> {
     fn union_into(&self, other: &mut BitSet<T>) -> bool {
+        assert_eq!(self.domain_size, other.domain_size);
         bitwise(&mut other.words, &self.words, |a, b| { a | b })
     }
 }
 
 impl<T: Idx> SubtractFromBitSet<T> for BitSet<T> {
     fn subtract_from(&self, other: &mut BitSet<T>) -> bool {
+        assert_eq!(self.domain_size, other.domain_size);
         bitwise(&mut other.words, &self.words, |a, b| { a & !b })
     }
 }
@@ -256,19 +225,36 @@ impl<T: Idx> fmt::Debug for BitSet<T> {
     }
 }
 
-impl<T: Idx> rustc_serialize::Encodable for BitSet<T> {
-    fn encode<E: rustc_serialize::Encoder>(&self, encoder: &mut E) -> Result<(), E::Error> {
-        self.words.encode(encoder)
-    }
-}
+impl<T: Idx> ToString for BitSet<T> {
+    fn to_string(&self) -> String {
+        let mut result = String::new();
+        let mut sep = '[';
 
-impl<T: Idx> rustc_serialize::Decodable for BitSet<T> {
-    fn decode<D: rustc_serialize::Decoder>(d: &mut D) -> Result<BitSet<T>, D::Error> {
-        let words: Vec<Word> = rustc_serialize::Decodable::decode(d)?;
-        Ok(BitSet {
-            words,
-            marker: PhantomData,
-        })
+        // Note: this is a little endian printout of bytes.
+
+        // i tracks how many bits we have printed so far.
+        let mut i = 0;
+        for word in &self.words {
+            let mut word = *word;
+            for _ in 0..WORD_BYTES { // for each byte in `word`:
+                let remain = self.domain_size - i;
+                // If less than a byte remains, then mask just that many bits.
+                let mask = if remain <= 8 { (1 << remain) - 1 } else { 0xFF };
+                assert!(mask <= 0xFF);
+                let byte = word & mask;
+
+                result.push_str(&format!("{}{:02x}", sep, byte));
+
+                if remain <= 8 { break; }
+                word >>= 8;
+                i += 8;
+                sep = '-';
+            }
+            sep = '|';
+        }
+        result.push(']');
+
+        result
     }
 }
 
@@ -326,67 +312,78 @@ const SPARSE_MAX: usize = 8;
 ///
 /// This type is used by `HybridBitSet`; do not use directly.
 #[derive(Clone, Debug)]
-pub struct SparseBitSet<T: Idx>(SmallVec<[T; SPARSE_MAX]>);
+pub struct SparseBitSet<T: Idx> {
+    domain_size: usize,
+    elems: SmallVec<[T; SPARSE_MAX]>,
+}
 
 impl<T: Idx> SparseBitSet<T> {
-    fn new_empty() -> Self {
-        SparseBitSet(SmallVec::new())
+    fn new_empty(domain_size: usize) -> Self {
+        SparseBitSet {
+            domain_size,
+            elems: SmallVec::new()
+        }
     }
 
     fn len(&self) -> usize {
-        self.0.len()
+        self.elems.len()
     }
 
     fn is_empty(&self) -> bool {
-        self.0.len() == 0
+        self.elems.len() == 0
     }
 
     fn contains(&self, elem: T) -> bool {
-        self.0.contains(&elem)
+        assert!(elem.index() < self.domain_size);
+        self.elems.contains(&elem)
     }
 
     fn insert(&mut self, elem: T) -> bool {
-        assert!(self.len() < SPARSE_MAX);
-        if let Some(i) = self.0.iter().position(|&e| e >= elem) {
-            if self.0[i] == elem {
+        assert!(elem.index() < self.domain_size);
+        let changed = if let Some(i) = self.elems.iter().position(|&e| e >= elem) {
+            if self.elems[i] == elem {
                 // `elem` is already in the set.
                 false
             } else {
                 // `elem` is smaller than one or more existing elements.
-                self.0.insert(i, elem);
+                self.elems.insert(i, elem);
                 true
             }
         } else {
             // `elem` is larger than all existing elements.
-            self.0.push(elem);
+            self.elems.push(elem);
             true
-        }
+        };
+        assert!(self.len() <= SPARSE_MAX);
+        changed
     }
 
     fn remove(&mut self, elem: T) -> bool {
-        if let Some(i) = self.0.iter().position(|&e| e == elem) {
-            self.0.remove(i);
+        assert!(elem.index() < self.domain_size);
+        if let Some(i) = self.elems.iter().position(|&e| e == elem) {
+            self.elems.remove(i);
             true
         } else {
             false
         }
     }
 
-    fn to_dense(&self, domain_size: usize) -> BitSet<T> {
-        let mut dense = BitSet::new_empty(domain_size);
-        for elem in self.0.iter() {
+    fn to_dense(&self) -> BitSet<T> {
+        let mut dense = BitSet::new_empty(self.domain_size);
+        for elem in self.elems.iter() {
             dense.insert(*elem);
         }
         dense
     }
 
     fn iter(&self) -> slice::Iter<T> {
-        self.0.iter()
+        self.elems.iter()
     }
 }
 
 impl<T: Idx> UnionIntoBitSet<T> for SparseBitSet<T> {
     fn union_into(&self, other: &mut BitSet<T>) -> bool {
+        assert_eq!(self.domain_size, other.domain_size);
         let mut changed = false;
         for elem in self.iter() {
             changed |= other.insert(*elem);
@@ -397,6 +394,7 @@ impl<T: Idx> UnionIntoBitSet<T> for SparseBitSet<T> {
 
 impl<T: Idx> SubtractFromBitSet<T> for SparseBitSet<T> {
     fn subtract_from(&self, other: &mut BitSet<T>) -> bool {
+        assert_eq!(self.domain_size, other.domain_size);
         let mut changed = false;
         for elem in self.iter() {
             changed |= other.remove(*elem);
@@ -414,10 +412,14 @@ impl<T: Idx> SubtractFromBitSet<T> for SparseBitSet<T> {
 ///
 /// `T` is an index type, typically a newtyped `usize` wrapper, but it can also
 /// just be `usize`.
+///
+/// All operations that involve an element will panic if the element is equal
+/// to or greater than the domain size. All operations that involve two bitsets
+/// will panic if the bitsets have differing domain sizes.
 #[derive(Clone, Debug)]
 pub enum HybridBitSet<T: Idx> {
-    Sparse(SparseBitSet<T>, usize),
-    Dense(BitSet<T>, usize),
+    Sparse(SparseBitSet<T>),
+    Dense(BitSet<T>),
 }
 
 impl<T: Idx> HybridBitSet<T> {
@@ -427,17 +429,17 @@ impl<T: Idx> HybridBitSet<T> {
     fn dummy() -> Self {
         // The cheapest HybridBitSet to construct, which is only used to get
         // around the borrow checker.
-        HybridBitSet::Sparse(SparseBitSet::new_empty(), 0)
+        HybridBitSet::Sparse(SparseBitSet::new_empty(0))
     }
 
     pub fn new_empty(domain_size: usize) -> Self {
-        HybridBitSet::Sparse(SparseBitSet::new_empty(), domain_size)
+        HybridBitSet::Sparse(SparseBitSet::new_empty(domain_size))
     }
 
-    pub fn domain_size(&self) -> usize {
-        match *self {
-            HybridBitSet::Sparse(_, size) => size,
-            HybridBitSet::Dense(_, size) => size,
+    fn domain_size(&self) -> usize {
+        match self {
+            HybridBitSet::Sparse(sparse) => sparse.domain_size,
+            HybridBitSet::Dense(dense) => dense.domain_size,
         }
     }
 
@@ -448,83 +450,88 @@ impl<T: Idx> HybridBitSet<T> {
 
     pub fn contains(&self, elem: T) -> bool {
         match self {
-            HybridBitSet::Sparse(sparse, _) => sparse.contains(elem),
-            HybridBitSet::Dense(dense, _) => dense.contains(elem),
+            HybridBitSet::Sparse(sparse) => sparse.contains(elem),
+            HybridBitSet::Dense(dense) => dense.contains(elem),
         }
     }
 
     pub fn superset(&self, other: &HybridBitSet<T>) -> bool {
         match (self, other) {
-            (HybridBitSet::Dense(self_dense, _), HybridBitSet::Dense(other_dense, _)) => {
+            (HybridBitSet::Dense(self_dense), HybridBitSet::Dense(other_dense)) => {
                 self_dense.superset(other_dense)
             }
-            _ => other.iter().all(|elem| self.contains(elem)),
+            _ => {
+                assert!(self.domain_size() == other.domain_size());
+                other.iter().all(|elem| self.contains(elem))
+            }
         }
     }
 
     pub fn is_empty(&self) -> bool {
         match self {
-            HybridBitSet::Sparse(sparse, _) => sparse.is_empty(),
-            HybridBitSet::Dense(dense, _) => dense.is_empty(),
+            HybridBitSet::Sparse(sparse) => sparse.is_empty(),
+            HybridBitSet::Dense(dense) => dense.is_empty(),
         }
     }
 
     pub fn insert(&mut self, elem: T) -> bool {
+        // No need to check `elem` against `self.domain_size` here because all
+        // the match cases check it, one way or another.
         match self {
-            HybridBitSet::Sparse(sparse, _) if sparse.len() < SPARSE_MAX => {
+            HybridBitSet::Sparse(sparse) if sparse.len() < SPARSE_MAX => {
                 // The set is sparse and has space for `elem`.
                 sparse.insert(elem)
             }
-            HybridBitSet::Sparse(sparse, _) if sparse.contains(elem) => {
+            HybridBitSet::Sparse(sparse) if sparse.contains(elem) => {
                 // The set is sparse and does not have space for `elem`, but
                 // that doesn't matter because `elem` is already present.
                 false
             }
-            HybridBitSet::Sparse(_, _) => {
+            HybridBitSet::Sparse(_) => {
                 // The set is sparse and full. Convert to a dense set.
                 match mem::replace(self, HybridBitSet::dummy()) {
-                    HybridBitSet::Sparse(sparse, domain_size) => {
-                        let mut dense = sparse.to_dense(domain_size);
+                    HybridBitSet::Sparse(sparse) => {
+                        let mut dense = sparse.to_dense();
                         let changed = dense.insert(elem);
                         assert!(changed);
-                        *self = HybridBitSet::Dense(dense, domain_size);
+                        *self = HybridBitSet::Dense(dense);
                         changed
                     }
                     _ => unreachable!()
                 }
             }
 
-            HybridBitSet::Dense(dense, _) => dense.insert(elem),
+            HybridBitSet::Dense(dense) => dense.insert(elem),
         }
     }
 
     pub fn insert_all(&mut self) {
         let domain_size = self.domain_size();
         match self {
-            HybridBitSet::Sparse(_, _) => {
-                let dense = BitSet::new_filled(domain_size);
-                *self = HybridBitSet::Dense(dense, domain_size);
+            HybridBitSet::Sparse(_) => {
+                *self = HybridBitSet::Dense(BitSet::new_filled(domain_size));
             }
-            HybridBitSet::Dense(dense, _) => dense.insert_all(),
+            HybridBitSet::Dense(dense) => dense.insert_all(),
         }
     }
 
     pub fn remove(&mut self, elem: T) -> bool {
         // Note: we currently don't bother going from Dense back to Sparse.
         match self {
-            HybridBitSet::Sparse(sparse, _) => sparse.remove(elem),
-            HybridBitSet::Dense(dense, _) => dense.remove(elem),
+            HybridBitSet::Sparse(sparse) => sparse.remove(elem),
+            HybridBitSet::Dense(dense) => dense.remove(elem),
         }
     }
 
     pub fn union(&mut self, other: &HybridBitSet<T>) -> bool {
         match self {
-            HybridBitSet::Sparse(_, _) => {
+            HybridBitSet::Sparse(_) => {
                 match other {
-                    HybridBitSet::Sparse(other_sparse, _) => {
+                    HybridBitSet::Sparse(other_sparse) => {
                         // Both sets are sparse. Add the elements in
                         // `other_sparse` to `self_hybrid` one at a time. This
                         // may or may not cause `self_hybrid` to be densified.
+                        assert_eq!(self.domain_size(), other.domain_size());
                         let mut self_hybrid = mem::replace(self, HybridBitSet::dummy());
                         let mut changed = false;
                         for elem in other_sparse.iter() {
@@ -533,14 +540,14 @@ impl<T: Idx> HybridBitSet<T> {
                         *self = self_hybrid;
                         changed
                     }
-                    HybridBitSet::Dense(other_dense, _) => {
+                    HybridBitSet::Dense(other_dense) => {
                         // `self` is sparse and `other` is dense. Densify
                         // `self` and then do the bitwise union.
                         match mem::replace(self, HybridBitSet::dummy()) {
-                            HybridBitSet::Sparse(self_sparse, self_domain_size) => {
-                                let mut new_dense = self_sparse.to_dense(self_domain_size);
+                            HybridBitSet::Sparse(self_sparse) => {
+                                let mut new_dense = self_sparse.to_dense();
                                 let changed = new_dense.union(other_dense);
-                                *self = HybridBitSet::Dense(new_dense, self_domain_size);
+                                *self = HybridBitSet::Dense(new_dense);
                                 changed
                             }
                             _ => unreachable!()
@@ -549,22 +556,22 @@ impl<T: Idx> HybridBitSet<T> {
                 }
             }
 
-            HybridBitSet::Dense(self_dense, _) => self_dense.union(other),
+            HybridBitSet::Dense(self_dense) => self_dense.union(other),
         }
     }
 
     /// Converts to a dense set, consuming itself in the process.
     pub fn to_dense(self) -> BitSet<T> {
         match self {
-            HybridBitSet::Sparse(sparse, domain_size) => sparse.to_dense(domain_size),
-            HybridBitSet::Dense(dense, _) => dense,
+            HybridBitSet::Sparse(sparse) => sparse.to_dense(),
+            HybridBitSet::Dense(dense) => dense,
         }
     }
 
     pub fn iter(&self) -> HybridIter<T> {
         match self {
-            HybridBitSet::Sparse(sparse, _) => HybridIter::Sparse(sparse.iter()),
-            HybridBitSet::Dense(dense, _) => HybridIter::Dense(dense.iter()),
+            HybridBitSet::Sparse(sparse) => HybridIter::Sparse(sparse.iter()),
+            HybridBitSet::Dense(dense) => HybridIter::Dense(dense.iter()),
         }
     }
 }
@@ -572,8 +579,8 @@ impl<T: Idx> HybridBitSet<T> {
 impl<T: Idx> UnionIntoBitSet<T> for HybridBitSet<T> {
     fn union_into(&self, other: &mut BitSet<T>) -> bool {
         match self {
-            HybridBitSet::Sparse(sparse, _) => sparse.union_into(other),
-            HybridBitSet::Dense(dense, _) => dense.union_into(other),
+            HybridBitSet::Sparse(sparse) => sparse.union_into(other),
+            HybridBitSet::Dense(dense) => dense.union_into(other),
         }
     }
 }
@@ -581,8 +588,8 @@ impl<T: Idx> UnionIntoBitSet<T> for HybridBitSet<T> {
 impl<T: Idx> SubtractFromBitSet<T> for HybridBitSet<T> {
     fn subtract_from(&self, other: &mut BitSet<T>) -> bool {
         match self {
-            HybridBitSet::Sparse(sparse, _) => sparse.subtract_from(other),
-            HybridBitSet::Dense(dense, _) => dense.subtract_from(other),
+            HybridBitSet::Sparse(sparse) => sparse.subtract_from(other),
+            HybridBitSet::Dense(dense) => dense.subtract_from(other),
         }
     }
 }
@@ -607,16 +614,24 @@ impl<'a, T: Idx> Iterator for HybridIter<'a, T> {
 ///
 /// `T` is an index type, typically a newtyped `usize` wrapper, but it can also
 /// just be `usize`.
+///
+/// All operations that involve an element will panic if the element is equal
+/// to or greater than the domain size.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GrowableBitSet<T: Idx> {
     bit_set: BitSet<T>,
 }
 
 impl<T: Idx> GrowableBitSet<T> {
-    pub fn grow(&mut self, domain_size: T) {
-        let num_words = num_words(domain_size);
-        if self.bit_set.words.len() <= num_words {
-            self.bit_set.words.resize(num_words + 1, 0)
+    /// Ensure that the set can hold at least `min_domain_size` elements.
+    pub fn ensure(&mut self, min_domain_size: usize) {
+        if self.bit_set.domain_size < min_domain_size {
+            self.bit_set.domain_size = min_domain_size;
+        }
+
+        let min_num_words = num_words(min_domain_size);
+        if self.bit_set.words.len() < min_num_words {
+            self.bit_set.words.resize(min_num_words, 0)
         }
     }
 
@@ -631,7 +646,7 @@ impl<T: Idx> GrowableBitSet<T> {
     /// Returns true if the set has changed.
     #[inline]
     pub fn insert(&mut self, elem: T) -> bool {
-        self.grow(elem);
+        self.ensure(elem.index() + 1);
         self.bit_set.insert(elem)
     }
 
@@ -651,31 +666,34 @@ impl<T: Idx> GrowableBitSet<T> {
 /// `R` and `C` are index types used to identify rows and columns respectively;
 /// typically newtyped `usize` wrappers, but they can also just be `usize`.
 ///
+/// All operations that involve a row and/or column index will panic if the
+/// index exceeds the relevant bound.
 #[derive(Clone, Debug)]
 pub struct BitMatrix<R: Idx, C: Idx> {
-    columns: usize,
+    num_rows: usize,
+    num_columns: usize,
     words: Vec<Word>,
     marker: PhantomData<(R, C)>,
 }
 
 impl<R: Idx, C: Idx> BitMatrix<R, C> {
     /// Create a new `rows x columns` matrix, initially empty.
-    pub fn new(rows: usize, columns: usize) -> BitMatrix<R, C> {
+    pub fn new(num_rows: usize, num_columns: usize) -> BitMatrix<R, C> {
         // For every element, we need one bit for every other
         // element. Round up to an even number of words.
-        let words_per_row = num_words(columns);
+        let words_per_row = num_words(num_columns);
         BitMatrix {
-            columns,
-            words: vec![0; rows * words_per_row],
+            num_rows,
+            num_columns,
+            words: vec![0; num_rows * words_per_row],
             marker: PhantomData,
         }
     }
 
     /// The range of bits for a given row.
     fn range(&self, row: R) -> (usize, usize) {
-        let row = row.index();
-        let words_per_row = num_words(self.columns);
-        let start = row * words_per_row;
+        let words_per_row = num_words(self.num_columns);
+        let start = row.index() * words_per_row;
         (start, start + words_per_row)
     }
 
@@ -683,7 +701,8 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     /// `column` to the bitset for `row`.
     ///
     /// Returns true if this changed the matrix, and false otherwise.
-    pub fn insert(&mut self, row: R, column: R) -> bool {
+    pub fn insert(&mut self, row: R, column: C) -> bool {
+        assert!(row.index() < self.num_rows && column.index() < self.num_columns);
         let (start, _) = self.range(row);
         let (word_index, mask) = word_index_and_mask(column);
         let words = &mut self.words[..];
@@ -697,7 +716,8 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     /// the matrix cell at `(row, column)` true?  Put yet another way,
     /// if the matrix represents (transitive) reachability, can
     /// `row` reach `column`?
-    pub fn contains(&self, row: R, column: R) -> bool {
+    pub fn contains(&self, row: R, column: C) -> bool {
+        assert!(row.index() < self.num_rows && column.index() < self.num_columns);
         let (start, _) = self.range(row);
         let (word_index, mask) = word_index_and_mask(column);
         (self.words[start + word_index] & mask) != 0
@@ -707,11 +727,12 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     /// is an O(n) operation where `n` is the number of elements
     /// (somewhat independent from the actual size of the
     /// intersection, in particular).
-    pub fn intersect_rows(&self, a: R, b: R) -> Vec<C> {
-        let (a_start, a_end) = self.range(a);
-        let (b_start, b_end) = self.range(b);
-        let mut result = Vec::with_capacity(self.columns);
-        for (base, (i, j)) in (a_start..a_end).zip(b_start..b_end).enumerate() {
+    pub fn intersect_rows(&self, row1: R, row2: R) -> Vec<C> {
+        assert!(row1.index() < self.num_rows && row2.index() < self.num_rows);
+        let (row1_start, row1_end) = self.range(row1);
+        let (row2_start, row2_end) = self.range(row2);
+        let mut result = Vec::with_capacity(self.num_columns);
+        for (base, (i, j)) in (row1_start..row1_end).zip(row2_start..row2_end).enumerate() {
             let mut v = self.words[i] & self.words[j];
             for bit in 0..WORD_BITS {
                 if v == 0 {
@@ -734,6 +755,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     /// `write` can reach everything that `read` can (and
     /// potentially more).
     pub fn union_rows(&mut self, read: R, write: R) -> bool {
+        assert!(read.index() < self.num_rows && write.index() < self.num_rows);
         let (read_start, read_end) = self.range(read);
         let (write_start, write_end) = self.range(write);
         let words = &mut self.words[..];
@@ -750,6 +772,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     /// Iterates through all the columns set to true in a given row of
     /// the matrix.
     pub fn iter<'a>(&'a self, row: R) -> BitIter<'a, C> {
+        assert!(row.index() < self.num_rows);
         let (start, end) = self.range(row);
         BitIter {
             cur: None,
@@ -865,45 +888,16 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
 }
 
 #[inline]
-fn num_words<T: Idx>(elements: T) -> usize {
-    (elements.index() + WORD_BITS - 1) / WORD_BITS
+fn num_words<T: Idx>(domain_size: T) -> usize {
+    (domain_size.index() + WORD_BITS - 1) / WORD_BITS
 }
 
 #[inline]
-fn word_index_and_mask<T: Idx>(index: T) -> (usize, Word) {
-    let index = index.index();
-    let word_index = index / WORD_BITS;
-    let mask = 1 << (index % WORD_BITS);
+fn word_index_and_mask<T: Idx>(elem: T) -> (usize, Word) {
+    let elem = elem.index();
+    let word_index = elem / WORD_BITS;
+    let mask = 1 << (elem % WORD_BITS);
     (word_index, mask)
-}
-
-#[test]
-fn test_clear_above() {
-    use std::cmp;
-
-    for i in 0..256 {
-        let mut idx_buf: BitSet<usize> = BitSet::new_filled(128);
-        idx_buf.clear_above(i);
-
-        let elems: Vec<usize> = idx_buf.iter().collect();
-        let expected: Vec<usize> = (0..cmp::min(i, 128)).collect();
-        assert_eq!(elems, expected);
-    }
-}
-
-#[test]
-fn test_set_up_to() {
-    for i in 0..128 {
-        for mut idx_buf in
-            vec![BitSet::new_empty(128), BitSet::new_filled(128)].into_iter()
-        {
-            idx_buf.set_up_to(i);
-
-            let elems: Vec<usize> = idx_buf.iter().collect();
-            let expected: Vec<usize> = (0..i).collect();
-            assert_eq!(elems, expected);
-        }
-    }
 }
 
 #[test]
@@ -936,7 +930,7 @@ fn bitset_iter_works() {
 
 #[test]
 fn bitset_iter_works_2() {
-    let mut bitset: BitSet<usize> = BitSet::new_empty(319);
+    let mut bitset: BitSet<usize> = BitSet::new_empty(320);
     bitset.insert(0);
     bitset.insert(127);
     bitset.insert(191);
@@ -1037,7 +1031,7 @@ fn grow() {
         assert!(set.insert(index));
         assert!(!set.insert(index));
     }
-    set.grow(128);
+    set.ensure(128);
 
     // Check if the bits set before growing are still set
     for index in 0..65 {

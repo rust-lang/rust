@@ -558,6 +558,7 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
+    #[cfg(target_has_atomic = "cas")]
     pub fn compare_exchange_weak(&self,
                                  current: bool,
                                  new: bool,
@@ -1041,6 +1042,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
+    #[cfg(target_has_atomic = "cas")]
     pub fn compare_exchange_weak(&self,
                                  current: *mut T,
                                  new: *mut T,
@@ -1434,6 +1436,7 @@ loop {
 ```"),
                 #[inline]
                 #[$stable_cxchg]
+                #[cfg(target_has_atomic = "cas")]
                 pub fn compare_exchange_weak(&self,
                                              current: $int_type,
                                              new: $int_type,
@@ -1471,6 +1474,7 @@ assert_eq!(foo.load(Ordering::SeqCst), 10);
 ```"),
                 #[inline]
                 #[$stable]
+                #[cfg(target_has_atomic = "cas")]
                 pub fn fetch_add(&self, val: $int_type, order: Ordering) -> $int_type {
                     unsafe { atomic_add(self.v.get(), val, order) }
                 }
@@ -1502,6 +1506,7 @@ assert_eq!(foo.load(Ordering::SeqCst), 10);
 ```"),
                 #[inline]
                 #[$stable]
+                #[cfg(target_has_atomic = "cas")]
                 pub fn fetch_sub(&self, val: $int_type, order: Ordering) -> $int_type {
                     unsafe { atomic_sub(self.v.get(), val, order) }
                 }
@@ -1536,6 +1541,7 @@ assert_eq!(foo.load(Ordering::SeqCst), 0b100001);
 ```"),
                 #[inline]
                 #[$stable]
+                #[cfg(target_has_atomic = "cas")]
                 pub fn fetch_and(&self, val: $int_type, order: Ordering) -> $int_type {
                     unsafe { atomic_and(self.v.get(), val, order) }
                 }
@@ -1571,6 +1577,7 @@ assert_eq!(foo.load(Ordering::SeqCst), !(0x13 & 0x31));
 ```"),
                 #[inline]
                 #[$stable_nand]
+                #[cfg(target_has_atomic = "cas")]
                 pub fn fetch_nand(&self, val: $int_type, order: Ordering) -> $int_type {
                     unsafe { atomic_nand(self.v.get(), val, order) }
                 }
@@ -1605,6 +1612,7 @@ assert_eq!(foo.load(Ordering::SeqCst), 0b111111);
 ```"),
                 #[inline]
                 #[$stable]
+                #[cfg(target_has_atomic = "cas")]
                 pub fn fetch_or(&self, val: $int_type, order: Ordering) -> $int_type {
                     unsafe { atomic_or(self.v.get(), val, order) }
                 }
@@ -1639,6 +1647,7 @@ assert_eq!(foo.load(Ordering::SeqCst), 0b011110);
 ```"),
                 #[inline]
                 #[$stable]
+                #[cfg(target_has_atomic = "cas")]
                 pub fn fetch_xor(&self, val: $int_type, order: Ordering) -> $int_type {
                     unsafe { atomic_xor(self.v.get(), val, order) }
                 }
@@ -1688,6 +1697,7 @@ assert_eq!(x.load(Ordering::SeqCst), 9);
                 #[unstable(feature = "no_more_cas",
                        reason = "no more CAS loops in user code",
                        issue = "48655")]
+                #[cfg(target_has_atomic = "cas")]
                 pub fn fetch_update<F>(&self,
                                        mut f: F,
                                        fetch_order: Ordering,
@@ -1748,6 +1758,7 @@ assert!(max_foo == 42);
                 #[unstable(feature = "atomic_min_max",
                        reason = "easier and faster min/max than writing manual CAS loop",
                        issue = "48655")]
+                #[cfg(target_has_atomic = "cas")]
                 pub fn fetch_max(&self, val: $int_type, order: Ordering) -> $int_type {
                     unsafe { $max_fn(self.v.get(), val, order) }
                 }
@@ -1799,6 +1810,7 @@ assert_eq!(min_foo, 12);
                 #[unstable(feature = "atomic_min_max",
                        reason = "easier and faster min/max than writing manual CAS loop",
                        issue = "48655")]
+                #[cfg(target_has_atomic = "cas")]
                 pub fn fetch_min(&self, val: $int_type, order: Ordering) -> $int_type {
                     unsafe { $min_fn(self.v.get(), val, order) }
                 }
@@ -1987,6 +1999,7 @@ unsafe fn atomic_swap<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 /// Returns the previous value (like __sync_fetch_and_add).
 #[inline]
+#[cfg(target_has_atomic = "cas")]
 unsafe fn atomic_add<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_xadd_acq(dst, val),
@@ -1999,6 +2012,7 @@ unsafe fn atomic_add<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 /// Returns the previous value (like __sync_fetch_and_sub).
 #[inline]
+#[cfg(target_has_atomic = "cas")]
 unsafe fn atomic_sub<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_xsub_acq(dst, val),
@@ -2035,6 +2049,7 @@ unsafe fn atomic_compare_exchange<T>(dst: *mut T,
 }
 
 #[inline]
+#[cfg(target_has_atomic = "cas")]
 unsafe fn atomic_compare_exchange_weak<T>(dst: *mut T,
                                           old: T,
                                           new: T,
@@ -2059,6 +2074,7 @@ unsafe fn atomic_compare_exchange_weak<T>(dst: *mut T,
 }
 
 #[inline]
+#[cfg(target_has_atomic = "cas")]
 unsafe fn atomic_and<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_and_acq(dst, val),
@@ -2070,6 +2086,7 @@ unsafe fn atomic_and<T>(dst: *mut T, val: T, order: Ordering) -> T {
 }
 
 #[inline]
+#[cfg(target_has_atomic = "cas")]
 unsafe fn atomic_nand<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_nand_acq(dst, val),
@@ -2081,6 +2098,7 @@ unsafe fn atomic_nand<T>(dst: *mut T, val: T, order: Ordering) -> T {
 }
 
 #[inline]
+#[cfg(target_has_atomic = "cas")]
 unsafe fn atomic_or<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_or_acq(dst, val),
@@ -2092,6 +2110,7 @@ unsafe fn atomic_or<T>(dst: *mut T, val: T, order: Ordering) -> T {
 }
 
 #[inline]
+#[cfg(target_has_atomic = "cas")]
 unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_xor_acq(dst, val),
@@ -2104,6 +2123,7 @@ unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 /// returns the max value (signed comparison)
 #[inline]
+#[cfg(target_has_atomic = "cas")]
 unsafe fn atomic_max<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_max_acq(dst, val),
@@ -2116,6 +2136,7 @@ unsafe fn atomic_max<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 /// returns the min value (signed comparison)
 #[inline]
+#[cfg(target_has_atomic = "cas")]
 unsafe fn atomic_min<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_min_acq(dst, val),
@@ -2128,6 +2149,7 @@ unsafe fn atomic_min<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 /// returns the max value (signed comparison)
 #[inline]
+#[cfg(target_has_atomic = "cas")]
 unsafe fn atomic_umax<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_umax_acq(dst, val),
@@ -2140,6 +2162,7 @@ unsafe fn atomic_umax<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 /// returns the min value (signed comparison)
 #[inline]
+#[cfg(target_has_atomic = "cas")]
 unsafe fn atomic_umin<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_umin_acq(dst, val),

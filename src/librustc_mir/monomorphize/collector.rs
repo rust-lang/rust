@@ -256,7 +256,7 @@ impl<'tcx> InliningMap<'tcx> {
         let new_items_count_total = new_items_count + self.targets.len();
 
         self.targets.reserve(new_items_count);
-        self.inlines.grow(new_items_count_total);
+        self.inlines.ensure(new_items_count_total);
 
         for (i, (target, inline)) in new_targets.enumerate() {
             self.targets.push(target);

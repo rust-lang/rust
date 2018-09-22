@@ -37,6 +37,7 @@ use std::fmt::{self, Write};
 use std::borrow::Cow;
 use std::ops::Range;
 use std::str;
+use syntax::edition::Edition;
 
 use html::toc::TocBuilder;
 use html::highlight;
@@ -170,6 +171,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
         let event = self.inner.next();
         let compile_fail;
         let ignore;
+        let edition;
         if let Some(Event::Start(Tag::CodeBlock(lang))) = event {
             let parse_result = LangString::parse(&lang, self.check_error_codes);
             if !parse_result.rust {
@@ -177,6 +179,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
             }
             compile_fail = parse_result.compile_fail;
             ignore = parse_result.ignore;
+            edition = parse_result.edition;
         } else {
             return event;
         }
@@ -212,6 +215,17 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                 } else {
                     ""
                 };
+
+                let edition_string = if let Some(e @ Edition::Edition2018) = edition {
+                    format!("&amp;edition={}{}", e,
+                            if channel == "&amp;version=nightly" { "" }
+                            else { "&amp;version=nightly" })
+                } else if let Some(e) = edition {
+                    format!("&amp;edition={}", e)
+                } else {
+                    "".to_owned()
+                };
+
                 // These characters don't need to be escaped in a URI.
                 // FIXME: use a library function for percent encoding.
                 fn dont_escape(c: u8) -> bool {
@@ -231,26 +245,44 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                     }
                 }
                 Some(format!(
-                    r#"<a class="test-arrow" target="_blank" href="{}?code={}{}">Run</a>"#,
-                    url, test_escaped, channel
+                    r#"<a class="test-arrow" target="_blank" href="{}?code={}{}{}">Run</a>"#,
+                    url, test_escaped, channel, edition_string
                 ))
             });
+
             let tooltip = if ignore {
-                Some(("This example is not tested", "ignore"))
+                Some(("This example is not tested".to_owned(), "ignore"))
             } else if compile_fail {
-                Some(("This example deliberately fails to compile", "compile_fail"))
+                Some(("This example deliberately fails to compile".to_owned(), "compile_fail"))
+            } else if let Some(e) = edition {
+                Some((format!("This code runs with edition {}", e), "edition"))
             } else {
                 None
             };
-            s.push_str(&highlight::render_with_highlighting(
-                        &text,
-                        Some(&format!("rust-example-rendered{}",
-                                      if ignore { " ignore" }
-                                      else if compile_fail { " compile_fail" }
-                                      else { "" })),
-                        playground_button.as_ref().map(String::as_str),
-                        tooltip));
-            Some(Event::Html(s.into()))
+
+            if let Some((s1, s2)) = tooltip {
+                s.push_str(&highlight::render_with_highlighting(
+                    &text,
+                    Some(&format!("rust-example-rendered{}",
+                                  if ignore { " ignore" }
+                                  else if compile_fail { " compile_fail" }
+                                  else if edition.is_some() { " edition " }
+                                  else { "" })),
+                    playground_button.as_ref().map(String::as_str),
+                    Some((s1.as_str(), s2))));
+                Some(Event::Html(s.into()))
+            } else {
+                s.push_str(&highlight::render_with_highlighting(
+                    &text,
+                    Some(&format!("rust-example-rendered{}",
+                                  if ignore { " ignore" }
+                                  else if compile_fail { " compile_fail" }
+                                  else if edition.is_some() { " edition " }
+                                  else { "" })),
+                    playground_button.as_ref().map(String::as_str),
+                    None));
+                Some(Event::Html(s.into()))
+            }
         })
     }
 }
@@ -577,6 +609,7 @@ pub struct LangString {
     pub compile_fail: bool,
     pub error_codes: Vec<String>,
     pub allow_fail: bool,
+    pub edition: Option<Edition>
 }
 
 impl LangString {
@@ -591,6 +624,7 @@ impl LangString {
             compile_fail: false,
             error_codes: Vec::new(),
             allow_fail: false,
+            edition: None,
         }
     }
 
@@ -624,6 +658,11 @@ impl LangString {
                     data.compile_fail = true;
                     seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     data.no_run = true;
+                }
+                x if allow_error_code_check && x.starts_with("edition") => {
+                    // allow_error_code_check is true if we're on nightly, which
+                    // is needed for edition support
+                    data.edition = x[7..].parse::<Edition>().ok();
                 }
                 x if allow_error_code_check && x.starts_with("E") && x.len() == 5 => {
                     if x[1..].parse::<u32>().is_ok() {
@@ -925,12 +964,14 @@ mod tests {
     use super::{ErrorCodes, LangString, Markdown, MarkdownHtml, IdMap};
     use super::plain_summary_line;
     use std::cell::RefCell;
+    use syntax::edition::Edition;
 
     #[test]
     fn test_lang_string_parse() {
         fn t(s: &str,
             should_panic: bool, no_run: bool, ignore: bool, rust: bool, test_harness: bool,
-            compile_fail: bool, allow_fail: bool, error_codes: Vec<String>) {
+            compile_fail: bool, allow_fail: bool, error_codes: Vec<String>,
+             edition: Option<Edition>) {
             assert_eq!(LangString::parse(s, ErrorCodes::Yes), LangString {
                 should_panic,
                 no_run,
@@ -941,6 +982,7 @@ mod tests {
                 error_codes,
                 original: s.to_owned(),
                 allow_fail,
+                edition,
             })
         }
 
@@ -948,23 +990,26 @@ mod tests {
             Vec::new()
         }
 
-        // marker                | should_panic| no_run| ignore| rust | test_harness| compile_fail
-        //                       | allow_fail | error_codes
-        t("",                      false,        false,  false,  true,  false, false, false, v());
-        t("rust",                  false,        false,  false,  true,  false, false, false, v());
-        t("sh",                    false,        false,  false,  false, false, false, false, v());
-        t("ignore",                false,        false,  true,   true,  false, false, false, v());
-        t("should_panic",          true,         false,  false,  true,  false, false, false, v());
-        t("no_run",                false,        true,   false,  true,  false, false, false, v());
-        t("test_harness",          false,        false,  false,  true,  true,  false, false, v());
-        t("compile_fail",          false,        true,   false,  true,  false, true,  false, v());
-        t("allow_fail",            false,        false,  false,  true,  false, false, true,  v());
-        t("{.no_run .example}",    false,        true,   false,  true,  false, false, false, v());
-        t("{.sh .should_panic}",   true,         false,  false,  false, false, false, false, v());
-        t("{.example .rust}",      false,        false,  false,  true,  false, false, false, v());
-        t("{.test_harness .rust}", false,        false,  false,  true,  true,  false, false, v());
-        t("text, no_run",          false,        true,   false,  false, false, false, false, v());
-        t("text,no_run",           false,        true,   false,  false, false, false, false, v());
+        // ignore-tidy-linelength
+        // marker                | should_panic | no_run | ignore | rust | test_harness
+        //                       | compile_fail | allow_fail | error_codes | edition
+        t("",                      false,         false,   false,   true,  false, false, false, v(), None);
+        t("rust",                  false,         false,   false,   true,  false, false, false, v(), None);
+        t("sh",                    false,         false,   false,   false, false, false, false, v(), None);
+        t("ignore",                false,         false,   true,    true,  false, false, false, v(), None);
+        t("should_panic",          true,          false,   false,   true,  false, false, false, v(), None);
+        t("no_run",                false,         true,    false,   true,  false, false, false, v(), None);
+        t("test_harness",          false,         false,   false,   true,  true,  false, false, v(), None);
+        t("compile_fail",          false,         true,    false,   true,  false, true,  false, v(), None);
+        t("allow_fail",            false,         false,   false,   true,  false, false, true,  v(), None);
+        t("{.no_run .example}",    false,         true,    false,   true,  false, false, false, v(), None);
+        t("{.sh .should_panic}",   true,          false,   false,   false, false, false, false, v(), None);
+        t("{.example .rust}",      false,         false,   false,   true,  false, false, false, v(), None);
+        t("{.test_harness .rust}", false,         false,   false,   true,  true,  false, false, v(), None);
+        t("text, no_run",          false,         true,    false,   false, false, false, false, v(), None);
+        t("text,no_run",           false,         true,    false,   false, false, false, false, v(), None);
+        t("edition2015",           false,         false,   false,   true,  false, false, false, v(), Some(Edition::Edition2015));
+        t("edition2018",           false,         false,   false,   true,  false, false, false, v(), Some(Edition::Edition2018));
     }
 
     #[test]

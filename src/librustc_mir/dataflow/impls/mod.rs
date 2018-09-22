@@ -354,7 +354,8 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> 
     // sets on_entry bits for Arg places
     fn start_block_effect(&self, entry_set: &mut BitSet<MovePathIndex>) {
         // set all bits to 1 (uninit) before gathering counterevidence
-        entry_set.set_up_to(self.bits_per_block());
+        assert!(self.bits_per_block() == entry_set.domain_size());
+        entry_set.insert_all();
 
         drop_flag_effects_for_function_entry(
             self.tcx, self.mir, self.mdpe,

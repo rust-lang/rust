@@ -1578,8 +1578,9 @@ impl<'a> Parser<'a> {
             impl_dyn_multi = bounds.len() > 1 || self.prev_token_kind == PrevTokenKind::Plus;
             TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds)
         } else if self.check_keyword(keywords::Dyn) &&
-                  self.look_ahead(1, |t| t.can_begin_bound() &&
-                                         !can_continue_type_after_non_fn_ident(t)) {
+                  (self.span.edition() == Edition::Edition2018 ||
+                   self.look_ahead(1, |t| t.can_begin_bound() &&
+                                         !can_continue_type_after_non_fn_ident(t))) {
             self.bump(); // `dyn`
             // Always parse bounds greedily for better error recovery.
             let bounds = self.parse_generic_bounds()?;
@@ -1780,27 +1781,32 @@ impl<'a> Parser<'a> {
             (pat, self.parse_ty()?)
         } else {
             debug!("parse_arg_general ident_to_pat");
-
-            let parser_snapshot_before_pat = self.clone();
-
-            // Once we can use edition 2018 in the compiler,
-            // replace this with real try blocks.
-            macro_rules! try_block {
-                ($($inside:tt)*) => (
-                    (||{ ::std::ops::Try::from_ok({ $($inside)* }) })()
-                )
+            let parser_snapshot_before_ty = self.clone();
+            let mut ty = self.parse_ty();
+            if ty.is_ok() && self.token == token::Colon {
+                // This wasn't actually a type, but a pattern looking like a type,
+                // so we are going to rollback and re-parse for recovery.
+                ty = self.unexpected();
             }
+            match ty {
+                Ok(ty) => {
+                    let ident = Ident::new(keywords::Invalid.name(), self.prev_span);
+                    let pat = P(Pat {
+                        id: ast::DUMMY_NODE_ID,
+                        node: PatKind::Ident(
+                            BindingMode::ByValue(Mutability::Immutable), ident, None),
+                        span: ty.span,
+                    });
+                    (pat, ty)
+                }
+                Err(mut err) => {
+                    // Recover from attempting to parse the argument as a type without pattern.
+                    err.cancel();
+                    mem::replace(self, parser_snapshot_before_ty);
+                    let pat = self.parse_pat()?;
+                    self.expect(&token::Colon)?;
+                    let ty = self.parse_ty()?;
 
-            // We're going to try parsing the argument as a pattern (even though it's not
-            // allowed). This way we can provide better errors to the user.
-            let pat_arg: PResult<'a, _> = try_block! {
-                let pat = self.parse_pat()?;
-                self.expect(&token::Colon)?;
-                (pat, self.parse_ty()?)
-            };
-
-            match pat_arg {
-                Ok((pat, ty)) => {
                     let mut err = self.diagnostic().struct_span_err_with_code(
                         pat.span,
                         "patterns aren't allowed in methods without bodies",
@@ -1813,27 +1819,12 @@ impl<'a> Parser<'a> {
                         Applicability::MachineApplicable,
                     );
                     err.emit();
+
                     // Pretend the pattern is `_`, to avoid duplicate errors from AST validation.
                     let pat = P(Pat {
                         node: PatKind::Wild,
                         span: pat.span,
                         id: ast::DUMMY_NODE_ID
-                    });
-                    (pat, ty)
-                }
-                Err(mut err) => {
-                    err.cancel();
-                    // Recover from attempting to parse the argument as a pattern. This means
-                    // the type is alone, with no name, e.g. `fn foo(u32)`.
-                    mem::replace(self, parser_snapshot_before_pat);
-                    debug!("parse_arg_general ident_to_pat");
-                    let ident = Ident::new(keywords::Invalid.name(), self.prev_span);
-                    let ty = self.parse_ty()?;
-                    let pat = P(Pat {
-                        id: ast::DUMMY_NODE_ID,
-                        node: PatKind::Ident(
-                            BindingMode::ByValue(Mutability::Immutable), ident, None),
-                        span: ty.span,
                     });
                     (pat, ty)
                 }
@@ -2702,8 +2693,8 @@ impl<'a> Parser<'a> {
                   token::Literal(token::Float(n), _suf) => {
                     self.bump();
                     let fstr = n.as_str();
-                    let mut err = self.diagnostic().struct_span_err(self.prev_span,
-                        &format!("unexpected token: `{}`", n));
+                    let mut err = self.diagnostic()
+                        .struct_span_err(self.prev_span, &format!("unexpected token: `{}`", n));
                     err.span_label(self.prev_span, "unexpected token");
                     if fstr.chars().all(|x| "0123456789.".contains(x)) {
                         let float = match fstr.parse::<f64>().ok() {
@@ -2863,8 +2854,8 @@ impl<'a> Parser<'a> {
                 let e = self.parse_prefix_expr(None);
                 let (span, e) = self.interpolated_or_expr_span(e)?;
                 let span_of_tilde = lo;
-                let mut err = self.diagnostic().struct_span_err(span_of_tilde,
-                        "`~` cannot be used as a unary operator");
+                let mut err = self.diagnostic()
+                    .struct_span_err(span_of_tilde, "`~` cannot be used as a unary operator");
                 err.span_suggestion_short_with_applicability(
                     span_of_tilde,
                     "use `!` to perform bitwise negation",
@@ -3420,6 +3411,24 @@ impl<'a> Parser<'a> {
                 // has been misleading, at least in the past (closed Issue #48492)
                 Applicability::MaybeIncorrect
             );
+            err.emit();
+        }
+        let in_span = self.prev_span;
+        if self.eat_keyword(keywords::In) {
+            // a common typo: `for _ in in bar {}`
+            let mut err = self.sess.span_diagnostic.struct_span_err(
+                self.prev_span,
+                "expected iterable, found keyword `in`",
+            );
+            err.span_suggestion_short_with_applicability(
+                in_span.until(self.prev_span),
+                "remove the duplicated `in`",
+                String::new(),
+                Applicability::MachineApplicable,
+            );
+            err.note("if you meant to use emplacement syntax, it is obsolete (for now, anyway)");
+            err.note("for more information on the status of emplacement syntax, see <\
+                      https://github.com/rust-lang/rust/issues/27779#issuecomment-378416911>");
             err.emit();
         }
         let expr = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
@@ -4765,12 +4774,9 @@ impl<'a> Parser<'a> {
         if !self.eat(&token::OpenDelim(token::Brace)) {
             let sp = self.span;
             let tok = self.this_token_to_string();
-            let mut do_not_suggest_help = false;
             let mut e = self.span_fatal(sp, &format!("expected `{{`, found `{}`", tok));
-            if self.token.is_keyword(keywords::In) || self.token == token::Colon {
-                do_not_suggest_help = true;
-                e.span_label(sp, "expected `{`");
-            }
+            let do_not_suggest_help =
+                self.token.is_keyword(keywords::In) || self.token == token::Colon;
 
             if self.token.is_ident_named("and") {
                 e.span_suggestion_short_with_applicability(
@@ -4801,6 +4807,7 @@ impl<'a> Parser<'a> {
                         || do_not_suggest_help {
                         // if the next token is an open brace (e.g., `if a b {`), the place-
                         // inside-a-block suggestion would be more likely wrong than right
+                        e.span_label(sp, "expected `{`");
                         return Err(e);
                     }
                     let mut stmt_span = stmt.span;
