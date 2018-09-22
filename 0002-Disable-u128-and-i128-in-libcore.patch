@@ -1,6 +1,6 @@
-From 7f8b6fdc01a17a0f963ac05bf9a488c093307090 Mon Sep 17 00:00:00 2001
+From 5a91929290f0ced810185e9f81bbdb4d5cf53804 Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Sat, 8 Sep 2018 11:06:28 +0200
+Date: Sat, 22 Sep 2018 11:09:38 +0200
 Subject: [PATCH] Disable u128 and i128 in libcore
 
 ---
@@ -8,20 +8,19 @@ Subject: [PATCH] Disable u128 and i128 in libcore
  src/libcore/cmp.rs           |  6 +--
  src/libcore/default.rs       |  2 -
  src/libcore/fmt/num.rs       |  6 +--
- src/libcore/hash/mod.rs      | 20 ---------
+ src/libcore/hash/mod.rs      | 20 --------
  src/libcore/iter/range.rs    |  1 -
  src/libcore/iter/traits.rs   |  2 +-
- src/libcore/lib.rs           |  2 -
+ src/libcore/lib.rs           |  4 +-
  src/libcore/marker.rs        |  4 +-
  src/libcore/mem.rs           |  2 -
- src/libcore/num/mod.rs       | 99 ++++++++++++--------------------------------
- src/libcore/num/wrapping.rs  | 14 +++----
- src/libcore/ops/arith.rs     | 22 +++++-----
- src/libcore/ops/bit.rs       | 30 +++++---------
- src/libcore/tests/iter.rs    | 15 -------
- src/libcore/tests/num/mod.rs | 18 --------
- src/libcore/time.rs          | 51 -----------------------
- 17 files changed, 62 insertions(+), 236 deletions(-)
+ src/libcore/num/mod.rs       | 99 ++++++++++--------------------------
+ src/libcore/num/wrapping.rs  | 14 ++---
+ src/libcore/ops/arith.rs     | 22 ++++----
+ src/libcore/ops/bit.rs       | 30 ++++-------
+ src/libcore/tests/iter.rs    | 15 ------
+ src/libcore/tests/num/mod.rs | 18 -------
+ 16 files changed, 63 insertions(+), 186 deletions(-)
 
 diff --git a/src/libcore/clone.rs b/src/libcore/clone.rs
 index 3b15ba2..de08ce0 100644
@@ -213,10 +212,10 @@ index 4b2c1aa..ec3991f 100644
  
  /// An iterator adapter that produces output as long as the underlying
 diff --git a/src/libcore/lib.rs b/src/libcore/lib.rs
-index fb90be8..310f376 100644
+index 6a3f169..883ae4b 100644
 --- a/src/libcore/lib.rs
 +++ b/src/libcore/lib.rs
-@@ -152,14 +152,12 @@ mod uint_macros;
+@@ -151,14 +151,12 @@ mod uint_macros;
  #[path = "num/i16.rs"]   pub mod i16;
  #[path = "num/i32.rs"]   pub mod i32;
  #[path = "num/i64.rs"]   pub mod i64;
@@ -231,8 +230,17 @@ index fb90be8..310f376 100644
  
  #[path = "num/f32.rs"]   pub mod f32;
  #[path = "num/f64.rs"]   pub mod f64;
+@@ -208,7 +206,7 @@ pub mod slice;
+ pub mod str;
+ pub mod hash;
+ pub mod fmt;
+-pub mod time;
++//pub mod time;
+ 
+ pub mod unicode;
+ 
 diff --git a/src/libcore/marker.rs b/src/libcore/marker.rs
-index dd57d2d..b75376b 100644
+index 5572fe1..c8d8144 100644
 --- a/src/libcore/marker.rs
 +++ b/src/libcore/marker.rs
 @@ -672,8 +672,8 @@ mod copy_impls {
@@ -264,7 +272,7 @@ index 1803ade..f7fb0cb 100644
  /// f64 | 8
  /// char | 4
 diff --git a/src/libcore/num/mod.rs b/src/libcore/num/mod.rs
-index 5ae984a..63b3754 100644
+index 12da045..f02bf78 100644
 --- a/src/libcore/num/mod.rs
 +++ b/src/libcore/num/mod.rs
 @@ -105,7 +105,6 @@ nonzero_integers! {
@@ -275,7 +283,7 @@ index 5ae984a..63b3754 100644
      NonZeroUsize(usize);
  }
  
-@@ -2282,18 +2281,6 @@ impl i64 {
+@@ -2285,18 +2284,6 @@ impl i64 {
           "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
  }
  
@@ -294,7 +302,7 @@ index 5ae984a..63b3754 100644
  #[cfg(target_pointer_width = "16")]
  #[lang = "isize"]
  impl isize {
-@@ -4729,17 +4716,6 @@ impl u64 {
+@@ -4732,17 +4719,6 @@ impl u64 {
          "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
  }
  
@@ -312,7 +320,7 @@ index 5ae984a..63b3754 100644
  #[cfg(target_pointer_width = "16")]
  #[lang = "usize"]
  impl usize {
-@@ -4823,7 +4799,7 @@ macro_rules! from_str_radix_int_impl {
+@@ -4826,7 +4802,7 @@ macro_rules! from_str_radix_int_impl {
          }
      )*}
  }
@@ -321,7 +329,7 @@ index 5ae984a..63b3754 100644
  
  /// The error type returned when a checked integral type conversion fails.
  #[unstable(feature = "try_from", issue = "33417")]
-@@ -4939,30 +4915,25 @@ macro_rules! rev {
+@@ -4942,30 +4918,25 @@ macro_rules! rev {
  try_from_upper_bounded!(u16, u8);
  try_from_upper_bounded!(u32, u16, u8);
  try_from_upper_bounded!(u64, u32, u16, u8);
@@ -356,7 +364,7 @@ index 5ae984a..63b3754 100644
  
  // usize/isize
  try_from_upper_bounded!(usize, isize);
-@@ -4974,21 +4945,21 @@ mod ptr_try_from_impls {
+@@ -4977,21 +4948,21 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8);
@@ -386,7 +394,7 @@ index 5ae984a..63b3754 100644
  }
  
  #[cfg(target_pointer_width = "32")]
-@@ -4997,24 +4968,24 @@ mod ptr_try_from_impls {
+@@ -5000,24 +4971,24 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8, u16);
@@ -419,7 +427,7 @@ index 5ae984a..63b3754 100644
  }
  
  #[cfg(target_pointer_width = "64")]
-@@ -5023,24 +4994,20 @@ mod ptr_try_from_impls {
+@@ -5026,24 +4997,20 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8, u16, u32);
@@ -448,7 +456,7 @@ index 5ae984a..63b3754 100644
  }
  
  #[doc(hidden)]
-@@ -5075,7 +5042,7 @@ macro_rules! doit {
+@@ -5078,7 +5045,7 @@ macro_rules! doit {
          }
      })*)
  }
@@ -457,7 +465,7 @@ index 5ae984a..63b3754 100644
  
  fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, ParseIntError> {
      use self::IntErrorKind::*;
-@@ -5243,52 +5210,38 @@ impl_from_bool! { u8, #[stable(feature = "from_bool", since = "1.28.0")] }
+@@ -5246,52 +5213,38 @@ impl_from_bool! { u8, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u16, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u32, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u64, #[stable(feature = "from_bool", since = "1.28.0")] }
@@ -935,68 +943,6 @@ index ab96d31..bb5c1d0 100644
  
  test_impl_try_from_always_ok! { test_try_usizeusize, usize, usize }
  test_impl_try_from_always_ok! { test_try_isizeisize, isize, isize }
-diff --git a/src/libcore/time.rs b/src/libcore/time.rs
-index b589202..0f8a2ee 100644
---- a/src/libcore/time.rs
-+++ b/src/libcore/time.rs
-@@ -268,57 +268,6 @@ impl Duration {
-     #[inline]
-     pub const fn subsec_nanos(&self) -> u32 { self.nanos }
- 
--    /// Returns the total number of whole milliseconds contained by this `Duration`.
--    ///
--    /// # Examples
--    ///
--    /// ```
--    /// # #![feature(duration_as_u128)]
--    /// use std::time::Duration;
--    ///
--    /// let duration = Duration::new(5, 730023852);
--    /// assert_eq!(duration.as_millis(), 5730);
--    /// ```
--    #[unstable(feature = "duration_as_u128", issue = "50202")]
--    #[inline]
--    pub fn as_millis(&self) -> u128 {
--        self.secs as u128 * MILLIS_PER_SEC as u128 + (self.nanos / NANOS_PER_MILLI) as u128
--    }
--
--    /// Returns the total number of whole microseconds contained by this `Duration`.
--    ///
--    /// # Examples
--    ///
--    /// ```
--    /// # #![feature(duration_as_u128)]
--    /// use std::time::Duration;
--    ///
--    /// let duration = Duration::new(5, 730023852);
--    /// assert_eq!(duration.as_micros(), 5730023);
--    /// ```
--    #[unstable(feature = "duration_as_u128", issue = "50202")]
--    #[inline]
--    pub fn as_micros(&self) -> u128 {
--        self.secs as u128 * MICROS_PER_SEC as u128 + (self.nanos / NANOS_PER_MICRO) as u128
--    }
--
--    /// Returns the total number of nanoseconds contained by this `Duration`.
--    ///
--    /// # Examples
--    ///
--    /// ```
--    /// # #![feature(duration_as_u128)]
--    /// use std::time::Duration;
--    ///
--    /// let duration = Duration::new(5, 730023852);
--    /// assert_eq!(duration.as_nanos(), 5730023852);
--    /// ```
--    #[unstable(feature = "duration_as_u128", issue = "50202")]
--    #[inline]
--    pub fn as_nanos(&self) -> u128 {
--        self.secs as u128 * NANOS_PER_SEC as u128 + self.nanos as u128
--    }
--
-     /// Checked `Duration` addition. Computes `self + other`, returning [`None`]
-     /// if overflow occurred.
-     ///
 -- 
-2.15.2 (Apple Git-101.1)
+2.17.1 (Apple Git-112)
 
