@@ -1724,19 +1724,29 @@ impl<'a, 'gcx, 'tcx> VariantDef {
     /// - `did` is the DefId used for the variant - for tuple-structs, it is the constructor DefId,
     /// and for everything else, it is the variant DefId.
     /// - `attribute_def_id` is the DefId that has the variant's attributes.
+    /// this is the struct DefId for structs, and the variant DefId for variants.
+    ///
+    /// Note that we *could* use the constructor DefId, because the constructor attributes
+    /// redirect to the base attributes, but compiling a small crate requires
+    /// loading the AdtDefs for all the structs in the universe (e.g. coherence for any
+    /// built-in trait), and we do not want to load attributes twice.
+    ///
+    /// If someone speeds up attribute loading to not be a performance concern, they can
+    /// remove this hack and use the constructor DefId everywhere.
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                did: DefId,
                name: Name,
                discr: VariantDiscr,
                fields: Vec<FieldDef>,
                adt_kind: AdtKind,
-               ctor_kind: CtorKind)
+               ctor_kind: CtorKind,
+               attribute_def_id: DefId)
                -> Self
     {
-        debug!("VariantDef::new({:?}, {:?}, {:?}, {:?}, {:?}, {:?})", did, name, discr, fields,
-               adt_kind, ctor_kind);
+        debug!("VariantDef::new({:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?})", did, name, discr,
+               fields, adt_kind, ctor_kind, attribute_def_id);
         let mut flags = VariantFlags::NO_VARIANT_FLAGS;
-        if adt_kind == AdtKind::Struct && tcx.has_attr(did, "non_exhaustive") {
+        if adt_kind == AdtKind::Struct && tcx.has_attr(attribute_def_id, "non_exhaustive") {
             debug!("found non-exhaustive field list for {:?}", did);
             flags = flags | VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE;
         }
