@@ -332,7 +332,8 @@ enum BuiltinImplConditions<'tcx> {
 /// evaluations.
 ///
 /// The evaluation results are ordered:
-///     - `EvaluatedToOk` implies `EvaluatedToOkModuloRegions` implies `EvaluatedToAmbig` implies `EvaluatedToUnknown`
+///     - `EvaluatedToOk` implies `EvaluatedToOkModuloRegions`
+///       implies `EvaluatedToAmbig` implies `EvaluatedToUnknown`
 ///     - `EvaluatedToErr` implies `EvaluatedToRecur`
 ///     - the "union" of evaluation results is equal to their maximum -
 ///     all the "potential success" candidates can potentially succeed,
