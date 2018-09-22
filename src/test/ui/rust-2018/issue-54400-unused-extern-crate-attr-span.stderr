@@ -1,0 +1,18 @@
+error: unused extern crate
+  --> $DIR/issue-54400-unused-extern-crate-attr-span.rs:22:1
+   |
+LL | / #[cfg(blandiloquence)] //~ HELP remove it
+LL | | extern crate edition_lint_paths;
+   | | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   | |________________________________|
+   |                                  help: remove it
+   |
+note: lint level defined here
+  --> $DIR/issue-54400-unused-extern-crate-attr-span.rs:16:9
+   |
+LL | #![deny(rust_2018_idioms)]
+   |         ^^^^^^^^^^^^^^^^
+   = note: #[deny(unused_extern_crates)] implied by #[deny(rust_2018_idioms)]
+
+error: aborting due to previous error
+
