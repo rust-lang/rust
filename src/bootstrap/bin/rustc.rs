@@ -291,15 +291,6 @@ fn main() {
         cmd.arg("-Z").arg("verify-llvm-ir");
     }
 
-    let color = match env::var("RUSTC_COLOR") {
-        Ok(s) => usize::from_str(&s).expect("RUSTC_COLOR should be an integer"),
-        Err(_) => 0,
-    };
-
-    if color != 0 {
-        cmd.arg("--color=always");
-    }
-
     if env::var_os("RUSTC_DENY_WARNINGS").is_some() && env::var_os("RUSTC_EXTERNAL_TOOL").is_none()
     {
         cmd.arg("-Dwarnings");
