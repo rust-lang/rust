@@ -557,7 +557,10 @@ impl
 
     /// Compute a place.  You should only use this if you intend to write into this
     /// place; for reading, a more efficient alternative is `eval_place_for_read`.
-    pub fn eval_place(&mut self, mir_place: &mir::Place<'tcx>) -> EvalResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
+    pub fn eval_place(
+        &mut self,
+        mir_place: &mir::Place<'tcx>
+    ) -> EvalResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
         use rustc::mir::Place::*;
         let place = match *mir_place {
             Local(mir::RETURN_PLACE) => PlaceTy {
@@ -805,7 +808,10 @@ impl
 
     /// Every place can be read from, so we can turm them into an operand
     #[inline(always)]
-    pub fn place_to_op(&self, place: PlaceTy<'tcx, M::PointerTag>) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    pub fn place_to_op(
+        &self,
+        place: PlaceTy<'tcx, M::PointerTag>
+    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let op = match place.place {
             Place::Ptr(mplace) => {
                 Operand::Indirect(mplace)

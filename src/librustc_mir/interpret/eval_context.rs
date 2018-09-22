@@ -230,7 +230,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
 
     /// Mark a storage as live, killing the previous content and returning it.
     /// Remember to deallocate that!
-    pub fn storage_live(&mut self, local: mir::Local) -> EvalResult<'tcx, LocalValue<M::PointerTag>> {
+    pub fn storage_live(
+        &mut self,
+        local: mir::Local
+    ) -> EvalResult<'tcx, LocalValue<M::PointerTag>> {
         assert!(local != mir::RETURN_PLACE, "Cannot make return place live");
         trace!("{:?} is now live", local);
 
@@ -519,7 +522,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         Ok(())
     }
 
-    pub(super) fn deallocate_local(&mut self, local: LocalValue<M::PointerTag>) -> EvalResult<'tcx> {
+    pub(super) fn deallocate_local(
+        &mut self,
+        local: LocalValue<M::PointerTag>,
+    ) -> EvalResult<'tcx> {
         // FIXME: should we tell the user that there was a local which was never written to?
         if let LocalValue::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
             trace!("deallocating local");
