@@ -10,27 +10,27 @@
 
 // The Rust abstract syntax tree.
 
-pub use self::UnsafeSource::*;
 pub use self::GenericArgs::*;
+pub use self::UnsafeSource::*;
 pub use symbol::{Ident, Symbol as Name};
 pub use util::parser::ExprPrecedence;
 
-use syntax_pos::{Span, DUMMY_SP};
-use source_map::{dummy_spanned, respan, Spanned};
-use rustc_target::spec::abi::Abi;
 use ext::hygiene::{Mark, SyntaxContext};
 use print::pprust;
 use ptr::P;
 use rustc_data_structures::indexed_vec;
 use rustc_data_structures::indexed_vec::Idx;
-use symbol::{Symbol, keywords};
-use ThinVec;
+use rustc_target::spec::abi::Abi;
+use source_map::{dummy_spanned, respan, Spanned};
+use symbol::{keywords, Symbol};
+use syntax_pos::{Span, DUMMY_SP};
 use tokenstream::{ThinTokenStream, TokenStream};
+use ThinVec;
 
-use serialize::{self, Encoder, Decoder};
-use std::fmt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
+use serialize::{self, Decoder, Encoder};
+use std::fmt;
 use std::u32;
 
 pub use rustc_target::abi::FloatTy;
@@ -54,7 +54,12 @@ pub struct Lifetime {
 
 impl fmt::Debug for Lifetime {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "lifetime({}: {})", self.id, pprust::lifetime_to_string(self))
+        write!(
+            f,
+            "lifetime({}: {})",
+            self.id,
+            pprust::lifetime_to_string(self)
+        )
     }
 }
 
@@ -94,7 +99,10 @@ impl Path {
     // convert a span and an identifier to the corresponding
     // 1-segment path
     pub fn from_ident(ident: Ident) -> Path {
-        Path { segments: vec![PathSegment::from_ident(ident)], span: ident.span }
+        Path {
+            segments: vec![PathSegment::from_ident(ident)],
+            span: ident.span,
+        }
     }
 
     // Make a "crate root" segment for this path unless it already has it
@@ -284,7 +292,7 @@ pub enum TraitBoundModifier {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum GenericBound {
     Trait(PolyTraitRef, TraitBoundModifier),
-    Outlives(Lifetime)
+    Outlives(Lifetime),
 }
 
 impl GenericBound {
@@ -304,7 +312,7 @@ pub enum GenericParamKind {
     Lifetime,
     Type {
         default: Option<P<Ty>>,
-    }
+    },
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -328,7 +336,7 @@ pub struct Generics {
 
 impl Default for Generics {
     /// Creates an instance of `Generics`.
-    fn default() ->  Generics {
+    fn default() -> Generics {
         Generics {
             params: Vec::new(),
             where_clause: WhereClause {
@@ -458,7 +466,7 @@ pub enum MetaItemKind {
     /// Name value meta item.
     ///
     /// E.g. `feature = "foo"` as in `#[feature = "foo"]`
-    NameValue(Lit)
+    NameValue(Lit),
 }
 
 /// A Block (`{ .. }`).
@@ -492,14 +500,17 @@ impl Pat {
     pub(super) fn to_ty(&self) -> Option<P<Ty>> {
         let node = match &self.node {
             PatKind::Wild => TyKind::Infer,
-            PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None) =>
-                TyKind::Path(None, Path::from_ident(*ident)),
+            PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None) => {
+                TyKind::Path(None, Path::from_ident(*ident))
+            }
             PatKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
             PatKind::Mac(mac) => TyKind::Mac(mac.clone()),
-            PatKind::Ref(pat, mutbl) =>
-                pat.to_ty().map(|ty| TyKind::Rptr(None, MutTy { ty, mutbl: *mutbl }))?,
-            PatKind::Slice(pats, None, _) if pats.len() == 1 =>
-                pats[0].to_ty().map(TyKind::Slice)?,
+            PatKind::Ref(pat, mutbl) => pat
+                .to_ty()
+                .map(|ty| TyKind::Rptr(None, MutTy { ty, mutbl: *mutbl }))?,
+            PatKind::Slice(pats, None, _) if pats.len() == 1 => {
+                pats[0].to_ty().map(TyKind::Slice)?
+            }
             PatKind::Tuple(pats, None) => {
                 let mut tys = Vec::with_capacity(pats.len());
                 // FIXME(#48994) - could just be collected into an Option<Vec>
@@ -511,11 +522,16 @@ impl Pat {
             _ => return None,
         };
 
-        Some(P(Ty { node, id: self.id, span: self.span }))
+        Some(P(Ty {
+            node,
+            id: self.id,
+            span: self.span,
+        }))
     }
 
     pub fn walk<F>(&self, it: &mut F) -> bool
-        where F: FnMut(&Pat) -> bool
+    where
+        F: FnMut(&Pat) -> bool,
     {
         if !it(self) {
             return false;
@@ -523,28 +539,22 @@ impl Pat {
 
         match self.node {
             PatKind::Ident(_, _, Some(ref p)) => p.walk(it),
-            PatKind::Struct(_, ref fields, _) => {
-                fields.iter().all(|field| field.node.pat.walk(it))
-            }
+            PatKind::Struct(_, ref fields, _) => fields.iter().all(|field| field.node.pat.walk(it)),
             PatKind::TupleStruct(_, ref s, _) | PatKind::Tuple(ref s, _) => {
                 s.iter().all(|p| p.walk(it))
             }
-            PatKind::Box(ref s) | PatKind::Ref(ref s, _) | PatKind::Paren(ref s) => {
-                s.walk(it)
-            }
+            PatKind::Box(ref s) | PatKind::Ref(ref s, _) | PatKind::Paren(ref s) => s.walk(it),
             PatKind::Slice(ref before, ref slice, ref after) => {
-                before.iter().all(|p| p.walk(it)) &&
-                slice.iter().all(|p| p.walk(it)) &&
-                after.iter().all(|p| p.walk(it))
+                before.iter().all(|p| p.walk(it))
+                    && slice.iter().all(|p| p.walk(it))
+                    && after.iter().all(|p| p.walk(it))
             }
-            PatKind::Wild |
-            PatKind::Lit(_) |
-            PatKind::Range(..) |
-            PatKind::Ident(..) |
-            PatKind::Path(..) |
-            PatKind::Mac(_) => {
-                true
-            }
+            PatKind::Wild
+            | PatKind::Lit(_)
+            | PatKind::Range(..)
+            | PatKind::Ident(..)
+            | PatKind::Path(..)
+            | PatKind::Mac(_) => true,
         }
     }
 }
@@ -623,13 +633,15 @@ pub enum PatKind {
     /// `[a, b, ..i, y, z]` is represented as:
     ///     `PatKind::Slice(box [a, b], Some(i), box [y, z])`
     Slice(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
-    /// Parentheses in patters used for grouping, i.e. `(PAT)`.
+    /// Parentheses in patterns used for grouping, i.e. `(PAT)`.
     Paren(P<Pat>),
     /// A macro pattern; pre-expansion
     Mac(Mac),
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug, Copy)]
+#[derive(
+    Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug, Copy,
+)]
 pub enum Mutability {
     Mutable,
     Immutable,
@@ -702,25 +714,22 @@ impl BinOpKind {
     pub fn lazy(&self) -> bool {
         match *self {
             BinOpKind::And | BinOpKind::Or => true,
-            _ => false
+            _ => false,
         }
     }
 
     pub fn is_shift(&self) -> bool {
         match *self {
             BinOpKind::Shl | BinOpKind::Shr => true,
-            _ => false
+            _ => false,
         }
     }
 
     pub fn is_comparison(&self) -> bool {
         use self::BinOpKind::*;
         match *self {
-            Eq | Lt | Le | Ne | Gt | Ge =>
-            true,
-            And | Or | Add | Sub | Mul | Div | Rem |
-            BitXor | BitAnd | BitOr | Shl | Shr =>
-            false,
+            Eq | Lt | Le | Ne | Gt | Ge => true,
+            And | Or | Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Shl | Shr => false,
         }
     }
 
@@ -772,9 +781,9 @@ impl Stmt {
     pub fn add_trailing_semicolon(mut self) -> Self {
         self.node = match self.node {
             StmtKind::Expr(expr) => StmtKind::Semi(expr),
-            StmtKind::Mac(mac) => StmtKind::Mac(mac.map(|(mac, _style, attrs)| {
-                (mac, MacStmtStyle::Semicolon, attrs)
-            })),
+            StmtKind::Mac(mac) => {
+                StmtKind::Mac(mac.map(|(mac, _style, attrs)| (mac, MacStmtStyle::Semicolon, attrs)))
+            }
             node => node,
         };
         self
@@ -797,10 +806,14 @@ impl Stmt {
 
 impl fmt::Debug for Stmt {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "stmt({}: {})", self.id.to_string(), pprust::stmt_to_string(self))
+        write!(
+            f,
+            "stmt({}: {})",
+            self.id.to_string(),
+            pprust::stmt_to_string(self)
+        )
     }
 }
-
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub enum StmtKind {
@@ -900,14 +913,13 @@ pub struct AnonConst {
     pub value: P<Expr>,
 }
 
-
 /// An expression
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Expr {
     pub id: NodeId,
     pub node: ExprKind,
     pub span: Span,
-    pub attrs: ThinVec<Attribute>
+    pub attrs: ThinVec<Attribute>,
 }
 
 impl Expr {
@@ -937,9 +949,10 @@ impl Expr {
 
     fn to_bound(&self) -> Option<GenericBound> {
         match &self.node {
-            ExprKind::Path(None, path) =>
-                Some(GenericBound::Trait(PolyTraitRef::new(Vec::new(), path.clone(), self.span),
-                                         TraitBoundModifier::None)),
+            ExprKind::Path(None, path) => Some(GenericBound::Trait(
+                PolyTraitRef::new(Vec::new(), path.clone(), self.span),
+                TraitBoundModifier::None,
+            )),
             _ => None,
         }
     }
@@ -949,26 +962,35 @@ impl Expr {
             ExprKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
             ExprKind::Mac(mac) => TyKind::Mac(mac.clone()),
             ExprKind::Paren(expr) => expr.to_ty().map(TyKind::Paren)?,
-            ExprKind::AddrOf(mutbl, expr) =>
-                expr.to_ty().map(|ty| TyKind::Rptr(None, MutTy { ty, mutbl: *mutbl }))?,
-            ExprKind::Repeat(expr, expr_len) =>
-                expr.to_ty().map(|ty| TyKind::Array(ty, expr_len.clone()))?,
-            ExprKind::Array(exprs) if exprs.len() == 1 =>
-                exprs[0].to_ty().map(TyKind::Slice)?,
+            ExprKind::AddrOf(mutbl, expr) => expr
+                .to_ty()
+                .map(|ty| TyKind::Rptr(None, MutTy { ty, mutbl: *mutbl }))?,
+            ExprKind::Repeat(expr, expr_len) => {
+                expr.to_ty().map(|ty| TyKind::Array(ty, expr_len.clone()))?
+            }
+            ExprKind::Array(exprs) if exprs.len() == 1 => exprs[0].to_ty().map(TyKind::Slice)?,
             ExprKind::Tup(exprs) => {
-                let tys = exprs.iter().map(|expr| expr.to_ty()).collect::<Option<Vec<_>>>()?;
+                let tys = exprs
+                    .iter()
+                    .map(|expr| expr.to_ty())
+                    .collect::<Option<Vec<_>>>()?;
                 TyKind::Tup(tys)
             }
-            ExprKind::Binary(binop, lhs, rhs) if binop.node == BinOpKind::Add =>
+            ExprKind::Binary(binop, lhs, rhs) if binop.node == BinOpKind::Add => {
                 if let (Some(lhs), Some(rhs)) = (lhs.to_bound(), rhs.to_bound()) {
                     TyKind::TraitObject(vec![lhs, rhs], TraitObjectSyntax::None)
                 } else {
                     return None;
                 }
+            }
             _ => return None,
         };
 
-        Some(P(Ty { node, id: self.id, span: self.span }))
+        Some(P(Ty {
+            node,
+            id: self.id,
+            span: self.span,
+        }))
     }
 
     pub fn precedence(&self) -> ExprPrecedence {
@@ -1195,7 +1217,7 @@ pub struct QSelf {
     /// a::b::Trait>::AssociatedItem`; in the case where `position ==
     /// 0`, this is an empty span.
     pub path_span: Span,
-    pub position: usize
+    pub position: usize,
 }
 
 /// A capture clause
@@ -1259,7 +1281,7 @@ pub enum StrStyle {
     /// A raw string, like `r##"foo"##`
     ///
     /// The value is the number of `#` symbols used.
-    Raw(u16)
+    Raw(u16),
 }
 
 /// A literal
@@ -1307,9 +1329,7 @@ impl LitKind {
     /// Returns true if this is a numeric literal.
     pub fn is_numeric(&self) -> bool {
         match *self {
-            LitKind::Int(..) |
-            LitKind::Float(..) |
-            LitKind::FloatUnsuffixed(..) => true,
+            LitKind::Int(..) | LitKind::Float(..) | LitKind::FloatUnsuffixed(..) => true,
             _ => false,
         }
     }
@@ -1319,17 +1339,17 @@ impl LitKind {
     pub fn is_unsuffixed(&self) -> bool {
         match *self {
             // unsuffixed variants
-            LitKind::Str(..) |
-            LitKind::ByteStr(..) |
-            LitKind::Byte(..) |
-            LitKind::Char(..) |
-            LitKind::Int(_, LitIntType::Unsuffixed) |
-            LitKind::FloatUnsuffixed(..) |
-            LitKind::Bool(..) => true,
+            LitKind::Str(..)
+            | LitKind::ByteStr(..)
+            | LitKind::Byte(..)
+            | LitKind::Char(..)
+            | LitKind::Int(_, LitIntType::Unsuffixed)
+            | LitKind::FloatUnsuffixed(..)
+            | LitKind::Bool(..) => true,
             // suffixed variants
-            LitKind::Int(_, LitIntType::Signed(..)) |
-            LitKind::Int(_, LitIntType::Unsigned(..)) |
-            LitKind::Float(..) => false,
+            LitKind::Int(_, LitIntType::Signed(..))
+            | LitKind::Int(_, LitIntType::Unsigned(..))
+            | LitKind::Float(..) => false,
         }
     }
 
@@ -1532,7 +1552,7 @@ pub struct BareFnTy {
     pub unsafety: Unsafety,
     pub abi: Abi,
     pub generic_params: Vec<GenericParam>,
-    pub decl: P<FnDecl>
+    pub decl: P<FnDecl>,
 }
 
 /// The different kinds of types recognized by the compiler
@@ -1551,7 +1571,7 @@ pub enum TyKind {
     /// The never type (`!`)
     Never,
     /// A tuple (`(A, B, C, D,...)`)
-    Tup(Vec<P<Ty>> ),
+    Tup(Vec<P<Ty>>),
     /// A path (`module::module::...::Type`), optionally
     /// "qualified", e.g. `<Vec<T> as SomeTrait>::SomeType`.
     ///
@@ -1584,11 +1604,19 @@ pub enum TyKind {
 
 impl TyKind {
     pub fn is_implicit_self(&self) -> bool {
-        if let TyKind::ImplicitSelf = *self { true } else { false }
+        if let TyKind::ImplicitSelf = *self {
+            true
+        } else {
+            false
+        }
     }
 
     pub fn is_unit(&self) -> bool {
-        if let TyKind::Tup(ref tys) = *self { tys.is_empty() } else { false }
+        if let TyKind::Tup(ref tys) = *self {
+            tys.is_empty()
+        } else {
+            false
+        }
     }
 }
 
@@ -1666,12 +1694,14 @@ impl Arg {
             if ident.name == keywords::SelfValue.name() {
                 return match self.ty.node {
                     TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
-                    TyKind::Rptr(lt, MutTy{ref ty, mutbl}) if ty.node.is_implicit_self() => {
+                    TyKind::Rptr(lt, MutTy { ref ty, mutbl }) if ty.node.is_implicit_self() => {
                         Some(respan(self.pat.span, SelfKind::Region(lt, mutbl)))
                     }
-                    _ => Some(respan(self.pat.span.to(self.ty.span),
-                                     SelfKind::Explicit(self.ty.clone(), mutbl))),
-                }
+                    _ => Some(respan(
+                        self.pat.span.to(self.ty.span),
+                        SelfKind::Explicit(self.ty.clone(), mutbl),
+                    )),
+                };
             }
         }
         None
@@ -1704,11 +1734,20 @@ impl Arg {
         match eself.node {
             SelfKind::Explicit(ty, mutbl) => arg(mutbl, ty),
             SelfKind::Value(mutbl) => arg(mutbl, infer_ty),
-            SelfKind::Region(lt, mutbl) => arg(Mutability::Immutable, P(Ty {
-                id: DUMMY_NODE_ID,
-                node: TyKind::Rptr(lt, MutTy { ty: infer_ty, mutbl: mutbl }),
-                span,
-            })),
+            SelfKind::Region(lt, mutbl) => arg(
+                Mutability::Immutable,
+                P(Ty {
+                    id: DUMMY_NODE_ID,
+                    node: TyKind::Rptr(
+                        lt,
+                        MutTy {
+                            ty: infer_ty,
+                            mutbl: mutbl,
+                        },
+                    ),
+                    span,
+                }),
+            ),
         }
     }
 }
@@ -1720,7 +1759,7 @@ impl Arg {
 pub struct FnDecl {
     pub inputs: Vec<Arg>,
     pub output: FunctionRetTy,
-    pub variadic: bool
+    pub variadic: bool,
 }
 
 impl FnDecl {
@@ -1736,7 +1775,7 @@ impl FnDecl {
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
 pub enum IsAuto {
     Yes,
-    No
+    No,
 }
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
@@ -1765,7 +1804,10 @@ impl IsAsync {
     /// In case this is an `Async` return the `NodeId` for the generated impl Trait item
     pub fn opt_return_id(self) -> Option<NodeId> {
         match self {
-            IsAsync::Async { return_impl_trait_id, .. } => Some(return_impl_trait_id),
+            IsAsync::Async {
+                return_impl_trait_id,
+                ..
+            } => Some(return_impl_trait_id),
             IsAsync::NotAsync => None,
         }
     }
@@ -1785,10 +1827,13 @@ pub enum Defaultness {
 
 impl fmt::Display for Unsafety {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(match *self {
-            Unsafety::Normal => "normal",
-            Unsafety::Unsafe => "unsafe",
-        }, f)
+        fmt::Display::fmt(
+            match *self {
+                Unsafety::Normal => "normal",
+                Unsafety::Unsafe => "unsafe",
+            },
+            f,
+        )
     }
 }
 
@@ -1808,7 +1853,6 @@ impl fmt::Debug for ImplPolarity {
         }
     }
 }
-
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum FunctionRetTy {
@@ -1904,8 +1948,13 @@ impl UseTree {
     pub fn ident(&self) -> Ident {
         match self.kind {
             UseTreeKind::Simple(Some(rename), ..) => rename,
-            UseTreeKind::Simple(None, ..) =>
-                self.prefix.segments.last().expect("empty prefix in a simple import").ident,
+            UseTreeKind::Simple(None, ..) => {
+                self.prefix
+                    .segments
+                    .last()
+                    .expect("empty prefix in a simple import")
+                    .ident
+            }
             _ => panic!("`UseTree::ident` can only be used on a simple import"),
         }
     }
@@ -1920,7 +1969,9 @@ pub enum AttrStyle {
     Inner,
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, PartialOrd, Ord, Copy)]
+#[derive(
+    Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, PartialOrd, Ord, Copy,
+)]
 pub struct AttrId(pub usize);
 
 impl Idx for AttrId {
@@ -1971,7 +2022,10 @@ impl PolyTraitRef {
     pub fn new(generic_params: Vec<GenericParam>, path: Path, span: Span) -> Self {
         PolyTraitRef {
             bound_generic_params: generic_params,
-            trait_ref: TraitRef { path: path, ref_id: DUMMY_NODE_ID },
+            trait_ref: TraitRef {
+                path: path,
+                ref_id: DUMMY_NODE_ID,
+            },
             span,
         }
     }
@@ -1998,7 +2052,11 @@ pub enum VisibilityKind {
 
 impl VisibilityKind {
     pub fn is_pub(&self) -> bool {
-        if let VisibilityKind::Public = *self { true } else { false }
+        if let VisibilityKind::Public = *self {
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -2051,17 +2109,29 @@ impl VariantData {
     }
     pub fn id(&self) -> NodeId {
         match *self {
-            VariantData::Struct(_, id) | VariantData::Tuple(_, id) | VariantData::Unit(id) => id
+            VariantData::Struct(_, id) | VariantData::Tuple(_, id) | VariantData::Unit(id) => id,
         }
     }
     pub fn is_struct(&self) -> bool {
-        if let VariantData::Struct(..) = *self { true } else { false }
+        if let VariantData::Struct(..) = *self {
+            true
+        } else {
+            false
+        }
     }
     pub fn is_tuple(&self) -> bool {
-        if let VariantData::Tuple(..) = *self { true } else { false }
+        if let VariantData::Tuple(..) = *self {
+            true
+        } else {
+            false
+        }
     }
     pub fn is_unit(&self) -> bool {
-        if let VariantData::Unit(..) = *self { true } else { false }
+        if let VariantData::Unit(..) = *self {
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -2173,13 +2243,15 @@ pub enum ItemKind {
     /// An implementation.
     ///
     /// E.g. `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`
-    Impl(Unsafety,
-             ImplPolarity,
-             Defaultness,
-             Generics,
-             Option<TraitRef>, // (optional) trait this impl implements
-             P<Ty>, // self
-             Vec<ImplItem>),
+    Impl(
+        Unsafety,
+        ImplPolarity,
+        Defaultness,
+        Generics,
+        Option<TraitRef>, // (optional) trait this impl implements
+        P<Ty>,            // self
+        Vec<ImplItem>,
+    ),
     /// A macro invocation.
     ///
     /// E.g. `macro_rules! foo { .. }` or `foo!(..)`
@@ -2207,9 +2279,7 @@ impl ItemKind {
             ItemKind::Union(..) => "union",
             ItemKind::Trait(..) => "trait",
             ItemKind::TraitAlias(..) => "trait alias",
-            ItemKind::Mac(..) |
-            ItemKind::MacroDef(..) |
-            ItemKind::Impl(..) => "item"
+            ItemKind::Mac(..) | ItemKind::MacroDef(..) | ItemKind::Impl(..) => "item",
         }
     }
 }
@@ -2251,8 +2321,8 @@ impl ForeignItemKind {
 
 #[cfg(test)]
 mod tests {
-    use serialize;
     use super::*;
+    use serialize;
 
     // are ASTs encodable?
     #[test]
