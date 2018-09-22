@@ -59,15 +59,15 @@ rm -r target/out || true
 mkdir -p target/out/clif
 
 echo "[BUILD] mini_core"
-build_lib mini_core examples/mini_core.rs
+build_lib mini_core example/mini_core.rs
 
-$RUSTC examples/example.rs --crate-type lib
+$RUSTC example/example.rs --crate-type lib
 
 echo "[JIT] mini_core_hello_world"
-run_bin examples/mini_core_hello_world.rs --cfg jit
+run_bin example/mini_core_hello_world.rs --cfg jit
 
 echo "[AOT] mini_core_hello_world"
-build_example_bin mini_core_hello_world examples/mini_core_hello_world.rs
+build_example_bin mini_core_hello_world example/mini_core_hello_world.rs
 
 echo "[BUILD] core"
 time $RUSTC target/libcore/src/libcore/lib.rs --crate-type lib --crate-name core -Cincremental=target/incremental_core
