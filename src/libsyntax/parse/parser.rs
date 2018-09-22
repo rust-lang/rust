@@ -1781,27 +1781,32 @@ impl<'a> Parser<'a> {
             (pat, self.parse_ty()?)
         } else {
             debug!("parse_arg_general ident_to_pat");
-
-            let parser_snapshot_before_pat = self.clone();
-
-            // Once we can use edition 2018 in the compiler,
-            // replace this with real try blocks.
-            macro_rules! try_block {
-                ($($inside:tt)*) => (
-                    (||{ ::std::ops::Try::from_ok({ $($inside)* }) })()
-                )
+            let parser_snapshot_before_ty = self.clone();
+            let mut ty = self.parse_ty();
+            if ty.is_ok() && self.token == token::Colon {
+                // This wasn't actually a type, but a pattern looking like a type,
+                // so we are going to rollback and re-parse for recovery.
+                ty = self.unexpected();
             }
+            match ty {
+                Ok(ty) => {
+                    let ident = Ident::new(keywords::Invalid.name(), self.prev_span);
+                    let pat = P(Pat {
+                        id: ast::DUMMY_NODE_ID,
+                        node: PatKind::Ident(
+                            BindingMode::ByValue(Mutability::Immutable), ident, None),
+                        span: ty.span,
+                    });
+                    (pat, ty)
+                }
+                Err(mut err) => {
+                    // Recover from attempting to parse the argument as a type without pattern.
+                    err.cancel();
+                    mem::replace(self, parser_snapshot_before_ty);
+                    let pat = self.parse_pat()?;
+                    self.expect(&token::Colon)?;
+                    let ty = self.parse_ty()?;
 
-            // We're going to try parsing the argument as a pattern (even though it's not
-            // allowed). This way we can provide better errors to the user.
-            let pat_arg: PResult<'a, _> = try_block! {
-                let pat = self.parse_pat()?;
-                self.expect(&token::Colon)?;
-                (pat, self.parse_ty()?)
-            };
-
-            match pat_arg {
-                Ok((pat, ty)) => {
                     let mut err = self.diagnostic().struct_span_err_with_code(
                         pat.span,
                         "patterns aren't allowed in methods without bodies",
@@ -1814,27 +1819,12 @@ impl<'a> Parser<'a> {
                         Applicability::MachineApplicable,
                     );
                     err.emit();
+
                     // Pretend the pattern is `_`, to avoid duplicate errors from AST validation.
                     let pat = P(Pat {
                         node: PatKind::Wild,
                         span: pat.span,
                         id: ast::DUMMY_NODE_ID
-                    });
-                    (pat, ty)
-                }
-                Err(mut err) => {
-                    err.cancel();
-                    // Recover from attempting to parse the argument as a pattern. This means
-                    // the type is alone, with no name, e.g. `fn foo(u32)`.
-                    mem::replace(self, parser_snapshot_before_pat);
-                    debug!("parse_arg_general ident_to_pat");
-                    let ident = Ident::new(keywords::Invalid.name(), self.prev_span);
-                    let ty = self.parse_ty()?;
-                    let pat = P(Pat {
-                        id: ast::DUMMY_NODE_ID,
-                        node: PatKind::Ident(
-                            BindingMode::ByValue(Mutability::Immutable), ident, None),
-                        span: ty.span,
                     });
                     (pat, ty)
                 }
