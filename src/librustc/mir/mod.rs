@@ -1888,7 +1888,7 @@ impl<'tcx> Debug for Statement<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Places
 
-/// TODO(csmoe): merge the old Place repr into NeoPlace
+/// FIXME(csmoe): merge the old Place repr into NeoPlace
 /// A path to a value; something that can be evaluated without
 /// changing or disturbing program state.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
