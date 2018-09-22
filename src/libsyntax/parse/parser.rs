@@ -2703,8 +2703,8 @@ impl<'a> Parser<'a> {
                   token::Literal(token::Float(n), _suf) => {
                     self.bump();
                     let fstr = n.as_str();
-                    let mut err = self.diagnostic().struct_span_err(self.prev_span,
-                        &format!("unexpected token: `{}`", n));
+                    let mut err = self.diagnostic()
+                        .struct_span_err(self.prev_span, &format!("unexpected token: `{}`", n));
                     err.span_label(self.prev_span, "unexpected token");
                     if fstr.chars().all(|x| "0123456789.".contains(x)) {
                         let float = match fstr.parse::<f64>().ok() {
@@ -2864,8 +2864,8 @@ impl<'a> Parser<'a> {
                 let e = self.parse_prefix_expr(None);
                 let (span, e) = self.interpolated_or_expr_span(e)?;
                 let span_of_tilde = lo;
-                let mut err = self.diagnostic().struct_span_err(span_of_tilde,
-                        "`~` cannot be used as a unary operator");
+                let mut err = self.diagnostic()
+                    .struct_span_err(span_of_tilde, "`~` cannot be used as a unary operator");
                 err.span_suggestion_short_with_applicability(
                     span_of_tilde,
                     "use `!` to perform bitwise negation",
@@ -3421,6 +3421,24 @@ impl<'a> Parser<'a> {
                 // has been misleading, at least in the past (closed Issue #48492)
                 Applicability::MaybeIncorrect
             );
+            err.emit();
+        }
+        let in_span = self.prev_span;
+        if self.eat_keyword(keywords::In) {
+            // a common typo: `for _ in in bar {}`
+            let mut err = self.sess.span_diagnostic.struct_span_err(
+                self.prev_span,
+                "expected iterable, found keyword `in`",
+            );
+            err.span_suggestion_short_with_applicability(
+                in_span.until(self.prev_span),
+                "remove the duplicated `in`",
+                String::new(),
+                Applicability::MachineApplicable,
+            );
+            err.note("if you meant to use emplacement syntax, it is obsolete (for now, anyway)");
+            err.note("for more information on the status of emplacement syntax, see <\
+                      https://github.com/rust-lang/rust/issues/27779#issuecomment-378416911>");
             err.emit();
         }
         let expr = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
@@ -4766,12 +4784,9 @@ impl<'a> Parser<'a> {
         if !self.eat(&token::OpenDelim(token::Brace)) {
             let sp = self.span;
             let tok = self.this_token_to_string();
-            let mut do_not_suggest_help = false;
             let mut e = self.span_fatal(sp, &format!("expected `{{`, found `{}`", tok));
-            if self.token.is_keyword(keywords::In) || self.token == token::Colon {
-                do_not_suggest_help = true;
-                e.span_label(sp, "expected `{`");
-            }
+            let do_not_suggest_help =
+                self.token.is_keyword(keywords::In) || self.token == token::Colon;
 
             if self.token.is_ident_named("and") {
                 e.span_suggestion_short_with_applicability(
@@ -4802,6 +4817,7 @@ impl<'a> Parser<'a> {
                         || do_not_suggest_help {
                         // if the next token is an open brace (e.g., `if a b {`), the place-
                         // inside-a-block suggestion would be more likely wrong than right
+                        e.span_label(sp, "expected `{`");
                         return Err(e);
                     }
                     let mut stmt_span = stmt.span;
