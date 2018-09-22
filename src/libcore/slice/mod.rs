@@ -119,7 +119,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn first(&self) -> Option<&T> {
-        if self.is_empty() { None } else { Some(&self[0]) }
+        self.get(0)
     }
 
     /// Returns a mutable pointer to the first element of the slice, or `None` if it is empty.
@@ -137,7 +137,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn first_mut(&mut self) -> Option<&mut T> {
-        if self.is_empty() { None } else { Some(&mut self[0]) }
+        self.get_mut(0)
     }
 
     /// Returns the first and all the rest of the elements of the slice, or `None` if it is empty.
@@ -239,7 +239,8 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn last(&self) -> Option<&T> {
-        if self.is_empty() { None } else { Some(&self[self.len() - 1]) }
+        let last_idx = self.len().checked_sub(1)?;
+        self.get(last_idx)
     }
 
     /// Returns a mutable pointer to the last item in the slice.
@@ -257,9 +258,8 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn last_mut(&mut self) -> Option<&mut T> {
-        let len = self.len();
-        if len == 0 { return None; }
-        Some(&mut self[len - 1])
+        let last_idx = self.len().checked_sub(1)?;
+        self.get_mut(last_idx)
     }
 
     /// Returns a reference to an element or subslice depending on the type of
@@ -1615,6 +1615,63 @@ impl<T> [T] {
         unsafe {
             ptr::copy_nonoverlapping(
                 src.as_ptr(), self.as_mut_ptr(), self.len());
+        }
+    }
+
+    /// Copies elements from one part of the slice to another part of itself,
+    /// using a memmove.
+    ///
+    /// `src` is the range within `self` to copy from. `dest` is the starting
+    /// index of the range within `self` to copy to, which will have the same
+    /// length as `src`. The two ranges may overlap. The ends of the two ranges
+    /// must be less than or equal to `self.len()`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if either range exceeds the end of the slice,
+    /// or if the end of `src` is before the start.
+    ///
+    /// # Examples
+    ///
+    /// Copying four bytes within a slice:
+    ///
+    /// ```
+    /// # #![feature(copy_within)]
+    /// let mut bytes = *b"Hello, World!";
+    ///
+    /// bytes.copy_within(1..5, 8);
+    ///
+    /// assert_eq!(&bytes, b"Hello, Wello!");
+    /// ```
+    #[unstable(feature = "copy_within", issue = "54236")]
+    pub fn copy_within<R: ops::RangeBounds<usize>>(&mut self, src: R, dest: usize)
+    where
+        T: Copy,
+    {
+        let src_start = match src.start_bound() {
+            ops::Bound::Included(&n) => n,
+            ops::Bound::Excluded(&n) => n
+                .checked_add(1)
+                .unwrap_or_else(|| slice_index_overflow_fail()),
+            ops::Bound::Unbounded => 0,
+        };
+        let src_end = match src.end_bound() {
+            ops::Bound::Included(&n) => n
+                .checked_add(1)
+                .unwrap_or_else(|| slice_index_overflow_fail()),
+            ops::Bound::Excluded(&n) => n,
+            ops::Bound::Unbounded => self.len(),
+        };
+        assert!(src_start <= src_end, "src end is before src start");
+        assert!(src_end <= self.len(), "src is out of bounds");
+        let count = src_end - src_start;
+        assert!(dest <= self.len() - count, "dest is out of bounds");
+        unsafe {
+            ptr::copy(
+                self.get_unchecked(src_start),
+                self.get_unchecked_mut(dest),
+                count,
+            );
         }
     }
 

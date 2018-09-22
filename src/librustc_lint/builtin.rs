@@ -1937,8 +1937,7 @@ impl EarlyLintPass for KeywordIdents {
         let next_edition = match cx.sess.edition() {
             Edition::Edition2015 => {
                 match &ident.as_str()[..] {
-                    "async" |
-                    "try" => Edition::Edition2018,
+                    "async" | "try" | "dyn" => Edition::Edition2018,
                     _ => return,
                 }
             }

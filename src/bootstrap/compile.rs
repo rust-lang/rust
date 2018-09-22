@@ -29,7 +29,7 @@ use build_helper::{output, mtime, up_to_date};
 use filetime::FileTime;
 use serde_json;
 
-use util::{exe, libdir, is_dylib, CiEnv};
+use util::{exe, libdir, is_dylib};
 use {Compiler, Mode, GitRepo};
 use native;
 
@@ -1034,29 +1034,6 @@ pub fn add_to_sysroot(builder: &Builder, sysroot_dst: &Path, stamp: &Path) {
     }
 }
 
-// Avoiding a dependency on winapi to keep compile times down
-#[cfg(unix)]
-fn stderr_isatty() -> bool {
-    use libc;
-    unsafe { libc::isatty(libc::STDERR_FILENO) != 0 }
-}
-#[cfg(windows)]
-fn stderr_isatty() -> bool {
-    type DWORD = u32;
-    type BOOL = i32;
-    type HANDLE = *mut u8;
-    const STD_ERROR_HANDLE: DWORD = -12i32 as DWORD;
-    extern "system" {
-        fn GetStdHandle(which: DWORD) -> HANDLE;
-        fn GetConsoleMode(hConsoleHandle: HANDLE, lpMode: *mut DWORD) -> BOOL;
-    }
-    unsafe {
-        let handle = GetStdHandle(STD_ERROR_HANDLE);
-        let mut out = 0;
-        GetConsoleMode(handle, &mut out) != 0
-    }
-}
-
 pub fn run_cargo(builder: &Builder,
                  cargo: &mut Command,
                  tail_args: Vec<String>,
@@ -1217,15 +1194,6 @@ pub fn stream_cargo(
     // stderr as piped so we can get those pretty colors.
     cargo.arg("--message-format").arg("json")
          .stdout(Stdio::piped());
-
-    if stderr_isatty() && builder.ci_env == CiEnv::None &&
-        // if the terminal is reported as dumb, then we don't want to enable color for rustc
-        env::var_os("TERM").map(|t| t != *"dumb").unwrap_or(true) {
-        // since we pass message-format=json to cargo, we need to tell the rustc
-        // wrapper to give us colored output if necessary. This is because we
-        // only want Cargo's JSON output, not rustcs.
-        cargo.env("RUSTC_COLOR", "1");
-    }
 
     for arg in tail_args {
         cargo.arg(arg);
