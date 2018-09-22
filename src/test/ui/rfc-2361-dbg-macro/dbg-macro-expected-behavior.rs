@@ -1,4 +1,5 @@
 // run-pass
+// ignore-wasm
 
 // Tests ensuring that `dbg!(expr)` has the expected run-time behavior.
 // as well as some compile time properties we expect.
@@ -55,31 +56,31 @@ fn test() {
 
 fn validate_stderr(stderr: Vec<String>) {
     assert_eq!(stderr, &[
-        ":21] Unit = Unit",
+        ":22] Unit = Unit",
 
-        ":22] a = Unit",
+        ":23] a = Unit",
 
-        ":28] Point{x: 42, y: 24,} = Point {",
+        ":29] Point{x: 42, y: 24,} = Point {",
         "    x: 42,",
         "    y: 24",
         "}",
 
-        ":29] b = Point {",
+        ":30] b = Point {",
         "    x: 42,",
         "    y: 24",
         "}",
 
-        ":38] &a = NoCopy(",
+        ":39] &a = NoCopy(",
         "    1337",
         ")",
 
-        ":38] dbg!(& a) = NoCopy(",
+        ":39] dbg!(& a) = NoCopy(",
         "    1337",
         ")",
-        ":43] f(&42) = 42",
+        ":44] f(&42) = 42",
 
         "before",
-        ":48] { foo += 1; eprintln!(\"before\"); 7331 } = 7331",
+        ":49] { foo += 1; eprintln!(\"before\"); 7331 } = 7331",
     ]);
 }
 
