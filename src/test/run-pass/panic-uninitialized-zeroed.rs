@@ -16,6 +16,7 @@
 
 use std::{mem, panic};
 
+#[allow(dead_code)]
 struct Foo {
     x: u8,
     y: !,
