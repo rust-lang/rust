@@ -215,7 +215,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 .declare_function("main", Linkage::Import, &sig)
                 .unwrap();
 
-            jit_module.finalize_all();
+            jit_module.finalize_definitions();
             let finalized_main: *const u8 = jit_module.get_finalized_function(main_func_id);
             println!("🎉 Finalized everything");
 
@@ -242,7 +242,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             tcx.sess.abort_if_errors();
 
             if should_codegen(tcx.sess) {
-                faerie_module.finalize_all();
+                faerie_module.finalize_definitions();
             }
 
             return Box::new(OngoingCodegen {
