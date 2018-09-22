@@ -28,8 +28,9 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::env;
+use std::fs;
 
 use syntax::ast::{self, Attribute, NodeId, PatKind, CRATE_NODE_ID};
 use syntax::parse::token;
@@ -172,11 +173,20 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         self.dumper.crate_prelude(data);
     }
 
-    pub fn dump_compilation_options(&mut self) {
-        // Apply possible `remap-path-prefix` remapping to the raw invocation
-        let invocation = {
+    pub fn dump_compilation_options(&mut self, crate_name: &str) {
+        // Apply possible `remap-path-prefix` remapping to the raw command
+        let command = {
+            let mapping = self.tcx.sess.source_map().path_mapping();
+            let remap_arg = |x: &str| -> String {
+                match fs::canonicalize(x) {
+                    Ok(path) => mapping.map_prefix(path).0.to_str().unwrap().to_owned(),
+                    Err(_) => x.to_owned(), // Probably not a path, ignore
+                }
+            };
+
             let remap_arg_indices = {
                 let mut indices = FxHashSet();
+                // rustc args are guaranteed to be valid UTF-8 (checked early)
                 for (i, e) in env::args().enumerate() {
                     if e.starts_with("--remap-path-prefix=") {
                         indices.insert(i);
@@ -188,19 +198,10 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 indices
             };
 
-            let args_without_remap_args = env::args()
+            let args = env::args()
                 .enumerate()
                 .filter(|(i, _)| !remap_arg_indices.contains(i))
-                .map(|(_, e)| e);
-
-            let mapping = self.tcx.sess.source_map().path_mapping();
-            let remap_arg = |x: &str| -> String {
-                mapping.map_prefix(PathBuf::from(x)).0.to_str().unwrap().to_owned()
-            };
-
-            // Naively attempt to remap every argument
-            let args = args_without_remap_args
-                .map(|elem| {
+                .map(|(_, elem)| {
                     let mut arg = elem.splitn(2, '=');
                     match (arg.next(), arg.next()) {
                         // Apart from `--remap...`, in `a=b` args usually only
@@ -214,14 +215,10 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             args.as_slice().join(" ")
         };
 
-        let opts = &self.tcx.sess.opts;
-
         let data = CompilationOptions {
-            invocation,
-            crate_name: opts.crate_name.clone(),
-            test: opts.test,
-            sysroot: opts.maybe_sysroot.clone(),
-            target_triple: opts.target_triple.to_string(),
+            directory: self.tcx.sess.working_dir.0.clone(),
+            command,
+            output: self.save_ctxt.compilation_output(crate_name),
         };
 
         self.dumper.compilation_opts(data);

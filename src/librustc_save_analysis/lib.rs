@@ -23,6 +23,7 @@ extern crate rustc;
 #[macro_use]
 extern crate log;
 extern crate rustc_data_structures;
+extern crate rustc_codegen_utils;
 extern crate rustc_serialize;
 extern crate rustc_target;
 extern crate rustc_typeck;
@@ -45,9 +46,10 @@ use rustc::hir::def::Def as HirDef;
 use rustc::hir::Node;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::cstore::ExternCrate;
-use rustc::session::config::CrateType;
+use rustc::session::config::{CrateType, OutputType};
 use rustc::ty::{self, TyCtxt};
 use rustc_typeck::hir_ty_to_ty;
+use rustc_codegen_utils::link::{filename_for_metadata, out_filename};
 
 use std::cell::Cell;
 use std::default::Default;
@@ -111,6 +113,24 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
+    // Returns path to the compilation output (e.g. libfoo-12345678.rmeta)
+    pub fn compilation_output(&self, crate_name: &str) -> PathBuf {
+        let sess = &self.tcx.sess;
+        // Save-analysis is emitted per whole session, not per each crate type
+        let crate_type = sess.crate_types.borrow()[0];
+        let outputs = &*self.tcx.output_filenames(LOCAL_CRATE);
+
+        if outputs.outputs.contains_key(&OutputType::Metadata) {
+            filename_for_metadata(sess, crate_name, outputs)
+        } else if outputs.outputs.should_codegen() {
+            out_filename(sess, crate_type, outputs, crate_name)
+        } else {
+            // Otherwise it's only a DepInfo, in which case we return early and
+            // not even reach the analysis stage.
+            unreachable!()
+        }
+    }
+
     // List external crates used by the current crate.
     pub fn get_external_crates(&self) -> Vec<ExternalCrateData> {
         let mut result = Vec::with_capacity(self.tcx.crates().len());
@@ -139,15 +159,9 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     disambiguator: self.tcx.crate_disambiguator(n).to_fingerprint().as_value(),
                 },
                 source: CrateSource {
-                    dylib: src.dylib.as_ref().map(|(ref path, _)|
-                        map_prefix(path).display().to_string()
-                    ),
-                    rlib: src.rlib.as_ref().map(|(ref path, _)|
-                        map_prefix(path).display().to_string()
-                    ),
-                    rmeta: src.rmeta.as_ref().map(|(ref path, _)|
-                        map_prefix(path).display().to_string()
-                    ),
+                    dylib: src.dylib.as_ref().map(|(path, _)| map_prefix(path)),
+                    rlib: src.rlib.as_ref().map(|(path, _)| map_prefix(path)),
+                    rmeta: src.rmeta.as_ref().map(|(path, _)| map_prefix(path)),
                 }
             });
         }
@@ -1103,7 +1117,7 @@ impl<'a> SaveHandler for DumpHandler<'a> {
         let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
 
         visitor.dump_crate_info(cratename, krate);
-        visitor.dump_compilation_options();
+        visitor.dump_compilation_options(cratename);
         visit::walk_crate(&mut visitor, krate);
     }
 }
@@ -1129,7 +1143,7 @@ impl<'b> SaveHandler for CallbackHandler<'b> {
         let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
 
         visitor.dump_crate_info(cratename, krate);
-        visitor.dump_compilation_options();
+        visitor.dump_compilation_options(cratename);
         visit::walk_crate(&mut visitor, krate);
     }
 }
