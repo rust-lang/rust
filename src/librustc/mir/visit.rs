@@ -156,6 +156,15 @@ macro_rules! make_mir_visitor {
                 self.super_place(place, context, location);
             }
 
+            fn visit_neoplace(
+                &mut self,
+                place: & $($mutability)* NeoPlace<'tcx>,
+                context: PlaceContext<'tcx>,
+                location: Location,
+            ) {
+                self.super_neoplace(place, context, location);
+            }
+
             fn visit_static(&mut self,
                             static_: & $($mutability)* Static<'tcx>,
                             context: PlaceContext<'tcx>,
@@ -748,6 +757,40 @@ macro_rules! make_mir_visitor {
                     },
                     Place::Projection(ref $($mutability)* proj) => {
                         self.visit_projection(proj, context, location);
+                    }
+                }
+            }
+
+            fn super_neoplace(
+                &mut self,
+                place: & $($mutability)* NeoPlace<'tcx>,
+                context: PlaceContext<'tcx>,
+                location: Location,
+            ) {
+                let NeoPlace {
+                    base,
+                    elems,
+                } = place;
+
+                match base {
+                    PlaceBase::Local(local) => {
+                        self.visit_local(local, context, location);
+                    }
+                    PlaceBase::Static(static_) => {
+                        self.visit_static(static_, context, location);
+                    }
+                    PlaceBase::Promoted(promoted) => {
+                        self.visit_ty(& $($mutability)* promoted.1, TyContext::Location(location));
+                    }
+                }
+
+                if !elems.is_empty() {
+                    for elem in elems.iter().cloned().rev() {
+                        self.visit_projection_elem(
+                            &$($mutability)* elem.clone(),
+                            context,
+                            location
+                        );
                     }
                 }
             }
