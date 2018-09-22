@@ -135,7 +135,7 @@ source = "git+https://github.com/CraneStation/cranelift.git#7d08f6da158693215472
 dependencies = [
  "cranelift-codegen 0.21.1 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-module 0.21.1 (git+https://github.com/CraneStation/cranelift.git)",
- "faerie 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "faerie 0.5.0 (git+https://github.com/m4b/faerie.git?branch=mach_data_relocations)",
  "failure 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "goblin 0.0.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "target-lexicon 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -219,7 +219,7 @@ dependencies = [
 [[package]]
 name = "faerie"
 version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/m4b/faerie.git?branch=mach_data_relocations#c8587ada91fd0af6961e0a884fa44454efbb2a21"
 dependencies = [
  "env_logger 0.5.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -423,7 +423,7 @@ dependencies = [
  "cranelift-faerie 0.21.1 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-module 0.21.1 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-simplejit 0.21.1 (git+https://github.com/CraneStation/cranelift.git)",
- "faerie 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "faerie 0.5.0 (git+https://github.com/m4b/faerie.git?branch=mach_data_relocations)",
  "target-lexicon 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -674,7 +674,7 @@ dependencies = [
 "checksum env_logger 0.5.13 (registry+https://github.com/rust-lang/crates.io-index)" = "15b0a4d2e39f8420210be8b27eeda28029729e2fd4291019455016c348240c38"
 "checksum errno 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)" = "c2a071601ed01b988f896ab14b95e67335d1eeb50190932a1320f7fe3cadc84e"
 "checksum errno-dragonfly 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "14ca354e36190500e1e1fb267c647932382b54053c50b14970856c0b00a35067"
-"checksum faerie 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3a1085754e4ac8a52d1bfe21ddeb534ac25800b56586a64554c3c32944ccb0b8"
+"checksum faerie 0.5.0 (git+https://github.com/m4b/faerie.git?branch=mach_data_relocations)" = "<none>"
 "checksum failure 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7efb22686e4a466b1ec1a15c2898f91fa9cb340452496dca654032de20ff95b9"
 "checksum failure_derive 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "946d0e98a50d9831f5d589038d2ca7f8f455b1c21028c0db0e84116a12696426"
 "checksum gcc 0.3.54 (registry+https://github.com/rust-lang/crates.io-index)" = "5e33ec290da0d127825013597dbdfc28bee4964690c7ce1166cbc2a7bd08b1bb"
