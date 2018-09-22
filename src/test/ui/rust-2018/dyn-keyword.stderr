@@ -1,0 +1,16 @@
+error: `dyn` is a keyword in the 2018 edition
+  --> $DIR/dyn-keyword.rs:8:9
+   |
+LL |     let dyn = (); //~ ERROR dyn
+   |         ^^^ help: you can use a raw identifier to stay compatible: `r#dyn`
+   |
+note: lint level defined here
+  --> $DIR/dyn-keyword.rs:5:9
+   |
+LL | #![deny(keyword_idents)]
+   |         ^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
+
+error: aborting due to previous error
+

@@ -1,0 +1,10 @@
+// edition:2015
+// run-rustfix
+
+#![allow(unused_variables)]
+#![deny(keyword_idents)]
+
+fn main() {
+    let r#dyn = (); //~ ERROR dyn
+    //~^ WARN hard error in the 2018 edition
+}

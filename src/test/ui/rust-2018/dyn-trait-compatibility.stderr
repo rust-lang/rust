@@ -1,0 +1,14 @@
+error: expected identifier, found reserved keyword `dyn`
+  --> $DIR/dyn-trait-compatibility.rs:4:16
+   |
+LL | type A1 = dyn::dyn; //~ERROR expected identifier, found reserved keyword
+   |                ^^^ expected identifier, found reserved keyword
+
+error: expected identifier, found `<`
+  --> $DIR/dyn-trait-compatibility.rs:5:14
+   |
+LL | type A2 = dyn<dyn, dyn>; //~ERROR expected identifier, found `<`
+   |              ^ expected identifier
+
+error: aborting due to 2 previous errors
+

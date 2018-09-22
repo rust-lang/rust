@@ -136,6 +136,7 @@ fn ident_can_begin_type(ident: ast::Ident, is_raw: bool) -> bool {
         keywords::Unsafe.name(),
         keywords::Extern.name(),
         keywords::Typeof.name(),
+        keywords::Dyn.name(),
     ].contains(&ident.name)
 }
 
