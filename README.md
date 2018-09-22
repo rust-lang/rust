@@ -64,6 +64,8 @@ rustup component add clippy-preview
 
 Now you can run Clippy by invoking `cargo clippy`.
 
+If it says that it can't find the `clippy` subcommand, please run `rustup self update`
+
 ### Running Clippy from the command line without installing it
 
 To have cargo compile your crate with Clippy without Clippy installation
