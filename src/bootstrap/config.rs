@@ -625,13 +625,11 @@ impl Config {
         let default = true;
         config.rust_optimize = optimize.unwrap_or(default);
 
-        let default = match &config.channel[..] {
-            "stable" | "beta" | "nightly" => true,
-            _ => false,
-        };
         config.rust_debuginfo_lines = debuginfo_lines.unwrap_or(default);
+
+        let default = false;
         config.rust_debuginfo_only_std = debuginfo_only_std.unwrap_or(default);
-        config.rust_debuginfo_tools = debuginfo_tools.unwrap_or(false);
+        config.rust_debuginfo_tools = debuginfo_tools.unwrap_or(default);
 
         let default = debug == Some(true);
         config.rust_debuginfo = debuginfo.unwrap_or(default);

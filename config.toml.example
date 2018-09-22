@@ -289,7 +289,7 @@
 #debuginfo = false
 
 # Whether or not line number debug information is emitted
-#debuginfo-lines = false
+#debuginfo-lines = true
 
 # Whether or not to only build debuginfo for the standard library if enabled.
 # If enabled, this will not compile the compiler with debuginfo, just the
