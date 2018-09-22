@@ -683,9 +683,15 @@ impl<'a> LoweringContext<'a> {
                 // Get the name we'll use to make the def-path. Note
                 // that collisions are ok here and this shouldn't
                 // really show up for end-user.
-                let str_name = match hir_name {
-                    ParamName::Plain(ident) => ident.as_interned_str(),
-                    ParamName::Fresh(_) => keywords::UnderscoreLifetime.name().as_interned_str(),
+                let (str_name, kind) = match hir_name {
+                    ParamName::Plain(ident) => (
+                        ident.as_interned_str(),
+                        hir::LifetimeParamKind::InBand,
+                    ),
+                    ParamName::Fresh(_) => (
+                        keywords::UnderscoreLifetime.name().as_interned_str(),
+                        hir::LifetimeParamKind::Elided,
+                    ),
                 };
 
                 // Add a definition for the in-band lifetime def
@@ -705,7 +711,7 @@ impl<'a> LoweringContext<'a> {
                     bounds: hir_vec![],
                     span,
                     pure_wrt_drop: false,
-                    kind: hir::GenericParamKind::Lifetime { in_band: true }
+                    kind: hir::GenericParamKind::Lifetime { kind }
                 }
             })
             .chain(in_band_ty_params.into_iter())
@@ -1452,11 +1458,15 @@ impl<'a> LoweringContext<'a> {
                         lifetime.span,
                     );
 
-                    let name = match name {
-                        hir::LifetimeName::Underscore => {
-                            hir::ParamName::Plain(keywords::UnderscoreLifetime.ident())
-                        }
-                        hir::LifetimeName::Param(param_name) => param_name,
+                    let (name, kind) = match name {
+                        hir::LifetimeName::Underscore => (
+                            hir::ParamName::Plain(keywords::UnderscoreLifetime.ident()),
+                            hir::LifetimeParamKind::Elided,
+                        ),
+                        hir::LifetimeName::Param(param_name) => (
+                            param_name,
+                            hir::LifetimeParamKind::Explicit,
+                        ),
                         _ => bug!("expected LifetimeName::Param or ParamName::Plain"),
                     };
 
@@ -1467,9 +1477,7 @@ impl<'a> LoweringContext<'a> {
                         pure_wrt_drop: false,
                         attrs: hir_vec![],
                         bounds: hir_vec![],
-                        kind: hir::GenericParamKind::Lifetime {
-                            in_band: false,
-                        }
+                        kind: hir::GenericParamKind::Lifetime { kind }
                     });
                 }
             }
@@ -2283,7 +2291,9 @@ impl<'a> LoweringContext<'a> {
                     pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
                     attrs: self.lower_attrs(&param.attrs),
                     bounds,
-                    kind: hir::GenericParamKind::Lifetime { in_band: false }
+                    kind: hir::GenericParamKind::Lifetime {
+                        kind: hir::LifetimeParamKind::Explicit,
+                    }
                 };
 
                 self.is_collecting_in_band_lifetimes = was_collecting_in_band;

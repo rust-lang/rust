@@ -35,7 +35,7 @@ use syntax_pos::Span;
 use util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap, NodeSet};
 
 use hir::intravisit::{self, NestedVisitorMap, Visitor};
-use hir::{self, GenericParamKind};
+use hir::{self, GenericParamKind, LifetimeParamKind};
 
 /// The origin of a named lifetime definition.
 ///
@@ -51,8 +51,8 @@ pub enum LifetimeDefOrigin {
 impl LifetimeDefOrigin {
     fn from_param(param: &GenericParam) -> Self {
         match param.kind {
-            GenericParamKind::Lifetime { in_band } => {
-                if in_band {
+            GenericParamKind::Lifetime { kind } => {
+                if kind == LifetimeParamKind::InBand {
                     LifetimeDefOrigin::InBand
                 } else {
                     LifetimeDefOrigin::Explicit
@@ -1087,15 +1087,15 @@ fn check_mixed_explicit_and_in_band_defs(
     tcx: TyCtxt<'_, '_, '_>,
     params: &P<[hir::GenericParam]>,
 ) {
-    let in_bands: Vec<_> = params.iter().filter_map(|param| match param.kind {
-        GenericParamKind::Lifetime { in_band, .. } => Some((in_band, param.span)),
+    let lifetime_params: Vec<_> = params.iter().filter_map(|param| match param.kind {
+        GenericParamKind::Lifetime { kind, .. } => Some((kind, param.span)),
         _ => None,
     }).collect();
-    let out_of_band = in_bands.iter().find(|(in_band, _)| !in_band);
-    let in_band = in_bands.iter().find(|(in_band, _)| *in_band);
+    let explicit = lifetime_params.iter().find(|(kind, _)| *kind == LifetimeParamKind::Explicit);
+    let in_band = lifetime_params.iter().find(|(kind, _)| *kind == LifetimeParamKind::InBand);
 
-    if let (Some((_, out_of_band_span)), Some((_, in_band_span)))
-        = (out_of_band, in_band) {
+    if let (Some((_, explicit_span)), Some((_, in_band_span)))
+        = (explicit, in_band) {
         struct_span_err!(
             tcx.sess,
             *in_band_span,
@@ -1104,7 +1104,7 @@ fn check_mixed_explicit_and_in_band_defs(
         ).span_label(
             *in_band_span,
             "in-band lifetime definition here",
-        ).span_label(*out_of_band_span, "explicit lifetime definition here")
+        ).span_label(*explicit_span, "explicit lifetime definition here")
         .emit();
     }
 }

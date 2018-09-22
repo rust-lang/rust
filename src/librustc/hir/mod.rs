@@ -499,14 +499,27 @@ impl GenericBound {
 
 pub type GenericBounds = HirVec<GenericBound>;
 
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
+pub enum LifetimeParamKind {
+    // Indicates that the lifetime definition was explicitly declared, like:
+    // `fn foo<'a>(x: &'a u8) -> &'a u8 { x }`
+    Explicit,
+
+    // Indicates that the lifetime definition was synthetically added
+    // as a result of an in-band lifetime usage like:
+    // `fn foo(x: &'a u8) -> &'a u8 { x }`
+    InBand,
+
+    // Indication that the lifetime was elided like both cases here:
+    // `fn foo(x: &u8) -> &'_ u8 { x }`
+    Elided,
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum GenericParamKind {
     /// A lifetime definition, eg `'a: 'b + 'c + 'd`.
     Lifetime {
-        // Indicates that the lifetime definition was synthetically added
-        // as a result of an in-band lifetime usage like:
-        // `fn foo(x: &'a u8) -> &'a u8 { x }`
-        in_band: bool,
+        kind: LifetimeParamKind,
     },
     Type {
         default: Option<P<Ty>>,
