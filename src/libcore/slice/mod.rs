@@ -119,7 +119,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn first(&self) -> Option<&T> {
-        if self.is_empty() { None } else { Some(&self[0]) }
+        self.get(0)
     }
 
     /// Returns a mutable pointer to the first element of the slice, or `None` if it is empty.
@@ -137,7 +137,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn first_mut(&mut self) -> Option<&mut T> {
-        if self.is_empty() { None } else { Some(&mut self[0]) }
+        self.get_mut(0)
     }
 
     /// Returns the first and all the rest of the elements of the slice, or `None` if it is empty.
@@ -239,7 +239,8 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn last(&self) -> Option<&T> {
-        if self.is_empty() { None } else { Some(&self[self.len() - 1]) }
+        let last_idx = self.len().checked_sub(1)?;
+        self.get(last_idx)
     }
 
     /// Returns a mutable pointer to the last item in the slice.
@@ -257,9 +258,8 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn last_mut(&mut self) -> Option<&mut T> {
-        let len = self.len();
-        if len == 0 { return None; }
-        Some(&mut self[len - 1])
+        let last_idx = self.len().checked_sub(1)?;
+        self.get_mut(last_idx)
     }
 
     /// Returns a reference to an element or subslice depending on the type of
