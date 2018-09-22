@@ -566,14 +566,9 @@ where
 
 pub fn extract_pre_comment(pre_snippet: &str) -> (Option<String>, ListItemCommentStyle) {
     let trimmed_pre_snippet = pre_snippet.trim();
+    let has_block_comment = trimmed_pre_snippet.ends_with("*/");
     let has_single_line_comment = trimmed_pre_snippet.starts_with("//");
-    let has_block_comment = trimmed_pre_snippet.starts_with("/*");
-    if has_single_line_comment {
-        (
-            Some(trimmed_pre_snippet.to_owned()),
-            ListItemCommentStyle::DifferentLine,
-        )
-    } else if has_block_comment {
+    if has_block_comment {
         let comment_end = pre_snippet.chars().rev().position(|c| c == '/').unwrap();
         if pre_snippet
             .chars()
@@ -591,6 +586,11 @@ pub fn extract_pre_comment(pre_snippet: &str) -> (Option<String>, ListItemCommen
                 ListItemCommentStyle::SameLine,
             )
         }
+    } else if has_single_line_comment {
+        (
+            Some(trimmed_pre_snippet.to_owned()),
+            ListItemCommentStyle::DifferentLine,
+        )
     } else {
         (None, ListItemCommentStyle::None)
     }
