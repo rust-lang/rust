@@ -501,9 +501,9 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                     flow_state,
                 );
             }
-            StatementKind::ReadForMatch(ref place) => {
+            StatementKind::FakeRead(_, ref place) => {
                 self.access_place(
-                    ContextKind::ReadForMatch.new(location),
+                    ContextKind::FakeRead.new(location),
                     (place, span),
                     (Deep, Read(ReadKind::Borrow(BorrowKind::Shared))),
                     LocalMutationIsAllowed::No,
@@ -2229,7 +2229,7 @@ enum ContextKind {
     CallDest,
     Assert,
     Yield,
-    ReadForMatch,
+    FakeRead,
     StorageDead,
 }
 

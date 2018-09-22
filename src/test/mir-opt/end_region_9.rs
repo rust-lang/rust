@@ -55,8 +55,10 @@ fn main() {
 //     bb0: {
 //        StorageLive(_1);
 //        _1 = const false;
+//        FakeRead(ForLet, _1);
 //        StorageLive(_2);
 //        _2 = const 3i32;
+//        FakeRead(ForLet, _2);
 //        falseUnwind -> [real: bb2, cleanup: bb1];
 //    }
 //    bb1: {

@@ -1505,7 +1505,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.emit_read_for_match()
     }
 
-    /// If true, make MIR codegen for `match` emit ReadForMatch
+    /// If true, make MIR codegen for `match` emit FakeRead
     /// statements (which simulate the maximal effect of executing the
     /// patterns in a match arm).
     pub fn emit_read_for_match(&self) -> bool {

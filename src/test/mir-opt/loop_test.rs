@@ -42,6 +42,7 @@ fn main() {
 //    bb5: { // The loop body (body_block)
 //        StorageLive(_5);
 //        _5 = const 1i32;
+//        FakeRead(ForLet, _5);
 //        StorageDead(_5);
 //        goto -> bb4;
 //    }

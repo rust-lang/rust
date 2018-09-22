@@ -11,7 +11,7 @@
 use borrow_check::borrow_set::BorrowData;
 use borrow_check::nll::region_infer::Cause;
 use borrow_check::{Context, MirBorrowckCtxt, WriteKind};
-use rustc::mir::{Local, Location, Place, TerminatorKind};
+use rustc::mir::{FakeReadCause, Local, Location, Place, TerminatorKind};
 use rustc_errors::DiagnosticBuilder;
 use rustc::ty::Region;
 
@@ -142,7 +142,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     if spans.for_closure() {
                         "borrow later captured here by closure"
                     } else {
-                        "borrow later used here"
+                        // Check if the location represents a `FakeRead`, and adapt the error
+                        // message to the `FakeReadCause` it is from: in particular,
+                        // the ones inserted in optimized `let var = <expr>` patterns.
+                        match self.retrieve_fake_read_cause_for_location(&location) {
+                            Some(FakeReadCause::ForLet) => "borrow later stored here",
+                            _ => "borrow later used here"
+                        }
                     }
                 };
                 err.span_label(spans.var_or_use(), message);

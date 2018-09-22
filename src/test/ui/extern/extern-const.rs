@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// run-rustfix
+// FIXME(#54388): re-enable rustfix later, when this test has consistent output across targets
 // compile-flags: -Z continue-parse-after-error
 
 extern "C" {

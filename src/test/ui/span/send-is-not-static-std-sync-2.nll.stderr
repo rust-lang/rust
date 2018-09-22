@@ -1,24 +1,24 @@
 error[E0597]: `x` does not live long enough
   --> $DIR/send-is-not-static-std-sync-2.rs:21:20
    |
+LL |     let lock = {
+   |         ---- borrow later stored here
+LL |         let x = 1;
 LL |         Mutex::new(&x)
    |                    ^^ borrowed value does not live long enough
 LL |     };
    |     - `x` dropped here while still borrowed
-...
-LL |     let _dangling = *lock.lock().unwrap();
-   |                      ---- borrow later used here
 
 error[E0597]: `x` does not live long enough
   --> $DIR/send-is-not-static-std-sync-2.rs:31:21
    |
+LL |     let lock = {
+   |         ---- borrow later stored here
+LL |         let x = 1;
 LL |         RwLock::new(&x)
    |                     ^^ borrowed value does not live long enough
 LL |     };
    |     - `x` dropped here while still borrowed
-LL |     //~^^ ERROR `x` does not live long enough
-LL |     let _dangling = *lock.read().unwrap();
-   |                      ---- borrow later used here
 
 error[E0597]: `x` does not live long enough
   --> $DIR/send-is-not-static-std-sync-2.rs:41:25

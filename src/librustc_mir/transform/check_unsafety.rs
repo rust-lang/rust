@@ -108,7 +108,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
         self.source_info = statement.source_info;
         match statement.kind {
             StatementKind::Assign(..) |
-            StatementKind::ReadForMatch(..) |
+            StatementKind::FakeRead(..) |
             StatementKind::SetDiscriminant { .. } |
             StatementKind::StorageLive(..) |
             StatementKind::StorageDead(..) |

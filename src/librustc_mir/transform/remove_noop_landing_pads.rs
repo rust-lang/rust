@@ -49,7 +49,7 @@ impl RemoveNoopLandingPads {
     ) -> bool {
         for stmt in &mir[bb].statements {
             match stmt.kind {
-                StatementKind::ReadForMatch(_) |
+                StatementKind::FakeRead(..) |
                 StatementKind::StorageLive(_) |
                 StatementKind::StorageDead(_) |
                 StatementKind::EndRegion(_) |

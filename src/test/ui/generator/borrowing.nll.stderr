@@ -10,6 +10,9 @@ LL |     };
 error[E0597]: `a` does not live long enough
   --> $DIR/borrowing.rs:24:9
    |
+LL |       let _b = {
+   |           -- borrow later stored here
+LL |           let a = 3;
 LL | /         || {
 LL | |             yield &a
 LL | |             //~^ ERROR: `a` does not live long enough
@@ -17,8 +20,6 @@ LL | |         }
    | |_________^ borrowed value does not live long enough
 LL |       };
    |       - `a` dropped here while still borrowed
-LL |   }
-   |   - borrow later used here, when `_b` is dropped
 
 error: aborting due to 2 previous errors
 

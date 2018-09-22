@@ -145,19 +145,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     if let (true, Some(borrow_temp)) =
                         (tcx.emit_read_for_match(), borrowed_input_temp.clone())
                     {
-                        // inject a fake read of the borrowed input at
-                        // the start of each arm's pattern testing
-                        // code.
-                        //
-                        // This should ensure that you cannot change
-                        // the variant for an enum while you are in
-                        // the midst of matching on it.
+                        // Inject a fake read, see comments on `FakeReadCause::ForMatch`.
                         let pattern_source_info = self.source_info(pattern.span);
                         self.cfg.push(
                             *pre_binding_block,
                             Statement {
                                 source_info: pattern_source_info,
-                                kind: StatementKind::ReadForMatch(borrow_temp.clone()),
+                                kind: StatementKind::FakeRead(
+                                    FakeReadCause::ForMatch,
+                                    borrow_temp.clone(),
+                                ),
                             },
                         );
                     }
@@ -264,6 +261,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard);
                 unpack!(block = self.into(&place, block, initializer));
+
+
+                // Inject a fake read, see comments on `FakeReadCause::ForLet`.
+                let source_info = self.source_info(irrefutable_pat.span);
+                self.cfg.push(
+                    block,
+                    Statement {
+                        source_info,
+                        kind: StatementKind::FakeRead(FakeReadCause::ForLet, place.clone()),
+                    },
+                );
+
                 self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
                 block.unit()
             }
@@ -302,6 +311,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             ty::Variance::Invariant,
                             ascription_user_ty,
                         ),
+                    },
+                );
+
+                // Inject a fake read, see comments on `FakeReadCause::ForLet`.
+                self.cfg.push(
+                    block,
+                    Statement {
+                        source_info,
+                        kind: StatementKind::FakeRead(FakeReadCause::ForLet, place.clone()),
                     },
                 );
 

@@ -216,7 +216,7 @@ fn check_statement(
             check_rvalue(tcx, mir, rval, span)
         }
 
-        StatementKind::ReadForMatch(_) => Err((span, "match in const fn is unstable".into())),
+        StatementKind::FakeRead(..) => Err((span, "match in const fn is unstable".into())),
 
         // just an assignment
         StatementKind::SetDiscriminant { .. } => Ok(()),

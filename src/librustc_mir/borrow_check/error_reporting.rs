@@ -12,7 +12,7 @@ use borrow_check::WriteKind;
 use rustc::middle::region::ScopeTree;
 use rustc::mir::VarBindingForm;
 use rustc::mir::{BindingForm, BorrowKind, ClearCrossCrate, Field, Local};
-use rustc::mir::{LocalDecl, LocalKind, Location, Operand, Place};
+use rustc::mir::{FakeReadCause, LocalDecl, LocalKind, Location, Operand, Place};
 use rustc::mir::{ProjectionElem, Rvalue, Statement, StatementKind};
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
@@ -1018,6 +1018,21 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         } else {
             debug!("is_place_thread_local: no");
             false
+        }
+    }
+
+    /// Returns the `FakeReadCause` at this location if it is a `FakeRead` statement.
+    pub(super) fn retrieve_fake_read_cause_for_location(
+        &self,
+        location: &Location,
+    ) -> Option<FakeReadCause> {
+        let stmt = self.mir.basic_blocks()[location.block]
+            .statements
+            .get(location.statement_index)?;
+        if let StatementKind::FakeRead(cause, _) = stmt.kind {
+            Some(cause)
+        } else {
+            None
         }
     }
 }

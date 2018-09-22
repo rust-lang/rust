@@ -66,15 +66,15 @@ fn main() {
 //      goto -> bb13;
 //  }
 //  bb3: { // binding3(empty) and arm3
-//      ReadForMatch(_4);
+//      FakeRead(ForMatch, _4);
 //      falseEdges -> [real: bb8, imaginary: bb4]; //pre_binding1
 //  }
 //  bb4: {
-//      ReadForMatch(_4);
+//      FakeRead(ForMatch, _4);
 //      falseEdges -> [real: bb12, imaginary: bb5]; //pre_binding2
 //  }
 //  bb5: {
-//      ReadForMatch(_4);
+//      FakeRead(ForMatch, _4);
 //      falseEdges -> [real: bb2, imaginary: bb6]; //pre_binding3
 //  }
 //  bb6: {
@@ -136,15 +136,15 @@ fn main() {
 //      goto -> bb13;
 //  }
 //  bb3: {
-//      ReadForMatch(_4);
+//      FakeRead(ForMatch, _4);
 //      falseEdges -> [real: bb8, imaginary: bb4]; //pre_binding1
 //  }
 //  bb4: {
-//      ReadForMatch(_4);
+//      FakeRead(ForMatch, _4);
 //      falseEdges -> [real: bb2, imaginary: bb5]; //pre_binding2
 //  }
 //  bb5: {
-//      ReadForMatch(_4);
+//      FakeRead(ForMatch, _4);
 //      falseEdges -> [real: bb12, imaginary: bb6]; //pre_binding3
 //  }
 //  bb6: {
@@ -202,19 +202,19 @@ fn main() {
 //     resume;
 // }
 // bb2: {
-//     ReadForMatch(_4);
+//     FakeRead(ForMatch, _4);
 //     falseEdges -> [real: bb7, imaginary: bb3]; //pre_binding1
 // }
 // bb3: {
-//     ReadForMatch(_4);
+//     FakeRead(ForMatch, _4);
 //     falseEdges -> [real: bb11, imaginary: bb4]; //pre_binding2
 // }
 // bb4: {
-//     ReadForMatch(_4);
+//     FakeRead(ForMatch, _4);
 //     falseEdges -> [real: bb12, imaginary: bb5]; //pre_binding3
 // }
 // bb5: {
-//     ReadForMatch(_4);
+//     FakeRead(ForMatch, _4);
 //     falseEdges -> [real: bb16, imaginary: bb6]; //pre_binding4
 // }
 // bb6: {

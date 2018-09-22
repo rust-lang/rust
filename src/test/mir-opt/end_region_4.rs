@@ -45,10 +45,13 @@ fn foo(i: i32) {
 //     bb0: {
 //         StorageLive(_1);
 //         _1 = D::{{constructor}}(const 0i32,);
+//         FakeRead(ForLet, _1);
 //         StorageLive(_2);
 //         _2 = const 0i32;
+//         FakeRead(ForLet, _2);
 //         StorageLive(_3);
 //         _3 = &'26_2rs _2;
+//         FakeRead(ForLet, _3);
 //         StorageLive(_5);
 //         _5 = (*_3);
 //         _4 = const foo(move _5) -> [return: bb2, unwind: bb3];
@@ -60,6 +63,7 @@ fn foo(i: i32) {
 //         StorageDead(_5);
 //         StorageLive(_6);
 //         _6 = &'26_4rs _2;
+//         FakeRead(ForLet, _6);
 //         _0 = ();
 //         EndRegion('26_4rs);
 //         StorageDead(_6);

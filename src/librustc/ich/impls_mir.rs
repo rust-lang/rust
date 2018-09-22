@@ -238,7 +238,8 @@ for mir::StatementKind<'gcx> {
                 place.hash_stable(hcx, hasher);
                 rvalue.hash_stable(hcx, hasher);
             }
-            mir::StatementKind::ReadForMatch(ref place) => {
+            mir::StatementKind::FakeRead(ref cause, ref place) => {
+                cause.hash_stable(hcx, hasher);
                 place.hash_stable(hcx, hasher);
             }
             mir::StatementKind::SetDiscriminant { ref place, variant_index } => {
@@ -270,6 +271,8 @@ for mir::StatementKind<'gcx> {
         }
     }
 }
+
+impl_stable_hash_for!(enum mir::FakeReadCause { ForMatch, ForLet });
 
 impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>>
     for mir::ValidationOperand<'gcx, T>

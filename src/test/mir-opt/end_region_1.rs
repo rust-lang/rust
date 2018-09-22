@@ -29,8 +29,10 @@ fn main() {
 //     bb0: {
 //         StorageLive(_1);
 //         _1 = const 3i32;
+//         FakeRead(ForLet, _1);
 //         StorageLive(_2);
 //         _2 = &'10_1rs _1;
+//         FakeRead(ForLet, _2);
 //         _0 = ();
 //         EndRegion('10_1rs);
 //         StorageDead(_2);

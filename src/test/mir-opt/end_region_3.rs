@@ -49,6 +49,7 @@ fn main() {
 //         _1 = const true;
 //         StorageLive(_3);
 //         _3 = &'26_1rs _1;
+//         FakeRead(ForLet, _3);
 //         StorageLive(_5);
 //         _5 = _1;
 //         switchInt(move _5) -> [false: bb5, otherwise: bb4];
@@ -69,6 +70,7 @@ fn main() {
 //         StorageDead(_5);
 //         StorageLive(_7);
 //         _7 = &'26_3rs _1;
+//         FakeRead(ForLet, _7);
 //         _2 = ();
 //         EndRegion('26_3rs);
 //         StorageDead(_7);
