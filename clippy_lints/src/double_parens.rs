@@ -1,7 +1,8 @@
 use crate::syntax::ast::*;
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use crate::utils::span_lint;
+use crate::utils::{in_macro, span_lint};
+
 
 /// **What it does:** Checks for unnecessary double parentheses.
 ///
@@ -33,6 +34,10 @@ impl LintPass for DoubleParens {
 
 impl EarlyLintPass for DoubleParens {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
+        if in_macro(expr.span) {
+            return;
+        }
+
         match expr.node {
             ExprKind::Paren(ref in_paren) => match in_paren.node {
                 ExprKind::Paren(_) | ExprKind::Tup(_) => {

@@ -48,4 +48,10 @@ fn method_unit_ok(x: DummyStruct) {
     x.dummy_method(());
 }
 
+// Issue #3206
+fn inside_macro() {
+    assert_eq!((1, 2), (1, 2), "Error");
+    assert_eq!(((1, 2)), (1, 2), "Error");
+}
+
 fn main() {}
