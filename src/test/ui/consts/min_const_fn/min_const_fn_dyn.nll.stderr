@@ -10,16 +10,16 @@ error: trait bounds other than `Sized` on const fn parameters are unstable
 LL | const fn no_inner_dyn_trait_ret() -> Hide { Hide(HasDyn { field: &0 }) }
    |                                                                  ^^
 
-error[E0597]: borrowed value does not live long enough
+error[E0714]: temporary value dropped while borrowed
   --> $DIR/min_const_fn_dyn.rs:24:67
    |
 LL | const fn no_inner_dyn_trait_ret() -> Hide { Hide(HasDyn { field: &0 }) }
-   |                                                                   ^    - temporary value only lives until here
+   |                                                                   ^    - temporary value is freed at the end of this statement
    |                                                                   |
-   |                                                                   temporary value does not live long enough
+   |                                                                   creates a temporary which is freed while still in use
    |
    = note: borrowed value must be valid for the static lifetime...
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0714`.

@@ -694,9 +694,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let tcx = self.infcx.tcx;
         let mut err =
-            tcx.path_does_not_live_long_enough(proper_span, "borrowed value", Origin::Mir);
-        err.span_label(proper_span, "temporary value does not live long enough");
-        err.span_label(drop_span, "temporary value only lives until here");
+            tcx.temporary_value_borrowed_for_too_long(proper_span, Origin::Mir);
+        err.span_label(proper_span, "creates a temporary which is freed while still in use");
+        err.span_label(drop_span, "temporary value is freed at the end of this statement");
 
         let explanation = self.explain_why_borrow_contains_point(context, borrow, None);
         match explanation {
