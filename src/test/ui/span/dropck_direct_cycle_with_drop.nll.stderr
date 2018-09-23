@@ -23,8 +23,6 @@ LL | }
    | |
    | `d1` dropped here while still borrowed
    | borrow later used here, when `d1` is dropped
-   |
-   = note: values in a scope are dropped in the opposite order they are defined
 
 error: aborting due to 2 previous errors
 

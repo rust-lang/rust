@@ -11,7 +11,6 @@ LL | }
    | borrow later used here, when `foo` is dropped
    |
    = note: consider using a `let` binding to create a longer lived value
-   = note: values in a scope are dropped in the opposite order they are defined
 
 error: aborting due to previous error
 
