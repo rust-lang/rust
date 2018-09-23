@@ -229,7 +229,7 @@ macro_rules! await {
         let mut pinned = $e;
         loop {
             if let $crate::task::Poll::Ready(x) =
-                $crate::future::poll_in_task_cx(unsafe {
+                $crate::future::poll_with_tls_waker(unsafe {
                     $crate::pin::Pin::new_unchecked(&mut pinned)
                 })
             {

@@ -123,6 +123,15 @@ impl LocalWaker {
         LocalWaker { inner }
     }
 
+    /// Converts this `LocalWaker` into a `Waker`.
+    ///
+    /// `Waker` is nearly identical to `LocalWaker`, but is threadsafe
+    /// (implements `Send` and `Sync`).
+    #[inline]
+    pub fn into_waker(self) -> Waker {
+        self.into()
+    }
+
     /// Wake up the task associated with this `LocalWaker`.
     #[inline]
     pub fn wake(&self) {

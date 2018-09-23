@@ -22,7 +22,7 @@ use panicking;
 use ptr::{Unique, NonNull};
 use rc::Rc;
 use sync::{Arc, Mutex, RwLock, atomic};
-use task::{self, Poll};
+use task::{LocalWaker, Poll};
 use thread::Result;
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
@@ -327,9 +327,9 @@ impl<T: fmt::Debug> fmt::Debug for AssertUnwindSafe<T> {
 impl<'a, F: Future> Future for AssertUnwindSafe<F> {
     type Output = F::Output;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut task::Context) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<Self::Output> {
         let pinned_field = unsafe { Pin::map_unchecked_mut(self, |x| &mut x.0) };
-        F::poll(pinned_field, cx)
+        F::poll(pinned_field, lw)
     }
 }
 
