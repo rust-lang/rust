@@ -555,7 +555,8 @@ fn convert_variant<'a, 'tcx>(
     name: ast::Name,
     discr: ty::VariantDiscr,
     def: &hir::VariantData,
-    adt_kind: ty::AdtKind
+    adt_kind: ty::AdtKind,
+    attribute_def_id: DefId
 ) -> ty::VariantDef {
     let mut seen_fields: FxHashMap<ast::Ident, Span> = FxHashMap();
     let node_id = tcx.hir.as_local_node_id(did).unwrap();
@@ -592,7 +593,8 @@ fn convert_variant<'a, 'tcx>(
         discr,
         fields,
         adt_kind,
-        CtorKind::from_hir(def))
+        CtorKind::from_hir(def),
+        attribute_def_id)
 }
 
 fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::AdtDef {
@@ -622,7 +624,8 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
                         };
                         distance_from_explicit += 1;
 
-                        convert_variant(tcx, did, v.node.name, discr, &v.node.data, AdtKind::Enum)
+                        convert_variant(tcx, did, v.node.name, discr, &v.node.data, AdtKind::Enum,
+                                        did)
                     })
                     .collect(),
             )
@@ -642,7 +645,8 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
                     item.name,
                     ty::VariantDiscr::Relative(0),
                     def,
-                    AdtKind::Struct
+                    AdtKind::Struct,
+                    def_id
                 )],
             )
         }
@@ -654,7 +658,8 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
                 item.name,
                 ty::VariantDiscr::Relative(0),
                 def,
-                AdtKind::Union
+                AdtKind::Union,
+                def_id
             )],
         ),
         _ => bug!(),

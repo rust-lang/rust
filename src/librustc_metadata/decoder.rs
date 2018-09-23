@@ -556,9 +556,12 @@ impl<'a, 'tcx> CrateMetadata {
             _ => bug!(),
         };
 
+        let def_id = self.local_def_id(data.struct_ctor.unwrap_or(index));
+        let attribute_def_id = self.local_def_id(index);
+
         ty::VariantDef::new(
             tcx,
-            self.local_def_id(data.struct_ctor.unwrap_or(index)),
+            def_id,
             self.item_name(index).as_symbol(),
             data.discr,
             item.children.decode(self).map(|index| {
@@ -570,7 +573,8 @@ impl<'a, 'tcx> CrateMetadata {
                 }
             }).collect(),
             adt_kind,
-            data.ctor_kind
+            data.ctor_kind,
+            attribute_def_id
         )
     }
 
