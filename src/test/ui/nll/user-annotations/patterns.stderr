@@ -40,33 +40,33 @@ LL | }
    |
    = note: borrowed value must be valid for the static lifetime...
 
-error[E0597]: borrowed value does not live long enough
+error[E0714]: temporary value dropped while borrowed
   --> $DIR/patterns.rs:53:41
    |
 LL |     let _: Vec<&'static String> = vec![&String::new()];
-   |                                         ^^^^^^^^^^^^^ - temporary value only lives until here
+   |                                         ^^^^^^^^^^^^^ - temporary value is freed at the end of this statement
    |                                         |
-   |                                         temporary value does not live long enough
+   |                                         creates a temporary which is freed while still in use
    |
    = note: borrowed value must be valid for the static lifetime...
 
-error[E0597]: borrowed value does not live long enough
+error[E0714]: temporary value dropped while borrowed
   --> $DIR/patterns.rs:56:52
    |
 LL |     let (_, a): (Vec<&'static String>, _) = (vec![&String::new()], 44);
-   |                                                    ^^^^^^^^^^^^^      - temporary value only lives until here
+   |                                                    ^^^^^^^^^^^^^      - temporary value is freed at the end of this statement
    |                                                    |
-   |                                                    temporary value does not live long enough
+   |                                                    creates a temporary which is freed while still in use
    |
    = note: borrowed value must be valid for the static lifetime...
 
-error[E0597]: borrowed value does not live long enough
+error[E0714]: temporary value dropped while borrowed
   --> $DIR/patterns.rs:59:53
    |
 LL |     let (_a, b): (Vec<&'static String>, _) = (vec![&String::new()], 44);
-   |                                                     ^^^^^^^^^^^^^      - temporary value only lives until here
+   |                                                     ^^^^^^^^^^^^^      - temporary value is freed at the end of this statement
    |                                                     |
-   |                                                     temporary value does not live long enough
+   |                                                     creates a temporary which is freed while still in use
    |
    = note: borrowed value must be valid for the static lifetime...
 
@@ -140,4 +140,5 @@ LL |     let (y, _z): (&'static u32, u32) = (x, 44); //~ ERROR
 
 error: aborting due to 14 previous errors
 
-For more information about this error, try `rustc --explain E0597`.
+Some errors occurred: E0597, E0714.
+For more information about an error, try `rustc --explain E0597`.

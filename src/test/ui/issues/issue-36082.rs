@@ -25,9 +25,9 @@ fn main() {
     //[ast]~| NOTE temporary value dropped here while still borrowed
     //[ast]~| NOTE temporary value does not live long enough
     //[ast]~| NOTE consider using a `let` binding to increase its lifetime
-    //[mir]~^^^^^ ERROR borrowed value does not live long enough [E0597]
-    //[mir]~| NOTE temporary value does not live long enough
-    //[mir]~| NOTE temporary value only lives until here
+    //[mir]~^^^^^ ERROR temporary value dropped while borrowed [E0714]
+    //[mir]~| NOTE temporary value is freed at the end of this statement
+    //[mir]~| NOTE creates a temporary which is freed while still in use
     //[mir]~| NOTE consider using a `let` binding to create a longer lived value
     println!("{}", val);
     //[mir]~^ borrow later used here

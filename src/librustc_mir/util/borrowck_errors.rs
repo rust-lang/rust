@@ -707,6 +707,22 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
 
         self.cancel_if_wrong_origin(err, o)
     }
+
+    fn temporary_value_borrowed_for_too_long(
+        self,
+        span: Span,
+        o: Origin,
+    ) -> DiagnosticBuilder<'cx> {
+        let err = struct_span_err!(
+            self,
+            span,
+            E0714,
+            "temporary value dropped while borrowed{OGN}",
+            OGN = o
+        );
+
+        self.cancel_if_wrong_origin(err, o)
+    }
 }
 
 impl<'cx, 'gcx, 'tcx> BorrowckErrors<'cx> for TyCtxt<'cx, 'gcx, 'tcx> {
