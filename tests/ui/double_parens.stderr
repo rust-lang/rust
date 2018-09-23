@@ -30,5 +30,11 @@ error: Consider removing unnecessary double parentheses
 32 |     (())
    |     ^^^^
 
-error: aborting due to 5 previous errors
+error: Consider removing unnecessary double parentheses
+  --> $DIR/double_parens.rs:54:16
+   |
+54 |     assert_eq!(((1, 2)), (1, 2), "Error");
+   |                ^^^^^^^^
+
+error: aborting due to 6 previous errors
 
