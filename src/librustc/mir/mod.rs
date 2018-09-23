@@ -1909,8 +1909,8 @@ pub enum Place<'tcx> {
 /// A new Place repr
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct NeoPlace<'tcx> {
-    base: PlaceBase<'tcx>,
-    elems: &'tcx List<PlaceElem<'tcx>>,
+    pub base: PlaceBase<'tcx>,
+    pub elems: &'tcx List<PlaceElem<'tcx>>,
 }
 
 impl<'tcx> serialize::UseSpecializedDecodable for &'tcx List<PlaceElem<'tcx>> {}

@@ -345,14 +345,16 @@ impl<'a, 'gcx, 'tcx> GatherBorrows<'a, 'gcx, 'tcx> {
         //    TEMP = &foo
         //
         // so extract `temp`.
-        let temp = if let &mir::Place::Local(temp) = assigned_place {
-            temp
-        } else {
-            span_bug!(
-                self.mir.source_info(start_location).span,
-                "expected 2-phase borrow to assign to a local, not `{:?}`",
-                assigned_place,
-            );
+        let neo_place = self.tcx.as_new_place(assigned_place);
+        let temp = match neo_place.base {
+            mir::PlaceBase::Local(temp) if neo_place.has_no_projection() => temp,
+            _ => {
+                span_bug!(
+                    self.mir.source_info(start_location).span,
+                    "expected 2-phase borrow to assign to a local, not `{:?}`",
+                    assigned_place,
+                );
+            }
         };
 
         // Consider the borrow not activated to start. When we find an activation, we'll update
