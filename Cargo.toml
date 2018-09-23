@@ -19,7 +19,7 @@ cranelift-simplejit = { git = "https://github.com/CraneStation/cranelift.git" }
 cranelift-faerie = { git = "https://github.com/CraneStation/cranelift.git" }
 target-lexicon = "0.0.3"
 #goblin = "0.0.17"
-faerie = "0.5.0"
+faerie = "0.5.1"
 ar = "0.6.0"
 bitflags = "1.0.3"
 byteorder = "1.2.6"
@@ -30,7 +30,3 @@ byteorder = "1.2.6"
 #cranelift-module = { path = "../cranelift/lib/module" }
 #cranelift-simplejit = { path = "../cranelift/lib/simplejit" }
 #cranelift-faerie = { path = "../cranelift/lib/faerie" }
-
-[patch.crates-io]
-# Use https://github.com/m4b/faerie/pull/47, because faerie 0.5.0 doesn't create valid Mach-O binaries
-faerie = { git = "https://github.com/m4b/faerie.git", branch = "mach_data_relocations" }

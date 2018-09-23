@@ -629,7 +629,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
         StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)
         | StatementKind::Nop
-        | StatementKind::ReadForMatch(_)
+        | StatementKind::FakeRead(..)
         | StatementKind::Validate(_, _)
         | StatementKind::EndRegion(_)
         | StatementKind::AscribeUserType(..) => {}
