@@ -160,11 +160,10 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
 
     // Generate various additional constraints.
     invalidation::generate_invalidates(
-        infcx,
+        infcx.tcx,
         &mut all_facts,
         location_table,
         &mir,
-        def_id,
         borrow_set,
     );
 
