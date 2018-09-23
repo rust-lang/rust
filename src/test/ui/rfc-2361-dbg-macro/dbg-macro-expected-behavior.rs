@@ -1,6 +1,4 @@
 // run-pass
-// ignore-wasm
-// ignore-wasm32
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
 
