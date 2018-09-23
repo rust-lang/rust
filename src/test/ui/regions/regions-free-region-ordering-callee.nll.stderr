@@ -18,7 +18,7 @@ LL | fn ordering3<'a, 'b>(x: &'a usize, y: &'b usize) -> &'a &'b usize {
    |              lifetime `'a` defined here
 LL |     // Do not infer an ordering from the return value.
 LL |     let z: &'b usize = &*x;
-   |                        ^^^ requires that `'a` must outlive `'b`
+   |                        ^^^ assignment requires that `'a` must outlive `'b`
 
 error: aborting due to 2 previous errors
 

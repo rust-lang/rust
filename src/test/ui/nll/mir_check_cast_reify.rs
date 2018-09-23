@@ -44,8 +44,8 @@ fn bar<'a>(x: &'a u32) -> &'static u32 {
     // The MIR type checker must therefore relate `'?0` to `'?1` and `'?2`
     // as part of checking the `ReifyFnPointer`.
     let f: fn(_) -> _ = foo;
-    //~^ ERROR unsatisfied lifetime constraints
     f(x)
+    //~^ ERROR unsatisfied lifetime constraints
 }
 
 fn main() {}

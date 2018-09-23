@@ -23,6 +23,42 @@ crate struct ConstraintSet {
     constraints: IndexVec<ConstraintIndex, OutlivesConstraint>,
 }
 
+/// Constraints can be categorized to determine whether and why they are
+/// interesting. Order of variants indicates sort order of the category,
+/// thereby influencing diagnostic output.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub enum ConstraintCategory {
+    Return,
+    TypeAnnotation,
+    Cast,
+    CallArgument,
+
+    /// A constraint that came from checking the body of a closure.
+    ///
+    /// Ideally we would give an explanation that points to the relevant part
+    /// of the closure's body.
+    ClosureBounds,
+    CopyBound,
+    SizedBound,
+    Assignment,
+    OpaqueType,
+
+    /// A "boring" constraint (caused by the given location) is one that
+    /// the user probably doesn't want to see described in diagnostics,
+    /// because it is kind of an artifact of the type system setup.
+    /// Example: `x = Foo { field: y }` technically creates
+    /// intermediate regions representing the "type of `Foo { field: y
+    /// }`", and data flows from `y` into those variables, but they
+    /// are not very interesting. The assignment into `x` on the other
+    /// hand might be.
+    Boring,
+    // Boring and applicable everywhere.
+    BoringNoLocation,
+
+    /// A constraint that doesn't correspond to anything the user sees.
+    Internal,
+}
+
 impl ConstraintSet {
     crate fn push(&mut self, constraint: OutlivesConstraint) {
         debug!(
@@ -87,6 +123,9 @@ pub struct OutlivesConstraint {
 
     /// Where did this constraint arise?
     pub locations: Locations,
+
+    /// What caused this constraint?
+    pub category: ConstraintCategory,
 }
 
 impl fmt::Debug for OutlivesConstraint {

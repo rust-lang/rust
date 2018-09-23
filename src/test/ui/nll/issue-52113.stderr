@@ -1,12 +1,13 @@
 error: unsatisfied lifetime constraints
-  --> $DIR/issue-52113.rs:43:9
+  --> $DIR/issue-52113.rs:47:5
    |
 LL | fn produce_err<'a, 'b: 'a>(data: &'b mut Vec<&'b u32>, value: &'a u32) -> impl Bazinga + 'b {
    |                --  -- lifetime `'b` defined here
    |                |
    |                lifetime `'a` defined here
-LL |     let x = move || { //~ ERROR unsatisfied lifetime constraints
-   |         ^ requires that `'a` must outlive `'b`
+...
+LL |     x   //~ ERROR unsatisfied lifetime constraints
+   |     ^ returning this value requires that `'a` must outlive `'b`
 
 error: aborting due to previous error
 

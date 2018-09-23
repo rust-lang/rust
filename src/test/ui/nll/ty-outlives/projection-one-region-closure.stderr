@@ -32,17 +32,6 @@ LL | | }
                T
            ]
 
-error: unsatisfied lifetime constraints
-  --> $DIR/projection-one-region-closure.rs:55:5
-   |
-LL | fn no_relationships_late<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
-   |                          --  -- lifetime `'b` defined here
-   |                          |
-   |                          lifetime `'a` defined here
-...
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
-
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/projection-one-region-closure.rs:55:29
    |
@@ -50,6 +39,17 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:8 ~ projection_one_region_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:16), 'a))`...
+
+error: unsatisfied lifetime constraints
+  --> $DIR/projection-one-region-closure.rs:55:29
+   |
+LL | fn no_relationships_late<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
+   |                          --  -- lifetime `'b` defined here
+   |                          |
+   |                          lifetime `'a` defined here
+...
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^ closure body requires that `'b` must outlive `'a`
 
 note: External requirements
   --> $DIR/projection-one-region-closure.rs:66:29
@@ -86,17 +86,6 @@ LL | | }
                T
            ]
 
-error: unsatisfied lifetime constraints
-  --> $DIR/projection-one-region-closure.rs:66:5
-   |
-LL | fn no_relationships_early<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
-   |                           --  -- lifetime `'b` defined here
-   |                           |
-   |                           lifetime `'a` defined here
-...
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
-
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/projection-one-region-closure.rs:66:29
    |
@@ -104,6 +93,17 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
+
+error: unsatisfied lifetime constraints
+  --> $DIR/projection-one-region-closure.rs:66:29
+   |
+LL | fn no_relationships_early<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
+   |                           --  -- lifetime `'b` defined here
+   |                           |
+   |                           lifetime `'a` defined here
+...
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^ closure body requires that `'b` must outlive `'a`
 
 note: External requirements
   --> $DIR/projection-one-region-closure.rs:87:29
@@ -140,17 +140,6 @@ LL | | }
                T
            ]
 
-error: unsatisfied lifetime constraints
-  --> $DIR/projection-one-region-closure.rs:87:5
-   |
-LL | fn projection_outlives<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
-   |                        --  -- lifetime `'b` defined here
-   |                        |
-   |                        lifetime `'a` defined here
-...
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
-
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/projection-one-region-closure.rs:87:29
    |
@@ -158,6 +147,17 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
+
+error: unsatisfied lifetime constraints
+  --> $DIR/projection-one-region-closure.rs:87:29
+   |
+LL | fn projection_outlives<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
+   |                        --  -- lifetime `'b` defined here
+   |                        |
+   |                        lifetime `'a` defined here
+...
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^ closure body requires that `'b` must outlive `'a`
 
 note: External requirements
   --> $DIR/projection-one-region-closure.rs:99:29

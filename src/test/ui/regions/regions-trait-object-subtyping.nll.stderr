@@ -7,7 +7,7 @@ LL | fn foo3<'a,'b>(x: &'a mut Dummy) -> &'b mut Dummy {
    |         lifetime `'a` defined here
 LL |     // Without knowing 'a:'b, we can't coerce
 LL |     x //~ ERROR lifetime bound not satisfied
-   |     ^ returning this value requires that `'a` must outlive `'b`
+   |     ^ cast requires that `'a` must outlive `'b`
 
 error: unsatisfied lifetime constraints
   --> $DIR/regions-trait-object-subtyping.rs:32:5

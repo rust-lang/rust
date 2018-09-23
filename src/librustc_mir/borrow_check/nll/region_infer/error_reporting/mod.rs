@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow_check::nll::constraints::OutlivesConstraint;
+use borrow_check::nll::constraints::{OutlivesConstraint, ConstraintCategory};
 use borrow_check::nll::region_infer::RegionInferenceContext;
-use borrow_check::nll::type_check::Locations;
 use rustc::hir::def_id::DefId;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc::infer::InferCtxt;
-use rustc::mir::{self, Location, Mir, Place, Rvalue, StatementKind, TerminatorKind};
-use rustc::ty::{self, TyCtxt, RegionVid};
+use rustc::mir::{Location, Mir};
+use rustc::ty::{self, RegionVid};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_errors::{Diagnostic, DiagnosticBuilder};
 use std::collections::VecDeque;
@@ -29,19 +28,6 @@ mod var_name;
 
 use self::region_name::RegionName;
 
-/// Constraints that are considered interesting can be categorized to
-/// determine why they are interesting. Order of variants indicates
-/// sort order of the category, thereby influencing diagnostic output.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
-enum ConstraintCategory {
-    Cast,
-    Assignment,
-    Return,
-    CallArgument,
-    Other,
-    Boring,
-}
-
 impl fmt::Display for ConstraintCategory {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Must end with a space. Allows for empty names to be provided.
@@ -50,7 +36,14 @@ impl fmt::Display for ConstraintCategory {
             ConstraintCategory::Return => write!(f, "returning this value "),
             ConstraintCategory::Cast => write!(f, "cast "),
             ConstraintCategory::CallArgument => write!(f, "argument "),
-            _ => write!(f, ""),
+            ConstraintCategory::TypeAnnotation => write!(f, "type annotation "),
+            ConstraintCategory::ClosureBounds => write!(f, "closure body "),
+            ConstraintCategory::SizedBound => write!(f, "proving this value is `Sized` "),
+            ConstraintCategory::CopyBound => write!(f, "copying this value "),
+            ConstraintCategory::OpaqueType => write!(f, "opaque type "),
+            ConstraintCategory::Boring
+            | ConstraintCategory::BoringNoLocation
+            | ConstraintCategory::Internal => write!(f, ""),
         }
     }
 }
@@ -72,7 +65,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn best_blame_constraint(
         &self,
         mir: &Mir<'tcx>,
-        tcx: TyCtxt<'_, '_, 'tcx>,
         from_region: RegionVid,
         target_test: impl Fn(RegionVid) -> bool,
     ) -> (ConstraintCategory, Span, RegionVid) {
@@ -97,7 +89,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // Classify each of the constraints along the path.
         let mut categorized_path: Vec<(ConstraintCategory, Span)> = path
             .iter()
-            .map(|&index| self.classify_constraint(index, mir, tcx))
+            .map(|constraint| (constraint.category, constraint.locations.span(mir)))
             .collect();
         debug!(
             "best_blame_constraint: categorized_path={:#?}",
@@ -130,12 +122,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let constraint_sup_scc = self.constraint_sccs.scc(constraint.sup);
 
             match categorized_path[i].0 {
-                ConstraintCategory::Boring => false,
-                ConstraintCategory::Other => {
-                    // other isn't interesting when the two lifetimes
-                    // are unified.
-                    constraint_sup_scc != self.constraint_sccs.scc(constraint.sub)
-                }
+                ConstraintCategory::OpaqueType
+                | ConstraintCategory::Boring
+                | ConstraintCategory::BoringNoLocation
+                | ConstraintCategory::Internal => false,
                 _ => constraint_sup_scc != target_scc,
             }
         });
@@ -221,106 +211,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         None
     }
 
-    /// This function will return true if a constraint is interesting and false if a constraint
-    /// is not. It is useful in filtering constraint paths to only interesting points.
-    fn constraint_is_interesting(&self, constraint: OutlivesConstraint) -> bool {
-        debug!(
-            "constraint_is_interesting: locations={:?} constraint={:?}",
-            constraint.locations, constraint
-        );
-
-        match constraint.locations {
-            Locations::Interesting(_) | Locations::All => true,
-            _ => false,
-        }
-    }
-
-    /// This function classifies a constraint from a location.
-    fn classify_constraint(
-        &self,
-        constraint: OutlivesConstraint,
-        mir: &Mir<'tcx>,
-        tcx: TyCtxt<'_, '_, 'tcx>,
-    ) -> (ConstraintCategory, Span) {
-        debug!("classify_constraint: constraint={:?}", constraint);
-        let span = constraint.locations.span(mir);
-        let location = constraint
-            .locations
-            .from_location()
-            .unwrap_or(Location::START);
-
-        if !self.constraint_is_interesting(constraint) {
-            return (ConstraintCategory::Boring, span);
-        }
-
-        let data = &mir[location.block];
-        debug!(
-            "classify_constraint: location={:?} data={:?}",
-            location, data
-        );
-        let category = if location.statement_index == data.statements.len() {
-            if let Some(ref terminator) = data.terminator {
-                debug!("classify_constraint: terminator.kind={:?}", terminator.kind);
-                match terminator.kind {
-                    TerminatorKind::DropAndReplace { .. } => ConstraintCategory::Assignment,
-                    // Classify calls differently depending on whether or not
-                    // the sub region appears in the destination type (so the
-                    // sup region is in the return type). If the return type
-                    // contains the sub-region, then this is either an
-                    // assignment or a return, depending on whether we are
-                    // writing to the RETURN_PLACE or not.
-                    //
-                    // The idea here is that the region is being propagated
-                    // from an input into the output place, so it's a kind of
-                    // assignment. Otherwise, if the sub-region only appears in
-                    // the argument types, then use the CallArgument
-                    // classification.
-                    TerminatorKind::Call { destination: Some((ref place, _)), .. } => {
-                        if tcx.any_free_region_meets(
-                            &place.ty(mir, tcx).to_ty(tcx),
-                            |region| self.to_region_vid(region) == constraint.sub,
-                        ) {
-                            match place {
-                                Place::Local(mir::RETURN_PLACE) => ConstraintCategory::Return,
-                                _ => ConstraintCategory::Assignment,
-                            }
-                        } else {
-                            ConstraintCategory::CallArgument
-                        }
-                    }
-                    TerminatorKind::Call { destination: None, .. } => {
-                        ConstraintCategory::CallArgument
-                    }
-                    _ => ConstraintCategory::Other,
-                }
-            } else {
-                ConstraintCategory::Other
-            }
-        } else {
-            let statement = &data.statements[location.statement_index];
-            debug!("classify_constraint: statement.kind={:?}", statement.kind);
-            match statement.kind {
-                StatementKind::Assign(ref place, ref rvalue) => {
-                    debug!("classify_constraint: place={:?} rvalue={:?}", place, rvalue);
-                    if *place == Place::Local(mir::RETURN_PLACE) {
-                        ConstraintCategory::Return
-                    } else {
-                        match rvalue {
-                            Rvalue::Cast(..) => ConstraintCategory::Cast,
-                            Rvalue::Use(..) | Rvalue::Aggregate(..) => {
-                                ConstraintCategory::Assignment
-                            }
-                            _ => ConstraintCategory::Other,
-                        }
-                    }
-                }
-                _ => ConstraintCategory::Other,
-            }
-        };
-
-        (category, span)
-    }
-
     /// Report an error because the universal region `fr` was required to outlive
     /// `outlived_fr` but it is not known to do so. For example:
     ///
@@ -342,7 +232,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let (category, span, _) = self.best_blame_constraint(
             mir,
-            infcx.tcx,
             fr,
             |r| r == outlived_fr
         );
@@ -392,7 +281,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let escapes_from = if infcx.tcx.is_closure(mir_def_id) { "closure" } else { "function" };
 
-        if fr_name_and_span.is_none() && outlived_fr_name_and_span.is_none() {
+        // Revert to the normal error in these cases.
+        // Assignments aren't "escapes" in function items.
+        if (fr_name_and_span.is_none() && outlived_fr_name_and_span.is_none())
+            || (category == ConstraintCategory::Assignment && escapes_from == "function")
+        {
             return self.report_general_error(mir, infcx, mir_def_id,
                                              fr, true, outlived_fr, false,
                                              category, span, errors_buffer);
@@ -572,11 +465,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     crate fn find_outlives_blame_span(
         &self,
         mir: &Mir<'tcx>,
-        tcx: TyCtxt<'_, '_, 'tcx>,
         fr1: RegionVid,
         fr2: RegionVid,
     ) -> Span {
-        let (_, span, _) = self.best_blame_constraint(mir, tcx, fr1, |r| r == fr2);
+        let (_, span, _) = self.best_blame_constraint(mir, fr1, |r| r == fr2);
         span
     }
 }

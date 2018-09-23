@@ -7,7 +7,7 @@ LL | fn get_min_from_max<'min, 'max>(v: Box<Get<&'max i32>>)
    |                     lifetime `'min` defined here
 ...
 LL |     v //~ ERROR mismatched types
-   |     ^ cast requires that `'min` must outlive `'max`
+   |     ^ returning this value requires that `'min` must outlive `'max`
 
 error: unsatisfied lifetime constraints
   --> $DIR/variance-contravariant-arg-object.rs:32:5
@@ -18,7 +18,7 @@ LL | fn get_max_from_min<'min, 'max, G>(v: Box<Get<&'min i32>>)
    |                     lifetime `'min` defined here
 ...
 LL |     v //~ ERROR mismatched types
-   |     ^ cast requires that `'min` must outlive `'max`
+   |     ^ returning this value requires that `'min` must outlive `'max`
 
 error: aborting due to 2 previous errors
 

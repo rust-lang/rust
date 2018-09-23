@@ -9,10 +9,12 @@
 // except according to those terms.
 
 use borrow_check::nll::type_check::Locations;
-use borrow_check::nll::constraints::{ConstraintIndex, ConstraintSet, OutlivesConstraint};
+use borrow_check::nll::constraints::{ConstraintCategory, ConstraintIndex};
+use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
 use rustc::ty::RegionVid;
 use rustc_data_structures::graph;
 use rustc_data_structures::indexed_vec::IndexVec;
+use syntax_pos::DUMMY_SP;
 
 /// The construct graph organizes the constraints by their end-points.
 /// It can be used to view a `R1: R2` constraint as either an edge `R1
@@ -174,7 +176,8 @@ impl<'s, D: ConstraintGraphDirecton> Iterator for Edges<'s, D> {
             Some(OutlivesConstraint {
                 sup: self.static_region,
                 sub: next_static_idx.into(),
-                locations: Locations::All,
+                locations: Locations::All(DUMMY_SP),
+                category: ConstraintCategory::Internal,
             })
         } else {
             None

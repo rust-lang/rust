@@ -1062,7 +1062,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 longer_fr, shorter_fr,
             );
 
-            let blame_span = self.find_outlives_blame_span(mir, infcx.tcx, longer_fr, shorter_fr);
+            let blame_span = self.find_outlives_blame_span(mir, longer_fr, shorter_fr);
 
             if let Some(propagated_outlives_requirements) = propagated_outlives_requirements {
                 // Shrink `fr` until we find a non-local region (if we do).
@@ -1147,7 +1147,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         };
 
         // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
-        let span = self.find_outlives_blame_span(mir, infcx.tcx, longer_fr, error_region);
+        let span = self.find_outlives_blame_span(mir, longer_fr, error_region);
 
         // Obviously, this error message is far from satisfactory.
         // At present, though, it only appears in unit tests --

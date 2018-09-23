@@ -14,6 +14,7 @@ use borrow_check::nll::type_check::constraint_conversion;
 use borrow_check::nll::type_check::{Locations, MirTypeckRegionConstraints};
 use borrow_check::nll::universal_regions::UniversalRegions;
 use borrow_check::nll::ToRegionVid;
+use borrow_check::nll::constraints::ConstraintCategory;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::outlives::free_region_map::FreeRegionRelations;
 use rustc::infer::region_constraints::GenericKind;
@@ -23,6 +24,7 @@ use rustc::traits::query::type_op::{self, TypeOp};
 use rustc::ty::{self, RegionVid, Ty};
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 use std::rc::Rc;
+use syntax_pos::DUMMY_SP;
 
 #[derive(Debug)]
 crate struct UniversalRegionRelations<'tcx> {
@@ -283,7 +285,8 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
                 &self.region_bound_pairs,
                 self.implicit_region_bound,
                 self.param_env,
-                Locations::All,
+                Locations::All(DUMMY_SP),
+                ConstraintCategory::Internal,
                 &mut self.constraints.outlives_constraints,
                 &mut self.constraints.type_tests,
                 &mut self.all_facts,

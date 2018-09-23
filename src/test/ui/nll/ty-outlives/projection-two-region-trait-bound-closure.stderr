@@ -235,7 +235,7 @@ LL | | }
            ]
 
 error: unsatisfied lifetime constraints
-  --> $DIR/projection-two-region-trait-bound-closure.rs:105:5
+  --> $DIR/projection-two-region-trait-bound-closure.rs:105:29
    |
 LL | fn two_regions<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
    |                --  -- lifetime `'b` defined here
@@ -243,7 +243,7 @@ LL | fn two_regions<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
    |                lifetime `'a` defined here
 ...
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^ closure body requires that `'b` must outlive `'a`
 
 note: External requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:115:29

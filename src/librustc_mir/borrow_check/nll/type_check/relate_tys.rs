@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow_check::nll::constraints::OutlivesConstraint;
+use borrow_check::nll::constraints::{ConstraintCategory, OutlivesConstraint};
 use borrow_check::nll::type_check::{BorrowCheckContext, Locations};
 use borrow_check::nll::universal_regions::UniversalRegions;
 use borrow_check::nll::ToRegionVid;
@@ -28,6 +28,7 @@ pub(super) fn sub_types<'tcx>(
     a: Ty<'tcx>,
     b: Ty<'tcx>,
     locations: Locations,
+    category: ConstraintCategory,
     borrowck_context: Option<&mut BorrowCheckContext<'_, 'tcx>>,
 ) -> Fallible<()> {
     debug!("sub_types(a={:?}, b={:?}, locations={:?})", a, b, locations);
@@ -35,6 +36,7 @@ pub(super) fn sub_types<'tcx>(
         infcx,
         ty::Variance::Covariant,
         locations,
+        category,
         borrowck_context,
         ty::List::empty(),
     ).relate(&a, &b)?;
@@ -47,6 +49,7 @@ pub(super) fn eq_types<'tcx>(
     a: Ty<'tcx>,
     b: Ty<'tcx>,
     locations: Locations,
+    category: ConstraintCategory,
     borrowck_context: Option<&mut BorrowCheckContext<'_, 'tcx>>,
 ) -> Fallible<()> {
     debug!("eq_types(a={:?}, b={:?}, locations={:?})", a, b, locations);
@@ -54,6 +57,7 @@ pub(super) fn eq_types<'tcx>(
         infcx,
         ty::Variance::Invariant,
         locations,
+        category,
         borrowck_context,
         ty::List::empty(),
     ).relate(&a, &b)?;
@@ -69,6 +73,7 @@ pub(super) fn relate_type_and_user_type<'tcx>(
     v: ty::Variance,
     b: CanonicalTy<'tcx>,
     locations: Locations,
+    category: ConstraintCategory,
     borrowck_context: Option<&mut BorrowCheckContext<'_, 'tcx>>,
 ) -> Fallible<()> {
     debug!(
@@ -89,6 +94,7 @@ pub(super) fn relate_type_and_user_type<'tcx>(
         infcx,
         v1,
         locations,
+        category,
         borrowck_context,
         b_variables,
     ).relate(&b_value, &a)?;
@@ -123,6 +129,8 @@ struct TypeRelating<'cx, 'bccx: 'cx, 'gcx: 'tcx, 'tcx: 'bccx> {
 
     /// Where (and why) is this relation taking place?
     locations: Locations,
+
+    category: ConstraintCategory,
 
     /// This will be `Some` when we are running the type check as part
     /// of NLL, and `None` if we are running a "sanity check".
@@ -161,6 +169,7 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelating<'cx, 'bccx, 'gcx, 'tcx> {
         infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
         ambient_variance: ty::Variance,
         locations: Locations,
+        category: ConstraintCategory,
         borrowck_context: Option<&'cx mut BorrowCheckContext<'bccx, 'tcx>>,
         canonical_var_infos: CanonicalVarInfos<'tcx>,
     ) -> Self {
@@ -171,6 +180,7 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelating<'cx, 'bccx, 'gcx, 'tcx> {
             borrowck_context,
             locations,
             canonical_var_values,
+            category,
             a_scopes: vec![],
             b_scopes: vec![],
         }
@@ -264,6 +274,7 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelating<'cx, 'bccx, 'gcx, 'tcx> {
                     sup,
                     sub,
                     locations: self.locations,
+                    category: self.category,
                 });
 
             // FIXME all facts!

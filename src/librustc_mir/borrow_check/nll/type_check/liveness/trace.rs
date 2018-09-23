@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use borrow_check::nll::constraints::ConstraintCategory;
 use borrow_check::nll::region_infer::values::{self, PointIndex, RegionValueElements};
 use borrow_check::nll::type_check::liveness::liveness_map::{LiveVar, NllLivenessMap};
 use borrow_check::nll::type_check::liveness::local_use_map::LocalUseMap;
-use borrow_check::nll::type_check::AtLocation;
+use borrow_check::nll::type_check::NormalizeLocation;
 use borrow_check::nll::type_check::TypeChecker;
 use dataflow::move_paths::indexes::MovePathIndex;
 use dataflow::move_paths::MoveData;
@@ -487,7 +488,11 @@ impl LivenessContext<'_, '_, '_, '_, 'tcx> {
         if let Some(data) = &drop_data.region_constraint_data {
             for &drop_location in drop_locations {
                 self.typeck
-                    .push_region_constraints(drop_location.boring(), data);
+                    .push_region_constraints(
+                        drop_location.to_locations(),
+                        ConstraintCategory::Boring,
+                        data,
+                    );
             }
         }
 
