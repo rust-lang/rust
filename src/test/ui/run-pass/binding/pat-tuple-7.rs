@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // run-pass
-#![feature(pattern_parentheses)]
 
 fn main() {
     match 0 {

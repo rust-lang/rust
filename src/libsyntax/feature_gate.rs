@@ -412,9 +412,6 @@ declare_features! (
     // Multiple patterns with `|` in `if let` and `while let`
     (active, if_while_or_patterns, "1.26.0", Some(48215), None),
 
-    // Parentheses in patterns
-    (active, pattern_parentheses, "1.26.0", Some(51087), None),
-
     // Allows `#[repr(packed)]` attribute on structs
     (active, repr_packed, "1.26.0", Some(33158), None),
 
@@ -680,6 +677,8 @@ declare_features! (
     (accepted, extern_absolute_paths, "1.30.0", Some(44660), None),
     // Access to crate names passed via `--extern` through prelude
     (accepted, extern_prelude, "1.30.0", Some(44660), None),
+    // Parentheses in patterns
+    (accepted, pattern_parentheses, "1.31.0", Some(51087), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1772,10 +1771,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             PatKind::Range(_, _, Spanned { node: RangeEnd::Excluded, .. }) => {
                 gate_feature_post!(&self, exclusive_range_pattern, pattern.span,
                                    "exclusive range pattern syntax is experimental");
-            }
-            PatKind::Paren(..) => {
-                gate_feature_post!(&self, pattern_parentheses, pattern.span,
-                                   "parentheses in patterns are unstable");
             }
             _ => {}
         }

@@ -284,9 +284,7 @@ fn run() {
     reject_stmt_parse("#[attr] #![attr] foo!{}");
 
     // FIXME: Allow attributes in pattern constexprs?
-    // would require parens in patterns to allow disambiguation...
-    // —which is now available under the `pattern_parentheses` feature gate
-    // (tracking issue #51087)
+    // note: requires parens in patterns to allow disambiguation
 
     reject_expr_parse("match 0 {
         0..=#[attr] 10 => ()
