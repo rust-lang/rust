@@ -8,6 +8,8 @@ LL |     }
    |     |
    |     `x` dropped here while still borrowed
    |     borrow later used here, when `y` is dropped
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
 
 error[E0597]: `x` does not live long enough
   --> $DIR/issue-29106.rs:33:25
@@ -19,6 +21,8 @@ LL |     }
    |     |
    |     `x` dropped here while still borrowed
    |     borrow later used here, when `y` is dropped
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
 
 error: aborting due to 2 previous errors
 
