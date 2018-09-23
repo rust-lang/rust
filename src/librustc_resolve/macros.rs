@@ -575,6 +575,13 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         // 5. Standard library prelude (de-facto closed, controlled).
         // 6. Language prelude (closed, controlled).
         // (Macro NS)
+        // 0. Derive helpers (open, not controlled). All ambiguities with other names
+        //    are currently reported as errors. They should be higher in priority than preludes
+        //    and probably even names in modules according to the "general principles" above. They
+        //    also should be subject to restricted shadowing because are effectively produced by
+        //    derives (you need to resolve the derive first to add helpers into scope), but they
+        //    should be available before the derive is expanded for compatibility.
+        //    It's mess in general, so we are being conservative for now.
         // 1. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
         //    (open, not controlled).
         // 2. `macro_use` prelude (open, the open part is from macro expansions, not controlled).
@@ -583,13 +590,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         // 2b. Standard library prelude is currently implemented as `macro-use` (closed, controlled)
         // 3. Language prelude: builtin macros (closed, controlled, except for legacy plugins).
         // 4. Language prelude: builtin attributes (closed, controlled).
-        // N (unordered). Derive helpers (open, not controlled). All ambiguities with other names
-        //    are currently reported as errors. They should be higher in priority than preludes
-        //    and maybe even names in modules according to the "general principles" above. They
-        //    also should be subject to restricted shadowing because are effectively produced by
-        //    derives (you need to resolve the derive first to add helpers into scope), but they
-        //    should be available before the derive is expanded for compatibility.
-        //    It's mess in general, so we are being conservative for now.
 
         assert!(ns == TypeNS  || ns == MacroNS);
         assert!(force || !record_used); // `record_used` implies `force`
@@ -621,7 +621,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         }
 
         // Go through all the scopes and try to resolve the name.
-        let mut where_to_resolve = WhereToResolve::Module(parent_scope.module);
+        let mut where_to_resolve = WhereToResolve::DeriveHelpers;
         let mut use_prelude = !parent_scope.module.no_implicit_prelude;
         loop {
             let result = match where_to_resolve {
@@ -751,8 +751,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     }
                     WhereToResolve::MacroUsePrelude => WhereToResolve::BuiltinMacros,
                     WhereToResolve::BuiltinMacros => WhereToResolve::BuiltinAttrs,
-                    WhereToResolve::BuiltinAttrs => WhereToResolve::DeriveHelpers,
-                    WhereToResolve::DeriveHelpers => break, // nowhere else to search
+                    WhereToResolve::BuiltinAttrs => break, // nowhere else to search
+                    WhereToResolve::DeriveHelpers => WhereToResolve::Module(parent_scope.module),
                     WhereToResolve::ExternPrelude => WhereToResolve::ToolPrelude,
                     WhereToResolve::ToolPrelude => WhereToResolve::StdLibPrelude,
                     WhereToResolve::StdLibPrelude => WhereToResolve::BuiltinTypes,
