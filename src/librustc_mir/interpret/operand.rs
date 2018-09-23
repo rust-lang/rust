@@ -82,11 +82,6 @@ impl<'tcx> Value {
     }
 }
 
-impl_stable_hash_for!(enum ::interpret::Value {
-    Scalar(x),
-    ScalarPair(x, y),
-});
-
 // ScalarPair needs a type to interpret, so we often have a value and a type together
 // as input for binary and cast operations.
 #[derive(Copy, Clone, Debug)]
@@ -131,11 +126,6 @@ impl Operand {
         }
     }
 }
-
-impl_stable_hash_for!(enum ::interpret::Operand {
-    Immediate(x),
-    Indirect(x),
-});
 
 #[derive(Copy, Clone, Debug)]
 pub struct OpTy<'tcx> {
@@ -206,7 +196,7 @@ fn from_known_layout<'tcx>(
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Try reading a value in memory; this is interesting particularily for ScalarPair.
     /// Return None if the layout does not permit loading this as a value.
     pub(super) fn try_read_value_from_mplace(

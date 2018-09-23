@@ -21,8 +21,8 @@ use rustc::mir::interpret::{
     ConstEvalErr, EvalErrorKind, ScalarMaybeUndef, Scalar, GlobalId, EvalResult
 };
 use rustc::ty::{TyCtxt, self, Instance};
-use interpret::{EvalContext, CompileTimeEvaluator, eval_promoted, mk_borrowck_eval_cx};
-use interpret::{self, Value, OpTy, MemoryKind};
+use interpret::{self, EvalContext, Value, OpTy, MemoryKind};
+use const_eval::{CompileTimeInterpreter, eval_promoted, mk_borrowck_eval_cx};
 use transform::{MirPass, MirSource};
 use syntax::source_map::{Span, DUMMY_SP};
 use rustc::ty::subst::Substs;
@@ -68,9 +68,9 @@ impl MirPass for ConstProp {
 type Const<'tcx> = (OpTy<'tcx>, Span);
 
 /// Finds optimization opportunities on the MIR.
-struct ConstPropagator<'b, 'a, 'tcx:'a+'b> {
-    ecx: EvalContext<'a, 'b, 'tcx, CompileTimeEvaluator>,
-    mir: &'b Mir<'tcx>,
+struct ConstPropagator<'a, 'mir, 'tcx:'a+'mir> {
+    ecx: EvalContext<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
+    mir: &'mir Mir<'tcx>,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     source: MirSource,
     places: IndexVec<Local, Option<Const<'tcx>>>,
@@ -101,12 +101,12 @@ impl<'a, 'b, 'tcx> HasTyCtxt<'tcx> for &'a ConstPropagator<'a, 'b, 'tcx> {
     }
 }
 
-impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
+impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
     fn new(
-        mir: &'b Mir<'tcx>,
+        mir: &'mir Mir<'tcx>,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         source: MirSource,
-    ) -> ConstPropagator<'b, 'a, 'tcx> {
+    ) -> ConstPropagator<'a, 'mir, 'tcx> {
         let param_env = tcx.param_env(source.def_id);
         let substs = Substs::identity_for_item(tcx, source.def_id);
         let instance = Instance::new(source.def_id, substs);
@@ -310,7 +310,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 // cannot use `const_eval` here, because that would require having the MIR
                 // for the current function available, but we're producing said MIR right now
                 let res = self.use_ecx(source_info, |this| {
-                    eval_promoted(&mut this.ecx, cid, this.mir, this.param_env)
+                    eval_promoted(this.tcx, cid, this.mir, this.param_env)
                 })?;
                 trace!("evaluated promoted {:?} to {:?}", promoted, res);
                 Some((res, source_info.span))

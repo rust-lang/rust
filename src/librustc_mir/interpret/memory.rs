@@ -39,8 +39,9 @@ pub enum MemoryKind<T> {
     Machine(T),
 }
 
-#[derive(Clone)]
-pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
+// `Memory` has to depend on the `Machine` because some of its operations
+// (e.g. `get`) call a `Machine` hook.
+pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
     /// Additional data required by the Machine
     pub data: M::MemoryData,
 
@@ -56,16 +57,19 @@ pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// that do not exist any more.
     dead_alloc_map: FxHashMap<AllocId, (Size, Align)>,
 
-    pub tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
+    /// Lets us implement `HasDataLayout`, which is awfully convenient.
+    pub(super) tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for &'a Memory<'a, 'mir, 'tcx, M> {
+impl<'b, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
+    for &'b Memory<'a, 'mir, 'tcx, M>
+{
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         &self.tcx.data_layout
     }
 }
-impl<'a, 'b, 'c, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout
+impl<'a, 'b, 'c, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
     for &'b &'c mut Memory<'a, 'mir, 'tcx, M>
 {
     #[inline]
@@ -74,7 +78,23 @@ impl<'a, 'b, 'c, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
+// FIXME: Really we shouldnt clone memory, ever. Snapshot machinery should instad
+// carefully copy only the reachable parts.
+impl<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>>
+    Clone for Memory<'a, 'mir, 'tcx, M>
+    where M::MemoryData: Clone
+{
+    fn clone(&self) -> Self {
+        Memory {
+            data: self.data.clone(),
+            alloc_map: self.alloc_map.clone(),
+            dead_alloc_map: self.dead_alloc_map.clone(),
+            tcx: self.tcx,
+        }
+    }
+}
+
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn new(tcx: TyCtxtAt<'a, 'tcx, 'tcx>, data: M::MemoryData) -> Self {
         Memory {
             data,
@@ -279,7 +299,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 }
 
 /// Allocation accessors
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     /// Helper function to obtain the global (tcx) allocation for a static
     fn get_static_alloc(
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
@@ -491,7 +511,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 }
 
 /// Byte accessors
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     /// The last argument controls whether we error out when there are undefined
     /// or pointer bytes.  You should never call this, call `get_bytes` or
     /// `get_bytes_with_undef_and_ptr` instead,
@@ -564,7 +584,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 }
 
 /// Reading and writing
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     /// mark an allocation as static and initialized, either mutable or not
     pub fn intern_static(
         &mut self,
@@ -877,7 +897,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 }
 
 /// Relocations
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     /// Return all relocations overlapping with the given ptr-offset pair.
     fn relocations(
         &self,
@@ -950,7 +970,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 }
 
 /// Undefined bytes
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     // FIXME(solson): This is a very naive, slow version.
     fn copy_undef_mask(
         &mut self,

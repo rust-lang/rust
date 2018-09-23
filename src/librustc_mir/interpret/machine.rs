@@ -20,20 +20,22 @@ use rustc::ty::{self, layout::TyLayout, query::TyCtxtAt};
 use super::{EvalContext, PlaceTy, OpTy};
 
 /// Methods of this trait signifies a point where CTFE evaluation would fail
-/// and some use case dependent behaviour can instead be applied
-pub trait Machine<'mir, 'tcx>: Clone + Eq {
+/// and some use case dependent behaviour can instead be applied.
+/// FIXME: We should be able to get rid of the 'a here if we can get rid of the 'a in
+/// `snapshot::EvalSnapshot`.
+pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// Additional data that can be accessed via the Memory
-    type MemoryData: Clone + Eq;
+    type MemoryData;
 
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
-    type MemoryKinds: ::std::fmt::Debug + Copy + Clone + Eq;
+    type MemoryKinds: ::std::fmt::Debug + Copy + Eq;
 
     /// The memory kind to use for mutated statics -- or None if those are not supported.
     const MUT_STATIC_KIND: Option<Self::MemoryKinds>;
 
-    /// Whether to attempt to detect infinite loops (any kind of infinite
-    /// execution, really).
-    const DETECT_LOOPS: bool;
+    /// Called before a basic block terminator is executed.
+    /// You can use this to detect endlessly running programs.
+    fn before_terminator(ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx>;
 
     /// Entry point to all function calls.
     ///
@@ -45,7 +47,7 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq {
     /// nor just jump to `ret`, but instead push their own stack frame.)
     /// Passing `dest`and `ret` in the same `Option` proved very annoying when only one of them
     /// was used.
-    fn find_fn<'a>(
+    fn find_fn(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
@@ -55,7 +57,7 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq {
 
     /// Directly process an intrinsic without pushing a stack frame.
     /// If this returns successfully, the engine will take care of jumping to the next block.
-    fn call_intrinsic<'a>(
+    fn call_intrinsic(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
@@ -66,7 +68,7 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq {
     /// This can be called multiple times for the same static item and should return consistent
     /// results.  Once the item is *written* the first time, as usual for statics a copy is
     /// made and this function is not called again.
-    fn find_foreign_static<'a>(
+    fn find_foreign_static(
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         def_id: DefId,
     ) -> EvalResult<'tcx, &'tcx Allocation>;
@@ -75,7 +77,7 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq {
     /// value, and for the `Offset` operation that is inherently about pointers.
     ///
     /// Returns a (value, overflowed) pair if the operation succeeded
-    fn ptr_op<'a>(
+    fn ptr_op(
         ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: Scalar,
@@ -87,13 +89,13 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq {
     /// Heap allocations via the `box` keyword
     ///
     /// Returns a pointer to the allocated memory
-    fn box_alloc<'a>(
+    fn box_alloc(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         dest: PlaceTy<'tcx>,
     ) -> EvalResult<'tcx>;
 
     /// Execute a validation operation
-    fn validation_op<'a>(
+    fn validation_op(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         _op: ::rustc::mir::ValidationOp,
         _operand: &::rustc::mir::ValidationOperand<'tcx, ::rustc::mir::Place<'tcx>>,

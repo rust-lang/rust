@@ -46,7 +46,7 @@ fn numeric_intrinsic<'tcx>(
     Ok(Scalar::from_uint(bits_out, size))
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Returns whether emulation happened.
     pub fn emulate_intrinsic(
         &mut self,

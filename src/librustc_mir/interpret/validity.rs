@@ -95,7 +95,7 @@ fn path_format(path: &Vec<PathElem>) -> String {
     out
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     fn validate_scalar(
         &self,
         value: ScalarMaybeUndef,

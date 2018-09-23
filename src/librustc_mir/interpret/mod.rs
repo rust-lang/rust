@@ -17,7 +17,7 @@ mod operand;
 mod machine;
 mod memory;
 mod operator;
-mod snapshot;
+pub(crate) mod snapshot; // for const_eval
 mod step;
 mod terminator;
 mod traits;
@@ -35,16 +35,3 @@ pub use self::memory::{Memory, MemoryKind};
 pub use self::machine::Machine;
 
 pub use self::operand::{Value, ValTy, Operand, OpTy};
-
-// reexports for compatibility
-pub use const_eval::{
-    eval_promoted,
-    mk_borrowck_eval_cx,
-    mk_eval_cx,
-    CompileTimeEvaluator,
-    const_to_allocation_provider,
-    const_eval_provider,
-    const_field,
-    const_variant_index,
-    op_to_const,
-};
