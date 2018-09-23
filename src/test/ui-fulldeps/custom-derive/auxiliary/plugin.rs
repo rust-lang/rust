@@ -25,3 +25,13 @@ pub fn derive_foo(input: TokenStream) -> TokenStream {
 pub fn derive_bar(input: TokenStream) -> TokenStream {
     panic!("lolnope");
 }
+
+#[proc_macro_derive(WithHelper, attributes(helper))]
+pub fn with_helper(input: TokenStream) -> TokenStream {
+    TokenStream::new()
+}
+
+#[proc_macro_attribute]
+pub fn helper(_: TokenStream, input: TokenStream) -> TokenStream {
+    input
+}
