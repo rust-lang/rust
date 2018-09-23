@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow_check::WriteKind;
+use borrow_check::{WriteKind, StorageDeadOrDrop};
+use borrow_check::prefixes::IsPrefixOf;
 use rustc::middle::region::ScopeTree;
 use rustc::mir::VarBindingForm;
 use rustc::mir::{BindingForm, BorrowKind, ClearCrossCrate, Field, Local};
@@ -394,6 +395,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         err.buffer(&mut self.errors_buffer);
     }
 
+    /// Reports StorageDeadOrDrop of `place` conflicts with `borrow`.
+    ///
+    /// This means that some data referenced by `borrow` needs to live
+    /// past the point where the StorageDeadOrDrop of `place` occurs.
+    /// This is usually interpreted as meaning that `place` has too
+    /// short a lifetime. (But sometimes it is more useful to report
+    /// it as a more direct conflict between the execution of a
+    /// `Drop::drop` with an aliasing borrow.)
     pub(super) fn report_borrowed_value_does_not_live_long_enough(
         &mut self,
         context: Context,
@@ -401,6 +410,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         place_span: (&Place<'tcx>, Span),
         kind: Option<WriteKind>,
     ) {
+        debug!("report_borrowed_value_does_not_live_long_enough(\
+                {:?}, {:?}, {:?}, {:?}\
+                )",
+               context, borrow, place_span, kind
+        );
+
         let drop_span = place_span.1;
         let scope_tree = self.tcx.region_scope_tree(self.mir_def_id);
         let root_place = self
@@ -431,6 +446,19 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             .insert((root_place.clone(), borrow_span));
 
         let borrow_reason = self.find_why_borrow_contains_point(context, borrow);
+
+        if let Some(WriteKind::StorageDeadOrDrop(StorageDeadOrDrop::Destructor)) = kind
+        {
+            // If a borrow of path `B` conflicts with drop of `D` (and
+            // we're not in the uninteresting case where `B` is a
+            // prefix of `D`), then report this as a more interesting
+            // destructor conflict.
+            if !borrow.borrowed_place.is_prefix_of(place_span.0) {
+                self.report_borrow_conflicts_with_destructor(
+                    context, borrow, borrow_reason, place_span, kind);
+                return;
+            }
+        }
 
         let mut err = match &self.describe_place(&borrow.borrowed_place) {
             Some(_) if self.is_place_thread_local(root_place) => {
@@ -493,6 +521,69 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         self.report_why_borrow_contains_point(&mut err, reason, kind_place);
         err
+    }
+
+    pub(super) fn report_borrow_conflicts_with_destructor(
+        &mut self,
+        context: Context,
+        borrow: &BorrowData<'tcx>,
+        borrow_reason: BorrowContainsPointReason<'tcx>,
+        place_span: (&Place<'tcx>, Span),
+        kind: Option<WriteKind>,
+    ) {
+        debug!(
+            "report_borrow_conflicts_with_destructor(\
+             {:?}, {:?}, {:?}, {:?} {:?}\
+             )",
+            context, borrow, borrow_reason, place_span, kind,
+        );
+
+        let borrow_spans = self.retrieve_borrow_spans(borrow);
+        let borrow_span = borrow_spans.var_or_use();
+
+        let mut err = self.tcx.cannot_borrow_across_destructor(borrow_span, Origin::Mir);
+
+        let drop_span = place_span.1;
+
+        let (what_was_dropped, dropped_ty) = {
+            let place = place_span.0;
+            let desc = match self.describe_place(place) {
+                Some(name) => format!("`{}`", name.as_str()),
+                None => format!("temporary value"),
+            };
+            let ty = place.ty(self.mir, self.tcx).to_ty(self.tcx);
+            (desc, ty)
+        };
+
+        let label = match dropped_ty.sty {
+            ty::Adt(adt, _) if adt.has_dtor(self.tcx) && !adt.is_box() => {
+                match self.describe_place(&borrow.borrowed_place) {
+                    Some(borrowed) =>
+                        format!("here, drop of {D} needs exclusive access to `{B}`, \
+                                 because the type `{T}` implements the `Drop` trait",
+                                D=what_was_dropped, T=dropped_ty, B=borrowed),
+                    None =>
+                        format!("here is drop of {D}; whose type `{T}` implements the `Drop` trait",
+                                D=what_was_dropped, T=dropped_ty),
+                }
+            }
+            _ => format!("drop of {D} occurs here", D=what_was_dropped),
+        };
+        err.span_label(drop_span, label);
+
+        // Only give this note and suggestion if they could be relevant
+        match borrow_reason {
+            BorrowContainsPointReason::Liveness {..}
+            | BorrowContainsPointReason::DropLiveness {..} => {
+                err.note("consider using a `let` binding to create a longer lived value");
+            }
+            BorrowContainsPointReason::OutlivesFreeRegion {..} => (),
+        }
+
+        self.report_why_borrow_contains_point(
+            &mut err, borrow_reason, kind.map(|k| (k, place_span.0)));
+
+        err.buffer(&mut self.errors_buffer);
     }
 
     fn report_thread_local_value_does_not_live_long_enough(
