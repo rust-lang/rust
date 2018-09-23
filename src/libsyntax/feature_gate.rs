@@ -933,6 +933,12 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                                        is just used for rustc unit tests \
                                                        and will never be stable",
                                                       cfg_fn!(rustc_attrs))),
+    ("rustc_expected_cgu_reuse", Whitelisted, Gated(Stability::Unstable,
+                                                    "rustc_attrs",
+                                                    "this attribute \
+                                                     is just used for rustc unit tests \
+                                                     and will never be stable",
+                                                    cfg_fn!(rustc_attrs))),
     ("rustc_synthetic", Whitelisted, Gated(Stability::Unstable,
                                                       "rustc_attrs",
                                                       "this attribute \

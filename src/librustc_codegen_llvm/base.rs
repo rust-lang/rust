@@ -32,6 +32,7 @@ use abi;
 use back::write::{self, OngoingCodegen};
 use llvm::{self, TypeKind, get_param};
 use metadata;
+use rustc::dep_graph::cgu_reuse_tracker::CguReuse;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::middle::lang_items::StartFnLangItem;
 use rustc::middle::weak_lang_items;
@@ -697,25 +698,18 @@ pub fn iter_globals(llmod: &'ll llvm::Module) -> ValueIter<'ll> {
     }
 }
 
-#[derive(Debug)]
-enum CguReUsable {
-    PreLto,
-    PostLto,
-    No
-}
-
 fn determine_cgu_reuse<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  cgu: &CodegenUnit<'tcx>)
-                                 -> CguReUsable {
+                                 -> CguReuse {
     if !tcx.dep_graph.is_fully_enabled() {
-        return CguReUsable::No
+        return CguReuse::No
     }
 
     let work_product_id = &cgu.work_product_id();
     if tcx.dep_graph.previous_work_product(work_product_id).is_none() {
         // We don't have anything cached for this CGU. This can happen
         // if the CGU did not exist in the previous session.
-        return CguReUsable::No
+        return CguReuse::No
     }
 
     // Try to mark the CGU as green. If it we can do so, it means that nothing
@@ -732,12 +726,12 @@ fn determine_cgu_reuse<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if tcx.dep_graph.try_mark_green(tcx, &dep_node).is_some() {
         // We can re-use either the pre- or the post-thinlto state
         if tcx.sess.lto() != Lto::No {
-            CguReUsable::PreLto
+            CguReuse::PreLto
         } else {
-            CguReUsable::PostLto
+            CguReuse::PostLto
         }
     } else {
-        CguReUsable::No
+        CguReuse::No
     }
 }
 
@@ -894,8 +888,11 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ongoing_codegen.wait_for_signal_to_codegen_item();
         ongoing_codegen.check_for_errors(tcx.sess);
 
-        let loaded_from_cache = match determine_cgu_reuse(tcx, &cgu) {
-            CguReUsable::No => {
+        let cgu_reuse = determine_cgu_reuse(tcx, &cgu);
+        tcx.sess.cgu_reuse_tracker.set_actual_reuse(&cgu.name().as_str(), cgu_reuse);
+
+        match cgu_reuse {
+            CguReuse::No => {
                 let _timing_guard = time_graph.as_ref().map(|time_graph| {
                     time_graph.start(write::CODEGEN_WORKER_TIMELINE,
                                      write::CODEGEN_WORK_PACKAGE_KIND,
@@ -907,14 +904,14 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 total_codegen_time += start_time.elapsed();
                 false
             }
-            CguReUsable::PreLto => {
+            CguReuse::PreLto => {
                 write::submit_pre_lto_module_to_llvm(tcx, CachedModuleCodegen {
                     name: cgu.name().to_string(),
                     source: cgu.work_product(tcx),
                 });
                 true
             }
-            CguReUsable::PostLto => {
+            CguReuse::PostLto => {
                 write::submit_post_lto_module_to_llvm(tcx, CachedModuleCodegen {
                     name: cgu.name().to_string(),
                     source: cgu.work_product(tcx),
@@ -922,12 +919,6 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 true
             }
         };
-
-        if tcx.dep_graph.is_fully_enabled() {
-            let dep_node = cgu.codegen_dep_node(tcx);
-            let dep_node_index = tcx.dep_graph.dep_node_index_of(&dep_node);
-            tcx.dep_graph.mark_loaded_from_cache(dep_node_index, loaded_from_cache);
-        }
     }
 
     ongoing_codegen.codegen_finished(tcx);
@@ -938,9 +929,7 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             "codegen to LLVM IR",
                             total_codegen_time);
 
-    if tcx.sess.opts.incremental.is_some() {
-        ::rustc_incremental::assert_module_sources::assert_module_sources(tcx);
-    }
+    rustc_incremental::assert_module_sources::assert_module_sources(tcx);
 
     symbol_names_test::report_symbol_names(tcx);
 

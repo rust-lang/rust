@@ -16,6 +16,7 @@ mod prev;
 mod query;
 mod safe;
 mod serialized;
+pub mod cgu_reuse_tracker;
 
 pub use self::dep_tracking_map::{DepTrackingMap, DepTrackingMapConfig};
 pub use self::dep_node::{DepNode, DepKind, DepConstructor, WorkProductId, label_strs};

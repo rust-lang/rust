@@ -18,6 +18,7 @@ use llvm::{True, False};
 use llvm;
 use memmap;
 use rustc::dep_graph::WorkProduct;
+use rustc::dep_graph::cgu_reuse_tracker::CguReuse;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::session::config::{self, Lto};
@@ -538,6 +539,8 @@ fn thin_lto(cgcx: &CodegenContext,
                     let work_product = green_modules[module_name].clone();
                     copy_jobs.push(work_product);
                     info!(" - {}: re-used", module_name);
+                    cgcx.cgu_reuse_tracker.set_actual_reuse(module_name,
+                                                            CguReuse::PostLto);
                     continue
                 }
             }

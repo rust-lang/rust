@@ -26,19 +26,23 @@
 //! The reason that we use `cfg=...` and not `#[cfg_attr]` is so that
 //! the HIR doesn't change as a result of the annotations, which might
 //! perturb the reuse results.
+//!
+//! `#![rustc_expected_cgu_reuse(module="spike", cfg="rpass2", kind="post-lto")]
+//! allows for doing a more fine-grained check to see if pre- or post-lto data
+//! was re-used.
 
 use rustc::hir::def_id::LOCAL_CRATE;
-use rustc::dep_graph::{DepNode, DepConstructor};
+use rustc::dep_graph::cgu_reuse_tracker::*;
 use rustc::mir::mono::CodegenUnitNameBuilder;
 use rustc::ty::TyCtxt;
+use std::collections::BTreeSet;
 use syntax::ast;
-use rustc::ich::{ATTR_PARTITION_REUSED, ATTR_PARTITION_CODEGENED};
+use rustc::ich::{ATTR_PARTITION_REUSED, ATTR_PARTITION_CODEGENED,
+                 ATTR_EXPECTED_CGU_REUSE};
 
 const MODULE: &'static str = "module";
 const CFG: &'static str = "cfg";
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-enum Disposition { Reused, Codegened }
+const KIND: &'static str = "kind";
 
 pub fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.dep_graph.with_ignore(|| {
@@ -46,7 +50,18 @@ pub fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
             return;
         }
 
-        let ams = AssertModuleSource { tcx };
+        let available_cgus = tcx
+            .collect_and_partition_mono_items(LOCAL_CRATE)
+            .1
+            .iter()
+            .map(|cgu| format!("{}", cgu.name()))
+            .collect::<BTreeSet<String>>();
+
+        let ams = AssertModuleSource {
+            tcx,
+            available_cgus
+        };
+
         for attr in &tcx.hir.krate().attrs {
             ams.check_attr(attr);
         }
@@ -54,18 +69,38 @@ pub fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 }
 
 struct AssertModuleSource<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    available_cgus: BTreeSet<String>,
 }
 
 impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
     fn check_attr(&self, attr: &ast::Attribute) {
-        let disposition = if attr.check_name(ATTR_PARTITION_REUSED) {
-            Disposition::Reused
+        let (expected_reuse, comp_kind) = if attr.check_name(ATTR_PARTITION_REUSED) {
+            (CguReuse::PreLto, ComparisonKind::AtLeast)
         } else if attr.check_name(ATTR_PARTITION_CODEGENED) {
-            Disposition::Codegened
+            (CguReuse::No, ComparisonKind::Exact)
+        } else if attr.check_name(ATTR_EXPECTED_CGU_REUSE) {
+            match &self.field(attr, KIND).as_str()[..] {
+                "no" => (CguReuse::No, ComparisonKind::Exact),
+                "pre-lto" => (CguReuse::PreLto, ComparisonKind::Exact),
+                "post-lto" => (CguReuse::PostLto, ComparisonKind::Exact),
+                "any" => (CguReuse::PreLto, ComparisonKind::AtLeast),
+                other => {
+                    self.tcx.sess.span_fatal(
+                        attr.span,
+                        &format!("unknown cgu-reuse-kind `{}` specified", other));
+                }
+            }
         } else {
             return;
         };
+
+        if !self.tcx.sess.opts.debugging_opts.query_dep_graph {
+            self.tcx.sess.span_fatal(
+                attr.span,
+                &format!("found CGU-reuse attribute but `-Zquery-dep-graph` \
+                          was not specified"));
+        }
 
         if !self.check_config(attr) {
             debug!("check_attr: config does not match, ignoring attr");
@@ -101,43 +136,24 @@ impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
 
         debug!("mapping '{}' to cgu name '{}'", self.field(attr, MODULE), cgu_name);
 
-        let dep_node = DepNode::new(self.tcx,
-                                    DepConstructor::CompileCodegenUnit(cgu_name));
-
-        if let Some(loaded_from_cache) = self.tcx.dep_graph.was_loaded_from_cache(&dep_node) {
-            match (disposition, loaded_from_cache) {
-                (Disposition::Reused, false) => {
-                    self.tcx.sess.span_err(
-                        attr.span,
-                        &format!("expected module named `{}` to be Reused but is Codegened",
-                                 user_path));
-                }
-                (Disposition::Codegened, true) => {
-                    self.tcx.sess.span_err(
-                        attr.span,
-                        &format!("expected module named `{}` to be Codegened but is Reused",
-                                 user_path));
-                }
-                (Disposition::Reused, true) |
-                (Disposition::Codegened, false) => {
-                    // These are what we would expect.
-                }
-            }
-        } else {
-            let available_cgus = self.tcx
-                .collect_and_partition_mono_items(LOCAL_CRATE)
-                .1
-                .iter()
-                .map(|cgu| format!("{}", cgu.name()))
-                .collect::<Vec<String>>()
-                .join(", ");
-
+        if !self.available_cgus.contains(&cgu_name.as_str()[..]) {
             self.tcx.sess.span_err(attr.span,
-                &format!("no module named `{}` (mangled: {}).\nAvailable modules: {}",
+                &format!("no module named `{}` (mangled: {}). \
+                          Available modules: {}",
                     user_path,
                     cgu_name,
-                    available_cgus));
+                    self.available_cgus
+                        .iter()
+                        .cloned()
+                        .collect::<Vec<_>>()
+                        .join(", ")));
         }
+
+        self.tcx.sess.cgu_reuse_tracker.set_expectation(&cgu_name.as_str(),
+                                                        &user_path,
+                                                        attr.span,
+                                                        expected_reuse,
+                                                        comp_kind);
     }
 
     fn field(&self, attr: &ast::Attribute, name: &str) -> ast::Name {
@@ -171,5 +187,4 @@ impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
         debug!("check_config: no match found");
         return false;
     }
-
 }

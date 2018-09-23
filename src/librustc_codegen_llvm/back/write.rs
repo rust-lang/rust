@@ -21,6 +21,7 @@ use memmap;
 use rustc_incremental::{copy_cgu_workproducts_to_incr_comp_cache_dir,
                         in_incr_comp_dir, in_incr_comp_dir_sess};
 use rustc::dep_graph::{WorkProduct, WorkProductId, WorkProductFileKind};
+use rustc::dep_graph::cgu_reuse_tracker::CguReuseTracker;
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::session::config::{self, OutputFilenames, OutputType, Passes, Sanitizer, Lto};
 use rustc::session::Session;
@@ -377,6 +378,8 @@ pub struct CodegenContext {
     // The incremental compilation session directory, or None if we are not
     // compiling incrementally
     pub incr_comp_session_dir: Option<PathBuf>,
+    // Used to update CGU re-use information during the thinlto phase.
+    pub cgu_reuse_tracker: CguReuseTracker,
     // Channel back to the main control thread to send messages to
     coordinator_send: Sender<Box<dyn Any + Send>>,
     // A reference to the TimeGraph so we can register timings. None means that
@@ -1607,6 +1610,7 @@ fn start_executing_work(tcx: TyCtxt,
         remark: sess.opts.cg.remark.clone(),
         worker: 0,
         incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone()),
+        cgu_reuse_tracker: sess.cgu_reuse_tracker.clone(),
         coordinator_send,
         diag_emitter: shared_emitter.clone(),
         time_graph,
@@ -2389,6 +2393,8 @@ impl OngoingCodegen {
                 sess.fatal("Error during codegen/LLVM phase.");
             }
         };
+
+        sess.cgu_reuse_tracker.check_expected_reuse(sess);
 
         sess.abort_if_errors();
 
