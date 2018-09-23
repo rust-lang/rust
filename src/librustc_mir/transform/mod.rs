@@ -237,9 +237,12 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
         no_landing_pads::NoLandingPads,
         simplify_branches::SimplifyBranches::new("initial"),
         remove_noop_landing_pads::RemoveNoopLandingPads,
-        simplify::SimplifyCfg::new("early-opt"),
         // Remove all `AscribeUserType` statements.
         cleanup_post_borrowck::CleanAscribeUserType,
+        // Remove all `FakeRead` statements and the borrows that are only
+        // used for checking matches
+        cleanup_post_borrowck::CleanFakeReadsAndBorrows,
+        simplify::SimplifyCfg::new("early-opt"),
 
         // These next passes must be executed together
         add_call_guards::CriticalCallEdges,
