@@ -71,11 +71,11 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 elem: ProjectionElem::Field(upvar_index, _),
             }) => {
                 debug_assert!(is_closure_or_generator(
-                    base.ty(self.mir, self.tcx).to_ty(self.tcx)
+                    base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx)
                 ));
 
                 item_msg = format!("`{}`", access_place_desc.unwrap());
-                if access_place.is_upvar_field_projection(self.mir, &self.tcx).is_some() {
+                if access_place.is_upvar_field_projection(self.mir, &self.infcx.tcx).is_some() {
                     reason = ", as it is not declared as mutable".to_string();
                 } else {
                     let name = self.mir.upvar_decls[upvar_index.index()].debug_name;
@@ -91,11 +91,11 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     item_msg = format!("`{}`", access_place_desc.unwrap());
                     debug_assert!(self.mir.local_decls[Local::new(1)].ty.is_region_ptr());
                     debug_assert!(is_closure_or_generator(
-                        the_place_err.ty(self.mir, self.tcx).to_ty(self.tcx)
+                        the_place_err.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx)
                     ));
 
                     reason = if access_place.is_upvar_field_projection(self.mir,
-                                                                       &self.tcx).is_some() {
+                                                                       &self.infcx.tcx).is_some() {
                         ", as it is a captured variable in a `Fn` closure".to_string()
                     } else {
                         ", as `Fn` closures cannot mutate their captured variables".to_string()
@@ -116,7 +116,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     reason = ", as it is immutable for the pattern guard".to_string();
                 } else {
                     let pointer_type =
-                        if base.ty(self.mir, self.tcx).to_ty(self.tcx).is_region_ptr() {
+                        if base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx).is_region_ptr() {
                             "`&` reference"
                         } else {
                             "`*const` pointer"
@@ -145,7 +145,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     reason = String::new();
                 } else {
                     item_msg = format!("`{}`", access_place_desc.unwrap());
-                    let static_name = &self.tcx.item_name(*def_id);
+                    let static_name = &self.infcx.tcx.item_name(*def_id);
                     reason = format!(", as `{}` is an immutable static item", static_name);
                 }
             }
@@ -177,14 +177,14 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
 
         let span = match error_access {
             AccessKind::Move => {
-                err = self.tcx
+                err = self.infcx.tcx
                     .cannot_move_out_of(span, &(item_msg + &reason), Origin::Mir);
                 act = "move";
                 acted_on = "moved";
                 span
             }
             AccessKind::Mutate => {
-                err = self.tcx
+                err = self.infcx.tcx
                     .cannot_assign(span, &(item_msg + &reason), Origin::Mir);
                 act = "assign";
                 acted_on = "written";
@@ -196,7 +196,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
 
                 let borrow_spans = self.borrow_spans(span, location);
                 let borrow_span = borrow_spans.args_or_use();
-                err = self.tcx.cannot_borrow_path_as_mutable_because(
+                err = self.infcx.tcx.cannot_borrow_path_as_mutable_because(
                     borrow_span,
                     &item_msg,
                     &reason,
@@ -242,7 +242,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 elem: ProjectionElem::Field(upvar_index, _),
             }) => {
                 debug_assert!(is_closure_or_generator(
-                    base.ty(self.mir, self.tcx).to_ty(self.tcx)
+                    base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx)
                 ));
 
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
@@ -250,8 +250,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 let upvar_hir_id = self.mir.upvar_decls[upvar_index.index()]
                     .var_hir_id
                     .assert_crate_local();
-                let upvar_node_id = self.tcx.hir.hir_to_node_id(upvar_hir_id);
-                if let Some(Node::Binding(pat)) = self.tcx.hir.find(upvar_node_id) {
+                let upvar_node_id = self.infcx.tcx.hir.hir_to_node_id(upvar_hir_id);
+                if let Some(Node::Binding(pat)) = self.infcx.tcx.hir.find(upvar_node_id) {
                     if let hir::PatKind::Binding(
                         hir::BindingAnnotation::Unannotated,
                         _,
@@ -274,7 +274,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             // a local variable, then just suggest the user remove it.
             Place::Local(_)
                 if {
-                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                    if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
                         snippet.starts_with("&mut ")
                     } else {
                         false
@@ -317,7 +317,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 let local_decl = &self.mir.local_decls[*local];
                 let suggestion = match local_decl.is_user_variable.as_ref().unwrap() {
                     ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf) => {
-                        Some(suggest_ampmut_self(self.tcx, local_decl))
+                        Some(suggest_ampmut_self(self.infcx.tcx, local_decl))
                     }
 
                     ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
@@ -325,7 +325,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         opt_ty_info,
                         ..
                     })) => Some(suggest_ampmut(
-                        self.tcx,
+                        self.infcx.tcx,
                         self.mir,
                         *local,
                         local_decl,
@@ -337,7 +337,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         ..
                     })) => {
                         let pattern_span = local_decl.source_info.span;
-                        suggest_ref_mut(self.tcx, pattern_span)
+                        suggest_ref_mut(self.infcx.tcx, pattern_span)
                             .map(|replacement| (pattern_span, replacement))
                     }
 
@@ -426,11 +426,11 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                 ..
                             }
                         ) = &self.mir.basic_blocks()[location.block].terminator {
-                            if self.tcx.parent(id) == self.tcx.lang_items().index_trait() {
-
+                            let index_trait = self.infcx.tcx.lang_items().index_trait();
+                            if self.infcx.tcx.parent(id) == index_trait {
                                 let mut found = false;
-                                self.tcx.for_each_relevant_impl(
-                                    self.tcx.lang_items().index_mut_trait().unwrap(),
+                                self.infcx.tcx.for_each_relevant_impl(
+                                    self.infcx.tcx.lang_items().index_mut_trait().unwrap(),
                                     substs.type_at(0),
                                     |_relevant_impl| {
                                         found = true;

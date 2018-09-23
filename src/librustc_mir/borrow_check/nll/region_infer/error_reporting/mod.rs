@@ -339,10 +339,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         );
 
         let counter = &mut 1;
-        let fr_name = self.give_region_a_name(
-            infcx, mir, mir_def_id, fr, counter, &mut diag);
+        let fr_name = self.give_region_a_name(infcx, mir, mir_def_id, fr, counter);
+        fr_name.highlight_region_name(&mut diag);
         let outlived_fr_name = self.give_region_a_name(
-            infcx, mir, mir_def_id, outlived_fr, counter, &mut diag);
+            infcx, mir, mir_def_id, outlived_fr, counter);
+        outlived_fr_name.highlight_region_name(&mut diag);
 
         let mir_def_name = if infcx.tcx.is_closure(mir_def_id) { "closure" } else { "function" };
 
@@ -430,10 +431,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     // Otherwise, we should suggest adding a constraint on the return type.
                     let span = infcx.tcx.def_span(*did);
                     if let Ok(snippet) = infcx.tcx.sess.source_map().span_to_snippet(span) {
-                        let suggestable_fr_name = match fr_name {
-                            RegionName::Named(name) => format!("{}", name),
-                            RegionName::Synthesized(_) => "'_".to_string(),
+                        let suggestable_fr_name = if fr_name.was_named() {
+                            format!("{}", fr_name)
+                        } else {
+                            "'_".to_string()
                         };
+
                         diag.span_suggestion_with_applicability(
                             span,
                             &format!(

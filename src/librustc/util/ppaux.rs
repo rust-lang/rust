@@ -34,7 +34,14 @@ use hir;
 thread_local! {
     /// Mechanism for highlighting of specific regions for display in NLL region inference errors.
     /// Contains region to highlight and counter for number to use when highlighting.
-    static HIGHLIGHT_REGION: Cell<Option<(RegionVid, usize)>> = Cell::new(None)
+    static HIGHLIGHT_REGION_FOR_REGIONVID: Cell<Option<(RegionVid, usize)>> = Cell::new(None)
+}
+
+thread_local! {
+    /// Mechanism for highlighting of specific regions for display in NLL's 'borrow does not live
+    /// long enough' errors. Contains a region to highlight and a counter to use.
+    static HIGHLIGHT_REGION_FOR_BOUND_REGION: Cell<Option<(ty::BoundRegion, usize)>> =
+        Cell::new(None)
 }
 
 macro_rules! gen_display_debug_body {
@@ -564,12 +571,34 @@ pub fn parameterized<F: fmt::Write>(f: &mut F,
     PrintContext::new().parameterized(f, substs, did, projections)
 }
 
-fn get_highlight_region() -> Option<(RegionVid, usize)> {
-    HIGHLIGHT_REGION.with(|hr| hr.get())
+fn get_highlight_region_for_regionvid() -> Option<(RegionVid, usize)> {
+    HIGHLIGHT_REGION_FOR_REGIONVID.with(|hr| hr.get())
 }
 
-pub fn with_highlight_region<R>(r: RegionVid, counter: usize, op: impl FnOnce() -> R) -> R {
-    HIGHLIGHT_REGION.with(|hr| {
+pub fn with_highlight_region_for_regionvid<R>(
+    r: RegionVid,
+    counter: usize,
+    op: impl FnOnce() -> R
+) -> R {
+    HIGHLIGHT_REGION_FOR_REGIONVID.with(|hr| {
+        assert_eq!(hr.get(), None);
+        hr.set(Some((r, counter)));
+        let r = op();
+        hr.set(None);
+        r
+    })
+}
+
+fn get_highlight_region_for_bound_region() -> Option<(ty::BoundRegion, usize)> {
+    HIGHLIGHT_REGION_FOR_BOUND_REGION.with(|hr| hr.get())
+}
+
+pub fn with_highlight_region_for_bound_region<R>(
+    r: ty::BoundRegion,
+    counter: usize,
+    op: impl Fn() -> R
+) -> R {
+    HIGHLIGHT_REGION_FOR_BOUND_REGION.with(|hr| {
         assert_eq!(hr.get(), None);
         hr.set(Some((r, counter)));
         let r = op();
@@ -726,6 +755,15 @@ define_print! {
                 return self.print_debug(f, cx);
             }
 
+            if let Some((region, counter)) = get_highlight_region_for_bound_region() {
+                if *self == region {
+                    return match *self {
+                        BrNamed(_, name) => write!(f, "{}", name),
+                        BrAnon(_) | BrFresh(_) | BrEnv => write!(f, "'{}", counter)
+                    };
+                }
+            }
+
             match *self {
                 BrNamed(_, name) => write!(f, "{}", name),
                 BrAnon(_) | BrFresh(_) | BrEnv => Ok(())
@@ -748,7 +786,7 @@ define_print! {
 define_print! {
     () ty::RegionKind, (self, f, cx) {
         display {
-            if cx.is_verbose || get_highlight_region().is_some() {
+            if cx.is_verbose || get_highlight_region_for_regionvid().is_some() {
                 return self.print_debug(f, cx);
             }
 
@@ -923,7 +961,7 @@ impl fmt::Debug for ty::FloatVid {
 
 impl fmt::Debug for ty::RegionVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some((region, counter)) = get_highlight_region() {
+        if let Some((region, counter)) = get_highlight_region_for_regionvid() {
             debug!("RegionVid.fmt: region={:?} self={:?} counter={:?}", region, self, counter);
             return if *self == region {
                 write!(f, "'{:?}", counter)

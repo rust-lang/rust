@@ -11,26 +11,71 @@
 use borrow_check::borrow_set::BorrowData;
 use borrow_check::nll::region_infer::Cause;
 use borrow_check::{Context, MirBorrowckCtxt, WriteKind};
-use rustc::mir::{FakeReadCause, Local, Location, Place, TerminatorKind};
+use rustc::ty::{Region, TyCtxt};
+use rustc::mir::{FakeReadCause, Location, Place, TerminatorKind};
 use rustc_errors::DiagnosticBuilder;
-use rustc::ty::Region;
+use syntax_pos::Span;
+use syntax_pos::symbol::Symbol;
 
 mod find_use;
 
-#[derive(Copy, Clone, Debug)]
-pub enum BorrowContainsPointReason<'tcx> {
-    Liveness {
-        local: Local,
-        location: Location,
-        in_loop: bool,
-    },
-    DropLiveness {
-        local: Local,
-        location: Location,
-    },
-    OutlivesFreeRegion {
-        outlived_region: Option<Region<'tcx>>,
-    },
+pub(in borrow_check) enum BorrowExplanation<'tcx> {
+    UsedLater(bool, Option<FakeReadCause>, Span),
+    UsedLaterInLoop(bool, Span),
+    UsedLaterWhenDropped(Span, Symbol, bool),
+    MustBeValidFor(Region<'tcx>),
+    Unexplained,
+}
+
+impl<'tcx> BorrowExplanation<'tcx> {
+    pub(in borrow_check) fn emit<'cx, 'gcx>(
+        &self,
+        tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+        err: &mut DiagnosticBuilder<'_>
+    ) {
+        match *self {
+            BorrowExplanation::UsedLater(is_in_closure, fake_read_cause, var_or_use_span) => {
+                let message = if is_in_closure {
+                    "borrow later captured here by closure"
+                } else if let Some(FakeReadCause::ForLet) = fake_read_cause {
+                    "borrow later stored here"
+                } else {
+                    "borrow later used here"
+                };
+                err.span_label(var_or_use_span, message);
+            },
+            BorrowExplanation::UsedLaterInLoop(is_in_closure, var_or_use_span) => {
+                let message = if is_in_closure {
+                    "borrow captured here by closure in later iteration of loop"
+                } else {
+                    "borrow used here in later iteration of loop"
+                };
+                err.span_label(var_or_use_span, message);
+            },
+            BorrowExplanation::UsedLaterWhenDropped(span, local_name, should_note_order) => {
+                err.span_label(
+                    span,
+                    format!("borrow later used here, when `{}` is dropped", local_name),
+                );
+
+                if should_note_order {
+                    err.note(
+                        "values in a scope are dropped \
+                         in the opposite order they are defined",
+                    );
+                }
+            },
+            BorrowExplanation::MustBeValidFor(region) => {
+                tcx.note_and_explain_free_region(
+                    err,
+                    "borrowed value must be valid for ",
+                    region,
+                    "...",
+                );
+            },
+            _ => {},
+        }
+    }
 }
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
@@ -53,23 +98,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         context: Context,
         borrow: &BorrowData<'tcx>,
         kind_place: Option<(WriteKind, &Place<'tcx>)>,
-        err: &mut DiagnosticBuilder<'_>,
-    ) {
-        let reason = self.find_why_borrow_contains_point(context, borrow);
-        self.report_why_borrow_contains_point(err, reason, kind_place);
-    }
-
-    /// Finds the reason that [explain_why_borrow_contains_point] will report
-    /// but doesn't add it to any message. This is a separate function in case
-    /// the caller wants to change the error they report based on the reason
-    /// that will be reported.
-    pub(in borrow_check) fn find_why_borrow_contains_point(
-        &self,
-        context: Context,
-        borrow: &BorrowData<'tcx>
-    ) -> BorrowContainsPointReason<'tcx> {
-        use self::BorrowContainsPointReason::*;
-
+    ) -> BorrowExplanation<'tcx> {
         debug!(
             "find_why_borrow_contains_point(context={:?}, borrow={:?})",
             context, borrow,
@@ -77,116 +106,70 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let regioncx = &self.nonlexical_regioncx;
         let mir = self.mir;
-        let tcx = self.tcx;
+        let tcx = self.infcx.tcx;
 
         let borrow_region_vid = regioncx.to_region_vid(borrow.region);
-
         debug!(
             "explain_why_borrow_contains_point: borrow_region_vid={:?}",
             borrow_region_vid
         );
 
         let region_sub = regioncx.find_sub_region_live_at(borrow_region_vid, context.loc);
-
         debug!(
             "explain_why_borrow_contains_point: region_sub={:?}",
             region_sub
         );
 
-        match find_use::find(mir, regioncx, tcx, region_sub, context.loc) {
-            Some(Cause::LiveVar(local, location)) => Liveness {
-                local,
-                location,
-                in_loop: self.is_borrow_location_in_loop(context.loc),
-            },
-            Some(Cause::DropVar(local, location)) => DropLiveness {
-                local,
-                location,
-            },
-            None => OutlivesFreeRegion {
-                outlived_region: regioncx.to_error_region(region_sub),
-            },
-        }
-    }
-
-    /// Adds annotations to `err` for the explanation `reason`. This is a
-    /// separate method so that the caller can change their error message based
-    /// on the reason that is going to be reported.
-    pub (in borrow_check) fn report_why_borrow_contains_point(
-        &self,
-        err: &mut DiagnosticBuilder,
-        reason: BorrowContainsPointReason<'tcx>,
-        kind_place: Option<(WriteKind, &Place<'tcx>)>,
-    ) {
-        use self::BorrowContainsPointReason::*;
-
-        debug!(
-            "find_why_borrow_contains_point(reason={:?}, kind_place={:?})",
-            reason, kind_place,
-        );
-
-        let mir = self.mir;
-
-        match reason {
-            Liveness { local, location, in_loop } => {
+         match find_use::find(mir, regioncx, tcx, region_sub, context.loc) {
+            Some(Cause::LiveVar(local, location)) => {
                 let span = mir.source_info(location).span;
                 let spans = self.move_spans(&Place::Local(local), location)
                     .or_else(|| self.borrow_spans(span, location));
-                let message = if in_loop {
-                    if spans.for_closure() {
-                        "borrow captured here by closure in later iteration of loop"
-                    } else {
-                        "borrow used here in later iteration of loop"
-                    }
-                } else {
-                    if spans.for_closure() {
-                        "borrow later captured here by closure"
-                    } else {
-                        // Check if the location represents a `FakeRead`, and adapt the error
-                        // message to the `FakeReadCause` it is from: in particular,
-                        // the ones inserted in optimized `let var = <expr>` patterns.
-                        match self.retrieve_fake_read_cause_for_location(&location) {
-                            Some(FakeReadCause::ForLet) => "borrow later stored here",
-                            _ => "borrow later used here"
-                        }
-                    }
-                };
-                err.span_label(spans.var_or_use(), message);
-            }
-            DropLiveness { local, location } => match &mir.local_decls[local].name {
-                Some(local_name) => {
-                    err.span_label(
-                        mir.source_info(location).span,
-                        format!("borrow later used here, when `{}` is dropped", local_name),
-                    );
 
+                if self.is_borrow_location_in_loop(context.loc) {
+                    BorrowExplanation::UsedLaterInLoop(spans.for_closure(), spans.var_or_use())
+                } else {
+                    // Check if the location represents a `FakeRead`, and adapt the error
+                    // message to the `FakeReadCause` it is from: in particular,
+                    // the ones inserted in optimized `let var = <expr>` patterns.
+                    BorrowExplanation::UsedLater(
+                        spans.for_closure(),
+                        self.retrieve_fake_read_cause_for_location(&location),
+                        spans.var_or_use()
+                    )
+                }
+            }
+
+            Some(Cause::DropVar(local, location)) => match &mir.local_decls[local].name {
+                Some(local_name) => {
+                    let mut should_note_order = false;
                     if let Some((WriteKind::StorageDeadOrDrop(_), place)) = kind_place {
                         if let Place::Local(borrowed_local) = place {
                             let dropped_local_scope = mir.local_decls[local].visibility_scope;
                             let borrowed_local_scope =
-                            mir.local_decls[*borrowed_local].visibility_scope;
+                                mir.local_decls[*borrowed_local].visibility_scope;
 
                             if mir.is_sub_scope(borrowed_local_scope, dropped_local_scope) {
-                                err.note(
-                                "values in a scope are dropped \
-                                                     in the opposite order they are defined",
-                                );
+                                should_note_order = true;
                             }
                         }
                     }
-                }
 
-                None => {}
-            }
-            OutlivesFreeRegion { outlived_region: Some(region) } => {
-                self.tcx.note_and_explain_free_region(
-                    err,
-                    "borrowed value must be valid for ",
-                    region,
-                    "...",
-                );
-            }
-            OutlivesFreeRegion { outlived_region: None } => (),
+                    BorrowExplanation::UsedLaterWhenDropped(
+                        mir.source_info(location).span,
+                        *local_name,
+                        should_note_order
+                    )
+                },
+
+                None => BorrowExplanation::Unexplained,
+            },
+
+            None => if let Some(region) = regioncx.to_error_region(region_sub) {
+                BorrowExplanation::MustBeValidFor(region)
+            } else {
+                BorrowExplanation::Unexplained
+            },
         }
     }
 
@@ -262,4 +245,3 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         false
     }
 }
-

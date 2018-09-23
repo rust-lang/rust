@@ -121,9 +121,7 @@ struct DefUseVisitor<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
 
 enum DefUseResult {
     Def,
-
     UseLive { local: Local },
-
     UseDrop { local: Local },
 }
 

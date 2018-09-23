@@ -79,7 +79,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             next: Some(place),
             kind,
             mir: self.mir,
-            tcx: self.tcx,
+            tcx: self.infcx.tcx,
         }
     }
 }

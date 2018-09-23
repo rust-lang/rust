@@ -244,30 +244,31 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             let origin = Origin::Mir;
             debug!("report: original_path={:?} span={:?}, kind={:?} \
                    original_path.is_upvar_field_projection={:?}", original_path, span, kind,
-                   original_path.is_upvar_field_projection(self.mir, &self.tcx));
+                   original_path.is_upvar_field_projection(self.mir, &self.infcx.tcx));
             (
                 match kind {
                     IllegalMoveOriginKind::Static => {
-                        self.tcx.cannot_move_out_of(span, "static item", origin)
+                        self.infcx.tcx.cannot_move_out_of(span, "static item", origin)
                     }
                     IllegalMoveOriginKind::BorrowedContent { target_place: place } => {
                         // Inspect the type of the content behind the
                         // borrow to provide feedback about why this
                         // was a move rather than a copy.
-                        let ty = place.ty(self.mir, self.tcx).to_ty(self.tcx);
+                        let ty = place.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
                         let is_upvar_field_projection =
                             self.prefixes(&original_path, PrefixSet::All)
-                            .any(|p| p.is_upvar_field_projection(self.mir, &self.tcx)
+                            .any(|p| p.is_upvar_field_projection(self.mir, &self.infcx.tcx)
                                  .is_some());
                         match ty.sty {
-                            ty::Array(..) | ty::Slice(..) => self
-                                .tcx
-                                .cannot_move_out_of_interior_noncopy(span, ty, None, origin),
+                            ty::Array(..) | ty::Slice(..) =>
+                                self.infcx.tcx.cannot_move_out_of_interior_noncopy(
+                                    span, ty, None, origin
+                                ),
                             ty::Closure(def_id, closure_substs)
                                 if !self.mir.upvar_decls.is_empty() && is_upvar_field_projection
                             => {
                                 let closure_kind_ty =
-                                    closure_substs.closure_kind_ty(def_id, self.tcx);
+                                    closure_substs.closure_kind_ty(def_id, self.infcx.tcx);
                                 let closure_kind = closure_kind_ty.to_opt_closure_kind();
                                 let place_description = match closure_kind {
                                     Some(ty::ClosureKind::Fn) => {
@@ -285,18 +286,18 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                        place_description={:?}", closure_kind_ty, closure_kind,
                                        place_description);
 
-                                let mut diag = self.tcx.cannot_move_out_of(
+                                let mut diag = self.infcx.tcx.cannot_move_out_of(
                                     span, place_description, origin);
 
                                 for prefix in self.prefixes(&original_path, PrefixSet::All) {
                                     if let Some(field) = prefix.is_upvar_field_projection(
-                                            self.mir, &self.tcx) {
+                                            self.mir, &self.infcx.tcx) {
                                         let upvar_decl = &self.mir.upvar_decls[field.index()];
                                         let upvar_hir_id =
                                             upvar_decl.var_hir_id.assert_crate_local();
                                         let upvar_node_id =
-                                            self.tcx.hir.hir_to_node_id(upvar_hir_id);
-                                        let upvar_span = self.tcx.hir.span(upvar_node_id);
+                                            self.infcx.tcx.hir.hir_to_node_id(upvar_hir_id);
+                                        let upvar_span = self.infcx.tcx.hir.span(upvar_node_id);
                                         diag.span_label(upvar_span, "captured outer variable");
                                         break;
                                     }
@@ -304,18 +305,19 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
 
                                 diag
                             }
-                            _ => self
-                                .tcx
-                                .cannot_move_out_of(span, "borrowed content", origin),
+                            _ => self.infcx.tcx.cannot_move_out_of(
+                                span, "borrowed content", origin
+                            ),
                         }
                     }
                     IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } => {
-                        self.tcx
+                        self.infcx.tcx
                             .cannot_move_out_of_interior_of_drop(span, ty, origin)
                     }
-                    IllegalMoveOriginKind::InteriorOfSliceOrArray { ty, is_index } => self
-                        .tcx
-                        .cannot_move_out_of_interior_noncopy(span, ty, Some(*is_index), origin),
+                    IllegalMoveOriginKind::InteriorOfSliceOrArray { ty, is_index } =>
+                        self.infcx.tcx.cannot_move_out_of_interior_noncopy(
+                            span, ty, Some(*is_index), origin
+                        ),
                 },
                 span,
             )
@@ -331,7 +333,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         err: &mut DiagnosticBuilder<'a>,
         span: Span,
     ) {
-        let snippet = self.tcx.sess.source_map().span_to_snippet(span).unwrap();
+        let snippet = self.infcx.tcx.sess.source_map().span_to_snippet(span).unwrap();
         match error {
             GroupedMoveError::MovesFromPlace {
                 mut binds_to,
@@ -394,8 +396,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     ..
                 }))
             ) = bind_to.is_user_variable {
-                let pat_snippet = self
-                    .tcx.sess.source_map()
+                let pat_snippet = self.infcx.tcx.sess.source_map()
                     .span_to_snippet(pat_span)
                     .unwrap();
                 if pat_snippet.starts_with('&') {
