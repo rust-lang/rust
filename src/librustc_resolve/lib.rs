@@ -3009,7 +3009,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             if is_self_value(path, ns) {
                 __diagnostic_used!(E0424);
                 err.code(DiagnosticId::Error("E0424".into()));
-                err.span_label(span, format!("`self` value is only available in \
+                err.span_label(span, format!("`self` value is a keyword \
+                                               only available in \
                                                methods with `self` parameter"));
                 return (err, Vec::new());
             }
@@ -3052,7 +3053,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                 Applicability::MachineApplicable,
                             );
                             if !self_is_available {
-                                err.span_label(span, format!("`self` value is only available in \
+                                err.span_label(span, format!("`self` value is a keyword \
+                                                               only available in \
                                                                methods with `self` parameter"));
                             }
                         }

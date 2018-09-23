@@ -22,7 +22,7 @@ error[E0425]: cannot find value `whiskers` in this scope
 LL |     whiskers -= other;
    |     ^^^^^^^^
    |     |
-   |     `self` value is only available in methods with `self` parameter
+   |     `self` value is a keyword only available in methods with `self` parameter
    |     help: try: `self.whiskers`
 
 error[E0425]: cannot find function `shave` in this scope
@@ -65,7 +65,7 @@ error[E0424]: expected value, found module `self`
   --> $DIR/issue-2356.rs:75:8
    |
 LL |     if self.whiskers > 3 {
-   |        ^^^^ `self` value is only available in methods with `self` parameter
+   |        ^^^^ `self` value is a keyword only available in methods with `self` parameter
 
 error[E0425]: cannot find function `grow_older` in this scope
   --> $DIR/issue-2356.rs:82:5
@@ -91,7 +91,7 @@ error[E0425]: cannot find value `whiskers` in this scope
 LL |     whiskers = 4;
    |     ^^^^^^^^
    |     |
-   |     `self` value is only available in methods with `self` parameter
+   |     `self` value is a keyword only available in methods with `self` parameter
    |     help: try: `self.whiskers`
 
 error[E0425]: cannot find function `purr_louder` in this scope
@@ -104,7 +104,7 @@ error[E0424]: expected value, found module `self`
   --> $DIR/issue-2356.rs:102:5
    |
 LL |     self += 1;
-   |     ^^^^ `self` value is only available in methods with `self` parameter
+   |     ^^^^ `self` value is a keyword only available in methods with `self` parameter
 
 error: aborting due to 17 previous errors
 
