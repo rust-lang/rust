@@ -61,7 +61,7 @@ pub(super) fn each_borrow_involving_path<'a, 'tcx, 'gcx: 'tcx, F, I, S> (
     for i in candidates {
         let borrowed = &borrow_set[i];
 
-        if places_conflict::places_conflict(
+        if places_conflict::borrow_conflicts_with_place(
             tcx,
             mir,
             &borrowed.borrowed_place,
