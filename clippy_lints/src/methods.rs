@@ -17,6 +17,7 @@ use crate::utils::{get_arg_name, get_trait_def_id, implements_trait, in_macro, i
 use crate::utils::paths;
 use crate::utils::sugg;
 use crate::consts::{constant, Constant};
+use crate::rustc_errors::Applicability;
 
 #[derive(Clone)]
 pub struct Pass;
@@ -1127,8 +1128,18 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
                     let refs: String = iter::repeat('&').take(n + 1).collect();
                     let derefs: String = iter::repeat('*').take(n).collect();
                     let explicit = format!("{}{}::clone({})", refs, ty, snip);
-                    db.span_suggestion(expr.span, "try dereferencing it", format!("{}({}{}).clone()", refs, derefs, snip.deref()));
-                    db.span_suggestion(expr.span, "or try being explicit about what type to clone", explicit);
+                    db.span_suggestion_with_applicability(
+                        expr.span,
+                        "try dereferencing it",
+                        format!("{}({}{}).clone()", refs, derefs, snip.deref()),
+                        Applicability::MaybeIncorrect,
+                    );
+                    db.span_suggestion_with_applicability(
+                        expr.span, 
+                        "or try being explicit about what type to clone", 
+                        explicit,
+                        Applicability::MaybeIncorrect,
+                    );
                 },
             );
             return; // don't report clone_on_copy
@@ -1169,7 +1180,12 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
         }
         span_lint_and_then(cx, CLONE_ON_COPY, expr.span, "using `clone` on a `Copy` type", |db| {
             if let Some((text, snip)) = snip {
-                db.span_suggestion(expr.span, text, snip);
+                db.span_suggestion_with_applicability(
+                    expr.span,
+                    text,
+                    snip,
+                    Applicability::Unspecified,
+                );
             }
         });
     }
@@ -1639,7 +1655,12 @@ fn lint_map_or_none<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr,
             let map_or_func_snippet = snippet(cx, map_or_args[2].span, "..");
             let hint = format!("{0}.and_then({1})", map_or_self_snippet, map_or_func_snippet);
             span_lint_and_then(cx, OPTION_MAP_OR_NONE, expr.span, msg, |db| {
-                db.span_suggestion(expr.span, "try using and_then instead", hint);
+                db.span_suggestion_with_applicability(
+                    expr.span,
+                    "try using and_then instead",
+                    hint,
+                    Applicability::MachineApplicable, // snippet
+                );
             });
         }
     }

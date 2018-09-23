@@ -4,6 +4,7 @@ use if_chain::if_chain;
 use crate::syntax::ast;
 use crate::syntax::source_map::Span;
 use crate::syntax::visit::FnKind;
+use crate::rustc_errors::Applicability;
 
 use crate::utils::{in_macro, match_path_ast, snippet_opt, span_lint_and_then, span_note_and_lint};
 
@@ -108,7 +109,12 @@ impl ReturnPass {
         }
         span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded return statement", |db| {
             if let Some(snippet) = snippet_opt(cx, inner_span) {
-                db.span_suggestion(ret_span, "remove `return` as shown", snippet);
+                db.span_suggestion_with_applicability(
+                    ret_span,
+                    "remove `return` as shown",
+                    snippet,
+                    Applicability::MachineApplicable,
+                );
             }
         });
     }

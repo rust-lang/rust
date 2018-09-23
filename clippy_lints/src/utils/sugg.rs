@@ -15,6 +15,7 @@ use crate::syntax::util::parser::AssocOp;
 use crate::syntax::ast;
 use crate::utils::{higher, snippet, snippet_opt};
 use crate::syntax_pos::{BytePos, Pos};
+use crate::rustc_errors::Applicability;
 
 /// A helper type to build suggestion correctly handling parenthesis.
 pub enum Sugg<'a> {
@@ -461,7 +462,7 @@ pub trait DiagnosticBuilderExt<'a, T: LintContext<'a>> {
     /// ```rust,ignore
     /// db.suggest_item_with_attr(cx, item, "#[derive(Default)]");
     /// ```
-    fn suggest_item_with_attr<D: Display + ?Sized>(&mut self, cx: &T, item: Span, msg: &str, attr: &D);
+    fn suggest_item_with_attr<D: Display + ?Sized>(&mut self, cx: &T, item: Span, msg: &str, attr: &D, applicability: Applicability);
 
     /// Suggest to add an item before another.
     ///
@@ -475,7 +476,7 @@ pub trait DiagnosticBuilderExt<'a, T: LintContext<'a>> {
     ///     bar();
     /// }");
     /// ```
-    fn suggest_prepend_item(&mut self, cx: &T, item: Span, msg: &str, new_item: &str);
+    fn suggest_prepend_item(&mut self, cx: &T, item: Span, msg: &str, new_item: &str, applicability: Applicability);
 
     /// Suggest to completely remove an item.
     ///
@@ -488,19 +489,24 @@ pub trait DiagnosticBuilderExt<'a, T: LintContext<'a>> {
     /// ```rust,ignore
     /// db.suggest_remove_item(cx, item, "remove this")
     /// ```
-    fn suggest_remove_item(&mut self, cx: &T, item: Span, msg: &str);
+    fn suggest_remove_item(&mut self, cx: &T, item: Span, msg: &str, applicability: Applicability);
 }
 
 impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_errors::DiagnosticBuilder<'b> {
-    fn suggest_item_with_attr<D: Display + ?Sized>(&mut self, cx: &T, item: Span, msg: &str, attr: &D) {
+    fn suggest_item_with_attr<D: Display + ?Sized>(&mut self, cx: &T, item: Span, msg: &str, attr: &D, applicability: Applicability) {
         if let Some(indent) = indentation(cx, item) {
             let span = item.with_hi(item.lo());
 
-            self.span_suggestion(span, msg, format!("{}\n{}", attr, indent));
+            self.span_suggestion_with_applicability(
+                        span,
+                        msg,
+                        format!("{}\n{}", attr, indent),
+                        applicability,
+                        );
         }
     }
 
-    fn suggest_prepend_item(&mut self, cx: &T, item: Span, msg: &str, new_item: &str) {
+    fn suggest_prepend_item(&mut self, cx: &T, item: Span, msg: &str, new_item: &str, applicability: Applicability) {
         if let Some(indent) = indentation(cx, item) {
             let span = item.with_hi(item.lo());
 
@@ -517,11 +523,16 @@ impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_error
                 })
                 .collect::<String>();
 
-            self.span_suggestion(span, msg, format!("{}\n{}", new_item, indent));
+            self.span_suggestion_with_applicability(
+                        span,
+                        msg,
+                        format!("{}\n{}", new_item, indent),
+                        applicability,
+                        );
         }
     }
 
-    fn suggest_remove_item(&mut self, cx: &T, item: Span, msg: &str) {
+    fn suggest_remove_item(&mut self, cx: &T, item: Span, msg: &str, applicability: Applicability) {
         let mut remove_span = item;
         let hi = cx.sess().source_map().next_point(remove_span).hi();
         let fmpos = cx.sess().source_map().lookup_byte_offset(hi);
@@ -534,6 +545,11 @@ impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_error
             }
         }
 
-        self.span_suggestion(remove_span, msg, String::new());
+        self.span_suggestion_with_applicability(
+            remove_span,
+            msg,
+            String::new(),
+            applicability,
+        );
     }
 }

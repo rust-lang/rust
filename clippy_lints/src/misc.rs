@@ -13,6 +13,7 @@ use crate::utils::{get_item_name, get_parent_expr, implements_trait, in_constant
 use crate::utils::sugg::Sugg;
 use crate::syntax::ast::{LitKind, CRATE_NODE_ID};
 use crate::consts::{constant, Constant};
+use crate::rustc_errors::Applicability;
 
 /// **What it does:** Checks for function arguments and let bindings denoted as
 /// `ref`.
@@ -294,12 +295,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         l.pat.span,
                         "`ref` on an entire `let` pattern is discouraged, take a reference with `&` instead",
                         |db| {
-                            db.span_suggestion(s.span,
-                                               "try",
-                                               format!("let {name}{tyopt} = {initref};",
-                                                       name=snippet(cx, i.span, "_"),
-                                                       tyopt=tyopt,
-                                                       initref=initref));
+                            db.span_suggestion_with_applicability(
+                                s.span,
+                                "try",
+                                format!(
+                                    "let {name}{tyopt} = {initref};",
+                                    name=snippet(cx, i.span, "_"),
+                                    tyopt=tyopt,
+                                    initref=initref,
+                                ),
+                                Applicability::MachineApplicable, // snippet
+                            );
                         }
                     );
                 }
@@ -317,8 +323,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     "boolean short circuit operator in statement may be clearer using an explicit test",
                     |db| {
                         let sugg = if binop.node == BinOpKind::Or { !sugg } else { sugg };
-                        db.span_suggestion(s.span, "replace it with",
-                                           format!("if {} {{ {}; }}", sugg, &snippet(cx, b.span, "..")));
+                        db.span_suggestion_with_applicability(
+                            s.span, 
+                            "replace it with",
+                            format!(
+                                "if {} {{ {}; }}",
+                                sugg, 
+                                &snippet(cx, b.span, ".."),
+                            ),
+                            Applicability::MachineApplicable, // snippet
+                        );
                     });
             }
         };
@@ -363,10 +377,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         let lhs = Sugg::hir(cx, left, "..");
                         let rhs = Sugg::hir(cx, right, "..");
 
-                        db.span_suggestion(
+                        db.span_suggestion_with_applicability(
                             expr.span,
                             "consider comparing them within some error",
                             format!("({}).abs() < error", lhs - rhs),
+                            Applicability::MachineApplicable, // snippet
                         );
                         db.span_note(expr.span, "std::f32::EPSILON and std::f64::EPSILON are available.");
                     });
@@ -534,7 +549,12 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
                     }
                 }
             }
-            db.span_suggestion(expr.span, "try", snip.to_string());
+            db.span_suggestion_with_applicability(
+                expr.span, 
+                "try",
+                snip.to_string(),
+                Applicability::MachineApplicable, // snippet
+            );
         },
     );
 }

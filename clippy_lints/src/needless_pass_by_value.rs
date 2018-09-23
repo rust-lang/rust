@@ -17,6 +17,7 @@ use crate::utils::{get_trait_def_id, implements_trait, in_macro, is_copy, is_sel
             snippet, snippet_opt, span_lint_and_then};
 use crate::utils::ptr::get_spans;
 use std::borrow::Cow;
+use crate::rustc_errors::Applicability;
 
 /// **What it does:** Checks for functions taking arguments by value, but not
 /// consuming them in its
@@ -227,19 +228,23 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                                 }).unwrap());
                             then {
                                 let slice_ty = format!("&[{}]", snippet(cx, elem_ty.span, "_"));
-                                db.span_suggestion(input.span,
-                                                "consider changing the type to",
-                                                slice_ty);
+                                db.span_suggestion_with_applicability(
+                                    input.span,
+                                    "consider changing the type to",
+                                    slice_ty,
+                                    Applicability::Unspecified,
+                                );
 
                                 for (span, suggestion) in clone_spans {
-                                    db.span_suggestion(
+                                    db.span_suggestion_with_applicability(
                                         span,
                                         &snippet_opt(cx, span)
                                             .map_or(
                                                 "change the call to".into(),
                                                 |x| Cow::from(format!("change `{}` to", x)),
                                             ),
-                                        suggestion.into()
+                                        suggestion.into(),
+                                        Applicability::Unspecified,
                                     );
                                 }
 
@@ -252,10 +257,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                         if match_type(cx, ty, &paths::STRING) {
                             if let Some(clone_spans) =
                                 get_spans(cx, Some(body.id()), idx, &[("clone", ".to_string()"), ("as_str", "")]) {
-                                db.span_suggestion(input.span, "consider changing the type to", "&str".to_string());
+                                db.span_suggestion_with_applicability(
+                                    input.span,
+                                    "consider changing the type to",
+                                    "&str".to_string(),
+                                    Applicability::Unspecified,
+                                );
 
                                 for (span, suggestion) in clone_spans {
-                                    db.span_suggestion(
+                                    db.span_suggestion_with_applicability(
                                         span,
                                         &snippet_opt(cx, span)
                                             .map_or(
@@ -263,6 +273,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                                                 |x| Cow::from(format!("change `{}` to", x))
                                             ),
                                         suggestion.into(),
+                                        Applicability::Unspecified,
                                     );
                                 }
 

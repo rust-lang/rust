@@ -3,6 +3,7 @@ use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc::ty;
 use crate::rustc::hir::*;
 use crate::utils::{is_adjusted, iter_input_pats, snippet_opt, span_lint_and_then};
+use crate::rustc_errors::Applicability;
 
 #[allow(missing_copy_implementations)]
 pub struct EtaPass;
@@ -96,7 +97,12 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr) {
             }
             span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure found", |db| {
                 if let Some(snippet) = snippet_opt(cx, caller.span) {
-                    db.span_suggestion(expr.span, "remove closure as shown", snippet);
+                    db.span_suggestion_with_applicability(
+                        expr.span,
+                        "remove closure as shown",
+                        snippet,
+                        Applicability::MachineApplicable,
+                    );
                 }
             });
         }

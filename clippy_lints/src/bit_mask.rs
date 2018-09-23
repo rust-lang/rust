@@ -7,6 +7,7 @@ use crate::syntax::source_map::Span;
 use crate::utils::{span_lint, span_lint_and_then};
 use crate::utils::sugg::Sugg;
 use crate::consts::{constant, Constant};
+use crate::rustc_errors::Applicability;
 
 /// **What it does:** Checks for incompatible bit masks in comparisons.
 ///
@@ -138,7 +139,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BitMask {
                                    "bit mask could be simplified with a call to `trailing_zeros`",
                                    |db| {
                     let sugg = Sugg::hir(cx, left1, "...").maybe_par();
-                    db.span_suggestion(e.span, "try", format!("{}.trailing_zeros() >= {}", sugg, n.count_ones()));
+                    db.span_suggestion_with_applicability(
+                        e.span,
+                        "try",
+                        format!("{}.trailing_zeros() >= {}", sugg, n.count_ones()),
+                        Applicability::MaybeIncorrect,
+                    );
                 });
             }
         }

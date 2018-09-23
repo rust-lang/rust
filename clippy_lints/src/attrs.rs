@@ -13,6 +13,7 @@ use crate::rustc::ty::{self, TyCtxt};
 use semver::Version;
 use crate::syntax::ast::{AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use crate::syntax::source_map::Span;
+use crate::rustc_errors::Applicability;
 
 /// **What it does:** Checks for items annotated with `#[inline(always)]`,
 /// unless the annotated function is empty or simply panics.
@@ -203,7 +204,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
                                             "useless lint attribute",
                                             |db| {
                                                 sugg = sugg.replacen("#[", "#![", 1);
-                                                db.span_suggestion(line_span, "if you just forgot a `!`, use", sugg);
+                                                db.span_suggestion_with_applicability(
+                                                    line_span,
+                                                    "if you just forgot a `!`, use",
+                                                    sugg,
+                                                    Applicability::MachineApplicable,
+                                                );
                                             },
                                         );
                                     }

@@ -2,6 +2,7 @@ use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc::hir::*;
 use crate::utils::{match_qpath, paths, snippet, span_lint_and_then};
+use crate::rustc_errors::Applicability;
 
 /// **What it does:** Lint for redundant pattern matching over `Result` or
 /// `Option`
@@ -77,10 +78,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     &format!("redundant pattern matching, consider using `{}`", good_method),
                     |db| {
                         let span = expr.span.with_hi(op.span.hi());
-                        db.span_suggestion(
+                        db.span_suggestion_with_applicability(
                             span,
                             "try this",
                             format!("if {}.{}", snippet(cx, op.span, "_"), good_method),
+                            Applicability::MachineApplicable, // snippet
                         );
                     },
                 );

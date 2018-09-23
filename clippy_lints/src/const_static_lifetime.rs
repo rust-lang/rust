@@ -2,6 +2,7 @@ use crate::syntax::ast::*;
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::utils::{in_macro, snippet, span_lint_and_then};
+use crate::rustc_errors::Applicability;
 
 /// **What it does:** Checks for constants with an explicit `'static` lifetime.
 ///
@@ -60,7 +61,12 @@ impl StaticConst {
                                     lifetime.ident.span,
                                     "Constants have by default a `'static` lifetime",
                                     |db| {
-                                        db.span_suggestion(ty.span, "consider removing `'static`", sugg);
+                                        db.span_suggestion_with_applicability(
+                                            ty.span, 
+                                            "consider removing `'static`",
+                                            sugg,
+                                            Applicability::MachineApplicable, //snippet
+                                        );
                                     },
                                 );
                             }

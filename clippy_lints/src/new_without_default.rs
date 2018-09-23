@@ -8,6 +8,7 @@ use crate::syntax::source_map::Span;
 use crate::utils::paths;
 use crate::utils::{get_trait_def_id, implements_trait, return_ty, same_tys, span_lint_and_then};
 use crate::utils::sugg::DiagnosticBuilderExt;
+use crate::rustc_errors::Applicability;
 
 /// **What it does:** Checks for types with a `fn new() -> Self` method and no
 /// implementation of
@@ -129,7 +130,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                             impl_item.span,
                                             &format!("you should consider deriving a `Default` implementation for `{}`", self_ty),
                                             |db| {
-                                                db.suggest_item_with_attr(cx, sp, "try this", "#[derive(Default)]");
+                                                db.suggest_item_with_attr(
+                                                    cx,
+                                                    sp,
+                                                    "try this",
+                                                    "#[derive(Default)]",
+                                                    Applicability::MaybeIncorrect,
+                                                );
                                             });
                                     } else {
                                         span_lint_and_then(
@@ -143,6 +150,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                                     item.span,
                                                     "try this",
                                                     &create_new_without_default_suggest_msg(self_ty),
+                                                    Applicability::MaybeIncorrect,
                                                 );
                                             },
                                         );

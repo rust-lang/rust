@@ -12,6 +12,7 @@ use crate::utils::{expr_block, is_allowed, is_expn_of, match_qpath, match_type, 
             remove_blocks, snippet, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty};
 use crate::utils::sugg::Sugg;
 use crate::consts::{constant, Constant};
+use crate::rustc_errors::Applicability;
 
 /// **What it does:** Checks for matches with a single arm where an `if let`
 /// will usually suffice.
@@ -339,7 +340,12 @@ fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Ex
                         };
 
                         if let Some(sugg) = sugg {
-                            db.span_suggestion(expr.span, "consider using an if/else expression", sugg);
+                            db.span_suggestion_with_applicability(
+                                expr.span,
+                                "consider using an if/else expression",
+                                sugg,
+                                Applicability::HasPlaceholders,
+                            );
                         }
                     }
                 }

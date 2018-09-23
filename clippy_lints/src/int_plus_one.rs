@@ -2,6 +2,7 @@
 
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast::*;
 
 use crate::utils::{snippet_opt, span_lint_and_then};
@@ -152,7 +153,12 @@ impl IntPlusOne {
 
     fn emit_warning(&self, cx: &EarlyContext<'_>, block: &Expr, recommendation: String) {
         span_lint_and_then(cx, INT_PLUS_ONE, block.span, "Unnecessary `>= y + 1` or `x - 1 >=`", |db| {
-            db.span_suggestion(block.span, "change `>= y + 1` to `> y` as shown", recommendation);
+            db.span_suggestion_with_applicability(
+                block.span,
+                "change `>= y + 1` to `> y` as shown",
+                recommendation,
+                Applicability::MachineApplicable, // snippet
+            );
         });
     }
 }

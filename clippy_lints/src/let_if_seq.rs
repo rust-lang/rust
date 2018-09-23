@@ -6,6 +6,7 @@ use crate::rustc::hir::BindingAnnotation;
 use crate::rustc::hir::def::Def;
 use crate::syntax::ast;
 use crate::utils::{snippet, span_lint_and_then};
+use crate::rustc_errors::Applicability;
 
 /// **What it does:** Checks for variable declarations immediately followed by a
 /// conditional affectation.
@@ -120,9 +121,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                                        span,
                                        "`if _ { .. } else { .. }` is an expression",
                                        |db| {
-                                           db.span_suggestion(span,
-                                                              "it is more idiomatic to write",
-                                                              sug);
+                                           db.span_suggestion_with_applicability(
+                                                span,
+                                                "it is more idiomatic to write",
+                                                sug,
+                                                Applicability::HasPlaceholders,
+                                            );
                                            if !mutability.is_empty() {
                                                db.note("you might not need `mut` at all");
                                            }
