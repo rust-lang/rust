@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use languageserver_types::{
     Diagnostic, DiagnosticSeverity, DocumentSymbol,
-    Command, TextDocumentIdentifier,
+    CodeActionResponse, Command, TextDocumentIdentifier,
     SymbolInformation, Position, Location, TextEdit,
     CompletionItem, InsertTextFormat, CompletionItemKind,
 };
@@ -369,7 +369,7 @@ pub fn handle_code_action(
     world: ServerWorld,
     params: req::CodeActionParams,
     _token: JobToken,
-) -> Result<Option<Vec<Command>>> {
+) -> Result<Option<CodeActionResponse>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
     let range = params.range.conv_with(&line_index);
@@ -392,7 +392,7 @@ pub fn handle_code_action(
         res.push(cmd);
     }
 
-    Ok(Some(res))
+    Ok(Some(CodeActionResponse::Commands(res)))
 }
 
 pub fn publish_diagnostics(

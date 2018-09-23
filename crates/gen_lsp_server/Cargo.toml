@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 
 [dependencies]
-languageserver-types = "0.50.0"
+languageserver-types = "0.51.0"
 log = "0.4.3"
 
 failure = "0.1.2"
