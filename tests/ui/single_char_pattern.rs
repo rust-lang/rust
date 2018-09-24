@@ -45,4 +45,8 @@ fn main() {
 
     x.replace(";", ",").split(","); // issue #2978
     x.starts_with("\x03"); // issue #2996
+
+    // Issue #3204
+    const S: &str = "#";
+    x.find(S);
 }

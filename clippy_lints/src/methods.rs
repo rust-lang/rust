@@ -16,7 +16,6 @@ use crate::utils::{get_arg_name, get_trait_def_id, implements_trait, in_macro, i
             span_lint, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq};
 use crate::utils::paths;
 use crate::utils::sugg;
-use crate::consts::{constant, Constant};
 use crate::rustc_errors::Applicability;
 
 #[derive(Clone)]
@@ -1914,8 +1913,11 @@ fn lint_chars_last_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &
 
 /// lint for length-1 `str`s for methods in `PATTERN_METHODS`
 fn lint_single_char_pattern<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, _expr: &'tcx hir::Expr, arg: &'tcx hir::Expr) {
-    if let Some((Constant::Str(r), _)) = constant(cx, cx.tables, arg) {
-        if r.len() == 1 {
+    if_chain! {
+        if let hir::ExprKind::Lit(lit) = &arg.node;
+        if let ast::LitKind::Str(r, _) = lit.node;
+        if r.as_str().len() == 1;
+        then {
             let snip = snippet(cx, arg.span, "..");
             let hint = format!("'{}'", &snip[1..snip.len() - 1]);
             span_lint_and_sugg(
