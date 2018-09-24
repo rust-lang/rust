@@ -37,11 +37,18 @@ impl<'a> SpanUtils<'a> {
 
     pub fn make_filename_string(&self, file: &SourceFile) -> String {
         match &file.name {
-            FileName::Real(path) if !path.is_absolute() && !file.name_was_remapped => {
-                self.sess.working_dir.0
-                    .join(&path)
-                    .display()
-                    .to_string()
+            FileName::Real(path) if !file.name_was_remapped => {
+                if path.is_absolute() {
+                    self.sess.source_map().path_mapping()
+                        .map_prefix(path.clone()).0
+                        .display()
+                        .to_string()
+                } else {
+                    self.sess.working_dir.0
+                        .join(&path)
+                        .display()
+                        .to_string()
+                }
             },
             // If the file name is already remapped, we assume the user
             // configured it the way they wanted to, so use that directly
