@@ -13,10 +13,8 @@ use std::io::Write;
 use rustc_serialize::json::as_json;
 
 use rls_data::config::Config;
-use rls_data::{
-    self, Analysis, CompilationOptions, CratePreludeData, Def, DefKind, Impl, Import, MacroRef,
-    Ref, RefKind, Relation,
-};
+use rls_data::{self, Analysis, CompilationOptions, CratePreludeData, Def, DefKind, Impl, Import,
+               MacroRef, Ref, RefKind, Relation};
 use rls_span::{Column, Row};
 
 #[derive(Debug)]

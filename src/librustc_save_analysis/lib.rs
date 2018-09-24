@@ -72,11 +72,10 @@ use json_dumper::JsonDumper;
 use dump_visitor::DumpVisitor;
 use span_utils::SpanUtils;
 
+use rls_data::{Def, DefKind, ExternalCrateData, GlobalCrateId, MacroRef, Ref, RefKind, Relation,
+               RelationKind, SpanData, Impl, ImplKind};
 use rls_data::config::Config;
-use rls_data::{
-    Def, DefKind, ExternalCrateData, GlobalCrateId, Impl, ImplKind, MacroRef, Ref,
-    RefKind, Relation, RelationKind, SpanData,
-};
+
 
 pub struct SaveContext<'l, 'tcx: 'l> {
     tcx: TyCtxt<'l, 'tcx, 'tcx>,
@@ -144,7 +143,6 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }
             };
             let lo_loc = self.span_utils.sess.source_map().lookup_char_pos(span.lo());
-
             result.push(ExternalCrateData {
                 // FIXME: change file_name field to PathBuf in rls-data
                 // https://github.com/nrc/rls-data/issues/7

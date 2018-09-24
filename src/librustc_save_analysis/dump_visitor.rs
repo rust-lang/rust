@@ -51,10 +51,8 @@ use json_dumper::{Access, DumpOutput, JsonDumper};
 use span_utils::SpanUtils;
 use sig;
 
-use rls_data::{
-    CompilationOptions, CratePreludeData, Def, DefKind, GlobalCrateId, Import, ImportKind, Ref,
-    RefKind, Relation, RelationKind, SpanData,
-};
+use rls_data::{CompilationOptions, CratePreludeData, Def, DefKind, GlobalCrateId, Import,
+               ImportKind, Ref, RefKind, Relation, RelationKind, SpanData};
 
 macro_rules! down_cast_data {
     ($id:ident, $kind:ident, $sp:expr) => {
