@@ -1,5 +1,7 @@
 // Test that the fake borrows for matches are removed after borrow checking.
 
+// ignore-wasm32-bare unwinding being disabled causes differences in output
+
 #![feature(nll)]
 
 fn match_guard(x: Option<&&i32>) -> i32 {
