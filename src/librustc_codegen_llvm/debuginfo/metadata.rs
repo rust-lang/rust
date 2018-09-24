@@ -2013,13 +2013,7 @@ pub fn create_vtable_metadata(
         llvm::LLVMRustDIBuilderCreateStaticVariable(DIB(cx),
                                                     NO_SCOPE_METADATA,
                                                     name.as_ptr(),
-                                                    // LLVM 3.9
-                                                    // doesn't accept
-                                                    // null here, so
-                                                    // pass the name
-                                                    // as the linkage
-                                                    // name.
-                                                    name.as_ptr(),
+                                                    ptr::null(),
                                                     unknown_file_metadata(cx),
                                                     UNKNOWN_LINE_NUMBER,
                                                     vtable_type,

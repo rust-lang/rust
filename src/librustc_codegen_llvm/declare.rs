@@ -23,7 +23,7 @@
 use llvm;
 use llvm::AttributePlace::Function;
 use rustc::ty::{self, PolyFnSig};
-use rustc::ty::layout::{self, LayoutOf};
+use rustc::ty::layout::LayoutOf;
 use rustc::session::config::Sanitizer;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_target::spec::PanicStrategy;
@@ -144,7 +144,7 @@ impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let fty = FnType::new(self, sig, &[]);
         let llfn = declare_raw_fn(self, name, fty.llvm_cconv(), fty.llvm_type(self));
 
-        if self.layout_of(sig.output()).abi == layout::Abi::Uninhabited {
+        if self.layout_of(sig.output()).abi.is_uninhabited() {
             llvm::Attribute::NoReturn.apply_llfn(Function, llfn);
         }
 
