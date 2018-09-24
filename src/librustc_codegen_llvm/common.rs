@@ -226,7 +226,6 @@ impl Backend<'ll> for CodegenCx<'ll, 'tcx, &'ll Value> {
 
 impl<'ll, 'tcx : 'll> ConstMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
 
-    // LLVM constant constructors.
     fn const_null(&self, t: &'ll Type) -> &'ll Value {
         unsafe {
             llvm::LLVMConstNull(t)
@@ -288,9 +287,6 @@ impl<'ll, 'tcx : 'll> ConstMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Valu
         &self.const_uint(&self.type_i8(), i as u64)
     }
 
-
-    // This is a 'c-like' raw string, which differs from
-    // our boxed-and-length-annotated strings.
     fn const_cstr(
         &self,
         s: LocalInternedString,
@@ -318,8 +314,6 @@ impl<'ll, 'tcx : 'll> ConstMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Valu
         }
     }
 
-    // NB: Do not use `do_spill_noroot` to make this into a constant string, or
-    // you will be kicked off fast isel. See issue #4352 for an example of this.
     fn const_str_slice(&self, s: LocalInternedString) -> &'ll Value {
         let len = s.len();
         let cs = consts::ptrcast(&self.const_cstr(s, false),

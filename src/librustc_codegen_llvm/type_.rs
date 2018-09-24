@@ -103,7 +103,6 @@ impl BaseTypeMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
         }
     }
 
-    // Creates an integer type with the given number of bits, e.g. i24
     fn type_ix(&self, num_bits: u64) -> &'ll Type {
         unsafe {
             llvm::LLVMIntTypeInContext(&self.llcx, num_bits as c_uint)
@@ -205,7 +204,6 @@ impl BaseTypeMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
         }
     }
 
-    /// Return the number of elements in `self` if it is a LLVM vector type.
     fn vector_length(&self, ty: &'ll Type) -> usize {
         unsafe {
             llvm::LLVMGetVectorSize(ty) as usize
@@ -232,7 +230,6 @@ impl BaseTypeMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
         }
     }
 
-    /// Retrieve the bit width of the integer type `self`.
     fn int_width(&self, ty: &'ll Type) -> u64 {
         unsafe {
             llvm::LLVMGetIntTypeWidth(ty) as u64
@@ -356,16 +353,12 @@ impl DerivedTypeMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
         }
     }
 
-    /// Return a LLVM type that has at most the required alignment,
-    /// as a conservative approximation for unknown pointee types.
     fn type_pointee_for_abi_align(&self, align: Align) -> &'ll Type {
         // FIXME(eddyb) We could find a better approximation if ity.align < align.
         let ity = layout::Integer::approximate_abi_align(self, align);
         &self.type_from_integer(ity)
     }
 
-    /// Return a LLVM type that has at most the required alignment,
-    /// and exactly the required size, as a best-effort padding array.
     fn type_padding_filler(
         &self,
         size: Size,

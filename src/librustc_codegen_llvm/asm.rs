@@ -25,7 +25,6 @@ use libc::{c_uint, c_char};
 
 
 impl AsmBuilderMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> {
-    // Take an inline assembly expression and splat it out via LLVM
     fn codegen_inline_asm(
         &self,
         ia: &hir::InlineAsm,

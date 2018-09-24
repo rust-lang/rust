@@ -16,6 +16,10 @@ use abi::FnType;
 use syntax_pos::Span;
 
 pub trait IntrinsicCallMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> {
+
+    /// Remember to add all intrinsics here, in librustc_typeck/check/mod.rs,
+    /// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
+    /// add them to librustc_codegen_llvm/context.rs
     fn codegen_intrinsic_call(
         &self,
         callee_ty: Ty<'tcx>,
@@ -28,6 +32,8 @@ pub trait IntrinsicCallMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tc
 
 pub trait IntrinsicDeclarationMethods<'ll> : Backend<'ll> {
     fn get_intrinsic(&self, key: &str) -> Self::Value;
+
+    /// Declare any llvm intrinsics that you might need
     fn declare_intrinsic(
         &self,
         key: &str

@@ -579,11 +579,14 @@ pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> +
     );
     fn set_invariant_load(&self, load: <Self::CodegenCx as Backend<'ll>>::Value);
 
+    /// Returns the ptr value that should be used for storing `val`.
     fn check_store(
         &self,
         val: <Self::CodegenCx as Backend<'ll>>::Value,
         ptr: <Self::CodegenCx as Backend<'ll>>::Value
     ) -> <Self::CodegenCx as Backend<'ll>>::Value;
+
+    /// Returns the args that should be used for a call to `llfn`.
     fn check_call<'b>(
         &self,
         typ: &str,
@@ -591,9 +594,18 @@ pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> +
         args: &'b [<Self::CodegenCx as Backend<'ll>>::Value]
     ) -> Cow<'b, [<Self::CodegenCx as Backend<'ll>>::Value]>
         where [<Self::CodegenCx as Backend<'ll>>::Value] : ToOwned;
+
     fn lifetime_start(&self, ptr: <Self::CodegenCx as Backend<'ll>>::Value, size: Size);
     fn lifetime_end(&self, ptr: <Self::CodegenCx as Backend<'ll>>::Value, size: Size);
 
+    /// If LLVM lifetime intrinsic support is enabled (i.e. optimizations
+    /// on), and `ptr` is nonzero-sized, then extracts the size of `ptr`
+    /// and the intrinsic for `lt` and passes them to `emit`, which is in
+    /// charge of generating code to call the passed intrinsic on whatever
+    /// block of generated code is targeted for the intrinsic.
+    ///
+    /// If LLVM lifetime intrinsic support is disabled (i.e.  optimizations
+    /// off) or `ptr` is zero-sized, then no-op (does not call `emit`).
     fn call_lifetime_intrinsic(
         &self,
         intrinsic: &str,

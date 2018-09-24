@@ -87,9 +87,6 @@ fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_, &'ll Value>, name: &str) -> Opti
 
 impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> {
 
-    /// Remember to add all intrinsics here, in librustc_typeck/check/mod.rs,
-    /// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
-    /// add them to librustc_codegen_llvm/context.rs
     fn codegen_intrinsic_call(
         &self,
         callee_ty: Ty<'tcx>,

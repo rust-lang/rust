@@ -158,14 +158,14 @@ pub fn bin_op_to_fcmp_predicate(op: hir::BinOpKind) -> RealPredicate {
     }
 }
 
-pub fn compare_simd_types<'a, 'll:'a, 'tcx:'ll, Builder : BuilderMethods<'a, 'll, 'tcx>>(
-    bx: &Builder,
-    lhs: <Builder::CodegenCx as Backend<'ll>>::Value,
-    rhs: <Builder::CodegenCx as Backend<'ll>>::Value,
+pub fn compare_simd_types<'a, 'll:'a, 'tcx:'ll, Bx : BuilderMethods<'a, 'll, 'tcx>>(
+    bx: &Bx,
+    lhs: <Bx::CodegenCx as Backend<'ll>>::Value,
+    rhs: <Bx::CodegenCx as Backend<'ll>>::Value,
     t: Ty<'tcx>,
-    ret_ty: <Builder::CodegenCx as Backend<'ll>>::Type,
+    ret_ty: <Bx::CodegenCx as Backend<'ll>>::Type,
     op: hir::BinOpKind
-) -> <Builder::CodegenCx as Backend<'ll>>::Value {
+) -> <Bx::CodegenCx as Backend<'ll>>::Value {
     let signed = match t.sty {
         ty::Float(_) => {
             let cmp = bin_op_to_fcmp_predicate(op);
@@ -337,31 +337,31 @@ pub fn coerce_unsized_into<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, '
     }
 }
 
-pub fn cast_shift_expr_rhs<'a, 'll: 'a, 'tcx: 'll, Builder : BuilderMethods<'a, 'll, 'tcx>>(
-    bx: &Builder,
+pub fn cast_shift_expr_rhs<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll, 'tcx>>(
+    bx: &Bx,
     op: hir::BinOpKind,
-    lhs: <Builder::CodegenCx as Backend<'ll>>::Value,
-    rhs: <Builder::CodegenCx as Backend<'ll>>::Value
-) -> <Builder::CodegenCx as Backend<'ll>>::Value {
+    lhs: <Bx::CodegenCx as Backend<'ll>>::Value,
+    rhs: <Bx::CodegenCx as Backend<'ll>>::Value
+) -> <Bx::CodegenCx as Backend<'ll>>::Value {
     cast_shift_rhs(bx, op, lhs, rhs, |a, b| bx.trunc(a, b), |a, b| bx.zext(a, b))
 }
 
-fn cast_shift_rhs<'a, 'll :'a, 'tcx : 'll, F, G, Builder : BuilderMethods<'a, 'll, 'tcx>>(
-    bx: &Builder,
+fn cast_shift_rhs<'a, 'll :'a, 'tcx : 'll, F, G, Bx : BuilderMethods<'a, 'll, 'tcx>>(
+    bx: &Bx,
     op: hir::BinOpKind,
-    lhs: <Builder::CodegenCx as Backend<'ll>>::Value,
-    rhs: <Builder::CodegenCx as Backend<'ll>>::Value,
+    lhs: <Bx::CodegenCx as Backend<'ll>>::Value,
+    rhs: <Bx::CodegenCx as Backend<'ll>>::Value,
     trunc: F,
     zext: G
-) -> <Builder::CodegenCx as Backend<'ll>>::Value
+) -> <Bx::CodegenCx as Backend<'ll>>::Value
     where F: FnOnce(
-        <Builder::CodegenCx as Backend<'ll>>::Value,
-        <Builder::CodegenCx as Backend<'ll>>::Type
-    ) -> <Builder::CodegenCx as Backend<'ll>>::Value,
+        <Bx::CodegenCx as Backend<'ll>>::Value,
+        <Bx::CodegenCx as Backend<'ll>>::Type
+    ) -> <Bx::CodegenCx as Backend<'ll>>::Value,
     G: FnOnce(
-        <Builder::CodegenCx as Backend<'ll>>::Value,
-        <Builder::CodegenCx as Backend<'ll>>::Type
-    ) -> <Builder::CodegenCx as Backend<'ll>>::Value
+        <Bx::CodegenCx as Backend<'ll>>::Value,
+        <Bx::CodegenCx as Backend<'ll>>::Type
+    ) -> <Bx::CodegenCx as Backend<'ll>>::Value
 {
     // Shifts may have any size int on the rhs
     if op.is_shift() {
@@ -417,32 +417,32 @@ pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll ,'tcx>
     }
 }
 
-pub fn to_immediate<'a, 'll: 'a, 'tcx: 'll, Builder : BuilderMethods<'a, 'll, 'tcx>>(
-    bx: &Builder,
-    val: <Builder::CodegenCx as Backend<'ll>>::Value,
+pub fn to_immediate<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll, 'tcx>>(
+    bx: &Bx,
+    val: <Bx::CodegenCx as Backend<'ll>>::Value,
     layout: layout::TyLayout,
-) -> <Builder::CodegenCx as Backend<'ll>>::Value {
+) -> <Bx::CodegenCx as Backend<'ll>>::Value {
     if let layout::Abi::Scalar(ref scalar) = layout.abi {
         return to_immediate_scalar(bx, val, scalar);
     }
     val
 }
 
-pub fn to_immediate_scalar<'a, 'll :'a, 'tcx :'ll, Builder : BuilderMethods<'a, 'll, 'tcx>>(
-    bx: &Builder,
-    val: <Builder::CodegenCx as Backend<'ll>>::Value,
+pub fn to_immediate_scalar<'a, 'll :'a, 'tcx :'ll, Bx : BuilderMethods<'a, 'll, 'tcx>>(
+    bx: &Bx,
+    val: <Bx::CodegenCx as Backend<'ll>>::Value,
     scalar: &layout::Scalar,
-) -> <Builder::CodegenCx as Backend<'ll>>::Value {
+) -> <Bx::CodegenCx as Backend<'ll>>::Value {
     if scalar.is_bool() {
         return bx.trunc(val, bx.cx().type_i1());
     }
     val
 }
 
-pub fn memcpy_ty<'a, 'll: 'a, 'tcx: 'll, Builder : BuilderMethods<'a, 'll, 'tcx>>(
-    bx: &Builder,
-    dst: <Builder::CodegenCx as Backend<'ll>>::Value,
-    src: <Builder::CodegenCx as Backend<'ll>>::Value,
+pub fn memcpy_ty<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll, 'tcx>>(
+    bx: &Bx,
+    dst: <Bx::CodegenCx as Backend<'ll>>::Value,
+    src: <Bx::CodegenCx as Backend<'ll>>::Value,
     layout: TyLayout<'tcx>,
     align: Align,
     flags: MemFlags,

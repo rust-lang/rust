@@ -1232,7 +1232,6 @@ impl BuilderMethods<'a, 'll, 'tcx>
         }
     }
 
-    /// Returns the ptr value that should be used for storing `val`.
     fn check_store<'b>(&self,
                        val: &'ll Value,
                        ptr: &'ll Value) -> &'ll Value {
@@ -1252,7 +1251,6 @@ impl BuilderMethods<'a, 'll, 'tcx>
         }
     }
 
-    /// Returns the args that should be used for a call to `llfn`.
     fn check_call<'b>(&self,
                       typ: &str,
                       llfn: &'ll Value,
@@ -1303,14 +1301,6 @@ impl BuilderMethods<'a, 'll, 'tcx>
         self.call_lifetime_intrinsic("llvm.lifetime.end", ptr, size);
     }
 
-    /// If LLVM lifetime intrinsic support is enabled (i.e. optimizations
-    /// on), and `ptr` is nonzero-sized, then extracts the size of `ptr`
-    /// and the intrinsic for `lt` and passes them to `emit`, which is in
-    /// charge of generating code to call the passed intrinsic on whatever
-    /// block of generated code is targeted for the intrinsic.
-    ///
-    /// If LLVM lifetime intrinsic support is disabled (i.e.  optimizations
-    /// off) or `ptr` is zero-sized, then no-op (does not call `emit`).
     fn call_lifetime_intrinsic(&self, intrinsic: &str, ptr: &'ll Value, size: Size) {
         if self.cx.sess().opts.optimize == config::OptLevel::No {
             return;

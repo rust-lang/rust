@@ -30,7 +30,10 @@ pub trait BaseTypeMethods<'ll, 'tcx: 'll> : Backend<'ll> {
     fn type_i32(&self) -> Self::Type;
     fn type_i64(&self) -> Self::Type;
     fn type_i128(&self) -> Self::Type;
+
+    // Creates an integer type with the given number of bits, e.g. i24
     fn type_ix(&self, num_bits: u64) -> Self::Type;
+
     fn type_f32(&self) -> Self::Type;
     fn type_f64(&self) -> Self::Type;
     fn type_x86_mmx(&self) -> Self::Type;
@@ -45,9 +48,14 @@ pub trait BaseTypeMethods<'ll, 'tcx: 'll> : Backend<'ll> {
     fn set_struct_body(&self, ty: Self::Type, els: &[Self::Type], packed: bool);
     fn type_ptr_to(&self, ty: Self::Type) -> Self::Type;
     fn element_type(&self, ty: Self::Type) -> Self::Type;
+
+    /// Return the number of elements in `self` if it is a LLVM vector type.
     fn vector_length(&self, ty: Self::Type) -> usize;
+
     fn func_params_types(&self, ty: Self::Type) -> Vec<Self::Type>;
     fn float_width(&self, ty: Self::Type) -> usize;
+
+    /// Retrieve the bit width of the integer type `self`.
     fn int_width(&self, ty: Self::Type) -> u64;
 
     fn val_ty(&self, v: Self::Value) -> Self::Type;
@@ -74,7 +82,13 @@ pub trait DerivedTypeMethods<'ll, 'tcx: 'll> : Backend<'ll> {
         t: ast::FloatTy
     ) -> Self::Type;
     fn type_from_integer(&self, i: layout::Integer) -> Self::Type;
+
+    /// Return a LLVM type that has at most the required alignment,
+    /// as a conservative approximation for unknown pointee types.
     fn type_pointee_for_abi_align(&self, align: Align) -> Self::Type;
+
+    /// Return a LLVM type that has at most the required alignment,
+    /// and exactly the required size, as a best-effort padding array.
     fn type_padding_filler(
         &self,
         size: Size,

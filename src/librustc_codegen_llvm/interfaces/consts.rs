@@ -17,6 +17,7 @@ use mir::place::PlaceRef;
 
 pub trait ConstMethods<'ll, 'tcx: 'll> : Backend<'ll> {
     // Constant constructors
+
     fn const_null(&self, t: Self::Type) -> Self::Value;
     fn const_undef(&self, t: Self::Type) -> Self::Value;
     fn const_int(&self, t: Self::Type, i: i64) -> Self::Value;
@@ -28,12 +29,19 @@ pub trait ConstMethods<'ll, 'tcx: 'll> : Backend<'ll> {
     fn const_u64(&self, i: u64) -> Self::Value;
     fn const_usize(&self, i: u64) -> Self::Value;
     fn const_u8(&self, i: u8) -> Self::Value;
+
+    // This is a 'c-like' raw string, which differs from
+    // our boxed-and-length-annotated strings.
     fn const_cstr(
         &self,
         s: LocalInternedString,
         null_terminated: bool,
     ) -> Self::Value;
+
+    // NB: Do not use `do_spill_noroot` to make this into a constant string, or
+    // you will be kicked off fast isel. See issue #4352 for an example of this.
     fn const_str_slice(&self, s: LocalInternedString) -> Self::Value;
+    
     fn const_fat_ptr(
         &self,
         ptr: Self::Value,

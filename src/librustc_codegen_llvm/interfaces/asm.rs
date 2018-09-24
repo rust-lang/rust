@@ -14,6 +14,7 @@ use super::backend::Backend;
 use super::builder::HasCodegen;
 
 pub trait AsmBuilderMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx>{
+    // Take an inline assembly expression and splat it out via LLVM
     fn codegen_inline_asm(
         &self,
         ia: &InlineAsm,

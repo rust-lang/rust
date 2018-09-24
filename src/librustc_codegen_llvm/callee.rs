@@ -204,9 +204,7 @@ pub fn get_fn(
     llfn
 }
 
-pub fn resolve_and_get_fn<'ll, 'tcx: 'll,
-    Cx : Backend<'ll> + MiscMethods<'ll, 'tcx> + TypeMethods<'ll, 'tcx>
-    >(
+pub fn resolve_and_get_fn<'ll, 'tcx: 'll, Cx : CodegenMethods<'ll, 'tcx>>(
     cx: &Cx,
     def_id: DefId,
     substs: &'tcx Substs<'tcx>,
