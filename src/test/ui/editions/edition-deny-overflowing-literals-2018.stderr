@@ -1,0 +1,10 @@
+error: literal out of range for u8
+  --> $DIR/edition-deny-overflowing-literals-2018.rs:14:17
+   |
+LL |     let x: u8 = 256;
+   |                 ^^^
+   |
+   = note: #[deny(overflowing_literals)] on by default
+
+error: aborting due to previous error
+
