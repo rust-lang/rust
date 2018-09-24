@@ -34,6 +34,7 @@ use imp::{AnalysisImpl, AnalysisHostImpl, FileResolverImp};
 pub use ra_editor::{
     StructureNode, LineIndex, FileSymbol,
     Runnable, RunnableKind, HighlightedRange, CompletionItem,
+    Fold, FoldKind
 };
 pub use job::{JobToken, JobHandle};
 
@@ -223,6 +224,10 @@ impl Analysis {
     }
     pub fn diagnostics(&self, file_id: FileId) -> Vec<Diagnostic> {
         self.imp.diagnostics(file_id)
+    }
+    pub fn folding_ranges(&self, file_id: FileId) -> Vec<Fold> {
+        let file = self.imp.file_syntax(file_id);
+        ra_editor::folding_ranges(&file)
     }
 }
 

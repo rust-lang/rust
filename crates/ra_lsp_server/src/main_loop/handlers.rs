@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap};
 
 use languageserver_types::{
     Diagnostic, DiagnosticSeverity, DocumentSymbol,
@@ -8,11 +8,9 @@ use languageserver_types::{
     FoldingRange, FoldingRangeParams, FoldingRangeKind
 };
 use serde_json::to_value;
-use ra_analysis::{Query, FileId, RunnableKind, JobToken};
+use ra_analysis::{Query, FileId, RunnableKind, JobToken, FoldKind};
 use ra_syntax::{
-    algo::{siblings, walk, Direction},
-    text_utils::contains_offset_nonstrict,
-    SyntaxKind, SyntaxNodeRef, TextRange
+    text_utils::contains_offset_nonstrict
 };
 
 use ::{
@@ -375,82 +373,28 @@ pub fn handle_folding_range(
     _token: JobToken,
 ) -> Result<Option<Vec<FoldingRange>>> {
     let file_id = params.text_document.try_conv_with(&world)?;
-    let file = world.analysis().file_syntax(file_id);
     let line_index = world.analysis().file_line_index(file_id);
-    let syntax = file.syntax();
 
-    let mut res = vec![];
-    let mut visited = HashSet::new();
-
-    for node in walk::preorder(syntax) {
-        if visited.contains(&node) {
-            continue;
-        }
-
-        let range_and_kind = match node.kind() {
-            SyntaxKind::COMMENT => (
-                contiguous_range_for(SyntaxKind::COMMENT, node, &mut visited),
-                Some(FoldingRangeKind::Comment),
-            ),
-            SyntaxKind::USE_ITEM => (
-                contiguous_range_for(SyntaxKind::USE_ITEM, node, &mut visited),
-                Some(FoldingRangeKind::Imports),
-            ),
-            _ => (None, None),
-        };
-
-        match range_and_kind {
-            (Some(range), Some(kind)) => {
-                let range = range.conv_with(&line_index);
-                res.push(FoldingRange {
-                    start_line: range.start.line,
-                    start_character: Some(range.start.character),
-                    end_line: range.end.line,
-                    end_character: Some(range.start.character),
-                    kind: Some(kind),
-                });
+    let res = Some(world.analysis()
+        .folding_ranges(file_id)
+        .into_iter()
+        .map(|fold| {
+            let kind = match fold.kind {
+                FoldKind::Comment => FoldingRangeKind::Comment,
+                FoldKind::Imports => FoldingRangeKind::Imports
+            };
+            let range = fold.range.conv_with(&line_index);
+            FoldingRange {
+                start_line: range.start.line,
+                start_character: Some(range.start.character),
+                end_line: range.end.line,
+                end_character: Some(range.start.character),
+                kind: Some(kind)
             }
-            _ => {}
-        }
-    }
+        })
+        .collect());
 
-    if res.is_empty() {
-        Ok(None)
-    } else {
-        Ok(Some(res))
-    }
-}
-
-fn contiguous_range_for<'a>(
-    kind: SyntaxKind,
-    node: SyntaxNodeRef<'a>,
-    visited: &mut HashSet<SyntaxNodeRef<'a>>,
-) -> Option<TextRange> {
-    visited.insert(node);
-
-    let left = node;
-    let mut right = node;
-    for node in siblings(node, Direction::Forward) {
-        visited.insert(node);
-        match node.kind() {
-            SyntaxKind::WHITESPACE if !node.leaf_text().unwrap().as_str().contains("\n\n") => (),
-            k => {
-                if k == kind {
-                    right = node
-                } else {
-                    break;
-                }
-            }
-        }
-    }
-    if left != right {
-        Some(TextRange::from_to(
-            left.range().start(),
-            right.range().end(),
-        ))
-    } else {
-        None
-    }
+    Ok(res)
 }
 
 pub fn handle_code_action(

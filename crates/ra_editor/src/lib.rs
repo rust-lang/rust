@@ -10,6 +10,7 @@ mod extend_selection;
 mod symbols;
 mod line_index;
 mod edit;
+mod folding_ranges;
 mod code_actions;
 mod typing;
 mod completion;
@@ -36,6 +37,7 @@ pub use self::{
     },
     typing::{join_lines, on_eq_typed},
     completion::{scope_completion, CompletionItem},
+    folding_ranges::{Fold, FoldKind, folding_ranges}
 };
 
 #[derive(Debug)]
