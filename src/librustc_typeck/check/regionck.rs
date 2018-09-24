@@ -88,8 +88,8 @@ use middle::mem_categorization as mc;
 use middle::mem_categorization::Categorization;
 use middle::region;
 use rustc::hir::def_id::DefId;
-use rustc::infer::{self, RegionObligation, UnlessNll};
 use rustc::infer::outlives::env::OutlivesEnvironment;
+use rustc::infer::{self, RegionObligation, SuppressRegionErrors};
 use rustc::ty::adjustment;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
@@ -140,7 +140,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             rcx.visit_body(body);
             rcx.visit_region_obligations(id);
         }
-        rcx.resolve_regions_and_report_errors(UnlessNll(true));
+        rcx.resolve_regions_and_report_errors(SuppressRegionErrors::when_nll_is_enabled(self.tcx));
 
         assert!(self.tables.borrow().free_region_map.is_empty());
         self.tables.borrow_mut().free_region_map = rcx.outlives_environment.into_free_region_map();
@@ -162,7 +162,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             .add_implied_bounds(self, wf_tys, item_id, span);
         rcx.outlives_environment.save_implied_bounds(item_id);
         rcx.visit_region_obligations(item_id);
-        rcx.resolve_regions_and_report_errors(UnlessNll(false));
+        rcx.resolve_regions_and_report_errors(SuppressRegionErrors::default());
     }
 
     /// Region check a function body. Not invoked on closures, but
@@ -190,7 +190,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             rcx.visit_fn_body(fn_id, body, self.tcx.hir.span(fn_id));
         }
 
-        rcx.resolve_regions_and_report_errors(UnlessNll(true));
+        rcx.resolve_regions_and_report_errors(SuppressRegionErrors::when_nll_is_enabled(self.tcx));
 
         // In this mode, we also copy the free-region-map into the
         // tables of the enclosing fcx. In the other regionck modes
@@ -314,7 +314,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         id: ast::NodeId, // the id of the fn itself
         body: &'gcx hir::Body,
         span: Span,
-   ) {
+    ) {
         // When we enter a function, we can derive
         debug!("visit_fn_body(id={})", id);
 
@@ -355,7 +355,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             body_id.node_id,
             span,
         );
-        self.outlives_environment.save_implied_bounds(body_id.node_id);
+        self.outlives_environment
+            .save_implied_bounds(body_id.node_id);
         self.link_fn_args(
             region::Scope {
                 id: body.value.hir_id.local_id,
@@ -392,7 +393,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         self.select_all_obligations_or_error();
     }
 
-    fn resolve_regions_and_report_errors(&self, unless_nll: UnlessNll) {
+    fn resolve_regions_and_report_errors(&self, suppress: SuppressRegionErrors) {
         self.infcx.process_registered_region_obligations(
             self.outlives_environment.region_bound_pairs_map(),
             self.implicit_region_bound,
@@ -403,7 +404,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             self.subject_def_id,
             &self.region_scope_tree,
             &self.outlives_environment,
-            unless_nll,
+            suppress,
         );
     }
 

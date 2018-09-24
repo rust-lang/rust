@@ -55,7 +55,7 @@
 //! ported to this system, and which relies on string concatenation at the
 //! time of error detection.
 
-use infer::{self, UnlessNll};
+use infer::{self, SuppressRegionErrors};
 use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
 use super::region_constraints::GenericKind;
 use super::lexical_region_resolve::RegionResolutionError;
@@ -68,7 +68,6 @@ use middle::region;
 use traits::{ObligationCause, ObligationCauseCode};
 use ty::{self, subst::Subst, Region, Ty, TyCtxt, TypeFoldable, TyKind};
 use ty::error::TypeError;
-use session::config::BorrowckMode;
 use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
@@ -298,20 +297,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         &self,
         region_scope_tree: &region::ScopeTree,
         errors: &Vec<RegionResolutionError<'tcx>>,
-        unless_nll: UnlessNll,
+        suppress: SuppressRegionErrors,
     ) {
-        debug!("report_region_errors(): {} errors to start", errors.len());
+        debug!("report_region_errors(): {} errors to start, suppress = {:?}", errors.len(), suppress);
 
-        // If the errors will later be reported by NLL, choose wether to display them or not based
-        // on the borrowck mode
-        if unless_nll.0 {
-            match self.tcx.borrowck_mode() {
-                // If we're on AST or Migrate mode, report AST region errors
-                BorrowckMode::Ast | BorrowckMode::Migrate => {},
-                // If we're on MIR or Compare mode, don't report AST region errors as they should
-                // be reported by NLL
-                BorrowckMode::Compare | BorrowckMode::Mir => return,
-            }
+        if suppress.suppressed() {
+            return;
         }
 
         // try to pre-process the errors, which will group some of them

@@ -20,7 +20,7 @@ pub use self::ObligationCauseCode::*;
 use chalk_engine;
 use hir;
 use hir::def_id::DefId;
-use infer::UnlessNll;
+use infer::SuppressRegionErrors;
 use infer::outlives::env::OutlivesEnvironment;
 use middle::region;
 use mir::interpret::ConstEvalErr;
@@ -720,7 +720,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             region_context,
             &region_scope_tree,
             &outlives_env,
-            UnlessNll(false),
+            SuppressRegionErrors::default(),
         );
 
         let predicates = match infcx.fully_resolve(&predicates) {
