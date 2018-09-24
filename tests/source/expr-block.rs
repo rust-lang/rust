@@ -280,6 +280,21 @@ fn issue_1862() {
     )
 }
 
+fn issue_3025() {
+    foo(
+        // This describes the argument below.
+        /* bar = */ None ,
+        // This describes the argument below.
+        something_something,
+        // This describes the argument below. */
+        None ,
+        // This describes the argument below.
+        /* This comment waaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaay too long to be kept on the same line */ None ,
+        // This describes the argument below.
+        /* com */ this_last_arg_is_tooooooooooooooooooooooooooooooooo_long_to_be_kept_with_the_pre_comment ,
+    )
+}
+
 fn issue_1878() {
     let channel: &str = seq.next_element()?.ok_or_else(|| de::Error::invalid_length(2, &self))?;
 }
