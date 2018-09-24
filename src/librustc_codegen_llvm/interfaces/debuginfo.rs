@@ -64,4 +64,5 @@ pub trait DebugInfoBuilderMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 
         scope: Option<<Self::CodegenCx as DebugInfoMethods<'ll, 'tcx>>::DIScope>,
         span: syntax_pos::Span,
     );
+    fn insert_reference_to_gdb_debug_scripts_section_global(&self);
 }

@@ -30,4 +30,6 @@ pub trait MiscMethods<'ll, 'tcx: 'll> : Backend<'ll> {
     fn sess(&self) -> &Session;
     fn stats(&self) -> &RefCell<Stats>;
     fn codegen_unit(&self) -> &Arc<CodegenUnit<'tcx>>;
+    fn set_frame_pointer_elimination(&self, llfn: Self::Value);
+    fn apply_target_cpu_attr(&self, llfn: Self::Value);
 }
