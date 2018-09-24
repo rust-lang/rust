@@ -65,18 +65,10 @@ where
     T: Anything<'b, 'c>,
     T::AssocType: 'a,
 {
-    // This error is unfortunate. This code ought to type-check: we
-    // are projecting `<T as Anything<'b>>::AssocType`, and we know
-    // that this outlives `'a` because of the where-clause. However,
-    // the way the region checker works, we don't register this
-    // outlives obligation, and hence we get an error: this is because
-    // what we see is a projection like `<T as
-    // Anything<'?0>>::AssocType`, and we don't yet know if `?0` will
-    // equal `'b` or not, so we ignore the where-clause. Obviously we
-    // can do better here with a more involved verification step.
+    // We are projecting `<T as Anything<'b>>::AssocType`, and we know
+    // that this outlives `'a` because of the where-clause.
 
     with_signature(cell, t, |cell, t| require(cell, t));
-    //~^ ERROR associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may not live long enough
 }
 
 #[rustc_regions]

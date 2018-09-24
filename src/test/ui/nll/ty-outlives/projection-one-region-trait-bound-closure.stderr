@@ -88,7 +88,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^ closure body requires that `'b` must outlive `'a`
 
 note: External requirements
-  --> $DIR/projection-one-region-trait-bound-closure.rs:77:29
+  --> $DIR/projection-one-region-trait-bound-closure.rs:70:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -111,7 +111,7 @@ LL | | where
 LL | |     T: Anything<'b>,
 LL | |     T::AssocType: 'a,
 ...  |
-LL | |     //~^ ERROR
+LL | |     with_signature(cell, t, |cell, t| require(cell, t));
 LL | | }
    | |_^
    |
@@ -121,16 +121,8 @@ LL | | }
                T
            ]
 
-error[E0309]: the associated type `<T as Anything<'_#5r>>::AssocType` may not live long enough
-  --> $DIR/projection-one-region-trait-bound-closure.rs:77:29
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider adding an explicit lifetime bound `<T as Anything<'_#5r>>::AssocType: ReEarlyBound(0, 'a)`...
-
 note: External requirements
-  --> $DIR/projection-one-region-trait-bound-closure.rs:87:29
+  --> $DIR/projection-one-region-trait-bound-closure.rs:79:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -146,7 +138,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: where '_#2r: '_#3r
 
 note: No external requirements
-  --> $DIR/projection-one-region-trait-bound-closure.rs:82:1
+  --> $DIR/projection-one-region-trait-bound-closure.rs:74:1
    |
 LL | / fn elements_outlive<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
@@ -164,7 +156,7 @@ LL | | }
            ]
 
 note: External requirements
-  --> $DIR/projection-one-region-trait-bound-closure.rs:99:29
+  --> $DIR/projection-one-region-trait-bound-closure.rs:91:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -179,7 +171,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: where '_#1r: '_#2r
 
 note: No external requirements
-  --> $DIR/projection-one-region-trait-bound-closure.rs:91:1
+  --> $DIR/projection-one-region-trait-bound-closure.rs:83:1
    |
 LL | / fn one_region<'a, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
@@ -195,6 +187,5 @@ LL | | }
                T
            ]
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0309`.

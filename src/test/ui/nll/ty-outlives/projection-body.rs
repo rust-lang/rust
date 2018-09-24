@@ -1,5 +1,7 @@
 // Test that when we infer the lifetime to a subset of the fn body, it
 // works out.
+//
+// compile-pass
 
 trait MyTrait<'a> {
     type Output;
