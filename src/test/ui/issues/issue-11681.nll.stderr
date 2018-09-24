@@ -1,0 +1,18 @@
+error[E0714]: temporary value dropped while borrowed
+  --> $DIR/issue-11681.rs:22:20
+   |
+LL |   let testValue = &Test; //~ ERROR borrowed value does not live long enough
+   |                    ^^^^ creates a temporary which is freed while still in use
+LL |   return testValue;
+LL | }
+   | - temporary value is freed at the end of this statement
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 21:15...
+  --> $DIR/issue-11681.rs:21:15
+   |
+LL | fn createTest<'a>() -> &'a Test {
+   |               ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0714`.

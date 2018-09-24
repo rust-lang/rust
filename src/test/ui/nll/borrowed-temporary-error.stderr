@@ -1,11 +1,11 @@
-error[E0597]: borrowed value does not live long enough
+error[E0714]: temporary value dropped while borrowed
   --> $DIR/borrowed-temporary-error.rs:20:10
    |
 LL |         &(v,)
-   |          ^^^^ temporary value does not live long enough
-LL |         //~^ ERROR borrowed value does not live long enough [E0597]
+   |          ^^^^ creates a temporary which is freed while still in use
+LL |         //~^ ERROR temporary value dropped while borrowed [E0714]
 LL |     });
-   |       - temporary value only lives until here
+   |       - temporary value is freed at the end of this statement
 LL |     println!("{:?}", x);
    |                      - borrow later used here
    |
@@ -13,4 +13,4 @@ LL |     println!("{:?}", x);
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0714`.
