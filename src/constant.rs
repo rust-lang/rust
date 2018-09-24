@@ -1,10 +1,10 @@
 use cranelift_module::*;
 use crate::prelude::*;
 use crate::rustc::mir::interpret::{
-    read_target_uint, AllocId, AllocType, Allocation, ConstValue, EvalResult, GlobalId,
+    read_target_uint, AllocId, AllocType, Allocation, ConstValue, EvalResult, GlobalId, Scalar,
 };
 use crate::rustc::ty::Const;
-use crate::rustc_mir::interpret::{CompileTimeEvaluator, EvalContext, Memory, MemoryKind};
+use crate::rustc_mir::interpret::{EvalContext, Machine, Memory, MemoryKind, OpTy, PlaceTy};
 
 #[derive(Default)]
 pub struct ConstantCx {
@@ -124,7 +124,7 @@ fn trans_const_place<'a, 'tcx: 'a>(
         let mut ecx = EvalContext::new(
             fx.tcx.at(DUMMY_SP),
             ty::ParamEnv::reveal_all(),
-            CompileTimeEvaluator,
+            TransPlaceInterpreter,
             (),
         );
         let op = ecx.const_to_op(const_)?;
@@ -155,11 +155,11 @@ fn data_id_for_static<'a, 'tcx: 'a, B: Backend>(
 ) -> DataId {
     let symbol_name = tcx.symbol_name(Instance::mono(tcx, def_id)).as_str();
     let is_mutable = if let crate::rustc::hir::Mutability::MutMutable = tcx.is_static(def_id).unwrap() {
-        true
-    } else {
-        !tcx.type_of(def_id)
-            .is_freeze(tcx, ParamEnv::reveal_all(), DUMMY_SP)
-    };
+            true
+        } else {
+            !tcx.type_of(def_id)
+                .is_freeze(tcx, ParamEnv::reveal_all(), DUMMY_SP)
+        };
     module
         .declare_data(&*symbol_name, Linkage::Export, is_mutable)
         .unwrap()
@@ -185,7 +185,7 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
     module: &mut Module<B>,
     cx: &mut ConstantCx,
 ) {
-    let memory = Memory::<CompileTimeEvaluator>::new(tcx.at(DUMMY_SP), ());
+    let memory = Memory::<TransPlaceInterpreter>::new(tcx.at(DUMMY_SP), ());
 
     while let Some(todo_item) = pop_set(&mut cx.todo) {
         let (data_id, alloc) = match todo_item {
@@ -267,5 +267,58 @@ fn pop_set<T: Copy + Eq + ::std::hash::Hash>(set: &mut HashSet<T>) -> Option<T> 
         Some(elem)
     } else {
         None
+    }
+}
+
+struct TransPlaceInterpreter;
+
+impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
+    type MemoryData = ();
+    type MemoryKinds = ();
+    const MUT_STATIC_KIND: Option<()> = None;
+
+    fn before_terminator(_: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx> {
+        panic!();
+    }
+
+    fn find_fn(
+        _: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        _: Instance<'tcx>,
+        _: &[OpTy<'tcx>],
+        _: Option<PlaceTy<'tcx>>,
+        _: Option<BasicBlock>,
+    ) -> EvalResult<'tcx, Option<&'mir Mir<'tcx>>> {
+        panic!();
+    }
+
+    fn call_intrinsic(
+        _: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        _: Instance<'tcx>,
+        _: &[OpTy<'tcx>],
+        _: PlaceTy<'tcx>,
+    ) -> EvalResult<'tcx> {
+        panic!();
+    }
+
+    fn find_foreign_static(
+        _: crate::rustc::ty::query::TyCtxtAt<'a, 'tcx, 'tcx>,
+        _: DefId,
+    ) -> EvalResult<'tcx, &'tcx Allocation> {
+        panic!();
+    }
+
+    fn ptr_op(
+        _: &EvalContext<'a, 'mir, 'tcx, Self>,
+        _: mir::BinOp,
+        _: Scalar,
+        _: TyLayout<'tcx>,
+        _: Scalar,
+        _: TyLayout<'tcx>,
+    ) -> EvalResult<'tcx, (Scalar, bool)> {
+        panic!();
+    }
+
+    fn box_alloc(_: &mut EvalContext<'a, 'mir, 'tcx, Self>, _: PlaceTy<'tcx>) -> EvalResult<'tcx> {
+        panic!();
     }
 }
