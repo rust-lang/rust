@@ -444,7 +444,6 @@ impl IntrinsicDeclarationMethods<'tcx> for CodegenCx<'b, 'tcx> {
         self.declare_intrinsic(key).unwrap_or_else(|| bug!("unknown intrinsic '{}'", key))
     }
 
-    /// Declare any llvm intrinsics that you might need
     fn declare_intrinsic(
         &self,
         key: &str

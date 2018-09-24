@@ -21,6 +21,13 @@ use syntax_pos::{SourceFile, Span};
 
 pub trait DebugInfoMethods<'tcx>: Backend<'tcx> {
     fn create_vtable_metadata(&self, ty: Ty<'tcx>, vtable: Self::Value);
+
+    /// Creates the function-specific debug context.
+    ///
+    /// Returns the FunctionDebugContext for the function which holds state needed
+    /// for debug info creation. The function may also return another variant of the
+    /// FunctionDebugContext enum which indicates why no debuginfo should be created
+    /// for the function.
     fn create_function_debug_context(
         &self,
         instance: Instance<'tcx>,
@@ -28,6 +35,7 @@ pub trait DebugInfoMethods<'tcx>: Backend<'tcx> {
         llfn: Self::Value,
         mir: &mir::Mir,
     ) -> FunctionDebugContext<Self::DIScope>;
+
     fn create_mir_scopes(
         &self,
         mir: &mir::Mir,

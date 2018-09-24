@@ -16,6 +16,9 @@ use rustc::ty::Ty;
 use syntax_pos::Span;
 
 pub trait IntrinsicCallMethods<'tcx>: HasCodegen<'tcx> {
+    /// Remember to add all intrinsics here, in librustc_typeck/check/mod.rs,
+    /// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
+    /// add them to librustc_codegen_llvm/context.rs
     fn codegen_intrinsic_call(
         &self,
         callee_ty: Ty<'tcx>,
@@ -28,5 +31,7 @@ pub trait IntrinsicCallMethods<'tcx>: HasCodegen<'tcx> {
 
 pub trait IntrinsicDeclarationMethods<'tcx>: Backend<'tcx> {
     fn get_intrinsic(&self, key: &str) -> Self::Value;
+
+    /// Declare any llvm intrinsics that you might need
     fn declare_intrinsic(&self, key: &str) -> Option<Self::Value>;
 }

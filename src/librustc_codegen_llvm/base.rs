@@ -156,14 +156,14 @@ pub fn bin_op_to_fcmp_predicate(op: hir::BinOpKind) -> RealPredicate {
     }
 }
 
-pub fn compare_simd_types<'a, 'tcx: 'a, Builder: BuilderMethods<'a, 'tcx>>(
-    bx: &Builder,
-    lhs: Builder::Value,
-    rhs: Builder::Value,
+pub fn compare_simd_types<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &Bx,
+    lhs: Bx::Value,
+    rhs: Bx::Value,
     t: Ty<'tcx>,
-    ret_ty: Builder::Type,
+    ret_ty: Bx::Type,
     op: hir::BinOpKind
-) -> Builder::Value {
+) -> Bx::Value {
     let signed = match t.sty {
         ty::Float(_) => {
             let cmp = bin_op_to_fcmp_predicate(op);
@@ -332,31 +332,31 @@ pub fn coerce_unsized_into<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-pub fn cast_shift_expr_rhs<'a, 'tcx: 'a, Builder: BuilderMethods<'a, 'tcx>>(
-    bx: &Builder,
+pub fn cast_shift_expr_rhs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &Bx,
     op: hir::BinOpKind,
-    lhs: Builder::Value,
-    rhs: Builder::Value
-) -> Builder::Value {
+    lhs: Bx::Value,
+    rhs: Bx::Value
+) -> Bx::Value {
     cast_shift_rhs(bx, op, lhs, rhs, |a, b| bx.trunc(a, b), |a, b| bx.zext(a, b))
 }
 
-fn cast_shift_rhs<'a, 'tcx: 'a, F, G, Builder: BuilderMethods<'a, 'tcx>>(
-    bx: &Builder,
+fn cast_shift_rhs<'a, 'tcx: 'a, F, G, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &Bx,
     op: hir::BinOpKind,
-    lhs: Builder::Value,
-    rhs: Builder::Value,
+    lhs: Bx::Value,
+    rhs: Bx::Value,
     trunc: F,
     zext: G
-) -> Builder::Value
+) -> Bx::Value
     where F: FnOnce(
-        Builder::Value,
-        Builder::Type
-    ) -> Builder::Value,
+        Bx::Value,
+        Bx::Type
+    ) -> Bx::Value,
     G: FnOnce(
-        Builder::Value,
-        Builder::Type
-    ) -> Builder::Value
+        Bx::Value,
+        Bx::Type
+    ) -> Bx::Value
 {
     // Shifts may have any size int on the rhs
     if op.is_shift() {
@@ -412,33 +412,33 @@ pub fn from_immediate<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-pub fn to_immediate<'a, 'tcx: 'a, Builder: BuilderMethods<'a, 'tcx>>(
-    bx: &Builder,
-    val: Builder::Value,
+pub fn to_immediate<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &Bx,
+    val: Bx::Value,
     layout: layout::TyLayout,
-) -> Builder::Value {
+) -> Bx::Value {
     if let layout::Abi::Scalar(ref scalar) = layout.abi {
         return to_immediate_scalar(bx, val, scalar);
     }
     val
 }
 
-pub fn to_immediate_scalar<'a, 'tcx: 'a, Builder: BuilderMethods<'a, 'tcx>>(
-    bx: &Builder,
-    val: Builder::Value,
+pub fn to_immediate_scalar<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &Bx,
+    val: Bx::Value,
     scalar: &layout::Scalar,
-) -> Builder::Value {
+) -> Bx::Value {
     if scalar.is_bool() {
         return bx.trunc(val, bx.cx().type_i1());
     }
     val
 }
 
-pub fn memcpy_ty<'a, 'tcx: 'a, Builder: BuilderMethods<'a, 'tcx>>(
-    bx: &Builder,
-    dst: Builder::Value,
+pub fn memcpy_ty<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &Bx,
+    dst: Bx::Value,
     dst_align: Align,
-    src: Builder::Value,
+    src: Bx::Value,
     src_align: Align,
     layout: TyLayout<'tcx>,
     flags: MemFlags,

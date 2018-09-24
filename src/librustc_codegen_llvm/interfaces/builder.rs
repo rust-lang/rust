@@ -244,7 +244,10 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     fn add_incoming_to_phi(&self, phi: Self::Value, val: Self::Value, bb: Self::BasicBlock);
     fn set_invariant_load(&self, load: Self::Value);
 
+    /// Returns the ptr value that should be used for storing `val`.
     fn check_store(&self, val: Self::Value, ptr: Self::Value) -> Self::Value;
+
+    /// Returns the args that should be used for a call to `llfn`.
     fn check_call<'b>(
         &self,
         typ: &str,
@@ -256,6 +259,14 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     fn lifetime_start(&self, ptr: Self::Value, size: Size);
     fn lifetime_end(&self, ptr: Self::Value, size: Size);
 
+    /// If LLVM lifetime intrinsic support is enabled (i.e. optimizations
+    /// on), and `ptr` is nonzero-sized, then extracts the size of `ptr`
+    /// and the intrinsic for `lt` and passes them to `emit`, which is in
+    /// charge of generating code to call the passed intrinsic on whatever
+    /// block of generated code is targeted for the intrinsic.
+    ///
+    /// If LLVM lifetime intrinsic support is disabled (i.e.  optimizations
+    /// off) or `ptr` is zero-sized, then no-op (does not call `emit`).
     fn call_lifetime_intrinsic(&self, intrinsic: &str, ptr: Self::Value, size: Size);
 
     fn call(

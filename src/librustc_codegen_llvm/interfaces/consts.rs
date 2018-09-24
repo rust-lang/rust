@@ -17,6 +17,7 @@ use syntax::symbol::LocalInternedString;
 
 pub trait ConstMethods<'tcx>: Backend<'tcx> {
     // Constant constructors
+
     fn const_null(&self, t: Self::Type) -> Self::Value;
     fn const_undef(&self, t: Self::Type) -> Self::Value;
     fn const_int(&self, t: Self::Type, i: i64) -> Self::Value;
@@ -28,7 +29,11 @@ pub trait ConstMethods<'tcx>: Backend<'tcx> {
     fn const_u64(&self, i: u64) -> Self::Value;
     fn const_usize(&self, i: u64) -> Self::Value;
     fn const_u8(&self, i: u8) -> Self::Value;
+
+    // This is a 'c-like' raw string, which differs from
+    // our boxed-and-length-annotated strings.
     fn const_cstr(&self, s: LocalInternedString, null_terminated: bool) -> Self::Value;
+
     fn const_str_slice(&self, s: LocalInternedString) -> Self::Value;
     fn const_fat_ptr(&self, ptr: Self::Value, meta: Self::Value) -> Self::Value;
     fn const_struct(&self, elts: &[Self::Value], packed: bool) -> Self::Value;
