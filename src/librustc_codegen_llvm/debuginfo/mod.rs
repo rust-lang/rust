@@ -279,6 +279,9 @@ impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     ) {
         set_source_location(debug_context, &self, scope, span)
     }
+    fn insert_reference_to_gdb_debug_scripts_section_global(&self) {
+        gdb::insert_reference_to_gdb_debug_scripts_section_global(self)
+    }
 }
 
 impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {

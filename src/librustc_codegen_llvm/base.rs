@@ -30,7 +30,7 @@ use super::CachedModuleCodegen;
 
 use abi;
 use back::write::{self, OngoingCodegen};
-use llvm::{self, get_param};
+use llvm;
 use metadata;
 use rustc::dep_graph::cgu_reuse_tracker::CguReuse;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -50,7 +50,6 @@ use rustc::session::Session;
 use rustc_incremental;
 use allocator;
 use mir::place::PlaceRef;
-use attributes;
 use builder::{Builder, MemFlags};
 use callee;
 use rustc_mir::monomorphize::item::DefPathBasedNames;
@@ -495,48 +494,50 @@ pub fn set_link_section(llval: &Value, attrs: &CodegenFnAttrs) {
 
 /// Create the `main` function which will initialize the rust runtime and call
 /// users main function.
-fn maybe_create_entry_wrapper(cx: &CodegenCx) {
+fn maybe_create_entry_wrapper<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+    cx: &'a Bx::CodegenCx
+) {
     let (main_def_id, span) = match *cx.sess().entry_fn.borrow() {
         Some((id, span, _)) => {
-            (cx.tcx.hir.local_def_id(id), span)
+            (cx.tcx().hir.local_def_id(id), span)
         }
         None => return,
     };
 
-    let instance = Instance::mono(cx.tcx, main_def_id);
+    let instance = Instance::mono(cx.tcx(), main_def_id);
 
-    if !cx.codegen_unit.contains_item(&MonoItem::Fn(instance)) {
+    if !cx.codegen_unit().contains_item(&MonoItem::Fn(instance)) {
         // We want to create the wrapper in the same codegen unit as Rust's main
         // function.
         return;
     }
 
-    let main_llfn = callee::get_fn(cx, instance);
+    let main_llfn = cx.get_fn(instance);
 
     let et = cx.sess().entry_fn.get().map(|e| e.2);
     match et {
-        Some(EntryFnType::Main) => create_entry_fn(cx, span, main_llfn, main_def_id, true),
-        Some(EntryFnType::Start) => create_entry_fn(cx, span, main_llfn, main_def_id, false),
+        Some(EntryFnType::Main) => create_entry_fn::<Bx>(cx, span, main_llfn, main_def_id, true),
+        Some(EntryFnType::Start) => create_entry_fn::<Bx>(cx, span, main_llfn, main_def_id, false),
         None => {}    // Do nothing.
     }
 
-    fn create_entry_fn(
-        cx: &CodegenCx<'ll, '_>,
+    fn create_entry_fn<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+        cx: &'a Bx::CodegenCx,
         sp: Span,
-        rust_main: &'ll Value,
+        rust_main: Bx::Value,
         rust_main_def_id: DefId,
         use_start_lang_item: bool,
     ) {
         let llfty =
             cx.type_func(&[cx.type_int(), cx.type_ptr_to(cx.type_i8p())], cx.type_int());
 
-        let main_ret_ty = cx.tcx.fn_sig(rust_main_def_id).output();
+        let main_ret_ty = cx.tcx().fn_sig(rust_main_def_id).output();
         // Given that `main()` has no arguments,
         // then its return type cannot have
         // late-bound regions, since late-bound
         // regions must appear in the argument
         // listing.
-        let main_ret_ty = cx.tcx.erase_regions(
+        let main_ret_ty = cx.tcx().erase_regions(
             &main_ret_ty.no_bound_vars().unwrap(),
         );
 
@@ -551,25 +552,25 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
         let llfn = cx.declare_cfn("main", llfty);
 
         // `main` should respect same config for frame pointer elimination as rest of code
-        attributes::set_frame_pointer_elimination(cx, llfn);
-        attributes::apply_target_cpu_attr(cx, llfn);
+        cx.set_frame_pointer_elimination(llfn);
+        cx.apply_target_cpu_attr(llfn);
 
-        let bx = Builder::new_block(cx, llfn, "top");
+        let bx = Bx::new_block(&cx, llfn, "top");
 
-        debuginfo::gdb::insert_reference_to_gdb_debug_scripts_section_global(&bx);
+        bx.insert_reference_to_gdb_debug_scripts_section_global();
 
         // Params from native main() used as args for rust start function
-        let param_argc = get_param(llfn, 0);
-        let param_argv = get_param(llfn, 1);
-        let arg_argc = bx.intcast(param_argc, cx.isize_ty, true);
+        let param_argc = cx.get_param(llfn, 0);
+        let param_argv = cx.get_param(llfn, 1);
+        let arg_argc = bx.intcast(param_argc, cx.type_isize(), true);
         let arg_argv = param_argv;
 
         let (start_fn, args) = if use_start_lang_item {
-            let start_def_id = cx.tcx.require_lang_item(StartFnLangItem);
+            let start_def_id = cx.tcx().require_lang_item(StartFnLangItem);
             let start_fn = callee::resolve_and_get_fn(
                 cx,
                 start_def_id,
-                cx.tcx.intern_substs(&[main_ret_ty.into()]),
+                cx.tcx().intern_substs(&[main_ret_ty.into()]),
             );
             (start_fn, vec![bx.pointercast(rust_main, cx.type_ptr_to(cx.type_i8p())),
                             arg_argc, arg_argv])
@@ -1112,7 +1113,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             // If this codegen unit contains the main function, also create the
             // wrapper here
-            maybe_create_entry_wrapper(&cx);
+            maybe_create_entry_wrapper::<Builder<&Value>>(&cx);
 
             // Run replace-all-uses-with for statics that need it
             for &(old_g, new_g) in cx.statics_to_rauw.borrow().iter() {

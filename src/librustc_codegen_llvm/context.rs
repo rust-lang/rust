@@ -425,6 +425,14 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn codegen_unit(&self) -> &Arc<CodegenUnit<'tcx>> {
         &self.codegen_unit
     }
+
+    fn set_frame_pointer_elimination(&self, llfn: &'ll Value) {
+        attributes::set_frame_pointer_elimination(self, llfn)
+    }
+
+    fn apply_target_cpu_attr(&self, llfn: &'ll Value) {
+        attributes::apply_target_cpu_attr(self, llfn)
+    }
 }
 
 impl IntrinsicDeclarationMethods<'tcx> for CodegenCx<'b, 'tcx> {

@@ -58,4 +58,5 @@ pub trait DebugInfoBuilderMethods<'tcx>: HasCodegen<'tcx> {
         scope: Option<Self::DIScope>,
         span: Span,
     );
+    fn insert_reference_to_gdb_debug_scripts_section_global(&self);
 }
