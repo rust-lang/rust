@@ -345,7 +345,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             // Avoid creating a temporary
-            ExprKind::VarRef { .. } | ExprKind::SelfRef | ExprKind::StaticRef { .. } => {
+            ExprKind::VarRef { .. } |
+            ExprKind::SelfRef |
+            ExprKind::StaticRef { .. } |
+            ExprKind::PlaceTypeAscription { .. } |
+            ExprKind::ValueTypeAscription { .. } => {
                 debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
 
                 let place = unpack!(block = this.as_place(block, expr));
@@ -391,11 +395,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             | ExprKind::Adt { .. }
             | ExprKind::Closure { .. }
             | ExprKind::Literal { .. }
-            | ExprKind::Yield { .. }
-            | ExprKind::PlaceTypeAscription { .. }
-            | ExprKind::ValueTypeAscription { .. } => {
+            | ExprKind::Yield { .. } => {
                 debug_assert!(match Category::of(&expr.kind).unwrap() {
+                    // should be handled above
                     Category::Rvalue(RvalueFunc::Into) => false,
+
+                    // must be handled above or else we get an
+                    // infinite loop in the builder; see
+                    // e.g. `ExprKind::VarRef` above
+                    Category::Place => false,
+
                     _ => true,
                 });
 
