@@ -228,15 +228,14 @@ pub struct Evaluator<'tcx> {
     pub(crate) tls: TlsData<'tcx>,
 }
 
-impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
+impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     type MemoryData = ();
     type MemoryKinds = MiriMemoryKind;
 
     const MUT_STATIC_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::MutStatic);
-    const DETECT_LOOPS: bool = false;
 
     /// Returns Ok() when the function was handled, fail otherwise
-    fn find_fn<'a>(
+    fn find_fn(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
@@ -246,7 +245,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ecx.find_fn(instance, args, dest, ret)
     }
 
-    fn call_intrinsic<'a>(
+    fn call_intrinsic(
         ecx: &mut rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
@@ -255,7 +254,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ecx.call_intrinsic(instance, args, dest)
     }
 
-    fn ptr_op<'a>(
+    fn ptr_op(
         ecx: &rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: Scalar,
@@ -266,7 +265,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ecx.ptr_op(bin_op, left, left_layout, right, right_layout)
     }
 
-    fn box_alloc<'a>(
+    fn box_alloc(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         dest: PlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
@@ -305,7 +304,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         Ok(())
     }
 
-    fn find_foreign_static<'a>(
+    fn find_foreign_static(
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         def_id: DefId,
     ) -> EvalResult<'tcx, &'tcx Allocation> {
@@ -329,13 +328,19 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         Ok(alloc)
     }
 
-    fn validation_op<'a>(
+    fn validation_op(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         _op: ::rustc::mir::ValidationOp,
         _operand: &::rustc::mir::ValidationOperand<'tcx, ::rustc::mir::Place<'tcx>>,
     ) -> EvalResult<'tcx> {
         // FIXME: prevent this from ICEing
         //ecx.validation_op(op, operand)
+        Ok(())
+    }
+
+    fn before_terminator(_ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx>
+    {
+        // We are not interested in detecting loops
         Ok(())
     }
 }
