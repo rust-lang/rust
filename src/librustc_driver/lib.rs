@@ -980,6 +980,7 @@ pub fn enable_save_analysis(control: &mut CompileController) {
                                 state.expanded_crate.unwrap(),
                                 state.analysis.unwrap(),
                                 state.crate_name.unwrap(),
+                                state.input,
                                 None,
                                 DumpHandler::new(state.out_dir,
                                                  state.crate_name.unwrap()))

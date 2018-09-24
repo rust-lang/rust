@@ -25,12 +25,12 @@
 
 use rustc::hir::def::Def as HirDef;
 use rustc::hir::def_id::DefId;
+use rustc::session::config::Input;
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 
 use std::path::Path;
 use std::env;
-use std::fs;
 
 use syntax::ast::{self, Attribute, NodeId, PatKind, CRATE_NODE_ID};
 use syntax::parse::token;
@@ -173,20 +173,13 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         self.dumper.crate_prelude(data);
     }
 
-    pub fn dump_compilation_options(&mut self, crate_name: &str) {
-        // Apply possible `remap-path-prefix` remapping to the raw command
-        let command = {
-            let mapping = self.tcx.sess.source_map().path_mapping();
-            let remap_arg = |x: &str| -> String {
-                match fs::canonicalize(x) {
-                    Ok(path) => mapping.map_prefix(path).0.to_str().unwrap().to_owned(),
-                    Err(_) => x.to_owned(), // Probably not a path, ignore
-                }
-            };
-
+    pub fn dump_compilation_options(&mut self, input: &Input, crate_name: &str) {
+        // Apply possible `remap-path-prefix` remapping to the input source file
+        // (and don't include remapping args anymore)
+        let (program, arguments) = {
             let remap_arg_indices = {
                 let mut indices = FxHashSet();
-                // rustc args are guaranteed to be valid UTF-8 (checked early)
+                // Args are guaranteed to be valid UTF-8 (checked early)
                 for (i, e) in env::args().enumerate() {
                     if e.starts_with("--remap-path-prefix=") {
                         indices.insert(i);
@@ -198,26 +191,30 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 indices
             };
 
-            let args = env::args()
+            let mut args = env::args()
                 .enumerate()
                 .filter(|(i, _)| !remap_arg_indices.contains(i))
-                .map(|(_, elem)| {
-                    let mut arg = elem.splitn(2, '=');
-                    match (arg.next(), arg.next()) {
-                        // Apart from `--remap...`, in `a=b` args usually only
-                        // `b` is a path (e.g. `--extern some_crate=/path/to..`)
-                        (Some(a), Some(b)) => format!("{}={}", a, remap_arg(b)),
-                        (Some(a), _) => remap_arg(a),
-                        _ => unreachable!(),
+                .map(|(_, arg)| {
+                    match input {
+                        Input::File(ref path) if path == Path::new(&arg) => {
+                            let mapped = &self.tcx.sess.local_crate_source_file;
+                            mapped
+                                .as_ref()
+                                .unwrap()
+                                .to_string_lossy()
+                                .into()
+                        },
+                        _ => arg,
                     }
-                }).collect::<Vec<_>>();
+                });
 
-            args.as_slice().join(" ")
+            (args.next().unwrap(), args.collect())
         };
 
         let data = CompilationOptions {
             directory: self.tcx.sess.working_dir.0.clone(),
-            command,
+            program,
+            arguments,
             output: self.save_ctxt.compilation_output(crate_name),
         };
 

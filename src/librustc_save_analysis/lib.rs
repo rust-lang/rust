@@ -46,7 +46,7 @@ use rustc::hir::def::Def as HirDef;
 use rustc::hir::Node;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::cstore::ExternCrate;
-use rustc::session::config::{CrateType, OutputType};
+use rustc::session::config::{CrateType, Input, OutputType};
 use rustc::ty::{self, TyCtxt};
 use rustc_typeck::hir_ty_to_ty;
 use rustc_codegen_utils::link::{filename_for_metadata, out_filename};
@@ -74,7 +74,7 @@ use span_utils::SpanUtils;
 
 use rls_data::config::Config;
 use rls_data::{
-    CrateSource, Def, DefKind, ExternalCrateData, GlobalCrateId, Impl, ImplKind, MacroRef, Ref,
+    Def, DefKind, ExternalCrateData, GlobalCrateId, Impl, ImplKind, MacroRef, Ref,
     RefKind, Relation, RelationKind, SpanData,
 };
 
@@ -143,11 +143,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     continue;
                 }
             };
-            let src = self.tcx.used_crate_source(n);
             let lo_loc = self.span_utils.sess.source_map().lookup_char_pos(span.lo());
-            let map_prefix = |path: &PathBuf| -> PathBuf {
-                self.tcx.sess.source_map().path_mapping().map_prefix(path.to_owned()).0
-            };
 
             result.push(ExternalCrateData {
                 // FIXME: change file_name field to PathBuf in rls-data
@@ -158,11 +154,6 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     name: self.tcx.crate_name(n).to_string(),
                     disambiguator: self.tcx.crate_disambiguator(n).to_fingerprint().as_value(),
                 },
-                source: CrateSource {
-                    dylib: src.dylib.as_ref().map(|(path, _)| map_prefix(path)),
-                    rlib: src.rlib.as_ref().map(|(path, _)| map_prefix(path)),
-                    rmeta: src.rmeta.as_ref().map(|(path, _)| map_prefix(path)),
-                }
             });
         }
 
@@ -1046,6 +1037,7 @@ pub trait SaveHandler {
         save_ctxt: SaveContext<'l, 'tcx>,
         krate: &ast::Crate,
         cratename: &str,
+        input: &'l Input,
     );
 }
 
@@ -1111,13 +1103,14 @@ impl<'a> SaveHandler for DumpHandler<'a> {
         save_ctxt: SaveContext<'l, 'tcx>,
         krate: &ast::Crate,
         cratename: &str,
+        input: &'l Input,
     ) {
         let output = &mut self.output_file(&save_ctxt);
         let mut dumper = JsonDumper::new(output, save_ctxt.config.clone());
         let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
 
         visitor.dump_crate_info(cratename, krate);
-        visitor.dump_compilation_options(cratename);
+        visitor.dump_compilation_options(input, cratename);
         visit::walk_crate(&mut visitor, krate);
     }
 }
@@ -1133,6 +1126,7 @@ impl<'b> SaveHandler for CallbackHandler<'b> {
         save_ctxt: SaveContext<'l, 'tcx>,
         krate: &ast::Crate,
         cratename: &str,
+        input: &'l Input,
     ) {
         // We're using the JsonDumper here because it has the format of the
         // save-analysis results that we will pass to the callback. IOW, we are
@@ -1143,7 +1137,7 @@ impl<'b> SaveHandler for CallbackHandler<'b> {
         let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
 
         visitor.dump_crate_info(cratename, krate);
-        visitor.dump_compilation_options(cratename);
+        visitor.dump_compilation_options(input, cratename);
         visit::walk_crate(&mut visitor, krate);
     }
 }
@@ -1153,6 +1147,7 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
     krate: &ast::Crate,
     analysis: &'l ty::CrateAnalysis,
     cratename: &str,
+    input: &'l Input,
     config: Option<Config>,
     mut handler: H,
 ) {
@@ -1170,7 +1165,7 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
             impl_counter: Cell::new(0),
         };
 
-        handler.save(save_ctxt, krate, cratename)
+        handler.save(save_ctxt, krate, cratename, input)
     })
 }
 
