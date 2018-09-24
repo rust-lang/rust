@@ -6,11 +6,13 @@ use ra_syntax::{
     algo::{walk, Direction, siblings},
 };
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum FoldKind {
     Comment,
     Imports,
 }
 
+#[derive(Debug)]
 pub struct Fold {
     pub range: TextRange,
     pub kind: FoldKind,
@@ -83,4 +85,58 @@ fn contiguous_range_for<'a>(
     } else {
         None
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_fold_comments() {
+        let text = r#"
+// Hello
+// this is a multiline
+// comment
+//
+
+// But this is not
+
+fn main() {
+    // We should
+    // also
+    // fold
+    // this one.
+}"#;
+
+        let file = File::parse(&text);
+        let folds = folding_ranges(&file);
+        assert_eq!(folds.len(), 2);
+        assert_eq!(folds[0].range.start(), 1.into());
+        assert_eq!(folds[0].range.end(), 46.into());
+        assert_eq!(folds[0].kind, FoldKind::Comment);
+
+        assert_eq!(folds[1].range.start(), 84.into());
+        assert_eq!(folds[1].range.end(), 137.into());
+        assert_eq!(folds[1].kind, FoldKind::Comment);
+    }
+
+    #[test]
+    fn test_fold_imports() {
+        let text = r#"
+use std::str;
+use std::vec;
+use std::io as iop;
+
+fn main() {
+}"#;
+
+        let file = File::parse(&text);
+        let folds = folding_ranges(&file);
+        assert_eq!(folds.len(), 1);
+        assert_eq!(folds[0].range.start(), 1.into());
+        assert_eq!(folds[0].range.end(), 48.into());
+        assert_eq!(folds[0].kind, FoldKind::Imports);
+    }
+
+
 }
