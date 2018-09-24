@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryRegionConstraint,
-                       QueryResponse};
+use infer::canonical::{
+    Canonical, Canonicalized, CanonicalizedQueryResponse, QueryRegionConstraint, QueryResponse,
+};
 use infer::{InferCtxt, InferOk};
 use smallvec::SmallVec;
 use std::fmt;
