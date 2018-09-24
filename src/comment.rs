@@ -52,6 +52,27 @@ fn custom_opener(s: &str) -> &str {
 }
 
 impl<'a> CommentStyle<'a> {
+    /// Returns true if the commenting style covers a line only.
+    pub fn is_line_comment(&self) -> bool {
+        match *self {
+            CommentStyle::DoubleSlash
+            | CommentStyle::TripleSlash
+            | CommentStyle::Doc
+            | CommentStyle::Custom(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if the commenting style can span over multiple lines.
+    pub fn is_block_comment(&self) -> bool {
+        match *self {
+            CommentStyle::SingleBullet | CommentStyle::DoubleBullet | CommentStyle::Exclamation => {
+                true
+            }
+            _ => false,
+        }
+    }
+
     pub fn is_doc_comment(&self) -> bool {
         match *self {
             CommentStyle::TripleSlash | CommentStyle::Doc => true,
@@ -213,7 +234,7 @@ pub fn combine_strs_with_missing_comments(
 }
 
 pub fn rewrite_doc_comment(orig: &str, shape: Shape, config: &Config) -> Option<String> {
-    _rewrite_comment(orig, false, shape, config, true)
+    identify_comment(orig, false, shape, config, true)
 }
 
 pub fn rewrite_comment(
@@ -222,32 +243,7 @@ pub fn rewrite_comment(
     shape: Shape,
     config: &Config,
 ) -> Option<String> {
-    _rewrite_comment(orig, block_style, shape, config, false)
-}
-
-fn _rewrite_comment(
-    orig: &str,
-    block_style: bool,
-    shape: Shape,
-    config: &Config,
-    is_doc_comment: bool,
-) -> Option<String> {
-    // If there are lines without a starting sigil, we won't format them correctly
-    // so in that case we won't even re-align (if !config.normalize_comments()) and
-    // we should stop now.
-    let num_bare_lines = orig
-        .lines()
-        .map(|line| line.trim())
-        .filter(|l| !(l.starts_with('*') || l.starts_with("//") || l.starts_with("/*")))
-        .count();
-    if num_bare_lines > 0 && !config.normalize_comments() {
-        return Some(orig.to_owned());
-    }
-    if !config.normalize_comments() && !config.wrap_comments() {
-        return light_rewrite_comment(orig, shape.indent, config, is_doc_comment);
-    }
-
-    identify_comment(orig, block_style, shape, config, is_doc_comment)
+    identify_comment(orig, block_style, shape, config, false)
 }
 
 fn identify_comment(
@@ -258,8 +254,8 @@ fn identify_comment(
     is_doc_comment: bool,
 ) -> Option<String> {
     let style = comment_style(orig, false);
-    let mut first_group_ending = 0;
 
+    // Computes the len of line taking into account a newline if the line is part of a paragraph.
     fn compute_len(orig: &str, line: &str) -> usize {
         if orig.len() > line.len() {
             if orig.as_bytes()[line.len()] == b'\r' {
@@ -272,60 +268,143 @@ fn identify_comment(
         }
     }
 
-    match style {
+    // Get the first group of line comments having the same commenting style.
+    //
+    // Returns a tuple with:
+    // - a boolean indicating if there is a blank line
+    // - a number indicating the size of the first group of comments
+    fn consume_same_line_comments(
+        style: CommentStyle,
+        orig: &str,
+        line_start: &str,
+    ) -> (bool, usize) {
+        let mut first_group_ending = 0;
+        let mut hbl = false;
+
+        for line in orig.lines() {
+            let trimmed_line = line.trim_left();
+            if trimmed_line.is_empty() {
+                hbl = true;
+                break;
+            } else if trimmed_line.starts_with(line_start)
+                || comment_style(trimmed_line, false) == style
+            {
+                first_group_ending += compute_len(&orig[first_group_ending..], line);
+            } else {
+                break;
+            }
+        }
+        (hbl, first_group_ending)
+    }
+
+    let (has_bare_lines, first_group_ending) = match style {
         CommentStyle::DoubleSlash | CommentStyle::TripleSlash | CommentStyle::Doc => {
             let line_start = style.line_start().trim_left();
-            for line in orig.lines() {
-                if line.trim_left().starts_with(line_start) || comment_style(line, false) == style {
-                    first_group_ending += compute_len(&orig[first_group_ending..], line);
-                } else {
-                    break;
-                }
-            }
+            consume_same_line_comments(style, orig, line_start)
         }
         CommentStyle::Custom(opener) => {
             let trimmed_opener = opener.trim_right();
-            for line in orig.lines() {
-                if line.trim_left().starts_with(trimmed_opener) {
-                    first_group_ending += compute_len(&orig[first_group_ending..], line);
-                } else {
-                    break;
-                }
-            }
+            consume_same_line_comments(style, orig, trimmed_opener)
         }
         // for a block comment, search for the closing symbol
         CommentStyle::DoubleBullet | CommentStyle::SingleBullet | CommentStyle::Exclamation => {
             let closer = style.closer().trim_left();
+            let mut closing_symbol_offset = 0;
+            let mut hbl = false;
             for line in orig.lines() {
-                first_group_ending += compute_len(&orig[first_group_ending..], line);
-                if line.trim_left().ends_with(closer) {
+                closing_symbol_offset += compute_len(&orig[closing_symbol_offset..], line);
+                let trimmed_line = line.trim_left();
+                if !trimmed_line.starts_with('*')
+                    && !trimmed_line.starts_with("//")
+                    && !trimmed_line.starts_with("/*")
+                {
+                    hbl = true;
+                }
+                if trimmed_line.ends_with(closer) {
                     break;
                 }
             }
+            (hbl, closing_symbol_offset)
         }
-    }
+    };
 
     let (first_group, rest) = orig.split_at(first_group_ending);
-    let first_group_str = rewrite_comment_inner(
-        first_group,
-        block_style,
-        style,
-        shape,
-        config,
-        is_doc_comment || style.is_doc_comment(),
-    )?;
+    let rewritten_first_group =
+        if !config.normalize_comments() && has_bare_lines && style.is_block_comment() {
+            light_rewrite_block_comment_with_bare_lines(first_group, shape, config)?
+        } else if !config.normalize_comments() && !config.wrap_comments() {
+            light_rewrite_comment(first_group, shape.indent, config, is_doc_comment)?
+        } else {
+            rewrite_comment_inner(
+                first_group,
+                block_style,
+                style,
+                shape,
+                config,
+                is_doc_comment || style.is_doc_comment(),
+            )?
+        };
     if rest.is_empty() {
-        Some(first_group_str)
+        Some(rewritten_first_group)
     } else {
-        identify_comment(rest, block_style, shape, config, is_doc_comment).map(|rest_str| {
-            format!(
-                "{}\n{}{}",
-                first_group_str,
-                shape.indent.to_string(config),
-                rest_str
-            )
-        })
+        identify_comment(rest.trim_left(), block_style, shape, config, is_doc_comment).map(
+            |rest_str| {
+                format!(
+                    "{}\n{}{}{}",
+                    rewritten_first_group,
+                    // insert back the blank line
+                    if has_bare_lines && style.is_line_comment() {
+                        "\n"
+                    } else {
+                        ""
+                    },
+                    shape.indent.to_string(config),
+                    rest_str
+                )
+            },
+        )
     }
+}
+
+/// Trims a minimum of leading whitespaces so that the content layout is kept and aligns to indent.
+fn light_rewrite_block_comment_with_bare_lines(
+    orig: &str,
+    shape: Shape,
+    config: &Config,
+) -> Option<String> {
+    let prefix_whitespace_min = orig
+        .lines()
+        // skip the line with the starting sigil since the leading whitespace is removed
+        // otherwise, the minimum would always be zero
+        .skip(1)
+        .filter(|line| !line.is_empty())
+        .map(|line| {
+            let mut width = 0;
+            for c in line.chars() {
+                match c {
+                    ' ' => width += 1,
+                    '\t' => width += config.tab_spaces(),
+                    _ => break,
+                }
+            }
+            width
+        })
+        .min()?;
+
+    let indent_str = shape.indent.to_string(config);
+    let mut lines = orig.lines();
+    let first_line = lines.next()?;
+    let rest = lines
+        .map(|line| {
+            if line.is_empty() {
+                line
+            } else {
+                &line[prefix_whitespace_min..]
+            }
+        })
+        .collect::<Vec<&str>>()
+        .join(&format!("\n{}", indent_str));
+    Some(format!("{}\n{}{}", first_line, indent_str, rest))
 }
 
 fn rewrite_comment_inner(
@@ -1413,26 +1492,29 @@ mod test {
     #[test]
     #[rustfmt::skip]
     fn format_comments() {
-        let mut config: ::config::Config = Default::default();
-        config.set().wrap_comments(true);
-        config.set().normalize_comments(true);
+        let mut wrap_normalize_config: ::config::Config = Default::default();
+        wrap_normalize_config.set().wrap_comments(true);
+        wrap_normalize_config.set().normalize_comments(true);
+
+        let mut wrap_config: ::config::Config = Default::default();
+        wrap_config.set().wrap_comments(true);
 
         let comment = rewrite_comment(" //test",
                                       true,
                                       Shape::legacy(100, Indent::new(0, 100)),
-                                      &config).unwrap();
+                                      &wrap_normalize_config).unwrap();
         assert_eq!("/* test */", comment);
 
         let comment = rewrite_comment("// comment on a",
                                       false,
                                       Shape::legacy(10, Indent::empty()),
-                                      &config).unwrap();
+                                      &wrap_normalize_config).unwrap();
         assert_eq!("// comment\n// on a", comment);
 
         let comment = rewrite_comment("//  A multi line comment\n             // between args.",
                                       false,
                                       Shape::legacy(60, Indent::new(0, 12)),
-                                      &config).unwrap();
+                                      &wrap_normalize_config).unwrap();
         assert_eq!("//  A multi line comment\n            // between args.", comment);
 
         let input = "// comment";
@@ -1441,14 +1523,55 @@ mod test {
         let comment = rewrite_comment(input,
                                       true,
                                       Shape::legacy(9, Indent::new(0, 69)),
-                                      &config).unwrap();
+                                      &wrap_normalize_config).unwrap();
         assert_eq!(expected, comment);
 
         let comment = rewrite_comment("/*   trimmed    */",
                                       true,
                                       Shape::legacy(100, Indent::new(0, 100)),
-                                      &config).unwrap();
+                                      &wrap_normalize_config).unwrap();
         assert_eq!("/* trimmed */", comment);
+
+        // check that different comment style are properly recognised
+        let comment = rewrite_comment(r#"/// test1
+                                         /// test2
+                                         /*
+                                          * test3
+                                          */"#,
+                                      false,
+                                      Shape::legacy(100, Indent::new(0, 0)),
+                                      &wrap_normalize_config).unwrap();
+        assert_eq!("/// test1\n/// test2\n// test3", comment);
+
+        // check that the blank line marks the end of a commented paragraph
+        let comment = rewrite_comment(r#"// test1
+
+                                         // test2"#,
+                                      false,
+                                      Shape::legacy(100, Indent::new(0, 0)),
+                                      &wrap_normalize_config).unwrap();
+        assert_eq!("// test1\n\n// test2", comment);
+
+        // check that the blank line marks the end of a custom-commented paragraph
+        let comment = rewrite_comment(r#"//@ test1
+
+                                         //@ test2"#,
+                                      false,
+                                      Shape::legacy(100, Indent::new(0, 0)),
+                                      &wrap_normalize_config).unwrap();
+        assert_eq!("//@ test1\n\n//@ test2", comment);
+
+        // check that bare lines are just indented but left unchanged otherwise
+        let comment = rewrite_comment(r#"// test1
+                                         /*
+                                           a bare line!
+
+                                                another bare line!
+                                          */"#,
+                                      false,
+                                      Shape::legacy(100, Indent::new(0, 0)),
+                                      &wrap_config).unwrap();
+        assert_eq!("// test1\n/*\n a bare line!\n\n      another bare line!\n*/", comment);
     }
 
     // This is probably intended to be a non-test fn, but it is not used. I'm
