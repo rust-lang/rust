@@ -87,6 +87,7 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
     fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
         let kind = match self.kind {
             mir::BorrowKind::Shared => "",
+            mir::BorrowKind::Shallow => "shallow ",
             mir::BorrowKind::Unique => "uniq ",
             mir::BorrowKind::Mut { .. } => "mut ",
         };
@@ -287,7 +288,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
                     borrow_data.activation_location = match context {
                         // The use of TMP in a shared borrow does not
                         // count as an actual activation.
-                        PlaceContext::Borrow { kind: mir::BorrowKind::Shared, .. } => {
+                        PlaceContext::Borrow { kind: mir::BorrowKind::Shared, .. }
+                        | PlaceContext::Borrow { kind: mir::BorrowKind::Shallow, .. } => {
                             TwoPhaseActivation::NotActivated
                         }
                         _ => {

@@ -499,11 +499,20 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 );
             }
             StatementKind::FakeRead(_, ref place) => {
-                self.access_place(
+                // Read for match doesn't access any memory and is used to
+                // assert that a place is safe and live. So we don't have to
+                // do any checks here.
+                //
+                // FIXME: Remove check that the place is initialized. This is
+                // needed for now because matches don't have never patterns yet.
+                // So this is the only place we prevent
+                //      let x: !;
+                //      match x {};
+                // from compiling.
+                self.check_if_path_or_subpath_is_moved(
                     ContextKind::FakeRead.new(location),
+                    InitializationRequiringAction::Use,
                     (place, span),
-                    (Deep, Read(ReadKind::Borrow(BorrowKind::Shared))),
-                    LocalMutationIsAllowed::No,
                     flow_state,
                 );
             }
@@ -755,6 +764,7 @@ use self::AccessDepth::{Deep, Shallow};
 enum ArtificialField {
     Discriminant,
     ArrayLength,
+    ShallowBorrow,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -835,6 +845,7 @@ enum LocalMutationIsAllowed {
 enum InitializationRequiringAction {
     Update,
     Borrow,
+    MatchOn,
     Use,
     Assignment,
 }
@@ -849,6 +860,7 @@ impl InitializationRequiringAction {
         match self {
             InitializationRequiringAction::Update => "update",
             InitializationRequiringAction::Borrow => "borrow",
+            InitializationRequiringAction::MatchOn => "use", // no good noun
             InitializationRequiringAction::Use => "use",
             InitializationRequiringAction::Assignment => "assign",
         }
@@ -858,6 +870,7 @@ impl InitializationRequiringAction {
         match self {
             InitializationRequiringAction::Update => "updated",
             InitializationRequiringAction::Borrow => "borrowed",
+            InitializationRequiringAction::MatchOn => "matched on",
             InitializationRequiringAction::Use => "used",
             InitializationRequiringAction::Assignment => "assigned",
         }
@@ -972,7 +985,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Control::Continue
                 }
 
-                (Read(_), BorrowKind::Shared) | (Reservation(..), BorrowKind::Shared) => {
+                (Read(_), BorrowKind::Shared) | (Reservation(..), BorrowKind::Shared)
+                | (Read(_), BorrowKind::Shallow) | (Reservation(..), BorrowKind::Shallow) => {
+                    Control::Continue
+                }
+
+                (Write(WriteKind::Move), BorrowKind::Shallow) => {
+                    // Handled by initialization checks.
                     Control::Continue
                 }
 
@@ -984,7 +1003,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     }
 
                     match kind {
-                        ReadKind::Copy => {
+                        ReadKind::Copy  => {
                             error_reported = true;
                             this.report_use_while_mutably_borrowed(context, place_span, borrow)
                         }
@@ -1108,6 +1127,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         match *rvalue {
             Rvalue::Ref(_ /*rgn*/, bk, ref place) => {
                 let access_kind = match bk {
+                    BorrowKind::Shallow => {
+                        (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
+                    },
                     BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
                     BorrowKind::Unique | BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
@@ -1127,9 +1149,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     flow_state,
                 );
 
+                let action = if bk == BorrowKind::Shallow {
+                    InitializationRequiringAction::MatchOn
+                } else {
+                    InitializationRequiringAction::Borrow
+                };
+
                 self.check_if_path_or_subpath_is_moved(
                     context,
-                    InitializationRequiringAction::Borrow,
+                    action,
                     (place, span),
                     flow_state,
                 );
@@ -1315,11 +1343,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             return;
         }
 
-        // FIXME: replace this with a proper borrow_conflicts_with_place when
-        // that is merged.
         let sd = if might_be_alive { Deep } else { Shallow(None) };
 
-        if places_conflict::places_conflict(self.infcx.tcx, self.mir, place, root_place, sd) {
+        if places_conflict::borrow_conflicts_with_place(
+            self.infcx.tcx,
+            self.mir,
+            place,
+            borrow.kind,
+            root_place,
+            sd
+        ) {
             debug!("check_for_invalidation_at_exit({:?}): INVALID", place);
             // FIXME: should be talking about the region lifetime instead
             // of just a span here.
@@ -1369,7 +1402,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             // only mutable borrows should be 2-phase
             assert!(match borrow.kind {
-                BorrowKind::Shared => false,
+                BorrowKind::Shared | BorrowKind::Shallow => false,
                 BorrowKind::Unique | BorrowKind::Mut { .. } => true,
             });
 
@@ -1669,7 +1702,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 let is_local_mutation_allowed = match borrow_kind {
                     BorrowKind::Unique => LocalMutationIsAllowed::Yes,
                     BorrowKind::Mut { .. } => is_local_mutation_allowed,
-                    BorrowKind::Shared => unreachable!(),
+                    BorrowKind::Shared | BorrowKind::Shallow => unreachable!(),
                 };
                 match self.is_mutable(place, is_local_mutation_allowed) {
                     Ok(root_place) => {
@@ -1699,8 +1732,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             | Write(wk @ WriteKind::Move)
             | Reservation(wk @ WriteKind::StorageDeadOrDrop)
             | Reservation(wk @ WriteKind::MutableBorrow(BorrowKind::Shared))
+            | Reservation(wk @ WriteKind::MutableBorrow(BorrowKind::Shallow))
             | Write(wk @ WriteKind::StorageDeadOrDrop)
-            | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shared)) => {
+            | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shared))
+            | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shallow)) => {
                 if let Err(_place_err) = self.is_mutable(place, is_local_mutation_allowed) {
                     if self.infcx.tcx.migrate_borrowck() {
                         // rust-lang/rust#46908: In pure NLL mode this
@@ -1743,6 +1778,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Read(ReadKind::Borrow(BorrowKind::Unique))
             | Read(ReadKind::Borrow(BorrowKind::Mut { .. }))
             | Read(ReadKind::Borrow(BorrowKind::Shared))
+            | Read(ReadKind::Borrow(BorrowKind::Shallow))
             | Read(ReadKind::Copy) => {
                 // Access authorized
                 return false;

@@ -47,12 +47,10 @@ fn main() {
 //     bb0: {
 //         StorageLive(_1);
 //         _1 = Test { x: const 0i32 };
-//         FakeRead(ForLet, _1);
 //         StorageLive(_2);
 //         Validate(Suspend(ReScope(Remainder { block: ItemLocalId(20), first_statement_index: 3 })), [_1: Test]);
 //         _2 = &ReErased _1;
 //         Validate(Acquire, [(*_2): Test/ReScope(Remainder { block: ItemLocalId(20), first_statement_index: 3 }) (imm)]);
-//         FakeRead(ForLet, _2);
 //         StorageLive(_4);
 //         StorageLive(_5);
 //         Validate(Suspend(ReScope(Node(ItemLocalId(18)))), [((*_2).0: i32): i32/ReScope(Remainder { block: ItemLocalId(20), first_statement_index: 3 }) (imm)]);

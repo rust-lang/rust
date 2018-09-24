@@ -333,6 +333,27 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Origin::Mir,
                 ),
 
+            (BorrowKind::Mut { .. }, _, _, BorrowKind::Shallow, _, _)
+            | (BorrowKind::Unique, _, _, BorrowKind::Shallow, _, _) => {
+                let mut err = tcx.cannot_mutate_in_match_guard(
+                    span,
+                    issued_span,
+                    &desc_place,
+                    "mutably borrow",
+                    Origin::Mir,
+                );
+                borrow_spans.var_span_label(
+                    &mut err,
+                    format!(
+                        "borrow occurs due to use of `{}` in closure",
+                        desc_place
+                    ),
+                );
+                err.buffer(&mut self.errors_buffer);
+
+                return;
+            }
+
             (BorrowKind::Unique, _, _, _, _, _) => tcx.cannot_uniquely_borrow_by_one_closure(
                 span,
                 &desc_place,
@@ -368,7 +389,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Origin::Mir,
                 ),
 
-            (BorrowKind::Shared, _, _, BorrowKind::Shared, _, _) => unreachable!(),
+            (BorrowKind::Shallow, _, _, BorrowKind::Unique, _, _)
+            | (BorrowKind::Shallow, _, _, BorrowKind::Mut { .. }, _, _) => {
+                // Shallow borrows are uses from the user's point of view.
+                self.report_use_while_mutably_borrowed(context, (place, span), issued_borrow);
+                return
+            }
+            (BorrowKind::Shared, _, _, BorrowKind::Shared, _, _)
+            | (BorrowKind::Shared, _, _, BorrowKind::Shallow, _, _)
+            | (BorrowKind::Shallow, _, _, BorrowKind::Shared, _, _)
+            | (BorrowKind::Shallow, _, _, BorrowKind::Shallow, _, _) => unreachable!(),
         };
 
         if issued_spans == borrow_spans {
@@ -780,12 +810,22 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let loan_span = loan_spans.args_or_use();
 
         let tcx = self.infcx.tcx;
-        let mut err = tcx.cannot_assign_to_borrowed(
-            span,
-            loan_span,
-            &self.describe_place(place).unwrap_or("_".to_owned()),
-            Origin::Mir,
-        );
+        let mut err = if loan.kind == BorrowKind::Shallow {
+            tcx.cannot_mutate_in_match_guard(
+                span,
+                loan_span,
+                &self.describe_place(place).unwrap_or("_".to_owned()),
+                "assign",
+                Origin::Mir,
+            )
+        } else {
+            tcx.cannot_assign_to_borrowed(
+                span,
+                loan_span,
+                &self.describe_place(place).unwrap_or("_".to_owned()),
+                Origin::Mir,
+            )
+        };
 
         loan_spans.var_span_label(&mut err, "borrow occurs due to use in closure");
 

@@ -46,6 +46,7 @@ for mir::BorrowKind {
 
         match *self {
             mir::BorrowKind::Shared |
+            mir::BorrowKind::Shallow |
             mir::BorrowKind::Unique => {}
             mir::BorrowKind::Mut { allow_two_phase_borrow } => {
                 allow_two_phase_borrow.hash_stable(hcx, hasher);
@@ -272,7 +273,7 @@ for mir::StatementKind<'gcx> {
     }
 }
 
-impl_stable_hash_for!(enum mir::FakeReadCause { ForMatch, ForLet });
+impl_stable_hash_for!(enum mir::FakeReadCause { ForMatchGuard, ForMatchedPlace, ForLet });
 
 impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>>
     for mir::ValidationOperand<'gcx, T>

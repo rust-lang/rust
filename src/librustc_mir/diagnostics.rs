@@ -1991,6 +1991,26 @@ fn main() {
 ```
 "##,
 
+E0510: r##"
+Cannot mutate place in this match guard.
+
+When matching on a variable it cannot be mutated in the match guards, as this
+could cause the match to be non-exhaustive:
+
+```compile_fail,E0510
+#![feature(nll, bind_by_move_pattern_guards)]
+let mut x = Some(0);
+match x {
+    None => (),
+    Some(v) if { x = None; false } => (),
+    Some(_) => (), // No longer matches
+}
+```
+
+Here executing `x = None` would modify the value being matched and require us
+to go "back in time" to the `None` arm.
+"##,
+
 E0579: r##"
 When matching against an exclusive range, the compiler verifies that the range
 is non-empty. Exclusive range patterns include the start point but not the end
