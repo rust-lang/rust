@@ -270,7 +270,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                 // re-consider the current implementations of the
                 // propagate_call_return method.
 
-                if let mir::Rvalue::Ref(region, _, ref place) = *rhs {
+                if let mir::Rvalue::Ref(region, _, ref place) = **rhs {
                     if place.ignore_borrow(
                         self.tcx,
                         self.mir,

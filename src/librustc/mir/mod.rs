@@ -1610,7 +1610,7 @@ impl<'tcx> Statement<'tcx> {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum StatementKind<'tcx> {
     /// Write the RHS Rvalue to the LHS Place.
-    Assign(Place<'tcx>, Rvalue<'tcx>),
+    Assign(Place<'tcx>, Box<Rvalue<'tcx>>),
 
     /// This represents all the reading that a pattern match may do
     /// (e.g. inspecting constants and discriminant values), and the

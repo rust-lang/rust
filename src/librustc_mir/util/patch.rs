@@ -130,7 +130,7 @@ impl<'tcx> MirPatch<'tcx> {
     }
 
     pub fn add_assign(&mut self, loc: Location, place: Place<'tcx>, rv: Rvalue<'tcx>) {
-        self.add_statement(loc, StatementKind::Assign(place, rv));
+        self.add_statement(loc, StatementKind::Assign(place, box rv));
     }
 
     pub fn make_nop(&mut self, loc: Location) {

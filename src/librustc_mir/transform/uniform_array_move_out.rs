@@ -184,7 +184,7 @@ impl MirPass for RestoreSubsliceArrayMoveOut {
             for candidate in &visitor.candidates {
                 let statement = &mir[candidate.block].statements[candidate.statement_index];
                 if let StatementKind::Assign(ref dst_place, ref rval) = statement.kind {
-                    if let Rvalue::Aggregate(box AggregateKind::Array(_), ref items) = *rval {
+                    if let Rvalue::Aggregate(box AggregateKind::Array(_), ref items) = **rval {
                         let items : Vec<_> = items.iter().map(|item| {
                             if let Operand::Move(Place::Local(local)) = item {
                                 let local_use = &visitor.locals_use[*local];
@@ -268,7 +268,7 @@ impl RestoreSubsliceArrayMoveOut {
                 let statement = &block.statements[location.statement_index];
                 if let StatementKind::Assign(
                     Place::Local(_),
-                    Rvalue::Use(Operand::Move(Place::Projection(box PlaceProjection{
+                    box Rvalue::Use(Operand::Move(Place::Projection(box PlaceProjection{
                         ref base, elem: ProjectionElem::ConstantIndex{
                             offset, min_length: _, from_end: false}})))) = statement.kind {
                     return Some((offset, base))

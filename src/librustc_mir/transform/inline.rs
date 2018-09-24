@@ -447,7 +447,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
                     let stmt = Statement {
                         source_info: callsite.location,
-                        kind: StatementKind::Assign(tmp.clone(), dest)
+                        kind: StatementKind::Assign(tmp.clone(), box dest)
                     };
                     caller_mir[callsite.bb]
                         .statements.push(stmt);
@@ -594,7 +594,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         let stmt = Statement {
             source_info: callsite.location,
-            kind: StatementKind::Assign(Place::Local(arg_tmp), arg),
+            kind: StatementKind::Assign(Place::Local(arg_tmp), box arg),
         };
         caller_mir[callsite.bb].statements.push(stmt);
         arg_tmp

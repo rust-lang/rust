@@ -478,7 +478,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         assert!(!data.is_cleanup, "DropAndReplace in unwind path not supported");
 
         let assign = Statement {
-            kind: StatementKind::Assign(location.clone(), Rvalue::Use(value.clone())),
+            kind: StatementKind::Assign(location.clone(), box Rvalue::Use(value.clone())),
             source_info: terminator.source_info
         };
 
