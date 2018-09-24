@@ -225,12 +225,16 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// inference variables and applies it to the canonical value.
     /// Returns both the instantiated result *and* the substitution S.
     ///
-    /// This is useful at the start of a query: it basically brings
-    /// the canonical value "into scope" within your new infcx. At the
-    /// end of processing, the substitution S (once canonicalized)
-    /// then represents the values that you computed for each of the
-    /// canonical inputs to your query.
-    pub fn instantiate_canonical_with_fresh_inference_vars<T>(
+    /// This is only meant to be invoked as part of constructing an
+    /// inference context at the start of a query (see
+    /// `InferCtxtBuilder::enter_with_canonical`).  It basically
+    /// brings the canonical value "into scope" within your new infcx.
+    ///
+    /// At the end of processing, the substitution S (once
+    /// canonicalized) then represents the values that you computed
+    /// for each of the canonical inputs to your query.
+
+    pub(in infer) fn instantiate_canonical_with_fresh_inference_vars<T>(
         &self,
         span: Span,
         canonical: &Canonical<'tcx, T>,
@@ -238,6 +242,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
+        assert_eq!(self.universe(), ty::UniverseIndex::ROOT, "infcx not newly created");
+        assert_eq!(self.type_variables.borrow().num_vars(), 0, "infcx not newly created");
+
         let canonical_inference_vars =
             self.fresh_inference_vars_for_canonical_vars(span, canonical.variables);
         let result = canonical.substitute(self.tcx, &canonical_inference_vars);

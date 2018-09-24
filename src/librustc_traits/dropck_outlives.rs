@@ -30,19 +30,16 @@ crate fn provide(p: &mut Providers) {
 
 fn dropck_outlives<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
-    goal: CanonicalTyGoal<'tcx>,
+    canonical_goal: CanonicalTyGoal<'tcx>,
 ) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, DropckOutlivesResult<'tcx>>>>, NoSolution> {
-    debug!("dropck_outlives(goal={:#?})", goal);
+    debug!("dropck_outlives(goal={:#?})", canonical_goal);
 
-    tcx.infer_ctxt().enter(|ref infcx| {
+    tcx.infer_ctxt().enter_with_canonical(DUMMY_SP, &canonical_goal, |ref infcx, goal, canonical_inference_vars| {
         let tcx = infcx.tcx;
-        let (
-            ParamEnvAnd {
-                param_env,
-                value: for_ty,
-            },
-            canonical_inference_vars,
-        ) = infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &goal);
+        let ParamEnvAnd {
+            param_env,
+            value: for_ty,
+        } = goal;
 
         let mut result = DropckOutlivesResult {
             kinds: vec![],

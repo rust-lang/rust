@@ -20,6 +20,7 @@ pub use ty::IntVarValue;
 use arena::SyncDroplessArena;
 use errors::DiagnosticBuilder;
 use hir::def_id::DefId;
+use infer::canonical::{Canonical, CanonicalVarValues};
 use middle::free_region::RegionRelations;
 use middle::lang_items;
 use middle::region;
@@ -494,9 +495,29 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         self
     }
 
-    pub fn enter<F, R>(&'tcx mut self, f: F) -> R
+    /// Given a canonical value `C` as a starting point, create an
+    /// inference context that contains each of the bound values
+    /// within instantiated as a fresh variable. The `f` closure is
+    /// invoked with the new infcx, along with the instantiated value
+    /// `V` and a substitution `S`.  This substitution `S` maps from
+    /// the bound values in `C` to their instantiated values in `V`
+    /// (in other words, `S(C) = V`).
+    pub fn enter_with_canonical<T, R>(
+        &'tcx mut self,
+        span: Span,
+        canonical: &Canonical<'tcx, T>,
+        f: impl for<'b> FnOnce(InferCtxt<'b, 'gcx, 'tcx>, T, CanonicalVarValues<'tcx>) -> R,
+    ) -> R
     where
-        F: for<'b> FnOnce(InferCtxt<'b, 'gcx, 'tcx>) -> R,
+        T: TypeFoldable<'tcx>,
+    {
+        self.enter(|infcx| {
+            let (value, subst) = infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
+            f(infcx, value, subst)
+        })
+    }
+
+    pub fn enter<R>(&'tcx mut self, f: impl for<'b> FnOnce(InferCtxt<'b, 'gcx, 'tcx>) -> R) -> R
     {
         let InferCtxtBuilder {
             global_tcx,

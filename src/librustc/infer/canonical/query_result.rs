@@ -64,9 +64,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
         K: TypeFoldable<'tcx>,
         R: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
     {
-        self.enter(|ref infcx| {
-            let (key, canonical_inference_vars) =
-                infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_key);
+        self.enter_with_canonical(DUMMY_SP, canonical_key, |ref infcx, key, canonical_inference_vars| {
             let fulfill_cx = &mut FulfillmentContext::new();
             let value = operation(infcx, fulfill_cx, key)?;
             infcx.make_canonicalized_query_result(canonical_inference_vars, value, fulfill_cx)
