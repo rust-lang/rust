@@ -334,6 +334,17 @@ fn opts() -> Vec<RustcOptGroup> {
                 "LEVEL",
             )
         }),
+        unstable("index-page", |o| {
+             o.optopt("",
+                      "index-page",
+                      "Markdown file to be used as index page",
+                      "PATH")
+        }),
+        unstable("enable-index-page", |o| {
+             o.optflag("",
+                       "enable-index-page",
+                       "To enable generation of the index page")
+        }),
     ]
 }
 
@@ -534,6 +545,8 @@ fn main_args(args: &[String]) -> isize {
     let linker = matches.opt_str("linker").map(PathBuf::from);
     let sort_modules_alphabetically = !matches.opt_present("sort-modules-by-appearance");
     let resource_suffix = matches.opt_str("resource-suffix");
+    let index_page = matches.opt_str("index-page").map(|s| PathBuf::from(&s));
+    let enable_index_page = matches.opt_present("enable-index-page") || index_page.is_some();
     let enable_minification = !matches.opt_present("disable-minification");
 
     let edition = matches.opt_str("edition").unwrap_or("2015".to_string());
@@ -544,6 +557,12 @@ fn main_args(args: &[String]) -> isize {
             return 1;
         }
     };
+    if let Some(ref index_page) = index_page {
+        if !index_page.is_file() {
+            diag.struct_err("option `--index-page` argument must be a file").emit();
+            return 1;
+        }
+    }
 
     let cg = build_codegen_options(&matches, ErrorOutputType::default());
 
@@ -580,7 +599,10 @@ fn main_args(args: &[String]) -> isize {
                                   renderinfo,
                                   sort_modules_alphabetically,
                                   themes,
-                                  enable_minification, id_map)
+                                  enable_minification, id_map,
+                                  enable_index_page, index_page,
+                                  &matches,
+                                  &diag)
                     .expect("failed to generate documentation");
                 0
             }

@@ -80,6 +80,8 @@ use html::{highlight, layout};
 
 use minifier;
 
+use pulldown_cmark;
+
 /// A pair of name and its optional document.
 pub type NameDoc = (String, Option<String>);
 
@@ -106,6 +108,8 @@ struct Context {
     /// The map used to ensure all generated 'id=' attributes are unique.
     id_map: Rc<RefCell<IdMap>>,
     pub shared: Arc<SharedContext>,
+    pub enable_index_page: bool,
+    pub index_page: Option<PathBuf>,
 }
 
 struct SharedContext {
@@ -501,7 +505,10 @@ pub fn run(mut krate: clean::Crate,
            sort_modules_alphabetically: bool,
            themes: Vec<PathBuf>,
            enable_minification: bool,
-           id_map: IdMap) -> Result<(), Error> {
+           id_map: IdMap,
+           enable_index_page: bool,
+           index_page: Option<PathBuf>,
+) -> Result<(), Error> {
     let src_root = match krate.src {
         FileName::Real(ref p) => match p.parent() {
             Some(p) => p.to_path_buf(),
@@ -572,6 +579,8 @@ pub fn run(mut krate: clean::Crate,
         codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
         id_map: Rc::new(RefCell::new(id_map)),
         shared: Arc::new(scx),
+        enable_index_page,
+        index_page,
     };
 
     // Crawl the crate to build various caches used for the output
@@ -902,8 +911,9 @@ themePicker.onblur = handleThemeButtonsBlur;
     write(cx.dst.join("COPYRIGHT.txt"),
           include_bytes!("static/COPYRIGHT.txt"))?;
 
-    fn collect(path: &Path, krate: &str, key: &str) -> io::Result<Vec<String>> {
+    fn collect(path: &Path, krate: &str, key: &str) -> io::Result<(Vec<String>, Vec<String>)> {
         let mut ret = Vec::new();
+        let mut krates = Vec::new();
         if path.exists() {
             for line in BufReader::new(File::open(path)?).lines() {
                 let line = line?;
@@ -914,9 +924,13 @@ themePicker.onblur = handleThemeButtonsBlur;
                     continue;
                 }
                 ret.push(line.to_string());
+                krates.push(line[key.len() + 2..].split('"')
+                                                 .next()
+                                                 .map(|s| s.to_owned())
+                                                 .unwrap_or_else(|| String::new()));
             }
         }
-        Ok(ret)
+        Ok((ret, krates))
     }
 
     fn show_item(item: &IndexItem, krate: &str) -> String {
@@ -931,7 +945,7 @@ themePicker.onblur = handleThemeButtonsBlur;
 
     let dst = cx.dst.join("aliases.js");
     {
-        let mut all_aliases = try_err!(collect(&dst, &krate.name, "ALIASES"), &dst);
+        let (mut all_aliases, _) = try_err!(collect(&dst, &krate.name, "ALIASES"), &dst);
         let mut w = try_err!(File::create(&dst), &dst);
         let mut output = String::with_capacity(100);
         for (alias, items) in &cache.aliases {
@@ -955,7 +969,7 @@ themePicker.onblur = handleThemeButtonsBlur;
 
     // Update the search index
     let dst = cx.dst.join("search-index.js");
-    let mut all_indexes = try_err!(collect(&dst, &krate.name, "searchIndex"), &dst);
+    let (mut all_indexes, mut krates) = try_err!(collect(&dst, &krate.name, "searchIndex"), &dst);
     all_indexes.push(search_index);
     // Sort the indexes by crate so the file will be generated identically even
     // with rustdoc running in parallel.
@@ -968,6 +982,61 @@ themePicker.onblur = handleThemeButtonsBlur;
                  &dst);
     }
     try_err!(writeln!(&mut w, "initSearch(searchIndex);"), &dst);
+
+<<<<<<< HEAD
+    if cx.disable_index_page == false {
+        let dst = cx.dst.join("index.html");
+=======
+    if cx.enable_index_page == true {
+>>>>>>> a2642cf... f
+        if let Some(ref index_page) = cx.index_page {
+            let mut content = Vec::with_capacity(100000);
+
+            let mut f = try_err!(File::open(&index_page), &index_page);
+            try_err!(f.read_to_end(&mut content), &index_page);
+            let content = match String::from_utf8(content) {
+                Ok(c) => c,
+                Err(_) => return Err(Error::new(
+                                         io::Error::new(
+                                             io::ErrorKind::Other, "invalid markdown"),
+                                             &index_page)),
+            };
+            let parser = pulldown_cmark::Parser::new(&content);
+            let mut html_buf = String::new();
+            pulldown_cmark::html::push_html(&mut html_buf, parser);
+            let mut f = try_err!(File::create(&dst), &dst);
+            try_err!(f.write_all(html_buf.as_bytes()), &dst);
+        } else {
+            let mut w = BufWriter::new(try_err!(File::create(&dst), &dst));
+            let page = layout::Page {
+                title: "Index of crates",
+                css_class: "mod",
+                root_path: "./",
+                description: "List of crates",
+                keywords: BASIC_KEYWORDS,
+                resource_suffix: &cx.shared.resource_suffix,
+            };
+            krates.push(krate.name.clone());
+            krates.sort();
+            krates.dedup();
+
+            let content = format!(
+"<h1 class='fqn'>\
+     <span class='in-band'>List of all crates</span>\
+</h1><ul class='mod'>{}</ul>",
+                                  krates
+                                    .iter()
+                                    .map(|s| {
+                                        format!("<li><a href=\"{}/index.html\">{}</li>", s, s)
+                                    })
+                                    .collect::<String>());
+            try_err!(layout::render(&mut w, &cx.shared.layout,
+                                    &page, &(""), &content,
+                                    cx.shared.css_file_extension.is_some(),
+                                    &cx.shared.themes), &dst);
+            try_err!(w.flush(), &dst);
+        }
+    }
 
     // Update the list of all implementors for traits
     let dst = cx.dst.join("implementors");
@@ -1022,7 +1091,8 @@ themePicker.onblur = handleThemeButtonsBlur;
                             remote_item_type.css_class(),
                             remote_path[remote_path.len() - 1]));
 
-        let mut all_implementors = try_err!(collect(&mydst, &krate.name, "implementors"), &mydst);
+        let (mut all_implementors, _) = try_err!(collect(&mydst, &krate.name, "implementors"),
+                                                 &mydst);
         all_implementors.push(implementors);
         // Sort the implementors by crate so the file will be generated
         // identically even with rustdoc running in parallel.

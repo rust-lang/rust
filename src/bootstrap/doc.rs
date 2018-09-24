@@ -405,6 +405,7 @@ impl Step for Standalone {
             cmd.arg("--html-after-content").arg(&footer)
                .arg("--html-before-content").arg(&version_info)
                .arg("--html-in-header").arg(&favicon)
+               .arg("--index-page").arg("src/doc/index.md")
                .arg("--markdown-playground-url")
                .arg("https://play.rust-lang.org/")
                .arg("-o").arg(&out)
