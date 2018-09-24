@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::hir::def_id::DefId;
-use rustc::infer::canonical::{Canonical, QueryResult};
+use rustc::infer::canonical::{Canonical, QueryResponse};
 use rustc::traits::query::dropck_outlives::{DropckOutlivesResult, DtorckConstraint};
 use rustc::traits::query::{CanonicalTyGoal, NoSolution};
 use rustc::traits::{FulfillmentContext, Normalized, ObligationCause, TraitEngineExt};
@@ -31,7 +31,7 @@ crate fn provide(p: &mut Providers) {
 fn dropck_outlives<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     canonical_goal: CanonicalTyGoal<'tcx>,
-) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, DropckOutlivesResult<'tcx>>>>, NoSolution> {
+) -> Result<Lrc<Canonical<'tcx, QueryResponse<'tcx, DropckOutlivesResult<'tcx>>>>, NoSolution> {
     debug!("dropck_outlives(goal={:#?})", canonical_goal);
 
     tcx.infer_ctxt().enter_with_canonical(DUMMY_SP, &canonical_goal, |ref infcx, goal, canonical_inference_vars| {
@@ -143,7 +143,7 @@ fn dropck_outlives<'tcx>(
 
         debug!("dropck_outlives: result = {:#?}", result);
 
-        infcx.make_canonicalized_query_result(canonical_inference_vars, result, fulfill_cx)
+        infcx.make_canonicalized_query_response(canonical_inference_vars, result, fulfill_cx)
     })
 }
 

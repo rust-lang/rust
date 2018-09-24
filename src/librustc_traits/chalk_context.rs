@@ -10,7 +10,7 @@
 
 use chalk_engine::fallible::Fallible as ChalkEngineFallible;
 use chalk_engine::{context, hh::HhGoal, DelayedLiteral, ExClause};
-use rustc::infer::canonical::{Canonical, CanonicalVarValues, QueryRegionConstraint, QueryResult};
+use rustc::infer::canonical::{Canonical, CanonicalVarValues, QueryRegionConstraint, QueryResponse};
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use rustc::traits::{
     WellFormed,
@@ -77,7 +77,7 @@ impl context::Context for ChalkArenas<'tcx> {
     // u-canonicalization not yet implemented
     type UniverseMap = UniverseMap;
 
-    type Solution = Canonical<'tcx, QueryResult<'tcx, ()>>;
+    type Solution = Canonical<'tcx, QueryResponse<'tcx, ()>>;
 
     type InferenceNormalizedSubst = CanonicalVarValues<'tcx>;
 
@@ -116,7 +116,7 @@ impl context::AggregateOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
         &self,
         _root_goal: &Canonical<'gcx, ty::ParamEnvAnd<'gcx, Goal<'gcx>>>,
         _simplified_answers: impl context::AnswerStream<ChalkArenas<'gcx>>,
-    ) -> Option<Canonical<'gcx, QueryResult<'gcx, ()>>> {
+    ) -> Option<Canonical<'gcx, QueryResponse<'gcx, ()>>> {
         unimplemented!()
     }
 }

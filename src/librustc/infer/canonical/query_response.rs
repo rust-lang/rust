@@ -19,8 +19,8 @@
 
 use infer::canonical::substitute::substitute_value;
 use infer::canonical::{
-    Canonical, CanonicalVarKind, CanonicalVarValues, CanonicalizedQueryResult, Certainty,
-    QueryRegionConstraint, QueryResult, SmallCanonicalVarValues,
+    Canonical, CanonicalVarKind, CanonicalVarValues, CanonicalizedQueryResponse, Certainty,
+    QueryRegionConstraint, QueryResponse, SmallCanonicalVarValues,
 };
 use infer::region_constraints::{Constraint, RegionConstraintData};
 use infer::InferCtxtBuilder;
@@ -59,7 +59,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
         canonical_key: &Canonical<'tcx, K>,
         operation: impl FnOnce(&InferCtxt<'_, 'gcx, 'tcx>, &mut FulfillmentContext<'tcx>, K)
             -> Fallible<R>,
-    ) -> Fallible<CanonicalizedQueryResult<'gcx, R>>
+    ) -> Fallible<CanonicalizedQueryResponse<'gcx, R>>
     where
         K: TypeFoldable<'tcx>,
         R: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
@@ -67,7 +67,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
         self.enter_with_canonical(DUMMY_SP, canonical_key, |ref infcx, key, canonical_inference_vars| {
             let fulfill_cx = &mut FulfillmentContext::new();
             let value = operation(infcx, fulfill_cx, key)?;
-            infcx.make_canonicalized_query_result(canonical_inference_vars, value, fulfill_cx)
+            infcx.make_canonicalized_query_response(canonical_inference_vars, value, fulfill_cx)
         })
     }
 }
@@ -92,41 +92,41 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     ///   the same thing happens, but the resulting query is marked as ambiguous.
     /// - Finally, if any of the obligations result in a hard error,
     ///   then `Err(NoSolution)` is returned.
-    pub fn make_canonicalized_query_result<T>(
+    pub fn make_canonicalized_query_response<T>(
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
         fulfill_cx: &mut FulfillmentContext<'tcx>,
-    ) -> Fallible<CanonicalizedQueryResult<'gcx, T>>
+    ) -> Fallible<CanonicalizedQueryResponse<'gcx, T>>
     where
         T: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
     {
-        let query_result = self.make_query_result(inference_vars, answer, fulfill_cx)?;
-        let canonical_result = self.canonicalize_response(&query_result);
+        let query_response = self.make_query_response(inference_vars, answer, fulfill_cx)?;
+        let canonical_result = self.canonicalize_response(&query_response);
 
         debug!(
-            "make_canonicalized_query_result: canonical_result = {:#?}",
+            "make_canonicalized_query_response: canonical_result = {:#?}",
             canonical_result
         );
 
         Ok(Lrc::new(canonical_result))
     }
 
-    /// Helper for `make_canonicalized_query_result` that does
+    /// Helper for `make_canonicalized_query_response` that does
     /// everything up until the final canonicalization.
-    fn make_query_result<T>(
+    fn make_query_response<T>(
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
         fulfill_cx: &mut FulfillmentContext<'tcx>,
-    ) -> Result<QueryResult<'tcx, T>, NoSolution>
+    ) -> Result<QueryResponse<'tcx, T>, NoSolution>
     where
         T: Debug + TypeFoldable<'tcx> + Lift<'gcx>,
     {
         let tcx = self.tcx;
 
         debug!(
-            "make_query_result(\
+            "make_query_response(\
              inference_vars={:?}, \
              answer={:?})",
             inference_vars, answer,
@@ -138,7 +138,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
         if !true_errors.is_empty() {
             // FIXME -- we don't indicate *why* we failed to solve
-            debug!("make_query_result: true_errors={:#?}", true_errors);
+            debug!("make_query_response: true_errors={:#?}", true_errors);
             return Err(NoSolution);
         }
 
@@ -162,7 +162,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             Certainty::Ambiguous
         };
 
-        Ok(QueryResult {
+        Ok(QueryResponse {
             var_values: inference_vars,
             region_constraints,
             certainty,
@@ -180,12 +180,12 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// out the [chapter in the rustc guide][c].
     ///
     /// [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html#processing-the-canonicalized-query-result
-    pub fn instantiate_query_result_and_region_obligations<R>(
+    pub fn instantiate_query_response_and_region_obligations<R>(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         original_values: &SmallCanonicalVarValues<'tcx>,
-        query_result: &Canonical<'tcx, QueryResult<'tcx, R>>,
+        query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
     ) -> InferResult<'tcx, R>
     where
         R: Debug + TypeFoldable<'tcx>,
@@ -193,17 +193,17 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         let InferOk {
             value: result_subst,
             mut obligations,
-        } = self.query_result_substitution(cause, param_env, original_values, query_result)?;
+        } = self.query_response_substitution(cause, param_env, original_values, query_response)?;
 
         obligations.extend(self.query_region_constraints_into_obligations(
             cause,
             param_env,
-            &query_result.value.region_constraints,
+            &query_response.value.region_constraints,
             &result_subst,
         ));
 
         let user_result: R =
-            query_result.substitute_projected(self.tcx, &result_subst, |q_r| &q_r.value);
+            query_response.substitute_projected(self.tcx, &result_subst, |q_r| &q_r.value);
 
         Ok(InferOk {
             value: user_result,
@@ -212,7 +212,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     }
 
     /// An alternative to
-    /// `instantiate_query_result_and_region_obligations` that is more
+    /// `instantiate_query_response_and_region_obligations` that is more
     /// efficient for NLL. NLL is a bit more advanced in the
     /// "transition to chalk" than the rest of the compiler. During
     /// the NLL type check, all of the "processing" of types and
@@ -227,8 +227,8 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// into the older infcx-style constraints (e.g., calls to
     /// `sub_regions` or `register_region_obligation`).
     ///
-    /// Therefore, `instantiate_nll_query_result_and_region_obligations` performs the same
-    /// basic operations as `instantiate_query_result_and_region_obligations` but
+    /// Therefore, `instantiate_nll_query_response_and_region_obligations` performs the same
+    /// basic operations as `instantiate_query_response_and_region_obligations` but
     /// it returns its result differently:
     ///
     /// - It creates a substitution `S` that maps from the original
@@ -246,12 +246,12 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     ///   are propagated back in the return value.
     /// - Finally, the query result (of type `R`) is propagated back,
     ///   after applying the substitution `S`.
-    pub fn instantiate_nll_query_result_and_region_obligations<R>(
+    pub fn instantiate_nll_query_response_and_region_obligations<R>(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         original_values: &SmallCanonicalVarValues<'tcx>,
-        query_result: &Canonical<'tcx, QueryResult<'tcx, R>>,
+        query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
         output_query_region_constraints: &mut Vec<QueryRegionConstraint<'tcx>>,
     ) -> InferResult<'tcx, R>
     where
@@ -259,13 +259,13 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     {
         // In an NLL query, there should be no type variables in the
         // query, only region variables.
-        debug_assert!(query_result.variables.iter().all(|v| match v.kind {
+        debug_assert!(query_response.variables.iter().all(|v| match v.kind {
             CanonicalVarKind::Ty(_) => false,
             CanonicalVarKind::Region => true,
         }));
 
         let result_subst =
-            self.query_result_substitution_guess(cause, original_values, query_result);
+            self.query_response_substitution_guess(cause, original_values, query_response);
 
         // Compute `QueryRegionConstraint` values that unify each of
         // the original values `v_o` that was canonicalized into a
@@ -274,7 +274,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
         for (index, original_value) in original_values.iter().enumerate() {
             // ...with the value `v_r` of that variable from the query.
-            let result_value = query_result.substitute_projected(self.tcx, &result_subst, |v| {
+            let result_value = query_response.substitute_projected(self.tcx, &result_subst, |v| {
                 &v.var_values[CanonicalVar::new(index)]
             });
             match (original_value.unpack(), result_value.unpack()) {
@@ -309,7 +309,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
         // ...also include the other query region constraints from the query.
         output_query_region_constraints.extend(
-            query_result.value.region_constraints.iter().filter_map(|r_c| {
+            query_response.value.region_constraints.iter().filter_map(|r_c| {
                 let &ty::OutlivesPredicate(k1, r2) = r_c.skip_binder(); // reconstructed below
                 let k1 = substitute_value(self.tcx, &result_subst, &k1);
                 let r2 = substitute_value(self.tcx, &result_subst, &r2);
@@ -322,7 +322,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         );
 
         let user_result: R =
-            query_result.substitute_projected(self.tcx, &result_subst, |q_r| &q_r.value);
+            query_response.substitute_projected(self.tcx, &result_subst, |q_r| &q_r.value);
 
         Ok(InferOk {
             value: user_result,
@@ -340,30 +340,30 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// example) we are doing lazy normalization and the value
     /// assigned to a type variable is unified with an unnormalized
     /// projection.
-    fn query_result_substitution<R>(
+    fn query_response_substitution<R>(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         original_values: &SmallCanonicalVarValues<'tcx>,
-        query_result: &Canonical<'tcx, QueryResult<'tcx, R>>,
+        query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
     ) -> InferResult<'tcx, CanonicalVarValues<'tcx>>
     where
         R: Debug + TypeFoldable<'tcx>,
     {
         debug!(
-            "query_result_substitution(original_values={:#?}, query_result={:#?})",
-            original_values, query_result,
+            "query_response_substitution(original_values={:#?}, query_response={:#?})",
+            original_values, query_response,
         );
 
         let result_subst =
-            self.query_result_substitution_guess(cause, original_values, query_result);
+            self.query_response_substitution_guess(cause, original_values, query_response);
 
-        let obligations = self.unify_query_result_substitution_guess(
+        let obligations = self.unify_query_response_substitution_guess(
             cause,
             param_env,
             original_values,
             &result_subst,
-            query_result,
+            query_response,
         )?
             .into_obligations();
 
@@ -382,25 +382,25 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// will instantiate fresh inference variables for each canonical
     /// variable instead. Therefore, the result of this method must be
     /// properly unified
-    fn query_result_substitution_guess<R>(
+    fn query_response_substitution_guess<R>(
         &self,
         cause: &ObligationCause<'tcx>,
         original_values: &SmallCanonicalVarValues<'tcx>,
-        query_result: &Canonical<'tcx, QueryResult<'tcx, R>>,
+        query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
     ) -> CanonicalVarValues<'tcx>
     where
         R: Debug + TypeFoldable<'tcx>,
     {
         debug!(
-            "query_result_substitution_guess(original_values={:#?}, query_result={:#?})",
-            original_values, query_result,
+            "query_response_substitution_guess(original_values={:#?}, query_response={:#?})",
+            original_values, query_response,
         );
 
         // Every canonical query result includes values for each of
         // the inputs to the query. Therefore, we begin by unifying
         // these values with the original inputs that were
         // canonicalized.
-        let result_values = &query_result.value.var_values;
+        let result_values = &query_response.value.var_values;
         assert_eq!(original_values.len(), result_values.len());
 
         // Quickly try to find initial values for the canonical
@@ -411,7 +411,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         // result, then we can type the corresponding value from the
         // input. See the example above.
         let mut opt_values: IndexVec<CanonicalVar, Option<Kind<'tcx>>> =
-            IndexVec::from_elem_n(None, query_result.variables.len());
+            IndexVec::from_elem_n(None, query_response.variables.len());
 
         // In terms of our example above, we are iterating over pairs like:
         // [(?A, Vec<?0>), ('static, '?1), (?B, ?0)]
@@ -438,7 +438,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         // given variable in the loop above, use that. Otherwise, use
         // a fresh inference variable.
         let result_subst = CanonicalVarValues {
-            var_values: query_result
+            var_values: query_response
                 .variables
                 .iter()
                 .enumerate()
@@ -456,29 +456,29 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// query result.  Often, but not always, this is a no-op, because
     /// we already found the mapping in the "guessing" step.
     ///
-    /// See also: `query_result_substitution_guess`
-    fn unify_query_result_substitution_guess<R>(
+    /// See also: `query_response_substitution_guess`
+    fn unify_query_response_substitution_guess<R>(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         original_values: &SmallCanonicalVarValues<'tcx>,
         result_subst: &CanonicalVarValues<'tcx>,
-        query_result: &Canonical<'tcx, QueryResult<'tcx, R>>,
+        query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
     ) -> InferResult<'tcx, ()>
     where
         R: Debug + TypeFoldable<'tcx>,
     {
         // A closure that yields the result value for the given
         // canonical variable; this is taken from
-        // `query_result.var_values` after applying the substitution
+        // `query_response.var_values` after applying the substitution
         // `result_subst`.
-        let substituted_query_result = |index: CanonicalVar| -> Kind<'tcx> {
-            query_result.substitute_projected(self.tcx, &result_subst, |v| &v.var_values[index])
+        let substituted_query_response = |index: CanonicalVar| -> Kind<'tcx> {
+            query_response.substitute_projected(self.tcx, &result_subst, |v| &v.var_values[index])
         };
 
         // Unify the original value for each variable with the value
-        // taken from `query_result` (after applying `result_subst`).
-        Ok(self.unify_canonical_vars(cause, param_env, original_values, substituted_query_result)?)
+        // taken from `query_response` (after applying `result_subst`).
+        Ok(self.unify_canonical_vars(cause, param_env, original_values, substituted_query_response)?)
     }
 
     /// Converts the region constraints resulting from a query into an

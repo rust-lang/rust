@@ -119,7 +119,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         };
         assert!(result.value.is_proven());
 
-        let result = self.instantiate_query_result_and_region_obligations(
+        let result = self.instantiate_query_response_and_region_obligations(
             &ObligationCause::misc(span, body_id), param_env, &orig_values, &result);
         debug!("implied_outlives_bounds for {:?}: {:#?}", ty, result);
         let result = match result {

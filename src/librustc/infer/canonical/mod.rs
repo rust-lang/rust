@@ -44,7 +44,7 @@ use ty::{self, CanonicalVar, Lift, Region, List, TyCtxt};
 
 mod canonicalizer;
 
-pub mod query_result;
+pub mod query_response;
 
 mod substitute;
 
@@ -118,10 +118,10 @@ pub enum CanonicalTyVarKind {
 }
 
 /// After we execute a query with a canonicalized key, we get back a
-/// `Canonical<QueryResult<..>>`. You can use
+/// `Canonical<QueryResponse<..>>`. You can use
 /// `instantiate_query_result` to access the data in this result.
 #[derive(Clone, Debug)]
-pub struct QueryResult<'tcx, R> {
+pub struct QueryResponse<'tcx, R> {
     pub var_values: CanonicalVarValues<'tcx>,
     pub region_constraints: Vec<QueryRegionConstraint<'tcx>>,
     pub certainty: Certainty,
@@ -130,8 +130,8 @@ pub struct QueryResult<'tcx, R> {
 
 pub type Canonicalized<'gcx, V> = Canonical<'gcx, <V as Lift<'gcx>>::Lifted>;
 
-pub type CanonicalizedQueryResult<'gcx, T> =
-    Lrc<Canonical<'gcx, QueryResult<'gcx, <T as Lift<'gcx>>::Lifted>>>;
+pub type CanonicalizedQueryResponse<'gcx, T> =
+    Lrc<Canonical<'gcx, QueryResponse<'gcx, <T as Lift<'gcx>>::Lifted>>>;
 
 /// Indicates whether or not we were able to prove the query to be
 /// true.
@@ -168,7 +168,7 @@ impl Certainty {
     }
 }
 
-impl<'tcx, R> QueryResult<'tcx, R> {
+impl<'tcx, R> QueryResponse<'tcx, R> {
     pub fn is_proven(&self) -> bool {
         self.certainty.is_proven()
     }
@@ -178,7 +178,7 @@ impl<'tcx, R> QueryResult<'tcx, R> {
     }
 }
 
-impl<'tcx, R> Canonical<'tcx, QueryResult<'tcx, R>> {
+impl<'tcx, R> Canonical<'tcx, QueryResponse<'tcx, R>> {
     pub fn is_proven(&self) -> bool {
         self.value.is_proven()
     }
@@ -351,14 +351,14 @@ BraceStructTypeFoldableImpl! {
 }
 
 BraceStructTypeFoldableImpl! {
-    impl<'tcx, R> TypeFoldable<'tcx> for QueryResult<'tcx, R> {
+    impl<'tcx, R> TypeFoldable<'tcx> for QueryResponse<'tcx, R> {
         var_values, region_constraints, certainty, value
     } where R: TypeFoldable<'tcx>,
 }
 
 BraceStructLiftImpl! {
-    impl<'a, 'tcx, R> Lift<'tcx> for QueryResult<'a, R> {
-        type Lifted = QueryResult<'tcx, R::Lifted>;
+    impl<'a, 'tcx, R> Lift<'tcx> for QueryResponse<'a, R> {
+        type Lifted = QueryResponse<'tcx, R::Lifted>;
         var_values, region_constraints, certainty, value
     } where R: Lift<'tcx>
 }

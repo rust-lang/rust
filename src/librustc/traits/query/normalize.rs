@@ -167,7 +167,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                             return ty;
                         }
 
-                        match self.infcx.instantiate_query_result_and_region_obligations(
+                        match self.infcx.instantiate_query_response_and_region_obligations(
                             self.cause,
                             self.param_env,
                             &orig_values,
