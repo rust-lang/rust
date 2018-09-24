@@ -54,8 +54,16 @@ pub(super) fn impl_item(p: &mut Parser) {
 
     // test impl_item_neg
     // impl !Send for X {}
-    p.eat(EXCL);
-    types::type_(p);
+    if p.at(IMPL_KW) {
+        p.error("expected type");
+    } else {
+        p.eat(EXCL);
+        if p.at(IMPL_KW) {
+            p.error("expected type");
+        } else {
+            types::type_(p);
+        }
+    }
     if p.eat(FOR_KW) {
         types::type_(p);
     }
