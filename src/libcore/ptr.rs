@@ -2336,13 +2336,13 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
         ///
         /// Note, that this table does not contain values where inverse does not exist (i.e. for
         /// `0⁻¹ mod 16`, `2⁻¹ mod 16`, etc.)
-        const INV_TABLE_MOD_16: [usize; 8] = [1, 11, 13, 7, 9, 3, 5, 15];
+        const INV_TABLE_MOD_16: [u8; 8] = [1, 11, 13, 7, 9, 3, 5, 15];
         /// Modulo for which the `INV_TABLE_MOD_16` is intended.
         const INV_TABLE_MOD: usize = 16;
         /// INV_TABLE_MOD²
         const INV_TABLE_MOD_SQUARED: usize = INV_TABLE_MOD * INV_TABLE_MOD;
 
-        let table_inverse = INV_TABLE_MOD_16[(x & (INV_TABLE_MOD - 1)) >> 1];
+        let table_inverse = INV_TABLE_MOD_16[(x & (INV_TABLE_MOD - 1)) >> 1] as usize;
         if m <= INV_TABLE_MOD {
             table_inverse & (m - 1)
         } else {
@@ -2395,36 +2395,23 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     let gcdpow = intrinsics::cttz_nonzero(stride).min(intrinsics::cttz_nonzero(a));
     let gcd = 1usize << gcdpow;
 
-    if gcd == 1 {
-        // This branch solves for the variable $o$ in following linear congruence equation:
+    if p as usize & (gcd - 1) == 0 {
+        // This branch solves for the following linear congruence equation:
         //
-        // ⎰ p + o ≡ 0 (mod a)   # $p + o$ must be aligned to specified alignment $a$
-        // ⎱     o ≡ 0 (mod s)   # offset $o$ must be a multiple of stride $s$
+        // $$ p + so ≡ 0 mod a $$
         //
-        // where
+        // $p$ here is the pointer value, $s$ – stride of `T`, $o$ offset in `T`s, and $a$ – the
+        // requested alignment.
         //
-        // * a, s are co-prime
-        //
-        // This gives us the formula below:
-        //
-        // o = (a - (p mod a)) * (s⁻¹ mod a) * s
+        // g = gcd(a, s)
+        // o = (a - (p mod a))/g * ((s/g)⁻¹ mod a)
         //
         // The first term is “the relative alignment of p to a”, the second term is “how does
-        // incrementing p by one s change the relative alignment of p”, the third term is
-        // translating change in units of s to a byte count.
+        // incrementing p by s bytes change the relative alignment of p”. Division by `g` is
+        // necessary to make this equation well formed if $a$ and $s$ are not co-prime.
         //
         // Furthermore, the result produced by this solution is not “minimal”, so it is necessary
-        // to take the result $o mod lcm(s, a)$. Since $s$ and $a$ are co-prime (i.e. $gcd(s, a) =
-        // 1$) and $lcm(s, a) = s * a / gcd(s, a)$, we can replace $lcm(s, a)$ with just a $s * a$.
-        //
-        // (Author note: we decided later on to express the offset in "elements" rather than bytes,
-        // which drops the multiplication by `s` on both sides of the modulo.)
-        return intrinsics::unchecked_rem(a.wrapping_sub(pmoda).wrapping_mul(mod_inv(smoda, a)), a);
-    }
-
-    if p as usize & (gcd - 1) == 0 {
-        // This can be aligned, but `a` and `stride` are not co-prime, so a somewhat adapted
-        // formula is used.
+        // to take the result $o mod lcm(s, a)$. We can replace $lcm(s, a)$ with just a $a / g$.
         let j = a.wrapping_sub(pmoda) >> gcdpow;
         let k = smoda >> gcdpow;
         return intrinsics::unchecked_rem(j.wrapping_mul(mod_inv(k, a)), a >> gcdpow);

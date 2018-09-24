@@ -1756,7 +1756,7 @@ impl<T> [T] {
         fn gcd(a: usize, b: usize) -> usize {
             // iterative stein’s algorithm
             // We should still make this `const fn` (and revert to recursive algorithm if we do)
-            // because relying on llvm to consteval all this is… well, it makes me
+            // because relying on llvm to consteval all this is… well, it makes me uncomfortable.
             let (ctz_a, mut ctz_b) = unsafe {
                 if a == 0 { return b; }
                 if b == 0 { return a; }
