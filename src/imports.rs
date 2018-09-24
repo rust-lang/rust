@@ -324,11 +324,15 @@ impl UseTree {
             && a.prefix.to_string().len() > 2
             && a.prefix.to_string().starts_with("::");
 
+        let mut modsep = leading_modsep;
+
         for p in &a.prefix.segments {
-            if let Some(use_segment) = UseSegment::from_path_segment(context, p, leading_modsep) {
+            if let Some(use_segment) = UseSegment::from_path_segment(context, p, modsep) {
                 result.path.push(use_segment);
+                modsep = false;
             }
         }
+
         match a.kind {
             UseTreeKind::Glob => {
                 result.path.push(UseSegment::Glob);
