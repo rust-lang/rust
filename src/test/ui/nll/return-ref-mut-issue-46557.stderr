@@ -1,14 +1,14 @@
-error[E0597]: borrowed value does not live long enough
+error[E0714]: temporary value dropped while borrowed
   --> $DIR/return-ref-mut-issue-46557.rs:17:21
    |
-LL |     let ref mut x = 1234543; //~ ERROR borrowed value does not live long enough [E0597]
-   |                     ^^^^^^^ temporary value does not live long enough
+LL |     let ref mut x = 1234543; //~ ERROR temporary value dropped while borrowed [E0714]
+   |                     ^^^^^^^ creates a temporary which is freed while still in use
 LL |     x
 LL | }
-   | - temporary value only lives until here
+   | - temporary value is freed at the end of this statement
    |
    = note: borrowed value must be valid for the static lifetime...
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0714`.

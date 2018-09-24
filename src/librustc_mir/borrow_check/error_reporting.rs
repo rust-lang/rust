@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow_check::{WriteKind, StorageDeadOrDrop};
+use borrow_check::WriteKind;
 use borrow_check::prefixes::IsPrefixOf;
 use borrow_check::nll::explain_borrow::BorrowExplanation;
 use rustc::middle::region::ScopeTree;
 use rustc::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, FakeReadCause, Field, Local,
-    LocalDecl, LocalKind, Location, Operand, Place, ProjectionElem, Rvalue, Statement,
-    StatementKind, TerminatorKind, VarBindingForm,
+    LocalDecl, LocalKind, Location, Operand, Place, PlaceProjection, ProjectionElem, Rvalue,
+    Statement, StatementKind, TerminatorKind, VarBindingForm,
 };
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -333,6 +333,27 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Origin::Mir,
                 ),
 
+            (BorrowKind::Mut { .. }, _, _, BorrowKind::Shallow, _, _)
+            | (BorrowKind::Unique, _, _, BorrowKind::Shallow, _, _) => {
+                let mut err = tcx.cannot_mutate_in_match_guard(
+                    span,
+                    issued_span,
+                    &desc_place,
+                    "mutably borrow",
+                    Origin::Mir,
+                );
+                borrow_spans.var_span_label(
+                    &mut err,
+                    format!(
+                        "borrow occurs due to use of `{}` in closure",
+                        desc_place
+                    ),
+                );
+                err.buffer(&mut self.errors_buffer);
+
+                return;
+            }
+
             (BorrowKind::Unique, _, _, _, _, _) => tcx.cannot_uniquely_borrow_by_one_closure(
                 span,
                 &desc_place,
@@ -368,7 +389,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Origin::Mir,
                 ),
 
-            (BorrowKind::Shared, _, _, BorrowKind::Shared, _, _) => unreachable!(),
+            (BorrowKind::Shallow, _, _, BorrowKind::Unique, _, _)
+            | (BorrowKind::Shallow, _, _, BorrowKind::Mut { .. }, _, _) => {
+                // Shallow borrows are uses from the user's point of view.
+                self.report_use_while_mutably_borrowed(context, (place, span), issued_borrow);
+                return
+            }
+            (BorrowKind::Shared, _, _, BorrowKind::Shared, _, _)
+            | (BorrowKind::Shared, _, _, BorrowKind::Shallow, _, _)
+            | (BorrowKind::Shallow, _, _, BorrowKind::Shared, _, _)
+            | (BorrowKind::Shallow, _, _, BorrowKind::Shallow, _, _) => unreachable!(),
         };
 
         if issued_spans == borrow_spans {
@@ -452,13 +482,21 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         self.access_place_error_reported
             .insert((root_place.clone(), borrow_span));
 
-        if let Some(WriteKind::StorageDeadOrDrop(StorageDeadOrDrop::Destructor)) = kind {
+        if let StorageDeadOrDrop::Destructor(dropped_ty)
+            = self.classify_drop_access_kind(&borrow.borrowed_place)
+        {
             // If a borrow of path `B` conflicts with drop of `D` (and
             // we're not in the uninteresting case where `B` is a
             // prefix of `D`), then report this as a more interesting
             // destructor conflict.
             if !borrow.borrowed_place.is_prefix_of(place_span.0) {
-                self.report_borrow_conflicts_with_destructor(context, borrow, place_span, kind);
+                self.report_borrow_conflicts_with_destructor(
+                    context,
+                    borrow,
+                    place_span,
+                    kind,
+                    dropped_ty,
+                );
                 return;
             }
         }
@@ -566,6 +604,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         borrow: &BorrowData<'tcx>,
         (place, drop_span): (&Place<'tcx>, Span),
         kind: Option<WriteKind>,
+        dropped_ty: ty::Ty<'tcx>,
     ) {
         debug!(
             "report_borrow_conflicts_with_destructor(\
@@ -579,28 +618,19 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let mut err = self.infcx.tcx.cannot_borrow_across_destructor(borrow_span, Origin::Mir);
 
-        let (what_was_dropped, dropped_ty) = {
-            let desc = match self.describe_place(place) {
-                Some(name) => format!("`{}`", name.as_str()),
-                None => format!("temporary value"),
-            };
-            let ty = place.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
-            (desc, ty)
+        let what_was_dropped = match self.describe_place(place) {
+            Some(name) => format!("`{}`", name.as_str()),
+            None => format!("temporary value"),
         };
 
-        let label = match dropped_ty.sty {
-            ty::Adt(adt, _) if adt.has_dtor(self.infcx.tcx) && !adt.is_box() => {
-                match self.describe_place(&borrow.borrowed_place) {
-                    Some(borrowed) =>
-                        format!("here, drop of {D} needs exclusive access to `{B}`, \
-                                 because the type `{T}` implements the `Drop` trait",
-                                D=what_was_dropped, T=dropped_ty, B=borrowed),
-                    None =>
-                        format!("here is drop of {D}; whose type `{T}` implements the `Drop` trait",
-                                D=what_was_dropped, T=dropped_ty),
-                }
-            }
-            _ => format!("drop of {D} occurs here", D=what_was_dropped),
+        let label = match self.describe_place(&borrow.borrowed_place) {
+            Some(borrowed) =>
+                format!("here, drop of {D} needs exclusive access to `{B}`, \
+                         because the type `{T}` implements the `Drop` trait",
+                        D=what_was_dropped, T=dropped_ty, B=borrowed),
+            None =>
+                format!("here is drop of {D}; whose type `{T}` implements the `Drop` trait",
+                        D=what_was_dropped, T=dropped_ty),
         };
         err.span_label(drop_span, label);
 
@@ -664,9 +694,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let tcx = self.infcx.tcx;
         let mut err =
-            tcx.path_does_not_live_long_enough(proper_span, "borrowed value", Origin::Mir);
-        err.span_label(proper_span, "temporary value does not live long enough");
-        err.span_label(drop_span, "temporary value only lives until here");
+            tcx.temporary_value_borrowed_for_too_long(proper_span, Origin::Mir);
+        err.span_label(proper_span, "creates a temporary which is freed while still in use");
+        err.span_label(drop_span, "temporary value is freed at the end of this statement");
 
         let explanation = self.explain_why_borrow_contains_point(context, borrow, None);
         match explanation {
@@ -780,12 +810,22 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let loan_span = loan_spans.args_or_use();
 
         let tcx = self.infcx.tcx;
-        let mut err = tcx.cannot_assign_to_borrowed(
-            span,
-            loan_span,
-            &self.describe_place(place).unwrap_or("_".to_owned()),
-            Origin::Mir,
-        );
+        let mut err = if loan.kind == BorrowKind::Shallow {
+            tcx.cannot_mutate_in_match_guard(
+                span,
+                loan_span,
+                &self.describe_place(place).unwrap_or("_".to_owned()),
+                "assign",
+                Origin::Mir,
+            )
+        } else {
+            tcx.cannot_assign_to_borrowed(
+                span,
+                loan_span,
+                &self.describe_place(place).unwrap_or("_".to_owned()),
+                Origin::Mir,
+            )
+        };
 
         loan_spans.var_span_label(&mut err, "borrow occurs due to use in closure");
 
@@ -879,6 +919,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 }
 
 pub(super) struct IncludingDowncast(bool);
+
+/// Which case a StorageDeadOrDrop is for.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum StorageDeadOrDrop<'tcx> {
+    LocalStorageDead,
+    BoxedStorageDead,
+    Destructor(ty::Ty<'tcx>),
+}
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     // End-user visible description of `place` if one can be found. If the
@@ -1164,6 +1212,56 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Some(cause)
         } else {
             None
+        }
+    }
+
+    fn classify_drop_access_kind(&self, place: &Place<'tcx>) -> StorageDeadOrDrop<'tcx> {
+        let tcx = self.infcx.tcx;
+        match place {
+            Place::Local(_)
+            | Place::Static(_)
+            | Place::Promoted(_) => StorageDeadOrDrop::LocalStorageDead,
+            Place::Projection(box PlaceProjection { base, elem }) => {
+                let base_access = self.classify_drop_access_kind(base);
+                match elem {
+                    ProjectionElem::Deref => {
+                        match base_access {
+                            StorageDeadOrDrop::LocalStorageDead
+                            | StorageDeadOrDrop::BoxedStorageDead => {
+                                assert!(base.ty(self.mir, tcx).to_ty(tcx).is_box(),
+                                        "Drop of value behind a reference or raw pointer");
+                                StorageDeadOrDrop::BoxedStorageDead
+                            }
+                            StorageDeadOrDrop::Destructor(_) => {
+                                base_access
+                            }
+                        }
+                    }
+                    ProjectionElem::Field(..)
+                    | ProjectionElem::Downcast(..) => {
+                        let base_ty = base.ty(self.mir, tcx).to_ty(tcx);
+                        match base_ty.sty {
+                            ty::Adt(def, _) if def.has_dtor(tcx) => {
+                                // Report the outermost adt with a destructor
+                                match base_access {
+                                    StorageDeadOrDrop::Destructor(_) => {
+                                        base_access
+                                    }
+                                    StorageDeadOrDrop::LocalStorageDead
+                                    | StorageDeadOrDrop::BoxedStorageDead => {
+                                        StorageDeadOrDrop::Destructor(base_ty)
+                                    }
+                                }
+                            }
+                            _ => base_access,
+                        }
+                    }
+
+                    ProjectionElem::ConstantIndex { .. }
+                    | ProjectionElem::Subslice { .. }
+                    | ProjectionElem::Index(_) => base_access,
+                }
+            }
         }
     }
 

@@ -23,13 +23,12 @@ use rustc::mir::{ClearCrossCrate, Local, Location, Mir, Mutability, Operand, Pla
 use rustc::mir::{Field, Projection, ProjectionElem, Rvalue, Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind};
 use rustc::ty::query::Providers;
-use rustc::ty::{self, ParamEnv, TyCtxt, Ty};
+use rustc::ty::{self, TyCtxt};
 
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, Level};
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_data_structures::indexed_vec::Idx;
 use smallvec::SmallVec;
 
 use std::rc::Rc;
@@ -251,7 +250,6 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         mir,
         mir_def_id: def_id,
         move_data: &mdpe.move_data,
-        param_env: param_env,
         location_table,
         movable_generator,
         locals_are_invalidated_at_exit,
@@ -393,7 +391,6 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     /// when MIR borrowck begins.
     location_table: &'cx LocationTable,
 
-    param_env: ParamEnv<'gcx>,
     movable_generator: bool,
     /// This keeps track of whether local variables are free-ed when the function
     /// exits even without a `StorageDead`, which appears to be the case for
@@ -502,11 +499,20 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 );
             }
             StatementKind::FakeRead(_, ref place) => {
-                self.access_place(
+                // Read for match doesn't access any memory and is used to
+                // assert that a place is safe and live. So we don't have to
+                // do any checks here.
+                //
+                // FIXME: Remove check that the place is initialized. This is
+                // needed for now because matches don't have never patterns yet.
+                // So this is the only place we prevent
+                //      let x: !;
+                //      match x {};
+                // from compiling.
+                self.check_if_path_or_subpath_is_moved(
                     ContextKind::FakeRead.new(location),
+                    InitializationRequiringAction::Use,
                     (place, span),
-                    (Deep, Read(ReadKind::Borrow(BorrowKind::Shared))),
-                    LocalMutationIsAllowed::No,
                     flow_state,
                 );
             }
@@ -574,8 +580,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 self.access_place(
                     ContextKind::StorageDead.new(location),
                     (&Place::Local(local), span),
-                    (Shallow(None), Write(WriteKind::StorageDeadOrDrop(
-                        StorageDeadOrDrop::LocalStorageDead))),
+                    (Shallow(None), Write(WriteKind::StorageDeadOrDrop)),
                     LocalMutationIsAllowed::Yes,
                     flow_state,
                 );
@@ -630,8 +635,13 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                         loc: {:?} term: {:?} drop_place: {:?} drop_place_ty: {:?} span: {:?}",
                        loc, term, drop_place, drop_place_ty, span);
 
-                self.visit_terminator_drop(
-                    loc, term, flow_state, drop_place, drop_place_ty, span, SeenTy(None));
+                self.access_place(
+                    ContextKind::Drop.new(loc),
+                    (drop_place, span),
+                    (AccessDepth::Drop, Write(WriteKind::StorageDeadOrDrop)),
+                    LocalMutationIsAllowed::Yes,
+                    flow_state,
+                );
             }
             TerminatorKind::DropAndReplace {
                 location: ref drop_place,
@@ -748,16 +758,17 @@ enum MutateMode {
 }
 
 use self::ReadOrWrite::{Activation, Read, Reservation, Write};
-use self::ShallowOrDeep::{Deep, Shallow};
+use self::AccessDepth::{Deep, Shallow};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum ArtificialField {
     Discriminant,
     ArrayLength,
+    ShallowBorrow,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-enum ShallowOrDeep {
+enum AccessDepth {
     /// From the RFC: "A *shallow* access means that the immediate
     /// fields reached at P are accessed, but references or pointers
     /// found within are not dereferenced. Right now, the only access
@@ -769,6 +780,10 @@ enum ShallowOrDeep {
     /// through the given place may be invalidated or accesses by
     /// this action."
     Deep,
+
+    /// Access is Deep only when there is a Drop implementation that
+    /// can reach the data behind the reference.
+    Drop,
 }
 
 /// Kind of access to a value: read or write
@@ -803,19 +818,10 @@ enum ReadKind {
 /// (For informational purposes only)
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum WriteKind {
-    StorageDeadOrDrop(StorageDeadOrDrop),
+    StorageDeadOrDrop,
     MutableBorrow(BorrowKind),
     Mutate,
     Move,
-}
-
-/// Specify whether which case a StorageDeadOrDrop is in.
-/// (For informational purposes only)
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-enum StorageDeadOrDrop {
-    LocalStorageDead,
-    BoxedStorageDead,
-    Destructor,
 }
 
 /// When checking permissions for a place access, this flag is used to indicate that an immutable
@@ -839,6 +845,7 @@ enum LocalMutationIsAllowed {
 enum InitializationRequiringAction {
     Update,
     Borrow,
+    MatchOn,
     Use,
     Assignment,
 }
@@ -853,6 +860,7 @@ impl InitializationRequiringAction {
         match self {
             InitializationRequiringAction::Update => "update",
             InitializationRequiringAction::Borrow => "borrow",
+            InitializationRequiringAction::MatchOn => "use", // no good noun
             InitializationRequiringAction::Use => "use",
             InitializationRequiringAction::Assignment => "assign",
         }
@@ -862,237 +870,14 @@ impl InitializationRequiringAction {
         match self {
             InitializationRequiringAction::Update => "updated",
             InitializationRequiringAction::Borrow => "borrowed",
+            InitializationRequiringAction::MatchOn => "matched on",
             InitializationRequiringAction::Use => "used",
             InitializationRequiringAction::Assignment => "assigned",
         }
     }
 }
 
-/// A simple linked-list threaded up the stack of recursive calls in `visit_terminator_drop`.
-#[derive(Copy, Clone, Debug)]
-struct SeenTy<'a, 'gcx: 'a>(Option<(Ty<'gcx>, &'a SeenTy<'a, 'gcx>)>);
-
-impl<'a, 'gcx> SeenTy<'a, 'gcx> {
-    /// Return a new list with `ty` prepended to the front of `self`.
-    fn cons(&'a self, ty: Ty<'gcx>) -> Self {
-        SeenTy(Some((ty, self)))
-    }
-
-    /// True if and only if `ty` occurs on the linked list `self`.
-    fn have_seen(self, ty: Ty) -> bool {
-        let mut this = self.0;
-        loop {
-            match this {
-                None => return false,
-                Some((seen_ty, recur)) => {
-                    if seen_ty == ty {
-                        return true;
-                    } else {
-                        this = recur.0;
-                        continue;
-                    }
-                }
-            }
-        }
-    }
-}
-
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
-    /// Invokes `access_place` as appropriate for dropping the value
-    /// at `drop_place`. Note that the *actual* `Drop` in the MIR is
-    /// always for a variable (e.g., `Drop(x)`) -- but we recursively
-    /// break this variable down into subpaths (e.g., `Drop(x.foo)`)
-    /// to indicate more precisely which fields might actually be
-    /// accessed by a destructor.
-    fn visit_terminator_drop(
-        &mut self,
-        loc: Location,
-        term: &Terminator<'tcx>,
-        flow_state: &Flows<'cx, 'gcx, 'tcx>,
-        drop_place: &Place<'tcx>,
-        erased_drop_place_ty: ty::Ty<'gcx>,
-        span: Span,
-        prev_seen: SeenTy<'_, 'gcx>,
-    ) {
-        if prev_seen.have_seen(erased_drop_place_ty) {
-            // if we have directly seen the input ty `T`, then we must
-            // have had some *direct* ownership loop between `T` and
-            // some directly-owned (as in, actually traversed by
-            // recursive calls below) part that is also of type `T`.
-            //
-            // Note: in *all* such cases, the data in question cannot
-            // be constructed (nor destructed) in finite time/space.
-            //
-            // Proper examples, some of which are statically rejected:
-            //
-            // * `struct A { field: A, ... }`:
-            //   statically rejected as infinite size
-            //
-            // * `type B = (B, ...);`:
-            //   statically rejected as cyclic
-            //
-            // * `struct C { field: Box<C>, ... }`
-            // * `struct D { field: Box<(D, D)>, ... }`:
-            //   *accepted*, though impossible to construct
-            //
-            // Here is *NOT* an example:
-            // * `struct Z { field: Option<Box<Z>>, ... }`:
-            //   Here, the type is both representable in finite space (due to the boxed indirection)
-            //   and constructable in finite time (since the recursion can bottom out with `None`).
-            //   This is an obvious instance of something the compiler must accept.
-            //
-            // Since some of the above impossible cases like `C` and
-            // `D` are accepted by the compiler, we must take care not
-            // to infinite-loop while processing them. But since such
-            // cases cannot actually arise, it is sound for us to just
-            // skip them during drop. If the developer uses unsafe
-            // code to construct them, they should not be surprised by
-            // weird drop behavior in their resulting code.
-            debug!("visit_terminator_drop previously seen \
-                    erased_drop_place_ty: {:?} on prev_seen: {:?}; returning early.",
-                   erased_drop_place_ty, prev_seen);
-            return;
-        }
-
-        let gcx = self.infcx.tcx.global_tcx();
-        let drop_field = |mir: &mut MirBorrowckCtxt<'cx, 'gcx, 'tcx>,
-                          (index, field): (usize, ty::Ty<'gcx>)| {
-            let field_ty = gcx.normalize_erasing_regions(mir.param_env, field);
-            let place = drop_place.clone().field(Field::new(index), field_ty);
-
-            debug!("visit_terminator_drop drop_field place: {:?} field_ty: {:?}", place, field_ty);
-            let seen = prev_seen.cons(erased_drop_place_ty);
-            mir.visit_terminator_drop(loc, term, flow_state, &place, field_ty, span, seen);
-        };
-
-        match erased_drop_place_ty.sty {
-            // When a struct is being dropped, we need to check
-            // whether it has a destructor, if it does, then we can
-            // call it, if it does not then we need to check the
-            // individual fields instead. This way if `foo` has a
-            // destructor but `bar` does not, we will only check for
-            // borrows of `x.foo` and not `x.bar`. See #47703.
-            ty::Adt(def, substs) if def.is_struct() && !def.has_dtor(self.infcx.tcx) => {
-                def.all_fields()
-                    .map(|field| field.ty(gcx, substs))
-                    .enumerate()
-                    .for_each(|field| drop_field(self, field));
-            }
-            // Same as above, but for tuples.
-            ty::Tuple(tys) => {
-                tys.iter()
-                    .cloned()
-                    .enumerate()
-                    .for_each(|field| drop_field(self, field));
-            }
-            // Closures also have disjoint fields, but they are only
-            // directly accessed in the body of the closure.
-            ty::Closure(def, substs)
-                if *drop_place == Place::Local(Local::new(1))
-                    && !self.mir.upvar_decls.is_empty() =>
-            {
-                substs
-                    .upvar_tys(def, self.infcx.tcx)
-                    .enumerate()
-                    .for_each(|field| drop_field(self, field));
-            }
-            // Generators also have disjoint fields, but they are only
-            // directly accessed in the body of the generator.
-            ty::Generator(def, substs, _)
-                if *drop_place == Place::Local(Local::new(1))
-                    && !self.mir.upvar_decls.is_empty() =>
-            {
-                substs
-                    .upvar_tys(def, self.infcx.tcx)
-                    .enumerate()
-                    .for_each(|field| drop_field(self, field));
-            }
-
-            // #45696: special-case Box<T> by treating its dtor as
-            // only deep *across owned content*. Namely, we know
-            // dropping a box does not touch data behind any
-            // references it holds; if we were to instead fall into
-            // the base case below, we would have a Deep Write due to
-            // the box being `needs_drop`, and that Deep Write would
-            // touch `&mut` data in the box.
-            ty::Adt(def, _) if def.is_box() => {
-                // When/if we add a `&own T` type, this action would
-                // be like running the destructor of the `&own T`.
-                // (And the owner of backing storage referenced by the
-                // `&own T` would be responsible for deallocating that
-                // backing storage.)
-
-                // we model dropping any content owned by the box by
-                // recurring on box contents. This catches cases like
-                // `Box<Box<ScribbleWhenDropped<&mut T>>>`, while
-                // still restricting Write to *owned* content.
-                let ty = erased_drop_place_ty.boxed_ty();
-                let deref_place = drop_place.clone().deref();
-                debug!("visit_terminator_drop drop-box-content deref_place: {:?} ty: {:?}",
-                       deref_place, ty);
-                let seen = prev_seen.cons(erased_drop_place_ty);
-                self.visit_terminator_drop(
-                    loc, term, flow_state, &deref_place, ty, span, seen);
-            }
-
-            _ => {
-                // We have now refined the type of the value being
-                // dropped (potentially) to just the type of a
-                // subfield; so check whether that field's type still
-                // "needs drop".
-                if erased_drop_place_ty.needs_drop(gcx, self.param_env) {
-                    // If so, we assume that the destructor may access
-                    // any data it likes (i.e., a Deep Write).
-                    self.access_place(
-                        ContextKind::Drop.new(loc),
-                        (drop_place, span),
-                        (Deep, Write(WriteKind::StorageDeadOrDrop(
-                            StorageDeadOrDrop::Destructor))),
-                        LocalMutationIsAllowed::Yes,
-                        flow_state,
-                    );
-                } else {
-                    // If there is no destructor, we still include a
-                    // *shallow* write.  This essentially ensures that
-                    // borrows of the memory directly at `drop_place`
-                    // cannot continue to be borrowed across the drop.
-                    //
-                    // If we were to use a Deep Write here, then any
-                    // `&mut T` that is reachable from `drop_place`
-                    // would get invalidated; fixing that is the
-                    // essence of resolving issue #45696.
-                    //
-                    // * Note: In the compiler today, doing a Deep
-                    //   Write here would not actually break
-                    //   anything beyond #45696; for example it does not
-                    //   break this example:
-                    //
-                    //   ```rust
-                    //   fn reborrow(x: &mut i32) -> &mut i32 { &mut *x }
-                    //   ```
-                    //
-                    //   Why? Because we do not schedule/emit
-                    //   `Drop(x)` in the MIR unless `x` needs drop in
-                    //   the first place.
-                    self.access_place(
-                        ContextKind::Drop.new(loc),
-                        (drop_place, span),
-                        (Shallow(None), Write(WriteKind::StorageDeadOrDrop(
-                            // rust-lang/rust#52059: distinguish
-                            // between invaliding the backing storage
-                            // vs running a destructor.
-                            //
-                            // See also: rust-lang/rust#52782,
-                            // specifically #discussion_r206658948
-                            StorageDeadOrDrop::BoxedStorageDead))),
-                        LocalMutationIsAllowed::Yes,
-                        flow_state,
-                    );
-                }
-            }
-        }
-    }
-
     /// Checks an access to the given place to see if it is allowed. Examines the set of borrows
     /// that are in scope, as well as which paths have been initialized, to ensure that (a) the
     /// place is initialized and (b) it is not borrowed in some way that would prevent this
@@ -1103,7 +888,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         &mut self,
         context: Context,
         place_span: (&Place<'tcx>, Span),
-        kind: (ShallowOrDeep, ReadOrWrite),
+        kind: (AccessDepth, ReadOrWrite),
         is_local_mutation_allowed: LocalMutationIsAllowed,
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) {
@@ -1159,7 +944,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         &mut self,
         context: Context,
         place_span: (&Place<'tcx>, Span),
-        sd: ShallowOrDeep,
+        sd: AccessDepth,
         rw: ReadOrWrite,
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) -> bool {
@@ -1200,7 +985,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Control::Continue
                 }
 
-                (Read(_), BorrowKind::Shared) | (Reservation(..), BorrowKind::Shared) => {
+                (Read(_), BorrowKind::Shared) | (Reservation(..), BorrowKind::Shared)
+                | (Read(_), BorrowKind::Shallow) | (Reservation(..), BorrowKind::Shallow) => {
+                    Control::Continue
+                }
+
+                (Write(WriteKind::Move), BorrowKind::Shallow) => {
+                    // Handled by initialization checks.
                     Control::Continue
                 }
 
@@ -1212,7 +1003,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     }
 
                     match kind {
-                        ReadKind::Copy => {
+                        ReadKind::Copy  => {
                             error_reported = true;
                             this.report_use_while_mutably_borrowed(context, place_span, borrow)
                         }
@@ -1252,7 +1043,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             error_reported = true;
                             this.report_conflicting_borrow(context, place_span, bk, &borrow)
                         }
-                        WriteKind::StorageDeadOrDrop(_) => {
+                        WriteKind::StorageDeadOrDrop => {
                             error_reported = true;
                             this.report_borrowed_value_does_not_live_long_enough(
                                 context,
@@ -1281,7 +1072,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         &mut self,
         context: Context,
         place_span: (&Place<'tcx>, Span),
-        kind: ShallowOrDeep,
+        kind: AccessDepth,
         mode: MutateMode,
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) {
@@ -1336,6 +1127,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         match *rvalue {
             Rvalue::Ref(_ /*rgn*/, bk, ref place) => {
                 let access_kind = match bk {
+                    BorrowKind::Shallow => {
+                        (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
+                    },
                     BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
                     BorrowKind::Unique | BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
@@ -1355,9 +1149,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     flow_state,
                 );
 
+                let action = if bk == BorrowKind::Shallow {
+                    InitializationRequiringAction::MatchOn
+                } else {
+                    InitializationRequiringAction::Borrow
+                };
+
                 self.check_if_path_or_subpath_is_moved(
                     context,
-                    InitializationRequiringAction::Borrow,
+                    action,
                     (place, span),
                     flow_state,
                 );
@@ -1543,11 +1343,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             return;
         }
 
-        // FIXME: replace this with a proper borrow_conflicts_with_place when
-        // that is merged.
         let sd = if might_be_alive { Deep } else { Shallow(None) };
 
-        if places_conflict::places_conflict(self.infcx.tcx, self.mir, place, root_place, sd) {
+        if places_conflict::borrow_conflicts_with_place(
+            self.infcx.tcx,
+            self.mir,
+            place,
+            borrow.kind,
+            root_place,
+            sd
+        ) {
             debug!("check_for_invalidation_at_exit({:?}): INVALID", place);
             // FIXME: should be talking about the region lifetime instead
             // of just a span here.
@@ -1597,7 +1402,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             // only mutable borrows should be 2-phase
             assert!(match borrow.kind {
-                BorrowKind::Shared => false,
+                BorrowKind::Shared | BorrowKind::Shallow => false,
                 BorrowKind::Unique | BorrowKind::Mut { .. } => true,
             });
 
@@ -1897,7 +1702,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 let is_local_mutation_allowed = match borrow_kind {
                     BorrowKind::Unique => LocalMutationIsAllowed::Yes,
                     BorrowKind::Mut { .. } => is_local_mutation_allowed,
-                    BorrowKind::Shared => unreachable!(),
+                    BorrowKind::Shared | BorrowKind::Shallow => unreachable!(),
                 };
                 match self.is_mutable(place, is_local_mutation_allowed) {
                     Ok(root_place) => {
@@ -1925,10 +1730,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             Reservation(wk @ WriteKind::Move)
             | Write(wk @ WriteKind::Move)
-            | Reservation(wk @ WriteKind::StorageDeadOrDrop(_))
+            | Reservation(wk @ WriteKind::StorageDeadOrDrop)
             | Reservation(wk @ WriteKind::MutableBorrow(BorrowKind::Shared))
-            | Write(wk @ WriteKind::StorageDeadOrDrop(_))
-            | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shared)) => {
+            | Reservation(wk @ WriteKind::MutableBorrow(BorrowKind::Shallow))
+            | Write(wk @ WriteKind::StorageDeadOrDrop)
+            | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shared))
+            | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shallow)) => {
                 if let Err(_place_err) = self.is_mutable(place, is_local_mutation_allowed) {
                     if self.infcx.tcx.migrate_borrowck() {
                         // rust-lang/rust#46908: In pure NLL mode this
@@ -1942,7 +1749,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         error_access = match wk {
                             WriteKind::MutableBorrow(_) => AccessKind::MutableBorrow,
                             WriteKind::Move => AccessKind::Move,
-                            WriteKind::StorageDeadOrDrop(_) |
+                            WriteKind::StorageDeadOrDrop |
                             WriteKind::Mutate => AccessKind::Mutate,
                         };
                         self.report_mutability_error(
@@ -1971,6 +1778,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Read(ReadKind::Borrow(BorrowKind::Unique))
             | Read(ReadKind::Borrow(BorrowKind::Mut { .. }))
             | Read(ReadKind::Borrow(BorrowKind::Shared))
+            | Read(ReadKind::Borrow(BorrowKind::Shallow))
             | Read(ReadKind::Copy) => {
                 // Access authorized
                 return false;

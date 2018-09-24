@@ -1,0 +1,14 @@
+error[E0714]: temporary value dropped while borrowed
+  --> $DIR/transmute-const-promotion.rs:16:37
+   |
+LL |     let x: &'static u32 = unsafe { &mem::transmute(3.0f32) };
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+LL |     //~^ ERROR value does not live long enough
+LL | }
+   | - temporary value is freed at the end of this statement
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0714`.

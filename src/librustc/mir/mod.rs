@@ -451,10 +451,31 @@ impl From<Mutability> for hir::Mutability {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     Shared,
+
+    /// The immediately borrowed place must be immutable, but projections from
+    /// it don't need to be. For example, a shallow borrow of `a.b` doesn't
+    /// conflict with a mutable borrow of `a.b.c`.
+    ///
+    /// This is used when lowering matches: when matching on a place we want to
+    /// ensure that place have the same value from the start of the match until
+    /// an arm is selected. This prevents this code from compiling:
+    ///
+    ///     let mut x = &Some(0);
+    ///     match *x {
+    ///         None => (),
+    ///         Some(_) if { x = &None; false } => (),
+    ///         Some(_) => (),
+    ///     }
+    ///
+    /// This can't be a shared borrow because mutably borrowing (*x as Some).0
+    /// should not prevent `if let None = x { ... }`, for example, becase the
+    /// mutating `(*x as Some).0` can't affect the discriminant of `x`.
+    /// We can also report errors with this kind of borrow differently.
+    Shallow,
 
     /// Data must be immutable but not aliasable.  This kind of borrow
     /// cannot currently be expressed by the user and is used only in
@@ -504,7 +525,7 @@ pub enum BorrowKind {
 impl BorrowKind {
     pub fn allows_two_phase_borrow(&self) -> bool {
         match *self {
-            BorrowKind::Shared | BorrowKind::Unique => false,
+            BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => false,
             BorrowKind::Mut {
                 allow_two_phase_borrow,
             } => allow_two_phase_borrow,
@@ -1672,7 +1693,11 @@ pub enum FakeReadCause {
     ///
     /// This should ensure that you cannot change the variant for an enum
     /// while you are in the midst of matching on it.
-    ForMatch,
+    ForMatchGuard,
+
+    /// `let x: !; match x {}` doesn't generate any read of x so we need to
+    /// generate a read of x to check that it is initialized and safe.
+    ForMatchedPlace,
 
     /// Officially, the semantics of
     ///
@@ -1773,7 +1798,7 @@ impl<'tcx> Debug for Statement<'tcx> {
 
 /// A path to a value; something that can be evaluated without
 /// changing or disturbing program state.
-#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub enum Place<'tcx> {
     /// local variable
     Local(Local),
@@ -1790,7 +1815,7 @@ pub enum Place<'tcx> {
 
 /// The def-id of a static, along with its normalized type (which is
 /// stored to avoid requiring normalization when reading MIR).
-#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct Static<'tcx> {
     pub def_id: DefId,
     pub ty: Ty<'tcx>,
@@ -1805,13 +1830,13 @@ impl_stable_hash_for!(struct Static<'tcx> {
 /// or `*B` or `B[index]`. Note that it is parameterized because it is
 /// shared between `Constant` and `Place`. See the aliases
 /// `PlaceProjection` etc below.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct Projection<'tcx, B, V, T> {
     pub base: B,
     pub elem: ProjectionElem<'tcx, V, T>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub enum ProjectionElem<'tcx, V, T> {
     Deref,
     Field(Field, T),
@@ -2198,6 +2223,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Ref(region, borrow_kind, ref place) => {
                 let kind_str = match borrow_kind {
                     BorrowKind::Shared => "",
+                    BorrowKind::Shallow => "shallow ",
                     BorrowKind::Mut { .. } | BorrowKind::Unique => "mut ",
                 };
 

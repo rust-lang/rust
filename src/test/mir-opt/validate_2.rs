@@ -28,7 +28,6 @@ fn main() {
 //         Validate(Acquire, [_1: std::boxed::Box<[i32]>]);
 //         StorageDead(_2);
 //         StorageDead(_3);
-//         FakeRead(ForLet, _1);
 //         _0 = ();
 //         Validate(Release, [_1: std::boxed::Box<[i32]>]);
 //         drop(_1) -> [return: bb2, unwind: bb3];

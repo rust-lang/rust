@@ -287,6 +287,10 @@ impl BorrowKind {
             // use `&mut`. It gives all the capabilities of an `&uniq`
             // and hence is a safe "over approximation".
             BorrowKind::Unique => hir::MutMutable,
+
+            // We have no type corresponding to a shallow borrow, so use
+            // `&` as an approximation.
+            BorrowKind::Shallow => hir::MutImmutable,
         }
     }
 }

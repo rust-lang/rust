@@ -143,13 +143,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Some(Cause::DropVar(local, location)) => match &mir.local_decls[local].name {
                 Some(local_name) => {
                     let mut should_note_order = false;
-                    if let Some((WriteKind::StorageDeadOrDrop(_), place)) = kind_place {
+                    if let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place {
                         if let Place::Local(borrowed_local) = place {
                             let dropped_local_scope = mir.local_decls[local].visibility_scope;
                             let borrowed_local_scope =
                                 mir.local_decls[*borrowed_local].visibility_scope;
 
-                            if mir.is_sub_scope(borrowed_local_scope, dropped_local_scope) {
+                            if mir.is_sub_scope(borrowed_local_scope, dropped_local_scope)
+                                && local != *borrowed_local
+                            {
                                 should_note_order = true;
                             }
                         }

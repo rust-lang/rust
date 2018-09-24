@@ -27,7 +27,7 @@ error[E0503]: cannot use `e.0` because it was mutably borrowed
    |
 LL |         let x = e.x();
    |                 - borrow of `e` occurs here
-LL |         match e { //[mir]~ ERROR cannot use `e` because it was mutably borrowed
+LL |         match e {
 LL |             Baz::X(value) => value
    |                    ^^^^^ use of borrowed `e`
 
@@ -68,7 +68,7 @@ error[E0503]: cannot use `e.0` because it was mutably borrowed
    |
 LL |         let x = e.x();
    |                 - borrow of `*e` occurs here
-LL |         match *e { //[mir]~ ERROR cannot use `*e` because it was mutably borrowed
+LL |         match *e {
 LL |             Baz::X(value) => value
    |                    ^^^^^ use of borrowed `*e`
 
@@ -85,7 +85,7 @@ error[E0503]: cannot use `v[..]` because it was mutably borrowed
    |
 LL |         let x = &mut v;
    |                      - borrow of `v` occurs here
-LL |         match v { //[mir]~ ERROR cannot use `v` because it was mutably borrowed
+LL |         match v {
 LL |             &[x, _, .., _, _] => println!("{}", x),
    |               ^ use of borrowed `v`
 
@@ -121,7 +121,7 @@ error[E0503]: cannot use `v[..]` because it was mutably borrowed
    |
 LL |         let x = &mut v;
    |                      - borrow of `v` occurs here
-LL |         match v { //[mir]~ ERROR cannot use `v` because it was mutably borrowed
+LL |         match v {
 LL |             &[x..] => println!("{:?}", x),
    |               ^ use of borrowed `v`
 
@@ -157,7 +157,7 @@ error[E0502]: cannot borrow `e.0` as immutable because `e` is also borrowed as m
    |
 LL |         let x = &mut e;
    |                      - mutable borrow occurs here
-LL |         match e { //[mir]~ ERROR cannot use `e` because it was mutably borrowed
+LL |         match e {
 LL |             E::A(ref ax) =>
    |                  ^^^^^^ immutable borrow occurs here
 ...
@@ -181,7 +181,7 @@ error[E0502]: cannot borrow `s.y.0` as immutable because `s` is also borrowed as
    |
 LL |         let x = &mut s;
    |                      - mutable borrow occurs here
-LL |         match s { //[mir]~ ERROR cannot use `s` because it was mutably borrowed
+LL |         match s {
 LL |             S  { y: (ref y0, _), .. } =>
    |                      ^^^^^^ immutable borrow occurs here
 ...

@@ -11,32 +11,28 @@
 use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::LocationTable;
 use borrow_check::{JustWrite, WriteAndRead};
-use borrow_check::{ShallowOrDeep, Deep, Shallow};
+use borrow_check::{AccessDepth, Deep, Shallow};
 use borrow_check::{ReadOrWrite, Activation, Read, Reservation, Write};
 use borrow_check::{Context, ContextKind};
 use borrow_check::{LocalMutationIsAllowed, MutateMode};
 use borrow_check::ArtificialField;
-use borrow_check::{ReadKind, WriteKind, StorageDeadOrDrop};
+use borrow_check::{ReadKind, WriteKind};
 use borrow_check::nll::facts::AllFacts;
 use borrow_check::path_utils::*;
 use dataflow::move_paths::indexes::BorrowIndex;
-use rustc::hir::def_id::DefId;
-use rustc::infer::InferCtxt;
+use rustc::ty::TyCtxt;
 use rustc::mir::visit::Visitor;
-use rustc::mir::{BasicBlock, Location, Mir, Place, Rvalue, Local};
+use rustc::mir::{BasicBlock, Location, Mir, Place, Rvalue};
 use rustc::mir::{Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind};
-use rustc::mir::{Field, Operand, BorrowKind};
-use rustc::ty::{self, ParamEnv};
-use rustc_data_structures::indexed_vec::Idx;
+use rustc::mir::{Operand, BorrowKind};
 use rustc_data_structures::graph::dominators::Dominators;
 
 pub(super) fn generate_invalidates<'cx, 'gcx, 'tcx>(
-    infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
+    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
     mir: &Mir<'tcx>,
-    mir_def_id: DefId,
     borrow_set: &BorrowSet<'tcx>,
 ) {
     if !all_facts.is_some() {
@@ -44,37 +40,32 @@ pub(super) fn generate_invalidates<'cx, 'gcx, 'tcx>(
         return;
     }
 
-    let param_env = infcx.tcx.param_env(mir_def_id);
-
     if let Some(all_facts) = all_facts {
         let dominators = mir.dominators();
         let mut ig = InvalidationGenerator {
             all_facts,
             borrow_set,
-            infcx,
+            tcx,
             location_table,
             mir,
             dominators,
-            param_env,
         };
         ig.visit_mir(mir);
     }
 }
 
-/// 'cg = the duration of the constraint generation process itself.
-struct InvalidationGenerator<'cg, 'cx: 'cg, 'tcx: 'cx, 'gcx: 'tcx> {
-    infcx: &'cg InferCtxt<'cx, 'gcx, 'tcx>,
-    all_facts: &'cg mut AllFacts,
-    location_table: &'cg LocationTable,
-    mir: &'cg Mir<'tcx>,
+struct InvalidationGenerator<'cx, 'tcx: 'cx, 'gcx: 'tcx> {
+    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+    all_facts: &'cx mut AllFacts,
+    location_table: &'cx LocationTable,
+    mir: &'cx Mir<'tcx>,
     dominators: Dominators<BasicBlock>,
-    borrow_set: &'cg BorrowSet<'tcx>,
-    param_env: ParamEnv<'gcx>,
+    borrow_set: &'cx BorrowSet<'tcx>,
 }
 
 /// Visits the whole MIR and generates invalidates() facts
 /// Most of the code implementing this was stolen from borrow_check/mod.rs
-impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
+impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
     fn visit_statement(&mut self,
                        block: BasicBlock,
                        statement: &Statement<'tcx>,
@@ -154,8 +145,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tc
                 self.access_place(
                     ContextKind::StorageDead.new(location),
                     &Place::Local(local),
-                    (Shallow(None), Write(WriteKind::StorageDeadOrDrop(
-                        StorageDeadOrDrop::LocalStorageDead))),
+                    (Shallow(None), Write(WriteKind::StorageDeadOrDrop)),
                     LocalMutationIsAllowed::Yes,
                 );
             }
@@ -184,12 +174,12 @@ impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tc
                 target: _,
                 unwind: _,
             } => {
-                let tcx = self.infcx.tcx;
-                let gcx = tcx.global_tcx();
-                let drop_place_ty = drop_place.ty(self.mir, tcx);
-                let drop_place_ty = tcx.erase_regions(&drop_place_ty).to_ty(tcx);
-                let drop_place_ty = gcx.lift(&drop_place_ty).unwrap();
-                self.visit_terminator_drop(location, terminator, drop_place, drop_place_ty);
+                self.access_place(
+                    ContextKind::Drop.new(location),
+                    drop_place,
+                    (AccessDepth::Drop, Write(WriteKind::StorageDeadOrDrop)),
+                    LocalMutationIsAllowed::Yes,
+                );
             }
             TerminatorKind::DropAndReplace {
                 location: ref drop_place,
@@ -286,83 +276,13 @@ impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tc
     }
 }
 
-impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
-    /// Simulates dropping of a variable
-    fn visit_terminator_drop(
-        &mut self,
-        loc: Location,
-        term: &Terminator<'tcx>,
-        drop_place: &Place<'tcx>,
-        erased_drop_place_ty: ty::Ty<'gcx>,
-    ) {
-        let gcx = self.infcx.tcx.global_tcx();
-        let drop_field = |
-            ig: &mut InvalidationGenerator<'cg, 'cx, 'gcx, 'tcx>,
-            (index, field): (usize, ty::Ty<'gcx>),
-        | {
-            let field_ty = gcx.normalize_erasing_regions(ig.param_env, field);
-            let place = drop_place.clone().field(Field::new(index), field_ty);
-
-            ig.visit_terminator_drop(loc, term, &place, field_ty);
-        };
-
-        match erased_drop_place_ty.sty {
-            // When a struct is being dropped, we need to check
-            // whether it has a destructor, if it does, then we can
-            // call it, if it does not then we need to check the
-            // individual fields instead. This way if `foo` has a
-            // destructor but `bar` does not, we will only check for
-            // borrows of `x.foo` and not `x.bar`. See #47703.
-            ty::Adt(def, substs) if def.is_struct() && !def.has_dtor(self.infcx.tcx) => {
-                def.all_fields()
-                    .map(|field| field.ty(gcx, substs))
-                    .enumerate()
-                    .for_each(|field| drop_field(self, field));
-            }
-            // Same as above, but for tuples.
-            ty::Tuple(tys) => {
-                tys.iter().cloned().enumerate()
-                    .for_each(|field| drop_field(self, field));
-            }
-            // Closures and generators also have disjoint fields, but they are only
-            // directly accessed in the body of the closure/generator.
-            ty::Generator(def, substs, ..)
-                if *drop_place == Place::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty()
-            => {
-                substs.upvar_tys(def, self.infcx.tcx).enumerate()
-                    .for_each(|field| drop_field(self, field));
-            }
-            ty::Closure(def, substs)
-                if *drop_place == Place::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty()
-                => {
-                    substs.upvar_tys(def, self.infcx.tcx).enumerate()
-                        .for_each(|field| drop_field(self, field));
-                }
-            _ => {
-                // We have now refined the type of the value being
-                // dropped (potentially) to just the type of a
-                // subfield; so check whether that field's type still
-                // "needs drop". If so, we assume that the destructor
-                // may access any data it likes (i.e., a Deep Write).
-                if erased_drop_place_ty.needs_drop(gcx, self.param_env) {
-                    self.access_place(
-                        ContextKind::Drop.new(loc),
-                        drop_place,
-                        (Deep, Write(WriteKind::StorageDeadOrDrop(
-                            StorageDeadOrDrop::Destructor))),
-                        LocalMutationIsAllowed::Yes,
-                    );
-                }
-            }
-        }
-    }
-
+impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
     /// Simulates mutation of a place
     fn mutate_place(
         &mut self,
         context: Context,
         place: &Place<'tcx>,
-        kind: ShallowOrDeep,
+        kind: AccessDepth,
         _mode: MutateMode,
     ) {
         self.access_place(
@@ -409,10 +329,13 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
         match *rvalue {
             Rvalue::Ref(_ /*rgn*/, bk, ref place) => {
                 let access_kind = match bk {
+                    BorrowKind::Shallow => {
+                        (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
+                    },
                     BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
                     BorrowKind::Unique | BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
-                        if allow_two_phase_borrow(&self.infcx.tcx, bk) {
+                        if allow_two_phase_borrow(&self.tcx, bk) {
                             (Deep, Reservation(wk))
                         } else {
                             (Deep, Write(wk))
@@ -471,7 +394,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
         &mut self,
         context: Context,
         place: &Place<'tcx>,
-        kind: (ShallowOrDeep, ReadOrWrite),
+        kind: (AccessDepth, ReadOrWrite),
         _is_local_mutation_allowed: LocalMutationIsAllowed,
     ) {
         let (sd, rw) = kind;
@@ -483,7 +406,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
         &mut self,
         context: Context,
         place: &Place<'tcx>,
-        sd: ShallowOrDeep,
+        sd: AccessDepth,
         rw: ReadOrWrite,
     ) {
         debug!(
@@ -494,7 +417,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
             sd,
             rw,
         );
-        let tcx = self.infcx.tcx;
+        let tcx = self.tcx;
         let mir = self.mir;
         let borrow_set = self.borrow_set.clone();
         let indices = self.borrow_set.borrows.indices();
@@ -519,6 +442,10 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
                         // have already taken the reservation
                     }
 
+                    (Read(_), BorrowKind::Shallow) | (Reservation(..), BorrowKind::Shallow) => {
+                        // Sccess_place be called for BorrowKind::Match.
+                        unreachable!();
+                    }
                     (Read(_), BorrowKind::Shared) | (Reservation(..), BorrowKind::Shared) => {
                         // Reads/reservations don't invalidate shared borrows
                     }
@@ -527,7 +454,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
                         // Reading from mere reservations of mutable-borrows is OK.
                         if !is_active(&this.dominators, borrow, context.loc) {
                             // If the borrow isn't active yet, reads don't invalidate it
-                            assert!(allow_two_phase_borrow(&this.infcx.tcx, borrow.kind));
+                            assert!(allow_two_phase_borrow(&this.tcx, borrow.kind));
                             return Control::Continue;
                         }
 

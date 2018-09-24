@@ -11,7 +11,7 @@
 use borrow_check::borrow_set::{BorrowSet, BorrowData, TwoPhaseActivation};
 use borrow_check::places_conflict;
 use borrow_check::Context;
-use borrow_check::ShallowOrDeep;
+use borrow_check::AccessDepth;
 use dataflow::indexes::BorrowIndex;
 use rustc::mir::{BasicBlock, Location, Mir, Place};
 use rustc::mir::{ProjectionElem, BorrowKind};
@@ -43,7 +43,7 @@ pub(super) fn each_borrow_involving_path<'a, 'tcx, 'gcx: 'tcx, F, I, S> (
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     _context: Context,
-    access_place: (ShallowOrDeep, &Place<'tcx>),
+    access_place: (AccessDepth, &Place<'tcx>),
     borrow_set: &BorrowSet<'tcx>,
     candidates: I,
     mut op: F,
@@ -61,7 +61,14 @@ pub(super) fn each_borrow_involving_path<'a, 'tcx, 'gcx: 'tcx, F, I, S> (
     for i in candidates {
         let borrowed = &borrow_set[i];
 
-        if places_conflict::places_conflict(tcx, mir, &borrowed.borrowed_place, place, access) {
+        if places_conflict::borrow_conflicts_with_place(
+            tcx,
+            mir,
+            &borrowed.borrowed_place,
+            borrowed.kind,
+            place,
+            access,
+        ) {
             debug!(
                 "each_borrow_involving_path: {:?} @ {:?} vs. {:?}/{:?}",
                 i, borrowed, place, access

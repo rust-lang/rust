@@ -52,13 +52,13 @@ LL | }
    = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-references-and-borrowing.html#dangling-references>
 
-error[E0597]: borrowed value does not live long enough
+error[E0714]: temporary value dropped while borrowed
   --> $DIR/issue-52534-1.rs:30:6
    |
 LL |     &&x
-   |      ^^ temporary value does not live long enough
+   |      ^^ creates a temporary which is freed while still in use
 LL | }
-   | - temporary value only lives until here
+   | - temporary value is freed at the end of this statement
    |
 note: borrowed value must be valid for the anonymous lifetime #1 defined on the function body at 28:1...
   --> $DIR/issue-52534-1.rs:28:1
@@ -137,4 +137,5 @@ LL | }
 
 error: aborting due to 8 previous errors
 
-For more information about this error, try `rustc --explain E0597`.
+Some errors occurred: E0597, E0714.
+For more information about an error, try `rustc --explain E0597`.
