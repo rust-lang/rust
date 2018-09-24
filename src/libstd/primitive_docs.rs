@@ -208,7 +208,7 @@ mod prim_bool { }
 /// # `!` and traits
 ///
 /// When writing your own traits, `!` should have an `impl` whenever there is an obvious `impl`
-/// which doesn't `panic!`. As is turns out, most traits can have an `impl` for `!`. Take [`Debug`]
+/// which doesn't `panic!`. As it turns out, most traits can have an `impl` for `!`. Take [`Debug`]
 /// for example:
 ///
 /// ```
@@ -228,9 +228,9 @@ mod prim_bool { }
 /// [`fmt::Result`]. Since this method takes a `&!` as an argument we know that it can never be
 /// called (because there is no value of type `!` for it to be called with). Writing `*self`
 /// essentially tells the compiler "We know that this code can never be run, so just treat the
-/// entire function body has having type [`fmt::Result`]". This pattern can be used a lot when
+/// entire function body as having type [`fmt::Result`]". This pattern can be used a lot when
 /// implementing traits for `!`. Generally, any trait which only has methods which take a `self`
-/// parameter should have such as impl.
+/// parameter should have such an impl.
 ///
 /// On the other hand, one trait which would not be appropriate to implement is [`Default`]:
 ///
