@@ -356,13 +356,13 @@ impl<'ll, 'tcx: 'll> DebugInfoMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll V
         let mut flags = DIFlags::FlagPrototyped;
 
     let local_id = self.tcx().hir.as_local_node_id(def_id);
-    if let Some((id, _, _)) = *cx.sess().entry_fn.borrow() {
+    if let Some((id, _, _)) = *self.sess().entry_fn.borrow() {
         if local_id == Some(id) {
             flags |= DIFlags::FlagMainSubprogram;
         }
     }
 
-    if cx.layout_of(sig.output()).abi.is_uninhabited() {
+    if self.layout_of(sig.output()).abi.is_uninhabited() {
         flags |= DIFlags::FlagNoReturn;
     }
 
