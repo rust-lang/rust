@@ -1633,8 +1633,8 @@ pub enum StatementKind<'tcx> {
     /// Execute a piece of inline Assembly.
     InlineAsm {
         asm: Box<InlineAsm>,
-        outputs: Vec<Place<'tcx>>,
-        inputs: Vec<Operand<'tcx>>,
+        outputs: Box<[Place<'tcx>]>,
+        inputs: Box<[Operand<'tcx>]>,
     },
 
     /// Assert the given places to be valid inhabitants of their type.  These statements are

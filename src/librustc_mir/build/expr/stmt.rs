@@ -143,11 +143,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let outputs = outputs
                     .into_iter()
                     .map(|output| unpack!(block = this.as_place(block, output)))
-                    .collect();
+                    .collect::<Vec<_>>()
+                    .into_boxed_slice();
                 let inputs = inputs
                     .into_iter()
                     .map(|input| unpack!(block = this.as_local_operand(block, input)))
-                    .collect();
+                    .collect::<Vec<_>>()
+                    .into_boxed_slice();
                 this.cfg.push(
                     block,
                     Statement {

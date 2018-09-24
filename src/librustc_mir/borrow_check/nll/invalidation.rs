@@ -118,7 +118,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tc
                 ref inputs,
             } => {
                 let context = ContextKind::InlineAsm.new(location);
-                for (o, output) in asm.outputs.iter().zip(outputs) {
+                for (o, output) in asm.outputs.iter().zip(outputs.iter()) {
                     if o.is_indirect {
                         // FIXME(eddyb) indirect inline asm outputs should
                         // be encoeded through MIR place derefs instead.
@@ -137,7 +137,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tc
                         );
                     }
                 }
-                for input in inputs {
+                for input in inputs.iter() {
                     self.consume_operand(context, input);
                 }
             }
