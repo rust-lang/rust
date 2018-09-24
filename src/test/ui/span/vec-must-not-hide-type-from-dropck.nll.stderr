@@ -9,6 +9,8 @@ LL | }
    | |
    | `c2` dropped here while still borrowed
    | borrow later used here, when `c1` is dropped
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
 
 error[E0597]: `c1` does not live long enough
   --> $DIR/vec-must-not-hide-type-from-dropck.rs:129:24
