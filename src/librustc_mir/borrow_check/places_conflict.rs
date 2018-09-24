@@ -10,7 +10,7 @@
 
 use borrow_check::ArtificialField;
 use borrow_check::Overlap;
-use borrow_check::{Deep, Shallow, ShallowOrDeep};
+use borrow_check::{Deep, Shallow, AccessDepth};
 use rustc::hir;
 use rustc::mir::{Mir, Place};
 use rustc::mir::{Projection, ProjectionElem};
@@ -22,7 +22,7 @@ pub(super) fn places_conflict<'gcx, 'tcx>(
     mir: &Mir<'tcx>,
     borrow_place: &Place<'tcx>,
     access_place: &Place<'tcx>,
-    access: ShallowOrDeep,
+    access: AccessDepth,
 ) -> bool {
     debug!(
         "places_conflict({:?},{:?},{:?})",
@@ -49,7 +49,7 @@ fn place_components_conflict<'gcx, 'tcx>(
     mir: &Mir<'tcx>,
     mut borrow_components: PlaceComponentsIter<'_, 'tcx>,
     mut access_components: PlaceComponentsIter<'_, 'tcx>,
-    access: ShallowOrDeep,
+    access: AccessDepth,
 ) -> bool {
     // The borrowck rules for proving disjointness are applied from the "root" of the
     // borrow forwards, iterating over "similar" projections in lockstep until
@@ -179,16 +179,26 @@ fn place_components_conflict<'gcx, 'tcx>(
                         return false;
                     }
                     (ProjectionElem::Deref, ty::Ref(_, _, hir::MutImmutable), _) => {
-                        // the borrow goes through a dereference of a shared reference.
-                        //
-                        // I'm not sure why we are tracking these borrows - shared
-                        // references can *always* be aliased, which means the
-                        // permission check already account for this borrow.
-                        debug!("places_conflict: behind a shared ref");
+                        // Shouldn't be tracked
+                        bug!("Tracking borrow behind shared reference.");
+                    }
+                    (ProjectionElem::Deref, ty::Ref(_, _, hir::MutMutable), AccessDepth::Drop) => {
+                        // Values behind a mutatble reference are not access either by Dropping a
+                        // value, or by StorageDead
+                        debug!("places_conflict: drop access behind ptr");
                         return false;
                     }
 
+                    (ProjectionElem::Field { .. }, ty::Adt(def, _), AccessDepth::Drop) => {
+                        // Drop can read/write arbitrary projections, so places
+                        // conflict regardless of further projections.
+                        if def.has_dtor(tcx) {
+                            return true;
+                        }
+                    }
+
                     (ProjectionElem::Deref, _, Deep)
+                    | (ProjectionElem::Deref, _, AccessDepth::Drop)
                     | (ProjectionElem::Field { .. }, _, _)
                     | (ProjectionElem::Index { .. }, _, _)
                     | (ProjectionElem::ConstantIndex { .. }, _, _)
