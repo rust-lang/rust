@@ -215,7 +215,7 @@ impl DefIndexAddressSpace {
     }
 }
 
-/// A DefId identifies a particular *definition*, by combining a crate
+/// A `DefId` identifies a particular *definition*, by combining a crate
 /// index and a def index.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
 pub struct DefId {

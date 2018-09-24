@@ -898,7 +898,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         locations: Locations,
         category: ConstraintCategory,
     ) -> Fallible<()> {
-        if let Err(terr) = self.sub_types(sub, sup, locations) {
+        if let Err(terr) = self.sub_types(sub, sup, locations, category) {
             if let TyKind::Opaque(..) = sup.sty {
                 return self.eq_opaque_type_and_type(sub, sup, locations, category);
             } else {
@@ -954,10 +954,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         let infcx = self.infcx;
         let tcx = infcx.tcx;
         let param_env = self.param_env;
-        let mir_def_id = self.mir_def_id;
+        let parent_def_id = infcx.tcx.closure_base_def_id(self.mir_def_id);
         let opaque_type_map =
             self.fully_perform_op(
                 locations,
+                category,
                 CustomTypeOp::new(
                     |infcx| {
                         let mut obligations = ObligationAccumulator::default();
@@ -965,7 +966,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         let dummy_body_id = ObligationCause::dummy().body_id;
                         let (output_ty, opaque_type_map) =
                             obligations.add(infcx.instantiate_opaque_types(
-                                mir_def_id,
+                                parent_def_id,
                                 dummy_body_id,
                                 param_env,
                                 &anon_ty,
@@ -1028,7 +1029,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             for (opaque_def_id, opaque_decl) in opaque_type_map {
                 self.fully_perform_op(
                     locations,
-                    category,
+                    ConstraintCategory::OpaqueType,
                     CustomTypeOp::new(
                         |_cx| {
                             infcx.constrain_opaque_type(

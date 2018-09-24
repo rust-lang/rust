@@ -821,8 +821,8 @@ fn has_typeck_tables<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn used_trait_imports<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              def_id: DefId)
-                              -> Lrc<DefIdSet> {
+                                def_id: DefId)
+                                -> Lrc<DefIdSet> {
     tcx.typeck_tables_of(def_id).used_trait_imports.clone()
 }
 
@@ -870,7 +870,6 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
 
             let revealed_ty = if tcx.features().impl_trait_in_bindings {
-                fcx.require_type_is_sized(expected_type, body.value.span, traits::SizedReturnType);
                 fcx.instantiate_opaque_types_from_value(
                     id,
                     &expected_type
@@ -965,7 +964,6 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
         let local_ty = match local.ty {
             Some(ref ty) => {
                 let o_ty = self.fcx.to_ty(&ty);
-                debug!("visit_local: ty.hir_id={:?} o_ty={:?} c_ty={:?}", ty.hir_id, o_ty, 1);
 
                 let revealed_ty = if self.fcx.tcx.features().impl_trait_in_bindings {
                     self.fcx.instantiate_opaque_types_from_value(
@@ -977,6 +975,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
                 };
 
                 let c_ty = self.fcx.inh.infcx.canonicalize_response(&revealed_ty);
+                debug!("visit_local: ty.hir_id={:?} o_ty={:?} revealed_ty={:?} c_ty={:?}",
+                       ty.hir_id, o_ty, revealed_ty, c_ty);
                 self.fcx.tables.borrow_mut().user_provided_tys_mut().insert(ty.hir_id, c_ty);
 
                 Some(LocalTy { decl_ty: o_ty, revealed_ty })
@@ -1074,7 +1074,9 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         fcx.yield_ty = Some(yield_ty);
     }
 
-    GatherLocalsVisitor { fcx: &fcx, parent_id: fn_id, }.visit_body(body);
+    let outer_def_id = fcx.tcx.closure_base_def_id(fcx.tcx.hir.local_def_id(fn_id));
+    let outer_node_id = fcx.tcx.hir.as_local_node_id(outer_def_id).unwrap();
+    GatherLocalsVisitor { fcx: &fcx, parent_id: outer_node_id, }.visit_body(body);
 
     // Add formal parameters.
     for (arg_ty, arg) in fn_sig.inputs().iter().zip(&body.arguments) {
@@ -2265,19 +2267,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// `InferCtxt::instantiate_opaque_types` for more details.
     fn instantiate_opaque_types_from_value<T: TypeFoldable<'tcx>>(
         &self,
-        fn_id: ast::NodeId,
+        parent_id: ast::NodeId,
         value: &T,
     ) -> T {
-        let fn_def_id = self.tcx.hir.local_def_id(fn_id);
-        debug!(
-            "instantiate_opaque_types_from_value(fn_def_id={:?}, value={:?})",
-            fn_def_id,
-            value
-        );
+        let parent_def_id = self.tcx.hir.local_def_id(parent_id);
+        debug!("instantiate_opaque_types_from_value(parent_def_id={:?}, value={:?})",
+               parent_def_id,
+               value);
 
         let (value, opaque_type_map) = self.register_infer_ok_obligations(
             self.instantiate_opaque_types(
-                fn_def_id,
+                parent_def_id,
                 self.body_id,
                 self.param_env,
                 value,

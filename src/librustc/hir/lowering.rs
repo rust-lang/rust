@@ -139,7 +139,6 @@ pub struct LoweringContext<'a> {
     type_def_lifetime_params: DefIdMap<usize>,
 
     current_hir_id_owner: Vec<(DefIndex, u32)>,
-    current_impl_trait_owner: Vec<DefId>,
     item_local_id_counters: NodeMap<u32>,
     node_id_to_hir_id: IndexVec<NodeId, hir::HirId>,
 }
@@ -233,7 +232,6 @@ pub fn lower_crate(
         anonymous_lifetime_mode: AnonymousLifetimeMode::PassThrough,
         type_def_lifetime_params: DefIdMap(),
         current_hir_id_owner: vec![(CRATE_DEF_INDEX, 0)],
-        current_impl_trait_owner: vec![],
         item_local_id_counters: NodeMap(),
         node_id_to_hir_id: IndexVec::new(),
         is_generator: false,
@@ -392,17 +390,6 @@ impl<'a> LoweringContext<'a> {
         }
 
         impl<'lcx, 'interner> ItemLowerer<'lcx, 'interner> {
-            fn with_impl_trait_owner<F, T>(&mut self, def_id: DefId, f: F) -> T
-            where
-                F: FnOnce(&mut Self) -> T,
-            {
-                self.lctx.current_impl_trait_owner.push(def_id);
-                let ret = f(self);
-                self.lctx.current_impl_trait_owner.pop();
-
-                ret
-            }
-
             fn with_trait_impl_ref<F>(&mut self, trait_impl_ref: &Option<TraitRef>, f: F)
             where
                 F: FnOnce(&mut Self),
@@ -440,12 +427,7 @@ impl<'a> LoweringContext<'a> {
 
                     self.lctx.with_parent_impl_lifetime_defs(&item_generics, |this| {
                         let this = &mut ItemLowerer { lctx: this };
-                        if let ItemKind::Fn(..) = item.node {
-                            let fn_def_id = this.lctx.resolver.definitions().local_def_id(item.id);
-                            this.with_impl_trait_owner(fn_def_id, |this| {
-                                visit::walk_item(this, item)
-                            });
-                        } else if let ItemKind::Impl(.., ref opt_trait_ref, _, _) = item.node {
+                        if let ItemKind::Impl(.., ref opt_trait_ref, _, _) = item.node {
                             this.with_trait_impl_ref(opt_trait_ref, |this| {
                                 visit::walk_item(this, item)
                             });
@@ -570,17 +552,6 @@ impl<'a> LoweringContext<'a> {
             .insert(owner, new_counter)
             .unwrap();
         debug_assert!(prev == HIR_ID_COUNTER_LOCKED);
-        ret
-    }
-
-    fn with_impl_trait_owner<F, T>(&mut self, def_id: DefId, f: F) -> T
-    where
-        F: FnOnce(&mut LoweringContext) -> T,
-    {
-        self.current_impl_trait_owner.push(def_id);
-        let ret = f(self);
-        self.current_impl_trait_owner.pop();
-
         ret
     }
 
@@ -1939,7 +1910,7 @@ impl<'a> LoweringContext<'a> {
                 visitor.visit_ty(ty);
             }
         }
-        let impl_trait_owner_id = self.current_impl_trait_owner.last().map(|id| *id);
+        let parent_def_id = DefId::local(self.current_hir_id_owner.last().unwrap().0);
         (P(hir::Local {
             id: node_id,
             hir_id,
@@ -1947,7 +1918,7 @@ impl<'a> LoweringContext<'a> {
                 .as_ref()
                 .map(|t| self.lower_ty(t,
                     if self.sess.features_untracked().impl_trait_in_bindings {
-                        ImplTraitContext::Existential(impl_trait_owner_id)
+                        ImplTraitContext::Existential(Some(parent_def_id))
                     } else {
                         ImplTraitContext::Disallowed
                     }
@@ -2213,8 +2184,7 @@ impl<'a> LoweringContext<'a> {
             span, Some(fn_def_id), return_impl_trait_id, |this| {
             let output_ty = match output {
                 FunctionRetTy::Ty(ty) => {
-                    let impl_trait_owner_id = *this.current_impl_trait_owner.last().unwrap();
-                    this.lower_ty(ty, ImplTraitContext::Existential(Some(impl_trait_owner_id)))
+                    this.lower_ty(ty, ImplTraitContext::Existential(Some(fn_def_id)))
                 }
                 FunctionRetTy::Default(span) => {
                     let LoweredNodeId { node_id, hir_id } = this.next_id();
@@ -2738,33 +2708,31 @@ impl<'a> LoweringContext<'a> {
             }
             ItemKind::Fn(ref decl, header, ref generics, ref body) => {
                 let fn_def_id = self.resolver.definitions().local_def_id(id);
-                self.with_impl_trait_owner(fn_def_id, |this| {
-                    this.with_new_scopes(|this| {
-                        // Note: we don't need to change the return type from `T` to
-                        // `impl Future<Output = T>` here because lower_body
-                        // only cares about the input argument patterns in the function
-                        // declaration (decl), not the return types.
-                        let body_id = this.lower_async_body(decl, header.asyncness, body);
+                self.with_new_scopes(|this| {
+                    // Note: we don't need to change the return type from `T` to
+                    // `impl Future<Output = T>` here because lower_body
+                    // only cares about the input argument patterns in the function
+                    // declaration (decl), not the return types.
+                    let body_id = this.lower_async_body(decl, header.asyncness, body);
 
-                        let (generics, fn_decl) = this.add_in_band_defs(
-                            generics,
-                            fn_def_id,
-                            AnonymousLifetimeMode::PassThrough,
-                            |this, idty| this.lower_fn_decl(
-                                decl,
-                                Some((fn_def_id, idty)),
-                                true,
-                                header.asyncness.opt_return_id()
-                            ),
-                        );
+                    let (generics, fn_decl) = this.add_in_band_defs(
+                        generics,
+                        fn_def_id,
+                        AnonymousLifetimeMode::PassThrough,
+                        |this, idty| this.lower_fn_decl(
+                            decl,
+                            Some((fn_def_id, idty)),
+                            true,
+                            header.asyncness.opt_return_id()
+                        ),
+                    );
 
-                        hir::ItemKind::Fn(
-                            fn_decl,
-                            this.lower_fn_header(header),
-                            generics,
-                            body_id,
-                        )
-                    })
+                    hir::ItemKind::Fn(
+                        fn_decl,
+                        this.lower_fn_header(header),
+                        generics,
+                        body_id,
+                    )
                 })
             }
             ItemKind::Mod(ref m) => hir::ItemKind::Mod(self.lower_mod(m)),
@@ -3083,33 +3051,29 @@ impl<'a> LoweringContext<'a> {
                 ),
             ),
             TraitItemKind::Method(ref sig, None) => {
-                self.with_impl_trait_owner(trait_item_def_id, |this| {
-                    let names = this.lower_fn_args_to_names(&sig.decl);
-                    let (generics, sig) = this.lower_method_sig(
-                        &i.generics,
-                        sig,
-                        trait_item_def_id,
-                        false,
-                        None,
-                    );
-                    (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Required(names)))
-                })
+                let names = self.lower_fn_args_to_names(&sig.decl);
+                let (generics, sig) = self.lower_method_sig(
+                    &i.generics,
+                    sig,
+                    trait_item_def_id,
+                    false,
+                    None,
+                );
+                (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Required(names)))
             }
             TraitItemKind::Method(ref sig, Some(ref body)) => {
-                self.with_impl_trait_owner(trait_item_def_id, |this| {
-                    let body_id = this.lower_body(Some(&sig.decl), |this| {
-                        let body = this.lower_block(body, false);
-                        this.expr_block(body, ThinVec::new())
-                    });
-                    let (generics, sig) = this.lower_method_sig(
-                        &i.generics,
-                        sig,
-                        trait_item_def_id,
-                        false,
-                        None,
-                    );
-                    (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Provided(body_id)))
-                })
+                let body_id = self.lower_body(Some(&sig.decl), |this| {
+                    let body = this.lower_block(body, false);
+                    this.expr_block(body, ThinVec::new())
+                });
+                let (generics, sig) = self.lower_method_sig(
+                    &i.generics,
+                    sig,
+                    trait_item_def_id,
+                    false,
+                    None,
+                );
+                (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Provided(body_id)))
             }
             TraitItemKind::Type(ref bounds, ref default) => (
                 self.lower_generics(&i.generics, ImplTraitContext::Disallowed),
@@ -3175,18 +3139,16 @@ impl<'a> LoweringContext<'a> {
                 )
             }
             ImplItemKind::Method(ref sig, ref body) => {
-                self.with_impl_trait_owner(impl_item_def_id, |this| {
-                    let body_id = this.lower_async_body(&sig.decl, sig.header.asyncness, body);
-                    let impl_trait_return_allow = !this.is_in_trait_impl;
-                    let (generics, sig) = this.lower_method_sig(
-                        &i.generics,
-                        sig,
-                        impl_item_def_id,
-                        impl_trait_return_allow,
-                        sig.header.asyncness.opt_return_id(),
-                    );
-                    (generics, hir::ImplItemKind::Method(sig, body_id))
-                })
+                let body_id = self.lower_async_body(&sig.decl, sig.header.asyncness, body);
+                let impl_trait_return_allow = !self.is_in_trait_impl;
+                let (generics, sig) = self.lower_method_sig(
+                    &i.generics,
+                    sig,
+                    impl_item_def_id,
+                    impl_trait_return_allow,
+                    sig.header.asyncness.opt_return_id(),
+                );
+                (generics, hir::ImplItemKind::Method(sig, body_id))
             }
             ImplItemKind::Type(ref ty) => (
                 self.lower_generics(&i.generics, ImplTraitContext::Disallowed),
