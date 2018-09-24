@@ -624,7 +624,7 @@ impl<T> [T] {
     /// not divide the length of the slice, then the last chunk will
     /// not have length `chunk_size`.
     ///
-    /// See [`exact_chunks`] for a variant of this iterator that returns chunks
+    /// See [`chunks_exact`] for a variant of this iterator that returns chunks
     /// of always exactly `chunk_size` elements.
     ///
     /// # Panics
@@ -642,7 +642,7 @@ impl<T> [T] {
     /// assert!(iter.next().is_none());
     /// ```
     ///
-    /// [`exact_chunks`]: #method.exact_chunks
+    /// [`chunks_exact`]: #method.chunks_exact
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn chunks(&self, chunk_size: usize) -> Chunks<T> {
@@ -655,7 +655,7 @@ impl<T> [T] {
     /// not divide the length of the slice, then the last chunk will not
     /// have length `chunk_size`.
     ///
-    /// See [`exact_chunks_mut`] for a variant of this iterator that returns chunks
+    /// See [`chunks_exact_mut`] for a variant of this iterator that returns chunks
     /// of always exactly `chunk_size` elements.
     ///
     /// # Panics
@@ -677,7 +677,7 @@ impl<T> [T] {
     /// assert_eq!(v, &[1, 1, 2, 2, 3]);
     /// ```
     ///
-    /// [`exact_chunks_mut`]: #method.exact_chunks_mut
+    /// [`chunks_exact_mut`]: #method.chunks_exact_mut
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<T> {
@@ -702,19 +702,19 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(exact_chunks)]
+    /// #![feature(chunks_exact)]
     ///
     /// let slice = ['l', 'o', 'r', 'e', 'm'];
-    /// let mut iter = slice.exact_chunks(2);
+    /// let mut iter = slice.chunks_exact(2);
     /// assert_eq!(iter.next().unwrap(), &['l', 'o']);
     /// assert_eq!(iter.next().unwrap(), &['r', 'e']);
     /// assert!(iter.next().is_none());
     /// ```
     ///
     /// [`chunks`]: #method.chunks
-    #[unstable(feature = "exact_chunks", issue = "47115")]
+    #[unstable(feature = "chunks_exact", issue = "47115")]
     #[inline]
-    pub fn exact_chunks(&self, chunk_size: usize) -> ExactChunks<T> {
+    pub fn chunks_exact(&self, chunk_size: usize) -> ExactChunks<T> {
         assert!(chunk_size != 0);
         let rem = self.len() % chunk_size;
         let len = self.len() - rem;
@@ -739,12 +739,12 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(exact_chunks)]
+    /// #![feature(chunks_exact)]
     ///
     /// let v = &mut [0, 0, 0, 0, 0];
     /// let mut count = 1;
     ///
-    /// for chunk in v.exact_chunks_mut(2) {
+    /// for chunk in v.chunks_exact_mut(2) {
     ///     for elem in chunk.iter_mut() {
     ///         *elem += count;
     ///     }
@@ -754,9 +754,9 @@ impl<T> [T] {
     /// ```
     ///
     /// [`chunks_mut`]: #method.chunks_mut
-    #[unstable(feature = "exact_chunks", issue = "47115")]
+    #[unstable(feature = "chunks_exact", issue = "47115")]
     #[inline]
-    pub fn exact_chunks_mut(&mut self, chunk_size: usize) -> ExactChunksMut<T> {
+    pub fn chunks_exact_mut(&mut self, chunk_size: usize) -> ExactChunksMut<T> {
         assert!(chunk_size != 0);
         let rem = self.len() % chunk_size;
         let len = self.len() - rem;
@@ -3657,20 +3657,20 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksMut<'a, T> {
 /// up to `chunk_size-1` elements will be omitted but can be retrieved from
 /// the [`remainder`] function from the iterator.
 ///
-/// This struct is created by the [`exact_chunks`] method on [slices].
+/// This struct is created by the [`chunks_exact`] method on [slices].
 ///
-/// [`exact_chunks`]: ../../std/primitive.slice.html#method.exact_chunks
+/// [`chunks_exact`]: ../../std/primitive.slice.html#method.chunks_exact
 /// [`remainder`]: ../../std/slice/struct.ExactChunks.html#method.remainder
 /// [slices]: ../../std/primitive.slice.html
 #[derive(Debug)]
-#[unstable(feature = "exact_chunks", issue = "47115")]
+#[unstable(feature = "chunks_exact", issue = "47115")]
 pub struct ExactChunks<'a, T:'a> {
     v: &'a [T],
     rem: &'a [T],
     chunk_size: usize
 }
 
-#[unstable(feature = "exact_chunks", issue = "47115")]
+#[unstable(feature = "chunks_exact", issue = "47115")]
 impl<'a, T> ExactChunks<'a, T> {
     /// Return the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
@@ -3681,7 +3681,7 @@ impl<'a, T> ExactChunks<'a, T> {
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-#[unstable(feature = "exact_chunks", issue = "47115")]
+#[unstable(feature = "chunks_exact", issue = "47115")]
 impl<'a, T> Clone for ExactChunks<'a, T> {
     fn clone(&self) -> ExactChunks<'a, T> {
         ExactChunks {
@@ -3692,7 +3692,7 @@ impl<'a, T> Clone for ExactChunks<'a, T> {
     }
 }
 
-#[unstable(feature = "exact_chunks", issue = "47115")]
+#[unstable(feature = "chunks_exact", issue = "47115")]
 impl<'a, T> Iterator for ExactChunks<'a, T> {
     type Item = &'a [T];
 
@@ -3737,7 +3737,7 @@ impl<'a, T> Iterator for ExactChunks<'a, T> {
     }
 }
 
-#[unstable(feature = "exact_chunks", issue = "47115")]
+#[unstable(feature = "chunks_exact", issue = "47115")]
 impl<'a, T> DoubleEndedIterator for ExactChunks<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
@@ -3751,7 +3751,7 @@ impl<'a, T> DoubleEndedIterator for ExactChunks<'a, T> {
     }
 }
 
-#[unstable(feature = "exact_chunks", issue = "47115")]
+#[unstable(feature = "chunks_exact", issue = "47115")]
 impl<'a, T> ExactSizeIterator for ExactChunks<'a, T> {
     fn is_empty(&self) -> bool {
         self.v.is_empty()
@@ -3761,7 +3761,7 @@ impl<'a, T> ExactSizeIterator for ExactChunks<'a, T> {
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<'a, T> TrustedLen for ExactChunks<'a, T> {}
 
-#[unstable(feature = "exact_chunks", issue = "47115")]
+#[unstable(feature = "chunks_exact", issue = "47115")]
 impl<'a, T> FusedIterator for ExactChunks<'a, T> {}
 
 #[doc(hidden)]
@@ -3780,20 +3780,20 @@ unsafe impl<'a, T> TrustedRandomAccess for ExactChunks<'a, T> {
 /// `chunk_size-1` elements will be omitted but can be retrieved from the
 /// [`into_remainder`] function from the iterator.
 ///
-/// This struct is created by the [`exact_chunks_mut`] method on [slices].
+/// This struct is created by the [`chunks_exact_mut`] method on [slices].
 ///
-/// [`exact_chunks_mut`]: ../../std/primitive.slice.html#method.exact_chunks_mut
+/// [`chunks_exact_mut`]: ../../std/primitive.slice.html#method.chunks_exact_mut
 /// [`into_remainder`]: ../../std/slice/struct.ExactChunksMut.html#method.into_remainder
 /// [slices]: ../../std/primitive.slice.html
 #[derive(Debug)]
-#[unstable(feature = "exact_chunks", issue = "47115")]
+#[unstable(feature = "chunks_exact", issue = "47115")]
 pub struct ExactChunksMut<'a, T:'a> {
     v: &'a mut [T],
     rem: &'a mut [T],
     chunk_size: usize
 }
 
-#[unstable(feature = "exact_chunks", issue = "47115")]
+#[unstable(feature = "chunks_exact", issue = "47115")]
 impl<'a, T> ExactChunksMut<'a, T> {
     /// Return the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
@@ -3803,7 +3803,7 @@ impl<'a, T> ExactChunksMut<'a, T> {
     }
 }
 
-#[unstable(feature = "exact_chunks", issue = "47115")]
+#[unstable(feature = "chunks_exact", issue = "47115")]
 impl<'a, T> Iterator for ExactChunksMut<'a, T> {
     type Item = &'a mut [T];
 
@@ -3850,7 +3850,7 @@ impl<'a, T> Iterator for ExactChunksMut<'a, T> {
     }
 }
 
-#[unstable(feature = "exact_chunks", issue = "47115")]
+#[unstable(feature = "chunks_exact", issue = "47115")]
 impl<'a, T> DoubleEndedIterator for ExactChunksMut<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut [T]> {
@@ -3866,7 +3866,7 @@ impl<'a, T> DoubleEndedIterator for ExactChunksMut<'a, T> {
     }
 }
 
-#[unstable(feature = "exact_chunks", issue = "47115")]
+#[unstable(feature = "chunks_exact", issue = "47115")]
 impl<'a, T> ExactSizeIterator for ExactChunksMut<'a, T> {
     fn is_empty(&self) -> bool {
         self.v.is_empty()
@@ -3876,7 +3876,7 @@ impl<'a, T> ExactSizeIterator for ExactChunksMut<'a, T> {
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<'a, T> TrustedLen for ExactChunksMut<'a, T> {}
 
-#[unstable(feature = "exact_chunks", issue = "47115")]
+#[unstable(feature = "chunks_exact", issue = "47115")]
 impl<'a, T> FusedIterator for ExactChunksMut<'a, T> {}
 
 #[doc(hidden)]
