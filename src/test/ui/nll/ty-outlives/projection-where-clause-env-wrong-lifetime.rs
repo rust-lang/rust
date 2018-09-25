@@ -11,7 +11,8 @@ where
     for<'x> T: MyTrait<'x>,
     <T as MyTrait<'b>>::Output: 'a,
 {
-    bar::<<T as MyTrait<'a>>::Output>() //~ ERROR the associated type `<T as MyTrait<'a>>::Output` may not live long enough
+    bar::<<T as MyTrait<'a>>::Output>()
+    //~^ ERROR the associated type `<T as MyTrait<'a>>::Output` may not live long enough
 }
 
 fn bar<'a, T>() -> &'a ()
