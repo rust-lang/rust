@@ -202,21 +202,14 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
                 values,
                 targets,
             } => {
-                // TODO: prevent panics on large and negative disciminants
-                if should_codegen(fx.tcx.sess) {
-                    let discr = trans_operand(fx, discr).load_value(fx);
-                    let mut jt_data = JumpTableData::new();
-                    for (i, value) in values.iter().enumerate() {
-                        let ebb = fx.get_ebb(targets[i]);
-                        jt_data.set_entry(*value as usize, ebb);
-                    }
-                    let jump_table = fx.bcx.create_jump_table(jt_data);
-                    fx.bcx.ins().br_table(discr, jump_table);
-                    let otherwise_ebb = fx.get_ebb(targets[targets.len() - 1]);
-                    fx.bcx.ins().jump(otherwise_ebb, &[]);
-                } else {
-                    fx.bcx.ins().trap(TrapCode::User(0));
+                let discr = trans_operand(fx, discr).load_value(fx);
+                let mut switch = ::cranelift::frontend::Switch::new();
+                for (i, value) in values.iter().enumerate() {
+                    let ebb = fx.get_ebb(targets[i]);
+                    switch.set_entry(*value as u64, ebb);
                 }
+                let otherwise_ebb = fx.get_ebb(targets[targets.len() - 1]);
+                switch.emit(&mut fx.bcx, discr, otherwise_ebb);
             }
             TerminatorKind::Call {
                 func,

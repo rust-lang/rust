@@ -170,6 +170,21 @@ impl<T: ?Sized> PartialEq for *const T {
     }
 }
 
+#[lang = "neg"]
+pub trait Neg {
+    type Output;
+
+    fn neg(self) -> Self::Output;
+}
+
+impl Neg for isize {
+    type Output = isize;
+
+    fn neg(self) -> isize {
+        -self
+    }
+}
+
 pub enum Option<T> {
     Some(T),
     None,

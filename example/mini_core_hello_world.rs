@@ -74,6 +74,12 @@ impl Drop for NoisyDropInner {
     }
 }
 
+enum Ordering {
+    Less = -1,
+    Equal = 0,
+    Greater = 1,
+}
+
 #[lang = "start"]
 fn start<T: Termination + 'static>(
     main: fn() -> T,
@@ -156,5 +162,10 @@ fn main() {
     match FUNC_REF {
         Some(_) => {},
         None => assert!(false),
+    }
+
+    match Ordering::Less {
+        Ordering::Less => {},
+        _ => assert!(false),
     }
 }
