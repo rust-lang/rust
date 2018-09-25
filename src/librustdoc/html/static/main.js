@@ -1991,8 +1991,11 @@
                 }
         };
         if (getCurrentValue('rustdoc-trait-implementations') !== "false") {
-            onEach(document.getElementById('implementations-list')
-                           .getElementsByClassName("collapse-toggle"), collapser);
+            var impl_list = document.getElementById('implementations-list');
+
+            if (impl_list !== null) {
+                onEach(impl_list.getElementsByClassName("collapse-toggle"), collapser);
+            }
         }
         if (getCurrentValue('rustdoc-method-docs') !== "false") {
             var implItems = document.getElementsByClassName('impl-items');
