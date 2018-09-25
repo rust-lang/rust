@@ -1,4 +1,4 @@
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/issue-47184.rs:14:44
    |
 LL |     let _vec: Vec<&'static String> = vec![&String::new()];
@@ -10,4 +10,4 @@ LL |     let _vec: Vec<&'static String> = vec![&String::new()];
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0714`.
+For more information about this error, try `rustc --explain E0716`.

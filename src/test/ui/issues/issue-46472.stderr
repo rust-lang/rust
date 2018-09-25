@@ -13,7 +13,7 @@ note: borrowed value must be valid for the lifetime 'a as defined on the functio
 LL | fn bar<'a>() -> &'a mut u32 {
    |        ^^
 
-error[E0714]: temporary value dropped while borrowed (Mir)
+error[E0716]: temporary value dropped while borrowed (Mir)
   --> $DIR/issue-46472.rs:14:10
    |
 LL |     &mut 4
@@ -30,5 +30,5 @@ LL | fn bar<'a>() -> &'a mut u32 {
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0597, E0714.
+Some errors occurred: E0597, E0716.
 For more information about an error, try `rustc --explain E0597`.

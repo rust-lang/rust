@@ -1,4 +1,4 @@
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/borrowck-borrow-from-temporary.rs:19:24
    |
 LL |     let &Foo(ref x) = &id(Foo(3)); //~ ERROR borrowed value does not live long enough
@@ -15,4 +15,4 @@ LL | fn foo<'a>() -> &'a isize {
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0714`.
+For more information about this error, try `rustc --explain E0716`.

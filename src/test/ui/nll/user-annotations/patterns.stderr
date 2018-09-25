@@ -40,7 +40,7 @@ LL | }
    |
    = note: borrowed value must be valid for the static lifetime...
 
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/patterns.rs:53:41
    |
 LL |     let _: Vec<&'static String> = vec![&String::new()];
@@ -50,7 +50,7 @@ LL |     let _: Vec<&'static String> = vec![&String::new()];
    |
    = note: borrowed value must be valid for the static lifetime...
 
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/patterns.rs:56:52
    |
 LL |     let (_, a): (Vec<&'static String>, _) = (vec![&String::new()], 44);
@@ -60,7 +60,7 @@ LL |     let (_, a): (Vec<&'static String>, _) = (vec![&String::new()], 44);
    |
    = note: borrowed value must be valid for the static lifetime...
 
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/patterns.rs:59:53
    |
 LL |     let (_a, b): (Vec<&'static String>, _) = (vec![&String::new()], 44);
@@ -140,5 +140,5 @@ LL |     let (y, _z): (&'static u32, u32) = (x, 44); //~ ERROR
 
 error: aborting due to 14 previous errors
 
-Some errors occurred: E0597, E0714.
+Some errors occurred: E0597, E0716.
 For more information about an error, try `rustc --explain E0597`.

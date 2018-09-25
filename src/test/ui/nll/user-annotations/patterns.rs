@@ -51,13 +51,13 @@ fn underscore_with_initializer() {
     let _: &'static u32 = &x; //~ ERROR
 
     let _: Vec<&'static String> = vec![&String::new()];
-    //~^ ERROR temporary value dropped while borrowed [E0714]
+    //~^ ERROR temporary value dropped while borrowed [E0716]
 
     let (_, a): (Vec<&'static String>, _) = (vec![&String::new()], 44);
-    //~^ ERROR temporary value dropped while borrowed [E0714]
+    //~^ ERROR temporary value dropped while borrowed [E0716]
 
     let (_a, b): (Vec<&'static String>, _) = (vec![&String::new()], 44);
-    //~^ ERROR temporary value dropped while borrowed [E0714]
+    //~^ ERROR temporary value dropped while borrowed [E0716]
 }
 
 fn pair_underscores_with_initializer() {

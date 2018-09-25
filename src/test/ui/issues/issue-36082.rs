@@ -25,7 +25,7 @@ fn main() {
     //[ast]~| NOTE temporary value dropped here while still borrowed
     //[ast]~| NOTE temporary value does not live long enough
     //[ast]~| NOTE consider using a `let` binding to increase its lifetime
-    //[mir]~^^^^^ ERROR temporary value dropped while borrowed [E0714]
+    //[mir]~^^^^^ ERROR temporary value dropped while borrowed [E0716]
     //[mir]~| NOTE temporary value is freed at the end of this statement
     //[mir]~| NOTE creates a temporary which is freed while still in use
     //[mir]~| NOTE consider using a `let` binding to create a longer lived value

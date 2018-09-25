@@ -739,7 +739,7 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         let err = struct_span_err!(
             self,
             span,
-            E0714,
+            E0716,
             "temporary value dropped while borrowed{OGN}",
             OGN = o
         );

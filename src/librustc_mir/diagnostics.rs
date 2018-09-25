@@ -2263,13 +2263,13 @@ lifetime, which would again violate the `&mut`-borrow's exclusive
 access.
 "##,
 
-E0714: r##"
+E0716: r##"
 This error indicates that a temporary value is being dropped
 while a borrow is still in active use.
 
 Erroneous code example:
 
-```compile_fail,E0714
+```compile_fail,E0716
 # #![feature(nll)]
 fn foo() -> i32 { 22 }
 fn bar(x: &i32) -> &i32 { x }

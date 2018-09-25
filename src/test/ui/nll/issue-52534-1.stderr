@@ -52,7 +52,7 @@ LL | }
    = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-references-and-borrowing.html#dangling-references>
 
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/issue-52534-1.rs:30:6
    |
 LL |     &&x
@@ -137,5 +137,5 @@ LL | }
 
 error: aborting due to 8 previous errors
 
-Some errors occurred: E0597, E0714.
+Some errors occurred: E0597, E0716.
 For more information about an error, try `rustc --explain E0597`.

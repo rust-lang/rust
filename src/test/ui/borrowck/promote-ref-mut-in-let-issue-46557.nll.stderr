@@ -1,4 +1,4 @@
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-ref-mut-in-let-issue-46557.rs:15:21
    |
 LL |     let ref mut x = 1234543; //~ ERROR
@@ -9,7 +9,7 @@ LL | }
    |
    = note: borrowed value must be valid for the static lifetime...
 
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-ref-mut-in-let-issue-46557.rs:20:25
    |
 LL |     let (ref mut x, ) = (1234543, ); //~ ERROR
@@ -20,7 +20,7 @@ LL | }
    |
    = note: borrowed value must be valid for the static lifetime...
 
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-ref-mut-in-let-issue-46557.rs:25:11
    |
 LL |     match 1234543 {
@@ -31,7 +31,7 @@ LL | }
    |
    = note: borrowed value must be valid for the static lifetime...
 
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-ref-mut-in-let-issue-46557.rs:31:11
    |
 LL |     match (123443,) {
@@ -42,7 +42,7 @@ LL | }
    |
    = note: borrowed value must be valid for the static lifetime...
 
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-ref-mut-in-let-issue-46557.rs:37:10
    |
 LL |     &mut 1234543 //~ ERROR
@@ -54,4 +54,4 @@ LL | }
 
 error: aborting due to 5 previous errors
 
-For more information about this error, try `rustc --explain E0714`.
+For more information about this error, try `rustc --explain E0716`.

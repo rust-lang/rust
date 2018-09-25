@@ -18,7 +18,7 @@ fn main() {
     let x = gimme({
         let v = 22;
         &(v,)
-        //~^ ERROR temporary value dropped while borrowed [E0714]
+        //~^ ERROR temporary value dropped while borrowed [E0716]
     });
     println!("{:?}", x);
 }
