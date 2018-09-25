@@ -284,49 +284,8 @@ impl<'tcx> NeoPlace<'tcx> {
         }
     }
 
-    // for Place:
-    //    (Base.[a, b, c])
-    //     ^^^^^^^^^^  ^-- projection
-    //     |-- base_place
-    //
-    //     Base.[]
-    //     ^^^^ ^^-- no projection(empty)
-    //     |-- base_place
-    pub fn split_projection<'cx, 'gcx>(
-        &self,
-        tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-    ) -> (NeoPlace<'tcx>, Option<&'tcx PlaceElem<'tcx>>) {
-        // split place_elems
-        // Base.[a, b, c]
-        //       ^^^^  ^-- projection(projection lives in the last elem)
-        //       |-- place_elems
-        match self.elems.split_last() {
-            Some((projection, place_elems)) => (
-                NeoPlace {
-                    base: self.clone().base,
-                    elems: tcx.intern_place_elems(place_elems),
-                },
-                Some(projection),
-            ),
-            _ => (self.clone(), None)
-        }
-    }
-
     pub fn has_no_projection(&self) -> bool {
         self.elems.is_empty()
-    }
-
-    // for projection returns the base place;
-    //     Base.[a, b, c] => Base.[a, b]
-    //                 ^-- projection
-    // if no projection returns the place itself,
-    //     Base.[] => Base.[]
-    //          ^^-- no projection
-    pub fn projection_base<'cx, 'gcx>(&self, tcx: TyCtxt<'cx, 'gcx, 'tcx>) -> NeoPlace<'tcx> {
-        match self.split_projection(tcx) {
-            (place, Some(_)) => place,
-            (_, None) => self.clone(),
-        }
     }
 }
 
