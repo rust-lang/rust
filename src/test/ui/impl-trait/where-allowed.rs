@@ -232,4 +232,3 @@ fn main() {
     let _in_return_in_local_variable = || -> impl Fn() { || {} };
     //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
 }
-

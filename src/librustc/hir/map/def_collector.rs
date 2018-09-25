@@ -102,9 +102,9 @@ impl<'a> DefCollector<'a> {
             visit::walk_fn_decl(this, decl);
 
             let closure_def = this.create_def(closure_id,
-                                  DefPathData::ClosureExpr,
-                                  REGULAR_SPACE,
-                                  span);
+                                              DefPathData::ClosureExpr,
+                                              REGULAR_SPACE,
+                                              span);
             this.with_parent(closure_def, |this| {
                 visit::walk_block(this, body);
             })

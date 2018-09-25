@@ -98,9 +98,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ///
     /// # Parameters
     ///
-    /// - `parent_def_id` -- we will only instantiate opaque types
-    ///   with this parent. This is typically the def-id of the function
-    ///   in whose return type opaque types are being instantiated.
+    /// - `parent_def_id` -- the def-id of the function in which the opaque type
+    ///   is defined
     /// - `body_id` -- the body-id with which the resulting obligations should
     ///   be associated
     /// - `param_env` -- the in-scope parameter environment to be used for
@@ -113,11 +112,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         value: &T,
     ) -> InferOk<'tcx, (T, OpaqueTypeMap<'tcx>)> {
-        debug!(
-            "instantiate_opaque_types(value={:?},
-            parent_def_id={:?}, body_id={:?},
-            param_env={:?})",
-            value, parent_def_id, body_id, param_env,
+        debug!("instantiate_opaque_types(value={:?}, parent_def_id={:?}, body_id={:?}, \
+                param_env={:?})",
+               value, parent_def_id, body_id, param_env,
         );
         let mut instantiator = Instantiator {
             infcx: self,
@@ -736,7 +733,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
 
                         debug!(
                             "instantiate_opaque_types_in_map: \
-                             encountered opaque outside it's definition scope \
+                             encountered opaque outside its definition scope \
                              def_id={:?}",
                             def_id,
                         );
@@ -808,8 +805,8 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
 
         for predicate in bounds.predicates {
             // Change the predicate to refer to the type variable,
-            // which will be the concrete type, instead of the Opaque.
-            // This also instantiates nested `impl Trait`.
+            // which will be the concrete type instead of the opaque type.
+            // This also instantiates nested instances of `impl Trait`.
             let predicate = self.instantiate_opaque_types_in_map(&predicate);
 
             let cause = traits::ObligationCause::new(span, self.body_id, traits::SizedReturnType);

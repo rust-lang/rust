@@ -75,7 +75,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// The Writerback context. This visitor walks the AST, checking the
+// The Writeback context. This visitor walks the AST, checking the
 // fn-specific tables to find references to types or regions. It
 // resolves those regions to remove inference variables and writes the
 // final result back into the master tables in the tcx. Here and
@@ -290,7 +290,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
 
     fn visit_local(&mut self, l: &'gcx hir::Local) {
         intravisit::walk_local(self, l);
-        let var_ty = self.fcx.local_ty(l.span, l.id);
+        let var_ty = self.fcx.local_ty(l.span, l.id).decl_ty;
         let var_ty = self.resolve(&var_ty, &l.span);
         self.write_ty_to_tables(l.hir_id, var_ty);
     }

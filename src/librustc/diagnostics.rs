@@ -1739,7 +1739,7 @@ specified exit code, use `std::process::exit`.
 
 E0562: r##"
 Abstract return types (written `impl Trait` for some trait `Trait`) are only
-allowed as function return types.
+allowed as function and inherent impl return types.
 
 Erroneous code example:
 

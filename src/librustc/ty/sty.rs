@@ -79,8 +79,8 @@ impl BoundRegion {
     }
 }
 
-/// NB: If you change this, you'll probably want to change the corresponding
-/// AST structure in libsyntax/ast.rs as well.
+/// N.B., If you change this, you'll probably want to change the corresponding
+/// AST structure in `libsyntax/ast.rs` as well.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum TyKind<'tcx> {
     /// The primitive boolean type. Written as `bool`.
@@ -158,7 +158,7 @@ pub enum TyKind<'tcx> {
     Projection(ProjectionTy<'tcx>),
 
     /// Opaque (`impl Trait`) type found in a return type.
-    /// The DefId comes either from
+    /// The `DefId` comes either from
     /// * the `impl Trait` ast::Ty node,
     /// * or the `existential type` declaration
     /// The substitutions are for the generics of the function in question.
@@ -168,7 +168,7 @@ pub enum TyKind<'tcx> {
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
     Param(ParamTy),
 
-    /// A type variable used during type-checking.
+    /// A type variable used during type checking.
     Infer(InferTy),
 
     /// A placeholder for a type which could not be computed; this is
