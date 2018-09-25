@@ -193,25 +193,17 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
                     .unwrap()
                     .borrow_region_constraints()
                     .opportunistic_resolve_var(self.tcx, vid);
-                let info = CanonicalVarInfo {
-                    kind: CanonicalVarKind::Region,
-                };
                 debug!(
                     "canonical: region var found with vid {:?}, \
                      opportunistically resolved to {:?}",
                     vid, r
                 );
-                let cvar = self.canonical_var(info, r.into());
-                self.tcx().mk_region(ty::ReCanonical(cvar))
+                self.canonical_var_for_region(r)
             }
 
             ty::ReStatic => {
                 if self.canonicalize_region_mode.static_region {
-                    let info = CanonicalVarInfo {
-                        kind: CanonicalVarKind::Region,
-                    };
-                    let cvar = self.canonical_var(info, r.into());
-                    self.tcx().mk_region(ty::ReCanonical(cvar))
+                    self.canonical_var_for_region(r)
                 } else {
                     r
                 }
@@ -224,11 +216,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
             | ty::ReEmpty
             | ty::ReErased => {
                 if self.canonicalize_region_mode.other_free_regions {
-                    let info = CanonicalVarInfo {
-                        kind: CanonicalVarKind::Region,
-                    };
-                    let cvar = self.canonical_var(info, r.into());
-                    self.tcx().mk_region(ty::ReCanonical(cvar))
+                    self.canonical_var_for_region(r)
                 } else {
                     r
                 }
@@ -412,6 +400,14 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
                 CanonicalVar::new(variables.len() - 1)
             })
         }
+    }
+
+    fn canonical_var_for_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        let info = CanonicalVarInfo {
+            kind: CanonicalVarKind::Region,
+        };
+        let cvar = self.canonical_var(info, r.into());
+        self.tcx().mk_region(ty::ReCanonical(cvar))
     }
 
     /// Given a type variable `ty_var` of the given kind, first check
