@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_imports)]
 use std::{str, string};
 
 const A: [u8; 2] = ['h' as u8, 'i' as u8];

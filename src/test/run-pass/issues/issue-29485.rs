@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_attributes)]
 // aux-build:issue-29485.rs
 // ignore-emscripten no threads
 

@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
+#![allow(unused_imports)]
 // Test how resolving a projection interacts with inference.  In this
 // case, we were eagerly unifying the type variable for the iterator
 // type with `I` from the where clause, ignoring the in-scope `impl`

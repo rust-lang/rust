@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_must_use)]
 // ignore-emscripten no threads support
 // pretty-expanded FIXME #23616
 

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_must_use)]
 
 mod x {
     pub fn g() -> usize {14}

@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
+#![allow(dead_code)]
 
 // revisions:lexical nll
 //[nll]compile-flags: -Z disable-nll-user-type-assert

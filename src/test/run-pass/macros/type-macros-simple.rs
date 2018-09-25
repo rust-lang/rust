@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
+#![allow(unused_variables)]
 macro_rules! Tuple {
     { $A:ty,$B:ty } => { ($A, $B) }
 }

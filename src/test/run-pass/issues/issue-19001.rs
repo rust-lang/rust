@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // check that we handle recursive arrays correctly in `type_of`
 
 struct Loopy {

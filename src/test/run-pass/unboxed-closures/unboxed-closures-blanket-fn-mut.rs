@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 // Test that you can supply `&F` where `F: FnMut()`.
 
 #![feature(lang_items)]

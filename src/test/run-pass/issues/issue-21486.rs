@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unreachable_code)]
 // Issue #21486: Make sure that all structures are dropped, even when
 // created via FRU and control-flow breaks in the middle of
 // construction.

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(path_statements)]
 // pretty-expanded FIXME #23616
 
 macro_rules! inner {

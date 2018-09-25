@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // check for const_err regressions
 
 #![deny(const_err)]

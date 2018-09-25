@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 #![allow(stable_features)]
 // Test a very simple custom DST coercion.
 

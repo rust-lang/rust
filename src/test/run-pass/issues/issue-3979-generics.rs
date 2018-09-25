@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 #![allow(non_snake_case)]
 
 use std::ops::Add;

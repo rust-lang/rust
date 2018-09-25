@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // compile-flags: -Zmir-opt-level=1
 
 use std::mem;

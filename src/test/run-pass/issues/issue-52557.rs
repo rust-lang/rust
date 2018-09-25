@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_imports)]
 // This test checks for namespace pollution by private tests.
 // Tests used to marked as public causing name conflicts with normal
 // functions only in test builds.

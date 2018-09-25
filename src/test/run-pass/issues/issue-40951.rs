@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 // Regression test for #40951.
 
 const FOO: [&'static str; 1] = ["foo"];

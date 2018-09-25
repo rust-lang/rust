@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
+#![allow(unused_imports)]
 // This should resolve fine. Prior to fix, the last import
 // was being tried too early, and marked as unrsolved before
 // the glob import had a chance to be resolved.

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 // Test coercions involving DST and/or raw pointers
 
 // pretty-expanded FIXME #23616

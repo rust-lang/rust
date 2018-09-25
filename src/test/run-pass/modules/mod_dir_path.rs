@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_macros)]
 // ignore-pretty issue #37195
 
 mod mod_dir_simple {

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 enum Foo {
     Bar(Option<i8>, (), (), Vec<i32>),
     Baz,

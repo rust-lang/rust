@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 #![allow(unions_with_drop_fields)]
 
 #![feature(untagged_unions)]

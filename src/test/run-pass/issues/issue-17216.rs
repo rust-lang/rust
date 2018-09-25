@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 struct Leak<'a> {
     dropped: &'a mut bool
 }

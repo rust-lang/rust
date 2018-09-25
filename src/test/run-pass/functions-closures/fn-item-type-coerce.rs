@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 // Test implicit coercions from a fn item type to a fn pointer type.
 
 // pretty-expanded FIXME #23616

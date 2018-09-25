@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 
 // Tests that automatic coercions from &mut T to *mut T
 // allow borrows of T to expire immediately - essentially, that

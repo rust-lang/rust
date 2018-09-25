@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 // Test that we correctly handle projection bounds appearing in the
 // supertrait list (and in conjunction with overloaded operators). In
 // this case, the `Result=Self` binding in the supertrait listing of

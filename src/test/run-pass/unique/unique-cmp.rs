@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_allocation)]
 #![feature(box_syntax)]
 
 pub fn main() {

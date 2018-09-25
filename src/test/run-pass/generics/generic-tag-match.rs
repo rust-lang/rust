@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_assignments)]
 #![allow(non_camel_case_types)]
 
 enum foo<T> { arm(T), }

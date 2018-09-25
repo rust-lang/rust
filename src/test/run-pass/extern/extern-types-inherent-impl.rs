@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Test that inherent impls can be defined for extern types.
 
 #![feature(extern_types)]

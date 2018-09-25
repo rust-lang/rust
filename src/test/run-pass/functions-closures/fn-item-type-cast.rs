@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
+#![allow(unused_variables)]
 // Test explicit coercions from a fn item type to a fn pointer type.
 
 

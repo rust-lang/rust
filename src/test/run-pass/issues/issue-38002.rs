@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Check that constant ADTs are codegened OK, part k of N.
 
 enum Bar {

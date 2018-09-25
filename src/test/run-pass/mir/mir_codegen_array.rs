@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_mut)]
 fn into_inner() -> [u64; 1024] {
     let mut x = 10 + 20;
     [x; 1024]

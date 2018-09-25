@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // pretty-expanded FIXME #23616
 
 // This used to cause an ICE because the retslot for the "return" had the wrong type

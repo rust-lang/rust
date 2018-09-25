@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unreachable_code)]
 // More thorough regression test for Issues #30018 and #30822. This
 // attempts to explore different ways that array element construction
 // (for both scratch arrays and non-scratch ones) interacts with

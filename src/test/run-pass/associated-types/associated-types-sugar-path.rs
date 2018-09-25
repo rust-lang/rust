@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_imports)]
 // Test paths to associated types using the type-parameter-only sugar.
 
 use std::ops::Deref;

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 #[derive(Debug)]
 struct Message<'a, P: 'a = &'a [u8]> {
     header: &'a [u8],

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // aux-build:png2.rs
 // compile-flags:--extern png2
 // edition:2018

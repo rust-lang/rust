@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Test that a type which is covariant with respect to its region
 // parameter is successful when used in a covariant way.
 //

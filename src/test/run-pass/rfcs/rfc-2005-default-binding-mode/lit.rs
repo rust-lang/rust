@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 fn with_u8() {
     let s = 5u8;
     let r = match &s {

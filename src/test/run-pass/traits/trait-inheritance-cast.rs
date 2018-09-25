@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Testing that supertrait methods can be called on subtrait object types
 
 

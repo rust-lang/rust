@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_unsafe)]
+#![allow(unreachable_code)]
 // ignore-emscripten no threads support
 #![allow(stable_features)]
 

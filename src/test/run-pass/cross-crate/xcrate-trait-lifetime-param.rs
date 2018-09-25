@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // aux-build:xcrate-trait-lifetime-param.rs
 
 // pretty-expanded FIXME #23616

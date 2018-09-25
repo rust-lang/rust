@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 #![allow(non_upper_case_globals)]
 
 #![allow(dead_code)]

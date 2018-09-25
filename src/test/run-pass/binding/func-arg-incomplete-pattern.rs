@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Test that we do not leak when the arg pattern must drop part of the
 // argument (in this case, the `y` field).
 

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 use std::marker::PhantomData;
 
 pub struct UnionedKeys<'a,K>

@@ -11,7 +11,7 @@
 // run-pass
 #![feature(crate_in_paths)]
 #![feature(crate_visibility_modifier)]
-
+#![allow(dead_code)]
 mod m {
     pub struct Z;
     pub struct S1(crate (::m::Z)); // OK

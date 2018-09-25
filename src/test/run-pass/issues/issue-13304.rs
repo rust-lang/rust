@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_mut)]
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
 

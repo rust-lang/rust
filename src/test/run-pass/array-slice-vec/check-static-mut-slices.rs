@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 
 // Checks that mutable static items can have mutable slices
 

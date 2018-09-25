@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_mut)]
+#![allow(unused_variables)]
 // Test that we choose Deref or DerefMut appropriately based on mutability of ref bindings (#15609).
 
 use std::ops::{Deref, DerefMut};

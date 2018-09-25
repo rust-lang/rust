@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_doc_comments)]
 #![feature(optin_builtin_traits)]
 
 auto trait Auto {}

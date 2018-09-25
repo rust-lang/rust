@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_must_use)]
 // Test that we are able to reinitialize box with moved referent
 #![feature(nll)]
 static mut ORDER: [usize; 3] = [0, 0, 0];

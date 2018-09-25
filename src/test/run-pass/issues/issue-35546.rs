@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Regression test for #35546. Check that we are able to codegen
 // this. Before we had problems because of the drop glue signature
 // around dropping a trait object (specifically, when dropping the

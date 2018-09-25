@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // test for issue #30244
 
 #[derive(Copy, Clone)]

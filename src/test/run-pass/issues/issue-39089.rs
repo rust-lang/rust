@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 fn f<T: ?for<'a> Sized>() {}
 
 fn main() {}

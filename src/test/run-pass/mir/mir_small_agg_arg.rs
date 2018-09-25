@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 fn foo((x, y): (i8, i8)) {
 }
 

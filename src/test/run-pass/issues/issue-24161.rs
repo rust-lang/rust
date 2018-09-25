@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 #[derive(Copy,Clone)]
 struct Functions {
     a: fn(u32) -> u32,

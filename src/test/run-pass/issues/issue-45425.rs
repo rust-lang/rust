@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 use std::ops::Add;
 
 fn ref_add<T>(a: &T, b: &T) -> T

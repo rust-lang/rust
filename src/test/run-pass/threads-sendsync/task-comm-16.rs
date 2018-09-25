@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_mut)]
+#![allow(unused_parens)]
 #![allow(non_camel_case_types)]
 
 use std::sync::mpsc::channel;

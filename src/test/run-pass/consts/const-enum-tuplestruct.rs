@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 
 enum E { V16(u16), V32(u32) }
 struct S(E, u16, u16);

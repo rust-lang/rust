@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // compile-flags: -g
 
 #[derive(PartialEq, Eq)]

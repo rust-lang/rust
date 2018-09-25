@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_attributes)]
 // compile-flags:--cfg set1
 
 #![cfg_attr(set1, feature(custom_attribute))]

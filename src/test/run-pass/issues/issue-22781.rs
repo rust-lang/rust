@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 use std::collections::HashMap;
 use std::collections::hash_map::Entry::Vacant;
 

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 // Regression test for issue 7660
 // rvalue lifetime too short when equivalent `match` works
 

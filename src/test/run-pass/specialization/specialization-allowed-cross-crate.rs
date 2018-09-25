@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_imports)]
 
 // aux-build:go_trait.rs
 

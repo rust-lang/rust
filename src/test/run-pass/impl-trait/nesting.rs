@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 
 fn foo<T>(t: T) -> impl Into<[T; { const FOO: usize = 1; FOO }]> {
     [t]

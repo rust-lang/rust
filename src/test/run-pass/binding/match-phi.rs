@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
+#![allow(unused_assignments)]
 // pretty-expanded FIXME #23616
 #![allow(non_camel_case_types)]
 #![allow(unused_variables)]

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 
 trait Deserializer {
     fn read_int(&self) -> isize;

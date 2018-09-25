@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 
 // compile-flags:-C lto -C panic=unwind
 // no-prefer-dynamic

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 #![feature(box_syntax)]
 
 struct Point {x: isize, y: isize}

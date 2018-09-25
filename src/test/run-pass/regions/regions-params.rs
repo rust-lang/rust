@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_parens)]
 
 
 fn region_identity(x: &usize) -> &usize { x }

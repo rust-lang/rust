@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // General test that function items in static blocks
 // can be generated with a macro.
 

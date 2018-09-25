@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 
 enum A { A1, A2 }

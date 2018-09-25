@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 #[derive(Debug)]
 enum Foo<'s> {
     V(&'s str)

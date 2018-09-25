@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 pub trait Parameters { type SelfRef; }
 
 struct RP<'a> { _marker: std::marker::PhantomData<&'a ()> }

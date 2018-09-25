@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_must_use)]
+#![allow(dead_code)]
 #![allow(non_camel_case_types)]
 
 // pretty-expanded FIXME #23616

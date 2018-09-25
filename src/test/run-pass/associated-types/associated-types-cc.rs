@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 // aux-build:associated-types-cc-lib.rs
 
 // Test that we are able to reference cross-crate traits that employ

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // A quick test of 'unsafe const fn' functionality
 
 #![feature(min_const_fn)]

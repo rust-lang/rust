@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_mut)]
+#![allow(unused_variables)]
 fn decode() -> String {
     'outer: loop {
         let mut ch_start: usize;

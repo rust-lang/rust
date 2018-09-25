@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_imports)]
 // Test that we are able to compile calls to associated fns like
 // `decode()` where the bound on the `Self` parameter references a
 // lifetime parameter of the trait. This example indicates why trait

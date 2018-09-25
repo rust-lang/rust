@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Regression test for #41936. The coerce-unsized trait check in
 // coherence was using subtyping, which triggered variance
 // computation, which failed because it required type info for fields

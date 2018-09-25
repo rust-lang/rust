@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_must_use)]
 fn main() {
     if false { test(); }
 }

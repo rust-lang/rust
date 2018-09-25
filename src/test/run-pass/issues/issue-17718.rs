@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // aux-build:issue-17718-aux.rs
 
 extern crate issue_17718_aux as other;

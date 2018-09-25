@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // run-pass
-
+#![allow(unused_variables)]
 // compile-flags:-C panic=abort
 // no-prefer-dynamic
 // ignore-cloudabi no processes

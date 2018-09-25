@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 type MyType<'a, T> = &'a T;
 
 // combine lifetime bounds and type arguments in usual way

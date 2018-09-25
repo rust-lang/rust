@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
+#![allow(unused_variables)]
 // Various scenarios in which `pub` is required in blocks
 
 struct S;

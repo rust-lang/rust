@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Test that pointers to extern types can be cast from/to usize,
 // despite being !Sized.
 

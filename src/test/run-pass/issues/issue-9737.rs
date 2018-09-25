@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 macro_rules! f {
     (v: $x:expr) => ( println!("{}", $x) )
 }

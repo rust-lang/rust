@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 
 enum E { V0, V16(u16) }
 static C: (E, u16, u16) = (E::V0, 0x600D, 0xBAD);

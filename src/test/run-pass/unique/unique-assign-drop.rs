@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_assignments)]
 
 #![feature(box_syntax)]
 

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Regression test for #21726: an issue arose around the rules for
 // subtyping of projection types that resulted in an unconstrained
 // region, yielding region inference failures.

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_assignments)]
 // pretty-expanded FIXME #23616
 
 pub fn main() {

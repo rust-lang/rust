@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_imports)]
 // Ideally, any macro call with a trailing comma should behave
 // identically to a call without the comma.
 //

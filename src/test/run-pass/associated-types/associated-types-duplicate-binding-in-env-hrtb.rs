@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Check that we do not report ambiguities when equivalent predicates
 // (modulo bound lifetime names) appears in the environment
 // twice. Issue #21965.

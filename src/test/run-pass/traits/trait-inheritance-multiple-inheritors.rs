@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 
 trait A { fn a(&self) -> isize; }
 trait B: A { fn b(&self) -> isize; }

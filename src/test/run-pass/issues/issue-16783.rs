@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 // pretty-expanded FIXME #23616
 
 pub fn main() {

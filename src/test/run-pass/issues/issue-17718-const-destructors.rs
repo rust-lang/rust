@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 struct A;
 impl Drop for A {
     fn drop(&mut self) {}

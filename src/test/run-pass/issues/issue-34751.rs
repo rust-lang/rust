@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // #34751 ICE: 'rustc' panicked at 'assertion failed: !substs.has_regions_escaping_depth(0)'
 
 #[allow(dead_code)]

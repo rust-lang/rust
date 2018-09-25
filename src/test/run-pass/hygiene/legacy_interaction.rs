@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // ignore-pretty pretty-printing is unhygienic
 
 // aux-build:legacy_interaction.rs

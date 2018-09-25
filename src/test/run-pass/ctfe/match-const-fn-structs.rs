@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 
 // https://github.com/rust-lang/rust/issues/46114
 

@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_assignments)]
+#![allow(unused_variables)]
 use std::fmt;
 struct NoisyDrop<T: fmt::Debug>(T);
 impl<T: fmt::Debug> Drop for NoisyDrop<T> {

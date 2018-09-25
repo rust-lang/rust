@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 
 static X2: u64 = !0 as u16 as u64;
 static Y2: u64 = !0 as u32 as u64;

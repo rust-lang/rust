@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
+#![allow(unused_variables)]
 #![allow(unions_with_drop_fields)]
 
 // Drop works for union itself.

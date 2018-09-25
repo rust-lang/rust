@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_must_use)]
 // ignore-emscripten no threads support
 
 // This test may not always fail, but it can be flaky if the race it used to

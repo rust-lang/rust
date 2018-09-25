@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // This code produces a CFG with critical edges that, if we don't
 // handle properly, will cause invalid codegen.
 

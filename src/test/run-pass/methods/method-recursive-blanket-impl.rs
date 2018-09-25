@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
+#![allow(unused_imports)]
 // Test that we don't trigger on the blanket impl for all `&'a T` but
 // rather keep autoderefing and trigger on the underlying impl.  To
 // know not to stop at the blanket, we have to recursively evaluate

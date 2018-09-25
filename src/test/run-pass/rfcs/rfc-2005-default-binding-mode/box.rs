@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unreachable_patterns)]
 #![feature(box_syntax, box_patterns)]
 
 struct Foo{}

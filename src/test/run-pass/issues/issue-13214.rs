@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // defining static with struct that contains enum
 // with &'static str variant used to cause ICE
 

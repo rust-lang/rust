@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
+#![allow(unused_variables)]
 #![allow(stable_features)]
 
 // Test that we handle projection types which wind up important for

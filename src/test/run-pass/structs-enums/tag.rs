@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_parens)]
 #![allow(non_camel_case_types)]
 
 

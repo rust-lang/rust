@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Regression test for #24085. Errors were occurring in region
 // inference due to the requirement that `'a:b'`, which was getting
 // incorrectly codegened in connection with the closure below.

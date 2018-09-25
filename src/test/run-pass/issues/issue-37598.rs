@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 #![feature(slice_patterns)]
 
 fn check(list: &[u8]) {

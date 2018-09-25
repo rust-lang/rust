@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // ignore-emscripten weird assertion?
 
 #![feature(repr_packed)]

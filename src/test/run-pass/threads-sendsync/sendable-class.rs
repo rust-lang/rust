@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_must_use)]
+#![allow(dead_code)]
+#![allow(unused_variables)]
 #![allow(non_camel_case_types)]
 
 // Test that a class with only sendable fields can be sent

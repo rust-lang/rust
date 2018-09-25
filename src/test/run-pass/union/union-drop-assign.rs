@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_assignments)]
 #![allow(unions_with_drop_fields)]
 
 // Drop works for union itself.

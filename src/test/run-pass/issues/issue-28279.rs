@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 use std::rc::Rc;
 
 fn test1() -> Rc<for<'a> Fn(&'a usize) + 'static> {

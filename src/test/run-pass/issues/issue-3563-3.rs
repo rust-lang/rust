@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_imports)]
 #![allow(non_snake_case)]
 
 // ASCII art shape renderer.  Demonstrates traits, impls, operator overloading,

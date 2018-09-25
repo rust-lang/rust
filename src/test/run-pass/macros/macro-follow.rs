@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_macros)]
 // Check the macro follow sets (see corresponding cfail test).
 
 // FOLLOW(pat) = {FatArrow, Comma, Eq, Or, Ident(if), Ident(in)}

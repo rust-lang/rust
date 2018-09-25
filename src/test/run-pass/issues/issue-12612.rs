@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_imports)]
 // aux-build:issue_12612_1.rs
 // aux-build:issue_12612_2.rs
 

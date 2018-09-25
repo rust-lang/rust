@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Ensures that destructors are run for expressions of the form "let _ = e;"
 // where `e` is a type which requires a destructor.
 

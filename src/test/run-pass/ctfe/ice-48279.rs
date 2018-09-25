@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
+#![allow(unused_unsafe)]
 
 // https://github.com/rust-lang/rust/issues/48279
 

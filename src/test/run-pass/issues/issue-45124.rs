@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unreachable_code)]
 // compile-flags: --edition 2018
 
 #![feature(try_blocks)]

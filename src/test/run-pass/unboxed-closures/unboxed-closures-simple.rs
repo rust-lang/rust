@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_mut)]
+#![allow(unused_imports)]
 use std::ops::FnMut;
 
 pub fn main() {

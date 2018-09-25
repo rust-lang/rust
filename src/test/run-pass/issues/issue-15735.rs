@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 struct A<'a> {
     a: &'a i32,
     b: &'a i32,

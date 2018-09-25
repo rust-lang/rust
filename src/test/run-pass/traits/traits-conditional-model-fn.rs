@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_imports)]
 // A model for how the `Fn` traits could work. You can implement at
 // most one of `Go`, `GoMut`, or `GoOnce`, and then the others follow
 // automatically.

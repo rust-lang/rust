@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Regression test for #29740. Inefficient MIR matching algorithms
 // generated way too much code for this sort of case, leading to OOM.
 #![allow(non_snake_case)]

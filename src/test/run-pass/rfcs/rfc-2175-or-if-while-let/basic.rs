@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 #![feature(if_while_or_patterns)]
 
 enum E {

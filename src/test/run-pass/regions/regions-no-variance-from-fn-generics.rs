@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 // Issue #12856: a lifetime formal binding introduced by a generic fn
 // should not upset the variance inference for actual occurrences of
 // that lifetime in type expressions.

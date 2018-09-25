@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // run-pass
-
+#![allow(unused_variables)]
 // compile-flags:-C panic=abort
 // aux-build:exit-success-if-unwind.rs
 // no-prefer-dynamic

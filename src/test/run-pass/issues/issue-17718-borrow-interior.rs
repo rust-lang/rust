@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 struct S { a: usize }
 
 static A: S = S { a: 3 };

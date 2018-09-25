@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 // ignore-emscripten no threads support
 
 use std::thread;

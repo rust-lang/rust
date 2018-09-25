@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 struct S<T, U = u16> {
     a: T,
     b: U,

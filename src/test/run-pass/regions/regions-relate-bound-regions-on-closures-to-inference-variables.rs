@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Test that this fairly specialized, but also reasonable, pattern
 // typechecks. The pattern involves regions bound in closures that
 // wind up related to inference variables.

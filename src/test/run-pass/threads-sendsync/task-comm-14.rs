@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_parens)]
 // ignore-emscripten no threads support
 
 use std::sync::mpsc::{channel, Sender};

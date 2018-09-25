@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_must_use)]
+#![allow(unused_assignments)]
 // ignore-emscripten no threads support
 
 use std::sync::mpsc::{channel, Sender};

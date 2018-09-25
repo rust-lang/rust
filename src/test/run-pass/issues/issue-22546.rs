@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 // Parsing patterns with paths with type parameters (issue #22544)
 
 use std::default::Default;

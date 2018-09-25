@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_macros)]
 macro_rules! m {
     ($e:expr) => {
         macro_rules! n { () => { $e } }

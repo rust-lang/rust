@@ -10,7 +10,7 @@
 
 // run-pass
 #![feature(crate_in_paths)]
-
+#![allow(dead_code)]
 use crate::m::f;
 use crate as root;
 

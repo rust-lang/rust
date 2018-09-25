@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Regression test for issue #22655: This test should not lead to
 // infinite recursion.
 

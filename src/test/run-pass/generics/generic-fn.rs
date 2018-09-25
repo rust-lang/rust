@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
+#![allow(unused_assignments)]
 
 fn id<T>(x: T) -> T { return x; }
 

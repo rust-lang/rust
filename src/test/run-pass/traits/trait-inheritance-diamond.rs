@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // B and C both require A, so D does as well, twice, but that's just fine
 
 

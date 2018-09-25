@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 const C: *const u8 = &0;
 
 fn foo(x: *const u8) {

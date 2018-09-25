@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // This test case exposes conditions where the encoding of a trait object type
 // with projection predicates would differ between this crate and the upstream
 // crate, because the predicates were encoded in different order within each

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // pretty-expanded FIXME #23616
 
 // Test that `Fn(isize) -> isize + 'static` parses as `(Fn(isize) -> isize) +

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_imports)]
 #![deny(unused_qualifications)]
 
 use self::A::B;

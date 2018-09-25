@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_mut)]
 fn foo<T>(y: Option<T>) {
     let mut x: isize;
     let mut rs: Vec<isize> = Vec::new();

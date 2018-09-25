@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Make sure const bounds work on things, and test that a few types
 // are const.
 

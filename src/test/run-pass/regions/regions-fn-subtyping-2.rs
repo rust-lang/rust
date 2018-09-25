@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Issue #2263.
 
 // Here, `f` is a function that takes a pointer `x` and a function

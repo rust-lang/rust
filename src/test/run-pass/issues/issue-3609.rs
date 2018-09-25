@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_must_use)]
+#![allow(dead_code)]
+#![allow(unused_mut)]
 use std::thread;
 use std::sync::mpsc::Sender;
 

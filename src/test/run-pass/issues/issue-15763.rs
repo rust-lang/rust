@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unreachable_code)]
 #![feature(box_syntax)]
 
 #[derive(PartialEq, Debug)]

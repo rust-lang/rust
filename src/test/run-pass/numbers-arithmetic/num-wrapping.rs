@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_macros)]
 
 // compile-flags: -C debug-assertions
 //

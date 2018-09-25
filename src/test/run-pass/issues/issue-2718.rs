@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
+#![allow(unused_unsafe)]
+#![allow(unused_imports)]
 #![allow(non_camel_case_types)]
 
 pub type Task = isize;

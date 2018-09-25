@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
+#![allow(unused_assignments)]
 #[derive(Debug)]
 enum Foo {
     Bar(u32, u32),

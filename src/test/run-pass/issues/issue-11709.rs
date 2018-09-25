@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // ignore-pretty issue #37199
 
 // Don't panic on blocks without results

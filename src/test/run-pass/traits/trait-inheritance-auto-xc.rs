@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // aux-build:trait_inheritance_auto_xc_aux.rs
 
 

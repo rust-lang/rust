@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 
 struct A { foo: isize }
 struct B { a: isize, b: isize, c: isize }

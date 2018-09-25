@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_imports)]
 // This should resolve fine.
 // Prior to fix, the crossed imports between a and b
 // would block on the glob import, itself never being resolved

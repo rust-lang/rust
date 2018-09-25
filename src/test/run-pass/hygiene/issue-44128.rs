@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_must_use)]
 #![feature(decl_macro)]
 
 pub macro create_struct($a:ident) {

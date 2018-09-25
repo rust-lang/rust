@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_assignments)]
 // Test that duplicate auto trait bounds in trait objects don't create new types.
 #[allow(unused_assignments)]
 

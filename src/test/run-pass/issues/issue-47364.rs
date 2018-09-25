@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 // compile-flags: -C codegen-units=8 -O
 #![allow(non_snake_case)]
 

@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
+#![allow(unused_unsafe)]
 // ignore-wasm32-bare seems unimportant to test
 
 // Issue #2303

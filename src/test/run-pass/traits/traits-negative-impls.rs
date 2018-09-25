@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 #![feature(optin_builtin_traits)]
 
 use std::marker::Send;

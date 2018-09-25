@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Check that merely having lifetime parameters is not
 // enough for codegen to consider this as non-monomorphic,
 // which led to various assertions and failures in turn.

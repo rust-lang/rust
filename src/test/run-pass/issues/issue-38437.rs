@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Check that drop elaboration clears the "master" discriminant
 // drop flag even if it protects no fields.
 

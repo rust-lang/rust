@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_imports)]
 // Test that the call operator autoderefs when calling a bounded type parameter.
 
 use std::ops::FnMut;

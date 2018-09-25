@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
+#![allow(unused_assignments)]
+#![allow(unused_variables)]
 // ignore-emscripten no threads support
 
 #![feature(box_syntax)]

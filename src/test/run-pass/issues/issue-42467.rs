@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 struct Foo<T>(T);
 
 struct IntoIter<T>(T);

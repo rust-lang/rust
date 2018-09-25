@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 use std::collections::BinaryHeap;
 use std::iter::Iterator;
 

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // regression test for #19097
 
 struct Foo<T>(T);

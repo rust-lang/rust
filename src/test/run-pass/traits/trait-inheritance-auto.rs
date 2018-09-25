@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Testing that this impl turns A into a Quux, because
 // A is already a Foo Bar Baz
 

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 #![feature(box_syntax)]
 
 struct Triple { a: isize, b: isize, c: isize }

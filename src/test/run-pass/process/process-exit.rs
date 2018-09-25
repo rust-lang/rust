@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_imports)]
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
 

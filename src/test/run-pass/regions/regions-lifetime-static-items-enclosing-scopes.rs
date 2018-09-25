@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // This test verifies that temporary lifetime is correctly computed
 // for static objects in enclosing scopes.
 

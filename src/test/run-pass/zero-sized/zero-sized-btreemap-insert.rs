@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
+#![allow(unused_imports)]
 use std::cmp::{Ord, Ordering, PartialOrd};
 use std::collections::BTreeMap;
 use std::iter::Iterator;

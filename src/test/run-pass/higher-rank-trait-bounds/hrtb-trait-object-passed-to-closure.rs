@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Test that `&PrinterSupport`, which is really short for `&'a
 // PrinterSupport<'b>`, gets properly expanded when it appears in a
 // closure type. This used to result in messed up De Bruijn indices.

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_imports)]
 // aux-build:use-macro-self.rs
 
 #[macro_use]

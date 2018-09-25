@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Test that we can parse where clauses on various forms of tuple
 // structs.
 

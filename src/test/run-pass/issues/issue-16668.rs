@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 struct Parser<'a, I, O> {
     parse: Box<FnMut(I) -> Result<O, String> + 'a>
 }

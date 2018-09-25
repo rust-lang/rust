@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 #[repr(u64)]
 enum A {
     A = 0u64,

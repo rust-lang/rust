@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // regression test for issue 4875
 
 // pretty-expanded FIXME #23616

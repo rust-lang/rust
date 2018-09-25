@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_mut)]
+#![allow(unused_variables)]
 // pretty-expanded FIXME #23616
 
 fn main() {

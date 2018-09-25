@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 #![deny(non_shorthand_field_patterns)]
 
 pub struct Value<A> { pub value: A }

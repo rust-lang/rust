@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // ignore-cloudabi stdout does not map to file descriptor 1 by default
 // ignore-wasm32-bare no libc
 

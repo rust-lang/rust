@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 use module_of_many_things::*;
 use dug::too::greedily::and::too::deep::*;
 

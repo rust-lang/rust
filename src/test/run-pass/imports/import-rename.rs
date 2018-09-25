@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 use foo::{x, y as fooy};
 use Maybe::{Yes as MaybeYes};
 

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 #[derive(Hash)]
 enum Foo {
     Bar(isize, char),

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Test that pointers and references to extern types are thin, ie they have the same size and
 // alignment as a pointer to ().
 

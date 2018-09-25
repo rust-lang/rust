@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
+#![allow(unused_mut)]
 /*
 # if b { x } else { y } requires identical types for x and y
 */

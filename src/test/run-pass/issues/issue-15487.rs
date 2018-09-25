@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_attributes)]
 // ignore-windows
 // ignore-wasm32-bare no libs to link
 

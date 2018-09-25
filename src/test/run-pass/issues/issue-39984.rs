@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
+#![allow(unreachable_code)]
 // Regression test for issue #39984.
 //
 // The key here is that the error type of the `Ok` call ought to be

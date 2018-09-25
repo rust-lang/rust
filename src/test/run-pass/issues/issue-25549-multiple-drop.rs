@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 struct Foo<'r>(&'r mut i32);
 
 impl<'r> Drop for Foo<'r> {

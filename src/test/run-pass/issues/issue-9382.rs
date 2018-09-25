@@ -11,6 +11,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 #![feature(box_syntax)]
 
 // Tests for a previous bug that occurred due to an interaction

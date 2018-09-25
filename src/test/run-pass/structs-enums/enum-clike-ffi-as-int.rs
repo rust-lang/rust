@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 
 /*!
  * C-like enums have to be represented as LLVM ints, not wrapped in a

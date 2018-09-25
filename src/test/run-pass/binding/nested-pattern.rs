@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 #![allow(non_camel_case_types)]
 
 // a bug was causing this to complain about leaked memory on exit

@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
+#![allow(unused_variables)]
 // Test that when there is a conditional (but blanket) impl and a
 // where clause, we don't get confused in trait resolution.
 //

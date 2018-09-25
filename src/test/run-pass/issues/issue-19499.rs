@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(path_statements)]
+#![allow(unused_variables)]
 // Regression test for issue #19499. Due to incorrect caching of trait
 // results for closures with upvars whose types were not fully
 // computed, this rather bizarre little program (along with many more

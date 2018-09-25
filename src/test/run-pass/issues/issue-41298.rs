@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 struct Function<T, F> { t: T, f: F }
 
 impl<T, R> Function<T, fn() -> R> { fn foo() { } }

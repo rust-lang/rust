@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Test that we are handle to correctly handle a projection type
 // that appears in a supertrait bound. Issue #20559.
 

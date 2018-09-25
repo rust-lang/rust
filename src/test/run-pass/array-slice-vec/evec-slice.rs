@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_assignments)]
 
 pub fn main() {
     let x : &[isize] = &[1,2,3,4,5];

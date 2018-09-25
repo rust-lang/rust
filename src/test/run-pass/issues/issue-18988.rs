@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 pub trait Foo : Send { }
 
 pub struct MyFoo {

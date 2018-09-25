@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_variables)]
 enum Foo {
     Bar = (|x: i32| { }, 42).1,
 }

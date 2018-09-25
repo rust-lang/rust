@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 
 pub fn main() {
     let _id: &Mat2<f64> = &Matrix::identity(1.0);

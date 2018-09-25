@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // Extending Num and using inherited static methods
 
 // pretty-expanded FIXME #23616

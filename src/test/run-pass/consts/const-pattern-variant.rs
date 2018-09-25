@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unreachable_patterns)]
 #![feature(min_const_fn)]
 
 #[derive(PartialEq, Eq)]

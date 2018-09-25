@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_must_use)]
+#![allow(unused_imports)]
 // pretty-expanded FIXME #23616
 #![allow(deprecated)]
 

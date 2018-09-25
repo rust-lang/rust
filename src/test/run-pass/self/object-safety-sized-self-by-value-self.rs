@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_mut)]
 // Check that a trait is still object-safe (and usable) if it has
 // methods with by-value self so long as they require `Self : Sized`.
 

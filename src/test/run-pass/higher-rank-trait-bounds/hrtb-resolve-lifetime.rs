@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // A basic test of using a higher-ranked trait bound.
 
 // pretty-expanded FIXME #23616
