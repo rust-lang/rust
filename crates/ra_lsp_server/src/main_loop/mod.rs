@@ -253,6 +253,7 @@ fn on_request(
         .on::<req::DecorationsRequest>(handlers::handle_decorations)?
         .on::<req::Completion>(handlers::handle_completion)?
         .on::<req::CodeActionRequest>(handlers::handle_code_action)?
+        .on::<req::FoldingRangeRequest>(handlers::handle_folding_range)?
         .finish();
     match req {
         Ok((id, handle)) => {

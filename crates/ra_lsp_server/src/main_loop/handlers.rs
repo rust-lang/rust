@@ -1,15 +1,16 @@
-use std::collections::HashMap;
+use std::collections::{HashMap};
 
 use languageserver_types::{
     Diagnostic, DiagnosticSeverity, DocumentSymbol,
-    Command, TextDocumentIdentifier,
+    CodeActionResponse, Command, TextDocumentIdentifier,
     SymbolInformation, Position, Location, TextEdit,
     CompletionItem, InsertTextFormat, CompletionItemKind,
+    FoldingRange, FoldingRangeParams, FoldingRangeKind
 };
 use serde_json::to_value;
-use ra_analysis::{Query, FileId, RunnableKind, JobToken};
+use ra_analysis::{Query, FileId, RunnableKind, JobToken, FoldKind};
 use ra_syntax::{
-    text_utils::contains_offset_nonstrict,
+    text_utils::contains_offset_nonstrict
 };
 
 use ::{
@@ -177,6 +178,7 @@ pub fn handle_workspace_symbol(
                     world, &line_index
                 )?,
                 container_name: None,
+                deprecated: None,
             };
             res.push(info);
         };
@@ -365,11 +367,41 @@ pub fn handle_completion(
     Ok(Some(req::CompletionResponse::Array(items)))
 }
 
+pub fn handle_folding_range(
+    world: ServerWorld,
+    params: FoldingRangeParams,
+    _token: JobToken,
+) -> Result<Option<Vec<FoldingRange>>> {
+    let file_id = params.text_document.try_conv_with(&world)?;
+    let line_index = world.analysis().file_line_index(file_id);
+
+    let res = Some(world.analysis()
+        .folding_ranges(file_id)
+        .into_iter()
+        .map(|fold| {
+            let kind = match fold.kind {
+                FoldKind::Comment => FoldingRangeKind::Comment,
+                FoldKind::Imports => FoldingRangeKind::Imports
+            };
+            let range = fold.range.conv_with(&line_index);
+            FoldingRange {
+                start_line: range.start.line,
+                start_character: Some(range.start.character),
+                end_line: range.end.line,
+                end_character: Some(range.start.character),
+                kind: Some(kind)
+            }
+        })
+        .collect());
+
+    Ok(res)
+}
+
 pub fn handle_code_action(
     world: ServerWorld,
     params: req::CodeActionParams,
     _token: JobToken,
-) -> Result<Option<Vec<Command>>> {
+) -> Result<Option<CodeActionResponse>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
     let range = params.range.conv_with(&line_index);
@@ -392,7 +424,7 @@ pub fn handle_code_action(
         res.push(cmd);
     }
 
-    Ok(Some(res))
+    Ok(Some(CodeActionResponse::Commands(res)))
 }
 
 pub fn publish_diagnostics(

@@ -1,5 +1,7 @@
 use languageserver_types::{
     ServerCapabilities,
+    CodeActionProviderCapability,
+    FoldingRangeProviderCapability,
     TextDocumentSyncCapability,
     TextDocumentSyncOptions,
     TextDocumentSyncKind,
@@ -32,7 +34,7 @@ pub fn server_capabilities() -> ServerCapabilities {
         document_highlight_provider: None,
         document_symbol_provider: Some(true),
         workspace_symbol_provider: Some(true),
-        code_action_provider: Some(true),
+        code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
         code_lens_provider: None,
         document_formatting_provider: None,
         document_range_formatting_provider: None,
@@ -40,10 +42,12 @@ pub fn server_capabilities() -> ServerCapabilities {
             first_trigger_character: "=".to_string(),
             more_trigger_character: None,
         }),
+        folding_range_provider: Some(FoldingRangeProviderCapability::Simple(true)),
         rename_provider: None,
         color_provider: None,
         execute_command_provider: Some(ExecuteCommandOptions {
             commands: vec!["apply_code_action".to_string()],
         }),
+        workspace: None,
     }
 }
