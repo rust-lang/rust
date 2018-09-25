@@ -2662,23 +2662,32 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             as Box<dyn Iterator<Item = AssociatedItem> + 'a>
     }
 
-    /// Returns true if the impls are the same polarity and are implementing
-    /// a trait which contains no items
+    /// Returns true if the impls are the same polarity and the trait either
+    /// has no items or is annotated #[marker] and prevents item overrides.
     pub fn impls_are_allowed_to_overlap(self, def_id1: DefId, def_id2: DefId) -> bool {
-        if !self.features().overlapping_marker_traits {
-            return false;
+        if self.features().overlapping_marker_traits {
+            let trait1_is_empty = self.impl_trait_ref(def_id1)
+                .map_or(false, |trait_ref| {
+                    self.associated_item_def_ids(trait_ref.def_id).is_empty()
+                });
+            let trait2_is_empty = self.impl_trait_ref(def_id2)
+                .map_or(false, |trait_ref| {
+                    self.associated_item_def_ids(trait_ref.def_id).is_empty()
+                });
+            self.impl_polarity(def_id1) == self.impl_polarity(def_id2)
+                && trait1_is_empty
+                && trait2_is_empty
+        } else if self.features().marker_trait_attr {
+            let is_marker_impl = |def_id: DefId| -> bool {
+                let trait_ref = self.impl_trait_ref(def_id);
+                trait_ref.map_or(false, |tr| self.trait_def(tr.def_id).is_marker)
+            };
+            self.impl_polarity(def_id1) == self.impl_polarity(def_id2)
+                && is_marker_impl(def_id1)
+                && is_marker_impl(def_id2)
+        } else {
+            false
         }
-        let trait1_is_empty = self.impl_trait_ref(def_id1)
-            .map_or(false, |trait_ref| {
-                self.associated_item_def_ids(trait_ref.def_id).is_empty()
-            });
-        let trait2_is_empty = self.impl_trait_ref(def_id2)
-            .map_or(false, |trait_ref| {
-                self.associated_item_def_ids(trait_ref.def_id).is_empty()
-            });
-        self.impl_polarity(def_id1) == self.impl_polarity(def_id2)
-            && trait1_is_empty
-            && trait2_is_empty
     }
 
     // Returns `ty::VariantDef` if `def` refers to a struct,

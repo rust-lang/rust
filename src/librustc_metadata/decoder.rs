@@ -539,6 +539,7 @@ impl<'a, 'tcx> CrateMetadata {
                           data.unsafety,
                           data.paren_sugar,
                           data.has_auto_impl,
+                          data.is_marker,
                           self.def_path_table.def_path_hash(item_id))
     }
 

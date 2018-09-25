@@ -355,6 +355,9 @@ declare_features! (
     // Allows overlapping impls of marker traits
     (active, overlapping_marker_traits, "1.18.0", Some(29864), None),
 
+    // Trait attribute to allow overlapping impls
+    (active, marker_trait_attr, "1.30.0", Some(29864), None),
+
     // rustc internal
     (active, abi_thiscall, "1.19.0", None, None),
 
@@ -807,6 +810,12 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                           "non_exhaustive",
                                           "non exhaustive is an experimental feature",
                                           cfg_fn!(non_exhaustive))),
+
+    // RFC #1268
+    ("marker", Normal, Gated(Stability::Unstable,
+                             "marker_trait_attr",
+                             "marker traits is an experimental feature",
+                             cfg_fn!(marker_trait_attr))),
 
     ("plugin", CrateLevel, Gated(Stability::Unstable,
                                  "plugin",

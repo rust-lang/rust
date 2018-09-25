@@ -32,6 +32,7 @@ enum Target {
     Statement,
     Closure,
     Static,
+    Trait,
     Other,
 }
 
@@ -45,6 +46,7 @@ impl Target {
             hir::ItemKind::Const(..) => Target::Const,
             hir::ItemKind::ForeignMod(..) => Target::ForeignMod,
             hir::ItemKind::Static(..) => Target::Static,
+            hir::ItemKind::Trait(..) => Target::Trait,
             _ => Target::Other,
         }
     }
@@ -70,6 +72,8 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                 self.check_inline(attr, &item.span, target)
             } else if attr.check_name("non_exhaustive") {
                 self.check_non_exhaustive(attr, item, target)
+            } else if attr.check_name("marker") {
+                self.check_marker(attr, item, target)
             }
         }
 
@@ -110,6 +114,26 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                              E0702,
                              "attribute should be empty")
                 .span_label(item.span, "not empty")
+                .emit();
+        }
+    }
+
+    /// Check if the `#[marker]` attribute on an `item` is valid.
+    fn check_marker(&self, attr: &hir::Attribute, item: &hir::Item, target: Target) {
+        match target {
+            Target::Trait => { /* Valid */ },
+            _ => {
+                self.tcx.sess
+                    .struct_span_err(attr.span, "attribute can only be applied to a trait")
+                    .span_label(item.span, "not a trait")
+                    .emit();
+                return;
+            }
+        }
+
+        if !attr.is_word() {
+            self.tcx.sess
+                .struct_span_err(attr.span, "attribute should be empty")
                 .emit();
         }
     }
