@@ -14,8 +14,7 @@ use back::write::{ModuleConfig, with_llvm_pmb, CodegenContext};
 use back::write::{self, DiagnosticHandlers, pre_lto_bitcode_filename};
 use errors::{FatalError, Handler};
 use llvm::archive_ro::ArchiveRO;
-use llvm::{True, False};
-use llvm;
+use llvm::{self, True, False};
 use memmap;
 use rustc::dep_graph::WorkProduct;
 use rustc::dep_graph::cgu_reuse_tracker::CguReuse;
@@ -49,7 +48,7 @@ pub fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
 
 pub(crate) enum LtoModuleCodegen {
     Fat {
-        module: Option<ModuleCodegen>,
+        module: Option<ModuleCodegen<ModuleLlvm>>,
         _serialized_bitcode: Vec<SerializedModule>,
     },
 
@@ -73,7 +72,7 @@ impl LtoModuleCodegen {
     pub(crate) unsafe fn optimize(&mut self,
                                   cgcx: &CodegenContext,
                                   timeline: &mut Timeline)
-        -> Result<ModuleCodegen, FatalError>
+        -> Result<ModuleCodegen<ModuleLlvm>, FatalError>
     {
         match *self {
             LtoModuleCodegen::Fat { ref mut module, .. } => {
@@ -108,7 +107,7 @@ impl LtoModuleCodegen {
 /// the need optimization and another for modules that can simply be copied over
 /// from the incr. comp. cache.
 pub(crate) fn run(cgcx: &CodegenContext,
-                  modules: Vec<ModuleCodegen>,
+                  modules: Vec<ModuleCodegen<ModuleLlvm>>,
                   cached_modules: Vec<(SerializedModule, WorkProduct)>,
                   timeline: &mut Timeline)
     -> Result<(Vec<LtoModuleCodegen>, Vec<WorkProduct>), FatalError>
@@ -232,7 +231,7 @@ pub(crate) fn run(cgcx: &CodegenContext,
 
 fn fat_lto(cgcx: &CodegenContext,
            diag_handler: &Handler,
-           mut modules: Vec<ModuleCodegen>,
+           mut modules: Vec<ModuleCodegen<ModuleLlvm>>,
            mut serialized_modules: Vec<(SerializedModule, CString)>,
            symbol_white_list: &[*const libc::c_char],
            timeline: &mut Timeline)
@@ -388,7 +387,7 @@ impl Drop for Linker<'a> {
 /// they all go out of scope.
 fn thin_lto(cgcx: &CodegenContext,
             diag_handler: &Handler,
-            modules: Vec<ModuleCodegen>,
+            modules: Vec<ModuleCodegen<ModuleLlvm>>,
             serialized_modules: Vec<(SerializedModule, CString)>,
             cached_modules: Vec<(SerializedModule, WorkProduct)>,
             symbol_white_list: &[*const libc::c_char],
@@ -736,7 +735,7 @@ impl ThinModule {
     }
 
     unsafe fn optimize(&mut self, cgcx: &CodegenContext, timeline: &mut Timeline)
-        -> Result<ModuleCodegen, FatalError>
+        -> Result<ModuleCodegen<ModuleLlvm>, FatalError>
     {
         let diag_handler = cgcx.create_diag_handler();
         let tm = (cgcx.tm_factory)().map_err(|e| {

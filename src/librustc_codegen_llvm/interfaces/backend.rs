@@ -9,10 +9,51 @@
 // except according to those terms.
 
 use super::CodegenObject;
+use ModuleCodegen;
+use rustc::session::Session;
+use rustc::middle::cstore::EncodedMetadata;
+use rustc::middle::allocator::AllocatorKind;
+use rustc::ty::TyCtxt;
+use time_graph::TimeGraph;
+use std::sync::mpsc::Receiver;
+use std::any::Any;
 
 pub trait Backend<'ll> {
     type Value : 'll + CodegenObject;
     type BasicBlock : Copy;
     type Type : CodegenObject;
     type Context;
+}
+
+pub trait BackendMethods {
+    type Metadata;
+    type OngoingCodegen;
+
+    fn thin_lto_available(&self) -> bool;
+    fn pgo_available(&self) -> bool;
+    fn new_metadata(&self, sess: &Session, mod_name: &str) -> Self::Metadata;
+    fn write_metadata<'a, 'gcx>(
+        &self,
+        tcx: TyCtxt<'a, 'gcx, 'gcx>,
+        metadata: &Self::Metadata
+    ) -> EncodedMetadata;
+    fn codegen_allocator(&self, tcx: TyCtxt, mods: &Self::Metadata, kind: AllocatorKind);
+
+    fn start_async_codegen(
+        &self,
+        tcx: TyCtxt,
+        time_graph: Option<TimeGraph>,
+        metadata: EncodedMetadata,
+        coordinator_receive: Receiver<Box<dyn Any + Send>>,
+        total_cgus: usize
+    ) -> Self::OngoingCodegen;
+    fn submit_pre_codegened_module_to_llvm(
+        &self,
+        codegen: &Self::OngoingCodegen,
+        tcx: TyCtxt,
+        module: ModuleCodegen<Self::Metadata>
+    );
+    fn codegen_finished(&self, codegen: &Self::OngoingCodegen, tcx: TyCtxt);
+    fn check_for_errors(&self, codegen: &Self::OngoingCodegen, sess: &Session);
+    fn wait_for_signal_to_codegen_item(&self, codegen: &Self::OngoingCodegen);
 }

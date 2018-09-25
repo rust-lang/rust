@@ -21,7 +21,7 @@ mod declare;
 mod asm;
 
 pub use self::builder::{BuilderMethods, HasCodegen};
-pub use self::backend::Backend;
+pub use self::backend::{Backend, BackendMethods};
 pub use self::consts::ConstMethods;
 pub use self::type_::{TypeMethods, BaseTypeMethods, DerivedTypeMethods,
     LayoutTypeMethods, ArgTypeMethods};
