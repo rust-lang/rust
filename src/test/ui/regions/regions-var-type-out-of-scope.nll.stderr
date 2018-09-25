@@ -1,4 +1,4 @@
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/regions-var-type-out-of-scope.rs:19:14
    |
 LL |         x = &id(3); //~ ERROR borrowed value does not live long enough
@@ -13,4 +13,4 @@ LL |         assert_eq!(*x, 3);
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0714`.
+For more information about this error, try `rustc --explain E0716`.

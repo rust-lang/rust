@@ -4,7 +4,7 @@ error[E0493]: destructors cannot be evaluated at compile-time
 LL | static PROMOTION_FAIL_S: Option<&'static WithDtor> = Some(&WithDtor);
    |                                                            ^^^^^^^^ statics cannot evaluate destructors
 
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-drop-scope.rs:19:60
    |
 LL | static PROMOTION_FAIL_S: Option<&'static WithDtor> = Some(&WithDtor);
@@ -20,7 +20,7 @@ error[E0493]: destructors cannot be evaluated at compile-time
 LL | const PROMOTION_FAIL_C: Option<&'static WithDtor> = Some(&WithDtor);
    |                                                           ^^^^^^^^ constants cannot evaluate destructors
 
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-drop-scope.rs:23:59
    |
 LL | const PROMOTION_FAIL_C: Option<&'static WithDtor> = Some(&WithDtor);
@@ -56,5 +56,5 @@ LL |     (x, ()).1
 
 error: aborting due to 8 previous errors
 
-Some errors occurred: E0493, E0714.
+Some errors occurred: E0493, E0716.
 For more information about an error, try `rustc --explain E0493`.

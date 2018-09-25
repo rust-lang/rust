@@ -1,4 +1,4 @@
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/regions-creating-enums.rs:33:17
    |
 LL |         return &ast::num((*f)(x)); //~ ERROR borrowed value does not live long enough
@@ -12,7 +12,7 @@ note: borrowed value must be valid for the lifetime 'a as defined on the functio
 LL | fn map_nums<'a,'b, F>(x: &ast, f: &mut F) -> &'a ast<'b> where F: FnMut(usize) -> usize {
    |             ^^
 
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/regions-creating-enums.rs:38:17
    |
 LL |         return &ast::add(m_x, m_y);  //~ ERROR borrowed value does not live long enough
@@ -28,4 +28,4 @@ LL | fn map_nums<'a,'b, F>(x: &ast, f: &mut F) -> &'a ast<'b> where F: FnMut(usi
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0714`.
+For more information about this error, try `rustc --explain E0716`.

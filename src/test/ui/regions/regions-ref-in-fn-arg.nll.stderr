@@ -1,4 +1,4 @@
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/regions-ref-in-fn-arg.rs:14:13
    |
 LL | fn arg_item(box ref x: Box<isize>) -> &'static isize {
@@ -9,7 +9,7 @@ LL | }
    |
    = note: borrowed value must be valid for the static lifetime...
 
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/regions-ref-in-fn-arg.rs:21:11
    |
 LL |     with(|box ref x| x) //~ ERROR borrowed value does not live long enough
@@ -19,4 +19,4 @@ LL |     with(|box ref x| x) //~ ERROR borrowed value does not live long enough
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0714`.
+For more information about this error, try `rustc --explain E0716`.

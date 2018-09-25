@@ -1,4 +1,4 @@
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/regions-close-over-borrowed-ref-in-obj.rs:22:27
    |
 LL |         let ss: &isize = &id(1);
@@ -13,4 +13,4 @@ LL | }
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0714`.
+For more information about this error, try `rustc --explain E0716`.

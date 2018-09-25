@@ -1,4 +1,4 @@
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/wf-misc-methods-issue-28609.rs:32:31
    |
 LL |     s.transmute_inherent(&mut 42) //~ ERROR does not live long enough
@@ -55,7 +55,7 @@ LL | |     &*s
 LL | | }
    | |_^
 
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/wf-misc-methods-issue-28609.rs:63:15
    |
 LL |     s << &mut 3 //~ ERROR does not live long enough
@@ -72,7 +72,7 @@ LL | |     s << &mut 3 //~ ERROR does not live long enough
 LL | | }
    | |_^
 
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/wf-misc-methods-issue-28609.rs:68:16
    |
 LL |     s.shl(&mut 3) //~ ERROR does not live long enough
@@ -89,7 +89,7 @@ LL | |     s.shl(&mut 3) //~ ERROR does not live long enough
 LL | | }
    | |_^
 
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/wf-misc-methods-issue-28609.rs:73:21
    |
 LL |     S2::shl(s, &mut 3) //~ ERROR does not live long enough
@@ -108,5 +108,5 @@ LL | | }
 
 error: aborting due to 6 previous errors
 
-Some errors occurred: E0597, E0714.
+Some errors occurred: E0597, E0716.
 For more information about an error, try `rustc --explain E0597`.

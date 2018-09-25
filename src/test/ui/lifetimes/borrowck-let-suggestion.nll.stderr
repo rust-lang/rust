@@ -1,4 +1,4 @@
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/borrowck-let-suggestion.rs:12:17
    |
 LL |     let mut x = vec![1].iter();
@@ -14,4 +14,4 @@ LL |     x.use_mut();
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0714`.
+For more information about this error, try `rustc --explain E0716`.

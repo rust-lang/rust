@@ -1,4 +1,4 @@
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-reference-to-fn-2.rs:28:22
    |
 LL |     self_.statefn = &id(state2 as StateMachineFunc);
@@ -16,7 +16,7 @@ LL | |     return Some("state1");
 LL | | }
    | |_^
 
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-reference-to-fn-2.rs:34:22
    |
 LL |     self_.statefn = &id(state3 as StateMachineFunc);
@@ -34,7 +34,7 @@ LL | |     return Some("state2");
 LL | | }
    | |_^
 
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-reference-to-fn-2.rs:40:22
    |
 LL |     self_.statefn = &id(finished as StateMachineFunc);
@@ -52,7 +52,7 @@ LL | |     return Some("state3");
 LL | | }
    | |_^
 
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-reference-to-fn-2.rs:51:19
    |
 LL |         statefn: &id(state1 as StateMachineFunc)
@@ -65,4 +65,4 @@ LL | }
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0714`.
+For more information about this error, try `rustc --explain E0716`.

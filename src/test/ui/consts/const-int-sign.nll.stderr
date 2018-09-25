@@ -1,4 +1,4 @@
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/const-int-sign.rs:12:29
    |
 LL |     let x: &'static bool = &(5_i32.is_negative()); //~ ERROR does not live long enough
@@ -9,7 +9,7 @@ LL | }
    |
    = note: borrowed value must be valid for the static lifetime...
 
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/const-int-sign.rs:13:29
    |
 LL |     let y: &'static bool = &(5_i32.is_positive()); //~ ERROR does not live long enough
@@ -21,4 +21,4 @@ LL | }
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0714`.
+For more information about this error, try `rustc --explain E0716`.

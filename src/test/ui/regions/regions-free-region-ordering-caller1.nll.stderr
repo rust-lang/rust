@@ -1,4 +1,4 @@
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/regions-free-region-ordering-caller1.rs:19:27
    |
 LL |     let z: &'a & usize = &(&y);
@@ -15,4 +15,4 @@ LL | fn call1<'a>(x: &'a usize) {
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0714`.
+For more information about this error, try `rustc --explain E0716`.

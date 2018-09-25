@@ -1,4 +1,4 @@
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-region-bound.rs:20:14
    |
 LL |     let x = &id(3); //~ ERROR borrowed value does not live long enough
@@ -11,4 +11,4 @@ LL | }
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0714`.
+For more information about this error, try `rustc --explain E0716`.

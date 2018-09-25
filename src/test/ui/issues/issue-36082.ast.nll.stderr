@@ -1,4 +1,4 @@
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/issue-36082.rs:23:19
    |
 LL |     let val: &_ = x.borrow().0;
@@ -13,4 +13,4 @@ LL |     println!("{}", val);
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0714`.
+For more information about this error, try `rustc --explain E0716`.

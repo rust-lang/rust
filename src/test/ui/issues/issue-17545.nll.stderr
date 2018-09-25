@@ -1,4 +1,4 @@
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/issue-17545.rs:17:10
    |
 LL |         &id(()), //~ ERROR borrowed value does not live long enough
@@ -14,4 +14,4 @@ LL | pub fn foo<'a, F: Fn(&'a ())>(bar: F) {
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0714`.
+For more information about this error, try `rustc --explain E0716`.

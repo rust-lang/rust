@@ -1,4 +1,4 @@
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/borrowck-let-suggestion-suffixes.rs:28:14
    |
 LL |     v3.push(&id('x'));           // statement 6
@@ -11,7 +11,7 @@ LL |     (v1, v2, v3, /* v4 is above. */ v5).use_ref();
    |
    = note: consider using a `let` binding to create a longer lived value
 
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/borrowck-let-suggestion-suffixes.rs:38:18
    |
 LL |         v4.push(&id('y'));
@@ -24,7 +24,7 @@ LL |         v4.use_ref();
    |
    = note: consider using a `let` binding to create a longer lived value
 
-error[E0714]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/borrowck-let-suggestion-suffixes.rs:49:14
    |
 LL |     v5.push(&id('z'));
@@ -39,4 +39,4 @@ LL |     (v1, v2, v3, /* v4 is above. */ v5).use_ref();
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0714`.
+For more information about this error, try `rustc --explain E0716`.
