@@ -1002,6 +1002,65 @@ fn test_align_to_empty_mid() {
 }
 
 #[test]
+fn test_slice_partition_dedup_by() {
+    let mut slice: [i32; 9] = [1, -1, 2, 3, 1, -5, 5, -2, 2];
+
+    let (dedup, duplicates) = slice.partition_dedup_by(|a, b| a.abs() == b.abs());
+
+    assert_eq!(dedup, [1, 2, 3, 1, -5, -2]);
+    assert_eq!(duplicates, [5, -1, 2]);
+}
+
+#[test]
+fn test_slice_partition_dedup_empty() {
+    let mut slice: [i32; 0] = [];
+
+    let (dedup, duplicates) = slice.partition_dedup();
+
+    assert_eq!(dedup, []);
+    assert_eq!(duplicates, []);
+}
+
+#[test]
+fn test_slice_partition_dedup_one() {
+    let mut slice = [12];
+
+    let (dedup, duplicates) = slice.partition_dedup();
+
+    assert_eq!(dedup, [12]);
+    assert_eq!(duplicates, []);
+}
+
+#[test]
+fn test_slice_partition_dedup_multiple_ident() {
+    let mut slice = [12, 12, 12, 12, 12, 11, 11, 11, 11, 11, 11];
+
+    let (dedup, duplicates) = slice.partition_dedup();
+
+    assert_eq!(dedup, [12, 11]);
+    assert_eq!(duplicates, [12, 12, 12, 12, 11, 11, 11, 11, 11]);
+}
+
+#[test]
+fn test_slice_partition_dedup_partialeq() {
+    #[derive(Debug)]
+    struct Foo(i32, i32);
+
+    impl PartialEq for Foo {
+        fn eq(&self, other: &Foo) -> bool {
+            self.0 == other.0
+        }
+    }
+
+    let mut slice = [Foo(0, 1), Foo(0, 5), Foo(1, 7), Foo(1, 9)];
+
+    let (dedup, duplicates) = slice.partition_dedup();
+
+    assert_eq!(dedup, [Foo(0, 1), Foo(1, 7)]);
+    assert_eq!(duplicates, [Foo(0, 5), Foo(1, 9)]);
+}
+
+#[test]
 fn test_copy_within() {
     // Start to end, with a RangeTo.
     let mut bytes = *b"Hello, World!";
