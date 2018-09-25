@@ -761,7 +761,7 @@ impl Default for TargetOptions {
 }
 
 impl Target {
-    /// Given a function ABI, turn "System" into the correct ABI for this target.
+    /// Given a function ABI, turn it into the correct ABI for this target.
     pub fn adjust_abi(&self, abi: Abi) -> Abi {
         match abi {
             Abi::System => {
@@ -769,6 +769,16 @@ impl Target {
                     Abi::Stdcall
                 } else {
                     Abi::C
+                }
+            },
+            // These ABI kinds are ignored on non-x86 Windows targets.
+            // See https://docs.microsoft.com/en-us/cpp/cpp/argument-passing-and-naming-conventions
+            // and the individual pages for __stdcall et al.
+            Abi::Stdcall | Abi::Fastcall | Abi::Vectorcall | Abi::Thiscall => {
+                if self.options.is_like_windows && self.arch != "x86" {
+                    Abi::C
+                } else {
+                    abi
                 }
             },
             abi => abi

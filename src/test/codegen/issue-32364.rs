@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-arm
-// ignore-aarch64
+// Test that `extern "stdcall"` is properly translated.
+
+// only-x86
 
 // compile-flags: -C no-prepopulate-passes
 
