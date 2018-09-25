@@ -162,6 +162,8 @@ pub struct Config {
 pub struct Target {
     /// Some(path to llvm-config) if using an external LLVM.
     pub llvm_config: Option<PathBuf>,
+    /// Some(path to FileCheck) if one was specified.
+    pub llvm_filecheck: Option<PathBuf>,
     pub jemalloc: Option<PathBuf>,
     pub cc: Option<PathBuf>,
     pub cxx: Option<PathBuf>,
@@ -330,6 +332,7 @@ struct Rust {
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct TomlTarget {
     llvm_config: Option<String>,
+    llvm_filecheck: Option<String>,
     jemalloc: Option<String>,
     cc: Option<String>,
     cxx: Option<String>,
@@ -582,6 +585,9 @@ impl Config {
 
                 if let Some(ref s) = cfg.llvm_config {
                     target.llvm_config = Some(config.src.join(s));
+                }
+                if let Some(ref s) = cfg.llvm_filecheck {
+                    target.llvm_filecheck = Some(config.src.join(s));
                 }
                 if let Some(ref s) = cfg.jemalloc {
                     target.jemalloc = Some(config.src.join(s));
