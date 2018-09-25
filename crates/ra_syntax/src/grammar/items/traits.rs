@@ -54,16 +54,8 @@ pub(super) fn impl_item(p: &mut Parser) {
 
     // test impl_item_neg
     // impl !Send for X {}
-    if p.at(IMPL_KW) {
-        p.error("expected type");
-    } else {
-        p.eat(EXCL);
-        if p.at(IMPL_KW) {
-            p.error("expected type");
-        } else {
-            types::type_(p);
-        }
-    }
+    p.eat(EXCL);
+    impl_type(p);
     if p.eat(FOR_KW) {
         types::type_(p);
     }
@@ -123,3 +115,17 @@ fn choose_type_params_over_qpath(p: &Parser) -> bool {
     (p.nth(1) == LIFETIME || p.nth(1) == IDENT)
         && (p.nth(2) == R_ANGLE || p.nth(2) == COMMA || p.nth(2) == COLON || p.nth(2) == EQ)
 }
+
+// impl Type {}
+//      ^^^^
+// impl Trait for T {}
+//      ^^^^^
+pub(crate) fn impl_type(p: &mut Parser) {
+    if p.at(IMPL_KW) {
+        p.error("expected trait or type");
+        return;
+    }
+    types::type_(p);
+}
+
+
