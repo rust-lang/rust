@@ -120,6 +120,7 @@
 #![feature(const_vec_new)]
 #![feature(slice_partition_dedup)]
 #![feature(maybe_uninit)]
+#![feature(rchunks)]
 
 // Allow testing this library
 
