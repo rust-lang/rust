@@ -21,7 +21,7 @@ use rustc::ty::subst::Subst;
 use rustc::traits::ObligationCause;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::query::OnDiskCache;
-use rustc::infer::{self, InferOk, InferResult};
+use rustc::infer::{self, InferOk, InferResult, SuppressRegionErrors};
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc_metadata::cstore::CStore;
@@ -177,7 +177,7 @@ fn test_env_with_pool<F>(
             });
             let outlives_env = OutlivesEnvironment::new(param_env);
             let def_id = tcx.hir.local_def_id(ast::CRATE_NODE_ID);
-            infcx.resolve_regions_and_report_errors(def_id, &region_scope_tree, &outlives_env);
+            infcx.resolve_regions_and_report_errors(def_id, &region_scope_tree, &outlives_env, SuppressRegionErrors::default());
             assert_eq!(tcx.sess.err_count(), expected_err_count);
         });
     });
