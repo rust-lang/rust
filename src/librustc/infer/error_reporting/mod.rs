@@ -55,22 +55,22 @@
 //! ported to this system, and which relies on string concatenation at the
 //! time of error detection.
 
-use infer::{self, SuppressRegionErrors};
-use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
-use super::region_constraints::GenericKind;
 use super::lexical_region_resolve::RegionResolutionError;
+use super::region_constraints::GenericKind;
+use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
+use infer::{self, SuppressRegionErrors};
 
-use std::{cmp, fmt};
+use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use hir;
-use hir::Node;
 use hir::def_id::DefId;
+use hir::Node;
 use middle::region;
-use traits::{ObligationCause, ObligationCauseCode};
-use ty::{self, subst::Subst, Region, Ty, TyCtxt, TypeFoldable, TyKind};
-use ty::error::TypeError;
+use std::{cmp, fmt};
 use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
-use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
+use traits::{ObligationCause, ObligationCauseCode};
+use ty::error::TypeError;
+use ty::{self, subst::Subst, Region, Ty, TyCtxt, TyKind, TypeFoldable};
 
 mod note;
 
@@ -152,8 +152,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
 
             // We shouldn't encounter an error message with ReClosureBound.
-            ty::ReCanonical(..) |
-            ty::ReClosureBound(..) => {
+            ty::ReCanonical(..) | ty::ReClosureBound(..) => {
                 bug!("encountered unexpected ReClosureBound: {:?}", region,);
             }
         };
@@ -175,9 +174,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     fn msg_span_from_free_region(self, region: ty::Region<'tcx>) -> (String, Option<Span>) {
         match *region {
-            ty::ReEarlyBound(_) | ty::ReFree(_)  => {
+            ty::ReEarlyBound(_) | ty::ReFree(_) => {
                 self.msg_span_from_early_bound_and_free_regions(region)
-            },
+            }
             ty::ReStatic => ("the static lifetime".to_owned(), None),
             _ => bug!("{:?}", region),
         }
@@ -196,25 +195,28 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             Some(Node::Item(it)) => Self::item_scope_tag(&it),
             Some(Node::TraitItem(it)) => Self::trait_item_scope_tag(&it),
             Some(Node::ImplItem(it)) => Self::impl_item_scope_tag(&it),
-            _ => unreachable!()
+            _ => unreachable!(),
         };
         let (prefix, span) = match *region {
             ty::ReEarlyBound(ref br) => {
                 let mut sp = cm.def_span(self.hir.span(node));
-                if let Some(param) = self.hir.get_generics(scope).and_then(|generics| {
-                    generics.get_named(&br.name)
-                }) {
+                if let Some(param) = self.hir
+                    .get_generics(scope)
+                    .and_then(|generics| generics.get_named(&br.name))
+                {
                     sp = param.span;
                 }
                 (format!("the lifetime {} as defined on", br.name), sp)
             }
             ty::ReFree(ty::FreeRegion {
-                bound_region: ty::BoundRegion::BrNamed(_, ref name), ..
+                bound_region: ty::BoundRegion::BrNamed(_, ref name),
+                ..
             }) => {
                 let mut sp = cm.def_span(self.hir.span(node));
-                if let Some(param) = self.hir.get_generics(scope).and_then(|generics| {
-                    generics.get_named(&name)
-                }) {
+                if let Some(param) = self.hir
+                    .get_generics(scope)
+                    .and_then(|generics| generics.get_named(&name))
+                {
                     sp = param.span;
                 }
                 (format!("the lifetime {} as defined on", name), sp)
@@ -277,9 +279,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     fn impl_item_scope_tag(item: &hir::ImplItem) -> &'static str {
         match item.node {
             hir::ImplItemKind::Method(..) => "method body",
-            hir::ImplItemKind::Const(..) |
-            hir::ImplItemKind::Existential(..) |
-            hir::ImplItemKind::Type(..) => "associated item",
+            hir::ImplItemKind::Const(..)
+            | hir::ImplItemKind::Existential(..)
+            | hir::ImplItemKind::Type(..) => "associated item",
         }
     }
 
@@ -299,7 +301,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         errors: &Vec<RegionResolutionError<'tcx>>,
         suppress: SuppressRegionErrors,
     ) {
-        debug!("report_region_errors(): {} errors to start, suppress = {:?}", errors.len(), suppress);
+        debug!(
+            "report_region_errors(): {} errors to start, suppress = {:?}",
+            errors.len(),
+            suppress
+        );
 
         if suppress.suppressed() {
             return;
@@ -473,17 +479,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     } else {
                         err.span_label(arm_span, msg);
                     }
-                },
-                hir::MatchSource::TryDesugar => { // Issue #51632
+                }
+                hir::MatchSource::TryDesugar => {
+                    // Issue #51632
                     if let Ok(try_snippet) = self.tcx.sess.source_map().span_to_snippet(arm_span) {
                         err.span_suggestion_with_applicability(
                             arm_span,
                             "try wrapping with a success variant",
                             format!("Ok({})", try_snippet),
-                            Applicability::MachineApplicable
+                            Applicability::MachineApplicable,
                         );
                     }
-                },
+                }
                 _ => {
                     let msg = "match arm with an incompatible type";
                     if self.tcx.sess.source_map().is_multiline(arm_span) {
@@ -632,16 +639,21 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn strip_generic_default_params(
         &self,
         def_id: DefId,
-        substs: &ty::subst::Substs<'tcx>
+        substs: &ty::subst::Substs<'tcx>,
     ) -> &'tcx ty::subst::Substs<'tcx> {
         let generics = self.tcx.generics_of(def_id);
         let mut num_supplied_defaults = 0;
-        let mut type_params = generics.params.iter().rev().filter_map(|param| match param.kind {
-            ty::GenericParamDefKind::Lifetime => None,
-            ty::GenericParamDefKind::Type { has_default, .. } => {
-                Some((param.def_id, has_default))
-            }
-        }).peekable();
+        let mut type_params = generics
+            .params
+            .iter()
+            .rev()
+            .filter_map(|param| match param.kind {
+                ty::GenericParamDefKind::Lifetime => None,
+                ty::GenericParamDefKind::Type { has_default, .. } => {
+                    Some((param.def_id, has_default))
+                }
+            })
+            .peekable();
         let has_default = {
             let has_default = type_params.peek().map(|(_, has_default)| has_default);
             *has_default.unwrap_or(&false)
@@ -675,10 +687,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 | (&ty::Infer(ty::InferTy::IntVar(_)), &ty::Infer(ty::InferTy::IntVar(_)))
                 | (&ty::Float(_), &ty::Infer(ty::InferTy::FloatVar(_)))
                 | (&ty::Infer(ty::InferTy::FloatVar(_)), &ty::Float(_))
-                | (
-                    &ty::Infer(ty::InferTy::FloatVar(_)),
-                    &ty::Infer(ty::InferTy::FloatVar(_)),
-                ) => true,
+                | (&ty::Infer(ty::InferTy::FloatVar(_)), &ty::Infer(ty::InferTy::FloatVar(_))) => {
+                    true
+                }
                 _ => false,
             }
         }
@@ -694,11 +705,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 "&{}{}{}",
                 r,
                 if r == "" { "" } else { " " },
-                if mutbl == hir::MutMutable {
-                    "mut "
-                } else {
-                    ""
-                }
+                if mutbl == hir::MutMutable { "mut " } else { "" }
             ));
             s.push_normal(ty.to_string());
         }
@@ -729,9 +736,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     let common_len = cmp::min(len1, len2);
                     let remainder1: Vec<_> = sub1.types().skip(common_len).collect();
                     let remainder2: Vec<_> = sub2.types().skip(common_len).collect();
-                    let common_default_params =
-                        remainder1.iter().rev().zip(remainder2.iter().rev())
-                                               .filter(|(a, b)| a == b).count();
+                    let common_default_params = remainder1
+                        .iter()
+                        .rev()
+                        .zip(remainder2.iter().rev())
+                        .filter(|(a, b)| a == b)
+                        .count();
                     let len = sub1.len() - common_default_params;
 
                     // Only draw `<...>` if there're lifetime/type arguments.
@@ -857,8 +867,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
 
             // When encountering &T != &mut T, highlight only the borrow
-            (&ty::Ref(r1, ref_ty1, mutbl1),
-             &ty::Ref(r2, ref_ty2, mutbl2)) if equals(&ref_ty1, &ref_ty2) => {
+            (&ty::Ref(r1, ref_ty1, mutbl1), &ty::Ref(r2, ref_ty2, mutbl2))
+                if equals(&ref_ty1, &ref_ty2) =>
+            {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
                 push_ty_ref(&r1, ref_ty1, mutbl1, &mut values.0);
                 push_ty_ref(&r2, ref_ty2, mutbl2, &mut values.1);
@@ -1059,11 +1070,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         bound_kind: GenericKind<'tcx>,
         sub: Region<'tcx>,
     ) {
-        self.construct_generic_bound_failure(region_scope_tree,
-                                             span,
-                                             origin,
-                                             bound_kind,
-                                             sub)
+        self.construct_generic_bound_failure(region_scope_tree, span, origin, bound_kind, sub)
             .emit()
     }
 
@@ -1074,8 +1081,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         origin: Option<SubregionOrigin<'tcx>>,
         bound_kind: GenericKind<'tcx>,
         sub: Region<'tcx>,
-    ) -> DiagnosticBuilder<'a>
-    {
+    ) -> DiagnosticBuilder<'a> {
         // Attempt to obtain the span of the parameter so we can
         // suggest adding an explicit lifetime bound to it.
         let type_param_span = match (self.in_progress_tables, bound_kind) {
@@ -1152,8 +1158,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let tail = if has_lifetimes { " + " } else { "" };
                 let suggestion = format!("{}: {}{}", bound_kind, sub, tail);
                 err.span_suggestion_short_with_applicability(
-                    sp, consider, suggestion,
-                    Applicability::MaybeIncorrect // Issue #41966
+                    sp,
+                    consider,
+                    suggestion,
+                    Applicability::MaybeIncorrect, // Issue #41966
                 );
             } else {
                 err.help(consider);
@@ -1349,12 +1357,10 @@ impl<'tcx> ObligationCause<'tcx> {
         match self.code {
             CompareImplMethodObligation { .. } => Error0308("method not compatible with trait"),
             MatchExpressionArm { source, .. } => Error0308(match source {
-                hir::MatchSource::IfLetDesugar { .. } => {
-                    "`if let` arms have incompatible types"
-                },
+                hir::MatchSource::IfLetDesugar { .. } => "`if let` arms have incompatible types",
                 hir::MatchSource::TryDesugar => {
                     "try expression alternatives have incompatible types"
-                },
+                }
                 _ => "match arms have incompatible types",
             }),
             IfExpression => Error0308("if and else have incompatible types"),
