@@ -26,7 +26,7 @@ use rustc::util::nodemap::FxHashMap;
 use time_graph::{self, TimeGraph, Timeline};
 use llvm::{self, DiagnosticInfo, PassManager, SMDiagnostic};
 use llvm_util;
-use {CodegenResults, ModuleCodegen, CompiledModule, ModuleKind, // ModuleLlvm,
+use {CodegenResults, ModuleCodegen, CompiledModule, ModuleKind, ModuleLlvm,
      CachedModuleCodegen};
 use CrateInfo;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
@@ -408,7 +408,7 @@ impl CodegenContext {
         }
     }
 
-    pub(crate) fn save_temp_bitcode(&self, module: &ModuleCodegen, name: &str) {
+    pub(crate) fn save_temp_bitcode(&self, module: &ModuleCodegen<ModuleLlvm>, name: &str) {
         if !self.save_temps {
             return
         }
@@ -515,7 +515,7 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
 // Unsafe due to LLVM calls.
 unsafe fn optimize(cgcx: &CodegenContext,
                    diag_handler: &Handler,
-                   module: &ModuleCodegen,
+                   module: &ModuleCodegen<ModuleLlvm>,
                    config: &ModuleConfig,
                    timeline: &mut Timeline)
     -> Result<(), FatalError>
@@ -646,7 +646,7 @@ unsafe fn optimize(cgcx: &CodegenContext,
 }
 
 fn generate_lto_work(cgcx: &CodegenContext,
-                     modules: Vec<ModuleCodegen>,
+                     modules: Vec<ModuleCodegen<ModuleLlvm>>,
                      import_only_modules: Vec<(SerializedModule, WorkProduct)>)
     -> Vec<(WorkItem, u64)>
 {
@@ -675,7 +675,7 @@ fn generate_lto_work(cgcx: &CodegenContext,
 
 unsafe fn codegen(cgcx: &CodegenContext,
                   diag_handler: &Handler,
-                  module: ModuleCodegen,
+                  module: ModuleCodegen<ModuleLlvm>,
                   config: &ModuleConfig,
                   timeline: &mut Timeline)
     -> Result<CompiledModule, FatalError>
@@ -1284,7 +1284,7 @@ pub(crate) fn dump_incremental_data(_codegen_results: &CodegenResults) {
 
 enum WorkItem {
     /// Optimize a newly codegened, totally unoptimized module.
-    Optimize(ModuleCodegen),
+    Optimize(ModuleCodegen<ModuleLlvm>),
     /// Copy the post-LTO artifacts from the incremental cache to the output
     /// directory.
     CopyPostLtoArtifacts(CachedModuleCodegen),
@@ -1312,7 +1312,7 @@ impl WorkItem {
 
 enum WorkItemResult {
     Compiled(CompiledModule),
-    NeedsLTO(ModuleCodegen),
+    NeedsLTO(ModuleCodegen<ModuleLlvm>),
 }
 
 fn execute_work_item(cgcx: &CodegenContext,
@@ -1336,7 +1336,7 @@ fn execute_work_item(cgcx: &CodegenContext,
 }
 
 fn execute_optimize_work_item(cgcx: &CodegenContext,
-                              module: ModuleCodegen,
+                              module: ModuleCodegen<ModuleLlvm>,
                               module_config: &ModuleConfig,
                               timeline: &mut Timeline)
     -> Result<WorkItemResult, FatalError>
@@ -1480,7 +1480,7 @@ fn execute_lto_work_item(cgcx: &CodegenContext,
 enum Message {
     Token(io::Result<Acquired>),
     NeedsLTO {
-        result: ModuleCodegen,
+        result: ModuleCodegen<ModuleLlvm>,
         worker_id: usize,
     },
     Done {
@@ -2445,7 +2445,7 @@ impl OngoingCodegen {
 
     pub(crate) fn submit_pre_codegened_module_to_llvm(&self,
                                                       tcx: TyCtxt,
-                                                      module: ModuleCodegen) {
+                                                      module: ModuleCodegen<ModuleLlvm>) {
         self.wait_for_signal_to_codegen_item();
         self.check_for_errors(tcx.sess);
 
@@ -2497,7 +2497,7 @@ impl OngoingCodegen {
 // }
 
 pub(crate) fn submit_codegened_module_to_llvm(tcx: TyCtxt,
-                                              module: ModuleCodegen,
+                                              module: ModuleCodegen<ModuleLlvm>,
                                               cost: u64) {
     let llvm_work_item = WorkItem::Optimize(module);
     drop(tcx.tx_to_llvm_workers.lock().send(Box::new(Message::CodegenDone {

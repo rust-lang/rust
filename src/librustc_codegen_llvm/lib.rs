@@ -68,6 +68,10 @@ extern crate tempfile;
 extern crate memmap;
 
 use back::bytecode::RLIB_BYTECODE_EXTENSION;
+use interfaces::*;
+use time_graph::TimeGraph;
+use std::sync::mpsc::Receiver;
+use back::write::{self, OngoingCodegen};
 
 pub use llvm_util::target_features;
 use std::any::Any;
@@ -76,7 +80,8 @@ use rustc_data_structures::sync::Lrc;
 
 use rustc::dep_graph::DepGraph;
 use rustc::hir::def_id::CrateNum;
-use rustc::middle::cstore::MetadataLoader;
+use rustc::middle::allocator::AllocatorKind;
+use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
 use rustc::middle::cstore::{NativeLibrary, CrateSource, LibSource};
 use rustc::middle::lang_items::LangItem;
 use rustc::session::{Session, CompileIncomplete};
@@ -132,6 +137,56 @@ mod type_of;
 mod value;
 
 pub struct LlvmCodegenBackend(());
+
+impl BackendMethods for LlvmCodegenBackend {
+    type Metadata = ModuleLlvm;
+    type OngoingCodegen = OngoingCodegen;
+
+    fn new_metadata(&self, sess: &Session, mod_name: &str) -> ModuleLlvm {
+        ModuleLlvm::new(sess, mod_name)
+    }
+    fn write_metadata<'a, 'gcx>(
+        &self,
+        tcx: TyCtxt<'a, 'gcx, 'gcx>,
+        metadata: &ModuleLlvm
+    ) -> EncodedMetadata {
+        base::write_metadata(tcx, metadata)
+    }
+    fn start_async_codegen(
+        &self,
+        tcx: TyCtxt,
+        time_graph: Option<TimeGraph>,
+        metadata: EncodedMetadata,
+        coordinator_receive: Receiver<Box<dyn Any + Send>>,
+        total_cgus: usize
+    ) -> OngoingCodegen {
+        write::start_async_codegen(tcx, time_graph, metadata, coordinator_receive, total_cgus)
+    }
+    fn submit_pre_codegened_module_to_llvm(
+        &self,
+        codegen: &OngoingCodegen,
+        tcx: TyCtxt,
+        module: ModuleCodegen<ModuleLlvm>
+    ) {
+        codegen.submit_pre_codegened_module_to_llvm(tcx, module)
+    }
+    fn codegen_aborted(codegen: OngoingCodegen) {
+        codegen.codegen_aborted();
+    }
+    fn codegen_finished(&self, codegen: &OngoingCodegen, tcx: TyCtxt) {
+        codegen.codegen_finished(tcx)
+    }
+    fn check_for_errors(&self, codegen: &OngoingCodegen, sess: &Session) {
+        codegen.check_for_errors(sess)
+    }
+    fn codegen_allocator(&self, tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind) {
+        unsafe { allocator::codegen(tcx, mods, kind) }
+    }
+    fn wait_for_signal_to_codegen_item(&self, codegen: &OngoingCodegen) {
+        codegen.wait_for_signal_to_codegen_item()
+    }
+}
+
 
 impl !Send for LlvmCodegenBackend {} // Llvm is on a per-thread basis
 impl !Sync for LlvmCodegenBackend {}
@@ -212,7 +267,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         rx: mpsc::Receiver<Box<dyn Any + Send>>
     ) -> Box<dyn Any> {
-        box base::codegen_crate(tcx, rx)
+        box base::codegen_crate(LlvmCodegenBackend(()), tcx, rx)
     }
 
     fn join_codegen_and_link(
@@ -265,7 +320,7 @@ pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     LlvmCodegenBackend::new()
 }
 
-struct ModuleCodegen {
+pub struct ModuleCodegen<M> {
     /// The name of the module. When the crate may be saved between
     /// compilations, incremental compilation requires that name be
     /// unique amongst **all** crates.  Therefore, it should contain
@@ -273,7 +328,7 @@ struct ModuleCodegen {
     /// as the crate name and disambiguator.
     /// We currently generate these names via CodegenUnit::build_cgu_name().
     name: String,
-    module_llvm: ModuleLlvm,
+    module_llvm: M,
     kind: ModuleKind,
 }
 
@@ -282,7 +337,7 @@ struct CachedModuleCodegen {
     source: WorkProduct,
 }
 
-impl ModuleCodegen {
+impl ModuleCodegen<ModuleLlvm> {
     fn into_compiled_module(self,
                             emit_obj: bool,
                             emit_bc: bool,
@@ -315,7 +370,7 @@ impl ModuleCodegen {
     }
 }
 
-struct ModuleLlvm {
+pub struct ModuleLlvm {
     llcx: &'static mut llvm::Context,
     llmod_raw: *const llvm::Module,
     tm: &'static mut llvm::TargetMachine,

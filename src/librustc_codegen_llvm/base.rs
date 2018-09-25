@@ -29,7 +29,7 @@ use super::ModuleKind;
 use super::CachedModuleCodegen;
 
 use abi;
-use back::write::{self, OngoingCodegen};
+use back::write;
 use llvm;
 use metadata;
 use rustc::dep_graph::cgu_reuse_tracker::CguReuse;
@@ -48,7 +48,6 @@ use rustc::util::profiling::ProfileCategory;
 use rustc::session::config::{self, DebugInfo, EntryFnType, Lto};
 use rustc::session::Session;
 use rustc_incremental;
-use allocator;
 use mir::place::PlaceRef;
 use builder::{Builder, MemFlags};
 use callee;
@@ -584,9 +583,10 @@ fn maybe_create_entry_wrapper<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
-                            llvm_module: &ModuleLlvm)
-                            -> EncodedMetadata {
+pub(crate) fn write_metadata<'a, 'gcx>(
+    tcx: TyCtxt<'a, 'gcx, 'gcx>,
+    llvm_module: &ModuleLlvm
+) -> EncodedMetadata {
     use std::io::Write;
     use flate2::Compression;
     use flate2::write::DeflateEncoder;
@@ -713,10 +713,12 @@ fn determine_cgu_reuse<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                               rx: mpsc::Receiver<Box<dyn Any + Send>>)
-                               -> OngoingCodegen
-{
+pub fn codegen_crate<'a, 'tcx, B: BackendMethods>(
+    backend: B,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    rx: mpsc::Receiver<Box<dyn Any + Send>>
+) -> B::OngoingCodegen {
+
     check_for_rustc_errors_attr(tcx);
 
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
@@ -728,9 +730,9 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                             &["crate"],
                                                             Some("metadata")).as_str()
                                                                              .to_string();
-    let metadata_llvm_module = ModuleLlvm::new(tcx.sess, &metadata_cgu_name);
+    let metadata_llvm_module = backend.new_metadata(tcx.sess, &metadata_cgu_name);
     let metadata = time(tcx.sess, "write metadata", || {
-        write_metadata(tcx, &metadata_llvm_module)
+        backend.write_metadata(tcx, &metadata_llvm_module)
     });
     tcx.sess.profiler(|p| p.end_activity(ProfileCategory::Codegen));
 
@@ -749,19 +751,19 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Skip crate items and just output metadata in -Z no-codegen mode.
     if tcx.sess.opts.debugging_opts.no_codegen ||
        !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = write::start_async_codegen(
+        let ongoing_codegen = backend.start_async_codegen(
             tcx,
             time_graph,
             metadata,
             rx,
             1);
 
-        ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, metadata_module);
-        ongoing_codegen.codegen_finished(tcx);
+        backend.submit_pre_codegened_module_to_llvm(&ongoing_codegen, tcx, metadata_module);
+        backend.codegen_finished(&ongoing_codegen, tcx);
 
         assert_and_save_dep_graph(tcx);
 
-        ongoing_codegen.check_for_errors(tcx.sess);
+        backend.check_for_errors(&ongoing_codegen, tcx.sess);
 
         return ongoing_codegen;
     }
@@ -782,13 +784,13 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    let ongoing_codegen = write::start_async_codegen(
+    let ongoing_codegen = backend.start_async_codegen(
         tcx,
         time_graph.clone(),
         metadata,
         rx,
         codegen_units.len());
-    let ongoing_codegen = AbortCodegenOnDrop(Some(ongoing_codegen));
+    let ongoing_codegen = AbortCodegenOnDrop::<B>(Some(ongoing_codegen));
 
     // Codegen an allocator shim, if necessary.
     //
@@ -811,11 +813,9 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                        &["crate"],
                                                        Some("allocator")).as_str()
                                                                          .to_string();
-        let modules = ModuleLlvm::new(tcx.sess, &llmod_id);
+        let modules = backend.new_metadata(tcx.sess, &llmod_id);
         time(tcx.sess, "write allocator module", || {
-            unsafe {
-                allocator::codegen(tcx, &modules, kind)
-            }
+            backend.codegen_allocator(tcx, &modules, kind)
         });
 
         Some(ModuleCodegen {
@@ -828,10 +828,10 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     if let Some(allocator_module) = allocator_module {
-        ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, allocator_module);
+        backend.submit_pre_codegened_module_to_llvm(&ongoing_codegen, tcx, allocator_module);
     }
 
-    ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, metadata_module);
+    backend.submit_pre_codegened_module_to_llvm(&ongoing_codegen, tcx, metadata_module);
 
     // We sort the codegen units by size. This way we can schedule work for LLVM
     // a bit more efficiently.
@@ -845,8 +845,8 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut all_stats = Stats::default();
 
     for cgu in codegen_units.into_iter() {
-        ongoing_codegen.wait_for_signal_to_codegen_item();
-        ongoing_codegen.check_for_errors(tcx.sess);
+        backend.wait_for_signal_to_codegen_item(&ongoing_codegen);
+        backend.check_for_errors(&ongoing_codegen, tcx.sess);
 
         let cgu_reuse = determine_cgu_reuse(tcx, &cgu);
         tcx.sess.cgu_reuse_tracker.set_actual_reuse(&cgu.name().as_str(), cgu_reuse);
@@ -881,7 +881,7 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
     }
 
-    ongoing_codegen.codegen_finished(tcx);
+    backend.codegen_finished(&ongoing_codegen, tcx);
 
     // Since the main thread is sometimes blocked during codegen, we keep track
     // -Ztime-passes output manually.
@@ -915,7 +915,7 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    ongoing_codegen.check_for_errors(tcx.sess);
+    backend.check_for_errors(&ongoing_codegen, tcx.sess);
 
     assert_and_save_dep_graph(tcx);
     ongoing_codegen.into_inner()
@@ -938,32 +938,32 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// If you see this comment in the code, then it means that this workaround
 /// worked! We may yet one day track down the mysterious cause of that
 /// segfault...
-struct AbortCodegenOnDrop(Option<OngoingCodegen>);
+struct AbortCodegenOnDrop<B: BackendMethods>(Option<B::OngoingCodegen>);
 
-impl AbortCodegenOnDrop {
-    fn into_inner(mut self) -> OngoingCodegen {
+impl<B: BackendMethods> AbortCodegenOnDrop<B> {
+    fn into_inner(mut self) -> B::OngoingCodegen {
         self.0.take().unwrap()
     }
 }
 
-impl Deref for AbortCodegenOnDrop {
-    type Target = OngoingCodegen;
+impl<B: BackendMethods> Deref for AbortCodegenOnDrop<B> {
+    type Target = B::OngoingCodegen;
 
-    fn deref(&self) -> &OngoingCodegen {
+    fn deref(&self) -> &B::OngoingCodegen {
         self.0.as_ref().unwrap()
     }
 }
 
-impl DerefMut for AbortCodegenOnDrop {
-    fn deref_mut(&mut self) -> &mut OngoingCodegen {
+impl<B: BackendMethods> DerefMut for AbortCodegenOnDrop<B> {
+    fn deref_mut(&mut self) -> &mut B::OngoingCodegen {
         self.0.as_mut().unwrap()
     }
 }
 
-impl Drop for AbortCodegenOnDrop {
+impl<B: BackendMethods> Drop for AbortCodegenOnDrop<B> {
     fn drop(&mut self) {
         if let Some(codegen) = self.0.take() {
-            codegen.codegen_aborted();
+            B::codegen_aborted(codegen);
         }
     }
 }
@@ -1092,7 +1092,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     fn module_codegen<'a, 'tcx>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         cgu_name: InternedString)
-        -> (Stats, ModuleCodegen)
+        -> (Stats, ModuleCodegen<ModuleLlvm>)
     {
         let cgu = tcx.codegen_unit(cgu_name);
 
@@ -1226,9 +1226,9 @@ pub fn visibility_to_llvm(linkage: Visibility) -> llvm::Visibility {
 mod temp_stable_hash_impls {
     use rustc_data_structures::stable_hasher::{StableHasherResult, StableHasher,
                                                HashStable};
-    use ModuleCodegen;
+    use {ModuleCodegen, ModuleLlvm};
 
-    impl<HCX> HashStable<HCX> for ModuleCodegen {
+    impl<HCX> HashStable<HCX> for ModuleCodegen<ModuleLlvm> {
         fn hash_stable<W: StableHasherResult>(&self,
                                               _: &mut HCX,
                                               _: &mut StableHasher<W>) {
