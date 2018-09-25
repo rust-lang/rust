@@ -117,8 +117,17 @@ pub unsafe fn from_u32_unchecked(i: u32) -> char {
 impl From<char> for u32 {
     /// Converts a [`char`] into a [`u32`].
     ///
-    /// [`char`]: primitive.char.html
-    /// [`u32`]: primitive.u32.html
+    /// # Examples
+    ///
+    /// ```
+    /// use std::mem;
+    ///
+    /// fn main() {
+    ///     let c = 'c';
+    ///     let u = u32::from(c);
+    ///     assert!(4 == mem::size_of_val(&u))
+    /// }
+    /// ```
     #[inline]
     fn from(c: char) -> Self {
         c as u32
@@ -147,8 +156,17 @@ impl From<char> for u32 {
 impl From<u8> for char {
     /// Converts a [`u8`] into a [`char`].
     ///
-    /// [`u8`]: primitive.u8.html
-    /// [`char`]: primitive.char.html
+    /// # Examples
+    ///
+    /// ```
+    /// use std::mem;
+    ///
+    /// fn main() {
+    ///     let u = 32 as u8;
+    ///     let c = char::from(u);
+    ///     assert!(4 == mem::size_of_val(&c))
+    /// }
+    /// ```
     #[inline]
     fn from(i: u8) -> Self {
         i as char
