@@ -736,6 +736,7 @@ All notable changes to this project will be documented in this file.
 [`many_single_char_names`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#many_single_char_names
 [`map_clone`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#map_clone
 [`map_entry`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#map_entry
+[`map_flatten`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#map_flatten
 [`match_as_ref`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#match_as_ref
 [`match_bool`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#match_bool
 [`match_overlapping_arm`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#match_overlapping_arm
