@@ -555,6 +555,29 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         self.cannot_borrow_path_as_mutable_because(span, path, "", o)
     }
 
+    fn cannot_mutate_in_match_guard(
+        self,
+        mutate_span: Span,
+        match_span: Span,
+        match_place: &str,
+        action: &str,
+        o: Origin,
+    ) -> DiagnosticBuilder<'cx> {
+        let mut err = struct_span_err!(
+            self,
+            mutate_span,
+            E0510,
+            "cannot {} `{}` in match guard{OGN}",
+            action,
+            match_place,
+            OGN = o
+        );
+        err.span_label(mutate_span, format!("cannot {}", action));
+        err.span_label(match_span, format!("value is immutable in match guard"));
+
+        self.cancel_if_wrong_origin(err, o)
+    }
+
     fn cannot_borrow_across_generator_yield(
         self,
         span: Span,

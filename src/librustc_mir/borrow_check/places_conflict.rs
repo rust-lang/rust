@@ -12,20 +12,21 @@ use borrow_check::ArtificialField;
 use borrow_check::Overlap;
 use borrow_check::{Deep, Shallow, AccessDepth};
 use rustc::hir;
-use rustc::mir::{Mir, Place};
+use rustc::mir::{BorrowKind, Mir, Place};
 use rustc::mir::{Projection, ProjectionElem};
 use rustc::ty::{self, TyCtxt};
 use std::cmp::max;
 
-pub(super) fn places_conflict<'gcx, 'tcx>(
+pub(super) fn borrow_conflicts_with_place<'gcx, 'tcx>(
     tcx: TyCtxt<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     borrow_place: &Place<'tcx>,
+    borrow_kind: BorrowKind,
     access_place: &Place<'tcx>,
     access: AccessDepth,
 ) -> bool {
     debug!(
-        "places_conflict({:?},{:?},{:?})",
+        "borrow_conflicts_with_place({:?},{:?},{:?})",
         borrow_place, access_place, access
     );
 
@@ -39,7 +40,14 @@ pub(super) fn places_conflict<'gcx, 'tcx>(
 
     unroll_place(borrow_place, None, |borrow_components| {
         unroll_place(access_place, None, |access_components| {
-            place_components_conflict(tcx, mir, borrow_components, access_components, access)
+            place_components_conflict(
+                tcx,
+                mir,
+                borrow_components,
+                borrow_kind,
+                access_components,
+                access
+            )
         })
     })
 }
@@ -48,6 +56,7 @@ fn place_components_conflict<'gcx, 'tcx>(
     tcx: TyCtxt<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     mut borrow_components: PlaceComponentsIter<'_, 'tcx>,
+    borrow_kind: BorrowKind,
     mut access_components: PlaceComponentsIter<'_, 'tcx>,
     access: AccessDepth,
 ) -> bool {
@@ -95,10 +104,10 @@ fn place_components_conflict<'gcx, 'tcx>(
     loop {
         // loop invariant: borrow_c is always either equal to access_c or disjoint from it.
         if let Some(borrow_c) = borrow_components.next() {
-            debug!("places_conflict: borrow_c = {:?}", borrow_c);
+            debug!("borrow_conflicts_with_place: borrow_c = {:?}", borrow_c);
 
             if let Some(access_c) = access_components.next() {
-                debug!("places_conflict: access_c = {:?}", access_c);
+                debug!("borrow_conflicts_with_place: access_c = {:?}", access_c);
 
                 // Borrow and access path both have more components.
                 //
@@ -127,7 +136,7 @@ fn place_components_conflict<'gcx, 'tcx>(
                         // idea, at least for now, so just give up and
                         // report a conflict. This is unsafe code anyway so
                         // the user could always use raw pointers.
-                        debug!("places_conflict: arbitrary -> conflict");
+                        debug!("borrow_conflicts_with_place: arbitrary -> conflict");
                         return true;
                     }
                     Overlap::EqualOrDisjoint => {
@@ -136,7 +145,7 @@ fn place_components_conflict<'gcx, 'tcx>(
                     Overlap::Disjoint => {
                         // We have proven the borrow disjoint - further
                         // projections will remain disjoint.
-                        debug!("places_conflict: disjoint");
+                        debug!("borrow_conflicts_with_place: disjoint");
                         return false;
                     }
                 }
@@ -157,7 +166,8 @@ fn place_components_conflict<'gcx, 'tcx>(
 
                 match (elem, &base_ty.sty, access) {
                     (_, _, Shallow(Some(ArtificialField::Discriminant)))
-                    | (_, _, Shallow(Some(ArtificialField::ArrayLength))) => {
+                    | (_, _, Shallow(Some(ArtificialField::ArrayLength)))
+                    | (_, _, Shallow(Some(ArtificialField::ShallowBorrow))) => {
                         // The discriminant and array length are like
                         // additional fields on the type; they do not
                         // overlap any existing data there. Furthermore,
@@ -167,7 +177,7 @@ fn place_components_conflict<'gcx, 'tcx>(
                         //
                         // e.g. a (mutable) borrow of `a[5]` while we read the
                         // array length of `a`.
-                        debug!("places_conflict: implicit field");
+                        debug!("borrow_conflicts_with_place: implicit field");
                         return false;
                     }
 
@@ -175,7 +185,7 @@ fn place_components_conflict<'gcx, 'tcx>(
                         // e.g. a borrow of `*x.y` while we shallowly access `x.y` or some
                         // prefix thereof - the shallow access can't touch anything behind
                         // the pointer.
-                        debug!("places_conflict: shallow access behind ptr");
+                        debug!("borrow_conflicts_with_place: shallow access behind ptr");
                         return false;
                     }
                     (ProjectionElem::Deref, ty::Ref(_, _, hir::MutImmutable), _) => {
@@ -185,7 +195,7 @@ fn place_components_conflict<'gcx, 'tcx>(
                     (ProjectionElem::Deref, ty::Ref(_, _, hir::MutMutable), AccessDepth::Drop) => {
                         // Values behind a mutatble reference are not access either by Dropping a
                         // value, or by StorageDead
-                        debug!("places_conflict: drop access behind ptr");
+                        debug!("borrow_conflicts_with_place: drop access behind ptr");
                         return false;
                     }
 
@@ -225,11 +235,13 @@ fn place_components_conflict<'gcx, 'tcx>(
             // If the second example, where we did, then we still know
             // that the borrow can access a *part* of our place that
             // our access cares about, so we still have a conflict.
-            //
-            // FIXME: Differs from AST-borrowck; includes drive-by fix
-            // to #38899. Will probably need back-compat mode flag.
-            debug!("places_conflict: full borrow, CONFLICT");
-            return true;
+            if borrow_kind == BorrowKind::Shallow && access_components.next().is_some() {
+                debug!("borrow_conflicts_with_place: shallow borrow");
+                return false;
+            } else {
+                debug!("borrow_conflicts_with_place: full borrow, CONFLICT");
+                return true;
+            }
         }
     }
 }
@@ -241,7 +253,7 @@ fn place_components_conflict<'gcx, 'tcx>(
 ///
 /// NB: This particular impl strategy is not the most obvious.  It was
 /// chosen because it makes a measurable difference to NLL
-/// performance, as this code (`places_conflict`) is somewhat hot.
+/// performance, as this code (`borrow_conflicts_with_place`) is somewhat hot.
 struct PlaceComponents<'p, 'tcx: 'p> {
     component: &'p Place<'tcx>,
     next: Option<&'p PlaceComponents<'p, 'tcx>>,

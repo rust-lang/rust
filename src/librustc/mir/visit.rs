@@ -963,6 +963,7 @@ impl<'tcx> PlaceContext<'tcx> {
 
             PlaceContext::Inspect |
             PlaceContext::Borrow { kind: BorrowKind::Shared, .. } |
+            PlaceContext::Borrow { kind: BorrowKind::Shallow, .. } |
             PlaceContext::Borrow { kind: BorrowKind::Unique, .. } |
             PlaceContext::Projection(Mutability::Not) |
             PlaceContext::Copy | PlaceContext::Move |
@@ -974,7 +975,9 @@ impl<'tcx> PlaceContext<'tcx> {
     /// Returns true if this place context represents a use that does not change the value.
     pub fn is_nonmutating_use(&self) -> bool {
         match *self {
-            PlaceContext::Inspect | PlaceContext::Borrow { kind: BorrowKind::Shared, .. } |
+            PlaceContext::Inspect |
+            PlaceContext::Borrow { kind: BorrowKind::Shared, .. } |
+            PlaceContext::Borrow { kind: BorrowKind::Shallow, .. } |
             PlaceContext::Borrow { kind: BorrowKind::Unique, .. } |
             PlaceContext::Projection(Mutability::Not) |
             PlaceContext::Copy | PlaceContext::Move => true,

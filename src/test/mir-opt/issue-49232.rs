@@ -34,10 +34,9 @@ fn main() {
 //     }
 //     let mut _1: ();
 //     let mut _3: bool;
-//     let mut _4: u8;
-//     let mut _5: !;
-//     let mut _6: ();
-//     let mut _7: &i32;
+//     let mut _4: !;
+//     let mut _5: ();
+//     let mut _6: &i32;
 //     bb0: {
 //         goto -> bb1;
 //     }
@@ -51,7 +50,7 @@ fn main() {
 //         StorageLive(_2);
 //         StorageLive(_3);
 //         _3 = const true;
-//         _4 = discriminant(_3);
+//         FakeRead(ForMatchedPlace, _3);
 //         switchInt(_3) -> [false: bb11, otherwise: bb10];
 //     }
 //     bb4: {
@@ -89,9 +88,9 @@ fn main() {
 //     bb14: {
 //         FakeRead(ForLet, _2);
 //         StorageDead(_3);
-//         StorageLive(_7);
-//         _7 = &_2;
-//         _6 = const std::mem::drop(move _7) -> [return: bb28, unwind: bb4];
+//         StorageLive(_6);
+//         _6 = &_2;
+//         _5 = const std::mem::drop(move _6) -> [return: bb28, unwind: bb4];
 //     }
 //     bb15: {
 //         goto -> bb16;
@@ -129,15 +128,15 @@ fn main() {
 //         goto -> bb2;
 //     }
 //     bb26: {
-//         _5 = ();
+//         _4 = ();
 //         unreachable;
 //     }
 //     bb27: {
-//         StorageDead(_5);
+//         StorageDead(_4);
 //         goto -> bb14;
 //     }
 //     bb28: {
-//         StorageDead(_7);
+//         StorageDead(_6);
 //         _1 = ();
 //         StorageDead(_2);
 //         goto -> bb1;
