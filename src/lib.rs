@@ -12,7 +12,6 @@
 #![allow(unused_attributes)]
 #![feature(type_ascription)]
 #![feature(unicode_internals)]
-#![feature(extern_prelude)]
 #![feature(nll)]
 
 #[macro_use]

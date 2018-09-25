@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![cfg(not(test))]
-#![feature(extern_prelude)]
-
 extern crate env_logger;
 #[macro_use]
 extern crate failure;
