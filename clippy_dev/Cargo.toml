@@ -1,7 +1,10 @@
+cargo-features = ["edition"]
+
 [package]
 name = "clippy_dev"
 version = "0.0.1"
 authors = ["Philipp Hansch <dev@phansch.net>"]
+edition = "2018"
 
 [dependencies]
 clap = "~2.32"
