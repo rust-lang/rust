@@ -30,7 +30,7 @@ pub fn codegen_inline_asm(
     ia: &hir::InlineAsm,
     outputs: Vec<PlaceRef<'ll, 'tcx>>,
     mut inputs: Vec<&'ll Value>
-) {
+) -> bool {
     let mut ext_constraints = vec![];
     let mut output_types = vec![];
 
@@ -97,6 +97,10 @@ pub fn codegen_inline_asm(
         ia.alignstack,
         dialect
     );
+    if r.is_none() {
+        return false;
+    }
+    let r = r.unwrap();
 
     // Again, based on how many outputs we have
     let outputs = ia.outputs.iter().zip(&outputs).filter(|&(ref o, _)| !o.is_indirect);
@@ -117,6 +121,8 @@ pub fn codegen_inline_asm(
         llvm::LLVMSetMetadata(r, kind,
             llvm::LLVMMDNodeInContext(bx.cx.llcx, &val, 1));
     }
+
+    return true;
 }
 
 pub fn codegen_global_asm<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,

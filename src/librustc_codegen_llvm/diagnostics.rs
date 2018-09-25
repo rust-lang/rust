@@ -47,4 +47,26 @@ unsafe { simd_add(i32x2(0, 0), i32x2(1, 2)); } // ok!
 ```
 "##,
 
+E0668: r##"
+Malformed inline assembly rejected by LLVM.
+
+LLVM checks the validity of the constraints and the assembly string passed to
+it. This error implies that LLVM seems something wrong with the inline
+assembly call.
+
+In particular, it can happen if you forgot the closing bracket of a register
+constraint (see issue #51430):
+```
+#![feature(asm)]
+
+fn main() {
+    let rax: u64;
+    unsafe {
+        asm!("" :"={rax"(rax));
+        println!("Accumulator is: {}", rax);
+    }
+}
+```
+"##,
+
 }

@@ -86,7 +86,10 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     self.codegen_operand(&bx, input).immediate()
                 }).collect();
 
-                asm::codegen_inline_asm(&bx, asm, outputs, input_vals);
+                let res = asm::codegen_inline_asm(&bx, asm, outputs, input_vals);
+                if !res {
+                    span_err!(bx.sess(), statement.source_info.span, E0668, "malformed inline assembly");
+                }
                 bx
             }
             mir::StatementKind::FakeRead(..) |

@@ -426,6 +426,11 @@ extern "C" LLVMValueRef LLVMRustInlineAsm(LLVMTypeRef Ty, char *AsmString,
                              HasSideEffects, IsAlignStack, fromRust(Dialect)));
 }
 
+extern "C" bool LLVMRustInlineAsmVerify(LLVMTypeRef Ty,
+                                          char *Constraints) {
+  return InlineAsm::Verify(unwrap<FunctionType>(Ty), Constraints);
+}
+
 extern "C" void LLVMRustAppendModuleInlineAsm(LLVMModuleRef M, const char *Asm) {
   unwrap(M)->appendModuleInlineAsm(StringRef(Asm));
 }
