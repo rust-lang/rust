@@ -56,6 +56,7 @@ use externalfiles::ExternalHtml;
 
 use serialize::json::{ToJson, Json, as_json};
 use syntax::ast;
+use syntax::ext::base::MacroKind;
 use syntax::source_map::FileName;
 use syntax::feature_gate::UnstableFeatures;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
@@ -2155,6 +2156,12 @@ impl<'a> fmt::Display for Item<'a> {
             clean::EnumItem(..) => write!(fmt, "Enum ")?,
             clean::TypedefItem(..) => write!(fmt, "Type Definition ")?,
             clean::MacroItem(..) => write!(fmt, "Macro ")?,
+            clean::ProcMacroItem(ref mac) => match mac.kind {
+                MacroKind::Bang => write!(fmt, "Macro ")?,
+                MacroKind::Attr => write!(fmt, "Attribute Macro ")?,
+                MacroKind::Derive => write!(fmt, "Derive Macro ")?,
+                MacroKind::ProcMacroStub => unreachable!(),
+            }
             clean::PrimitiveItem(..) => write!(fmt, "Primitive Type ")?,
             clean::StaticItem(..) | clean::ForeignStaticItem(..) => write!(fmt, "Static ")?,
             clean::ConstantItem(..) => write!(fmt, "Constant ")?,
@@ -2191,6 +2198,7 @@ impl<'a> fmt::Display for Item<'a> {
             clean::EnumItem(ref e) => item_enum(fmt, self.cx, self.item, e),
             clean::TypedefItem(ref t, _) => item_typedef(fmt, self.cx, self.item, t),
             clean::MacroItem(ref m) => item_macro(fmt, self.cx, self.item, m),
+            clean::ProcMacroItem(ref m) => item_proc_macro(fmt, self.cx, self.item, m),
             clean::PrimitiveItem(ref p) => item_primitive(fmt, self.cx, self.item, p),
             clean::StaticItem(ref i) | clean::ForeignStaticItem(ref i) =>
                 item_static(fmt, self.cx, self.item, i),
@@ -4523,6 +4531,8 @@ fn item_ty_to_strs(ty: &ItemType) -> (&'static str, &'static str) {
         ItemType::ForeignType     => ("foreign-types", "Foreign Types"),
         ItemType::Keyword         => ("keywords", "Keywords"),
         ItemType::Existential     => ("existentials", "Existentials"),
+        ItemType::ProcAttribute   => ("attributes", "Attribute Macros"),
+        ItemType::ProcDerive      => ("derives", "Derive Macros"),
     }
 }
 
@@ -4595,6 +4605,17 @@ fn item_macro(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                                                          None,
                                                          None))
     })?;
+    document(w, cx, it)
+}
+
+fn item_proc_macro(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item, m: &clean::ProcMacro)
+    -> fmt::Result
+{
+    if m.kind == MacroKind::Bang {
+        write!(w, "<pre class='rust macro'>")?;
+        write!(w, "{}!() {{ /* proc-macro */ }}", it.name.as_ref().unwrap())?;
+        write!(w, "</pre>")?;
+    }
     document(w, cx, it)
 }
 

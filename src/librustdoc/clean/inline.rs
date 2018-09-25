@@ -105,15 +105,14 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name, visited: &mut FxHa
             record_extern_fqn(cx, did, clean::TypeKind::Const);
             clean::ConstantItem(build_const(cx, did))
         }
-        // FIXME(misdreavus): if attributes/derives come down here we should probably document them
-        // separately
-        Def::Macro(did, MacroKind::Bang) => {
-            record_extern_fqn(cx, did, clean::TypeKind::Macro);
-            if let Some(mac) = build_macro(cx, did, name) {
-                clean::MacroItem(mac)
-            } else {
-                return None;
+        Def::Macro(did, mac_kind) => {
+            match mac_kind {
+                MacroKind::Bang => record_extern_fqn(cx, did, clean::TypeKind::Macro),
+                MacroKind::Attr => record_extern_fqn(cx, did, clean::TypeKind::Attr),
+                MacroKind::Derive => record_extern_fqn(cx, did, clean::TypeKind::Derive),
+                MacroKind::ProcMacroStub => return None,
             }
+            build_macro(cx, did, name)
         }
         _ => return None,
     };
@@ -442,31 +441,35 @@ fn build_static(cx: &DocContext, did: DefId, mutable: bool) -> clean::Static {
     }
 }
 
-fn build_macro(cx: &DocContext, did: DefId, name: ast::Name) -> Option<clean::Macro> {
+fn build_macro(cx: &DocContext, did: DefId, name: ast::Name) -> clean::ItemEnum {
     let imported_from = cx.tcx.original_crate_name(did.krate);
-    let def = match cx.cstore.load_macro_untracked(did, cx.sess()) {
-        LoadedMacro::MacroDef(macro_def) => macro_def,
-        // FIXME(jseyfried): document proc macro re-exports
-        LoadedMacro::ProcMacro(..) => return None,
-    };
+    match cx.cstore.load_macro_untracked(did, cx.sess()) {
+        LoadedMacro::MacroDef(def) => {
+            let matchers: hir::HirVec<Span> = if let ast::ItemKind::MacroDef(ref def) = def.node {
+                let tts: Vec<_> = def.stream().into_trees().collect();
+                tts.chunks(4).map(|arm| arm[0].span()).collect()
+            } else {
+                unreachable!()
+            };
 
-    let matchers: hir::HirVec<Span> = if let ast::ItemKind::MacroDef(ref def) = def.node {
-        let tts: Vec<_> = def.stream().into_trees().collect();
-        tts.chunks(4).map(|arm| arm[0].span()).collect()
-    } else {
-        unreachable!()
-    };
+            let source = format!("macro_rules! {} {{\n{}}}",
+                                 name.clean(cx),
+                                 matchers.iter().map(|span| {
+                                     format!("    {} => {{ ... }};\n", span.to_src(cx))
+                                 }).collect::<String>());
 
-    let source = format!("macro_rules! {} {{\n{}}}",
-                         name.clean(cx),
-                         matchers.iter().map(|span| {
-                             format!("    {} => {{ ... }};\n", span.to_src(cx))
-                         }).collect::<String>());
+            clean::MacroItem(clean::Macro {
+                source,
+                imported_from: Some(imported_from).clean(cx),
+            })
+        }
+        LoadedMacro::ProcMacro(ext) => {
+            clean::ProcMacroItem(clean::ProcMacro {
+                kind: ext.kind(),
+            })
+        }
+    }
 
-    Some(clean::Macro {
-        source,
-        imported_from: Some(imported_from).clean(cx),
-    })
 }
 
 /// A trait's generics clause actually contains all of the predicates for all of

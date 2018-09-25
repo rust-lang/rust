@@ -39,7 +39,10 @@
                      "associatedconstant",
                      "union",
                      "foreigntype",
-                     "keyword"];
+                     "keyword",
+                     "existential",
+                     "attr",
+                     "derive"];
 
     var search_input = document.getElementsByClassName('search-input')[0];
 

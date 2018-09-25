@@ -15,6 +15,7 @@ use std::mem;
 
 use syntax::ast;
 use syntax::attr;
+use syntax::ext::base::MacroKind;
 use syntax::source_map::Spanned;
 use syntax_pos::{self, Span};
 
@@ -168,24 +169,59 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
         }
     }
 
-    pub fn visit_fn(&mut self, item: &hir::Item,
+    pub fn visit_fn(&mut self, om: &mut Module, item: &hir::Item,
                     name: ast::Name, fd: &hir::FnDecl,
                     header: hir::FnHeader,
                     gen: &hir::Generics,
-                    body: hir::BodyId) -> Function {
+                    body: hir::BodyId) {
         debug!("Visiting fn");
-        Function {
-            id: item.id,
-            vis: item.vis.clone(),
-            stab: self.stability(item.id),
-            depr: self.deprecation(item.id),
-            attrs: item.attrs.clone(),
-            decl: fd.clone(),
-            name,
-            whence: item.span,
-            generics: gen.clone(),
-            header,
-            body,
+        let macro_kind = item.attrs.iter().filter_map(|a| {
+            if a.check_name("proc_macro") {
+                Some(MacroKind::Bang)
+            } else if a.check_name("proc_macro_derive") {
+                Some(MacroKind::Derive)
+            } else if a.check_name("proc_macro_attribute") {
+                Some(MacroKind::Attr)
+            } else {
+                None
+            }
+        }).next();
+        match macro_kind {
+            Some(kind) => {
+                let name = if kind == MacroKind::Derive {
+                    item.attrs.lists("proc_macro_derive")
+                              .filter_map(|mi| mi.name())
+                              .next()
+                              .expect("proc-macro derives require a name")
+                } else {
+                    name
+                };
+
+                om.proc_macros.push(ProcMacro {
+                    name,
+                    id: item.id,
+                    kind,
+                    attrs: item.attrs.clone(),
+                    whence: item.span,
+                    stab: self.stability(item.id),
+                    depr: self.deprecation(item.id),
+                });
+            }
+            None => {
+                om.fns.push(Function {
+                    id: item.id,
+                    vis: item.vis.clone(),
+                    stab: self.stability(item.id),
+                    depr: self.deprecation(item.id),
+                    attrs: item.attrs.clone(),
+                    decl: fd.clone(),
+                    name,
+                    whence: item.span,
+                    generics: gen.clone(),
+                    header,
+                    body,
+                });
+            }
         }
     }
 
@@ -425,7 +461,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
             hir::ItemKind::Union(ref sd, ref gen) =>
                 om.unions.push(self.visit_union_data(item, name, sd, gen)),
             hir::ItemKind::Fn(ref fd, header, ref gen, body) =>
-                om.fns.push(self.visit_fn(item, name, &**fd, header, gen, body)),
+                self.visit_fn(om, item, name, &**fd, header, gen, body),
             hir::ItemKind::Ty(ref ty, ref gen) => {
                 let t = Typedef {
                     ty: ty.clone(),
