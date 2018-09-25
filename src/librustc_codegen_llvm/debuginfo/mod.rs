@@ -279,7 +279,7 @@ pub fn create_function_debug_context(
         }
         None => {}
     };
-    if cx.layout_of(sig.output()).abi.is_uninhabited() {
+    if cx.layout_of(sig.output()).abi == ty::layout::Abi::Uninhabited {
         flags = flags | DIFlags::FlagNoReturn;
     }
 

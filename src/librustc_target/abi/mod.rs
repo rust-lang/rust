@@ -802,14 +802,6 @@ impl Abi {
             _ => false,
         }
     }
-
-    /// Returns true if this is an uninhabited type
-    pub fn is_uninhabited(&self) -> bool {
-        match *self {
-            Abi::Uninhabited => true,
-            _ => false,
-        }
-    }
 }
 
 #[derive(PartialEq, Eq, Hash, Debug)]

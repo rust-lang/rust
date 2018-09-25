@@ -290,7 +290,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     mir::CastKind::Misc => {
                         assert!(cast.is_llvm_immediate());
                         let ll_t_out = cast.immediate_llvm_type(bx.cx);
-                        if operand.layout.abi.is_uninhabited() {
+                        if operand.layout.abi == layout::Abi::Uninhabited {
                             return (bx, OperandRef {
                                 val: OperandValue::Immediate(C_undef(ll_t_out)),
                                 layout: cast,

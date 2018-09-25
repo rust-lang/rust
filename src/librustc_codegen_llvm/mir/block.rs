@@ -482,54 +482,6 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     _ => FnType::new(bx.cx, sig, &extra_args)
                 };
 
-                // emit a panic instead of instantiating an uninhabited type
-                if (intrinsic == Some("init") || intrinsic == Some("uninit")) &&
-                    fn_ty.ret.layout.abi.is_uninhabited()
-                {
-                    let loc = bx.sess().source_map().lookup_char_pos(span.lo());
-                    let filename = Symbol::intern(&loc.file.name.to_string()).as_str();
-                    let filename = C_str_slice(bx.cx, filename);
-                    let line = C_u32(bx.cx, loc.line as u32);
-                    let col = C_u32(bx.cx, loc.col.to_usize() as u32 + 1);
-                    let align = tcx.data_layout.aggregate_align
-                        .max(tcx.data_layout.i32_align)
-                        .max(tcx.data_layout.pointer_align);
-
-                    let str = format!(
-                        "Attempted to instantiate uninhabited type {} using mem::{}",
-                        sig.output(),
-                        if intrinsic == Some("init") { "zeroed" } else { "uninitialized" }
-                    );
-                    let msg_str = Symbol::intern(&str).as_str();
-                    let msg_str = C_str_slice(bx.cx, msg_str);
-                    let msg_file_line_col = C_struct(bx.cx,
-                                                    &[msg_str, filename, line, col],
-                                                    false);
-                    let msg_file_line_col = consts::addr_of(bx.cx,
-                                                            msg_file_line_col,
-                                                            align,
-                                                            Some("panic_loc"));
-
-                    // Obtain the panic entry point.
-                    let def_id =
-                        common::langcall(bx.tcx(), Some(span), "", lang_items::PanicFnLangItem);
-                    let instance = ty::Instance::mono(bx.tcx(), def_id);
-                    let fn_ty = FnType::of_instance(bx.cx, &instance);
-                    let llfn = callee::get_fn(bx.cx, instance);
-
-                    // Codegen the actual panic invoke/call.
-                    do_call(
-                        self,
-                        bx,
-                        fn_ty,
-                        llfn,
-                        &[msg_file_line_col],
-                        destination.as_ref().map(|(_, bb)| (ReturnDest::Nothing, *bb)),
-                        cleanup,
-                    );
-                    return;
-                }
-
                 // The arguments we'll be passing. Plus one to account for outptr, if used.
                 let arg_count = fn_ty.args.len() + fn_ty.ret.is_indirect() as usize;
                 let mut llargs = Vec::with_capacity(arg_count);
