@@ -1218,10 +1218,6 @@ impl<'a> L4Bender<'a> {
 
         cmd.arg("--"); // separate direct l4-bender args from linker args
 
-        if let Ok(l4_ld_opts) = env::var("L4_LD_OPTIONS") {
-            L4Bender::split_cmd_args(&mut cmd, &l4_ld_opts);
-        }
-
         L4Bender {
             cmd: cmd,
             sess: sess,
