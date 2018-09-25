@@ -968,37 +968,48 @@ fn trans_ptr_binop<'a, 'tcx: 'a>(
     bin_op: BinOp,
     lhs: CValue<'tcx>,
     rhs: CValue<'tcx>,
-    ty: Ty<'tcx>,
+    ret_ty: Ty<'tcx>,
 ) -> CValue<'tcx> {
     match lhs.layout().ty.sty {
         ty::RawPtr(TypeAndMut { ty, mutbl: _ }) => {
-            if !ty.is_sized(fx.tcx.at(DUMMY_SP), ParamEnv::reveal_all()) {
-                unimpl!("Unsized values are not yet implemented");
+            if ty.is_sized(fx.tcx.at(DUMMY_SP), ParamEnv::reveal_all()) {
+                binop_match! {
+                    fx, bin_op, false, lhs, rhs, ret_ty, "ptr";
+                    Add (_) bug;
+                    Sub (_) bug;
+                    Mul (_) bug;
+                    Div (_) bug;
+                    Rem (_) bug;
+                    BitXor (_) bug;
+                    BitAnd (_) bug;
+                    BitOr (_) bug;
+                    Shl (_) bug;
+                    Shr (_) bug;
+
+                    Eq (_) icmp(Equal);
+                    Lt (_) icmp(UnsignedLessThan);
+                    Le (_) icmp(UnsignedLessThanOrEqual);
+                    Ne (_) icmp(NotEqual);
+                    Ge (_) icmp(UnsignedGreaterThanOrEqual);
+                    Gt (_) icmp(UnsignedGreaterThan);
+
+                    Offset (_) iadd;
+                }
+            } else {
+                let lhs = lhs.load_value_pair(fx).0;
+                let rhs = rhs.load_value_pair(fx).0;
+                let res = match bin_op {
+                    BinOp::Eq => fx.bcx.ins().icmp(IntCC::Equal, lhs, rhs),
+                    BinOp::Ne => fx.bcx.ins().icmp(IntCC::NotEqual, lhs, rhs),
+                    _ => unimplemented!("trans_ptr_binop({:?}, <fat ptr>, <fat ptr>) not implemented", bin_op),
+                };
+
+                assert_eq!(fx.tcx.types.bool, ret_ty);
+                let ret_layout = fx.layout_of(ret_ty);
+                CValue::ByVal(fx.bcx.ins().bint(types::I8, res), ret_layout)
             }
         }
         _ => bug!("trans_ptr_binop on non ptr"),
-    }
-    binop_match! {
-        fx, bin_op, false, lhs, rhs, ty, "ptr";
-        Add (_) bug;
-        Sub (_) bug;
-        Mul (_) bug;
-        Div (_) bug;
-        Rem (_) bug;
-        BitXor (_) bug;
-        BitAnd (_) bug;
-        BitOr (_) bug;
-        Shl (_) bug;
-        Shr (_) bug;
-
-        Eq (_) icmp(Equal);
-        Lt (_) icmp(UnsignedLessThan);
-        Le (_) icmp(UnsignedLessThanOrEqual);
-        Ne (_) icmp(NotEqual);
-        Ge (_) icmp(UnsignedGreaterThanOrEqual);
-        Gt (_) icmp(UnsignedGreaterThan);
-
-        Offset (_) iadd;
     }
 }
 
