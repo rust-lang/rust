@@ -139,7 +139,7 @@ code, pre {
 }
 .docblock code, .docblock-short code {
 	border-radius: 3px;
-	padding: 0 0.2em;
+	padding: 0 0.1em;
 }
 .docblock pre code, .docblock-short pre code, .docblock code.spotlight {
 	padding: 0;

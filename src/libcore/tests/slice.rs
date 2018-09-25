@@ -221,115 +221,115 @@ fn test_chunks_mut_zip() {
 }
 
 #[test]
-fn test_exact_chunks_count() {
+fn test_chunks_exact_count() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
-    let c = v.exact_chunks(3);
+    let c = v.chunks_exact(3);
     assert_eq!(c.count(), 2);
 
     let v2: &[i32] = &[0, 1, 2, 3, 4];
-    let c2 = v2.exact_chunks(2);
+    let c2 = v2.chunks_exact(2);
     assert_eq!(c2.count(), 2);
 
     let v3: &[i32] = &[];
-    let c3 = v3.exact_chunks(2);
+    let c3 = v3.chunks_exact(2);
     assert_eq!(c3.count(), 0);
 }
 
 #[test]
-fn test_exact_chunks_nth() {
+fn test_chunks_exact_nth() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
-    let mut c = v.exact_chunks(2);
+    let mut c = v.chunks_exact(2);
     assert_eq!(c.nth(1).unwrap(), &[2, 3]);
     assert_eq!(c.next().unwrap(), &[4, 5]);
 
     let v2: &[i32] = &[0, 1, 2, 3, 4, 5, 6];
-    let mut c2 = v2.exact_chunks(3);
+    let mut c2 = v2.chunks_exact(3);
     assert_eq!(c2.nth(1).unwrap(), &[3, 4, 5]);
     assert_eq!(c2.next(), None);
 }
 
 #[test]
-fn test_exact_chunks_last() {
+fn test_chunks_exact_last() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
-    let c = v.exact_chunks(2);
+    let c = v.chunks_exact(2);
     assert_eq!(c.last().unwrap(), &[4, 5]);
 
     let v2: &[i32] = &[0, 1, 2, 3, 4];
-    let c2 = v2.exact_chunks(2);
+    let c2 = v2.chunks_exact(2);
     assert_eq!(c2.last().unwrap(), &[2, 3]);
 }
 
 #[test]
-fn test_exact_chunks_remainder() {
+fn test_chunks_exact_remainder() {
     let v: &[i32] = &[0, 1, 2, 3, 4];
-    let c = v.exact_chunks(2);
+    let c = v.chunks_exact(2);
     assert_eq!(c.remainder(), &[4]);
 }
 
 #[test]
-fn test_exact_chunks_zip() {
+fn test_chunks_exact_zip() {
     let v1: &[i32] = &[0, 1, 2, 3, 4];
     let v2: &[i32] = &[6, 7, 8, 9, 10];
 
-    let res = v1.exact_chunks(2)
-        .zip(v2.exact_chunks(2))
+    let res = v1.chunks_exact(2)
+        .zip(v2.chunks_exact(2))
         .map(|(a, b)| a.iter().sum::<i32>() + b.iter().sum::<i32>())
         .collect::<Vec<_>>();
     assert_eq!(res, vec![14, 22]);
 }
 
 #[test]
-fn test_exact_chunks_mut_count() {
+fn test_chunks_exact_mut_count() {
     let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
-    let c = v.exact_chunks_mut(3);
+    let c = v.chunks_exact_mut(3);
     assert_eq!(c.count(), 2);
 
     let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
-    let c2 = v2.exact_chunks_mut(2);
+    let c2 = v2.chunks_exact_mut(2);
     assert_eq!(c2.count(), 2);
 
     let v3: &mut [i32] = &mut [];
-    let c3 = v3.exact_chunks_mut(2);
+    let c3 = v3.chunks_exact_mut(2);
     assert_eq!(c3.count(), 0);
 }
 
 #[test]
-fn test_exact_chunks_mut_nth() {
+fn test_chunks_exact_mut_nth() {
     let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
-    let mut c = v.exact_chunks_mut(2);
+    let mut c = v.chunks_exact_mut(2);
     assert_eq!(c.nth(1).unwrap(), &[2, 3]);
     assert_eq!(c.next().unwrap(), &[4, 5]);
 
     let v2: &mut [i32] = &mut [0, 1, 2, 3, 4, 5, 6];
-    let mut c2 = v2.exact_chunks_mut(3);
+    let mut c2 = v2.chunks_exact_mut(3);
     assert_eq!(c2.nth(1).unwrap(), &[3, 4, 5]);
     assert_eq!(c2.next(), None);
 }
 
 #[test]
-fn test_exact_chunks_mut_last() {
+fn test_chunks_exact_mut_last() {
     let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
-    let c = v.exact_chunks_mut(2);
+    let c = v.chunks_exact_mut(2);
     assert_eq!(c.last().unwrap(), &[4, 5]);
 
     let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
-    let c2 = v2.exact_chunks_mut(2);
+    let c2 = v2.chunks_exact_mut(2);
     assert_eq!(c2.last().unwrap(), &[2, 3]);
 }
 
 #[test]
-fn test_exact_chunks_mut_remainder() {
+fn test_chunks_exact_mut_remainder() {
     let v: &mut [i32] = &mut [0, 1, 2, 3, 4];
-    let c = v.exact_chunks_mut(2);
+    let c = v.chunks_exact_mut(2);
     assert_eq!(c.into_remainder(), &[4]);
 }
 
 #[test]
-fn test_exact_chunks_mut_zip() {
+fn test_chunks_exact_mut_zip() {
     let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
     let v2: &[i32] = &[6, 7, 8, 9, 10];
 
-    for (a, b) in v1.exact_chunks_mut(2).zip(v2.exact_chunks(2)) {
+    for (a, b) in v1.chunks_exact_mut(2).zip(v2.chunks_exact(2)) {
         let sum = b.iter().sum::<i32>();
         for v in a {
             *v += sum;
@@ -999,6 +999,65 @@ fn test_align_to_empty_mid() {
         let (_, mid, _) = unsafe { bytes[offset..offset+1].align_to::<Chunk>() };
         assert_eq!(mid.as_ptr() as usize % mem::align_of::<Chunk>(), 0);
     }
+}
+
+#[test]
+fn test_slice_partition_dedup_by() {
+    let mut slice: [i32; 9] = [1, -1, 2, 3, 1, -5, 5, -2, 2];
+
+    let (dedup, duplicates) = slice.partition_dedup_by(|a, b| a.abs() == b.abs());
+
+    assert_eq!(dedup, [1, 2, 3, 1, -5, -2]);
+    assert_eq!(duplicates, [5, -1, 2]);
+}
+
+#[test]
+fn test_slice_partition_dedup_empty() {
+    let mut slice: [i32; 0] = [];
+
+    let (dedup, duplicates) = slice.partition_dedup();
+
+    assert_eq!(dedup, []);
+    assert_eq!(duplicates, []);
+}
+
+#[test]
+fn test_slice_partition_dedup_one() {
+    let mut slice = [12];
+
+    let (dedup, duplicates) = slice.partition_dedup();
+
+    assert_eq!(dedup, [12]);
+    assert_eq!(duplicates, []);
+}
+
+#[test]
+fn test_slice_partition_dedup_multiple_ident() {
+    let mut slice = [12, 12, 12, 12, 12, 11, 11, 11, 11, 11, 11];
+
+    let (dedup, duplicates) = slice.partition_dedup();
+
+    assert_eq!(dedup, [12, 11]);
+    assert_eq!(duplicates, [12, 12, 12, 12, 11, 11, 11, 11, 11]);
+}
+
+#[test]
+fn test_slice_partition_dedup_partialeq() {
+    #[derive(Debug)]
+    struct Foo(i32, i32);
+
+    impl PartialEq for Foo {
+        fn eq(&self, other: &Foo) -> bool {
+            self.0 == other.0
+        }
+    }
+
+    let mut slice = [Foo(0, 1), Foo(0, 5), Foo(1, 7), Foo(1, 9)];
+
+    let (dedup, duplicates) = slice.partition_dedup();
+
+    assert_eq!(dedup, [Foo(0, 1), Foo(1, 7)]);
+    assert_eq!(duplicates, [Foo(0, 5), Foo(1, 9)]);
 }
 
 #[test]

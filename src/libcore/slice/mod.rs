@@ -624,7 +624,7 @@ impl<T> [T] {
     /// not divide the length of the slice, then the last chunk will
     /// not have length `chunk_size`.
     ///
-    /// See [`exact_chunks`] for a variant of this iterator that returns chunks
+    /// See [`chunks_exact`] for a variant of this iterator that returns chunks
     /// of always exactly `chunk_size` elements.
     ///
     /// # Panics
@@ -642,7 +642,7 @@ impl<T> [T] {
     /// assert!(iter.next().is_none());
     /// ```
     ///
-    /// [`exact_chunks`]: #method.exact_chunks
+    /// [`chunks_exact`]: #method.chunks_exact
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn chunks(&self, chunk_size: usize) -> Chunks<T> {
@@ -655,7 +655,7 @@ impl<T> [T] {
     /// not divide the length of the slice, then the last chunk will not
     /// have length `chunk_size`.
     ///
-    /// See [`exact_chunks_mut`] for a variant of this iterator that returns chunks
+    /// See [`chunks_exact_mut`] for a variant of this iterator that returns chunks
     /// of always exactly `chunk_size` elements.
     ///
     /// # Panics
@@ -677,7 +677,7 @@ impl<T> [T] {
     /// assert_eq!(v, &[1, 1, 2, 2, 3]);
     /// ```
     ///
-    /// [`exact_chunks_mut`]: #method.exact_chunks_mut
+    /// [`chunks_exact_mut`]: #method.chunks_exact_mut
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<T> {
@@ -702,24 +702,24 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(exact_chunks)]
+    /// #![feature(chunks_exact)]
     ///
     /// let slice = ['l', 'o', 'r', 'e', 'm'];
-    /// let mut iter = slice.exact_chunks(2);
+    /// let mut iter = slice.chunks_exact(2);
     /// assert_eq!(iter.next().unwrap(), &['l', 'o']);
     /// assert_eq!(iter.next().unwrap(), &['r', 'e']);
     /// assert!(iter.next().is_none());
     /// ```
     ///
     /// [`chunks`]: #method.chunks
-    #[unstable(feature = "exact_chunks", issue = "47115")]
+    #[unstable(feature = "chunks_exact", issue = "47115")]
     #[inline]
-    pub fn exact_chunks(&self, chunk_size: usize) -> ExactChunks<T> {
+    pub fn chunks_exact(&self, chunk_size: usize) -> ChunksExact<T> {
         assert!(chunk_size != 0);
         let rem = self.len() % chunk_size;
         let len = self.len() - rem;
         let (fst, snd) = self.split_at(len);
-        ExactChunks { v: fst, rem: snd, chunk_size }
+        ChunksExact { v: fst, rem: snd, chunk_size }
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time.
@@ -739,12 +739,12 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(exact_chunks)]
+    /// #![feature(chunks_exact)]
     ///
     /// let v = &mut [0, 0, 0, 0, 0];
     /// let mut count = 1;
     ///
-    /// for chunk in v.exact_chunks_mut(2) {
+    /// for chunk in v.chunks_exact_mut(2) {
     ///     for elem in chunk.iter_mut() {
     ///         *elem += count;
     ///     }
@@ -754,14 +754,14 @@ impl<T> [T] {
     /// ```
     ///
     /// [`chunks_mut`]: #method.chunks_mut
-    #[unstable(feature = "exact_chunks", issue = "47115")]
+    #[unstable(feature = "chunks_exact", issue = "47115")]
     #[inline]
-    pub fn exact_chunks_mut(&mut self, chunk_size: usize) -> ExactChunksMut<T> {
+    pub fn chunks_exact_mut(&mut self, chunk_size: usize) -> ChunksExactMut<T> {
         assert!(chunk_size != 0);
         let rem = self.len() % chunk_size;
         let len = self.len() - rem;
         let (fst, snd) = self.split_at_mut(len);
-        ExactChunksMut { v: fst, rem: snd, chunk_size }
+        ChunksExactMut { v: fst, rem: snd, chunk_size }
     }
 
     /// Divides one slice into two at an index.
@@ -1400,6 +1400,178 @@ impl<T> [T] {
         where F: FnMut(&T) -> K, K: Ord
     {
         sort::quicksort(self, |a, b| f(a).lt(&f(b)));
+    }
+
+    /// Moves all consecutive repeated elements to the end of the slice according to the
+    /// [`PartialEq`] trait implementation.
+    ///
+    /// Returns two slices. The first contains no consecutive repeated elements.
+    /// The second contains all the duplicates in no specified order.
+    ///
+    /// If the slice is sorted, the first returned slice contains no duplicates.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partition_dedup)]
+    ///
+    /// let mut slice = [1, 2, 2, 3, 3, 2, 1, 1];
+    ///
+    /// let (dedup, duplicates) = slice.partition_dedup();
+    ///
+    /// assert_eq!(dedup, [1, 2, 3, 2, 1]);
+    /// assert_eq!(duplicates, [2, 3, 1]);
+    /// ```
+    #[unstable(feature = "slice_partition_dedup", issue = "54279")]
+    #[inline]
+    pub fn partition_dedup(&mut self) -> (&mut [T], &mut [T])
+        where T: PartialEq
+    {
+        self.partition_dedup_by(|a, b| a == b)
+    }
+
+    /// Moves all but the first of consecutive elements to the end of the slice satisfying
+    /// a given equality relation.
+    ///
+    /// Returns two slices. The first contains no consecutive repeated elements.
+    /// The second contains all the duplicates in no specified order.
+    ///
+    /// The `same_bucket` function is passed references to two elements from the slice and
+    /// must determine if the elements compare equal. The elements are passed in opposite order
+    /// from their order in the slice, so if `same_bucket(a, b)` returns `true`, `a` is moved
+    /// at the end of the slice.
+    ///
+    /// If the slice is sorted, the first returned slice contains no duplicates.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partition_dedup)]
+    ///
+    /// let mut slice = ["foo", "Foo", "BAZ", "Bar", "bar", "baz", "BAZ"];
+    ///
+    /// let (dedup, duplicates) = slice.partition_dedup_by(|a, b| a.eq_ignore_ascii_case(b));
+    ///
+    /// assert_eq!(dedup, ["foo", "BAZ", "Bar", "baz"]);
+    /// assert_eq!(duplicates, ["bar", "Foo", "BAZ"]);
+    /// ```
+    #[unstable(feature = "slice_partition_dedup", issue = "54279")]
+    #[inline]
+    pub fn partition_dedup_by<F>(&mut self, mut same_bucket: F) -> (&mut [T], &mut [T])
+        where F: FnMut(&mut T, &mut T) -> bool
+    {
+        // Although we have a mutable reference to `self`, we cannot make
+        // *arbitrary* changes. The `same_bucket` calls could panic, so we
+        // must ensure that the slice is in a valid state at all times.
+        //
+        // The way that we handle this is by using swaps; we iterate
+        // over all the elements, swapping as we go so that at the end
+        // the elements we wish to keep are in the front, and those we
+        // wish to reject are at the back. We can then split the slice.
+        // This operation is still O(n).
+        //
+        // Example: We start in this state, where `r` represents "next
+        // read" and `w` represents "next_write`.
+        //
+        //           r
+        //     +---+---+---+---+---+---+
+        //     | 0 | 1 | 1 | 2 | 3 | 3 |
+        //     +---+---+---+---+---+---+
+        //           w
+        //
+        // Comparing self[r] against self[w-1], this is not a duplicate, so
+        // we swap self[r] and self[w] (no effect as r==w) and then increment both
+        // r and w, leaving us with:
+        //
+        //               r
+        //     +---+---+---+---+---+---+
+        //     | 0 | 1 | 1 | 2 | 3 | 3 |
+        //     +---+---+---+---+---+---+
+        //               w
+        //
+        // Comparing self[r] against self[w-1], this value is a duplicate,
+        // so we increment `r` but leave everything else unchanged:
+        //
+        //                   r
+        //     +---+---+---+---+---+---+
+        //     | 0 | 1 | 1 | 2 | 3 | 3 |
+        //     +---+---+---+---+---+---+
+        //               w
+        //
+        // Comparing self[r] against self[w-1], this is not a duplicate,
+        // so swap self[r] and self[w] and advance r and w:
+        //
+        //                       r
+        //     +---+---+---+---+---+---+
+        //     | 0 | 1 | 2 | 1 | 3 | 3 |
+        //     +---+---+---+---+---+---+
+        //                   w
+        //
+        // Not a duplicate, repeat:
+        //
+        //                           r
+        //     +---+---+---+---+---+---+
+        //     | 0 | 1 | 2 | 3 | 1 | 3 |
+        //     +---+---+---+---+---+---+
+        //                       w
+        //
+        // Duplicate, advance r. End of slice. Split at w.
+
+        let len = self.len();
+        if len <= 1 {
+            return (self, &mut [])
+        }
+
+        let ptr = self.as_mut_ptr();
+        let mut next_read: usize = 1;
+        let mut next_write: usize = 1;
+
+        unsafe {
+            // Avoid bounds checks by using raw pointers.
+            while next_read < len {
+                let ptr_read = ptr.add(next_read);
+                let prev_ptr_write = ptr.add(next_write - 1);
+                if !same_bucket(&mut *ptr_read, &mut *prev_ptr_write) {
+                    if next_read != next_write {
+                        let ptr_write = prev_ptr_write.offset(1);
+                        mem::swap(&mut *ptr_read, &mut *ptr_write);
+                    }
+                    next_write += 1;
+                }
+                next_read += 1;
+            }
+        }
+
+        self.split_at_mut(next_write)
+    }
+
+    /// Moves all but the first of consecutive elements to the end of the slice that resolve
+    /// to the same key.
+    ///
+    /// Returns two slices. The first contains no consecutive repeated elements.
+    /// The second contains all the duplicates in no specified order.
+    ///
+    /// If the slice is sorted, the first returned slice contains no duplicates.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partition_dedup)]
+    ///
+    /// let mut slice = [10, 20, 21, 30, 30, 20, 11, 13];
+    ///
+    /// let (dedup, duplicates) = slice.partition_dedup_by_key(|i| *i / 10);
+    ///
+    /// assert_eq!(dedup, [10, 20, 30, 20, 11]);
+    /// assert_eq!(duplicates, [21, 30, 13]);
+    /// ```
+    #[unstable(feature = "slice_partition_dedup", issue = "54279")]
+    #[inline]
+    pub fn partition_dedup_by_key<K, F>(&mut self, mut key: F) -> (&mut [T], &mut [T])
+        where F: FnMut(&mut T) -> K,
+              K: PartialEq,
+    {
+        self.partition_dedup_by(|a, b| key(a) == key(b))
     }
 
     /// Rotates the slice in-place such that the first `mid` elements of the
@@ -3657,21 +3829,21 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksMut<'a, T> {
 /// up to `chunk_size-1` elements will be omitted but can be retrieved from
 /// the [`remainder`] function from the iterator.
 ///
-/// This struct is created by the [`exact_chunks`] method on [slices].
+/// This struct is created by the [`chunks_exact`] method on [slices].
 ///
-/// [`exact_chunks`]: ../../std/primitive.slice.html#method.exact_chunks
-/// [`remainder`]: ../../std/slice/struct.ExactChunks.html#method.remainder
+/// [`chunks_exact`]: ../../std/primitive.slice.html#method.chunks_exact
+/// [`remainder`]: ../../std/slice/struct.ChunksExact.html#method.remainder
 /// [slices]: ../../std/primitive.slice.html
 #[derive(Debug)]
-#[unstable(feature = "exact_chunks", issue = "47115")]
-pub struct ExactChunks<'a, T:'a> {
+#[unstable(feature = "chunks_exact", issue = "47115")]
+pub struct ChunksExact<'a, T:'a> {
     v: &'a [T],
     rem: &'a [T],
     chunk_size: usize
 }
 
-#[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> ExactChunks<'a, T> {
+#[unstable(feature = "chunks_exact", issue = "47115")]
+impl<'a, T> ChunksExact<'a, T> {
     /// Return the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
@@ -3681,10 +3853,10 @@ impl<'a, T> ExactChunks<'a, T> {
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-#[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> Clone for ExactChunks<'a, T> {
-    fn clone(&self) -> ExactChunks<'a, T> {
-        ExactChunks {
+#[unstable(feature = "chunks_exact", issue = "47115")]
+impl<'a, T> Clone for ChunksExact<'a, T> {
+    fn clone(&self) -> ChunksExact<'a, T> {
+        ChunksExact {
             v: self.v,
             rem: self.rem,
             chunk_size: self.chunk_size,
@@ -3692,8 +3864,8 @@ impl<'a, T> Clone for ExactChunks<'a, T> {
     }
 }
 
-#[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> Iterator for ExactChunks<'a, T> {
+#[unstable(feature = "chunks_exact", issue = "47115")]
+impl<'a, T> Iterator for ChunksExact<'a, T> {
     type Item = &'a [T];
 
     #[inline]
@@ -3737,8 +3909,8 @@ impl<'a, T> Iterator for ExactChunks<'a, T> {
     }
 }
 
-#[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> DoubleEndedIterator for ExactChunks<'a, T> {
+#[unstable(feature = "chunks_exact", issue = "47115")]
+impl<'a, T> DoubleEndedIterator for ChunksExact<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
         if self.v.len() < self.chunk_size {
@@ -3751,21 +3923,21 @@ impl<'a, T> DoubleEndedIterator for ExactChunks<'a, T> {
     }
 }
 
-#[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> ExactSizeIterator for ExactChunks<'a, T> {
+#[unstable(feature = "chunks_exact", issue = "47115")]
+impl<'a, T> ExactSizeIterator for ChunksExact<'a, T> {
     fn is_empty(&self) -> bool {
         self.v.is_empty()
     }
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, T> TrustedLen for ExactChunks<'a, T> {}
+unsafe impl<'a, T> TrustedLen for ChunksExact<'a, T> {}
 
-#[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> FusedIterator for ExactChunks<'a, T> {}
+#[unstable(feature = "chunks_exact", issue = "47115")]
+impl<'a, T> FusedIterator for ChunksExact<'a, T> {}
 
 #[doc(hidden)]
-unsafe impl<'a, T> TrustedRandomAccess for ExactChunks<'a, T> {
+unsafe impl<'a, T> TrustedRandomAccess for ChunksExact<'a, T> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a [T] {
         let start = i * self.chunk_size;
         from_raw_parts(self.v.as_ptr().add(start), self.chunk_size)
@@ -3780,21 +3952,21 @@ unsafe impl<'a, T> TrustedRandomAccess for ExactChunks<'a, T> {
 /// `chunk_size-1` elements will be omitted but can be retrieved from the
 /// [`into_remainder`] function from the iterator.
 ///
-/// This struct is created by the [`exact_chunks_mut`] method on [slices].
+/// This struct is created by the [`chunks_exact_mut`] method on [slices].
 ///
-/// [`exact_chunks_mut`]: ../../std/primitive.slice.html#method.exact_chunks_mut
-/// [`into_remainder`]: ../../std/slice/struct.ExactChunksMut.html#method.into_remainder
+/// [`chunks_exact_mut`]: ../../std/primitive.slice.html#method.chunks_exact_mut
+/// [`into_remainder`]: ../../std/slice/struct.ChunksExactMut.html#method.into_remainder
 /// [slices]: ../../std/primitive.slice.html
 #[derive(Debug)]
-#[unstable(feature = "exact_chunks", issue = "47115")]
-pub struct ExactChunksMut<'a, T:'a> {
+#[unstable(feature = "chunks_exact", issue = "47115")]
+pub struct ChunksExactMut<'a, T:'a> {
     v: &'a mut [T],
     rem: &'a mut [T],
     chunk_size: usize
 }
 
-#[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> ExactChunksMut<'a, T> {
+#[unstable(feature = "chunks_exact", issue = "47115")]
+impl<'a, T> ChunksExactMut<'a, T> {
     /// Return the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
@@ -3803,8 +3975,8 @@ impl<'a, T> ExactChunksMut<'a, T> {
     }
 }
 
-#[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> Iterator for ExactChunksMut<'a, T> {
+#[unstable(feature = "chunks_exact", issue = "47115")]
+impl<'a, T> Iterator for ChunksExactMut<'a, T> {
     type Item = &'a mut [T];
 
     #[inline]
@@ -3850,8 +4022,8 @@ impl<'a, T> Iterator for ExactChunksMut<'a, T> {
     }
 }
 
-#[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> DoubleEndedIterator for ExactChunksMut<'a, T> {
+#[unstable(feature = "chunks_exact", issue = "47115")]
+impl<'a, T> DoubleEndedIterator for ChunksExactMut<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut [T]> {
         if self.v.len() < self.chunk_size {
@@ -3866,21 +4038,21 @@ impl<'a, T> DoubleEndedIterator for ExactChunksMut<'a, T> {
     }
 }
 
-#[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> ExactSizeIterator for ExactChunksMut<'a, T> {
+#[unstable(feature = "chunks_exact", issue = "47115")]
+impl<'a, T> ExactSizeIterator for ChunksExactMut<'a, T> {
     fn is_empty(&self) -> bool {
         self.v.is_empty()
     }
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, T> TrustedLen for ExactChunksMut<'a, T> {}
+unsafe impl<'a, T> TrustedLen for ChunksExactMut<'a, T> {}
 
-#[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> FusedIterator for ExactChunksMut<'a, T> {}
+#[unstable(feature = "chunks_exact", issue = "47115")]
+impl<'a, T> FusedIterator for ChunksExactMut<'a, T> {}
 
 #[doc(hidden)]
-unsafe impl<'a, T> TrustedRandomAccess for ExactChunksMut<'a, T> {
+unsafe impl<'a, T> TrustedRandomAccess for ChunksExactMut<'a, T> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a mut [T] {
         let start = i * self.chunk_size;
         from_raw_parts_mut(self.v.as_mut_ptr().add(start), self.chunk_size)

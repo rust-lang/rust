@@ -641,9 +641,28 @@ impl Build {
     /// Returns the path to `FileCheck` binary for the specified target
     fn llvm_filecheck(&self, target: Interned<String>) -> PathBuf {
         let target_config = self.config.target_config.get(&target);
-        if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
+        if let Some(s) = target_config.and_then(|c| c.llvm_filecheck.as_ref()) {
+            s.to_path_buf()
+        } else if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
             let llvm_bindir = output(Command::new(s).arg("--bindir"));
-            Path::new(llvm_bindir.trim()).join(exe("FileCheck", &*target))
+            let filecheck = Path::new(llvm_bindir.trim()).join(exe("FileCheck", &*target));
+            if filecheck.exists() {
+                filecheck
+            } else {
+                // On Fedora the system LLVM installs FileCheck in the
+                // llvm subdirectory of the libdir.
+                let llvm_libdir = output(Command::new(s).arg("--libdir"));
+                let lib_filecheck = Path::new(llvm_libdir.trim())
+                    .join("llvm").join(exe("FileCheck", &*target));
+                if lib_filecheck.exists() {
+                    lib_filecheck
+                } else {
+                    // Return the most normal file name, even though
+                    // it doesn't exist, so that any error message
+                    // refers to that.
+                    filecheck
+                }
+            }
         } else {
             let base = self.llvm_out(self.config.build).join("build");
             let base = if !self.config.ninja && self.config.build.contains("msvc") {
