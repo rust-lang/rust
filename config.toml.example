@@ -322,6 +322,7 @@
 
 # Flag indicating whether codegen tests will be run or not. If you get an error
 # saying that the FileCheck executable is missing, you may want to disable this.
+# Also see the target's llvm-filecheck option.
 #codegen-tests = true
 
 # Flag indicating whether git info will be retrieved from .git automatically.
@@ -415,6 +416,10 @@
 # against. Note that if this is specified we don't compile LLVM at all for this
 # target.
 #llvm-config = "../path/to/llvm/root/bin/llvm-config"
+
+# Normally the build system can find LLVM's FileCheck utility, but if
+# not, you can specify an explicit file name for it.
+#llvm-filecheck = "/path/to/FileCheck"
 
 # Path to the custom jemalloc static library to link into the standard library
 # by default. This is only used if jemalloc is still enabled above
