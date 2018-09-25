@@ -45,8 +45,16 @@
 extern crate getopts;
 #[cfg(any(unix, target_os = "cloudabi"))]
 extern crate libc;
-extern crate panic_unwind;
 extern crate term;
+
+// FIXME(#54291): rustc and/or LLVM don't yet support building with panic-unwind
+//                on aarch64-pc-windows-msvc, so we don't link libtest against
+//                libunwind (for the time being), even though it means that
+//                libtest won't be fully functional on this platform.
+//
+// See also: https://github.com/rust-lang/rust/issues/54190#issuecomment-422904437
+#[cfg(not(all(windows, target_arch = "aarch64")))]
+extern crate panic_unwind;
 
 pub use self::TestFn::*;
 pub use self::ColorConfig::*;
