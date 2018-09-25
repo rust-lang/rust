@@ -405,7 +405,7 @@ impl Step for Standalone {
             cmd.arg("--html-after-content").arg(&footer)
                .arg("--html-before-content").arg(&version_info)
                .arg("--html-in-header").arg(&favicon)
-               .arg("--index-page").arg("src/doc/index.md")
+               .arg("--index-page").arg(&builder.src.join("src/doc/index.md"))
                .arg("--markdown-playground-url")
                .arg("https://play.rust-lang.org/")
                .arg("-o").arg(&out)
@@ -482,22 +482,27 @@ impl Step for Std {
         let my_out = builder.crate_doc_out(target);
         t!(symlink_dir_force(&builder.config, &my_out, &out_dir));
 
-        let mut cargo = builder.cargo(compiler, Mode::Std, target, "doc");
-        compile::std_cargo(builder, &compiler, target, &mut cargo);
+        let run_cargo_rustdoc_for = |package: &str| {
+            let mut cargo = builder.cargo(compiler, Mode::Std, target, "rustdoc");
+            compile::std_cargo(builder, &compiler, target, &mut cargo);
 
-        // Keep a whitelist so we do not build internal stdlib crates, these will be
-        // build by the rustc step later if enabled.
-        cargo.arg("--no-deps");
-        for krate in &["alloc", "core", "std"] {
-            cargo.arg("-p").arg(krate);
+            // Keep a whitelist so we do not build internal stdlib crates, these will be
+            // build by the rustc step later if enabled.
+            cargo.arg("-Z").arg("unstable-options")
+                 .arg("-p").arg(package);
             // Create all crate output directories first to make sure rustdoc uses
             // relative links.
             // FIXME: Cargo should probably do this itself.
-            t!(fs::create_dir_all(out_dir.join(krate)));
-        }
+            t!(fs::create_dir_all(out_dir.join(package)));
+            cargo.arg("--")
+                 .arg("index-page").arg(&builder.src.join("src/doc/index.md"));
 
-        builder.run(&mut cargo);
-        builder.cp_r(&my_out, &out);
+            builder.run(&mut cargo);
+            builder.cp_r(&my_out, &out);
+        };
+        for krate in &["alloc", "core", "std"] {
+            run_cargo_rustdoc_for(krate);
+        }
     }
 }
 
