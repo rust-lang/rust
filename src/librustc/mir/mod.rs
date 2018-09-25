@@ -1907,13 +1907,46 @@ pub enum Place<'tcx> {
 }
 
 /// A new Place repr
-#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct NeoPlace<'tcx> {
     base: PlaceBase<'tcx>,
     elems: &'tcx List<PlaceElem<'tcx>>,
 }
 
 impl<'tcx> serialize::UseSpecializedDecodable for &'tcx List<PlaceElem<'tcx>> {}
+
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+    pub fn as_new_place(self, place: &Place<'tcx>) -> NeoPlace<'tcx> {
+        let mut elems: Vec<PlaceElem<'tcx>> = Vec::new();
+        let mut p = place;
+
+        while let Place::Projection(proj) = p {
+            elems.push(proj.elem);
+            p = &proj.base;
+        }
+
+        elems.reverse();
+
+        match p.clone() {
+            Place::Projection(_) => unreachable!(),
+
+            Place::Local(local) => NeoPlace {
+                base: PlaceBase::Local(local),
+                elems: self.mk_place_elems(elems.iter()),
+            },
+
+            Place::Static(static_) => NeoPlace {
+                base: PlaceBase::Static(static_),
+                elems: self.mk_place_elems(elems.iter()),
+            },
+
+            Place::Promoted(promoted) => NeoPlace {
+                base: PlaceBase::Promoted(promoted),
+                elems: self.mk_place_elems(elems.iter()),
+            },
+        }
+    }
+}
 
 #[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum PlaceBase<'tcx> {
@@ -1950,7 +1983,7 @@ pub struct Projection<'tcx, B, V, T> {
     pub elem: ProjectionElem<'tcx, V, T>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub enum ProjectionElem<'tcx, V, T> {
     Deref,
     Field(Field, T),
@@ -2099,6 +2132,23 @@ impl<'tcx> Debug for Place<'tcx> {
                     write!(fmt, "{:?}[{:?}:-{:?}]", data.base, from, to)
                 }
             },
+        }
+    }
+}
+
+impl<'tcx> Debug for PlaceBase<'tcx> {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        use self::PlaceBase::*;
+
+        match self {
+            Local(id) => write!(fmt, "{:?}", *id),
+            Static(box self::Static { def_id, ty }) => write!(
+                fmt,
+                "({}: {:?})",
+                ty::tls::with(|tcx| tcx.item_path_str(*def_id)),
+                ty
+            ),
+            Promoted(promoted) => write!(fmt, "({:?}: {:?})", promoted.0, promoted.1),
         }
     }
 }
@@ -3324,6 +3374,41 @@ impl<'tcx> TypeFoldable<'tcx> for Place<'tcx> {
     }
 }
 
+impl<'tcx> TypeFoldable<'tcx> for NeoPlace<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        NeoPlace {
+            base: self.base.fold_with(folder),
+            elems: self.elems.fold_with(folder),
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.base.visit_with(visitor) ||
+            self.elems.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for PlaceBase<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _folder: &mut F) -> Self {
+        self.clone()
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> bool {
+        false
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for &'tcx List<PlaceElem<'tcx>> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
+        folder.tcx().intern_place_elems(&v)
+    }
+
+    fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> bool {
+        self.iter().any(|p| p.visit_with(visitor))
+    }
+}
+
 impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         use mir::Rvalue::*;
@@ -3439,6 +3524,31 @@ where
         self.base.visit_with(visitor) || match self.elem {
             Field(_, ref ty) => ty.visit_with(visitor),
             Index(ref v) => v.visit_with(visitor),
+            _ => false,
+        }
+    }
+}
+
+impl<'tcx, V, T> TypeFoldable<'tcx> for ProjectionElem<'tcx, V, T>
+where
+    V: TypeFoldable<'tcx>,
+    T: TypeFoldable<'tcx>,
+{
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        use self::ProjectionElem::*;
+        match self {
+            Deref => Deref,
+            Field(f, ty) => Field(*f, ty.fold_with(folder)),
+            Index(v) => Index(v.fold_with(folder)),
+            elem => elem.clone(),
+        }
+    }
+
+    fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> bool {
+        use self::ProjectionElem::*;
+        match self {
+            Field(_, ty) => ty.visit_with(visitor),
+            Index(v) => v.visit_with(visitor),
             _ => false,
         }
     }
