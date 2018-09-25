@@ -48,6 +48,16 @@ pub fn align64(i : i32) -> Align64 {
     a64
 }
 
+// For issue 54028: make sure that we are specifying the correct alignment for fields of aligned
+// structs
+// CHECK-LABEL: @align64_load
+#[no_mangle]
+pub fn align64_load(a: Align64) -> i32 {
+// CHECK: [[FIELD:%.*]] = bitcast %Align64* %{{.*}} to i32*
+// CHECK: {{%.*}} = load i32, i32* [[FIELD]], align 64
+    a.0
+}
+
 // CHECK-LABEL: @nested64
 #[no_mangle]
 pub fn nested64(a: Align64, b: i32, c: i32, d: i8) -> Nested64 {
