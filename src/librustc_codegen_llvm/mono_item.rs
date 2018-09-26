@@ -27,17 +27,14 @@ use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty::TypeFoldable;
 use rustc::ty::layout::{LayoutOf, HasTyCtxt};
 use std::fmt;
-use builder::Builder;
 use interfaces::*;
 
 pub use rustc::mir::mono::MonoItem;
 
 pub use rustc_mir::monomorphize::item::MonoItemExt as BaseMonoItemExt;
 
-pub trait MonoItemExt<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> :
-    fmt::Debug + BaseMonoItemExt<'a, 'tcx>
-{
-    fn define(&self, cx: &'a Bx::CodegenCx) {
+pub trait MonoItemExt<'a, 'tcx: 'a>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
+    fn define<Bx: BuilderMethods<'a, 'tcx>>(&self, cx: &'a Bx::CodegenCx) {
         debug!("BEGIN IMPLEMENTING '{} ({})' in cgu {}",
                self.to_string(cx.tcx()),
                self.to_raw_string(),
@@ -76,10 +73,12 @@ pub trait MonoItemExt<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> :
                cx.codegen_unit().name());
     }
 
-    fn predefine(&self,
-                 cx: &'a Bx::CodegenCx,
-                 linkage: Linkage,
-                 visibility: Visibility) {
+    fn predefine<Bx: BuilderMethods<'a, 'tcx>>(
+        &self,
+        cx: &'a Bx::CodegenCx,
+        linkage: Linkage,
+        visibility: Visibility
+    ) {
         debug!("BEGIN PREDEFINING '{} ({})' in cgu {}",
                self.to_string(cx.tcx()),
                self.to_raw_string(),
@@ -122,7 +121,7 @@ pub trait MonoItemExt<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> :
     }
 }
 
-impl MonoItemExt<'a, 'tcx, Builder<'a, 'll, 'tcx>> for MonoItem<'tcx> {}
+impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {}
 
 impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn predefine_static(&self,

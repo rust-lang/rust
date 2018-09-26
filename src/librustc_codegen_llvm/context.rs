@@ -421,8 +421,20 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         &self.stats
     }
 
+    fn consume_stats(self) -> RefCell<Stats> {
+        self.stats
+    }
+
     fn codegen_unit(&self) -> &Arc<CodegenUnit<'tcx>> {
         &self.codegen_unit
+    }
+
+    fn statics_to_rauw(&self) -> &RefCell<Vec<(&'ll Value, &'ll Value)>> {
+        &self.statics_to_rauw
+    }
+
+    fn used_statics(&self) -> &RefCell<Vec<&'ll Value>> {
+        &self.used_statics
     }
 
     fn set_frame_pointer_elimination(&self, llfn: &'ll Value) {
@@ -431,6 +443,25 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn apply_target_cpu_attr(&self, llfn: &'ll Value) {
         attributes::apply_target_cpu_attr(self, llfn)
+    }
+
+
+    fn create_used_variable(&self) {
+        let name = const_cstr!("llvm.used");
+        let section = const_cstr!("llvm.metadata");
+        let array = self.const_array(
+            &self.type_ptr_to(self.type_i8()),
+            &*self.used_statics.borrow()
+        );
+
+        unsafe {
+            let g = llvm::LLVMAddGlobal(self.llmod,
+                                        self.val_ty(array),
+                                        name.as_ptr());
+            llvm::LLVMSetInitializer(g, array);
+            llvm::LLVMRustSetLinkage(g, llvm::Linkage::AppendingLinkage);
+            llvm::LLVMSetSection(g, section.as_ptr());
+        }
     }
 }
 

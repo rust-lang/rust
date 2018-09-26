@@ -72,9 +72,12 @@ use interfaces::*;
 use time_graph::TimeGraph;
 use std::sync::mpsc::Receiver;
 use back::write::{self, OngoingCodegen};
+use context::CodegenCx;
+use monomorphize::partitioning::CodegenUnit;
 
 pub use llvm_util::target_features;
 use std::any::Any;
+use std::sync::Arc;
 use std::sync::mpsc;
 use rustc_data_structures::sync::Lrc;
 
@@ -139,15 +142,15 @@ mod value;
 pub struct LlvmCodegenBackend(());
 
 impl BackendMethods for LlvmCodegenBackend {
-    type Metadata = ModuleLlvm;
+    type Module = ModuleLlvm;
     type OngoingCodegen = OngoingCodegen;
 
     fn new_metadata(&self, sess: &Session, mod_name: &str) -> ModuleLlvm {
         ModuleLlvm::new(sess, mod_name)
     }
-    fn write_metadata<'a, 'gcx>(
+    fn write_metadata<'b, 'gcx>(
         &self,
-        tcx: TyCtxt<'a, 'gcx, 'gcx>,
+        tcx: TyCtxt<'b, 'gcx, 'gcx>,
         metadata: &ModuleLlvm
     ) -> EncodedMetadata {
         base::write_metadata(tcx, metadata)
@@ -184,6 +187,19 @@ impl BackendMethods for LlvmCodegenBackend {
     }
     fn wait_for_signal_to_codegen_item(&self, codegen: &OngoingCodegen) {
         codegen.wait_for_signal_to_codegen_item()
+    }
+}
+
+impl<'a, 'tcx: 'a> BackendCodegenCxMethods<'a, 'tcx> for LlvmCodegenBackend {
+    type CodegenCx = CodegenCx<'a, 'tcx>;
+
+    fn new_codegen_context(
+        &self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        codegen_unit: Arc<CodegenUnit<'tcx>>,
+        llvm_module: &'a ModuleLlvm
+    ) -> CodegenCx<'a, 'tcx> {
+        CodegenCx::new(tcx, codegen_unit, llvm_module)
     }
 }
 

@@ -22,7 +22,7 @@ mod type_;
 
 pub use self::abi::{AbiBuilderMethods, AbiMethods};
 pub use self::asm::{AsmBuilderMethods, AsmMethods};
-pub use self::backend::{Backend, BackendMethods, BackendTypes};
+pub use self::backend::{Backend, BackendCodegenCxMethods, BackendMethods, BackendTypes};
 pub use self::builder::BuilderMethods;
 pub use self::consts::ConstMethods;
 pub use self::debuginfo::{DebugInfoBuilderMethods, DebugInfoMethods};

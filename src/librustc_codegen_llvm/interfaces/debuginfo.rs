@@ -47,6 +47,7 @@ pub trait DebugInfoMethods<'tcx>: Backend<'tcx> {
         file: &SourceFile,
         defining_crate: CrateNum,
     ) -> Self::DIScope;
+    fn debuginfo_finalize(&self);
 }
 
 pub trait DebugInfoBuilderMethods<'tcx>: HasCodegen<'tcx> {
