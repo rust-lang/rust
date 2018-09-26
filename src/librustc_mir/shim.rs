@@ -717,7 +717,7 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             assert!(arg_ty.is_self());
             local_decls[rcvr_arg].ty = tcx.mk_mut_ptr(arg_ty);
 
-            Operand::Copy(rcvr_l.deref())
+            Operand::Move(rcvr_l.deref())
         }
         Adjustment::RefMut => {
             // let rcvr = &mut rcvr;
