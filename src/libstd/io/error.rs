@@ -214,10 +214,19 @@ impl ErrorKind {
 impl From<ErrorKind> for Error {
     /// Converts a [`ErrorKind`] into a [`Error`].
     ///
-    /// This conversion allocates a new error with simple repr.
+    /// This conversion allocates a new error with a simple representation of error kind.
     ///
-    /// [`ErrorKind`]: enum.ErrorKind.html
-    /// [`Error`]: struct.Error.html
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::{Error, ErrorKind};
+    ///
+    /// fn main() {
+    ///     let not_found = ErrorKind::NotFound;
+    ///     let error = Error::from(not_found);
+    ///     assert_eq!("entity not found", format!("{}", error));
+    /// }
+    /// ```
     #[inline]
     fn from(kind: ErrorKind) -> Error {
         Error {
