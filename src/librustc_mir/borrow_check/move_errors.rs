@@ -100,7 +100,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 // flow could be used.
                 if let Some(StatementKind::Assign(
                     Place::Local(local),
-                    Rvalue::Use(Operand::Move(move_from)),
+                    box Rvalue::Use(Operand::Move(move_from)),
                 )) = self.mir.basic_blocks()[location.block]
                     .statements
                     .get(location.statement_index)

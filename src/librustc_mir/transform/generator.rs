@@ -188,7 +188,7 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
         });
         Statement {
             source_info,
-            kind: StatementKind::Assign(state, Rvalue::Use(val)),
+            kind: StatementKind::Assign(state, box Rvalue::Use(val)),
         }
     }
 }
@@ -246,7 +246,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
             data.statements.push(Statement {
                 source_info,
                 kind: StatementKind::Assign(Place::Local(RETURN_PLACE),
-                    self.make_state(state_idx, v)),
+                                            box self.make_state(state_idx, v)),
             });
             let state = if let Some(resume) = resume { // Yield
                 let state = 3 + self.suspension_points.len() as u32;

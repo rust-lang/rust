@@ -290,7 +290,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                         self.gather_init(output, InitKind::Deep);
                     }
                 }
-                for input in inputs {
+                for input in inputs.iter() {
                     self.gather_operand(input);
                 }
             }
