@@ -1,38 +1,18 @@
-error: chained comparison operators require parentheses
-  --> $DIR/issue-40396.rs:12:37
+error[E0423]: expected function, found struct `Vec`
+  --> $DIR/issue-40396.rs:20:38
    |
-LL |     println!("{:?}", (0..13).collect<Vec<i32>>()); //~ ERROR chained comparison
-   |                                     ^^^^^^^^
-   |
-   = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
-   = help: or use `(...)` if you meant to specify fn arguments
+LL |     println!("{:?}", (0..13).collect<Vec<i32>()); //~ ERROR expected function, found struct `Vec`
+   |                                      ^^^^^^^^ did you mean `Vec { /* fields */ }`?
 
-error: chained comparison operators require parentheses
-  --> $DIR/issue-40396.rs:16:25
+error[E0615]: attempted to take value of method `collect` on type `std::ops::Range<{integer}>`
+  --> $DIR/issue-40396.rs:20:30
    |
-LL |     println!("{:?}", Vec<i32>::new()); //~ ERROR chained comparison
-   |                         ^^^^^^^
+LL |     println!("{:?}", (0..13).collect<Vec<i32>()); //~ ERROR expected function, found struct `Vec`
+   |                              ^^^^^^^
    |
-   = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
-   = help: or use `(...)` if you meant to specify fn arguments
+   = help: maybe a `()` to call it is missing?
 
-error: chained comparison operators require parentheses
-  --> $DIR/issue-40396.rs:20:37
-   |
-LL |     println!("{:?}", (0..13).collect<Vec<i32>()); //~ ERROR chained comparison
-   |                                     ^^^^^^^^
-   |
-   = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
-   = help: or use `(...)` if you meant to specify fn arguments
+error: aborting due to 2 previous errors
 
-error: chained comparison operators require parentheses
-  --> $DIR/issue-40396.rs:20:41
-   |
-LL |     println!("{:?}", (0..13).collect<Vec<i32>()); //~ ERROR chained comparison
-   |                                         ^^^^^^
-   |
-   = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
-   = help: or use `(...)` if you meant to specify fn arguments
-
-error: aborting due to 4 previous errors
-
+Some errors occurred: E0423, E0615.
+For more information about an error, try `rustc --explain E0423`.

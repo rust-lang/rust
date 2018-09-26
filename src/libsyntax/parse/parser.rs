@@ -250,6 +250,8 @@ pub struct Parser<'a> {
     desugar_doc_comments: bool,
     /// Whether we should configure out of line modules as we parse.
     pub cfg_mods: bool,
+    /// Whether we should prevent recovery from parsing areas (during backtracking).
+    prevent_recovery: bool,
 }
 
 
@@ -569,6 +571,7 @@ impl<'a> Parser<'a> {
             },
             desugar_doc_comments,
             cfg_mods: true,
+            prevent_recovery: false,
         };
 
         let tok = parser.next_tok();
@@ -1127,6 +1130,9 @@ impl<'a> Parser<'a> {
                     first = false;
                 } else {
                     if let Err(mut e) = self.expect(t) {
+                        if self.prevent_recovery {
+                            return Err(e);
+                        }
                         // Attempt to keep parsing if it was a similar separator
                         if let Some(ref tokens) = t.similar_tokens() {
                             if tokens.contains(&self.token) {
@@ -1742,11 +1748,10 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(keywords::Const) {
             Mutability::Immutable
         } else {
-            let span = self.prev_span;
-            self.span_err(span,
-                          "expected mut or const in raw pointer type (use \
-                           `*mut T` or `*const T` as appropriate)");
-            Mutability::Immutable
+            let mut err = self.fatal("expected mut or const in raw pointer type (use \
+            `*mut T` or `*const T` as appropriate)");
+            err.span_label(self.prev_span, "expected mut or const");
+            return Err(err);
         };
         let t = self.parse_ty_no_plus()?;
         Ok(MutTy { ty: t, mutbl: mutbl })
@@ -2048,20 +2053,32 @@ impl<'a> Parser<'a> {
                           -> PResult<'a, PathSegment> {
         let ident = self.parse_path_segment_ident()?;
 
-        let is_args_start = |token: &token::Token| match *token {
-            token::Lt | token::BinOp(token::Shl) | token::OpenDelim(token::Paren) => true,
+        let is_args_start = |token: &token::Token, include_paren: bool| match *token {
+            token::Lt | token::BinOp(token::Shl) => true,
+            token::OpenDelim(token::Paren) => include_paren,
             _ => false,
         };
-        let check_args_start = |this: &mut Self| {
-            this.expected_tokens.extend_from_slice(
-                &[TokenType::Token(token::Lt), TokenType::Token(token::OpenDelim(token::Paren))]
-            );
-            is_args_start(&this.token)
+        let check_args_start = |this: &mut Self, include_paren: bool| {
+            this.expected_tokens.push(TokenType::Token(token::Lt));
+            if include_paren {
+                this.expected_tokens.push(TokenType::Token(token::OpenDelim(token::Paren)));
+            }
+            is_args_start(&this.token, include_paren)
         };
 
-        Ok(if style == PathStyle::Type && check_args_start(self) ||
-              style != PathStyle::Mod && self.check(&token::ModSep)
-                                      && self.look_ahead(1, |t| is_args_start(t)) {
+        let mut parser_snapshot_before_generics = None;
+
+        Ok(if style == PathStyle::Type && check_args_start(self, true)
+            || style != PathStyle::Mod && self.check(&token::ModSep)
+                                       && self.look_ahead(1, |t| is_args_start(t, true))
+            || style == PathStyle::Expr && check_args_start(self, false) && {
+                // Check for generic arguments in an expression without a disambiguating `::`.
+                // We have to save a snapshot, because it could end up being an expression
+                // instead.
+                parser_snapshot_before_generics = Some(self.clone());
+                self.prevent_recovery = true;
+                true
+            } {
             // Generic arguments are found - `<`, `(`, `::<` or `::(`.
             let lo = self.span;
             if self.eat(&token::ModSep) && style == PathStyle::Type && enable_warning {
@@ -2071,10 +2088,26 @@ impl<'a> Parser<'a> {
 
             let args = if self.eat_lt() {
                 // `<'a, T, A = U>`
-                let (args, bindings) = self.parse_generic_args()?;
-                self.expect_gt()?;
-                let span = lo.to(self.prev_span);
-                AngleBracketedArgs { args, bindings, span }.into()
+                let args: PResult<_> = self.parse_generic_args().and_then(|(args, bindings)| {
+                    self.expect_gt().and_then(|_| {
+                        let span = lo.to(self.prev_span);
+                        Ok(AngleBracketedArgs { args, bindings, span })
+                    })
+                });
+
+                match args {
+                    Err(mut err) => {
+                        if let Some(snapshot) = parser_snapshot_before_generics {
+                            err.cancel();
+                            mem::replace(self, snapshot);
+                            return Ok(PathSegment::from_ident(ident));
+                        }
+                        return Err(err);
+                    }
+                    _ => {
+                        args?.into()
+                    }
+                }
             } else {
                 // `(T, U) -> R`
                 self.bump(); // `(`
