@@ -372,7 +372,9 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
     pub fn write_cvalue(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>, from: CValue<'tcx>) {
         match (&self.layout().ty.sty, &from.layout().ty.sty) {
             (ty::Ref(_, t, dest_mut), ty::Ref(_, u, src_mut))
-                if (if *dest_mut != crate::rustc::hir::Mutability::MutImmutable && src_mut != dest_mut {
+                if (if *dest_mut != crate::rustc::hir::Mutability::MutImmutable
+                    && src_mut != dest_mut
+                {
                     false
                 } else if t != u {
                     false
@@ -449,7 +451,11 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
     ) -> CPlace<'tcx> {
         match self {
             CPlace::Var(var, layout) => {
-                bug!("Tried to project {:?}, which is put in SSA var {:?}", layout.ty, var);
+                bug!(
+                    "Tried to project {:?}, which is put in SSA var {:?}",
+                    layout.ty,
+                    var
+                );
             }
             CPlace::Addr(base, extra, layout) => {
                 let (field_ptr, field_layout) = codegen_field(fx, base, layout, field);

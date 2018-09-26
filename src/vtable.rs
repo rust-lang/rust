@@ -81,8 +81,9 @@ fn build_vtable<'a, 'tcx: 'a>(
         .layout_of(ParamEnv::reveal_all().and(ty))
         .unwrap()
         .size_and_align();
-    let drop_in_place_fn =
-        fx.get_function_id(crate::rustc_mir::monomorphize::resolve_drop_in_place(tcx, ty));
+    let drop_in_place_fn = fx.get_function_id(
+        crate::rustc_mir::monomorphize::resolve_drop_in_place(tcx, ty),
+    );
 
     let mut components: Vec<_> = vec![Some(drop_in_place_fn), None, None];
 

@@ -154,7 +154,8 @@ fn data_id_for_static<'a, 'tcx: 'a, B: Backend>(
     def_id: DefId,
 ) -> DataId {
     let symbol_name = tcx.symbol_name(Instance::mono(tcx, def_id)).as_str();
-    let is_mutable = if let crate::rustc::hir::Mutability::MutMutable = tcx.is_static(def_id).unwrap() {
+    let is_mutable =
+        if let crate::rustc::hir::Mutability::MutMutable = tcx.is_static(def_id).unwrap() {
             true
         } else {
             !tcx.type_of(def_id)
@@ -235,11 +236,13 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
             let data_id = match tcx.alloc_map.lock().get(reloc).unwrap() {
                 AllocType::Function(instance) => {
                     let (func_name, sig) = crate::abi::get_function_name_and_sig(tcx, instance);
-                    let func_id = module.declare_function(&func_name, Linkage::Import, &sig).unwrap();
+                    let func_id = module
+                        .declare_function(&func_name, Linkage::Import, &sig)
+                        .unwrap();
                     let local_func_id = module.declare_func_in_data(func_id, &mut data_ctx);
                     data_ctx.write_function_addr(reloc_offset as u32, local_func_id);
                     continue;
-                },
+                }
                 AllocType::Memory(_) => {
                     cx.todo.insert(TodoItem::Alloc(reloc));
                     data_id_for_alloc_id(module, reloc)

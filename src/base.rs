@@ -27,8 +27,11 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
                         if inst.def_id().krate == LOCAL_CRATE =>
                     {
                         let mut mir = ::std::io::Cursor::new(Vec::new());
-                        crate::rustc_mir::util::write_mir_pretty(tcx, Some(inst.def_id()), &mut mir)
-                            .unwrap();
+                        crate::rustc_mir::util::write_mir_pretty(
+                            tcx,
+                            Some(inst.def_id()),
+                            &mut mir,
+                        ).unwrap();
                         String::from_utf8(mir.into_inner()).unwrap()
                     }
                     InstanceDef::Item(_)
@@ -436,12 +439,10 @@ fn trans_stmt<'a, 'tcx: 'a>(
                                     let res = fx.bcx.ins().icmp_imm(IntCC::Equal, val, 0);
                                     fx.bcx.ins().bint(types::I8, res)
                                 }
-                                ty::Uint(_) | ty::Int(_) => {
-                                    fx.bcx.ins().bnot(val)
-                                }
+                                ty::Uint(_) | ty::Int(_) => fx.bcx.ins().bnot(val),
                                 _ => unimplemented!("un op Not for {:?}", layout.ty),
                             }
-                        },
+                        }
                         UnOp::Neg => match layout.ty.sty {
                             ty::Int(_) => {
                                 let clif_ty = fx.cton_type(layout.ty).unwrap();
@@ -1001,7 +1002,10 @@ fn trans_ptr_binop<'a, 'tcx: 'a>(
                 let res = match bin_op {
                     BinOp::Eq => fx.bcx.ins().icmp(IntCC::Equal, lhs, rhs),
                     BinOp::Ne => fx.bcx.ins().icmp(IntCC::NotEqual, lhs, rhs),
-                    _ => unimplemented!("trans_ptr_binop({:?}, <fat ptr>, <fat ptr>) not implemented", bin_op),
+                    _ => unimplemented!(
+                        "trans_ptr_binop({:?}, <fat ptr>, <fat ptr>) not implemented",
+                        bin_op
+                    ),
                 };
 
                 assert_eq!(fx.tcx.types.bool, ret_ty);

@@ -49,7 +49,11 @@ fn get_pass_mode<'a, 'tcx: 'a>(
         PassMode::ByVal(ret_ty)
     } else {
         if abi == Abi::C {
-            unimpl!("Non scalars are not yet supported for \"C\" abi ({:?}) is_return: {:?}", ty, is_return);
+            unimpl!(
+                "Non scalars are not yet supported for \"C\" abi ({:?}) is_return: {:?}",
+                ty,
+                is_return
+            );
         }
         PassMode::ByRef
     }
@@ -667,9 +671,10 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                     assert_eq!(args.len(), 1);
                     let layout = fx.layout_of(substs.type_at(0));
                     let size = match &layout.ty.sty {
-                        _ if !layout.is_unsized() => {
-                            fx.bcx.ins().iconst(fx.module.pointer_type(), layout.size.bytes() as i64)
-                        }
+                        _ if !layout.is_unsized() => fx
+                            .bcx
+                            .ins()
+                            .iconst(fx.module.pointer_type(), layout.size.bytes() as i64),
                         ty::Slice(elem) => {
                             let len = args[0].load_value_pair(fx).1;
                             let elem_size = fx.layout_of(elem).size.bytes();
@@ -690,9 +695,10 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                     assert_eq!(args.len(), 1);
                     let layout = fx.layout_of(substs.type_at(0));
                     let align = match &layout.ty.sty {
-                        _ if !layout.is_unsized() => {
-                            fx.bcx.ins().iconst(fx.module.pointer_type(), layout.align.abi() as i64)
-                        }
+                        _ if !layout.is_unsized() => fx
+                            .bcx
+                            .ins()
+                            .iconst(fx.module.pointer_type(), layout.align.abi() as i64),
                         ty::Slice(elem) => {
                             let align = fx.layout_of(elem).align.abi() as i64;
                             fx.bcx.ins().iconst(fx.module.pointer_type(), align)
@@ -860,7 +866,8 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 _ if intrinsic.starts_with("atomic_fence") => {}
                 _ if intrinsic.starts_with("atomic_load") => {
                     assert_eq!(args.len(), 1);
-                    let inner_layout = fx.layout_of(args[0].layout().ty.builtin_deref(true).unwrap().ty);
+                    let inner_layout =
+                        fx.layout_of(args[0].layout().ty.builtin_deref(true).unwrap().ty);
                     let val = CValue::ByRef(args[0].load_value(fx), inner_layout);
                     ret.write_cvalue(fx, val);
                 }
