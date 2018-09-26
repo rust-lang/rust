@@ -10,7 +10,7 @@
 
 #[doc(keyword = "as")]
 //
-/// The keyword for casting types.
+/// The keyword for casting a value to a type.
 ///
 /// `as` is most commonly used to turn primitive types into other primitive types, but it has other
 /// uses that include turning pointers into addresses, addresses into pointers, and pointers into
@@ -133,7 +133,7 @@ mod crate_keyword { }
 ///
 /// Enums in Rust are similar to those of other compiled languages like C, but have important
 /// differences that make them considerably more powerful. What Rust calls enums are more commonly
-/// known as Algebraic Data Types if you're coming from a functional programming background. The
+/// known as [Algebraic Data Types] if you're coming from a functional programming background. The
 /// important detail is that each enum variant can have data to go along with it.
 ///
 /// ```rust
@@ -177,6 +177,7 @@ mod crate_keyword { }
 ///
 /// For more information, take a look at the [Rust Book] or the [Reference]
 ///
+/// [Algebraic Data Types]: https://en.wikipedia.org/wiki/Algebraic_data_type
 /// [`Option`]: option/enum.Option.html
 /// [Rust Book]: https://doc.rust-lang.org/book/second-edition/ch06-01-defining-an-enum.html
 /// [Reference]: https://doc.rust-lang.org/reference/items/enumerations.html
@@ -442,11 +443,14 @@ mod if_keyword { }
 //
 /// The implementation-defining keyword.
 ///
-/// The `impl` keyword is primarily used for defining implementations on types. There are two kinds
-/// of implementations: Inherent implementations and trait implementations. Inherent
-/// implementations define functions that operate on a type, known in object-oriented languages as
-/// methods. Trait implementations are used to give a type a trait, and implement any of the
-/// required associated items or methods that it requires.
+/// The `impl` keyword is primarily used to define implementations on types. Inherent
+/// implementations are standalone, while trait implementations are used to implement traits for
+/// types, or other traits.
+///
+/// Functions and consts can both be defined in an implementation. A function defined in an
+/// `impl` block can be standalone, meaning it would be called like `Foo::bar()`. If the function
+/// takes `self`, `&self`, or `&mut self` as its first argument, it can also be called using
+/// method-call syntax, a familiar feature to any object oriented programmer, like `foo.bar()`.
 ///
 /// ```rust
 /// struct Example {
@@ -551,7 +555,8 @@ mod impl_keyword { }
 ///
 /// Other places the `let` keyword is used include along with [`if`], in the form of `if let`
 /// expressions. They're useful if the pattern being matched isn't exhaustive, such as with
-/// enumerations.
+/// enumerations. `while let` also exists, which runs a loop with a pattern matched value until
+/// that pattern can't be matched.
 ///
 /// For more information on the `let` keyword, see the [Rust book] or the [Reference]
 ///
