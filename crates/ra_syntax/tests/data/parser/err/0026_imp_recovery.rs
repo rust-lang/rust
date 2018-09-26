@@ -1,3 +1,2 @@
 impl<T: Clone>
-impl<T> OnceCell<T> {
-}
+impl<T> OnceCell<T> {}
