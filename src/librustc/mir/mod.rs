@@ -2090,6 +2090,91 @@ impl<'tcx> Place<'tcx> {
     }
 }
 
+impl<'tcx> NeoPlace<'tcx> {
+    pub fn local(local: Local) -> Self {
+        Self {
+            base: PlaceBase::Local(local),
+            elems: List::empty(),
+        }
+    }
+
+    pub fn static_(static_: Static<'tcx>) -> Self {
+        Self {
+            base: PlaceBase::Static(box static_),
+            elems: List::empty(),
+        }
+    }
+
+    pub fn promoted(promoted: Promoted, ty: Ty<'tcx>) -> Self {
+        Self {
+            base: PlaceBase::Promoted(box (promoted, ty)),
+            elems: List::empty(),
+        }
+    }
+
+    pub fn field(
+        self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        f: Field,
+        ty: Ty<'tcx>,
+    ) -> Self {
+        self.elem(tcx, ProjectionElem::Field(f, ty))
+    }
+
+    pub fn deref(self, tcx: TyCtxt<'_, '_, 'tcx>) -> Self {
+        self.elem(tcx, ProjectionElem::Deref)
+    }
+
+    pub fn downcast(
+        self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        adt_def: &'tcx AdtDef,
+        variant_index: usize,
+    ) -> Self {
+        self.elem(tcx, ProjectionElem::Downcast(adt_def, variant_index))
+    }
+
+    pub fn index(self, tcx: TyCtxt<'_, '_, 'tcx>, index: Local) -> Self {
+        self.elem(tcx, ProjectionElem::Index(index))
+    }
+
+    pub fn constant_index(
+        self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        offset: u32,
+        min_length: u32,
+        from_end: bool,
+    ) -> Self {
+       self.elem(tcx, ProjectionElem::ConstantIndex {
+           offset, min_length, from_end,
+       })
+    }
+
+    pub fn subslice(
+        self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        from: u32,
+        to: u32,
+    ) -> Self {
+        self.elem(tcx, ProjectionElem::Subslice {
+            from, to,
+        })
+    }
+
+    fn elem(
+        self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        elem: PlaceElem<'tcx>,
+    ) -> Self {
+        Self {
+            base: self.base,
+            elems: tcx.mk_place_elems(
+                self.elems.iter().cloned().chain(iter::once(elem))
+            ),
+        }
+    }
+}
+
 impl<'tcx> Debug for Place<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::Place::*;
