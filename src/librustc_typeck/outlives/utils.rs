@@ -148,15 +148,9 @@ fn is_free_region<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, region: Region<'_>) -> bool
         //         field: &'static T, // this would generate a ReStatic
         //     }
         RegionKind::ReStatic => {
-            if tcx
-                .sess
-                .features_untracked()
-                .infer_static_outlives_requirements
-            {
-                true
-            } else {
-                false
-            }
+            tcx.sess
+               .features_untracked()
+               .infer_static_outlives_requirements
         }
 
         // Late-bound regions can appear in `fn` types:

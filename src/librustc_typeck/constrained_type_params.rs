@@ -76,11 +76,8 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
-        match *r {
-            ty::ReEarlyBound(data) => {
-                self.parameters.push(Parameter::from(data));
-            }
-            _ => {}
+        if let ty::ReEarlyBound(data) = *r {
+            self.parameters.push(Parameter::from(data));
         }
         false
     }
@@ -203,6 +200,6 @@ pub fn setup_constraining_predicates<'tcx>(tcx: TyCtxt,
         }
         debug!("setup_constraining_predicates: predicates={:?} \
                 i={} impl_trait_ref={:?} input_parameters={:?}",
-           predicates, i, impl_trait_ref, input_parameters);
+               predicates, i, impl_trait_ref, input_parameters);
     }
 }

@@ -71,15 +71,12 @@ struct ImplWfCheck<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> ItemLikeVisitor<'tcx> for ImplWfCheck<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        match item.node {
-            hir::ItemKind::Impl(.., ref impl_item_refs) => {
-                let impl_def_id = self.tcx.hir.local_def_id(item.id);
-                enforce_impl_params_are_constrained(self.tcx,
-                                                    impl_def_id,
-                                                    impl_item_refs);
-                enforce_impl_items_are_distinct(self.tcx, impl_item_refs);
-            }
-            _ => { }
+        if let hir::ItemKind::Impl(.., ref impl_item_refs) = item.node {
+            let impl_def_id = self.tcx.hir.local_def_id(item.id);
+            enforce_impl_params_are_constrained(self.tcx,
+                                                impl_def_id,
+                                                impl_item_refs);
+            enforce_impl_items_are_distinct(self.tcx, impl_item_refs);
         }
     }
 
@@ -182,7 +179,7 @@ fn enforce_impl_items_are_distinct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let impl_item = tcx.hir.impl_item(impl_item_ref.id);
         let seen_items = match impl_item.node {
             hir::ImplItemKind::Type(_) => &mut seen_type_items,
-            _                    => &mut seen_value_items,
+            _                          => &mut seen_value_items,
         };
         match seen_items.entry(impl_item.ident.modern()) {
             Occupied(entry) => {
@@ -191,7 +188,7 @@ fn enforce_impl_items_are_distinct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                impl_item.ident);
                 err.span_label(*entry.get(),
                                format!("previous definition of `{}` here",
-                                        impl_item.ident));
+                                       impl_item.ident));
                 err.span_label(impl_item.span, "duplicate definition");
                 err.emit();
             }
