@@ -554,35 +554,35 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         //    (open, not controlled).
         // 3. Standard library prelude (de-facto closed, controlled).
         // (Macro NS)
-        // 1-2. `macro_rules` (open, not controlled), loop through legacy scopes. Have higher
-        //    priority than prelude macros, but create ambiguities with macros in modules.
-        // 1-2. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
-        //    (open, not controlled). Have higher priority than prelude macros, but create
-        //    ambiguities with `macro_rules`.
-        // 3. `macro_use` prelude (open, the open part is from macro expansions, not controlled).
-        // 3a. User-defined prelude from macro-use
-        //    (open, the open part is from macro expansions, not controlled).
-        // 3b. Standard library prelude is currently implemented as `macro-use` (closed, controlled)
-        // 5. Language prelude: builtin macros (closed, controlled, except for legacy plugins).
-        // 6. Language prelude: builtin attributes (closed, controlled).
-        // 3-6. Legacy plugin helpers (open, not controlled). Similar to derive helpers,
-        //    but introduced by legacy plugins using `register_attribute`. Priority is somewhere
-        //    in prelude, not sure where exactly (creates ambiguities with any other prelude names).
-        // N (unordered). Derive helpers (open, not controlled). All ambiguities with other names
+        // 1-3. Derive helpers (open, not controlled). All ambiguities with other names
         //    are currently reported as errors. They should be higher in priority than preludes
-        //    and maybe even names in modules according to the "general principles" above. They
+        //    and probably even names in modules according to the "general principles" above. They
         //    also should be subject to restricted shadowing because are effectively produced by
         //    derives (you need to resolve the derive first to add helpers into scope), but they
         //    should be available before the derive is expanded for compatibility.
         //    It's mess in general, so we are being conservative for now.
+        // 1-3. `macro_rules` (open, not controlled), loop through legacy scopes. Have higher
+        //    priority than prelude macros, but create ambiguities with macros in modules.
+        // 1-3. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
+        //    (open, not controlled). Have higher priority than prelude macros, but create
+        //    ambiguities with `macro_rules`.
+        // 4. `macro_use` prelude (open, the open part is from macro expansions, not controlled).
+        // 4a. User-defined prelude from macro-use
+        //    (open, the open part is from macro expansions, not controlled).
+        // 4b. Standard library prelude is currently implemented as `macro-use` (closed, controlled)
+        // 5. Language prelude: builtin macros (closed, controlled, except for legacy plugins).
+        // 6. Language prelude: builtin attributes (closed, controlled).
+        // 4-6. Legacy plugin helpers (open, not controlled). Similar to derive helpers,
+        //    but introduced by legacy plugins using `register_attribute`. Priority is somewhere
+        //    in prelude, not sure where exactly (creates ambiguities with any other prelude names).
 
         enum WhereToResolve<'a> {
+            DeriveHelpers,
             MacroRules(LegacyScope<'a>),
             Module(Module<'a>),
             MacroUsePrelude,
             BuiltinMacros,
             BuiltinAttrs,
-            DeriveHelpers,
             LegacyPluginHelpers,
             ExternPrelude,
             ToolPrelude,
@@ -616,10 +616,30 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         let mut innermost_result: Option<(&NameBinding, Flags, /* conflicts with */ Flags)> = None;
 
         // Go through all the scopes and try to resolve the name.
-        let mut where_to_resolve = WhereToResolve::MacroRules(parent_scope.legacy);
+        let mut where_to_resolve = WhereToResolve::DeriveHelpers;
         let mut use_prelude = !parent_scope.module.no_implicit_prelude;
         loop {
             let result = match where_to_resolve {
+                WhereToResolve::DeriveHelpers => {
+                    let mut result = Err(Determinacy::Determined);
+                    for derive in &parent_scope.derives {
+                        let parent_scope = ParentScope { derives: Vec::new(), ..*parent_scope };
+                        if let Ok((_, ext)) = self.resolve_macro_to_def(derive, MacroKind::Derive,
+                                                                        &parent_scope, force) {
+                            if let SyntaxExtension::ProcMacroDerive(_, helper_attrs, _) = &*ext {
+                                if helper_attrs.contains(&ident.name) {
+                                    let binding =
+                                        (Def::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
+                                        ty::Visibility::Public, derive.span, Mark::root())
+                                        .to_name_binding(self.arenas);
+                                    result = Ok((binding, Flags::DERIVE_HELPERS, Flags::all()));
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    result
+                }
                 WhereToResolve::MacroRules(legacy_scope) => match legacy_scope {
                     LegacyScope::Binding(legacy_binding) if ident == legacy_binding.ident =>
                         Ok((legacy_binding.binding, Flags::MACRO_RULES, Flags::MODULE)),
@@ -659,26 +679,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     } else {
                         Err(Determinacy::Determined)
                     }
-                }
-                WhereToResolve::DeriveHelpers => {
-                    let mut result = Err(Determinacy::Determined);
-                    for derive in &parent_scope.derives {
-                        let parent_scope = ParentScope { derives: Vec::new(), ..*parent_scope };
-                        if let Ok((_, ext)) = self.resolve_macro_to_def(derive, MacroKind::Derive,
-                                                                        &parent_scope, force) {
-                            if let SyntaxExtension::ProcMacroDerive(_, helper_attrs, _) = &*ext {
-                                if helper_attrs.contains(&ident.name) {
-                                    let binding =
-                                        (Def::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
-                                        ty::Visibility::Public, derive.span, Mark::root())
-                                        .to_name_binding(self.arenas);
-                                    result = Ok((binding, Flags::DERIVE_HELPERS, Flags::all()));
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    result
                 }
                 WhereToResolve::LegacyPluginHelpers => {
                     if self.session.plugin_attributes.borrow().iter()
@@ -747,6 +747,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
             macro_rules! continue_search { () => {
                 where_to_resolve = match where_to_resolve {
+                    WhereToResolve::DeriveHelpers =>
+                        WhereToResolve::MacroRules(parent_scope.legacy),
                     WhereToResolve::MacroRules(legacy_scope) => match legacy_scope {
                         LegacyScope::Binding(binding) =>
                             WhereToResolve::MacroRules(binding.parent_legacy_scope),
@@ -770,8 +772,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     }
                     WhereToResolve::MacroUsePrelude => WhereToResolve::BuiltinMacros,
                     WhereToResolve::BuiltinMacros => WhereToResolve::BuiltinAttrs,
-                    WhereToResolve::BuiltinAttrs => WhereToResolve::DeriveHelpers,
-                    WhereToResolve::DeriveHelpers => WhereToResolve::LegacyPluginHelpers,
+                    WhereToResolve::BuiltinAttrs => WhereToResolve::LegacyPluginHelpers,
                     WhereToResolve::LegacyPluginHelpers => break, // nowhere else to search
                     WhereToResolve::ExternPrelude => WhereToResolve::ToolPrelude,
                     WhereToResolve::ToolPrelude => WhereToResolve::StdLibPrelude,
