@@ -214,6 +214,21 @@ impl<'tcx> PlaceBase<'tcx> {
             PlaceBase::Static(data) => data.ty,
         }
     }
+
+    pub fn ty_with_projections(
+        &self,
+        local_decls: &impl HasLocalDecls<'tcx>,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        elems: impl Iterator<Item = &'tcx PlaceElem<'tcx>>,
+    ) -> Ty<'tcx> {
+        let mut base_ty = self.ty(local_decls);
+
+        for elem in elems {
+            base_ty = PlaceTy::from(base_ty).projection_ty(tcx, elem).to_ty(tcx);
+        }
+
+        base_ty
+    }
 }
 
 impl<'tcx> NeoPlace<'tcx> {
