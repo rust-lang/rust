@@ -756,7 +756,7 @@ impl Builder<'a, 'll, 'tcx> {
             // Ask LLVM to verify that the constraints are well-formed.
             let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons);
             debug!("Constraint verification result: {:?}", constraints_ok);
-            if constraints_ok == 1 {
+            if constraints_ok == llvm::True {
                 let v = llvm::LLVMRustInlineAsm(
                     fty, asm, cons, volatile, alignstack, dia);
                 Some(self.call(v, inputs, None))
