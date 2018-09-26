@@ -57,6 +57,7 @@ use syntax::symbol::{keywords, Symbol, LocalInternedString, InternedString};
 use syntax_pos::{DUMMY_SP, Span};
 
 use smallvec;
+use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
 
@@ -1488,28 +1489,16 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 /// declared, but a type name in a non-zero universe is a placeholder
 /// type -- an idealized representative of "types in general" that we
 /// use for checking generic functions.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
-pub struct UniverseIndex { private: u32 }
+newtype_index! {
+    pub struct UniverseIndex {
+        DEBUG_FORMAT = "U{}",
+    }
+}
 
 impl_stable_hash_for!(struct UniverseIndex { private });
 
 impl UniverseIndex {
-    /// The root universe, where things that the user defined are
-    /// visible.
-    pub const ROOT: Self = UniverseIndex { private: 0 };
-
-    /// The "max universe" -- this isn't really a valid universe, but
-    /// it's useful sometimes as a "starting value" when you are
-    /// taking the minimum of a (non-empty!) set of universes.
-    pub const MAX: Self = UniverseIndex { private: ::std::u32::MAX };
-
-    /// Creates a universe index from the given integer.  Not to be
-    /// used lightly lest you pick a bad value. But sometimes we
-    /// convert universe indices into integers and back for various
-    /// reasons.
-    pub fn from_u32(index: u32) -> Self {
-        UniverseIndex { private: index }
-    }
+    pub const ROOT: UniverseIndex = UniverseIndex::from_u32_const(0);
 
     /// A "superuniverse" corresponds to being inside a `forall` quantifier.
     /// So, for example, suppose we have this type in universe `U`:
@@ -1529,26 +1518,6 @@ impl UniverseIndex {
     /// True if the names in this universe are a subset of the names in `other`.
     pub fn is_subset_of(self, other: UniverseIndex) -> bool {
         self.private <= other.private
-    }
-
-    pub fn as_u32(&self) -> u32 {
-        self.private
-    }
-
-    pub fn as_usize(&self) -> usize {
-        self.private as usize
-    }
-}
-
-impl fmt::Debug for UniverseIndex {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(fmt, "U{}", self.as_u32())
-    }
-}
-
-impl From<u32> for UniverseIndex {
-    fn from(index: u32) -> Self {
-        UniverseIndex::from_u32(index)
     }
 }
 
