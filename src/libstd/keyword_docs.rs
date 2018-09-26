@@ -538,7 +538,7 @@ mod impl_keyword { }
 /// book][book1] for more information on pattern matching. The type of the pattern is optionally
 /// given afterwards, but if left blank is automatically inferred by the compiler if possible.
 ///
-/// Variables in Rust are immutable by default, and require the [`mut`] keyword to be made mutable.
+/// Variables in Rust are immutable by default, and require the `mut` keyword to be made mutable.
 ///
 /// Multiple variables can be defined with the same name, known as shadowing. This doesn't affect
 /// the original variable in any way beyond being unable to directly access it beyond the point of
@@ -561,7 +561,6 @@ mod impl_keyword { }
 /// For more information on the `let` keyword, see the [Rust book] or the [Reference]
 ///
 /// [book1]: https://doc.rust-lang.org/stable/book/2018-edition/ch06-02-match.html
-/// [`mut`]: keyword.mut.html
 /// [`if`]: keyword.if.html
 /// [book2]:
 /// https://doc.rust-lang.org/stable/book/2018-edition/ch18-01-all-the-places-for-patterns.html#let-statements
