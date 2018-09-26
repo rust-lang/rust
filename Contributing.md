@@ -64,6 +64,9 @@ would need a configuration file named `test-indent.toml` in that directory. As a
 example, the `issue-1111.rs` test file is configured by the file
 `./tests/config/issue-1111.toml`.
 
+## Debugging
+
+Some `rewrite_*` methods use the `debug!` macro for printing useful information. These messages can be printed by using the environment variable `RUST_LOG=rustfmt=DEBUG`. These traces can be helpful in understanding which part of the code was used and get a better grasp on the execution flow.
 
 ## Hack!
 
@@ -153,6 +156,8 @@ which is how much we are currently indented from the lhs of the page. We also
 take a context which contains information used for parsing, the current block
 indent, and a configuration (see below).
 
+##### Rewrite and Indent
+
 To understand the indents, consider
 
 ```
@@ -195,6 +200,8 @@ checked subtraction: `available_space = budget.checked_sub(overhead)?`.
 `checked_sub` returns an `Option`, and if we would underflow `?` returns
 `None`, otherwise we proceed with the computed space.
 
+##### Rewrite of list-like expressions
+
 Much syntax in Rust is lists: lists of arguments, lists of fields, lists of
 array elements, etc. We have some generic code to handle lists, including how to
 space them in horizontal and vertical space, indentation, comments between
@@ -202,6 +209,8 @@ items, trailing separators, etc. However, since there are so many options, the
 code is a bit complex. Look in [src/lists.rs](src/lists.rs). `write_list` is the key function,
 and `ListFormatting` the key structure for configuration. You'll need to make a
 `ListItems` for input, this is usually done using `itemize_list`.
+
+##### Configuration
 
 Rustfmt strives to be highly configurable. Often the first part of a patch is
 creating a configuration option for the feature you are implementing. All
