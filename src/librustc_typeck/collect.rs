@@ -2003,7 +2003,7 @@ fn compute_sig_of_foreign_fn_decl<'a, 'tcx>(
 ) -> ty::PolyFnSig<'tcx> {
     let unsafety = if abi == abi::Abi::RustIntrinsic {
         match &*tcx.item_name(def_id).as_str() {
-            "size_of" | "min_align_of" => hir::Unsafety::Normal,
+            "size_of" | "min_align_of" | "needs_drop" => hir::Unsafety::Normal,
             _ => hir::Unsafety::Unsafe,
         }
     } else {

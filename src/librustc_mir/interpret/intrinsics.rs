@@ -65,6 +65,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 self.write_scalar(align_val, dest)?;
             }
 
+            "needs_drop" => {
+                let ty = substs.type_at(0);
+                let ty_needs_drop = ty.needs_drop(self.tcx.tcx, self.param_env);
+                let val = Scalar::from_bool(ty_needs_drop);
+                self.write_scalar(val, dest)?;
+            }
+
             "size_of" => {
                 let ty = substs.type_at(0);
                 let size = self.layout_of(ty)?.size.bytes() as u128;

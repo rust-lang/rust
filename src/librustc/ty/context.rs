@@ -1143,6 +1143,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 match &self.item_name(def_id).as_str()[..] {
                     | "size_of"
                     | "min_align_of"
+                    | "needs_drop"
                     => return true,
                     _ => {},
                 }

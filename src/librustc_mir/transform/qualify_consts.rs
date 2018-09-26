@@ -823,6 +823,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         match &self.tcx.item_name(def_id).as_str()[..] {
                             | "size_of"
                             | "min_align_of"
+                            | "needs_drop"
                             | "type_id"
                             | "bswap"
                             | "bitreverse"
