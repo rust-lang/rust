@@ -4611,10 +4611,24 @@ fn item_macro(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 fn item_proc_macro(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item, m: &clean::ProcMacro)
     -> fmt::Result
 {
-    if m.kind == MacroKind::Bang {
-        write!(w, "<pre class='rust macro'>")?;
-        write!(w, "{}!() {{ /* proc-macro */ }}", it.name.as_ref().unwrap())?;
-        write!(w, "</pre>")?;
+    let name = it.name.as_ref().expect("proc-macros always have names");
+    match m.kind {
+        MacroKind::Bang => {
+            write!(w, "<pre class='rust macro'>")?;
+            write!(w, "{}!() {{ /* proc-macro */ }}", name)?;
+            write!(w, "</pre>")?;
+        }
+        MacroKind::Attr => {
+            write!(w, "<pre class='rust attr'>")?;
+            write!(w, "#[{}]", name)?;
+            write!(w, "</pre>")?;
+        }
+        MacroKind::Derive => {
+            write!(w, "<pre class='rust derive'>")?;
+            write!(w, "#[derive({})]", name)?;
+            write!(w, "</pre>")?;
+        }
+        _ => {}
     }
     document(w, cx, it)
 }
