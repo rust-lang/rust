@@ -592,4 +592,8 @@ impl<'ll, 'tcx: 'll> DebugInfoMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll V
     ) -> &'ll DILexicalBlock {
         metadata::extend_scope_to_file(&self, scope_metadata, file, defining_crate)
     }
+
+    fn debuginfo_finalize(&self) {
+        finalize(self)
+    }
 }

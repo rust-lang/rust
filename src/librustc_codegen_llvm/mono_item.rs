@@ -28,18 +28,17 @@ use rustc::ty::{TypeFoldable, Ty};
 use rustc::ty::layout::{LayoutOf, HasTyCtxt, TyLayout};
 use std::fmt;
 use value::Value;
-use builder::Builder;
 use interfaces::*;
 
 pub use rustc::mir::mono::MonoItem;
 
 pub use rustc_mir::monomorphize::item::MonoItemExt as BaseMonoItemExt;
 
-pub trait MonoItemExt<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>> :
-    fmt::Debug + BaseMonoItemExt<'ll, 'tcx> where
-    &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
+pub trait MonoItemExt<'a, 'll: 'a, 'tcx: 'll> : fmt::Debug + BaseMonoItemExt<'ll, 'tcx>
 {
-    fn define(&self, cx: &'a Bx::CodegenCx) {
+    fn define<Bx: BuilderMethods<'a, 'll, 'tcx>>(&self, cx: &'a Bx::CodegenCx) where
+        &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
+    {
         debug!("BEGIN IMPLEMENTING '{} ({})' in cgu {}",
                self.to_string(*cx.tcx()),
                self.to_raw_string(),
@@ -78,10 +77,14 @@ pub trait MonoItemExt<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>
                cx.codegen_unit().name());
     }
 
-    fn predefine(&self,
-                 cx: &'a Bx::CodegenCx,
-                 linkage: Linkage,
-                 visibility: Visibility) {
+    fn predefine<Bx: BuilderMethods<'a, 'll, 'tcx>>(
+        &self,
+        cx: &'a Bx::CodegenCx,
+        linkage: Linkage,
+        visibility: Visibility
+    ) where
+        &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
+    {
         debug!("BEGIN PREDEFINING '{} ({})' in cgu {}",
                self.to_string(*cx.tcx()),
                self.to_raw_string(),
@@ -124,7 +127,7 @@ pub trait MonoItemExt<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>
     }
 }
 
-impl<'a, 'll:'a, 'tcx: 'll> MonoItemExt<'a, 'll, 'tcx, Builder<'a, 'll, 'tcx, &'ll Value>>
+impl<'a, 'll:'a, 'tcx: 'll> MonoItemExt<'a, 'll, 'tcx>
     for MonoItem<'tcx> {}
 
 impl<'ll, 'tcx: 'll> PreDefineMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {

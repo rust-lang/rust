@@ -33,4 +33,5 @@ pub trait StaticMethods<'ll> : Backend<'ll> {
         def_id: DefId,
         is_mutable: bool,
     );
+    fn static_replace_all_uses(&self, old_g: Self::Value, new_g: Self::Value);
 }

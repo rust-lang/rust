@@ -72,9 +72,14 @@ use interfaces::*;
 use time_graph::TimeGraph;
 use std::sync::mpsc::Receiver;
 use back::write::{self, OngoingCodegen};
+use builder::Builder;
+use value::Value;
+use context::CodegenCx;
+use monomorphize::partitioning::CodegenUnit;
 
 pub use llvm_util::target_features;
 use std::any::Any;
+use std::sync::Arc;
 use std::path::{PathBuf};
 use std::sync::mpsc;
 use rustc_data_structures::sync::Lrc;
@@ -142,9 +147,10 @@ mod value;
 
 pub struct LlvmCodegenBackend(());
 
-impl BackendMethods for LlvmCodegenBackend {
+impl<'a, 'll: 'a, 'tcx: 'll> BackendMethods<'a, 'll, 'tcx> for LlvmCodegenBackend {
     type Metadata = ModuleLlvm;
     type OngoingCodegen = OngoingCodegen;
+    type Builder = Builder<'a, 'll, 'tcx, &'ll Value>;
 
     fn thin_lto_available(&self) -> bool {
          unsafe { !llvm::LLVMRustThinLTOAvailable() }
@@ -155,9 +161,9 @@ impl BackendMethods for LlvmCodegenBackend {
     fn new_metadata(&self, sess: &Session, mod_name: &str) -> ModuleLlvm {
         ModuleLlvm::new(sess, mod_name)
     }
-    fn write_metadata<'a, 'gcx>(
+    fn write_metadata<'b, 'gcx>(
         &self,
-        tcx: TyCtxt<'a, 'gcx, 'gcx>,
+        tcx: TyCtxt<'b, 'gcx, 'gcx>,
         metadata: &ModuleLlvm
     ) -> EncodedMetadata {
         base::write_metadata(tcx, metadata)
@@ -191,6 +197,14 @@ impl BackendMethods for LlvmCodegenBackend {
     }
     fn wait_for_signal_to_codegen_item(&self, codegen: &OngoingCodegen) {
         codegen.wait_for_signal_to_codegen_item()
+    }
+    fn new_codegen_context(
+        &self,
+        tcx: TyCtxt<'ll, 'tcx, 'tcx>,
+        codegen_unit: Arc<CodegenUnit<'tcx>>,
+        llvm_module: &'ll ModuleLlvm
+    ) -> CodegenCx<'ll, 'tcx, &'ll Value> {
+        CodegenCx::new(tcx, codegen_unit, llvm_module)
     }
 }
 

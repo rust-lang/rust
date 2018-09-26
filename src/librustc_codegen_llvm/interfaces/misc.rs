@@ -29,7 +29,11 @@ pub trait MiscMethods<'ll, 'tcx: 'll> : Backend<'ll> {
     fn eh_unwind_resume(&self) -> Self::Value;
     fn sess(&self) -> &Session;
     fn stats(&self) -> &RefCell<Stats>;
+    fn consume_stats(self) -> RefCell<Stats>;
     fn codegen_unit(&self) -> &Arc<CodegenUnit<'tcx>>;
+    fn statics_to_rauw(&self) -> &RefCell<Vec<(Self::Value, Self::Value)>>;
+    fn used_statics(&self) -> &RefCell<Vec<Self::Value>>;
     fn set_frame_pointer_elimination(&self, llfn: Self::Value);
     fn apply_target_cpu_attr(&self, llfn: Self::Value);
+    fn create_used_variable(&self);
 }

@@ -41,7 +41,7 @@ pub trait DebugInfoMethods<'ll, 'tcx: 'll> : Backend<'ll> {
         llfn: Self::Value,
         mir: &mir::Mir,
     ) -> FunctionDebugContext<'ll>;
-    
+
     fn create_mir_scopes(
         &self,
         mir: &mir::Mir,
@@ -53,6 +53,7 @@ pub trait DebugInfoMethods<'ll, 'tcx: 'll> : Backend<'ll> {
         file: &syntax_pos::SourceFile,
         defining_crate: CrateNum,
     ) -> Self::DIScope;
+    fn debuginfo_finalize(&self);
 }
 
 pub trait DebugInfoBuilderMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> {

@@ -27,6 +27,7 @@ use super::ModuleLlvm;
 use super::ModuleCodegen;
 use super::ModuleKind;
 use super::CachedModuleCodegen;
+use super::LlvmCodegenBackend;
 
 use abi;
 use back::write;
@@ -54,8 +55,6 @@ use callee;
 use rustc_mir::monomorphize::collector::{self, MonoItemCollectionMode};
 use rustc_mir::monomorphize::item::DefPathBasedNames;
 use common::{self, IntPredicate, RealPredicate, TypeKind};
-use context::CodegenCx;
-use debuginfo;
 use meth;
 use mir;
 use monomorphize::Instance;
@@ -720,9 +719,9 @@ fn determine_cgu_reuse<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-pub fn codegen_crate<'a, 'tcx, B : BackendMethods>(
+pub fn codegen_crate<'a, 'll: 'a, 'tcx: 'll, B : BackendMethods<'a, 'll, 'tcx>>(
     backend: B,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'ll, 'tcx, 'tcx>,
     rx: mpsc::Receiver<Box<dyn Any + Send>>
 ) -> B::OngoingCodegen {
 
@@ -940,7 +939,7 @@ pub fn codegen_crate<'a, 'tcx, B : BackendMethods>(
     ongoing_codegen
 }
 
-fn assert_and_save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+fn assert_and_save_dep_graph<'ll, 'tcx>(tcx: TyCtxt<'ll, 'tcx, 'tcx>) {
     time(tcx.sess,
          "assert dep graph",
          || rustc_incremental::assert_dep_graph(tcx));
@@ -950,8 +949,8 @@ fn assert_and_save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
          || rustc_incremental::save_dep_graph(tcx));
 }
 
-fn collect_and_partition_mono_items<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn collect_and_partition_mono_items<'ll, 'tcx>(
+    tcx: TyCtxt<'ll, 'tcx, 'tcx>,
     cnum: CrateNum,
 ) -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>)
 {
@@ -1167,7 +1166,7 @@ fn is_codegened_item(tcx: TyCtxt, id: DefId) -> bool {
     all_mono_items.contains(&id)
 }
 
-fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn compile_codegen_unit<'ll, 'tcx>(tcx: TyCtxt<'ll, 'tcx, 'tcx>,
                                   cgu_name: InternedString)
                                   -> Stats {
     let start_time = Instant::now();
@@ -1189,26 +1188,26 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            cost);
     return stats;
 
-    fn module_codegen<'a, 'tcx>(
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    fn module_codegen<'ll, 'tcx>(
+        tcx: TyCtxt<'ll, 'tcx, 'tcx>,
         cgu_name: InternedString)
         -> (Stats, ModuleCodegen<ModuleLlvm>)
     {
+        let backend = LlvmCodegenBackend(());
         let cgu = tcx.codegen_unit(cgu_name);
-
         // Instantiate monomorphizations without filling out definitions yet...
-        let llvm_module = ModuleLlvm::new(tcx.sess, &cgu_name.as_str());
+        let llvm_module = backend.new_metadata(tcx.sess, &cgu_name.as_str());
         let stats = {
-            let cx = CodegenCx::new(tcx, cgu, &llvm_module);
+            let cx = backend.new_codegen_context(tcx, cgu, &llvm_module);
             let mono_items = cx.codegen_unit
                                .items_in_deterministic_order(cx.tcx);
             for &(mono_item, (linkage, visibility)) in &mono_items {
-                mono_item.predefine(&cx, linkage, visibility);
+                mono_item.predefine::<Builder<&Value>>(&cx, linkage, visibility);
             }
 
             // ... and now that we have everything pre-defined, fill out those definitions.
             for &(mono_item, _) in &mono_items {
-                mono_item.define(&cx);
+                mono_item.define::<Builder<&Value>>(&cx);
             }
 
             // If this codegen unit contains the main function, also create the
@@ -1216,40 +1215,22 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             maybe_create_entry_wrapper::<Builder<&Value>>(&cx);
 
             // Run replace-all-uses-with for statics that need it
-            for &(old_g, new_g) in cx.statics_to_rauw.borrow().iter() {
-                unsafe {
-                    let bitcast = llvm::LLVMConstPointerCast(new_g, cx.val_ty(old_g));
-                    llvm::LLVMReplaceAllUsesWith(old_g, bitcast);
-                    llvm::LLVMDeleteGlobal(old_g);
-                }
+            for &(old_g, new_g) in cx.statics_to_rauw().borrow().iter() {
+                cx.static_replace_all_uses(old_g, new_g)
             }
 
             // Create the llvm.used variable
             // This variable has type [N x i8*] and is stored in the llvm.metadata section
-            if !cx.used_statics.borrow().is_empty() {
-                let name = const_cstr!("llvm.used");
-                let section = const_cstr!("llvm.metadata");
-                let array = cx.const_array(
-                    &cx.type_ptr_to(cx.type_i8()),
-                    &*cx.used_statics.borrow()
-                );
-
-                unsafe {
-                    let g = llvm::LLVMAddGlobal(cx.llmod,
-                                                cx.val_ty(array),
-                                                name.as_ptr());
-                    llvm::LLVMSetInitializer(g, array);
-                    llvm::LLVMRustSetLinkage(g, llvm::Linkage::AppendingLinkage);
-                    llvm::LLVMSetSection(g, section.as_ptr());
-                }
+            if !cx.used_statics().borrow().is_empty() {
+                cx.create_used_variable()
             }
 
             // Finalize debuginfo
             if cx.sess().opts.debuginfo != DebugInfo::None {
-                debuginfo::finalize(&cx);
+                cx.debuginfo_finalize();
             }
 
-            cx.stats.into_inner()
+            cx.consume_stats().into_inner()
         };
 
         (stats, ModuleCodegen {
