@@ -13,14 +13,16 @@ use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use ty::{self, Ty, TyCtxt};
 use middle::cstore::{ExternCrate, ExternCrateSource};
 use syntax::ast;
-use syntax::symbol::Symbol;
-use syntax::symbol::LocalInternedString;
+use syntax::symbol::{keywords, LocalInternedString, Symbol};
+use syntax_pos::edition::Edition;
 
 use std::cell::Cell;
+use std::fmt::Debug;
 
 thread_local! {
     static FORCE_ABSOLUTE: Cell<bool> = Cell::new(false);
     static FORCE_IMPL_FILENAME_LINE: Cell<bool> = Cell::new(false);
+    static SHOULD_PREFIX_WITH_CRATE: Cell<bool> = Cell::new(false);
 }
 
 /// Enforces that item_path_str always returns an absolute path and
@@ -51,6 +53,17 @@ pub fn with_forced_impl_filename_line<F: FnOnce() -> R, R>(f: F) -> R {
     })
 }
 
+/// Add the `crate::` prefix to paths where appropriate.
+pub fn with_crate_prefix<F: FnOnce() -> R, R>(f: F) -> R {
+    SHOULD_PREFIX_WITH_CRATE.with(|flag| {
+        let old = flag.get();
+        flag.set(true);
+        let result = f();
+        flag.set(old);
+        result
+    })
+}
+
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Returns a string identifying this def-id. This string is
     /// suitable for user output. It is relative to the current crate
@@ -64,6 +77,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
         });
         let mut buffer = LocalPathBuffer::new(mode);
+        debug!("item_path_str: buffer={:?} def_id={:?}", buffer, def_id);
         self.push_item_path(&mut buffer, def_id);
         buffer.into_string()
     }
@@ -77,6 +91,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// suitable for user output. It always begins with a crate identifier.
     pub fn absolute_item_path_str(self, def_id: DefId) -> String {
         let mut buffer = LocalPathBuffer::new(RootMode::Absolute);
+        debug!("absolute_item_path_str: buffer={:?} def_id={:?}", buffer, def_id);
         self.push_item_path(&mut buffer, def_id);
         buffer.into_string()
     }
@@ -85,8 +100,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// various ways, depending on the `root_mode` of the `buffer`.
     /// (See `RootMode` enum for more details.)
     pub fn push_krate_path<T>(self, buffer: &mut T, cnum: CrateNum)
-        where T: ItemPathBuffer
+        where T: ItemPathBuffer + Debug
     {
+        debug!(
+            "push_krate_path: buffer={:?} cnum={:?} LOCAL_CRATE={:?}",
+            buffer, cnum, LOCAL_CRATE
+        );
         match *buffer.root_mode() {
             RootMode::Local => {
                 // In local mode, when we encounter a crate other than
@@ -109,16 +128,32 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         ..
                     }) = *opt_extern_crate
                     {
+                        debug!("push_krate_path: def_id={:?}", def_id);
                         self.push_item_path(buffer, def_id);
                     } else {
-                        buffer.push(&self.crate_name(cnum).as_str());
+                        let name = self.crate_name(cnum).as_str();
+                        debug!("push_krate_path: name={:?}", name);
+                        buffer.push(&name);
                     }
+                } else if self.sess.edition() == Edition::Edition2018 {
+                    SHOULD_PREFIX_WITH_CRATE.with(|flag| {
+                        // We only add the `crate::` keyword where appropriate. This
+                        // is only possible because of the invariant in `push_item_path`
+                        // that this function will not be called after printing the path
+                        // to an item in the standard library. Without this invariant,
+                        // we would print `crate::std::..` here.
+                        if flag.get() {
+                            buffer.push(&keywords::Crate.name().as_str())
+                        }
+                    })
                 }
             }
             RootMode::Absolute => {
                 // In absolute mode, just write the crate name
                 // unconditionally.
-                buffer.push(&self.original_crate_name(cnum).as_str());
+                let name = self.original_crate_name(cnum).as_str();
+                debug!("push_krate_path: original_name={:?}", name);
+                buffer.push(&name);
             }
         }
     }
@@ -127,12 +162,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// from at least one local module and returns true. If the crate defining `external_def_id` is
     /// declared with an `extern crate`, the path is guaranteed to use the `extern crate`.
     pub fn try_push_visible_item_path<T>(self, buffer: &mut T, external_def_id: DefId) -> bool
-        where T: ItemPathBuffer
+        where T: ItemPathBuffer + Debug
     {
+        debug!(
+            "try_push_visible_item_path: buffer={:?} external_def_id={:?}",
+            buffer, external_def_id
+        );
         let visible_parent_map = self.visible_parent_map(LOCAL_CRATE);
 
         let (mut cur_def, mut cur_path) = (external_def_id, Vec::<LocalInternedString>::new());
         loop {
+            debug!(
+                "try_push_visible_item_path: cur_def={:?} cur_path={:?} CRATE_DEF_INDEX={:?}",
+                cur_def, cur_path, CRATE_DEF_INDEX,
+            );
             // If `cur_def` is a direct or injected extern crate, push the path to the crate
             // followed by the path to the item within the crate and return.
             if cur_def.index == CRATE_DEF_INDEX {
@@ -142,6 +185,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         direct: true,
                         ..
                     }) => {
+                        debug!("try_push_visible_item_path: def_id={:?}", def_id);
                         self.push_item_path(buffer, def_id);
                         cur_path.iter().rev().for_each(|segment| buffer.push(&segment));
                         return true;
@@ -156,6 +200,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
 
             let mut cur_def_key = self.def_key(cur_def);
+            debug!("try_push_visible_item_path: cur_def_key={:?}", cur_def_key);
 
             // For a UnitStruct or TupleStruct we want the name of its parent rather than <unnamed>.
             if let DefPathData::StructCtor = cur_def_key.disambiguated_data.data {
@@ -175,6 +220,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     Symbol::intern("<unnamed>").as_str()
                 }
             });
+            debug!("try_push_visible_item_path: symbol={:?}", symbol);
             cur_path.push(symbol);
 
             match visible_parent_map.get(&cur_def) {
@@ -185,8 +231,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn push_item_path<T>(self, buffer: &mut T, def_id: DefId)
-        where T: ItemPathBuffer
+        where T: ItemPathBuffer + Debug
     {
+        debug!("push_item_path: buffer={:?} def_id={:?}", buffer, def_id);
         match *buffer.root_mode() {
             RootMode::Local if !def_id.is_local() =>
                 if self.try_push_visible_item_path(buffer, def_id) { return },
@@ -194,6 +241,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
 
         let key = self.def_key(def_id);
+        debug!("push_item_path: key={:?}", key);
         match key.disambiguated_data.data {
             DefPathData::CrateRoot => {
                 assert!(key.parent.is_none());
@@ -225,9 +273,21 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             data @ DefPathData::ImplTrait |
             data @ DefPathData::GlobalMetaData(..) => {
                 let parent_def_id = self.parent_def_id(def_id).unwrap();
-                self.push_item_path(buffer, parent_def_id);
+
+                match self.def_key(parent_def_id).disambiguated_data.data {
+                    // Skip recursing to print the crate root depending on the
+                    // current name.
+                    //
+                    // In particular, don't recurse to print the crate root if we
+                    // just printed `std`. In doing this, we are able to add
+                    // `crate::` to trait import suggestions.
+                    DefPathData::CrateRoot if data.as_interned_str() == "std" => {},
+                    _ => self.push_item_path(buffer, parent_def_id),
+                }
+
                 buffer.push(&data.as_interned_str().as_symbol().as_str());
-            }
+            },
+
             DefPathData::StructCtor => { // present `X` instead of `X::{{constructor}}`
                 let parent_def_id = self.parent_def_id(def_id).unwrap();
                 self.push_item_path(buffer, parent_def_id);
@@ -238,8 +298,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     fn push_impl_path<T>(self,
                          buffer: &mut T,
                          impl_def_id: DefId)
-        where T: ItemPathBuffer
+        where T: ItemPathBuffer + Debug
     {
+        debug!("push_impl_path: buffer={:?} impl_def_id={:?}", buffer, impl_def_id);
         let parent_def_id = self.parent_def_id(impl_def_id).unwrap();
 
         // Always use types for non-local impls, where types are always
@@ -327,7 +388,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     fn push_impl_path_fallback<T>(self,
                                   buffer: &mut T,
                                   impl_def_id: DefId)
-        where T: ItemPathBuffer
+        where T: ItemPathBuffer + Debug
     {
         // If no type info is available, fall back to
         // pretty printing some span information. This should

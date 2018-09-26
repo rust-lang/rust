@@ -338,6 +338,7 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
 //
 // To be able to work on all platforms and get *some* reasonable output, we
 // use C++ name-mangling.
+#[derive(Debug)]
 struct SymbolPathBuffer {
     result: String,
     temp_buf: String,
