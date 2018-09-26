@@ -657,6 +657,8 @@ impl FunctionCx<'a, 'll, 'tcx> {
                                 .get_fn(&bx, meta, &fn_ty));
                             llargs.push(data_ptr);
                             continue;
+                        } else {
+                            span_bug!(span, "can't codegen a virtual call on {:?}", op);
                         }
                     }
 
