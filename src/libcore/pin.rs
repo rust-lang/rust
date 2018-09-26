@@ -293,21 +293,21 @@ where
 }
 
 #[unstable(feature = "pin", issue = "49150")]
-impl<'a, P: fmt::Debug> fmt::Debug for Pin<P> {
+impl<P: fmt::Debug> fmt::Debug for Pin<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&self.pointer, f)
     }
 }
 
 #[unstable(feature = "pin", issue = "49150")]
-impl<'a, P: fmt::Display> fmt::Display for Pin<P> {
+impl<P: fmt::Display> fmt::Display for Pin<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.pointer, f)
     }
 }
 
 #[unstable(feature = "pin", issue = "49150")]
-impl<'a, P: fmt::Pointer> fmt::Pointer for Pin<P> {
+impl<P: fmt::Pointer> fmt::Pointer for Pin<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Pointer::fmt(&self.pointer, f)
     }
@@ -319,10 +319,10 @@ impl<'a, P: fmt::Pointer> fmt::Pointer for Pin<P> {
 // for other reasons, though, so we just need to take care not to allow such
 // impls to land in std.
 #[unstable(feature = "pin", issue = "49150")]
-impl<'a, P, U> CoerceUnsized<Pin<U>> for Pin<P>
+impl<P, U> CoerceUnsized<Pin<U>> for Pin<P>
 where
     P: CoerceUnsized<U>,
 {}
 
 #[unstable(feature = "pin", issue = "49150")]
-impl<'a, P> Unpin for Pin<P> {}
+impl<P> Unpin for Pin<P> {}
