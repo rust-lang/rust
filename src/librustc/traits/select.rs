@@ -1374,7 +1374,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         let tcx = self.tcx();
         let trait_ref = cache_fresh_trait_pred.skip_binder().trait_ref;
         if self.can_use_global_caches(param_env) {
-            if let Some(trait_ref) = tcx.lift_to_global(&trait_ref) {
+            if let Err(Overflow) = candidate {
+                // Don't cache overflow globally; we only produce this
+                // in certain modes.
+            } else if let Some(trait_ref) = tcx.lift_to_global(&trait_ref) {
                 if let Some(candidate) = tcx.lift_to_global(&candidate) {
                     debug!(
                         "insert_candidate_cache(trait_ref={:?}, candidate={:?}) global",
