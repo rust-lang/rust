@@ -883,6 +883,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         )
     }
 
+    /// Try to relate `sub <: sup`; if this fails, instantiate opaque
+    /// variables in `sub` with their inferred definitions and try
+    /// again. This is used for opaque types in places (e.g., `let x:
+    /// impl Foo = ..`).
     fn sub_types_or_anon(
         &mut self,
         sub: Ty<'tcx>,
@@ -892,7 +896,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     ) -> Fallible<()> {
         if let Err(terr) = self.sub_types(sub, sup, locations, category) {
             if let TyKind::Opaque(..) = sup.sty {
-                return self.eq_opaque_type_and_type(sub, sup, locations, category);
+                // When you have `let x: impl Foo = ...` in a closure,
+                // the resulting inferend values are stored with the
+                // def-id of the base function.
+                let parent_def_id = self.tcx().closure_base_def_id(self.mir_def_id);
+                return self.eq_opaque_type_and_type(sub, sup, parent_def_id, locations, category);
             } else {
                 return Err(terr);
             }
@@ -940,13 +948,20 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         &mut self,
         revealed_ty: Ty<'tcx>,
         anon_ty: Ty<'tcx>,
+        anon_owner_def_id: DefId,
         locations: Locations,
         category: ConstraintCategory,
     ) -> Fallible<()> {
+        debug!(
+            "eq_opaque_type_and_type( \
+             revealed_ty={:?}, \
+             anon_ty={:?})",
+            revealed_ty, anon_ty
+        );
         let infcx = self.infcx;
         let tcx = infcx.tcx;
         let param_env = self.param_env;
-        let parent_def_id = infcx.tcx.closure_base_def_id(self.mir_def_id);
+        debug!("eq_opaque_type_and_type: mir_def_id={:?}", self.mir_def_id);
         let opaque_type_map = self.fully_perform_op(
             locations,
             category,
@@ -957,7 +972,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     let dummy_body_id = ObligationCause::dummy().body_id;
                     let (output_ty, opaque_type_map) =
                         obligations.add(infcx.instantiate_opaque_types(
-                            parent_def_id,
+                            anon_owner_def_id,
                             dummy_body_id,
                             param_env,
                             &anon_ty,
@@ -978,8 +993,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         let opaque_defn_ty = opaque_defn_ty.subst(tcx, opaque_decl.substs);
                         let opaque_defn_ty = renumber::renumber_regions(infcx, &opaque_defn_ty);
                         debug!(
-                            "eq_opaque_type_and_type: concrete_ty={:?} opaque_defn_ty={:?}",
-                            opaque_decl.concrete_ty, opaque_defn_ty
+                            "eq_opaque_type_and_type: concrete_ty={:?}={:?} opaque_defn_ty={:?}",
+                            opaque_decl.concrete_ty,
+                            infcx.resolve_type_vars_if_possible(&opaque_decl.concrete_ty),
+                            opaque_defn_ty
                         );
                         obligations.add(infcx
                             .at(&ObligationCause::dummy(), param_env)
