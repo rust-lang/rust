@@ -63,10 +63,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             value,
             Some(self),
             self.tcx,
-            CanonicalizeRegionMode {
-                static_region: true,
-                other_free_regions: true,
-            },
+            &CanonicalizeAllFreeRegions,
             var_values,
         )
     }
@@ -105,10 +102,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             value,
             Some(self),
             self.tcx,
-            CanonicalizeRegionMode {
-                static_region: false,
-                other_free_regions: false,
-            },
+            &CanonicalizeQueryResponse,
             &mut var_values,
         )
     }
@@ -140,27 +134,87 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             value,
             Some(self),
             self.tcx,
-            CanonicalizeRegionMode {
-                static_region: false,
-                other_free_regions: true,
-            },
+            &CanonicalizeFreeRegionsOtherThanStatic,
             var_values,
         )
     }
 }
 
-/// If this flag is true, then all free regions will be replaced with
-/// a canonical var. This is used to make queries as generic as
-/// possible. For example, the query `F: Foo<'static>` would be
-/// canonicalized to `F: Foo<'0>`.
-struct CanonicalizeRegionMode {
-    static_region: bool,
-    other_free_regions: bool,
+/// Controls how we canonicalize "free regions" that are not inference
+/// variables. This depends on what we are canonicalizing *for* --
+/// e.g., if we are canonicalizing to create a query, we want to
+/// replace those with inference variables, since we want to make a
+/// maximally general query. But if we are canonicalizing a *query
+/// response*, then we don't typically replace free regions, as they
+/// must have been introduced from other parts of the system.
+trait CanonicalizeRegionMode {
+    fn canonicalize_free_region(
+        &self,
+        canonicalizer: &mut Canonicalizer<'_, '_, 'tcx>,
+        r: ty::Region<'tcx>,
+    ) -> ty::Region<'tcx>;
+
+    fn any(&self) -> bool;
 }
 
-impl CanonicalizeRegionMode {
+struct CanonicalizeQueryResponse;
+
+impl CanonicalizeRegionMode for CanonicalizeQueryResponse {
+    fn canonicalize_free_region(
+        &self,
+        _canonicalizer: &mut Canonicalizer<'_, '_, 'tcx>,
+        r: ty::Region<'tcx>,
+    ) -> ty::Region<'tcx> {
+        match r {
+            ty::ReFree(_) | ty::ReEmpty | ty::ReErased | ty::ReStatic | ty::ReEarlyBound(..) => r,
+            _ => {
+                // Other than `'static` or `'empty`, the query
+                // response should be executing in a fully
+                // canonicalized environment, so there shouldn't be
+                // any other region names it can come up.
+                bug!("unexpected region in query response: `{:?}`", r)
+            }
+        }
+    }
+
     fn any(&self) -> bool {
-        self.static_region || self.other_free_regions
+        false
+    }
+}
+
+struct CanonicalizeAllFreeRegions;
+
+impl CanonicalizeRegionMode for CanonicalizeAllFreeRegions {
+    fn canonicalize_free_region(
+        &self,
+        canonicalizer: &mut Canonicalizer<'_, '_, 'tcx>,
+        r: ty::Region<'tcx>,
+    ) -> ty::Region<'tcx> {
+        canonicalizer.canonical_var_for_region(r)
+    }
+
+    fn any(&self) -> bool {
+        true
+    }
+}
+
+struct CanonicalizeFreeRegionsOtherThanStatic;
+
+impl CanonicalizeRegionMode for CanonicalizeFreeRegionsOtherThanStatic {
+    fn canonicalize_free_region(
+        &self,
+        canonicalizer: &mut Canonicalizer<'_, '_, 'tcx>,
+        r: ty::Region<'tcx>,
+    ) -> ty::Region<'tcx> {
+        if let ty::ReStatic = r {
+            r
+        } else {
+            canonicalizer.canonical_var_for_region(r)
+        }
+    }
+
+    fn any(&self) -> bool {
+        true
     }
 }
 
@@ -172,7 +226,7 @@ struct Canonicalizer<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     // Note that indices is only used once `var_values` is big enough to be
     // heap-allocated.
     indices: FxHashMap<Kind<'tcx>, CanonicalVar>,
-    canonicalize_region_mode: CanonicalizeRegionMode,
+    canonicalize_region_mode: &'cx dyn CanonicalizeRegionMode,
     needs_canonical_flags: TypeFlags,
 }
 
@@ -201,26 +255,13 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
                 self.canonical_var_for_region(r)
             }
 
-            ty::ReStatic => {
-                if self.canonicalize_region_mode.static_region {
-                    self.canonical_var_for_region(r)
-                } else {
-                    r
-                }
-            }
-
-            ty::ReEarlyBound(..)
+            ty::ReStatic
+            | ty::ReEarlyBound(..)
             | ty::ReFree(_)
             | ty::ReScope(_)
             | ty::RePlaceholder(..)
             | ty::ReEmpty
-            | ty::ReErased => {
-                if self.canonicalize_region_mode.other_free_regions {
-                    self.canonical_var_for_region(r)
-                } else {
-                    r
-                }
-            }
+            | ty::ReErased => self.canonicalize_region_mode.canonicalize_free_region(self, r),
 
             ty::ReClosureBound(..) | ty::ReCanonical(_) => {
                 bug!("canonical region encountered during canonicalization")
@@ -286,10 +327,10 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
     /// `canonicalize_query` and `canonicalize_response`.
     fn canonicalize<V>(
         value: &V,
-        infcx: Option<&'cx InferCtxt<'cx, 'gcx, 'tcx>>,
-        tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-        canonicalize_region_mode: CanonicalizeRegionMode,
-        var_values: &'cx mut SmallCanonicalVarValues<'tcx>,
+        infcx: Option<&InferCtxt<'_, 'gcx, 'tcx>>,
+        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        canonicalize_region_mode: &dyn CanonicalizeRegionMode,
+        var_values: &mut SmallCanonicalVarValues<'tcx>,
     ) -> Canonicalized<'gcx, V>
     where
         V: TypeFoldable<'tcx> + Lift<'gcx>,
