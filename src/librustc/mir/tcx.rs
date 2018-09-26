@@ -307,6 +307,35 @@ impl<'tcx> NeoPlace<'tcx> {
             None
         }
     }
+
+    // for a place_elem returns it's prefix path
+    // Base.[a, b, c]
+    //          ^-- place_elem
+    // ^^^^^^^-- prefix
+    pub fn prefix<'cx, 'gcx>(
+        &self,
+        tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+        elem_index: usize,
+    ) -> Self {
+        // only works for place with projections
+        assert!(!self.elems.is_empty());
+
+        if elem_index < 1 {
+            // Base.[a]
+            //       ^-- elems[0]
+            Self {
+                base: self.clone().base,
+                elems: List::empty(),
+            }
+        } else {
+            Self {
+                base: self.clone().base,
+                elems: tcx.mk_place_elems(
+                    self.elems.iter().cloned().take(elem_index)
+                )
+            }
+        }
+    }
 }
 
 pub enum RvalueInitializationState {
