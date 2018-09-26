@@ -55,33 +55,29 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 }
 
 fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did: DefId) {
-    match tcx.type_of(impl_did).sty {
-        ty::Adt(..) => {}
-        _ => {
-            // Destructors only work on nominal types.
-            if let Some(impl_node_id) = tcx.hir.as_local_node_id(impl_did) {
-                match tcx.hir.find(impl_node_id) {
-                    Some(Node::Item(item)) => {
-                        let span = match item.node {
-                            ItemKind::Impl(.., ref ty, _) => ty.span,
-                            _ => item.span,
-                        };
-                        struct_span_err!(tcx.sess,
-                                         span,
-                                         E0120,
-                                         "the Drop trait may only be implemented on \
-                                         structures")
-                            .span_label(span, "implementing Drop requires a struct")
-                            .emit();
-                    }
-                    _ => {
-                        bug!("didn't find impl in ast map");
-                    }
-                }
+    if let ty::Adt(..) = tcx.type_of(impl_did).sty {
+        /* do nothing */
+    } else {
+        // Destructors only work on nominal types.
+        if let Some(impl_node_id) = tcx.hir.as_local_node_id(impl_did) {
+            if let Some(Node::Item(item)) = tcx.hir.find(impl_node_id) {
+                let span = match item.node {
+                    ItemKind::Impl(.., ref ty, _) => ty.span,
+                    _ => item.span,
+                };
+                struct_span_err!(tcx.sess,
+                                 span,
+                                 E0120,
+                                 "the Drop trait may only be implemented on \
+                                  structures")
+                    .span_label(span, "implementing Drop requires a struct")
+                    .emit();
             } else {
-                bug!("found external impl of Drop trait on \
-                      something other than a struct");
+                bug!("didn't find impl in ast map");
             }
+        } else {
+            bug!("found external impl of Drop trait on \
+                  something other than a struct");
         }
     }
 }
@@ -92,8 +88,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did:
     let impl_node_id = if let Some(n) = tcx.hir.as_local_node_id(impl_did) {
         n
     } else {
-        debug!("visit_implementation_of_copy(): impl not in this \
-                crate");
+        debug!("visit_implementation_of_copy(): impl not in this crate");
         return;
     };
 
@@ -119,11 +114,11 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did:
             };
 
             let mut err = struct_span_err!(tcx.sess,
-                                          span,
-                                          E0204,
-                                          "the trait `Copy` may not be implemented for this type");
+                                           span,
+                                           E0204,
+                                           "the trait `Copy` may not be implemented for this type");
             for span in fields.iter().map(|f| tcx.def_span(f.did)) {
-                    err.span_label(span, "this field does not implement `Copy`");
+                err.span_label(span, "this field does not implement `Copy`");
             }
             err.emit()
         }
@@ -173,12 +168,9 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
     debug!("compute_coerce_unsized_info(impl_did={:?})", impl_did);
     let coerce_unsized_trait = gcx.lang_items().coerce_unsized_trait().unwrap();
 
-    let unsize_trait = match gcx.lang_items().require(UnsizeTraitLangItem) {
-        Ok(id) => id,
-        Err(err) => {
-            gcx.sess.fatal(&format!("`CoerceUnsized` implementation {}", err));
-        }
-    };
+    let unsize_trait = gcx.lang_items().require(UnsizeTraitLangItem).unwrap_or_else(|err| {
+        gcx.sess.fatal(&format!("`CoerceUnsized` implementation {}", err));
+    });
 
     // this provider should only get invoked for local def-ids
     let impl_node_id = gcx.hir.as_local_node_id(impl_did).unwrap_or_else(|| {
@@ -210,9 +202,9 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
                            mk_ptr: &dyn Fn(Ty<'gcx>) -> Ty<'gcx>| {
             if (mt_a.mutbl, mt_b.mutbl) == (hir::MutImmutable, hir::MutMutable) {
                 infcx.report_mismatched_types(&cause,
-                                             mk_ptr(mt_b.ty),
-                                             target,
-                                             ty::error::TypeError::Mutability)
+                                              mk_ptr(mt_b.ty),
+                                              target,
+                                              ty::error::TypeError::Mutability)
                     .emit();
             }
             (mt_a.ty, mt_b.ty, unsize_trait, None)
@@ -235,7 +227,7 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
             }
 
             (&ty::Adt(def_a, substs_a), &ty::Adt(def_b, substs_b)) if def_a.is_struct() &&
-                                                                          def_b.is_struct() => {
+                                                                      def_b.is_struct() => {
                 if def_a != def_b {
                     let source_path = gcx.item_path_str(def_a.did);
                     let target_path = gcx.item_path_str(def_b.did);

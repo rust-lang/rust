@@ -75,7 +75,7 @@ impl<'a, 'tcx> CheckVisitor<'a, 'tcx> {
         let msg = if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
             format!("unused import: `{}`", snippet)
         } else {
-            "unused import".to_string()
+            "unused import".to_owned()
         };
         self.tcx.lint_node(lint::builtin::UNUSED_IMPORTS, id, span, &msg);
     }
