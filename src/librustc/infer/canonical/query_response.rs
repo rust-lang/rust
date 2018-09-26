@@ -20,7 +20,7 @@
 use infer::canonical::substitute::substitute_value;
 use infer::canonical::{
     Canonical, CanonicalVarKind, CanonicalVarValues, CanonicalizedQueryResponse, Certainty,
-    QueryRegionConstraint, QueryResponse, SmallCanonicalVarValues,
+    OriginalQueryValues, QueryRegionConstraint, QueryResponse,
 };
 use infer::region_constraints::{Constraint, RegionConstraintData};
 use infer::InferCtxtBuilder;
@@ -64,11 +64,15 @@ impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
         K: TypeFoldable<'tcx>,
         R: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
     {
-        self.enter_with_canonical(DUMMY_SP, canonical_key, |ref infcx, key, canonical_inference_vars| {
-            let fulfill_cx = &mut FulfillmentContext::new();
-            let value = operation(infcx, fulfill_cx, key)?;
-            infcx.make_canonicalized_query_response(canonical_inference_vars, value, fulfill_cx)
-        })
+        self.enter_with_canonical(
+            DUMMY_SP,
+            canonical_key,
+            |ref infcx, key, canonical_inference_vars| {
+                let fulfill_cx = &mut FulfillmentContext::new();
+                let value = operation(infcx, fulfill_cx, key)?;
+                infcx.make_canonicalized_query_response(canonical_inference_vars, value, fulfill_cx)
+            },
+        )
     }
 }
 
@@ -153,7 +157,8 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 region_obligations
                     .iter()
                     .map(|(_, r_o)| (r_o.sup_type, r_o.sub_region)),
-                region_constraints)
+                region_constraints,
+            )
         });
 
         let certainty = if ambig_errors.is_empty() {
@@ -184,7 +189,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        original_values: &SmallCanonicalVarValues<'tcx>,
+        original_values: &OriginalQueryValues<'tcx>,
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
     ) -> InferResult<'tcx, R>
     where
@@ -250,7 +255,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        original_values: &SmallCanonicalVarValues<'tcx>,
+        original_values: &OriginalQueryValues<'tcx>,
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
         output_query_region_constraints: &mut Vec<QueryRegionConstraint<'tcx>>,
     ) -> InferResult<'tcx, R>
@@ -272,7 +277,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         // variable...
         let mut obligations = vec![];
 
-        for (index, original_value) in original_values.iter().enumerate() {
+        for (index, original_value) in original_values.var_values.iter().enumerate() {
             // ...with the value `v_r` of that variable from the query.
             let result_value = query_response.substitute_projected(self.tcx, &result_subst, |v| {
                 &v.var_values[CanonicalVar::new(index)]
@@ -344,7 +349,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        original_values: &SmallCanonicalVarValues<'tcx>,
+        original_values: &OriginalQueryValues<'tcx>,
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
     ) -> InferResult<'tcx, CanonicalVarValues<'tcx>>
     where
@@ -385,7 +390,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     fn query_response_substitution_guess<R>(
         &self,
         cause: &ObligationCause<'tcx>,
-        original_values: &SmallCanonicalVarValues<'tcx>,
+        original_values: &OriginalQueryValues<'tcx>,
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
     ) -> CanonicalVarValues<'tcx>
     where
@@ -401,7 +406,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         // these values with the original inputs that were
         // canonicalized.
         let result_values = &query_response.value.var_values;
-        assert_eq!(original_values.len(), result_values.len());
+        assert_eq!(original_values.var_values.len(), result_values.len());
 
         // Quickly try to find initial values for the canonical
         // variables in the result in terms of the query. We do this
@@ -415,7 +420,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
         // In terms of our example above, we are iterating over pairs like:
         // [(?A, Vec<?0>), ('static, '?1), (?B, ?0)]
-        for (original_value, result_value) in original_values.iter().zip(result_values) {
+        for (original_value, result_value) in original_values.var_values.iter().zip(result_values) {
             match result_value.unpack() {
                 UnpackedKind::Type(result_value) => {
                     // e.g., here `result_value` might be `?0` in the example above...
@@ -461,7 +466,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        original_values: &SmallCanonicalVarValues<'tcx>,
+        original_values: &OriginalQueryValues<'tcx>,
         result_subst: &CanonicalVarValues<'tcx>,
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
     ) -> InferResult<'tcx, ()>
@@ -478,7 +483,12 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
         // Unify the original value for each variable with the value
         // taken from `query_response` (after applying `result_subst`).
-        Ok(self.unify_canonical_vars(cause, param_env, original_values, substituted_query_response)?)
+        Ok(self.unify_canonical_vars(
+            cause,
+            param_env,
+            original_values,
+            substituted_query_response,
+        )?)
     }
 
     /// Converts the region constraints resulting from a query into an
@@ -522,12 +532,12 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        variables1: &SmallCanonicalVarValues<'tcx>,
+        variables1: &OriginalQueryValues<'tcx>,
         variables2: impl Fn(CanonicalVar) -> Kind<'tcx>,
     ) -> InferResult<'tcx, ()> {
         self.commit_if_ok(|_| {
             let mut obligations = vec![];
-            for (index, value1) in variables1.iter().enumerate() {
+            for (index, value1) in variables1.var_values.iter().enumerate() {
                 let value2 = variables2(CanonicalVar::new(index));
 
                 match (value1.unpack(), value2.unpack()) {

@@ -75,9 +75,16 @@ pub struct CanonicalVarValues<'tcx> {
     pub var_values: IndexVec<CanonicalVar, Kind<'tcx>>,
 }
 
-/// Like CanonicalVarValues, but for use in places where a SmallVec is
-/// appropriate.
-pub type SmallCanonicalVarValues<'tcx> = SmallVec<[Kind<'tcx>; 8]>;
+/// When we canonicalize a value to form a query, we wind up replacing
+/// various parts of it with canonical variables. This struct stores
+/// those replaced bits to remember for when we process the query
+/// result.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
+pub struct OriginalQueryValues<'tcx> {
+    /// This is equivalent to `CanonicalVarValues`, but using a
+    /// `SmallVec` yields a significant performance win.
+    pub var_values: SmallVec<[Kind<'tcx>; 8]>,
+}
 
 /// Information about a canonical variable that is included with the
 /// canonical value. This is sufficient information for code to create

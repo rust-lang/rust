@@ -17,7 +17,7 @@
 
 use infer::canonical::{
     Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, Canonicalized,
-    SmallCanonicalVarValues,
+    OriginalQueryValues,
 };
 use infer::InferCtxt;
 use std::sync::atomic::Ordering;
@@ -48,7 +48,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     pub fn canonicalize_query<V>(
         &self,
         value: &V,
-        var_values: &mut SmallCanonicalVarValues<'tcx>,
+        query_state: &mut OriginalQueryValues<'tcx>,
     ) -> Canonicalized<'gcx, V>
     where
         V: TypeFoldable<'tcx> + Lift<'gcx>,
@@ -64,7 +64,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             Some(self),
             self.tcx,
             &CanonicalizeAllFreeRegions,
-            var_values,
+            query_state,
         )
     }
 
@@ -97,13 +97,13 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     where
         V: TypeFoldable<'tcx> + Lift<'gcx>,
     {
-        let mut var_values = SmallVec::new();
+        let mut query_state = OriginalQueryValues::default();
         Canonicalizer::canonicalize(
             value,
             Some(self),
             self.tcx,
             &CanonicalizeQueryResponse,
-            &mut var_values,
+            &mut query_state,
         )
     }
 
@@ -119,7 +119,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     pub fn canonicalize_hr_query_hack<V>(
         &self,
         value: &V,
-        var_values: &mut SmallCanonicalVarValues<'tcx>,
+        query_state: &mut OriginalQueryValues<'tcx>,
     ) -> Canonicalized<'gcx, V>
     where
         V: TypeFoldable<'tcx> + Lift<'gcx>,
@@ -135,7 +135,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             Some(self),
             self.tcx,
             &CanonicalizeFreeRegionsOtherThanStatic,
-            var_values,
+            query_state,
         )
     }
 }
@@ -222,7 +222,7 @@ struct Canonicalizer<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     infcx: Option<&'cx InferCtxt<'cx, 'gcx, 'tcx>>,
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     variables: SmallVec<[CanonicalVarInfo; 8]>,
-    var_values: &'cx mut SmallCanonicalVarValues<'tcx>,
+    query_state: &'cx mut OriginalQueryValues<'tcx>,
     // Note that indices is only used once `var_values` is big enough to be
     // heap-allocated.
     indices: FxHashMap<Kind<'tcx>, CanonicalVar>,
@@ -330,7 +330,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         infcx: Option<&InferCtxt<'_, 'gcx, 'tcx>>,
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalize_region_mode: &dyn CanonicalizeRegionMode,
-        var_values: &mut SmallCanonicalVarValues<'tcx>,
+        query_state: &mut OriginalQueryValues<'tcx>,
     ) -> Canonicalized<'gcx, V>
     where
         V: TypeFoldable<'tcx> + Lift<'gcx>,
@@ -365,7 +365,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
             canonicalize_region_mode,
             needs_canonical_flags,
             variables: SmallVec::new(),
-            var_values,
+            query_state,
             indices: FxHashMap::default(),
         };
         let out_value = value.fold_with(&mut canonicalizer);
@@ -396,10 +396,12 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
     fn canonical_var(&mut self, info: CanonicalVarInfo, kind: Kind<'tcx>) -> CanonicalVar {
         let Canonicalizer {
             variables,
-            var_values,
+            query_state,
             indices,
             ..
         } = self;
+
+        let var_values = &mut query_state.var_values;
 
         // This code is hot. `variables` and `var_values` are usually small
         // (fewer than 8 elements ~95% of the time). They are SmallVec's to

@@ -10,7 +10,7 @@
 
 use infer::at::At;
 use infer::InferOk;
-use smallvec::SmallVec;
+use infer::canonical::OriginalQueryValues;
 use std::iter::FromIterator;
 use syntax::source_map::Span;
 use ty::subst::Kind;
@@ -51,7 +51,7 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
         }
 
         let gcx = tcx.global_tcx();
-        let mut orig_values = SmallVec::new();
+        let mut orig_values = OriginalQueryValues::default();
         let c_ty = self.infcx.canonicalize_query(&self.param_env.and(ty), &mut orig_values);
         let span = self.cause.span;
         debug!("c_ty = {:?}", c_ty);
