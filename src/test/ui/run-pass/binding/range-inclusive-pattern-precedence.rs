@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // run-pass
-#![feature(box_patterns, pattern_parentheses)]
+#![feature(box_patterns)]
 
 const VALUE: usize = 21;
 
