@@ -17,7 +17,7 @@ use parse::{token, DirectoryOwnership};
 use parse;
 use print::pprust;
 use ptr::P;
-use OneVector;
+use smallvec::SmallVec;
 use symbol::Symbol;
 use tokenstream;
 
@@ -110,9 +110,9 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::T
         fn make_expr(mut self: Box<ExpandResult<'a>>) -> Option<P<ast::Expr>> {
             Some(panictry!(self.p.parse_expr()))
         }
-        fn make_items(mut self: Box<ExpandResult<'a>>)
-                      -> Option<OneVector<P<ast::Item>>> {
-            let mut ret = OneVector::new();
+
+        fn make_items(mut self: Box<ExpandResult<'a>>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
+            let mut ret = SmallVec::new();
             while self.p.token != token::Eof {
                 match panictry!(self.p.parse_item()) {
                     Some(item) => ret.push(item),

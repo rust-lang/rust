@@ -16,7 +16,7 @@ use ext::hygiene::Mark;
 use tokenstream::TokenStream;
 use fold::*;
 use ptr::P;
-use OneVector;
+use smallvec::SmallVec;
 use symbol::keywords;
 use ThinVec;
 use util::move_map::MoveMap;
@@ -115,7 +115,7 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
 }
 
 impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
-    fn fold_item(&mut self, item: P<ast::Item>) -> OneVector<P<ast::Item>> {
+    fn fold_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         match item.node {
             ast::ItemKind::Mac(_) => return self.remove(item.id).make_items(),
             ast::ItemKind::MacroDef(_) => return smallvec![item],
@@ -125,21 +125,21 @@ impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
         noop_fold_item(item, self)
     }
 
-    fn fold_trait_item(&mut self, item: ast::TraitItem) -> OneVector<ast::TraitItem> {
+    fn fold_trait_item(&mut self, item: ast::TraitItem) -> SmallVec<[ast::TraitItem; 1]> {
         match item.node {
             ast::TraitItemKind::Macro(_) => self.remove(item.id).make_trait_items(),
             _ => noop_fold_trait_item(item, self),
         }
     }
 
-    fn fold_impl_item(&mut self, item: ast::ImplItem) -> OneVector<ast::ImplItem> {
+    fn fold_impl_item(&mut self, item: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]> {
         match item.node {
             ast::ImplItemKind::Macro(_) => self.remove(item.id).make_impl_items(),
             _ => noop_fold_impl_item(item, self),
         }
     }
 
-    fn fold_foreign_item(&mut self, item: ast::ForeignItem) -> OneVector<ast::ForeignItem> {
+    fn fold_foreign_item(&mut self, item: ast::ForeignItem) -> SmallVec<[ast::ForeignItem; 1]> {
         match item.node {
             ast::ForeignItemKind::Macro(_) => self.remove(item.id).make_foreign_items(),
             _ => noop_fold_foreign_item(item, self),
@@ -160,7 +160,7 @@ impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
         }
     }
 
-    fn fold_stmt(&mut self, stmt: ast::Stmt) -> OneVector<ast::Stmt> {
+    fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
         let (style, mut stmts) = match stmt.node {
             ast::StmtKind::Mac(mac) => (mac.1, self.remove(stmt.id).make_stmts()),
             _ => return noop_fold_stmt(stmt, self),

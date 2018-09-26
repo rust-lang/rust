@@ -15,7 +15,7 @@ use ast;
 use source_map::Spanned;
 use edition::Edition;
 use parse::{token, ParseSess};
-use OneVector;
+use smallvec::SmallVec;
 use errors::Applicability;
 
 use ptr::P;
@@ -338,22 +338,23 @@ impl<'a> fold::Folder for StripUnconfigured<'a> {
         Some(P(fold::noop_fold_expr(expr, self)))
     }
 
-    fn fold_stmt(&mut self, stmt: ast::Stmt) -> OneVector<ast::Stmt> {
+    fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
         match self.configure_stmt(stmt) {
             Some(stmt) => fold::noop_fold_stmt(stmt, self),
-            None => return OneVector::new(),
+            None => return SmallVec::new(),
         }
     }
 
-    fn fold_item(&mut self, item: P<ast::Item>) -> OneVector<P<ast::Item>> {
+    fn fold_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         fold::noop_fold_item(configure!(self, item), self)
     }
 
-    fn fold_impl_item(&mut self, item: ast::ImplItem) -> OneVector<ast::ImplItem> {
+    fn fold_impl_item(&mut self, item: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]>
+    {
         fold::noop_fold_impl_item(configure!(self, item), self)
     }
 
-    fn fold_trait_item(&mut self, item: ast::TraitItem) -> OneVector<ast::TraitItem> {
+    fn fold_trait_item(&mut self, item: ast::TraitItem) -> SmallVec<[ast::TraitItem; 1]> {
         fold::noop_fold_trait_item(configure!(self, item), self)
     }
 

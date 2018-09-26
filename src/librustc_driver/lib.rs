@@ -58,6 +58,7 @@ extern crate rustc_codegen_utils;
 extern crate rustc_typeck;
 extern crate scoped_tls;
 extern crate serialize;
+extern crate smallvec;
 #[macro_use]
 extern crate log;
 extern crate syntax;

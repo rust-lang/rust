@@ -47,7 +47,6 @@ extern crate serialize as rustc_serialize; // used by deriving
 
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::bit_set::GrowableBitSet;
-pub use rustc_data_structures::small_vec::OneVector;
 pub use rustc_data_structures::thin_vec::ThinVec;
 use ast::AttrId;
 

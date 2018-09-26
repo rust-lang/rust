@@ -24,7 +24,6 @@ use rustc::session::Session;
 use rustc::session::config::{Input, OutputFilenames};
 use rustc_borrowck as borrowck;
 use rustc_borrowck::graphviz as borrowck_dot;
-use rustc_data_structures::small_vec::OneVector;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_metadata::cstore::CStore;
 
@@ -38,6 +37,7 @@ use syntax::ptr::P;
 use syntax_pos::{self, FileName};
 
 use graphviz as dot;
+use smallvec::SmallVec;
 
 use std::cell::Cell;
 use std::fs::File;
@@ -727,7 +727,7 @@ impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
         self.run(is_const, |s| fold::noop_fold_item_kind(i, s))
     }
 
-    fn fold_trait_item(&mut self, i: ast::TraitItem) -> OneVector<ast::TraitItem> {
+    fn fold_trait_item(&mut self, i: ast::TraitItem) -> SmallVec<[ast::TraitItem; 1]> {
         let is_const = match i.node {
             ast::TraitItemKind::Const(..) => true,
             ast::TraitItemKind::Method(ast::MethodSig { ref decl, ref header, .. }, _) =>
@@ -737,7 +737,7 @@ impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
         self.run(is_const, |s| fold::noop_fold_trait_item(i, s))
     }
 
-    fn fold_impl_item(&mut self, i: ast::ImplItem) -> OneVector<ast::ImplItem> {
+    fn fold_impl_item(&mut self, i: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]> {
         let is_const = match i.node {
             ast::ImplItemKind::Const(..) => true,
             ast::ImplItemKind::Method(ast::MethodSig { ref decl, ref header, .. }, _) =>

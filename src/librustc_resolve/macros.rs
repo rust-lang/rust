@@ -42,7 +42,6 @@ use errors::Applicability;
 use std::cell::Cell;
 use std::mem;
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::small_vec::ExpectOne;
 
 #[derive(Clone, Copy)]
 crate struct FromPrelude(bool);
@@ -190,7 +189,9 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
             }
         }
 
-        EliminateCrateVar(self, item.span).fold_item(item).expect_one("")
+        let ret = EliminateCrateVar(self, item.span).fold_item(item);
+        assert!(ret.len() == 1);
+        ret.into_iter().next().unwrap()
     }
 
     fn is_whitelisted_legacy_custom_derive(&self, name: Name) -> bool {

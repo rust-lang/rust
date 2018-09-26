@@ -52,7 +52,6 @@ use lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
 use middle::cstore::CrateStore;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::small_vec::OneVector;
 use rustc_data_structures::thin_vec::ThinVec;
 use session::Session;
 use util::common::FN_OUTPUT_NAME;
@@ -62,6 +61,7 @@ use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::iter;
 use std::mem;
+use smallvec::SmallVec;
 use syntax::attr;
 use syntax::ast;
 use syntax::ast::*;
@@ -307,7 +307,7 @@ enum AnonymousLifetimeMode {
     PassThrough,
 }
 
-struct ImplTraitTypeIdVisitor<'a> { ids: &'a mut OneVector<hir::ItemId> }
+struct ImplTraitTypeIdVisitor<'a> { ids: &'a mut SmallVec<[hir::ItemId; 1]> }
 
 impl<'a, 'b> Visitor<'a> for ImplTraitTypeIdVisitor<'b> {
     fn visit_ty(&mut self, ty: &'a Ty) {
@@ -1901,9 +1901,9 @@ impl<'a> LoweringContext<'a> {
         )
     }
 
-    fn lower_local(&mut self, l: &Local) -> (P<hir::Local>, OneVector<hir::ItemId>) {
+    fn lower_local(&mut self, l: &Local) -> (P<hir::Local>, SmallVec<[hir::ItemId; 1]>) {
         let LoweredNodeId { node_id, hir_id } = self.lower_node_id(l.id);
-        let mut ids = OneVector::<hir::ItemId>::new();
+        let mut ids = SmallVec::<[hir::ItemId; 1]>::new();
         if self.sess.features_untracked().impl_trait_in_bindings {
             if let Some(ref ty) = l.ty {
                 let mut visitor = ImplTraitTypeIdVisitor { ids: &mut ids };
@@ -3211,7 +3211,7 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         decl: &FnDecl,
         header: &FnHeader,
-        ids: &mut OneVector<hir::ItemId>,
+        ids: &mut SmallVec<[hir::ItemId; 1]>,
     ) {
         if let Some(id) = header.asyncness.opt_return_id() {
             ids.push(hir::ItemId { id });
@@ -3223,14 +3223,14 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_item_id(&mut self, i: &Item) -> OneVector<hir::ItemId> {
+    fn lower_item_id(&mut self, i: &Item) -> SmallVec<[hir::ItemId; 1]> {
         match i.node {
             ItemKind::Use(ref use_tree) => {
                 let mut vec = smallvec![hir::ItemId { id: i.id }];
                 self.lower_item_id_use_tree(use_tree, i.id, &mut vec);
                 vec
             }
-            ItemKind::MacroDef(..) => OneVector::new(),
+            ItemKind::MacroDef(..) => SmallVec::new(),
             ItemKind::Fn(ref decl, ref header, ..) => {
                 let mut ids = smallvec![hir::ItemId { id: i.id }];
                 self.lower_fn_impl_trait_ids(decl, header, &mut ids);
@@ -3268,7 +3268,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_item_id_use_tree(&mut self,
                               tree: &UseTree,
                               base_id: NodeId,
-                              vec: &mut OneVector<hir::ItemId>)
+                              vec: &mut SmallVec<[hir::ItemId; 1]>)
     {
         match tree.kind {
             UseTreeKind::Nested(ref nested_vec) => for &(ref nested, id) in nested_vec {
@@ -4369,11 +4369,11 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_stmt(&mut self, s: &Stmt) -> OneVector<hir::Stmt> {
+    fn lower_stmt(&mut self, s: &Stmt) -> SmallVec<[hir::Stmt; 1]> {
         smallvec![match s.node {
             StmtKind::Local(ref l) => {
                 let (l, item_ids) = self.lower_local(l);
-                let mut ids: OneVector<hir::Stmt> = item_ids
+                let mut ids: SmallVec<[hir::Stmt; 1]> = item_ids
                     .into_iter()
                     .map(|item_id| Spanned {
                         node: hir::StmtKind::Decl(

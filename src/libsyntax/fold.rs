@@ -24,14 +24,24 @@ use syntax_pos::Span;
 use source_map::{Spanned, respan};
 use parse::token::{self, Token};
 use ptr::P;
-use OneVector;
+use smallvec::{Array, SmallVec};
 use symbol::keywords;
 use ThinVec;
 use tokenstream::*;
 use util::move_map::MoveMap;
 
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::small_vec::ExpectOne;
+
+pub trait ExpectOne<A: Array> {
+    fn expect_one(self, err: &'static str) -> A::Item;
+}
+
+impl<A: Array> ExpectOne<A> for SmallVec<A> {
+    fn expect_one(self, err: &'static str) -> A::Item {
+        assert!(self.len() == 1, err);
+        self.into_iter().next().unwrap()
+    }
+}
 
 pub trait Folder : Sized {
     // Any additions to this trait should happen in form
@@ -62,7 +72,7 @@ pub trait Folder : Sized {
         noop_fold_use_tree(use_tree, self)
     }
 
-    fn fold_foreign_item(&mut self, ni: ForeignItem) -> OneVector<ForeignItem> {
+    fn fold_foreign_item(&mut self, ni: ForeignItem) -> SmallVec<[ForeignItem; 1]> {
         noop_fold_foreign_item(ni, self)
     }
 
@@ -70,7 +80,7 @@ pub trait Folder : Sized {
         noop_fold_foreign_item_simple(ni, self)
     }
 
-    fn fold_item(&mut self, i: P<Item>) -> OneVector<P<Item>> {
+    fn fold_item(&mut self, i: P<Item>) -> SmallVec<[P<Item>; 1]> {
         noop_fold_item(i, self)
     }
 
@@ -90,11 +100,11 @@ pub trait Folder : Sized {
         noop_fold_item_kind(i, self)
     }
 
-    fn fold_trait_item(&mut self, i: TraitItem) -> OneVector<TraitItem> {
+    fn fold_trait_item(&mut self, i: TraitItem) -> SmallVec<[TraitItem; 1]> {
         noop_fold_trait_item(i, self)
     }
 
-    fn fold_impl_item(&mut self, i: ImplItem) -> OneVector<ImplItem> {
+    fn fold_impl_item(&mut self, i: ImplItem) -> SmallVec<[ImplItem; 1]> {
         noop_fold_impl_item(i, self)
     }
 
@@ -110,7 +120,7 @@ pub trait Folder : Sized {
         noop_fold_block(b, self)
     }
 
-    fn fold_stmt(&mut self, s: Stmt) -> OneVector<Stmt> {
+    fn fold_stmt(&mut self, s: Stmt) -> SmallVec<[Stmt; 1]> {
         noop_fold_stmt(s, self)
     }
 
@@ -974,8 +984,7 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
     }
 }
 
-pub fn noop_fold_trait_item<T: Folder>(i: TraitItem, folder: &mut T)
-                                       -> OneVector<TraitItem> {
+pub fn noop_fold_trait_item<T: Folder>(i: TraitItem, folder: &mut T) -> SmallVec<[TraitItem; 1]> {
     smallvec![TraitItem {
         id: folder.new_id(i.id),
         ident: folder.fold_ident(i.ident),
@@ -1003,8 +1012,7 @@ pub fn noop_fold_trait_item<T: Folder>(i: TraitItem, folder: &mut T)
     }]
 }
 
-pub fn noop_fold_impl_item<T: Folder>(i: ImplItem, folder: &mut T)
-                                      -> OneVector<ImplItem> {
+pub fn noop_fold_impl_item<T: Folder>(i: ImplItem, folder: &mut T)-> SmallVec<[ImplItem; 1]> {
     smallvec![ImplItem {
         id: folder.new_id(i.id),
         vis: folder.fold_vis(i.vis),
@@ -1080,7 +1088,7 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, span}: Crate,
 }
 
 // fold one item into possibly many items
-pub fn noop_fold_item<T: Folder>(i: P<Item>, folder: &mut T) -> OneVector<P<Item>> {
+pub fn noop_fold_item<T: Folder>(i: P<Item>, folder: &mut T) -> SmallVec<[P<Item>; 1]> {
     smallvec![i.map(|i| folder.fold_item_simple(i))]
 }
 
@@ -1102,7 +1110,8 @@ pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span,
 }
 
 pub fn noop_fold_foreign_item<T: Folder>(ni: ForeignItem, folder: &mut T)
--> OneVector<ForeignItem> {
+    -> SmallVec<[ForeignItem; 1]>
+{
     smallvec![folder.fold_foreign_item_simple(ni)]
 }
 
@@ -1381,7 +1390,8 @@ pub fn noop_fold_exprs<T: Folder>(es: Vec<P<Expr>>, folder: &mut T) -> Vec<P<Exp
     es.move_flat_map(|e| folder.fold_opt_expr(e))
 }
 
-pub fn noop_fold_stmt<T: Folder>(Stmt {node, span, id}: Stmt, folder: &mut T) -> OneVector<Stmt> {
+pub fn noop_fold_stmt<T: Folder>(Stmt {node, span, id}: Stmt, folder: &mut T) -> SmallVec<[Stmt; 1]>
+{
     let id = folder.new_id(id);
     let span = folder.new_span(span);
     noop_fold_stmt_kind(node, folder).into_iter().map(|node| {
@@ -1389,7 +1399,7 @@ pub fn noop_fold_stmt<T: Folder>(Stmt {node, span, id}: Stmt, folder: &mut T) ->
     }).collect()
 }
 
-pub fn noop_fold_stmt_kind<T: Folder>(node: StmtKind, folder: &mut T) -> OneVector<StmtKind> {
+pub fn noop_fold_stmt_kind<T: Folder>(node: StmtKind, folder: &mut T) -> SmallVec<[StmtKind; 1]> {
     match node {
         StmtKind::Local(local) => smallvec![StmtKind::Local(folder.fold_local(local))],
         StmtKind::Item(item) => folder.fold_item(item).into_iter().map(StmtKind::Item).collect(),
