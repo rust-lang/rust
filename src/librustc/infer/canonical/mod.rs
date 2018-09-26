@@ -53,6 +53,7 @@ mod substitute;
 /// numbered starting from 0 in order of first appearance.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
 pub struct Canonical<'gcx, V> {
+    pub max_universe: ty::UniverseIndex,
     pub variables: CanonicalVarInfos<'gcx>,
     pub value: V,
 }
@@ -95,6 +96,12 @@ pub struct CanonicalVarInfo {
     pub kind: CanonicalVarKind,
 }
 
+impl CanonicalVarInfo {
+    pub fn universe(self) -> ty::UniverseIndex {
+        self.kind.universe()
+    }
+}
+
 /// Describes the "kind" of the canonical variable. This is a "kind"
 /// in the type-theory sense of the term -- i.e., a "meta" type system
 /// that analyzes type-like values.
@@ -104,7 +111,22 @@ pub enum CanonicalVarKind {
     Ty(CanonicalTyVarKind),
 
     /// Region variable `'?R`.
-    Region,
+    Region(ty::UniverseIndex),
+}
+
+
+impl CanonicalVarKind {
+    pub fn universe(self) -> ty::UniverseIndex {
+        match self {
+            // At present, we don't support higher-ranked
+            // quantification over types, so all type variables are in
+            // the root universe.
+            CanonicalVarKind::Ty(_) => ty::UniverseIndex::ROOT,
+
+            // Region variables can be created in sub-universes.
+            CanonicalVarKind::Region(ui) => ui,
+        }
+    }
 }
 
 /// Rust actually has more than one category of type variables;
@@ -220,8 +242,8 @@ impl<'gcx, V> Canonical<'gcx, V> {
     /// let b: Canonical<'tcx, (T, Ty<'tcx>)> = a.unchecked_map(|v| (v, ty));
     /// ```
     pub fn unchecked_map<W>(self, map_op: impl FnOnce(V) -> W) -> Canonical<'gcx, W> {
-        let Canonical { variables, value } = self;
-        Canonical { variables, value: map_op(value) }
+        let Canonical { max_universe, variables, value } = self;
+        Canonical { max_universe, variables, value: map_op(value) }
     }
 }
 
@@ -293,8 +315,8 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 ty.into()
             }
 
-            CanonicalVarKind::Region => self
-                .next_region_var(RegionVariableOrigin::MiscVariable(span))
+            CanonicalVarKind::Region(ui) => self
+                .next_region_var_in_universe(RegionVariableOrigin::MiscVariable(span), ui)
                 .into(),
         }
     }
@@ -314,6 +336,7 @@ CloneTypeFoldableImpls! {
 
 BraceStructTypeFoldableImpl! {
     impl<'tcx, C> TypeFoldable<'tcx> for Canonical<'tcx, C> {
+        max_universe,
         variables,
         value,
     } where C: TypeFoldable<'tcx>
@@ -322,7 +345,7 @@ BraceStructTypeFoldableImpl! {
 BraceStructLiftImpl! {
     impl<'a, 'tcx, T> Lift<'tcx> for Canonical<'a, T> {
         type Lifted = Canonical<'tcx, T::Lifted>;
-        variables, value
+        max_universe, variables, value
     } where T: Lift<'tcx>
 }
 

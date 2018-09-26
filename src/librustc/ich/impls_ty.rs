@@ -1268,7 +1268,7 @@ for traits::VtableGeneratorData<'gcx, N> where N: HashStable<StableHashingContex
 
 impl_stable_hash_for!(
     impl<'tcx, V> for struct infer::canonical::Canonical<'tcx, V> {
-        variables, value
+        max_universe, variables, value
     }
 );
 
@@ -1284,7 +1284,7 @@ impl_stable_hash_for!(struct infer::canonical::CanonicalVarInfo {
 
 impl_stable_hash_for!(enum infer::canonical::CanonicalVarKind {
     Ty(k),
-    Region
+    Region(ui),
 });
 
 impl_stable_hash_for!(enum infer::canonical::CanonicalTyVarKind {

@@ -261,7 +261,8 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
             | ty::ReScope(_)
             | ty::RePlaceholder(..)
             | ty::ReEmpty
-            | ty::ReErased => self.canonicalize_region_mode.canonicalize_free_region(self, r),
+            | ty::ReErased => self.canonicalize_region_mode
+                .canonicalize_free_region(self, r),
 
             ty::ReClosureBound(..) | ty::ReCanonical(_) => {
                 bug!("canonical region encountered during canonicalization")
@@ -353,6 +354,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         if !value.has_type_flags(needs_canonical_flags) {
             let out_value = gcx.lift(value).unwrap();
             let canon_value = Canonical {
+                max_universe: ty::UniverseIndex::ROOT,
                 variables: List::empty(),
                 value: out_value,
             };
@@ -383,7 +385,14 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
 
         let canonical_variables = tcx.intern_canonical_var_infos(&canonicalizer.variables);
 
+        let max_universe = canonical_variables
+            .iter()
+            .map(|cvar| cvar.universe())
+            .max()
+            .unwrap_or(ty::UniverseIndex::ROOT);
+
         Canonical {
+            max_universe,
             variables: canonical_variables,
             value: out_value,
         }
@@ -451,8 +460,10 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
     }
 
     fn canonical_var_for_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        // TODO: root is not always what we want here, but we'll
+        // address that in a later commit.
         let info = CanonicalVarInfo {
-            kind: CanonicalVarKind::Region,
+            kind: CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
         };
         let b = self.canonical_var(info, r.into());
         debug_assert_eq!(ty::INNERMOST, b.level);
