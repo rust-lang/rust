@@ -1,22 +1,22 @@
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/regions-ref-in-fn-arg.rs:14:13
    |
 LL | fn arg_item(box ref x: Box<isize>) -> &'static isize {
-   |             ^^^^^^^^^ temporary value does not live long enough
+   |             ^^^^^^^^^ creates a temporary which is freed while still in use
 LL |     x //~^ ERROR borrowed value does not live long enough
 LL | }
-   | - temporary value only lives until here
+   | - temporary value is freed at the end of this statement
    |
    = note: borrowed value must be valid for the static lifetime...
 
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/regions-ref-in-fn-arg.rs:21:11
    |
 LL |     with(|box ref x| x) //~ ERROR borrowed value does not live long enough
-   |           ^^^^^^^^^  - temporary value only lives until here
+   |           ^^^^^^^^^  - temporary value is freed at the end of this statement
    |           |
-   |           temporary value does not live long enough
+   |           creates a temporary which is freed while still in use
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0716`.

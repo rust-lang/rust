@@ -1,10 +1,10 @@
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-reference-to-fn-2.rs:28:22
    |
 LL |     self_.statefn = &id(state2 as StateMachineFunc);
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value only lives until here
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
    |                      |
-   |                      temporary value does not live long enough
+   |                      creates a temporary which is freed while still in use
    |
 note: borrowed value must be valid for the anonymous lifetime #2 defined on the function body at 27:1...
   --> $DIR/static-reference-to-fn-2.rs:27:1
@@ -16,13 +16,13 @@ LL | |     return Some("state1");
 LL | | }
    | |_^
 
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-reference-to-fn-2.rs:34:22
    |
 LL |     self_.statefn = &id(state3 as StateMachineFunc);
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value only lives until here
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
    |                      |
-   |                      temporary value does not live long enough
+   |                      creates a temporary which is freed while still in use
    |
 note: borrowed value must be valid for the anonymous lifetime #2 defined on the function body at 33:1...
   --> $DIR/static-reference-to-fn-2.rs:33:1
@@ -34,13 +34,13 @@ LL | |     return Some("state2");
 LL | | }
    | |_^
 
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-reference-to-fn-2.rs:40:22
    |
 LL |     self_.statefn = &id(finished as StateMachineFunc);
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value only lives until here
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
    |                      |
-   |                      temporary value does not live long enough
+   |                      creates a temporary which is freed while still in use
    |
 note: borrowed value must be valid for the anonymous lifetime #2 defined on the function body at 39:1...
   --> $DIR/static-reference-to-fn-2.rs:39:1
@@ -52,17 +52,17 @@ LL | |     return Some("state3");
 LL | | }
    | |_^
 
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-reference-to-fn-2.rs:51:19
    |
 LL |         statefn: &id(state1 as StateMachineFunc)
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
 ...
 LL | }
-   | - temporary value only lives until here
+   | - temporary value is freed at the end of this statement
    |
    = note: borrowed value must be valid for the static lifetime...
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0716`.

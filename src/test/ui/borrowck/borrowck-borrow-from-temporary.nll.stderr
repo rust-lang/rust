@@ -1,16 +1,16 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/borrowed-universal-error.rs:20:12
+  --> $DIR/borrowck-borrow-from-temporary.rs:19:24
    |
-LL |     gimme(&(v,))
-   |            ^^^^ creates a temporary which is freed while still in use
-LL |     //~^ ERROR temporary value dropped while borrowed [E0716]
+LL |     let &Foo(ref x) = &id(Foo(3)); //~ ERROR borrowed value does not live long enough
+   |                        ^^^^^^^^^^ creates a temporary which is freed while still in use
+LL |     x
 LL | }
    | - temporary value is freed at the end of this statement
    |
 note: borrowed value must be valid for the lifetime 'a as defined on the function body at 18:8...
-  --> $DIR/borrowed-universal-error.rs:18:8
+  --> $DIR/borrowck-borrow-from-temporary.rs:18:8
    |
-LL | fn foo<'a>(x: &'a (u32,)) -> &'a u32 {
+LL | fn foo<'a>() -> &'a isize {
    |        ^^
 
 error: aborting due to previous error
