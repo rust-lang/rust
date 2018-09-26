@@ -17,6 +17,7 @@
 //! types, instead of all variables.
 
 use borrow_check::nll::ToRegionVid;
+use borrow_check::nll::facts::{AllFacts, AllFactsExt};
 use rustc::mir::{Local, Mir};
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
@@ -61,12 +62,13 @@ impl NllLivenessMap {
         mir: &Mir<'tcx>,
     ) -> Self {
         let mut to_local = IndexVec::default();
+        let facts_enabled = AllFacts::enabled(tcx);
         let from_local: IndexVec<Local, Option<_>> = mir.local_decls
             .iter_enumerated()
             .map(|(local, local_decl)| {
                 if tcx.all_free_regions_meet(&local_decl.ty, |r| {
                     free_regions.contains(&r.to_region_vid())
-                }) {
+                }) && !facts_enabled {
                     // If all the regions in the type are free regions
                     // (or there are no regions), then we don't need
                     // to track liveness for this variable.

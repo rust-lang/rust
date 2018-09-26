@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use borrow_check::location::LocationTable;
 use borrow_check::nll::region_infer::values::RegionValueElements;
 use borrow_check::nll::constraints::ConstraintSet;
 use borrow_check::nll::NllLivenessMap;
@@ -40,6 +41,7 @@ pub(super) fn generate<'gcx, 'tcx>(
     elements: &Rc<RegionValueElements>,
     flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
+    location_table: &LocationTable,
 ) {
     debug!("liveness::generate");
     let free_regions = {
@@ -51,7 +53,7 @@ pub(super) fn generate<'gcx, 'tcx>(
         )
     };
     let liveness_map = NllLivenessMap::compute(typeck.tcx(), &free_regions, mir);
-    trace::trace(typeck, mir, elements, flow_inits, move_data, &liveness_map);
+    trace::trace(typeck, mir, elements, flow_inits, move_data, &liveness_map, location_table);
 }
 
 /// Compute all regions that are (currently) known to outlive free

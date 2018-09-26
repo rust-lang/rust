@@ -42,12 +42,13 @@ use rustc::traits::{ObligationCause, PredicateObligations};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, CanonicalTy, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind};
-use std::fmt;
+use std::{fmt, iter};
 use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
 use transform::{MirPass, MirSource};
 
 use rustc_data_structures::fx::FxHashSet;
+use either::Either;
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
@@ -135,37 +136,35 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     } = free_region_relations::create(
         infcx,
         param_env,
-        location_table,
         Some(implicit_region_bound),
         universal_regions,
         &mut constraints,
-        all_facts,
     );
 
-    {
-        let mut borrowck_context = BorrowCheckContext {
-            universal_regions,
-            location_table,
-            borrow_set,
-            all_facts,
-            constraints: &mut constraints,
-        };
+    let mut borrowck_context = BorrowCheckContext {
+        universal_regions,
+        location_table,
+        borrow_set,
+        all_facts,
+        constraints: &mut constraints,
+    };
 
-        type_check_internal(
-            infcx,
-            mir_def_id,
-            param_env,
-            mir,
-            &region_bound_pairs,
-            Some(implicit_region_bound),
-            Some(&mut borrowck_context),
-            Some(&universal_region_relations),
-            |cx| {
-                cx.equate_inputs_and_outputs(mir, universal_regions, &normalized_inputs_and_output);
-                liveness::generate(cx, mir, elements, flow_inits, move_data);
-            },
-        );
-    }
+    type_check_internal(
+        infcx,
+        mir_def_id,
+        param_env,
+        mir,
+        &region_bound_pairs,
+        Some(implicit_region_bound),
+        Some(&mut borrowck_context),
+        Some(&universal_region_relations),
+        |cx| {
+            cx.equate_inputs_and_outputs(mir, universal_regions, &normalized_inputs_and_output);
+            liveness::generate(cx, mir, elements, flow_inits, move_data, location_table);
+
+            cx.borrowck_context.as_mut().map(|bcx| translate_outlives_facts(bcx));
+        },
+    );
 
     MirTypeckResults {
         constraints,
@@ -206,6 +205,27 @@ fn type_check_internal<'a, 'gcx, 'tcx, R>(
     }
 
     extra(&mut checker)
+}
+
+fn translate_outlives_facts(cx: &mut BorrowCheckContext) {
+    if let Some(facts) = cx.all_facts {
+        let location_table = cx.location_table;
+        facts.outlives.extend(
+            cx.constraints.outlives_constraints.iter().flat_map(|constraint: &OutlivesConstraint| {
+                if let Some(from_location) = constraint.locations.from_location() {
+                    Either::Left(iter::once((
+                        constraint.sup,
+                        constraint.sub,
+                        location_table.mid_index(from_location),
+                    )))
+                } else {
+                    Either::Right(location_table.all_points().map(move |location| {
+                       (constraint.sup, constraint.sub, location)
+                    }))
+                }
+            })
+        );
+    }
 }
 
 fn mirbug(tcx: TyCtxt, span: Span, msg: &str) {
@@ -853,7 +873,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             constraint_conversion::ConstraintConversion::new(
                 self.infcx.tcx,
                 borrowck_context.universal_regions,
-                borrowck_context.location_table,
                 self.region_bound_pairs,
                 self.implicit_region_bound,
                 self.param_env,
@@ -861,7 +880,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 category,
                 &mut borrowck_context.constraints.outlives_constraints,
                 &mut borrowck_context.constraints.type_tests,
-                &mut borrowck_context.all_facts,
             ).convert_all(&data);
         }
     }
@@ -1920,14 +1938,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                                 locations: location.to_locations(),
                                 category: ConstraintCategory::Boring,
                             });
-
-                            if let Some(all_facts) = all_facts {
-                                all_facts.outlives.push((
-                                    ref_region.to_region_vid(),
-                                    borrow_region.to_region_vid(),
-                                    location_table.mid_index(location),
-                                ));
-                            }
 
                             match mutbl {
                                 hir::Mutability::MutImmutable => {
