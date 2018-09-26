@@ -13,7 +13,7 @@
 use std::iter::once;
 
 use syntax::ast;
-use syntax::ext::base::MacroKind;
+use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax_pos::Span;
 
 use rustc::hir;
@@ -465,8 +465,14 @@ fn build_macro(cx: &DocContext, did: DefId, name: ast::Name) -> clean::ItemEnum 
             })
         }
         LoadedMacro::ProcMacro(ext) => {
+            let helpers = match &*ext {
+                &SyntaxExtension::ProcMacroDerive(_, ref syms, ..) => { syms.clean(cx) }
+                _ => Vec::new(),
+            };
+
             clean::ProcMacroItem(clean::ProcMacro {
                 kind: ext.kind(),
+                helpers,
             })
         }
     }

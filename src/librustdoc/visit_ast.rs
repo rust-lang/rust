@@ -197,10 +197,26 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
                     name
                 };
 
+                let mut helpers = Vec::new();
+                for mi in item.attrs.lists("proc_macro_derive") {
+                    if !mi.check_name("attributes") {
+                        continue;
+                    }
+
+                    if let Some(list) = mi.meta_item_list() {
+                        for inner_mi in list {
+                            if let Some(name) = inner_mi.name() {
+                                helpers.push(name);
+                            }
+                        }
+                    }
+                }
+
                 om.proc_macros.push(ProcMacro {
                     name,
                     id: item.id,
                     kind,
+                    helpers,
                     attrs: item.attrs.clone(),
                     whence: item.span,
                     stab: self.stability(item.id),

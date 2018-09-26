@@ -3793,6 +3793,7 @@ impl Clean<Item> for doctree::Macro {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ProcMacro {
     pub kind: MacroKind,
+    pub helpers: Vec<String>,
 }
 
 impl Clean<Item> for doctree::ProcMacro {
@@ -3807,6 +3808,7 @@ impl Clean<Item> for doctree::ProcMacro {
             def_id: cx.tcx.hir.local_def_id(self.id),
             inner: ProcMacroItem(ProcMacro {
                 kind: self.kind,
+                helpers: self.helpers.clean(cx),
             }),
         }
     }

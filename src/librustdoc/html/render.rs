@@ -4626,6 +4626,14 @@ fn item_proc_macro(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item, m: &c
         MacroKind::Derive => {
             write!(w, "<pre class='rust derive'>")?;
             write!(w, "#[derive({})]", name)?;
+            if !m.helpers.is_empty() {
+                writeln!(w, "\n{{")?;
+                writeln!(w, "    // Attributes available to this derive:")?;
+                for attr in &m.helpers {
+                    writeln!(w, "    #[{}]", attr)?;
+                }
+                write!(w, "}}")?;
+            }
             write!(w, "</pre>")?;
         }
         _ => {}

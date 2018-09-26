@@ -271,6 +271,7 @@ pub struct ProcMacro {
     pub name: Name,
     pub id: NodeId,
     pub kind: MacroKind,
+    pub helpers: Vec<Name>,
     pub attrs: hir::HirVec<ast::Attribute>,
     pub whence: Span,
     pub stab: Option<attr::Stability>,
