@@ -584,6 +584,8 @@ pub fn cton_intcast<'a, 'tcx: 'a>(
 
 pub struct FunctionCx<'a, 'tcx: 'a, B: Backend + 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    // FIXME get isa from Module
+    pub isa: &'a isa::TargetIsa,
     pub module: &'a mut Module<B>,
     pub instance: Instance<'tcx>,
     pub mir: &'tcx Mir<'tcx>,

@@ -646,15 +646,16 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                         .ins()
                         .iconst(fx.module.pointer_type(), elem_size as i64);
                     assert_eq!(args.len(), 3);
-                    let src = args[0];
-                    let dst = args[1];
+                    let src = args[0].load_value(fx);
+                    let dst = args[1].load_value(fx);
                     let count = args[2].load_value(fx);
                     let byte_amount = fx.bcx.ins().imul(count, elem_size);
-                    fx.easy_call(
-                        "memmove",
-                        &[dst, src, CValue::ByVal(byte_amount, usize_layout)],
-                        nil_ty,
-                    );
+
+                    if intrinsic.ends_with("_nonoverlapping") {
+                        fx.bcx.call_memcpy(fx.isa, dst, src, byte_amount);
+                    } else {
+                        fx.bcx.call_memmove(fx.isa, dst, src, byte_amount);
+                    }
                 }
                 "discriminant_value" => {
                     assert_eq!(args.len(), 1);

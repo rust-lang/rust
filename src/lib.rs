@@ -178,13 +178,16 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
         let metadata = tcx.encode_metadata();
 
-        let mut flags_builder = settings::builder();
-        flags_builder.enable("is_pic").unwrap();
-        let flags = settings::Flags::new(flags_builder);
-        let isa =
+        fn build_isa(tcx: TyCtxt) -> Box<isa::TargetIsa> {
+            let mut flags_builder = settings::builder();
+            flags_builder.enable("is_pic").unwrap();
+            let flags = settings::Flags::new(flags_builder);
             cranelift::codegen::isa::lookup(tcx.sess.target.target.llvm_target.parse().unwrap())
                 .unwrap()
-                .finish(flags);
+                .finish(flags)
+        }
+
+        let isa = build_isa(tcx);
 
         let mono_items =
             collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager).0;
@@ -197,7 +200,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             let mut jit_module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new());
             assert_eq!(pointer_ty(tcx), jit_module.pointer_type());
 
-            codegen_mono_items(tcx, &mut jit_module, &mono_items);
+            codegen_mono_items(tcx, &*isa, &mut jit_module, &mono_items);
 
             tcx.sess.abort_if_errors();
             println!("Compiled everything");
@@ -237,7 +240,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             );
             assert_eq!(pointer_ty(tcx), faerie_module.pointer_type());
 
-            codegen_mono_items(tcx, &mut faerie_module, &mono_items);
+            codegen_mono_items(tcx, &*build_isa(tcx), &mut faerie_module, &mono_items);
 
             tcx.sess.abort_if_errors();
 
@@ -318,6 +321,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
 fn codegen_mono_items<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    isa: &isa::TargetIsa,
     module: &mut Module<impl Backend + 'static>,
     mono_items: &FxHashSet<MonoItem<'tcx>>,
 ) {
@@ -333,7 +337,7 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
 
     for mono_item in mono_items {
         let res = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(|| {
-            base::trans_mono_item(tcx, module, &mut caches, &mut ccx, *mono_item);
+            base::trans_mono_item(tcx, isa, module, &mut caches, &mut ccx, *mono_item);
         }));
 
         if let Err(err) = res {

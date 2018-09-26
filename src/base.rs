@@ -11,6 +11,7 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 
 pub fn trans_mono_item<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    isa: &isa::TargetIsa,
     module: &mut Module<impl Backend>,
     caches: &mut Caches<'tcx>,
     ccx: &mut crate::constant::ConstantCx,
@@ -47,7 +48,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
                 }
             });
 
-            trans_fn(tcx, module, ccx, caches, inst);
+            trans_fn(tcx, isa, module, ccx, caches, inst);
         }
         MonoItem::Static(def_id) => {
             crate::constant::codegen_static(ccx, def_id);
@@ -60,6 +61,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
 
 fn trans_fn<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    isa: &isa::TargetIsa,
     module: &mut Module<impl Backend>,
     constants: &mut crate::constant::ConstantCx,
     caches: &mut Caches<'tcx>,
@@ -89,6 +91,7 @@ fn trans_fn<'a, 'tcx: 'a>(
     // Step 5. Make FunctionCx
     let mut fx = FunctionCx {
         tcx,
+        isa,
         module,
         instance,
         mir,
