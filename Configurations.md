@@ -887,8 +887,11 @@ See also [`brace_style`](#brace_style), [`control_brace_style`](#control_brace_s
 
 ## `enum_discrim_align_threshold`
 
-The maximum diff of width between enum variants to have discriminants aligned with each other.
+The maximum length of enum variant having discriminant, that gets vertically aligned with others.
 Variants without discriminants would be ignored for the purpose of alignment.
+
+Note that this is not how much whitespace is inserted, but instead the longest variant name that
+doesn't get ignored when aligning.
 
 - **Default value** : 0
 - **Possible values**: any positive integer
@@ -897,18 +900,17 @@ Variants without discriminants would be ignored for the purpose of alignment.
 #### `0` (default):
 
 ```rust
-enum Foo {
+enum Bar {
     A = 0,
     Bb = 1,
-    RandomLongVariantWithoutDiscriminant,
+    RandomLongVariantGoesHere = 10,
     Ccc = 71,
 }
 
 enum Bar {
-    A = 0,
-    Bb = 1,
-    ThisOneisWithDiscriminantAndPreventsAlignment = 10,
-    Ccc = 71,
+    VeryLongVariantNameHereA = 0,
+    VeryLongVariantNameHereBb = 1,
+    VeryLongVariantNameHereCcc = 2,
 }
 ```
 
@@ -918,15 +920,14 @@ enum Bar {
 enum Foo {
     A   = 0,
     Bb  = 1,
-    RandomLongVariantWithoutDiscriminant,
+    RandomLongVariantGoesHere = 10,
     Ccc = 2,
 }
 
 enum Bar {
-    A = 0,
-    Bb = 1,
-    ThisOneisWithDiscriminantAndPreventsAlignment = 10,
-    Ccc = 71,
+    VeryLongVariantNameHereA = 0,
+    VeryLongVariantNameHereBb = 1,
+    VeryLongVariantNameHereCcc = 2,
 }
 ```
 

@@ -1,21 +1,27 @@
-// rustfmt-enum_discrim_align_threshold: 20
+// rustfmt-enum_discrim_align_threshold: 40
 
 enum Standard {
     A     = 1,
     Bcdef = 2,
 }
 
-enum Mixed {
-    ThisIsAFairlyLongEnumVariantWithoutDiscrim,
+enum NoDiscrims {
+    ThisIsAFairlyLongEnumVariantWithoutDiscrimLongerThan40,
     A     = 1,
-    ThisIsAFairlyLongEnumVariantWithoutDiscrim2,
+    ThisIsAnotherFairlyLongEnumVariantWithoutDiscrimLongerThan40,
     Bcdef = 2,
 }
 
 enum TooLong {
-    ThisOneHasDiscrimAaaaaaaaaaaaaaaaaaaaaaaaaaaa = 10,
-    A = 1,
+    ThisOneHasDiscrimAaaaaaaaaaaaaaaaaaaaaaChar40 = 10,
+    A     = 1,
     Bcdef = 2,
+}
+
+enum Borderline {
+    ThisOneHasDiscrimAaaaaaaaaaaaaaaaaaaaaa = 10,
+    A                                       = 1,
+    Bcdef                                   = 2,
 }
 
 // Live specimen from #1686

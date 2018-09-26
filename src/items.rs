@@ -501,22 +501,21 @@ impl<'a> FmtVisitor<'a> {
         self.block_indent = self.block_indent.block_indent(self.config);
 
         // If enum variants have discriminants, try to vertically align those,
-        // provided it does not result in too much padding
-        let pad_discrim_ident_to;
-        let diff_threshold = self.config.enum_discrim_align_threshold();
-        let discr_ident_lens: Vec<_> = enum_def
+        // provided the discrims are not shifted too much  to the right
+        let align_threshold: usize = self.config.enum_discrim_align_threshold();
+        let discr_ident_lens: Vec<usize> = enum_def
             .variants
             .iter()
             .filter(|var| var.node.disr_expr.is_some())
             .map(|var| rewrite_ident(&self.get_context(), var.node.ident).len())
             .collect();
-        let shortest_w_discr = *discr_ident_lens.iter().min().unwrap_or(&0);
-        let longest_w_discr = *discr_ident_lens.iter().max().unwrap_or(&0);
-        if longest_w_discr > shortest_w_discr + diff_threshold {
-            pad_discrim_ident_to = 0;
-        } else {
-            pad_discrim_ident_to = longest_w_discr;
-        }
+        // cut the list at the point of longest discrim shorter than the threshold
+        // All of the discrims under the threshold will get padded, and all above - left as is.
+        let pad_discrim_ident_to = *discr_ident_lens
+            .iter()
+            .filter(|&l| *l <= align_threshold)
+            .max()
+            .unwrap_or(&0);
 
         let itemize_list_with = |one_line_width: usize| {
             itemize_list(
