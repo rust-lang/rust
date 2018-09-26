@@ -56,7 +56,7 @@ assembly call.
 
 In particular, it can happen if you forgot the closing bracket of a register
 constraint (see issue #51430):
-```compile_fail
+```ignore (error-emitted-at-codegen-which-cannot-be-handled-by-compile_fail)
 #![feature(asm)]
 
 fn main() {
