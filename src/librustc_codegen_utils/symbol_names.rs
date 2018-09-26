@@ -114,6 +114,7 @@ use rustc_mir::monomorphize::Instance;
 use syntax_pos::symbol::Symbol;
 
 use std::fmt::Write;
+use std::mem::discriminant;
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
@@ -220,8 +221,9 @@ fn get_symbol_hash<'a, 'tcx>(
             (&tcx.crate_disambiguator(instantiating_crate)).hash_stable(&mut hcx, &mut hasher);
         }
 
-        let is_vtable_shim = instance.is_vtable_shim();
-        is_vtable_shim.hash_stable(&mut hcx, &mut hasher);
+        // We want to avoid accidental collision between different types of instances.
+        // Especially, VtableShim may overlap with its original instance without this.
+        discriminant(&instance.def).hash_stable(&mut hcx, &mut hasher);
     });
 
     // 64 bits should be enough to avoid collisions.
