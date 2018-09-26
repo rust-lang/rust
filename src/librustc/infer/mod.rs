@@ -24,6 +24,7 @@ use middle::free_region::RegionRelations;
 use middle::lang_items;
 use middle::region;
 use rustc_data_structures::unify as ut;
+use session::config::BorrowckMode;
 use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::collections::BTreeMap;
 use std::fmt;
@@ -79,6 +80,38 @@ pub type InferResult<'tcx, T> = Result<InferOk<'tcx, T>, TypeError<'tcx>>;
 pub type Bound<T> = Option<T>;
 pub type UnitResult<'tcx> = RelateResult<'tcx, ()>; // "unify result"
 pub type FixupResult<T> = Result<T, FixupError>; // "fixup result"
+
+/// A flag that is used to suppress region errors. This is normally
+/// false, but sometimes -- when we are doing region checks that the
+/// NLL borrow checker will also do -- it might be set to true.
+#[derive(Copy, Clone, Default, Debug)]
+pub struct SuppressRegionErrors {
+    suppressed: bool
+}
+
+impl SuppressRegionErrors {
+    pub fn suppressed(self) -> bool {
+        self.suppressed
+    }
+
+    /// Indicates that the MIR borrowck will repeat these region
+    /// checks, so we should ignore errors if NLL is (unconditionally)
+    /// enabled.
+    pub fn when_nll_is_enabled(tcx: TyCtxt<'_, '_, '_>) -> Self {
+        match tcx.borrowck_mode() {
+            // If we're on AST or Migrate mode, report AST region errors
+            BorrowckMode::Ast | BorrowckMode::Migrate => SuppressRegionErrors {
+                suppressed: false
+            },
+
+            // If we're on MIR or Compare mode, don't report AST region errors as they should
+            // be reported by NLL
+            BorrowckMode::Compare | BorrowckMode::Mir => SuppressRegionErrors {
+                suppressed: true
+            },
+        }
+    }
+}
 
 pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
@@ -408,7 +441,7 @@ pub enum FixupError {
 pub struct RegionObligation<'tcx> {
     pub sub_region: ty::Region<'tcx>,
     pub sup_type: Ty<'tcx>,
-    pub cause: ObligationCause<'tcx>,
+    pub origin: SubregionOrigin<'tcx>,
 }
 
 impl fmt::Display for FixupError {
@@ -1039,34 +1072,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         region_context: DefId,
         region_map: &region::ScopeTree,
         outlives_env: &OutlivesEnvironment<'tcx>,
-    ) {
-        self.resolve_regions_and_report_errors_inner(
-            region_context,
-            region_map,
-            outlives_env,
-            false,
-        )
-    }
-
-    /// Like `resolve_regions_and_report_errors`, but skips error
-    /// reporting if NLL is enabled.  This is used for fn bodies where
-    /// the same error may later be reported by the NLL-based
-    /// inference.
-    pub fn resolve_regions_and_report_errors_unless_nll(
-        &self,
-        region_context: DefId,
-        region_map: &region::ScopeTree,
-        outlives_env: &OutlivesEnvironment<'tcx>,
-    ) {
-        self.resolve_regions_and_report_errors_inner(region_context, region_map, outlives_env, true)
-    }
-
-    fn resolve_regions_and_report_errors_inner(
-        &self,
-        region_context: DefId,
-        region_map: &region::ScopeTree,
-        outlives_env: &OutlivesEnvironment<'tcx>,
-        will_later_be_reported_by_nll: bool,
+        suppress: SuppressRegionErrors,
     ) {
         assert!(
             self.is_tainted_by_errors() || self.region_obligations.borrow().is_empty(),
@@ -1098,7 +1104,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // this infcx was in use.  This is totally hokey but
             // otherwise we have a hard time separating legit region
             // errors from silly ones.
-            self.report_region_errors(region_map, &errors, will_later_be_reported_by_nll);
+            self.report_region_errors(region_map, &errors, suppress);
         }
     }
 

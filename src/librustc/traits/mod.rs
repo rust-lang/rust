@@ -20,6 +20,7 @@ pub use self::ObligationCauseCode::*;
 use chalk_engine;
 use hir;
 use hir::def_id::DefId;
+use infer::SuppressRegionErrors;
 use infer::outlives::env::OutlivesEnvironment;
 use middle::region;
 use mir::interpret::ConstEvalErr;
@@ -715,7 +716,12 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // cares about declarations like `'a: 'b`.
         let outlives_env = OutlivesEnvironment::new(elaborated_env);
 
-        infcx.resolve_regions_and_report_errors(region_context, &region_scope_tree, &outlives_env);
+        infcx.resolve_regions_and_report_errors(
+            region_context,
+            &region_scope_tree,
+            &outlives_env,
+            SuppressRegionErrors::default(),
+        );
 
         let predicates = match infcx.fully_resolve(&predicates) {
             Ok(predicates) => predicates,

@@ -26,7 +26,7 @@ note: first, the lifetime cannot outlive the lifetime 'a as defined on the funct
    |
 LL | fn foo3<'a,'b>(x: &'a mut Dummy) -> &'b mut Dummy {
    |         ^^
-note: ...so that the type `(dyn Dummy + 'a)` is not borrowed for too long
+note: ...so that reference does not outlive borrowed content
   --> $DIR/regions-trait-object-subtyping.rs:25:5
    |
 LL |     x //~ ERROR lifetime bound not satisfied

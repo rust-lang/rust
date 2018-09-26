@@ -10,15 +10,13 @@
 
 use super::universal_regions::UniversalRegions;
 use borrow_check::nll::constraints::graph::NormalConstraintGraph;
-use borrow_check::nll::constraints::{
-    ConstraintSccIndex, ConstraintSet, OutlivesConstraint,
-};
+use borrow_check::nll::constraints::{ConstraintSccIndex, ConstraintSet, OutlivesConstraint};
 use borrow_check::nll::region_infer::values::{RegionElement, ToElementIndex};
 use borrow_check::nll::type_check::free_region_relations::UniversalRegionRelations;
 use borrow_check::nll::type_check::Locations;
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraint;
-use rustc::infer::region_constraints::{GenericKind, VarInfos};
+use rustc::infer::region_constraints::{GenericKind, VarInfos, VerifyBound};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin, RegionVariableOrigin};
 use rustc::mir::{
     ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements, Local, Location,
@@ -29,7 +27,7 @@ use rustc::util::common;
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_errors::{DiagnosticBuilder, Diagnostic};
+use rustc_errors::{Diagnostic, DiagnosticBuilder};
 
 use std::rc::Rc;
 
@@ -70,6 +68,15 @@ pub struct RegionInferenceContext<'tcx> {
     /// SCC. We will ensure that no SCC contains values that are not
     /// visible from this index.
     scc_universes: IndexVec<ConstraintSccIndex, ty::UniverseIndex>,
+
+    /// Contains a "representative" from each SCC. This will be the
+    /// minimal RegionVid belonging to that universe. It is used as a
+    /// kind of hacky way to manage checking outlives relationships,
+    /// since we can 'canonicalize' each region to the representative
+    /// of its SCC and be sure that -- if they have the same repr --
+    /// they *must* be equal (though not having the same repr does not
+    /// mean they are unequal).
+    scc_representatives: IndexVec<ConstraintSccIndex, ty::RegionVid>,
 
     /// The final inferred values of the region variables; we compute
     /// one value per SCC. To get the value for any given *region*,
@@ -162,42 +169,7 @@ pub struct TypeTest<'tcx> {
 
     /// A test which, if met by the region `'x`, proves that this type
     /// constraint is satisfied.
-    pub test: RegionTest,
-}
-
-/// A "test" that can be applied to some "subject region" `'x`. These are used to
-/// describe type constraints. Tests do not presently affect the
-/// region values that get inferred for each variable; they only
-/// examine the results *after* inference.  This means they can
-/// conveniently include disjuction ("a or b must be true").
-#[derive(Clone, Debug)]
-pub enum RegionTest {
-    /// The subject region `'x` must by outlived by *some* region in
-    /// the given set of regions.
-    ///
-    /// This test comes from e.g. a where clause like `T: 'a + 'b`,
-    /// which implies that we know that `T: 'a` and that `T:
-    /// 'b`. Therefore, if we are trying to prove that `T: 'x`, we can
-    /// do so by showing that `'a: 'x` *or* `'b: 'x`.
-    IsOutlivedByAnyRegionIn(Vec<RegionVid>),
-
-    /// The subject region `'x` must by outlived by *all* regions in
-    /// the given set of regions.
-    ///
-    /// This test comes from e.g. a projection type like `T = <u32 as
-    /// Trait<'a, 'b>>::Foo`, which must outlive `'a` or `'b`, and
-    /// maybe both. Therefore we can prove that `T: 'x` if we know
-    /// that `'a: 'x` *and* `'b: 'x`.
-    IsOutlivedByAllRegionsIn(Vec<RegionVid>),
-
-    /// Any of the given tests are true.
-    ///
-    /// This arises from projections, for which there are multiple
-    /// ways to prove an outlives relationship.
-    Any(Vec<RegionTest>),
-
-    /// All of the given tests are true.
-    All(Vec<RegionTest>),
+    pub verify_bound: VerifyBound<'tcx>,
 }
 
 impl<'tcx> RegionInferenceContext<'tcx> {
@@ -245,6 +217,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let scc_universes = Self::compute_scc_universes(&constraint_sccs, &definitions);
 
+        let scc_representatives = Self::compute_scc_representatives(&constraint_sccs, &definitions);
+
         let mut result = Self {
             definitions,
             liveness_constraints,
@@ -252,6 +226,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             constraint_graph,
             constraint_sccs,
             scc_universes,
+            scc_representatives,
             scc_values,
             type_tests,
             universal_regions,
@@ -286,6 +261,27 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("compute_scc_universes: scc_universe = {:#?}", scc_universes);
 
         scc_universes
+    }
+
+    /// For each SCC, we compute a unique `RegionVid` (in fact, the
+    /// minimal one that belongs to the SCC). See
+    /// `scc_representatives` field of `RegionInferenceContext` for
+    /// more details.
+    fn compute_scc_representatives(
+        constraints_scc: &Sccs<RegionVid, ConstraintSccIndex>,
+        definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    ) -> IndexVec<ConstraintSccIndex, ty::RegionVid> {
+        let num_sccs = constraints_scc.num_sccs();
+        let next_region_vid = definitions.next_index();
+        let mut scc_representatives = IndexVec::from_elem_n(next_region_vid, num_sccs);
+
+        for region_vid in definitions.indices() {
+            let scc = constraints_scc.scc(region_vid);
+            let prev_min = scc_representatives[scc];
+            scc_representatives[scc] = region_vid.min(prev_min);
+        }
+
+        scc_representatives
     }
 
     /// Initializes the region variables for each universally
@@ -582,7 +578,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for type_test in &self.type_tests {
             debug!("check_type_test: {:?}", type_test);
 
-            if self.eval_region_test(mir, type_test.lower_bound, &type_test.test) {
+            let generic_ty = type_test.generic_kind.to_ty(tcx);
+            if self.eval_verify_bound(
+                tcx,
+                mir,
+                generic_ty,
+                type_test.lower_bound,
+                &type_test.verify_bound,
+            ) {
                 continue;
             }
 
@@ -689,7 +692,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             generic_kind,
             lower_bound,
             locations,
-            test: _,
+            verify_bound: _,
         } = type_test;
 
         let generic_ty = generic_kind.to_ty(tcx);
@@ -716,7 +719,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // where `ur` is a local bound -- we are sometimes in a
             // position to prove things that our caller cannot.  See
             // #53570 for an example.
-            if self.eval_region_test(mir, ur, &type_test.test) {
+            if self.eval_verify_bound(tcx, mir, generic_ty, ur, &type_test.verify_bound) {
                 continue;
             }
 
@@ -888,29 +891,97 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     /// Test if `test` is true when applied to `lower_bound` at
     /// `point`, and returns true or false.
-    fn eval_region_test(&self, mir: &Mir<'tcx>, lower_bound: RegionVid, test: &RegionTest) -> bool {
+    fn eval_verify_bound(
+        &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        mir: &Mir<'tcx>,
+        generic_ty: Ty<'tcx>,
+        lower_bound: RegionVid,
+        verify_bound: &VerifyBound<'tcx>,
+    ) -> bool {
         debug!(
-            "eval_region_test(lower_bound={:?}, test={:?})",
-            lower_bound, test
+            "eval_verify_bound(lower_bound={:?}, verify_bound={:?})",
+            lower_bound, verify_bound
         );
 
-        match test {
-            RegionTest::IsOutlivedByAllRegionsIn(regions) => regions
-                .iter()
-                .all(|&r| self.eval_outlives(mir, r, lower_bound)),
+        match verify_bound {
+            VerifyBound::IfEq(test_ty, verify_bound1) => {
+                self.eval_if_eq(tcx, mir, generic_ty, lower_bound, test_ty, verify_bound1)
+            }
 
-            RegionTest::IsOutlivedByAnyRegionIn(regions) => regions
-                .iter()
-                .any(|&r| self.eval_outlives(mir, r, lower_bound)),
+            VerifyBound::OutlivedBy(r) => {
+                let r_vid = self.to_region_vid(r);
+                self.eval_outlives(mir, r_vid, lower_bound)
+            }
 
-            RegionTest::Any(tests) => tests
-                .iter()
-                .any(|test| self.eval_region_test(mir, lower_bound, test)),
+            VerifyBound::AnyBound(verify_bounds) => verify_bounds.iter().any(|verify_bound| {
+                self.eval_verify_bound(tcx, mir, generic_ty, lower_bound, verify_bound)
+            }),
 
-            RegionTest::All(tests) => tests
-                .iter()
-                .all(|test| self.eval_region_test(mir, lower_bound, test)),
+            VerifyBound::AllBounds(verify_bounds) => verify_bounds.iter().all(|verify_bound| {
+                self.eval_verify_bound(tcx, mir, generic_ty, lower_bound, verify_bound)
+            }),
         }
+    }
+
+    fn eval_if_eq(
+        &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        mir: &Mir<'tcx>,
+        generic_ty: Ty<'tcx>,
+        lower_bound: RegionVid,
+        test_ty: Ty<'tcx>,
+        verify_bound: &VerifyBound<'tcx>,
+    ) -> bool {
+        let generic_ty_normalized = self.normalize_to_scc_representatives(tcx, generic_ty);
+        let test_ty_normalized = self.normalize_to_scc_representatives(tcx, test_ty);
+        if generic_ty_normalized == test_ty_normalized {
+            self.eval_verify_bound(tcx, mir, generic_ty, lower_bound, verify_bound)
+        } else {
+            false
+        }
+    }
+
+    /// This is a conservative normalization procedure. It takes every
+    /// free region in `value` and replaces it with the
+    /// "representative" of its SCC (see `scc_representatives` field).
+    /// We are guaranteed that if two values normalize to the same
+    /// thing, then they are equal; this is a conservative check in
+    /// that they could still be equal even if they normalize to
+    /// different results. (For example, there might be two regions
+    /// with the same value that are not in the same SCC).
+    ///
+    /// NB. This is not an ideal approach and I would like to revisit
+    /// it. However, it works pretty well in practice. In particular,
+    /// this is needed to deal with projection outlives bounds like
+    ///
+    ///     <T as Foo<'0>>::Item: '1
+    ///
+    /// In particular, this routine winds up being important when
+    /// there are bounds like `where <T as Foo<'a>>::Item: 'b` in the
+    /// environment.  In this case, if we can show that `'0 == 'a`,
+    /// and that `'b: '1`, then we know that the clause is
+    /// satisfied. In such cases, particularly due to limitations of
+    /// the trait solver =), we usually wind up with a where-clause like
+    /// `T: Foo<'a>` in scope, which thus forces `'0 == 'a` to be added as
+    /// a constraint, and thus ensures that they are in the same SCC.
+    ///
+    /// So why can't we do a more correct routine? Well, we could
+    /// *almost* use the `relate_tys` code, but the way it is
+    /// currently setup it creates inference variables to deal with
+    /// higher-ranked things and so forth, and right now the inference
+    /// context is not permitted to make more inference variables. So
+    /// we use this kind of hacky solution.
+    fn normalize_to_scc_representatives<T>(&self, tcx: TyCtxt<'_, '_, 'tcx>, value: T) -> T
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        tcx.fold_regions(&value, &mut false, |r, _db| {
+            let vid = self.to_region_vid(r);
+            let scc = self.constraint_sccs.scc(vid);
+            let repr = self.scc_representatives[scc];
+            tcx.mk_region(ty::ReVar(repr))
+        })
     }
 
     // Evaluate whether `sup_region: sub_region @ point`.
