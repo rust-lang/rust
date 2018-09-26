@@ -112,7 +112,7 @@ struct RegionDefinition<'tcx> {
     /// Which universe is this region variable defined in? This is
     /// most often `ty::UniverseIndex::ROOT`, but when we encounter
     /// forall-quantifiers like `for<'a> { 'a = 'b }`, we would create
-    /// the variable for `'a` in a subuniverse.
+    /// the variable for `'a` in a superuniverse.
     universe: ty::UniverseIndex,
 
     /// If this is 'static or an early-bound region, then this is

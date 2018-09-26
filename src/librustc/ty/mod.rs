@@ -1457,7 +1457,7 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 /// presence of `for<..>` binders to control what sets of names are
 /// visible. Universes are arranged into a tree: the root universe
 /// contains names that are always visible. But when you enter into
-/// some subuniverse, then it may add names that are only visible
+/// some superuniverse, then it may add names that are only visible
 /// within that subtree (but it can still name the names of its
 /// ancestor universes).
 ///
@@ -1471,10 +1471,10 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 /// ```
 ///
 /// The struct name `Foo` is in the root universe U0. But the type
-/// parameter `T`, introduced on `bar`, is in a subuniverse U1 --
+/// parameter `T`, introduced on `bar`, is in a superuniverse U1 --
 /// i.e., within `bar`, we can name both `T` and `Foo`, but outside of
 /// `bar`, we cannot name `T`. Then, within the type of `y`, the
-/// region `'a` is in a subuniverse U2 of U1, because we can name it
+/// region `'a` is in a superuniverse U2 of U1, because we can name it
 /// inside the fn type but not outside.
 ///
 /// Universes are used to do type- and trait-checking around these
@@ -1489,27 +1489,29 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 /// type -- an idealized representative of "types in general" that we
 /// use for checking generic functions.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
-pub struct UniverseIndex(u32);
+pub struct UniverseIndex { private: u32 }
+
+impl_stable_hash_for!(struct UniverseIndex { private });
 
 impl UniverseIndex {
     /// The root universe, where things that the user defined are
     /// visible.
-    pub const ROOT: Self = UniverseIndex(0);
+    pub const ROOT: Self = UniverseIndex { private: 0 };
 
     /// The "max universe" -- this isn't really a valid universe, but
     /// it's useful sometimes as a "starting value" when you are
     /// taking the minimum of a (non-empty!) set of universes.
-    pub const MAX: Self = UniverseIndex(::std::u32::MAX);
+    pub const MAX: Self = UniverseIndex { private: ::std::u32::MAX };
 
     /// Creates a universe index from the given integer.  Not to be
     /// used lightly lest you pick a bad value. But sometimes we
     /// convert universe indices into integers and back for various
     /// reasons.
     pub fn from_u32(index: u32) -> Self {
-        UniverseIndex(index)
+        UniverseIndex { private: index }
     }
 
-    /// A "subuniverse" corresponds to being inside a `forall` quantifier.
+    /// A "superuniverse" corresponds to being inside a `forall` quantifier.
     /// So, for example, suppose we have this type in universe `U`:
     ///
     /// ```
@@ -1517,24 +1519,24 @@ impl UniverseIndex {
     /// ```
     ///
     /// Once we "enter" into this `for<'a>` quantifier, we are in a
-    /// subuniverse of `U` -- in this new universe, we can name the
+    /// superuniverse of `U` -- in this new universe, we can name the
     /// region `'a`, but that region was not nameable from `U` because
     /// it was not in scope there.
-    pub fn subuniverse(self) -> UniverseIndex {
-        UniverseIndex(self.0.checked_add(1).unwrap())
+    pub fn superuniverse(self) -> UniverseIndex {
+        UniverseIndex::from_u32(self.private.checked_add(1).unwrap())
     }
 
     /// True if the names in this universe are a subset of the names in `other`.
     pub fn is_subset_of(self, other: UniverseIndex) -> bool {
-        self.0 <= other.0
+        self.private <= other.private
     }
 
     pub fn as_u32(&self) -> u32 {
-        self.0
+        self.private
     }
 
     pub fn as_usize(&self) -> usize {
-        self.0 as usize
+        self.private as usize
     }
 }
 
@@ -1546,7 +1548,7 @@ impl fmt::Debug for UniverseIndex {
 
 impl From<u32> for UniverseIndex {
     fn from(index: u32) -> Self {
-        UniverseIndex(index)
+        UniverseIndex::from_u32(index)
     }
 }
 

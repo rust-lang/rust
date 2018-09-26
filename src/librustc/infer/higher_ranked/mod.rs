@@ -593,7 +593,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     where
         T : TypeFoldable<'tcx>,
     {
-        let new_universe = self.create_subuniverse();
+        let new_universe = self.create_superuniverse();
 
         let (result, map) = self.tcx.replace_late_bound_regions(binder, |br| {
             self.tcx.mk_region(ty::RePlaceholder(ty::Placeholder {

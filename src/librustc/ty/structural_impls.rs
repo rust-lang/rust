@@ -57,6 +57,7 @@ CloneTypeFoldableAndLiftImpls! {
     ::ty::ClosureKind,
     ::ty::IntVarValue,
     ::ty::ParamTy,
+    ::ty::UniverseIndex,
     ::ty::Variance,
     ::syntax_pos::Span,
 }

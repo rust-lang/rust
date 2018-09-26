@@ -1494,12 +1494,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Create and return a new subunivese of the current universe;
-    /// update `self.universe` to that new subuniverse. At present,
+    /// update `self.universe` to that new universe. At present,
     /// used only in the NLL subtyping code, which uses the new
     /// universe-based scheme instead of the more limited leak-check
     /// scheme.
-    pub fn create_subuniverse(&self) -> ty::UniverseIndex {
-        let u = self.universe.get().subuniverse();
+    pub fn create_superuniverse(&self) -> ty::UniverseIndex {
+        let u = self.universe.get().superuniverse();
         self.universe.set(u);
         u
     }
