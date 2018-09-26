@@ -46,7 +46,7 @@ pub struct Pass {
 
 impl Default for Pass {
     fn default() -> Self {
-        Pass { impls: FxHashMap::default() }
+        Self { impls: FxHashMap::default() }
     }
 }
 

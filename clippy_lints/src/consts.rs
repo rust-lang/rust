@@ -123,11 +123,11 @@ impl Constant {
             (&Constant::Tuple(ref l), &Constant::Tuple(ref r)) | (&Constant::Vec(ref l), &Constant::Vec(ref r)) => l
                 .iter()
                 .zip(r.iter())
-                .map(|(li, ri)| Constant::partial_cmp(tcx, cmp_type, li, ri))
+                .map(|(li, ri)| Self::partial_cmp(tcx, cmp_type, li, ri))
                 .find(|r| r.map_or(true, |o| o != Ordering::Equal))
                 .unwrap_or_else(|| Some(l.len().cmp(&r.len()))),
             (&Constant::Repeat(ref lv, ref ls), &Constant::Repeat(ref rv, ref rs)) => {
-                match Constant::partial_cmp(tcx, cmp_type, lv, rv) {
+                match Self::partial_cmp(tcx, cmp_type, lv, rv) {
                     Some(Equal) => Some(ls.cmp(rs)),
                     x => x,
                 }

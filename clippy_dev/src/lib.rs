@@ -35,8 +35,8 @@ pub struct Lint {
 }
 
 impl Lint {
-    pub fn new(name: &str, group: &str, desc: &str, deprecation: Option<&str>, module: &str) -> Lint {
-        Lint {
+    pub fn new(name: &str, group: &str, desc: &str, deprecation: Option<&str>, module: &str) -> Self {
+        Self {
             name: name.to_lowercase(),
             group: group.to_string(),
             desc: NL_ESCAPE_RE.replace(&desc.replace("\\\"", "\""), "").to_string(),
@@ -46,12 +46,12 @@ impl Lint {
     }
 
     /// Returns all non-deprecated lints
-    pub fn active_lints(lints: &[Lint]) -> impl Iterator<Item=&Lint> {
+    pub fn active_lints(lints: &[Self]) -> impl Iterator<Item=&Self> {
         lints.iter().filter(|l| l.deprecation.is_none())
     }
 
     /// Returns the lints in a HashMap, grouped by the different lint groups
-    pub fn by_lint_group(lints: &[Lint]) -> HashMap<String, Vec<Lint>> {
+    pub fn by_lint_group(lints: &[Self]) -> HashMap<String, Vec<Self>> {
         lints.iter().map(|lint| (lint.group.to_string(), lint.clone())).into_group_map()
     }
 }
