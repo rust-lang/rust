@@ -46,14 +46,14 @@ use abi::Abi;
 /// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
 /// `llvm::Context` so that several compilation units may be optimized in parallel.
 /// All other LLVM data structures in the `CodegenCx` are tied to that `llvm::Context`.
-pub struct CodegenCx<'a, 'tcx: 'a, V> {
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub struct CodegenCx<'ll, 'tcx: 'll, V> {
+    pub tcx: TyCtxt<'ll, 'tcx, 'tcx>,
     pub check_overflow: bool,
     pub use_dll_storage_attrs: bool,
     pub tls_model: llvm::ThreadLocalMode,
 
-    pub llmod: &'a llvm::Module,
-    pub llcx: &'a llvm::Context,
+    pub llmod: &'ll llvm::Module,
+    pub llcx: &'ll llvm::Context,
     pub stats: RefCell<Stats>,
     pub codegen_unit: Arc<CodegenUnit<'tcx>>,
 
@@ -87,12 +87,12 @@ pub struct CodegenCx<'a, 'tcx: 'a, V> {
     /// See http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable for details
     pub used_statics: RefCell<Vec<V>>,
 
-    pub lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<usize>), &'a Type>>,
-    pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'a Type>>,
+    pub lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<usize>), &'ll Type>>,
+    pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'ll Type>>,
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
-    pub isize_ty: &'a Type,
+    pub isize_ty: &'ll Type,
 
-    pub dbg_cx: Option<debuginfo::CrateDebugContext<'a, 'tcx>>,
+    pub dbg_cx: Option<debuginfo::CrateDebugContext<'ll, 'tcx>>,
 
     eh_personality: Cell<Option<V>>,
     eh_unwind_resume: Cell<Option<V>>,
@@ -104,8 +104,7 @@ pub struct CodegenCx<'a, 'tcx: 'a, V> {
     local_gen_sym_counter: Cell<usize>,
 }
 
-impl<'a, 'tcx, Value> DepGraphSafe for CodegenCx<'a, 'tcx, Value> {
-}
+impl<'ll, 'tcx, Value> DepGraphSafe for CodegenCx<'ll, 'tcx, Value> {}
 
 pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
     let reloc_model_arg = match sess.opts.cg.relocation_model {
@@ -218,11 +217,11 @@ pub unsafe fn create_module(
     llmod
 }
 
-impl<'a, 'tcx, Value : Eq+Hash> CodegenCx<'a, 'tcx, Value> {
-    crate fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+impl<'ll, 'tcx, Value : Eq+Hash> CodegenCx<'ll, 'tcx, Value> {
+    crate fn new(tcx: TyCtxt<'ll, 'tcx, 'tcx>,
                  codegen_unit: Arc<CodegenUnit<'tcx>>,
-                 llvm_module: &'a ::ModuleLlvm)
-                 -> CodegenCx<'a, 'tcx, Value> {
+                 llvm_module: &'ll ::ModuleLlvm)
+                 -> CodegenCx<'ll, 'tcx, Value> {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
         // attributes in LLVM IR as well as native dependencies (in C these
@@ -446,7 +445,7 @@ impl IntrinsicDeclarationMethods<'b> for CodegenCx<'b, 'tcx, &'b Value> {
 
         declare_intrinsic(self, key).unwrap_or_else(|| bug!("unknown intrinsic '{}'", key))
     }
-    
+
     fn declare_intrinsic(
         &self,
         key: &str
