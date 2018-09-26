@@ -40,6 +40,33 @@ the debuginfo test suite:
 > ./x.py test --stage 1 src/test/debuginfo
 ```
 
+### Run only the tidy script
+
+```bash
+> ./x.py test src/tools/tidy
+```
+
+### Run tests on the standard library
+
+```bash
+> ./x.py test src/libstd
+```
+
+### Run tests on the standard library and run the tidy script
+
+```bash
+> ./x.py test src/libstd src/tools/tidy
+```
+
+### Run tests on the standard library using a stage 1 compiler
+
+```bash
+>   ./x.py test src/libstd --stage 1
+```
+
+By listing which test suites you want to run you avoid having to run
+tests for components you did not change at all.
+
 **Warning:** Note that bors only runs the tests with the full stage 2
 build; therefore, while the tests **usually** work fine with stage 1,
 there are some limitations. In particular, the stage1 compiler doesn't
@@ -92,25 +119,3 @@ just `rs` files, so you can do something like
 This is much faster, but doesn't always work. For example, some tests
 include directives that specify specific compiler flags, or which rely
 on other crates, and they may not run the same without those options.
-
-### Run only the tidy script
-```bash
-> ./x.py test src/tools/tidy
-```
-### Run tests on the standard library
-```bash
-> ./x.py test src/libstd
-```
-
-### Run tests on the standard library and run the tidy script
-```bash
-> ./x.py test src/libstd src/tools/tidy
-```
-
-### Run tests on the standard library using a stage 1 compiler
-```bash
->   ./x.py test src/libstd --stage 1
-```
-
-By listing which test suites you want to run you avoid having to run tests for 
-components you did not change at all.

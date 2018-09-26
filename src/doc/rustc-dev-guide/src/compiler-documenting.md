@@ -34,14 +34,9 @@ Much like individual tests or building certain components you can build only
  the documentation you want.
 
 ## Document internal rustc items
-By default rustc does not build the compiler docs for its internal items. 
-Mostly because this is useless for the average user. However, you might need 
-to have it available so you can understand the types. Here’s how you can 
-compile it yourself. From the top level directory where x.py is located run:
 
-```bash
-cp config.toml.example config.toml
-```
+Compiler documentation is not built by default - there's a  flag in config.toml for achieving the same.
+But, when enabled, compiler documentation does include internal items.
 
 Next open up config.toml and make sure these two lines are set to true:
 

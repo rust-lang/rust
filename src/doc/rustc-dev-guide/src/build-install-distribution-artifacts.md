@@ -7,22 +7,16 @@ You’ll want to run this command to do it:
    ./x.py dist
    ```
 
-## Other Flags
-
-The same flags from build are available here. 
-You might want to consider adding on the -j flag for faster builds 
-when building a distribution artifact.
-
-```bash
--j, --jobs JOBS     number of jobs to run in parallel
-```
-
-
 # Install distribution artifacts
 
-If you’ve built a distribution artifact you might want to install it and 
+If you’ve built a distribution artifact you might want to install it and
 test that it works on your target system. You’ll want to run this command:
 
    ```bash
    ./x.py install
-   ``` 
+   ```
+
+   Note: If you are testing out a modification to a compiler, you might want to use it to compile some project.
+   Usually, you do not want to use ./x.py install for testing.
+   Rather, you should create a toolchain as discussed in how-to-build-and-run.html#creating-a-rustup-toolchain.
+   For example, if the toolchain you created is called foo, you would then invoke it with rustc +foo ... (where ... represents the rest of the arguments).

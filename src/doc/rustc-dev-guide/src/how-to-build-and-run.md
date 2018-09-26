@@ -47,7 +47,7 @@ debuginfo-lines = true
 use-jemalloc = false
 ```
 
-### what is x.py?
+### What is x.py?
 
 x.py is the script used to orchestrate the tooling in the rustc repository. 
 It is the script that can build docs, run tests, and compile rustc. 
@@ -88,7 +88,6 @@ compiling `rustc` is done in stages:
   can build the libraries with the stage2 compiler. The result ought
   to be identical to before, unless something has broken.
 
-
 #### Build Flags
 
 There are other flags you can pass to the build portion of x.py that can be 
@@ -110,29 +109,6 @@ Options:
     -j, --jobs JOBS     number of jobs to run in parallel
     -h, --help          print this help message
 ```
-
-One thing to keep in mind is that `rustc` is a _bootstrapping_ compiler. That
-is, since `rustc` is written in Rust, we need to use an older version of the
-compiler to compile the newer version. In particular, the newer version of the
-compiler, `libstd`, and other tooling may use some unstable features
-internally. The result is the compiling `rustc` is done in stages.
-
-- **Stage 0:** the stage0 compiler can be your existing
-  (perhaps older version of)
-  Rust compiler, the current _beta_ compiler or you may download the binary
-  from the internet.
-- **Stage 1:** the code in your clone (for new version)
-  is then compiled with the stage0
-  compiler to produce the stage1 compiler.
-  However, it was built with an older compiler (stage0),
-  so to optimize the stage1 compiler we go to next stage.
-- **Stage 2:** we rebuild our stage1 compiler with itself
-  to produce the stage2 compiler (i.e. it builds
-  itself) to have all the _latest optimizations_.
-- _(Optional)_ **Stage 3**: to sanity check of our new compiler,
-  we can build it again
-  with stage2 compiler which must be identical to itself,
-  unless something has broken.
 
 For hacking, often building the stage 1 compiler is enough, but for
 final testing and release, the stage 2 compiler is used.
