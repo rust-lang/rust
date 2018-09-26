@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_mut)] // under NLL we get warning about `bar` below
 fn baz() -> ! { panic!(); }
 
 fn foo() {

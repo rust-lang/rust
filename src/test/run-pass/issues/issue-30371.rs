@@ -10,6 +10,7 @@
 
 // run-pass
 #![allow(unreachable_code)]
+#![allow(unused_mut)] // rust-lang/rust#54586
 #![deny(unused_variables)]
 
 fn main() {

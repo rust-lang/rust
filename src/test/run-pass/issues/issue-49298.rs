@@ -10,6 +10,7 @@
 
 // run-pass
 #![feature(test)]
+#![allow(unused_mut)] // under NLL we get warning about `x` below: rust-lang/rust#54499
 
 extern crate test;
 
