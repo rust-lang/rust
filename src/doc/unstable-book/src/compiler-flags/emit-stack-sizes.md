@@ -8,6 +8,10 @@ The tracking issue for this feature is: [#54192]
 
 The rustc flag `-Z emit-stack-sizes` makes LLVM emit stack size metadata.
 
+> **NOTE**: This LLVM feature only supports the ELF object format as of LLVM
+> 8.0. Using this flag with targets that use other object formats (e.g. macOS
+> and Windows) will result in it being ignored.
+
 Consider this crate:
 
 ```
