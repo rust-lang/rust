@@ -9,8 +9,12 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// min-lldb-version: 310
-// ignore-gdb-version: 7.11.90 - 7.12.9
+
+// Require LLVM with DW_TAG_variant_part and a gdb and lldb that can
+// read it.
+// min-system-llvm-version: 7.0
+// min-gdb-version: 8.2
+// rust-lldb
 
 // compile-flags:-g
 
@@ -19,15 +23,12 @@
 // gdb-command:run
 
 // gdb-command:print *the_a
-// gdbg-check:$1 = {{RUST$ENUM$DISR = TheA, x = 0, y = 8970181431921507452}, {RUST$ENUM$DISR = TheA, [...]}}
 // gdbr-check:$1 = unique_enum::ABC::TheA{x: 0, y: 8970181431921507452}
 
 // gdb-command:print *the_b
-// gdbg-check:$2 = {{RUST$ENUM$DISR = TheB, [...]}, {RUST$ENUM$DISR = TheB, __0 = 0, __1 = 286331153, __2 = 286331153}}
 // gdbr-check:$2 = unique_enum::ABC::TheB(0, 286331153, 286331153)
 
 // gdb-command:print *univariant
-// gdbg-check:$3 = {{__0 = 123234}}
 // gdbr-check:$3 = unique_enum::Univariant::TheOnlyCase(123234)
 
 
@@ -36,16 +37,13 @@
 // lldb-command:run
 
 // lldb-command:print *the_a
-// lldbg-check:[...]$0 = TheA { x: 0, y: 8970181431921507452 }
-// lldbr-check:(unique_enum::ABC::TheA) *the_a = TheA { unique_enum::ABC::TheA: 0, unique_enum::ABC::TheB: 8970181431921507452 }
+// lldbr-check:(unique_enum::ABC::TheA) *the_a = TheA { TheA: 0, TheB: 8970181431921507452 }
 
 // lldb-command:print *the_b
-// lldbg-check:[...]$1 = TheB(0, 286331153, 286331153)
 // lldbr-check:(unique_enum::ABC::TheB) *the_b = { = 0 = 286331153 = 286331153 }
 
 // lldb-command:print *univariant
-// lldbg-check:[...]$2 = TheOnlyCase(123234)
-// lldbr-check:(unique_enum::Univariant) *univariant = { unique_enum::TheOnlyCase = { = 123234 } }
+// lldbr-check:(unique_enum::Univariant) *univariant = { TheOnlyCase = { = 123234 } }
 
 #![allow(unused_variables)]
 #![feature(box_syntax)]

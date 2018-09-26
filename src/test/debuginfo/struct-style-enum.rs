@@ -9,8 +9,12 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// min-lldb-version: 310
-// ignore-gdb-version: 7.11.90 - 7.12.9
+
+// Require LLVM with DW_TAG_variant_part and a gdb and lldb that can
+// read it.
+// min-system-llvm-version: 7.0
+// min-gdb-version: 8.2
+// rust-lldb
 
 // compile-flags:-g
 
@@ -20,19 +24,15 @@
 // gdb-command:run
 
 // gdb-command:print case1
-// gdbg-check:$1 = {{RUST$ENUM$DISR = Case1, a = 0, b = 31868, c = 31868, d = 31868, e = 31868}, {RUST$ENUM$DISR = Case1, [...]}, {RUST$ENUM$DISR = Case1, [...]}}
 // gdbr-check:$1 = struct_style_enum::Regular::Case1{a: 0, b: 31868, c: 31868, d: 31868, e: 31868}
 
 // gdb-command:print case2
-// gdbg-check:$2 = {{RUST$ENUM$DISR = Case2, [...]}, {RUST$ENUM$DISR = Case2, a = 0, b = 286331153, c = 286331153}, {RUST$ENUM$DISR = Case2, [...]}}
 // gdbr-check:$2 = struct_style_enum::Regular::Case2{a: 0, b: 286331153, c: 286331153}
 
 // gdb-command:print case3
-// gdbg-check:$3 = {{RUST$ENUM$DISR = Case3, [...]}, {RUST$ENUM$DISR = Case3, [...]}, {RUST$ENUM$DISR = Case3, a = 0, b = 6438275382588823897}}
 // gdbr-check:$3 = struct_style_enum::Regular::Case3{a: 0, b: 6438275382588823897}
 
 // gdb-command:print univariant
-// gdbg-check:$4 = {{a = -1}}
 // gdbr-check:$4 = struct_style_enum::Univariant::TheOnlyCase{a: -1}
 
 
@@ -41,20 +41,16 @@
 // lldb-command:run
 
 // lldb-command:print case1
-// lldbg-check:[...]$0 = Case1 { a: 0, b: 31868, c: 31868, d: 31868, e: 31868 }
 // lldbr-check:(struct_style_enum::Regular::Case1) case1 = { a = 0 b = 31868 c = 31868 d = 31868 e = 31868 }
 
 // lldb-command:print case2
-// lldbg-check:[...]$1 = Case2 { a: 0, b: 286331153, c: 286331153 }
-// lldbr-check:(struct_style_enum::Regular::Case2) case2 = Case2 { struct_style_enum::Regular::Case1: 0, struct_style_enum::Regular::Case2: 286331153, struct_style_enum::Regular::Case3: 286331153 }
+// lldbr-check:(struct_style_enum::Regular::Case2) case2 = Case2 { Case1: 0, Case2: 286331153, Case3: 286331153 }
 
 // lldb-command:print case3
-// lldbg-check:[...]$2 = Case3 { a: 0, b: 6438275382588823897 }
-// lldbr-check:(struct_style_enum::Regular::Case3) case3 = Case3 { struct_style_enum::Regular::Case1: 0, struct_style_enum::Regular::Case2: 6438275382588823897 }
+// lldbr-check:(struct_style_enum::Regular::Case3) case3 = Case3 { Case1: 0, Case2: 6438275382588823897 }
 
 // lldb-command:print univariant
-// lldbg-check:[...]$3 = TheOnlyCase { a: -1 }
-// lldbr-check:(struct_style_enum::Univariant) univariant = Univariant { struct_style_enum::TheOnlyCase: TheOnlyCase { a: -1 } }
+// lldbr-check:(struct_style_enum::Univariant) univariant = Univariant { TheOnlyCase: TheOnlyCase { a: -1 } }
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

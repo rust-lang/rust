@@ -10,7 +10,10 @@
 
 // ignore-tidy-linelength
 // min-lldb-version: 310
-// ignore-gdb-version: 7.11.90 - 7.12.9
+
+// Require LLVM with DW_TAG_variant_part and a gdb that can read it.
+// min-system-llvm-version: 7.0
+// min-gdb-version: 8.2
 
 // compile-flags:-g
 
@@ -18,19 +21,15 @@
 // gdb-command:run
 
 // gdb-command:print case1
-// gdbg-check:$1 = {{RUST$ENUM$DISR = Case1, a = 0, b = 31868, c = 31868, d = 31868, e = 31868}, {RUST$ENUM$DISR = Case1, [...]}, {RUST$ENUM$DISR = Case1, [...]}}
-// gdbr-check:$1 = generic_struct_style_enum::Regular::Case1{a: 0, b: 31868, c: 31868, d: 31868, e: 31868}
+// gdbr-check:$1 = generic_struct_style_enum::Regular<u16, u32, i64>::Case1{a: 0, b: 31868, c: 31868, d: 31868, e: 31868}
 
 // gdb-command:print case2
-// gdbg-check:$2 = {{RUST$ENUM$DISR = Case2, [...]}, {RUST$ENUM$DISR = Case2, a = 0, b = 286331153, c = 286331153}, {RUST$ENUM$DISR = Case2, [...]}}
-// gdbr-check:$2 = generic_struct_style_enum::Regular::Case2{a: 0, b: 286331153, c: 286331153}
+// gdbr-check:$2 = generic_struct_style_enum::Regular<i16, u32, i64>::Case2{a: 0, b: 286331153, c: 286331153}
 
 // gdb-command:print case3
-// gdbg-check:$3 = {{RUST$ENUM$DISR = Case3, [...]}, {RUST$ENUM$DISR = Case3, [...]}, {RUST$ENUM$DISR = Case3, a = 0, b = 6438275382588823897}}
-// gdbr-check:$3 = generic_struct_style_enum::Regular::Case3{a: 0, b: 6438275382588823897}
+// gdbr-check:$3 = generic_struct_style_enum::Regular<u16, i32, u64>::Case3{a: 0, b: 6438275382588823897}
 
 // gdb-command:print univariant
-// gdbg-check:$4 = {{a = -1}}
 // gdbr-check:$4 = generic_struct_style_enum::Univariant<i32>::TheOnlyCase{a: -1}
 
 
