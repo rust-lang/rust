@@ -34,7 +34,7 @@
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
 #![feature(libc)]
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
 #![feature(panic_unwind)]
 #![feature(raw)]
 #![feature(staged_api)]

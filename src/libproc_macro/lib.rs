@@ -27,7 +27,7 @@
        test(no_crate_inject, attr(deny(warnings))),
        test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
 
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(lang_items)]

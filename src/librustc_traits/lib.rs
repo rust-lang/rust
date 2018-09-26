@@ -11,11 +11,9 @@
 //! New recursive solver modeled on Chalk's recursive solver. Most of
 //! the guts are broken up into modules; see the comments in those modules.
 
-#![cfg_attr(stage0, feature(crate_in_paths))]
 #![feature(crate_visibility_modifier)]
-#![cfg_attr(stage0, feature(extern_prelude))]
 #![feature(in_band_lifetimes)]
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
 
 #![recursion_limit="256"]
 

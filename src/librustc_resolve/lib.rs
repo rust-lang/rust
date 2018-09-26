@@ -13,7 +13,7 @@
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(crate_visibility_modifier)]
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
 

@@ -76,7 +76,6 @@
 
 #![cfg_attr(not(test), feature(fn_traits))]
 #![cfg_attr(not(test), feature(generator_trait))]
-#![cfg_attr(not(stage0), feature(nll))]
 #![cfg_attr(test, feature(test))]
 
 #![feature(allocator_api)]
@@ -87,8 +86,7 @@
 #![feature(box_syntax)]
 #![feature(cfg_target_has_atomic)]
 #![feature(coerce_unsized)]
-#![cfg_attr(stage0, feature(const_fn))]
-#![cfg_attr(not(stage0), feature(min_const_fn))]
+#![feature(min_const_fn)]
 #![feature(core_intrinsics)]
 #![feature(custom_attribute)]
 #![feature(dropck_eyepatch)]
@@ -99,6 +97,7 @@
 #![feature(lang_items)]
 #![feature(libc)]
 #![feature(needs_allocator)]
+#![feature(nll)]
 #![feature(optin_builtin_traits)]
 #![feature(pattern)]
 #![feature(pin)]
