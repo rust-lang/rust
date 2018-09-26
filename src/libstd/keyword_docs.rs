@@ -30,7 +30,7 @@
 /// explicitly using `as` allows a few more coercions that aren't allowed implicitly, such as
 /// changing the type of a raw pointer or turning closures into raw pointers.
 ///
-/// Other places `as` is used include as extra syntax for [`crate`] and [`use`], to change the name
+/// Other places `as` is used include as extra syntax for [`crate`] and `use`, to change the name
 /// something is imported as.
 ///
 /// For more information on what `as` is capable of, see the [Reference]
@@ -38,7 +38,6 @@
 /// [Reference]:
 /// https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions
 /// [`crate`]: keyword.crate.html
-/// [`use`]: keyword.use.html
 mod as_keyword { }
 
 #[doc(keyword = "const")]
@@ -75,7 +74,7 @@ mod as_keyword { }
 /// const WORDS: &str = "hello convenience!";
 /// ```
 ///
-/// `const` items looks remarkably similar to [`static`] items, which introduces some confusion as
+/// `const` items looks remarkably similar to `static` items, which introduces some confusion as
 /// to which one should be used at which times. To put it simply, constants are inlined wherever
 /// they're used, making using them identical to simply replacing the name of the const with its
 /// value. Static variables on the other hand point to a single location in memory, which all
@@ -89,7 +88,6 @@ mod as_keyword { }
 ///
 /// For more detail on `const`, see the [Rust Book] or the [Reference]
 ///
-/// [`static`]: keyword.static.html
 /// [pointer]: primitive.pointer.html
 /// [Rust Book]:
 /// https://doc.rust-lang.org/stable/book/2018-edition/ch03-01-variables-and-mutability.html#differences-between-variables-and-constants
@@ -114,7 +112,7 @@ mod const_keyword { }
 /// The `as` keyword can be used to change what the crate is referred to as in your project. If a
 /// crate name includes a dash, it is implicitly imported with the dashes replaced by underscores.
 ///
-/// `crate` is also used as in conjunction with [`pub`] to signify that the item it's attached to
+/// `crate` is also used as in conjunction with `pub` to signify that the item it's attached to
 /// is public only to other members of the same crate it's in.
 ///
 /// ```rust
@@ -127,7 +125,6 @@ mod const_keyword { }
 /// ```
 ///
 /// [Reference]: https://doc.rust-lang.org/reference/items/extern-crates.html
-/// [`pub`]: keyword.pub.html
 mod crate_keyword { }
 
 #[doc(keyword = "enum")]
@@ -263,8 +260,6 @@ mod extern_keyword { }
 /// }
 /// ```
 ///
-/// See docs on [`impl`] and [`self`] for relevant details on those.
-///
 /// In addition to presenting fixed types in the form of `fn name(arg: type, ..) -> return_type`,
 /// functions can also declare a list of type parameters along with trait bounds that they fall
 /// into.
@@ -281,20 +276,17 @@ mod extern_keyword { }
 /// }
 /// ```
 ///
-/// Declaring trait bounds in the angle brackets is functionally identical to using a [`where`]
+/// Declaring trait bounds in the angle brackets is functionally identical to using a `where`
 /// clause. It's up to the programmer to decide which works better in each situation, but `where`
 /// tends to be better when things get longer than one line.
 ///
-/// Along with being made public via [`pub`], `fn` can also have an [`extern`] added for use in
+/// Along with being made public via `pub`, `fn` can also have an [`extern`] added for use in
 /// FFI.
 ///
 /// For more information on the various types of functions and how they're used, consult the [Rust
 /// book] or the [Reference].
 ///
 /// [`impl`]: keyword.impl.html
-/// [`self`]: keyword.self.html
-/// [`where`]: keyword.where.html
-/// [`pub`]: keyword.pub.html
 /// [`extern`]: keyword.extern.html
 /// [Rust book]: https://doc.rust-lang.org/book/second-edition/ch03-03-how-functions-work.html
 /// [Reference]: https://doc.rust-lang.org/reference/items/functions.html
@@ -307,7 +299,7 @@ mod fn_keyword { }
 /// `for` is primarily used in for-in-loops, but it has a few other pieces of syntactic uses such as
 /// `impl Trait for Type` (see [`impl`] for more info on that). for-in-loops, or to be more
 /// precise, iterator loops, are a simple syntactic sugar over an exceedingly common practice
-/// within Rust, which is to loop over an iterator until that iterator returns None (or [`break`]
+/// within Rust, which is to loop over an iterator until that iterator returns None (or `break`
 /// is called).
 ///
 /// ```rust
@@ -365,7 +357,6 @@ mod fn_keyword { }
 /// For more information on for-loops, see the [Rust book] or the [Reference].
 ///
 /// [`impl`]: keyword.impl.html
-/// [`break`]: keyword.break.html
 /// [`IntoIterator`]: iter/trait.IntoIterator.html
 /// [Rust book]:
 /// https://doc.rust-lang.org/book/2018-edition/ch03-05-control-flow.html#looping-through-a-collection-with-for
@@ -402,7 +393,7 @@ mod for_keyword { }
 /// thing you'd see in many languages, with an optional `else` block. Second uses `if` as an
 /// expression, which is only possible if all branches return the same type. An `if` expression can
 /// be used everywhere you'd expect. The third kind of `if` block is an `if let` block, which
-/// behaves similarly to using a [`match`] expression:
+/// behaves similarly to using a `match` expression:
 ///
 /// ```rust
 /// if let Some(x) = Some(123) {
@@ -423,8 +414,6 @@ mod for_keyword { }
 /// }
 /// ```
 ///
-/// See [`let`] for more information on pattern bindings.
-///
 /// Each kind of `if` expression can be mixed and matched as needed.
 ///
 /// ```rust
@@ -444,8 +433,6 @@ mod for_keyword { }
 ///
 /// For more information on `if` expressions, see the [Rust book] or the [Reference].
 ///
-/// [`match`]: keyword.match.html
-/// [`let`]: keyword.let.html
 /// [Rust book]:
 /// https://doc.rust-lang.org/stable/book/2018-edition/ch03-05-control-flow.html#if-expressions
 /// [Reference]: https://doc.rust-lang.org/reference/expressions/if-expr.html
