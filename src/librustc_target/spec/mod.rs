@@ -576,6 +576,9 @@ pub struct TargetOptions {
     /// the functions in the executable are not randomized and can be used
     /// during an exploit of a vulnerability in any code.
     pub position_independent_executables: bool,
+    /// Determines if the target always requires using the PLT for indirect
+    /// library calls or not. This controls the default value of the `-Z plt` flag.
+    pub needs_plt: bool,
     /// Either partial, full, or off. Full RELRO makes the dynamic linker
     /// resolve all symbols at startup and marks the GOT read-only before
     /// starting the program, preventing overwriting the GOT.
@@ -720,6 +723,7 @@ impl Default for TargetOptions {
             has_rpath: false,
             no_default_libraries: true,
             position_independent_executables: false,
+            needs_plt: false,
             relro_level: RelroLevel::None,
             pre_link_objects_exe: Vec::new(),
             pre_link_objects_exe_crt: Vec::new(),
@@ -1009,6 +1013,7 @@ impl Target {
         key!(has_rpath, bool);
         key!(no_default_libraries, bool);
         key!(position_independent_executables, bool);
+        key!(needs_plt, bool);
         try!(key!(relro_level, RelroLevel));
         key!(archive_format);
         key!(allow_asm, bool);
@@ -1217,6 +1222,7 @@ impl ToJson for Target {
         target_option_val!(has_rpath);
         target_option_val!(no_default_libraries);
         target_option_val!(position_independent_executables);
+        target_option_val!(needs_plt);
         target_option_val!(relro_level);
         target_option_val!(archive_format);
         target_option_val!(allow_asm);
