@@ -158,6 +158,7 @@ source.
   this test; see also `ignore-gdb-version`
 * `min-lldb-version` specifies the minimum lldb version required for
   this test
+* `no-system-llvm` causes the test to be ignored if the system llvm is used
 * `min-llvm-version` specifies the minimum llvm version required for
   this test
 * `min-system-llvm-version` specifies the minimum system llvm version
