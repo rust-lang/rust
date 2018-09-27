@@ -55,9 +55,7 @@ fn inferred_outlives_of<'a, 'tcx>(
                         .iter()
                         .map(|out_pred| match out_pred {
                             ty::Predicate::RegionOutlives(p) => p.to_string(),
-
                             ty::Predicate::TypeOutlives(p) => p.to_string(),
-
                             err => bug!("unexpected predicate {:?}", err),
                         }).collect();
                     pred.sort();
