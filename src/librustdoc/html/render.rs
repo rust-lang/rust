@@ -1596,6 +1596,8 @@ struct AllTypes {
     statics: FxHashSet<ItemEntry>,
     constants: FxHashSet<ItemEntry>,
     keywords: FxHashSet<ItemEntry>,
+    attributes: FxHashSet<ItemEntry>,
+    derives: FxHashSet<ItemEntry>,
 }
 
 impl AllTypes {
@@ -1614,6 +1616,8 @@ impl AllTypes {
             statics: new_set(100),
             constants: new_set(100),
             keywords: new_set(100),
+            attributes: new_set(100),
+            derives: new_set(100),
         }
     }
 
@@ -1635,6 +1639,8 @@ impl AllTypes {
                 ItemType::Existential => self.existentials.insert(ItemEntry::new(new_url, name)),
                 ItemType::Static => self.statics.insert(ItemEntry::new(new_url, name)),
                 ItemType::Constant => self.constants.insert(ItemEntry::new(new_url, name)),
+                ItemType::ProcAttribute => self.attributes.insert(ItemEntry::new(new_url, name)),
+                ItemType::ProcDerive => self.derives.insert(ItemEntry::new(new_url, name)),
                 _ => true,
             };
         }
@@ -1674,6 +1680,8 @@ impl fmt::Display for AllTypes {
         print_entries(f, &self.primitives, "Primitives", "primitives")?;
         print_entries(f, &self.traits, "Traits", "traits")?;
         print_entries(f, &self.macros, "Macros", "macros")?;
+        print_entries(f, &self.attributes, "Attribute Macros", "attributes")?;
+        print_entries(f, &self.derives, "Derive Macros", "derives")?;
         print_entries(f, &self.functions, "Functions", "functions")?;
         print_entries(f, &self.typedefs, "Typedefs", "typedefs")?;
         print_entries(f, &self.existentials, "Existentials", "existentials")?;
