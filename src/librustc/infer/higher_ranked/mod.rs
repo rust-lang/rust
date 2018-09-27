@@ -586,15 +586,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// the [rustc guide].
     ///
     /// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/traits/hrtb.html
-    pub fn replace_late_bound_regions_with_placeholders<T>(&self,
-                                           binder: &ty::Binder<T>)
-                                           -> (T, PlaceholderMap<'tcx>)
-        where T : TypeFoldable<'tcx>
+    pub fn replace_late_bound_regions_with_placeholders<T>(
+        &self,
+        binder: &ty::Binder<T>,
+    ) -> (T, PlaceholderMap<'tcx>)
+    where
+        T : TypeFoldable<'tcx>,
     {
         let new_universe = self.create_subuniverse();
 
         let (result, map) = self.tcx.replace_late_bound_regions(binder, |br| {
-            self.tcx.mk_region(ty::RePlaceholder(new_universe, br))
+            self.tcx.mk_region(ty::RePlaceholder(ty::Placeholder {
+                universe: new_universe,
+                name: br,
+            }))
         });
 
         debug!("skolemize_bound_regions(binder={:?}, result={:?}, map={:?})",
@@ -758,7 +763,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     assert!(
                         match *r {
                             ty::ReVar(_) => true,
-                            ty::RePlaceholder(_, ref br1) => br == br1,
+                            ty::RePlaceholder(index) => index.name == *br,
                             _ => false,
                         },
                         "leak-check would have us replace {:?} with {:?}",

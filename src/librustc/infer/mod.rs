@@ -406,12 +406,14 @@ pub enum RegionVariableOrigin {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum NLLRegionVariableOrigin {
-    // During NLL region processing, we create variables for free
-    // regions that we encounter in the function signature and
-    // elsewhere. This origin indices we've got one of those.
+    /// During NLL region processing, we create variables for free
+    /// regions that we encounter in the function signature and
+    /// elsewhere. This origin indices we've got one of those.
     FreeRegion,
 
-    BoundRegion(ty::UniverseIndex),
+    /// "Universal" instantiation of a higher-ranked region (e.g.,
+    /// from a `for<'a> T` binder). Meant to represent "any region".
+    Placeholder(ty::Placeholder),
 
     Existential,
 }
@@ -420,7 +422,7 @@ impl NLLRegionVariableOrigin {
     pub fn is_universal(self) -> bool {
         match self {
             NLLRegionVariableOrigin::FreeRegion => true,
-            NLLRegionVariableOrigin::BoundRegion(..) => true,
+            NLLRegionVariableOrigin::Placeholder(..) => true,
             NLLRegionVariableOrigin::Existential => false,
         }
     }

@@ -830,7 +830,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             | ty::ReErased
             | ty::ReFree(..)
             | ty::ReEarlyBound(..) => ty::UniverseIndex::ROOT,
-            ty::RePlaceholder(universe, _) => universe,
+            ty::RePlaceholder(placeholder) => placeholder.universe,
             ty::ReClosureBound(vid) | ty::ReVar(vid) => self.var_universe(vid),
             ty::ReLateBound(..) => bug!("universe(): encountered bound region {:?}", region),
             ty::ReCanonical(..) => bug!(

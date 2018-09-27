@@ -1134,7 +1134,7 @@ pub enum RegionKind {
 
     /// A placeholder region - basically the higher-ranked version of ReFree.
     /// Should not exist after typeck.
-    RePlaceholder(ty::UniverseIndex, BoundRegion),
+    RePlaceholder(ty::Placeholder),
 
     /// Empty lifetime is for data that is never accessed.
     /// Bottom in the region lattice. We treat ReEmpty somewhat
@@ -1338,7 +1338,7 @@ impl RegionKind {
             RegionKind::ReScope(..) => false,
             RegionKind::ReStatic => true,
             RegionKind::ReVar(..) => false,
-            RegionKind::RePlaceholder(_, br) => br.is_named(),
+            RegionKind::RePlaceholder(placeholder) => placeholder.name.is_named(),
             RegionKind::ReEmpty => false,
             RegionKind::ReErased => false,
             RegionKind::ReClosureBound(..) => false,

@@ -1553,6 +1553,18 @@ impl From<u32> for UniverseIndex {
     }
 }
 
+/// The "placeholder index" fully defines a placeholder region.
+/// Placeholder regions are identified by both a **universe** as well
+/// as a "bound-region" within that universe. The `bound_region` is
+/// basically a name -- distinct bound regions within the same
+/// universe are just two regions with an unknown relationship to one
+/// another.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, PartialOrd, Ord)]
+pub struct Placeholder {
+    pub universe: UniverseIndex,
+    pub name: BoundRegion,
+}
+
 /// When type checking, we use the `ParamEnv` to track
 /// details about the set of where-clauses that are in scope at this
 /// particular point.

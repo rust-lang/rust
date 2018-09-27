@@ -1980,15 +1980,16 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             obligation.predicate.def_id(),
             obligation.predicate.skip_binder().trait_ref.self_ty(),
             |impl_def_id| {
-                self.probe(|this, snapshot| /* [1] */
-                    if let Ok(placeholder_map) = this.match_impl(impl_def_id, obligation, snapshot) {
+                self.probe(|this, snapshot| {
+                    if let Ok(placeholder_map) = this.match_impl(impl_def_id, obligation, snapshot)
+                    {
                         candidates.vec.push(ImplCandidate(impl_def_id));
 
                         // NB: we can safely drop the placeholder map
-                        // since we are in a probe [1]
+                        // since we are in a probe.
                         mem::drop(placeholder_map);
                     }
-                );
+                });
             },
         );
 

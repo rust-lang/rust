@@ -803,7 +803,7 @@ define_print! {
                 }
                 ty::ReLateBound(_, br) |
                 ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
-                ty::RePlaceholder(_, br) => {
+                ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
                     write!(f, "{}", br)
                 }
                 ty::ReScope(scope) if cx.identify_regions => {
@@ -872,8 +872,8 @@ define_print! {
                     write!(f, "'?{}", c.index())
                 }
 
-                ty::RePlaceholder(universe, ref bound_region) => {
-                    write!(f, "RePlaceholder({:?}, {:?})", universe, bound_region)
+                ty::RePlaceholder(placeholder) => {
+                    write!(f, "RePlaceholder({:?})", placeholder)
                 }
 
                 ty::ReEmpty => write!(f, "ReEmpty"),
