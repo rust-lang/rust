@@ -73,6 +73,7 @@ impl<'a> CommentStyle<'a> {
         }
     }
 
+    /// Returns true if the commenting style is for documentation.
     pub fn is_doc_comment(&self) -> bool {
         match *self {
             CommentStyle::TripleSlash | CommentStyle::Doc => true,
