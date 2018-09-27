@@ -878,6 +878,7 @@ All notable changes to this project will be documented in this file.
 [`unused_collect`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unused_collect
 [`unused_io_amount`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unused_io_amount
 [`unused_label`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unused_label
+[`unused_unit`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unused_unit
 [`use_debug`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#use_debug
 [`use_self`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#use_self
 [`used_underscore_binding`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#used_underscore_binding
