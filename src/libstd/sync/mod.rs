@@ -98,11 +98,11 @@
 //!     location doesn't lead to undefined behavior.
 //!
 //! [prefetching]: https://en.wikipedia.org/wiki/Cache_prefetching
-//! [compiler fences]: atomic::compiler_fence
+//! [compiler fences]: crate::sync::atomic::compiler_fence
 //! [out-of-order]: https://en.wikipedia.org/wiki/Out-of-order_execution
 //! [superscalar]: https://en.wikipedia.org/wiki/Superscalar_processor
-//! [memory fences]: atomic::fence
-//! [atomics operations]: atomic
+//! [memory fences]: crate::sync::atomic::fence
+//! [atomic operations]: crate::sync::atomic
 //!
 //! ## Higher-level synchronization objects
 //!
@@ -120,7 +120,7 @@
 //! Higher-level synchronization mechanisms are usually heavy-weight.
 //! While most atomic operations can execute instantaneously, acquiring a
 //! [`Mutex`] can involve blocking until another thread releases it.
-//! For [`RwLock`], while! any number of readers may acquire it without
+//! For [`RwLock`], while any number of readers may acquire it without
 //! blocking, each writer will have exclusive access.
 //!
 //! On the other hand, communication over [channels] can provide a fairly
@@ -130,7 +130,9 @@
 //! The more synchronization exists between CPUs, the smaller the performance
 //! gains from multithreading will be.
 //!
-//! [channels]: mpsc
+//! [`Mutex`]: crate::sync::Mutex
+//! [`RwLock`]: crate::sync::RwLock
+//! [channels]: crate::sync::mpsc
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
