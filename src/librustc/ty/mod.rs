@@ -1540,6 +1540,8 @@ pub struct Placeholder {
     pub name: BoundRegion,
 }
 
+impl_stable_hash_for!(struct Placeholder { universe, name });
+
 /// When type checking, we use the `ParamEnv` to track
 /// details about the set of where-clauses that are in scope at this
 /// particular point.

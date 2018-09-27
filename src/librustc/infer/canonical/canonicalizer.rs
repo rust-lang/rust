@@ -162,11 +162,18 @@ struct CanonicalizeQueryResponse;
 impl CanonicalizeRegionMode for CanonicalizeQueryResponse {
     fn canonicalize_free_region(
         &self,
-        _canonicalizer: &mut Canonicalizer<'_, '_, 'tcx>,
+        canonicalizer: &mut Canonicalizer<'_, '_, 'tcx>,
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
         match r {
             ty::ReFree(_) | ty::ReEmpty | ty::ReErased | ty::ReStatic | ty::ReEarlyBound(..) => r,
+            ty::RePlaceholder(placeholder) => {
+                let info = CanonicalVarInfo {
+                    kind: CanonicalVarKind::PlaceholderRegion(*placeholder),
+                };
+                let cvar = canonicalizer.canonical_var(info, r.into());
+                canonicalizer.tcx.mk_region(ty::ReCanonical(cvar.var))
+            }
             _ => {
                 // Other than `'static` or `'empty`, the query
                 // response should be executing in a fully
@@ -190,7 +197,7 @@ impl CanonicalizeRegionMode for CanonicalizeAllFreeRegions {
         canonicalizer: &mut Canonicalizer<'_, '_, 'tcx>,
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
-        canonicalizer.canonical_var_for_region(r)
+        canonicalizer.canonical_var_for_region_in_root_universe(r)
     }
 
     fn any(&self) -> bool {
@@ -209,7 +216,7 @@ impl CanonicalizeRegionMode for CanonicalizeFreeRegionsOtherThanStatic {
         if let ty::ReStatic = r {
             r
         } else {
-            canonicalizer.canonical_var_for_region(r)
+            canonicalizer.canonical_var_for_region_in_root_universe(r)
         }
     }
 
@@ -252,7 +259,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
                      opportunistically resolved to {:?}",
                     vid, r
                 );
-                self.canonical_var_for_region(r)
+                self.canonical_var_for_region_in_root_universe(r)
             }
 
             ty::ReStatic
@@ -459,9 +466,23 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn canonical_var_for_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        // TODO: root is not always what we want here, but we'll
-        // address that in a later commit.
+    /// Shorthand helper that creates a canonical region variable for
+    /// `r` (always in the root universe). The reason that we always
+    /// put these variables into the root universe is because this
+    /// method is used during **query construction:** in that case, we
+    /// are taking all the regions and just putting them into the most
+    /// generic context we can. This may generate solutions that don't
+    /// fit (e.g., that equate some region variable with a placeholder
+    /// it can't name) on the caller side, but that's ok, the caller
+    /// can figure that out. In the meantime, it maximizes our
+    /// caching.
+    ///
+    /// (This works because unification never fails -- and hence trait
+    /// selection is never affected -- due to a universe mismatch.)
+    fn canonical_var_for_region_in_root_universe(
+        &mut self,
+        r: ty::Region<'tcx>,
+    ) -> ty::Region<'tcx> {
         let info = CanonicalVarInfo {
             kind: CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
         };

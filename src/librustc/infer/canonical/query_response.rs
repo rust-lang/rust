@@ -394,6 +394,21 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             original_values, query_response,
         );
 
+        // For each new universe created in the query result that did
+        // not appear in the original query, create a local
+        // superuniverse.
+        let mut universe_map = original_values.universe_map.clone();
+        let num_universes_in_query = original_values.universe_map.len();
+        let num_universes_in_response = query_response.max_universe.as_usize() + 1;
+        for _ in num_universes_in_query..num_universes_in_response {
+            universe_map.push(self.create_next_universe());
+        }
+        assert!(universe_map.len() >= 1); // always have the root universe
+        assert_eq!(
+            universe_map[ty::UniverseIndex::ROOT.as_usize()],
+            ty::UniverseIndex::ROOT
+        );
+
         // Every canonical query result includes values for each of
         // the inputs to the query. Therefore, we begin by unifying
         // these values with the original inputs that were
@@ -440,9 +455,20 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 .variables
                 .iter()
                 .enumerate()
-                .map(|(index, info)| opt_values[BoundTyIndex::new(index)].unwrap_or_else(||
-                    self.fresh_inference_var_for_canonical_var(cause.span, *info)
-                ))
+                .map(|(index, info)| {
+                    if info.is_existential() {
+                        match opt_values[BoundTyIndex::new(index)] {
+                            Some(k) => k,
+                            None => self.instantiate_canonical_var(cause.span, *info, |u| {
+                                universe_map[u.as_usize()]
+                            }),
+                        }
+                    } else {
+                        self.instantiate_canonical_var(cause.span, *info, |u| {
+                            universe_map[u.as_usize()]
+                        })
+                    }
+                })
                 .collect(),
         };
 
