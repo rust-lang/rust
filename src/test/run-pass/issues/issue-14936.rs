@@ -9,7 +9,8 @@
 // except according to those terms.
 
 // run-pass
-
+#![allow(unused_macros)]
+#![allow(dead_code)]
 #![feature(asm)]
 
 type History = Vec<&'static str>;
