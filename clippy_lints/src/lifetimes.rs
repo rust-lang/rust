@@ -103,9 +103,9 @@ fn check_fn_inner<'a, 'tcx>(
     }
 
     let mut bounds_lts = Vec::new();
-    let types = generics.params.iter().filter_map(|param| match param.kind {
-        GenericParamKind::Type { .. } => Some(param),
-        GenericParamKind::Lifetime { .. } => None,
+    let types = generics.params.iter().filter(|param| match param.kind {
+        GenericParamKind::Type { .. } => true,
+        GenericParamKind::Lifetime { .. } => false,
     });
     for typ in types {
         for bound in &typ.bounds {
