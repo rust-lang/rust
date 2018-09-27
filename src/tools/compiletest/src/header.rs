@@ -243,6 +243,29 @@ impl EarlyProps {
                     // Ignore if using system LLVM and actual version
                     // is smaller the minimum required version
                     config.system_llvm && &actual_version[..] < min_version
+                } else if line.starts_with("ignore-llvm-version") {
+                    // Syntax is: "ignore-llvm-version <version1> [- <version2>]"
+                    let range_components = line.split(' ')
+                        .skip(1) // Skip the directive.
+                        .map(|s| s.trim())
+                        .filter(|word| !word.is_empty() && word != &"-")
+                        .take(3) // 3 or more = invalid, so take at most 3.
+                        .collect::<Vec<&str>>();
+                    match range_components.len() {
+                        1 => {
+                            &actual_version[..] == range_components[0]
+                        }
+                        2 => {
+                            let v_min = range_components[0];
+                            let v_max = range_components[1];
+                            if v_max < v_min {
+                                panic!("Malformed LLVM version range: max < min")
+                            }
+                            // Ignore if version lies inside of range.
+                            &actual_version[..] >= v_min && &actual_version[..] <= v_max
+                        }
+                        _ => panic!("Malformed LLVM version directive"),
+                    }
                 } else {
                     false
                 }
