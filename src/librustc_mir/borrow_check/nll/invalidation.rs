@@ -479,7 +479,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
 
     /// Generate a new invalidates(L, B) fact
     fn generate_invalidates(&mut self, b: BorrowIndex, l: Location) {
-        let lidx = self.location_table.mid_index(l);
+        let lidx = self.location_table.start_index(l);
         self.all_facts.invalidates.push((lidx, b));
     }
 }

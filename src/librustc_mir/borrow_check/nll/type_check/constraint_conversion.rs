@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow_check::location::LocationTable;
 use borrow_check::nll::constraints::{ConstraintCategory, ConstraintSet, OutlivesConstraint};
-use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::TypeTest;
 use borrow_check::nll::type_check::Locations;
 use borrow_check::nll::universal_regions::UniversalRegions;
@@ -26,7 +24,6 @@ use syntax_pos::DUMMY_SP;
 crate struct ConstraintConversion<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     universal_regions: &'a UniversalRegions<'tcx>,
-    location_table: &'a LocationTable,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: Option<ty::Region<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
@@ -34,14 +31,12 @@ crate struct ConstraintConversion<'a, 'gcx: 'tcx, 'tcx: 'a> {
     category: ConstraintCategory,
     outlives_constraints: &'a mut ConstraintSet,
     type_tests: &'a mut Vec<TypeTest<'tcx>>,
-    all_facts: &'a mut Option<AllFacts>,
 }
 
 impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
     crate fn new(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         universal_regions: &'a UniversalRegions<'tcx>,
-        location_table: &'a LocationTable,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
@@ -49,12 +44,10 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
         category: ConstraintCategory,
         outlives_constraints: &'a mut ConstraintSet,
         type_tests: &'a mut Vec<TypeTest<'tcx>>,
-        all_facts: &'a mut Option<AllFacts>,
     ) -> Self {
         Self {
             tcx,
             universal_regions,
-            location_table,
             region_bound_pairs,
             implicit_region_bound,
             param_env,
@@ -62,7 +55,6 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
             category,
             outlives_constraints,
             type_tests,
-            all_facts,
         }
     }
 
@@ -101,23 +93,6 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
                 let r1_vid = self.to_region_vid(r1);
                 let r2_vid = self.to_region_vid(r2);
                 self.add_outlives(r1_vid, r2_vid);
-
-                // In the new analysis, all outlives relations etc
-                // "take effect" at the mid point of the statement
-                // that requires them, so ignore the `at_location`.
-                if let Some(all_facts) = &mut self.all_facts {
-                    if let Some(from_location) = self.locations.from_location() {
-                        all_facts.outlives.push((
-                            r1_vid,
-                            r2_vid,
-                            self.location_table.mid_index(from_location),
-                        ));
-                    } else {
-                        for location in self.location_table.all_points() {
-                            all_facts.outlives.push((r1_vid, r2_vid, location));
-                        }
-                    }
-                }
             }
 
             UnpackedKind::Type(t1) => {

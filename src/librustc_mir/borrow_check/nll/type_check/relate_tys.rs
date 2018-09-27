@@ -227,8 +227,6 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, '_, 'tcx> {
                     locations: self.locations,
                     category: self.category,
                 });
-
-            // FIXME all facts!
         }
     }
 }
