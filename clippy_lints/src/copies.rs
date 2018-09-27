@@ -6,7 +6,7 @@ use crate::rustc_data_structures::fx::FxHashMap;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
 use crate::syntax::symbol::LocalInternedString;
-use crate::rustc_data_structures::small_vec::OneVector;
+use smallvec::SmallVec;
 use crate::utils::{SpanlessEq, SpanlessHash};
 use crate::utils::{get_parent_expr, in_macro, snippet, span_lint_and_then, span_note_and_lint};
 
@@ -235,9 +235,9 @@ fn lint_match_arms(cx: &LateContext<'_, '_>, expr: &Expr) {
 /// sequence of `if/else`.
 /// Eg. would return `([a, b], [c, d, e])` for the expression
 /// `if a { c } else if b { d } else { e }`.
-fn if_sequence(mut expr: &Expr) -> (OneVector<&Expr>, OneVector<&Block>) {
-    let mut conds = OneVector::new();
-    let mut blocks: OneVector<&Block> = OneVector::new();
+fn if_sequence(mut expr: &Expr) -> (SmallVec<[&Expr; 1]>, SmallVec<[&Block; 1]>) {
+    let mut conds = SmallVec::new();
+    let mut blocks: SmallVec<[&Block; 1]> = SmallVec::new();
 
     while let ExprKind::If(ref cond, ref then_expr, ref else_expr) = expr.node {
         conds.push(&**cond);
