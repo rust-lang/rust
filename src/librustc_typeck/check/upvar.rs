@@ -73,15 +73,11 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for InferBorrowKindVisitor<'a, 'gcx, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'gcx hir::Expr) {
-        match expr.node {
-            hir::ExprKind::Closure(cc, _, body_id, _, _) => {
-                let body = self.fcx.tcx.hir.body(body_id);
-                self.visit_body(body);
-                self.fcx
-                    .analyze_closure(expr.id, expr.hir_id, expr.span, body, cc);
-            }
-
-            _ => {}
+        if let hir::ExprKind::Closure(cc, _, body_id, _, _) = expr.node {
+            let body = self.fcx.tcx.hir.body(body_id);
+            self.visit_body(body);
+            self.fcx
+                .analyze_closure(expr.id, expr.hir_id, expr.span, body, cc);
         }
 
         intravisit::walk_expr(self, expr);
@@ -335,49 +331,46 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
             "adjust_upvar_borrow_kind_for_consume: guarantor.cat={:?}",
             guarantor.cat
         );
-        match guarantor.cat {
-            Categorization::Deref(_, mc::BorrowedPtr(..)) => {
-                debug!(
-                    "adjust_upvar_borrow_kind_for_consume: found deref with note {:?}",
-                    cmt.note
-                );
-                match guarantor.note {
-                    mc::NoteUpvarRef(upvar_id) => {
-                        debug!(
-                            "adjust_upvar_borrow_kind_for_consume: \
-                             setting upvar_id={:?} to by value",
-                            upvar_id
-                        );
+        if let Categorization::Deref(_, mc::BorrowedPtr(..)) = guarantor.cat {
+            debug!(
+                "adjust_upvar_borrow_kind_for_consume: found deref with note {:?}",
+                cmt.note
+            );
+            match guarantor.note {
+                mc::NoteUpvarRef(upvar_id) => {
+                    debug!(
+                        "adjust_upvar_borrow_kind_for_consume: \
+                         setting upvar_id={:?} to by value",
+                        upvar_id
+                    );
 
-                        // to move out of an upvar, this must be a FnOnce closure
-                        self.adjust_closure_kind(
-                            upvar_id.closure_expr_id,
-                            ty::ClosureKind::FnOnce,
-                            guarantor.span,
-                            var_name(tcx, upvar_id.var_id),
-                        );
+                    // to move out of an upvar, this must be a FnOnce closure
+                    self.adjust_closure_kind(
+                        upvar_id.closure_expr_id,
+                        ty::ClosureKind::FnOnce,
+                        guarantor.span,
+                        var_name(tcx, upvar_id.var_id),
+                    );
 
-                        self.adjust_upvar_captures
-                            .insert(upvar_id, ty::UpvarCapture::ByValue);
-                    }
-                    mc::NoteClosureEnv(upvar_id) => {
-                        // we get just a closureenv ref if this is a
-                        // `move` closure, or if the upvar has already
-                        // been inferred to by-value. In any case, we
-                        // must still adjust the kind of the closure
-                        // to be a FnOnce closure to permit moves out
-                        // of the environment.
-                        self.adjust_closure_kind(
-                            upvar_id.closure_expr_id,
-                            ty::ClosureKind::FnOnce,
-                            guarantor.span,
-                            var_name(tcx, upvar_id.var_id),
-                        );
-                    }
-                    mc::NoteIndex | mc::NoteNone => {}
+                    self.adjust_upvar_captures
+                        .insert(upvar_id, ty::UpvarCapture::ByValue);
                 }
+                mc::NoteClosureEnv(upvar_id) => {
+                    // we get just a closureenv ref if this is a
+                    // `move` closure, or if the upvar has already
+                    // been inferred to by-value. In any case, we
+                    // must still adjust the kind of the closure
+                    // to be a FnOnce closure to permit moves out
+                    // of the environment.
+                    self.adjust_closure_kind(
+                        upvar_id.closure_expr_id,
+                        ty::ClosureKind::FnOnce,
+                        guarantor.span,
+                        var_name(tcx, upvar_id.var_id),
+                    );
+                }
+                mc::NoteIndex | mc::NoteNone => {}
             }
-            _ => {}
         }
     }
 

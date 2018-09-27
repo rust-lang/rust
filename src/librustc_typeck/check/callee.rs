@@ -166,34 +166,31 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 None => continue,
             };
 
-            match self.lookup_method_in_trait(call_expr.span,
-                                              method_name,
-                                              trait_def_id,
-                                              adjusted_ty,
-                                              None) {
-                None => continue,
-                Some(ok) => {
-                    let method = self.register_infer_ok_obligations(ok);
-                    let mut autoref = None;
-                    if borrow {
-                        if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].sty {
-                            let mutbl = match mutbl {
-                                hir::MutImmutable => AutoBorrowMutability::Immutable,
-                                hir::MutMutable => AutoBorrowMutability::Mutable {
-                                    // For initial two-phase borrow
-                                    // deployment, conservatively omit
-                                    // overloaded function call ops.
-                                    allow_two_phase_borrow: AllowTwoPhase::No,
-                                }
-                            };
-                            autoref = Some(Adjustment {
-                                kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
-                                target: method.sig.inputs()[0]
-                            });
-                        }
+            if let Some(ok) = self.lookup_method_in_trait(call_expr.span,
+                                                          method_name,
+                                                          trait_def_id,
+                                                          adjusted_ty,
+                                                          None) {
+                let method = self.register_infer_ok_obligations(ok);
+                let mut autoref = None;
+                if borrow {
+                    if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].sty {
+                        let mutbl = match mutbl {
+                            hir::MutImmutable => AutoBorrowMutability::Immutable,
+                            hir::MutMutable => AutoBorrowMutability::Mutable {
+                                // For initial two-phase borrow
+                                // deployment, conservatively omit
+                                // overloaded function call ops.
+                                allow_two_phase_borrow: AllowTwoPhase::No,
+                            }
+                        };
+                        autoref = Some(Adjustment {
+                            kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
+                            target: method.sig.inputs()[0]
+                        });
                     }
-                    return Some((autoref, method));
                 }
+                return Some((autoref, method));
             }
         }
 
@@ -238,7 +235,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     err.span_suggestion_with_applicability(
                         call_expr.span,
                         &format!("`{}` is a unit variant, you need to write it \
-                                 without the parenthesis", path),
+                                  without the parenthesis", path),
                         path.to_string(),
                         Applicability::MachineApplicable
                     );

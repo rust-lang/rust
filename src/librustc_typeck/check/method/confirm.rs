@@ -210,9 +210,6 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         target
     }
 
-    ///////////////////////////////////////////////////////////////////////////
-    //
-
     /// Returns a set of substitutions for the method *receiver* where all type and region
     /// parameters are instantiated with fresh variables. This substitution does not include any
     /// parameters declared on the method itself.
@@ -291,18 +288,18 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         self.fcx
             .autoderef(self.span, self_ty)
             .include_raw_pointers()
-            .filter_map(|(ty, _)| {
+            .filter_map(|(ty, _)|
                 match ty.sty {
                     ty::Dynamic(ref data, ..) => data.principal().map(|p| closure(self, ty, p)),
                     _ => None,
                 }
-            })
+            )
             .next()
-            .unwrap_or_else(|| {
+            .unwrap_or_else(||
                 span_bug!(self.span,
                           "self-type `{}` for ObjectPick never dereferenced to an object",
                           self_ty)
-            })
+            )
     }
 
     fn instantiate_method_substs(
@@ -373,9 +370,6 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         }
     }
 
-    ///////////////////////////////////////////////////////////////////////////
-    //
-
     // NOTE: this returns the *unnormalized* predicates and method sig. Because of
     // inference guessing, the predicates and method signature can't be normalized
     // until we unify the `Self` type.
@@ -444,11 +438,10 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     /// respectively.
     fn convert_place_derefs_to_mutable(&self) {
         // Gather up expressions we want to munge.
-        let mut exprs = Vec::new();
-        exprs.push(self.self_expr);
+        let mut exprs = vec![self.self_expr];
+
         loop {
-            let last = exprs[exprs.len() - 1];
-            match last.node {
+            match exprs.last().unwrap().node {
                 hir::ExprKind::Field(ref expr, _) |
                 hir::ExprKind::Index(ref expr, _) |
                 hir::ExprKind::Unary(hir::UnDeref, ref expr) => exprs.push(&expr),

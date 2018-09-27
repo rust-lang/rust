@@ -1255,9 +1255,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     {
         // Do all probes correspond to the same trait?
         let container = probes[0].0.item.container;
-        match container {
-            ty::TraitContainer(_) => {}
-            ty::ImplContainer(_) => return None,
+        if let ty::ImplContainer(_) = container {
+            return None
         }
         if probes[1..].iter().any(|&(p, _)| p.item.container != container) {
             return None;
@@ -1461,7 +1460,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                     .filter(|x| {
                         let dist = lev_distance(&*name.as_str(), &x.ident.as_str());
                         Namespace::from(x.kind) == Namespace::Value && dist > 0
-                        && dist <= max_dist
+                            && dist <= max_dist
                     })
                     .collect()
             } else {
