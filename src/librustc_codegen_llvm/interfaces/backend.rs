@@ -9,17 +9,16 @@
 // except according to those terms.
 
 use super::CodegenObject;
-use super::builder::{HasCodegen, BuilderMethods};
 use ModuleCodegen;
 use rustc::session::Session;
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::allocator::AllocatorKind;
-use monomorphize::partitioning::CodegenUnit;
 use rustc::ty::TyCtxt;
+use rustc::mir::mono::Stats;
+use syntax_pos::symbol::InternedString;
 use time_graph::TimeGraph;
 use std::sync::mpsc::Receiver;
 use std::any::Any;
-use std::sync::Arc;
 
 pub trait Backend<'ll> {
     type Value : 'll + CodegenObject;
@@ -28,10 +27,9 @@ pub trait Backend<'ll> {
     type Context;
 }
 
-pub trait BackendMethods<'a, 'll: 'a, 'tcx: 'll> {
+pub trait BackendMethods {
     type Metadata;
     type OngoingCodegen;
-    type Builder : BuilderMethods<'a, 'll, 'tcx>;
 
     fn thin_lto_available(&self) -> bool;
     fn pgo_available(&self) -> bool;
@@ -60,10 +58,9 @@ pub trait BackendMethods<'a, 'll: 'a, 'tcx: 'll> {
     fn codegen_finished(&self, codegen: &Self::OngoingCodegen, tcx: TyCtxt);
     fn check_for_errors(&self, codegen: &Self::OngoingCodegen, sess: &Session);
     fn wait_for_signal_to_codegen_item(&self, codegen: &Self::OngoingCodegen);
-    fn new_codegen_context(
+    fn compile_codegen_unit<'ll, 'tcx: 'll>(
         &self,
         tcx: TyCtxt<'ll, 'tcx, 'tcx>,
-        codegen_unit: Arc<CodegenUnit<'tcx>>,
-        llvm_module: &'ll Self::Metadata
-    ) -> <Self::Builder as HasCodegen<'a, 'll, 'tcx>>::CodegenCx;
+        cgu_name: InternedString
+    ) -> Stats ;
 }

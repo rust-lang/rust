@@ -72,14 +72,11 @@ use interfaces::*;
 use time_graph::TimeGraph;
 use std::sync::mpsc::Receiver;
 use back::write::{self, OngoingCodegen};
-use builder::Builder;
-use value::Value;
-use context::CodegenCx;
-use monomorphize::partitioning::CodegenUnit;
+use syntax_pos::symbol::InternedString;
+use rustc::mir::mono::Stats;
 
 pub use llvm_util::target_features;
 use std::any::Any;
-use std::sync::Arc;
 use std::path::{PathBuf};
 use std::sync::mpsc;
 use rustc_data_structures::sync::Lrc;
@@ -147,10 +144,9 @@ mod value;
 
 pub struct LlvmCodegenBackend(());
 
-impl<'a, 'll: 'a, 'tcx: 'll> BackendMethods<'a, 'll, 'tcx> for LlvmCodegenBackend {
+impl BackendMethods for LlvmCodegenBackend {
     type Metadata = ModuleLlvm;
     type OngoingCodegen = OngoingCodegen;
-    type Builder = Builder<'a, 'll, 'tcx, &'ll Value>;
 
     fn thin_lto_available(&self) -> bool {
          unsafe { !llvm::LLVMRustThinLTOAvailable() }
@@ -198,13 +194,12 @@ impl<'a, 'll: 'a, 'tcx: 'll> BackendMethods<'a, 'll, 'tcx> for LlvmCodegenBacken
     fn wait_for_signal_to_codegen_item(&self, codegen: &OngoingCodegen) {
         codegen.wait_for_signal_to_codegen_item()
     }
-    fn new_codegen_context(
+    fn compile_codegen_unit<'ll, 'tcx: 'll>(
         &self,
         tcx: TyCtxt<'ll, 'tcx, 'tcx>,
-        codegen_unit: Arc<CodegenUnit<'tcx>>,
-        llvm_module: &'ll ModuleLlvm
-    ) -> CodegenCx<'ll, 'tcx, &'ll Value> {
-        CodegenCx::new(tcx, codegen_unit, llvm_module)
+        cgu_name: InternedString
+    ) -> Stats {
+        base::compile_codegen_unit(tcx, cgu_name)
     }
 }
 

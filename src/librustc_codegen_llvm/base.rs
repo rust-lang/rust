@@ -57,6 +57,7 @@ use rustc_mir::monomorphize::item::DefPathBasedNames;
 use common::{self, IntPredicate, RealPredicate, TypeKind};
 use meth;
 use mir;
+use context::CodegenCx;
 use monomorphize::Instance;
 use monomorphize::partitioning::{self, PartitioningStrategy, CodegenUnit, CodegenUnitExt};
 use rustc_codegen_utils::symbol_names_test;
@@ -719,7 +720,7 @@ fn determine_cgu_reuse<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-pub fn codegen_crate<'a, 'll: 'a, 'tcx: 'll, B : BackendMethods<'a, 'll, 'tcx>>(
+pub fn codegen_crate<B : BackendMethods>(
     backend: B,
     tcx: TyCtxt<'ll, 'tcx, 'tcx>,
     rx: mpsc::Receiver<Box<dyn Any + Send>>
@@ -877,7 +878,7 @@ pub fn codegen_crate<'a, 'll: 'a, 'tcx: 'll, B : BackendMethods<'a, 'll, 'tcx>>(
                                      &format!("codegen {}", cgu.name()))
                 });
                 let start_time = Instant::now();
-                let stats = compile_codegen_unit(tcx, *cgu.name());
+                let stats = backend.compile_codegen_unit(tcx, *cgu.name());
                 all_stats.extend(stats);
                 total_codegen_time += start_time.elapsed();
                 false
@@ -1166,7 +1167,7 @@ fn is_codegened_item(tcx: TyCtxt, id: DefId) -> bool {
     all_mono_items.contains(&id)
 }
 
-fn compile_codegen_unit<'ll, 'tcx>(tcx: TyCtxt<'ll, 'tcx, 'tcx>,
+pub fn compile_codegen_unit<'ll, 'tcx>(tcx: TyCtxt<'ll, 'tcx, 'tcx>,
                                   cgu_name: InternedString)
                                   -> Stats {
     let start_time = Instant::now();
@@ -1198,7 +1199,7 @@ fn compile_codegen_unit<'ll, 'tcx>(tcx: TyCtxt<'ll, 'tcx, 'tcx>,
         // Instantiate monomorphizations without filling out definitions yet...
         let llvm_module = backend.new_metadata(tcx.sess, &cgu_name.as_str());
         let stats = {
-            let cx = backend.new_codegen_context(tcx, cgu, &llvm_module);
+            let cx = CodegenCx::new(tcx, cgu, &llvm_module);
             let mono_items = cx.codegen_unit
                                .items_in_deterministic_order(cx.tcx);
             for &(mono_item, (linkage, visibility)) in &mono_items {
