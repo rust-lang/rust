@@ -4008,7 +4008,7 @@ where F: Fn(DefId) -> Def {
 
     let mut apb = AbsolutePathBuffer { names: vec![] };
 
-    tcx.push_item_path(&mut apb, def_id);
+    tcx.push_item_path(&mut apb, def_id, false);
 
     hir::Path {
         span: DUMMY_SP,
