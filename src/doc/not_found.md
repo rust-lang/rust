@@ -5,6 +5,23 @@
 #TOC { display: none; }
 .header-section-number { display: none; }
 li {list-style-type: none; }
+.search-input {
+    width: calc(100% - 200px);
+}
+.search-but {
+    cursor: pointer;
+}
+.search-but, .search-input {
+    padding: 4px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    outline: none;
+    font-size: 0.7em;
+    background-color: #fff;
+}
+.search-but:hover, .search-input:focus {
+    border-color: #55a9ff;
+}
 </style>
 
 Looks like you've taken a wrong turn.
@@ -13,11 +30,20 @@ Some things that might be helpful to you though:
 
 # Search
 
-<form action="https://duckduckgo.com/">
-    <input type="text" id="site-search" name="q" size="80"></input>
-    <input type="submit" value="Search DuckDuckGo"></form>
+<div>
+  <form action="std/index.html" method="get">
+    <input id="std-search" class="search-input" type="search" name="search"
+           placeholder="Search through the standard library"/>
+    <button class="search-but">Search Standard Library</button>
+  </form>
+</div>
 
-Rust doc search: <span id="core-search"></span>
+<div>
+  <form action="https://duckduckgo.com/">
+    <input id="site-search" class="search-input" type="search" name="q"></input>
+    <input type="submit" value="Search DuckDuckGo" class="search-but">
+  </form>
+</div>
 
 # Reference
 
@@ -53,16 +79,7 @@ function populate_site_search() {
 
 function populate_rust_search() {
     var op = get_url_fragments();
-    var lt = op.pop();
-
-    // #18540, use a single token
-
-    var a = document.createElement("a");
-    a.href = "https://doc.rust-lang.org/core/?search=" + encodeURIComponent(lt);
-    a.textContent = lt;
-    var search = document.getElementById('core-search');
-    search.innerHTML = "";
-    search.appendChild(a);
+    document.getElementById('std-search').value = op.join(' ');
 }
 populate_site_search();
 populate_rust_search();
