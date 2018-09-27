@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
 
-use cranelift::codegen::entity::EntityMap;
+use cranelift::codegen::entity::SecondaryMap;
 use cranelift::codegen::write::{FuncWriter, PlainWriter};
 
 use crate::prelude::*;
@@ -14,7 +14,7 @@ impl FuncWriter for CommentWriter {
         &mut self,
         w: &mut dyn fmt::Write,
         func: &Function,
-        aliases: &EntityMap<Value, Vec<Value>>,
+        aliases: &SecondaryMap<Value, Vec<Value>>,
         isa: Option<&dyn isa::TargetIsa>,
         inst: Inst,
         indent: usize,
