@@ -1,3 +1,16 @@
+Version 1.29.1 (2018-09-25)
+===========================
+
+Security Notes
+--------------
+
+- The standard library's `str::repeat` function contained an out of bounds write
+  caused by an integer overflow. This has been fixed by deterministically
+  panicking when an overflow happens.
+
+  Thank you to Scott McMurray for responsibily disclosing this vulnerability to
+  us.
+
 Version 1.29.0 (2018-09-13)
 ==========================
 
