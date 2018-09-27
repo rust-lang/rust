@@ -12,8 +12,9 @@
 //!
 //! ## The need for synchronization
 //!
-//! On an ideal single-core CPU, the timeline of events happening in a program
-//! is linear, consistent with the order of operations in the code.
+//! Conceptually, a Rust program is simply a series of operations which will
+//! be executed on a computer. The timeline of events happening in the program
+//! is consistent with the order of the operations in the code.
 //!
 //! Considering the following code, operating on some global static variables:
 //!
@@ -35,22 +36,22 @@
 //! ```
 //!
 //! It appears _as if_ some variables stored in memory are changed, an addition
-//! is performed, result is stored in A and the variable C is modified twice.
+//! is performed, result is stored in `A` and the variable `C` is modified twice.
 //! When only a single thread is involved, the results are as expected:
 //! the line `7 4 4` gets printed.
 //!
-//! As for what happens behind the scenes, when an optimizing compiler is used
-//! the final generated machine code might look very different from the code:
+//! As for what happens behind the scenes, when optimizations are enabled the
+//! final generated machine code might look very different from the code:
 //!
-//! - first store to `C` might be moved before the store to `A` or `B`,
-//!   _as if_ we had written `C = 4; A = 3; B = 4;`
+//! - The first store to `C` might be moved before the store to `A` or `B`,
+//!   _as if_ we had written `C = 4; A = 3; B = 4`.
 //!
-//! - assignment of `A + B` to `A` might be removed, the sum can be stored in a
-//!   in a register until it gets printed, and the global variable never gets
-//!   updated.
+//! - Assignment of `A + B` to `A` might be removed, since the sum can be stored
+//!   in a temporary location until it gets printed, with the global variable
+//!   never getting updated.
 //!
-//! - the final result could be determined just by looking at the code at compile time,
-//!   so [constant folding] might turn the whole block into a simple `println!("7 4 4")`
+//! - The final result could be determined just by looking at the code at compile time,
+//!   so [constant folding] might turn the whole block into a simple `println!("7 4 4")`.
 //!
 //! The compiler is allowed to perform any combination of these optimizations, as long
 //! as the final optimized code, when executed, produces the same results as the one
@@ -77,8 +78,8 @@
 //!   might hoist memory loads at the top of a code block, so that the CPU can
 //!   start [prefetching] the values from memory.
 //!
-//!   In single-threaded scenarios, this can cause issues when writing signal handlers
-//!   or certain kinds of low-level code.
+//!   In single-threaded scenarios, this can cause issues when writing
+//!   signal handlers or certain kinds of low-level code.
 //!   Use [compiler fences] to prevent this reordering.
 //!
 //! - **Single processor** executing instructions [out-of-order]: modern CPUs are
