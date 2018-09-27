@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(dead_code)]
 // ignore-wasm32-bare no libc to test ffi with
 
 #[repr(C)]

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+#![allow(unused_imports)]
 #![allow(deprecated)]
 
 // ignore-android since the dynamic linker sets a SIGPIPE handler (to do
