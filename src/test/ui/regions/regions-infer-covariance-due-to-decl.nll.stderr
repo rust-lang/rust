@@ -1,0 +1,13 @@
+error: unsatisfied lifetime constraints
+  --> $DIR/regions-infer-covariance-due-to-decl.rs:32:9
+   |
+LL | fn use_<'short,'long>(c: Covariant<'long>,
+   |         ------ ----- lifetime `'long` defined here
+   |         |
+   |         lifetime `'short` defined here
+...
+LL |     let _: Covariant<'short> = c; //~ ERROR E0623
+   |         ^ type annotation requires that `'short` must outlive `'long`
+
+error: aborting due to previous error
+

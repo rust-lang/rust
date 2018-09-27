@@ -1,0 +1,13 @@
+error: unsatisfied lifetime constraints
+  --> $DIR/variance-cell-is-invariant.rs:24:9
+   |
+LL | fn use_<'short,'long>(c: Foo<'short>,
+   |         ------ ----- lifetime `'long` defined here
+   |         |
+   |         lifetime `'short` defined here
+...
+LL |     let _: Foo<'long> = c; //~ ERROR E0623
+   |         ^ type annotation requires that `'short` must outlive `'long`
+
+error: aborting due to previous error
+

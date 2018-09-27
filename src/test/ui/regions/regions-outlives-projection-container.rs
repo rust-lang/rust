@@ -14,8 +14,6 @@
 // type of a bound that appears in the where clause on a struct must
 // outlive the location in which the type appears. Issue #22246.
 
-// ignore-compare-mode-nll
-
 #![allow(dead_code)]
 #![feature(rustc_attrs)]
 

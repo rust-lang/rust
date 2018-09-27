@@ -1,0 +1,13 @@
+error: unsatisfied lifetime constraints
+  --> $DIR/regions-variance-invariant-use-contravariant.rs:30:9
+   |
+LL | fn use_<'short,'long>(c: Invariant<'long>,
+   |         ------ ----- lifetime `'long` defined here
+   |         |
+   |         lifetime `'short` defined here
+...
+LL |     let _: Invariant<'short> = c; //~ ERROR E0623
+   |         ^ type annotation requires that `'short` must outlive `'long`
+
+error: aborting due to previous error
+
