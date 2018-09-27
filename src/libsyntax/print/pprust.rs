@@ -61,6 +61,7 @@ pub struct State<'a> {
     cur_cmnt: usize,
     boxes: Vec<pp::Breaks>,
     ann: &'a (dyn PpAnn+'a),
+    is_expanded: bool
 }
 
 fn rust_printer<'a>(writer: Box<dyn Write+'a>, ann: &'a dyn PpAnn) -> State<'a> {
@@ -72,6 +73,7 @@ fn rust_printer<'a>(writer: Box<dyn Write+'a>, ann: &'a dyn PpAnn) -> State<'a> 
         cur_cmnt: 0,
         boxes: Vec::new(),
         ann,
+        is_expanded: false
     }
 }
 
@@ -133,14 +135,17 @@ impl<'a> State<'a> {
             // If the code is post expansion, don't use the table of
             // literals, since it doesn't correspond with the literals
             // in the AST anymore.
-            if is_expanded { None } else { Some(lits) })
+            if is_expanded { None } else { Some(lits) },
+            is_expanded
+        )
     }
 
     pub fn new(cm: &'a SourceMap,
                out: Box<dyn Write+'a>,
                ann: &'a dyn PpAnn,
                comments: Option<Vec<comments::Comment>>,
-               literals: Option<Vec<comments::Literal>>) -> State<'a> {
+               literals: Option<Vec<comments::Literal>>,
+               is_expanded: bool) -> State<'a> {
         State {
             s: pp::mk_printer(out, DEFAULT_COLUMNS),
             cm: Some(cm),
@@ -149,6 +154,7 @@ impl<'a> State<'a> {
             cur_cmnt: 0,
             boxes: Vec::new(),
             ann,
+            is_expanded: is_expanded
         }
     }
 }
@@ -1260,10 +1266,18 @@ impl<'a> State<'a> {
             ast::ItemKind::Mod(ref _mod) => {
                 self.head(&visibility_qualified(&item.vis, "mod"))?;
                 self.print_ident(item.ident)?;
-                self.nbsp()?;
-                self.bopen()?;
-                self.print_mod(_mod, &item.attrs)?;
-                self.bclose(item.span)?;
+
+                if _mod.inline || self.is_expanded {
+                    self.nbsp()?;
+                    self.bopen()?;
+                    self.print_mod(_mod, &item.attrs)?;
+                    self.bclose(item.span)?;
+                } else {
+                    self.s.word(";")?;
+                    self.end()?; // end inner head-block
+                    self.end()?; // end outer head-block
+                }
+
             }
             ast::ItemKind::ForeignMod(ref nmod) => {
                 self.head("extern")?;

@@ -237,6 +237,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt,
     })).collect();
 
     let reexport_mod = ast::Mod {
+        inline: true,
         inner: DUMMY_SP,
         items,
     };

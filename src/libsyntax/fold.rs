@@ -1044,10 +1044,11 @@ pub fn noop_fold_fn_header<T: Folder>(mut header: FnHeader, folder: &mut T) -> F
     header
 }
 
-pub fn noop_fold_mod<T: Folder>(Mod {inner, items}: Mod, folder: &mut T) -> Mod {
+pub fn noop_fold_mod<T: Folder>(Mod {inner, items, inline}: Mod, folder: &mut T) -> Mod {
     Mod {
         inner: folder.new_span(inner),
         items: items.move_flat_map(|x| folder.fold_item(x)),
+        inline: inline,
     }
 }
 
@@ -1077,6 +1078,7 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, span}: Crate,
         None => (ast::Mod {
             inner: span,
             items: vec![],
+            inline: true,
         }, vec![], span)
     };
 

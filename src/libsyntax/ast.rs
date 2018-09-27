@@ -1885,6 +1885,8 @@ pub struct Mod {
     /// to the last token in the external file.
     pub inner: Span,
     pub items: Vec<P<Item>>,
+    /// For `mod foo;` inline is false, for `mod foo { .. }` it is true.
+    pub inline: bool,
 }
 
 /// Foreign module declaration.

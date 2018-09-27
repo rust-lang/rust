@@ -303,6 +303,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 krate.module = ast::Mod {
                     inner: orig_mod_span,
                     items: vec![],
+                    inline: true,
                 };
             },
             _ => unreachable!(),
