@@ -72,11 +72,10 @@ use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 
 use std::cell::{Cell, RefCell};
-use std::cmp;
+use std::{cmp, fmt, iter, ptr};
 use std::collections::BTreeSet;
-use std::fmt;
-use std::iter;
 use std::mem::replace;
+use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
 
 use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution, ImportResolver};
@@ -1114,6 +1113,17 @@ impl<'a> ModuleData<'a> {
     fn nearest_item_scope(&'a self) -> Module<'a> {
         if self.is_trait() { self.parent.unwrap() } else { self }
     }
+
+    fn is_ancestor_of(&self, mut other: &Self) -> bool {
+        while !ptr::eq(self, other) {
+            if let Some(parent) = other.parent {
+                other = parent;
+            } else {
+                return false;
+            }
+        }
+        true
+    }
 }
 
 impl<'a> fmt::Debug for ModuleData<'a> {
@@ -1411,6 +1421,7 @@ pub struct Resolver<'a, 'b: 'a> {
     block_map: NodeMap<Module<'a>>,
     module_map: FxHashMap<DefId, Module<'a>>,
     extern_module_map: FxHashMap<(DefId, bool /* MacrosOnly? */), Module<'a>>,
+    binding_parent_modules: FxHashMap<PtrKey<'a, NameBinding<'a>>, Module<'a>>,
 
     pub make_glob_map: bool,
     /// Maps imports to the names of items actually imported (this actually maps
@@ -1714,6 +1725,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             module_map,
             block_map: NodeMap(),
             extern_module_map: FxHashMap(),
+            binding_parent_modules: FxHashMap(),
 
             make_glob_map: make_glob_map == MakeGlobMap::Yes,
             glob_map: NodeMap(),
@@ -4594,6 +4606,31 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
     fn is_accessible_from(&self, vis: ty::Visibility, module: Module<'a>) -> bool {
         vis.is_accessible_from(module.normal_ancestor_id, self)
+    }
+
+    fn set_binding_parent_module(&mut self, binding: &'a NameBinding<'a>, module: Module<'a>) {
+        if let Some(old_module) = self.binding_parent_modules.insert(PtrKey(binding), module) {
+            if !ptr::eq(module, old_module) {
+                span_bug!(binding.span, "parent module is reset for binding");
+            }
+        }
+    }
+
+    fn disambiguate_legacy_vs_modern(
+        &self,
+        legacy: &'a NameBinding<'a>,
+        modern: &'a NameBinding<'a>,
+    ) -> bool {
+        // Some non-controversial subset of ambiguities "modern macro name" vs "macro_rules"
+        // is disambiguated to mitigate regressions from macro modularization.
+        // Scoping for `macro_rules` behaves like scoping for `let` at module level, in general.
+        match (self.binding_parent_modules.get(&PtrKey(legacy)),
+               self.binding_parent_modules.get(&PtrKey(modern))) {
+            (Some(legacy), Some(modern)) =>
+                legacy.normal_ancestor_id == modern.normal_ancestor_id &&
+                modern.is_ancestor_of(legacy),
+            _ => false,
+        }
     }
 
     fn report_ambiguity_error(&self, ident: Ident, b1: &NameBinding, b2: &NameBinding) {
