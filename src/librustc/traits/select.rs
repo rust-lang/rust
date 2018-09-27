@@ -690,10 +690,76 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 }
             }
 
-            ty::Predicate::TypeOutlives(..) | ty::Predicate::RegionOutlives(..) => {
-                // we do not consider region relationships when
-                // evaluating trait matches
-                Ok(EvaluatedToOk)
+            ty::Predicate::TypeOutlives(ref binder) => {
+                assert!(!binder.has_escaping_regions());
+                // Check if the type has higher-ranked regions.
+                if binder.skip_binder().0.has_escaping_regions() {
+                    // If so, this obligation is an error (for now). Eventually we should be
+                    // able to support additional cases here, like `for<'a> &'a str: 'a`.
+
+                    // NOTE: this hack is implemented in both trait fulfillment and
+                    // evaluation. If you fix it in one place, make sure you fix it
+                    // in the other.
+
+                    // We don't want to allow this sort of reasoning in intercrate
+                    // mode, for backwards-compatibility reasons.
+                    if self.intercrate.is_some() {
+                        Ok(EvaluatedToAmbig)
+                    } else {
+                        Ok(EvaluatedToErr)
+                    }
+                } else {
+                    // If the type has no late bound regions, then if we assign all
+                    // the inference variables in it to be 'static, then the type
+                    // will be 'static itself.
+                    //
+                    // Therefore, `staticize(T): 'a` holds for any `'a`, so this
+                    // obligation is fulfilled. Because evaluation works with
+                    // staticized types (yes I know this is involved with #21974),
+                    // we are 100% OK here.
+                    Ok(EvaluatedToOk)
+                }
+            }
+
+            ty::Predicate::RegionOutlives(ref binder) => {
+                let ty::OutlivesPredicate(r_a, r_b) = binder.skip_binder();
+
+                if r_a == r_b {
+                    // for<'a> 'a: 'a. OK
+                    Ok(EvaluatedToOk)
+                } else if r_a.is_late_bound() || r_b.is_late_bound() {
+                    // There is no current way to prove `for<'a> 'a: 'x`
+                    // unless `'a = 'x`, because there are no bounds involving
+                    // lifetimes.
+
+                    // It is possible to solve `for<'a> 'x: 'a` where `'x`
+                    // is a free region by forcing `'x = 'static`. However,
+                    // fulfillment does not *quite* do this ATM (it calls
+                    // `region_outlives_predicate`, which is OK if `'x` is
+                    // literally ReStatic, but is *not* OK if `'x` is any
+                    // sort of inference variable, even if it *is* equal
+                    // to `'static`).
+
+                    // If we ever want to handle that sort of obligations,
+                    // we need to make sure we are not confused by
+                    // technically-allowed-by-RFC-447-but-probably-should-not-be
+                    // impls such as
+                    // ```Rust
+                    // impl<'a, 's, T> X<'s> for T where T: Debug + 's, 'a: 's
+                    // ```
+
+                    // We don't want to allow this sort of reasoning in intercrate
+                    // mode, for backwards-compatibility reasons.
+                    if self.intercrate.is_some() {
+                        Ok(EvaluatedToAmbig)
+                    } else {
+                        Ok(EvaluatedToErr)
+                    }
+                } else {
+                    // Relating 2 inference variable regions. These will
+                    // always hold if our query is "staticized".
+                    Ok(EvaluatedToOk)
+                }
             }
 
             ty::Predicate::ObjectSafe(trait_def_id) => {
@@ -900,6 +966,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         {
             debug!("evaluate_stack({:?}) --> recursive",
                    stack.fresh_trait_ref);
+
             let cycle = stack.iter().skip(1).take(rec_index + 1);
             let cycle = cycle.map(|stack| ty::Predicate::Trait(stack.obligation.predicate));
             if self.coinductive_match(cycle) {

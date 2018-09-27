@@ -362,6 +362,7 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
                         match binder.no_late_bound_regions() {
                             // If so, this obligation is an error (for now). Eventually we should be
                             // able to support additional cases here, like `for<'a> &'a str: 'a`.
+                            // NOTE: this is duplicate-implemented between here and fulfillment.
                             None => {
                                 ProcessResult::Error(CodeSelectionError(Unimplemented))
                             }
