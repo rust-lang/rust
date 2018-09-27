@@ -4095,11 +4095,12 @@ impl<'a> fmt::Display for Sidebar<'a> {
                 write!(fmt,
                        "<div class='block version'>\
                         <p>Version {}</p>\
-                        </div>
-                        <a id='all-types' href='all.html'><p>See all {}'s items</p></a>",
-                       version,
-                       it.name.as_ref().unwrap())?;
+                        </div>",
+                       version)?;
             }
+
+            write!(fmt, "<a id='all-types' href='all.html'><p>See all {}'s items</p></a>",
+                   it.name.as_ref().expect("crates always have a name"))?;
         }
 
         write!(fmt, "<div class=\"sidebar-elems\">")?;
