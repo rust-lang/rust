@@ -188,7 +188,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
                                        target_param_env: ParamEnv<'tcx>,
                                        orig: Ty<'tcx>,
                                        target: Ty<'tcx>) -> Option<TypeError<'tcx2>> {
-        use rustc::infer::InferOk;
+        use rustc::infer::{InferOk, SuppressRegionErrors};
         use rustc::infer::outlives::env::OutlivesEnvironment;
         use rustc::middle::region::ScopeTree;
         use rustc::ty::Lift;
@@ -216,7 +216,8 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
 
             self.infcx.resolve_regions_and_report_errors(target_def_id,
                                                          &scope_tree,
-                                                         &outlives_env);
+                                                         &outlives_env,
+                                                         SuppressRegionErrors::default());
 
             let err =
                 self.infcx
