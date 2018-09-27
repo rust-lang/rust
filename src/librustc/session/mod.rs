@@ -28,17 +28,16 @@ use util::common::ProfileQueriesMsg;
 use rustc_data_structures::base_n;
 use rustc_data_structures::sync::{self, Lrc, Lock, LockCell, OneThread, Once, RwLock};
 
-use syntax::ast::NodeId;
 use errors::{self, DiagnosticBuilder, DiagnosticId, Applicability};
 use errors::emitter::{Emitter, EmitterWriter};
+use syntax::ast::{self, NodeId};
 use syntax::edition::Edition;
+use syntax::feature_gate::{self, AttributeType};
 use syntax::json::JsonEmitter;
-use syntax::feature_gate;
-use syntax::parse;
-use syntax::parse::ParseSess;
-use syntax::{ast, source_map};
-use syntax::feature_gate::AttributeType;
-use syntax_pos::{MultiSpan, Span, symbol::Symbol};
+use syntax::source_map;
+use syntax::symbol::Symbol;
+use syntax::parse::{self, ParseSess};
+use syntax_pos::{MultiSpan, Span};
 use util::profiling::SelfProfiler;
 
 use rustc_target::spec::PanicStrategy;

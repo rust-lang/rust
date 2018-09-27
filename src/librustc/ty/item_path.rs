@@ -281,7 +281,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     // In particular, don't recurse to print the crate root if we
                     // just printed `std`. In doing this, we are able to add
                     // `crate::` to trait import suggestions.
-                    DefPathData::CrateRoot if data.as_interned_str() == "std" => {},
+                    DefPathData::CrateRoot if self.sess.extern_prelude.contains(
+                        &data.as_interned_str().as_symbol()
+                    ) => {},
                     _ => self.push_item_path(buffer, parent_def_id),
                 }
 
