@@ -11,15 +11,15 @@
 use rustc::ty::layout::{HasTyCtxt, LayoutOf, TyLayout};
 use rustc::ty::Ty;
 
-use super::{CodegenMethods, CodegenObject};
-use monomorphize::partitioning::CodegenUnit;
+use super::CodegenObject;
 use rustc::middle::allocator::AllocatorKind;
 use rustc::middle::cstore::EncodedMetadata;
+use rustc::mir::mono::Stats;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use std::any::Any;
 use std::sync::mpsc::Receiver;
-use std::sync::Arc;
+use syntax_pos::symbol::InternedString;
 use time_graph::TimeGraph;
 use ModuleCodegen;
 
@@ -71,15 +71,9 @@ pub trait BackendMethods {
     fn codegen_finished(&self, codegen: &Self::OngoingCodegen, tcx: TyCtxt);
     fn check_for_errors(&self, codegen: &Self::OngoingCodegen, sess: &Session);
     fn wait_for_signal_to_codegen_item(&self, codegen: &Self::OngoingCodegen);
-}
-
-pub trait BackendCodegenCxMethods<'a, 'tcx: 'a>: BackendMethods {
-    type CodegenCx: CodegenMethods<'tcx>;
-
-    fn new_codegen_context(
+    fn compile_codegen_unit<'a, 'tcx: 'a>(
         &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        codegen_unit: Arc<CodegenUnit<'tcx>>,
-        llvm_module: &'a Self::Module,
-    ) -> Self::CodegenCx;
+        cgu_name: InternedString,
+    ) -> Stats;
 }

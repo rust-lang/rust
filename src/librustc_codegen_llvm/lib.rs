@@ -72,12 +72,11 @@ use interfaces::*;
 use time_graph::TimeGraph;
 use std::sync::mpsc::Receiver;
 use back::write::{self, OngoingCodegen};
-use context::CodegenCx;
-use monomorphize::partitioning::CodegenUnit;
+use syntax_pos::symbol::InternedString;
+use rustc::mir::mono::Stats;
 
 pub use llvm_util::target_features;
 use std::any::Any;
-use std::sync::Arc;
 use std::sync::mpsc;
 use rustc_data_structures::sync::Lrc;
 
@@ -188,18 +187,12 @@ impl BackendMethods for LlvmCodegenBackend {
     fn wait_for_signal_to_codegen_item(&self, codegen: &OngoingCodegen) {
         codegen.wait_for_signal_to_codegen_item()
     }
-}
-
-impl<'a, 'tcx: 'a> BackendCodegenCxMethods<'a, 'tcx> for LlvmCodegenBackend {
-    type CodegenCx = CodegenCx<'a, 'tcx>;
-
-    fn new_codegen_context(
+    fn compile_codegen_unit<'a, 'tcx: 'a>(
         &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        codegen_unit: Arc<CodegenUnit<'tcx>>,
-        llvm_module: &'a ModuleLlvm
-    ) -> CodegenCx<'a, 'tcx> {
-        CodegenCx::new(tcx, codegen_unit, llvm_module)
+        cgu_name: InternedString,
+    ) -> Stats {
+        base::compile_codegen_unit(tcx, cgu_name)
     }
 }
 
