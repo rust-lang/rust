@@ -3893,13 +3893,11 @@ pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
 /// as not being able to provide a non-aliasing guarantee of the returned
 /// mutable slice. `data` must be non-null and aligned even for zero-length
 /// slices as with [`from_raw_parts`]. The total size of the slice must be no
-/// larger than `isize::MAX` **bytes** in memory. See the safety documentation
-/// of [`pointer::offset`].
+/// larger than `isize::MAX` **bytes** in memory.
 ///
 /// See the documentation of [`from_raw_parts`] for more details.
 ///
 /// [`from_raw_parts`]: ../../std/slice/fn.from_raw_parts.html
-/// [`pointer::offset`]: ../../std/primitive.pointer.html#method.offset
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
