@@ -23,6 +23,14 @@ use proc_macro::TokenStream;
 // @has - '//h2' 'Derive Macros'
 // @!has - '//h2' 'Functions'
 
+// @has some_macros/all.html
+// @has - '//a[@href="macro.some_proc_macro.html"]' 'some_proc_macro'
+// @has - '//a[@href="attr.some_proc_attr.html"]' 'some_proc_attr'
+// @has - '//a[@href="derive.SomeDerive.html"]' 'SomeDerive'
+// @!has - '//a/@href' 'fn.some_proc_macro.html'
+// @!has - '//a/@href' 'fn.some_proc_attr.html'
+// @!has - '//a/@href' 'fn.some_derive.html'
+
 // @has some_macros/index.html '//a/@href' 'macro.some_proc_macro.html'
 // @!has - '//a/@href' 'fn.some_proc_macro.html'
 // @has some_macros/macro.some_proc_macro.html
