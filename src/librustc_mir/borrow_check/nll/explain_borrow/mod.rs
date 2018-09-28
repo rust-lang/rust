@@ -13,7 +13,7 @@ use borrow_check::error_reporting::UseSpans;
 use borrow_check::nll::region_infer::Cause;
 use borrow_check::{Context, MirBorrowckCtxt, WriteKind};
 use rustc::ty::{Region, TyCtxt};
-use rustc::mir::{FakeReadCause, Location, Operand, Place, StatementKind, TerminatorKind};
+use rustc::mir::{FakeReadCause, Location, Mir, Operand, Place, StatementKind, TerminatorKind};
 use rustc_errors::DiagnosticBuilder;
 use syntax_pos::Span;
 use syntax_pos::symbol::Symbol;
@@ -40,6 +40,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
     pub(in borrow_check) fn add_explanation_to_diagnostic<'cx, 'gcx>(
         &self,
         tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+        _mir: &Mir<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
         borrow_desc: String,
     ) {
