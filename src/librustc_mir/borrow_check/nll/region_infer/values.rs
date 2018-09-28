@@ -252,19 +252,6 @@ impl PlaceholderIndices {
     }
 }
 
-impl ::std::iter::FromIterator<ty::Placeholder> for PlaceholderIndices {
-    fn from_iter<I>(iter: I) -> Self
-    where
-        I: IntoIterator<Item = ty::Placeholder>,
-    {
-        let mut result = Self::default();
-        iter.into_iter().for_each(|p| {
-            result.insert(p);
-        });
-        result
-    }
-}
-
 /// Stores the full values for a set of regions (in contrast to
 /// `LivenessValues`, which only stores those points in the where a
 /// region is live). The full value for a region may contain points in
