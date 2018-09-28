@@ -27,6 +27,7 @@ use rustc::ty::layout::TyLayout;
 use rustc_target::abi::call::{CastTarget, FnType, Reg};
 use rustc_data_structures::small_c_str::SmallCStr;
 use common;
+use rustc_codegen_utils;
 use rustc_codegen_utils::common::TypeKind;
 use type_of::LayoutLlvmExt;
 use abi::{LlvmType, FnTypeExt};
@@ -373,15 +374,15 @@ impl DerivedTypeMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
     }
 
     fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
-        common::type_needs_drop(*self.tcx(), ty)
+        rustc_codegen_utils::common::type_needs_drop(*self.tcx(), ty)
     }
 
     fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        common::type_is_sized(*self.tcx(), ty)
+        rustc_codegen_utils::common::type_is_sized(*self.tcx(), ty)
     }
 
     fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        common::type_is_freeze(*self.tcx(), ty)
+        rustc_codegen_utils::common::type_is_freeze(*self.tcx(), ty)
     }
 
     fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {

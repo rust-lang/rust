@@ -10,7 +10,6 @@
 
 use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
 use llvm::{self, False, OperandBundleDef, BasicBlock};
-use common;
 use rustc_codegen_utils::common::{IntPredicate, TypeKind, RealPredicate};
 use rustc_codegen_utils;
 use context::CodegenCx;
@@ -193,12 +192,14 @@ impl BuilderMethods<'a, 'll, 'tcx>
         }
     }
 
-    fn invoke(&self,
-                  llfn: &'ll Value,
-                  args: &[&'ll Value],
-                  then: &'ll BasicBlock,
-                  catch: &'ll BasicBlock,
-                  bundle: Option<&common::OperandBundleDef<'ll, &'ll Value>>) -> &'ll Value {
+    fn invoke(
+        &self,
+        llfn: &'ll Value,
+        args: &[&'ll Value],
+        then: &'ll BasicBlock,
+        catch: &'ll BasicBlock,
+        bundle: Option<&rustc_codegen_utils::common::OperandBundleDef<'ll, &'ll Value>>
+    ) -> &'ll Value {
         self.count_insn("invoke");
 
         debug!("Invoke {:?} with args ({:?})",
@@ -1323,8 +1324,12 @@ impl BuilderMethods<'a, 'll, 'tcx>
         self.call(lifetime_intrinsic, &[self.cx.const_u64(size), ptr], None);
     }
 
-    fn call(&self, llfn: &'ll Value, args: &[&'ll Value],
-                bundle: Option<&common::OperandBundleDef<'ll, &'ll Value>>) -> &'ll Value {
+    fn call(
+        &self,
+        llfn: &'ll Value,
+        args: &[&'ll Value],
+        bundle: Option<&rustc_codegen_utils::common::OperandBundleDef<'ll, &'ll Value>>
+    ) -> &'ll Value {
         self.count_insn("call");
 
         debug!("Call {:?} with args ({:?})",

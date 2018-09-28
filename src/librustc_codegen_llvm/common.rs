@@ -30,7 +30,7 @@ use rustc::hir;
 use interfaces::BuilderMethods;
 use mir::constant::const_alloc_to_llvm;
 use mir::place::PlaceRef;
-use rustc_codegen_utils::common::TypeKind;
+use rustc_codegen_utils::common::{OperandBundleDef, TypeKind};
 
 use libc::{c_uint, c_char};
 use std::iter;
@@ -38,35 +38,9 @@ use std::iter;
 use rustc_target::spec::abi::Abi;
 use syntax::symbol::LocalInternedString;
 use syntax::ast::Mutability;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::Span;
 
 pub use context::CodegenCx;
-
-pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.needs_drop(tcx, ty::ParamEnv::reveal_all())
-}
-
-pub fn type_is_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_sized(tcx.at(DUMMY_SP), ty::ParamEnv::reveal_all())
-}
-
-pub fn type_is_freeze<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_freeze(tcx, ty::ParamEnv::reveal_all(), DUMMY_SP)
-}
-
-pub struct OperandBundleDef<'a, V> {
-    pub name: &'a str,
-    pub val: V
-}
-
-impl<V> OperandBundleDef<'ll, V> {
-    pub fn new(name: &'ll str, val: V) -> Self {
-        OperandBundleDef {
-            name,
-            val
-        }
-    }
-}
 
 /*
 * A note on nomenclature of linking: "extern", "foreign", and "upcall".
