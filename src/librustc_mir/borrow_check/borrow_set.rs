@@ -346,7 +346,8 @@ impl<'a, 'gcx, 'tcx> GatherBorrows<'a, 'gcx, 'tcx> {
         //
         // so extract `temp`.
         let neo_place = self.tcx.as_new_place(assigned_place);
-        let temp = if let Some(mir::PlaceBase::Local(temp)) = neo_place.bare_place() {
+        let temp =
+            if let Some(mir::PlaceBase::Local(temp)) = neo_place.as_place_base() {
             *temp
         } else {
             span_bug!(

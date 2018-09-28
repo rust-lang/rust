@@ -300,7 +300,7 @@ impl<'tcx> NeoPlace<'tcx> {
     }
 
     // Return the base of place without projections
-    pub fn bare_place(&self) -> Option<&PlaceBase<'tcx>>{
+    pub fn as_place_base(&self) -> Option<&PlaceBase<'tcx>>{
         if self.elems.is_empty() {
             Some(&self.base)
         } else {
