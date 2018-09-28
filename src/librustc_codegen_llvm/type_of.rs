@@ -10,11 +10,9 @@
 
 use abi::{FnType, FnTypeExt};
 use common::*;
-use llvm;
 use rustc::hir;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
-use rustc_target::spec::PanicStrategy;
 use rustc_target::abi::FloatTy;
 use rustc_mir::monomorphize::item::DefPathBasedNames;
 use type_::Type;
@@ -433,12 +431,19 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                         PointerKind::Shared
                     },
                     hir::MutMutable => {
-                        // Only emit noalias annotations for LLVM >= 6 or in panic=abort
-                        // mode, as prior versions had many bugs in conjunction with
-                        // unwinding. See also issue #31681.
+                        // Previously we would only emit noalias annotations for LLVM >= 6 or in
+                        // panic=abort mode. That was deemed right, as prior versions had many bugs
+                        // in conjunction with unwinding, but later versions didn’t seem to have
+                        // said issues. See issue #31681.
+                        //
+                        // Alas, later on we encountered a case where noalias would generate wrong
+                        // code altogether even with recent versions of LLVM in *safe* code with no
+                        // unwinding involved. See #54462.
+                        //
+                        // For now, do not enable mutable_noalias by default at all, while the
+                        // issue is being figured out.
                         let mutable_noalias = cx.tcx.sess.opts.debugging_opts.mutable_noalias
-                            .unwrap_or(unsafe { llvm::LLVMRustVersionMajor() >= 6 }
-                                || cx.tcx.sess.panic_strategy() == PanicStrategy::Abort);
+                            .unwrap_or(false);
                         if mutable_noalias {
                             PointerKind::UniqueBorrowed
                         } else {

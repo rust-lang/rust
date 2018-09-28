@@ -53,13 +53,13 @@ pub fn named_borrow<'r>(_: &'r i32) {
 pub fn unsafe_borrow(_: &UnsafeInner) {
 }
 
-// CHECK: @mutable_unsafe_borrow(i16* noalias dereferenceable(2) %arg0)
+// CHECK: @mutable_unsafe_borrow(i16* dereferenceable(2) %arg0)
 // ... unless this is a mutable borrow, those never alias
 #[no_mangle]
 pub fn mutable_unsafe_borrow(_: &mut UnsafeInner) {
 }
 
-// CHECK: @mutable_borrow(i32* noalias dereferenceable(4) %arg0)
+// CHECK: @mutable_borrow(i32* dereferenceable(4) %arg0)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn mutable_borrow(_: &mut i32) {
@@ -102,7 +102,7 @@ pub fn helper(_: usize) {
 pub fn slice(_: &[u8]) {
 }
 
-// CHECK: @mutable_slice([0 x i8]* noalias nonnull %arg0.0, [[USIZE]] %arg0.1)
+// CHECK: @mutable_slice([0 x i8]* nonnull %arg0.0, [[USIZE]] %arg0.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn mutable_slice(_: &mut [u8]) {
