@@ -13,7 +13,7 @@
 // edition:2018
 
 mod foo {
-    type Bar = u32;
+    pub type Bar = u32;
 }
 
 mod baz {
