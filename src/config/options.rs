@@ -17,17 +17,21 @@ use isatty::stdout_isatty;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
+/// Macro that will stringify the enum variants or a provided textual repr
+#[macro_export]
+macro_rules! configuration_option_enum_stringify {
+    ($variant:ident) => {
+        stringify!($variant)
+    };
+
+    ($_variant:ident: $value:expr) => {
+        stringify!($value)
+    };
+}
+
 /// Macro for deriving implementations of Serialize/Deserialize for enums
 #[macro_export]
 macro_rules! impl_enum_serialize_and_deserialize {
-    (@stringify $variant:ident) => (
-        stringify!($variant)
-    );
-
-    (@stringify $_variant:ident: $value:expr) => (
-        stringify!($value)
-    );
-
     ( $e:ident, $( $variant:ident $(: $value:expr)* ),* ) => {
         impl ::serde::ser::Serialize for $e {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -40,7 +44,7 @@ macro_rules! impl_enum_serialize_and_deserialize {
                 match *self {
                     $(
                         $e::$variant => serializer.serialize_str(
-                            impl_enum_serialize_and_deserialize!(@stringify $variant $(: $value)*)
+                            configuration_option_enum_stringify!($variant $(: $value)*)
                         ),
                     )*
                     _ => {
@@ -69,13 +73,13 @@ macro_rules! impl_enum_serialize_and_deserialize {
                 }
                 let s = d.deserialize_string(StringOnly::<D>(PhantomData))?;
                 $(
-                    if impl_enum_serialize_and_deserialize!(@stringify $variant $(: $value)*)
+                    if configuration_option_enum_stringify!($variant $(: $value)*)
                         .eq_ignore_ascii_case(&s) {
                       return Ok($e::$variant);
                     }
                 )*
                 static ALLOWED: &'static[&str] = &[
-                    $(impl_enum_serialize_and_deserialize!(@stringify $variant $(: $value)*),)*];
+                    $(configuration_option_enum_stringify!($variant $(: $value)*),)*];
                 Err(D::Error::unknown_variant(&s, ALLOWED))
             }
         }
@@ -85,7 +89,7 @@ macro_rules! impl_enum_serialize_and_deserialize {
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 $(
-                    if impl_enum_serialize_and_deserialize!(@stringify $variant $(: $value)*)
+                    if configuration_option_enum_stringify!($variant $(: $value)*)
                         .eq_ignore_ascii_case(s) {
                         return Ok($e::$variant);
                     }
@@ -99,7 +103,7 @@ macro_rules! impl_enum_serialize_and_deserialize {
                 let mut variants = Vec::new();
                 $(
                     variants.push(
-                        impl_enum_serialize_and_deserialize!(@stringify $variant $(: $value)*)
+                        configuration_option_enum_stringify!($variant $(: $value)*)
                     );
                 )*
                 format!("[{}]", variants.join("|"))
@@ -110,9 +114,19 @@ macro_rules! impl_enum_serialize_and_deserialize {
 
 macro_rules! configuration_option_enum {
     ($e:ident: $( $name:ident $(: $value:expr)* ),+ $(,)*) => (
-        #[derive(Copy, Clone, Eq, PartialEq, Debug)]
+        #[derive(Copy, Clone, Eq, PartialEq)]
         pub enum $e {
             $( $name ),+
+        }
+
+        impl ::std::fmt::Debug for $e {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                f.write_str(match self {
+                    $(
+                        $e::$name => configuration_option_enum_stringify!($name $(: $value)*),
+                    )+
+                })
+            }
         }
 
         impl_enum_serialize_and_deserialize!($e, $( $name $(: $value)* ),+);
