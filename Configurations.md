@@ -885,6 +885,53 @@ impl Lorem {
 See also [`brace_style`](#brace_style), [`control_brace_style`](#control_brace_style).
 
 
+## `enum_discrim_align_threshold`
+
+The maximum length of enum variant having discriminant, that gets vertically aligned with others.
+Variants without discriminants would be ignored for the purpose of alignment.
+
+Note that this is not how much whitespace is inserted, but instead the longest variant name that
+doesn't get ignored when aligning.
+
+- **Default value** : 0
+- **Possible values**: any positive integer
+- **Stable**: No
+
+#### `0` (default):
+
+```rust
+enum Bar {
+    A = 0,
+    Bb = 1,
+    RandomLongVariantGoesHere = 10,
+    Ccc = 71,
+}
+
+enum Bar {
+    VeryLongVariantNameHereA = 0,
+    VeryLongVariantNameHereBb = 1,
+    VeryLongVariantNameHereCcc = 2,
+}
+```
+
+#### `20`:
+
+```rust
+enum Foo {
+    A   = 0,
+    Bb  = 1,
+    RandomLongVariantGoesHere = 10,
+    Ccc = 2,
+}
+
+enum Bar {
+    VeryLongVariantNameHereA = 0,
+    VeryLongVariantNameHereBb = 1,
+    VeryLongVariantNameHereCcc = 2,
+}
+```
+
+
 ## `fn_single_line`
 
 Put single-expression functions on a single line
