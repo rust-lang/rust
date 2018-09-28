@@ -115,7 +115,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         kind_place: Option<(WriteKind, &Place<'tcx>)>,
     ) -> BorrowExplanation<'tcx> {
         debug!(
-            "find_why_borrow_contains_point(context={:?}, borrow={:?})",
+            "explain_why_borrow_contains_point(context={:?}, borrow={:?})",
             context, borrow,
         );
 
