@@ -147,9 +147,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
     fn construct_var_data(&self, tcx: TyCtxt<'_, '_, 'tcx>) -> LexicalRegionResolutions<'tcx> {
         LexicalRegionResolutions {
             error_region: tcx.types.re_static,
-            values: (0..self.num_vars())
-                .map(|_| VarValue::Value(tcx.types.re_empty))
-                .collect(),
+            values: IndexVec::from_elem_n(VarValue::Value(tcx.types.re_empty), self.num_vars())
         }
     }
 

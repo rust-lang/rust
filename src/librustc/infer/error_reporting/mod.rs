@@ -406,10 +406,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             errors.clone()
         } else {
             errors
-                .iter()
-                .filter(|&e| !is_bound_failure(e))
-                .cloned()
-                .collect()
+            .iter()
+            .filter(|&e| !is_bound_failure(e))
+            .cloned()
+            .collect()
         };
 
         // sort the errors by span, for better error message stability.

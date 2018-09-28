@@ -443,7 +443,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         assert!(self.undo_log[snapshot.length] == OpenSnapshot);
 
         if snapshot.length == 0 {
-            self.undo_log.truncate(0);
+            self.undo_log.clear();
         } else {
             (*self.undo_log)[snapshot.length] = CommitedSnapshot;
         }
