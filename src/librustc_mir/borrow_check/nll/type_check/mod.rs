@@ -126,12 +126,12 @@ pub(crate) fn type_check<'gcx, 'tcx>(
 ) -> MirTypeckResults<'tcx> {
     let implicit_region_bound = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
     let mut constraints = MirTypeckRegionConstraints {
+        placeholder_indices: PlaceholderIndices::default(),
         liveness_constraints: LivenessValues::new(elements),
         outlives_constraints: ConstraintSet::default(),
         closure_bounds_mapping: Default::default(),
         type_tests: Vec::default(),
     };
-    let mut placeholder_indices = PlaceholderIndices::default();
 
     let CreateResult {
         universal_region_relations,
@@ -151,7 +151,6 @@ pub(crate) fn type_check<'gcx, 'tcx>(
         borrow_set,
         all_facts,
         constraints: &mut constraints,
-        placeholder_indices: &mut placeholder_indices,
     };
 
     type_check_internal(
@@ -175,7 +174,6 @@ pub(crate) fn type_check<'gcx, 'tcx>(
 
     MirTypeckResults {
         constraints,
-        placeholder_indices,
         universal_region_relations,
     }
 }
@@ -730,18 +728,18 @@ struct BorrowCheckContext<'a, 'tcx: 'a> {
     all_facts: &'a mut Option<AllFacts>,
     borrow_set: &'a BorrowSet<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
-    placeholder_indices: &'a mut PlaceholderIndices,
 }
 
 crate struct MirTypeckResults<'tcx> {
     crate constraints: MirTypeckRegionConstraints<'tcx>,
-    crate placeholder_indices: PlaceholderIndices,
     crate universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
 }
 
 /// A collection of region constraints that must be satisfied for the
 /// program to be considered well-typed.
 crate struct MirTypeckRegionConstraints<'tcx> {
+    crate placeholder_indices: PlaceholderIndices,
+
     /// In general, the type-checker is not responsible for enforcing
     /// liveness constraints; this job falls to the region inferencer,
     /// which performs a liveness analysis. However, in some limited
