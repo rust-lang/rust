@@ -57,16 +57,17 @@
 //! as the final optimized code, when executed, produces the same results as the one
 //! without optimizations.
 //!
-//! When multiprocessing is involved (either multiple CPU cores, or multiple
-//! physical CPUs), access to global variables (which are shared between threads)
-//! could lead to nondeterministic results, **even if** compiler optimizations
-//! are disabled.
+//! Due to the [concurrency] involved in modern computers, assumptions about
+//! the program's execution order are often wrong. Access to global variables
+//! can lead to nondeterministic results, **even if** compiler optimizations
+//! are disabled, and it is **still possible** to introduce synchronization bugs.
 //!
 //! Note that thanks to Rust's safety guarantees, accessing global (static)
 //! variables requires `unsafe` code, assuming we don't use any of the
 //! synchronization primitives in this module.
 //!
 //! [constant folding]: https://en.wikipedia.org/wiki/Constant_folding
+//! [concurrency]: https://en.wikipedia.org/wiki/Concurrency_(computer_science)
 //!
 //! ## Out-of-order execution
 //!
