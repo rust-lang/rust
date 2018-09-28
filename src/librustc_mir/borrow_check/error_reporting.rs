@@ -35,6 +35,17 @@ use dataflow::move_paths::indexes::MoveOutIndex;
 use dataflow::move_paths::MovePathIndex;
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
+#[derive(Debug)]
+struct MoveSite {
+    /// Index of the "move out" that we found. The `MoveData` can
+    /// then tell us where the move occurred.
+    moi: MoveOutIndex,
+
+    /// True if we traversed a back edge while walking from the point
+    /// of error to the move site.
+    traversed_back_edge: bool
+}
+
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     pub(super) fn report_use_of_moved_or_uninitialized(
         &mut self,
@@ -53,10 +64,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             .or_else(|| self.borrow_spans(span, context.loc));
         let span = use_spans.args_or_use();
 
-        let mois = self.get_moved_indexes(context, mpi);
-        debug!("report_use_of_moved_or_uninitialized: mois={:?}", mois);
+        let move_site_vec = self.get_moved_indexes(context, mpi);
+        debug!(
+            "report_use_of_moved_or_uninitialized: move_site_vec={:?}",
+            move_site_vec
+        );
+        let move_out_indices: Vec<_> = move_site_vec
+            .iter()
+            .map(|move_site| move_site.moi)
+            .collect();
 
-        if mois.is_empty() {
+        if move_out_indices.is_empty() {
             let root_place = self.prefixes(&place, PrefixSet::All).last().unwrap();
 
             if self.uninitialized_error_reported
@@ -91,14 +109,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             err.buffer(&mut self.errors_buffer);
         } else {
-            if let Some((reported_place, _)) = self.move_error_reported.get(&mois) {
+            if let Some((reported_place, _)) = self.move_error_reported.get(&move_out_indices) {
                 if self.prefixes(&reported_place, PrefixSet::All)
                     .any(|p| p == place)
                 {
                     debug!(
                         "report_use_of_moved_or_uninitialized place: error suppressed \
                          mois={:?}",
-                        mois
+                        move_out_indices
                     );
                     return;
                 }
@@ -115,8 +133,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             );
 
             let mut is_loop_move = false;
-            for moi in &mois {
-                let move_out = self.move_data.moves[*moi];
+            for move_site in &move_site_vec {
+                let move_out = self.move_data.moves[(*move_site).moi];
                 let moved_place = &self.move_data.move_paths[move_out.path].place;
 
                 let move_spans = self.move_spans(moved_place, move_out.source);
@@ -131,9 +149,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 if span == move_span {
                     err.span_label(
                         span,
-                        format!("value moved{} here in previous iteration of loop", move_msg),
+                        format!("value moved{} here, in previous iteration of loop", move_msg),
                     );
                     is_loop_move = true;
+                } else if move_site.traversed_back_edge {
+                    err.span_label(
+                        move_span,
+                        format!(
+                            "value moved{} here, in previous iteration of loop",
+                            move_msg
+                        ),
+                    );
                 } else {
                     err.span_label(move_span, format!("value moved{} here", move_msg));
                     move_spans.var_span_label(&mut err, "variable moved due to use in closure");
@@ -171,7 +197,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 };
 
                 if needs_note {
-                    let mpi = self.move_data.moves[mois[0]].path;
+                    let mpi = self.move_data.moves[move_out_indices[0]].path;
                     let place = &self.move_data.move_paths[mpi].place;
 
                     if let Some(ty) = self.retrieve_type_for_place(place) {
@@ -192,8 +218,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 }
             }
 
-            if let Some((_, mut old_err)) =
-                self.move_error_reported.insert(mois, (place.clone(), err))
+            if let Some((_, mut old_err)) = self.move_error_reported
+                .insert(move_out_indices, (place.clone(), err))
             {
                 // Cancel the old error so it doesn't ICE.
                 old_err.cancel();
@@ -733,29 +759,32 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         err
     }
 
-    fn get_moved_indexes(&mut self, context: Context, mpi: MovePathIndex) -> Vec<MoveOutIndex> {
+    fn get_moved_indexes(&mut self, context: Context, mpi: MovePathIndex) -> Vec<MoveSite> {
         let mir = self.mir;
 
         let mut stack = Vec::new();
-        stack.extend(mir.predecessor_locations(context.loc));
+        stack.extend(mir.predecessor_locations(context.loc).map(|predecessor| {
+            let is_back_edge = context.loc.dominates(predecessor, &self.dominators);
+            (predecessor, is_back_edge)
+        }));
 
         let mut visited = FxHashSet();
         let mut result = vec![];
 
-        'dfs: while let Some(l) = stack.pop() {
+        'dfs: while let Some((location, is_back_edge)) = stack.pop() {
             debug!(
-                "report_use_of_moved_or_uninitialized: current_location={:?}",
-                l
+                "report_use_of_moved_or_uninitialized: (current_location={:?}, back_edge={})",
+                location, is_back_edge
             );
 
-            if !visited.insert(l) {
+            if !visited.insert(location) {
                 continue;
             }
 
             // check for moves
-            let stmt_kind = mir[l.block]
+            let stmt_kind = mir[location.block]
                 .statements
-                .get(l.statement_index)
+                .get(location.statement_index)
                 .map(|s| &s.kind);
             if let Some(StatementKind::StorageDead(..)) = stmt_kind {
                 // this analysis only tries to find moves explicitly
@@ -774,11 +803,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 let move_paths = &self.move_data.move_paths;
                 mpis.extend(move_paths[mpi].parents(move_paths));
 
-                for moi in &self.move_data.loc_map[l] {
+                for moi in &self.move_data.loc_map[location] {
                     debug!("report_use_of_moved_or_uninitialized: moi={:?}", moi);
                     if mpis.contains(&self.move_data.moves[*moi].path) {
                         debug!("report_use_of_moved_or_uninitialized: found");
-                        result.push(*moi);
+                        result.push(MoveSite {
+                            moi: *moi,
+                            traversed_back_edge: is_back_edge,
+                        });
 
                         // Strictly speaking, we could continue our DFS here. There may be
                         // other moves that can reach the point of error. But it is kind of
@@ -807,7 +839,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 self.infcx.tcx,
                 self.mir,
                 self.move_data,
-                l,
+                location,
                 |m| {
                     if m == mpi {
                         any_match = true;
@@ -818,7 +850,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 continue 'dfs;
             }
 
-            stack.extend(mir.predecessor_locations(l));
+            stack.extend(mir.predecessor_locations(location).map(|predecessor| {
+                let back_edge = location.dominates(predecessor, &self.dominators);
+                (predecessor, is_back_edge || back_edge)
+            }));
         }
 
         result
