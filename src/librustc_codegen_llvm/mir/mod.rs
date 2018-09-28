@@ -16,7 +16,7 @@ use rustc::mir::{self, Mir};
 use rustc::ty::subst::Substs;
 use rustc::session::config::DebugInfo;
 use base;
-use common::Funclet;
+use rustc_codegen_utils::common::Funclet;
 use debuginfo::{self, VariableAccess, VariableKind, FunctionDebugContext};
 use monomorphize::Instance;
 use abi::{FnType, PassMode};

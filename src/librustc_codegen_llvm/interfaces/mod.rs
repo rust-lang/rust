@@ -32,13 +32,10 @@ pub use self::debuginfo::{DebugInfoMethods, DebugInfoBuilderMethods};
 pub use self::abi::{AbiMethods, AbiBuilderMethods};
 pub use self::declare::{DeclareMethods, PreDefineMethods};
 pub use self::asm::{AsmMethods, AsmBuilderMethods};
-
-use std::fmt;
+pub use rustc_codegen_utils::interfaces::CodegenObject;
 
 pub trait CodegenMethods<'ll, 'tcx: 'll> :
     Backend<'ll> + TypeMethods<'ll, 'tcx> + MiscMethods<'ll, 'tcx> + ConstMethods<'ll, 'tcx> +
     StaticMethods<'ll> + DebugInfoMethods<'ll, 'tcx> + AbiMethods<'tcx> +
     IntrinsicDeclarationMethods<'ll> + DeclareMethods<'ll, 'tcx> + AsmMethods +
     PreDefineMethods<'ll, 'tcx> {}
-
-pub trait CodegenObject : Copy + PartialEq + fmt::Debug {}

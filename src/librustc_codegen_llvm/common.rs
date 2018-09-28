@@ -30,7 +30,7 @@ use rustc::hir;
 use interfaces::BuilderMethods;
 use mir::constant::const_alloc_to_llvm;
 use mir::place::PlaceRef;
-use rustc_codegen_utils::common::{OperandBundleDef, TypeKind};
+use rustc_codegen_utils::common::TypeKind;
 
 use libc::{c_uint, c_char};
 use std::iter;
@@ -67,42 +67,6 @@ pub use context::CodegenCx;
 * some helper task such as bringing a task to life, allocating memory, etc.
 *
 */
-
-/// A structure representing an active landing pad for the duration of a basic
-/// block.
-///
-/// Each `Block` may contain an instance of this, indicating whether the block
-/// is part of a landing pad or not. This is used to make decision about whether
-/// to emit `invoke` instructions (e.g. in a landing pad we don't continue to
-/// use `invoke`) and also about various function call metadata.
-///
-/// For GNU exceptions (`landingpad` + `resume` instructions) this structure is
-/// just a bunch of `None` instances (not too interesting), but for MSVC
-/// exceptions (`cleanuppad` + `cleanupret` instructions) this contains data.
-/// When inside of a landing pad, each function call in LLVM IR needs to be
-/// annotated with which landing pad it's a part of. This is accomplished via
-/// the `OperandBundleDef` value created for MSVC landing pads.
-pub struct Funclet<'ll, V> {
-    cleanuppad: V,
-    operand: OperandBundleDef<'ll, V>,
-}
-
-impl<'ll, V : CodegenObject> Funclet<'ll, V> {
-    pub fn new(cleanuppad: V) -> Self {
-        Funclet {
-            cleanuppad,
-            operand: OperandBundleDef::new("funclet", cleanuppad),
-        }
-    }
-
-    pub fn cleanuppad(&self) -> V {
-        self.cleanuppad
-    }
-
-    pub fn bundle(&self) -> &OperandBundleDef<'ll, V> {
-        &self.operand
-    }
-}
 
 impl Backend<'ll> for CodegenCx<'ll, 'tcx, &'ll Value> {
     type Value = &'ll Value;

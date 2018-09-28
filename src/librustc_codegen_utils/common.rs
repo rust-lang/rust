@@ -11,6 +11,7 @@
 
 use rustc::ty::{self, Ty, TyCtxt};
 use syntax_pos::DUMMY_SP;
+use interfaces::CodegenObject;
 
 
 pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
@@ -36,6 +37,44 @@ impl<'a, V> OperandBundleDef<'a, V> {
             name,
             val
         }
+    }
+}
+
+
+
+/// A structure representing an active landing pad for the duration of a basic
+/// block.
+///
+/// Each `Block` may contain an instance of this, indicating whether the block
+/// is part of a landing pad or not. This is used to make decision about whether
+/// to emit `invoke` instructions (e.g. in a landing pad we don't continue to
+/// use `invoke`) and also about various function call metadata.
+///
+/// For GNU exceptions (`landingpad` + `resume` instructions) this structure is
+/// just a bunch of `None` instances (not too interesting), but for MSVC
+/// exceptions (`cleanuppad` + `cleanupret` instructions) this contains data.
+/// When inside of a landing pad, each function call in LLVM IR needs to be
+/// annotated with which landing pad it's a part of. This is accomplished via
+/// the `OperandBundleDef` value created for MSVC landing pads.
+pub struct Funclet<'ll, V> {
+    cleanuppad: V,
+    operand: OperandBundleDef<'ll, V>,
+}
+
+impl<'ll, V : CodegenObject> Funclet<'ll, V> {
+    pub fn new(cleanuppad: V) -> Self {
+        Funclet {
+            cleanuppad,
+            operand: OperandBundleDef::new("funclet", cleanuppad),
+        }
+    }
+
+    pub fn cleanuppad(&self) -> V {
+        self.cleanuppad
+    }
+
+    pub fn bundle(&self) -> &OperandBundleDef<'ll, V> {
+        &self.operand
     }
 }
 
