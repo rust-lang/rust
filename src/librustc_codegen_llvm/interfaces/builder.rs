@@ -20,7 +20,9 @@ use libc::c_char;
 use mir::operand::OperandRef;
 use mir::place::PlaceRef;
 use rustc::ty::layout::{Align, Size};
-use rustc_codegen_utils::common::IntPredicate;
+use rustc_codegen_utils::common::{
+    AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope,
+};
 
 use std::borrow::Cow;
 use std::ops::Range;
