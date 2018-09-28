@@ -385,7 +385,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
         StatementKind::Assign(to_place, rval) => {
             let lval = trans_place(fx, to_place);
             let dest_layout = lval.layout();
-            match rval {
+            match &**rval {
                 Rvalue::Use(operand) => {
                     let val = trans_operand(fx, operand);
                     lval.write_cvalue(fx, val);
