@@ -106,3 +106,5 @@ ENV DIST_SRC 1
 # When we build cargo in this container, we don't want it to use the system
 # libcurl, instead it should compile its own.
 ENV LIBCURL_NO_PKG_CONFIG 1
+
+ENV DIST_REQUIRE_ALL_TOOLS 1
