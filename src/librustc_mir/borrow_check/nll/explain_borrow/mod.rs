@@ -37,7 +37,7 @@ pub(in borrow_check) enum LaterUseKind {
 }
 
 impl<'tcx> BorrowExplanation<'tcx> {
-    pub(in borrow_check) fn emit<'cx, 'gcx>(
+    pub(in borrow_check) fn add_explanation_to_diagnostic<'cx, 'gcx>(
         &self,
         tcx: TyCtxt<'cx, 'gcx, 'tcx>,
         err: &mut DiagnosticBuilder<'_>,
