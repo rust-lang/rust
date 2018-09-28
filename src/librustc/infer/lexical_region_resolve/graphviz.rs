@@ -198,7 +198,7 @@ impl<'a, 'gcx, 'tcx> dot::Labeller<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
         match *e {
             Edge::Constraint(ref c) =>
                 dot::LabelText::label(format!("{:?}", self.map.get(c).unwrap())),
-            Edge::EnclScope(..) => dot::LabelText::label("(enclosed)".to_string()),
+            Edge::EnclScope(..) => dot::LabelText::label("(enclosed)".to_owned()),
         }
     }
 }
