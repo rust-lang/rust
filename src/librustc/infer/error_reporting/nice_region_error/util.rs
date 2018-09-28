@@ -137,8 +137,8 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     pub(super) fn is_self_anon(&self, is_first: bool, scope_def_id: DefId) -> bool {
         is_first
             && self.tcx
-                .opt_associated_item(scope_def_id)
-                .map(|i| i.method_has_self_argument) == Some(true)
+                   .opt_associated_item(scope_def_id)
+                   .map(|i| i.method_has_self_argument) == Some(true)
     }
 
 }

@@ -499,24 +499,22 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                     let ty::OutlivesPredicate(k1, r2) = constraint.skip_binder(); // restored below
                     let k1 = substitute_value(self.tcx, result_subst, k1);
                     let r2 = substitute_value(self.tcx, result_subst, r2);
-                    match k1.unpack() {
-                        UnpackedKind::Lifetime(r1) => Obligation::new(
-                            cause.clone(),
-                            param_env,
-                            ty::Predicate::RegionOutlives(ty::Binder::dummy(
-                                ty::OutlivesPredicate(r1, r2),
-                            )),
-                        ),
 
-                        UnpackedKind::Type(t1) => Obligation::new(
-                            cause.clone(),
-                            param_env,
-                            ty::Predicate::TypeOutlives(ty::Binder::dummy(ty::OutlivesPredicate(
-                                t1, r2,
-                            ))),
-                        ),
-                    }
-                }),
+                    Obligation::new(
+                        cause.clone(),
+                        param_env,
+                        match k1.unpack() {
+                            UnpackedKind::Lifetime(r1) => ty::Predicate::RegionOutlives(
+                                ty::Binder::dummy(
+                                    ty::OutlivesPredicate(r1, r2)
+                            )),
+                            UnpackedKind::Type(t1) => ty::Predicate::TypeOutlives(
+                                ty::Binder::dummy(ty::OutlivesPredicate(
+                                    t1, r2
+                            )))
+                        }
+                    )
+                })
         ) as Box<dyn Iterator<Item = _>>
     }
 
