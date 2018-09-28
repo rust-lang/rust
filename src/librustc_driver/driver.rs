@@ -790,7 +790,9 @@ where
                 trait_map: resolver.trait_map,
                 maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
                 maybe_unused_extern_crates: resolver.maybe_unused_extern_crates,
-                extern_prelude: resolver.extern_prelude,
+                extern_prelude: resolver.extern_prelude.iter().map(|(ident, entry)| {
+                    (ident.name, entry.introduced_by_item)
+                }).collect(),
             },
 
             analysis: ty::CrateAnalysis {

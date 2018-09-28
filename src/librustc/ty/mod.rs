@@ -36,7 +36,7 @@ use ty::subst::{Subst, Substs};
 use ty::util::{IntTypeExt, Discr};
 use ty::walk::TypeWalker;
 use util::captures::Captures;
-use util::nodemap::{NodeSet, DefIdMap, FxHashMap, FxHashSet};
+use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 use arena::SyncDroplessArena;
 use session::DataTypeKind;
 
@@ -141,7 +141,7 @@ pub struct Resolutions {
     pub maybe_unused_trait_imports: NodeSet,
     pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
     pub export_map: ExportMap,
-    pub extern_prelude: FxHashSet<Name>,
+    pub extern_prelude: FxHashMap<Name, bool /* introduced by item */>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

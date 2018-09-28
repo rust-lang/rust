@@ -1340,6 +1340,12 @@ impl PrimitiveTypeTable {
     }
 }
 
+#[derive(Default, Clone)]
+pub struct ExternPreludeEntry<'a> {
+    extern_crate_item: Option<&'a NameBinding<'a>>,
+    pub introduced_by_item: bool,
+}
+
 /// The main resolver class.
 ///
 /// This is the visitor that walks the whole crate.
@@ -1352,7 +1358,7 @@ pub struct Resolver<'a, 'b: 'a> {
     graph_root: Module<'a>,
 
     prelude: Option<Module<'a>>,
-    pub extern_prelude: FxHashSet<Name>,
+    pub extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'a>>,
 
     /// n.b. This is used only for better diagnostics, not name resolution itself.
     has_self: FxHashSet<DefId>,
@@ -1668,15 +1674,16 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         DefCollector::new(&mut definitions, Mark::root())
             .collect_root(crate_name, session.local_crate_disambiguator());
 
-        let mut extern_prelude: FxHashSet<Name> =
-            session.opts.externs.iter().map(|kv| Symbol::intern(kv.0)).collect();
+        let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry> =
+            session.opts.externs.iter().map(|kv| (Ident::from_str(kv.0), Default::default()))
+                                       .collect();
 
         if !attr::contains_name(&krate.attrs, "no_core") {
-            extern_prelude.insert(Symbol::intern("core"));
+            extern_prelude.insert(Ident::from_str("core"), Default::default());
             if !attr::contains_name(&krate.attrs, "no_std") {
-                extern_prelude.insert(Symbol::intern("std"));
+                extern_prelude.insert(Ident::from_str("std"), Default::default());
                 if session.rust_2018() {
-                    extern_prelude.insert(Symbol::intern("meta"));
+                    extern_prelude.insert(Ident::from_str("meta"), Default::default());
                 }
             }
         }
@@ -1963,21 +1970,10 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         }
 
         if !module.no_implicit_prelude {
-            if ns == TypeNS && self.extern_prelude.contains(&ident.name) {
-                let crate_id = if record_used {
-                    self.crate_loader.process_path_extern(ident.name, ident.span)
-                } else if let Some(crate_id) =
-                        self.crate_loader.maybe_process_path_extern(ident.name, ident.span) {
-                    crate_id
-                } else {
-                    return None;
-                };
-                let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
-                self.populate_module_if_necessary(&crate_root);
-
-                let binding = (crate_root, ty::Visibility::Public,
-                               ident.span, Mark::root()).to_name_binding(self.arenas);
-                return Some(LexicalScopeBinding::Item(binding));
+            if ns == TypeNS {
+                if let Some(binding) = self.extern_prelude_get(ident, !record_used) {
+                    return Some(LexicalScopeBinding::Item(binding));
+                }
             }
             if ns == TypeNS && is_known_tool(ident.name) {
                 let binding = (Def::ToolMod, ty::Visibility::Public,
@@ -4018,7 +4014,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     } else {
                         // Items from the prelude
                         if !module.no_implicit_prelude {
-                            names.extend(self.extern_prelude.iter().cloned());
+                            names.extend(self.extern_prelude.iter().map(|(ident, _)| ident.name));
                             if let Some(prelude) = self.prelude {
                                 add_module_candidates(prelude, &mut names);
                             }
@@ -4459,11 +4455,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
         if self.session.rust_2018() {
             let extern_prelude_names = self.extern_prelude.clone();
-            for &name in extern_prelude_names.iter() {
-                let ident = Ident::with_empty_ctxt(name);
-                if let Some(crate_id) = self.crate_loader.maybe_process_path_extern(name,
-                                                                                    ident.span)
-                {
+            for (ident, _) in extern_prelude_names.into_iter() {
+                if let Some(crate_id) = self.crate_loader.maybe_process_path_extern(ident.name,
+                                                                                    ident.span) {
                     let crate_root = self.get_module(DefId {
                         krate: crate_id,
                         index: CRATE_DEF_INDEX,
@@ -4824,6 +4818,28 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
         err.emit();
         self.name_already_seen.insert(name, span);
+    }
+
+    fn extern_prelude_get(&mut self, ident: Ident, speculative: bool)
+                          -> Option<&'a NameBinding<'a>> {
+        self.extern_prelude.get(&ident.modern()).cloned().and_then(|entry| {
+            if let Some(binding) = entry.extern_crate_item {
+                Some(binding)
+            } else {
+                let crate_id = if !speculative {
+                    self.crate_loader.process_path_extern(ident.name, ident.span)
+                } else if let Some(crate_id) =
+                        self.crate_loader.maybe_process_path_extern(ident.name, ident.span) {
+                    crate_id
+                } else {
+                    return None;
+                };
+                let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
+                self.populate_module_if_necessary(&crate_root);
+                Some((crate_root, ty::Visibility::Public, ident.span, Mark::root())
+                    .to_name_binding(self.arenas))
+            }
+        })
     }
 }
 
