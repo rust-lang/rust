@@ -407,6 +407,31 @@ fn light_rewrite_block_comment_with_bare_lines(
     Some(format!("{}\n{}{}", first_line, indent_str, rest))
 }
 
+/// Attributes for code blocks in rustdoc.
+/// See https://doc.rust-lang.org/rustdoc/print.html#attributes
+enum CodeBlockAttribute {
+    Rust,
+    Ignore,
+    Text,
+    ShouldPanic,
+    NoRun,
+    CompileFail,
+}
+
+impl CodeBlockAttribute {
+    fn new(attribute: &str) -> CodeBlockAttribute {
+        match attribute {
+            "rust" | "" => CodeBlockAttribute::Rust,
+            "ignore" => CodeBlockAttribute::Ignore,
+            "text" => CodeBlockAttribute::Text,
+            "should_panic" => CodeBlockAttribute::ShouldPanic,
+            "no_run" => CodeBlockAttribute::NoRun,
+            "compile_fail" => CodeBlockAttribute::CompileFail,
+            _ => CodeBlockAttribute::Text,
+        }
+    }
+}
+
 fn rewrite_comment_inner(
     orig: &str,
     block_style: bool,
@@ -466,7 +491,7 @@ fn rewrite_comment_inner(
     result.push_str(opener);
     let mut code_block_buffer = String::with_capacity(128);
     let mut is_prev_line_multi_line = false;
-    let mut inside_code_block = false;
+    let mut code_block_attr = None;
     let comment_line_separator = format!("{}{}", indent_str, line_start);
     let join_code_block_with_comment_line_separator = |s: &str| {
         let mut result = String::with_capacity(s.len() + 128);
@@ -485,28 +510,36 @@ fn rewrite_comment_inner(
     for (i, (line, has_leading_whitespace)) in lines.enumerate() {
         let is_last = i == count_newlines(orig);
 
-        if inside_code_block {
+        if let Some(ref attr) = code_block_attr {
             if line.starts_with("```") {
-                inside_code_block = false;
-                result.push_str(&comment_line_separator);
-                let code_block = {
-                    let mut config = config.clone();
-                    config.set().wrap_comments(false);
-                    match ::format_code_block(&code_block_buffer, &config) {
-                        Some(ref s) => trim_custom_comment_prefix(s),
-                        None => trim_custom_comment_prefix(&code_block_buffer),
+                let code_block = match attr {
+                    CodeBlockAttribute::Ignore | CodeBlockAttribute::Text => {
+                        trim_custom_comment_prefix(&code_block_buffer)
+                    }
+                    _ if code_block_buffer.is_empty() => String::new(),
+                    _ => {
+                        let mut config = config.clone();
+                        config.set().wrap_comments(false);
+                        match ::format_code_block(&code_block_buffer, &config) {
+                            Some(ref s) => trim_custom_comment_prefix(s),
+                            None => trim_custom_comment_prefix(&code_block_buffer),
+                        }
                     }
                 };
-                result.push_str(&join_code_block_with_comment_line_separator(&code_block));
+                if !code_block.is_empty() {
+                    result.push_str(&comment_line_separator);
+                    result.push_str(&join_code_block_with_comment_line_separator(&code_block));
+                }
                 code_block_buffer.clear();
                 result.push_str(&comment_line_separator);
                 result.push_str(line);
+                code_block_attr = None;
             } else {
                 code_block_buffer.push_str(&hide_sharp_behind_comment(line));
                 code_block_buffer.push('\n');
 
                 if is_last {
-                    // There is an code block that is not properly enclosed by backticks.
+                    // There is a code block that is not properly enclosed by backticks.
                     // We will leave them untouched.
                     result.push_str(&comment_line_separator);
                     result.push_str(&join_code_block_with_comment_line_separator(
@@ -517,7 +550,11 @@ fn rewrite_comment_inner(
 
             continue;
         } else {
-            inside_code_block = line.starts_with("```");
+            code_block_attr = if line.starts_with("```") {
+                Some(CodeBlockAttribute::new(&line[3..]))
+            } else {
+                None
+            };
 
             if result == opener {
                 let force_leading_whitespace = opener == "/* " && count_newlines(orig) == 0;
