@@ -1465,11 +1465,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// If true, we should use a naive AST walk to determine if match
     /// guard could perform bad mutations (or mutable-borrows).
     pub fn check_for_mutation_in_guard_via_ast_walk(self) -> bool {
-        // If someone passes the `-Z` flag, they're asking for the footgun.
-        if self.sess.opts.debugging_opts.disable_ast_check_for_mutation_in_guard {
-            return false;
-        }
-
         // If someone requests the feature, then be a little more
         // careful and ensure that MIR-borrowck is enabled (which can
         // happen via edition selection, via `feature(nll)`, or via an
