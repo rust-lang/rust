@@ -135,10 +135,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         );
 
         // Select everything, returning errors.
-        let true_errors = match fulfill_cx.select_where_possible(self) {
-            Ok(()) => vec![],
-            Err(errors) => errors,
-        };
+        let true_errors = fulfill_cx.select_where_possible(self).err().unwrap_or_else(Vec::new);
         debug!("true_errors = {:#?}", true_errors);
 
         if !true_errors.is_empty() {
@@ -148,10 +145,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         }
 
         // Anything left unselected *now* must be an ambiguity.
-        let ambig_errors = match fulfill_cx.select_all_or_error(self) {
-            Ok(()) => vec![],
-            Err(errors) => errors,
-        };
+        let ambig_errors = fulfill_cx.select_all_or_error(self).err().unwrap_or_else(Vec::new);
         debug!("ambig_errors = {:#?}", ambig_errors);
 
         let region_obligations = self.take_registered_region_obligations();
@@ -448,10 +442,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 .variables
                 .iter()
                 .enumerate()
-                .map(|(index, info)| match opt_values[CanonicalVar::new(index)] {
-                    Some(k) => k,
-                    None => self.fresh_inference_var_for_canonical_var(cause.span, *info),
-                })
+                .map(|(index, info)| opt_values[CanonicalVar::new(index)].unwrap_or_else(||
+                    self.fresh_inference_var_for_canonical_var(cause.span, *info)
+                ))
                 .collect(),
         };
 
