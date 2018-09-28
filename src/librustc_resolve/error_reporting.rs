@@ -121,7 +121,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     /// ```
     ///    |
     /// LL | use foobar::Baz;
-    ///    |     ^^^ Did you mean `baz::foobar`?
+    ///    |     ^^^^^^ Did you mean `baz::foobar`?
     /// ```
     ///
     /// Used when importing a submodule of an external crate but missing that crate's
@@ -139,19 +139,19 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         path.insert(1, new_path_segment);
 
         for name in &external_crate_names {
-            // Don't suggest meta as it will error in `resolve_path`.
-            if name.as_str() == "meta" {
-                continue;
-            }
-
-            // Replace the first after root (a placeholder we inserted) with a crate name
-            // and check if that is valid.
-            path[1].name = *name;
-            let result = self.resolve_path(None, &path, None, false, span, CrateLint::No);
-            debug!("make_external_crate_suggestion: name={:?} path={:?} result={:?}",
-                   name, path, result);
-            if let PathResult::Module(..) = result {
-                return Some(path)
+            let ident = Ident::with_empty_ctxt(*name);
+            // Calling `maybe_process_path_extern` ensures that we're only running `resolve_path`
+            // on a crate name that won't ICE.
+            if let Some(_) = self.crate_loader.maybe_process_path_extern(*name, ident.span) {
+                // Replace the first after root (a placeholder we inserted) with a crate name
+                // and check if that is valid.
+                path[1].name = *name;
+                let result = self.resolve_path(None, &path, None, false, span, CrateLint::No);
+                debug!("make_external_crate_suggestion: name={:?} path={:?} result={:?}",
+                       name, path, result);
+                if let PathResult::Module(..) = result {
+                    return Some(path)
+                }
             }
         }
 
