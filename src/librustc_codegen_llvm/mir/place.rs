@@ -173,10 +173,7 @@ impl PlaceRef<'ll, 'tcx> {
         let cx = bx.cx;
         let field = self.layout.field(cx, ix);
         let offset = self.layout.fields.offset(ix);
-        let effective_field_align = self.align
-            .min(self.layout.align)
-            .min(field.align)
-            .restrict_for_offset(offset);
+        let effective_field_align = self.align.restrict_for_offset(offset);
 
         let simple = || {
             // Unions and newtypes only use an offset of 0.
