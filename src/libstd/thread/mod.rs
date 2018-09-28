@@ -657,7 +657,7 @@ pub fn panicking() -> bool {
 ///
 /// # Platform-specific behavior
 ///
-/// On Unix platforms this function will not return early due to a
+/// On Unix platforms this function might return early due to a
 /// signal being received or a spurious wakeup.
 ///
 /// # Examples
