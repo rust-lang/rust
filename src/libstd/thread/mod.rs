@@ -650,15 +650,15 @@ pub fn panicking() -> bool {
     panicking::panicking()
 }
 
-/// Puts the current thread to sleep for the specified amount of time.
+/// Puts the current thread to sleep for at least the specified amount of time.
 ///
 /// The thread may sleep longer than the duration specified due to scheduling
-/// specifics or platform-dependent functionality.
+/// specifics or platform-dependent functionality. It will never sleep less.
 ///
 /// # Platform-specific behavior
 ///
-/// On Unix platforms this function might return early due to a
-/// signal being received or a spurious wakeup.
+/// On Unix platforms this function may invoke multiple syscalls
+/// in case of a signal being received or a spurious wakeup.
 ///
 /// # Examples
 ///
