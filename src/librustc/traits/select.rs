@@ -727,26 +727,42 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 if r_a == r_b {
                     // for<'a> 'a: 'a. OK
                     Ok(EvaluatedToOk)
+                } else if **r_a == ty::ReStatic {
+                    // 'static: 'x always holds.
+                    //
+                    // This special case is handled somewhat inconsistently - if we
+                    // have an inference variable that is supposed to be equal to
+                    // `'static`, then we don't allow it to be equated to an LBR,
+                    // but if we have a literal `'static`, then we *do*.
+                    //
+                    // This is actually consistent with how our region inference works.
+                    //
+                    // It would appear that this sort of inconsistency would
+                    // cause "instability" problems with evaluation caching. However,
+                    // evaluation caching is only for trait predicates, and when
+                    // trait predicates create nested obligations, they contain
+                    // inference variables for all the regions in the trait - the
+                    // only way this codepath can be reached from trait predicate
+                    // evaluation is when the user typed an explicit `where 'static: 'a`
+                    // lifetime bound (in which case we want to return EvaluatedToOk).
+                    //
+                    // If we ever want to handle inference variables that might be
+                    // equatable with ReStatic, we need to make sure we are not confused by
+                    // technically-allowed-by-RFC-447-but-probably-should-not-be
+                    // impls such as
+                    // ```Rust
+                    // impl<'a, 's, T> X<'s> for T where T: Debug + 'a, 'a: 's
+                    // ```
+                    Ok(EvaluatedToOk)
                 } else if r_a.is_late_bound() || r_b.is_late_bound() {
                     // There is no current way to prove `for<'a> 'a: 'x`
                     // unless `'a = 'x`, because there are no bounds involving
                     // lifetimes.
 
-                    // It is possible to solve `for<'a> 'x: 'a` where `'x`
-                    // is a free region by forcing `'x = 'static`. However,
-                    // fulfillment does not *quite* do this ATM (it calls
-                    // `region_outlives_predicate`, which is OK if `'x` is
-                    // literally ReStatic, but is *not* OK if `'x` is any
-                    // sort of inference variable, even if it *is* equal
-                    // to `'static`).
-
-                    // If we ever want to handle that sort of obligations,
-                    // we need to make sure we are not confused by
-                    // technically-allowed-by-RFC-447-but-probably-should-not-be
-                    // impls such as
-                    // ```Rust
-                    // impl<'a, 's, T> X<'s> for T where T: Debug + 's, 'a: 's
-                    // ```
+                    // It might be possible to prove `for<'a> 'x: 'a` by forcing `'x`
+                    // to be `'static`. However, this is not currently done by type
+                    // inference unless `'x` is literally ReStatic. See the comment
+                    // above.
 
                     // We don't want to allow this sort of reasoning in intercrate
                     // mode, for backwards-compatibility reasons.
