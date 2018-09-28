@@ -95,7 +95,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
 }
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
-    /// Adds annotations to `err` explaining *why* the borrow contains the
+    /// Returns structured explanation for *why* the borrow contains the
     /// point from `context`. This is key for the "3-point errors"
     /// [described in the NLL RFC][d].
     ///
@@ -106,7 +106,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// - `kind_place`: if Some, this describes the statement that triggered the error.
     ///   - first half is the kind of write, if any, being performed
     ///   - second half is the place being accessed
-    /// - `err`: where the error annotations are going to be added
     ///
     /// [d]: https://rust-lang.github.io/rfcs/2094-nll.html#leveraging-intuition-framing-errors-in-terms-of-points
     pub(in borrow_check) fn explain_why_borrow_contains_point(
