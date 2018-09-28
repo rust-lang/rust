@@ -17,7 +17,8 @@ use abi::{Abi, FnType, PassMode};
 use rustc_target::abi::call::ArgType;
 use base;
 use builder::MemFlags;
-use common::{self, IntPredicate};
+use common;
+use rustc_codegen_utils::common::IntPredicate;
 use meth;
 use monomorphize;
 

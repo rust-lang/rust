@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use common::*;
+use rustc_codegen_utils::common::IntPredicate;
 use libc::c_char;
 use rustc::ty::TyCtxt;
 use rustc::ty::layout::{Align, Size};

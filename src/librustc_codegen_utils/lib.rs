@@ -46,6 +46,7 @@ pub mod link;
 pub mod codegen_backend;
 pub mod symbol_names;
 pub mod symbol_names_test;
+pub mod common;
 
 /// check for the #[rustc_error] annotation, which forces an
 /// error in codegen. This is used to write compile-fail tests

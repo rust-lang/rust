@@ -12,7 +12,7 @@ use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, HasTyCtxt};
 use rustc::mir;
 use rustc::mir::tcx::PlaceTy;
-use common::IntPredicate;
+use rustc_codegen_utils::common::IntPredicate;
 use type_of::LayoutLlvmExt;
 use glue;
 

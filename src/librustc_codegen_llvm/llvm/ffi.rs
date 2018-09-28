@@ -20,6 +20,7 @@ use libc::{c_ulonglong, c_void};
 
 use std::marker::PhantomData;
 use common;
+use rustc_codegen_utils;
 use syntax;
 
 use super::RustString;
@@ -144,18 +145,18 @@ pub enum IntPredicate {
 }
 
 impl IntPredicate {
-    pub fn from_generic(intpre: common::IntPredicate) -> Self {
+    pub fn from_generic(intpre: rustc_codegen_utils::common::IntPredicate) -> Self {
         match intpre {
-            common::IntPredicate::IntEQ => IntPredicate::IntEQ,
-            common::IntPredicate::IntNE => IntPredicate::IntNE,
-            common::IntPredicate::IntUGT => IntPredicate::IntUGT,
-            common::IntPredicate::IntUGE => IntPredicate::IntUGE,
-            common::IntPredicate::IntULT => IntPredicate::IntULT,
-            common::IntPredicate::IntULE => IntPredicate::IntULE,
-            common::IntPredicate::IntSGT => IntPredicate::IntSGT,
-            common::IntPredicate::IntSGE => IntPredicate::IntSGE,
-            common::IntPredicate::IntSLT => IntPredicate::IntSLT,
-            common::IntPredicate::IntSLE => IntPredicate::IntSLE,
+            rustc_codegen_utils::common::IntPredicate::IntEQ => IntPredicate::IntEQ,
+            rustc_codegen_utils::common::IntPredicate::IntNE => IntPredicate::IntNE,
+            rustc_codegen_utils::common::IntPredicate::IntUGT => IntPredicate::IntUGT,
+            rustc_codegen_utils::common::IntPredicate::IntUGE => IntPredicate::IntUGE,
+            rustc_codegen_utils::common::IntPredicate::IntULT => IntPredicate::IntULT,
+            rustc_codegen_utils::common::IntPredicate::IntULE => IntPredicate::IntULE,
+            rustc_codegen_utils::common::IntPredicate::IntSGT => IntPredicate::IntSGT,
+            rustc_codegen_utils::common::IntPredicate::IntSGE => IntPredicate::IntSGE,
+            rustc_codegen_utils::common::IntPredicate::IntSLT => IntPredicate::IntSLT,
+            rustc_codegen_utils::common::IntPredicate::IntSLE => IntPredicate::IntSLE,
         }
     }
 }

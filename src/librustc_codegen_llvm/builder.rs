@@ -11,6 +11,7 @@
 use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
 use llvm::{self, False, OperandBundleDef, BasicBlock};
 use common::{self, *};
+use rustc_codegen_utils::common::IntPredicate;
 use context::CodegenCx;
 use type_::Type;
 use type_of::LayoutLlvmExt;
