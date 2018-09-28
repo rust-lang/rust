@@ -53,7 +53,12 @@ pub struct ImportedSourceFile {
 }
 
 pub struct CrateMetadata {
+    /// Original name of the crate.
     pub name: Symbol,
+
+    /// Name of the crate as imported.  I.e. if imported with
+    /// `extern crate foo as bar;` this will be `bar`.
+    pub imported_name: Symbol,
 
     /// Information about the extern crate that caused this crate to
     /// be loaded. If this is `None`, then the crate was injected
