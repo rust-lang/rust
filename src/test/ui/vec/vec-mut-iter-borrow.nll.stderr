@@ -5,7 +5,7 @@ LL |     for x in &mut xs {
    |              -------
    |              |
    |              first mutable borrow occurs here
-   |              borrow used here in later iteration of loop
+   |              borrow used here, in later iteration of loop
 LL |         xs.push(1) //~ ERROR cannot borrow `xs`
    |         ^^ second mutable borrow occurs here
 

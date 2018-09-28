@@ -4,7 +4,7 @@ error[E0382]: use of moved value: `x`
 LL |         || x; //~ ERROR
    |         ^^ - use occurs due to use in closure
    |         |
-   |         value moved into closure here in previous iteration of loop
+   |         value moved into closure here, in previous iteration of loop
    |
    = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
 
