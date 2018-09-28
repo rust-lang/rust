@@ -661,11 +661,10 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         debug!("RegionConstraintCollector: add_verify({:?})", verify);
 
         // skip no-op cases known to be satisfied
-        match verify.bound {
-            VerifyBound::AllBounds(ref bs) if bs.len() == 0 => {
+        if let VerifyBound::AllBounds(ref bs) = verify.bound {
+            if bs.len() == 0 {
                 return;
             }
-            _ => {}
         }
 
         let index = self.data.verifys.len();

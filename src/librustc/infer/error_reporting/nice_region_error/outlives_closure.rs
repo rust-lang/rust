@@ -58,18 +58,17 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                     &RegionKind::ReFree(ref free_region)) = (&sub_origin, sup_region) {
                 let hir = &self.tcx.hir;
                 if let Some(node_id) = hir.as_local_node_id(free_region.scope) {
-                    match hir.get(node_id) {
-                        Node::Expr(Expr {
-                            node: Closure(_, _, _, closure_span, None),
-                            ..
-                        }) => {
-                            let sup_sp = sup_origin.span();
-                            let origin_sp = origin.span();
-                            let mut err = self.tcx.sess.struct_span_err(
-                                sup_sp,
-                                "borrowed data cannot be stored outside of its closure");
-                            err.span_label(sup_sp, "cannot be stored outside of its closure");
-                            if origin_sp == sup_sp || origin_sp.contains(sup_sp) {
+                    if let Node::Expr(Expr {
+                        node: Closure(_, _, _, closure_span, None),
+                        ..
+                    }) = hir.get(node_id) {
+                        let sup_sp = sup_origin.span();
+                        let origin_sp = origin.span();
+                        let mut err = self.tcx.sess.struct_span_err(
+                            sup_sp,
+                            "borrowed data cannot be stored outside of its closure");
+                        err.span_label(sup_sp, "cannot be stored outside of its closure");
+                        if origin_sp == sup_sp || origin_sp.contains(sup_sp) {
 // // sup_sp == origin.span():
 //
 // let mut x = None;
@@ -87,11 +86,11 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
 //                         ------------ ... because it cannot outlive this closure
 //     f = Some(x);
 //              ^ cannot be stored outside of its closure
-                                err.span_label(*external_span,
-                                               "borrowed data cannot be stored into here...");
-                                err.span_label(*closure_span,
-                                               "...because it cannot outlive this closure");
-                            } else {
+                            err.span_label(*external_span,
+                                           "borrowed data cannot be stored into here...");
+                            err.span_label(*closure_span,
+                                           "...because it cannot outlive this closure");
+                        } else {
 // FIXME: the wording for this case could be much improved
 //
 // let mut lines_to_use: Vec<&CrateId> = Vec::new();
@@ -102,18 +101,16 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
 //     ...so that variable is valid at time of its declaration
 //     lines_to_use.push(installed_id);
 //                       ^^^^^^^^^^^^ cannot be stored outside of its closure
-                                err.span_label(origin_sp,
-                                               "cannot infer an appropriate lifetime...");
-                                err.span_label(*external_span,
-                                               "...so that variable is valid at time of its \
-                                                declaration");
-                                err.span_label(*closure_span,
-                                               "borrowed data cannot outlive this closure");
-                            }
-                            err.emit();
-                            return Some(ErrorReported);
+                            err.span_label(origin_sp,
+                                           "cannot infer an appropriate lifetime...");
+                            err.span_label(*external_span,
+                                           "...so that variable is valid at time of its \
+                                            declaration");
+                            err.span_label(*closure_span,
+                                           "borrowed data cannot outlive this closure");
                         }
-                        _ => {}
+                        err.emit();
+                        return Some(ErrorReported);
                     }
                 }
             }

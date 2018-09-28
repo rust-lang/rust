@@ -273,11 +273,8 @@ impl<'tcx> TypeVariableTable<'tcx> {
     pub fn rollback_to(&mut self, s: Snapshot<'tcx>) {
         debug!("rollback_to{:?}", {
             for action in self.values.actions_since_snapshot(&s.snapshot) {
-                match *action {
-                    sv::UndoLog::NewElem(index) => {
-                        debug!("inference variable _#{}t popped", index)
-                    }
-                    _ => { }
+                if let sv::UndoLog::NewElem(index) = *action {
+                    debug!("inference variable _#{}t popped", index)
                 }
             }
         });

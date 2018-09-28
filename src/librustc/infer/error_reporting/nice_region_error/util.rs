@@ -119,16 +119,13 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         decl: &hir::FnDecl,
     ) -> Option<Span> {
         let ret_ty = self.tcx.type_of(scope_def_id);
-        match ret_ty.sty {
-            ty::FnDef(_, _) => {
-                let sig = ret_ty.fn_sig(self.tcx);
-                let late_bound_regions = self.tcx
-                    .collect_referenced_late_bound_regions(&sig.output());
-                if late_bound_regions.iter().any(|r| *r == br) {
-                    return Some(decl.output.span());
-                }
+        if let ty::FnDef(_, _) = ret_ty.sty {
+            let sig = ret_ty.fn_sig(self.tcx);
+            let late_bound_regions = self.tcx
+                .collect_referenced_late_bound_regions(&sig.output());
+            if late_bound_regions.iter().any(|r| *r == br) {
+                return Some(decl.output.span());
             }
-            _ => {}
         }
         None
     }

@@ -112,12 +112,9 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
         }
     };
 
-    match dump_region_data_to(region_rels, &region_data.constraints, &output_path) {
-        Ok(()) => {}
-        Err(e) => {
-            let msg = format!("io error dumping region constraints: {}", e);
-            tcx.sess.err(&msg)
-        }
+    if let Err(e) = dump_region_data_to(region_rels, &region_data.constraints, &output_path) {
+        let msg = format!("io error dumping region constraints: {}", e);
+        tcx.sess.err(&msg)
     }
 }
 
