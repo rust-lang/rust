@@ -69,7 +69,7 @@ for something that you want to get back to before you land your PR:
 ```rust,ignore
 fn do_something() {
     if something_else {
-        unimplemented!(): // TODO write this
+        unimplemented!(); // TODO write this
     }
 }
 ```
