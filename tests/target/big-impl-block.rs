@@ -78,4 +78,5 @@ where
     S: event::Stream,
     F: for<'t> FnMut(transform::Api<'t, Stream<ContentStream<S>>>) -> transform::Api<'t, X>,
     X: event::Stream,
-{}
+{
+}

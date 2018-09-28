@@ -755,11 +755,10 @@ pub fn format_impl(
             result.push_str(&inner_indent_str);
             result.push_str(visitor.buffer.to_string().trim());
             result.push_str(&outer_indent_str);
-        }
-
-        if result.ends_with('{') && !context.config.empty_item_single_line() {
+        } else if need_newline || !context.config.empty_item_single_line() {
             result.push_str(&sep);
         }
+
         result.push('}');
 
         Some(result)
