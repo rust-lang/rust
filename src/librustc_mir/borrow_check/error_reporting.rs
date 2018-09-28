@@ -770,7 +770,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         match explanation {
             BorrowExplanation::UsedLater(..)
             | BorrowExplanation::UsedLaterInLoop(..)
-            | BorrowExplanation::UsedLaterWhenDropped(..) => {
+            | BorrowExplanation::UsedLaterWhenDropped { .. } => {
                 // Only give this note and suggestion if it could be relevant.
                 err.note("consider using a `let` binding to create a longer lived value");
             }
