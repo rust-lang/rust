@@ -76,6 +76,10 @@ else
   fi
 fi
 
+if [ "$RUST_RELEASE_CHANNEL" = "nightly" ] or [ "$DIST_REQUIRE_ALL_TOOLS" = "" ]; then
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-missing-tools"
+fi
+
 # We've had problems in the past of shell scripts leaking fds into the sccache
 # server (#48192) which causes Cargo to erroneously think that a build script
 # hasn't finished yet. Try to solve that problem by starting a very long-lived

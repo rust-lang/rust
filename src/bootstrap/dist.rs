@@ -67,6 +67,14 @@ fn rust_installer(builder: &Builder) -> Command {
     builder.tool_cmd(Tool::RustInstaller)
 }
 
+fn missing_tool(tool_name: &str, skip: bool) {
+    if skip {
+        println!("Unable to build {}, skipping dist", tool_name)
+    } else {
+        panic!("Unable to build {}", tool_name)
+    }
+}
+
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Docs {
     pub stage: u32,
@@ -1166,7 +1174,7 @@ impl Step for Rls {
         let rls = builder.ensure(tool::Rls {
             compiler: builder.compiler(stage, builder.config.build),
             target, extra_features: Vec::new()
-        }).or_else(|| { println!("Unable to build RLS, skipping dist"); None })?;
+        }).or_else(|| { missing_tool("RLS", builder.build.config.missing_tools); None })?;
 
         builder.install(&rls, &image.join("bin"), 0o755);
         let doc = image.join("share/doc/rls");
@@ -1245,11 +1253,11 @@ impl Step for Clippy {
         let clippy = builder.ensure(tool::Clippy {
             compiler: builder.compiler(stage, builder.config.build),
             target, extra_features: Vec::new()
-        }).or_else(|| { println!("Unable to build clippy, skipping dist"); None })?;
+        }).or_else(|| { missing_tool("clippy", builder.build.config.missing_tools); None })?;
         let cargoclippy = builder.ensure(tool::CargoClippy {
             compiler: builder.compiler(stage, builder.config.build),
             target, extra_features: Vec::new()
-        }).or_else(|| { println!("Unable to build cargo clippy, skipping dist"); None })?;
+        }).or_else(|| { missing_tool("cargo clippy", builder.build.config.missing_tools); None })?;
 
         builder.install(&clippy, &image.join("bin"), 0o755);
         builder.install(&cargoclippy, &image.join("bin"), 0o755);
@@ -1324,11 +1332,11 @@ impl Step for Rustfmt {
         let rustfmt = builder.ensure(tool::Rustfmt {
             compiler: builder.compiler(stage, builder.config.build),
             target, extra_features: Vec::new()
-        }).or_else(|| { println!("Unable to build Rustfmt, skipping dist"); None })?;
+        }).or_else(|| { missing_tool("Rustfmt", builder.build.config.missing_tools); None })?;
         let cargofmt = builder.ensure(tool::Cargofmt {
             compiler: builder.compiler(stage, builder.config.build),
             target, extra_features: Vec::new()
-        }).or_else(|| { println!("Unable to build Cargofmt, skipping dist"); None })?;
+        }).or_else(|| { missing_tool("Cargofmt", builder.build.config.missing_tools); None })?;
 
         builder.install(&rustfmt, &image.join("bin"), 0o755);
         builder.install(&cargofmt, &image.join("bin"), 0o755);

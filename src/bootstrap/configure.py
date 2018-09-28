@@ -69,6 +69,7 @@ o("profiler", "build.profiler", "build the profiler runtime")
 o("emscripten", None, "compile the emscripten backend as well as LLVM")
 o("full-tools", None, "enable all tools")
 o("lldb", "rust.lldb", "build lldb")
+o("enable-missing-tools", "build.missing-tools", "allow failures when building tools")
 
 # Optimization and debugging options. These may be overridden by the release
 # channel, etc.
