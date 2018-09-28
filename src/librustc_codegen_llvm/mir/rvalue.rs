@@ -19,7 +19,8 @@ use std::{u128, i128};
 use base;
 use builder::MemFlags;
 use callee;
-use common::{self, IntPredicate, RealPredicate};
+use common::{self, RealPredicate};
+use rustc_codegen_utils::common::IntPredicate;
 use monomorphize;
 use type_of::LayoutLlvmExt;
 
