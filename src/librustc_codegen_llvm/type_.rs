@@ -26,7 +26,8 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::TyLayout;
 use rustc_target::abi::call::{CastTarget, FnType, Reg};
 use rustc_data_structures::small_c_str::SmallCStr;
-use common::{self, TypeKind};
+use common;
+use rustc_codegen_utils::common::TypeKind;
 use type_of::LayoutLlvmExt;
 use abi::{LlvmType, FnTypeExt};
 
@@ -225,7 +226,7 @@ impl BaseTypeMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
             TypeKind::Float => 32,
             TypeKind::Double => 64,
             TypeKind::X86_FP80 => 80,
-            TypeKind::FP128 | TypeKind::PPc_FP128 => 128,
+            TypeKind::FP128 | TypeKind::PPC_FP128 => 128,
             _ => bug!("llvm_float_width called on a non-float type")
         }
     }

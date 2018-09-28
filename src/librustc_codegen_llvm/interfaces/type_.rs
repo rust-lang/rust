@@ -10,7 +10,7 @@
 
 use super::backend::Backend;
 use super::builder::HasCodegen;
-use common::TypeKind;
+use rustc_codegen_utils::common::TypeKind;
 use syntax::ast;
 use rustc::ty::layout::{self, Align, Size};
 use std::cell::RefCell;

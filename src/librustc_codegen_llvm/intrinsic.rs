@@ -17,13 +17,13 @@ use abi::{Abi, FnType, LlvmType, PassMode};
 use mir::place::PlaceRef;
 use mir::operand::{OperandRef, OperandValue};
 use base::*;
-use common::*;
 use context::CodegenCx;
 use glue;
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{HasDataLayout, LayoutOf};
+use rustc_codegen_utils::common::TypeKind;
 use rustc::hir;
 use syntax::ast;
 use syntax::symbol::Symbol;
@@ -424,7 +424,9 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
             // This requires that atomic intrinsics follow a specific naming pattern:
             // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
             name if name.starts_with("atomic_") => {
-                use self::AtomicOrdering::*;
+                use rustc_codegen_utils::common::AtomicOrdering::*;
+                use rustc_codegen_utils::common::
+                    {SynchronizationScope, AtomicRmwBinOp};
 
                 let split: Vec<&str> = name.split('_').collect();
 

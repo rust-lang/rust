@@ -19,7 +19,6 @@ use libc::{c_uint, c_int, size_t, c_char};
 use libc::{c_ulonglong, c_void};
 
 use std::marker::PhantomData;
-use common;
 use rustc_codegen_utils;
 use syntax;
 
@@ -184,24 +183,24 @@ pub enum RealPredicate {
 }
 
 impl RealPredicate {
-    pub fn from_generic(realpred: common::RealPredicate) -> Self {
+    pub fn from_generic(realpred: rustc_codegen_utils::common::RealPredicate) -> Self {
         match realpred {
-            common::RealPredicate::RealPredicateFalse => RealPredicate::RealPredicateFalse,
-            common::RealPredicate::RealOEQ => RealPredicate::RealOEQ,
-            common::RealPredicate::RealOGT => RealPredicate::RealOGT,
-            common::RealPredicate::RealOGE => RealPredicate::RealOGE,
-            common::RealPredicate::RealOLT => RealPredicate::RealOLT,
-            common::RealPredicate::RealOLE => RealPredicate::RealOLE,
-            common::RealPredicate::RealONE => RealPredicate::RealONE,
-            common::RealPredicate::RealORD => RealPredicate::RealORD,
-            common::RealPredicate::RealUNO => RealPredicate::RealUNO,
-            common::RealPredicate::RealUEQ => RealPredicate::RealUEQ,
-            common::RealPredicate::RealUGT => RealPredicate::RealUGT,
-            common::RealPredicate::RealUGE => RealPredicate::RealUGE,
-            common::RealPredicate::RealULT => RealPredicate::RealULT,
-            common::RealPredicate::RealULE => RealPredicate::RealULE,
-            common::RealPredicate::RealUNE => RealPredicate::RealUNE,
-            common::RealPredicate::RealPredicateTrue => RealPredicate::RealPredicateTrue
+            rustc_codegen_utils::common::RealPredicate::RealPredicateFalse => RealPredicate::RealPredicateFalse,
+            rustc_codegen_utils::common::RealPredicate::RealOEQ => RealPredicate::RealOEQ,
+            rustc_codegen_utils::common::RealPredicate::RealOGT => RealPredicate::RealOGT,
+            rustc_codegen_utils::common::RealPredicate::RealOGE => RealPredicate::RealOGE,
+            rustc_codegen_utils::common::RealPredicate::RealOLT => RealPredicate::RealOLT,
+            rustc_codegen_utils::common::RealPredicate::RealOLE => RealPredicate::RealOLE,
+            rustc_codegen_utils::common::RealPredicate::RealONE => RealPredicate::RealONE,
+            rustc_codegen_utils::common::RealPredicate::RealORD => RealPredicate::RealORD,
+            rustc_codegen_utils::common::RealPredicate::RealUNO => RealPredicate::RealUNO,
+            rustc_codegen_utils::common::RealPredicate::RealUEQ => RealPredicate::RealUEQ,
+            rustc_codegen_utils::common::RealPredicate::RealUGT => RealPredicate::RealUGT,
+            rustc_codegen_utils::common::RealPredicate::RealUGE => RealPredicate::RealUGE,
+            rustc_codegen_utils::common::RealPredicate::RealULT => RealPredicate::RealULT,
+            rustc_codegen_utils::common::RealPredicate::RealULE => RealPredicate::RealULE,
+            rustc_codegen_utils::common::RealPredicate::RealUNE => RealPredicate::RealUNE,
+            rustc_codegen_utils::common::RealPredicate::RealPredicateTrue => RealPredicate::RealPredicateTrue
         }
     }
 }
@@ -216,7 +215,7 @@ pub enum TypeKind {
     Double = 3,
     X86_FP80 = 4,
     FP128 = 5,
-    PPc_FP128 = 6,
+    PPC_FP128 = 6,
     Label = 7,
     Integer = 8,
     Function = 9,
@@ -230,25 +229,25 @@ pub enum TypeKind {
 }
 
 impl TypeKind {
-    pub fn to_generic(self) -> common::TypeKind {
+    pub fn to_generic(self) -> rustc_codegen_utils::common::TypeKind {
         match self {
-            TypeKind::Void => common::TypeKind::Void,
-            TypeKind::Half => common::TypeKind::Half,
-            TypeKind::Float => common::TypeKind::Float,
-            TypeKind::Double => common::TypeKind::Double,
-            TypeKind::X86_FP80 => common::TypeKind::X86_FP80,
-            TypeKind::FP128 => common::TypeKind::FP128,
-            TypeKind::PPc_FP128 => common::TypeKind::PPc_FP128,
-            TypeKind::Label => common::TypeKind::Label,
-            TypeKind::Integer => common::TypeKind::Integer,
-            TypeKind::Function => common::TypeKind::Function,
-            TypeKind::Struct => common::TypeKind::Struct,
-            TypeKind::Array => common::TypeKind::Array,
-            TypeKind::Pointer => common::TypeKind::Pointer,
-            TypeKind::Vector => common::TypeKind::Vector,
-            TypeKind::Metadata => common::TypeKind::Metadata,
-            TypeKind::X86_MMX => common::TypeKind::X86_MMX,
-            TypeKind::Token => common::TypeKind::Token,
+            TypeKind::Void => rustc_codegen_utils::common::TypeKind::Void,
+            TypeKind::Half => rustc_codegen_utils::common::TypeKind::Half,
+            TypeKind::Float => rustc_codegen_utils::common::TypeKind::Float,
+            TypeKind::Double => rustc_codegen_utils::common::TypeKind::Double,
+            TypeKind::X86_FP80 => rustc_codegen_utils::common::TypeKind::X86_FP80,
+            TypeKind::FP128 => rustc_codegen_utils::common::TypeKind::FP128,
+            TypeKind::PPC_FP128 => rustc_codegen_utils::common::TypeKind::PPC_FP128,
+            TypeKind::Label => rustc_codegen_utils::common::TypeKind::Label,
+            TypeKind::Integer => rustc_codegen_utils::common::TypeKind::Integer,
+            TypeKind::Function => rustc_codegen_utils::common::TypeKind::Function,
+            TypeKind::Struct => rustc_codegen_utils::common::TypeKind::Struct,
+            TypeKind::Array => rustc_codegen_utils::common::TypeKind::Array,
+            TypeKind::Pointer => rustc_codegen_utils::common::TypeKind::Pointer,
+            TypeKind::Vector => rustc_codegen_utils::common::TypeKind::Vector,
+            TypeKind::Metadata => rustc_codegen_utils::common::TypeKind::Metadata,
+            TypeKind::X86_MMX => rustc_codegen_utils::common::TypeKind::X86_MMX,
+            TypeKind::Token => rustc_codegen_utils::common::TypeKind::Token,
         }
     }
 }
@@ -271,19 +270,19 @@ pub enum AtomicRmwBinOp {
 }
 
 impl AtomicRmwBinOp {
-    pub fn from_generic(op : common::AtomicRmwBinOp) -> Self {
+    pub fn from_generic(op : rustc_codegen_utils::common::AtomicRmwBinOp) -> Self {
         match op {
-            common::AtomicRmwBinOp::AtomicXchg => AtomicRmwBinOp::AtomicXchg,
-            common::AtomicRmwBinOp::AtomicAdd => AtomicRmwBinOp::AtomicAdd,
-            common::AtomicRmwBinOp::AtomicSub => AtomicRmwBinOp::AtomicSub,
-            common::AtomicRmwBinOp::AtomicAnd => AtomicRmwBinOp::AtomicAnd,
-            common::AtomicRmwBinOp::AtomicNand => AtomicRmwBinOp::AtomicNand,
-            common::AtomicRmwBinOp::AtomicOr => AtomicRmwBinOp::AtomicOr,
-            common::AtomicRmwBinOp::AtomicXor => AtomicRmwBinOp::AtomicXor,
-            common::AtomicRmwBinOp::AtomicMax => AtomicRmwBinOp::AtomicMax,
-            common::AtomicRmwBinOp::AtomicMin => AtomicRmwBinOp::AtomicMin,
-            common::AtomicRmwBinOp::AtomicUMax => AtomicRmwBinOp::AtomicUMax,
-            common::AtomicRmwBinOp::AtomicUMin => AtomicRmwBinOp::AtomicUMin
+            rustc_codegen_utils::common::AtomicRmwBinOp::AtomicXchg => AtomicRmwBinOp::AtomicXchg,
+            rustc_codegen_utils::common::AtomicRmwBinOp::AtomicAdd => AtomicRmwBinOp::AtomicAdd,
+            rustc_codegen_utils::common::AtomicRmwBinOp::AtomicSub => AtomicRmwBinOp::AtomicSub,
+            rustc_codegen_utils::common::AtomicRmwBinOp::AtomicAnd => AtomicRmwBinOp::AtomicAnd,
+            rustc_codegen_utils::common::AtomicRmwBinOp::AtomicNand => AtomicRmwBinOp::AtomicNand,
+            rustc_codegen_utils::common::AtomicRmwBinOp::AtomicOr => AtomicRmwBinOp::AtomicOr,
+            rustc_codegen_utils::common::AtomicRmwBinOp::AtomicXor => AtomicRmwBinOp::AtomicXor,
+            rustc_codegen_utils::common::AtomicRmwBinOp::AtomicMax => AtomicRmwBinOp::AtomicMax,
+            rustc_codegen_utils::common::AtomicRmwBinOp::AtomicMin => AtomicRmwBinOp::AtomicMin,
+            rustc_codegen_utils::common::AtomicRmwBinOp::AtomicUMax => AtomicRmwBinOp::AtomicUMax,
+            rustc_codegen_utils::common::AtomicRmwBinOp::AtomicUMin => AtomicRmwBinOp::AtomicUMin
         }
     }
 }
@@ -304,15 +303,15 @@ pub enum AtomicOrdering {
 }
 
 impl AtomicOrdering {
-    pub fn from_generic(ao : common::AtomicOrdering) -> Self {
+    pub fn from_generic(ao : rustc_codegen_utils::common::AtomicOrdering) -> Self {
         match ao {
-            common::AtomicOrdering::NotAtomic => AtomicOrdering::NotAtomic,
-            common::AtomicOrdering::Unordered => AtomicOrdering::Unordered,
-            common::AtomicOrdering::Monotonic => AtomicOrdering::Monotonic,
-            common::AtomicOrdering::Acquire => AtomicOrdering::Acquire,
-            common::AtomicOrdering::Release => AtomicOrdering::Release,
-            common::AtomicOrdering::AcquireRelease => AtomicOrdering::AcquireRelease,
-            common::AtomicOrdering::SequentiallyConsistent =>
+            rustc_codegen_utils::common::AtomicOrdering::NotAtomic => AtomicOrdering::NotAtomic,
+            rustc_codegen_utils::common::AtomicOrdering::Unordered => AtomicOrdering::Unordered,
+            rustc_codegen_utils::common::AtomicOrdering::Monotonic => AtomicOrdering::Monotonic,
+            rustc_codegen_utils::common::AtomicOrdering::Acquire => AtomicOrdering::Acquire,
+            rustc_codegen_utils::common::AtomicOrdering::Release => AtomicOrdering::Release,
+            rustc_codegen_utils::common::AtomicOrdering::AcquireRelease => AtomicOrdering::AcquireRelease,
+            rustc_codegen_utils::common::AtomicOrdering::SequentiallyConsistent =>
                 AtomicOrdering::SequentiallyConsistent
         }
     }
@@ -331,11 +330,11 @@ pub enum SynchronizationScope {
 }
 
 impl SynchronizationScope {
-    pub fn from_generic(sc : common::SynchronizationScope) -> Self {
+    pub fn from_generic(sc : rustc_codegen_utils::common::SynchronizationScope) -> Self {
         match sc {
-            common::SynchronizationScope::Other => SynchronizationScope::Other,
-            common::SynchronizationScope::SingleThread => SynchronizationScope::SingleThread,
-            common::SynchronizationScope::CrossThread => SynchronizationScope::CrossThread,
+            rustc_codegen_utils::common::SynchronizationScope::Other => SynchronizationScope::Other,
+            rustc_codegen_utils::common::SynchronizationScope::SingleThread => SynchronizationScope::SingleThread,
+            rustc_codegen_utils::common::SynchronizationScope::CrossThread => SynchronizationScope::CrossThread,
         }
     }
 }
