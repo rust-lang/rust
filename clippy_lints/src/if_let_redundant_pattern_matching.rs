@@ -87,7 +87,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     arms[0].pats[0].span,
                     &format!("redundant pattern matching, consider using `{}`", good_method),
                     |db| {
-                        let span = expr.span.with_hi(op.span.hi());
+                        let span = expr.span.to(op.span);
                         db.span_suggestion_with_applicability(
                             span,
                             "try this",

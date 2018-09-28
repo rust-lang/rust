@@ -2,27 +2,33 @@ error: redundant pattern matching, consider using `is_ok()`
   --> $DIR/if_let_redundant_pattern_matching.rs:19:12
    |
 19 |     if let Ok(_) = Ok::<i32, i32>(42) {}
-   |     -------^^^^^--------------------- help: try this: `if Ok::<i32, i32>(42).is_ok()`
+   |     -------^^^^^------------------------ help: try this: `if Ok::<i32, i32>(42).is_ok()`
    |
    = note: `-D clippy::if-let-redundant-pattern-matching` implied by `-D warnings`
 
 error: redundant pattern matching, consider using `is_err()`
   --> $DIR/if_let_redundant_pattern_matching.rs:21:12
    |
-21 |     if let Err(_) = Err::<i32, i32>(42) {
-   |     -------^^^^^^---------------------- help: try this: `if Err::<i32, i32>(42).is_err()`
+21 |       if let Err(_) = Err::<i32, i32>(42) {
+   |  _____-      ^^^^^^
+22 | |     }
+   | |_____- help: try this: `if Err::<i32, i32>(42).is_err()`
 
 error: redundant pattern matching, consider using `is_none()`
   --> $DIR/if_let_redundant_pattern_matching.rs:24:12
    |
-24 |     if let None = None::<()> {
-   |     -------^^^^------------- help: try this: `if None::<()>.is_none()`
+24 |       if let None = None::<()> {
+   |  _____-      ^^^^
+25 | |     }
+   | |_____- help: try this: `if None::<()>.is_none()`
 
 error: redundant pattern matching, consider using `is_some()`
   --> $DIR/if_let_redundant_pattern_matching.rs:27:12
    |
-27 |     if let Some(_) = Some(42) {
-   |     -------^^^^^^^----------- help: try this: `if Some(42).is_some()`
+27 |       if let Some(_) = Some(42) {
+   |  _____-      ^^^^^^^
+28 | |     }
+   | |_____- help: try this: `if Some(42).is_some()`
 
 error: aborting due to 4 previous errors
 
