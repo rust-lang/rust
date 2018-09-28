@@ -302,13 +302,13 @@ impl<N: Idx> RegionValues<N> {
     crate fn new(
         elements: &Rc<RegionValueElements>,
         num_universal_regions: usize,
-        placeholder_indices: PlaceholderIndices,
+        placeholder_indices: &Rc<PlaceholderIndices>,
     ) -> Self {
         let num_placeholders = placeholder_indices.len();
         Self {
             elements: elements.clone(),
             points: SparseBitMatrix::new(elements.num_points),
-            placeholder_indices: Rc::new(placeholder_indices),
+            placeholder_indices: placeholder_indices.clone(),
             free_regions: SparseBitMatrix::new(num_universal_regions),
             placeholders: SparseBitMatrix::new(num_placeholders),
         }

@@ -107,6 +107,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     // Run the MIR type-checker.
     let MirTypeckResults {
         constraints,
+        placeholder_indices,
         universal_region_relations,
     } = type_check::type_check(
         infcx,
@@ -121,6 +122,8 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
         move_data,
         elements,
     );
+
+    let placeholder_indices = Rc::new(placeholder_indices);
 
     if let Some(all_facts) = &mut all_facts {
         all_facts
@@ -150,6 +153,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     let mut regioncx = RegionInferenceContext::new(
         var_origins,
         universal_regions,
+        placeholder_indices,
         universal_region_relations,
         mir,
         outlives_constraints,

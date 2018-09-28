@@ -183,6 +183,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn new(
         var_infos: VarInfos,
         universal_regions: Rc<UniversalRegions<'tcx>>,
+        placeholder_indices: Rc<PlaceholderIndices>,
         universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
         _mir: &Mir<'tcx>,
         outlives_constraints: ConstraintSet,
@@ -196,22 +197,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .map(|info| RegionDefinition::new(info.universe, info.origin))
             .collect();
 
-        // Compute the max universe used anywhere amongst the regions.
-        let placeholder_indices: PlaceholderIndices = definitions
-            .iter()
-            .filter_map(|d| match d.origin {
-                NLLRegionVariableOrigin::Placeholder(placeholder) => Some(placeholder),
-                _ => None,
-            })
-            .collect();
-
         let constraints = Rc::new(outlives_constraints); // freeze constraints
         let constraint_graph = Rc::new(constraints.graph(definitions.len()));
         let fr_static = universal_regions.fr_static;
         let constraint_sccs = Rc::new(constraints.compute_sccs(&constraint_graph, fr_static));
 
         let mut scc_values =
-            RegionValues::new(elements, universal_regions.len(), placeholder_indices);
+            RegionValues::new(elements, universal_regions.len(), &placeholder_indices);
 
         for region in liveness_constraints.rows() {
             let scc = constraint_sccs.scc(region);

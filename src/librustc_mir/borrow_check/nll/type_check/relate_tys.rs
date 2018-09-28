@@ -217,6 +217,9 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, '_, 'tcx> {
 
     fn next_placeholder_region(&mut self, placeholder: ty::Placeholder) -> ty::Region<'tcx> {
         let origin = NLLRegionVariableOrigin::Placeholder(placeholder);
+        if let Some(borrowck_context) = &mut self.borrowck_context {
+            borrowck_context.placeholder_indices.insert(placeholder);
+        }
         self.infcx.next_nll_region_var(origin)
     }
 
