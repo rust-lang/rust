@@ -330,9 +330,7 @@ impl<'tcx> NeoPlace<'tcx> {
         } else {
             Self {
                 base: self.clone().base,
-                elems: tcx.mk_place_elems(
-                    self.elems.iter().cloned().take(elem_index)
-                )
+                elems: tcx.mk_place_elems(self.elems[..elem_index].iter()),
             }
         }
     }

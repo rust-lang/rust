@@ -2222,7 +2222,7 @@ impl<'tcx> Debug for Place<'tcx> {
 }
 
 impl<'tcx> Debug for PlaceBase<'tcx> {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::PlaceBase::*;
 
         match self {
