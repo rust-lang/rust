@@ -278,7 +278,10 @@ pub fn parse_config(args: Vec<String>) -> Config {
         }
     }
 
-    let (gdb, gdb_version, gdb_native_rust) = analyze_gdb(matches.opt_str("gdb"));
+    let target = opt_str2(matches.opt_str("target"));
+    let android_cross_path = opt_path(matches, "android-cross-path");
+    let (gdb, gdb_version, gdb_native_rust) = analyze_gdb(matches.opt_str("gdb"), &target,
+                                                          &android_cross_path);
 
     let color = match matches.opt_str("color").as_ref().map(|x| &**x) {
         Some("auto") | None => ColorConfig::AutoColor,
@@ -318,7 +321,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         runtool: matches.opt_str("runtool"),
         host_rustcflags: matches.opt_str("host-rustcflags"),
         target_rustcflags: matches.opt_str("target-rustcflags"),
-        target: opt_str2(matches.opt_str("target")),
+        target: target,
         host: opt_str2(matches.opt_str("host")),
         gdb,
         gdb_version,
@@ -326,7 +329,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         lldb_version: extract_lldb_version(matches.opt_str("lldb-version")),
         llvm_version: matches.opt_str("llvm-version"),
         system_llvm: matches.opt_present("system-llvm"),
-        android_cross_path: opt_path(matches, "android-cross-path"),
+        android_cross_path: android_cross_path,
         adb_path: opt_str2(matches.opt_str("adb-path")),
         adb_test_dir: opt_str2(matches.opt_str("adb-test-dir")),
         adb_device_status: opt_str2(matches.opt_str("target")).contains("android")
@@ -780,8 +783,18 @@ fn make_test_closure(
     }))
 }
 
+/// Returns true if the given target is an Android target for the
+/// purposes of GDB testing.
+fn is_android_gdb_target(target: &String) -> bool {
+    match &target[..] {
+        "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android" => true,
+        _ => false,
+    }
+}
+
 /// Returns (Path to GDB, GDB Version, GDB has Rust Support)
-fn analyze_gdb(gdb: Option<String>) -> (Option<String>, Option<u32>, bool) {
+fn analyze_gdb(gdb: Option<String>, target: &String, android_cross_path: &PathBuf)
+               -> (Option<String>, Option<u32>, bool) {
     #[cfg(not(windows))]
     const GDB_FALLBACK: &str = "gdb";
     #[cfg(windows)]
@@ -789,14 +802,27 @@ fn analyze_gdb(gdb: Option<String>) -> (Option<String>, Option<u32>, bool) {
 
     const MIN_GDB_WITH_RUST: u32 = 7011010;
 
+    let fallback_gdb = || {
+        if is_android_gdb_target(target) {
+            let mut gdb_path = match android_cross_path.to_str() {
+                Some(x) => x.to_owned(),
+                None => panic!("cannot find android cross path"),
+            };
+            gdb_path.push_str("/bin/gdb");
+            gdb_path
+        } else {
+            GDB_FALLBACK.to_owned()
+        }
+    };
+
     let gdb = match gdb {
-        None => GDB_FALLBACK,
-        Some(ref s) if s.is_empty() => GDB_FALLBACK, // may be empty if configure found no gdb
-        Some(ref s) => s,
+        None => fallback_gdb(),
+        Some(ref s) if s.is_empty() => fallback_gdb(), // may be empty if configure found no gdb
+        Some(ref s) => s.to_owned(),
     };
 
     let mut version_line = None;
-    if let Ok(output) = Command::new(gdb).arg("--version").output() {
+    if let Ok(output) = Command::new(&gdb).arg("--version").output() {
         if let Some(first_line) = String::from_utf8_lossy(&output.stdout).lines().next() {
             version_line = Some(first_line.to_string());
         }
@@ -809,7 +835,7 @@ fn analyze_gdb(gdb: Option<String>) -> (Option<String>, Option<u32>, bool) {
 
     let gdb_native_rust = version.map_or(false, |v| v >= MIN_GDB_WITH_RUST);
 
-    (Some(gdb.to_owned()), version, gdb_native_rust)
+    (Some(gdb), version, gdb_native_rust)
 }
 
 fn extract_gdb_version(full_version_line: &str) -> Option<u32> {

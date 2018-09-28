@@ -38,6 +38,7 @@ use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::str;
 
 use extract_gdb_version;
+use is_android_gdb_target;
 
 #[cfg(windows)]
 fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
@@ -666,222 +667,217 @@ impl<'test> TestCx<'test> {
         let exe_file = self.make_exe_name();
 
         let debugger_run_result;
-        match &*self.config.target {
-            "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android" => {
-                cmds = cmds.replace("run", "continue");
+        if is_android_gdb_target(&self.config.target) {
+            cmds = cmds.replace("run", "continue");
 
-                let tool_path = match self.config.android_cross_path.to_str() {
-                    Some(x) => x.to_owned(),
-                    None => self.fatal("cannot find android cross path"),
-                };
+            let tool_path = match self.config.android_cross_path.to_str() {
+                Some(x) => x.to_owned(),
+                None => self.fatal("cannot find android cross path"),
+            };
 
-                // write debugger script
-                let mut script_str = String::with_capacity(2048);
-                script_str.push_str(&format!("set charset {}\n", Self::charset()));
-                script_str.push_str(&format!("set sysroot {}\n", tool_path));
-                script_str.push_str(&format!("file {}\n", exe_file.to_str().unwrap()));
-                script_str.push_str("target remote :5039\n");
-                script_str.push_str(&format!(
-                    "set solib-search-path \
-                     ./{}/stage2/lib/rustlib/{}/lib/\n",
-                    self.config.host, self.config.target
-                ));
-                for line in &breakpoint_lines {
-                    script_str.push_str(
-                        &format!(
-                            "break {:?}:{}\n",
-                            self.testpaths.file.file_name().unwrap().to_string_lossy(),
-                            *line
-                        )[..],
-                    );
-                }
-                script_str.push_str(&cmds);
-                script_str.push_str("\nquit\n");
-
-                debug!("script_str = {}", script_str);
-                self.dump_output_file(&script_str, "debugger.script");
-
-                let adb_path = &self.config.adb_path;
-
-                Command::new(adb_path)
-                    .arg("push")
-                    .arg(&exe_file)
-                    .arg(&self.config.adb_test_dir)
-                    .status()
-                    .expect(&format!("failed to exec `{:?}`", adb_path));
-
-                Command::new(adb_path)
-                    .args(&["forward", "tcp:5039", "tcp:5039"])
-                    .status()
-                    .expect(&format!("failed to exec `{:?}`", adb_path));
-
-                let adb_arg = format!(
-                    "export LD_LIBRARY_PATH={}; \
-                     gdbserver{} :5039 {}/{}",
-                    self.config.adb_test_dir.clone(),
-                    if self.config.target.contains("aarch64") {
-                        "64"
-                    } else {
-                        ""
-                    },
-                    self.config.adb_test_dir.clone(),
-                    exe_file.file_name().unwrap().to_str().unwrap()
-                );
-
-                debug!("adb arg: {}", adb_arg);
-                let mut adb = Command::new(adb_path)
-                    .args(&["shell", &adb_arg])
-                    .stdout(Stdio::piped())
-                    .stderr(Stdio::inherit())
-                    .spawn()
-                    .expect(&format!("failed to exec `{:?}`", adb_path));
-
-                // Wait for the gdbserver to print out "Listening on port ..."
-                // at which point we know that it's started and then we can
-                // execute the debugger below.
-                let mut stdout = BufReader::new(adb.stdout.take().unwrap());
-                let mut line = String::new();
-                loop {
-                    line.truncate(0);
-                    stdout.read_line(&mut line).unwrap();
-                    if line.starts_with("Listening on port 5039") {
-                        break;
-                    }
-                }
-                drop(stdout);
-
-                let debugger_script = self.make_out_name("debugger.script");
-                // FIXME (#9639): This needs to handle non-utf8 paths
-                let debugger_opts = vec![
-                    "-quiet".to_owned(),
-                    "-batch".to_owned(),
-                    "-nx".to_owned(),
-                    format!("-command={}", debugger_script.to_str().unwrap()),
-                ];
-
-                let mut gdb_path = tool_path;
-                gdb_path.push_str("/bin/gdb");
-                let Output {
-                    status,
-                    stdout,
-                    stderr,
-                } = Command::new(&gdb_path)
-                    .args(&debugger_opts)
-                    .output()
-                    .expect(&format!("failed to exec `{:?}`", gdb_path));
-                let cmdline = {
-                    let mut gdb = Command::new(&format!("{}-gdb", self.config.target));
-                    gdb.args(&debugger_opts);
-                    let cmdline = self.make_cmdline(&gdb, "");
-                    logv(self.config, format!("executing {}", cmdline));
-                    cmdline
-                };
-
-                debugger_run_result = ProcRes {
-                    status,
-                    stdout: String::from_utf8(stdout).unwrap(),
-                    stderr: String::from_utf8(stderr).unwrap(),
-                    cmdline,
-                };
-                if adb.kill().is_err() {
-                    println!("Adb process is already finished.");
-                }
-            }
-
-            _ => {
-                let rust_src_root = self
-                    .config
-                    .find_rust_src_root()
-                    .expect("Could not find Rust source root");
-                let rust_pp_module_rel_path = Path::new("./src/etc");
-                let rust_pp_module_abs_path = rust_src_root
-                    .join(rust_pp_module_rel_path)
-                    .to_str()
-                    .unwrap()
-                    .to_owned();
-                // write debugger script
-                let mut script_str = String::with_capacity(2048);
-                script_str.push_str(&format!("set charset {}\n", Self::charset()));
-                script_str.push_str("show version\n");
-
-                match self.config.gdb_version {
-                    Some(version) => {
-                        println!(
-                            "NOTE: compiletest thinks it is using GDB version {}",
-                            version
-                        );
-
-                        if version > extract_gdb_version("7.4").unwrap() {
-                            // Add the directory containing the pretty printers to
-                            // GDB's script auto loading safe path
-                            script_str.push_str(&format!(
-                                "add-auto-load-safe-path {}\n",
-                                rust_pp_module_abs_path.replace(r"\", r"\\")
-                            ));
-                        }
-                    }
-                    _ => {
-                        println!(
-                            "NOTE: compiletest does not know which version of \
-                             GDB it is using"
-                        );
-                    }
-                }
-
-                // The following line actually doesn't have to do anything with
-                // pretty printing, it just tells GDB to print values on one line:
-                script_str.push_str("set print pretty off\n");
-
-                // Add the pretty printer directory to GDB's source-file search path
-                script_str.push_str(&format!("directory {}\n", rust_pp_module_abs_path));
-
-                // Load the target executable
-                script_str.push_str(&format!(
-                    "file {}\n",
-                    exe_file.to_str().unwrap().replace(r"\", r"\\")
-                ));
-
-                // Force GDB to print values in the Rust format.
-                if self.config.gdb_native_rust {
-                    script_str.push_str("set language rust\n");
-                }
-
-                // Add line breakpoints
-                for line in &breakpoint_lines {
-                    script_str.push_str(&format!(
-                        "break '{}':{}\n",
+            // write debugger script
+            let mut script_str = String::with_capacity(2048);
+            script_str.push_str(&format!("set charset {}\n", Self::charset()));
+            script_str.push_str(&format!("set sysroot {}\n", tool_path));
+            script_str.push_str(&format!("file {}\n", exe_file.to_str().unwrap()));
+            script_str.push_str("target remote :5039\n");
+            script_str.push_str(&format!(
+                "set solib-search-path \
+                 ./{}/stage2/lib/rustlib/{}/lib/\n",
+                self.config.host, self.config.target
+            ));
+            for line in &breakpoint_lines {
+                script_str.push_str(
+                    &format!(
+                        "break {:?}:{}\n",
                         self.testpaths.file.file_name().unwrap().to_string_lossy(),
                         *line
-                    ));
-                }
-
-                script_str.push_str(&cmds);
-                script_str.push_str("\nquit\n");
-
-                debug!("script_str = {}", script_str);
-                self.dump_output_file(&script_str, "debugger.script");
-
-                let debugger_script = self.make_out_name("debugger.script");
-
-                // FIXME (#9639): This needs to handle non-utf8 paths
-                let debugger_opts = vec![
-                    "-quiet".to_owned(),
-                    "-batch".to_owned(),
-                    "-nx".to_owned(),
-                    format!("-command={}", debugger_script.to_str().unwrap()),
-                ];
-
-                let mut gdb = Command::new(self.config.gdb.as_ref().unwrap());
-                gdb.args(&debugger_opts)
-                    .env("PYTHONPATH", rust_pp_module_abs_path);
-
-                debugger_run_result = self.compose_and_run(
-                    gdb,
-                    self.config.run_lib_path.to_str().unwrap(),
-                    None,
-                    None,
+                    )[..],
                 );
             }
+            script_str.push_str(&cmds);
+            script_str.push_str("\nquit\n");
+
+            debug!("script_str = {}", script_str);
+            self.dump_output_file(&script_str, "debugger.script");
+
+            let adb_path = &self.config.adb_path;
+
+            Command::new(adb_path)
+                .arg("push")
+                .arg(&exe_file)
+                .arg(&self.config.adb_test_dir)
+                .status()
+                .expect(&format!("failed to exec `{:?}`", adb_path));
+
+            Command::new(adb_path)
+                .args(&["forward", "tcp:5039", "tcp:5039"])
+                .status()
+                .expect(&format!("failed to exec `{:?}`", adb_path));
+
+            let adb_arg = format!(
+                "export LD_LIBRARY_PATH={}; \
+                 gdbserver{} :5039 {}/{}",
+                self.config.adb_test_dir.clone(),
+                if self.config.target.contains("aarch64") {
+                    "64"
+                } else {
+                    ""
+                },
+                self.config.adb_test_dir.clone(),
+                exe_file.file_name().unwrap().to_str().unwrap()
+            );
+
+            debug!("adb arg: {}", adb_arg);
+            let mut adb = Command::new(adb_path)
+                .args(&["shell", &adb_arg])
+                .stdout(Stdio::piped())
+                .stderr(Stdio::inherit())
+                .spawn()
+                .expect(&format!("failed to exec `{:?}`", adb_path));
+
+            // Wait for the gdbserver to print out "Listening on port ..."
+            // at which point we know that it's started and then we can
+            // execute the debugger below.
+            let mut stdout = BufReader::new(adb.stdout.take().unwrap());
+            let mut line = String::new();
+            loop {
+                line.truncate(0);
+                stdout.read_line(&mut line).unwrap();
+                if line.starts_with("Listening on port 5039") {
+                    break;
+                }
+            }
+            drop(stdout);
+
+            let debugger_script = self.make_out_name("debugger.script");
+            // FIXME (#9639): This needs to handle non-utf8 paths
+            let debugger_opts = vec![
+                "-quiet".to_owned(),
+                "-batch".to_owned(),
+                "-nx".to_owned(),
+                format!("-command={}", debugger_script.to_str().unwrap()),
+            ];
+
+            let gdb_path = self.config.gdb.as_ref().unwrap();
+            let Output {
+                status,
+                stdout,
+                stderr,
+            } = Command::new(&gdb_path)
+                .args(&debugger_opts)
+                .output()
+                .expect(&format!("failed to exec `{:?}`", gdb_path));
+            let cmdline = {
+                let mut gdb = Command::new(&format!("{}-gdb", self.config.target));
+                gdb.args(&debugger_opts);
+                let cmdline = self.make_cmdline(&gdb, "");
+                logv(self.config, format!("executing {}", cmdline));
+                cmdline
+            };
+
+            debugger_run_result = ProcRes {
+                status,
+                stdout: String::from_utf8(stdout).unwrap(),
+                stderr: String::from_utf8(stderr).unwrap(),
+                cmdline,
+            };
+            if adb.kill().is_err() {
+                println!("Adb process is already finished.");
+            }
+        } else {
+            let rust_src_root = self
+                .config
+                .find_rust_src_root()
+                .expect("Could not find Rust source root");
+            let rust_pp_module_rel_path = Path::new("./src/etc");
+            let rust_pp_module_abs_path = rust_src_root
+                .join(rust_pp_module_rel_path)
+                .to_str()
+                .unwrap()
+                .to_owned();
+            // write debugger script
+            let mut script_str = String::with_capacity(2048);
+            script_str.push_str(&format!("set charset {}\n", Self::charset()));
+            script_str.push_str("show version\n");
+
+            match self.config.gdb_version {
+                Some(version) => {
+                    println!(
+                        "NOTE: compiletest thinks it is using GDB version {}",
+                        version
+                    );
+
+                    if version > extract_gdb_version("7.4").unwrap() {
+                        // Add the directory containing the pretty printers to
+                        // GDB's script auto loading safe path
+                        script_str.push_str(&format!(
+                            "add-auto-load-safe-path {}\n",
+                            rust_pp_module_abs_path.replace(r"\", r"\\")
+                        ));
+                    }
+                }
+                _ => {
+                    println!(
+                        "NOTE: compiletest does not know which version of \
+                         GDB it is using"
+                    );
+                }
+            }
+
+            // The following line actually doesn't have to do anything with
+            // pretty printing, it just tells GDB to print values on one line:
+            script_str.push_str("set print pretty off\n");
+
+            // Add the pretty printer directory to GDB's source-file search path
+            script_str.push_str(&format!("directory {}\n", rust_pp_module_abs_path));
+
+            // Load the target executable
+            script_str.push_str(&format!(
+                "file {}\n",
+                exe_file.to_str().unwrap().replace(r"\", r"\\")
+            ));
+
+            // Force GDB to print values in the Rust format.
+            if self.config.gdb_native_rust {
+                script_str.push_str("set language rust\n");
+            }
+
+            // Add line breakpoints
+            for line in &breakpoint_lines {
+                script_str.push_str(&format!(
+                    "break '{}':{}\n",
+                    self.testpaths.file.file_name().unwrap().to_string_lossy(),
+                    *line
+                ));
+            }
+
+            script_str.push_str(&cmds);
+            script_str.push_str("\nquit\n");
+
+            debug!("script_str = {}", script_str);
+            self.dump_output_file(&script_str, "debugger.script");
+
+            let debugger_script = self.make_out_name("debugger.script");
+
+            // FIXME (#9639): This needs to handle non-utf8 paths
+            let debugger_opts = vec![
+                "-quiet".to_owned(),
+                "-batch".to_owned(),
+                "-nx".to_owned(),
+                format!("-command={}", debugger_script.to_str().unwrap()),
+            ];
+
+            let mut gdb = Command::new(self.config.gdb.as_ref().unwrap());
+            gdb.args(&debugger_opts)
+                .env("PYTHONPATH", rust_pp_module_abs_path);
+
+            debugger_run_result = self.compose_and_run(
+                gdb,
+                self.config.run_lib_path.to_str().unwrap(),
+                None,
+                None,
+            );
         }
 
         if !debugger_run_result.status.success() {
