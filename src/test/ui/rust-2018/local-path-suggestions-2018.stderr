@@ -1,17 +1,17 @@
 error[E0432]: unresolved import `foo`
-  --> $DIR/local-path-suggestions.rs:20:9
+  --> $DIR/local-path-suggestions-2018.rs:20:9
    |
 LL |     use foo::Bar;
    |         ^^^ Did you mean `crate::foo`?
 
 error[E0432]: unresolved import `foo`
-  --> $DIR/local-path-suggestions.rs:27:5
+  --> $DIR/local-path-suggestions-2018.rs:27:5
    |
 LL | use foo::Bar;
    |     ^^^ Did you mean `self::foo`?
 
 error[E0432]: unresolved import `foobar`
-  --> $DIR/local-path-suggestions.rs:29:5
+  --> $DIR/local-path-suggestions-2018.rs:29:5
    |
 LL | use foobar::Baz;
    |     ^^^^^^ Did you mean `baz::foobar`?
