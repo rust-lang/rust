@@ -57,7 +57,7 @@ impl AsmBuilderMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> {
 
     // Default per-arch clobbers
     // Basically what clang does
-    let arch_clobbers = match &bx.sess().target.target.arch[..] {
+    let arch_clobbers = match &self.cx().sess().target.target.arch[..] {
         "x86" | "x86_64"  => vec!["~{dirflag}", "~{fpsr}", "~{flags}"],
         "mips" | "mips64" => vec!["~{$1}"],
         _                 => Vec::new()
@@ -76,14 +76,14 @@ impl AsmBuilderMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> {
     // Depending on how many outputs we have, the return type is different
     let num_outputs = output_types.len();
     let output_type = match num_outputs {
-        0 => bx.cx().type_void(),
+        0 => self.cx().type_void(),
         1 => output_types[0],
-        _ => bx.cx().type_struct(&output_types, false)
+        _ => self.cx().type_struct(&output_types, false)
     };
 
     let asm = CString::new(ia.asm.as_str().as_bytes()).unwrap();
     let constraint_cstr = CString::new(all_constraints).unwrap();
-    let r = bx.inline_asm_call(
+    let r = self.inline_asm_call(
         asm.as_ptr(),
         constraint_cstr.as_ptr(),
         &inputs,
@@ -100,8 +100,8 @@ impl AsmBuilderMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> {
     // Again, based on how many outputs we have
     let outputs = ia.outputs.iter().zip(&outputs).filter(|&(ref o, _)| !o.is_indirect);
     for (i, (_, &place)) in outputs.enumerate() {
-        let v = if num_outputs == 1 { r } else { bx.extract_value(r, i as u64) };
-        OperandValue::Immediate(v).store(bx, place);
+        let v = if num_outputs == 1 { r } else { self.extract_value(r, i as u64) };
+        OperandValue::Immediate(v).store(self, place);
     }
 
         // Store mark in a metadata node so we can map LLVM errors
@@ -116,9 +116,9 @@ impl AsmBuilderMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> {
             llvm::LLVMSetMetadata(r, kind,
                 llvm::LLVMMDNodeInContext(self.cx().llcx, &val, 1));
         }
-    }
 
     return true;
+    }
 }
 
 impl AsmMethods for CodegenCx<'ll, 'tcx, &'ll Value> {

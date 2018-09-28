@@ -20,7 +20,7 @@ pub trait AsmBuilderMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx>{
         ia: &InlineAsm,
         outputs: Vec<PlaceRef<'tcx, <Self::CodegenCx as Backend<'ll>>::Value>>,
         inputs: Vec<<Self::CodegenCx as Backend<'ll>>::Value>
-    );
+    ) -> bool;
 }
 
 pub trait AsmMethods {

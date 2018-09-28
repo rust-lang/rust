@@ -386,7 +386,7 @@ pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> +
         volatile: bool,
         alignstack: bool,
         dia: AsmDialect
-    ) -> <Self::CodegenCx as Backend<'ll>>::Value;
+    ) -> Option<<Self::CodegenCx as Backend<'ll>>::Value>;
 
     fn minnum(
         &self,
