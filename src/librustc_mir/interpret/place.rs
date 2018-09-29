@@ -34,7 +34,7 @@ pub struct MemPlace<Tag=(), Id=AllocId> {
     /// Metadata for unsized places.  Interpretation is up to the type.
     /// Must not be present for sized types, but can be missing for unsized types
     /// (e.g. `extern type`).
-    pub extra: Option<Scalar<Tag, Id>>,
+    pub meta: Option<Scalar<Tag, Id>>,
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
@@ -97,7 +97,7 @@ impl MemPlace {
         MemPlace {
             ptr: self.ptr.with_default_tag(),
             align: self.align,
-            extra: self.extra.map(Scalar::with_default_tag),
+            meta: self.meta.map(Scalar::with_default_tag),
         }
     }
 }
@@ -109,7 +109,7 @@ impl<Tag> MemPlace<Tag> {
         MemPlace {
             ptr: self.ptr.erase_tag(),
             align: self.align,
-            extra: self.extra.map(Scalar::erase_tag),
+            meta: self.meta.map(Scalar::erase_tag),
         }
     }
 
@@ -118,7 +118,7 @@ impl<Tag> MemPlace<Tag> {
         MemPlace {
             ptr,
             align,
-            extra: None,
+            meta: None,
         }
     }
 
@@ -129,11 +129,11 @@ impl<Tag> MemPlace<Tag> {
 
     #[inline(always)]
     pub fn to_scalar_ptr_align(self) -> (Scalar<Tag>, Align) {
-        assert!(self.extra.is_none());
+        assert!(self.meta.is_none());
         (self.ptr, self.align)
     }
 
-    /// Extract the ptr part of the mplace
+    /// metact the ptr part of the mplace
     #[inline(always)]
     pub fn to_ptr(self) -> EvalResult<'tcx, Pointer<Tag>> {
         // At this point, we forget about the alignment information --
@@ -147,9 +147,9 @@ impl<Tag> MemPlace<Tag> {
     pub fn to_ref(self) -> Value<Tag> {
         // We ignore the alignment of the place here -- special handling for packed structs ends
         // at the `&` operator.
-        match self.extra {
+        match self.meta {
             None => Value::Scalar(self.ptr.into()),
-            Some(extra) => Value::ScalarPair(self.ptr.into(), extra.into()),
+            Some(meta) => Value::ScalarPair(self.ptr.into(), meta.into()),
         }
     }
 }
@@ -175,10 +175,10 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     #[inline]
     pub(super) fn len(self, cx: impl HasDataLayout) -> EvalResult<'tcx, u64> {
         if self.layout.is_unsized() {
-            // We need to consult `extra` metadata
+            // We need to consult `meta` metadata
             match self.layout.ty.sty {
                 ty::Slice(..) | ty::Str =>
-                    return self.mplace.extra.unwrap().to_usize(cx),
+                    return self.mplace.meta.unwrap().to_usize(cx),
                 _ => bug!("len not supported on unsized type {:?}", self.layout.ty),
             }
         } else {
@@ -194,7 +194,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     #[inline]
     pub(super) fn vtable(self) -> EvalResult<'tcx, Pointer<Tag>> {
         match self.layout.ty.sty {
-            ty::Dynamic(..) => self.mplace.extra.unwrap().to_ptr(),
+            ty::Dynamic(..) => self.mplace.meta.unwrap().to_ptr(),
             _ => bug!("vtable not supported on type {:?}", self.layout.ty),
         }
     }
@@ -283,9 +283,9 @@ impl
         let align = layout.align;
         let mplace = match *val {
             Value::Scalar(ptr) =>
-                MemPlace { ptr: ptr.not_undef()?, align, extra: None },
-            Value::ScalarPair(ptr, extra) =>
-                MemPlace { ptr: ptr.not_undef()?, align, extra: Some(extra.not_undef()?) },
+                MemPlace { ptr: ptr.not_undef()?, align, meta: None },
+            Value::ScalarPair(ptr, meta) =>
+                MemPlace { ptr: ptr.not_undef()?, align, meta: Some(meta.not_undef()?) },
         };
         Ok(MPlaceTy { mplace, layout })
     }
@@ -321,13 +321,13 @@ impl
         let field_layout = base.layout.field(self, usize::try_from(field).unwrap_or(0))?;
 
         // Offset may need adjustment for unsized fields
-        let (extra, offset) = if field_layout.is_unsized() {
+        let (meta, offset) = if field_layout.is_unsized() {
             // re-use parent metadata to determine dynamic field layout
-            let (_, align) = self.size_and_align_of(base.extra, field_layout)?;
-            (base.extra, offset.abi_align(align))
+            let (_, align) = self.size_and_align_of(base.meta, field_layout)?;
+            (base.meta, offset.abi_align(align))
 
         } else {
-            // base.extra could be present; we might be accessing a sized field of an unsized
+            // base.meta could be present; we might be accessing a sized field of an unsized
             // struct.
             (None, offset)
         };
@@ -338,7 +338,7 @@ impl
             // codegen -- mostly to see if we can get away with that
             .restrict_for_offset(offset); // must be last thing that happens
 
-        Ok(MPlaceTy { mplace: MemPlace { ptr, align, extra }, layout: field_layout })
+        Ok(MPlaceTy { mplace: MemPlace { ptr, align, meta }, layout: field_layout })
     }
 
     // Iterates over all fields of an array. Much more efficient than doing the
@@ -359,7 +359,7 @@ impl
         Ok((0..len).map(move |i| {
             let ptr = base.ptr.ptr_offset(i * stride, dl)?;
             Ok(MPlaceTy {
-                mplace: MemPlace { ptr, align: base.align, extra: None },
+                mplace: MemPlace { ptr, align: base.align, meta: None },
                 layout
             })
         }))
@@ -383,9 +383,9 @@ impl
         };
         let ptr = base.ptr.ptr_offset(from_offset, self)?;
 
-        // Compute extra and new layout
+        // Compute meta and new layout
         let inner_len = len - to - from;
-        let (extra, ty) = match base.layout.ty.sty {
+        let (meta, ty) = match base.layout.ty.sty {
             // It is not nice to match on the type, but that seems to be the only way to
             // implement this.
             ty::Array(inner, _) =>
@@ -400,7 +400,7 @@ impl
         let layout = self.layout_of(ty)?;
 
         Ok(MPlaceTy {
-            mplace: MemPlace { ptr, align: base.align, extra },
+            mplace: MemPlace { ptr, align: base.align, meta },
             layout
         })
     }
@@ -411,7 +411,7 @@ impl
         variant: usize,
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         // Downcasts only change the layout
-        assert!(base.extra.is_none());
+        assert!(base.meta.is_none());
         Ok(MPlaceTy { layout: base.layout.for_variant(self, variant), ..base })
     }
 
@@ -838,7 +838,7 @@ impl
         }
 
         let mplace = MPlaceTy {
-            mplace: MemPlace { extra: None, ..*mplace },
+            mplace: MemPlace { meta: None, ..*mplace },
             layout
         };
         Ok((instance, mplace))

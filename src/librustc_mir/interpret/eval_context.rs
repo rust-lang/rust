@@ -330,7 +330,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     }
 
     /// Return the actual dynamic size and alignment of the place at the given type.
-    /// Only the "extra" (metadata) part of the place matters.
+    /// Only the `meta` part of the place matters.
     pub(super) fn size_and_align_of(
         &self,
         metadata: Option<Scalar<M::PointerTag>>,
@@ -416,7 +416,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>
     ) -> EvalResult<'tcx, (Size, Align)> {
-        self.size_and_align_of(mplace.extra, mplace.layout)
+        self.size_and_align_of(mplace.meta, mplace.layout)
     }
 
     pub fn push_stack_frame(

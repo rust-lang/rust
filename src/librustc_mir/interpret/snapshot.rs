@@ -209,11 +209,11 @@ impl_snapshot_for!(enum ScalarMaybeUndef {
 impl_stable_hash_for!(struct ::interpret::MemPlace {
     ptr,
     align,
-    extra,
+    meta,
 });
 impl_snapshot_for!(struct MemPlace {
     ptr,
-    extra,
+    meta,
     align -> *align, // just copy alignment verbatim
 });
 

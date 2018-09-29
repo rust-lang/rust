@@ -119,9 +119,9 @@ pub fn op_to_const<'tcx>(
         }
     };
     let val = match normalized_op {
-        Err(MemPlace { ptr, align, extra }) => {
+        Err(MemPlace { ptr, align, meta }) => {
             // extract alloc-offset pair
-            assert!(extra.is_none());
+            assert!(meta.is_none());
             let ptr = ptr.to_ptr()?;
             let alloc = ecx.memory.get(ptr.alloc_id)?;
             assert!(alloc.align.abi() >= align.abi());

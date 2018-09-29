@@ -186,7 +186,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     let tail = self.tcx.struct_tail(place.layout.ty);
                     match tail.sty {
                         ty::Dynamic(..) => {
-                            let vtable = try_validation!(place.extra.unwrap().to_ptr(),
+                            let vtable = try_validation!(place.meta.unwrap().to_ptr(),
                                 "non-pointer vtable in fat pointer", path);
                             try_validation!(self.read_drop_type_from_vtable(vtable),
                                 "invalid drop fn in vtable", path);
@@ -195,7 +195,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                             // FIXME: More checks for the vtable.
                         }
                         ty::Slice(..) | ty::Str => {
-                            try_validation!(place.extra.unwrap().to_usize(self),
+                            try_validation!(place.meta.unwrap().to_usize(self),
                                 "non-integer slice length in fat pointer", path);
                         }
                         ty::Foreign(..) => {
@@ -208,7 +208,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 // for safe ptrs, also check the ptr values itself
                 if !ty.is_unsafe_ptr() {
                     // Make sure this is non-NULL and aligned
-                    let (size, align) = self.size_and_align_of(place.extra, place.layout)?;
+                    let (size, align) = self.size_and_align_of(place.meta, place.layout)?;
                     match self.memory.check_align(place.ptr, align) {
                         Ok(_) => {},
                         Err(err) => match err.kind {
