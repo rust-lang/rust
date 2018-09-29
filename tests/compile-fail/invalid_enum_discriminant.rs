@@ -8,8 +8,8 @@ pub enum Foo {
 
 fn main() {
     let f = unsafe { std::mem::transmute::<i32, Foo>(42) };
-    match f { //~ ERROR invalid enum discriminant
-        Foo::A => {},
+    match f {
+        Foo::A => {}, //~ ERROR invalid enum discriminant
         Foo::B => {},
         Foo::C => {},
         Foo::D => {},
