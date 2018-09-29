@@ -1630,7 +1630,7 @@ fn rewrite_struct_lit<'a>(
             nested_shape,
             tactic,
             context,
-            force_no_trailing_comma || base.is_some(),
+            force_no_trailing_comma || base.is_some() || !context.use_block_indent(),
         );
 
         write_list(&item_vec, &fmt)?
