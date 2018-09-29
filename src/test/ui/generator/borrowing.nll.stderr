@@ -2,10 +2,17 @@ error[E0597]: `a` does not live long enough
   --> $DIR/borrowing.rs:18:18
    |
 LL |         unsafe { (|| yield &a).resume() }
-   |                  ^^^^^^^^^^^^^ borrowed value does not live long enough
+   |                  ^^^^^^^^^^^^^
+   |                  |
+   |                  borrowed value does not live long enough
+   |                  a temporary with access to the borrow is created here ...
 LL |         //~^ ERROR: `a` does not live long enough
 LL |     };
-   |     - `a` dropped here while still borrowed
+   |     -- ... and the borrow might be used here, when that temporary is dropped and runs the destructor for generator
+   |     |
+   |     `a` dropped here while still borrowed
+   |
+   = note: The temporary is part of an expression at the end of a block. Consider forcing this temporary to be dropped sooner, before the block's local variables are dropped. For example, you could save the expression's value in a new local variable `x` and then make `x` be the expression at the end of the block.
 
 error[E0597]: `a` does not live long enough
   --> $DIR/borrowing.rs:24:9
