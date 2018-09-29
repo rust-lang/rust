@@ -43,4 +43,9 @@ fn main() {
         *some_btreemap.get_mut(&1).unwrap() = 'b';
         *false_positive.get_mut(0).unwrap() = 1;
     }
+
+    { // Test `get().unwrap().foo()` and `get_mut().unwrap().bar()`
+        let _ = some_vec.get(0..1).unwrap().to_vec();
+        let _ = some_vec.get_mut(0..1).unwrap().to_vec();
+    }
 }

@@ -46,9 +46,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DurationSubsec {
             if let Some((Constant::Int(divisor), _)) = constant(cx, cx.tables, right);
             then {
                 let suggested_fn = match (method_path.ident.as_str().as_ref(), divisor) {
-                    ("subsec_micros", 1_000) => "subsec_millis",
+                    ("subsec_micros", 1_000) | ("subsec_nanos", 1_000_000) => "subsec_millis",
                     ("subsec_nanos", 1_000) => "subsec_micros",
-                    ("subsec_nanos", 1_000_000) => "subsec_millis",
                     _ => return,
                 };
                 span_lint_and_sugg(

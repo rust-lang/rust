@@ -148,7 +148,7 @@ define_Conf! {
 }
 
 impl Default for Conf {
-    fn default() -> Conf {
+    fn default() -> Self {
         toml::from_str("").expect("we never error on empty config files")
     }
 }
