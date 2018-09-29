@@ -109,6 +109,17 @@
                 "when": "editorTextFocus && editorLangId == rust"
             }
         ],
+        "configuration": {
+            "type": "object",
+            "title": "Rust Analyzer configuration",
+            "properties": {
+                "ra-lsp.highlightingOn": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Highlight Rust code (overrides built-in syntax highlighting)"
+                }
+            }
+        },
         "problemMatchers": [
             {
                 "name": "rustc",
