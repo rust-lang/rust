@@ -224,6 +224,19 @@ pub fn run(config: Config, testpaths: &TestPaths, revision: Option<&str>) {
 pub fn compute_stamp_hash(config: &Config) -> String {
     let mut hash = DefaultHasher::new();
     config.stage_id.hash(&mut hash);
+    match config.mode {
+        DebugInfoGdb => match config.gdb {
+            None => env::var_os("PATH").hash(&mut hash),
+            Some(ref s) if s.is_empty() => env::var_os("PATH").hash(&mut hash),
+            Some(ref s) => s.hash(&mut hash),
+        },
+        DebugInfoLldb => {
+            env::var_os("PATH").hash(&mut hash);
+            env::var_os("PYTHONPATH").hash(&mut hash);
+        },
+
+        _ => {},
+    };
     format!("{:x}", hash.finish())
 }
 
