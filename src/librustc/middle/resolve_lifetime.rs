@@ -346,8 +346,6 @@ struct ElisionFailureInfo {
 
 type ScopeRef<'a> = &'a Scope<'a>;
 
-const ROOT_SCOPE: ScopeRef<'static> = &Scope::Root;
-
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
     *providers = ty::query::Providers {
         resolve_lifetimes,
@@ -431,7 +429,7 @@ fn krate<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) -> NamedRegionMap {
         let mut visitor = LifetimeContext {
             tcx,
             map: &mut map,
-            scope: ROOT_SCOPE,
+            scope: &Scope::Root,
             trait_ref_hack: false,
             is_in_fn_syntax: false,
             labels_in_fn: vec![],
@@ -490,7 +488,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 // No lifetime parameters, but implied 'static.
                 let scope = Scope::Elision {
                     elide: Elide::Exact(Region::Static),
-                    s: ROOT_SCOPE,
+                    s: &Scope::Root,
                 };
                 self.with(scope, |_, this| intravisit::walk_item(this, item));
             }
@@ -534,7 +532,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     next_early_index: index + type_count,
                     abstract_type_parent: true,
                     track_lifetime_uses,
-                    s: ROOT_SCOPE,
+                    s: &Scope::Root,
                 };
                 self.with(scope, |old_scope, this| {
                     this.check_lifetime_params(old_scope, &generics.params);
