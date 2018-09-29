@@ -453,35 +453,5 @@ error: used unwrap() on an Option value. If you don't want to handle the None ca
     |
     = note: `-D clippy::option-unwrap-used` implied by `-D warnings`
 
-error: this `.filter_map` can be written more simply using `.filter`
-   --> $DIR/methods.rs:449:13
-    |
-449 |     let _ = (0..4).filter_map(|x| if x > 1 { Some(x) } else { None });
-    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-    = note: `-D clippy::unnecessary-filter-map` implied by `-D warnings`
-
-error: this `.filter_map` can be written more simply using `.filter`
-   --> $DIR/methods.rs:450:13
-    |
-450 |     let _ = (0..4).filter_map(|x| { if x > 1 { return Some(x); }; None });
-    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: this `.filter_map` can be written more simply using `.filter`
-   --> $DIR/methods.rs:451:13
-    |
-451 |       let _ = (0..4).filter_map(|x| match x {
-    |  _____________^
-452 | |         0 | 1 => None,
-453 | |         _ => Some(x),
-454 | |     });
-    | |______^
-
-error: this `.filter_map` can be written more simply using `.map`
-   --> $DIR/methods.rs:456:13
-    |
-456 |     let _ = (0..4).filter_map(|x| Some(x + 1));
-    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 60 previous errors
+error: aborting due to 56 previous errors
 
