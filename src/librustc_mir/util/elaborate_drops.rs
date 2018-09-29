@@ -545,8 +545,9 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                     args: vec![Operand::Move(Place::Local(ref_place))],
                     destination: Some((unit_temp, succ)),
                     cleanup: unwind.into_option(),
+                    from_hir_call: true,
                 },
-                source_info: self.source_info
+                source_info: self.source_info,
             }),
             is_cleanup: unwind.is_cleanup(),
         };
@@ -903,7 +904,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             func: Operand::function_handle(tcx, free_func, substs, self.source_info.span),
             args: args,
             destination: Some((unit_temp, target)),
-            cleanup: None
+            cleanup: None,
+            from_hir_call: false,
         }; // FIXME(#43234)
         let free_block = self.new_block(unwind, call);
 

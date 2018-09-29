@@ -380,7 +380,13 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                 self.gather_operand(value);
                 self.gather_init(location, InitKind::Deep);
             }
-            TerminatorKind::Call { ref func, ref args, ref destination, cleanup: _ } => {
+            TerminatorKind::Call {
+                ref func,
+                ref args,
+                ref destination,
+                cleanup: _,
+                from_hir_call: _,
+            } => {
                 self.gather_operand(func);
                 for arg in args {
                     self.gather_operand(arg);

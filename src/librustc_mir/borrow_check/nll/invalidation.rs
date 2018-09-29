@@ -203,6 +203,7 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
                 ref args,
                 ref destination,
                 cleanup: _,
+                from_hir_call: _,
             } => {
                 self.consume_operand(ContextKind::CallOperator.new(location), func);
                 for arg in args {

@@ -795,7 +795,7 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
                     self.propagate_bits_into_entry_set_for(in_out, *target, dirty_list);
                 }
             }
-            mir::TerminatorKind::Call { cleanup, ref destination, func: _, args: _ } => {
+            mir::TerminatorKind::Call { cleanup, ref destination, .. } => {
                 if let Some(unwind) = cleanup {
                     if !self.dead_unwinds.contains(bb) {
                         self.propagate_bits_into_entry_set_for(in_out, unwind, dirty_list);

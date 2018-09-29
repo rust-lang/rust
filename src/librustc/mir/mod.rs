@@ -1049,6 +1049,9 @@ pub enum TerminatorKind<'tcx> {
         destination: Option<(Place<'tcx>, BasicBlock)>,
         /// Cleanups to be done if the call unwinds.
         cleanup: Option<BasicBlock>,
+        /// Whether this is from a call in HIR, rather than from an overloaded
+        /// operator. True for overloaded function call.
+        from_hir_call: bool,
     },
 
     /// Jump to the target if the condition has the expected value,
@@ -2810,6 +2813,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 ref args,
                 ref destination,
                 cleanup,
+                from_hir_call,
             } => {
                 let dest = destination
                     .as_ref()
@@ -2820,6 +2824,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                     args: args.fold_with(folder),
                     destination: dest,
                     cleanup,
+                    from_hir_call,
                 }
             }
             Assert {

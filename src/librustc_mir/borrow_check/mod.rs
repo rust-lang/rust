@@ -667,6 +667,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 ref args,
                 ref destination,
                 cleanup: _,
+                from_hir_call: _,
             } => {
                 self.consume_operand(ContextKind::CallOperator.new(loc), (func, span), flow_state);
                 for arg in args {

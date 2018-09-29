@@ -194,11 +194,13 @@ for mir::TerminatorKind<'gcx> {
             mir::TerminatorKind::Call { ref func,
                                         ref args,
                                         ref destination,
-                                        cleanup } => {
+                                        cleanup,
+                                        from_hir_call, } => {
                 func.hash_stable(hcx, hasher);
                 args.hash_stable(hcx, hasher);
                 destination.hash_stable(hcx, hasher);
                 cleanup.hash_stable(hcx, hasher);
+                from_hir_call.hash_stable(hcx, hasher);
             }
             mir::TerminatorKind::Assert { ref cond,
                                           expected,
