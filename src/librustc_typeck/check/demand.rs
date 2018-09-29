@@ -310,9 +310,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if self.can_coerce(ref_ty, expected) {
                     if let Ok(src) = cm.span_to_snippet(sp) {
                         let sugg_expr = match expr.node { // parenthesize if needed (Issue #46756)
-                            hir::ExprKind::Cast(_, _) |
-                            hir::ExprKind::Binary(_, _, _) => format!("({})", src),
-                            _ => src,
+                            hir::ExprKind::Cast(_, _)        |
+                            hir::ExprKind::Binary(_, _, _)   |
+                            _ if self.is_range_literal(expr) => format!("({})", src),
+                            _                                => src,
                         };
                         if let Some(sugg) = self.can_use_as_ref(expr) {
                             return Some(sugg);
@@ -372,6 +373,53 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ => {}
         }
         None
+    }
+
+    // This function checks if the specified expression is a built-in range literal
+    // (See: librustc/hir/lowering.rs::LoweringContext::lower_expr() )
+    fn is_range_literal(&self, expr: &hir::Expr) -> bool {
+        use hir::{Path, QPath, ExprKind, TyKind};
+
+        // TODO how to work out std vs core here?
+        let ops_path = ["{{root}}", "std", "ops"];
+
+        let is_range_path = |path: &Path| {
+            let ident_names: Vec<_> = path.segments
+                .iter()
+                .map(|seg| seg.ident.as_str())
+                .collect();
+
+            if let Some((last, preceding)) = ident_names.split_last() {
+                last.starts_with("Range") &&
+                    preceding.len() == 3 &&
+                    preceding.iter()
+                        .zip(ops_path.iter())
+                        .all(|(a, b)| a == b)
+            } else {
+                false
+            }
+        };
+
+        match expr.node {
+            ExprKind::Struct(QPath::Resolved(None, ref path), _, _) |
+            ExprKind::Path(QPath::Resolved(None, ref path)) => {
+                return is_range_path(&path);
+            }
+
+            ExprKind::Call(ref func, _) => {
+                if let ExprKind::Path(QPath::TypeRelative(ref ty, ref segment)) = func.node {
+                    if let TyKind::Path(QPath::Resolved(None, ref path)) = ty.node {
+                        let calls_new = segment.ident.as_str() == "new";
+
+                        return is_range_path(&path) && calls_new;
+                    }
+                }
+            }
+
+            _ => {}
+        }
+
+        false
     }
 
     pub fn check_for_cast(&self,
