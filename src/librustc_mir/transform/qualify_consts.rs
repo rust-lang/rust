@@ -94,7 +94,7 @@ impl fmt::Display for Mode {
     }
 }
 
-struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+struct Checker<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     mode: Mode,
     span: Span,
     def_id: DefId,
@@ -117,12 +117,12 @@ macro_rules! unleash_miri {
     }}
 }
 
-impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
+impl<'a, 'tcx> Checker<'a, 'tcx, 'tcx> {
     fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            def_id: DefId,
            mir: &'a Mir<'tcx>,
            mode: Mode)
-           -> Qualifier<'a, 'tcx, 'tcx> {
+           -> Checker<'a, 'tcx, 'tcx> {
         assert!(def_id.is_local());
         let mut rpo = traversal::reverse_postorder(mir);
         let temps = promote_consts::collect_temps(mir, &mut rpo);
@@ -137,7 +137,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             local_qualif[arg] = Some(qualif);
         }
 
-        Qualifier {
+        Checker {
             mode,
             span: mir.span,
             def_id,
@@ -265,8 +265,8 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     }
 
     /// Qualify a whole const, static initializer or const fn.
-    fn qualify_const(&mut self) -> (Qualif, Lrc<BitSet<Local>>) {
-        debug!("qualifying {} {:?}", self.mode, self.def_id);
+    fn check_const(&mut self) -> (Qualif, Lrc<BitSet<Local>>) {
+        debug!("const-checking {} {:?}", self.mode, self.def_id);
 
         let mir = self.mir;
 
@@ -358,7 +358,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 /// Accumulates an Rvalue or Call's effects in self.qualif.
 /// For functions (constant or not), it also records
 /// candidates for promotion in promotion_candidates.
-impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx, 'tcx> {
     fn visit_local(&mut self,
                    &local: &Local,
                    _: PlaceContext<'tcx>,
@@ -1151,8 +1151,8 @@ fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return (Qualif::NOT_CONST.bits(), Lrc::new(BitSet::new_empty(0)));
     }
 
-    let mut qualifier = Qualifier::new(tcx, def_id, mir, Mode::Const);
-    let (qualif, promoted_temps) = qualifier.qualify_const();
+    let mut checker = Checker::new(tcx, def_id, mir, Mode::Const);
+    let (qualif, promoted_temps) = checker.check_const();
     (qualif.bits(), promoted_temps)
 }
 
@@ -1195,13 +1195,13 @@ impl MirPass for QualifyAndPromoteConstants {
 
         debug!("run_pass: mode={:?}", mode);
         if mode == Mode::Fn || mode == Mode::ConstFn {
-            // This is ugly because Qualifier holds onto mir,
+            // This is ugly because Checker holds onto mir,
             // which can't be mutated until its scope ends.
             let (temps, candidates) = {
-                let mut qualifier = Qualifier::new(tcx, def_id, mir, mode);
+                let mut checker = Checker::new(tcx, def_id, mir, mode);
                 if mode == Mode::ConstFn {
                     if tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
-                        qualifier.qualify_const();
+                        checker.check_const();
                     } else if tcx.is_min_const_fn(def_id) {
                         // enforce `min_const_fn` for stable const fns
                         use super::qualify_min_const_fn::is_min_const_fn;
@@ -1210,19 +1210,19 @@ impl MirPass for QualifyAndPromoteConstants {
                         } else {
                             // this should not produce any errors, but better safe than sorry
                             // FIXME(#53819)
-                            qualifier.qualify_const();
+                            checker.check_const();
                         }
                     } else {
                         // Enforce a constant-like CFG for `const fn`.
-                        qualifier.qualify_const();
+                        checker.check_const();
                     }
                 } else {
-                    while let Some((bb, data)) = qualifier.rpo.next() {
-                        qualifier.visit_basic_block_data(bb, data);
+                    while let Some((bb, data)) = checker.rpo.next() {
+                        checker.visit_basic_block_data(bb, data);
                     }
                 }
 
-                (qualifier.temp_promotion_state, qualifier.promotion_candidates)
+                (checker.temp_promotion_state, checker.promotion_candidates)
             };
 
             // Do the actual promotion, now that we know what's viable.
@@ -1263,7 +1263,7 @@ impl MirPass for QualifyAndPromoteConstants {
                 // Already computed by `mir_const_qualif`.
                 const_promoted_temps.unwrap()
             } else {
-                Qualifier::new(tcx, def_id, mir, mode).qualify_const().1
+                Checker::new(tcx, def_id, mir, mode).check_const().1
             };
 
             // In `const` and `static` everything without `StorageDead`
