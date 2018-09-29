@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::{ast, ptr, source_map::Span};
+use syntax::{
+    ast, ptr,
+    source_map::{self, Span},
+};
 
 use macros::MacroArg;
 use utils::{mk_sp, outer_attributes};
@@ -23,6 +26,12 @@ pub trait Spanned {
 impl<T: Spanned> Spanned for ptr::P<T> {
     fn span(&self) -> Span {
         (**self).span()
+    }
+}
+
+impl<T> Spanned for source_map::Spanned<T> {
+    fn span(&self) -> Span {
+        self.span
     }
 }
 

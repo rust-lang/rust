@@ -264,6 +264,7 @@ impl Rewrite for FieldPat {
     }
 }
 
+#[derive(Debug)]
 pub enum TuplePatField<'a> {
     Pat(&'a ptr::P<ast::Pat>),
     Dotdot(Span),

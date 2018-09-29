@@ -15,12 +15,12 @@ use config::lists::*;
 use config::IndentStyle;
 use expr::rewrite_literal;
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
+use overflow;
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use types::{rewrite_path, PathContext};
 use utils::{count_newlines, mk_sp};
 
-use std::borrow::Cow;
 use syntax::ast;
 use syntax::source_map::{BytePos, Span, DUMMY_SP};
 
@@ -216,56 +216,21 @@ impl Rewrite for ast::MetaItem {
             }
             ast::MetaItemKind::List(ref list) => {
                 let path = rewrite_path(context, PathContext::Type, None, &self.ident, shape)?;
-
-                let has_comma = ::expr::span_ends_with_comma(context, self.span);
-                let trailing_comma = if has_comma { "," } else { "" };
-                let combine = list.len() == 1 && match list[0].node {
-                    ast::NestedMetaItemKind::Literal(..) => false,
-                    ast::NestedMetaItemKind::MetaItem(ref inner_meta_item) => {
-                        match inner_meta_item.node {
-                            ast::MetaItemKind::List(..) => rewrite_path(
-                                context,
-                                PathContext::Type,
-                                None,
-                                &inner_meta_item.ident,
-                                shape,
-                            )
-                            .map_or(false, |s| s.len() + path.len() + 2 <= shape.width),
-                            _ => false,
-                        }
-                    }
-                };
-
-                let argument_shape = argument_shape(
-                    path.len() + 1,
-                    2 + trailing_comma.len(),
-                    combine,
-                    shape,
+                let has_trailing_comma = ::expr::span_ends_with_comma(context, self.span);
+                overflow::rewrite_with_parens(
                     context,
-                )?;
-                let item_str = format_arg_list(
+                    &path,
                     list.iter(),
-                    |nested_meta_item| nested_meta_item.span.lo(),
-                    |nested_meta_item| nested_meta_item.span.hi(),
-                    |nested_meta_item| nested_meta_item.rewrite(context, argument_shape),
+                    // 1 = "]"
+                    shape.sub_width(1)?,
                     self.span,
-                    context,
-                    argument_shape,
-                    // 3 = "()" and "]"
-                    shape
-                        .offset_left(path.len())?
-                        .sub_width(3 + trailing_comma.len())?,
-                    Some(context.config.width_heuristics().fn_call_width),
-                    combine,
-                )?;
-
-                let indent = if item_str.starts_with('\n') {
-                    shape.indent.to_string_with_newline(context.config)
-                } else {
-                    Cow::Borrowed("")
-                };
-
-                format!("{}({}{}{})", path, item_str, trailing_comma, indent)
+                    context.config.width_heuristics().fn_call_width,
+                    Some(if has_trailing_comma {
+                        SeparatorTactic::Always
+                    } else {
+                        SeparatorTactic::Never
+                    }),
+                )?
             }
             ast::MetaItemKind::NameValue(ref literal) => {
                 let path = rewrite_path(context, PathContext::Type, None, &self.ident, shape)?;

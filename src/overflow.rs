@@ -67,10 +67,17 @@ const SPECIAL_MACRO_WHITELIST: &[(&str, usize)] = &[
     ("debug_assert_ne!", 2),
 ];
 
+const SPECIAL_ATTR_WHITELIST: &[(&str, usize)] = &[
+    // From the `failure` crate.
+    ("fail", 0),
+];
+
+#[derive(Debug)]
 pub enum OverflowableItem<'a> {
     Expr(&'a ast::Expr),
     GenericParam(&'a ast::GenericParam),
     MacroArg(&'a MacroArg),
+    NestedMetaItem(&'a ast::NestedMetaItem),
     SegmentParam(&'a SegmentParam<'a>),
     StructField(&'a ast::StructField),
     TuplePatField(&'a TuplePatField<'a>),
@@ -98,6 +105,7 @@ impl<'a> OverflowableItem<'a> {
             OverflowableItem::Expr(expr) => f(*expr),
             OverflowableItem::GenericParam(gp) => f(*gp),
             OverflowableItem::MacroArg(macro_arg) => f(*macro_arg),
+            OverflowableItem::NestedMetaItem(nmi) => f(*nmi),
             OverflowableItem::SegmentParam(sp) => f(*sp),
             OverflowableItem::StructField(sf) => f(*sf),
             OverflowableItem::TuplePatField(pat) => f(*pat),
@@ -109,6 +117,13 @@ impl<'a> OverflowableItem<'a> {
         match self {
             OverflowableItem::Expr(expr) => is_simple_expr(expr),
             OverflowableItem::MacroArg(MacroArg::Expr(expr)) => is_simple_expr(expr),
+            OverflowableItem::NestedMetaItem(nested_meta_item) => match nested_meta_item.node {
+                ast::NestedMetaItemKind::Literal(..) => true,
+                ast::NestedMetaItemKind::MetaItem(ref meta_item) => match meta_item.node {
+                    ast::MetaItemKind::Word => true,
+                    _ => false,
+                },
+            },
             _ => false,
         }
     }
@@ -149,6 +164,12 @@ impl<'a> OverflowableItem<'a> {
                 MacroArg::Pat(..) => false,
                 MacroArg::Item(..) => len == 1,
             },
+            OverflowableItem::NestedMetaItem(nested_meta_item) if len == 1 => {
+                match nested_meta_item.node {
+                    ast::NestedMetaItemKind::Literal(..) => false,
+                    ast::NestedMetaItemKind::MetaItem(..) => true,
+                }
+            }
             OverflowableItem::SegmentParam(seg) => match seg {
                 SegmentParam::Type(ty) => can_be_overflowed_type(context, ty, len),
                 _ => false,
@@ -156,6 +177,14 @@ impl<'a> OverflowableItem<'a> {
             OverflowableItem::TuplePatField(pat) => can_be_overflowed_pat(context, pat, len),
             OverflowableItem::Ty(ty) => can_be_overflowed_type(context, ty, len),
             _ => false,
+        }
+    }
+
+    fn whitelist(&self) -> &'static [(&'static str, usize)] {
+        match self {
+            OverflowableItem::MacroArg(..) => SPECIAL_MACRO_WHITELIST,
+            OverflowableItem::NestedMetaItem(..) => SPECIAL_ATTR_WHITELIST,
+            _ => &[],
         }
     }
 }
@@ -201,7 +230,7 @@ macro impl_into_overflowable_item_for_rustfmt_types {
     }
 }
 
-impl_into_overflowable_item_for_ast_node!(Expr, GenericParam, StructField, Ty);
+impl_into_overflowable_item_for_ast_node!(Expr, GenericParam, NestedMetaItem, StructField, Ty);
 impl_into_overflowable_item_for_rustfmt_types!([MacroArg], [SegmentParam, TuplePatField]);
 
 pub fn into_overflowable_list<'a, T>(
@@ -655,7 +684,7 @@ fn last_item_shape(
     shape: Shape,
     args_max_width: usize,
 ) -> Option<Shape> {
-    if items.len() == 1 && !lists.iter().next()?.is_nested_call() {
+    if items.len() == 1 && !lists.get(0)?.is_nested_call() {
         return Some(shape);
     }
     let offset = items.iter().rev().skip(1).fold(0, |acc, i| {
