@@ -100,8 +100,7 @@ pub enum ErrorKind {
     #[fail(
         display = "line formatted, but exceeded maximum width \
                    (maximum: {} (see `max_width` option), found: {})",
-        _0,
-        _1
+        _0, _1
     )]
     LineOverflow(usize, usize),
     /// Line ends in whitespace.
