@@ -35,7 +35,8 @@ Much like individual tests or building certain components you can build only
 
 ## Document internal rustc items
 
-Compiler documentation is not built by default - there's a  flag in config.toml for achieving the same.
+Compiler documentation is not built by default. There's a flag in
+config.toml for achieving the same.
 But, when enabled, compiler documentation does include internal items.
 
 Next open up config.toml and make sure these two lines are set to true:
