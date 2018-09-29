@@ -48,6 +48,7 @@ use rustc::lint::builtin::{
     BARE_TRAIT_OBJECTS,
     ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
     ELIDED_LIFETIMES_IN_PATHS,
+    EXPLICIT_OUTLIVES_REQUIREMENTS,
     parser::QUESTION_MARK_MACRO_SEP
 };
 use rustc::session;
@@ -157,6 +158,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         TypeLimits: TypeLimits::new(),
         MissingDoc: MissingDoc::new(),
         MissingDebugImplementations: MissingDebugImplementations::new(),
+        ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
     ]], ['tcx]);
 
     store.register_late_pass(sess, false, box BuiltinCombinedLateLintPass::new());
@@ -199,7 +201,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     BARE_TRAIT_OBJECTS,
                     UNUSED_EXTERN_CRATES,
                     ELLIPSIS_INCLUSIVE_RANGE_PATTERNS,
-                    ELIDED_LIFETIMES_IN_PATHS
+                    ELIDED_LIFETIMES_IN_PATHS,
+                    EXPLICIT_OUTLIVES_REQUIREMENTS
 
                     // FIXME(#52665, #47816) not always applicable and not all
                     // macros are ready for this yet.
