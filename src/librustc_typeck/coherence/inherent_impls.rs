@@ -315,8 +315,7 @@ impl<'a, 'tcx> InherentCollect<'a, 'tcx> {
                              E0116,
                              "cannot define inherent `impl` for a type outside of the crate \
                               where the type is defined")
-                .span_label(item.span,
-                            "impl for type defined outside of crate.")
+                .span_label(item.span, "impl for type defined outside of crate.")
                 .note("define and implement a trait or new type instead")
                 .emit();
         }

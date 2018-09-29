@@ -64,8 +64,8 @@ use std::iter;
 pub fn collect_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut visitor = CollectItemTypesVisitor { tcx: tcx };
     tcx.hir
-        .krate()
-        .visit_all_item_likes(&mut visitor.as_deep_visitor());
+       .krate()
+       .visit_all_item_likes(&mut visitor.as_deep_visitor());
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -197,7 +197,8 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
             E0121,
             "the type placeholder `_` is not allowed within types on item signatures"
         ).span_label(span, "not allowed in type signatures")
-            .emit();
+         .emit();
+
         self.tcx().types.err
     }
 
@@ -529,12 +530,11 @@ fn convert_enum_variant_types<'a, 'tcx>(
                 ).span_label(
                     variant.span,
                     format!("overflowed on value after {}", prev_discr.unwrap()),
-                )
-                    .note(&format!(
-                        "explicitly set `{} = {}` if that is desired outcome",
-                        variant.node.name, wrapped_discr
-                    ))
-                    .emit();
+                ).note(&format!(
+                    "explicitly set `{} = {}` if that is desired outcome",
+                    variant.node.name, wrapped_discr
+                ))
+                .emit();
                 None
             }.unwrap_or(wrapped_discr),
         );
@@ -577,8 +577,8 @@ fn convert_variant<'a, 'tcx>(
                     "field `{}` is already declared",
                     f.ident
                 ).span_label(f.span, "field already declared")
-                    .span_label(prev_span, format!("`{}` first declared here", f.ident))
-                    .emit();
+                 .span_label(prev_span, format!("`{}` first declared here", f.ident))
+                 .emit();
             } else {
                 seen_fields.insert(f.ident.modern(), f.span);
             }
@@ -824,14 +824,11 @@ fn has_late_bound_regions<'a, 'tcx>(
             has_late_bound_regions: None,
         };
         for param in &generics.params {
-            match param.kind {
-                GenericParamKind::Lifetime { .. } => {
-                    let hir_id = tcx.hir.node_to_hir_id(param.id);
-                    if tcx.is_late_bound(hir_id) {
-                        return Some(param.span);
-                    }
+            if let GenericParamKind::Lifetime { .. } = param.kind {
+                let hir_id = tcx.hir.node_to_hir_id(param.id);
+                if tcx.is_late_bound(hir_id) {
+                    return Some(param.span);
                 }
-                _ => {}
             }
         }
         visitor.visit_fn_decl(decl);
@@ -1314,6 +1311,7 @@ fn find_existential_constraints<'a, 'tcx>(
         def_id: DefId,
         found: Option<(Span, ty::Ty<'tcx>)>,
     }
+
     impl<'a, 'tcx> ConstraintLocator<'a, 'tcx> {
         fn check(&mut self, def_id: DefId) {
             trace!("checking {:?}", def_id);
@@ -1347,6 +1345,7 @@ fn find_existential_constraints<'a, 'tcx>(
             }
         }
     }
+
     impl<'a, 'tcx> intravisit::Visitor<'tcx> for ConstraintLocator<'a, 'tcx> {
         fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
             intravisit::NestedVisitorMap::All(&self.tcx.hir)
@@ -1373,6 +1372,7 @@ fn find_existential_constraints<'a, 'tcx>(
             intravisit::walk_trait_item(self, it);
         }
     }
+
     let mut locator = ConstraintLocator {
         def_id,
         tcx,
@@ -1380,7 +1380,9 @@ fn find_existential_constraints<'a, 'tcx>(
     };
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
     let parent = tcx.hir.get_parent(node_id);
+
     trace!("parent_id: {:?}", parent);
+
     if parent == ast::CRATE_NODE_ID {
         intravisit::walk_crate(&mut locator, tcx.hir.krate());
     } else {
@@ -1395,6 +1397,7 @@ fn find_existential_constraints<'a, 'tcx>(
             ),
         }
     }
+
     match locator.found {
         Some((_, ty)) => ty,
         None => {
@@ -1786,17 +1789,14 @@ fn explicit_predicates_of<'a, 'tcx>(
     // Collect the predicates that were written inline by the user on each
     // type parameter (e.g., `<T:Foo>`).
     for param in &ast_generics.params {
-        match param.kind {
-            GenericParamKind::Type { .. } => {
-                let name = param.name.ident().as_interned_str();
-                let param_ty = ty::ParamTy::new(index, name).to_ty(tcx);
-                index += 1;
+        if let GenericParamKind::Type { .. } = param.kind {
+            let name = param.name.ident().as_interned_str();
+            let param_ty = ty::ParamTy::new(index, name).to_ty(tcx);
+            index += 1;
 
-                let sized = SizedByDefault::Yes;
-                let bounds = compute_bounds(&icx, param_ty, &param.bounds, sized, param.span);
-                predicates.extend(bounds.predicates(tcx, param_ty));
-            }
-            _ => {}
+            let sized = SizedByDefault::Yes;
+            let bounds = compute_bounds(&icx, param_ty, &param.bounds, sized, param.span);
+            predicates.extend(bounds.predicates(tcx, param_ty));
         }
     }
 
@@ -1835,10 +1835,10 @@ fn explicit_predicates_of<'a, 'tcx>(
                                 &mut projections,
                             );
 
-                            predicates.push((trait_ref.to_predicate(), poly_trait_ref.span));
-                            predicates.extend(projections.iter().map(|&(p, span)| {
-                                (p.to_predicate(), span)
-                            }));
+                            predicates.extend(
+                                iter::once((trait_ref.to_predicate(), poly_trait_ref.span)).chain(
+                                    projections.iter().map(|&(p, span)| (p.to_predicate(), span)
+                            )));
                         }
 
                         &hir::GenericBound::Outlives(ref lifetime) => {
@@ -1852,7 +1852,7 @@ fn explicit_predicates_of<'a, 'tcx>(
 
             &hir::WherePredicate::RegionPredicate(ref region_pred) => {
                 let r1 = AstConv::ast_region_to_region(&icx, &region_pred.lifetime, None);
-                for bound in &region_pred.bounds {
+                predicates.extend(region_pred.bounds.iter().map(|bound| {
                     let (r2, span) = match bound {
                         hir::GenericBound::Outlives(lt) => {
                             (AstConv::ast_region_to_region(&icx, lt, None), lt.span)
@@ -1860,8 +1860,9 @@ fn explicit_predicates_of<'a, 'tcx>(
                         _ => bug!(),
                     };
                     let pred = ty::Binder::bind(ty::OutlivesPredicate(r1, r2));
-                    predicates.push((ty::Predicate::RegionOutlives(pred), span))
-                }
+
+                    (ty::Predicate::RegionOutlives(pred), span)
+                }))
             }
 
             &hir::WherePredicate::EqPredicate(..) => {
@@ -1876,9 +1877,7 @@ fn explicit_predicates_of<'a, 'tcx>(
             let trait_item = tcx.hir.trait_item(trait_item_ref.id);
             let bounds = match trait_item.node {
                 hir::TraitItemKind::Type(ref bounds, _) => bounds,
-                _ => {
-                    return vec![].into_iter();
-                }
+                _ => return vec![].into_iter()
             };
 
             let assoc_ty =
@@ -1939,6 +1938,7 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(
 ) -> Bounds<'tcx> {
     let mut region_bounds = vec![];
     let mut trait_bounds = vec![];
+
     for ast_bound in ast_bounds {
         match *ast_bound {
             hir::GenericBound::Trait(ref b, hir::TraitBoundModifier::None) => trait_bounds.push(b),
@@ -2032,16 +2032,16 @@ fn compute_sig_of_foreign_fn_decl<'a, 'tcx>(
         let check = |ast_ty: &hir::Ty, ty: Ty| {
             if ty.is_simd() {
                 tcx.sess
-                    .struct_span_err(
-                        ast_ty.span,
-                        &format!(
-                            "use of SIMD type `{}` in FFI is highly experimental and \
-                             may result in invalid code",
-                            tcx.hir.node_to_pretty_string(ast_ty.id)
-                        ),
-                    )
-                    .help("add #![feature(simd_ffi)] to the crate attributes to enable")
-                    .emit();
+                   .struct_span_err(
+                       ast_ty.span,
+                       &format!(
+                           "use of SIMD type `{}` in FFI is highly experimental and \
+                            may result in invalid code",
+                           tcx.hir.node_to_pretty_string(ast_ty.id)
+                       ),
+                   )
+                   .help("add #![feature(simd_ffi)] to the crate attributes to enable")
+                   .emit();
             }
         };
         for (input, ty) in decl.inputs.iter().zip(*fty.inputs().skip_binder()) {
@@ -2101,7 +2101,7 @@ fn from_target_feature(
         };
 
         // We allow comma separation to enable multiple features
-        for feature in value.as_str().split(',') {
+        target_features.extend(value.as_str().split(',').filter_map(|feature| {
             // Only allow whitelisted features per platform
             let feature_gate = match whitelist.get(feature) {
                 Some(g) => g,
@@ -2120,7 +2120,7 @@ fn from_target_feature(
                         }
                     }
                     err.emit();
-                    continue;
+                    return None;
                 }
             };
 
@@ -2147,10 +2147,10 @@ fn from_target_feature(
                     feature_gate::GateIssue::Language,
                     &format!("the target feature `{}` is currently unstable", feature),
                 );
-                continue;
+                return None;
             }
-            target_features.push(Symbol::intern(feature));
-        }
+            Some(Symbol::intern(feature))
+        }));
     }
 }
 
@@ -2183,7 +2183,7 @@ fn linkage_by_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, name: &
                 tcx.sess.span_fatal(span, "invalid linkage specified")
             } else {
                 tcx.sess
-                    .fatal(&format!("invalid linkage specified: {}", name))
+                   .fatal(&format!("invalid linkage specified: {}", name))
             }
         }
     }
@@ -2281,7 +2281,7 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
                     E0558,
                     "`export_name` attribute has invalid format"
                 ).span_label(attr.span, "did you mean #[export_name=\"*\"]?")
-                    .emit();
+                 .emit();
             }
         } else if attr.check_name("target_feature") {
             if tcx.fn_sig(id).unsafety() == Unsafety::Normal {
