@@ -1,8 +1,6 @@
 'use strict';
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient'
-import { DH_UNABLE_TO_CHECK_GENERATOR } from 'constants';
-
 
 let client: lc.LanguageClient;
 
@@ -10,8 +8,14 @@ let uris = {
     syntaxTree: vscode.Uri.parse('ra-lsp://syntaxtree')
 }
 
+let highlightingOn = true;
 
 export function activate(context: vscode.ExtensionContext) {
+    let config = vscode.workspace.getConfiguration('ra-lsp');
+    if (config.has('highlightingOn')) {
+        highlightingOn = config.get('highlightingOn') as boolean;
+    }
+
     let textDocumentContentProvider = new TextDocumentContentProvider()
     let dispose = (disposable: vscode.Disposable) => {
         context.subscriptions.push(disposable);
@@ -232,14 +236,18 @@ const decorations: { [index: string]: vscode.TextEditorDecorationType } = (() =>
 
 function setHighlights(
     editor: vscode.TextEditor,
-    highlihgs: Array<Decoration>
+    highlights: Array<Decoration>
 ) {
+    if (!highlightingOn) {
+        return;
+    }
+
     let byTag: Map<string, vscode.Range[]> = new Map()
     for (let tag in decorations) {
         byTag.set(tag, [])
     }
 
-    for (let d of highlihgs) {
+    for (let d of highlights) {
         if (!byTag.get(d.tag)) {
             console.log(`unknown tag ${d.tag}`)
             continue
