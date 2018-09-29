@@ -702,7 +702,9 @@ impl<'tcx> Relate<'tcx> for Kind<'tcx> {
             (UnpackedKind::Type(a_ty), UnpackedKind::Type(b_ty)) => {
                 Ok(relation.relate(&a_ty, &b_ty)?.into())
             }
-            (UnpackedKind::Lifetime(_), _) | (UnpackedKind::Type(_), _) => bug!()
+            (UnpackedKind::Lifetime(unpacked), x) | (UnpackedKind::Type(unpacked), x) => {
+                bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
+            }
         }
     }
 }
