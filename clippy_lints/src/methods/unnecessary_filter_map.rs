@@ -1,29 +1,27 @@
-use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use crate::rustc::lint::LateContext;
 use crate::rustc::hir;
 use crate::rustc::hir::def::Def;
+use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use crate::rustc::lint::LateContext;
 use crate::syntax::ast;
-use crate::utils::{match_qpath, match_trait_method, span_lint};
 use crate::utils::paths;
 use crate::utils::usage::mutated_variables;
+use crate::utils::{match_qpath, match_trait_method, span_lint};
 
 use if_chain::if_chain;
 
 use super::UNNECESSARY_FILTER_MAP;
 
 pub(super) fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::Expr]) {
-
     if !match_trait_method(cx, expr, &paths::ITERATOR) {
         return;
     }
 
     if let hir::ExprKind::Closure(_, _, body_id, ..) = args[1].node {
-
         let body = cx.tcx.hir.body(body_id);
         let arg_id = body.arguments[0].pat.id;
         let mutates_arg = match mutated_variables(&body.value, cx) {
-                Some(used_mutably) => used_mutably.contains(&arg_id),
-                None => true,
+            Some(used_mutably) => used_mutably.contains(&arg_id),
+            None => true,
         };
 
         let (mut found_mapping, mut found_filtering) = check_expression(&cx, arg_id, &body.value);
@@ -56,7 +54,11 @@ pub(super) fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::Expr
 }
 
 // returns (found_mapping, found_filtering)
-fn check_expression<'a, 'tcx: 'a>(cx: &'a LateContext<'a, 'tcx>, arg_id: ast::NodeId, expr: &'tcx hir::Expr) -> (bool, bool) {
+fn check_expression<'a, 'tcx: 'a>(
+    cx: &'a LateContext<'a, 'tcx>,
+    arg_id: ast::NodeId,
+    expr: &'tcx hir::Expr,
+) -> (bool, bool) {
     match &expr.node {
         hir::ExprKind::Call(ref func, ref args) => {
             if_chain! {
@@ -105,7 +107,7 @@ fn check_expression<'a, 'tcx: 'a>(cx: &'a LateContext<'a, 'tcx>, arg_id: ast::No
             (found_mapping, found_filtering)
         },
         hir::ExprKind::Path(path) if match_qpath(path, &paths::OPTION_NONE) => (false, true),
-        _ => (true, true)
+        _ => (true, true),
     }
 }
 
