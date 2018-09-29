@@ -418,7 +418,7 @@ pub fn handle_code_action(
         let edit = source_edit.try_conv_with(&world)?;
         let cmd = Command {
             title,
-            command: "libsyntax-rust.applySourceChange".to_string(),
+            command: "ra-lsp.applySourceChange".to_string(),
             arguments: Some(vec![to_value(edit).unwrap()]),
         };
         res.push(cmd);
