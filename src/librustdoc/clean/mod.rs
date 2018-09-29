@@ -21,6 +21,7 @@ pub use self::Visibility::{Public, Inherited};
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, AttrStyle, Ident};
 use syntax::attr;
+use syntax::ext::base::MacroKind;
 use syntax::source_map::{dummy_spanned, Spanned};
 use syntax::ptr::P;
 use syntax::symbol::keywords::{self, Keyword};
@@ -527,6 +528,7 @@ pub enum ItemEnum {
     /// `type`s from an extern block
     ForeignTypeItem,
     MacroItem(Macro),
+    ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),
     AssociatedConstItem(Type, Option<String>),
     AssociatedTypeItem(Vec<GenericBound>, Option<Type>),
@@ -588,6 +590,7 @@ impl Clean<Item> for doctree::Module {
         items.extend(self.traits.iter().map(|x| x.clean(cx)));
         items.extend(self.impls.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.macros.iter().map(|x| x.clean(cx)));
+        items.extend(self.proc_macros.iter().map(|x| x.clean(cx)));
 
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
@@ -2191,6 +2194,8 @@ pub enum TypeKind {
     Typedef,
     Foreign,
     Macro,
+    Attr,
+    Derive,
 }
 
 pub trait GetDefId {
@@ -3727,7 +3732,12 @@ pub fn register_def(cx: &DocContext, def: Def) -> DefId {
         Def::Static(i, _) => (i, TypeKind::Static),
         Def::Variant(i) => (cx.tcx.parent_def_id(i).expect("cannot get parent def id"),
                             TypeKind::Enum),
-        Def::Macro(i, _) => (i, TypeKind::Macro),
+        Def::Macro(i, mac_kind) => match mac_kind {
+            MacroKind::Bang => (i, TypeKind::Macro),
+            MacroKind::Attr => (i, TypeKind::Attr),
+            MacroKind::Derive => (i, TypeKind::Derive),
+            MacroKind::ProcMacroStub => unreachable!(),
+        },
         Def::SelfTy(Some(def_id), _) => (def_id, TypeKind::Trait),
         Def::SelfTy(_, Some(impl_def_id)) => {
             return impl_def_id
@@ -3777,6 +3787,30 @@ impl Clean<Item> for doctree::Macro {
                                     format!("    {} => {{ ... }};\n", span.to_src(cx))
                                 }).collect::<String>()),
                 imported_from: self.imported_from.clean(cx),
+            }),
+        }
+    }
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct ProcMacro {
+    pub kind: MacroKind,
+    pub helpers: Vec<String>,
+}
+
+impl Clean<Item> for doctree::ProcMacro {
+    fn clean(&self, cx: &DocContext) -> Item {
+        Item {
+            name: Some(self.name.clean(cx)),
+            attrs: self.attrs.clean(cx),
+            source: self.whence.clean(cx),
+            visibility: Some(Public),
+            stability: self.stab.clean(cx),
+            deprecation: self.depr.clean(cx),
+            def_id: cx.tcx.hir.local_def_id(self.id),
+            inner: ProcMacroItem(ProcMacro {
+                kind: self.kind,
+                helpers: self.helpers.clean(cx),
             }),
         }
     }

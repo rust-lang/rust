@@ -42,8 +42,9 @@ use rustc::lint;
 use rustc::hir::def::*;
 use rustc::hir::def::Namespace::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
-use rustc::ty;
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
+use rustc::session::config::nightly_options;
+use rustc::ty;
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 
 use rustc_metadata::creader::CrateLoader;
@@ -1381,6 +1382,9 @@ pub struct Resolver<'a, 'b: 'a> {
     /// The current self type if inside an impl (used for better errors).
     current_self_type: Option<Ty>,
 
+    /// The current self item if inside an ADT (used for better errors).
+    current_self_item: Option<NodeId>,
+
     /// The idents for the primitive types.
     primitive_type_table: PrimitiveTypeTable,
 
@@ -1710,6 +1714,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
             current_trait_ref: None,
             current_self_type: None,
+            current_self_item: None,
 
             primitive_type_table: PrimitiveTypeTable::new(),
 
@@ -2186,15 +2191,17 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
     }
 
     fn resolve_adt(&mut self, item: &Item, generics: &Generics) {
-        self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind), |this| {
-            let item_def_id = this.definitions.local_def_id(item.id);
-            if this.session.features_untracked().self_in_typedefs {
-                this.with_self_rib(Def::SelfTy(None, Some(item_def_id)), |this| {
+        self.with_current_self_item(item, |this| {
+            this.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind), |this| {
+                let item_def_id = this.definitions.local_def_id(item.id);
+                if this.session.features_untracked().self_in_typedefs {
+                    this.with_self_rib(Def::SelfTy(None, Some(item_def_id)), |this| {
+                        visit::walk_item(this, item);
+                    });
+                } else {
                     visit::walk_item(this, item);
-                });
-            } else {
-                visit::walk_item(this, item);
-            }
+                }
+            });
         });
     }
 
@@ -2432,6 +2439,15 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         let previous_value = replace(&mut self.current_self_type, Some(self_type.clone()));
         let result = f(self);
         self.current_self_type = previous_value;
+        result
+    }
+
+    fn with_current_self_item<T, F>(&mut self, self_item: &Item, f: F) -> T
+        where F: FnOnce(&mut Resolver) -> T
+    {
+        let previous_value = replace(&mut self.current_self_item, Some(self_item.id));
+        let result = f(self);
+        self.current_self_item = previous_value;
         result
     }
 
@@ -3004,6 +3020,10 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     "traits and impls"
                 };
                 err.span_label(span, format!("`Self` is only available in {}", available_in));
+                if this.current_self_item.is_some() && nightly_options::is_nightly_build() {
+                    err.help("add #![feature(self_in_typedefs)] to the crate attributes \
+                              to enable");
+                }
                 return (err, Vec::new());
             }
             if is_self_value(path, ns) {

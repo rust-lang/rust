@@ -539,7 +539,7 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
                 .emit();
         } else if has_guard && !cx.tcx.allow_bind_by_move_patterns_with_guards() {
             let mut err = struct_span_err!(cx.tcx.sess, p.span, E0008,
-                                       "cannot bind by-move into a pattern guard");
+                                           "cannot bind by-move into a pattern guard");
             err.span_label(p.span, "moves value into pattern guard");
             if cx.tcx.sess.opts.unstable_features.is_nightly_build() && cx.tcx.use_mir_borrowck() {
                 err.help("add #![feature(bind_by_move_pattern_guards)] to the \

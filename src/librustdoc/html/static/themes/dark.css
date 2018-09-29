@@ -124,6 +124,8 @@ pre {
 .content .highlighted.tymethod { background-color: #4950ed; }
 .content .highlighted.type { background-color: #38902c; }
 .content .highlighted.foreigntype { background-color: #b200d6; }
+.content .highlighted.attr,
+.content .highlighted.derive,
 .content .highlighted.macro { background-color: #217d1c; }
 .content .highlighted.constant,
 .content .highlighted.static { background-color: #0063cc; }
@@ -134,6 +136,8 @@ pre {
 .content span.struct, .content a.struct, .block a.current.struct { color: #2dbfb8; }
 .content span.type, .content a.type, .block a.current.type { color: #ff7f00; }
 .content span.foreigntype, .content a.foreigntype, .block a.current.foreigntype { color: #dd7de8; }
+.content span.attr, .content a.attr, .block a.current.attr,
+.content span.derive, .content a.derive, .block a.current.derive,
 .content span.macro, .content a.macro, .block a.current.macro { color: #09bd00; }
 .content span.union, .content a.union, .block a.current.union { color: #a6ae37; }
 .content span.constant, .content a.constant, .block a.current.constant,
