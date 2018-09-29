@@ -1,3 +1,5 @@
+// ignore-tidy-linelength
+
 #![feature(optin_builtin_traits)]
 
 struct Foo;

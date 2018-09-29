@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/dont_promote_non_sync.rs:16:32
+  --> $DIR/dont_promote_non_sync.rs:18:32
    |
 LL | fn mk_foo() -> &'static Foo { &Foo } //~ ERROR does not live long enough
    |                                ^^^ - temporary value only lives until here
@@ -9,7 +9,7 @@ LL | fn mk_foo() -> &'static Foo { &Foo } //~ ERROR does not live long enough
    = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/dont_promote_non_sync.rs:17:32
+  --> $DIR/dont_promote_non_sync.rs:19:32
    |
 LL | fn mk_bar() -> &'static Bar { &Bar(0) } //~ ERROR does not live long enough
    |                                ^^^^^^ - temporary value only lives until here
@@ -19,7 +19,7 @@ LL | fn mk_bar() -> &'static Bar { &Bar(0) } //~ ERROR does not live long enough
    = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/dont_promote_non_sync.rs:18:32
+  --> $DIR/dont_promote_non_sync.rs:20:32
    |
 LL | fn mk_baz() -> &'static Baz { &Baz { field: 0 } } //~ ERROR does not live long enough
    |                                ^^^^^^^^^^^^^^^^ - temporary value only lives until here
@@ -29,7 +29,7 @@ LL | fn mk_baz() -> &'static Baz { &Baz { field: 0 } } //~ ERROR does not live l
    = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/dont_promote_non_sync.rs:19:34
+  --> $DIR/dont_promote_non_sync.rs:21:34
    |
 LL | fn mk_bla_t() -> &'static Bla { &Bla::T(0) } //~ ERROR does not live long enough
    |                                  ^^^^^^^^^ - temporary value only lives until here
@@ -39,7 +39,7 @@ LL | fn mk_bla_t() -> &'static Bla { &Bla::T(0) } //~ ERROR does not live long e
    = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/dont_promote_non_sync.rs:20:34
+  --> $DIR/dont_promote_non_sync.rs:22:34
    |
 LL | fn mk_bla_s() -> &'static Bla { &Bla::S { field: 0 } } //~ ERROR does not live long enough
    |                                  ^^^^^^^^^^^^^^^^^^^ - temporary value only lives until here
@@ -49,7 +49,7 @@ LL | fn mk_bla_s() -> &'static Bla { &Bla::S { field: 0 } } //~ ERROR does not l
    = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/dont_promote_non_sync.rs:24:42
+  --> $DIR/dont_promote_non_sync.rs:26:42
    |
 LL | fn mk_foo2<T: FooT>() -> &'static Foo { &T::C } //~ ERROR does not live long enough
    |                                          ^^^^ - temporary value only lives until here
@@ -59,7 +59,7 @@ LL | fn mk_foo2<T: FooT>() -> &'static Foo { &T::C } //~ ERROR does not live lon
    = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/dont_promote_non_sync.rs:27:42
+  --> $DIR/dont_promote_non_sync.rs:29:42
    |
 LL | fn mk_bar2<T: BarT>() -> &'static Bar { &T::C } //~ ERROR does not live long enough
    |                                          ^^^^ - temporary value only lives until here
@@ -69,7 +69,7 @@ LL | fn mk_bar2<T: BarT>() -> &'static Bar { &T::C } //~ ERROR does not live lon
    = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/dont_promote_non_sync.rs:30:60
+  --> $DIR/dont_promote_non_sync.rs:32:60
    |
 LL | fn mk_capturing_closure() -> &'static Fn() { let x = Foo; &move || { &x; } } //~ ERROR does not live long enough
    |                                                            ^^^^^^^^^^^^^^^ - temporary value only lives until here
