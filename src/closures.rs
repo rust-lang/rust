@@ -13,9 +13,10 @@ use syntax::parse::classify;
 use syntax::source_map::Span;
 use syntax::{ast, ptr};
 
-use expr::{block_contains_comment, is_simple_block, is_unsafe_block, rewrite_cond, ToExpr};
+use expr::{block_contains_comment, is_simple_block, is_unsafe_block, rewrite_cond};
 use items::{span_hi_for_arg, span_lo_for_arg};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
+use overflow::OverflowableItem;
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use source_map::SpanUtils;
@@ -358,10 +359,7 @@ pub fn rewrite_last_closure(
 }
 
 /// Returns true if the given vector of arguments has more than one `ast::ExprKind::Closure`.
-pub fn args_have_many_closure<T>(args: &[&T]) -> bool
-where
-    T: ToExpr,
-{
+pub fn args_have_many_closure(args: &[OverflowableItem]) -> bool {
     args.iter()
         .filter(|arg| {
             arg.to_expr()

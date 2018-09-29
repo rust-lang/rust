@@ -9,27 +9,154 @@
 // except according to those terms.
 
 //! Rewrite a list some items with overflow.
-// FIXME: Replace `ToExpr` with some enum.
 
 use config::lists::*;
-use syntax::ast;
 use syntax::parse::token::DelimToken;
 use syntax::source_map::Span;
+use syntax::{ast, ptr};
 
 use closures;
-use expr::{is_every_expr_simple, is_method_call, is_nested_call, maybe_get_args_offset, ToExpr};
+use expr::{
+    can_be_overflowed_expr, is_every_expr_simple, is_method_call, is_nested_call,
+    maybe_get_args_offset,
+};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
+use macros::MacroArg;
+use patterns::{can_be_overflowed_pat, TuplePatField};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use source_map::SpanUtils;
 use spanned::Spanned;
+use types::{can_be_overflowed_type, SegmentParam};
 use utils::{count_newlines, extra_offset, first_line_width, last_line_width, mk_sp};
 
 use std::cmp::min;
 
+pub enum OverflowableItem<'a> {
+    Expr(&'a ast::Expr),
+    GenericParam(&'a ast::GenericParam),
+    MacroArg(&'a MacroArg),
+    SegmentParam(&'a SegmentParam<'a>),
+    StructField(&'a ast::StructField),
+    TuplePatField(&'a TuplePatField<'a>),
+    Ty(&'a ast::Ty),
+}
+
+impl<'a> Rewrite for OverflowableItem<'a> {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        self.map(|item| item.rewrite(context, shape))
+    }
+}
+
+impl<'a> Spanned for OverflowableItem<'a> {
+    fn span(&self) -> Span {
+        self.map(|item| item.span())
+    }
+}
+
+impl<'a> OverflowableItem<'a> {
+    pub fn map<F, T>(&self, f: F) -> T
+    where
+        F: Fn(&IntoOverflowableItem<'a>) -> T,
+    {
+        match self {
+            OverflowableItem::Expr(expr) => f(*expr),
+            OverflowableItem::GenericParam(gp) => f(*gp),
+            OverflowableItem::MacroArg(macro_arg) => f(*macro_arg),
+            OverflowableItem::SegmentParam(sp) => f(*sp),
+            OverflowableItem::StructField(sf) => f(*sf),
+            OverflowableItem::TuplePatField(pat) => f(*pat),
+            OverflowableItem::Ty(ty) => f(*ty),
+        }
+    }
+
+    pub fn to_expr(&self) -> Option<&'a ast::Expr> {
+        match self {
+            OverflowableItem::Expr(expr) => Some(expr),
+            OverflowableItem::MacroArg(macro_arg) => match macro_arg {
+                MacroArg::Expr(ref expr) => Some(expr),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    pub fn can_be_overflowed(&self, context: &RewriteContext, len: usize) -> bool {
+        match self {
+            OverflowableItem::Expr(expr) => can_be_overflowed_expr(context, expr, len),
+            OverflowableItem::MacroArg(macro_arg) => match macro_arg {
+                MacroArg::Expr(ref expr) => can_be_overflowed_expr(context, expr, len),
+                MacroArg::Ty(ref ty) => can_be_overflowed_type(context, ty, len),
+                MacroArg::Pat(..) => false,
+                MacroArg::Item(..) => len == 1,
+            },
+            OverflowableItem::SegmentParam(seg) => match seg {
+                SegmentParam::Type(ty) => can_be_overflowed_type(context, ty, len),
+                _ => false,
+            },
+            OverflowableItem::TuplePatField(pat) => can_be_overflowed_pat(context, pat, len),
+            OverflowableItem::Ty(ty) => can_be_overflowed_type(context, ty, len),
+            _ => false,
+        }
+    }
+}
+
+pub trait IntoOverflowableItem<'a>: Rewrite + Spanned {
+    fn into_overflowable_item(&'a self) -> OverflowableItem<'a>;
+}
+
+impl<'a, T: 'a + IntoOverflowableItem<'a>> IntoOverflowableItem<'a> for ptr::P<T> {
+    fn into_overflowable_item(&'a self) -> OverflowableItem<'a> {
+        (**self).into_overflowable_item()
+    }
+}
+
+macro impl_into_overflowable_item_for_ast_node {
+    ($($ast_node:ident),*) => {
+        $(
+            impl<'a> IntoOverflowableItem<'a> for ast::$ast_node {
+                fn into_overflowable_item(&'a self) -> OverflowableItem<'a> {
+                    OverflowableItem::$ast_node(self)
+                }
+            }
+        )*
+    }
+}
+
+macro impl_into_overflowable_item_for_rustfmt_types {
+    ([$($ty:ident),*], [$($ty_with_lifetime:ident),*]) => {
+        $(
+            impl<'a> IntoOverflowableItem<'a> for $ty {
+                fn into_overflowable_item(&'a self) -> OverflowableItem<'a> {
+                    OverflowableItem::$ty(self)
+                }
+            }
+        )*
+        $(
+            impl<'a> IntoOverflowableItem<'a> for $ty_with_lifetime<'a> {
+                fn into_overflowable_item(&'a self) -> OverflowableItem<'a> {
+                    OverflowableItem::$ty_with_lifetime(self)
+                }
+            }
+        )*
+    }
+}
+
+impl_into_overflowable_item_for_ast_node!(Expr, GenericParam, StructField, Ty);
+impl_into_overflowable_item_for_rustfmt_types!([MacroArg], [SegmentParam, TuplePatField]);
+
+pub fn into_overflowable_list<'a, T>(
+    iter: impl Iterator<Item = &'a T>,
+) -> impl Iterator<Item = OverflowableItem<'a>>
+where
+    T: 'a + IntoOverflowableItem<'a>,
+{
+    iter.map(|x| IntoOverflowableItem::into_overflowable_item(x))
+}
+
 const SHORT_ITEM_THRESHOLD: usize = 10;
 
-pub fn rewrite_with_parens<'a, 'b, T: 'a>(
+pub fn rewrite_with_parens<'a, T: 'a + IntoOverflowableItem<'a>>(
     context: &'a RewriteContext,
     ident: &'a str,
     items: impl Iterator<Item = &'a T>,
@@ -37,10 +164,7 @@ pub fn rewrite_with_parens<'a, 'b, T: 'a>(
     span: Span,
     item_max_width: usize,
     force_separator_tactic: Option<SeparatorTactic>,
-) -> Option<String>
-where
-    T: Rewrite + ToExpr + Spanned,
-{
+) -> Option<String> {
     Context::new(
         context,
         items,
@@ -56,16 +180,13 @@ where
     .rewrite(shape)
 }
 
-pub fn rewrite_with_angle_brackets<'a, T: 'a>(
+pub fn rewrite_with_angle_brackets<'a, T: 'a + IntoOverflowableItem<'a>>(
     context: &'a RewriteContext,
     ident: &'a str,
     items: impl Iterator<Item = &'a T>,
     shape: Shape,
     span: Span,
-) -> Option<String>
-where
-    T: Rewrite + ToExpr + Spanned,
-{
+) -> Option<String> {
     Context::new(
         context,
         items,
@@ -81,7 +202,7 @@ where
     .rewrite(shape)
 }
 
-pub fn rewrite_with_square_brackets<'a, T: 'a>(
+pub fn rewrite_with_square_brackets<'a, T: 'a + IntoOverflowableItem<'a>>(
     context: &'a RewriteContext,
     name: &'a str,
     items: impl Iterator<Item = &'a T>,
@@ -89,10 +210,7 @@ pub fn rewrite_with_square_brackets<'a, T: 'a>(
     span: Span,
     force_separator_tactic: Option<SeparatorTactic>,
     delim_token: Option<DelimToken>,
-) -> Option<String>
-where
-    T: Rewrite + ToExpr + Spanned,
-{
+) -> Option<String> {
     let (lhs, rhs) = match delim_token {
         Some(DelimToken::Paren) => ("(", ")"),
         Some(DelimToken::Brace) => ("{", "}"),
@@ -113,9 +231,9 @@ where
     .rewrite(shape)
 }
 
-struct Context<'a, T: 'a> {
+struct Context<'a> {
     context: &'a RewriteContext<'a>,
-    items: Vec<&'a T>,
+    items: Vec<OverflowableItem<'a>>,
     ident: &'a str,
     prefix: &'static str,
     suffix: &'static str,
@@ -128,8 +246,8 @@ struct Context<'a, T: 'a> {
     custom_delims: Option<(&'a str, &'a str)>,
 }
 
-impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
-    pub fn new(
+impl<'a> Context<'a> {
+    pub fn new<T: 'a + IntoOverflowableItem<'a>>(
         context: &'a RewriteContext,
         items: impl Iterator<Item = &'a T>,
         ident: &'a str,
@@ -140,7 +258,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
         item_max_width: usize,
         force_separator_tactic: Option<SeparatorTactic>,
         custom_delims: Option<(&'a str, &'a str)>,
-    ) -> Context<'a, T> {
+    ) -> Context<'a> {
         let used_width = extra_offset(ident, shape);
         // 1 = `()`
         let one_line_width = shape.width.saturating_sub(used_width + 2);
@@ -153,7 +271,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
         let nested_shape = shape_from_indent_style(context, shape, used_width + 2, used_width + 1);
         Context {
             context,
-            items: items.collect(),
+            items: into_overflowable_list(items).collect(),
             ident,
             one_line_shape,
             nested_shape,
@@ -167,7 +285,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
         }
     }
 
-    fn last_item(&self) -> Option<&&T> {
+    fn last_item(&self) -> Option<&OverflowableItem> {
         self.items.last()
     }
 
@@ -465,25 +583,19 @@ fn need_block_indent(s: &str, shape: Shape) -> bool {
     })
 }
 
-fn can_be_overflowed<'a, T>(context: &RewriteContext, items: &[&T]) -> bool
-where
-    T: Rewrite + Spanned + ToExpr + 'a,
-{
+fn can_be_overflowed<'a>(context: &RewriteContext, items: &[OverflowableItem]) -> bool {
     items
         .last()
         .map_or(false, |x| x.can_be_overflowed(context, items.len()))
 }
 
 /// Returns a shape for the last argument which is going to be overflowed.
-fn last_item_shape<T>(
-    lists: &[&T],
+fn last_item_shape(
+    lists: &[OverflowableItem],
     items: &[ListItem],
     shape: Shape,
     args_max_width: usize,
-) -> Option<Shape>
-where
-    T: Rewrite + Spanned + ToExpr,
-{
+) -> Option<Shape> {
     let is_nested_call = lists
         .iter()
         .next()

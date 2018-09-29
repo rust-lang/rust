@@ -27,17 +27,17 @@ use lists::{
     definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape,
     struct_lit_tactic, write_list, ListFormatting, ListItem, Separator,
 };
-use macros::{rewrite_macro, MacroArg, MacroPosition};
+use macros::{rewrite_macro, MacroPosition};
 use matches::rewrite_match;
-use overflow;
+use overflow::{self, IntoOverflowableItem, OverflowableItem};
 use pairs::{rewrite_all_pairs, rewrite_pair, PairParts};
-use patterns::{can_be_overflowed_pat, is_short_pattern, TuplePatField};
+use patterns::is_short_pattern;
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
 use source_map::{LineRangeUtils, SpanUtils};
 use spanned::Spanned;
 use string::{rewrite_string, StringFormat};
-use types::{can_be_overflowed_type, rewrite_path, PathContext};
+use types::{rewrite_path, PathContext};
 use utils::{
     colon_spaces, contains_skip, count_newlines, first_line_ends_with, first_line_width,
     inner_attributes, last_line_extendable, last_line_width, mk_sp, outer_attributes,
@@ -391,7 +391,7 @@ pub fn format_expr(
         })
 }
 
-pub fn rewrite_array<'a, T: 'a>(
+pub fn rewrite_array<'a, T: 'a + IntoOverflowableItem<'a>>(
     name: &'a str,
     exprs: impl Iterator<Item = &'a T>,
     span: Span,
@@ -399,10 +399,7 @@ pub fn rewrite_array<'a, T: 'a>(
     shape: Shape,
     force_separator_tactic: Option<SeparatorTactic>,
     delim_token: Option<DelimToken>,
-) -> Option<String>
-where
-    T: Rewrite + Spanned + ToExpr,
-{
+) -> Option<String> {
     overflow::rewrite_with_square_brackets(
         context,
         name,
@@ -1263,7 +1260,7 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
 }
 
 /// In case special-case style is required, returns an offset from which we start horizontal layout.
-pub fn maybe_get_args_offset<T: ToExpr>(callee_str: &str, args: &[&T]) -> Option<(bool, usize)> {
+pub fn maybe_get_args_offset(callee_str: &str, args: &[OverflowableItem]) -> Option<(bool, usize)> {
     if let Some(&(_, num_args_before)) = SPECIAL_MACRO_WHITELIST
         .iter()
         .find(|&&(s, _)| s == callee_str)
@@ -1358,7 +1355,7 @@ fn is_simple_expr(expr: &ast::Expr) -> bool {
     }
 }
 
-pub fn is_every_expr_simple<T: ToExpr>(lists: &[&T]) -> bool {
+pub fn is_every_expr_simple(lists: &[OverflowableItem]) -> bool {
     lists
         .iter()
         .all(|arg| arg.to_expr().map_or(false, is_simple_expr))
@@ -1723,16 +1720,13 @@ pub fn rewrite_field(
     }
 }
 
-fn rewrite_tuple_in_visual_indent_style<'a, T>(
+fn rewrite_tuple_in_visual_indent_style<'a, T: 'a + IntoOverflowableItem<'a>>(
     context: &RewriteContext,
     mut items: impl Iterator<Item = &'a T>,
     span: Span,
     shape: Shape,
     is_singleton_tuple: bool,
-) -> Option<String>
-where
-    T: Rewrite + Spanned + ToExpr + 'a,
-{
+) -> Option<String> {
     // In case of length 1, need a trailing comma
     debug!("rewrite_tuple_in_visual_indent_style {:?}", shape);
     if is_singleton_tuple {
@@ -1774,16 +1768,13 @@ where
     Some(format!("({})", list_str))
 }
 
-pub fn rewrite_tuple<'a, T>(
+pub fn rewrite_tuple<'a, T: 'a + IntoOverflowableItem<'a>>(
     context: &'a RewriteContext,
     items: impl Iterator<Item = &'a T>,
     span: Span,
     shape: Shape,
     is_singleton_tuple: bool,
-) -> Option<String>
-where
-    T: Rewrite + Spanned + ToExpr + 'a,
-{
+) -> Option<String> {
     debug!("rewrite_tuple {:?}", shape);
     if context.use_block_indent() {
         // We use the same rule as function calls for rewriting tuples.
@@ -1997,89 +1988,6 @@ fn rewrite_expr_addrof(
         ast::Mutability::Mutable => "&mut ",
     };
     rewrite_unary_prefix(context, operator_str, expr, shape)
-}
-
-pub trait ToExpr {
-    fn to_expr(&self) -> Option<&ast::Expr>;
-    fn can_be_overflowed(&self, context: &RewriteContext, len: usize) -> bool;
-}
-
-impl ToExpr for ast::Expr {
-    fn to_expr(&self) -> Option<&ast::Expr> {
-        Some(self)
-    }
-
-    fn can_be_overflowed(&self, context: &RewriteContext, len: usize) -> bool {
-        can_be_overflowed_expr(context, self, len)
-    }
-}
-
-impl ToExpr for ast::Ty {
-    fn to_expr(&self) -> Option<&ast::Expr> {
-        None
-    }
-
-    fn can_be_overflowed(&self, context: &RewriteContext, len: usize) -> bool {
-        can_be_overflowed_type(context, self, len)
-    }
-}
-
-impl<'a> ToExpr for TuplePatField<'a> {
-    fn to_expr(&self) -> Option<&ast::Expr> {
-        None
-    }
-
-    fn can_be_overflowed(&self, context: &RewriteContext, len: usize) -> bool {
-        can_be_overflowed_pat(context, self, len)
-    }
-}
-
-impl<'a> ToExpr for ast::StructField {
-    fn to_expr(&self) -> Option<&ast::Expr> {
-        None
-    }
-
-    fn can_be_overflowed(&self, _: &RewriteContext, _: usize) -> bool {
-        false
-    }
-}
-
-impl<'a> ToExpr for MacroArg {
-    fn to_expr(&self) -> Option<&ast::Expr> {
-        match *self {
-            MacroArg::Expr(ref expr) => Some(expr),
-            _ => None,
-        }
-    }
-
-    fn can_be_overflowed(&self, context: &RewriteContext, len: usize) -> bool {
-        match *self {
-            MacroArg::Expr(ref expr) => can_be_overflowed_expr(context, expr, len),
-            MacroArg::Ty(ref ty) => can_be_overflowed_type(context, ty, len),
-            MacroArg::Pat(..) => false,
-            MacroArg::Item(..) => len == 1,
-        }
-    }
-}
-
-impl ToExpr for ast::GenericParam {
-    fn to_expr(&self) -> Option<&ast::Expr> {
-        None
-    }
-
-    fn can_be_overflowed(&self, _: &RewriteContext, _: usize) -> bool {
-        false
-    }
-}
-
-impl<T: ToExpr> ToExpr for ptr::P<T> {
-    fn to_expr(&self) -> Option<&ast::Expr> {
-        (**self).to_expr()
-    }
-
-    fn can_be_overflowed(&self, context: &RewriteContext, len: usize) -> bool {
-        (**self).can_be_overflowed(context, len)
-    }
 }
 
 pub fn is_method_call(expr: &ast::Expr) -> bool {

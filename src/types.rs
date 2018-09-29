@@ -17,7 +17,7 @@ use syntax::source_map::{self, BytePos, Span};
 use syntax::symbol::keywords;
 
 use config::{IndentStyle, TypeDensity};
-use expr::{rewrite_assign_rhs, rewrite_tuple, rewrite_unary_prefix, ToExpr};
+use expr::{rewrite_assign_rhs, rewrite_tuple, rewrite_unary_prefix};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
 use macros::{rewrite_macro, MacroPosition};
 use overflow;
@@ -141,7 +141,7 @@ where
 }
 
 #[derive(Debug)]
-enum SegmentParam<'a> {
+pub enum SegmentParam<'a> {
     LifeTime(&'a ast::Lifetime),
     Type(&'a ast::Ty),
     Binding(&'a ast::TypeBinding),
@@ -162,19 +162,6 @@ impl<'a> Spanned for SegmentParam<'a> {
             SegmentParam::LifeTime(lt) => lt.ident.span,
             SegmentParam::Type(ty) => ty.span,
             SegmentParam::Binding(binding) => binding.span,
-        }
-    }
-}
-
-impl<'a> ToExpr for SegmentParam<'a> {
-    fn to_expr(&self) -> Option<&ast::Expr> {
-        None
-    }
-
-    fn can_be_overflowed(&self, context: &RewriteContext, len: usize) -> bool {
-        match *self {
-            SegmentParam::Type(ty) => ty.can_be_overflowed(context, len),
-            _ => false,
         }
     }
 }
