@@ -57,6 +57,7 @@ enum PathKind {
 struct LinkCollector<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
     cx: &'a DocContext<'a, 'tcx, 'rcx, 'cstore>,
     mod_ids: Vec<NodeId>,
+    is_nightly_build: bool,
 }
 
 impl<'a, 'tcx, 'rcx, 'cstore> LinkCollector<'a, 'tcx, 'rcx, 'cstore> {
@@ -64,6 +65,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> LinkCollector<'a, 'tcx, 'rcx, 'cstore> {
         LinkCollector {
             cx,
             mod_ids: Vec::new(),
+            is_nightly_build: UnstableFeatures::from_environment().is_nightly_build(),
         }
     }
 
@@ -240,7 +242,7 @@ fn look_for_tests<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx>(
     if find_testable_code(&dox, &mut tests, ErrorCodes::No).is_ok() {
         if tests.found_tests == 0 {
             let mut diag = cx.tcx.struct_span_lint_node(
-                lint::builtin::MISSING_DOC_ITEM_CODE_EXAMPLE,
+                lint::builtin::MISSING_DOC_CODE_EXAMPLES,
                 NodeId::new(0),
                 span_of_attrs(&item.attrs),
                 "Missing code example in this documentation");
@@ -313,7 +315,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
 
         look_for_tests(&cx, &dox, &item);
 
-        if !UnstableFeatures::from_environment().is_nightly_build() {
+        if !self.is_nightly_build {
             return None;
         }
 

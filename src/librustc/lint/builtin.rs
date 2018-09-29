@@ -313,7 +313,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub MISSING_DOC_ITEM_CODE_EXAMPLE,
+    pub MISSING_DOC_CODE_EXAMPLES,
     Allow,
     "warn about missing code example in an item's documentation"
 }
