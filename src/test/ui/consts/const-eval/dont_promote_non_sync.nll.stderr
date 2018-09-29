@@ -1,0 +1,83 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/dont_promote_non_sync.rs:18:32
+   |
+LL | fn mk_foo() -> &'static Foo { &Foo } //~ ERROR does not live long enough
+   |                                ^^^ - temporary value is freed at the end of this statement
+   |                                |
+   |                                creates a temporary which is freed while still in use
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/dont_promote_non_sync.rs:19:32
+   |
+LL | fn mk_bar() -> &'static Bar { &Bar(0) } //~ ERROR does not live long enough
+   |                                ^^^^^^ - temporary value is freed at the end of this statement
+   |                                |
+   |                                creates a temporary which is freed while still in use
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/dont_promote_non_sync.rs:20:32
+   |
+LL | fn mk_baz() -> &'static Baz { &Baz { field: 0 } } //~ ERROR does not live long enough
+   |                                ^^^^^^^^^^^^^^^^ - temporary value is freed at the end of this statement
+   |                                |
+   |                                creates a temporary which is freed while still in use
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/dont_promote_non_sync.rs:21:34
+   |
+LL | fn mk_bla_t() -> &'static Bla { &Bla::T(0) } //~ ERROR does not live long enough
+   |                                  ^^^^^^^^^ - temporary value is freed at the end of this statement
+   |                                  |
+   |                                  creates a temporary which is freed while still in use
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/dont_promote_non_sync.rs:22:34
+   |
+LL | fn mk_bla_s() -> &'static Bla { &Bla::S { field: 0 } } //~ ERROR does not live long enough
+   |                                  ^^^^^^^^^^^^^^^^^^^ - temporary value is freed at the end of this statement
+   |                                  |
+   |                                  creates a temporary which is freed while still in use
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/dont_promote_non_sync.rs:26:42
+   |
+LL | fn mk_foo2<T: FooT>() -> &'static Foo { &T::C } //~ ERROR does not live long enough
+   |                                          ^^^^ - temporary value is freed at the end of this statement
+   |                                          |
+   |                                          creates a temporary which is freed while still in use
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/dont_promote_non_sync.rs:29:42
+   |
+LL | fn mk_bar2<T: BarT>() -> &'static Bar { &T::C } //~ ERROR does not live long enough
+   |                                          ^^^^ - temporary value is freed at the end of this statement
+   |                                          |
+   |                                          creates a temporary which is freed while still in use
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/dont_promote_non_sync.rs:32:60
+   |
+LL | fn mk_capturing_closure() -> &'static Fn() { let x = Foo; &move || { &x; } } //~ ERROR does not live long enough
+   |                                                            ^^^^^^^^^^^^^^^ - temporary value is freed at the end of this statement
+   |                                                            |
+   |                                                            creates a temporary which is freed while still in use
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0716`.
