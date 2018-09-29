@@ -1135,6 +1135,8 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         [TRACKED], "panic strategy to compile crate with"),
     incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
           "enable incremental compilation"),
+    default_linker_libraries: Option<bool> = (None, parse_opt_bool, [UNTRACKED],
+          "allow the linker to link its default libraries"),
 }
 
 options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
