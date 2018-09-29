@@ -15,7 +15,7 @@ LL |     let t1 = &mut *t0;
 LL |     let p: &isize = &**t0; //~ ERROR cannot borrow
    |                     ^^^^^ immutable borrow occurs here
 LL |     **t1 = 22;
-   |     --------- borrow later used here
+   |     --------- mutable borrow later used here
 
 error[E0596]: cannot borrow `**t0` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:29:26

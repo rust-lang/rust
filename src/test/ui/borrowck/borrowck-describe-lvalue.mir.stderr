@@ -7,7 +7,7 @@ LL |             &mut x; //[ast]~ ERROR cannot borrow `**x` as mutable more than
    |             ^^^^^^ second mutable borrow occurs here
 LL |                     //[mir]~^ ERROR cannot borrow `x` as mutable more than once at a time
 LL |             *y = 1;
-   |             ------ borrow later used here
+   |             ------ first borrow later used here
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time
   --> $DIR/borrowck-describe-lvalue.rs:307:20
@@ -18,7 +18,7 @@ LL |                    &mut x; //[ast]~ ERROR cannot borrow `**x` as mutable mo
    |                    ^^^^^^ second mutable borrow occurs here
 LL |                    //[mir]~^ ERROR cannot borrow `x` as mutable more than once at a time
 LL |                    *y = 1;
-   |                    ------ borrow later used here
+   |                    ------ first borrow later used here
 
 error: unsatisfied lifetime constraints
   --> $DIR/borrowck-describe-lvalue.rs:305:16
@@ -269,7 +269,7 @@ LL |             E::A(ref ax) =>
    |                  ^^^^^^ immutable borrow occurs here
 ...
 LL |         drop(x);
-   |              - borrow later used here
+   |              - mutable borrow later used here
 
 error[E0502]: cannot borrow `e.x` as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-describe-lvalue.rs:207:23
@@ -281,7 +281,7 @@ LL |             E::B { x: ref bx } =>
    |                       ^^^^^^ immutable borrow occurs here
 ...
 LL |         drop(x);
-   |              - borrow later used here
+   |              - mutable borrow later used here
 
 error[E0502]: cannot borrow `s.y.0` as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-describe-lvalue.rs:221:22
@@ -293,7 +293,7 @@ LL |             S  { y: (ref y0, _), .. } =>
    |                      ^^^^^^ immutable borrow occurs here
 ...
 LL |         drop(x);
-   |              - borrow later used here
+   |              - mutable borrow later used here
 
 error[E0502]: cannot borrow `s.x.y` as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-describe-lvalue.rs:228:28
@@ -305,7 +305,7 @@ LL |             S  { x: F { y: ref x0, .. }, .. } =>
    |                            ^^^^^^ immutable borrow occurs here
 ...
 LL |         drop(x);
-   |              - borrow later used here
+   |              - mutable borrow later used here
 
 error[E0503]: cannot use `*v` because it was mutably borrowed
   --> $DIR/borrowck-describe-lvalue.rs:271:9
@@ -339,7 +339,7 @@ LL |             &[_, F {x: ref xf, ..}] => println!("{}", xf),
    |                        ^^^^^^ immutable borrow occurs here
 ...
 LL |         drop(x);
-   |              - borrow later used here
+   |              - mutable borrow later used here
 
 error[E0502]: cannot borrow `*block.current` as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-describe-lvalue.rs:245:29
@@ -350,7 +350,7 @@ LL |             let p: &'a u8 = &*block.current;
    |                             ^^^^^^^^^^^^^^^ immutable borrow occurs here
 ...
 LL |             drop(x);
-   |                  - borrow later used here
+   |                  - mutable borrow later used here
 
 error[E0502]: cannot borrow `*block.current` as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-describe-lvalue.rs:260:33
@@ -361,7 +361,7 @@ LL |             let p : *const u8 = &*(*block).current;
    |                                 ^^^^^^^^^^^^^^^^^^ immutable borrow occurs here
 ...
 LL |             drop(x);
-   |                  - borrow later used here
+   |                  - mutable borrow later used here
 
 error[E0382]: use of moved value: `x`
   --> $DIR/borrowck-describe-lvalue.rs:318:22

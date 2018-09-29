@@ -6,7 +6,7 @@ LL |     let mut it = my_stuff.iter();
 LL |     my_stuff.insert(1, 43); //~ ERROR cannot borrow
    |     ^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
 LL |     it;
-   |     -- borrow later used here
+   |     -- immutable borrow later used here
 
 error: aborting due to previous error
 

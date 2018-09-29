@@ -44,7 +44,7 @@ LL | |     +
 LL | |     &f;  //~ ERROR: cannot borrow `f` as immutable because it is also borrowed as mutable
    | |     ^-
    | |_____||
-   |       |borrow later used here
+   |       |mutable borrow later used here
    |       immutable borrow occurs here
 
 error[E0502]: cannot borrow `f` as mutable because it is also borrowed as immutable
@@ -59,7 +59,7 @@ LL | |     +
 LL | |     &mut f;  //~ ERROR: cannot borrow `f` as mutable because it is also borrowed as immutable
    | |     ^^^^^-
    | |_____|____|
-   |       |    borrow later used here
+   |       |    immutable borrow later used here
    |       mutable borrow occurs here
 
 error: aborting due to 6 previous errors

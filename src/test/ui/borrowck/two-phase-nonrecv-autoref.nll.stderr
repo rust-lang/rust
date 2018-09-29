@@ -2,11 +2,10 @@ error[E0499]: cannot borrow `*f` as mutable more than once at a time
   --> $DIR/two-phase-nonrecv-autoref.rs:70:11
    |
 LL |         f(f(10));
-   |         --^-----
-   |         | |
-   |         | second mutable borrow occurs here
+   |         - ^ second mutable borrow occurs here
+   |         |
    |         first mutable borrow occurs here
-   |         borrow later used here
+   |         first borrow later used by call
 
 error[E0382]: use of moved value: `*f`
   --> $DIR/two-phase-nonrecv-autoref.rs:79:11
@@ -20,11 +19,10 @@ error[E0499]: cannot borrow `*f` as mutable more than once at a time
   --> $DIR/two-phase-nonrecv-autoref.rs:86:11
    |
 LL |         f(f(10));
-   |         --^-----
-   |         | |
-   |         | second mutable borrow occurs here
+   |         - ^ second mutable borrow occurs here
+   |         |
    |         first mutable borrow occurs here
-   |         borrow later used here
+   |         first borrow later used by call
 
 error[E0161]: cannot move a value of type dyn std::ops::FnOnce(i32) -> i32: the size of dyn std::ops::FnOnce(i32) -> i32 cannot be statically determined
   --> $DIR/two-phase-nonrecv-autoref.rs:95:9
@@ -50,11 +48,10 @@ error[E0502]: cannot borrow `a` as immutable because it is also borrowed as muta
   --> $DIR/two-phase-nonrecv-autoref.rs:139:27
    |
 LL |     double_access(&mut a, &a);
-   |     ----------------------^^-
-   |     |             |       |
-   |     |             |       immutable borrow occurs here
+   |     ------------- ------  ^^ immutable borrow occurs here
+   |     |             |
    |     |             mutable borrow occurs here
-   |     borrow later used here
+   |     mutable borrow later used by call
 
 error[E0502]: cannot borrow `i` as immutable because it is also borrowed as mutable
   --> $DIR/two-phase-nonrecv-autoref.rs:167:7
@@ -64,7 +61,7 @@ LL |     i[i[3]] = 4;
    |     | |
    |     | immutable borrow occurs here
    |     mutable borrow occurs here
-   |     borrow later used here
+   |     mutable borrow later used here
 
 error[E0502]: cannot borrow `i` as immutable because it is also borrowed as mutable
   --> $DIR/two-phase-nonrecv-autoref.rs:173:7
@@ -74,7 +71,7 @@ LL |     i[i[3]] = i[4];
    |     | |
    |     | immutable borrow occurs here
    |     mutable borrow occurs here
-   |     borrow later used here
+   |     mutable borrow later used here
 
 error: aborting due to 9 previous errors
 

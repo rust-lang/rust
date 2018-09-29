@@ -86,7 +86,7 @@ LL |     let c2 = to_fn_mut(|| x = 5); //~ ERROR cannot borrow `x` as mutable mo
    |                        second mutable borrow occurs here
 LL |     //~| ERROR cannot borrow `x` as mutable more than once
 LL |     drop((c1, c2));
-   |           -- borrow later used here
+   |           -- first borrow later used here
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time (Mir)
   --> $DIR/borrowck-closures-two-mut.rs:36:24
@@ -101,7 +101,7 @@ LL |     let c2 = to_fn_mut(|| set(&mut x)); //~ ERROR cannot borrow `x` as muta
    |                        second mutable borrow occurs here
 LL |     //~| ERROR cannot borrow `x` as mutable more than once
 LL |     drop((c1, c2));
-   |           -- borrow later used here
+   |           -- first borrow later used here
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time (Mir)
   --> $DIR/borrowck-closures-two-mut.rs:44:24
@@ -116,7 +116,7 @@ LL |     let c2 = to_fn_mut(|| set(&mut x)); //~ ERROR cannot borrow `x` as muta
    |                        second mutable borrow occurs here
 LL |     //~| ERROR cannot borrow `x` as mutable more than once
 LL |     drop((c1, c2));
-   |           -- borrow later used here
+   |           -- first borrow later used here
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time (Mir)
   --> $DIR/borrowck-closures-two-mut.rs:52:24
@@ -131,7 +131,7 @@ LL |     let c2 = to_fn_mut(|| { let _y = to_fn_mut(|| set(&mut x)); }); // (nes
    |                        second mutable borrow occurs here
 ...
 LL |     drop((c1, c2));
-   |           -- borrow later used here
+   |           -- first borrow later used here
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time (Mir)
   --> $DIR/borrowck-closures-two-mut.rs:65:24
@@ -146,7 +146,7 @@ LL |     let c2 = to_fn_mut(|| set(&mut *x.f));
    |                        second mutable borrow occurs here
 ...
 LL |     drop((c1, c2));
-   |           -- borrow later used here
+   |           -- first borrow later used here
 
 error: aborting due to 10 previous errors
 

@@ -20,7 +20,7 @@ LL |     let f = || x;
 LL |     let y = &mut x; //~ ERROR
    |             ^^^^^^ mutable borrow occurs here
 LL |     f.use_ref();
-   |     - borrow later used here
+   |     - immutable borrow later used here
 
 error[E0597]: `x` does not live long enough
   --> $DIR/closure-borrow-spans.rs:31:16
@@ -68,7 +68,7 @@ LL |     let f = || x = 0;
 LL |     let y = &x; //~ ERROR
    |             ^^ immutable borrow occurs here
 LL |     f.use_ref();
-   |     - borrow later used here
+   |     - mutable borrow later used here
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time
   --> $DIR/closure-borrow-spans.rs:56:13
@@ -80,7 +80,7 @@ LL |     let f = || x = 0;
 LL |     let y = &mut x; //~ ERROR
    |             ^^^^^^ second mutable borrow occurs here
 LL |     f.use_ref();
-   |     - borrow later used here
+   |     - first borrow later used here
 
 error[E0597]: `x` does not live long enough
   --> $DIR/closure-borrow-spans.rs:64:16
@@ -128,7 +128,7 @@ LL |     let f = || *x = 0;
 LL |     let y = &x; //~ ERROR
    |             ^^ borrow occurs here
 LL |     f.use_ref();
-   |     - borrow later used here
+   |     - first borrow later used here
 
 error[E0501]: cannot borrow `x` as mutable because previous closure requires unique access
   --> $DIR/closure-borrow-spans.rs:89:13
@@ -140,7 +140,7 @@ LL |     let f = || *x = 0;
 LL |     let y = &mut x; //~ ERROR
    |             ^^^^^^ borrow occurs here
 LL |     f.use_ref();
-   |     - borrow later used here
+   |     - first borrow later used here
 
 error[E0597]: `x` does not live long enough
   --> $DIR/closure-borrow-spans.rs:98:17

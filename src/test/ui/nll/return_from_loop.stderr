@@ -32,7 +32,7 @@ LL |         my_struct.field.push_str("Hello, world!");
    |         ^^^^^^^^^^^^^^^ second mutable borrow occurs here
 ...
 LL |         value.len();
-   |         ----- borrow later used here
+   |         ----- first borrow later used here
 
 error: aborting due to 3 previous errors
 

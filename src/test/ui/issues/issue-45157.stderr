@@ -8,7 +8,7 @@ LL |         let nref = &u.z.c;
    |                    ^^^^^^ immutable borrow occurs here
 LL |         //~^ ERROR cannot borrow `u.z.c` as immutable because it is also borrowed as mutable [E0502]
 LL |         println!("{} {}", mref, nref)
-   |                           ---- borrow later used here
+   |                           ---- mutable borrow later used here
 
 error: aborting due to previous error
 

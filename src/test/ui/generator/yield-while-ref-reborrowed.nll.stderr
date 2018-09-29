@@ -11,7 +11,7 @@ LL | |     };
 LL |       println!("{}", x); //~ ERROR
    |                      ^ borrow occurs here
 LL |       b.resume();
-   |       - borrow later used here
+   |       - first borrow later used here
 
 error: aborting due to previous error
 
