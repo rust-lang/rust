@@ -54,6 +54,9 @@ use std::rc::Rc;
 
 use externalfiles::ExternalHtml;
 
+use errors;
+use getopts;
+
 use serialize::json::{ToJson, Json, as_json};
 use syntax::ast;
 use syntax::ext::base::MacroKind;
@@ -79,8 +82,6 @@ use html::markdown::{self, Markdown, MarkdownHtml, MarkdownSummaryLine, ErrorCod
 use html::{highlight, layout};
 
 use minifier;
-
-use pulldown_cmark;
 
 /// A pair of name and its optional document.
 pub type NameDoc = (String, Option<String>);
@@ -508,6 +509,8 @@ pub fn run(mut krate: clean::Crate,
            id_map: IdMap,
            enable_index_page: bool,
            index_page: Option<PathBuf>,
+           matches: &getopts::Matches,
+           diag: &errors::Handler,
 ) -> Result<(), Error> {
     let src_root = match krate.src {
         FileName::Real(ref p) => match p.parent() {
@@ -675,7 +678,7 @@ pub fn run(mut krate: clean::Crate,
     CACHE_KEY.with(|v| *v.borrow_mut() = cache.clone());
     CURRENT_LOCATION_KEY.with(|s| s.borrow_mut().clear());
 
-    write_shared(&cx, &krate, &*cache, index, enable_minification)?;
+    write_shared(&cx, &krate, &*cache, index, enable_minification, matches, diag)?;
 
     // And finally render the whole crate's documentation
     cx.krate(krate)
@@ -751,11 +754,15 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
             Json::Object(crate_data))
 }
 
-fn write_shared(cx: &Context,
-                krate: &clean::Crate,
-                cache: &Cache,
-                search_index: String,
-                enable_minification: bool) -> Result<(), Error> {
+fn write_shared(
+    cx: &Context,
+    krate: &clean::Crate,
+    cache: &Cache,
+    search_index: String,
+    enable_minification: bool,
+    matches: &getopts::Matches,
+    diag: &errors::Handler,
+) -> Result<(), Error> {
     // Write out the shared files. Note that these are shared among all rustdoc
     // docs placed in the output directory, so this needs to be a synchronized
     // operation with respect to all other rustdocs running around.
@@ -983,30 +990,15 @@ themePicker.onblur = handleThemeButtonsBlur;
     }
     try_err!(writeln!(&mut w, "initSearch(searchIndex);"), &dst);
 
-<<<<<<< HEAD
-    if cx.disable_index_page == false {
-        let dst = cx.dst.join("index.html");
-=======
     if cx.enable_index_page == true {
->>>>>>> a2642cf... f
         if let Some(ref index_page) = cx.index_page {
-            let mut content = Vec::with_capacity(100000);
-
-            let mut f = try_err!(File::open(&index_page), &index_page);
-            try_err!(f.read_to_end(&mut content), &index_page);
-            let content = match String::from_utf8(content) {
-                Ok(c) => c,
-                Err(_) => return Err(Error::new(
-                                         io::Error::new(
-                                             io::ErrorKind::Other, "invalid markdown"),
-                                             &index_page)),
-            };
-            let parser = pulldown_cmark::Parser::new(&content);
-            let mut html_buf = String::new();
-            pulldown_cmark::html::push_html(&mut html_buf, parser);
-            let mut f = try_err!(File::create(&dst), &dst);
-            try_err!(f.write_all(html_buf.as_bytes()), &dst);
+            ::markdown::render(index_page,
+                               cx.dst.clone(),
+                               &matches, &(*cx.shared).layout.external_html,
+                               !matches.opt_present("markdown-no-toc"),
+                               diag);
         } else {
+            let dst = cx.dst.join("index.html");
             let mut w = BufWriter::new(try_err!(File::create(&dst), &dst));
             let page = layout::Page {
                 title: "Index of crates",

@@ -77,7 +77,7 @@ pub fn render(input: &Path, mut output: PathBuf, matches: &getopts::Matches,
             diag.struct_err(&format!("{}: {}", output.display(), e)).emit();
             return 4;
         }
-        Ok(f) => f
+        Ok(f) => f,
     };
 
     let (metadata, text) = extract_leading_metadata(&input_str);
