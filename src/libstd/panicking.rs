@@ -517,6 +517,7 @@ pub fn update_count_then_panic(msg: Box<dyn Any + Send>) -> ! {
 }
 
 /// A private no-mangle function on which to slap yer breakpoints.
+#[inline(never)]
 #[no_mangle]
 #[allow(private_no_mangle_fns)] // yes we get it, but we like breakpoints
 pub fn rust_panic(mut msg: &mut dyn BoxMeUp) -> ! {
