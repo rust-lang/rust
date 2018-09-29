@@ -121,3 +121,10 @@ fn test_match_nonzero_const_pattern() {
         _ => panic!("Expected the const item as a pattern to match.")
     }
 }
+
+#[test]
+fn test_from_nonzero() {
+    let nz = NonZeroU32::new(1).unwrap();
+    let num: u32 = nz.into();
+    assert_eq!(num, 1u32);
+}
