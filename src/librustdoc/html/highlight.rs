@@ -44,7 +44,7 @@ pub fn render_with_highlighting(src: &str, class: Option<&str>,
     }
     write_header(class, &mut out).unwrap();
 
-    let lexer = match lexer::StringReader::new_without_err(&sess, fm, None) {
+    let lexer = match lexer::StringReader::new_without_err(&sess, fm, None, "Output from rustc:") {
         Ok(l) => l,
         Err(_) => {
             let first_line = src.lines().next().unwrap_or_else(|| "");

@@ -1,3 +1,4 @@
+Output from rustc:
 error: unknown start of token: /
  --> <stdin>:1:1
   |
