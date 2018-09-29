@@ -290,11 +290,6 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         let mut outer = check_expr_kind(self, ex, node_ty);
         outer &= check_adjustments(self, ex);
 
-        // Avoid non-Sync types
-        if !self.tables.expr_ty(ex).is_sync(self.tcx, self.param_env, DUMMY_SP) {
-            outer = NotPromotable;
-        }
-
         // Handle borrows on (or inside the autorefs of) this expression.
         if self.mut_rvalue_borrows.remove(&ex.id) {
             outer = NotPromotable
@@ -381,8 +376,20 @@ fn check_expr_kind<'a, 'tcx>(
         hir::ExprKind::Path(ref qpath) => {
             let def = v.tables.qpath_def(qpath, e.hir_id);
             match def {
-                Def::VariantCtor(..) | Def::StructCtor(..) |
-                Def::Fn(..) | Def::Method(..) | Def::SelfCtor(..) => Promotable,
+                Def::Fn(..) | Def::Method(..) |
+                Def::VariantCtor(..) | Def::StructCtor(..) | Def::SelfCtor(..) => {
+                    // This is a 0-argument constructor.  Do some value-based-reasoning.
+                    let ty = v.tables.expr_ty(e);
+                    let ty = ty.generalize_for_value_based_sync(v.tcx);
+                    if ty.is_sync(v.tcx, v.param_env, DUMMY_SP) {
+                        Promotable
+                    } else {
+                        debug!("Constructor ({:?}) not promotable because generalized type \
+                                ({:?}) is not Sync",
+                               e, ty);
+                        NotPromotable
+                    }
+                }
 
                 // References to a static that are themselves within a static
                 // are inherently promotable with the exception
@@ -448,7 +455,16 @@ fn check_expr_kind<'a, 'tcx>(
             let def_result = match def {
                 Def::StructCtor(_, CtorKind::Fn) |
                 Def::VariantCtor(_, CtorKind::Fn) |
-                Def::SelfCtor(..) => Promotable,
+                Def::SelfCtor(..) => {
+                    let ty = v.tables.expr_ty(e);
+                    if ty.is_sync(v.tcx, v.param_env, DUMMY_SP) {
+                        Promotable
+                    } else {
+                        debug!("Constructor ({:?}) not promotable because type ({:?}) is not Sync",
+                            e, ty);
+                        NotPromotable
+                    }
+                }
                 Def::Fn(did) => {
                     v.handle_const_fn_call(did, node_ty, e.span)
                 }
@@ -491,11 +507,17 @@ fn check_expr_kind<'a, 'tcx>(
             if let Some(ref expr) = *option_expr {
                 struct_result &= v.check_expr(&expr);
             }
-            if let ty::Adt(adt, ..) = v.tables.expr_ty(e).sty {
+            let ty = v.tables.expr_ty(e);
+            if let ty::Adt(adt, ..) = ty.sty {
                 // unsafe_cell_type doesn't necessarily exist with no_core
                 if Some(adt.did) == v.tcx.lang_items().unsafe_cell_type() {
                     return NotPromotable;
                 }
+            }
+            if !ty.is_sync(v.tcx, v.param_env, DUMMY_SP) {
+                debug!("Constructor ({:?}) not promotable because type ({:?}) is not Sync",
+                    e, ty);
+                return NotPromotable;
             }
             struct_result
         }
@@ -515,6 +537,7 @@ fn check_expr_kind<'a, 'tcx>(
             if v.tcx.with_freevars(e.id, |fv| !fv.is_empty()) {
                 NotPromotable
             } else {
+                // Nothing captured, so the environment type is trivially Freeze+Sync
                 nested_body_promotable
             }
         }

@@ -791,22 +791,35 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
             }
 
-            Rvalue::Aggregate(ref kind, _) => {
+            Rvalue::Aggregate(ref kind, ref args) => {
                 if let AggregateKind::Adt(def, ..) = **kind {
                     if def.has_dtor(self.tcx) {
                         self.add(Qualif::NEEDS_DROP);
                     }
 
+                    let ty = rvalue.ty(self.mir, self.tcx);
+                    // Value-based reasoning:
                     // We are looking at a concrete type constructor, and we know
                     // the only way to construct "fresh" non-Freeze data is `UnsafeCell`.
                     // So we can check for that instead of `Freeze`.
-                    // There is no similar shortcut for Sync, though.
-                    let ty = rvalue.ty(self.mir, self.tcx);
                     let freeze = Some(def.did) != self.tcx.lang_items().unsafe_cell_type();
-                    let sync = ty.is_sync(self.tcx, self.param_env, DUMMY_SP);
+                    // For Sync, we generally have to fall back on the type, but have a
+                    // special exception for 0-argument ADT cosntructors.
+                    let sync = {
+                        let generalized_ty = if args.len() == 0 {
+                            // A type cosntructor with no arguments is directly a value.
+                            // We generalize its type before checking Sync to allow
+                            // `None` to pass no matter the type parameter.
+                            ty.generalize_for_value_based_sync(self.tcx)
+                        } else {
+                            ty
+                        };
+                        generalized_ty.is_sync(self.tcx, self.param_env, DUMMY_SP)
+                    };
                     if !(freeze && sync)
                     {
                         // Not freeze and sync? Be careful.
+                        debug!("Rvalue {:?} has unsharable interior", rvalue);
                         self.add(Qualif::UNSHAREABLE_INTERIOR);
                     }
                 }

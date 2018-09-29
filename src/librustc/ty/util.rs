@@ -16,7 +16,7 @@ use hir::map::DefPathData;
 use hir::{self, Node};
 use ich::NodeIdHashingMode;
 use traits::{self, ObligationCause};
-use ty::{self, Ty, TyCtxt, GenericParamDefKind, TypeFoldable};
+use ty::{self, Ty, TyCtxt, GenericParamDefKind, TypeFoldable, Predicate};
 use ty::subst::{Substs, UnpackedKind};
 use ty::query::TyCtxtAt;
 use ty::TyKind::*;
@@ -860,6 +860,50 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             tcx, sp, &mut seen, &mut representable_cache, self);
         debug!("is_type_representable: {:?} is {:?}", self, r);
         r
+    }
+
+    /// Returns a potentially different type that
+    /// can be used to check whether a 0-argument constructor of this type is
+    /// a `Sync` value.
+    /// Concretely, some type parameters get replaced by `()`.  We assume that
+    /// if a type parameter has no bounds (except for `Sized`), and if the same
+    /// type is `Sync` for that type parameter replaced by `()`, then the constructor
+    /// valie is also `Sync` at the original type.  This is a kind of parametricity
+    /// assumption.
+    /// For now, we only do anything if *no* type parameter has any bound other than
+    /// `Sized`. That's just simpler to check.
+    pub fn generalize_for_value_based_sync(
+        &'tcx self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    ) -> Ty<'tcx> {
+        match self.sty {
+            ty::Adt(def, substs) => {
+                for (bound, _) in def.predicates(tcx).predicates.iter() {
+                    match bound {
+                        Predicate::Trait(pred)
+                            if Some(pred.def_id()) == tcx.lang_items().sized_trait() =>
+                        {
+                            // A `Sized` bound. Ignore.
+                            continue;
+                        }
+                        _ => {}
+                    }
+                    // There is a relevant bound. Do not do anything.
+                    debug!("Type {:?} not generalizable because of bound {:?}", self, bound);
+                    return self;
+                }
+                // If we got here, there are no bounds and we can replace all
+                // type parameters by `()`.
+                let unit_substs = substs.iter()
+                    .map(|param| match param.unpack() {
+                        UnpackedKind::Lifetime(_) => param.clone(),
+                        UnpackedKind::Type(_) => tcx.mk_unit().into(),
+                    });
+                let unit_substs = tcx.mk_substs(unit_substs);
+                tcx.mk_ty(ty::Adt(def, unit_substs))
+            }
+            _ => self, // don't change
+        }
     }
 }
 

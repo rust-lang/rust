@@ -1,17 +1,17 @@
 error[E0492]: cannot borrow a constant which may contain interior mutability or non-`Sync` data. If your data is `Sync`, create a static instead
-  --> $DIR/non_sync_const.rs:9:20
+  --> $DIR/non_sync_const.rs:10:21
    |
-LL | const FOO : &Foo = &Foo; //~ ERROR cannot borrow
-   |                    ^^^^
+LL | const FOO1 : &Foo = &Foo; //~ ERROR cannot borrow
+   |                     ^^^^
 
 error[E0492]: cannot borrow a constant which may contain interior mutability or non-`Sync` data. If your data is `Sync`, create a static instead
-  --> $DIR/non_sync_const.rs:10:34
+  --> $DIR/non_sync_const.rs:11:34
    |
 LL | const FOO2 : Option<&Foo> = Some(&Foo); //~ ERROR cannot borrow
    |                                  ^^^^
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/non_sync_const.rs:10:35
+  --> $DIR/non_sync_const.rs:11:35
    |
 LL | const FOO2 : Option<&Foo> = Some(&Foo); //~ ERROR cannot borrow
    |                                   ^^^- temporary value only lives until here
@@ -21,25 +21,25 @@ LL | const FOO2 : Option<&Foo> = Some(&Foo); //~ ERROR cannot borrow
    = note: borrowed value must be valid for the static lifetime...
 
 error[E0492]: cannot borrow a constant which may contain interior mutability or non-`Sync` data. If your data is `Sync`, create a static instead
-  --> $DIR/non_sync_const.rs:12:29
+  --> $DIR/non_sync_const.rs:13:29
    |
 LL | const FOO3 : &Option<Foo> = &Some(Foo); //~ ERROR cannot borrow
    |                             ^^^^^^^^^^
 
 error[E0492]: cannot borrow a constant which may contain interior mutability or non-`Sync` data. If your data is `Sync`, create a static instead
-  --> $DIR/non_sync_const.rs:14:20
+  --> $DIR/non_sync_const.rs:15:21
    |
-LL | const BAR : &Bar = &Bar(42); //~ ERROR cannot borrow
-   |                    ^^^^^^^^
+LL | const BAR1 : &Bar = &Bar(42); //~ ERROR cannot borrow
+   |                     ^^^^^^^^
 
 error[E0492]: cannot borrow a constant which may contain interior mutability or non-`Sync` data. If your data is `Sync`, create a static instead
-  --> $DIR/non_sync_const.rs:15:34
+  --> $DIR/non_sync_const.rs:16:34
    |
 LL | const BAR2 : Option<&Bar> = Some(&Bar(42)); //~ ERROR cannot borrow
    |                                  ^^^^^^^^
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/non_sync_const.rs:15:35
+  --> $DIR/non_sync_const.rs:16:35
    |
 LL | const BAR2 : Option<&Bar> = Some(&Bar(42)); //~ ERROR cannot borrow
    |                                   ^^^^^^^- temporary value only lives until here
@@ -49,12 +49,36 @@ LL | const BAR2 : Option<&Bar> = Some(&Bar(42)); //~ ERROR cannot borrow
    = note: borrowed value must be valid for the static lifetime...
 
 error[E0492]: cannot borrow a constant which may contain interior mutability or non-`Sync` data. If your data is `Sync`, create a static instead
-  --> $DIR/non_sync_const.rs:17:29
+  --> $DIR/non_sync_const.rs:18:29
    |
 LL | const BAR3 : &Option<Bar> = &Some(Bar(42)); //~ ERROR cannot borrow
    |                             ^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error[E0492]: cannot borrow a constant which may contain interior mutability or non-`Sync` data. If your data is `Sync`, create a static instead
+  --> $DIR/non_sync_const.rs:27:32
+   |
+LL | const OPT1 : &MyOption1<i32> = &MyOption1::None; //~ ERROR cannot borrow
+   |                                ^^^^^^^^^^^^^^^^
+
+error[E0492]: cannot borrow a constant which may contain interior mutability or non-`Sync` data. If your data is `Sync`, create a static instead
+  --> $DIR/non_sync_const.rs:28:32
+   |
+LL | const OPT2 : &MyOption2<Foo> = &MyOption2::None; //~ ERROR cannot borrow
+   |                                ^^^^^^^^^^^^^^^^
+
+error[E0492]: cannot borrow a constant which may contain interior mutability or non-`Sync` data. If your data is `Sync`, create a static instead
+  --> $DIR/non_sync_const.rs:31:26
+   |
+LL |   const TESTS: &FnOnce() = &{ //~ ERROR cannot borrow
+   |  __________________________^
+LL | |     let x = Cell::new(32);
+LL | |     move || {
+LL | |         x;
+LL | |     }
+LL | | };
+   | |_^
+
+error: aborting due to 11 previous errors
 
 Some errors occurred: E0492, E0597.
 For more information about an error, try `rustc --explain E0492`.

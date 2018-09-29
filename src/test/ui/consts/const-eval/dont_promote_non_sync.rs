@@ -26,4 +26,7 @@ fn mk_foo2<T: FooT>() -> &'static Foo { &T::C } //~ ERROR does not live long eno
 trait BarT { const C: Bar; }
 fn mk_bar2<T: BarT>() -> &'static Bar { &T::C } //~ ERROR does not live long enough
 
+// Closure capturing non-Sync data
+fn mk_capturing_closure() -> &'static Fn() { let x = Foo; &move || { &x; } } //~ ERROR does not live long enough
+
 fn main() {}
