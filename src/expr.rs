@@ -73,7 +73,7 @@ pub fn format_expr(
     let expr_rw = match expr.node {
         ast::ExprKind::Array(ref expr_vec) => rewrite_array(
             "",
-            &ptr_vec_to_ref_vec(expr_vec),
+            expr_vec.iter(),
             expr.span,
             context,
             shape,
@@ -110,7 +110,7 @@ pub fn format_expr(
             shape,
         ),
         ast::ExprKind::Tup(ref items) => {
-            rewrite_tuple(context, &ptr_vec_to_ref_vec(items), expr.span, shape)
+            rewrite_tuple(context, items.iter(), expr.span, shape, items.len() == 1)
         }
         ast::ExprKind::If(..)
         | ast::ExprKind::IfLet(..)
@@ -391,15 +391,18 @@ pub fn format_expr(
         })
 }
 
-pub fn rewrite_array<T: Rewrite + Spanned + ToExpr>(
-    name: &str,
-    exprs: &[&T],
+pub fn rewrite_array<'a, T: 'a>(
+    name: &'a str,
+    exprs: impl Iterator<Item = &'a T>,
     span: Span,
-    context: &RewriteContext,
+    context: &'a RewriteContext,
     shape: Shape,
     force_separator_tactic: Option<SeparatorTactic>,
     delim_token: Option<DelimToken>,
-) -> Option<String> {
+) -> Option<String>
+where
+    T: Rewrite + Spanned + ToExpr,
+{
     overflow::rewrite_with_square_brackets(
         context,
         name,
@@ -1329,7 +1332,7 @@ pub fn rewrite_call(
     overflow::rewrite_with_parens(
         context,
         callee,
-        &ptr_vec_to_ref_vec(args),
+        args.iter(),
         shape,
         span,
         context.config.width_heuristics().fn_call_width,
@@ -1722,17 +1725,17 @@ pub fn rewrite_field(
 
 fn rewrite_tuple_in_visual_indent_style<'a, T>(
     context: &RewriteContext,
-    items: &[&T],
+    mut items: impl Iterator<Item = &'a T>,
     span: Span,
     shape: Shape,
+    is_singleton_tuple: bool,
 ) -> Option<String>
 where
     T: Rewrite + Spanned + ToExpr + 'a,
 {
-    let mut items = items.iter();
     // In case of length 1, need a trailing comma
     debug!("rewrite_tuple_in_visual_indent_style {:?}", shape);
-    if items.len() == 1 {
+    if is_singleton_tuple {
         // 3 = "(" + ",)"
         let nested_shape = shape.sub_width(3)?.visual_indent(1);
         return items
@@ -1772,10 +1775,11 @@ where
 }
 
 pub fn rewrite_tuple<'a, T>(
-    context: &RewriteContext,
-    items: &[&T],
+    context: &'a RewriteContext,
+    items: impl Iterator<Item = &'a T>,
     span: Span,
     shape: Shape,
+    is_singleton_tuple: bool,
 ) -> Option<String>
 where
     T: Rewrite + Spanned + ToExpr + 'a,
@@ -1789,7 +1793,7 @@ where
             } else {
                 Some(SeparatorTactic::Never)
             }
-        } else if items.len() == 1 {
+        } else if is_singleton_tuple {
             Some(SeparatorTactic::Always)
         } else {
             None
@@ -1804,7 +1808,7 @@ where
             force_tactic,
         )
     } else {
-        rewrite_tuple_in_visual_indent_style(context, items, span, shape)
+        rewrite_tuple_in_visual_indent_style(context, items, span, shape, is_singleton_tuple)
     }
 }
 
@@ -2065,6 +2069,16 @@ impl ToExpr for ast::GenericParam {
 
     fn can_be_overflowed(&self, _: &RewriteContext, _: usize) -> bool {
         false
+    }
+}
+
+impl<T: ToExpr> ToExpr for ptr::P<T> {
+    fn to_expr(&self) -> Option<&ast::Expr> {
+        (**self).to_expr()
+    }
+
+    fn can_be_overflowed(&self, context: &RewriteContext, len: usize) -> bool {
+        (**self).can_be_overflowed(context, len)
     }
 }
 

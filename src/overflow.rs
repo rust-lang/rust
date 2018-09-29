@@ -29,10 +29,10 @@ use std::cmp::min;
 
 const SHORT_ITEM_THRESHOLD: usize = 10;
 
-pub fn rewrite_with_parens<T>(
-    context: &RewriteContext,
-    ident: &str,
-    items: &[&T],
+pub fn rewrite_with_parens<'a, 'b, T: 'a>(
+    context: &'a RewriteContext,
+    ident: &'a str,
+    items: impl Iterator<Item = &'a T>,
     shape: Shape,
     span: Span,
     item_max_width: usize,
@@ -56,10 +56,10 @@ where
     .rewrite(shape)
 }
 
-pub fn rewrite_with_angle_brackets<T>(
-    context: &RewriteContext,
-    ident: &str,
-    items: &[&T],
+pub fn rewrite_with_angle_brackets<'a, T: 'a>(
+    context: &'a RewriteContext,
+    ident: &'a str,
+    items: impl Iterator<Item = &'a T>,
     shape: Shape,
     span: Span,
 ) -> Option<String>
@@ -81,10 +81,10 @@ where
     .rewrite(shape)
 }
 
-pub fn rewrite_with_square_brackets<T>(
-    context: &RewriteContext,
-    name: &str,
-    items: &[&T],
+pub fn rewrite_with_square_brackets<'a, T: 'a>(
+    context: &'a RewriteContext,
+    name: &'a str,
+    items: impl Iterator<Item = &'a T>,
     shape: Shape,
     span: Span,
     force_separator_tactic: Option<SeparatorTactic>,
@@ -115,7 +115,7 @@ where
 
 struct Context<'a, T: 'a> {
     context: &'a RewriteContext<'a>,
-    items: &'a [&'a T],
+    items: Vec<&'a T>,
     ident: &'a str,
     prefix: &'static str,
     suffix: &'static str,
@@ -131,7 +131,7 @@ struct Context<'a, T: 'a> {
 impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
     pub fn new(
         context: &'a RewriteContext,
-        items: &'a [&'a T],
+        items: impl Iterator<Item = &'a T>,
         ident: &'a str,
         shape: Shape,
         span: Span,
@@ -153,7 +153,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
         let nested_shape = shape_from_indent_style(context, shape, used_width + 2, used_width + 1);
         Context {
             context,
-            items,
+            items: items.collect(),
             ident,
             one_line_shape,
             nested_shape,
@@ -192,7 +192,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
                 ast::ExprKind::Closure(..) => {
                     // If the argument consists of multiple closures, we do not overflow
                     // the last closure.
-                    if closures::args_have_many_closure(self.items) {
+                    if closures::args_have_many_closure(&self.items) {
                         None
                     } else {
                         closures::rewrite_last_closure(self.context, expr, shape)
@@ -227,7 +227,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
         let combine_arg_with_callee = self.items.len() == 1
             && self.items[0].to_expr().is_some()
             && self.ident.len() < self.context.config.tab_spaces();
-        let overflow_last = combine_arg_with_callee || can_be_overflowed(self.context, self.items);
+        let overflow_last = combine_arg_with_callee || can_be_overflowed(self.context, &self.items);
 
         // Replace the last item with its first line to see if it fits with
         // first arguments.
@@ -241,7 +241,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
                 }
             }
             let result = last_item_shape(
-                self.items,
+                &self.items,
                 list_items,
                 self.one_line_shape,
                 self.item_max_width,
@@ -316,7 +316,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
 
                     if tactic == DefinitiveListTactic::Vertical {
                         if let Some((all_simple, num_args_before)) =
-                            maybe_get_args_offset(self.ident, self.items)
+                            maybe_get_args_offset(self.ident, &self.items)
                         {
                             let one_line = all_simple
                                 && definitive_tactic(
@@ -335,7 +335,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
                             if one_line {
                                 tactic = DefinitiveListTactic::SpecialMacro(num_args_before);
                             };
-                        } else if is_every_expr_simple(self.items) && no_long_items(list_items) {
+                        } else if is_every_expr_simple(&self.items) && no_long_items(list_items) {
                             tactic = DefinitiveListTactic::Mixed;
                         }
                     }

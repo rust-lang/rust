@@ -1391,11 +1391,10 @@ fn format_tuple_struct(
         format_empty_struct_or_tuple(context, inner_span, offset, &mut result, "(", ")");
     } else {
         let shape = Shape::indented(offset, context.config).sub_width(1)?;
-        let fields = &fields.iter().collect::<Vec<_>>();
         result = overflow::rewrite_with_parens(
             context,
             &result,
-            fields,
+            fields.iter(),
             shape,
             span,
             context.config.width_heuristics().fn_call_width,
@@ -2495,7 +2494,7 @@ fn rewrite_generics(
         return Some(ident.to_owned());
     }
 
-    let params = &generics.params.iter().map(|e| &*e).collect::<Vec<_>>();
+    let params = generics.params.iter();
     overflow::rewrite_with_angle_brackets(context, ident, params, shape, generics.span)
 }
 

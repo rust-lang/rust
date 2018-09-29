@@ -11,6 +11,7 @@
 // A generic trait to abstract the rewriting of an element (of the AST).
 
 use syntax::parse::ParseSess;
+use syntax::ptr;
 use syntax::source_map::{SourceMap, Span};
 
 use config::{Config, IndentStyle};
@@ -23,6 +24,12 @@ use std::cell::RefCell;
 pub trait Rewrite {
     /// Rewrite self into shape.
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String>;
+}
+
+impl<T: Rewrite> Rewrite for ptr::P<T> {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        (**self).rewrite(context, shape)
+    }
 }
 
 #[derive(Clone)]

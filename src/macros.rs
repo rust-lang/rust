@@ -278,7 +278,7 @@ pub fn rewrite_macro_inner(
             overflow::rewrite_with_parens(
                 context,
                 &macro_name,
-                &arg_vec.iter().map(|e| &*e).collect::<Vec<_>>(),
+                arg_vec.iter(),
                 shape,
                 mac.span,
                 context.config.width_heuristics().fn_call_width,
@@ -334,11 +334,9 @@ pub fn rewrite_macro_inner(
                         force_trailing_comma = Some(SeparatorTactic::Vertical);
                     };
                 }
-                // Convert `MacroArg` into `ast::Expr`, as `rewrite_array` only accepts the latter.
-                let arg_vec = &arg_vec.iter().map(|e| &*e).collect::<Vec<_>>();
                 let rewrite = rewrite_array(
                     macro_name,
-                    arg_vec,
+                    arg_vec.iter(),
                     mac.span,
                     context,
                     shape,

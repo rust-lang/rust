@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::ast;
-use syntax::source_map::Span;
+use syntax::{ast, ptr, source_map::Span};
 
 use macros::MacroArg;
 use utils::{mk_sp, outer_attributes};
@@ -19,6 +18,12 @@ use std::cmp::max;
 /// Spanned returns a span including attributes, if available.
 pub trait Spanned {
     fn span(&self) -> Span;
+}
+
+impl<T: Spanned> Spanned for ptr::P<T> {
+    fn span(&self) -> Span {
+        (**self).span()
+    }
 }
 
 macro_rules! span_with_attrs_lo_hi {

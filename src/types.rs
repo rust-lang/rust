@@ -252,7 +252,7 @@ fn rewrite_segment(
                 let generics_str = overflow::rewrite_with_angle_brackets(
                     context,
                     "",
-                    &param_list.iter().map(|e| &*e).collect::<Vec<_>>(),
+                    param_list.iter(),
                     shape,
                     mk_sp(*span_lo, span_hi),
                 )?;
@@ -664,12 +664,9 @@ impl Rewrite for ast::Ty {
                 ty.rewrite(context, Shape::legacy(budget, shape.indent + 1))
                     .map(|ty_str| format!("[{}]", ty_str))
             }
-            ast::TyKind::Tup(ref items) => rewrite_tuple(
-                context,
-                &::utils::ptr_vec_to_ref_vec(items),
-                self.span,
-                shape,
-            ),
+            ast::TyKind::Tup(ref items) => {
+                rewrite_tuple(context, items.iter(), self.span, shape, items.len() == 1)
+            }
             ast::TyKind::Path(ref q_self, ref path) => {
                 rewrite_path(context, PathContext::Type, q_self.as_ref(), path, shape)
             }
