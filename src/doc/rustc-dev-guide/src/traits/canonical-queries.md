@@ -143,7 +143,7 @@ we did find. It consists of four parts:
 
 Let's work through an example query to see what all the parts mean.
 Consider [the `Borrow` trait][borrow]. This trait has a number of
-impls; among them, there are these two (for clarify, I've written the
+impls; among them, there are these two (for clarity, I've written the
 `Sized` bounds explicitly):
 
 [borrow]: https://doc.rust-lang.org/std/borrow/trait.Borrow.html

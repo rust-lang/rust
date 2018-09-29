@@ -29,7 +29,7 @@ they are repeated.
 
 We use this to improve caching as well as to detect cycles and other
 things during trait resolution. Roughly speaking, the idea is that if
-two trait queries have the same canonicalize form, then they will get
+two trait queries have the same canonical form, then they will get
 the same answer. That answer will be expressed in terms of the
 canonical variables (`?0`, `?1`), which we can then map back to the
 original variables (`?T`, `?U`).

@@ -81,7 +81,7 @@ sorts of identifiers in active use:
     about the crate (such as its version number, as two versions of
     the same crate can co-exist).
   - A [`DefId`] really consists of two parts, a `CrateNum` (which
-    identifies the crate) and a `DefIndex` (which indixes into a list
+    identifies the crate) and a `DefIndex` (which indexes into a list
     of items that is maintained per crate).
 - [`HirId`], which combines the index of a particular item with an
   offset within that item.

@@ -25,7 +25,7 @@ sanity checks in `src/librustc/hir/map/hir_id_validator.rs`:
   any `NodeId`s in the `HIR` are checked for existing `HirId`s)
 2. Lowering a `HirId` must be done in the scope of the *owning* item.
   This means you need to use `with_hir_id_owner` if you are creating parts
-  of another item than the one being currently lowered. This happens for
+  of an item other than the one being currently lowered. This happens for
   example during the lowering of existential `impl Trait`
 3. A `NodeId` that will be placed into a HIR structure must be lowered,
   even if its `HirId` is unused. Calling
