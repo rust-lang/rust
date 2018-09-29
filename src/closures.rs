@@ -361,13 +361,10 @@ pub fn rewrite_last_closure(
 /// Returns true if the given vector of arguments has more than one `ast::ExprKind::Closure`.
 pub fn args_have_many_closure(args: &[OverflowableItem]) -> bool {
     args.iter()
-        .filter(|arg| {
-            arg.to_expr()
-                .map(|e| match e.node {
-                    ast::ExprKind::Closure(..) => true,
-                    _ => false,
-                })
-                .unwrap_or(false)
+        .filter_map(|arg| arg.to_expr())
+        .filter(|expr| match expr.node {
+            ast::ExprKind::Closure(..) => true,
+            _ => false,
         })
         .count()
         > 1

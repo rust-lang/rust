@@ -17,7 +17,7 @@ use syntax::{ast, ptr};
 
 use closures;
 use expr::{
-    can_be_overflowed_expr, is_every_expr_simple, is_method_call, is_nested_call,
+    can_be_overflowed_expr, is_every_expr_simple, is_method_call, is_nested_call, is_simple_expr,
     maybe_get_args_offset,
 };
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
@@ -67,6 +67,30 @@ impl<'a> OverflowableItem<'a> {
             OverflowableItem::StructField(sf) => f(*sf),
             OverflowableItem::TuplePatField(pat) => f(*pat),
             OverflowableItem::Ty(ty) => f(*ty),
+        }
+    }
+
+    pub fn is_simple(&self) -> bool {
+        match self {
+            OverflowableItem::Expr(expr) => is_simple_expr(expr),
+            OverflowableItem::MacroArg(MacroArg::Expr(expr)) => is_simple_expr(expr),
+            _ => false,
+        }
+    }
+
+    pub fn is_expr(&self) -> bool {
+        match self {
+            OverflowableItem::Expr(..) => true,
+            OverflowableItem::MacroArg(MacroArg::Expr(..)) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_nested_call(&self) -> bool {
+        match self {
+            OverflowableItem::Expr(expr) => is_nested_call(expr),
+            OverflowableItem::MacroArg(MacroArg::Expr(expr)) => is_nested_call(expr),
+            _ => false,
         }
     }
 
@@ -303,23 +327,24 @@ impl<'a> Context<'a> {
         shape: Shape,
     ) -> Option<String> {
         let last_item = self.last_item()?;
-        let rewrite = if let Some(expr) = last_item.to_expr() {
-            match expr.node {
-                // When overflowing the closure which consists of a single control flow expression,
-                // force to use block if its condition uses multi line.
-                ast::ExprKind::Closure(..) => {
-                    // If the argument consists of multiple closures, we do not overflow
-                    // the last closure.
-                    if closures::args_have_many_closure(&self.items) {
-                        None
-                    } else {
-                        closures::rewrite_last_closure(self.context, expr, shape)
+        let rewrite = match last_item {
+            OverflowableItem::Expr(ref expr) => {
+                match expr.node {
+                    // When overflowing the closure which consists of a single control flow
+                    // expression, force to use block if its condition uses multi line.
+                    ast::ExprKind::Closure(..) => {
+                        // If the argument consists of multiple closures, we do not overflow
+                        // the last closure.
+                        if closures::args_have_many_closure(&self.items) {
+                            None
+                        } else {
+                            closures::rewrite_last_closure(self.context, expr, shape)
+                        }
                     }
+                    _ => expr.rewrite(self.context, shape),
                 }
-                _ => expr.rewrite(self.context, shape),
             }
-        } else {
-            last_item.rewrite(self.context, shape)
+            item @ _ => item.rewrite(self.context, shape),
         };
 
         if let Some(rewrite) = rewrite {
@@ -343,7 +368,7 @@ impl<'a> Context<'a> {
     fn try_overflow_last_item(&self, list_items: &mut Vec<ListItem>) -> DefinitiveListTactic {
         // 1 = "("
         let combine_arg_with_callee = self.items.len() == 1
-            && self.items[0].to_expr().is_some()
+            && self.items[0].is_expr()
             && self.ident.len() < self.context.config.tab_spaces();
         let overflow_last = combine_arg_with_callee || can_be_overflowed(self.context, &self.items);
 
@@ -351,12 +376,13 @@ impl<'a> Context<'a> {
         // first arguments.
         let placeholder = if overflow_last {
             let old_value = *self.context.force_one_line_chain.borrow();
-            if !combine_arg_with_callee {
-                if let Some(ref expr) = self.last_item().and_then(|item| item.to_expr()) {
-                    if is_method_call(expr) {
-                        self.context.force_one_line_chain.replace(true);
-                    }
+            match self.last_item() {
+                Some(OverflowableItem::Expr(expr))
+                    if !combine_arg_with_callee && is_method_call(expr) =>
+                {
+                    self.context.force_one_line_chain.replace(true);
                 }
+                _ => (),
             }
             let result = last_item_shape(
                 &self.items,
@@ -596,12 +622,7 @@ fn last_item_shape(
     shape: Shape,
     args_max_width: usize,
 ) -> Option<Shape> {
-    let is_nested_call = lists
-        .iter()
-        .next()
-        .and_then(|item| item.to_expr())
-        .map_or(false, is_nested_call);
-    if items.len() == 1 && !is_nested_call {
+    if items.len() == 1 && !lists.iter().next()?.is_nested_call() {
         return Some(shape);
     }
     let offset = items.iter().rev().skip(1).fold(0, |acc, i| {

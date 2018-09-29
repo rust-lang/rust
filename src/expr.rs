@@ -1337,7 +1337,7 @@ pub fn rewrite_call(
     )
 }
 
-fn is_simple_expr(expr: &ast::Expr) -> bool {
+pub fn is_simple_expr(expr: &ast::Expr) -> bool {
     match expr.node {
         ast::ExprKind::Lit(..) => true,
         ast::ExprKind::Path(ref qself, ref path) => qself.is_none() && path.segments.len() <= 1,
@@ -1356,9 +1356,7 @@ fn is_simple_expr(expr: &ast::Expr) -> bool {
 }
 
 pub fn is_every_expr_simple(lists: &[OverflowableItem]) -> bool {
-    lists
-        .iter()
-        .all(|arg| arg.to_expr().map_or(false, is_simple_expr))
+    lists.iter().all(OverflowableItem::is_simple)
 }
 
 pub fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_len: usize) -> bool {
