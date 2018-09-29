@@ -18,7 +18,6 @@ use syntax::{ast, ptr};
 use closures;
 use expr::{
     can_be_overflowed_expr, is_every_expr_simple, is_method_call, is_nested_call, is_simple_expr,
-    maybe_get_args_offset,
 };
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
 use macros::MacroArg;
@@ -31,6 +30,42 @@ use types::{can_be_overflowed_type, SegmentParam};
 use utils::{count_newlines, extra_offset, first_line_width, last_line_width, mk_sp};
 
 use std::cmp::min;
+
+const SHORT_ITEM_THRESHOLD: usize = 10;
+
+/// A list of `format!`-like macros, that take a long format string and a list of arguments to
+/// format.
+///
+/// Organized as a list of `(&str, usize)` tuples, giving the name of the macro and the number of
+/// arguments before the format string (none for `format!("format", ...)`, one for `assert!(result,
+/// "format", ...)`, two for `assert_eq!(left, right, "format", ...)`).
+const SPECIAL_MACRO_WHITELIST: &[(&str, usize)] = &[
+    // format! like macros
+    // From the Rust Standard Library.
+    ("eprint!", 0),
+    ("eprintln!", 0),
+    ("format!", 0),
+    ("format_args!", 0),
+    ("print!", 0),
+    ("println!", 0),
+    ("panic!", 0),
+    ("unreachable!", 0),
+    // From the `log` crate.
+    ("debug!", 0),
+    ("error!", 0),
+    ("info!", 0),
+    ("warn!", 0),
+    // write! like macros
+    ("assert!", 1),
+    ("debug_assert!", 1),
+    ("write!", 1),
+    ("writeln!", 1),
+    // assert_eq! like macros
+    ("assert_eq!", 2),
+    ("assert_ne!", 2),
+    ("debug_assert_eq!", 2),
+    ("debug_assert_ne!", 2),
+];
 
 pub enum OverflowableItem<'a> {
     Expr(&'a ast::Expr),
@@ -177,8 +212,6 @@ where
 {
     iter.map(|x| IntoOverflowableItem::into_overflowable_item(x))
 }
-
-const SHORT_ITEM_THRESHOLD: usize = 10;
 
 pub fn rewrite_with_parens<'a, T: 'a + IntoOverflowableItem<'a>>(
     context: &'a RewriteContext,
@@ -660,4 +693,22 @@ fn shape_from_indent_style(
 fn no_long_items(list: &[ListItem]) -> bool {
     list.iter()
         .all(|item| item.inner_as_ref().len() <= SHORT_ITEM_THRESHOLD)
+}
+
+/// In case special-case style is required, returns an offset from which we start horizontal layout.
+pub fn maybe_get_args_offset(callee_str: &str, args: &[OverflowableItem]) -> Option<(bool, usize)> {
+    if let Some(&(_, num_args_before)) = args
+        .get(0)?
+        .whitelist()
+        .iter()
+        .find(|&&(s, _)| s == callee_str)
+    {
+        let all_simple = args.len() > num_args_before
+            && is_every_expr_simple(&args[0..num_args_before])
+            && is_every_expr_simple(&args[num_args_before + 1..]);
+
+        Some((all_simple, num_args_before))
+    } else {
+        None
+    }
 }

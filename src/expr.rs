@@ -1259,54 +1259,6 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
     )
 }
 
-/// In case special-case style is required, returns an offset from which we start horizontal layout.
-pub fn maybe_get_args_offset(callee_str: &str, args: &[OverflowableItem]) -> Option<(bool, usize)> {
-    if let Some(&(_, num_args_before)) = SPECIAL_MACRO_WHITELIST
-        .iter()
-        .find(|&&(s, _)| s == callee_str)
-    {
-        let all_simple = args.len() > num_args_before && is_every_expr_simple(args);
-
-        Some((all_simple, num_args_before))
-    } else {
-        None
-    }
-}
-
-/// A list of `format!`-like macros, that take a long format string and a list of arguments to
-/// format.
-///
-/// Organized as a list of `(&str, usize)` tuples, giving the name of the macro and the number of
-/// arguments before the format string (none for `format!("format", ...)`, one for `assert!(result,
-/// "format", ...)`, two for `assert_eq!(left, right, "format", ...)`).
-const SPECIAL_MACRO_WHITELIST: &[(&str, usize)] = &[
-    // format! like macros
-    // From the Rust Standard Library.
-    ("eprint!", 0),
-    ("eprintln!", 0),
-    ("format!", 0),
-    ("format_args!", 0),
-    ("print!", 0),
-    ("println!", 0),
-    ("panic!", 0),
-    ("unreachable!", 0),
-    // From the `log` crate.
-    ("debug!", 0),
-    ("error!", 0),
-    ("info!", 0),
-    ("warn!", 0),
-    // write! like macros
-    ("assert!", 1),
-    ("debug_assert!", 1),
-    ("write!", 1),
-    ("writeln!", 1),
-    // assert_eq! like macros
-    ("assert_eq!", 2),
-    ("assert_ne!", 2),
-    ("debug_assert_eq!", 2),
-    ("debug_assert_ne!", 2),
-];
-
 fn choose_separator_tactic(context: &RewriteContext, span: Span) -> Option<SeparatorTactic> {
     if context.inside_macro() {
         if span_ends_with_comma(context, span) {
