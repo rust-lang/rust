@@ -98,8 +98,9 @@ impl ExcessivePrecision {
     }
 }
 
-/// Should we exclude the float because it has a .0 suffix
+/// Should we exclude the float because it has a `.0` or `.` suffix
 /// Ex 1_000_000_000.0
+/// Ex 1_000_000_000.
 fn dot_zero_exclusion(s: &str) -> bool {
     if let Some(after_dec) = s.split('.').nth(1) {
         let mut decpart = after_dec
@@ -108,7 +109,8 @@ fn dot_zero_exclusion(s: &str) -> bool {
 
         match decpart.next() {
             Some('0') => decpart.count() == 0,
-            _ => false,
+            Some(_) => false,
+            None => true,
         }
     } else {
         false
