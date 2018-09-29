@@ -137,7 +137,7 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
                 let mut predicates: Vec<_> =
                     predicates.predicates
                               .iter()
-                              .map(|p| p.subst_supertrait(tcx, &data.to_poly_trait_ref()))
+                              .map(|(p, _)| p.subst_supertrait(tcx, &data.to_poly_trait_ref()))
                               .collect();
 
                 debug!("super_predicates: data={:?} predicates={:?}",
@@ -311,7 +311,7 @@ impl<'cx, 'gcx, 'tcx> Iterator for SupertraitDefIds<'cx, 'gcx, 'tcx> {
         self.stack.extend(
             predicates.predicates
                       .iter()
-                      .filter_map(|p| p.to_opt_poly_trait_ref())
+                      .filter_map(|(p, _)| p.to_opt_poly_trait_ref())
                       .map(|t| t.def_id())
                       .filter(|&super_def_id| visited.insert(super_def_id)));
         Some(def_id)

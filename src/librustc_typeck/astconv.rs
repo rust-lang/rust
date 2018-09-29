@@ -693,7 +693,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
     pub(super) fn instantiate_poly_trait_ref_inner(&self,
         trait_ref: &hir::TraitRef,
         self_ty: Ty<'tcx>,
-        poly_projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>,
+        poly_projections: &mut Vec<(ty::PolyProjectionPredicate<'tcx>, Span)>,
         speculative: bool)
         -> ty::PolyTraitRef<'tcx>
     {
@@ -716,7 +716,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             let predicate: Result<_, ErrorReported> =
                 self.ast_type_binding_to_poly_projection_predicate(
                     trait_ref.ref_id, poly_trait_ref, binding, speculative, &mut dup_bindings);
-            predicate.ok() // ok to ignore Err() because ErrorReported (see above)
+            // ok to ignore Err() because ErrorReported (see above)
+            Some((predicate.ok()?, binding.span))
         }));
 
         debug!("ast_path_to_poly_trait_ref({:?}, projections={:?}) -> {:?}",
@@ -727,7 +728,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
     pub fn instantiate_poly_trait_ref(&self,
         poly_trait_ref: &hir::PolyTraitRef,
         self_ty: Ty<'tcx>,
-        poly_projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
+        poly_projections: &mut Vec<(ty::PolyProjectionPredicate<'tcx>, Span)>)
         -> ty::PolyTraitRef<'tcx>
     {
         self.instantiate_poly_trait_ref_inner(&poly_trait_ref.trait_ref, self_ty,
@@ -974,7 +975,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         let existential_principal = principal.map_bound(|trait_ref| {
             self.trait_ref_to_existential(trait_ref)
         });
-        let existential_projections = projection_bounds.iter().map(|bound| {
+        let existential_projections = projection_bounds.iter().map(|(bound, _)| {
             bound.map_bound(|b| {
                 let trait_ref = self.trait_ref_to_existential(b.projection_ty.trait_ref(tcx));
                 ty::ExistentialProjection {
@@ -1006,7 +1007,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 .map(|item| item.def_id));
         }
 
-        for projection_bound in &projection_bounds {
+        for (projection_bound, _) in &projection_bounds {
             associated_types.remove(&projection_bound.projection_def_id());
         }
 
@@ -1089,7 +1090,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         let tcx = self.tcx();
 
         let bounds: Vec<_> = self.get_type_parameter_bounds(span, ty_param_def_id)
-            .predicates.into_iter().filter_map(|p| p.to_opt_poly_trait_ref()).collect();
+            .predicates.into_iter().filter_map(|(p, _)| p.to_opt_poly_trait_ref()).collect();
 
         // Check that there is exactly one way to find an associated type with the
         // correct name.
@@ -1701,42 +1702,41 @@ fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 // and return from functions in multiple places.
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Bounds<'tcx> {
-    pub region_bounds: Vec<ty::Region<'tcx>>,
-    pub implicitly_sized: bool,
-    pub trait_bounds: Vec<ty::PolyTraitRef<'tcx>>,
-    pub projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>,
+    pub region_bounds: Vec<(ty::Region<'tcx>, Span)>,
+    pub implicitly_sized: Option<Span>,
+    pub trait_bounds: Vec<(ty::PolyTraitRef<'tcx>, Span)>,
+    pub projection_bounds: Vec<(ty::PolyProjectionPredicate<'tcx>, Span)>,
 }
 
 impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
     pub fn predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, param_ty: Ty<'tcx>)
-                      -> Vec<ty::Predicate<'tcx>>
+                      -> Vec<(ty::Predicate<'tcx>, Span)>
     {
         // If it could be sized, and is, add the sized predicate
-        let sized_predicate = if self.implicitly_sized {
+        let sized_predicate = self.implicitly_sized.and_then(|span| {
             tcx.lang_items().sized_trait().map(|sized| {
                 let trait_ref = ty::TraitRef {
                     def_id: sized,
                     substs: tcx.mk_substs_trait(param_ty, &[])
                 };
-                trait_ref.to_predicate()
+                (trait_ref.to_predicate(), span)
             })
-        } else {
-            None
-        };
+        });
 
         sized_predicate.into_iter().chain(
-            self.region_bounds.iter().map(|&region_bound| {
+            self.region_bounds.iter().map(|&(region_bound, span)| {
                 // account for the binder being introduced below; no need to shift `param_ty`
                 // because, at present at least, it can only refer to early-bound regions
                 let region_bound = tcx.mk_region(ty::fold::shift_region(*region_bound, 1));
-                ty::Binder::dummy(ty::OutlivesPredicate(param_ty, region_bound)).to_predicate()
+                let outlives = ty::OutlivesPredicate(param_ty, region_bound);
+                (ty::Binder::dummy(outlives).to_predicate(), span)
             }).chain(
-                self.trait_bounds.iter().map(|bound_trait_ref| {
-                    bound_trait_ref.to_predicate()
+                self.trait_bounds.iter().map(|&(bound_trait_ref, span)| {
+                    (bound_trait_ref.to_predicate(), span)
                 })
             ).chain(
-                self.projection_bounds.iter().map(|projection| {
-                    projection.to_predicate()
+                self.projection_bounds.iter().map(|&(projection, span)| {
+                    (projection.to_predicate(), span)
                 })
             )
         ).collect()

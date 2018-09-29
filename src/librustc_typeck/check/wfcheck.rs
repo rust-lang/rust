@@ -460,7 +460,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
         }
     });
     // Now we build the substituted predicates.
-    let default_obligations = predicates.predicates.iter().flat_map(|&pred| {
+    let default_obligations = predicates.predicates.iter().flat_map(|&(pred, _)| {
         struct CountParams { params: FxHashSet<u32> }
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams {
             fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
@@ -484,7 +484,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
         // or preds with multiple params.
         if substituted_pred.references_error() || param_count.params.len() > 1 || has_region {
             None
-        } else if predicates.predicates.contains(&substituted_pred) {
+        } else if predicates.predicates.iter().any(|&(p, _)| p == substituted_pred) {
             // Avoid duplication of predicates that contain no parameters, for example.
             None
         } else {
@@ -674,10 +674,10 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
                         "check_existential_types may define. adding predicates: {:#?}",
                         predicates,
                     );
-                    for &pred in predicates.predicates.iter() {
+                    for &(pred, _) in predicates.predicates.iter() {
                         let substituted_pred = pred.subst(fcx.tcx, substs);
                         // Avoid duplication of predicates that contain no parameters, for example.
-                        if !predicates.predicates.contains(&substituted_pred) {
+                        if !predicates.predicates.iter().any(|&(p, _)| p == substituted_pred) {
                             substituted_predicates.push(substituted_pred);
                         }
                     }
@@ -806,7 +806,7 @@ fn check_variances_for_type_defn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         .collect();
 
     identify_constrained_type_params(tcx,
-                                     ty_predicates.predicates.as_slice(),
+                                     &ty_predicates,
                                      None,
                                      &mut constrained_parameters);
 
@@ -874,7 +874,10 @@ fn check_false_global_bounds<'a, 'gcx, 'tcx>(
     let empty_env = ty::ParamEnv::empty();
 
     let def_id = fcx.tcx.hir.local_def_id(id);
-    let predicates = fcx.tcx.predicates_of(def_id).predicates;
+    let predicates = fcx.tcx.predicates_of(def_id).predicates
+        .into_iter()
+        .map(|(p, _)| p)
+        .collect();
     // Check elaborated bounds
     let implied_obligations = traits::elaborate_predicates(fcx.tcx, predicates);
 

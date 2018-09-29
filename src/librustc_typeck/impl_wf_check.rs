@@ -100,7 +100,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let mut input_parameters = ctp::parameters_for_impl(impl_self_ty, impl_trait_ref);
     ctp::identify_constrained_type_params(
-        tcx, &impl_predicates.predicates.as_slice(), impl_trait_ref, &mut input_parameters);
+        tcx, &impl_predicates, impl_trait_ref, &mut input_parameters);
 
     // Disallow unconstrained lifetimes, but only if they appear in assoc types.
     let lifetimes_in_associated_types: FxHashSet<_> = impl_item_refs.iter()

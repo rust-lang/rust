@@ -434,7 +434,7 @@ impl<'b, 'a, 'tcx> ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
 
     fn predicates(&mut self) -> &mut Self {
         let predicates = self.ev.tcx.predicates_of(self.item_def_id);
-        for predicate in &predicates.predicates {
+        for (predicate, _) in &predicates.predicates {
             predicate.visit_with(self);
             match predicate {
                 &ty::Predicate::Trait(poly_predicate) => {
@@ -781,7 +781,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
             if self.check_trait_ref(*principal.skip_binder()) {
                 return;
             }
-            for poly_predicate in projections {
+            for (poly_predicate, _) in projections {
                 let tcx = self.tcx;
                 if self.check_trait_ref(poly_predicate.skip_binder().projection_ty.trait_ref(tcx)) {
                     return;
@@ -956,7 +956,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                 }
             }
             ty::Opaque(def_id, ..) => {
-                for predicate in &self.tcx.predicates_of(def_id).predicates {
+                for (predicate, _) in &self.tcx.predicates_of(def_id).predicates {
                     let trait_ref = match *predicate {
                         ty::Predicate::Trait(ref poly_trait_predicate) => {
                             Some(poly_trait_predicate.skip_binder().trait_ref)
@@ -1387,7 +1387,7 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
         // for the inferred outlives rules; see
         // `src/test/ui/rfc-2093-infer-outlives/privacy.rs`.
         let predicates = self.tcx.explicit_predicates_of(self.item_def_id);
-        for predicate in &predicates.predicates {
+        for (predicate, _) in &predicates.predicates {
             predicate.visit_with(self);
             match predicate {
                 &ty::Predicate::Trait(poly_predicate) => {

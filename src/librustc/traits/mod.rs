@@ -816,11 +816,10 @@ fn substitute_normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
                                                       key: (DefId, &'tcx Substs<'tcx>))
                                                       -> bool
 {
-    use ty::subst::Subst;
     debug!("substitute_normalize_and_test_predicates(key={:?})",
            key);
 
-    let predicates = tcx.predicates_of(key.0).predicates.subst(tcx, key.1);
+    let predicates = tcx.predicates_of(key.0).instantiate(tcx, key.1).predicates;
     let result = normalize_and_test_predicates(tcx, predicates);
 
     debug!("substitute_normalize_and_test_predicates(key={:?}) = {:?}",

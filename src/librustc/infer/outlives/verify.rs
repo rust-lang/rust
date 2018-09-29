@@ -297,12 +297,15 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
         let tcx = self.tcx;
         let assoc_item = tcx.associated_item(assoc_item_def_id);
         let trait_def_id = assoc_item.container.assert_trait();
-        let trait_predicates = tcx.predicates_of(trait_def_id);
+        let trait_predicates = tcx.predicates_of(trait_def_id).predicates
+            .into_iter()
+            .map(|(p, _)| p)
+            .collect();
         let identity_substs = Substs::identity_for_item(tcx, assoc_item_def_id);
         let identity_proj = tcx.mk_projection(assoc_item_def_id, identity_substs);
         self.collect_outlives_from_predicate_list(
             move |ty| ty == identity_proj,
-            traits::elaborate_predicates(tcx, trait_predicates.predicates),
+            traits::elaborate_predicates(tcx, trait_predicates),
         ).map(|b| b.1)
     }
 

@@ -1736,8 +1736,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
         if cx.tcx.features().trivial_bounds {
             let def_id = cx.tcx.hir.local_def_id(item.id);
             let predicates = cx.tcx.predicates_of(def_id);
-            for predicate in &predicates.predicates {
-                let predicate_kind_name = match *predicate {
+            for &(predicate, span) in &predicates.predicates {
+                let predicate_kind_name = match predicate {
                     Trait(..) => "Trait",
                     TypeOutlives(..) |
                     RegionOutlives(..) => "Lifetime",
@@ -1755,7 +1755,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
                 if predicate.is_global() {
                     cx.span_lint(
                         TRIVIAL_BOUNDS,
-                        item.span,
+                        span,
                         &format!("{} bound {} does not depend on any type \
                                 or lifetime parameters", predicate_kind_name, predicate),
                     );
