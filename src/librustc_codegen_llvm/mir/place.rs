@@ -275,7 +275,7 @@ impl PlaceRef<'ll, 'tcx> {
     /// Obtain the actual discriminant of a value.
     pub fn codegen_get_discr(self, bx: &Builder<'a, 'll, 'tcx>, cast_to: Ty<'tcx>) -> &'ll Value {
         let cast_to = bx.cx.layout_of(cast_to).immediate_llvm_type(bx.cx);
-        if self.layout.abi.is_uninhabited() {
+        if self.layout.abi == layout::Abi::Uninhabited {
             return C_undef(cast_to);
         }
         match self.layout.variants {
@@ -338,7 +338,7 @@ impl PlaceRef<'ll, 'tcx> {
     /// Set the discriminant for a new value of the given case of the given
     /// representation.
     pub fn codegen_set_discr(&self, bx: &Builder<'a, 'll, 'tcx>, variant_index: usize) {
-        if self.layout.for_variant(bx.cx, variant_index).abi.is_uninhabited() {
+        if self.layout.for_variant(bx.cx, variant_index).abi == layout::Abi::Uninhabited {
             return;
         }
         match self.layout.variants {
