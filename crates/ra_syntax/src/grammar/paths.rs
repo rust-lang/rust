@@ -1,11 +1,11 @@
 use super::*;
 
 pub(super) const PATH_FIRST: TokenSet =
-    token_set![IDENT, SELF_KW, SUPER_KW, COLONCOLON, L_ANGLE];
+    token_set![IDENT, SELF_KW, SUPER_KW, CRATE_KW, COLONCOLON, L_ANGLE];
 
 pub(super) fn is_path_start(p: &Parser) -> bool {
     match p.current() {
-        IDENT | SELF_KW | SUPER_KW | COLONCOLON => true,
+        IDENT | SELF_KW | SUPER_KW | CRATE_KW | COLONCOLON => true,
         _ => false,
     }
 }
@@ -74,7 +74,9 @@ fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
                 name_ref(p);
                 opt_path_type_args(p, mode);
             }
-            SELF_KW | SUPER_KW => p.bump(),
+            // test crate_path
+            // use crate::foo;
+            SELF_KW | SUPER_KW | CRATE_KW => p.bump(),
             _ => {
                 p.err_and_bump("expected identifier");
             }
