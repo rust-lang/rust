@@ -1,5 +1,7 @@
 // compile-pass
 
+#![feature(lint_reasons)]
+
 #![warn(elided_lifetimes_in_paths,
         //~^ NOTE lint level defined here
         reason = "explicit anonymous lifetimes aid reasoning about ownership")]

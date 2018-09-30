@@ -1,3 +1,5 @@
+#![feature(lint_reasons)]
+
 #![warn(absolute_paths_not_starting_with_crate, reason = 0)]
 //~^ ERROR malformed lint attribute
 //~| HELP reason must be a string literal

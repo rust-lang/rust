@@ -225,11 +225,23 @@ impl<'a> LintLevelsBuilder<'a> {
                     match item.node {
                         ast::MetaItemKind::Word => {}  // actual lint names handled later
                         ast::MetaItemKind::NameValue(ref name_value) => {
+                            let gate_reasons = !self.sess.features_untracked().lint_reasons;
                             let name_ident = item.ident.segments[0].ident;
                             let name = name_ident.name.as_str();
+
                             if name == "reason" {
                                 if let ast::LitKind::Str(rationale, _) = name_value.node {
-                                    reason = Some(rationale);
+                                    if gate_reasons {
+                                        feature_gate::emit_feature_err(
+                                            &self.sess.parse_sess,
+                                            "lint_reasons",
+                                            item.span,
+                                            feature_gate::GateIssue::Language,
+                                            "lint reasons are experimental"
+                                        );
+                                    } else {
+                                        reason = Some(rationale);
+                                    }
                                 } else {
                                     let mut err = bad_attr(name_value.span);
                                     err.help("reason must be a string literal");

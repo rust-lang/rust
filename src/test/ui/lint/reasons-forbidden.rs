@@ -1,3 +1,5 @@
+#![feature(lint_reasons)]
+
 #![forbid(
     unsafe_code,
     //~^ NOTE `forbid` level set here

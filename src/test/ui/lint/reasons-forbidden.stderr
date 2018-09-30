@@ -1,5 +1,5 @@
 error[E0453]: allow(unsafe_code) overruled by outer forbid(unsafe_code)
-  --> $DIR/reasons-forbidden.rs:12:13
+  --> $DIR/reasons-forbidden.rs:14:13
    |
 LL |     unsafe_code,
    |     ----------- `forbid` level set here
