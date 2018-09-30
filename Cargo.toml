@@ -1,3 +1,5 @@
+cargo-features = ["profile-overrides"]
+
 [package]
 name = "rustc_codegen_cranelift"
 version = "0.1.0"
@@ -30,3 +32,6 @@ byteorder = "1.2.6"
 #cranelift-module = { path = "../cranelift/lib/module" }
 #cranelift-simplejit = { path = "../cranelift/lib/simplejit" }
 #cranelift-faerie = { path = "../cranelift/lib/faerie" }
+
+[profile.dev.overrides."*"]
+opt-level = 3
