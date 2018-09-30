@@ -20,7 +20,7 @@
        html_playground_url = "https://play.rust-lang.org/",
        test(attr(deny(warnings))))]
 
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
 
 pub use self::Piece::*;
 pub use self::Position::*;

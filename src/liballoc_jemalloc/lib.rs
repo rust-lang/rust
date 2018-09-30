@@ -16,7 +16,7 @@
 #![feature(core_intrinsics)]
 #![feature(libc)]
 #![feature(linkage)]
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
 #![cfg_attr(dummy_jemalloc, allow(dead_code, unused_extern_crates))]
@@ -90,7 +90,6 @@ mod contents {
     // ABI
 
     #[rustc_std_internal_symbol]
-    #[cfg_attr(stage0, no_mangle)]
     pub unsafe extern fn __rde_alloc(size: usize, align: usize) -> *mut u8 {
         let flags = align_to_flags(align, size);
         let ptr = mallocx(size as size_t, flags) as *mut u8;
@@ -98,7 +97,6 @@ mod contents {
     }
 
     #[rustc_std_internal_symbol]
-    #[cfg_attr(stage0, no_mangle)]
     pub unsafe extern fn __rde_dealloc(ptr: *mut u8,
                                        size: usize,
                                        align: usize) {
@@ -107,7 +105,6 @@ mod contents {
     }
 
     #[rustc_std_internal_symbol]
-    #[cfg_attr(stage0, no_mangle)]
     pub unsafe extern fn __rde_realloc(ptr: *mut u8,
                                        _old_size: usize,
                                        align: usize,
@@ -118,7 +115,6 @@ mod contents {
     }
 
     #[rustc_std_internal_symbol]
-    #[cfg_attr(stage0, no_mangle)]
     pub unsafe extern fn __rde_alloc_zeroed(size: usize, align: usize) -> *mut u8 {
         let ptr = if align <= MIN_ALIGN && align <= size {
             calloc(size as size_t, 1) as *mut u8

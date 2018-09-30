@@ -10,7 +10,7 @@
 
 #![allow(nonstandard_style)]
 
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
 
 pub struct Intrinsic {
     pub inputs: &'static [&'static Type],

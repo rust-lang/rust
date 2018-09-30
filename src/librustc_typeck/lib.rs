@@ -75,7 +75,7 @@ This API is completely unstable and subject to change.
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
 #![feature(exhaustive_patterns)]
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
 #![feature(quote)]
 #![feature(refcell_replace_swap)]
 #![feature(rustc_diagnostic_macros)]

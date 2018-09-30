@@ -13,7 +13,7 @@
 
 #![feature(cfg_target_vendor)]
 #![feature(link_cfg)]
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
 #![feature(staged_api)]
 #![feature(unwind_attributes)]
 #![feature(static_nobundle)]

@@ -10,7 +10,6 @@
 
 // run-pass
 #![allow(dead_code, unused_imports)]
-#![cfg_attr(stage0, feature(macro_vis_matcher))]
 #![feature(crate_visibility_modifier)]
 
 /**

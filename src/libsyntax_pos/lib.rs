@@ -21,11 +21,11 @@
 #![feature(const_fn)]
 #![feature(crate_visibility_modifier)]
 #![feature(custom_attribute)]
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
 #![feature(non_exhaustive)]
 #![feature(optin_builtin_traits)]
 #![feature(specialization)]
-#![feature(stdsimd)]
+#![cfg_attr(not(stage0), feature(stdsimd))]
 
 use std::borrow::Cow;
 use std::cell::Cell;

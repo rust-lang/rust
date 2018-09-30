@@ -26,7 +26,7 @@
 #![feature(in_band_lifetimes)]
 #![allow(unused_attributes)]
 #![feature(libc)]
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
 #![feature(quote)]
 #![feature(range_contains)]
 #![feature(rustc_diagnostic_macros)]

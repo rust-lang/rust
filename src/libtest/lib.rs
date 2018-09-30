@@ -35,7 +35,7 @@
 #![feature(asm)]
 #![feature(fnbox)]
 #![cfg_attr(any(unix, target_os = "cloudabi"), feature(libc))]
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
 #![feature(set_stdio)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]

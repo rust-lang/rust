@@ -12,7 +12,6 @@
 
 #![feature(plugin_registrar)]
 #![feature(box_syntax, rustc_private)]
-#![cfg_attr(stage0, feature(macro_vis_matcher))]
 #![feature(macro_at_most_once_rep)]
 
 extern crate syntax;

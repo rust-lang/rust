@@ -16,7 +16,7 @@
 #![feature(rustc_private)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
 #![feature(set_stdio)]
 #![feature(slice_sort_by_cached_key)]
 #![feature(test)]

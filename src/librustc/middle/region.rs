@@ -168,8 +168,6 @@ impl_stable_hash_for!(struct ::middle::region::FirstStatementIndex { private });
 
 // compilation error if size of `ScopeData` is not the same as a `u32`
 #[allow(dead_code)]
-// only works on stage 1 when the rustc_layout_scalar_valid_range attribute actually exists
-#[cfg(not(stage0))]
 static ASSERT: () = [()][!(mem::size_of::<ScopeData>() == 4) as usize];
 
 impl Scope {
