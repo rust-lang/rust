@@ -4,7 +4,7 @@
 # $ ./x.py clean
 # $ ./x.py test --target thumbv7m-none-eabi src/test/run-make
 
-ifeq ($(TARGET),thumbv7m-none-eabi))
+ifneq (,$(filter $(TARGET),thumbv6m-none-eabi thumbv7m-none-eabi))
 
 # For cargo setting
 RUSTC := $(RUSTC_ORIGINAL)
