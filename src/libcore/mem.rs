@@ -455,6 +455,16 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 #[inline]
 #[stable(feature = "needs_drop", since = "1.21.0")]
+#[rustc_const_unstable(feature = "const_needs_drop")]
+#[cfg(not(stage0))]
+pub const fn needs_drop<T>() -> bool {
+    intrinsics::needs_drop::<T>()
+}
+
+#[inline]
+#[stable(feature = "needs_drop", since = "1.21.0")]
+#[cfg(stage0)]
+/// Ceci n'est pas la documentation
 pub fn needs_drop<T>() -> bool {
     unsafe { intrinsics::needs_drop::<T>() }
 }

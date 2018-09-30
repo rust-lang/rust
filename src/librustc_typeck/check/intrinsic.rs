@@ -117,7 +117,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         (0, Vec::new(), tcx.types.never, hir::Unsafety::Unsafe)
     } else {
         let unsafety = match &name[..] {
-            "size_of" | "min_align_of" => hir::Unsafety::Normal,
+            "size_of" | "min_align_of" | "needs_drop" => hir::Unsafety::Normal,
             _ => hir::Unsafety::Unsafe,
         };
         let (n_tps, inputs, output) = match &name[..] {
