@@ -490,7 +490,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 Ok(Operand::Indirect(MemPlace::from_ptr(Pointer::new(id, offset), alloc.align)))
             },
             ConstValue::ScalarPair(a, b) =>
-                Ok(Operand::Immediate(Value::ScalarPair(a.into(), b))),
+                Ok(Operand::Immediate(Value::ScalarPair(a.into(), b.into()))),
             ConstValue::Scalar(x) =>
                 Ok(Operand::Immediate(Value::Scalar(x.into()))),
         }
