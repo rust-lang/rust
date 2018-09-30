@@ -116,10 +116,11 @@ impl<'tcx> CValue<'tcx> {
                     size: layout.size.bytes() as u32,
                     offset: None,
                 });
-                fx.bcx.ins().stack_store(value, stack_slot, 0);
-                fx.bcx
+                let addr = fx.bcx
                     .ins()
-                    .stack_addr(fx.module.pointer_type(), stack_slot, 0)
+                    .stack_addr(fx.module.pointer_type(), stack_slot, 0);
+                fx.bcx.ins().store(MemFlags::new(), value, addr, 0);
+                addr
             }
             CValue::ByValPair(value, extra, layout) => {
                 let stack_slot = fx.bcx.create_stack_slot(StackSlotData {

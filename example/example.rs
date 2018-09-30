@@ -192,3 +192,7 @@ pub struct StrWrapper {
 fn str_wrapper_get(w: &StrWrapper) -> &str {
     &w.s
 }
+
+fn i16_as_i8(a: i16) -> i8 {
+    a as i8
+}

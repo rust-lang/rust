@@ -158,6 +158,11 @@ fn verify_func(tcx: TyCtxt, writer: crate::pretty_clif::CommentWriter, func: &Fu
 
 fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>) {
     for (bb, bb_data) in fx.mir.basic_blocks().iter_enumerated() {
+        if bb_data.is_cleanup {
+            // Unwinding after panicking is not supported
+            continue;
+        }
+
         let ebb = fx.get_ebb(bb);
         fx.bcx.switch_to_block(ebb);
 
@@ -523,13 +528,27 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
                         (ty::Int(_), ty::Float(_)) => {
+                            let from_ty = fx.cton_type(from_ty).unwrap();
                             let from = operand.load_value(fx);
+                            // FIXME missing encoding for fcvt_from_sint.f32.i8
+                            let from = if from_ty == types::I8 || from_ty == types::I16 {
+                                fx.bcx.ins().sextend(types::I32, from)
+                            } else {
+                                from
+                            };
                             let f_type = fx.cton_type(to_ty).unwrap();
                             let res = fx.bcx.ins().fcvt_from_sint(f_type, from);
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
                         (ty::Uint(_), ty::Float(_)) => {
+                            let from_ty = fx.cton_type(from_ty).unwrap();
                             let from = operand.load_value(fx);
+                            // FIXME missing encoding for fcvt_from_uint.f32.i8
+                            let from = if from_ty == types::I8 || from_ty == types::I16 {
+                                fx.bcx.ins().uextend(types::I32, from)
+                            } else {
+                                from
+                            };
                             let f_type = fx.cton_type(to_ty).unwrap();
                             let res = fx.bcx.ins().fcvt_from_uint(f_type, from);
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
