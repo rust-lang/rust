@@ -39,9 +39,9 @@ use spanned::Spanned;
 use string::{rewrite_string, StringFormat};
 use types::{can_be_overflowed_type, rewrite_path, PathContext};
 use utils::{
-    colon_spaces, contains_skip, count_newlines, first_line_ends_with, first_line_width,
-    inner_attributes, last_line_extendable, last_line_width, mk_sp, outer_attributes,
-    ptr_vec_to_ref_vec, semicolon_for_stmt, wrap_str,
+    colon_spaces, contains_skip, count_newlines, first_line_ends_with, inner_attributes,
+    last_line_extendable, last_line_width, mk_sp, outer_attributes, ptr_vec_to_ref_vec,
+    semicolon_for_stmt, wrap_str,
 };
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
@@ -1438,13 +1438,15 @@ fn rewrite_paren(
     debug!("rewrite_paren, shape: {:?}", shape);
 
     // Extract comments within parens.
+    let mut pre_span;
+    let mut post_span;
     let mut pre_comment;
     let mut post_comment;
     let remove_nested_parens = context.config.remove_nested_parens();
     loop {
         // 1 = "(" or ")"
-        let pre_span = mk_sp(span.lo() + BytePos(1), subexpr.span.lo());
-        let post_span = mk_sp(subexpr.span.hi(), span.hi() - BytePos(1));
+        pre_span = mk_sp(span.lo() + BytePos(1), subexpr.span.lo());
+        post_span = mk_sp(subexpr.span.hi(), span.hi() - BytePos(1));
         pre_comment = rewrite_missing_comment(pre_span, shape, context)?;
         post_comment = rewrite_missing_comment(post_span, shape, context)?;
 
@@ -1460,18 +1462,46 @@ fn rewrite_paren(
         break;
     }
 
-    // 1 `(`
-    let sub_shape = shape.offset_left(1).and_then(|s| s.sub_width(1))?;
-
+    // 1 = `(` and `)`
+    let sub_shape = shape.offset_left(1)?.sub_width(1)?;
     let subexpr_str = subexpr.rewrite(context, sub_shape)?;
-    debug!("rewrite_paren, subexpr_str: `{:?}`", subexpr_str);
-
-    // 2 = `()`
-    if subexpr_str.contains('\n') || first_line_width(&subexpr_str) + 2 <= shape.width {
+    let fits_single_line = !pre_comment.contains("//") && !post_comment.contains("//");
+    if fits_single_line {
         Some(format!("({}{}{})", pre_comment, &subexpr_str, post_comment))
     } else {
-        None
+        rewrite_paren_in_multi_line(context, subexpr, shape, pre_span, post_span)
     }
+}
+
+fn rewrite_paren_in_multi_line(
+    context: &RewriteContext,
+    subexpr: &ast::Expr,
+    shape: Shape,
+    pre_span: Span,
+    post_span: Span,
+) -> Option<String> {
+    let nested_indent = shape.indent.block_indent(context.config);
+    let nested_shape = Shape::indented(nested_indent, context.config);
+    let pre_comment = rewrite_missing_comment(pre_span, nested_shape, context)?;
+    let post_comment = rewrite_missing_comment(post_span, nested_shape, context)?;
+    let subexpr_str = subexpr.rewrite(context, nested_shape)?;
+
+    let mut result = String::with_capacity(subexpr_str.len() * 2);
+    result.push('(');
+    if !pre_comment.is_empty() {
+        result.push_str(&nested_indent.to_string_with_newline(context.config));
+        result.push_str(&pre_comment);
+    }
+    result.push_str(&nested_indent.to_string_with_newline(context.config));
+    result.push_str(&subexpr_str);
+    if !post_comment.is_empty() {
+        result.push_str(&nested_indent.to_string_with_newline(context.config));
+        result.push_str(&post_comment);
+    }
+    result.push_str(&shape.indent.to_string_with_newline(context.config));
+    result.push(')');
+
+    Some(result)
 }
 
 fn rewrite_index(
