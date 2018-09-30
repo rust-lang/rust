@@ -46,7 +46,12 @@ def collect(deprecated_lints, clippy_lints, fn):
         # remove \-newline escapes from description string
         desc = nl_escape_re.sub('', match.group('desc'))
         cat = match.group('cat')
-        clippy_lints[cat].append((os.path.splitext(os.path.basename(fn))[0],
+        if cat in ('internal', 'internal_warn'):
+            continue
+        module_name = os.path.splitext(os.path.basename(fn))[0]
+        if module_name == 'mod':
+            module_name = os.path.basename(os.path.dirname(fn))
+        clippy_lints[cat].append((module_name,
                                   match.group('name').lower(),
                                   "allow",
                                   desc.replace('\\"', '"')))
@@ -138,10 +143,11 @@ def main(print_only=False, check=False):
         return
 
     # collect all lints from source files
-    for fn in os.listdir('clippy_lints/src'):
-        if fn.endswith('.rs'):
-            collect(deprecated_lints, clippy_lints,
-                    os.path.join('clippy_lints', 'src', fn))
+    for root, dirs, files in os.walk('clippy_lints/src'):
+        for fn in files:
+            if fn.endswith('.rs'):
+                collect(deprecated_lints, clippy_lints,
+                        os.path.join(root, fn))
 
     # determine version
     with open('Cargo.toml') as fp:
