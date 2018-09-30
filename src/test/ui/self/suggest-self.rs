@@ -13,6 +13,20 @@ struct Foo {
 }
 
 impl Foo {
+    fn this1(&self) -> i32 {
+        let this = self;
+        let a = 1;
+        this.x
+    }
+
+    fn this2(&self) -> i32 {
+        let a = Foo {
+            x: 2
+        };
+        let this = a;
+        this.x
+    }
+
     fn foo(&self) -> i32 {
         this.x
         //~^ ERROR cannot find value `this` in this scope
@@ -25,7 +39,7 @@ impl Foo {
 
     fn baz(&self) -> i32 {
         my.bar()
-        //~^ ERROR cannot find value `this` in this scope
+        //~^ ERROR cannot find value `my` in this scope
     }
 }
 
