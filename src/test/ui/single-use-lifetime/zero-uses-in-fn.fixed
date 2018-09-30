@@ -5,17 +5,17 @@
 #![deny(unused_lifetimes)]
 #![allow(dead_code, unused_variables)]
 
-fn september<'a>() {}
+fn september() {}
 //~^ ERROR lifetime parameter `'a` never used
 //~| HELP remove it
 
-fn october<'a, 'b, T>(s: &'b T) -> &'b T {
+fn october<'b, T>(s: &'b T) -> &'b T {
     //~^ ERROR lifetime parameter `'a` never used
     //~| HELP remove it
     s
 }
 
-fn november<'a, 'b>(s: &'a str) -> (&'a str) {
+fn november<'a>(s: &'a str) -> (&'a str) {
     //~^ ERROR lifetime parameter `'b` never used
     //~| HELP remove it
     s
