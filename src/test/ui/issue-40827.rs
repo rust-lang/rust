@@ -8,22 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::marker::PhantomData;
+use std::rc::Rc;
+use std::sync::Arc;
 
-struct AssertSync<T: Sync>(PhantomData<T>);
+struct Foo(Arc<Bar>);
 
-pub struct Foo {
-    bar: *const Bar,
-    phantom: PhantomData<Bar>,
+enum Bar {
+    A(Rc<Foo>),
+    B(Option<Foo>),
 }
 
-pub struct Bar {
-    foo: *const Foo,
-    phantom: PhantomData<Foo>,
-}
+fn f<T: Send>(_: T) {}
 
 fn main() {
-    let _: AssertSync<Foo> = unimplemented!();
+    f(Foo(Arc::new(Bar::B(None))));
     //~^ ERROR E0277
     //~| ERROR E0277
 }
