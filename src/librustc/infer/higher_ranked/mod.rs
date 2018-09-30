@@ -450,7 +450,7 @@ fn var_ids<'a, 'gcx, 'tcx>(fields: &CombineFields<'a, 'gcx, 'tcx>,
        .collect()
 }
 
-fn is_var_in_set(new_vars: &[ty::RegionVid], r: ty::Region) -> bool {
+fn is_var_in_set(new_vars: &[ty::RegionVid], r: ty::Region<'_>) -> bool {
     match *r {
         ty::ReVar(ref v) => new_vars.iter().any(|x| x == v),
         _ => false

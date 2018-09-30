@@ -686,7 +686,7 @@ impl<'a> LoweringContext<'a> {
         f: F,
     ) -> (Vec<hir::GenericParam>, T)
     where
-        F: FnOnce(&mut LoweringContext) -> (Vec<hir::GenericParam>, T),
+        F: FnOnce(&mut LoweringContext<'_>) -> (Vec<hir::GenericParam>, T),
     {
         assert!(!self.is_collecting_in_band_lifetimes);
         assert!(self.lifetimes_to_define.is_empty());
@@ -788,7 +788,7 @@ impl<'a> LoweringContext<'a> {
     // for them.
     fn with_in_scope_lifetime_defs<T, F>(&mut self, params: &[GenericParam], f: F) -> T
     where
-        F: FnOnce(&mut LoweringContext) -> T,
+        F: FnOnce(&mut LoweringContext<'_>) -> T,
     {
         let old_len = self.in_scope_lifetimes.len();
         let lt_def_names = params.iter().filter_map(|param| match param.kind {
@@ -812,7 +812,7 @@ impl<'a> LoweringContext<'a> {
         params: &HirVec<hir::GenericParam>,
         f: F
     ) -> T where
-        F: FnOnce(&mut LoweringContext) -> T,
+        F: FnOnce(&mut LoweringContext<'_>) -> T,
     {
         let old_len = self.in_scope_lifetimes.len();
         let lt_def_names = params.iter().filter_map(|param| match param.kind {
@@ -841,7 +841,7 @@ impl<'a> LoweringContext<'a> {
         f: F,
     ) -> (hir::Generics, T)
     where
-        F: FnOnce(&mut LoweringContext, &mut Vec<hir::GenericParam>) -> T,
+        F: FnOnce(&mut LoweringContext<'_>, &mut Vec<hir::GenericParam>) -> T,
     {
         let (in_band_defs, (mut lowered_generics, res)) = self.with_in_scope_lifetime_defs(
             &generics.params,
@@ -870,7 +870,7 @@ impl<'a> LoweringContext<'a> {
 
     fn with_catch_scope<T, F>(&mut self, catch_id: NodeId, f: F) -> T
     where
-        F: FnOnce(&mut LoweringContext) -> T,
+        F: FnOnce(&mut LoweringContext<'_>) -> T,
     {
         let len = self.catch_scopes.len();
         self.catch_scopes.push(catch_id);
@@ -892,7 +892,7 @@ impl<'a> LoweringContext<'a> {
         capture_clause: CaptureBy,
         closure_node_id: NodeId,
         ret_ty: Option<&Ty>,
-        body: impl FnOnce(&mut LoweringContext) -> hir::Expr,
+        body: impl FnOnce(&mut LoweringContext<'_>) -> hir::Expr,
     ) -> hir::ExprKind {
         let prev_is_generator = mem::replace(&mut self.is_generator, true);
         let body_expr = body(self);
@@ -929,7 +929,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_body<F>(&mut self, decl: Option<&FnDecl>, f: F) -> hir::BodyId
     where
-        F: FnOnce(&mut LoweringContext) -> hir::Expr,
+        F: FnOnce(&mut LoweringContext<'_>) -> hir::Expr,
     {
         let prev = mem::replace(&mut self.is_generator, false);
         let result = f(self);
@@ -940,7 +940,7 @@ impl<'a> LoweringContext<'a> {
 
     fn with_loop_scope<T, F>(&mut self, loop_id: NodeId, f: F) -> T
     where
-        F: FnOnce(&mut LoweringContext) -> T,
+        F: FnOnce(&mut LoweringContext<'_>) -> T,
     {
         // We're no longer in the base loop's condition; we're in another loop.
         let was_in_loop_condition = self.is_in_loop_condition;
@@ -965,7 +965,7 @@ impl<'a> LoweringContext<'a> {
 
     fn with_loop_condition_scope<T, F>(&mut self, f: F) -> T
     where
-        F: FnOnce(&mut LoweringContext) -> T,
+        F: FnOnce(&mut LoweringContext<'_>) -> T,
     {
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = true;
@@ -979,7 +979,7 @@ impl<'a> LoweringContext<'a> {
 
     fn with_new_scopes<T, F>(&mut self, f: F) -> T
     where
-        F: FnOnce(&mut LoweringContext) -> T,
+        F: FnOnce(&mut LoweringContext<'_>) -> T,
     {
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = false;
@@ -1094,7 +1094,8 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_ty_binding(&mut self, b: &TypeBinding, itctx: ImplTraitContext) -> hir::TypeBinding {
+    fn lower_ty_binding(&mut self, b: &TypeBinding,
+                        itctx: ImplTraitContext<'_>) -> hir::TypeBinding {
         hir::TypeBinding {
             id: self.lower_node_id(b.id).node_id,
             ident: b.ident,
@@ -1105,7 +1106,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_generic_arg(&mut self,
                         arg: &ast::GenericArg,
-                        itctx: ImplTraitContext)
+                        itctx: ImplTraitContext<'_>)
                         -> hir::GenericArg {
         match arg {
             ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(&lt)),
@@ -1113,11 +1114,11 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_ty(&mut self, t: &Ty, itctx: ImplTraitContext) -> P<hir::Ty> {
+    fn lower_ty(&mut self, t: &Ty, itctx: ImplTraitContext<'_>) -> P<hir::Ty> {
         P(self.lower_ty_direct(t, itctx))
     }
 
-    fn lower_ty_direct(&mut self, t: &Ty, mut itctx: ImplTraitContext) -> hir::Ty {
+    fn lower_ty_direct(&mut self, t: &Ty, mut itctx: ImplTraitContext<'_>) -> hir::Ty {
         let kind = match t.node {
             TyKind::Infer => hir::TyKind::Infer,
             TyKind::Err => hir::TyKind::Err,
@@ -1289,7 +1290,7 @@ impl<'a> LoweringContext<'a> {
         span: Span,
         fn_def_id: Option<DefId>,
         exist_ty_node_id: NodeId,
-        lower_bounds: impl FnOnce(&mut LoweringContext) -> hir::GenericBounds,
+        lower_bounds: impl FnOnce(&mut LoweringContext<'_>) -> hir::GenericBounds,
     ) -> hir::TyKind {
         // Make sure we know that some funky desugaring has been going on here.
         // This is a first: there is code in other places like for loop
@@ -1567,7 +1568,7 @@ impl<'a> LoweringContext<'a> {
         qself: &Option<QSelf>,
         p: &Path,
         param_mode: ParamMode,
-        mut itctx: ImplTraitContext,
+        mut itctx: ImplTraitContext<'_>,
     ) -> hir::QPath {
         let qself_position = qself.as_ref().map(|q| q.position);
         let qself = qself.as_ref().map(|q| self.lower_ty(&q.ty, itctx.reborrow()));
@@ -1762,7 +1763,7 @@ impl<'a> LoweringContext<'a> {
         param_mode: ParamMode,
         expected_lifetimes: usize,
         parenthesized_generic_args: ParenthesizedGenericArgs,
-        itctx: ImplTraitContext,
+        itctx: ImplTraitContext<'_>,
     ) -> hir::PathSegment {
         let (mut generic_args, infer_types) = if let Some(ref generic_args) = segment.args {
             let msg = "parenthesized parameters may only be used with a trait";
@@ -1844,7 +1845,7 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         data: &AngleBracketedArgs,
         param_mode: ParamMode,
-        mut itctx: ImplTraitContext,
+        mut itctx: ImplTraitContext<'_>,
     ) -> (hir::GenericArgs, bool) {
         let &AngleBracketedArgs { ref args, ref bindings, .. } = data;
         let has_types = args.iter().any(|arg| match arg {
@@ -1871,7 +1872,7 @@ impl<'a> LoweringContext<'a> {
         self.with_anonymous_lifetime_mode(
             AnonymousLifetimeMode::PassThrough,
             |this| {
-                const DISALLOWED: ImplTraitContext = ImplTraitContext::Disallowed;
+                const DISALLOWED: ImplTraitContext<'_> = ImplTraitContext::Disallowed;
                 let &ParenthesisedArgs { ref inputs, ref output, span } = data;
                 let inputs = inputs.iter().map(|ty| this.lower_ty_direct(ty, DISALLOWED)).collect();
                 let mk_tup = |this: &mut Self, tys, span| {
@@ -2250,7 +2251,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_param_bound(
         &mut self,
         tpb: &GenericBound,
-        itctx: ImplTraitContext,
+        itctx: ImplTraitContext<'_>,
     ) -> hir::GenericBound {
         match *tpb {
             GenericBound::Trait(ref ty, modifier) => hir::GenericBound::Trait(
@@ -2304,7 +2305,7 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         params: &[GenericParam],
         add_bounds: &NodeMap<Vec<GenericBound>>,
-        mut itctx: ImplTraitContext,
+        mut itctx: ImplTraitContext<'_>,
     ) -> hir::HirVec<hir::GenericParam> {
         params.iter().map(|param| {
             self.lower_generic_param(param, add_bounds, itctx.reborrow())
@@ -2314,7 +2315,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_generic_param(&mut self,
                            param: &GenericParam,
                            add_bounds: &NodeMap<Vec<GenericBound>>,
-                           mut itctx: ImplTraitContext)
+                           mut itctx: ImplTraitContext<'_>)
                            -> hir::GenericParam {
         let mut bounds = self.lower_param_bounds(&param.bounds, itctx.reborrow());
         match param.kind {
@@ -2383,7 +2384,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_generics(
         &mut self,
         generics: &Generics,
-        itctx: ImplTraitContext)
+        itctx: ImplTraitContext<'_>)
         -> hir::Generics
     {
         // Collect `?Trait` bounds in where clause and move them to parameter definitions.
@@ -2536,7 +2537,7 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_trait_ref(&mut self, p: &TraitRef, itctx: ImplTraitContext) -> hir::TraitRef {
+    fn lower_trait_ref(&mut self, p: &TraitRef, itctx: ImplTraitContext<'_>) -> hir::TraitRef {
         let path = match self.lower_qpath(p.ref_id, &None, &p.path, ParamMode::Explicit, itctx) {
             hir::QPath::Resolved(None, path) => path.and_then(|path| path),
             qpath => bug!("lower_trait_ref: unexpected QPath `{:?}`", qpath),
@@ -2552,7 +2553,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_poly_trait_ref(
         &mut self,
         p: &PolyTraitRef,
-        mut itctx: ImplTraitContext,
+        mut itctx: ImplTraitContext<'_>,
     ) -> hir::PolyTraitRef {
         let bound_generic_params =
             self.lower_generic_params(&p.bound_generic_params, &NodeMap(), itctx.reborrow());
@@ -2593,14 +2594,14 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_mt(&mut self, mt: &MutTy, itctx: ImplTraitContext) -> hir::MutTy {
+    fn lower_mt(&mut self, mt: &MutTy, itctx: ImplTraitContext<'_>) -> hir::MutTy {
         hir::MutTy {
             ty: self.lower_ty(&mt.ty, itctx),
             mutbl: self.lower_mutability(mt.mutbl),
         }
     }
 
-    fn lower_param_bounds(&mut self, bounds: &[GenericBound], mut itctx: ImplTraitContext)
+    fn lower_param_bounds(&mut self, bounds: &[GenericBound], mut itctx: ImplTraitContext<'_>)
         -> hir::GenericBounds {
         bounds.iter().map(|bound| self.lower_param_bound(bound, itctx.reborrow())).collect()
     }

@@ -55,7 +55,7 @@ pub(super) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
 }
 
 pub(super) trait QueryDescription<'tcx>: QueryAccessors<'tcx> {
-    fn describe(tcx: TyCtxt, key: Self::Key) -> String;
+    fn describe(tcx: TyCtxt<'_, '_, '_>, key: Self::Key) -> String;
 
     #[inline]
     fn cache_on_disk(_: Self::Key) -> bool {
@@ -70,7 +70,7 @@ pub(super) trait QueryDescription<'tcx>: QueryAccessors<'tcx> {
 }
 
 impl<'tcx, M: QueryAccessors<'tcx, Key=DefId>> QueryDescription<'tcx> for M {
-    default fn describe(tcx: TyCtxt, def_id: DefId) -> String {
+    default fn describe(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> String {
         if !tcx.sess.verbose() {
             format!("processing `{}`", tcx.item_path_str(def_id))
         } else {
@@ -82,7 +82,7 @@ impl<'tcx, M: QueryAccessors<'tcx, Key=DefId>> QueryDescription<'tcx> for M {
 
 impl<'tcx> QueryDescription<'tcx> for queries::normalize_projection_ty<'tcx> {
     fn describe(
-        _tcx: TyCtxt,
+        _tcx: TyCtxt<'_, '_, '_>,
         goal: CanonicalProjectionGoal<'tcx>,
     ) -> String {
         format!("normalizing `{:?}`", goal)
@@ -90,56 +90,57 @@ impl<'tcx> QueryDescription<'tcx> for queries::normalize_projection_ty<'tcx> {
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::implied_outlives_bounds<'tcx> {
-    fn describe(_tcx: TyCtxt, goal: CanonicalTyGoal<'tcx>) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, goal: CanonicalTyGoal<'tcx>) -> String {
         format!("computing implied outlives bounds for `{:?}`", goal)
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::dropck_outlives<'tcx> {
-    fn describe(_tcx: TyCtxt, goal: CanonicalTyGoal<'tcx>) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, goal: CanonicalTyGoal<'tcx>) -> String {
         format!("computing dropck types for `{:?}`", goal)
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::normalize_ty_after_erasing_regions<'tcx> {
-    fn describe(_tcx: TyCtxt, goal: ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, goal: ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
         format!("normalizing `{:?}`", goal)
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::evaluate_obligation<'tcx> {
-    fn describe(_tcx: TyCtxt, goal: CanonicalPredicateGoal<'tcx>) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, goal: CanonicalPredicateGoal<'tcx>) -> String {
         format!("evaluating trait selection obligation `{}`", goal.value.value)
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::type_op_eq<'tcx> {
-    fn describe(_tcx: TyCtxt, goal: CanonicalTypeOpEqGoal<'tcx>) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, goal: CanonicalTypeOpEqGoal<'tcx>) -> String {
         format!("evaluating `type_op_eq` `{:?}`", goal)
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::type_op_subtype<'tcx> {
-    fn describe(_tcx: TyCtxt, goal: CanonicalTypeOpSubtypeGoal<'tcx>) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, goal: CanonicalTypeOpSubtypeGoal<'tcx>) -> String {
         format!("evaluating `type_op_subtype` `{:?}`", goal)
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::type_op_prove_predicate<'tcx> {
-    fn describe(_tcx: TyCtxt, goal: CanonicalTypeOpProvePredicateGoal<'tcx>) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, goal: CanonicalTypeOpProvePredicateGoal<'tcx>) -> String {
         format!("evaluating `type_op_prove_predicate` `{:?}`", goal)
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::type_op_normalize_ty<'tcx> {
-    fn describe(_tcx: TyCtxt, goal: CanonicalTypeOpNormalizeGoal<'tcx, Ty<'tcx>>) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>,
+                goal: CanonicalTypeOpNormalizeGoal<'tcx, Ty<'tcx>>) -> String {
         format!("normalizing `{:?}`", goal)
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::type_op_normalize_predicate<'tcx> {
     fn describe(
-        _tcx: TyCtxt,
+        _tcx: TyCtxt<'_, '_, '_>,
         goal: CanonicalTypeOpNormalizeGoal<'tcx, ty::Predicate<'tcx>>,
     ) -> String {
         format!("normalizing `{:?}`", goal)
@@ -148,7 +149,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::type_op_normalize_predicate<'tcx>
 
 impl<'tcx> QueryDescription<'tcx> for queries::type_op_normalize_poly_fn_sig<'tcx> {
     fn describe(
-        _tcx: TyCtxt,
+        _tcx: TyCtxt<'_, '_, '_>,
         goal: CanonicalTypeOpNormalizeGoal<'tcx, ty::PolyFnSig<'tcx>>,
     ) -> String {
         format!("normalizing `{:?}`", goal)
@@ -156,56 +157,57 @@ impl<'tcx> QueryDescription<'tcx> for queries::type_op_normalize_poly_fn_sig<'tc
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::type_op_normalize_fn_sig<'tcx> {
-    fn describe(_tcx: TyCtxt, goal: CanonicalTypeOpNormalizeGoal<'tcx, ty::FnSig<'tcx>>) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>,
+                goal: CanonicalTypeOpNormalizeGoal<'tcx, ty::FnSig<'tcx>>) -> String {
         format!("normalizing `{:?}`", goal)
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::is_copy_raw<'tcx> {
-    fn describe(_tcx: TyCtxt, env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
         format!("computing whether `{}` is `Copy`", env.value)
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::is_sized_raw<'tcx> {
-    fn describe(_tcx: TyCtxt, env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
         format!("computing whether `{}` is `Sized`", env.value)
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::is_freeze_raw<'tcx> {
-    fn describe(_tcx: TyCtxt, env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
         format!("computing whether `{}` is freeze", env.value)
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::needs_drop_raw<'tcx> {
-    fn describe(_tcx: TyCtxt, env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
         format!("computing whether `{}` needs drop", env.value)
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::layout_raw<'tcx> {
-    fn describe(_tcx: TyCtxt, env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
         format!("computing layout of `{}`", env.value)
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::super_predicates_of<'tcx> {
-    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
+    fn describe(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> String {
         format!("computing the supertraits of `{}`",
                 tcx.item_path_str(def_id))
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::erase_regions_ty<'tcx> {
-    fn describe(_tcx: TyCtxt, ty: Ty<'tcx>) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, ty: Ty<'tcx>) -> String {
         format!("erasing regions from `{:?}`", ty)
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::type_param_predicates<'tcx> {
-    fn describe(tcx: TyCtxt, (_, def_id): (DefId, DefId)) -> String {
+    fn describe(tcx: TyCtxt<'_, '_, '_>, (_, def_id): (DefId, DefId)) -> String {
         let id = tcx.hir.as_local_node_id(def_id).unwrap();
         format!("computing the bounds for type parameter `{}`",
                 tcx.hir.ty_param_name(id))
@@ -213,69 +215,69 @@ impl<'tcx> QueryDescription<'tcx> for queries::type_param_predicates<'tcx> {
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::coherent_trait<'tcx> {
-    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
+    fn describe(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> String {
         format!("coherence checking all impls of trait `{}`",
                 tcx.item_path_str(def_id))
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::upstream_monomorphizations<'tcx> {
-    fn describe(_: TyCtxt, k: CrateNum) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, k: CrateNum) -> String {
         format!("collecting available upstream monomorphizations `{:?}`", k)
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::crate_inherent_impls<'tcx> {
-    fn describe(_: TyCtxt, k: CrateNum) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, k: CrateNum) -> String {
         format!("all inherent impls defined in crate `{:?}`", k)
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::crate_inherent_impls_overlap_check<'tcx> {
-    fn describe(_: TyCtxt, _: CrateNum) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "check for overlap between inherent impls defined in this crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::crate_variances<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "computing the variances for items in this crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::inferred_outlives_crate<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "computing the inferred outlives predicates for items in this crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::mir_shims<'tcx> {
-    fn describe(tcx: TyCtxt, def: ty::InstanceDef<'tcx>) -> String {
+    fn describe(tcx: TyCtxt<'_, '_, '_>, def: ty::InstanceDef<'tcx>) -> String {
         format!("generating MIR shim for `{}`",
                 tcx.item_path_str(def.def_id()))
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::privacy_access_levels<'tcx> {
-    fn describe(_: TyCtxt, _: CrateNum) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "privacy access levels".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::typeck_item_bodies<'tcx> {
-    fn describe(_: TyCtxt, _: CrateNum) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "type-checking all item bodies".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::reachable_set<'tcx> {
-    fn describe(_: TyCtxt, _: CrateNum) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "reachability".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::const_eval<'tcx> {
-    fn describe(tcx: TyCtxt, key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>) -> String {
+    fn describe(tcx: TyCtxt<'_, '_, '_>, key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>) -> String {
         format!("const-evaluating `{}`", tcx.item_path_str(key.value.instance.def.def_id()))
     }
 
@@ -293,13 +295,13 @@ impl<'tcx> QueryDescription<'tcx> for queries::const_eval<'tcx> {
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::mir_keys<'tcx> {
-    fn describe(_: TyCtxt, _: CrateNum) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "getting a list of all mir_keys".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::symbol_name<'tcx> {
-    fn describe(_tcx: TyCtxt, instance: ty::Instance<'tcx>) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, instance: ty::Instance<'tcx>) -> String {
         format!("computing the symbol for `{}`", instance)
     }
 
@@ -317,62 +319,62 @@ impl<'tcx> QueryDescription<'tcx> for queries::symbol_name<'tcx> {
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::describe_def<'tcx> {
-    fn describe(_: TyCtxt, _: DefId) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: DefId) -> String {
         bug!("describe_def")
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::def_span<'tcx> {
-    fn describe(_: TyCtxt, _: DefId) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: DefId) -> String {
         bug!("def_span")
     }
 }
 
 
 impl<'tcx> QueryDescription<'tcx> for queries::lookup_stability<'tcx> {
-    fn describe(_: TyCtxt, _: DefId) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: DefId) -> String {
         bug!("stability")
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::lookup_deprecation_entry<'tcx> {
-    fn describe(_: TyCtxt, _: DefId) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: DefId) -> String {
         bug!("deprecation")
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::item_attrs<'tcx> {
-    fn describe(_: TyCtxt, _: DefId) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: DefId) -> String {
         bug!("item_attrs")
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::is_reachable_non_generic<'tcx> {
-    fn describe(_: TyCtxt, _: DefId) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: DefId) -> String {
         bug!("is_reachable_non_generic")
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::fn_arg_names<'tcx> {
-    fn describe(_: TyCtxt, _: DefId) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: DefId) -> String {
         bug!("fn_arg_names")
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::impl_parent<'tcx> {
-    fn describe(_: TyCtxt, _: DefId) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: DefId) -> String {
         bug!("impl_parent")
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::trait_of_item<'tcx> {
-    fn describe(_: TyCtxt, _: DefId) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: DefId) -> String {
         bug!("trait_of_item")
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::const_is_rvalue_promotable_to_static<'tcx> {
-    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
+    fn describe(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> String {
         format!("const checking if rvalue is promotable to static `{}`",
             tcx.item_path_str(def_id))
     }
@@ -391,21 +393,22 @@ impl<'tcx> QueryDescription<'tcx> for queries::const_is_rvalue_promotable_to_sta
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::rvalue_promotable_map<'tcx> {
-    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
+    fn describe(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> String {
         format!("checking which parts of `{}` are promotable to static",
                 tcx.item_path_str(def_id))
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::is_mir_available<'tcx> {
-    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
+    fn describe(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> String {
         format!("checking if item is mir available: `{}`",
             tcx.item_path_str(def_id))
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::codegen_fulfill_obligation<'tcx> {
-    fn describe(tcx: TyCtxt, key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)) -> String {
+    fn describe(tcx: TyCtxt<'_, '_, '_>,
+                key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)) -> String {
         format!("checking if `{}` fulfills its obligations", tcx.item_path_str(key.1.def_id()))
     }
 
@@ -423,319 +426,319 @@ impl<'tcx> QueryDescription<'tcx> for queries::codegen_fulfill_obligation<'tcx> 
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::trait_impls_of<'tcx> {
-    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
+    fn describe(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> String {
         format!("trait impls of `{}`", tcx.item_path_str(def_id))
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::is_object_safe<'tcx> {
-    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
+    fn describe(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> String {
         format!("determine object safety of trait `{}`", tcx.item_path_str(def_id))
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::is_const_fn<'tcx> {
-    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
+    fn describe(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> String {
         format!("checking if item is const fn: `{}`", tcx.item_path_str(def_id))
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::dylib_dependency_formats<'tcx> {
-    fn describe(_: TyCtxt, _: CrateNum) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "dylib dependency formats of crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::is_panic_runtime<'tcx> {
-    fn describe(_: TyCtxt, _: CrateNum) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "checking if the crate is_panic_runtime".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::is_compiler_builtins<'tcx> {
-    fn describe(_: TyCtxt, _: CrateNum) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "checking if the crate is_compiler_builtins".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::has_global_allocator<'tcx> {
-    fn describe(_: TyCtxt, _: CrateNum) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "checking if the crate has_global_allocator".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::has_panic_handler<'tcx> {
-    fn describe(_: TyCtxt, _: CrateNum) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "checking if the crate has_panic_handler".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::extern_crate<'tcx> {
-    fn describe(_: TyCtxt, _: DefId) -> String {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: DefId) -> String {
         "getting crate's ExternCrateData".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::lint_levels<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "computing the lint levels for items in this crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::specializes<'tcx> {
-    fn describe(_tcx: TyCtxt, _: (DefId, DefId)) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: (DefId, DefId)) -> String {
         "computing whether impls specialize one another".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::in_scope_traits_map<'tcx> {
-    fn describe(_tcx: TyCtxt, _: DefIndex) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: DefIndex) -> String {
         "traits in scope at a block".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::is_no_builtins<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "test whether a crate has #![no_builtins]".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::panic_strategy<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "query a crate's configured panic strategy".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::is_profiler_runtime<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "query a crate is #![profiler_runtime]".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::is_sanitizer_runtime<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "query a crate is #![sanitizer_runtime]".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::reachable_non_generics<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "looking up the exported symbols of a crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::native_libraries<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "looking up the native libraries of a linked crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::foreign_modules<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "looking up the foreign modules of a linked crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::plugin_registrar_fn<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "looking up the plugin registrar for a crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::derive_registrar_fn<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "looking up the derive registrar for a crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::crate_disambiguator<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "looking up the disambiguator a crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::crate_hash<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "looking up the hash a crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::original_crate_name<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "looking up the original name a crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::extra_filename<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "looking up the extra filename for a crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::implementations_of_trait<'tcx> {
-    fn describe(_tcx: TyCtxt, _: (CrateNum, DefId)) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: (CrateNum, DefId)) -> String {
         "looking up implementations of a trait in a crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::all_trait_implementations<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "looking up all (?) trait implementations".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::link_args<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "looking up link arguments for a crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::resolve_lifetimes<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "resolving lifetimes".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::named_region_map<'tcx> {
-    fn describe(_tcx: TyCtxt, _: DefIndex) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: DefIndex) -> String {
         "looking up a named region".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::is_late_bound_map<'tcx> {
-    fn describe(_tcx: TyCtxt, _: DefIndex) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: DefIndex) -> String {
         "testing if a region is late bound".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::object_lifetime_defaults_map<'tcx> {
-    fn describe(_tcx: TyCtxt, _: DefIndex) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: DefIndex) -> String {
         "looking up lifetime defaults for a region".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::dep_kind<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "fetching what a dependency looks like".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::crate_name<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "fetching what a crate is named".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::get_lib_features<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         format!("calculating the lib features map")
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::defined_lib_features<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         format!("calculating the lib features defined in a crate")
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::get_lang_items<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "calculating the lang items map".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::defined_lang_items<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "calculating the lang items defined in a crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::missing_lang_items<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "calculating the missing lang items in a crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::visible_parent_map<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "calculating the visible parent map".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::missing_extern_crate_item<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "seeing if we're missing an `extern crate` item for this crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::used_crate_source<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "looking at the source for a crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::postorder_cnums<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "generating a postorder list of CrateNums".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::maybe_unused_extern_crates<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "looking up all possibly unused extern crates".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::stability_index<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "calculating the stability index for the local crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::all_traits<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "fetching all foreign and local traits".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::all_crate_nums<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "fetching all foreign CrateNum instances".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::exported_symbols<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "exported_symbols".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::collect_and_partition_mono_items<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "collect_and_partition_mono_items".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::codegen_unit<'tcx> {
-    fn describe(_tcx: TyCtxt, _: InternedString) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: InternedString) -> String {
         "codegen_unit".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::output_filenames<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "output_filenames".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::vtable_methods<'tcx> {
-    fn describe(tcx: TyCtxt, key: ty::PolyTraitRef<'tcx> ) -> String {
+    fn describe(tcx: TyCtxt<'_, '_, '_>, key: ty::PolyTraitRef<'tcx> ) -> String {
         format!("finding all methods for trait {}", tcx.item_path_str(key.def_id()))
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::features_query<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "looking up enabled feature gates".to_string()
     }
 }
@@ -773,19 +776,19 @@ impl<'tcx> QueryDescription<'tcx> for queries::optimized_mir<'tcx> {
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::substitute_normalize_and_test_predicates<'tcx> {
-    fn describe(tcx: TyCtxt, key: (DefId, &'tcx Substs<'tcx>)) -> String {
+    fn describe(tcx: TyCtxt<'_, '_, '_>, key: (DefId, &'tcx Substs<'tcx>)) -> String {
         format!("testing substituted normalized predicates:`{}`", tcx.item_path_str(key.0))
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::target_features_whitelist<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "looking up the whitelist of target features".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::instance_def_size_estimate<'tcx> {
-    fn describe(tcx: TyCtxt, def: ty::InstanceDef<'tcx>) -> String {
+    fn describe(tcx: TyCtxt<'_, '_, '_>, def: ty::InstanceDef<'tcx>) -> String {
         format!("estimating size for `{}`", tcx.item_path_str(def.def_id()))
     }
 }
@@ -806,25 +809,25 @@ impl<'tcx> QueryDescription<'tcx> for queries::generics_of<'tcx> {
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::program_clauses_for<'tcx> {
-    fn describe(_tcx: TyCtxt, _: DefId) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: DefId) -> String {
         "generating chalk-style clauses".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::program_clauses_for_env<'tcx> {
-    fn describe(_tcx: TyCtxt, _: ty::ParamEnv<'tcx>) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: ty::ParamEnv<'tcx>) -> String {
         "generating chalk-style clauses for param env".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::wasm_import_module_map<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "wasm import module map".to_string()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::dllimport_foreign_items<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> String {
         "wasm import module map".to_string()
     }
 }

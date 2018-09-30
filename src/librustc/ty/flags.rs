@@ -28,7 +28,7 @@ impl FlagComputation {
         }
     }
 
-    pub fn for_sty(st: &ty::TyKind) -> FlagComputation {
+    pub fn for_sty(st: &ty::TyKind<'_>) -> FlagComputation {
         let mut result = FlagComputation::new();
         result.add_sty(st);
         result
@@ -67,7 +67,7 @@ impl FlagComputation {
         }
     }
 
-    fn add_sty(&mut self, st: &ty::TyKind) {
+    fn add_sty(&mut self, st: &ty::TyKind<'_>) {
         match st {
             &ty::Bool |
             &ty::Char |
@@ -204,18 +204,18 @@ impl FlagComputation {
         }
     }
 
-    fn add_ty(&mut self, ty: Ty) {
+    fn add_ty(&mut self, ty: Ty<'_>) {
         self.add_flags(ty.flags);
         self.add_exclusive_binder(ty.outer_exclusive_binder);
     }
 
-    fn add_tys(&mut self, tys: &[Ty]) {
+    fn add_tys(&mut self, tys: &[Ty<'_>]) {
         for &ty in tys {
             self.add_ty(ty);
         }
     }
 
-    fn add_fn_sig(&mut self, fn_sig: ty::PolyFnSig) {
+    fn add_fn_sig(&mut self, fn_sig: ty::PolyFnSig<'_>) {
         let mut computation = FlagComputation::new();
 
         computation.add_tys(fn_sig.skip_binder().inputs());
@@ -224,14 +224,14 @@ impl FlagComputation {
         self.add_bound_computation(&computation);
     }
 
-    fn add_region(&mut self, r: ty::Region) {
+    fn add_region(&mut self, r: ty::Region<'_>) {
         self.add_flags(r.type_flags());
         if let ty::ReLateBound(debruijn, _) = *r {
             self.add_binder(debruijn);
         }
     }
 
-    fn add_const(&mut self, constant: &ty::Const) {
+    fn add_const(&mut self, constant: &ty::Const<'_>) {
         self.add_ty(constant.ty);
         if let ConstValue::Unevaluated(_, substs) = constant.val {
             self.add_flags(TypeFlags::HAS_PROJECTION);
@@ -239,16 +239,16 @@ impl FlagComputation {
         }
     }
 
-    fn add_existential_projection(&mut self, projection: &ty::ExistentialProjection) {
+    fn add_existential_projection(&mut self, projection: &ty::ExistentialProjection<'_>) {
         self.add_substs(projection.substs);
         self.add_ty(projection.ty);
     }
 
-    fn add_projection_ty(&mut self, projection_ty: &ty::ProjectionTy) {
+    fn add_projection_ty(&mut self, projection_ty: &ty::ProjectionTy<'_>) {
         self.add_substs(projection_ty.substs);
     }
 
-    fn add_substs(&mut self, substs: &Substs) {
+    fn add_substs(&mut self, substs: &Substs<'_>) {
         for ty in substs.types() {
             self.add_ty(ty);
         }

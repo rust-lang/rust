@@ -50,7 +50,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         &self,
         anon_region: Region<'tcx>,
         replace_region: Region<'tcx>,
-    ) -> Option<AnonymousArgInfo> {
+    ) -> Option<AnonymousArgInfo<'_>> {
         let (id, bound_region) = match *anon_region {
             ty::ReFree(ref free_region) => (free_region.scope, free_region.bound_region),
             ty::ReEarlyBound(ref ebr) => (

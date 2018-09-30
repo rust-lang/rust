@@ -88,7 +88,7 @@ pub enum Region {
 }
 
 impl Region {
-    fn early(hir_map: &Map, index: &mut u32, param: &GenericParam) -> (ParamName, Region) {
+    fn early(hir_map: &Map<'_>, index: &mut u32, param: &GenericParam) -> (ParamName, Region) {
         let i = *index;
         *index += 1;
         let def_id = hir_map.local_def_id(param.id);
@@ -97,7 +97,7 @@ impl Region {
         (param.name.modern(), Region::EarlyBound(i, def_id, origin))
     }
 
-    fn late(hir_map: &Map, param: &GenericParam) -> (ParamName, Region) {
+    fn late(hir_map: &Map<'_>, param: &GenericParam) -> (ParamName, Region) {
         let depth = ty::INNERMOST;
         let def_id = hir_map.local_def_id(param.id);
         let origin = LifetimeDefOrigin::from_param(param);
@@ -348,7 +348,7 @@ type ScopeRef<'a> = &'a Scope<'a>;
 
 const ROOT_SCOPE: ScopeRef<'static> = &Scope::Root;
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub fn provide(providers: &mut ty::query::Providers<'_>) {
     *providers = ty::query::Providers {
         resolve_lifetimes,
 
@@ -1371,9 +1371,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         f(self)
     }
 
-    fn with<F>(&mut self, wrap_scope: Scope, f: F)
+    fn with<F>(&mut self, wrap_scope: Scope<'_>, f: F)
     where
-        F: for<'b> FnOnce(ScopeRef, &mut LifetimeContext<'b, 'tcx>),
+        F: for<'b> FnOnce(ScopeRef<'_>, &mut LifetimeContext<'b, 'tcx>),
     {
         let LifetimeContext {
             tcx,
@@ -2159,7 +2159,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
     fn report_elision_failure(
         &mut self,
-        db: &mut DiagnosticBuilder,
+        db: &mut DiagnosticBuilder<'_>,
         params: &[ElisionFailureInfo],
     ) {
         let mut m = String::new();
@@ -2268,7 +2268,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         self.insert_lifetime(lifetime_ref, lifetime.shifted(late_depth));
     }
 
-    fn check_lifetime_params(&mut self, old_scope: ScopeRef, params: &'tcx [hir::GenericParam]) {
+    fn check_lifetime_params(&mut self, old_scope: ScopeRef<'_>,
+                             params: &'tcx [hir::GenericParam]) {
         let lifetimes: Vec<_> = params.iter().filter_map(|param| match param.kind {
             GenericParamKind::Lifetime { .. } => Some((param, param.name)),
             _ => None,
@@ -2351,7 +2352,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
     fn check_lifetime_param_for_shadowing(
         &self,
-        mut old_scope: ScopeRef,
+        mut old_scope: ScopeRef<'_>,
         param: &'tcx hir::GenericParam,
     ) {
         for label in &self.labels_in_fn {

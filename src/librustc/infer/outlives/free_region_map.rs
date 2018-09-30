@@ -84,14 +84,14 @@ impl<'tcx> FreeRegionRelations<'tcx> for FreeRegionMap<'tcx> {
     }
 }
 
-fn is_free(r: Region) -> bool {
+fn is_free(r: Region<'_>) -> bool {
     match *r {
         ty::ReEarlyBound(_) | ty::ReFree(_) => true,
         _ => false
     }
 }
 
-fn is_free_or_static(r: Region) -> bool {
+fn is_free_or_static(r: Region<'_>) -> bool {
     match *r {
         ty::ReStatic => true,
         _ => is_free(r),

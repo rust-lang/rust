@@ -2379,7 +2379,7 @@ pub mod nightly_options {
 }
 
 impl fmt::Display for CrateType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             CrateType::Executable => "bin".fmt(f),
             CrateType::Dylib => "dylib".fmt(f),

@@ -733,7 +733,7 @@ macro_rules! define_queries_inner {
                 }
             }
 
-            pub fn describe(&self, tcx: TyCtxt) -> String {
+            pub fn describe(&self, tcx: TyCtxt<'_, '_, '_>) -> String {
                 let (r, name) = match *self {
                     $(Query::$name(key) => {
                         (queries::$name::describe(tcx, key), stringify!($name))
@@ -845,7 +845,7 @@ macro_rules! define_queries_inner {
             ///
             /// Note: The optimization is only available during incr. comp.
             pub fn ensure(tcx: TyCtxt<'a, $tcx, 'lcx>, key: $K) -> () {
-                tcx.ensure_query::<queries::$name>(key);
+                tcx.ensure_query::<queries::$name<'_>>(key);
             }
         })*
 
@@ -881,7 +881,7 @@ macro_rules! define_queries_inner {
         impl<'a, $tcx, 'lcx> TyCtxtAt<'a, $tcx, 'lcx> {
             $($(#[$attr])*
             pub fn $name(self, key: $K) -> $V {
-                self.tcx.get_query::<queries::$name>(self.span, key)
+                self.tcx.get_query::<queries::$name<'_>>(self.span, key)
             })*
         }
 
@@ -1028,7 +1028,9 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
                     )
                 );
 
-                match tcx.force_query::<::ty::query::queries::$query>($key, DUMMY_SP, *dep_node) {
+                match tcx.force_query::<::ty::query::queries::$query<'_>>(
+                    $key, DUMMY_SP, *dep_node
+                ) {
                     Ok(_) => {},
                     Err(e) => {
                         tcx.report_cycle(e).emit();
@@ -1281,7 +1283,7 @@ macro_rules! impl_load_from_cache {
         impl DepNode {
             // Check whether the query invocation corresponding to the given
             // DepNode is eligible for on-disk-caching.
-            pub fn cache_on_disk(&self, tcx: TyCtxt) -> bool {
+            pub fn cache_on_disk(&self, tcx: TyCtxt<'_, '_, '_>) -> bool {
                 use ty::query::queries;
                 use ty::query::QueryDescription;
 
@@ -1299,7 +1301,7 @@ macro_rules! impl_load_from_cache {
             // above `cache_on_disk` methods returns true.
             // Also, as a sanity check, it expects that the corresponding query
             // invocation has been marked as green already.
-            pub fn load_from_on_disk_cache(&self, tcx: TyCtxt) {
+            pub fn load_from_on_disk_cache(&self, tcx: TyCtxt<'_, '_, '_>) {
                 match self.kind {
                     $(DepKind::$dep_kind => {
                         debug_assert!(tcx.dep_graph

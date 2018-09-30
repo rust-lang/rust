@@ -445,7 +445,7 @@ pub struct RegionObligation<'tcx> {
 }
 
 impl fmt::Display for FixupError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::FixupError::*;
 
         match *self {
@@ -590,7 +590,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         t.fold_with(&mut self.freshener())
     }
 
-    pub fn type_var_diverges(&'a self, ty: Ty) -> bool {
+    pub fn type_var_diverges(&'a self, ty: Ty<'_>) -> bool {
         match ty.sty {
             ty::Infer(ty::TyVar(vid)) => self.type_variables.borrow().var_diverges(vid),
             _ => false,
@@ -601,7 +601,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         freshen::TypeFreshener::new(self)
     }
 
-    pub fn type_is_unconstrained_numeric(&'a self, ty: Ty) -> UnconstrainedNumeric {
+    pub fn type_is_unconstrained_numeric(&'a self, ty: Ty<'_>) -> UnconstrainedNumeric {
         use ty::error::UnconstrainedNumeric::Neither;
         use ty::error::UnconstrainedNumeric::{UnconstrainedFloat, UnconstrainedInt};
         match ty.sty {
@@ -1510,7 +1510,7 @@ impl<'a, 'gcx, 'tcx> TypeTrace<'tcx> {
 }
 
 impl<'tcx> fmt::Debug for TypeTrace<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "TypeTrace({:?})", self.cause)
     }
 }
@@ -1598,7 +1598,7 @@ EnumTypeFoldableImpl! {
 }
 
 impl<'tcx> fmt::Debug for RegionObligation<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "RegionObligation(sub_region={:?}, sup_type={:?})",

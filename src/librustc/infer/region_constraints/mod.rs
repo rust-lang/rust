@@ -914,13 +914,13 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 }
 
 impl fmt::Debug for RegionSnapshot {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "RegionSnapshot(length={})", self.length)
     }
 }
 
 impl<'tcx> fmt::Debug for GenericKind<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             GenericKind::Param(ref p) => write!(f, "{:?}", p),
             GenericKind::Projection(ref p) => write!(f, "{:?}", p),
@@ -929,7 +929,7 @@ impl<'tcx> fmt::Debug for GenericKind<'tcx> {
 }
 
 impl<'tcx> fmt::Display for GenericKind<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             GenericKind::Param(ref p) => write!(f, "{}", p),
             GenericKind::Projection(ref p) => write!(f, "{}", p),

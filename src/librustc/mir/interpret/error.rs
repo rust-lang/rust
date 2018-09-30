@@ -429,13 +429,13 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
 }
 
 impl<'tcx> fmt::Display for EvalError<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.kind)
     }
 }
 
 impl<'tcx, O: fmt::Debug> fmt::Debug for EvalErrorKind<'tcx, O> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::EvalErrorKind::*;
         match *self {
             PointerOutOfBounds { ptr, access, allocation_size } => {

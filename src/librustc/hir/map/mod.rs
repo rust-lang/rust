@@ -668,7 +668,7 @@ impl<'hir> Map<'hir> {
     /// }
     /// ```
     pub fn get_return_block(&self, id: NodeId) -> Option<NodeId> {
-        let match_fn = |node: &Node| {
+        let match_fn = |node: &Node<'_>| {
             match *node {
                 Node::Item(_) |
                 Node::ForeignItem(_) |
@@ -677,7 +677,7 @@ impl<'hir> Map<'hir> {
                 _ => false,
             }
         };
-        let match_non_returning_block = |node: &Node| {
+        let match_non_returning_block = |node: &Node<'_>| {
             match *node {
                 Node::Expr(ref expr) => {
                     match expr.node {
@@ -954,7 +954,7 @@ impl<'a, 'hir> NodesMatchingSuffix<'a, 'hir> {
         // If `id` itself is a mod named `m` with parent `p`, then
         // returns `Some(id, m, p)`.  If `id` has no mod in its parent
         // chain, then returns `None`.
-        fn find_first_mod_parent<'a>(map: &'a Map, mut id: NodeId) -> Option<(NodeId, Name)> {
+        fn find_first_mod_parent<'a>(map: &'a Map<'_>, mut id: NodeId) -> Option<(NodeId, Name)> {
             loop {
                 if let Node::Item(item) = map.find(id)? {
                     if item_is_mod(&item) {
@@ -1076,7 +1076,7 @@ pub fn map_crate<'hir>(sess: &::session::Session,
 /// Identical to the `PpAnn` implementation for `hir::Crate`,
 /// except it avoids creating a dependency on the whole crate.
 impl<'hir> print::PpAnn for Map<'hir> {
-    fn nested(&self, state: &mut print::State, nested: print::Nested) -> io::Result<()> {
+    fn nested(&self, state: &mut print::State<'_>, nested: print::Nested) -> io::Result<()> {
         match nested {
             Nested::Item(id) => state.print_item(self.expect_item(id.id)),
             Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
@@ -1088,7 +1088,7 @@ impl<'hir> print::PpAnn for Map<'hir> {
 }
 
 impl<'a> print::State<'a> {
-    pub fn print_node(&mut self, node: Node) -> io::Result<()> {
+    pub fn print_node(&mut self, node: Node<'_>) -> io::Result<()> {
         match node {
             Node::Item(a)         => self.print_item(&a),
             Node::ForeignItem(a)  => self.print_foreign_item(&a),
@@ -1126,7 +1126,7 @@ impl<'a> print::State<'a> {
     }
 }
 
-fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
+fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
     let id_str = format!(" (id={})", id);
     let id_str = if include_id { &id_str[..] } else { "" };
 
@@ -1253,7 +1253,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
     }
 }
 
-pub fn describe_def(tcx: TyCtxt, def_id: DefId) -> Option<Def> {
+pub fn describe_def(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<Def> {
     if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
         tcx.hir.describe_def(node_id)
     } else {

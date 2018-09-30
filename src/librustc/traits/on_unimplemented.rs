@@ -44,7 +44,7 @@ impl OnUnimplementedNote {
     }
 }
 
-fn parse_error(tcx: TyCtxt, span: Span,
+fn parse_error(tcx: TyCtxt<'_, '_, '_>, span: Span,
                message: &str,
                label: &str,
                note: Option<&str>)

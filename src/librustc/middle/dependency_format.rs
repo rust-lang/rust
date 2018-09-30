@@ -256,7 +256,7 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     return ret;
 }
 
-fn add_library(tcx: TyCtxt,
+fn add_library(tcx: TyCtxt<'_, '_, '_>,
                cnum: CrateNum,
                link: LinkagePreference,
                m: &mut FxHashMap<CrateNum, LinkagePreference>) {

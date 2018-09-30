@@ -212,23 +212,23 @@ impl<'sess> OnDiskCache<'sess> {
                 let enc = &mut encoder;
                 let qri = &mut query_result_index;
 
-                encode_query_results::<type_of, _>(tcx, enc, qri)?;
-                encode_query_results::<generics_of, _>(tcx, enc, qri)?;
-                encode_query_results::<predicates_of, _>(tcx, enc, qri)?;
-                encode_query_results::<used_trait_imports, _>(tcx, enc, qri)?;
-                encode_query_results::<typeck_tables_of, _>(tcx, enc, qri)?;
-                encode_query_results::<codegen_fulfill_obligation, _>(tcx, enc, qri)?;
-                encode_query_results::<optimized_mir, _>(tcx, enc, qri)?;
-                encode_query_results::<unsafety_check_result, _>(tcx, enc, qri)?;
-                encode_query_results::<borrowck, _>(tcx, enc, qri)?;
-                encode_query_results::<mir_borrowck, _>(tcx, enc, qri)?;
-                encode_query_results::<mir_const_qualif, _>(tcx, enc, qri)?;
-                encode_query_results::<def_symbol_name, _>(tcx, enc, qri)?;
-                encode_query_results::<const_is_rvalue_promotable_to_static, _>(tcx, enc, qri)?;
-                encode_query_results::<symbol_name, _>(tcx, enc, qri)?;
-                encode_query_results::<check_match, _>(tcx, enc, qri)?;
-                encode_query_results::<codegen_fn_attrs, _>(tcx, enc, qri)?;
-                encode_query_results::<specialization_graph_of, _>(tcx, enc, qri)?;
+                encode_query_results::<type_of<'_>, _>(tcx, enc, qri)?;
+                encode_query_results::<generics_of<'_>, _>(tcx, enc, qri)?;
+                encode_query_results::<predicates_of<'_>, _>(tcx, enc, qri)?;
+                encode_query_results::<used_trait_imports<'_>, _>(tcx, enc, qri)?;
+                encode_query_results::<typeck_tables_of<'_>, _>(tcx, enc, qri)?;
+                encode_query_results::<codegen_fulfill_obligation<'_>, _>(tcx, enc, qri)?;
+                encode_query_results::<optimized_mir<'_>, _>(tcx, enc, qri)?;
+                encode_query_results::<unsafety_check_result<'_>, _>(tcx, enc, qri)?;
+                encode_query_results::<borrowck<'_>, _>(tcx, enc, qri)?;
+                encode_query_results::<mir_borrowck<'_>, _>(tcx, enc, qri)?;
+                encode_query_results::<mir_const_qualif<'_>, _>(tcx, enc, qri)?;
+                encode_query_results::<def_symbol_name<'_>, _>(tcx, enc, qri)?;
+                encode_query_results::<const_is_rvalue_promotable_to_static<'_>, _>(tcx, enc, qri)?;
+                encode_query_results::<symbol_name<'_>, _>(tcx, enc, qri)?;
+                encode_query_results::<check_match<'_>, _>(tcx, enc, qri)?;
+                encode_query_results::<codegen_fn_attrs<'_>, _>(tcx, enc, qri)?;
+                encode_query_results::<specialization_graph_of<'_>, _>(tcx, enc, qri)?;
 
                 // const eval is special, it only encodes successfully evaluated constants
                 use ty::query::QueryAccessors;
@@ -323,7 +323,7 @@ impl<'sess> OnDiskCache<'sess> {
 
             return Ok(());
 
-            fn sorted_cnums_including_local_crate(tcx: TyCtxt) -> Vec<CrateNum> {
+            fn sorted_cnums_including_local_crate(tcx: TyCtxt<'_, '_, '_>) -> Vec<CrateNum> {
                 let mut cnums = vec![LOCAL_CRATE];
                 cnums.extend_from_slice(&tcx.crates()[..]);
                 cnums.sort_unstable();
@@ -434,7 +434,7 @@ impl<'sess> OnDiskCache<'sess> {
     // current-session-CrateNum. There might be CrateNums from the previous
     // Session that don't occur in the current one. For these, the mapping
     // maps to None.
-    fn compute_cnum_map(tcx: TyCtxt,
+    fn compute_cnum_map(tcx: TyCtxt<'_, '_, '_>,
                         prev_cnums: &[(u32, String, CrateDisambiguator)])
                         -> IndexVec<CrateNum, Option<CrateNum>>
     {

@@ -39,7 +39,7 @@ pub struct Discr<'tcx> {
 }
 
 impl<'tcx> fmt::Display for Discr<'tcx> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.ty.sty {
             ty::Int(ity) => {
                 let bits = ty::tls::with(|tcx| {
@@ -846,7 +846,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         // To avoid a stack overflow when checking an enum variant or struct that
         // contains a different, structurally recursive type, maintain a stack
         // of seen types and check recursion for each of them (issues #3008, #3779).
-        let mut seen: Vec<Ty> = Vec::new();
+        let mut seen: Vec<Ty<'_>> = Vec::new();
         let mut representable_cache = FxHashMap();
         let r = is_type_structurally_recursive(
             tcx, sp, &mut seen, &mut representable_cache, self);
@@ -1039,7 +1039,7 @@ impl<'tcx> ExplicitSelf<'tcx> {
     }
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub fn provide(providers: &mut ty::query::Providers<'_>) {
     *providers = ty::query::Providers {
         is_copy_raw,
         is_sized_raw,

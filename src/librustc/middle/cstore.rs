@@ -244,7 +244,7 @@ pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
 // In order to get this left-to-right dependency ordering, we perform a
 // topological sort of all crates putting the leaves at the right-most
 // positions.
-pub fn used_crates(tcx: TyCtxt, prefer: LinkagePreference)
+pub fn used_crates(tcx: TyCtxt<'_, '_, '_>, prefer: LinkagePreference)
     -> Vec<(CrateNum, LibSource)>
 {
     let mut libs = tcx.crates()

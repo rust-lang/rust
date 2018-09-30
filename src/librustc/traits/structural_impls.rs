@@ -21,13 +21,13 @@ use std::rc::Rc;
 // structural impls for the structs in traits
 
 impl<'tcx, T: fmt::Debug> fmt::Debug for Normalized<'tcx, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Normalized({:?},{:?})", self.value, self.obligations)
     }
 }
 
 impl<'tcx, O: fmt::Debug> fmt::Debug for traits::Obligation<'tcx, O> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if ty::tls::with(|tcx| tcx.sess.verbose()) {
             write!(
                 f,
@@ -45,7 +45,7 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for traits::Obligation<'tcx, O> {
 }
 
 impl<'tcx, N: fmt::Debug> fmt::Debug for traits::Vtable<'tcx, N> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             super::VtableImpl(ref v) => write!(f, "{:?}", v),
 
@@ -67,7 +67,7 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::Vtable<'tcx, N> {
 }
 
 impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableImplData<'tcx, N> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "VtableImpl(impl_def_id={:?}, substs={:?}, nested={:?})",
@@ -77,7 +77,7 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableImplData<'tcx, N> {
 }
 
 impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableGeneratorData<'tcx, N> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "VtableGenerator(generator_def_id={:?}, substs={:?}, nested={:?})",
@@ -87,7 +87,7 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableGeneratorData<'tcx, N> {
 }
 
 impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableClosureData<'tcx, N> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "VtableClosure(closure_def_id={:?}, substs={:?}, nested={:?})",
@@ -97,13 +97,13 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableClosureData<'tcx, N> {
 }
 
 impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableBuiltinData<N> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "VtableBuiltin(nested={:?})", self.nested)
     }
 }
 
 impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableAutoImplData<N> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "VtableAutoImplData(trait_def_id={:?}, nested={:?})",
@@ -113,7 +113,7 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableAutoImplData<N> {
 }
 
 impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableObjectData<'tcx, N> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "VtableObject(upcast={:?}, vtable_base={}, nested={:?})",
@@ -123,7 +123,7 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableObjectData<'tcx, N> {
 }
 
 impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableFnPointerData<'tcx, N> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "VtableFnPointer(fn_ty={:?}, nested={:?})",
@@ -133,13 +133,13 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableFnPointerData<'tcx, N> {
 }
 
 impl<'tcx> fmt::Debug for traits::FulfillmentError<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "FulfillmentError({:?},{:?})", self.obligation, self.code)
     }
 }
 
 impl<'tcx> fmt::Debug for traits::FulfillmentErrorCode<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             super::CodeSelectionError(ref e) => write!(f, "{:?}", e),
             super::CodeProjectionError(ref e) => write!(f, "{:?}", e),
@@ -152,7 +152,7 @@ impl<'tcx> fmt::Debug for traits::FulfillmentErrorCode<'tcx> {
 }
 
 impl<'tcx> fmt::Debug for traits::MismatchedProjectionTypes<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "MismatchedProjectionTypes({:?})", self.err)
     }
 }
@@ -409,7 +409,7 @@ BraceStructTypeFoldableImpl! {
 }
 
 impl<'tcx> fmt::Display for traits::WhereClause<'tcx> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         use traits::WhereClause::*;
 
         match self {
@@ -422,7 +422,7 @@ impl<'tcx> fmt::Display for traits::WhereClause<'tcx> {
 }
 
 impl<'tcx> fmt::Display for traits::WellFormed<'tcx> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         use traits::WellFormed::*;
 
         match self {
@@ -433,7 +433,7 @@ impl<'tcx> fmt::Display for traits::WellFormed<'tcx> {
 }
 
 impl<'tcx> fmt::Display for traits::FromEnv<'tcx> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         use traits::FromEnv::*;
 
         match self {
@@ -444,7 +444,7 @@ impl<'tcx> fmt::Display for traits::FromEnv<'tcx> {
 }
 
 impl<'tcx> fmt::Display for traits::DomainGoal<'tcx> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         use traits::DomainGoal::*;
 
         match self {
@@ -457,7 +457,7 @@ impl<'tcx> fmt::Display for traits::DomainGoal<'tcx> {
 }
 
 impl fmt::Display for traits::QuantifierKind {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         use traits::QuantifierKind::*;
 
         match self {
@@ -468,7 +468,7 @@ impl fmt::Display for traits::QuantifierKind {
 }
 
 impl<'tcx> fmt::Display for traits::Goal<'tcx> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         use traits::Goal::*;
 
         match self {
@@ -495,7 +495,7 @@ impl<'tcx> fmt::Display for traits::Goal<'tcx> {
 }
 
 impl<'tcx> fmt::Display for traits::ProgramClause<'tcx> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let traits::ProgramClause { goal, hypotheses } = self;
         write!(fmt, "{}", goal)?;
         if !hypotheses.is_empty() {
@@ -512,7 +512,7 @@ impl<'tcx> fmt::Display for traits::ProgramClause<'tcx> {
 }
 
 impl<'tcx> fmt::Display for traits::Clause<'tcx> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         use traits::Clause::*;
 
         match self {

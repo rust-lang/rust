@@ -841,7 +841,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
 /// We will return true if the reference is within the same module as the existential type
 /// So true for f1, false for f2.
 pub fn may_define_existential_type(
-    tcx: TyCtxt,
+    tcx: TyCtxt<'_, '_, '_>,
     def_id: DefId,
     opaque_node_id: ast::NodeId,
 ) -> bool {

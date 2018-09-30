@@ -57,7 +57,7 @@ impl SearchPaths {
         self.paths.push((kind, PathBuf::from(path)));
     }
 
-    pub fn iter(&self, kind: PathKind) -> Iter {
+    pub fn iter(&self, kind: PathKind) -> Iter<'_> {
         Iter { kind: kind, iter: self.paths.iter() }
     }
 }

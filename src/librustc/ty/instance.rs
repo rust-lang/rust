@@ -114,7 +114,7 @@ impl<'tcx> InstanceDef<'tcx> {
 }
 
 impl<'tcx> fmt::Display for Instance<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ppaux::parameterized(f, self.substs, self.def_id(), &[])?;
         match self.def {
             InstanceDef::Item(_) => Ok(()),

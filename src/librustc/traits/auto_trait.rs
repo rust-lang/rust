@@ -483,14 +483,15 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         }
     }
 
-    pub fn region_name(&self, region: Region) -> Option<String> {
+    pub fn region_name(&self, region: Region<'_>) -> Option<String> {
         match region {
             &ty::ReEarlyBound(r) => Some(r.name.to_string()),
             _ => None,
         }
     }
 
-    pub fn get_lifetime(&self, region: Region, names_map: &FxHashMap<String, String>) -> String {
+    pub fn get_lifetime(&self, region: Region<'_>,
+                        names_map: &FxHashMap<String, String>) -> String {
         self.region_name(region)
             .map(|name|
                 names_map.get(&name).unwrap_or_else(||
@@ -591,7 +592,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         finished_map
     }
 
-    pub fn is_of_param(&self, substs: &Substs) -> bool {
+    pub fn is_of_param(&self, substs: &Substs<'_>) -> bool {
         if substs.is_noop() {
             return false;
         }
@@ -611,7 +612,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         T: Iterator<Item = Obligation<'cx, ty::Predicate<'cx>>>,
     >(
         &self,
-        ty: ty::Ty,
+        ty: ty::Ty<'_>,
         nested: T,
         computed_preds: &'b mut FxHashSet<ty::Predicate<'cx>>,
         fresh_preds: &'b mut FxHashSet<ty::Predicate<'cx>>,

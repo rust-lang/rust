@@ -355,7 +355,7 @@ impl LintStore {
         &self,
         lint_name: &str,
         tool_name: Option<LocalInternedString>,
-    ) -> CheckLintNameResult {
+    ) -> CheckLintNameResult<'_> {
         let complete_name = if let Some(tool_name) = tool_name {
             format!("{}::{}", tool_name, lint_name)
         } else {
@@ -410,7 +410,7 @@ impl LintStore {
         &self,
         lint_name: &str,
         tool_name: &str,
-    ) -> CheckLintNameResult {
+    ) -> CheckLintNameResult<'_> {
         let complete_name = format!("{}::{}", tool_name, lint_name);
         match self.by_name.get(&complete_name) {
             None => match self.lint_groups.get(&*complete_name) {
@@ -525,7 +525,7 @@ pub trait LintContext<'tcx>: Sized {
                                   lint: &'static Lint,
                                   span: Option<S>,
                                   msg: &str)
-                                  -> DiagnosticBuilder;
+                                  -> DiagnosticBuilder<'_>;
 
     /// Emit a lint at the appropriate level, for a particular span.
     fn span_lint<S: Into<MultiSpan>>(&self, lint: &'static Lint, span: S, msg: &str) {
@@ -536,7 +536,7 @@ pub trait LintContext<'tcx>: Sized {
                                             lint: &'static Lint,
                                             span: S,
                                             msg: &str)
-                                            -> DiagnosticBuilder {
+                                            -> DiagnosticBuilder<'_> {
         self.lookup(lint, Some(span), msg)
     }
 
@@ -640,7 +640,7 @@ impl<'a, 'tcx> LintContext<'tcx> for LateContext<'a, 'tcx> {
                                   lint: &'static Lint,
                                   span: Option<S>,
                                   msg: &str)
-                                  -> DiagnosticBuilder {
+                                  -> DiagnosticBuilder<'_> {
         let id = self.last_ast_node_with_lint_attrs;
         match span {
             Some(s) => self.tcx.struct_span_lint_node(lint, id, s, msg),
@@ -697,7 +697,7 @@ impl<'a> LintContext<'a> for EarlyContext<'a> {
                                   lint: &'static Lint,
                                   span: Option<S>,
                                   msg: &str)
-                                  -> DiagnosticBuilder {
+                                  -> DiagnosticBuilder<'_> {
         self.builder.struct_lint(lint, span.map(|s| s.into()), msg)
     }
 

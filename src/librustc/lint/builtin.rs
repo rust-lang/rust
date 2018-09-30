@@ -432,7 +432,7 @@ pub enum BuiltinLintDiagnostics {
 }
 
 impl BuiltinLintDiagnostics {
-    pub fn run(self, sess: &Session, db: &mut DiagnosticBuilder) {
+    pub fn run(self, sess: &Session, db: &mut DiagnosticBuilder<'_>) {
         match self {
             BuiltinLintDiagnostics::Normal => (),
             BuiltinLintDiagnostics::BareTraitObject(span, is_global) => {

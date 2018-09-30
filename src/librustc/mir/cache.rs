@@ -57,8 +57,8 @@ impl Cache {
 
     pub fn predecessors(
         &self,
-        mir: &Mir
-    ) -> MappedReadGuard<IndexVec<BasicBlock, Vec<BasicBlock>>> {
+        mir: &Mir<'_>
+    ) -> MappedReadGuard<'_, IndexVec<BasicBlock, Vec<BasicBlock>>> {
         if self.predecessors.borrow().is_none() {
             *self.predecessors.borrow_mut() = Some(calculate_predecessors(mir));
         }
@@ -67,7 +67,7 @@ impl Cache {
     }
 }
 
-fn calculate_predecessors(mir: &Mir) -> IndexVec<BasicBlock, Vec<BasicBlock>> {
+fn calculate_predecessors(mir: &Mir<'_>) -> IndexVec<BasicBlock, Vec<BasicBlock>> {
     let mut result = IndexVec::from_elem(vec![], mir.basic_blocks());
     for (bb, data) in mir.basic_blocks().iter_enumerated() {
         if let Some(ref term) = data.terminator {

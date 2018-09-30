@@ -163,7 +163,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn expand_givens(&mut self, graph: &RegionGraph) {
+    fn expand_givens(&mut self, graph: &RegionGraph<'_>) {
         // Givens are a kind of horrible hack to account for
         // constraints like 'c <= '0 that are known to hold due to
         // closure signatures (see the comment above on the `givens`
@@ -558,7 +558,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
         // We place free regions first because we are special casing
         // SubSupConflict(ReFree, ReFree) when reporting error, and so
         // the user will more likely get a specific suggestion.
-        fn region_order_key(x: &RegionAndOrigin) -> u8 {
+        fn region_order_key(x: &RegionAndOrigin<'_>) -> u8 {
             match *x.region {
                 ReEarlyBound(_) => 0,
                 ReFree(_) => 1,
@@ -739,7 +739,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
 }
 
 impl<'tcx> fmt::Debug for RegionAndOrigin<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "RegionAndOrigin({:?},{:?})", self.region, self.origin)
     }
 }

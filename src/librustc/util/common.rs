@@ -39,14 +39,14 @@ pub struct ErrorReported;
 thread_local!(static TIME_DEPTH: Cell<usize> = Cell::new(0));
 
 lazy_static! {
-    static ref DEFAULT_HOOK: Box<dyn Fn(&panic::PanicInfo) + Sync + Send + 'static> = {
+    static ref DEFAULT_HOOK: Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static> = {
         let hook = panic::take_hook();
         panic::set_hook(Box::new(panic_hook));
         hook
     };
 }
 
-fn panic_hook(info: &panic::PanicInfo) {
+fn panic_hook(info: &panic::PanicInfo<'_>) {
     if !proc_macro::__internal::in_sess() {
         (*DEFAULT_HOOK)(info);
 

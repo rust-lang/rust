@@ -666,21 +666,21 @@ impl<'a, 'tcx, 'lcx> TyCtxt<'a, 'tcx, 'lcx> {
         span: Span,
         key: DefId,
     ) -> Result<&'tcx [Ty<'tcx>], DiagnosticBuilder<'a>> {
-        self.try_get_query::<queries::adt_sized_constraint>(span, key)
+        self.try_get_query::<queries::adt_sized_constraint<'_>>(span, key)
     }
     pub fn try_needs_drop_raw(
         self,
         span: Span,
         key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
     ) -> Result<bool, DiagnosticBuilder<'a>> {
-        self.try_get_query::<queries::needs_drop_raw>(span, key)
+        self.try_get_query::<queries::needs_drop_raw<'_>>(span, key)
     }
     pub fn try_optimized_mir(
         self,
         span: Span,
         key: DefId,
     ) -> Result<&'tcx mir::Mir<'tcx>, DiagnosticBuilder<'a>> {
-        self.try_get_query::<queries::optimized_mir>(span, key)
+        self.try_get_query::<queries::optimized_mir<'_>>(span, key)
     }
 }
 

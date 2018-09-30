@@ -68,9 +68,9 @@ pub enum UnconstrainedNumeric {
 /// afterwards to present additional details, particularly when it comes to lifetime-related
 /// errors.
 impl<'tcx> fmt::Display for TypeError<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::TypeError::*;
-        fn report_maybe_different(f: &mut fmt::Formatter,
+        fn report_maybe_different(f: &mut fmt::Formatter<'_>,
                                   expected: String, found: String) -> fmt::Result {
             // A naive approach to making sure that we're not reporting silly errors such as:
             // (expected closure, found closure).
@@ -237,7 +237,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn note_and_explain_type_err(self,
-                                     db: &mut DiagnosticBuilder,
+                                     db: &mut DiagnosticBuilder<'_>,
                                      err: &TypeError<'tcx>,
                                      sp: Span) {
         use self::TypeError::*;

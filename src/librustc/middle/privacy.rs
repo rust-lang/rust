@@ -59,7 +59,7 @@ impl<Id: Hash + Eq> Default for AccessLevels<Id> {
 }
 
 impl<Id: Hash + Eq + fmt::Debug> fmt::Debug for AccessLevels<Id> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.map, f)
     }
 }
