@@ -81,11 +81,16 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     <nav class=\"sub\">\
         <form class=\"search-form js-only\">\
             <div class=\"search-container\">\
-                <input class=\"search-input\" name=\"search\" \
-                       autocomplete=\"off\" \
-                       spellcheck=\"false\" \
-                       placeholder=\"Click or press ‘S’ to search, ‘?’ for more options…\" \
-                       type=\"search\">\
+                <div>\
+                    <select id=\"crate-search\">\
+                        <option value=\"All crates\">All crates</option>\
+                    </select>\
+                    <input class=\"search-input\" name=\"search\" \
+                           autocomplete=\"off\" \
+                           spellcheck=\"false\" \
+                           placeholder=\"Click or press ‘S’ to search, ‘?’ for more options…\" \
+                           type=\"search\">\
+                </div>\
                 <a id=\"settings-menu\" href=\"{root_path}settings.html\">\
                     <img src=\"{root_path}wheel{suffix}.svg\" width=\"18\" alt=\"Change settings\">\
                 </a>\

@@ -983,7 +983,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                                        &[(minifier::js::Keyword::Null, "N")]),
                  &dst);
     }
-    try_err!(writeln!(&mut w, "initSearch(searchIndex);"), &dst);
+    try_err!(writeln!(&mut w, "initSearch(searchIndex);addSearchOptions(searchIndex);"), &dst);
 
     if options.enable_index_page {
         if let Some(index_page) = options.index_page.clone() {
