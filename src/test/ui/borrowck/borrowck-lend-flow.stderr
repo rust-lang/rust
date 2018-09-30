@@ -1,10 +1,11 @@
 error[E0502]: cannot borrow `*v` as mutable because `v` is also borrowed as immutable
-  --> $DIR/borrowck-lend-flow.rs:36:21
+  --> $DIR/borrowck-lend-flow.rs:34:21
    |
 LL |     let _w = &v;
    |               - immutable borrow occurs here
 LL |     borrow_mut(&mut *v); //~ ERROR cannot borrow
    |                     ^^ mutable borrow occurs here
+LL |     _w.use_ref();
 LL | }
    | - immutable borrow ends here
 

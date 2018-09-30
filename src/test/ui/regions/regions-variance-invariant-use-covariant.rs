@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-compare-mode-nll
-
 // Test that a type which is invariant with respect to its region
 // parameter used in a covariant way yields an error.
 //

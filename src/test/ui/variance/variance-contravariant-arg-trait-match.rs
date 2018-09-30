@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-compare-mode-nll
-
 #![allow(dead_code)]
 
 // Test that even when `T` is only used in contravariant position, it
