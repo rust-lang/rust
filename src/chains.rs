@@ -844,6 +844,7 @@ fn is_block_expr(context: &RewriteContext, expr: &ast::Expr, repr: &str) -> bool
         ast::ExprKind::Mac(..)
         | ast::ExprKind::Call(..)
         | ast::ExprKind::MethodCall(..)
+        | ast::ExprKind::Array(..)
         | ast::ExprKind::Struct(..)
         | ast::ExprKind::While(..)
         | ast::ExprKind::WhileLet(..)
