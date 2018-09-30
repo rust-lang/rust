@@ -1,5 +1,3 @@
-cargo-features = ["edition"]
-
 [package]
 name = "clippy_dev"
 version = "0.0.1"
