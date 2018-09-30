@@ -60,8 +60,10 @@ script:
   - |
     if [ -z ${INTEGRATION} ]; then
       ./ci/base-tests.sh
+      sleep 5
     else
       ./ci/integration-tests.sh
+      sleep 5
     fi
 
 after_success: |
