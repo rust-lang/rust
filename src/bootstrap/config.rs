@@ -272,6 +272,7 @@ struct Dist {
     gpg_password_file: Option<String>,
     upload_addr: Option<String>,
     src_tarball: Option<bool>,
+    missing_tools: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -615,6 +616,7 @@ impl Config {
             config.dist_gpg_password_file = t.gpg_password_file.clone().map(PathBuf::from);
             config.dist_upload_addr = t.upload_addr.clone();
             set(&mut config.rust_dist_src, t.src_tarball);
+            set(&mut config.missing_tools, t.missing_tools);
         }
 
         // Now that we've reached the end of our configuration, infer the

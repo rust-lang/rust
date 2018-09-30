@@ -481,3 +481,7 @@
 # as the one built on Windows will contain backslashes in paths causing problems
 # on linux
 #src-tarball = true
+#
+
+# Whether to allow failures when building tools
+#missing-tools = false
