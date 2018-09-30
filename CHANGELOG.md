@@ -864,6 +864,7 @@ All notable changes to this project will be documented in this file.
 [`unit_arg`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unit_arg
 [`unit_cmp`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unit_cmp
 [`unnecessary_cast`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unnecessary_cast
+[`unnecessary_filter_map`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unnecessary_filter_map
 [`unnecessary_fold`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unnecessary_fold
 [`unnecessary_mut_passed`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unnecessary_mut_passed
 [`unnecessary_operation`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unnecessary_operation

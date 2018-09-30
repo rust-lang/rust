@@ -682,13 +682,10 @@ impl LimitStack {
 }
 
 pub fn get_attr<'a>(attrs: &'a [ast::Attribute], name: &'static str) -> impl Iterator<Item = &'a ast::Attribute> {
-    attrs.iter().filter_map(move |attr| {
-        if attr.path.segments.len() == 2 && attr.path.segments[0].ident.to_string() == "clippy" && attr.path.segments[1].ident.to_string() == name {
-            Some(attr)
-        } else {
-            None
-        }
-    })
+    attrs.iter().filter(move |attr|
+        attr.path.segments.len() == 2 &&
+        attr.path.segments[0].ident.to_string() == "clippy" &&
+        attr.path.segments[1].ident.to_string() == name)
 }
 
 fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'static str, mut f: F) {

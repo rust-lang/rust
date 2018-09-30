@@ -20,6 +20,8 @@ use std::borrow::Cow;
 use std::fmt;
 use std::iter;
 
+mod unnecessary_filter_map;
+
 #[derive(Clone)]
 pub struct Pass;
 
@@ -692,6 +694,27 @@ declare_clippy_lint! {
     "using `fold` when a more succinct alternative exists"
 }
 
+
+/// **What it does:** Checks for `filter_map` calls which could be replaced by `filter` or `map`.
+///
+/// **Why is this bad?** Complexity
+///
+/// **Known problems:** None
+///
+/// **Example:**
+/// ```rust
+/// let _ = (0..3).filter_map(|x| if x > 2 { Some(x) } else { None });
+/// ```
+/// This could be written as:
+/// ```rust
+/// let _ = (0..3).filter(|&x| x > 2);
+/// ```
+declare_clippy_lint! {
+    pub UNNECESSARY_FILTER_MAP,
+    complexity,
+    "using `filter_map` when a more succinct alternative exists"
+}
+
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(
@@ -725,7 +748,8 @@ impl LintPass for Pass {
             STRING_EXTEND_CHARS,
             ITER_CLONED_COLLECT,
             USELESS_ASREF,
-            UNNECESSARY_FOLD
+            UNNECESSARY_FOLD,
+            UNNECESSARY_FILTER_MAP
         )
     }
 }
@@ -791,6 +815,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     lint_asref(cx, expr, "as_mut", arglists[0]);
                 } else if let Some(arglists) = method_chain_args(expr, &["fold"]) {
                     lint_unnecessary_fold(cx, expr, arglists[0]);
+                } else if let Some(arglists) = method_chain_args(expr, &["filter_map"]) {
+                    unnecessary_filter_map::lint(cx, expr, arglists[0]);
                 }
 
                 lint_or_fun_call(cx, expr, *method_span, &method_call.ident.as_str(), args);
