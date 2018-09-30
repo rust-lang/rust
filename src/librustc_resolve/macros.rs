@@ -682,7 +682,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     result
                 }
                 WhereToResolve::ExternPrelude => {
-                    if use_prelude && self.extern_prelude.contains(&ident.name) {
+                    if use_prelude && self.session.extern_prelude.contains(&ident.name) {
                         let crate_id =
                             self.crate_loader.process_path_extern(ident.name, ident.span);
                         let crate_root =
