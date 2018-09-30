@@ -391,11 +391,6 @@ for ::mir::interpret::ConstValue<'gcx> {
     }
 }
 
-impl_stable_hash_for!(enum mir::interpret::ScalarMaybeUndef {
-    Scalar(v),
-    Undef
-});
-
 impl_stable_hash_for!(struct mir::interpret::Pointer {
     alloc_id,
     offset

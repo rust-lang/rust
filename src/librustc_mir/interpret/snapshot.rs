@@ -11,7 +11,7 @@ use std::mem;
 use rustc::ich::{StableHashingContext, StableHashingContextProvider};
 use rustc::mir;
 use rustc::mir::interpret::{
-    AllocId, Pointer, Scalar, ScalarMaybeUndef,
+    AllocId, Pointer, Scalar,
     Relocations, Allocation, UndefMask,
     EvalResult, EvalErrorKind,
 };
@@ -25,7 +25,7 @@ use syntax::ast::Mutability;
 use syntax::source_map::Span;
 
 use super::eval_context::{LocalValue, StackPopCleanup};
-use super::{Frame, Memory, Operand, MemPlace, Place, Value};
+use super::{Frame, Memory, Operand, MemPlace, Place, Value, ScalarMaybeUndef};
 use const_eval::CompileTimeInterpreter;
 
 #[derive(Default)]
@@ -192,6 +192,11 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for Scalar
         }
     }
 }
+
+impl_stable_hash_for!(enum ::interpret::ScalarMaybeUndef {
+    Scalar(v),
+    Undef
+});
 
 impl_snapshot_for!(enum ScalarMaybeUndef {
     Scalar(s),

@@ -34,4 +34,4 @@ pub use self::memory::{Memory, MemoryKind};
 
 pub use self::machine::Machine;
 
-pub use self::operand::{Value, ValTy, Operand, OpTy};
+pub use self::operand::{ScalarMaybeUndef, Value, ValTy, Operand, OpTy};

@@ -25,14 +25,13 @@ use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::mir::interpret::{
     GlobalId, Scalar, FrameInfo, AllocId,
     EvalResult, EvalErrorKind,
-    ScalarMaybeUndef,
     truncate, sign_extend,
 };
 
 use syntax::source_map::{self, Span};
 
 use super::{
-    Value, Operand, MemPlace, MPlaceTy, Place,
+    Value, Operand, MemPlace, MPlaceTy, Place, ScalarMaybeUndef,
     Memory, Machine
 };
 
