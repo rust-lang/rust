@@ -311,7 +311,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 hir::BinOpKind::BitOr  => Some("std::ops::BitOrAssign"),
                                 hir::BinOpKind::Shl    => Some("std::ops::ShlAssign"),
                                 hir::BinOpKind::Shr    => Some("std::ops::ShrAssign"),
-                                _             => None
+                                _                      => None
                             };
                             if let Some(missing_trait) = missing_trait {
                                 if op.node == hir::BinOpKind::Add &&
@@ -338,15 +338,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                         IsAssign::No => {
                             let mut err = struct_span_err!(self.tcx.sess, expr.span, E0369,
-                                            "binary operation `{}` cannot be applied to type `{}`",
-                                            op.node.as_str(),
-                                            lhs_ty);
+                                "binary operation `{}` cannot be applied to type `{}`",
+                                op.node.as_str(),
+                                lhs_ty);
                             let mut suggested_deref = false;
                             if let Ref(_, mut rty, _) = lhs_ty.sty {
                                 if {
                                     !self.infcx.type_moves_by_default(self.param_env,
-                                                                        rty,
-                                                                        lhs_expr.span) &&
+                                                                      rty,
+                                                                      lhs_expr.span) &&
                                         self.lookup_op_method(rty,
                                                               &[rhs_ty],
                                                               Op::Binary(op, is_assign))

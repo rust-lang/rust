@@ -11,6 +11,7 @@
 //! Check properties that are required by built-in traits and set
 //! up data structures required by type-checking/codegen.
 
+use rustc::infer::SuppressRegionErrors;
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::middle::region;
 use rustc::middle::lang_items::UnsizeTraitLangItem;
@@ -396,6 +397,7 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
             impl_did,
             &region_scope_tree,
             &outlives_env,
+            SuppressRegionErrors::default(),
         );
 
         CoerceUnsizedInfo {

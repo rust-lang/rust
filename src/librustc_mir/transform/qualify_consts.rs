@@ -388,7 +388,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             match *candidate {
                 Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
                     match self.mir[bb].statements[stmt_idx].kind {
-                        StatementKind::Assign(_, Rvalue::Ref(_, _, Place::Local(index))) => {
+                        StatementKind::Assign(_, box Rvalue::Ref(_, _, Place::Local(index))) => {
                             promoted_temps.insert(index);
                         }
                         _ => {}

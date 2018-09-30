@@ -1385,6 +1385,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "run the self profiler"),
     profile_json: bool = (false, parse_bool, [UNTRACKED],
           "output a json file with profiler results"),
+    emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
+          "emits a section containing stack size metadata"),
 }
 
 pub fn default_lib_output() -> CrateType {

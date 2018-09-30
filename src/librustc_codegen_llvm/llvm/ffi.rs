@@ -1208,6 +1208,9 @@ extern "C" {
                              AlignStack: Bool,
                              Dialect: AsmDialect)
                              -> &Value;
+    pub fn LLVMRustInlineAsmVerify(Ty: &Type,
+                             Constraints: *const c_char)
+                             -> Bool;
 
     pub fn LLVMRustDebugMetadataVersion() -> u32;
     pub fn LLVMRustVersionMajor() -> u32;
@@ -1460,7 +1463,8 @@ extern "C" {
                                        DataSections: bool,
                                        TrapUnreachable: bool,
                                        Singlethread: bool,
-                                       AsmComments: bool)
+                                       AsmComments: bool,
+                                       EmitStackSizeSection: bool)
                                        -> Option<&'static mut TargetMachine>;
     pub fn LLVMRustDisposeTargetMachine(T: &'static mut TargetMachine);
     pub fn LLVMRustAddAnalysisPasses(T: &'a TargetMachine, PM: &PassManager<'a>, M: &'a Module);

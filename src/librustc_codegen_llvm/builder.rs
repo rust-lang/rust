@@ -737,7 +737,7 @@ impl Builder<'a, 'll, 'tcx> {
     pub fn inline_asm_call(&self, asm: *const c_char, cons: *const c_char,
                          inputs: &[&'ll Value], output: &'ll Type,
                          volatile: bool, alignstack: bool,
-                         dia: AsmDialect) -> &'ll Value {
+                         dia: AsmDialect) -> Option<&'ll Value> {
         self.count_insn("inlineasm");
 
         let volatile = if volatile { llvm::True }
@@ -753,9 +753,17 @@ impl Builder<'a, 'll, 'tcx> {
         debug!("Asm Output Type: {:?}", output);
         let fty = Type::func(&argtys[..], output);
         unsafe {
-            let v = llvm::LLVMRustInlineAsm(
-                fty, asm, cons, volatile, alignstack, dia);
-            self.call(v, inputs, None)
+            // Ask LLVM to verify that the constraints are well-formed.
+            let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons);
+            debug!("Constraint verification result: {:?}", constraints_ok);
+            if constraints_ok == llvm::True {
+                let v = llvm::LLVMRustInlineAsm(
+                    fty, asm, cons, volatile, alignstack, dia);
+                Some(self.call(v, inputs, None))
+            } else {
+                // LLVM has detected an issue with our constaints, bail out
+                None
+            }
         }
     }
 

@@ -56,6 +56,7 @@ use externalfiles::ExternalHtml;
 
 use serialize::json::{ToJson, Json, as_json};
 use syntax::ast;
+use syntax::ext::base::MacroKind;
 use syntax::source_map::FileName;
 use syntax::feature_gate::UnstableFeatures;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
@@ -1595,6 +1596,8 @@ struct AllTypes {
     statics: FxHashSet<ItemEntry>,
     constants: FxHashSet<ItemEntry>,
     keywords: FxHashSet<ItemEntry>,
+    attributes: FxHashSet<ItemEntry>,
+    derives: FxHashSet<ItemEntry>,
 }
 
 impl AllTypes {
@@ -1613,6 +1616,8 @@ impl AllTypes {
             statics: new_set(100),
             constants: new_set(100),
             keywords: new_set(100),
+            attributes: new_set(100),
+            derives: new_set(100),
         }
     }
 
@@ -1634,6 +1639,8 @@ impl AllTypes {
                 ItemType::Existential => self.existentials.insert(ItemEntry::new(new_url, name)),
                 ItemType::Static => self.statics.insert(ItemEntry::new(new_url, name)),
                 ItemType::Constant => self.constants.insert(ItemEntry::new(new_url, name)),
+                ItemType::ProcAttribute => self.attributes.insert(ItemEntry::new(new_url, name)),
+                ItemType::ProcDerive => self.derives.insert(ItemEntry::new(new_url, name)),
                 _ => true,
             };
         }
@@ -1673,6 +1680,8 @@ impl fmt::Display for AllTypes {
         print_entries(f, &self.primitives, "Primitives", "primitives")?;
         print_entries(f, &self.traits, "Traits", "traits")?;
         print_entries(f, &self.macros, "Macros", "macros")?;
+        print_entries(f, &self.attributes, "Attribute Macros", "attributes")?;
+        print_entries(f, &self.derives, "Derive Macros", "derives")?;
         print_entries(f, &self.functions, "Functions", "functions")?;
         print_entries(f, &self.typedefs, "Typedefs", "typedefs")?;
         print_entries(f, &self.existentials, "Existentials", "existentials")?;
@@ -2155,6 +2164,12 @@ impl<'a> fmt::Display for Item<'a> {
             clean::EnumItem(..) => write!(fmt, "Enum ")?,
             clean::TypedefItem(..) => write!(fmt, "Type Definition ")?,
             clean::MacroItem(..) => write!(fmt, "Macro ")?,
+            clean::ProcMacroItem(ref mac) => match mac.kind {
+                MacroKind::Bang => write!(fmt, "Macro ")?,
+                MacroKind::Attr => write!(fmt, "Attribute Macro ")?,
+                MacroKind::Derive => write!(fmt, "Derive Macro ")?,
+                MacroKind::ProcMacroStub => unreachable!(),
+            }
             clean::PrimitiveItem(..) => write!(fmt, "Primitive Type ")?,
             clean::StaticItem(..) | clean::ForeignStaticItem(..) => write!(fmt, "Static ")?,
             clean::ConstantItem(..) => write!(fmt, "Constant ")?,
@@ -2191,6 +2206,7 @@ impl<'a> fmt::Display for Item<'a> {
             clean::EnumItem(ref e) => item_enum(fmt, self.cx, self.item, e),
             clean::TypedefItem(ref t, _) => item_typedef(fmt, self.cx, self.item, t),
             clean::MacroItem(ref m) => item_macro(fmt, self.cx, self.item, m),
+            clean::ProcMacroItem(ref m) => item_proc_macro(fmt, self.cx, self.item, m),
             clean::PrimitiveItem(ref p) => item_primitive(fmt, self.cx, self.item, p),
             clean::StaticItem(ref i) | clean::ForeignStaticItem(ref i) =>
                 item_static(fmt, self.cx, self.item, i),
@@ -4079,11 +4095,12 @@ impl<'a> fmt::Display for Sidebar<'a> {
                 write!(fmt,
                        "<div class='block version'>\
                         <p>Version {}</p>\
-                        </div>
-                        <a id='all-types' href='all.html'><p>See all {}'s items</p></a>",
-                       version,
-                       it.name.as_ref().unwrap())?;
+                        </div>",
+                       version)?;
             }
+
+            write!(fmt, "<a id='all-types' href='all.html'><p>See all {}'s items</p></a>",
+                   it.name.as_ref().expect("crates always have a name"))?;
         }
 
         write!(fmt, "<div class=\"sidebar-elems\">")?;
@@ -4523,6 +4540,8 @@ fn item_ty_to_strs(ty: &ItemType) -> (&'static str, &'static str) {
         ItemType::ForeignType     => ("foreign-types", "Foreign Types"),
         ItemType::Keyword         => ("keywords", "Keywords"),
         ItemType::Existential     => ("existentials", "Existentials"),
+        ItemType::ProcAttribute   => ("attributes", "Attribute Macros"),
+        ItemType::ProcDerive      => ("derives", "Derive Macros"),
     }
 }
 
@@ -4595,6 +4614,39 @@ fn item_macro(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                                                          None,
                                                          None))
     })?;
+    document(w, cx, it)
+}
+
+fn item_proc_macro(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item, m: &clean::ProcMacro)
+    -> fmt::Result
+{
+    let name = it.name.as_ref().expect("proc-macros always have names");
+    match m.kind {
+        MacroKind::Bang => {
+            write!(w, "<pre class='rust macro'>")?;
+            write!(w, "{}!() {{ /* proc-macro */ }}", name)?;
+            write!(w, "</pre>")?;
+        }
+        MacroKind::Attr => {
+            write!(w, "<pre class='rust attr'>")?;
+            write!(w, "#[{}]", name)?;
+            write!(w, "</pre>")?;
+        }
+        MacroKind::Derive => {
+            write!(w, "<pre class='rust derive'>")?;
+            write!(w, "#[derive({})]", name)?;
+            if !m.helpers.is_empty() {
+                writeln!(w, "\n{{")?;
+                writeln!(w, "    // Attributes available to this derive:")?;
+                for attr in &m.helpers {
+                    writeln!(w, "    #[{}]", attr)?;
+                }
+                write!(w, "}}")?;
+            }
+            write!(w, "</pre>")?;
+        }
+        _ => {}
+    }
     document(w, cx, it)
 }
 

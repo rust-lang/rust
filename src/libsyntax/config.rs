@@ -90,6 +90,7 @@ impl<'a> StripUnconfigured<'a> {
             parser.expect(&token::Comma)?;
             let lo = parser.span.lo();
             let (path, tokens) = parser.parse_meta_item_unrestricted()?;
+            parser.eat(&token::Comma); // Optional trailing comma
             parser.expect(&token::CloseDelim(token::Paren))?;
             Ok((cfg, path, tokens, parser.prev_span.with_lo(lo)))
         }) {

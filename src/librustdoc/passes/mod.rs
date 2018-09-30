@@ -249,6 +249,9 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             // tymethods/macros have no control over privacy
             clean::MacroItem(..) | clean::TyMethodItem(..) => {}
 
+            // Proc-macros are always public
+            clean::ProcMacroItem(..) => {}
+
             // Primitives are never stripped
             clean::PrimitiveItem(..) => {}
 

@@ -1,0 +1,11 @@
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/projection-where-clause-none.rs:16:5
+   |
+LL |     bar::<T::Output>() //~ ERROR the parameter type `T` may not live long enough
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: 'a`...
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0309`.

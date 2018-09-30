@@ -48,7 +48,7 @@ impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
                 // See the mega-comment at `yield_in_scope` for a proof.
 
                 debug!("comparing counts yield: {} self: {}, source_span = {:?}",
-                    expr_count, self.expr_count, source_span);
+                       expr_count, self.expr_count, source_span);
 
                 if expr_count >= self.expr_count {
                     Some(yield_span)

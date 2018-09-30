@@ -155,29 +155,94 @@ pub enum GenericKind<'tcx> {
     Projection(ty::ProjectionTy<'tcx>),
 }
 
-/// When we introduce a verification step, we wish to test that a
-/// particular region (let's call it `'min`) meets some bound.
-/// The bound is described the by the following grammar:
+EnumTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for GenericKind<'tcx> {
+        (GenericKind::Param)(a),
+        (GenericKind::Projection)(a),
+    }
+}
+
+/// Describes the things that some `GenericKind` value G is known to
+/// outlive. Each variant of `VerifyBound` can be thought of as a
+/// function:
+///
+///     fn(min: Region) -> bool { .. }
+///
+/// where `true` means that the region `min` meets that `G: min`.
+/// (False means nothing.)
+///
+/// So, for example, if we have the type `T` and we have in scope that
+/// `T: 'a` and `T: 'b`, then the verify bound might be:
+///
+///     fn(min: Region) -> bool {
+///        ('a: min) || ('b: min)
+///     }
+///
+/// This is described with a `AnyRegion('a, 'b)` node.
 #[derive(Debug, Clone)]
 pub enum VerifyBound<'tcx> {
-    /// B = exists {R} --> some 'r in {R} must outlive 'min
+    /// Given a kind K and a bound B, expands to a function like the
+    /// following, where `G` is the generic for which this verify
+    /// bound was created:
     ///
-    /// Put another way, the subject value is known to outlive all
-    /// regions in {R}, so if any of those outlives 'min, then the
-    /// bound is met.
-    AnyRegion(Vec<Region<'tcx>>),
-
-    /// B = forall {R} --> all 'r in {R} must outlive 'min
+    ///     fn(min) -> bool {
+    ///       if G == K {
+    ///         B(min)
+    ///       } else {
+    ///         false
+    ///       }
+    ///     }
     ///
-    /// Put another way, the subject value is known to outlive some
-    /// region in {R}, so if all of those outlives 'min, then the bound
-    /// is met.
-    AllRegions(Vec<Region<'tcx>>),
+    /// In other words, if the generic `G` that we are checking is
+    /// equal to `K`, then check the associated verify bound
+    /// (otherwise, false).
+    ///
+    /// This is used when we have something in the environment that
+    /// may or may not be relevant, depending on the region inference
+    /// results. For example, we may have `where <T as
+    /// Trait<'a>>::Item: 'b` in our where clauses. If we are
+    /// generating the verify-bound for `<T as Trait<'0>>::Item`, then
+    /// this where-clause is only relevant if `'0` winds up inferred
+    /// to `'a`.
+    ///
+    /// So we would compile to a verify-bound like
+    ///
+    ///     IfEq(<T as Trait<'a>>::Item, AnyRegion('a))
+    ///
+    /// meaning, if the subject G is equal to `<T as Trait<'a>>::Item`
+    /// (after inference), and `'a: min`, then `G: min`.
+    IfEq(Ty<'tcx>, Box<VerifyBound<'tcx>>),
 
-    /// B = exists {B} --> 'min must meet some bound b in {B}
+    /// Given a region `R`, expands to the function:
+    ///
+    ///     fn(min) -> bool {
+    ///       R: min
+    ///     }
+    ///
+    /// This is used when we can establish that `G: R` -- therefore,
+    /// if `R: min`, then by transitivity `G: min`.
+    OutlivedBy(Region<'tcx>),
+
+    /// Given a set of bounds `B`, expands to the function:
+    ///
+    ///     fn(min) -> bool {
+    ///       exists (b in B) { b(min) }
+    ///     }
+    ///
+    /// In other words, if we meet some bound in `B`, that suffices.
+    /// This is used when all the bounds in `B` are known to apply to
+    /// G.
     AnyBound(Vec<VerifyBound<'tcx>>),
 
-    /// B = forall {B} --> 'min must meet all bounds b in {B}
+    /// Given a set of bounds `B`, expands to the function:
+    ///
+    ///     fn(min) -> bool {
+    ///       forall (b in B) { b(min) }
+    ///     }
+    ///
+    /// In other words, if we meet *all* bounds in `B`, that suffices.
+    /// This is used when *some* bound in `B` is known to suffice, but
+    /// we don't know which.
     AllBounds(Vec<VerifyBound<'tcx>>),
 }
 
@@ -882,33 +947,23 @@ impl<'a, 'gcx, 'tcx> GenericKind<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> VerifyBound<'tcx> {
-    fn for_each_region(&self, f: &mut dyn FnMut(ty::Region<'tcx>)) {
-        match self {
-            &VerifyBound::AnyRegion(ref rs) | &VerifyBound::AllRegions(ref rs) => for &r in rs {
-                f(r);
-            },
-
-            &VerifyBound::AnyBound(ref bs) | &VerifyBound::AllBounds(ref bs) => for b in bs {
-                b.for_each_region(f);
-            },
-        }
-    }
-
     pub fn must_hold(&self) -> bool {
         match self {
-            &VerifyBound::AnyRegion(ref bs) => bs.contains(&&ty::ReStatic),
-            &VerifyBound::AllRegions(ref bs) => bs.is_empty(),
-            &VerifyBound::AnyBound(ref bs) => bs.iter().any(|b| b.must_hold()),
-            &VerifyBound::AllBounds(ref bs) => bs.iter().all(|b| b.must_hold()),
+            VerifyBound::IfEq(..) => false,
+            VerifyBound::OutlivedBy(ty::ReStatic) => true,
+            VerifyBound::OutlivedBy(_) => false,
+            VerifyBound::AnyBound(bs) => bs.iter().any(|b| b.must_hold()),
+            VerifyBound::AllBounds(bs) => bs.iter().all(|b| b.must_hold()),
         }
     }
 
     pub fn cannot_hold(&self) -> bool {
         match self {
-            &VerifyBound::AnyRegion(ref bs) => bs.is_empty(),
-            &VerifyBound::AllRegions(ref bs) => bs.contains(&&ty::ReEmpty),
-            &VerifyBound::AnyBound(ref bs) => bs.iter().all(|b| b.cannot_hold()),
-            &VerifyBound::AllBounds(ref bs) => bs.iter().any(|b| b.cannot_hold()),
+            VerifyBound::IfEq(_, b) => b.cannot_hold(),
+            VerifyBound::OutlivedBy(ty::ReEmpty) => true,
+            VerifyBound::OutlivedBy(_) => false,
+            VerifyBound::AnyBound(bs) => bs.iter().all(|b| b.cannot_hold()),
+            VerifyBound::AllBounds(bs) => bs.iter().any(|b| b.cannot_hold()),
         }
     }
 

@@ -1319,7 +1319,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     );
                     if let StatementKind::Assign(
                         Place::Local(assigned_to),
-                        rvalue,
+                        box rvalue,
                     ) = &stmt.kind {
                         debug!("annotate_argument_and_return_for_borrow: assigned_to={:?} \
                                rvalue={:?}", assigned_to, rvalue);
@@ -1823,7 +1823,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             None => return OtherUse(self.mir.source_info(location).span),
         };
 
-        if let StatementKind::Assign(_, Rvalue::Aggregate(ref kind, ref places)) = stmt.kind {
+        if let StatementKind::Assign(_, box Rvalue::Aggregate(ref kind, ref places)) = stmt.kind {
             if let AggregateKind::Closure(def_id, _) = **kind {
                 debug!("find_closure_move_span: found closure {:?}", places);
 
@@ -1886,7 +1886,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
 
         for stmt in &self.mir[location.block].statements[location.statement_index + 1..] {
-            if let StatementKind::Assign(_, Rvalue::Aggregate(ref kind, ref places)) = stmt.kind {
+            if let StatementKind::Assign(_, box Rvalue::Aggregate(ref kind, ref places))
+                = stmt.kind {
                 if let AggregateKind::Closure(def_id, _) = **kind {
                     debug!("find_closure_borrow_span: found closure {:?}", places);
 

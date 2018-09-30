@@ -23,7 +23,7 @@
 use llvm;
 use llvm::AttributePlace::Function;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::LayoutOf;
+use rustc::ty::layout::{self, LayoutOf};
 use rustc::session::config::Sanitizer;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_target::spec::PanicStrategy;
@@ -137,7 +137,7 @@ pub fn declare_fn(
     let fty = FnType::new(cx, sig, &[]);
     let llfn = declare_raw_fn(cx, name, fty.llvm_cconv(), fty.llvm_type(cx));
 
-    if cx.layout_of(sig.output()).abi.is_uninhabited() {
+    if cx.layout_of(sig.output()).abi == layout::Abi::Uninhabited {
         llvm::Attribute::NoReturn.apply_llfn(Function, llfn);
     }
 

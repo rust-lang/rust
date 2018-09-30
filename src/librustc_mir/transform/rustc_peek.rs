@@ -171,7 +171,7 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
 
         if place == peek_arg_place {
-            if let mir::Rvalue::Ref(_, mir::BorrowKind::Shared, ref peeking_at_place) = *rvalue {
+            if let mir::Rvalue::Ref(_, mir::BorrowKind::Shared, ref peeking_at_place) = **rvalue {
                 // Okay, our search is over.
                 match move_data.rev_lookup.find(peeking_at_place) {
                     LookupResult::Exact(peek_mpi) => {

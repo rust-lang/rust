@@ -17,6 +17,9 @@ use check::FnCtxt;
 use hir::def_id::DefId;
 use hir::def::Def;
 use namespace::Namespace;
+use rustc::hir;
+use rustc::lint;
+use rustc::session::config::nightly_options;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TraitRef, TypeFoldable};
@@ -28,8 +31,6 @@ use rustc::middle::stability;
 use syntax::ast;
 use syntax::util::lev_distance::{lev_distance, find_best_match_for_name};
 use syntax_pos::{Span, symbol::Symbol};
-use rustc::hir;
-use rustc::lint;
 use std::mem;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -1073,9 +1074,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             self.tcx.item_path_str(stable_pick.item.def_id),
         ));
 
-        if ::rustc::session::config::nightly_options::is_nightly_build() {
+        if nightly_options::is_nightly_build() {
             for (candidate, feature) in unstable_candidates {
-                diag.note(&format!(
+                diag.help(&format!(
                     "add #![feature({})] to the crate attributes to enable `{}`",
                     feature,
                     self.tcx.item_path_str(candidate.item.def_id),
@@ -1255,9 +1256,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     {
         // Do all probes correspond to the same trait?
         let container = probes[0].0.item.container;
-        match container {
-            ty::TraitContainer(_) => {}
-            ty::ImplContainer(_) => return None,
+        if let ty::ImplContainer(_) = container {
+            return None
         }
         if probes[1..].iter().any(|&(p, _)| p.item.container != container) {
             return None;
@@ -1461,7 +1461,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                     .filter(|x| {
                         let dist = lev_distance(&*name.as_str(), &x.ident.as_str());
                         Namespace::from(x.kind) == Namespace::Value && dist > 0
-                        && dist <= max_dist
+                            && dist <= max_dist
                     })
                     .collect()
             } else {

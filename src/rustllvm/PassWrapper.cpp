@@ -373,7 +373,8 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     bool DataSections,
     bool TrapUnreachable,
     bool Singlethread,
-    bool AsmComments) {
+    bool AsmComments,
+    bool EmitStackSizeSection) {
 
   auto OptLevel = fromRust(RustOptLevel);
   auto RM = fromRust(RustReloc);
@@ -411,6 +412,8 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   }
 
 #if LLVM_VERSION_GE(6, 0)
+  Options.EmitStackSizeSection = EmitStackSizeSection;
+
   Optional<CodeModel::Model> CM;
 #else
   CodeModel::Model CM = CodeModel::Model::Default;

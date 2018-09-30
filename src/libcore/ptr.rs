@@ -79,7 +79,7 @@ use ops::CoerceUnsized;
 use fmt;
 use hash;
 use marker::{PhantomData, Unsize};
-use mem::{self, MaybeUninit};
+use mem;
 use nonzero::NonZero;
 
 use cmp::Ordering::{self, Less, Equal, Greater};
@@ -294,12 +294,16 @@ pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
     // Give ourselves some scratch space to work with
-    let mut tmp = MaybeUninit::<T>::uninitialized();
+    let mut tmp: T = mem::uninitialized();
 
     // Perform the swap
-    copy_nonoverlapping(x, tmp.as_mut_ptr(), 1);
+    copy_nonoverlapping(x, &mut tmp, 1);
     copy(y, x, 1); // `x` and `y` may overlap
-    copy_nonoverlapping(tmp.get_ref(), y, 1);
+    copy_nonoverlapping(&tmp, y, 1);
+
+    // y and t now point to the same thing, but we need to completely forget `tmp`
+    // because it's no longer relevant.
+    mem::forget(tmp);
 }
 
 /// Swaps `count * size_of::<T>()` bytes between the two regions of memory
@@ -386,8 +390,8 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     while i + block_size <= len {
         // Create some uninitialized memory as scratch space
         // Declaring `t` here avoids aligning the stack when this loop is unused
-        let mut t = mem::MaybeUninit::<Block>::uninitialized();
-        let t = t.as_mut_ptr() as *mut u8;
+        let mut t: Block = mem::uninitialized();
+        let t = &mut t as *mut _ as *mut u8;
         let x = x.add(i);
         let y = y.add(i);
 
@@ -401,10 +405,10 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 
     if i < len {
         // Swap any remaining bytes
-        let mut t = mem::MaybeUninit::<UnalignedBlock>::uninitialized();
+        let mut t: UnalignedBlock = mem::uninitialized();
         let rem = len - i;
 
-        let t = t.as_mut_ptr() as *mut u8;
+        let t = &mut t as *mut _ as *mut u8;
         let x = x.add(i);
         let y = y.add(i);
 
@@ -569,9 +573,9 @@ pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn read<T>(src: *const T) -> T {
-    let mut tmp = MaybeUninit::<T>::uninitialized();
-    copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
-    tmp.into_inner()
+    let mut tmp: T = mem::uninitialized();
+    copy_nonoverlapping(src, &mut tmp, 1);
+    tmp
 }
 
 /// Reads the value from `src` without moving it. This leaves the
@@ -636,11 +640,11 @@ pub unsafe fn read<T>(src: *const T) -> T {
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 pub unsafe fn read_unaligned<T>(src: *const T) -> T {
-    let mut tmp = MaybeUninit::<T>::uninitialized();
+    let mut tmp: T = mem::uninitialized();
     copy_nonoverlapping(src as *const u8,
-                        tmp.as_mut_ptr() as *mut u8,
+                        &mut tmp as *mut T as *mut u8,
                         mem::size_of::<T>());
-    tmp.into_inner()
+    tmp
 }
 
 /// Overwrites a memory location with the given value without reading or

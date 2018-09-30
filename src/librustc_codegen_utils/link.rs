@@ -97,6 +97,19 @@ pub fn find_crate_name(sess: Option<&Session>,
     "rust_out".to_string()
 }
 
+pub fn filename_for_metadata(sess: &Session,
+                             crate_name: &str,
+                             outputs: &OutputFilenames) -> PathBuf {
+    let libname = format!("{}{}", crate_name, sess.opts.cg.extra_filename);
+
+    let out_filename = outputs.single_output_file.clone()
+        .unwrap_or(outputs.out_directory.join(&format!("lib{}.rmeta", libname)));
+
+    check_file_is_writeable(&out_filename, sess);
+
+    out_filename
+}
+
 pub fn filename_for_input(sess: &Session,
                           crate_type: config::CrateType,
                           crate_name: &str,

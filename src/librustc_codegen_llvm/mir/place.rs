@@ -173,10 +173,7 @@ impl PlaceRef<'ll, 'tcx> {
         let cx = bx.cx;
         let field = self.layout.field(cx, ix);
         let offset = self.layout.fields.offset(ix);
-        let effective_field_align = self.align
-            .min(self.layout.align)
-            .min(field.align)
-            .restrict_for_offset(offset);
+        let effective_field_align = self.align.restrict_for_offset(offset);
 
         let simple = || {
             // Unions and newtypes only use an offset of 0.
@@ -278,7 +275,7 @@ impl PlaceRef<'ll, 'tcx> {
     /// Obtain the actual discriminant of a value.
     pub fn codegen_get_discr(self, bx: &Builder<'a, 'll, 'tcx>, cast_to: Ty<'tcx>) -> &'ll Value {
         let cast_to = bx.cx.layout_of(cast_to).immediate_llvm_type(bx.cx);
-        if self.layout.abi.is_uninhabited() {
+        if self.layout.abi == layout::Abi::Uninhabited {
             return C_undef(cast_to);
         }
         match self.layout.variants {
@@ -341,7 +338,7 @@ impl PlaceRef<'ll, 'tcx> {
     /// Set the discriminant for a new value of the given case of the given
     /// representation.
     pub fn codegen_set_discr(&self, bx: &Builder<'a, 'll, 'tcx>, variant_index: usize) {
-        if self.layout.for_variant(bx.cx, variant_index).abi.is_uninhabited() {
+        if self.layout.for_variant(bx.cx, variant_index).abi == layout::Abi::Uninhabited {
             return;
         }
         match self.layout.variants {

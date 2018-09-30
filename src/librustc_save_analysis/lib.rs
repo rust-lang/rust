@@ -23,6 +23,7 @@ extern crate rustc;
 #[macro_use]
 extern crate log;
 extern crate rustc_data_structures;
+extern crate rustc_codegen_utils;
 extern crate rustc_serialize;
 extern crate rustc_target;
 extern crate rustc_typeck;
@@ -45,9 +46,10 @@ use rustc::hir::def::Def as HirDef;
 use rustc::hir::Node;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::cstore::ExternCrate;
-use rustc::session::config::CrateType;
+use rustc::session::config::{CrateType, Input, OutputType};
 use rustc::ty::{self, TyCtxt};
 use rustc_typeck::hir_ty_to_ty;
+use rustc_codegen_utils::link::{filename_for_metadata, out_filename};
 
 use std::cell::Cell;
 use std::default::Default;
@@ -110,6 +112,24 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
+    // Returns path to the compilation output (e.g. libfoo-12345678.rmeta)
+    pub fn compilation_output(&self, crate_name: &str) -> PathBuf {
+        let sess = &self.tcx.sess;
+        // Save-analysis is emitted per whole session, not per each crate type
+        let crate_type = sess.crate_types.borrow()[0];
+        let outputs = &*self.tcx.output_filenames(LOCAL_CRATE);
+
+        if outputs.outputs.contains_key(&OutputType::Metadata) {
+            filename_for_metadata(sess, crate_name, outputs)
+        } else if outputs.outputs.should_codegen() {
+            out_filename(sess, crate_type, outputs, crate_name)
+        } else {
+            // Otherwise it's only a DepInfo, in which case we return early and
+            // not even reach the analysis stage.
+            unreachable!()
+        }
+    }
+
     // List external crates used by the current crate.
     pub fn get_external_crates(&self) -> Vec<ExternalCrateData> {
         let mut result = Vec::with_capacity(self.tcx.crates().len());
@@ -126,7 +146,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             result.push(ExternalCrateData {
                 // FIXME: change file_name field to PathBuf in rls-data
                 // https://github.com/nrc/rls-data/issues/7
-                file_name: self.span_utils.make_path_string(&lo_loc.file.name),
+                file_name: self.span_utils.make_filename_string(&lo_loc.file),
                 num: n.as_u32(),
                 id: GlobalCrateId {
                     name: self.tcx.crate_name(n).to_string(),
@@ -1015,6 +1035,7 @@ pub trait SaveHandler {
         save_ctxt: SaveContext<'l, 'tcx>,
         krate: &ast::Crate,
         cratename: &str,
+        input: &'l Input,
     );
 }
 
@@ -1080,12 +1101,14 @@ impl<'a> SaveHandler for DumpHandler<'a> {
         save_ctxt: SaveContext<'l, 'tcx>,
         krate: &ast::Crate,
         cratename: &str,
+        input: &'l Input,
     ) {
         let output = &mut self.output_file(&save_ctxt);
         let mut dumper = JsonDumper::new(output, save_ctxt.config.clone());
         let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
 
         visitor.dump_crate_info(cratename, krate);
+        visitor.dump_compilation_options(input, cratename);
         visit::walk_crate(&mut visitor, krate);
     }
 }
@@ -1101,6 +1124,7 @@ impl<'b> SaveHandler for CallbackHandler<'b> {
         save_ctxt: SaveContext<'l, 'tcx>,
         krate: &ast::Crate,
         cratename: &str,
+        input: &'l Input,
     ) {
         // We're using the JsonDumper here because it has the format of the
         // save-analysis results that we will pass to the callback. IOW, we are
@@ -1111,6 +1135,7 @@ impl<'b> SaveHandler for CallbackHandler<'b> {
         let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
 
         visitor.dump_crate_info(cratename, krate);
+        visitor.dump_compilation_options(input, cratename);
         visit::walk_crate(&mut visitor, krate);
     }
 }
@@ -1120,6 +1145,7 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
     krate: &ast::Crate,
     analysis: &'l ty::CrateAnalysis,
     cratename: &str,
+    input: &'l Input,
     config: Option<Config>,
     mut handler: H,
 ) {
@@ -1137,7 +1163,7 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
             impl_counter: Cell::new(0),
         };
 
-        handler.save(save_ctxt, krate, cratename)
+        handler.save(save_ctxt, krate, cratename, input)
     })
 }
 

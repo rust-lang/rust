@@ -47,7 +47,8 @@ use std::str;
 use syntax::attr;
 
 pub use rustc_codegen_utils::link::{find_crate_name, filename_for_input, default_output_for_target,
-                                  invalid_output_for_target, out_filename, check_file_is_writeable};
+                                  invalid_output_for_target, out_filename, check_file_is_writeable,
+                                  filename_for_metadata};
 
 // The third parameter is for env vars, used on windows to set up the
 // path for MSVC to find its DLLs, and gcc to find its bundled
@@ -216,15 +217,6 @@ fn preserve_objects_for_their_debuginfo(sess: &Session) -> bool {
     }
 
     false
-}
-
-fn filename_for_metadata(sess: &Session, crate_name: &str, outputs: &OutputFilenames) -> PathBuf {
-    let out_filename = outputs.single_output_file.clone()
-        .unwrap_or(outputs
-            .out_directory
-            .join(&format!("lib{}{}.rmeta", crate_name, sess.opts.cg.extra_filename)));
-    check_file_is_writeable(&out_filename, sess);
-    out_filename
 }
 
 pub(crate) fn each_linked_rlib(sess: &Session,

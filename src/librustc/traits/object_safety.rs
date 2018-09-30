@@ -179,7 +179,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         predicates
             .predicates
             .into_iter()
-            .map(|predicate| predicate.subst_supertrait(self, &trait_ref))
+            .map(|(predicate, _)| predicate.subst_supertrait(self, &trait_ref))
             .any(|predicate| {
                 match predicate {
                     ty::Predicate::Trait(ref data) => {
@@ -311,7 +311,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if self.predicates_of(method.def_id).predicates.into_iter()
                 // A trait object can't claim to live more than the concrete type,
                 // so outlives predicates will always hold.
-                .filter(|p| p.to_opt_type_outlives().is_none())
+                .filter(|(p, _)| p.to_opt_type_outlives().is_none())
                 .collect::<Vec<_>>()
                 // Do a shallow visit so that `contains_illegal_self_type_reference`
                 // may apply it's custom visiting.

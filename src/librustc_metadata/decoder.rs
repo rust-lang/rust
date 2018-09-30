@@ -1106,10 +1106,10 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn get_macro(&self, id: DefIndex) -> (InternedString, MacroDef) {
+    pub fn get_macro(&self, id: DefIndex) -> MacroDef {
         let entry = self.entry(id);
         match entry.kind {
-            EntryKind::MacroDef(macro_def) => (self.item_name(id), macro_def.decode(self)),
+            EntryKind::MacroDef(macro_def) => macro_def.decode(self),
             _ => bug!(),
         }
     }

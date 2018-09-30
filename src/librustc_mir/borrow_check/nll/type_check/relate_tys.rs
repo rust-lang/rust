@@ -10,15 +10,13 @@
 
 use borrow_check::nll::constraints::{ConstraintCategory, OutlivesConstraint};
 use borrow_check::nll::type_check::{BorrowCheckContext, Locations};
-use borrow_check::nll::universal_regions::UniversalRegions;
-use borrow_check::nll::ToRegionVid;
 use rustc::infer::canonical::{Canonical, CanonicalVarInfos};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::traits::query::Fallible;
 use rustc::ty::fold::{TypeFoldable, TypeVisitor};
 use rustc::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc::ty::subst::Kind;
-use rustc::ty::{self, CanonicalTy, CanonicalVar, RegionVid, Ty, TyCtxt};
+use rustc::ty::{self, CanonicalTy, CanonicalVar, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::IndexVec;
 
@@ -33,11 +31,9 @@ pub(super) fn sub_types<'tcx>(
 ) -> Fallible<()> {
     debug!("sub_types(a={:?}, b={:?}, locations={:?})", a, b, locations);
     TypeRelating::new(
-        infcx,
+        infcx.tcx,
+        NllTypeRelatingDelegate::new(infcx, borrowck_context, locations, category),
         ty::Variance::Covariant,
-        locations,
-        category,
-        borrowck_context,
         ty::List::empty(),
     ).relate(&a, &b)?;
     Ok(())
@@ -54,11 +50,9 @@ pub(super) fn eq_types<'tcx>(
 ) -> Fallible<()> {
     debug!("eq_types(a={:?}, b={:?}, locations={:?})", a, b, locations);
     TypeRelating::new(
-        infcx,
+        infcx.tcx,
+        NllTypeRelatingDelegate::new(infcx, borrowck_context, locations, category),
         ty::Variance::Invariant,
-        locations,
-        category,
-        borrowck_context,
         ty::List::empty(),
     ).relate(&a, &b)?;
     Ok(())
@@ -91,18 +85,22 @@ pub(super) fn relate_type_and_user_type<'tcx>(
     let v1 = ty::Contravariant.xform(v);
 
     TypeRelating::new(
-        infcx,
+        infcx.tcx,
+        NllTypeRelatingDelegate::new(infcx, borrowck_context, locations, category),
         v1,
-        locations,
-        category,
-        borrowck_context,
         b_variables,
     ).relate(&b_value, &a)?;
     Ok(())
 }
 
-struct TypeRelating<'cx, 'bccx: 'cx, 'gcx: 'tcx, 'tcx: 'bccx> {
-    infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+struct TypeRelating<'me, 'gcx: 'tcx, 'tcx: 'me, D>
+where
+    D: TypeRelatingDelegate<'tcx>,
+{
+    tcx: TyCtxt<'me, 'gcx, 'tcx>,
+
+    /// Callback to use when we deduce an outlives relationship
+    delegate: D,
 
     /// How are we relating `a` and `b`?
     ///
@@ -122,19 +120,10 @@ struct TypeRelating<'cx, 'bccx: 'cx, 'gcx: 'tcx, 'tcx: 'bccx> {
     ///
     /// This field stores the instantiations for late-bound regions in
     /// the `a` type.
-    a_scopes: Vec<BoundRegionScope>,
+    a_scopes: Vec<BoundRegionScope<'tcx>>,
 
     /// Same as `a_scopes`, but for the `b` type.
-    b_scopes: Vec<BoundRegionScope>,
-
-    /// Where (and why) is this relation taking place?
-    locations: Locations,
-
-    category: ConstraintCategory,
-
-    /// This will be `Some` when we are running the type check as part
-    /// of NLL, and `None` if we are running a "sanity check".
-    borrowck_context: Option<&'cx mut BorrowCheckContext<'bccx, 'tcx>>,
+    b_scopes: Vec<BoundRegionScope<'tcx>>,
 
     /// As we execute, the type on the LHS *may* come from a canonical
     /// source. In that case, we will sometimes find a constraint like
@@ -150,37 +139,128 @@ struct TypeRelating<'cx, 'bccx: 'cx, 'gcx: 'tcx, 'tcx: 'bccx> {
     canonical_var_values: IndexVec<CanonicalVar, Option<Kind<'tcx>>>,
 }
 
+trait TypeRelatingDelegate<'tcx> {
+    /// Push a constraint `sup: sub` -- this constraint must be
+    /// satisfied for the two types to be related. `sub` and `sup` may
+    /// be regions from the type or new variables created through the
+    /// delegate.
+    fn push_outlives(&mut self, sup: ty::Region<'tcx>, sub: ty::Region<'tcx>);
+
+    /// Creates a new region variable representing an instantiated
+    /// higher-ranked region; this will be either existential or
+    /// universal depending on the context.  So e.g. if you have
+    /// `for<'a> fn(..) <: for<'b> fn(..)`, then we will first
+    /// instantiate `'b` with a universally quantitifed region and
+    /// then `'a` with an existentially quantified region (the order
+    /// is important so that the existential region `'a` can see the
+    /// universal one).
+    fn next_region_var(
+        &mut self,
+        universally_quantified: UniversallyQuantified,
+    ) -> ty::Region<'tcx>;
+
+    /// Creates a new existential region in the given universe. This
+    /// is used when handling subtyping and type variables -- if we
+    /// have that `?X <: Foo<'a>`, for example, we would instantiate
+    /// `?X` with a type like `Foo<'?0>` where `'?0` is a fresh
+    /// existential variable created by this function. We would then
+    /// relate `Foo<'?0>` with `Foo<'a>` (and probably add an outlives
+    /// relation stating that `'?0: 'a`).
+    fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx>;
+}
+
+struct NllTypeRelatingDelegate<'me, 'bccx: 'me, 'gcx: 'tcx, 'tcx: 'bccx> {
+    infcx: &'me InferCtxt<'me, 'gcx, 'tcx>,
+    borrowck_context: Option<&'me mut BorrowCheckContext<'bccx, 'tcx>>,
+
+    /// Where (and why) is this relation taking place?
+    locations: Locations,
+
+    /// What category do we assign the resulting `'a: 'b` relationships?
+    category: ConstraintCategory,
+}
+
+impl NllTypeRelatingDelegate<'me, 'bccx, 'gcx, 'tcx> {
+    fn new(
+        infcx: &'me InferCtxt<'me, 'gcx, 'tcx>,
+        borrowck_context: Option<&'me mut BorrowCheckContext<'bccx, 'tcx>>,
+        locations: Locations,
+        category: ConstraintCategory,
+    ) -> Self {
+        Self {
+            infcx,
+            borrowck_context,
+            locations,
+            category,
+        }
+    }
+}
+
+impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, '_, 'tcx> {
+    fn next_region_var(
+        &mut self,
+        universally_quantified: UniversallyQuantified,
+    ) -> ty::Region<'tcx> {
+        let origin = if universally_quantified.0 {
+            NLLRegionVariableOrigin::BoundRegion(self.infcx.create_subuniverse())
+        } else {
+            NLLRegionVariableOrigin::Existential
+        };
+        self.infcx.next_nll_region_var(origin)
+    }
+
+    fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
+        self.infcx
+            .next_nll_region_var_in_universe(NLLRegionVariableOrigin::Existential, universe)
+    }
+
+    fn push_outlives(&mut self, sup: ty::Region<'tcx>, sub: ty::Region<'tcx>) {
+        if let Some(borrowck_context) = &mut self.borrowck_context {
+            let sub = borrowck_context.universal_regions.to_region_vid(sub);
+            let sup = borrowck_context.universal_regions.to_region_vid(sup);
+            borrowck_context
+                .constraints
+                .outlives_constraints
+                .push(OutlivesConstraint {
+                    sup,
+                    sub,
+                    locations: self.locations,
+                    category: self.category,
+                });
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 struct ScopesAndKind<'tcx> {
-    scopes: Vec<BoundRegionScope>,
+    scopes: Vec<BoundRegionScope<'tcx>>,
     kind: Kind<'tcx>,
 }
 
 #[derive(Clone, Debug, Default)]
-struct BoundRegionScope {
-    map: FxHashMap<ty::BoundRegion, RegionVid>,
+struct BoundRegionScope<'tcx> {
+    map: FxHashMap<ty::BoundRegion, ty::Region<'tcx>>,
 }
 
 #[derive(Copy, Clone)]
 struct UniversallyQuantified(bool);
 
-impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelating<'cx, 'bccx, 'gcx, 'tcx> {
+impl<'me, 'gcx, 'tcx, D> TypeRelating<'me, 'gcx, 'tcx, D>
+where
+    D: TypeRelatingDelegate<'tcx>,
+{
     fn new(
-        infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+        tcx: TyCtxt<'me, 'gcx, 'tcx>,
+        delegate: D,
         ambient_variance: ty::Variance,
-        locations: Locations,
-        category: ConstraintCategory,
-        borrowck_context: Option<&'cx mut BorrowCheckContext<'bccx, 'tcx>>,
         canonical_var_infos: CanonicalVarInfos<'tcx>,
     ) -> Self {
         let canonical_var_values = IndexVec::from_elem_n(None, canonical_var_infos.len());
         Self {
-            infcx,
+            tcx,
+            delegate,
             ambient_variance,
-            borrowck_context,
-            locations,
             canonical_var_values,
-            category,
             a_scopes: vec![],
             b_scopes: vec![],
         }
@@ -204,10 +284,10 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelating<'cx, 'bccx, 'gcx, 'tcx> {
         &mut self,
         value: &ty::Binder<impl TypeFoldable<'tcx>>,
         universally_quantified: UniversallyQuantified,
-    ) -> BoundRegionScope {
+    ) -> BoundRegionScope<'tcx> {
         let mut scope = BoundRegionScope::default();
         value.skip_binder().visit_with(&mut ScopeInstantiator {
-            infcx: self.infcx,
+            delegate: &mut self.delegate,
             target_index: ty::INNERMOST,
             universally_quantified,
             bound_region_scope: &mut scope,
@@ -227,8 +307,8 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelating<'cx, 'bccx, 'gcx, 'tcx> {
         debruijn: ty::DebruijnIndex,
         br: &ty::BoundRegion,
         first_free_index: ty::DebruijnIndex,
-        scopes: &[BoundRegionScope],
-    ) -> RegionVid {
+        scopes: &[BoundRegionScope<'tcx>],
+    ) -> ty::Region<'tcx> {
         // The debruijn index is a "reverse index" into the
         // scopes listing. So when we have INNERMOST (0), we
         // want the *last* scope pushed, and so forth.
@@ -245,40 +325,23 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelating<'cx, 'bccx, 'gcx, 'tcx> {
     /// with. Otherwise just return `r`.
     fn replace_bound_region(
         &self,
-        universal_regions: &UniversalRegions<'tcx>,
         r: ty::Region<'tcx>,
         first_free_index: ty::DebruijnIndex,
-        scopes: &[BoundRegionScope],
-    ) -> RegionVid {
-        match r {
-            ty::ReLateBound(debruijn, br) => {
-                Self::lookup_bound_region(*debruijn, br, first_free_index, scopes)
-            }
-
-            ty::ReVar(v) => *v,
-
-            _ => universal_regions.to_region_vid(r),
+        scopes: &[BoundRegionScope<'tcx>],
+    ) -> ty::Region<'tcx> {
+        if let ty::ReLateBound(debruijn, br) = r {
+            Self::lookup_bound_region(*debruijn, br, first_free_index, scopes)
+        } else {
+            r
         }
     }
 
     /// Push a new outlives requirement into our output set of
     /// constraints.
-    fn push_outlives(&mut self, sup: RegionVid, sub: RegionVid) {
+    fn push_outlives(&mut self, sup: ty::Region<'tcx>, sub: ty::Region<'tcx>) {
         debug!("push_outlives({:?}: {:?})", sup, sub);
 
-        if let Some(borrowck_context) = &mut self.borrowck_context {
-            borrowck_context
-                .constraints
-                .outlives_constraints
-                .push(OutlivesConstraint {
-                    sup,
-                    sub,
-                    locations: self.locations,
-                    category: self.category,
-                });
-
-            // FIXME all facts!
-        }
+        self.delegate.push_outlives(sup, sub);
     }
 
     /// When we encounter a canonical variable `var` in the output,
@@ -316,12 +379,10 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelating<'cx, 'bccx, 'gcx, 'tcx> {
         return result;
     }
 
-    fn generalize_value(
-        &self,
-        kind: Kind<'tcx>,
-    ) -> Kind<'tcx> {
+    fn generalize_value(&mut self, kind: Kind<'tcx>) -> Kind<'tcx> {
         TypeGeneralizer {
-            type_rel: self,
+            tcx: self.tcx,
+            delegate: &mut self.delegate,
             first_free_index: ty::INNERMOST,
             ambient_variance: self.ambient_variance,
 
@@ -333,11 +394,12 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelating<'cx, 'bccx, 'gcx, 'tcx> {
     }
 }
 
-impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx>
-    for TypeRelating<'cx, 'bccx, 'gcx, 'tcx>
+impl<D> TypeRelation<'me, 'gcx, 'tcx> for TypeRelating<'me, 'gcx, 'tcx, D>
+where
+    D: TypeRelatingDelegate<'tcx>,
 {
-    fn tcx(&self) -> TyCtxt<'cx, 'gcx, 'tcx> {
-        self.infcx.tcx
+    fn tcx(&self) -> TyCtxt<'me, 'gcx, 'tcx> {
+        self.tcx
     }
 
     fn tag(&self) -> &'static str {
@@ -397,37 +459,30 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx>
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-        if let Some(&mut BorrowCheckContext {
-            universal_regions, ..
-        }) = self.borrowck_context
-        {
-            if let ty::ReCanonical(var) = a {
-                self.relate_var(*var, b.into())?;
-                return Ok(a);
-            }
+        if let ty::ReCanonical(var) = a {
+            self.relate_var(*var, b.into())?;
+            return Ok(a);
+        }
 
-            debug!(
-                "regions(a={:?}, b={:?}, variance={:?})",
-                a, b, self.ambient_variance
-            );
+        debug!(
+            "regions(a={:?}, b={:?}, variance={:?})",
+            a, b, self.ambient_variance
+        );
 
-            let v_a =
-                self.replace_bound_region(universal_regions, a, ty::INNERMOST, &self.a_scopes);
-            let v_b =
-                self.replace_bound_region(universal_regions, b, ty::INNERMOST, &self.b_scopes);
+        let v_a = self.replace_bound_region(a, ty::INNERMOST, &self.a_scopes);
+        let v_b = self.replace_bound_region(b, ty::INNERMOST, &self.b_scopes);
 
-            debug!("regions: v_a = {:?}", v_a);
-            debug!("regions: v_b = {:?}", v_b);
+        debug!("regions: v_a = {:?}", v_a);
+        debug!("regions: v_b = {:?}", v_b);
 
-            if self.ambient_covariance() {
-                // Covariance: a <= b. Hence, `b: a`.
-                self.push_outlives(v_b, v_a);
-            }
+        if self.ambient_covariance() {
+            // Covariance: a <= b. Hence, `b: a`.
+            self.push_outlives(v_b, v_a);
+        }
 
-            if self.ambient_contravariance() {
-                // Contravariant: b <= a. Hence, `a: b`.
-                self.push_outlives(v_a, v_b);
-            }
+        if self.ambient_contravariance() {
+            // Contravariant: b <= a. Hence, `a: b`.
+            self.push_outlives(v_a, v_b);
         }
 
         Ok(a)
@@ -527,10 +582,8 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx>
 
             // Reset ambient variance to contravariance. See the
             // covariant case above for an explanation.
-            let variance = ::std::mem::replace(
-                &mut self.ambient_variance,
-                ty::Variance::Contravariant,
-            );
+            let variance =
+                ::std::mem::replace(&mut self.ambient_variance, ty::Variance::Contravariant);
 
             self.relate(a.skip_binder(), b.skip_binder())?;
 
@@ -551,15 +604,21 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx>
 /// binder depth, and finds late-bound regions targeting the
 /// `for<..`>.  For each of those, it creates an entry in
 /// `bound_region_scope`.
-struct ScopeInstantiator<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
-    infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+struct ScopeInstantiator<'me, 'tcx: 'me, D>
+where
+    D: TypeRelatingDelegate<'tcx> + 'me,
+{
+    delegate: &'me mut D,
     // The debruijn index of the scope we are instantiating.
     target_index: ty::DebruijnIndex,
     universally_quantified: UniversallyQuantified,
-    bound_region_scope: &'cx mut BoundRegionScope,
+    bound_region_scope: &'me mut BoundRegionScope<'tcx>,
 }
 
-impl<'cx, 'gcx, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'cx, 'gcx, 'tcx> {
+impl<'me, 'tcx, D> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx, D>
+where
+    D: TypeRelatingDelegate<'tcx>,
+{
     fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> bool {
         self.target_index.shift_in(1);
         t.super_visit_with(self);
@@ -570,21 +629,18 @@ impl<'cx, 'gcx, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'cx, 'gcx, 'tcx> {
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
         let ScopeInstantiator {
-            infcx,
             universally_quantified,
+            bound_region_scope,
+            delegate,
             ..
-        } = *self;
+        } = self;
 
         match r {
             ty::ReLateBound(debruijn, br) if *debruijn == self.target_index => {
-                self.bound_region_scope.map.entry(*br).or_insert_with(|| {
-                    let origin = if universally_quantified.0 {
-                        NLLRegionVariableOrigin::BoundRegion(infcx.create_subuniverse())
-                    } else {
-                        NLLRegionVariableOrigin::Existential
-                    };
-                    infcx.next_nll_region_var(origin).to_region_vid()
-                });
+                bound_region_scope
+                    .map
+                    .entry(*br)
+                    .or_insert_with(|| delegate.next_region_var(*universally_quantified));
             }
 
             _ => {}
@@ -613,8 +669,13 @@ impl<'cx, 'gcx, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'cx, 'gcx, 'tcx> {
 /// scopes.
 ///
 /// [blog post]: https://is.gd/0hKvIr
-struct TypeGeneralizer<'me, 'bccx: 'me, 'gcx: 'tcx, 'tcx: 'bccx> {
-    type_rel: &'me TypeRelating<'me, 'bccx, 'gcx, 'tcx>,
+struct TypeGeneralizer<'me, 'gcx: 'tcx, 'tcx: 'me, D>
+where
+    D: TypeRelatingDelegate<'tcx> + 'me,
+{
+    tcx: TyCtxt<'me, 'gcx, 'tcx>,
+
+    delegate: &'me mut D,
 
     /// After we generalize this type, we are going to relative it to
     /// some other type. What will be the variance at this point?
@@ -625,9 +686,12 @@ struct TypeGeneralizer<'me, 'bccx: 'me, 'gcx: 'tcx, 'tcx: 'bccx> {
     universe: ty::UniverseIndex,
 }
 
-impl TypeRelation<'me, 'gcx, 'tcx> for TypeGeneralizer<'me, 'bbcx, 'gcx, 'tcx> {
+impl<D> TypeRelation<'me, 'gcx, 'tcx> for TypeGeneralizer<'me, 'gcx, 'tcx, D>
+where
+    D: TypeRelatingDelegate<'tcx>,
+{
     fn tcx(&self) -> TyCtxt<'me, 'gcx, 'tcx> {
-        self.type_rel.infcx.tcx
+        self.tcx
     }
 
     fn tag(&self) -> &'static str {
@@ -710,9 +774,7 @@ impl TypeRelation<'me, 'gcx, 'tcx> for TypeGeneralizer<'me, 'bbcx, 'gcx, 'tcx> {
         // though, we may however need to check well-formedness or
         // risk a problem like #41677 again.
 
-        let replacement_region_vid = self.type_rel
-            .infcx
-            .next_nll_region_var_in_universe(NLLRegionVariableOrigin::Existential, self.universe);
+        let replacement_region_vid = self.delegate.generalize_existential(self.universe);
 
         Ok(replacement_region_vid)
     }

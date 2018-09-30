@@ -120,7 +120,6 @@
 #![feature(rustc_const_unstable)]
 #![feature(const_vec_new)]
 #![feature(slice_partition_dedup)]
-#![feature(maybe_uninit)]
 
 // Allow testing this library
 

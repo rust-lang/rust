@@ -606,6 +606,7 @@ impl<'a, 'tcx, 'x> SpecializedDecoder<interpret::AllocId> for CacheDecoder<'a, '
         alloc_decoding_session.decode_alloc_id(self)
     }
 }
+
 impl<'a, 'tcx, 'x> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx, 'x> {
     fn specialized_decode(&mut self) -> Result<Span, Self::Error> {
         let tag: u8 = Decodable::decode(self)?;

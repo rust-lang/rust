@@ -1631,7 +1631,7 @@ impl<'tcx> Statement<'tcx> {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum StatementKind<'tcx> {
     /// Write the RHS Rvalue to the LHS Place.
-    Assign(Place<'tcx>, Rvalue<'tcx>),
+    Assign(Place<'tcx>, Box<Rvalue<'tcx>>),
 
     /// This represents all the reading that a pattern match may do
     /// (e.g. inspecting constants and discriminant values), and the
@@ -1654,8 +1654,8 @@ pub enum StatementKind<'tcx> {
     /// Execute a piece of inline Assembly.
     InlineAsm {
         asm: Box<InlineAsm>,
-        outputs: Vec<Place<'tcx>>,
-        inputs: Vec<Operand<'tcx>>,
+        outputs: Box<[Place<'tcx>]>,
+        inputs: Box<[Operand<'tcx>]>,
     },
 
     /// Assert the given places to be valid inhabitants of their type.  These statements are
