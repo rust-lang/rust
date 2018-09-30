@@ -967,7 +967,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                                        &[(minifier::js::Keyword::Null, "N")]),
                  &dst);
     }
-    try_err!(writeln!(&mut w, "initSearch(searchIndex);"), &dst);
+    try_err!(writeln!(&mut w, "initSearch(searchIndex);addSearchOptions(searchIndex);"), &dst);
 
     // Update the list of all implementors for traits
     let dst = cx.dst.join("implementors");

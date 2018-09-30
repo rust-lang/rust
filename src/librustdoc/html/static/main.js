@@ -259,12 +259,14 @@
     //
     // So I guess you could say things are getting pretty interoperable.
     function getVirtualKey(ev) {
-        if ("key" in ev && typeof ev.key != "undefined")
+        if ("key" in ev && typeof ev.key != "undefined") {
             return ev.key;
+        }
 
         var c = ev.charCode || ev.keyCode;
-        if (c == 27)
+        if (c == 27) {
             return "Escape";
+        }
         return String.fromCharCode(c);
     }
 
@@ -472,12 +474,13 @@
 
         /**
          * Executes the query and builds an index of results
-         * @param  {[Object]} query     [The user query]
-         * @param  {[type]} searchWords [The list of search words to query
-         *                               against]
-         * @return {[type]}             [A search index of results]
+         * @param  {[Object]} query      [The user query]
+         * @param  {[type]} searchWords  [The list of search words to query
+         *                                against]
+         * @param  {[type]} filterCrates [Crate to search in if defined]
+         * @return {[type]}              [A search index of results]
          */
-        function execQuery(query, searchWords) {
+        function execQuery(query, searchWords, filterCrates) {
             function itemTypeFromName(typename) {
                 for (var i = 0; i < itemTypes.length; ++i) {
                     if (itemTypes[i] === typename) {
@@ -853,6 +856,9 @@
             {
                 val = extractGenerics(val.substr(1, val.length - 2));
                 for (var i = 0; i < nSearchWords; ++i) {
+                    if (filterCrates !== undefined && searchIndex[i].crate !== filterCrates) {
+                        continue;
+                    }
                     var in_args = findArg(searchIndex[i], val, true);
                     var returned = checkReturned(searchIndex[i], val, true);
                     var ty = searchIndex[i];
@@ -907,6 +913,9 @@
                 var output = extractGenerics(parts[1]);
 
                 for (var i = 0; i < nSearchWords; ++i) {
+                    if (filterCrates !== undefined && searchIndex[i].crate !== filterCrates) {
+                        continue;
+                    }
                     var type = searchIndex[i].type;
                     var ty = searchIndex[i];
                     if (!type) {
@@ -978,11 +987,11 @@
                 var contains = paths.slice(0, paths.length > 1 ? paths.length - 1 : 1);
 
                 for (j = 0; j < nSearchWords; ++j) {
-                    var lev_distance;
                     var ty = searchIndex[j];
-                    if (!ty) {
+                    if (!ty || (filterCrates !== undefined && ty.crate !== filterCrates)) {
                         continue;
                     }
+                    var lev_distance;
                     var lev_add = 0;
                     if (paths.length > 1) {
                         var lev = checkPath(contains, paths[paths.length - 1], ty);
@@ -1358,7 +1367,7 @@
             return '<div>' + text + ' <div class="count">(' + nbElems + ')</div></div>';
         }
 
-        function showResults(results) {
+        function showResults(results, filterCrates) {
             if (results['others'].length === 1 &&
                 getCurrentValue('rustdoc-go-to-only-result') === "true") {
                 var elem = document.createElement('a');
@@ -1376,8 +1385,13 @@
             var ret_in_args = addTab(results['in_args'], query, false);
             var ret_returned = addTab(results['returned'], query, false);
 
+            var filter = "";
+            if (filterCrates !== undefined) {
+                filter = " (in <b>" + filterCrates + "</b> crate)";
+            }
+
             var output = '<h1>Results for ' + escape(query.query) +
-                (query.type ? ' (type: ' + escape(query.type) + ')' : '') + '</h1>' +
+                (query.type ? ' (type: ' + escape(query.type) + ')' : '') + filter + '</h1>' +
                 '<div id="titles">' +
                 makeTabHeader(0, "In Names", ret_others[1]) +
                 makeTabHeader(1, "In Parameters", ret_in_args[1]) +
@@ -1406,7 +1420,7 @@
             printTab(currentTab);
         }
 
-        function execSearch(query, searchWords) {
+        function execSearch(query, searchWords, filterCrates) {
             var queries = query.raw.split(",");
             var results = {
                 'in_args': [],
@@ -1417,7 +1431,7 @@
             for (var i = 0; i < queries.length; ++i) {
                 var query = queries[i].trim();
                 if (query.length !== 0) {
-                    var tmp = execQuery(getQuery(query), searchWords);
+                    var tmp = execQuery(getQuery(query), searchWords, filterCrates);
 
                     results['in_args'].push(tmp['in_args']);
                     results['returned'].push(tmp['returned']);
@@ -1479,7 +1493,16 @@
             }
         }
 
-        function search(e) {
+        function getFilterCrates() {
+            var elem = document.getElementById("crate-search");
+
+            if (elem && elem.value !== "All crates" && rawSearchIndex.hasOwnProperty(elem.value)) {
+                return elem.value;
+            }
+            return undefined;
+        }
+
+        function search(e, forced) {
             var params = getQueryStringParams();
             var query = getQuery(search_input.value.trim());
 
@@ -1487,7 +1510,10 @@
                 e.preventDefault();
             }
 
-            if (query.query.length === 0 || query.id === currentResults) {
+            if (query.query.length === 0) {
+                return;
+            }
+            if (forced !== true && query.id === currentResults) {
                 if (query.query.length > 0) {
                     putBackSearch(search_input);
                 }
@@ -1507,7 +1533,8 @@
                 }
             }
 
-            showResults(execSearch(query, index));
+            var filterCrates = getFilterCrates();
+            showResults(execSearch(query, index, filterCrates), filterCrates);
         }
 
         function buildIndex(rawSearchIndex) {
@@ -1606,6 +1633,13 @@
                 setTimeout(search, 0);
             };
             search_input.onpaste = search_input.onchange;
+
+            var selectCrate = document.getElementById('crate-search');
+            if (selectCrate) {
+                selectCrate.onchange = function() {
+                    search(undefined, true);
+                };
+            }
 
             // Push and pop states are used to add search results to the browser
             // history.
@@ -2283,6 +2317,39 @@
     if (window.location.hash && window.location.hash.length > 0) {
         expandSection(window.location.hash.replace(/^#/, ''));
     }
+
+    function addSearchOptions(crates) {
+        var elem = document.getElementById('crate-search');
+
+        if (!elem) {
+            return;
+        }
+        var crates_text = [];
+        for (var crate in crates) {
+            if (crates.hasOwnProperty(crate)) {
+                crates_text.push(crate);
+            }
+        }
+        crates_text.sort(function(a, b) {
+            var lower_a = a.toLowerCase();
+            var lower_b = b.toLowerCase();
+
+            if (lower_a < lower_b) {
+                return -1;
+            } else if (lower_a > lower_b) {
+                return 1;
+            }
+            return 0;
+        });
+        for (var i = 0; i < crates_text.length; ++i) {
+            var option = document.createElement("option");
+            option.value = crates_text[i];
+            option.innerText = crates_text[i];
+            elem.appendChild(option);
+        }
+    }
+
+    window.addSearchOptions = addSearchOptions;
 }());
 
 // Sets the focus on the search bar at the top of the page
