@@ -470,7 +470,7 @@ pub enum LintSource {
     Default,
 
     /// Lint level was set by an attribute.
-    Node(ast::Name, Span),
+    Node(ast::Name, Span, Option<Symbol> /* RFC 2383 reason */),
 
     /// Lint level was set by a command-line flag.
     CommandLine(Symbol),
@@ -478,7 +478,7 @@ pub enum LintSource {
 
 impl_stable_hash_for!(enum self::LintSource {
     Default,
-    Node(name, span),
+    Node(name, span, reason),
     CommandLine(text)
 });
 
@@ -578,7 +578,10 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
                              hyphen_case_flag_val));
             }
         }
-        LintSource::Node(lint_attr_name, src) => {
+        LintSource::Node(lint_attr_name, src, reason) => {
+            if let Some(rationale) = reason {
+                err.note(&rationale.as_str());
+            }
             sess.diag_span_note_once(&mut err, DiagnosticMessageId::from(lint),
                                      src, "lint level defined here");
             if lint_attr_name.as_str() != name {

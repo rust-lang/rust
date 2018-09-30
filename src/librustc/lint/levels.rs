@@ -199,8 +199,7 @@ impl<'a> LintLevelsBuilder<'a> {
         let store = self.sess.lint_store.borrow();
         let sess = self.sess;
         let bad_attr = |span| {
-            span_err!(sess, span, E0452,
-                      "malformed lint attribute");
+            struct_span_err!(sess, span, E0452, "malformed lint attribute")
         };
         for attr in attrs {
             let level = match Level::from_str(&attr.name().as_str()) {
@@ -214,17 +213,45 @@ impl<'a> LintLevelsBuilder<'a> {
             let metas = if let Some(metas) = meta.meta_item_list() {
                 metas
             } else {
-                bad_attr(meta.span);
+                let mut err = bad_attr(meta.span);
+                err.emit();
                 continue
             };
+
+            // Before processing the lint names, look for a reason (RFC 2383).
+            let mut reason = None;
+            for li in metas {
+                if let Some(item) = li.meta_item() {
+                    match item.node {
+                        ast::MetaItemKind::Word => {}  // actual lint names handled later
+                        ast::MetaItemKind::NameValue(ref name_value) => {
+                            let name_ident = item.ident.segments[0].ident;
+                            let name = name_ident.name.as_str();
+                            if name == "reason" {
+                                if let ast::LitKind::Str(rationale, _) = name_value.node {
+                                    reason = Some(rationale);
+                                } else {
+                                    let mut err = bad_attr(name_value.span);
+                                    err.help("reason must be a string literal");
+                                    err.emit();
+                                }
+                            } else {
+                                let mut err = bad_attr(item.span);
+                                err.emit();
+                            }
+                        },
+                        ast::MetaItemKind::List(_) => {
+                            let mut err = bad_attr(item.span);
+                            err.emit();
+                        }
+                    }
+                }
+            }
 
             for li in metas {
                 let word = match li.word() {
                     Some(word) => word,
-                    None => {
-                        bad_attr(li.span);
-                        continue
-                    }
+                    None => { continue; }
                 };
                 let tool_name = if let Some(lint_tool) = word.is_scoped() {
                     if !attr::is_known_lint_tool(lint_tool) {
@@ -245,7 +272,7 @@ impl<'a> LintLevelsBuilder<'a> {
                 let name = word.name();
                 match store.check_lint_name(&name.as_str(), tool_name) {
                     CheckLintNameResult::Ok(ids) => {
-                        let src = LintSource::Node(name, li.span);
+                        let src = LintSource::Node(name, li.span, reason);
                         for id in ids {
                             specs.insert(*id, (level, src));
                         }
@@ -255,7 +282,9 @@ impl<'a> LintLevelsBuilder<'a> {
                         match result {
                             Ok(ids) => {
                                 let complete_name = &format!("{}::{}", tool_name.unwrap(), name);
-                                let src = LintSource::Node(Symbol::intern(complete_name), li.span);
+                                let src = LintSource::Node(
+                                    Symbol::intern(complete_name), li.span, reason
+                                );
                                 for id in ids {
                                     specs.insert(*id, (level, src));
                                 }
@@ -286,7 +315,9 @@ impl<'a> LintLevelsBuilder<'a> {
                                     Applicability::MachineApplicable,
                                 ).emit();
 
-                                let src = LintSource::Node(Symbol::intern(&new_lint_name), li.span);
+                                let src = LintSource::Node(
+                                    Symbol::intern(&new_lint_name), li.span, reason
+                                );
                                 for id in ids {
                                     specs.insert(*id, (level, src));
                                 }
@@ -368,11 +399,11 @@ impl<'a> LintLevelsBuilder<'a> {
             };
             let forbidden_lint_name = match forbid_src {
                 LintSource::Default => id.to_string(),
-                LintSource::Node(name, _) => name.to_string(),
+                LintSource::Node(name, _, _) => name.to_string(),
                 LintSource::CommandLine(name) => name.to_string(),
             };
             let (lint_attr_name, lint_attr_span) = match *src {
-                LintSource::Node(name, span) => (name, span),
+                LintSource::Node(name, span, _) => (name, span),
                 _ => continue,
             };
             let mut diag_builder = struct_span_err!(self.sess,
@@ -384,15 +415,19 @@ impl<'a> LintLevelsBuilder<'a> {
                                                     forbidden_lint_name);
             diag_builder.span_label(lint_attr_span, "overruled by previous forbid");
             match forbid_src {
-                LintSource::Default => &mut diag_builder,
-                LintSource::Node(_, forbid_source_span) => {
+                LintSource::Default => {},
+                LintSource::Node(_, forbid_source_span, reason) => {
                     diag_builder.span_label(forbid_source_span,
-                                            "`forbid` level set here")
+                                            "`forbid` level set here");
+                    if let Some(rationale) = reason {
+                        diag_builder.note(&rationale.as_str());
+                    }
                 },
                 LintSource::CommandLine(_) => {
-                    diag_builder.note("`forbid` lint level was set on command line")
+                    diag_builder.note("`forbid` lint level was set on command line");
                 }
-            }.emit();
+            }
+            diag_builder.emit();
             // don't set a separate error for every lint in the group
             break
         }
