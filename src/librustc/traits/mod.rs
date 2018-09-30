@@ -644,7 +644,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // have the errors get reported at a defined place (e.g.,
     // during typeck). Instead I have all parameter
     // environments, in effect, going through this function
-    // and hence potentially reporting errors. This ensurse of
+    // and hence potentially reporting errors. This ensures of
     // course that we never forget to normalize (the
     // alternative seemed like it would involve a lot of
     // manual invocations of this fn -- and then we'd have to

@@ -59,8 +59,9 @@ impl<OF, BF, O, E> ObligationProcessor for ClosureObligationProcessor<OF, BF, O,
 
     fn process_backedge<'c, I>(&mut self, _cycle: I,
                                _marker: PhantomData<&'c Self::Obligation>)
-        where I: Clone + Iterator<Item=&'c Self::Obligation> {
-        }
+        where I: Clone + Iterator<Item=&'c Self::Obligation>
+    {
+    }
 }
 
 
@@ -350,10 +351,7 @@ fn done_dependency() {
         }, |_|{}));
     assert_eq!(ok, vec!["(A,B,C): Sized"]);
     assert_eq!(err.len(), 0);
-
-
 }
-
 
 #[test]
 fn orphan() {

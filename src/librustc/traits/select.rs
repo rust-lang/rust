@@ -582,7 +582,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         match self.confirm_candidate(obligation, candidate) {
             Err(SelectionError::Overflow) => {
                 assert!(self.query_mode == TraitQueryMode::Canonical);
-                return Err(SelectionError::Overflow);
+                Err(SelectionError::Overflow)
             },
             Err(e) => Err(e),
             Ok(candidate) => Ok(Some(candidate))
@@ -879,7 +879,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // must be met of course). One obvious case this comes up is
         // marker traits like `Send`. Think of a linked list:
         //
-        //    struct List<T> { data: T, next: Option<Box<List<T>>> {
+        //    struct List<T> { data: T, next: Option<Box<List<T>>> }
         //
         // `Box<List<T>>` will be `Send` if `T` is `Send` and
         // `Option<Box<List<T>>>` is `Send`, and in turn
@@ -1407,7 +1407,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                stack: &TraitObligationStack<'o, 'tcx>)
                                -> Result<SelectionCandidateSet<'tcx>, SelectionError<'tcx>>
     {
-        let TraitObligationStack { obligation, .. } = *stack;
+        let obligation = stack.obligation;
         let ref obligation = Obligation {
             param_env: obligation.param_env,
             cause: obligation.cause.clone(),
@@ -1788,9 +1788,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     }
 
     fn assemble_candidates_from_auto_impls(&mut self,
-                                              obligation: &TraitObligation<'tcx>,
-                                              candidates: &mut SelectionCandidateSet<'tcx>)
-                                              -> Result<(), SelectionError<'tcx>>
+                                           obligation: &TraitObligation<'tcx>,
+                                           candidates: &mut SelectionCandidateSet<'tcx>)
+                                           -> Result<(), SelectionError<'tcx>>
     {
         // OK to skip binder here because the tests we do below do not involve bound regions
         let self_ty = *obligation.self_ty().skip_binder();
@@ -2433,7 +2433,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn confirm_candidate(&mut self,
                          obligation: &TraitObligation<'tcx>,
                          candidate: SelectionCandidate<'tcx>)
-                         -> Result<Selection<'tcx>,SelectionError<'tcx>>
+                         -> Result<Selection<'tcx>, SelectionError<'tcx>>
     {
         debug!("confirm_candidate({:?}, {:?})",
                obligation,
@@ -2612,11 +2612,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         let mut obligations = self.collect_predicates_for_types(
             obligation.param_env,
             cause,
-            obligation.recursion_depth+1,
+            obligation.recursion_depth + 1,
             trait_def_id,
             nested);
 
-        let trait_obligations = self.in_snapshot(|this, snapshot| {
+        let trait_obligations: Vec<PredicateObligation<'_>> = self.in_snapshot(|this, snapshot| {
             let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
             let (trait_ref, skol_map) =
                 this.infcx().skolemize_late_bound_regions(&poly_trait_ref);
@@ -2630,6 +2630,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                            snapshot)
         });
 
+        // Adds the predicates from the trait.  Note that this contains a `Self: Trait`
+        // predicate as usual.  It won't have any effect since auto traits are coinductive.
         obligations.extend(trait_obligations);
 
         debug!("vtable_auto_impl: obligations={:?}", obligations);
