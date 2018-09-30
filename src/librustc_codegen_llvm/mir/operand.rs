@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::mir::interpret::ConstEvalErr;
+use rustc::mir::interpret::{ConstValue, ConstEvalErr};
 use rustc::mir;
-use rustc::mir::interpret::{ConstValue, ScalarMaybeUndef};
 use rustc::ty;
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 use rustc_data_structures::sync::Lrc;
@@ -114,15 +113,12 @@ impl OperandRef<'ll, 'tcx> {
                     layout.scalar_pair_element_llvm_type(bx.cx, 0, true),
                 );
                 let b_layout = layout.scalar_pair_element_llvm_type(bx.cx, 1, true);
-                let b_llval = match b {
-                    ScalarMaybeUndef::Scalar(b) => scalar_to_llvm(
-                        bx.cx,
-                        b,
-                        b_scalar,
-                        b_layout,
-                    ),
-                    ScalarMaybeUndef::Undef => C_undef(b_layout),
-                };
+                let b_llval = scalar_to_llvm(
+                    bx.cx,
+                    b,
+                    b_scalar,
+                    b_layout,
+                );
                 OperandValue::Pair(a_llval, b_llval)
             },
             ConstValue::ByRef(_, alloc, offset) => {
