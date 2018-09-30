@@ -1598,6 +1598,22 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    /// Returns `true` if this type is an `Arc<T>`.
+    pub fn is_arc(&self) -> bool {
+        match self.sty {
+            Adt(def, _) => def.is_arc(),
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if this type is an `Rc<T>`.
+    pub fn is_rc(&self) -> bool {
+        match self.sty {
+            Adt(def, _) => def.is_rc(),
+            _ => false,
+        }
+    }
+
     pub fn is_box(&self) -> bool {
         match self.sty {
             Adt(def, _) => def.is_box(),

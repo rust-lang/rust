@@ -199,6 +199,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// counting in general.
 ///
 /// [rc_examples]: ../../std/rc/index.html#examples
+#[cfg_attr(all(not(stage0), not(test)), lang = "arc")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Arc<T: ?Sized> {
     ptr: NonNull<ArcInner<T>>,

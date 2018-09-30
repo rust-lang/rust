@@ -362,6 +362,9 @@ language_item_table! {
     AlignOffsetLangItem,             "align_offset",            align_offset_fn;
 
     TerminationTraitLangItem,        "termination",             termination;
+
+    Arc,                             "arc",                     arc;
+    Rc,                              "rc",                      rc;
 }
 
 impl<'a, 'tcx, 'gcx> TyCtxt<'a, 'tcx, 'gcx> {

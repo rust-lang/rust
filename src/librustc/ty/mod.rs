@@ -1694,9 +1694,13 @@ bitflags! {
         const IS_FUNDAMENTAL      = 1 << 2;
         const IS_UNION            = 1 << 3;
         const IS_BOX              = 1 << 4;
+        /// Indicates whether the type is an `Arc`.
+        const IS_ARC              = 1 << 5;
+        /// Indicates whether the type is an `Rc`.
+        const IS_RC               = 1 << 6;
         /// Indicates whether the variant list of this ADT is `#[non_exhaustive]`.
         /// (i.e., this flag is never set unless this ADT is an enum).
-        const IS_VARIANT_LIST_NON_EXHAUSTIVE   = 1 << 5;
+        const IS_VARIANT_LIST_NON_EXHAUSTIVE   = 1 << 7;
     }
 }
 
@@ -2016,6 +2020,12 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         if Some(did) == tcx.lang_items().owned_box() {
             flags = flags | AdtFlags::IS_BOX;
         }
+        if Some(did) == tcx.lang_items().arc() {
+            flags = flags | AdtFlags::IS_ARC;
+        }
+        if Some(did) == tcx.lang_items().rc() {
+            flags = flags | AdtFlags::IS_RC;
+        }
         if kind == AdtKind::Enum && tcx.has_attr(did, "non_exhaustive") {
             debug!("found non-exhaustive variant list for {:?}", did);
             flags = flags | AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE;
@@ -2092,6 +2102,16 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     #[inline]
     pub fn is_phantom_data(&self) -> bool {
         self.flags.intersects(AdtFlags::IS_PHANTOM_DATA)
+    }
+
+    /// Returns `true` if this is `Arc<T>`.
+    pub fn is_arc(&self) -> bool {
+        self.flags.intersects(AdtFlags::IS_ARC)
+    }
+
+    /// Returns `true` if this is `Rc<T>`.
+    pub fn is_rc(&self) -> bool {
+        self.flags.intersects(AdtFlags::IS_RC)
     }
 
     /// Returns true if this is Box<T>.

@@ -311,3 +311,5 @@ the source code.
   - `freeze`: `libcore/marker.rs`
   - `debug_trait`: `libcore/fmt/mod.rs`
   - `non_zero`: `libcore/nonzero.rs`
+  - `arc`: `liballoc/sync.rs`
+  - `rc`: `liballoc/rc.rs`
