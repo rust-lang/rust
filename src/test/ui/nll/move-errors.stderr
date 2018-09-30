@@ -25,13 +25,13 @@ LL |     let s = **r;
    |             cannot move out of borrowed content
    |             help: consider removing the `*`: `*r`
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of an `Rc`
   --> $DIR/move-errors.rs:40:13
    |
 LL |     let s = *r;
    |             ^^
    |             |
-   |             cannot move out of borrowed content
+   |             cannot move out of an `Rc`
    |             help: consider removing the `*`: `r`
 
 error[E0508]: cannot move out of type `[A; 1]`, a non-copy array

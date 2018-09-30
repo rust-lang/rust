@@ -9,6 +9,8 @@
 // except according to those terms.
 
 use core::unicode::property::Pattern_White_Space;
+use std::fmt::{self, Display};
+
 use rustc::mir::*;
 use rustc::ty;
 use rustc_errors::{DiagnosticBuilder,Applicability};
@@ -16,8 +18,10 @@ use syntax_pos::Span;
 
 use borrow_check::MirBorrowckCtxt;
 use borrow_check::prefixes::PrefixSet;
-use dataflow::move_paths::{IllegalMoveOrigin, IllegalMoveOriginKind};
-use dataflow::move_paths::{LookupResult, MoveError, MovePathIndex};
+use dataflow::move_paths::{
+    IllegalMoveOrigin, IllegalMoveOriginKind, InitLocation,
+    LookupResult, MoveError, MovePathIndex,
+};
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
 // Often when desugaring a pattern match we may have many individual moves in
@@ -59,6 +63,22 @@ enum GroupedMoveError<'tcx> {
         span: Span,
         kind: IllegalMoveOriginKind<'tcx>,
     },
+}
+
+enum BorrowedContentSource {
+    Arc,
+    Rc,
+    Other,
+}
+
+impl Display for BorrowedContentSource {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            BorrowedContentSource::Arc => write!(f, "an `Arc`"),
+            BorrowedContentSource::Rc => write!(f, "an `Rc`"),
+            BorrowedContentSource::Other => write!(f, "borrowed content"),
+        }
+    }
 }
 
 impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
@@ -305,9 +325,12 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
 
                                 diag
                             }
-                            _ => self.infcx.tcx.cannot_move_out_of(
-                                span, "borrowed content", origin
-                            ),
+                            _ => {
+                                let source = self.borrowed_content_source(place);
+                                self.infcx.tcx.cannot_move_out_of(
+                                    span, &format!("{}", source), origin
+                                )
+                            },
                         }
                     }
                     IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } => {
@@ -470,5 +493,95 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     don't implement the `Copy` trait",
             );
         }
+    }
+
+    fn borrowed_content_source(&self, place: &Place<'tcx>) -> BorrowedContentSource {
+        // Look up the provided place and work out the move path index for it,
+        // we'll use this to work back through where this value came from and check whether it
+        // was originally part of an `Rc` or `Arc`.
+        let initial_mpi = match self.move_data.rev_lookup.find(place) {
+            LookupResult::Exact(mpi) | LookupResult::Parent(Some(mpi)) => mpi,
+            _ => return BorrowedContentSource::Other,
+        };
+
+        let mut queue = vec![initial_mpi];
+        let mut visited = Vec::new();
+        debug!("borrowed_content_source: queue={:?}", queue);
+        while let Some(mpi) = queue.pop() {
+            debug!(
+                "borrowed_content_source: mpi={:?} queue={:?} visited={:?}",
+                mpi, queue, visited
+            );
+
+            // Don't visit the same path twice.
+            if visited.contains(&mpi) {
+                continue;
+            }
+            visited.push(mpi);
+
+            for i in &self.move_data.init_path_map[mpi] {
+                let init = &self.move_data.inits[*i];
+                debug!("borrowed_content_source: init={:?}", init);
+                // We're only interested in statements that initialized a value, not the
+                // initializations from arguments.
+                let loc = match init.location {
+                    InitLocation::Statement(stmt) => stmt,
+                    _ => continue,
+                };
+
+                let bbd = &self.mir[loc.block];
+                let is_terminator = bbd.statements.len() == loc.statement_index;
+                debug!("borrowed_content_source: loc={:?} is_terminator={:?}", loc, is_terminator);
+                if !is_terminator {
+                    let stmt = &bbd.statements[loc.statement_index];
+                    debug!("borrowed_content_source: stmt={:?}", stmt);
+                    // We're only interested in assignments (in particular, where the
+                    // assignment came from - was it an `Rc` or `Arc`?).
+                    if let StatementKind::Assign(_, box Rvalue::Ref(_, _, source)) = &stmt.kind {
+                        let ty = source.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
+                        let ty = match ty.sty {
+                            ty::TyKind::Ref(_, ty, _) => ty,
+                            _ => ty,
+                        };
+                        debug!("borrowed_content_source: ty={:?}", ty);
+
+                        if ty.is_arc() {
+                            return BorrowedContentSource::Arc;
+                        } else if ty.is_rc() {
+                            return BorrowedContentSource::Rc;
+                        } else {
+                            queue.push(init.path);
+                        }
+                    }
+                } else if let Some(Terminator {
+                    kind: TerminatorKind::Call { args, .. },
+                    ..
+                }) = &bbd.terminator {
+                    for arg in args {
+                        let source = match arg {
+                            Operand::Copy(place) | Operand::Move(place) => place,
+                            _ => continue,
+                        };
+
+                        let ty = source.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
+                        let ty = match ty.sty {
+                            ty::TyKind::Ref(_, ty, _) => ty,
+                            _ => ty,
+                        };
+                        debug!("borrowed_content_source: ty={:?}", ty);
+
+                        if ty.is_arc() {
+                            return BorrowedContentSource::Arc;
+                        } else if ty.is_rc() {
+                            return BorrowedContentSource::Rc;
+                        } else {
+                            queue.push(init.path);
+                        }
+                    }
+                }
+            }
+        }
+
+        BorrowedContentSource::Other
     }
 }
