@@ -54,4 +54,7 @@ fn main() {
 
     let good_bige32: f32 = 1E-10;
     let bad_bige32: f32 = 1.123_456_788_888E-10;
+
+    // Inferred type
+    let good_inferred: f32 = 1f32 * 1_000_000_000.;
 }

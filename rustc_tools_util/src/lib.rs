@@ -1,6 +1,3 @@
-#![feature(test)]
-#![feature(tool_lints)]
-
 use std::env;
 
 #[macro_export]
