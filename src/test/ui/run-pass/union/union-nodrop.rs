@@ -57,15 +57,13 @@ impl<T> Drop for ActuallyDrop<T> {
 }
 
 fn main() {
-    unsafe {
-        // NoDrop should not make needs_drop true
-        assert!(!needs_drop::<Foo>());
-        assert!(!needs_drop::<NoDrop<u8>>());
-        assert!(!needs_drop::<NoDrop<Box<u8>>>());
-        // presence of other drop types should still work
-        assert!(needs_drop::<Baz>());
-        // drop impl on union itself should work
-        assert!(needs_drop::<ActuallyDrop<u8>>());
-        assert!(needs_drop::<ActuallyDrop<Box<u8>>>());
-    }
+    // NoDrop should not make needs_drop true
+    assert!(!needs_drop::<Foo>());
+    assert!(!needs_drop::<NoDrop<u8>>());
+    assert!(!needs_drop::<NoDrop<Box<u8>>>());
+    // presence of other drop types should still work
+    assert!(needs_drop::<Baz>());
+    // drop impl on union itself should work
+    assert!(needs_drop::<ActuallyDrop<u8>>());
+    assert!(needs_drop::<ActuallyDrop<Box<u8>>>());
 }
