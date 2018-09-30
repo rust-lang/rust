@@ -10,8 +10,6 @@ sudo: false
 
 env:
  global:
-   # TRAVIS_TOKEN_CLIPPY_SERVICE
-   - secure: dj8SwwuRGuzbo2wZq5z7qXIf7P3p7cbSGs1I3pvXQmB6a58gkLiRn/qBcIIegdt/nzXs+Z0Nug+DdesYVeUPxk1hIa/eeU8p6mpyTtZ+30H4QVgVzd0VCthB5F/NUiPVxTgpGpEgCM9/p72xMwTn7AAJfsGqk7AJ4FS5ZZKhqFI=
    - RUST_BACKTRACE=1
 
 before_install:
@@ -74,21 +72,6 @@ after_success: |
       ./.github/deploy.sh
     else
       echo "Not deploying, because we're in an integration test run"
-    fi
-    # trigger rebuild of the clippy-service, to keep it up to date with clippy itself
-    if [ "$TRAVIS_PULL_REQUEST" == "false" ] &&
-       [ "$TRAVIS_REPO_SLUG" == "Manishearth/rust-clippy" ] &&
-       [ "$TRAVIS_BRANCH" == "master" ] &&
-       [ "$TRAVIS_TOKEN_CLIPPY_SERVICE" != "" ] ; then
-       curl -s -X POST \
-          -H "Content-Type: application/json" \
-          -H "Accept: application/json" \
-          -H "Travis-API-Version: 3" \
-          -H "Authorization: token $TRAVIS_TOKEN_CLIPPY_SERVICE" \
-          -d "{ \"request\": { \"branch\":\"master\" }}" \
-          https://api.travis-ci.org/repo/gnunicorn%2Fclippy-service/requests
-    else
-      echo "Ignored"
     fi
     set +e
   fi
