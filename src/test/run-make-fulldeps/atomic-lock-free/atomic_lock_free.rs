@@ -22,6 +22,8 @@ trait Sized {}
 trait Copy {}
 #[lang = "freeze"]
 trait Freeze {}
+#[lang = "sync"]
+trait Sync {}
 
 impl<T: ?Sized> Copy for *mut T {}
 

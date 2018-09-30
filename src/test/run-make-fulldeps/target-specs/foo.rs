@@ -17,6 +17,9 @@ trait Copy { }
 #[lang="sized"]
 trait Sized { }
 
+#[lang="sync"]
+trait Sync { }
+
 #[lang = "freeze"]
 auto trait Freeze {}
 
