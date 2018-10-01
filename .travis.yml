@@ -1,7 +1,10 @@
-language: rust
-cache: cargo
-rust:
-- nightly
+language: generic
+cache:
+  # Cache the global cargo directory, but NOT the local `target` directory which
+  # we cannot reuse anyway when the nightly changes (and it grows quite large
+  # over time).
+  directories:
+    - /home/travis/.cargo
 
 os:
 - linux
@@ -9,17 +12,25 @@ os:
 
 before_script:
 # mac os weirdness (https://github.com/travis-ci/travis-ci/issues/6307)
-- curl -sSL https://rvm.io/mpapis.asc | gpg --import -
 - rvm get stable
-# in a cronjob, use latest (not pinned) nightly
-- if [ "$TRAVIS_EVENT_TYPE" = cron ]; then rustup override set nightly; fi
-# prepare
-- export PATH=$HOME/.local/bin:$PATH
+# Compute the rust version we use. We do not use "language: rust" to have more control here.
+- |
+  if [ "$TRAVIS_EVENT_TYPE" = cron ]; then
+    RUST_TOOLCHAIN=nightly
+  else
+    RUST_TOOLCHAIN=$(cat rust-toolchain)
+  fi
+- rm rust-toolchain
+# install Rust
+- curl https://build.travis-ci.org/files/rustup-init.sh -sSf | sh -s -- -y --default-toolchain "$RUST_TOOLCHAIN"
+- export PATH=$HOME/.cargo/bin:$PATH
+- rustc --version
+# customize installation
 - rustup target add i686-unknown-linux-gnu
 - rustup target add i686-pc-windows-gnu
 - rustup target add i686-pc-windows-msvc
 - rustup component add rust-src
-- cargo install xargo || echo "skipping xargo install"
+- cargo install xargo || echo "Skipping xargo install"
 
 script:
 - set -e
@@ -27,7 +38,7 @@ script:
   # Test and install plain miri
   cargo build --release --all-features &&
   cargo test --release --all-features &&
-  cargo install --all-features --force
+  cargo install --all-features --force --path .
 - |
   # test that the rustc_tests binary compiles
   cd rustc_tests &&
@@ -66,4 +77,3 @@ branches:
 env:
   global:
   - RUST_TEST_NOCAPTURE=1
-  - TRAVIS_CARGO_NIGHTLY_FEATURE=""

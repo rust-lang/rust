@@ -14,18 +14,21 @@ branches:
     - master
 
 install:
-    - set PATH=C:\Program Files\Git\mingw64\bin;%PATH%
+    # install Rust
+    - set PATH=C:\Program Files\Git\mingw64\bin;C:\msys64\mingw%MSYS2_BITS%\bin;%PATH%
+    - set /p RUST_TOOLCHAIN=<rust-toolchain
     - curl -sSf -o rustup-init.exe https://win.rustup.rs/
-    - rustup-init.exe -y --default-host %TARGET% --default-toolchain nightly
-    - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin;C:\Users\appveyor\.rustup\toolchains\nightly-%TARGET%\bin
-    - if defined MSYS2_BITS set PATH=%PATH%;C:\msys64\mingw%MSYS2_BITS%\bin
-    - rustc -V
-    - cargo -V
+    - rustup-init.exe -y --default-host %TARGET% --default-toolchain %RUST_TOOLCHAIN%
+    - set PATH=%USERPROFILE%\.cargo\bin;%PATH%
+    - rustc --version
+    # customize installation
     - rustup component add rust-src
     - cargo install xargo
+    # prepare a libstd with MIR (cannot use bash script, obviously)
     - cd xargo
     - set RUSTFLAGS=-Zalways-encode-mir -Zmir-emit-validate=1
     - xargo build
+    - set RUSTFLAGS=
     - cd ..
 
 build: false
@@ -35,7 +38,7 @@ test_script:
     - set RUST_BACKTRACE=1
     - cargo build --release
     - cargo test --release
-    - set MIRI_SYSROOT=C:\Users\appveyor\.xargo\HOST
+    - set MIRI_SYSROOT=%USERPROFILE%\.xargo\HOST
     - cargo test --release
 
 notifications:
