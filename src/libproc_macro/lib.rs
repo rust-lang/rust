@@ -142,7 +142,7 @@ impl fmt::Debug for TokenStream {
     }
 }
 
-#[unstable(feature = "proc_macro_quote", issue = "38356")]
+#[unstable(feature = "proc_macro_quote", issue = "54722")]
 pub use quote::{quote, quote_span};
 
 /// Creates a token stream containing a single token tree.
@@ -252,7 +252,7 @@ pub mod token_stream {
 /// To quote `$` itself, use `$$`.
 ///
 /// This is a dummy macro, the actual implementation is in `quote::quote`.`
-#[unstable(feature = "proc_macro_quote", issue = "38356")]
+#[unstable(feature = "proc_macro_quote", issue = "54722")]
 #[macro_export]
 macro_rules! quote { () => {} }
 

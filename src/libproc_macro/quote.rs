@@ -70,7 +70,7 @@ macro_rules! quote {
 /// This is the actual `quote!()` proc macro.
 ///
 /// It is manually loaded in `CStore::load_macro_untracked`.
-#[unstable(feature = "proc_macro_quote", issue = "38356")]
+#[unstable(feature = "proc_macro_quote", issue = "54722")]
 pub fn quote(stream: TokenStream) -> TokenStream {
     if stream.is_empty() {
         return quote!(::TokenStream::new());
@@ -144,7 +144,7 @@ pub fn quote(stream: TokenStream) -> TokenStream {
 
 /// Quote a `Span` into a `TokenStream`.
 /// This is needed to implement a custom quoter.
-#[unstable(feature = "proc_macro_quote", issue = "38356")]
+#[unstable(feature = "proc_macro_quote", issue = "54722")]
 pub fn quote_span(_: Span) -> TokenStream {
     quote!(::Span::def_site())
 }
