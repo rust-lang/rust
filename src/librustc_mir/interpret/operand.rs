@@ -19,10 +19,104 @@ use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerEx
 
 use rustc::mir::interpret::{
     GlobalId, AllocId,
-    ConstValue, Pointer, Scalar, ScalarMaybeUndef,
+    ConstValue, Pointer, Scalar,
     EvalResult, EvalErrorKind
 };
 use super::{EvalContext, Machine, MemPlace, MPlaceTy, MemoryKind};
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
+pub enum ScalarMaybeUndef<Id=AllocId> {
+    Scalar(Scalar<Id>),
+    Undef,
+}
+
+impl From<Scalar> for ScalarMaybeUndef {
+    #[inline(always)]
+    fn from(s: Scalar) -> Self {
+        ScalarMaybeUndef::Scalar(s)
+    }
+}
+
+impl<'tcx> ScalarMaybeUndef {
+    #[inline]
+    pub fn not_undef(self) -> EvalResult<'static, Scalar> {
+        match self {
+            ScalarMaybeUndef::Scalar(scalar) => Ok(scalar),
+            ScalarMaybeUndef::Undef => err!(ReadUndefBytes(Size::from_bytes(0))),
+        }
+    }
+
+    #[inline(always)]
+    pub fn to_ptr(self) -> EvalResult<'tcx, Pointer> {
+        self.not_undef()?.to_ptr()
+    }
+
+    #[inline(always)]
+    pub fn to_bits(self, target_size: Size) -> EvalResult<'tcx, u128> {
+        self.not_undef()?.to_bits(target_size)
+    }
+
+    #[inline(always)]
+    pub fn to_bool(self) -> EvalResult<'tcx, bool> {
+        self.not_undef()?.to_bool()
+    }
+
+    #[inline(always)]
+    pub fn to_char(self) -> EvalResult<'tcx, char> {
+        self.not_undef()?.to_char()
+    }
+
+    #[inline(always)]
+    pub fn to_f32(self) -> EvalResult<'tcx, f32> {
+        self.not_undef()?.to_f32()
+    }
+
+    #[inline(always)]
+    pub fn to_f64(self) -> EvalResult<'tcx, f64> {
+        self.not_undef()?.to_f64()
+    }
+
+    #[inline(always)]
+    pub fn to_u8(self) -> EvalResult<'tcx, u8> {
+        self.not_undef()?.to_u8()
+    }
+
+    #[inline(always)]
+    pub fn to_u32(self) -> EvalResult<'tcx, u32> {
+        self.not_undef()?.to_u32()
+    }
+
+    #[inline(always)]
+    pub fn to_u64(self) -> EvalResult<'tcx, u64> {
+        self.not_undef()?.to_u64()
+    }
+
+    #[inline(always)]
+    pub fn to_usize(self, cx: impl HasDataLayout) -> EvalResult<'tcx, u64> {
+        self.not_undef()?.to_usize(cx)
+    }
+
+    #[inline(always)]
+    pub fn to_i8(self) -> EvalResult<'tcx, i8> {
+        self.not_undef()?.to_i8()
+    }
+
+    #[inline(always)]
+    pub fn to_i32(self) -> EvalResult<'tcx, i32> {
+        self.not_undef()?.to_i32()
+    }
+
+    #[inline(always)]
+    pub fn to_i64(self) -> EvalResult<'tcx, i64> {
+        self.not_undef()?.to_i64()
+    }
+
+    #[inline(always)]
+    pub fn to_isize(self, cx: impl HasDataLayout) -> EvalResult<'tcx, i64> {
+        self.not_undef()?.to_isize(cx)
+    }
+}
+
 
 /// A `Value` represents a single immediate self-contained Rust value.
 ///
@@ -490,7 +584,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 Ok(Operand::Indirect(MemPlace::from_ptr(Pointer::new(id, offset), alloc.align)))
             },
             ConstValue::ScalarPair(a, b) =>
-                Ok(Operand::Immediate(Value::ScalarPair(a.into(), b))),
+                Ok(Operand::Immediate(Value::ScalarPair(a.into(), b.into()))),
             ConstValue::Scalar(x) =>
                 Ok(Operand::Immediate(Value::Scalar(x.into()))),
         }

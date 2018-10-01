@@ -15,11 +15,11 @@ use rustc::ty::layout::{self, Size, Primitive};
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashSet;
 use rustc::mir::interpret::{
-    Scalar, AllocType, EvalResult, ScalarMaybeUndef, EvalErrorKind, PointerArithmetic
+    Scalar, AllocType, EvalResult, EvalErrorKind, PointerArithmetic
 };
 
 use super::{
-    OpTy, Machine, EvalContext
+    OpTy, Machine, EvalContext, ScalarMaybeUndef
 };
 
 macro_rules! validation_failure{

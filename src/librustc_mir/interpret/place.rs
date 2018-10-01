@@ -19,9 +19,9 @@ use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout};
 
 use rustc::mir::interpret::{
-    GlobalId, AllocId, Scalar, EvalResult, Pointer, ScalarMaybeUndef, PointerArithmetic
+    GlobalId, AllocId, Scalar, EvalResult, Pointer, PointerArithmetic
 };
-use super::{EvalContext, Machine, Value, ValTy, Operand, OpTy, MemoryKind};
+use super::{EvalContext, Machine, Value, ValTy, ScalarMaybeUndef, Operand, OpTy, MemoryKind};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct MemPlace<Id=AllocId> {

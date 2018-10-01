@@ -17,7 +17,7 @@ use rustc::hir::{self, def_id::DefId};
 use rustc::mir::interpret::ConstEvalErr;
 use rustc::mir;
 use rustc::ty::{self, TyCtxt, Instance, query::TyCtxtAt};
-use rustc::ty::layout::{LayoutOf, TyLayout};
+use rustc::ty::layout::{self, LayoutOf, TyLayout};
 use rustc::ty::subst::Subst;
 use rustc_data_structures::indexed_vec::IndexVec;
 
@@ -97,8 +97,18 @@ pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
 pub fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
     op: OpTy<'tcx>,
-    normalize: bool,
+    may_normalize: bool,
 ) -> EvalResult<'tcx, &'tcx ty::Const<'tcx>> {
+    // We do not normalize just any data.  Only scalar layout and fat pointers.
+    let normalize = may_normalize
+        && match op.layout.abi {
+            layout::Abi::Scalar(..) => true,
+            layout::Abi::ScalarPair(..) => {
+                // Must be a fat pointer
+                op.layout.ty.builtin_deref(true).is_some()
+            },
+            _ => false,
+        };
     let normalized_op = if normalize {
         ecx.try_read_value(op)?
     } else {
@@ -125,7 +135,7 @@ pub fn op_to_const<'tcx>(
         Ok(Value::Scalar(x)) =>
             ConstValue::Scalar(x.not_undef()?),
         Ok(Value::ScalarPair(a, b)) =>
-            ConstValue::ScalarPair(a.not_undef()?, b),
+            ConstValue::ScalarPair(a.not_undef()?, b.not_undef()?),
     };
     Ok(ty::Const::from_const_value(ecx.tcx.tcx, val, op.layout.ty))
 }

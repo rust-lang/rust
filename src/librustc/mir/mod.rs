@@ -17,7 +17,7 @@ use hir::def::CtorKind;
 use hir::def_id::DefId;
 use hir::{self, HirId, InlineAsm};
 use middle::region;
-use mir::interpret::{ConstValue, EvalErrorKind, Scalar, ScalarMaybeUndef};
+use mir::interpret::{ConstValue, EvalErrorKind, Scalar};
 use mir::visit::MirVisitable;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
@@ -2397,7 +2397,7 @@ pub fn fmt_const_val(f: &mut impl Write, const_val: &ty::Const<'_>) -> fmt::Resu
     // print string literals
     if let ConstValue::ScalarPair(ptr, len) = value {
         if let Scalar::Ptr(ptr) = ptr {
-            if let ScalarMaybeUndef::Scalar(Scalar::Bits { bits: len, .. }) = len {
+            if let Scalar::Bits { bits: len, .. } = len {
                 if let Ref(_, &ty::TyS { sty: Str, .. }, _) = ty.sty {
                     return ty::tls::with(|tcx| {
                         let alloc = tcx.alloc_map.lock().get(ptr.alloc_id);

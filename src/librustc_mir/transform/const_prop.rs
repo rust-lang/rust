@@ -18,10 +18,10 @@ use rustc::mir::{NullOp, UnOp, StatementKind, Statement, BasicBlock, LocalKind};
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
 use rustc::mir::visit::{Visitor, PlaceContext};
 use rustc::mir::interpret::{
-    ConstEvalErr, EvalErrorKind, ScalarMaybeUndef, Scalar, GlobalId, EvalResult
+    ConstEvalErr, EvalErrorKind, Scalar, GlobalId, EvalResult
 };
 use rustc::ty::{TyCtxt, self, Instance};
-use interpret::{self, EvalContext, Value, OpTy, MemoryKind};
+use interpret::{self, EvalContext, Value, OpTy, MemoryKind, ScalarMaybeUndef};
 use const_eval::{CompileTimeInterpreter, eval_promoted, mk_borrowck_eval_cx};
 use transform::{MirPass, MirSource};
 use syntax::source_map::{Span, DUMMY_SP};

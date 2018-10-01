@@ -21,7 +21,7 @@ use std::ptr;
 
 use rustc::ty::{self, Instance, query::TyCtxtAt};
 use rustc::ty::layout::{self, Align, TargetDataLayout, Size, HasDataLayout};
-use rustc::mir::interpret::{Pointer, AllocId, Allocation, ConstValue, ScalarMaybeUndef, GlobalId,
+use rustc::mir::interpret::{Pointer, AllocId, Allocation, ConstValue, GlobalId,
                             EvalResult, Scalar, EvalErrorKind, AllocType, PointerArithmetic,
                             truncate};
 pub use rustc::mir::interpret::{write_target_uint, read_target_uint};
@@ -29,7 +29,7 @@ use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 
 use syntax::ast::Mutability;
 
-use super::Machine;
+use super::{Machine, ScalarMaybeUndef};
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub enum MemoryKind<T> {
