@@ -16,10 +16,18 @@
 //!
 //! # Examples
 //!
-//! Creating a box:
+//! Move a value from the stack to the heap by creating a [`Box`]:
 //!
 //! ```
-//! let x = Box::new(5);
+//! let val: u8 = 5;
+//! let boxed: Box<u8> = Box::new(val);
+//! ```
+//!
+//! Move a value from a [`Box`] back to the stack by [dereferencing]:
+//!
+//! ```
+//! let boxed: Box<u8> = Box::new(5);
+//! let val: u8 = *boxed;
 //! ```
 //!
 //! Creating a recursive data structure:
@@ -52,6 +60,9 @@
 //! elements are in the list, and so we don't know how much memory to allocate
 //! for a `Cons`. By introducing a `Box`, which has a defined size, we know how
 //! big `Cons` needs to be.
+//!
+//! [dereferencing]: ../../std/ops/trait.Deref.html
+//! [`Box`]: struct.Box.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

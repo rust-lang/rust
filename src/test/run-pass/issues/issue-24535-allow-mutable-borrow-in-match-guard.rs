@@ -12,12 +12,11 @@
 // This test illustrates that under NLL, we can remove our overly
 // conservative approach for disallowing mutations of match inputs.
 
-// See further discussion on rust-lang/rust#24535 and
-// rust-lang/rfcs#1006.
-
-// compile-flags: -Z disable-ast-check-for-mutation-in-guard
+// See further discussion on rust-lang/rust#24535,
+// rust-lang/rfcs#1006, and rust-lang/rfcs#107
 
 #![feature(nll)]
+#![feature(bind_by_move_pattern_guards)]
 
 fn main() {
     rust_issue_24535();

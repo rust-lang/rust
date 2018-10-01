@@ -803,6 +803,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
         );
         debug!("instantiate_opaque_types: ty_var={:?}", ty_var);
 
+        self.obligations.reserve(bounds.predicates.len());
         for predicate in bounds.predicates {
             // Change the predicate to refer to the type variable,
             // which will be the concrete type instead of the opaque type.

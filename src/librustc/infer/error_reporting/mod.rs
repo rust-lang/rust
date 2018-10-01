@@ -406,10 +406,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             errors.clone()
         } else {
             errors
-                .iter()
-                .filter(|&e| !is_bound_failure(e))
-                .cloned()
-                .collect()
+            .iter()
+            .filter(|&e| !is_bound_failure(e))
+            .cloned()
+            .collect()
         };
 
         // sort the errors by span, for better error message stability.
@@ -455,11 +455,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             TypeError::Sorts(ref exp_found) => {
                 // if they are both "path types", there's a chance of ambiguity
                 // due to different versions of the same crate
-                match (&exp_found.expected.sty, &exp_found.found.sty) {
-                    (&ty::Adt(exp_adt, _), &ty::Adt(found_adt, _)) => {
-                        report_path_match(err, exp_adt.did, found_adt.did);
-                    }
-                    _ => (),
+                if let (&ty::Adt(exp_adt, _), &ty::Adt(found_adt, _))
+                     = (&exp_found.expected.sty, &exp_found.found.sty)
+                {
+                    report_path_match(err, exp_adt.did, found_adt.did);
                 }
             }
             TypeError::Traits(ref exp_found) => {

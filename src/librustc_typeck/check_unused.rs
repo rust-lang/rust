@@ -138,9 +138,15 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
         if extern_crate.warn_if_unused {
             if let Some(&span) = unused_extern_crates.get(&extern_crate.def_id) {
                 let msg = "unused extern crate";
+
+                // Removal suggestion span needs to include attributes (Issue #54400)
+                let span_with_attrs = tcx.get_attrs(extern_crate.def_id).iter()
+                    .map(|attr| attr.span)
+                    .fold(span, |acc, attr_span| acc.to(attr_span));
+
                 tcx.struct_span_lint_node(lint, id, span, msg)
                     .span_suggestion_short_with_applicability(
-                        span,
+                        span_with_attrs,
                         "remove it",
                         String::new(),
                         Applicability::MachineApplicable)

@@ -53,7 +53,7 @@ impl<T: Idx> WorkQueue<T> {
         }
     }
 
-    /// Attempt to enqueue `element` in the work queue. Returns false if it was already present.
+    /// Attempt to pop an element from the work queue.
     #[inline]
     pub fn pop(&mut self) -> Option<T> {
         if let Some(element) = self.deque.pop_front() {
