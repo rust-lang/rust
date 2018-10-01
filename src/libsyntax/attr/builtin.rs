@@ -435,7 +435,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
         if let Some(ref mut stab) = stab {
             stab.promotable = true;
         } else {
-            span_err!(diagnostic, item_sp, E0713,
+            span_err!(diagnostic, item_sp, E0717,
                       "rustc_promotable attribute must be paired with \
                        either stable or unstable attribute");
         }
