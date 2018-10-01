@@ -364,7 +364,9 @@ impl Options {
                                                 .iter()
                                                 .map(|s| (PathBuf::from(&s), s.to_owned())) {
                 if !theme_file.is_file() {
-                    diag.struct_err("option --themes arguments must all be files").emit();
+                    diag.struct_err(&format!("invalid file: \"{}\"", theme_s))
+                        .help("option --themes arguments must all be files")
+                        .emit();
                     return Err(1);
                 }
                 let (success, ret) = theme::test_theme_against(&theme_file, &paths, &diag);
