@@ -441,10 +441,10 @@ declare_features! (
 
     // Allows macro invocations on modules expressions and statements and
     // procedural macros to expand to non-items.
-    (active, proc_macro_mod, "1.27.0", Some(38356), None),
-    (active, proc_macro_expr, "1.27.0", Some(38356), None),
-    (active, proc_macro_non_items, "1.27.0", Some(38356), None),
-    (active, proc_macro_gen, "1.27.0", Some(38356), None),
+    (active, proc_macro_mod, "1.27.0", Some(54727), None),
+    (active, proc_macro_expr, "1.27.0", Some(54727), None),
+    (active, proc_macro_non_items, "1.27.0", Some(54727), None),
+    (active, proc_macro_gen, "1.27.0", Some(54727), None),
 
     // #[doc(alias = "...")]
     (active, doc_alias, "1.27.0", Some(50146), None),
@@ -502,7 +502,7 @@ declare_features! (
     (active, custom_test_frameworks, "1.30.0", Some(50297), None),
 
     // Non-builtin attributes in inner attribute position
-    (active, custom_inner_attributes, "1.30.0", Some(38356), None),
+    (active, custom_inner_attributes, "1.30.0", Some(54726), None),
 
     // Self struct constructor  (RFC 2302)
     (active, self_struct_ctor, "1.30.0", Some(51994), None),

@@ -6,7 +6,7 @@ LL | #[foo] //~ ERROR is currently unknown to the compiler
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
-error[E0658]: non-builtin inner attributes are unstable (see issue #38356)
+error[E0658]: non-builtin inner attributes are unstable (see issue #54726)
   --> $DIR/issue-36530.rs:15:5
    |
 LL |     #![foo] //~ ERROR is currently unknown to the compiler
