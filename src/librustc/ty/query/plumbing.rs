@@ -709,14 +709,19 @@ macro_rules! define_queries_inner {
 
                 // We use try_lock here since we are only called from the
                 // deadlock handler, and this shouldn't be locked
-                $(for v in self.$name.try_lock().unwrap().active.values() {
-                    match *v {
-                        QueryResult::Started(ref job) => jobs.push(job.clone()),
-                        _ => (),
-                    }
-                })*
+                $(
+                    jobs.extend(
+                        self.$name.try_lock().unwrap().active.values().filter_map(|v|
+                            if let QueryResult::Started(ref job) = *v {
+                                Some(job.clone())
+                            } else {
+                                None
+                            }
+                        )
+                    );
+                )*
 
-                return jobs;
+                jobs
             }
         }
 

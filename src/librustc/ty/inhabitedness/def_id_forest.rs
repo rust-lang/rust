@@ -87,11 +87,7 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
             }
             ret.root_ids.extend(old_ret.drain());
 
-            for id in next_forest.root_ids {
-                if ret.contains(tcx, id) {
-                    next_ret.push(id);
-                }
-            }
+            next_ret.extend(next_forest.root_ids.into_iter().filter(|&id| ret.contains(tcx, id)));
 
             mem::swap(&mut next_ret, &mut ret.root_ids);
             next_ret.drain();
@@ -107,11 +103,7 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
         let mut ret = DefIdForest::empty();
         let mut next_ret = SmallVec::new();
         for next_forest in iter {
-            for id in ret.root_ids.drain() {
-                if !next_forest.contains(tcx, id) {
-                    next_ret.push(id);
-                }
-            }
+            next_ret.extend(ret.root_ids.drain().filter(|&id| !next_forest.contains(tcx, id)));
 
             for id in next_forest.root_ids {
                 if !next_ret.contains(&id) {

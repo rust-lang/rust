@@ -254,23 +254,19 @@ impl<'sess> OnDiskCache<'sess> {
             })?;
 
             // Encode diagnostics
-            let diagnostics_index = {
-                let mut diagnostics_index = EncodedDiagnosticsIndex::new();
+            let diagnostics_index: EncodedDiagnosticsIndex = self.current_diagnostics.borrow()
+                .iter()
+                .map(|(dep_node_index, diagnostics)|
+            {
+                let pos = AbsoluteBytePos::new(encoder.position());
+                // Let's make sure we get the expected type here:
+                let diagnostics: &EncodedDiagnostics = diagnostics;
+                let dep_node_index = SerializedDepNodeIndex::new(dep_node_index.index());
+                encoder.encode_tagged(dep_node_index, diagnostics)?;
 
-                for (dep_node_index, diagnostics) in self.current_diagnostics
-                                                        .borrow()
-                                                        .iter() {
-                    let pos = AbsoluteBytePos::new(encoder.position());
-                    // Let's make sure we get the expected type here:
-                    let diagnostics: &EncodedDiagnostics = diagnostics;
-                    let dep_node_index =
-                        SerializedDepNodeIndex::new(dep_node_index.index());
-                    encoder.encode_tagged(dep_node_index, diagnostics)?;
-                    diagnostics_index.push((dep_node_index, pos));
-                }
-
-                diagnostics_index
-            };
+                Ok((dep_node_index, pos))
+            })
+            .collect::<Result<_, _>>()?;
 
             let interpret_alloc_index = {
                 let mut interpret_alloc_index = Vec::new();
@@ -282,6 +278,7 @@ impl<'sess> OnDiskCache<'sess> {
                         // otherwise, abort
                         break;
                     }
+                    interpret_alloc_index.reserve(new_n);
                     for idx in n..new_n {
                         let id = encoder.interpret_allocs_inverse[idx];
                         let pos = encoder.position() as u32;

@@ -388,7 +388,7 @@ fn remove_cycle<'tcx>(
 
         // Find the queries in the cycle which are
         // connected to queries outside the cycle
-        let entry_points: Vec<Lrc<QueryJob<'tcx>>> = stack.iter().filter_map(|query| {
+        let entry_points = stack.iter().filter_map(|query| {
             // Mark all the other queries in the cycle as already visited
             let mut visited = FxHashSet::from_iter(stack.iter().filter_map(|q| {
                 if q.1.as_ptr() != query.1.as_ptr() {
@@ -403,12 +403,12 @@ fn remove_cycle<'tcx>(
             } else {
                 None
             }
-        }).collect();
+        });
 
         // Deterministically pick an entry point
         // FIXME: Sort this instead
         let mut hcx = tcx.create_stable_hashing_context();
-        let entry_point = entry_points.iter().min_by_key(|q| {
+        let entry_point = entry_points.min_by_key(|q| {
             let mut stable_hasher = StableHasher::<u64>::new();
             q.info.query.hash_stable(&mut hcx, &mut stable_hasher);
             stable_hasher.finish()
