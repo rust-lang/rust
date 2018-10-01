@@ -652,6 +652,7 @@ impl<'a> LoweringContext<'a> {
             def_site: Some(span),
             format: source_map::CompilerDesugaring(reason),
             allow_internal_unstable: true,
+            _allow_internal_unstable_features: <_>::default(),
             allow_internal_unsafe: false,
             local_inner_macros: false,
             edition: source_map::hygiene::default_edition(),

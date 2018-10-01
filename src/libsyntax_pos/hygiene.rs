@@ -534,6 +534,11 @@ impl fmt::Debug for SyntaxContext {
     }
 }
 
+// HACK(eddyb) only testing the performance impact of using more memory.
+// Also, `[u8; 19]` doesn't implement the right traits, so instead I've
+// approximated `[u8; 19]` to `[u32; 5]` which can be written as a tuple:
+type UnstableFeatures = (((u32, u32), (u32, u32)), u32); // [u8; (145 + 7) / 8];
+
 /// Extra information for tracking spans of macro and syntax sugar expansion
 #[derive(Clone, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct ExpnInfo {
@@ -558,6 +563,8 @@ pub struct ExpnInfo {
     /// features internally without forcing the whole crate to opt-in
     /// to them.
     pub allow_internal_unstable: bool,
+    // HACK(eddyb) only testing the performance impact of using more memory.
+    pub _allow_internal_unstable_features: UnstableFeatures,
     /// Whether the macro is allowed to use `unsafe` internally
     /// even if the user crate has `#![forbid(unsafe_code)]`.
     pub allow_internal_unsafe: bool,

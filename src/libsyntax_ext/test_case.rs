@@ -52,6 +52,7 @@ pub fn expand(
             def_site: None,
             format: MacroAttribute(Symbol::intern("test_case")),
             allow_internal_unstable: true,
+            _allow_internal_unstable_features: <_>::default(),
             allow_internal_unsafe: false,
             local_inner_macros: false,
             edition: hygiene::default_edition(),

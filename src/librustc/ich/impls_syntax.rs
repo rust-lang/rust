@@ -395,6 +395,7 @@ impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnInfo {
     def_site,
     format,
     allow_internal_unstable,
+    _allow_internal_unstable_features,
     allow_internal_unsafe,
     local_inner_macros,
     edition
