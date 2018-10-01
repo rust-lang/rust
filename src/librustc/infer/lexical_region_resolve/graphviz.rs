@@ -112,12 +112,9 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
         }
     };
 
-    match dump_region_data_to(region_rels, &region_data.constraints, &output_path) {
-        Ok(()) => {}
-        Err(e) => {
-            let msg = format!("io error dumping region constraints: {}", e);
-            tcx.sess.err(&msg)
-        }
+    if let Err(e) = dump_region_data_to(region_rels, &region_data.constraints, &output_path) {
+        let msg = format!("io error dumping region constraints: {}", e);
+        tcx.sess.err(&msg)
     }
 }
 
@@ -187,12 +184,9 @@ impl<'a, 'gcx, 'tcx> dot::Labeller<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
             None => bug!("no node_id found for node: {:?}", n),
         };
         let name = || format!("node_{}", node_id);
-        match dot::Id::new(name()) {
-            Ok(id) => id,
-            Err(_) => {
-                bug!("failed to create graphviz node identified by {}", name());
-            }
-        }
+
+        dot::Id::new(name()).unwrap_or_else(|_|
+            bug!("failed to create graphviz node identified by {}", name()))
     }
     fn node_label(&self, n: &Node) -> dot::LabelText<'_> {
         match *n {
@@ -204,7 +198,7 @@ impl<'a, 'gcx, 'tcx> dot::Labeller<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
         match *e {
             Edge::Constraint(ref c) =>
                 dot::LabelText::label(format!("{:?}", self.map.get(c).unwrap())),
-            Edge::EnclScope(..) => dot::LabelText::label("(enclosed)".to_string()),
+            Edge::EnclScope(..) => dot::LabelText::label("(enclosed)".to_owned()),
         }
     }
 }

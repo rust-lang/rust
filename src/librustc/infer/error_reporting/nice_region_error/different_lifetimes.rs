@@ -113,12 +113,12 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             (None, None) => {
                 let (main_label_1, span_label_1) = if ty_sup.id == ty_sub.id {
                     (
-                        "this type is declared with multiple lifetimes...".to_string(),
-                        "...but data with one lifetime flows into the other here".to_string()
+                        "this type is declared with multiple lifetimes...".to_owned(),
+                        "...but data with one lifetime flows into the other here".to_owned()
                     )
                 } else {
                     (
-                        "these two types are declared with different lifetimes...".to_string(),
+                        "these two types are declared with different lifetimes...".to_owned(),
                         format!(
                             "...but data{} flows{} here",
                             span_label_var1,
@@ -133,7 +133,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                 ty_sub.span,
                 ret_span,
                 "this parameter and the return type are declared \
-                 with different lifetimes...".to_string()
+                 with different lifetimes...".to_owned()
                 ,
                 format!("...but data{} is returned here", span_label_var1),
             ),
@@ -141,7 +141,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                 ty_sup.span,
                 ret_span,
                 "this parameter and the return type are declared \
-                 with different lifetimes...".to_string()
+                 with different lifetimes...".to_owned()
                 ,
                 format!("...but data{} is returned here", span_label_var1),
             ),
