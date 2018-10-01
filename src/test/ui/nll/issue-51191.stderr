@@ -1,36 +1,40 @@
 error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
   --> $DIR/issue-51191.rs:17:9
    |
-LL |     fn bar(self: &mut Self) {
-   |            ---- help: consider changing this to be mutable: `mut self`
-LL |         (&mut self).bar(); //~ ERROR cannot borrow
-   |         ^^^^^^^^^^^ cannot borrow as mutable
+LL |         (&mut self).bar();
+   |         ^^^^^^^^^^^
+   |         |
+   |         cannot borrow as mutable
+   |         try removing `&mut` here
 
 error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
-  --> $DIR/issue-51191.rs:21:9
+  --> $DIR/issue-51191.rs:22:9
    |
 LL |     fn imm(self) {
    |            ---- help: consider changing this to be mutable: `mut self`
-LL |         (&mut self).bar(); //~ ERROR cannot borrow
+LL |         (&mut self).bar();
    |         ^^^^^^^^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
-  --> $DIR/issue-51191.rs:29:9
-   |
-LL |         (&mut self).bar(); //~ ERROR cannot borrow
-   |         ^^^^^^^^^^^ cannot borrow as mutable
-
-error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/issue-51191.rs:29:9
-   |
-LL |         (&mut self).bar(); //~ ERROR cannot borrow
-   |         ^^^^^^^^^^^ cannot borrow as mutable
-
-error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
-  --> $DIR/issue-51191.rs:33:9
+  --> $DIR/issue-51191.rs:31:9
    |
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/issue-51191.rs:31:9
+   |
+LL |         (&mut self).bar();
+   |         ^^^^^^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
+  --> $DIR/issue-51191.rs:37:9
+   |
+LL |         (&mut self).bar();
+   |         ^^^^^^^^^^^
+   |         |
+   |         cannot borrow as mutable
+   |         try removing `&mut` here
 
 error: aborting due to 5 previous errors
 

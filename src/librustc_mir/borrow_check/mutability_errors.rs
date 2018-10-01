@@ -16,6 +16,7 @@ use rustc::mir::TerminatorKind;
 use rustc::ty::{self, Const, DefIdTree, TyS, TyKind, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
+use syntax_pos::symbol::keywords;
 
 use dataflow::move_paths::InitLocation;
 use borrow_check::MirBorrowckCtxt;
@@ -217,6 +218,40 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         debug!("report_mutability_error: act={:?}, acted_on={:?}", act, acted_on);
 
         match the_place_err {
+            // Suggest removing a `&mut` from the use of a mutable reference.
+            Place::Local(local)
+                if {
+                    self.mir.local_decls.get(*local).map(|local_decl| {
+                        if let ClearCrossCrate::Set(
+                            mir::BindingForm::ImplicitSelf(kind)
+                        ) = local_decl.is_user_variable.as_ref().unwrap() {
+                            // Check if the user variable is a `&mut self` and we can therefore
+                            // suggest removing the `&mut`.
+                            //
+                            // Deliberately fall into this case for all implicit self types,
+                            // so that we don't fall in to the next case with them.
+                            *kind == mir::ImplicitSelfKind::MutRef
+                        } else if Some(keywords::SelfValue.name()) == local_decl.name {
+                            // Otherwise, check if the name is the self kewyord - in which case
+                            // we have an explicit self. Do the same thing in this case and check
+                            // for a `self: &mut Self` to suggest removing the `&mut`.
+                            if let ty::TyKind::Ref(
+                                _, _, hir::Mutability::MutMutable
+                            ) = local_decl.ty.sty {
+                                true
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    }).unwrap_or(false)
+                } =>
+            {
+                err.span_label(span, format!("cannot {ACT}", ACT = act));
+                err.span_label(span, "try removing `&mut` here");
+            },
+
             // We want to suggest users use `let mut` for local (user
             // variable) mutations...
             Place::Local(local) if self.mir.local_decls[*local].can_be_made_mutable() => {
