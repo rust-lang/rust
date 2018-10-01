@@ -15,8 +15,8 @@
 // reject it. But I want to make sure that we continue to reject it
 // (under NLL) even when that conservaive check goes away.
 
-// compile-flags: -Z disable-ast-check-for-mutation-in-guard
 
+#![feature(bind_by_move_pattern_guards)]
 #![feature(nll)]
 
 fn main() {
