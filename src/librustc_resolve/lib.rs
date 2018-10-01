@@ -3020,7 +3020,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     span,
                     "did you mean",
                     "self".to_string(),
-                    Applicability::MachineApplicable,
+                    Applicability::MaybeIncorrect,
                 );
             }
 
