@@ -41,7 +41,7 @@ pub trait ConstMethods<'ll, 'tcx: 'll> : Backend<'ll> {
     // NB: Do not use `do_spill_noroot` to make this into a constant string, or
     // you will be kicked off fast isel. See issue #4352 for an example of this.
     fn const_str_slice(&self, s: LocalInternedString) -> Self::Value;
-    
+
     fn const_fat_ptr(
         &self,
         ptr: Self::Value,

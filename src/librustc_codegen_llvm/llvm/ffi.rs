@@ -185,7 +185,8 @@ pub enum RealPredicate {
 impl RealPredicate {
     pub fn from_generic(realpred: rustc_codegen_utils::common::RealPredicate) -> Self {
         match realpred {
-            rustc_codegen_utils::common::RealPredicate::RealPredicateFalse => RealPredicate::RealPredicateFalse,
+            rustc_codegen_utils::common::RealPredicate::RealPredicateFalse =>
+                RealPredicate::RealPredicateFalse,
             rustc_codegen_utils::common::RealPredicate::RealOEQ => RealPredicate::RealOEQ,
             rustc_codegen_utils::common::RealPredicate::RealOGT => RealPredicate::RealOGT,
             rustc_codegen_utils::common::RealPredicate::RealOGE => RealPredicate::RealOGE,
@@ -200,7 +201,8 @@ impl RealPredicate {
             rustc_codegen_utils::common::RealPredicate::RealULT => RealPredicate::RealULT,
             rustc_codegen_utils::common::RealPredicate::RealULE => RealPredicate::RealULE,
             rustc_codegen_utils::common::RealPredicate::RealUNE => RealPredicate::RealUNE,
-            rustc_codegen_utils::common::RealPredicate::RealPredicateTrue => RealPredicate::RealPredicateTrue
+            rustc_codegen_utils::common::RealPredicate::RealPredicateTrue =>
+                RealPredicate::RealPredicateTrue
         }
     }
 }
@@ -310,7 +312,8 @@ impl AtomicOrdering {
             rustc_codegen_utils::common::AtomicOrdering::Monotonic => AtomicOrdering::Monotonic,
             rustc_codegen_utils::common::AtomicOrdering::Acquire => AtomicOrdering::Acquire,
             rustc_codegen_utils::common::AtomicOrdering::Release => AtomicOrdering::Release,
-            rustc_codegen_utils::common::AtomicOrdering::AcquireRelease => AtomicOrdering::AcquireRelease,
+            rustc_codegen_utils::common::AtomicOrdering::AcquireRelease =>
+                AtomicOrdering::AcquireRelease,
             rustc_codegen_utils::common::AtomicOrdering::SequentiallyConsistent =>
                 AtomicOrdering::SequentiallyConsistent
         }
@@ -332,9 +335,12 @@ pub enum SynchronizationScope {
 impl SynchronizationScope {
     pub fn from_generic(sc : rustc_codegen_utils::common::SynchronizationScope) -> Self {
         match sc {
-            rustc_codegen_utils::common::SynchronizationScope::Other => SynchronizationScope::Other,
-            rustc_codegen_utils::common::SynchronizationScope::SingleThread => SynchronizationScope::SingleThread,
-            rustc_codegen_utils::common::SynchronizationScope::CrossThread => SynchronizationScope::CrossThread,
+            rustc_codegen_utils::common::SynchronizationScope::Other =>
+                SynchronizationScope::Other,
+            rustc_codegen_utils::common::SynchronizationScope::SingleThread =>
+                SynchronizationScope::SingleThread,
+            rustc_codegen_utils::common::SynchronizationScope::CrossThread =>
+                SynchronizationScope::CrossThread,
         }
     }
 }
