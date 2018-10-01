@@ -31,7 +31,7 @@ pub use self::statics::StaticMethods;
 pub use self::type_::{
     ArgTypeMethods, BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods, TypeMethods,
 };
-pub use rustc_codegen_utils::interfaces::{Backend, BackendMethods, BackendTypes, CodegenObject};
+pub use rustc_codegen_ssa::interfaces::{Backend, BackendMethods, BackendTypes, CodegenObject};
 
 pub trait CodegenMethods<'tcx>:
     Backend<'tcx>

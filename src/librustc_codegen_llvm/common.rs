@@ -29,7 +29,7 @@ use rustc::mir::interpret::{Scalar, AllocType, Allocation};
 use rustc::hir;
 use mir::constant::const_alloc_to_llvm;
 use mir::place::PlaceRef;
-use rustc_codegen_utils::common::TypeKind;
+use rustc_codegen_ssa::common::TypeKind;
 
 use libc::{c_uint, c_char};
 

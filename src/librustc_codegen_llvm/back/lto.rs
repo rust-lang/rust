@@ -25,7 +25,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_codegen_utils::symbol_export;
 use time_graph::Timeline;
 use ModuleLlvm;
-use rustc_codegen_utils::{ModuleCodegen, ModuleKind};
+use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
 
 use libc;
 

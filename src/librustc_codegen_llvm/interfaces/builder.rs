@@ -19,7 +19,7 @@ use libc::c_char;
 use mir::operand::OperandRef;
 use mir::place::PlaceRef;
 use rustc::ty::layout::{Align, Size};
-use rustc_codegen_utils::common::{
+use rustc_codegen_ssa::common::{
     AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope,
 };
 

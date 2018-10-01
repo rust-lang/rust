@@ -18,7 +18,7 @@ use rustc_target::abi::call::ArgType;
 use base;
 use builder::MemFlags;
 use common;
-use rustc_codegen_utils::common::IntPredicate;
+use rustc_codegen_ssa::common::IntPredicate;
 use meth;
 use monomorphize;
 

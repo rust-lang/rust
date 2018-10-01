@@ -2122,8 +2122,13 @@ dependencies = [
  "memmap 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-demangle 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc_codegen_ssa 0.0.0",
  "rustc_llvm 0.0.0",
 ]
+
+[[package]]
+name = "rustc_codegen_ssa"
+version = "0.0.0"
 
 [[package]]
 name = "rustc_codegen_utils"

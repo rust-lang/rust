@@ -24,7 +24,7 @@ use type_::Type;
 use type_of::LayoutLlvmExt;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{LayoutOf, HasTyCtxt};
-use rustc_codegen_utils::common::TypeKind;
+use rustc_codegen_ssa::common::TypeKind;
 use rustc::hir;
 use syntax::ast;
 use syntax::symbol::Symbol;
@@ -463,8 +463,8 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             // This requires that atomic intrinsics follow a specific naming pattern:
             // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
             name if name.starts_with("atomic_") => {
-                use rustc_codegen_utils::common::AtomicOrdering::*;
-                use rustc_codegen_utils::common::
+                use rustc_codegen_ssa::common::AtomicOrdering::*;
+                use rustc_codegen_ssa::common::
                     {SynchronizationScope, AtomicRmwBinOp};
 
                 let split: Vec<&str> = name.split('_').collect();

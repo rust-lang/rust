@@ -20,7 +20,7 @@ use base;
 use builder::MemFlags;
 use callee;
 use common;
-use rustc_codegen_utils::common::{RealPredicate, IntPredicate};
+use rustc_codegen_ssa::common::{RealPredicate, IntPredicate};
 use monomorphize;
 use type_of::LayoutLlvmExt;
 
