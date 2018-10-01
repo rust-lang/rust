@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::ty::{Ty, FnSig};
-use super::backend::Backend;
+use super::Backend;
 use super::builder::HasCodegen;
 use rustc::mir;
 use monomorphize::Instance;

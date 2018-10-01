@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::backend::Backend;
+use super::Backend;
 use super::builder::HasCodegen;
 use mir::operand::OperandRef;
 use rustc::ty::Ty;

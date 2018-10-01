@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::ty::Ty;
-use super::backend::Backend;
+use super::Backend;
 use rustc::hir::def_id::DefId;
 use rustc::mir::mono::{Linkage, Visibility};
 use monomorphize::Instance;

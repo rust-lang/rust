@@ -10,7 +10,7 @@
 
 use rustc::hir::{InlineAsm, GlobalAsm};
 use mir::place::PlaceRef;
-use super::backend::Backend;
+use super::Backend;
 use super::builder::HasCodegen;
 
 pub trait AsmBuilderMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx>{

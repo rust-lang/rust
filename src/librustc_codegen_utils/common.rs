@@ -166,3 +166,25 @@ pub enum TypeKind {
     X86_MMX,
     Token,
 }
+
+// FIXME(mw): Anything that is produced via DepGraph::with_task() must implement
+//            the HashStable trait. Normally DepGraph::with_task() calls are
+//            hidden behind queries, but CGU creation is a special case in two
+//            ways: (1) it's not a query and (2) CGU are output nodes, so their
+//            Fingerprints are not actually needed. It remains to be clarified
+//            how exactly this case will be handled in the red/green system but
+//            for now we content ourselves with providing a no-op HashStable
+//            implementation for CGUs.
+mod temp_stable_hash_impls {
+    use rustc_data_structures::stable_hasher::{StableHasherResult, StableHasher,
+                                               HashStable};
+    use ModuleCodegen;
+
+    impl<HCX, M> HashStable<HCX> for ModuleCodegen<M> {
+        fn hash_stable<W: StableHasherResult>(&self,
+                                              _: &mut HCX,
+                                              _: &mut StableHasher<W>) {
+            // do nothing
+        }
+    }
+}

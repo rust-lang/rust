@@ -13,7 +13,7 @@ use libc::c_char;
 use rustc::ty::TyCtxt;
 use rustc::ty::layout::{Align, Size};
 use builder::MemFlags;
-use super::backend::Backend;
+use super::Backend;
 use super::CodegenMethods;
 use super::debuginfo::DebugInfoBuilderMethods;
 use super::intrinsic::IntrinsicCallMethods;

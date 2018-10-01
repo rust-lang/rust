@@ -9,7 +9,6 @@
 // except according to those terms.
 
 mod builder;
-mod backend;
 mod consts;
 mod type_;
 mod intrinsic;
@@ -21,7 +20,7 @@ mod declare;
 mod asm;
 
 pub use self::builder::{BuilderMethods, HasCodegen};
-pub use self::backend::{Backend, BackendMethods};
+pub use rustc_codegen_utils::interfaces::{Backend, BackendMethods};
 pub use self::consts::ConstMethods;
 pub use self::type_::{TypeMethods, BaseTypeMethods, DerivedTypeMethods,
     LayoutTypeMethods, ArgTypeMethods};

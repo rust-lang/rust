@@ -10,7 +10,7 @@
 
 use rustc::ty::layout::Align;
 use rustc::hir::def_id::DefId;
-use super::backend::Backend;
+use super::Backend;
 
 pub trait StaticMethods<'ll> : Backend<'ll> {
     fn static_ptrcast(&self, val: Self::Value, ty: Self::Type) -> Self::Value;

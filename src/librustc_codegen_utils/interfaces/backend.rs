@@ -16,7 +16,7 @@ use rustc::middle::allocator::AllocatorKind;
 use rustc::ty::TyCtxt;
 use rustc::mir::mono::Stats;
 use syntax_pos::symbol::InternedString;
-use time_graph::TimeGraph;
+use rustc::util::time_graph::TimeGraph;
 use std::sync::mpsc::Receiver;
 use std::any::Any;
 

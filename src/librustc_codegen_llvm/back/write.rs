@@ -29,8 +29,8 @@ use rustc::util::nodemap::FxHashMap;
 use time_graph::{self, TimeGraph, Timeline};
 use llvm::{self, DiagnosticInfo, PassManager, SMDiagnostic};
 use llvm_util;
-use {CodegenResults, ModuleCodegen, CompiledModule, ModuleKind, ModuleLlvm,
-     CachedModuleCodegen};
+use {CodegenResults, ModuleLlvm};
+use rustc_codegen_utils::{ModuleCodegen, ModuleKind, CachedModuleCodegen, CompiledModule};
 use CrateInfo;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::ty::TyCtxt;

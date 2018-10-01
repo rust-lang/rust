@@ -11,7 +11,7 @@
 use std::cell::RefCell;
 use rustc::util::nodemap::FxHashMap;
 use rustc::ty::{Ty, self, Instance};
-use super::backend::Backend;
+use super::Backend;
 use rustc::session::Session;
 use libc::c_uint;
 use rustc::mir::mono::Stats;

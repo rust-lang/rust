@@ -10,7 +10,7 @@
 
 use abi::FnType;
 use rustc::ty::{FnSig, Ty, Instance};
-use super::backend::Backend;
+use super::Backend;
 use super::builder::HasCodegen;
 
 pub trait AbiMethods<'tcx> {

@@ -9,5 +9,8 @@
 // except according to those terms.
 
 use std::fmt;
+mod backend;
+
+pub use self::backend::{Backend, BackendMethods};
 
 pub trait CodegenObject : Copy + PartialEq + fmt::Debug {}
