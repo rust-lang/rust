@@ -24,9 +24,7 @@
 //!     int) and rec(x=int, y=int, z=int) will have the same llvm::Type.
 
 use super::ModuleLlvm;
-use super::ModuleCodegen;
-use super::ModuleKind;
-use super::CachedModuleCodegen;
+use rustc_codegen_utils::{ModuleCodegen, ModuleKind, CachedModuleCodegen};
 use super::LlvmCodegenBackend;
 
 use abi;
@@ -1195,27 +1193,5 @@ pub fn visibility_to_llvm(linkage: Visibility) -> llvm::Visibility {
         Visibility::Default => llvm::Visibility::Default,
         Visibility::Hidden => llvm::Visibility::Hidden,
         Visibility::Protected => llvm::Visibility::Protected,
-    }
-}
-
-// FIXME(mw): Anything that is produced via DepGraph::with_task() must implement
-//            the HashStable trait. Normally DepGraph::with_task() calls are
-//            hidden behind queries, but CGU creation is a special case in two
-//            ways: (1) it's not a query and (2) CGU are output nodes, so their
-//            Fingerprints are not actually needed. It remains to be clarified
-//            how exactly this case will be handled in the red/green system but
-//            for now we content ourselves with providing a no-op HashStable
-//            implementation for CGUs.
-mod temp_stable_hash_impls {
-    use rustc_data_structures::stable_hasher::{StableHasherResult, StableHasher,
-                                               HashStable};
-    use {ModuleCodegen, ModuleLlvm};
-
-    impl<HCX> HashStable<HCX> for ModuleCodegen<ModuleLlvm> {
-        fn hash_stable<W: StableHasherResult>(&self,
-                                              _: &mut HCX,
-                                              _: &mut StableHasher<W>) {
-            // do nothing
-        }
     }
 }

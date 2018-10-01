@@ -213,7 +213,8 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     fn set_cleanup(&self, landing_pad: Self::Value);
     fn resume(&self, exn: Self::Value) -> Self::Value;
     fn cleanup_pad(&self, parent: Option<Self::Value>, args: &[Self::Value]) -> Self::Funclet;
-    fn cleanup_ret(&self, funclet: &Self::Funclet, unwind: Option<Self::BasicBlock>) -> Self::Value;
+    fn cleanup_ret(&self, funclet: &Self::Funclet, unwind: Option<Self::BasicBlock>)
+        -> Self::Value;
     fn catch_pad(&self, parent: Self::Value, args: &[Self::Value]) -> Self::Funclet;
     fn catch_ret(&self, funclet: &Self::Funclet, unwind: Self::BasicBlock) -> Self::Value;
     fn catch_switch(

@@ -17,10 +17,10 @@ use rustc::middle::cstore::EncodedMetadata;
 use rustc::mir::mono::Stats;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
+use rustc::util::time_graph::TimeGraph;
 use std::any::Any;
 use std::sync::mpsc::Receiver;
 use syntax_pos::symbol::InternedString;
-use time_graph::TimeGraph;
 use ModuleCodegen;
 
 pub trait BackendTypes {

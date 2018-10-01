@@ -37,7 +37,6 @@
 #![feature(static_nobundle)]
 
 use back::write::create_target_machine;
-use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
 
 #[macro_use] extern crate bitflags;
@@ -67,7 +66,6 @@ extern crate cc; // Used to locate MSVC
 extern crate tempfile;
 extern crate memmap;
 
-use back::bytecode::RLIB_BYTECODE_EXTENSION;
 use interfaces::*;
 use time_graph::TimeGraph;
 use std::sync::mpsc::Receiver;
@@ -93,7 +91,7 @@ use rustc::util::time_graph;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::util::profiling::ProfileCategory;
 use rustc_mir::monomorphize;
-use rustc_codegen_utils::{CompiledModule, ModuleKind};
+use rustc_codegen_utils::{ModuleCodegen, CompiledModule};
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::svh::Svh;
 
@@ -327,56 +325,6 @@ impl CodegenBackend for LlvmCodegenBackend {
 #[no_mangle]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     LlvmCodegenBackend::new()
-}
-
-pub struct ModuleCodegen<M> {
-    /// The name of the module. When the crate may be saved between
-    /// compilations, incremental compilation requires that name be
-    /// unique amongst **all** crates.  Therefore, it should contain
-    /// something unique to this crate (e.g., a module path) as well
-    /// as the crate name and disambiguator.
-    /// We currently generate these names via CodegenUnit::build_cgu_name().
-    name: String,
-    module_llvm: M,
-    kind: ModuleKind,
-}
-
-struct CachedModuleCodegen {
-    name: String,
-    source: WorkProduct,
-}
-
-impl ModuleCodegen<ModuleLlvm> {
-    fn into_compiled_module(self,
-                            emit_obj: bool,
-                            emit_bc: bool,
-                            emit_bc_compressed: bool,
-                            outputs: &OutputFilenames) -> CompiledModule {
-        let object = if emit_obj {
-            Some(outputs.temp_path(OutputType::Object, Some(&self.name)))
-        } else {
-            None
-        };
-        let bytecode = if emit_bc {
-            Some(outputs.temp_path(OutputType::Bitcode, Some(&self.name)))
-        } else {
-            None
-        };
-        let bytecode_compressed = if emit_bc_compressed {
-            Some(outputs.temp_path(OutputType::Bitcode, Some(&self.name))
-                        .with_extension(RLIB_BYTECODE_EXTENSION))
-        } else {
-            None
-        };
-
-        CompiledModule {
-            name: self.name.clone(),
-            kind: self.kind,
-            object,
-            bytecode,
-            bytecode_compressed,
-        }
-    }
 }
 
 pub struct ModuleLlvm {

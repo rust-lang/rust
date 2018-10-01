@@ -10,7 +10,6 @@
 
 mod abi;
 mod asm;
-mod backend;
 mod builder;
 mod consts;
 mod debuginfo;
@@ -22,7 +21,6 @@ mod type_;
 
 pub use self::abi::{AbiBuilderMethods, AbiMethods};
 pub use self::asm::{AsmBuilderMethods, AsmMethods};
-pub use self::backend::{Backend, BackendMethods, BackendTypes};
 pub use self::builder::BuilderMethods;
 pub use self::consts::ConstMethods;
 pub use self::debuginfo::{DebugInfoBuilderMethods, DebugInfoMethods};
@@ -33,8 +31,7 @@ pub use self::statics::StaticMethods;
 pub use self::type_::{
     ArgTypeMethods, BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods, TypeMethods,
 };
-
-use std::fmt;
+pub use rustc_codegen_utils::interfaces::{Backend, BackendMethods, BackendTypes, CodegenObject};
 
 pub trait CodegenMethods<'tcx>:
     Backend<'tcx>
@@ -76,6 +73,3 @@ pub trait HasCodegen<'tcx>: Backend<'tcx> {
             DIScope = Self::DIScope,
         >;
 }
-
-pub trait CodegenObject: Copy + PartialEq + fmt::Debug {}
-impl<T: Copy + PartialEq + fmt::Debug> CodegenObject for T {}

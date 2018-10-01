@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::backend::Backend;
+use super::Backend;
 use monomorphize::Instance;
 use rustc::hir::def_id::DefId;
 use rustc::mir::mono::{Linkage, Visibility};

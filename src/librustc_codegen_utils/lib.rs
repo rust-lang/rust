@@ -21,6 +21,7 @@
 #![feature(custom_attribute)]
 #![feature(nll)]
 #![allow(unused_attributes)]
+#![allow(dead_code)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 
@@ -46,8 +47,11 @@ use std::path::PathBuf;
 
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
+use rustc::dep_graph::WorkProduct;
+use rustc::session::config::{OutputFilenames, OutputType};
 
 pub mod command;
+pub mod interfaces;
 pub mod link;
 pub mod linker;
 pub mod codegen_backend;
@@ -55,6 +59,74 @@ pub mod symbol_export;
 pub mod symbol_names;
 pub mod symbol_names_test;
 pub mod common;
+
+pub struct ModuleCodegen<M> {
+    /// The name of the module. When the crate may be saved between
+    /// compilations, incremental compilation requires that name be
+    /// unique amongst **all** crates.  Therefore, it should contain
+    /// something unique to this crate (e.g., a module path) as well
+    /// as the crate name and disambiguator.
+    /// We currently generate these names via CodegenUnit::build_cgu_name().
+    pub name: String,
+    pub module_llvm: M,
+    pub kind: ModuleKind,
+}
+
+pub const RLIB_BYTECODE_EXTENSION: &str = "bc.z";
+
+impl<M> ModuleCodegen<M> {
+    pub fn into_compiled_module(self,
+                            emit_obj: bool,
+                            emit_bc: bool,
+                            emit_bc_compressed: bool,
+                            outputs: &OutputFilenames) -> CompiledModule {
+        let object = if emit_obj {
+            Some(outputs.temp_path(OutputType::Object, Some(&self.name)))
+        } else {
+            None
+        };
+        let bytecode = if emit_bc {
+            Some(outputs.temp_path(OutputType::Bitcode, Some(&self.name)))
+        } else {
+            None
+        };
+        let bytecode_compressed = if emit_bc_compressed {
+            Some(outputs.temp_path(OutputType::Bitcode, Some(&self.name))
+                    .with_extension(RLIB_BYTECODE_EXTENSION))
+        } else {
+            None
+        };
+
+        CompiledModule {
+            name: self.name.clone(),
+            kind: self.kind,
+            object,
+            bytecode,
+            bytecode_compressed,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct CompiledModule {
+    pub name: String,
+    pub kind: ModuleKind,
+    pub object: Option<PathBuf>,
+    pub bytecode: Option<PathBuf>,
+    pub bytecode_compressed: Option<PathBuf>,
+}
+
+pub struct CachedModuleCodegen {
+    pub name: String,
+    pub source: WorkProduct,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum ModuleKind {
+    Regular,
+    Metadata,
+    Allocator,
+}
 
 /// check for the #[rustc_error] annotation, which forces an
 /// error in codegen. This is used to write compile-fail tests
@@ -68,22 +140,6 @@ pub fn check_for_rustc_errors_attr(tcx: TyCtxt) {
             tcx.sess.span_fatal(span, "compilation successful");
         }
     }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum ModuleKind {
-    Regular,
-    Metadata,
-    Allocator,
-}
-
-#[derive(Debug)]
-pub struct CompiledModule {
-    pub name: String,
-    pub kind: ModuleKind,
-    pub object: Option<PathBuf>,
-    pub bytecode: Option<PathBuf>,
-    pub bytecode_compressed: Option<PathBuf>,
 }
 
 pub fn find_library(name: &str, search_paths: &[PathBuf], sess: &Session)
