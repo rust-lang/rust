@@ -496,20 +496,22 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     this.super_place(place, context, location);
                     match proj.elem {
                         ProjectionElem::Deref => {
-                            if let Mode::Fn = this.mode {
-                                this.add(Qualif::NOT_CONST);
-                            } else {
-                                let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
-                                if let ty::RawPtr(_) = base_ty.sty {
-                                    if !this.tcx.sess.features_untracked().const_raw_ptr_deref {
-                                        emit_feature_err(
-                                            &this.tcx.sess.parse_sess, "const_raw_ptr_deref",
-                                            this.span, GateIssue::Language,
-                                            &format!(
-                                                "dereferencing raw pointers in {}s is unstable",
-                                                this.mode,
-                                            ),
-                                        );
+                            this.add(Qualif::NOT_CONST);
+                            let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
+                            match this.mode {
+                                Mode::Fn => {},
+                                _ => {
+                                    if let ty::RawPtr(_) = base_ty.sty {
+                                        if !this.tcx.sess.features_untracked().const_raw_ptr_deref {
+                                            emit_feature_err(
+                                                &this.tcx.sess.parse_sess, "const_raw_ptr_deref",
+                                                this.span, GateIssue::Language,
+                                                &format!(
+                                                    "dereferencing raw pointers in {}s is unstable",
+                                                    this.mode,
+                                                ),
+                                            );
+                                        }
                                     }
                                 }
                             }

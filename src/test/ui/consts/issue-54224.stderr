@@ -1,0 +1,23 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/issue-54224.rs:3:39
+   |
+LL | const FOO: Option<&[[u8; 3]]> = Some(&[*b"foo"]); //~ ERROR temporary value dropped while borrowed
+   |                                       ^^^^^^^^^- temporary value is freed at the end of this statement
+   |                                       |
+   |                                       creates a temporary which is freed while still in use
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/issue-54224.rs:11:57
+   |
+LL | pub const Z: Cow<'static, [ [u8; 3] ]> = Cow::Borrowed(&[*b"ABC"]);
+   |                                                         ^^^^^^^^^- temporary value is freed at the end of this statement
+   |                                                         |
+   |                                                         creates a temporary which is freed while still in use
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0716`.
