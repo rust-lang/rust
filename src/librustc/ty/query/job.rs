@@ -324,14 +324,14 @@ fn connected_to_root<'tcx>(
     query: Lrc<QueryJob<'tcx>>,
     visited: &mut FxHashSet<*const QueryJob<'tcx>>
 ) -> bool {
-    // We already visited this or we're deliberately ignoring it
-    if visited.contains(&query.as_ptr()) {
-        return false;
-    }
-
     // This query is connected to the root (it has no query parent), return true
     if query.parent.is_none() {
         return true;
+    }
+
+    // We already visited this or we're deliberately ignoring it
+    if visited.contains(&query.as_ptr()) {
+        return false;
     }
 
     visited.insert(query.as_ptr());
