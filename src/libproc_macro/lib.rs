@@ -881,7 +881,7 @@ impl Ident {
     }
 
     /// Same as `Ident::new`, but creates a raw identifier (`r#ident`).
-    #[unstable(feature = "proc_macro_raw_ident", issue = "38356")]
+    #[unstable(feature = "proc_macro_raw_ident", issue = "54723")]
     pub fn new_raw(string: &str, span: Span) -> Ident {
         if !Ident::is_valid(string) {
             panic!("`{:?}` is not a valid identifier", string)
