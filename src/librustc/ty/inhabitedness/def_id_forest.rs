@@ -66,12 +66,7 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
                     tcx: TyCtxt<'a, 'gcx, 'tcx>,
                     id: DefId) -> bool
     {
-        for root_id in self.root_ids.iter() {
-            if tcx.is_descendant_of(id, *root_id) {
-                return true;
-            }
-        }
-        false
+        self.root_ids.iter().any(|root_id| tcx.is_descendant_of(id, *root_id))
     }
 
     /// Calculate the intersection of a collection of forests.

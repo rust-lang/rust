@@ -540,16 +540,13 @@ impl<'tcx> TypeckTables<'tcx> {
     }
 
     pub fn node_id_to_type(&self, id: hir::HirId) -> Ty<'tcx> {
-        match self.node_id_to_type_opt(id) {
-            Some(ty) => ty,
-            None => {
-                bug!("node_id_to_type: no type for node `{}`",
-                    tls::with(|tcx| {
-                        let id = tcx.hir.hir_to_node_id(id);
-                        tcx.hir.node_to_string(id)
-                    }))
-            }
-        }
+        self.node_id_to_type_opt(id).unwrap_or_else(||
+            bug!("node_id_to_type: no type for node `{}`",
+                 tls::with(|tcx| {
+                     let id = tcx.hir.hir_to_node_id(id);
+                     tcx.hir.node_to_string(id)
+                 }))
+        )
     }
 
     pub fn node_id_to_type_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {

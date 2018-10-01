@@ -441,7 +441,6 @@ impl<'sess> OnDiskCache<'sess> {
         tcx.dep_graph.with_ignore(|| {
             let current_cnums = tcx.all_crate_nums(LOCAL_CRATE).iter().map(|&cnum| {
                 let crate_name = tcx.original_crate_name(cnum)
-                                    .as_str()
                                     .to_string();
                 let crate_disambiguator = tcx.crate_disambiguator(cnum);
                 ((crate_name, crate_disambiguator), cnum)

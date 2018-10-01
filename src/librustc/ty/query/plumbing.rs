@@ -753,9 +753,8 @@ macro_rules! define_queries_inner {
                 }
                 // The def_span query is used to calculate default_span,
                 // so exit to avoid infinite recursion
-                match *self {
-                    Query::def_span(..) => return span,
-                    _ => ()
+                if let Query::def_span(..) = *self {
+                    return span
                 }
                 match *self {
                     $(Query::$name(key) => key.default_span(tcx),)*
@@ -1028,13 +1027,10 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
                     )
                 );
 
-                match tcx.force_query::<::ty::query::queries::$query<'_>>(
+                if let Err(e) = tcx.force_query::<::ty::query::queries::$query<'_>>(
                     $key, DUMMY_SP, *dep_node
                 ) {
-                    Ok(_) => {},
-                    Err(e) => {
-                        tcx.report_cycle(e).emit();
-                    }
+                    tcx.report_cycle(e).emit();
                 }
             }
         }

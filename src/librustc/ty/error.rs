@@ -252,20 +252,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     db.note("no two closures, even if identical, have the same type");
                     db.help("consider boxing your closure and/or using it as a trait object");
                 }
-                match (&values.found.sty, &values.expected.sty) { // Issue #53280
-                    (ty::Infer(ty::IntVar(_)), ty::Float(_)) => {
-                        if let Ok(snippet) = self.sess.source_map().span_to_snippet(sp) {
-                            if snippet.chars().all(|c| c.is_digit(10) || c == '-' || c == '_') {
-                                db.span_suggestion_with_applicability(
-                                    sp,
-                                    "use a float literal",
-                                    format!("{}.0", snippet),
-                                    Applicability::MachineApplicable
-                                );
-                            }
+                if let (ty::Infer(ty::IntVar(_)), ty::Float(_)) =
+                       (&values.found.sty, &values.expected.sty) // Issue #53280
+                {
+                    if let Ok(snippet) = self.sess.source_map().span_to_snippet(sp) {
+                        if snippet.chars().all(|c| c.is_digit(10) || c == '-' || c == '_') {
+                            db.span_suggestion_with_applicability(
+                                sp,
+                                "use a float literal",
+                                format!("{}.0", snippet),
+                                Applicability::MachineApplicable
+                            );
                         }
-                    },
-                    _ => {}
+                    }
                 }
             },
             OldStyleLUB(err) => {
