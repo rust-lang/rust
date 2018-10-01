@@ -24,7 +24,6 @@ use rustc::ty::{self, Ty, TyCtxt, Instance, query::TyCtxtAt};
 use rustc::ty::layout::{self, Size, LayoutOf, TyLayout};
 use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
-use rustc::util::nodemap::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashMap;
 use rustc::util::common::ErrorReported;
@@ -36,7 +35,7 @@ use interpret::{self,
     PlaceTy, MemPlace, OpTy, Operand, Value, Pointer, Scalar, ConstValue,
     EvalResult, EvalError, EvalErrorKind, GlobalId, EvalContext, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
-    snapshot,
+    snapshot, RefTracking,
 };
 
 /// Number of steps until the detector even starts doing anything.
@@ -542,15 +541,13 @@ fn validate_const<'a, 'tcx>(
     let ecx = mk_eval_cx(tcx, cid.instance, key.param_env).unwrap();
     let val = (|| {
         let op = ecx.const_to_op(constant)?;
-        let mut todo = vec![(op, Vec::new())];
-        let mut seen = FxHashSet();
-        seen.insert(op);
-        while let Some((op, mut path)) = todo.pop() {
+        let mut ref_tracking = RefTracking::new(op);
+        while let Some((op, mut path)) = ref_tracking.todo.pop() {
             ecx.validate_operand(
                 op,
                 &mut path,
-                &mut seen,
-                &mut todo,
+                Some(&mut ref_tracking),
+                /* const_mode */ true,
             )?;
         }
         Ok(constant)

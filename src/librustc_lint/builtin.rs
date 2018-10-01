@@ -1547,49 +1547,6 @@ impl LintPass for UnusedBrokenConst {
         lint_array!()
     }
 }
-
-fn validate_const<'a, 'tcx>(
-    tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
-    constant: &ty::Const<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    gid: ::rustc::mir::interpret::GlobalId<'tcx>,
-    what: &str,
-) {
-    let ecx = ::rustc_mir::const_eval::mk_eval_cx(tcx, gid.instance, param_env).unwrap();
-    let result = (|| {
-        let op = ecx.const_to_op(constant)?;
-        let mut ref_tracking = ::rustc_mir::interpret::RefTracking::new(op);
-        while let Some((op, mut path)) = ref_tracking.todo.pop() {
-            ecx.validate_operand(
-                op,
-                &mut path,
-                Some(&mut ref_tracking),
-                /* const_mode */ true,
-            )?;
-        }
-        Ok(())
-    })();
-    if let Err(err) = result {
-        let (trace, span) = ecx.generate_stacktrace(None);
-        let err = ::rustc::mir::interpret::ConstEvalErr {
-            error: err,
-            stacktrace: trace,
-            span,
-        };
-        let err = err.struct_error(
-            tcx.at(span),
-            &format!("this {} likely exhibits undefined behavior", what),
-        );
-        if let Some(mut err) = err {
-            err.note("The rules on what exactly is undefined behavior aren't clear, \
-                so this check might be overzealous. Please open an issue on the rust compiler \
-                repository if you believe it should not be considered undefined behavior",
-            );
-            err.emit();
-        }
-    }
-}
-
 fn check_const(cx: &LateContext, body_id: hir::BodyId) {
     let def_id = cx.tcx.hir.body_owner_def_id(body_id);
     let is_static = cx.tcx.is_static(def_id).is_some();

@@ -1,19 +1,14 @@
-error: reaching this expression at runtime will panic or abort
-  --> $DIR/promoted_const_fn_fail_deny_const_err.rs:31:26
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/promoted_const_fn_fail_deny_const_err.rs:31:27
    |
-LL |         Bar { a: &42 }.b as u8
-   |         ---------------------- a raw memory access tried to access part of a pointer value as raw bytes
-...
 LL |     let x: &'static u8 = &(bar() + 1);
-   |                          ^^-----^^^^^
-   |                            |
-   |                            inside call to `bar`
+   |                           ^^^^^^^^^^^ temporary value does not live long enough
+...
+LL | }
+   | - temporary value only lives until here
    |
-note: lint level defined here
-  --> $DIR/promoted_const_fn_fail_deny_const_err.rs:13:9
-   |
-LL | #![deny(const_err)]
-   |         ^^^^^^^^^
+   = note: borrowed value must be valid for the static lifetime...
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0597`.

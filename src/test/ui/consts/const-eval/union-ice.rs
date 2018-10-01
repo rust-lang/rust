@@ -22,7 +22,7 @@ const UNION: DummyUnion = DummyUnion { field1: 1065353216 };
 
 const FIELD3: Field3 = unsafe { UNION.field3 }; //~ ERROR will cause an error
 
-const FIELD_PATH: Struct = Struct { //~ ERROR any use of this value will cause an error
+const FIELD_PATH: Struct = Struct { //~ ERROR it is undefined behavior to use this value
     a: 42,
     b: unsafe { UNION.field3 },
 };

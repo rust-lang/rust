@@ -15,11 +15,11 @@ use std::ptr::NonNull;
 use std::num::{NonZeroU8, NonZeroUsize};
 
 const NULL_PTR: NonNull<u8> = unsafe { mem::transmute(0usize) };
-//~^ ERROR this constant likely exhibits undefined behavior
+//~^ ERROR it is undefined behavior to use this value
 
 const NULL_U8: NonZeroU8 = unsafe { mem::transmute(0u8) };
-//~^ ERROR this constant likely exhibits undefined behavior
+//~^ ERROR it is undefined behavior to use this value
 const NULL_USIZE: NonZeroUsize = unsafe { mem::transmute(0usize) };
-//~^ ERROR this constant likely exhibits undefined behavior
+//~^ ERROR it is undefined behavior to use this value
 
 fn main() {}
