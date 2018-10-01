@@ -1138,12 +1138,16 @@ fn link_args(cmd: &mut dyn Linker,
     // Pass debuginfo flags down to the linker.
     cmd.debuginfo();
 
-    // We want to prevent the compiler from accidentally leaking in any system
-    // libraries, so we explicitly ask gcc to not link to any libraries by
-    // default. Note that this does not happen for windows because windows pulls
-    // in some large number of libraries and I couldn't quite figure out which
-    // subset we wanted.
-    if t.options.no_default_libraries {
+    // We want to, by default, prevent the compiler from accidentally leaking in
+    // any system libraries, so we may explicitly ask linkers to not link to any
+    // libraries by default. Note that this does not happen for windows because
+    // windows pulls in some large number of libraries and I couldn't quite
+    // figure out which subset we wanted.
+    //
+    // This is all naturally configurable via the standard methods as well.
+    if !sess.opts.cg.default_linker_libraries.unwrap_or(false) &&
+        t.options.no_default_libraries
+    {
         cmd.no_default_libraries();
     }
 
