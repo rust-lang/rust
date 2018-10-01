@@ -19,12 +19,19 @@ use utils::wrap_str;
 
 const MIN_STRING: usize = 10;
 
+/// Describes the layout of a piece of text.
 pub struct StringFormat<'a> {
+    /// The opening sequence of characters for the piece of text
     pub opener: &'a str,
+    /// The closing sequence of characters for the piece of text
     pub closer: &'a str,
+    /// The opening sequence of characters for a line
     pub line_start: &'a str,
+    /// The closing sequence of characters for a line
     pub line_end: &'a str,
+    /// The allocated box to fit the text into
     pub shape: Shape,
+    /// Trim trailing whitespaces
     pub trim_end: bool,
     pub config: &'a Config,
 }
@@ -129,6 +136,9 @@ enum SnippetState {
     EndOfInput(String),
     /// The input could be broken and the returned snippet should be ended with a
     /// `[StringFormat::line_end]`. The next snippet needs to be indented.
+    /// The returned string is the line to print out and the number is the length that got read in
+    /// the text being rewritten. That length may be greater than the returned string if trailing
+    /// whitespaces got trimmed.
     LineEnd(String, usize),
     /// The input could be broken but the returned snippet should not be ended with a
     /// `[StringFormat::line_end]` because the whitespace is significant. Therefore, the next
@@ -144,13 +154,23 @@ fn break_string(max_chars: usize, trim_end: bool, input: &[&str]) -> SnippetStat
         // check if there is a line feed, in which case whitespaces needs to be kept.
         let mut index_minus_ws = index;
         for (i, grapheme) in input[0..=index].iter().enumerate().rev() {
-            if !trim_end && is_line_feed(grapheme) {
-                return SnippetState::Overflow(input[0..=i].join("").to_string(), i + 1);
-            } else if !is_whitespace(grapheme) {
+            if !is_whitespace(grapheme) {
                 index_minus_ws = i;
                 break;
             }
         }
+        // Take into account newlines occuring in input[0..=index], i.e., the possible next new
+        // line. If there is one, then text after it could be rewritten in a way that the available
+        // space is fully used.
+        for (i, grapheme) in input[0..=index].iter().enumerate() {
+            if is_line_feed(grapheme) {
+                if i < index_minus_ws || !trim_end {
+                    return SnippetState::Overflow(input[0..=i].join("").to_string(), i + 1);
+                }
+                break;
+            }
+        }
+
         let mut index_plus_ws = index;
         for (i, grapheme) in input[index + 1..].iter().enumerate() {
             if !trim_end && is_line_feed(grapheme) {
@@ -224,6 +244,7 @@ fn is_punctuation(grapheme: &str) -> bool {
 #[cfg(test)]
 mod test {
     use super::{break_string, rewrite_string, SnippetState, StringFormat};
+    use config::Config;
     use shape::{Indent, Shape};
     use unicode_segmentation::UnicodeSegmentation;
 
@@ -316,6 +337,30 @@ mod test {
         assert_eq!(
             break_string(20, true, &graphemes[..]),
             SnippetState::LineEnd("Neque in sem.".to_string(), 25)
+        );
+    }
+
+    #[test]
+    fn newline_in_candidate_line() {
+        let string = "Nulla\nconsequat erat at massa. Vivamus id mi.";
+
+        let graphemes = UnicodeSegmentation::graphemes(&*string, false).collect::<Vec<&str>>();
+        assert_eq!(
+            break_string(25, false, &graphemes[..]),
+            SnippetState::Overflow("Nulla\n".to_string(), 6)
+        );
+        assert_eq!(
+            break_string(25, true, &graphemes[..]),
+            SnippetState::Overflow("Nulla\n".to_string(), 6)
+        );
+
+        let mut config: Config = Default::default();
+        config.set().max_width(27);
+        let fmt = StringFormat::new(Shape::legacy(25, Indent::empty()), &config);
+        let rewritten_string = rewrite_string(string, &fmt);
+        assert_eq!(
+            rewritten_string,
+            Some("\"Nulla\nconsequat erat at massa. \\\n Vivamus id mi.\"".to_string())
         );
     }
 }
