@@ -123,9 +123,11 @@ impl<'tcx> QueryJob<'tcx> {
         let mut cycle = Vec::new();
 
         while let Some(job) = current_job {
-            cycle.insert(0, job.info.clone());
+            cycle.push(job.info.clone());
 
             if ptr::eq(&*job, self) {
+                cycle.reverse();
+
                 // This is the end of the cycle
                 // The span entry we included was for the usage
                 // of the cycle itself, and not part of the cycle
@@ -368,13 +370,11 @@ fn remove_cycle<'tcx>(
         // Reverse the stack so earlier entries require later entries
         stack.reverse();
 
-        // Extract the spans and queries into separate arrays
-        let mut spans: Vec<_> = stack.iter().map(|e| e.0).collect();
-        let queries = stack.into_iter().map(|e| e.1);
+        // The stack is a vector of pairs of spans and queries
+        let (mut spans, queries): (Vec<_>, Vec<_>) = stack.into_iter().unzip();
 
         // Shift the spans so that queries are matched with the span for their waitee
-        let last = spans.pop().unwrap();
-        spans.insert(0, last);
+        spans.rotate_right(1);
 
         // Zip them back together
         let mut stack: Vec<_> = spans.into_iter().zip(queries).collect();
@@ -414,10 +414,10 @@ fn remove_cycle<'tcx>(
             stable_hasher.finish()
         }).unwrap().as_ptr();
 
-        // Shift the stack until our entry point is first
-        while stack[0].1.as_ptr() != entry_point {
-            let last = stack.pop().unwrap();
-            stack.insert(0, last);
+        // Shift the stack so that our entry point is first
+        let entry_point_pos = stack.iter().position(|(_, query)| query.as_ptr() == entry_point);
+        if let Some(pos) = entry_point_pos {
+            stack.rotate_right(pos);
         }
 
         // Create the cycle error
