@@ -20,7 +20,7 @@ mod declare;
 mod asm;
 
 pub use self::builder::{BuilderMethods, HasCodegen};
-pub use rustc_codegen_utils::interfaces::{Backend, BackendMethods};
+pub use rustc_codegen_ssa::interfaces::{Backend, BackendMethods, CodegenObject};
 pub use self::consts::ConstMethods;
 pub use self::type_::{TypeMethods, BaseTypeMethods, DerivedTypeMethods,
     LayoutTypeMethods, ArgTypeMethods};
@@ -31,7 +31,6 @@ pub use self::debuginfo::{DebugInfoMethods, DebugInfoBuilderMethods};
 pub use self::abi::{AbiMethods, AbiBuilderMethods};
 pub use self::declare::{DeclareMethods, PreDefineMethods};
 pub use self::asm::{AsmMethods, AsmBuilderMethods};
-pub use rustc_codegen_utils::interfaces::CodegenObject;
 
 pub trait CodegenMethods<'ll, 'tcx: 'll> :
     Backend<'ll> + TypeMethods<'ll, 'tcx> + MiscMethods<'ll, 'tcx> + ConstMethods<'ll, 'tcx> +

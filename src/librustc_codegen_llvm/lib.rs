@@ -55,6 +55,7 @@ extern crate rustc_incremental;
 extern crate rustc_llvm;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_codegen_utils;
+extern crate rustc_codegen_ssa;
 extern crate rustc_fs_util;
 
 #[macro_use] extern crate log;
@@ -91,7 +92,7 @@ use rustc::util::time_graph;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::util::profiling::ProfileCategory;
 use rustc_mir::monomorphize;
-use rustc_codegen_utils::{ModuleCodegen, CompiledModule};
+use rustc_codegen_ssa::{ModuleCodegen, CompiledModule};
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::svh::Svh;
 

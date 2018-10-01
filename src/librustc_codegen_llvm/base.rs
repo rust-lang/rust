@@ -24,7 +24,7 @@
 //!     int) and rec(x=int, y=int, z=int) will have the same llvm::Type.
 
 use super::ModuleLlvm;
-use rustc_codegen_utils::{ModuleCodegen, ModuleKind, CachedModuleCodegen};
+use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, CachedModuleCodegen};
 use super::LlvmCodegenBackend;
 
 use abi;
@@ -53,7 +53,7 @@ use callee;
 use rustc_mir::monomorphize::collector::{self, MonoItemCollectionMode};
 use rustc_mir::monomorphize::item::DefPathBasedNames;
 use common;
-use rustc_codegen_utils::common::{RealPredicate, TypeKind, IntPredicate};
+use rustc_codegen_ssa::common::{RealPredicate, TypeKind, IntPredicate};
 use meth;
 use mir;
 use context::CodegenCx;

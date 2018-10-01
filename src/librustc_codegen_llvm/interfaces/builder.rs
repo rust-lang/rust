@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc_codegen_utils::common::{IntPredicate, RealPredicate, AtomicOrdering,
+use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, AtomicOrdering,
     SynchronizationScope, AtomicRmwBinOp, OperandBundleDef};
 use libc::c_char;
 use rustc::ty::TyCtxt;

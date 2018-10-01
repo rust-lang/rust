@@ -18,7 +18,7 @@ use rustc_target::abi::call::ArgType;
 use base;
 use builder::MemFlags;
 use common;
-use rustc_codegen_utils::common::IntPredicate;
+use rustc_codegen_ssa::common::IntPredicate;
 use meth;
 use monomorphize;
 
@@ -507,11 +507,11 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
                 if (intrinsic == Some("init") || intrinsic == Some("uninit")) &&
                     fn_ty.ret.layout.abi.is_uninhabited()
                 {
-                    let loc = bx.sess().source_map().lookup_char_pos(span.lo());
+                    let loc = bx.cx().sess().source_map().lookup_char_pos(span.lo());
                     let filename = Symbol::intern(&loc.file.name.to_string()).as_str();
-                    let filename = C_str_slice(bx.cx, filename);
-                    let line = C_u32(bx.cx, loc.line as u32);
-                    let col = C_u32(bx.cx, loc.col.to_usize() as u32 + 1);
+                    let filename = bx.cx().const_str_slice(filename);
+                    let line = bx.cx().const_u32(loc.line as u32);
+                    let col = bx.cx().const_u32(loc.col.to_usize() as u32 + 1);
                     let align = tcx.data_layout.aggregate_align
                         .max(tcx.data_layout.i32_align)
                         .max(tcx.data_layout.pointer_align);
@@ -522,26 +522,28 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
                         if intrinsic == Some("init") { "zeroed" } else { "uninitialized" }
                     );
                     let msg_str = Symbol::intern(&str).as_str();
-                    let msg_str = C_str_slice(bx.cx, msg_str);
-                    let msg_file_line_col = C_struct(bx.cx,
-                                                     &[msg_str, filename, line, col],
-                                                     false);
-                    let msg_file_line_col = consts::addr_of(bx.cx,
-                                                            msg_file_line_col,
-                                                            align,
-                                                            Some("panic_loc"));
+                    let msg_str = bx.cx().const_str_slice(msg_str);
+                    let msg_file_line_col = bx.cx().const_struct(
+                        &[msg_str, filename, line, col],
+                        false
+                    );
+                    let msg_file_line_col = bx.cx().static_addr_of(
+                        msg_file_line_col,
+                        align,
+                        Some("panic_loc")
+                    );
 
                     // Obtain the panic entry point.
                     let def_id =
                         common::langcall(bx.tcx(), Some(span), "", lang_items::PanicFnLangItem);
                     let instance = ty::Instance::mono(bx.tcx(), def_id);
-                    let fn_ty = FnType::of_instance(bx.cx, &instance);
-                    let llfn = callee::get_fn(bx.cx, instance);
+                    let fn_ty = bx.cx().fn_type_of_instance(&instance);
+                    let llfn = bx.cx().get_fn(instance);
 
                     // Codegen the actual panic invoke/call.
                     do_call(
                         self,
-                        bx,
+                        &bx,
                         fn_ty,
                         llfn,
                         &[msg_file_line_col],

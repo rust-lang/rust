@@ -28,7 +28,7 @@ use std::ffi::CStr;
 use std::cell::RefCell;
 use libc::{self, c_uint, c_char, size_t};
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_codegen_utils;
+use rustc_codegen_ssa;
 
 pub mod archive_ro;
 pub mod diagnostic;
@@ -274,7 +274,7 @@ impl OperandBundleDef<'a> {
     }
 
     pub fn from_generic(
-        bundle : &rustc_codegen_utils::common::OperandBundleDef<'a, &'a Value>
+        bundle : &rustc_codegen_ssa::common::OperandBundleDef<'a, &'a Value>
     ) -> Self {
         Self::new(bundle.name, &[bundle.val])
     }

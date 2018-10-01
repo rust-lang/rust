@@ -30,7 +30,7 @@ use rustc::hir;
 use interfaces::BuilderMethods;
 use mir::constant::const_alloc_to_llvm;
 use mir::place::PlaceRef;
-use rustc_codegen_utils::common::TypeKind;
+use rustc_codegen_ssa::common::TypeKind;
 
 use libc::{c_uint, c_char};
 use std::iter;

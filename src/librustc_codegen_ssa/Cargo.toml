@@ -1,0 +1,18 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_codegen_ssa"
+version = "0.0.0"
+
+[lib]
+name = "rustc_codegen_ssa"
+path = "lib.rs"
+crate-type = ["dylib"]
+test = false
+
+[dependencies]
+syntax = { path = "../libsyntax" }
+syntax_pos = { path = "../libsyntax_pos" }
+rustc = { path = "../librustc" }
+rustc_target = { path = "../librustc_target" }
+rustc_data_structures = { path = "../librustc_data_structures" }
+rustc_mir = { path = "../librustc_mir" }

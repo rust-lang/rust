@@ -19,7 +19,7 @@ use std::{u128, i128};
 use base;
 use callee;
 use common;
-use rustc_codegen_utils::common::{RealPredicate, IntPredicate};
+use rustc_codegen_ssa::common::{RealPredicate, IntPredicate};
 use monomorphize;
 use type_of::LayoutLlvmExt;
 

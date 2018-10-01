@@ -130,7 +130,7 @@ impl DeclareMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
         let fty = FnType::new(self, sig, &[]);
         let llfn = declare_raw_fn(self, name, fty.llvm_cconv(), fty.llvm_type(self));
 
-        if self.layout_of(sig.output()).abi == layout::Abi::Uninhabited {
+        if self.layout_of(sig.output()).abi.is_uninhabited() {
             llvm::Attribute::NoReturn.apply_llfn(Function, llfn);
         }
 
