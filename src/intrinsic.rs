@@ -272,16 +272,6 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 self.copy_op(args[1], ptr.into())?;
             }
 
-            "needs_drop" => {
-                let ty = substs.type_at(0);
-                let env = ty::ParamEnv::reveal_all();
-                let needs_drop = ty.needs_drop(self.tcx.tcx, env);
-                self.write_scalar(
-                    Scalar::from_bool(needs_drop),
-                    dest,
-                )?;
-            }
-
             "offset" => {
                 let offset = self.read_scalar(args[1])?.to_isize(&self)?;
                 let ptr = self.read_scalar(args[0])?.not_undef()?;
