@@ -283,7 +283,7 @@ macro_rules! diagnostic_method {
 
 impl Span {
     /// A span that resolves at the macro definition site.
-    #[unstable(feature = "proc_macro_span", issue = "38356")]
+    #[unstable(feature = "proc_macro_def_site", issue = "54724")]
     pub fn def_site() -> Span {
         ::__internal::with_sess(|_, data| data.def_site)
     }
