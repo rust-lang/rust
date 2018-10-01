@@ -107,6 +107,20 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         )
     }
 
+    pub fn canonicalize_user_type_annotation<V>(&self, value: &V) -> Canonicalized<'gcx, V>
+    where
+        V: TypeFoldable<'tcx> + Lift<'gcx>,
+    {
+        let mut query_state = OriginalQueryValues::default();
+        Canonicalizer::canonicalize(
+            value,
+            Some(self),
+            self.tcx,
+            &CanonicalizeUserTypeAnnotation,
+            &mut query_state,
+        )
+    }
+
     /// A hacky variant of `canonicalize_query` that does not
     /// canonicalize `'static`.  Unfortunately, the existing leak
     /// check treaks `'static` differently in some cases (see also
@@ -187,6 +201,29 @@ impl CanonicalizeRegionMode for CanonicalizeQueryResponse {
                 // response should be executing in a fully
                 // canonicalized environment, so there shouldn't be
                 // any other region names it can come up.
+                bug!("unexpected region in query response: `{:?}`", r)
+            }
+        }
+    }
+
+    fn any(&self) -> bool {
+        false
+    }
+}
+
+struct CanonicalizeUserTypeAnnotation;
+
+impl CanonicalizeRegionMode for CanonicalizeUserTypeAnnotation {
+    fn canonicalize_free_region(
+        &self,
+        canonicalizer: &mut Canonicalizer<'_, '_, 'tcx>,
+        r: ty::Region<'tcx>,
+    ) -> ty::Region<'tcx> {
+        match r {
+            ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReErased | ty::ReEmpty | ty::ReStatic => r,
+            ty::ReVar(_) => canonicalizer.canonical_var_for_region_in_root_universe(r),
+            _ => {
+                // We only expect region names that the user can type.
                 bug!("unexpected region in query response: `{:?}`", r)
             }
         }
