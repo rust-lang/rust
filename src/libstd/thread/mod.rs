@@ -674,17 +674,17 @@ pub fn sleep_ms(ms: u32) {
     sleep(Duration::from_millis(ms as u64))
 }
 
-/// Puts the current thread to sleep for the specified amount of time.
+/// Puts the current thread to sleep for at least the specified amount of time.
 ///
 /// The thread may sleep longer than the duration specified due to scheduling
-/// specifics or platform-dependent functionality.
+/// specifics or platform-dependent functionality. It will never sleep less.
 ///
 /// # Platform-specific behavior
 ///
-/// On Unix platforms this function will not return early due to a
-/// signal being received or a spurious wakeup. Platforms which do not support
-/// nanosecond precision for sleeping will have `dur` rounded up to the nearest
-/// granularity of time they can sleep for.
+/// On Unix platforms this function may invoke multiple syscalls
+/// in case of a signal being received or a spurious wakeup.
+/// Platforms which do not support nanosecond precision for sleeping will
+/// have `dur` rounded up to the nearest granularity of time they can sleep for.
 ///
 /// # Examples
 ///
