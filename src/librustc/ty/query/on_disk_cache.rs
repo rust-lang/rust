@@ -448,9 +448,9 @@ impl<'sess> OnDiskCache<'sess> {
             }).collect::<FxHashMap<_,_>>();
 
             let map_size = prev_cnums.iter()
-                                    .map(|&(cnum, ..)| cnum)
-                                    .max()
-                                    .unwrap_or(0) + 1;
+                                     .map(|&(cnum, ..)| cnum)
+                                     .max()
+                                     .unwrap_or(0) + 1;
             let mut map = IndexVec::new();
             map.resize(map_size as usize, None);
 
@@ -464,7 +464,6 @@ impl<'sess> OnDiskCache<'sess> {
         })
     }
 }
-
 
 //- DECODING -------------------------------------------------------------------
 
@@ -494,7 +493,7 @@ impl<'a, 'tcx, 'x> CacheDecoder<'a, 'tcx, 'x> {
         file_index_to_file.borrow_mut().entry(index).or_insert_with(|| {
             let stable_id = file_index_to_stable_id[&index];
             source_map.source_file_by_stable_id(stable_id)
-                   .expect("Failed to lookup SourceFile in new context.")
+                .expect("Failed to lookup SourceFile in new context.")
         }).clone()
     }
 }
@@ -761,7 +760,7 @@ for CacheDecoder<'a, 'tcx, 'x> {
 
 struct CacheEncoder<'enc, 'a, 'tcx, E>
     where E: 'enc + ty_codec::TyEncoder,
-          'tcx: 'a,
+             'tcx: 'a,
 {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     encoder: &'enc mut E,
@@ -839,9 +838,7 @@ impl<'enc, 'a, 'tcx, E> SpecializedEncoder<Span> for CacheEncoder<'enc, 'a, 'tcx
         let (file_lo, line_lo, col_lo) = match self.source_map
                                                    .byte_pos_to_line_and_col(span_data.lo) {
             Some(pos) => pos,
-            None => {
-                return TAG_INVALID_SPAN.encode(self);
-            }
+            None => return TAG_INVALID_SPAN.encode(self)
         };
 
         if !file_lo.contains(span_data.hi) {

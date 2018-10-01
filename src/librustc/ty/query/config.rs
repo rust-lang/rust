@@ -386,8 +386,8 @@ impl<'tcx> QueryDescription<'tcx> for queries::const_is_rvalue_promotable_to_sta
 
     #[inline]
     fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          id: SerializedDepNodeIndex)
-                          -> Option<Self::Value> {
+                              id: SerializedDepNodeIndex)
+                              -> Option<Self::Value> {
         tcx.queries.on_disk_cache.try_load_query_result(tcx, id)
     }
 }

@@ -449,14 +449,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             let prev_dep_node_index =
                 self.dep_graph.prev_dep_node_index_of(dep_node);
             let result = Q::try_load_from_disk(self.global_tcx(),
-                                                    prev_dep_node_index);
+                                               prev_dep_node_index);
 
             // We always expect to find a cached result for things that
             // can be forced from DepNode.
             debug_assert!(!dep_node.kind.can_reconstruct_query_key() ||
-                            result.is_some(),
-                            "Missing on-disk cache entry for {:?}",
-                            dep_node);
+                          result.is_some(),
+                          "Missing on-disk cache entry for {:?}",
+                          dep_node);
             result
         } else {
             // Some things are never cached on disk.
@@ -491,7 +491,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             assert!(Some(self.dep_graph.fingerprint_of(dep_node_index)) ==
                     self.dep_graph.prev_fingerprint_of(dep_node),
                     "Fingerprint for green query instance not loaded \
-                        from cache: {:?}", dep_node);
+                     from cache: {:?}", dep_node);
 
             debug!("BEGIN verify_ich({:?})", dep_node);
             let mut hcx = self.create_stable_hashing_context();
@@ -530,8 +530,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         //    (see for example #48923)
         assert!(!self.dep_graph.dep_node_exists(&dep_node),
                 "Forcing query with already existing DepNode.\n\
-                    - query-key: {:?}\n\
-                    - dep-node: {:?}",
+                 - query-key: {:?}\n\
+                 - dep-node: {:?}",
                 key, dep_node);
 
         profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
