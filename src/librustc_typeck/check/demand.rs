@@ -309,12 +309,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 };
                 if self.can_coerce(ref_ty, expected) {
                     if let Ok(src) = cm.span_to_snippet(sp) {
-                        let sugg_expr = match expr.node { // parenthesize if needed (Issue #46756)
-                            hir::ExprKind::Cast(_, _)        |
-                            hir::ExprKind::Binary(_, _, _)   |
-                            _ if self.is_range_literal(expr) => format!("({})", src),
-                            _                                => src,
+                        let needs_parens = match expr.node {
+                            // parenthesize if needed (Issue #46756)
+                            hir::ExprKind::Cast(_, _) |
+                            hir::ExprKind::Binary(_, _, _) => true,
+                            // parenthesize borrows of range literals (Issue #54505)
+                            _ if self.is_range_literal(expr) => true,
+                            _ => false,
                         };
+                        let sugg_expr = if needs_parens { format!("({})", src) } else { src };
+
                         if let Some(sugg) = self.can_use_as_ref(expr) {
                             return Some(sugg);
                         }
@@ -380,8 +384,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn is_range_literal(&self, expr: &hir::Expr) -> bool {
         use hir::{Path, QPath, ExprKind, TyKind};
 
-        // TODO how to work out std vs core here?
-        let ops_path = ["{{root}}", "std", "ops"];
+        // we support `::std::ops::Range` and `::std::core::Range` prefixes
+        // (via split on "|")
+        let ops_path = ["{{root}}", "std|core", "ops"];
 
         let is_range_path = |path: &Path| {
             let ident_names: Vec<_> = path.segments
@@ -394,24 +399,47 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     preceding.len() == 3 &&
                     preceding.iter()
                         .zip(ops_path.iter())
-                        .all(|(a, b)| a == b)
+                        .all(|(seg, match_seg)| {
+                            match_seg.split("|")
+                                .into_iter()
+                                .any(|ref spl_seg| seg == spl_seg)
+                        })
             } else {
                 false
             }
         };
 
-        match expr.node {
-            ExprKind::Struct(QPath::Resolved(None, ref path), _, _) |
-            ExprKind::Path(QPath::Resolved(None, ref path)) => {
-                return is_range_path(&path);
+        let is_range_struct_snippet = |span: &Span| {
+            // Tell if expression span snippet looks like an explicit
+            // Range struct or new() call.  This is to allow rejecting
+            // Ranges constructed with non-literals.
+            let source_map = self.tcx.sess.source_map();
+            let end_point = source_map.end_point(*span);
+
+            if let Ok(end_string) = source_map.span_to_snippet(end_point) {
+                end_string.ends_with("}") || end_string.ends_with(")")
+            } else {
+                false
             }
 
+        };
+
+        match expr.node {
+            // all built-in range literals but `..=` and `..`
+            // desugar to Structs, `..` desugars to its struct path
+            ExprKind::Struct(QPath::Resolved(None, ref path), _, _) |
+            ExprKind::Path(QPath::Resolved(None, ref path)) => {
+                return is_range_path(&path) && !is_range_struct_snippet(&expr.span);
+            }
+
+            // `..=` desugars into RangeInclusive::new(...)
             ExprKind::Call(ref func, _) => {
                 if let ExprKind::Path(QPath::TypeRelative(ref ty, ref segment)) = func.node {
                     if let TyKind::Path(QPath::Resolved(None, ref path)) = ty.node {
                         let calls_new = segment.ident.as_str() == "new";
 
-                        return is_range_path(&path) && calls_new;
+                        return is_range_path(&path) && calls_new &&
+                            !is_range_struct_snippet(&expr.span);
                     }
                 }
             }

@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// run-rustfix
-// error-pattern: error: `#[panic_handler]` function required, but not found
-// error-pattern: language item required, but not found: `panic_info`
+// error-pattern: `#[panic_handler]` function required, but not found
+// error-pattern: language item required, but not found: `eh_personality`
 
 
 // Regression test for #54505 - range borrowing suggestion had
