@@ -271,15 +271,14 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
 
         for data in constraint_sets {
             constraint_conversion::ConstraintConversion::new(
-                self.infcx.tcx,
+                self.infcx,
                 &self.universal_regions,
                 &self.region_bound_pairs,
                 self.implicit_region_bound,
                 self.param_env,
                 Locations::All(DUMMY_SP),
                 ConstraintCategory::Internal,
-                &mut self.constraints.outlives_constraints,
-                &mut self.constraints.type_tests,
+                &mut self.constraints,
             ).convert_all(&data);
         }
 

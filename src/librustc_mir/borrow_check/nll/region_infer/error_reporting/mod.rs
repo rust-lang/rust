@@ -594,6 +594,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     // Finds some region R such that `fr1: R` and `R` is live at
     // `elem`.
     crate fn find_sub_region_live_at(&self, fr1: RegionVid, elem: Location) -> RegionVid {
+        debug!("find_sub_region_live_at(fr1={:?}, elem={:?})", fr1, elem);
         // Find all paths
         let (_path, r) =
             self.find_constraint_paths_between_regions(fr1, |r| {

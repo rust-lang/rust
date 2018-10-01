@@ -1226,6 +1226,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         );
 
         let longer_fr_scc = self.constraint_sccs.scc(longer_fr);
+        debug!(
+            "check_bound_universal_region: longer_fr_scc={:?}",
+            longer_fr_scc,
+        );
 
         // If we have some bound universal region `'a`, then the only
         // elements it can contain is itself -- we don't know anything
@@ -1242,6 +1246,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             Some(v) => v,
             None => return,
         };
+        debug!("check_bound_universal_region: error_element = {:?}", error_element);
 
         // Find the region that introduced this `error_element`.
         let error_region = match error_element {

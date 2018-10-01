@@ -8,21 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
+use borrow_check::nll::constraints::OutlivesConstraint;
 use borrow_check::nll::region_infer::TypeTest;
-use borrow_check::nll::type_check::Locations;
+use borrow_check::nll::type_check::{Locations, MirTypeckRegionConstraints};
 use borrow_check::nll::universal_regions::UniversalRegions;
+use borrow_check::nll::ToRegionVid;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
 use rustc::infer::region_constraints::{GenericKind, VerifyBound};
-use rustc::infer::{self, SubregionOrigin};
+use rustc::infer::{self, InferCtxt, SubregionOrigin};
 use rustc::mir::ConstraintCategory;
 use rustc::ty::subst::UnpackedKind;
 use rustc::ty::{self, TyCtxt};
 use syntax_pos::DUMMY_SP;
 
 crate struct ConstraintConversion<'a, 'gcx: 'tcx, 'tcx: 'a> {
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     universal_regions: &'a UniversalRegions<'tcx>,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
@@ -30,32 +32,30 @@ crate struct ConstraintConversion<'a, 'gcx: 'tcx, 'tcx: 'a> {
     param_env: ty::ParamEnv<'tcx>,
     locations: Locations,
     category: ConstraintCategory,
-    outlives_constraints: &'a mut ConstraintSet,
-    type_tests: &'a mut Vec<TypeTest<'tcx>>,
+    constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
     crate fn new(
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
         universal_regions: &'a UniversalRegions<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
         locations: Locations,
         category: ConstraintCategory,
-        outlives_constraints: &'a mut ConstraintSet,
-        type_tests: &'a mut Vec<TypeTest<'tcx>>,
+        constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
     ) -> Self {
         Self {
-            tcx,
+            infcx,
+            tcx: infcx.tcx,
             universal_regions,
             region_bound_pairs,
             implicit_region_bound,
             param_env,
             locations,
             category,
-            outlives_constraints,
-            type_tests,
+            constraints,
         }
     }
 
@@ -113,7 +113,7 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
     }
 
     fn verify_to_type_test(
-        &self,
+        &mut self,
         generic_kind: GenericKind<'tcx>,
         region: ty::Region<'tcx>,
         verify_bound: VerifyBound<'tcx>,
@@ -128,22 +128,30 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn to_region_vid(&self, r: ty::Region<'tcx>) -> ty::RegionVid {
-        self.universal_regions.to_region_vid(r)
+    fn to_region_vid(&mut self, r: ty::Region<'tcx>) -> ty::RegionVid {
+        if let ty::RePlaceholder(placeholder) = r {
+            self.constraints
+                .placeholder_region(self.infcx, *placeholder)
+                .to_region_vid()
+        } else {
+            self.universal_regions.to_region_vid(r)
+        }
     }
 
     fn add_outlives(&mut self, sup: ty::RegionVid, sub: ty::RegionVid) {
-        self.outlives_constraints.push(OutlivesConstraint {
-            locations: self.locations,
-            category: self.category,
-            sub,
-            sup,
-        });
+        self.constraints
+            .outlives_constraints
+            .push(OutlivesConstraint {
+                locations: self.locations,
+                category: self.category,
+                sub,
+                sup,
+            });
     }
 
     fn add_type_test(&mut self, type_test: TypeTest<'tcx>) {
         debug!("add_type_test(type_test={:?})", type_test);
-        self.type_tests.push(type_test);
+        self.constraints.type_tests.push(type_test);
     }
 }
 
@@ -156,8 +164,8 @@ impl<'a, 'b, 'gcx, 'tcx> TypeOutlivesDelegate<'tcx>
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
     ) {
-        let b = self.universal_regions.to_region_vid(b);
-        let a = self.universal_regions.to_region_vid(a);
+        let b = self.to_region_vid(b);
+        let a = self.to_region_vid(a);
         self.add_outlives(b, a);
     }
 

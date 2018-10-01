@@ -16,6 +16,7 @@ use borrow_check::location::LocationTable;
 use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
 use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::values::LivenessValues;
+use borrow_check::nll::region_infer::values::PlaceholderIndex;
 use borrow_check::nll::region_infer::values::PlaceholderIndices;
 use borrow_check::nll::region_infer::values::RegionValueElements;
 use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
@@ -28,11 +29,12 @@ use borrow_check::nll::ToRegionVid;
 use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedPlaces;
+use either::Either;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::outlives::env::RegionBoundPairs;
-use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
+use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
 use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor};
@@ -44,13 +46,12 @@ use rustc::traits::{ObligationCause, PredicateObligations};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, Substs, UnpackedKind};
 use rustc::ty::{self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::indexed_vec::IndexVec;
 use std::rc::Rc;
 use std::{fmt, iter};
 use syntax_pos::{Span, DUMMY_SP};
 use transform::{MirPass, MirSource};
-
-use either::Either;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
@@ -127,6 +128,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     let implicit_region_bound = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
     let mut constraints = MirTypeckRegionConstraints {
         placeholder_indices: PlaceholderIndices::default(),
+        placeholder_index_to_region: IndexVec::default(),
         liveness_constraints: LivenessValues::new(elements),
         outlives_constraints: ConstraintSet::default(),
         closure_bounds_mapping: Default::default(),
@@ -738,7 +740,19 @@ crate struct MirTypeckResults<'tcx> {
 /// A collection of region constraints that must be satisfied for the
 /// program to be considered well-typed.
 crate struct MirTypeckRegionConstraints<'tcx> {
+    /// Maps from a `ty::Placeholder` to the corresponding
+    /// `PlaceholderIndex` bit that we will use for it.
+    ///
+    /// To keep everything in sync, do not insert this set
+    /// directly. Instead, use the `placeholder_region` helper.
     crate placeholder_indices: PlaceholderIndices,
+
+    /// Each time we add a placeholder to `placeholder_indices`, we
+    /// also create a corresponding "representative" region vid for
+    /// that wraps it. This vector tracks those. This way, when we
+    /// convert the same `ty::RePlaceholder(p)` twice, we can map to
+    /// the same underlying `RegionVid`.
+    crate placeholder_index_to_region: IndexVec<PlaceholderIndex, ty::Region<'tcx>>,
 
     /// In general, the type-checker is not responsible for enforcing
     /// liveness constraints; this job falls to the region inferencer,
@@ -755,6 +769,25 @@ crate struct MirTypeckRegionConstraints<'tcx> {
         FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>>,
 
     crate type_tests: Vec<TypeTest<'tcx>>,
+}
+
+impl MirTypeckRegionConstraints<'tcx> {
+    fn placeholder_region(
+        &mut self,
+        infcx: &InferCtxt<'_, '_, 'tcx>,
+        placeholder: ty::Placeholder,
+    ) -> ty::Region<'tcx> {
+        let placeholder_index = self.placeholder_indices.insert(placeholder);
+        match self.placeholder_index_to_region.get(placeholder_index) {
+            Some(&v) => v,
+            None => {
+                let origin = NLLRegionVariableOrigin::Placeholder(placeholder);
+                let region = infcx.next_nll_region_var(origin);
+                self.placeholder_index_to_region.push(region);
+                region
+            }
+        }
+    }
 }
 
 /// The `Locations` type summarizes *where* region constraints are
@@ -886,15 +919,14 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
         if let Some(ref mut borrowck_context) = self.borrowck_context {
             constraint_conversion::ConstraintConversion::new(
-                self.infcx.tcx,
+                self.infcx,
                 borrowck_context.universal_regions,
                 self.region_bound_pairs,
                 self.implicit_region_bound,
                 self.param_env,
                 locations,
                 category,
-                &mut borrowck_context.constraints.outlives_constraints,
-                &mut borrowck_context.constraints.type_tests,
+                &mut borrowck_context.constraints,
             ).convert_all(&data);
         }
     }

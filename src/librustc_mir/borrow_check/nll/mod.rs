@@ -134,6 +134,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     let var_origins = infcx.take_region_var_origins();
     let MirTypeckRegionConstraints {
         placeholder_indices,
+        placeholder_index_to_region: _,
         mut liveness_constraints,
         outlives_constraints,
         closure_bounds_mapping,
