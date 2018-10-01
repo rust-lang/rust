@@ -1221,7 +1221,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             if let Some(i) = arg_pos {
                 // The argument's `Ty`
                 (Some(&fn_like.decl().inputs[i]),
-                 i == 0 && fn_like.decl().has_implicit_self)
+                 i == 0 && fn_like.decl().implicit_self.has_implicit_self())
             } else {
                 (None, false)
             }

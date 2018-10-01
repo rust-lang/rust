@@ -125,8 +125,14 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
                             let ty_hir_id = fn_decl.inputs[index].hir_id;
                             let ty_span = tcx.hir.span(tcx.hir.hir_to_node_id(ty_hir_id));
                             opt_ty_info = Some(ty_span);
-                            self_arg = if index == 0 && fn_decl.has_implicit_self {
-                                Some(ImplicitSelfBinding)
+                            self_arg = if index == 0 && fn_decl.implicit_self.has_implicit_self() {
+                                match fn_decl.implicit_self {
+                                    hir::ImplicitSelfKind::Imm => Some(ImplicitSelfKind::Imm),
+                                    hir::ImplicitSelfKind::Mut => Some(ImplicitSelfKind::Mut),
+                                    hir::ImplicitSelfKind::ImmRef => Some(ImplicitSelfKind::ImmRef),
+                                    hir::ImplicitSelfKind::MutRef => Some(ImplicitSelfKind::MutRef),
+                                    _ => None,
+                                }
                             } else {
                                 None
                             };
@@ -508,12 +514,10 @@ fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 ///////////////////////////////////////////////////////////////////////////
 /// the main entry point for building MIR for a function
 
-struct ImplicitSelfBinding;
-
 struct ArgInfo<'gcx>(Ty<'gcx>,
                      Option<Span>,
                      Option<&'gcx hir::Pat>,
-                     Option<ImplicitSelfBinding>);
+                     Option<ImplicitSelfKind>);
 
 fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                                    fn_id: ast::NodeId,
@@ -797,8 +801,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     PatternKind::Binding { mutability, var, mode: BindingMode::ByValue, .. } => {
                         self.local_decls[local].mutability = mutability;
                         self.local_decls[local].is_user_variable =
-                            if let Some(ImplicitSelfBinding) = self_binding {
-                                Some(ClearCrossCrate::Set(BindingForm::ImplicitSelf))
+                            if let Some(kind) = self_binding {
+                                Some(ClearCrossCrate::Set(BindingForm::ImplicitSelf(*kind)))
                             } else {
                                 let binding_mode = ty::BindingMode::BindByValue(mutability.into());
                                 Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {

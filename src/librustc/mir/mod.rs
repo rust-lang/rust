@@ -583,9 +583,25 @@ pub enum BindingForm<'tcx> {
     /// This is a binding for a non-`self` binding, or a `self` that has an explicit type.
     Var(VarBindingForm<'tcx>),
     /// Binding for a `self`/`&self`/`&mut self` binding where the type is implicit.
-    ImplicitSelf,
+    ImplicitSelf(ImplicitSelfKind),
     /// Reference used in a guard expression to ensure immutability.
     RefForGuard,
+}
+
+/// Represents what type of implicit self a function has, if any.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+pub enum ImplicitSelfKind {
+    /// Represents a `fn x(self);`.
+    Imm,
+    /// Represents a `fn x(mut self);`.
+    Mut,
+    /// Represents a `fn x(&self);`.
+    ImmRef,
+    /// Represents a `fn x(&mut self);`.
+    MutRef,
+    /// Represents when a function does not have a self argument or
+    /// when a function has a `self: X` argument.
+    None
 }
 
 CloneTypeFoldableAndLiftImpls! { BindingForm<'tcx>, }
@@ -595,6 +611,14 @@ impl_stable_hash_for!(struct self::VarBindingForm<'tcx> {
     opt_ty_info,
     opt_match_place,
     pat_span
+});
+
+impl_stable_hash_for!(enum self::ImplicitSelfKind {
+    Imm,
+    Mut,
+    ImmRef,
+    MutRef,
+    None
 });
 
 mod binding_form_impl {
@@ -612,7 +636,7 @@ mod binding_form_impl {
 
             match self {
                 Var(binding) => binding.hash_stable(hcx, hasher),
-                ImplicitSelf => (),
+                ImplicitSelf(kind) => kind.hash_stable(hcx, hasher),
                 RefForGuard => (),
             }
         }
@@ -775,10 +799,9 @@ impl<'tcx> LocalDecl<'tcx> {
                 pat_span: _,
             }))) => true,
 
-            // FIXME: might be able to thread the distinction between
-            // `self`/`mut self`/`&self`/`&mut self` into the
-            // `BindingForm::ImplicitSelf` variant, (and then return
-            // true here for solely the first case).
+            Some(ClearCrossCrate::Set(BindingForm::ImplicitSelf(ImplicitSelfKind::Imm)))
+                => true,
+
             _ => false,
         }
     }
@@ -795,7 +818,7 @@ impl<'tcx> LocalDecl<'tcx> {
                 pat_span: _,
             }))) => true,
 
-            Some(ClearCrossCrate::Set(BindingForm::ImplicitSelf)) => true,
+            Some(ClearCrossCrate::Set(BindingForm::ImplicitSelf(_))) => true,
 
             _ => false,
         }

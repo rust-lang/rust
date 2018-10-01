@@ -270,7 +270,7 @@ trait TraitChangeModeSelfOwnToMut: Sized {
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
 trait TraitChangeModeSelfOwnToMut: Sized {
-    #[rustc_clean(label="Hir", cfg="cfail2")]
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
     #[rustc_dirty(label="HirBody", cfg="cfail2")]
     #[rustc_clean(label="HirBody", cfg="cfail3")]

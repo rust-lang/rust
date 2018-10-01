@@ -316,7 +316,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             {
                 let local_decl = &self.mir.local_decls[*local];
                 let suggestion = match local_decl.is_user_variable.as_ref().unwrap() {
-                    ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf) => {
+                    ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf(_)) => {
                         Some(suggest_ampmut_self(self.infcx.tcx, local_decl))
                     }
 

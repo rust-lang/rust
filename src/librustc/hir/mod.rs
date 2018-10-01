@@ -1769,9 +1769,34 @@ pub struct FnDecl {
     pub inputs: HirVec<Ty>,
     pub output: FunctionRetTy,
     pub variadic: bool,
-    /// True if this function has an `self`, `&self` or `&mut self` receiver
-    /// (but not a `self: Xxx` one).
-    pub has_implicit_self: bool,
+    /// Does the function have an implicit self?
+    pub implicit_self: ImplicitSelfKind,
+}
+
+/// Represents what type of implicit self a function has, if any.
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
+pub enum ImplicitSelfKind {
+    /// Represents a `fn x(self);`.
+    Imm,
+    /// Represents a `fn x(mut self);`.
+    Mut,
+    /// Represents a `fn x(&self);`.
+    ImmRef,
+    /// Represents a `fn x(&mut self);`.
+    MutRef,
+    /// Represents when a function does not have a self argument or
+    /// when a function has a `self: X` argument.
+    None
+}
+
+impl ImplicitSelfKind {
+    /// Does this represent an implicit self?
+    pub fn has_implicit_self(&self) -> bool {
+        match *self {
+            ImplicitSelfKind::None => false,
+            _ => true,
+        }
+    }
 }
 
 /// Is the trait definition an auto trait?

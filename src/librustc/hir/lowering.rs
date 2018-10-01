@@ -2011,11 +2011,31 @@ impl<'a> LoweringContext<'a> {
             inputs,
             output,
             variadic: decl.variadic,
-            has_implicit_self: decl.inputs.get(0).map_or(false, |arg| match arg.ty.node {
-                TyKind::ImplicitSelf => true,
-                TyKind::Rptr(_, ref mt) => mt.ty.node.is_implicit_self(),
-                _ => false,
-            }),
+            implicit_self: decl.inputs.get(0).map_or(
+                hir::ImplicitSelfKind::None,
+                |arg| {
+                    let is_mutable_pat = match arg.pat.node {
+                        PatKind::Ident(BindingMode::ByValue(mt), _, _) |
+                        PatKind::Ident(BindingMode::ByRef(mt), _, _) =>
+                            mt == Mutability::Mutable,
+                        _ => false,
+                    };
+
+                    match arg.ty.node {
+                        TyKind::ImplicitSelf if is_mutable_pat => hir::ImplicitSelfKind::Mut,
+                        TyKind::ImplicitSelf => hir::ImplicitSelfKind::Imm,
+                        // Given we are only considering `ImplicitSelf` types, we needn't consider
+                        // the case where we have a mutable pattern to a reference as that would
+                        // no longer be an `ImplicitSelf`.
+                        TyKind::Rptr(_, ref mt) if mt.ty.node.is_implicit_self() &&
+                            mt.mutbl == ast::Mutability::Mutable =>
+                                hir::ImplicitSelfKind::MutRef,
+                        TyKind::Rptr(_, ref mt) if mt.ty.node.is_implicit_self() =>
+                            hir::ImplicitSelfKind::ImmRef,
+                        _ => hir::ImplicitSelfKind::None,
+                    }
+                },
+            ),
         })
     }
 
