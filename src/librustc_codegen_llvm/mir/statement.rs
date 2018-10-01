@@ -15,6 +15,7 @@ use builder::Builder;
 
 use super::FunctionCx;
 use super::LocalRef;
+use super::OperandValue;
 
 impl FunctionCx<'a, 'll, 'tcx> {
     pub fn codegen_statement(&mut self,
@@ -82,14 +83,27 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     self.codegen_place(&bx, output)
                 }).collect();
 
-                let input_vals = inputs.iter().map(|input| {
-                    self.codegen_operand(&bx, input).immediate()
-                }).collect();
+                let input_vals = inputs.iter()
+                    .try_fold(Vec::with_capacity(inputs.len()), |mut acc, input| {
+                        let op = self.codegen_operand(&bx, input);
+                        if let OperandValue::Immediate(_) = op.val {
+                            acc.push(op.immediate());
+                            Ok(acc)
+                        } else {
+                            Err(op)
+                        }
+                });
 
-                let res = asm::codegen_inline_asm(&bx, asm, outputs, input_vals);
-                if !res {
-                    span_err!(bx.sess(), statement.source_info.span, E0668,
-                              "malformed inline assembly");
+                if input_vals.is_err() {
+                   span_err!(bx.sess(), statement.source_info.span, E0669,
+                             "invalid value for constraint in inline assembly");
+                } else {
+                    let input_vals = input_vals.unwrap();
+                    let res = asm::codegen_inline_asm(&bx, asm, outputs, input_vals);
+                    if !res {
+                        span_err!(bx.sess(), statement.source_info.span, E0668,
+                                  "malformed inline assembly");
+                    }
                 }
                 bx
             }
