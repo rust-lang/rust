@@ -167,12 +167,20 @@ impl CanonicalizeRegionMode for CanonicalizeQueryResponse {
     ) -> ty::Region<'tcx> {
         match r {
             ty::ReFree(_) | ty::ReEmpty | ty::ReErased | ty::ReStatic | ty::ReEarlyBound(..) => r,
-            ty::RePlaceholder(placeholder) => {
-                let info = CanonicalVarInfo {
+            ty::RePlaceholder(placeholder) => canonicalizer.canonical_var_for_region(
+                CanonicalVarInfo {
                     kind: CanonicalVarKind::PlaceholderRegion(*placeholder),
-                };
-                let cvar = canonicalizer.canonical_var(info, r.into());
-                canonicalizer.tcx.mk_region(ty::ReCanonical(cvar.var))
+                },
+                r,
+            ),
+            ty::ReVar(vid) => {
+                let universe = canonicalizer.region_var_universe(*vid);
+                canonicalizer.canonical_var_for_region(
+                    CanonicalVarInfo {
+                        kind: CanonicalVarKind::Region(universe),
+                    },
+                    r,
+                )
             }
             _ => {
                 // Other than `'static` or `'empty`, the query
@@ -259,7 +267,8 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
                      opportunistically resolved to {:?}",
                     vid, r
                 );
-                self.canonical_var_for_region_in_root_universe(r)
+                self.canonicalize_region_mode
+                    .canonicalize_free_region(self, r)
             }
 
             ty::ReStatic
@@ -483,9 +492,29 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         &mut self,
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
-        let info = CanonicalVarInfo {
-            kind: CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
-        };
+        self.canonical_var_for_region(
+            CanonicalVarInfo {
+                kind: CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
+            },
+            r,
+        )
+    }
+
+    /// Returns the universe in which `vid` is defined.
+    fn region_var_universe(&self, vid: ty::RegionVid) -> ty::UniverseIndex {
+        self.infcx
+            .unwrap()
+            .borrow_region_constraints()
+            .var_universe(vid)
+    }
+
+    /// Create a canonical variable (with the given `info`)
+    /// representing the region `r`; return a region referencing it.
+    fn canonical_var_for_region(
+        &mut self,
+        info: CanonicalVarInfo,
+        r: ty::Region<'tcx>,
+    ) -> ty::Region<'tcx> {
         let b = self.canonical_var(info, r.into());
         debug_assert_eq!(ty::INNERMOST, b.level);
         self.tcx().mk_region(ty::ReCanonical(b.var))
