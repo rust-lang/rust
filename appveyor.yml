@@ -82,11 +82,13 @@ environment:
   # 32/64 bit MSVC and GNU deployment
   - RUST_CONFIGURE_ARGS: >
       --build=x86_64-pc-windows-msvc
+      --target=x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
       --enable-full-tools
       --enable-profiler
     SCRIPT: python x.py dist
     DEPLOY: 1
     CI_JOB_NAME: dist-x86_64-msvc
+    APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017 Preview
   - RUST_CONFIGURE_ARGS: >
       --build=i686-pc-windows-msvc
       --target=i586-pc-windows-msvc
