@@ -18,7 +18,7 @@ use lint::context::CheckLintNameResult;
 use lint::{self, Lint, LintId, Level, LintSource};
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
                                            StableHasher, StableHasherResult};
-use session::{config::nightly_options, Session};
+use session::Session;
 use syntax::ast;
 use syntax::attr;
 use syntax::source_map::MultiSpan;
@@ -284,13 +284,7 @@ impl<'a> LintLevelsBuilder<'a> {
                                     "change it to",
                                     new_lint_name.to_string(),
                                     Applicability::MachineApplicable,
-                                );
-
-                                if nightly_options::is_nightly_build() {
-                                    err.emit();
-                                } else {
-                                    err.cancel();
-                                }
+                                ).emit();
 
                                 let src = LintSource::Node(Symbol::intern(&new_lint_name), li.span);
                                 for id in ids {
