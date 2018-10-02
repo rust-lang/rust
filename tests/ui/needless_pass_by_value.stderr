@@ -184,5 +184,17 @@ help: consider taking a reference instead
 129 |     let CopyWrapper(s) = *z; // moved
     |
 
-error: aborting due to 20 previous errors
+error: this argument is passed by value, but not consumed in the function body
+   --> $DIR/needless_pass_by_value.rs:140:40
+    |
+140 | fn some_fun<'b, S: Bar<'b, ()>>(_item: S) {}
+    |                                        ^ help: consider taking a reference instead: `&S`
+
+error: this argument is passed by value, but not consumed in the function body
+   --> $DIR/needless_pass_by_value.rs:145:20
+    |
+145 | fn more_fun(_item: impl Club<'static, i32>) {}
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^ help: consider taking a reference instead: `&impl Club<'static, i32>`
+
+error: aborting due to 22 previous errors
 

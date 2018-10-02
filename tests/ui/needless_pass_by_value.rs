@@ -134,4 +134,14 @@ fn test_destructure_copy(x: CopyWrapper, y: CopyWrapper, z: CopyWrapper) {
     println!("{}", t);
 }
 
+// The following 3 lines should not cause an ICE. See #2831
+trait Bar<'a, A> {}
+impl<'b, T> Bar<'b, T> for T {}
+fn some_fun<'b, S: Bar<'b, ()>>(_item: S) {}
+
+// Also this should not cause an ICE. See #2831
+trait Club<'a, A> {}
+impl<T> Club<'static, T> for T {}
+fn more_fun(_item: impl Club<'static, i32>) {}
+
 fn main() {}

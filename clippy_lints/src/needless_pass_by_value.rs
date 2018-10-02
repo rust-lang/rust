@@ -174,15 +174,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                 (
                     preds.iter().any(|t| t.def_id() == borrow_trait),
                     !preds.is_empty() && preds.iter().all(|t| {
+                        let ty_params = &t.skip_binder().trait_ref.substs.iter().skip(1)
+                            .cloned()
+                            .collect::<Vec<_>>();
                         implements_trait(
                             cx,
                             cx.tcx.mk_imm_ref(&RegionKind::ReErased, ty),
                             t.def_id(),
-                            &t.skip_binder()
-                                .input_types()
-                                .skip(1)
-                                .map(|ty| ty.into())
-                                .collect::<Vec<_>>(),
+                            ty_params
                         )
                     }),
                 )
