@@ -11,7 +11,7 @@
 use std::fmt::Write;
 
 use syntax_pos::symbol::Symbol;
-use rustc::ty::layout::{self, Size, Primitive};
+use rustc::ty::layout::{self, Size};
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashSet;
 use rustc::mir::interpret::{
@@ -19,7 +19,7 @@ use rustc::mir::interpret::{
 };
 
 use super::{
-    OpTy, Machine, EvalContext, ScalarMaybeUndef
+    OpTy, MPlaceTy, Machine, EvalContext, ScalarMaybeUndef
 };
 
 macro_rules! validation_failure{
@@ -61,6 +61,23 @@ pub enum PathElem {
     TupleElem(usize),
     Deref,
     Tag,
+}
+
+/// State for tracking recursive validation of references
+pub struct RefTracking<'tcx> {
+    pub seen: FxHashSet<(OpTy<'tcx>)>,
+    pub todo: Vec<(OpTy<'tcx>, Vec<PathElem>)>,
+}
+
+impl<'tcx> RefTracking<'tcx> {
+    pub fn new(op: OpTy<'tcx>) -> Self {
+        let mut ref_tracking = RefTracking {
+            seen: FxHashSet(),
+            todo: vec![(op, Vec::new())],
+        };
+        ref_tracking.seen.insert(op);
+        ref_tracking
+    }
 }
 
 // Adding a Deref and making a copy of the path to be put into the queue
@@ -205,6 +222,41 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         }
     }
 
+    /// Validate a reference, potentially recursively. `place` is assumed to already be
+    /// dereferenced, i.e. it describes the target.
+    fn validate_ref(
+        &self,
+        place: MPlaceTy<'tcx>,
+        path: &mut Vec<PathElem>,
+        ref_tracking: Option<&mut RefTracking<'tcx>>,
+    ) -> EvalResult<'tcx> {
+        // Skip recursion for some external statics
+        if let Scalar::Ptr(ptr) = place.ptr {
+            let alloc_kind = self.tcx.alloc_map.lock().get(ptr.alloc_id);
+            if let Some(AllocType::Static(did)) = alloc_kind {
+                // statics from other crates are already checked.
+                // they might be checked at a different type, but for now we want
+                // to avoid recursing too deeply.
+                // extern statics cannot be validated as they have no body.
+                if !did.is_local() || self.tcx.is_foreign_item(did) {
+                    return Ok(());
+                }
+            }
+        }
+        // Check if we have encountered this pointer+layout combination
+        // before.  Proceed recursively even for integer pointers, no
+        // reason to skip them! They are valid for some ZST, but not for others
+        // (e.g. `!` is a ZST).
+        let op = place.into();
+        if let Some(ref_tracking) = ref_tracking {
+            if ref_tracking.seen.insert(op) {
+                trace!("Recursing below ptr {:#?}", *op);
+                ref_tracking.todo.push((op, path_clone_and_deref(path)));
+            }
+        }
+        Ok(())
+    }
+
     /// This function checks the data at `op`.
     /// It will error if the bits at the destination do not match the ones described by the layout.
     /// The `path` may be pushed to, but the part that is present when the function
@@ -213,8 +265,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         &self,
         dest: OpTy<'tcx>,
         path: &mut Vec<PathElem>,
-        seen: &mut FxHashSet<(OpTy<'tcx>)>,
-        todo: &mut Vec<(OpTy<'tcx>, Vec<PathElem>)>,
+        mut ref_tracking: Option<&mut RefTracking<'tcx>>,
     ) -> EvalResult<'tcx> {
         trace!("validate_operand: {:?}, {:#?}", *dest, dest.layout);
 
@@ -273,7 +324,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
         // Validate all fields
         match dest.layout.fields {
-            // primitives are unions with zero fields
+            // Primitives appear as Union with 0 fields -- except for fat pointers.
             // We still check `layout.fields`, not `layout.abi`, because `layout.abi`
             // is `Scalar` for newtypes around scalars, but we want to descend through the
             // fields to get a proper `path`.
@@ -302,32 +353,61 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         };
                         let scalar = value.to_scalar_or_undef();
                         self.validate_scalar(scalar, size, scalar_layout, &path, dest.layout.ty)?;
-                        if scalar_layout.value == Primitive::Pointer {
-                            // ignore integer pointers, we can't reason about the final hardware
-                            if let Scalar::Ptr(ptr) = scalar.not_undef()? {
-                                let alloc_kind = self.tcx.alloc_map.lock().get(ptr.alloc_id);
-                                if let Some(AllocType::Static(did)) = alloc_kind {
-                                    // statics from other crates are already checked.
-                                    // extern statics cannot be validated as they have no body.
-                                    if !did.is_local() || self.tcx.is_foreign_item(did) {
-                                        return Ok(());
-                                    }
-                                }
-                                if value.layout.ty.builtin_deref(false).is_some() {
-                                    let ptr_op = self.ref_to_mplace(value)?.into();
-                                    // we have not encountered this pointer+layout combination
-                                    // before.
-                                    if seen.insert(ptr_op) {
-                                        trace!("Recursing below ptr {:#?}", *value);
-                                        todo.push((ptr_op, path_clone_and_deref(path)));
-                                    }
-                                }
-                            }
+                        // Recursively check *safe* references
+                        if dest.layout.ty.builtin_deref(true).is_some() &&
+                            !dest.layout.ty.is_unsafe_ptr()
+                        {
+                            self.validate_ref(self.ref_to_mplace(value)?, path, ref_tracking)?;
                         }
                     },
                     _ => bug!("bad abi for FieldPlacement::Union(0): {:#?}", dest.layout.abi),
                 }
             }
+            layout::FieldPlacement::Arbitrary { .. }
+                if dest.layout.ty.builtin_deref(true).is_some() =>
+            {
+                // This is a fat pointer.
+                let ptr = match self.read_value(dest.into())
+                    .and_then(|val| self.ref_to_mplace(val))
+                {
+                    Ok(ptr) => ptr,
+                    Err(_) =>
+                        return validation_failure!(
+                            "undefined location or metadata in fat pointer", path
+                        ),
+                };
+                // check metadata early, for better diagnostics
+                match self.tcx.struct_tail(ptr.layout.ty).sty {
+                    ty::Dynamic(..) => {
+                        match ptr.extra.unwrap().to_ptr() {
+                            Ok(_) => {},
+                            Err(_) =>
+                                return validation_failure!(
+                                    "non-pointer vtable in fat pointer", path
+                                ),
+                        }
+                        // FIXME: More checks for the vtable.
+                    }
+                    ty::Slice(..) | ty::Str => {
+                        match ptr.extra.unwrap().to_usize(self) {
+                            Ok(_) => {},
+                            Err(_) =>
+                                return validation_failure!(
+                                    "non-integer slice length in fat pointer", path
+                                ),
+                        }
+                    }
+                    _ =>
+                        bug!("Unexpected unsized type tail: {:?}",
+                            self.tcx.struct_tail(ptr.layout.ty)
+                        ),
+                }
+                // for safe ptrs, recursively check it
+                if !dest.layout.ty.is_unsafe_ptr() {
+                    self.validate_ref(ptr, path, ref_tracking)?;
+                }
+            }
+            // Compound data structures
             layout::FieldPlacement::Union(_) => {
                 // We can't check unions, their bits are allowed to be anything.
                 // The fields don't need to correspond to any bit pattern of the union's fields.
@@ -411,7 +491,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         for (i, field) in self.mplace_array_fields(dest)?.enumerate() {
                             let field = field?;
                             path.push(PathElem::ArrayElem(i));
-                            self.validate_operand(field.into(), path, seen, todo)?;
+                            self.validate_operand(
+                                field.into(),
+                                path,
+                                ref_tracking.as_mut().map(|r| &mut **r)
+                            )?;
                             path.truncate(path_len);
                         }
                     }
@@ -421,60 +505,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 // An empty array.  Nothing to do.
             }
             layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
-                // Fat pointers are treated like pointers, not aggregates.
-                if dest.layout.ty.builtin_deref(true).is_some() {
-                    // This is a fat pointer.
-                    let ptr = match self.read_value(dest.into())
-                        .and_then(|val| self.ref_to_mplace(val))
-                    {
-                        Ok(ptr) => ptr,
-                        Err(_) =>
-                            return validation_failure!(
-                                "undefined location or metadata in fat pointer", path
-                            ),
-                    };
-                    // check metadata early, for better diagnostics
-                    match self.tcx.struct_tail(ptr.layout.ty).sty {
-                        ty::Dynamic(..) => {
-                            match ptr.extra.unwrap().to_ptr() {
-                                Ok(_) => {},
-                                Err(_) =>
-                                    return validation_failure!(
-                                        "non-pointer vtable in fat pointer", path
-                                    ),
-                            }
-                            // FIXME: More checks for the vtable.
-                        }
-                        ty::Slice(..) | ty::Str => {
-                            match ptr.extra.unwrap().to_usize(self) {
-                                Ok(_) => {},
-                                Err(_) =>
-                                    return validation_failure!(
-                                        "non-integer slice length in fat pointer", path
-                                    ),
-                            }
-                        }
-                        _ =>
-                            bug!("Unexpected unsized type tail: {:?}",
-                                self.tcx.struct_tail(ptr.layout.ty)
-                            ),
-                    }
-                    // for safe ptrs, recursively check it
-                    if !dest.layout.ty.is_unsafe_ptr() {
-                        let ptr = ptr.into();
-                        if seen.insert(ptr) {
-                            trace!("Recursing below fat ptr {:?}", ptr);
-                            todo.push((ptr, path_clone_and_deref(path)));
-                        }
-                    }
-                } else {
-                    // Not a pointer, perform regular aggregate handling below
-                    for i in 0..offsets.len() {
-                        let field = self.operand_field(dest, i as u64)?;
-                        path.push(self.aggregate_field_path_elem(dest.layout.ty, variant, i));
-                        self.validate_operand(field, path, seen, todo)?;
-                        path.truncate(path_len);
-                    }
+                for i in 0..offsets.len() {
+                    let field = self.operand_field(dest, i as u64)?;
+                    path.push(self.aggregate_field_path_elem(dest.layout.ty, variant, i));
+                    self.validate_operand(field, path, ref_tracking.as_mut().map(|r| &mut **r))?;
+                    path.truncate(path_len);
                 }
             }
         }
