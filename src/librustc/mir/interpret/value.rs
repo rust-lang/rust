@@ -24,15 +24,18 @@ pub enum ConstValue<'tcx> {
     /// to allow HIR creation to happen for everything before needing to be able to run constant
     /// evaluation
     Unevaluated(DefId, &'tcx Substs<'tcx>),
+
     /// Used only for types with layout::abi::Scalar ABI and ZSTs
     ///
     /// Not using the enum `Value` to encode that this must not be `Undef`
     Scalar(Scalar),
-    /// Used only for types with layout::abi::ScalarPair
+
+    /// Used only for *fat pointers* with layout::abi::ScalarPair
     ///
-    /// The second field may be undef in case of `Option<usize>::None`
-    ScalarPair(Scalar, ScalarMaybeUndef),
-    /// Used only for the remaining cases. An allocation + offset into the allocation.
+    /// Needed for pattern matching code related to slices and strings.
+    ScalarPair(Scalar, Scalar),
+
+    /// An allocation + offset into the allocation.
     /// Invariant: The AllocId matches the allocation.
     ByRef(AllocId, &'tcx Allocation, Size),
 }
@@ -67,12 +70,12 @@ impl<'tcx> ConstValue<'tcx> {
         ConstValue::ScalarPair(val, Scalar::Bits {
             bits: len as u128,
             size: cx.data_layout().pointer_size.bytes() as u8,
-        }.into())
+        })
     }
 
     #[inline]
     pub fn new_dyn_trait(val: Scalar, vtable: Pointer) -> Self {
-        ConstValue::ScalarPair(val, Scalar::Ptr(vtable).into())
+        ConstValue::ScalarPair(val, Scalar::Ptr(vtable))
     }
 }
 

@@ -1124,13 +1124,6 @@ pub fn compare_const_vals<'a, 'tcx>(
                         len_b,
                     ),
                 ) if ptr_a.offset.bytes() == 0 && ptr_b.offset.bytes() == 0 => {
-                    let len_a = len_a.not_undef().ok();
-                    let len_b = len_b.not_undef().ok();
-                    if len_a.is_none() || len_b.is_none() {
-                        tcx.sess.struct_err("str slice len is undef").delay_as_bug();
-                    }
-                    let len_a = len_a?;
-                    let len_b = len_b?;
                     if let Ok(len_a) = len_a.to_bits(tcx.data_layout.pointer_size) {
                         if let Ok(len_b) = len_b.to_bits(tcx.data_layout.pointer_size) {
                             if len_a == len_b {
