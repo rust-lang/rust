@@ -38,6 +38,7 @@ use rustc_mir::util::borrowck_errors::{BorrowckErrors, Origin};
 use rustc_mir::util::suggest_ref_mut;
 use rustc::util::nodemap::FxHashSet;
 
+use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::rc::Rc;
@@ -808,34 +809,34 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
         match err.code {
             err_mutbl => {
-                let descr = match err.cmt.note {
+                let descr: Cow<'static, str> = match err.cmt.note {
                     mc::NoteClosureEnv(_) | mc::NoteUpvarRef(_) => {
-                        self.cmt_to_string(&err.cmt)
+                        self.cmt_to_cow_str(&err.cmt)
                     }
                     _ => match opt_loan_path_is_field(&err.cmt) {
                         (None, true) => {
                             format!("{} of {} binding",
-                                    self.cmt_to_string(&err.cmt),
-                                    err.cmt.mutbl.to_user_str())
+                                    self.cmt_to_cow_str(&err.cmt),
+                                    err.cmt.mutbl.to_user_str()).into()
 
                         }
                         (None, false) => {
                             format!("{} {}",
                                     err.cmt.mutbl.to_user_str(),
-                                    self.cmt_to_string(&err.cmt))
+                                    self.cmt_to_cow_str(&err.cmt)).into()
 
                         }
                         (Some(lp), true) => {
                             format!("{} `{}` of {} binding",
-                                    self.cmt_to_string(&err.cmt),
+                                    self.cmt_to_cow_str(&err.cmt),
                                     self.loan_path_to_string(&lp),
-                                    err.cmt.mutbl.to_user_str())
+                                    err.cmt.mutbl.to_user_str()).into()
                         }
                         (Some(lp), false) => {
                             format!("{} {} `{}`",
                                     err.cmt.mutbl.to_user_str(),
-                                    self.cmt_to_string(&err.cmt),
-                                    self.loan_path_to_string(&lp))
+                                    self.cmt_to_cow_str(&err.cmt),
+                                    self.loan_path_to_string(&lp)).into()
                         }
                     }
                 };
@@ -1058,11 +1059,11 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             err_borrowed_pointer_too_short(loan_scope, ptr_scope) => {
                 let descr = self.cmt_to_path_or_string(err.cmt);
                 let mut db = self.lifetime_too_short_for_reborrow(error_span, &descr, Origin::Ast);
-                let descr = match opt_loan_path(&err.cmt) {
+                let descr: Cow<'static, str> = match opt_loan_path(&err.cmt) {
                     Some(lp) => {
-                        format!("`{}`", self.loan_path_to_string(&lp))
+                        format!("`{}`", self.loan_path_to_string(&lp)).into()
                     }
-                    None => self.cmt_to_string(&err.cmt),
+                    None => self.cmt_to_cow_str(&err.cmt)
                 };
                 self.tcx.note_and_explain_region(
                     &self.region_scope_tree,
@@ -1477,14 +1478,14 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         result
     }
 
-    pub fn cmt_to_string(&self, cmt: &mc::cmt_<'tcx>) -> String {
+    pub fn cmt_to_cow_str(&self, cmt: &mc::cmt_<'tcx>) -> Cow<'static, str> {
         cmt.descriptive_string(self.tcx)
     }
 
     pub fn cmt_to_path_or_string(&self, cmt: &mc::cmt_<'tcx>) -> String {
         match opt_loan_path(cmt) {
             Some(lp) => format!("`{}`", self.loan_path_to_string(&lp)),
-            None => self.cmt_to_string(cmt),
+            None => self.cmt_to_cow_str(cmt).into_owned(),
         }
     }
 }

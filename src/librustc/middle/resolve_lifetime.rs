@@ -25,6 +25,7 @@ use errors::DiagnosticBuilder;
 use rustc::lint;
 use rustc_data_structures::sync::Lrc;
 use session::Session;
+use std::borrow::Cow;
 use std::cell::Cell;
 use std::mem::replace;
 use syntax::ast;
@@ -1250,8 +1251,8 @@ fn compute_object_lifetime_defaults(
                     let object_lifetime_default_reprs: String = result
                         .iter()
                         .map(|set| match *set {
-                            Set1::Empty => "BaseDefault".to_string(),
-                            Set1::One(Region::Static) => "'static".to_string(),
+                            Set1::Empty => "BaseDefault".into(),
+                            Set1::One(Region::Static) => "'static".into(),
                             Set1::One(Region::EarlyBound(mut i, _, _)) => {
                                 generics.params.iter().find_map(|param| match param.kind {
                                         GenericParamKind::Lifetime { .. } => {
@@ -1265,9 +1266,9 @@ fn compute_object_lifetime_defaults(
                                     }).unwrap()
                             }
                             Set1::One(_) => bug!(),
-                            Set1::Many => "Ambiguous".to_string(),
+                            Set1::Many => "Ambiguous".into(),
                         })
-                        .collect::<Vec<String>>()
+                        .collect::<Vec<Cow<'static, str>>>()
                         .join(",");
                     tcx.sess.span_err(item.span, &object_lifetime_default_reprs);
                 }
@@ -2652,10 +2653,10 @@ pub fn report_missing_lifetime_specifiers(
         if count > 1 { "s" } else { "" }
     );
 
-    let msg = if count > 1 {
-        format!("expected {} lifetime parameters", count)
+    let msg: Cow<'static, str> = if count > 1 {
+        format!("expected {} lifetime parameters", count).into()
     } else {
-        "expected lifetime parameter".to_string()
+        "expected lifetime parameter".into()
     };
 
     err.span_label(span, msg);

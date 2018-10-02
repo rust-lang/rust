@@ -83,6 +83,7 @@ use hir;
 use syntax::ast::{self, Name};
 use syntax_pos::Span;
 
+use std::borrow::Cow;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use rustc_data_structures::sync::Lrc;
@@ -1489,59 +1490,59 @@ impl<'tcx> cmt_<'tcx> {
         }
     }
 
-    pub fn descriptive_string(&self, tcx: TyCtxt<'_, '_, '_>) -> String {
+    pub fn descriptive_string(&self, tcx: TyCtxt<'_, '_, '_>) -> Cow<'static, str> {
         match self.cat {
             Categorization::StaticItem => {
-                "static item".to_string()
+                "static item".into()
             }
             Categorization::Rvalue(..) => {
-                "non-place".to_string()
+                "non-place".into()
             }
             Categorization::Local(vid) => {
                 if tcx.hir.is_argument(vid) {
-                    "argument".to_string()
+                    "argument"
                 } else {
-                    "local variable".to_string()
-                }
+                    "local variable"
+                }.into()
             }
             Categorization::Deref(_, pk) => {
                 match self.upvar_cat() {
                     Some(&Categorization::Upvar(ref var)) => {
-                        var.to_string()
+                        var.to_string().into()
                     }
                     Some(_) => bug!(),
                     None => {
                         match pk {
                             Unique => {
-                                "`Box` content".to_string()
+                                "`Box` content"
                             }
                             UnsafePtr(..) => {
-                                "dereference of raw pointer".to_string()
+                                "dereference of raw pointer"
                             }
                             BorrowedPtr(..) => {
                                 match self.note {
-                                    NoteIndex => "indexed content".to_string(),
-                                    _ => "borrowed content".to_string(),
+                                    NoteIndex => "indexed content",
+                                    _ => "borrowed content"
                                 }
                             }
-                        }
+                        }.into()
                     }
                 }
             }
             Categorization::Interior(_, InteriorField(..)) => {
-                "field".to_string()
+                "field".into()
             }
             Categorization::Interior(_, InteriorElement(InteriorOffsetKind::Index)) => {
-                "indexed content".to_string()
+                "indexed content".into()
             }
             Categorization::Interior(_, InteriorElement(InteriorOffsetKind::Pattern)) => {
-                "pattern-bound indexed content".to_string()
+                "pattern-bound indexed content".into()
             }
             Categorization::Upvar(ref var) => {
-                var.to_string()
+                var.to_string().into()
             }
             Categorization::Downcast(ref cmt, _) => {
-                cmt.descriptive_string(tcx)
+                cmt.descriptive_string(tcx).into()
             }
         }
     }
