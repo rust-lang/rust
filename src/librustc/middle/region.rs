@@ -459,13 +459,13 @@ impl<'tcx> ScopeTree {
         }
     }
 
-    pub fn each_encl_scope<E>(&self, mut e:E) where E: FnMut(Scope, Scope) {
+    pub fn each_encl_scope<E>(&self, mut e: E) where E: FnMut(Scope, Scope) {
         for (&child, &parent) in &self.parent_map {
             e(child, parent.0)
         }
     }
 
-    pub fn each_var_scope<E>(&self, mut e:E) where E: FnMut(&hir::ItemLocalId, Scope) {
+    pub fn each_var_scope<E>(&self, mut e: E) where E: FnMut(&hir::ItemLocalId, Scope) {
         for (child, &parent) in self.var_map.iter() {
             e(child, parent)
         }
@@ -557,8 +557,7 @@ impl<'tcx> ScopeTree {
         scope
     }
 
-    pub fn scopes_intersect(&self, scope1: Scope, scope2: Scope)
-                            -> bool {
+    pub fn scopes_intersect(&self, scope1: Scope, scope2: Scope) -> bool {
         self.is_subscope_of(scope1, scope2) ||
         self.is_subscope_of(scope2, scope1)
     }
@@ -582,14 +581,13 @@ impl<'tcx> ScopeTree {
             }
         }
 
-        debug!("is_subscope_of({:?}, {:?})=true",
-               subscope, superscope);
+        debug!("is_subscope_of({:?}, {:?})=true", subscope, superscope);
 
         return true;
     }
 
     /// Returns the id of the innermost containing body
-    pub fn containing_body(&self, mut scope: Scope)-> Option<hir::ItemLocalId> {
+    pub fn containing_body(&self, mut scope: Scope) -> Option<hir::ItemLocalId> {
         loop {
             if let ScopeData::CallSite = scope.data {
                 return Some(scope.item_local_id());
@@ -662,8 +660,8 @@ impl<'tcx> ScopeTree {
     /// Assuming that the provided region was defined within this `ScopeTree`,
     /// returns the outermost `Scope` that the region outlives.
     pub fn early_free_scope<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                       br: &ty::EarlyBoundRegion)
-                                       -> Scope {
+                                      br: &ty::EarlyBoundRegion)
+                                      -> Scope {
         let param_owner = tcx.parent_def_id(br.def_id).unwrap();
 
         let param_owner_id = tcx.hir.as_local_node_id(param_owner).unwrap();
@@ -886,11 +884,9 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
             // This ensures fixed size stacks.
 
             hir::ExprKind::Binary(
-                source_map::Spanned { node: hir::BinOpKind::And, .. },
-                _, ref r) |
+                source_map::Spanned { node: hir::BinOpKind::And, .. }, _, ref r) |
             hir::ExprKind::Binary(
-                source_map::Spanned { node: hir::BinOpKind::Or, .. },
-                _, ref r) => {
+                source_map::Spanned { node: hir::BinOpKind::Or, .. }, _, ref r) => {
                     // For shortcircuiting operators, mark the RHS as a terminating
                     // scope since it only executes conditionally.
                     terminating(r.hir_id.local_id);

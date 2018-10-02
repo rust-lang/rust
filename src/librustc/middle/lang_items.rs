@@ -39,7 +39,6 @@ macro_rules! language_item_table {
         $( $variant:ident, $name:expr, $method:ident; )*
     ) => {
 
-
 enum_from_u32! {
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
     pub enum LangItem {
@@ -161,8 +160,7 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
                             name)),
                 };
                 if let Some(span) = self.tcx.hir.span_if_local(original_def_id) {
-                    span_note!(&mut err, span,
-                               "first defined here.");
+                    span_note!(&mut err, span, "first defined here.");
                 } else {
                     err.note(&format!("first defined in crate `{}`.",
                                       self.tcx.crate_name(original_def_id.krate)));

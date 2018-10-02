@@ -361,17 +361,17 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         is_late_bound_map: |tcx, id| {
             let id = LocalDefId::from_def_id(DefId::local(id)); // (*)
             tcx.resolve_lifetimes(LOCAL_CRATE)
-                .late_bound
-                .get(&id)
-                .cloned()
+               .late_bound
+               .get(&id)
+               .cloned()
         },
 
         object_lifetime_defaults_map: |tcx, id| {
             let id = LocalDefId::from_def_id(DefId::local(id)); // (*)
             tcx.resolve_lifetimes(LOCAL_CRATE)
-                .object_lifetime_defaults
-                .get(&id)
-                .cloned()
+               .object_lifetime_defaults
+               .get(&id)
+               .cloned()
         },
 
         ..*providers
@@ -411,8 +411,8 @@ fn resolve_lifetimes<'tcx>(
     for (k, v) in named_region_map.object_lifetime_defaults {
         let hir_id = tcx.hir.node_to_hir_id(k);
         let map = rl.object_lifetime_defaults
-            .entry(hir_id.owner_local_def_id())
-            .or_default();
+                    .entry(hir_id.owner_local_def_id())
+                    .or_default();
         Lrc::get_mut(map)
             .unwrap()
             .insert(hir_id.local_id, Lrc::new(v));
@@ -677,7 +677,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                         lifetime.span,
                                         E0657,
                                         "`impl Trait` can only capture lifetimes \
-                                        bound at the fn or impl level"
+                                         bound at the fn or impl level"
                                     );
                                     self.uninsert_lifetime_on_error(lifetime, def.unwrap());
                                 }
@@ -1255,15 +1255,15 @@ fn compute_object_lifetime_defaults(
                             Set1::One(Region::Static) => "'static".into(),
                             Set1::One(Region::EarlyBound(mut i, _, _)) => {
                                 generics.params.iter().find_map(|param| match param.kind {
-                                        GenericParamKind::Lifetime { .. } => {
-                                            if i == 0 {
-                                                return Some(param.name.ident().to_string());
-                                            }
-                                            i -= 1;
-                                            None
+                                    GenericParamKind::Lifetime { .. } => {
+                                        if i == 0 {
+                                            return Some(param.name.ident().to_string().into());
                                         }
-                                        _ => None,
-                                    }).unwrap()
+                                        i -= 1;
+                                        None
+                                    }
+                                    _ => None,
+                                }).unwrap()
                             }
                             Set1::One(_) => bug!(),
                             Set1::Many => "Ambiguous".into(),
@@ -1421,16 +1421,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         def_ids.sort_by_key(|&def_id| self.tcx.def_path_hash(def_id));
 
         for def_id in def_ids {
-            debug!(
-                "check_uses_for_lifetimes_defined_by_scope: def_id = {:?}",
-                def_id,
-            );
+            debug!("check_uses_for_lifetimes_defined_by_scope: def_id = {:?}", def_id);
 
             let lifetimeuseset = self.lifetime_uses.remove(&def_id);
-            debug!(
-                "check_uses_for_lifetimes_defined_by_scope: lifetimeuseset = {:?}",
-                lifetimeuseset
-            );
+
+            debug!("check_uses_for_lifetimes_defined_by_scope: lifetimeuseset = {:?}",
+                   lifetimeuseset);
+
             match lifetimeuseset {
                 Some(LifetimeUseSet::One(lifetime)) => {
                     let node_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
@@ -1670,7 +1667,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             "lifetimes used in `fn` or `Fn` syntax must be \
                              explicitly declared using `<...>` binders"
                         ).span_label(lifetime_ref.span, "in-band lifetime definition")
-                            .emit();
+                         .emit();
                     }
 
                     Region::Static
@@ -1690,7 +1687,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 "use of undeclared lifetime name `{}`",
                 lifetime_ref
             ).span_label(lifetime_ref.span, "undeclared lifetime")
-                .emit();
+             .emit();
         }
     }
 
@@ -2250,9 +2247,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
                 Scope::Body { .. } | Scope::ObjectLifetimeDefault { lifetime: None, .. } => return,
 
-                Scope::ObjectLifetimeDefault {
-                    lifetime: Some(l), ..
-                } => break l,
+                Scope::ObjectLifetimeDefault { lifetime: Some(l), .. } => break l,
             }
         };
         self.insert_lifetime(lifetime_ref, lifetime.shifted(late_depth));
@@ -2324,13 +2319,11 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                     lifetime_i.name.ident(),
                                 ),
                             ).help(&format!(
-                                "you can use the `'static` lifetime directly, in place \
-                                    of `{}`",
+                                "you can use the `'static` lifetime directly, in place of `{}`",
                                 lifetime_i.name.ident(),
                             )).emit();
                         }
-                        hir::LifetimeName::Param(_)
-                        | hir::LifetimeName::Implicit => {
+                        hir::LifetimeName::Param(_) | hir::LifetimeName::Implicit => {
                             self.resolve_lifetime_ref(lt);
                         }
                     }
@@ -2487,8 +2480,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
-
 /// Detects late-bound lifetimes and inserts them into
 /// `map.late_bound`.
 ///
@@ -2504,10 +2495,8 @@ fn insert_late_bound_lifetimes(
     decl: &hir::FnDecl,
     generics: &hir::Generics,
 ) {
-    debug!(
-        "insert_late_bound_lifetimes(decl={:?}, generics={:?})",
-        decl, generics
-    );
+    debug!("insert_late_bound_lifetimes(decl={:?}, generics={:?})",
+           decl, generics);
 
     let mut constrained_by_input = ConstrainedCollector {
         regions: FxHashSet(),
@@ -2521,10 +2510,8 @@ fn insert_late_bound_lifetimes(
     };
     intravisit::walk_fn_ret_ty(&mut appears_in_output, &decl.output);
 
-    debug!(
-        "insert_late_bound_lifetimes: constrained_by_input={:?}",
-        constrained_by_input.regions
-    );
+    debug!("insert_late_bound_lifetimes: constrained_by_input={:?}",
+           constrained_by_input.regions);
 
     // Walk the lifetimes that appear in where clauses.
     //

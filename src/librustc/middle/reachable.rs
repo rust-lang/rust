@@ -396,7 +396,6 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
 #[derive(Clone)]
 pub struct ReachableSet(pub Lrc<NodeSet>);
 
-
 fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> ReachableSet {
     debug_assert!(crate_num == LOCAL_CRATE);
 

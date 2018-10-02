@@ -117,7 +117,7 @@ impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
         };
 
         struct_span_err!(self.tcx.sess, span, E0512,
-            "transmute called with types of different sizes")
+                         "transmute called with types of different sizes")
             .note(&format!("source type: {} ({})", from, skeleton_string(from, sk_from)))
             .note(&format!("target type: {} ({})", to, skeleton_string(to, sk_to)))
             .emit();

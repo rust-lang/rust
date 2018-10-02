@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use hir::map as hir_map;
 use hir::def_id::{CRATE_DEF_INDEX};
 use session::{config, Session};
@@ -131,7 +130,7 @@ fn find_item(item: &Item, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
                 ctxt.attr_main_fn = Some((item.id, item.span));
             } else {
                 struct_span_err!(ctxt.session, item.span, E0137,
-                          "multiple functions with a #[main] attribute")
+                                 "multiple functions with a #[main] attribute")
                 .span_label(item.span, "additional #[main] function")
                 .span_label(ctxt.attr_main_fn.unwrap().1, "first #[main] function")
                 .emit();
@@ -141,11 +140,8 @@ fn find_item(item: &Item, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
             if ctxt.start_fn.is_none() {
                 ctxt.start_fn = Some((item.id, item.span));
             } else {
-                struct_span_err!(
-                    ctxt.session, item.span, E0138,
-                    "multiple 'start' functions")
-                    .span_label(ctxt.start_fn.unwrap().1,
-                                "previous `start` function here")
+                struct_span_err!(ctxt.session, item.span, E0138, "multiple 'start' functions")
+                    .span_label(ctxt.start_fn.unwrap().1, "previous `start` function here")
                     .span_label(item.span, "multiple `start` functions")
                     .emit();
             }

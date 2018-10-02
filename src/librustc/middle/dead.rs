@@ -210,7 +210,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn visit_variant_data(&mut self, def: &'tcx hir::VariantData, _: ast::Name,
-                        _: &hir::Generics, _: ast::NodeId, _: syntax_pos::Span) {
+                          _: &hir::Generics, _: ast::NodeId, _: syntax_pos::Span) {
         let has_repr_c = self.repr_has_repr_c;
         let inherited_pub_visibility = self.inherited_pub_visibility;
         let live_fields = def.fields().iter().filter(|f| {
@@ -492,8 +492,8 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
                       ctor_id: Option<ast::NodeId>)
                       -> bool {
         if self.live_symbols.contains(&id)
-           || ctor_id.map_or(false,
-                             |ctor| self.live_symbols.contains(&ctor)) {
+           || ctor_id.map_or(false, |ctor| self.live_symbols.contains(&ctor))
+        {
             return true;
         }
         // If it's a type whose items are live, then it's live, too.
