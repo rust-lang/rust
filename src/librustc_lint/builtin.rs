@@ -1564,6 +1564,7 @@ fn validate_const<'a, 'tcx>(
                 op,
                 &mut path,
                 Some(&mut ref_tracking),
+                /* const_mode */ true,
             )?;
         }
         Ok(())

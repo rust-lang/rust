@@ -147,6 +147,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         size: Size,
         path: &Vec<PathElem>,
         ty: Ty,
+        const_mode: bool,
     ) -> EvalResult<'tcx> {
         trace!("validate scalar by type: {:#?}, {:#?}, {}", value, size, ty);
 
@@ -160,12 +161,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 try_validation!(value.to_char(),
                     scalar_format(value), path, "a valid unicode codepoint");
             },
-            ty::Float(_) | ty::Int(_) | ty::Uint(_) => {
-                // Must be scalar bits
+            ty::Float(_) | ty::Int(_) | ty::Uint(_) if const_mode => {
+                // Integers/floats in CTFE: Must be scalar bits
                 try_validation!(value.to_bits(size),
                     scalar_format(value), path, "initialized plain bits");
             }
-            ty::RawPtr(_) => {
+            ty::Float(_) | ty::Int(_) | ty::Uint(_) | ty::RawPtr(_) => {
                 // Anything but undef goes
                 try_validation!(value.not_undef(),
                     scalar_format(value), path, "a raw pointer");
@@ -303,6 +304,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         dest: OpTy<'tcx>,
         path: &mut Vec<PathElem>,
         mut ref_tracking: Option<&mut RefTracking<'tcx>>,
+        const_mode: bool,
     ) -> EvalResult<'tcx> {
         trace!("validate_operand: {:?}, {:#?}", *dest, dest.layout);
 
@@ -387,7 +389,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                             value.to_scalar_or_undef(),
                             dest.layout.size,
                             &path,
-                            dest.layout.ty
+                            dest.layout.ty,
+                            const_mode,
                         )?;
                         // Recursively check *safe* references
                         if dest.layout.ty.builtin_deref(true).is_some() &&
@@ -506,7 +509,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                             self.validate_operand(
                                 field.into(),
                                 path,
-                                ref_tracking.as_mut().map(|r| &mut **r)
+                                ref_tracking.as_mut().map(|r| &mut **r),
+                                const_mode,
                             )?;
                             path.truncate(path_len);
                         }
@@ -517,7 +521,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 for i in 0..offsets.len() {
                     let field = self.operand_field(dest, i as u64)?;
                     path.push(self.aggregate_field_path_elem(dest.layout.ty, variant, i));
-                    self.validate_operand(field, path, ref_tracking.as_mut().map(|r| &mut **r))?;
+                    self.validate_operand(
+                        field,
+                        path,
+                        ref_tracking.as_mut().map(|r| &mut **r),
+                        const_mode,
+                    )?;
                     path.truncate(path_len);
                 }
             }

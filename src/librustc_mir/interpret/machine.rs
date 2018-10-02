@@ -33,6 +33,9 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// The memory kind to use for mutated statics -- or None if those are not supported.
     const MUT_STATIC_KIND: Option<Self::MemoryKinds>;
 
+    /// Whether to enforce the validity invariant
+    const ENFORCE_VALIDITY: bool;
+
     /// Called before a basic block terminator is executed.
     /// You can use this to detect endlessly running programs.
     fn before_terminator(ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx>;

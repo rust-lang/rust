@@ -274,6 +274,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     type MemoryKinds = !;
 
     const MUT_STATIC_KIND: Option<!> = None; // no mutating of statics allowed
+    const ENFORCE_VALIDITY: bool = false; // for now, we don't
 
     fn find_fn(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
