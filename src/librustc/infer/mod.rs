@@ -1456,7 +1456,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    /// Clears the selection, evaluation, and projection cachesThis is useful when
+    /// Clears the selection, evaluation, and projection caches. This is useful when
     /// repeatedly attemping to select an Obligation while changing only
     /// its ParamEnv, since FulfillmentContext doesn't use 'probe'
     pub fn clear_caches(&self) {
