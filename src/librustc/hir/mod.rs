@@ -1723,6 +1723,12 @@ pub enum TyKind {
     ///
     /// Type parameters may be stored in each `PathSegment`.
     Path(QPath),
+    /// A type definition itself. This is currently only used for the `existential type`
+    /// item that `impl Trait` in return position desugars to.
+    ///
+    /// The generic arg list are the lifetimes (and in the future possibly parameters) that are
+    /// actually bound on the `impl Trait`.
+    Def(ItemId, HirVec<GenericArg>),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
     TraitObject(HirVec<PolyTraitRef>, Lifetime),

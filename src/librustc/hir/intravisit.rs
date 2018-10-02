@@ -603,6 +603,10 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
         TyKind::Path(ref qpath) => {
             visitor.visit_qpath(qpath, typ.hir_id, typ.span);
         }
+        TyKind::Def(item_id, ref lifetimes) => {
+            visitor.visit_nested_item(item_id);
+            walk_list!(visitor, visit_generic_arg, lifetimes);
+        }
         TyKind::Array(ref ty, ref length) => {
             visitor.visit_ty(ty);
             visitor.visit_anon_const(length)

@@ -339,6 +339,7 @@ impl_stable_hash_for!(enum hir::TyKind {
     Never,
     Tup(ts),
     Path(qpath),
+    Def(it, lt),
     TraitObject(trait_refs, lifetime),
     Typeof(body_id),
     Err,

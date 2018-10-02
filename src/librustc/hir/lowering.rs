@@ -1352,20 +1352,7 @@ impl<'a> LoweringContext<'a> {
             lctx.items.insert(exist_ty_id.node_id, exist_ty_item);
 
             // `impl Trait` now just becomes `Foo<'a, 'b, ..>`
-            let path = P(hir::Path {
-                span: exist_ty_span,
-                def: Def::Existential(DefId::local(exist_ty_def_index)),
-                segments: hir_vec![hir::PathSegment {
-                    infer_types: false,
-                    ident: Ident::new(keywords::Invalid.name(), exist_ty_span),
-                    args: Some(P(hir::GenericArgs {
-                        parenthesized: false,
-                        bindings: HirVec::new(),
-                        args: lifetimes,
-                    }))
-                }],
-            });
-            hir::TyKind::Path(hir::QPath::Resolved(None, path))
+            hir::TyKind::Def(hir::ItemId { id: exist_ty_id.node_id }, lifetimes)
         })
     }
 
@@ -3207,23 +3194,6 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    /// Lowers `impl Trait` items for a function and appends them to the list
-    fn lower_fn_impl_trait_ids(
-        &mut self,
-        decl: &FnDecl,
-        header: &FnHeader,
-        ids: &mut SmallVec<[hir::ItemId; 1]>,
-    ) {
-        if let Some(id) = header.asyncness.opt_return_id() {
-            ids.push(hir::ItemId { id });
-        }
-        let mut visitor = ImplTraitTypeIdVisitor { ids };
-        match decl.output {
-            FunctionRetTy::Default(_) => {},
-            FunctionRetTy::Ty(ref ty) => visitor.visit_ty(ty),
-        }
-    }
-
     fn lower_item_id(&mut self, i: &Item) -> SmallVec<[hir::ItemId; 1]> {
         match i.node {
             ItemKind::Use(ref use_tree) => {
@@ -3232,20 +3202,8 @@ impl<'a> LoweringContext<'a> {
                 vec
             }
             ItemKind::MacroDef(..) => SmallVec::new(),
-            ItemKind::Fn(ref decl, ref header, ..) => {
-                let mut ids = smallvec![hir::ItemId { id: i.id }];
-                self.lower_fn_impl_trait_ids(decl, header, &mut ids);
-                ids
-            },
-            ItemKind::Impl(.., None, _, ref items) => {
-                let mut ids = smallvec![hir::ItemId { id: i.id }];
-                for item in items {
-                    if let ImplItemKind::Method(ref sig, _) = item.node {
-                        self.lower_fn_impl_trait_ids(&sig.decl, &sig.header, &mut ids);
-                    }
-                }
-                ids
-            },
+            ItemKind::Fn(..) |
+            ItemKind::Impl(.., None, _, _) => smallvec![hir::ItemId { id: i.id }],
             ItemKind::Static(ref ty, ..) => {
                 let mut ids = smallvec![hir::ItemId { id: i.id }];
                 if self.sess.features_untracked().impl_trait_in_bindings {

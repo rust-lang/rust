@@ -401,6 +401,7 @@ impl<'a> State<'a> {
                 self.print_ty_fn(f.abi, f.unsafety, &f.decl, None, &f.generic_params,
                                  &f.arg_names[..])?;
             }
+            hir::TyKind::Def(..) => {},
             hir::TyKind::Path(ref qpath) => {
                 self.print_qpath(qpath, false)?
             }
