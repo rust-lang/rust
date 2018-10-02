@@ -821,6 +821,24 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                     let dst_layout = fx.layout_of(dst_ty);
                     ret.write_cvalue(fx, CValue::ByRef(addr, dst_layout))
                 }
+                "init" => {
+                    assert_eq!(args.len(), 0);
+                    let ty = substs.type_at(0);
+                    let layout = fx.layout_of(ty);
+                    let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
+                        kind: StackSlotKind::ExplicitSlot,
+                        size: layout.size.bytes() as u32,
+                        offset: None,
+                    });
+                    let addr = fx.bcx.ins().stack_addr(pointer_ty(fx.tcx), stack_slot, 0);
+                    let zero_val = fx.bcx.ins().iconst(types::I8, 0);
+                    let len_val = fx.bcx.ins().iconst(pointer_ty(fx.tcx), layout.size.bytes() as i64);
+                    fx.bcx.call_memset(fx.isa, addr, zero_val, len_val);
+
+                    let uninit_place = CPlace::from_stack_slot(fx, stack_slot, ty);
+                    let uninit_val = uninit_place.to_cvalue(fx);
+                    ret.write_cvalue(fx, uninit_val);
+                }
                 "uninit" => {
                     assert_eq!(args.len(), 0);
                     let ty = substs.type_at(0);
