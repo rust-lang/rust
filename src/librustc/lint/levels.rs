@@ -22,7 +22,6 @@ use session::{config::nightly_options, Session};
 use syntax::ast;
 use syntax::attr;
 use syntax::source_map::MultiSpan;
-use syntax::feature_gate;
 use syntax::symbol::Symbol;
 use util::nodemap::FxHashMap;
 
@@ -228,18 +227,7 @@ impl<'a> LintLevelsBuilder<'a> {
                     }
                 };
                 let tool_name = if let Some(lint_tool) = word.is_scoped() {
-                    let gate_feature = !self.sess.features_untracked().tool_lints;
-                    let known_tool = attr::is_known_lint_tool(lint_tool);
-                    if gate_feature {
-                        feature_gate::emit_feature_err(
-                            &sess.parse_sess,
-                            "tool_lints",
-                            word.span,
-                            feature_gate::GateIssue::Language,
-                            &format!("scoped lint `{}` is experimental", word.ident),
-                        );
-                    }
-                    if !known_tool {
+                    if !attr::is_known_lint_tool(lint_tool) {
                         span_err!(
                             sess,
                             lint_tool.span,
@@ -247,9 +235,6 @@ impl<'a> LintLevelsBuilder<'a> {
                             "an unknown tool name found in scoped lint: `{}`",
                             word.ident
                         );
-                    }
-
-                    if gate_feature || !known_tool {
                         continue;
                     }
 
