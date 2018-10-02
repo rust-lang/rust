@@ -70,10 +70,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     },
                     hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, name, None) => match closure_expr.node {
                         hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner) => lint(cx, e.span, args[0].span, name, inner),
-                        hir::ExprKind::MethodCall(ref method, _, ref obj) => if method.ident.as_str() == "clone" {
-                            if match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) {
-                                lint(cx, e.span, args[0].span, name, &obj[0]);
-                            }
+                        hir::ExprKind::MethodCall(ref method, _, ref obj) => if method.ident.as_str() == "clone" && match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) {
+                            lint(cx, e.span, args[0].span, name, &obj[0]);
                         }
                         _ => {},
                     },
