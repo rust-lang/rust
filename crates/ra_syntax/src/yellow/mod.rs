@@ -53,12 +53,12 @@ impl<R: TreeRoot<RaTypes>> Hash for SyntaxNode<R> {
     }
 }
 
-impl SyntaxNode<OwnedRoot> {
+impl SyntaxNode {
     pub(crate) fn new(green: GreenNode, errors: Vec<SyntaxError>) -> SyntaxNode {
         SyntaxNode(::rowan::SyntaxNode::new(green, errors))
     }
 }
-impl<'a> SyntaxNode<RefRoot<'a>> {
+impl<'a> SyntaxNodeRef<'a> {
     pub fn leaf_text(self) -> Option<&'a SmolStr> {
         self.0.leaf_text()
     }
