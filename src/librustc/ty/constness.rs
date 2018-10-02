@@ -20,7 +20,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
                     .iter()
                     .any(|&(sym, _)| sym == feature_name),
                 // the function has no stability attribute, it is stable as const fn or the user
-                // nees to use feature gates to use the function at all
+                // needs to use feature gates to use the function at all
                 None => true,
             },
             // functions without stability are either stable user written const fn or the user is
