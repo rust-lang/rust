@@ -47,7 +47,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 return;
             }
             match expr.node {
-
                 // `format!("{}", foo)` expansion
                 ExprKind::Call(ref fun, ref args) => {
                     if_chain! {
@@ -162,9 +161,12 @@ fn check_unformatted(expr: &Expr) -> bool {
         if let ExprKind::Struct(_, ref fields, _) = exprs[0].node;
         if let Some(format_field) = fields.iter().find(|f| f.ident.name == "format");
         if let ExprKind::Struct(_, ref fields, _) = format_field.expr.node;
-        if let Some(align_field) = fields.iter().find(|f| f.ident.name == "width");
-        if let ExprKind::Path(ref qpath) = align_field.expr.node;
-        if last_path_segment(qpath).ident.name == "Implied";
+        if let Some(width_field) = fields.iter().find(|f| f.ident.name == "width");
+        if let ExprKind::Path(ref width_qpath) = width_field.expr.node;
+        if last_path_segment(width_qpath).ident.name == "Implied";
+        if let Some(precision_field) = fields.iter().find(|f| f.ident.name == "precision");
+        if let ExprKind::Path(ref precision_path) = precision_field.expr.node;
+        if last_path_segment(precision_path).ident.name == "Implied";
         then {
             return true;
         }

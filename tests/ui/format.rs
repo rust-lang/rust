@@ -46,4 +46,10 @@ fn main() {
 
     // A format! inside a macro should not trigger a warning
     foo!("should not warn");
+
+    // precision on string means slicing without panicking on size:
+    format!("{:.1}", "foo"); // could be "foo"[..1]
+    format!("{:.10}", "foo"); // could not be "foo"[..10]
+    format!("{:.prec$}", "foo", prec = 1);
+    format!("{:.prec$}", "foo", prec = 10);
 }
