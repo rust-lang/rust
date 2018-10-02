@@ -21,7 +21,6 @@
     integer_atomics,
     stmt_expr_attributes,
     core_intrinsics,
-    crate_in_paths,
     no_core,
     rustc_attrs,
     stdsimd,
