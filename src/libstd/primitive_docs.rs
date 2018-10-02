@@ -909,12 +909,12 @@ mod prim_usize { }
 /// references with longer lifetimes can be freely coerced into references with shorter ones.
 ///
 /// Reference equality by address, instead of comparing the values pointed to, is accomplished via
-/// implicit reference-pointer coercion and raw pointer equality via [`ptr::eq`], while 
+/// implicit reference-pointer coercion and raw pointer equality via [`ptr::eq`], while
 /// [`PartialEq`] compares values.
-/// 
+///
 /// [`ptr::eq`]: ptr/fn.eq.html
 /// [`PartialEq`]: cmp/trait.PartialEq.html
-/// 
+///
 /// ```
 /// use std::ptr;
 ///
@@ -930,14 +930,14 @@ mod prim_usize { }
 /// assert!(ptr::eq(five_ref, same_five_ref));
 /// assert!(!ptr::eq(five_ref, other_five_ref));
 /// ```
-/// 
+///
 /// For more information on how to use references, see [the book's section on "References and
 /// Borrowing"][book-refs].
 ///
 /// [book-refs]: ../book/second-edition/ch04-02-references-and-borrowing.html
 ///
 /// # Trait implementations
-/// 
+///
 /// The following traits are implemented for all `&T`, regardless of the type of its referent:
 ///
 /// * [`Copy`]
