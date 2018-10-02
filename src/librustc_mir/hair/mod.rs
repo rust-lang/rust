@@ -29,6 +29,8 @@ pub mod cx;
 pub mod pattern;
 pub use self::pattern::{BindingMode, Pattern, PatternKind, FieldPattern};
 
+mod util;
+
 #[derive(Copy, Clone, Debug)]
 pub enum LintLevel {
     Inherited,

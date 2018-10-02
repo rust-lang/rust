@@ -15,6 +15,7 @@
 //!
 
 use hair::*;
+use hair::util::UserAnnotatedTyHelpers;
 
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
@@ -269,6 +270,16 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
     pub fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
         self.infcx.type_moves_by_default(self.param_env, ty, span)
+    }
+}
+
+impl UserAnnotatedTyHelpers<'gcx, 'tcx> for Cx<'_, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'_, 'gcx, 'tcx> {
+        self.tcx()
+    }
+
+    fn tables(&self) -> &ty::TypeckTables<'tcx> {
+        self.tables()
     }
 }
 
