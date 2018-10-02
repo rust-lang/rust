@@ -10,11 +10,11 @@
 
 use super::Backend;
 use libc::c_uint;
-use monomorphize::partitioning::CodegenUnit;
 use rustc::mir::mono::Stats;
 use rustc::session::Session;
 use rustc::ty::{self, Instance, Ty};
 use rustc::util::nodemap::FxHashMap;
+use rustc_mir::monomorphize::partitioning::CodegenUnit;
 use std::cell::RefCell;
 use std::sync::Arc;
 

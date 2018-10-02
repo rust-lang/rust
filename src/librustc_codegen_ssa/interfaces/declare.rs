@@ -9,10 +9,10 @@
 // except according to those terms.
 
 use super::Backend;
-use monomorphize::Instance;
 use rustc::hir::def_id::DefId;
 use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty;
+use rustc_mir::monomorphize::Instance;
 
 pub trait DeclareMethods<'tcx>: Backend<'tcx> {
     /// Declare a global value.

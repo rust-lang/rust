@@ -19,6 +19,7 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(custom_attribute)]
+#![feature(libc)]
 #![feature(nll)]
 #![allow(unused_attributes)]
 #![allow(dead_code)]
@@ -33,6 +34,7 @@ extern crate rustc_mir;
 extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_data_structures;
+extern crate libc;
 
 use std::path::PathBuf;
 use rustc::dep_graph::WorkProduct;

@@ -9,8 +9,14 @@
 // except according to those terms.
 
 mod backend;
+mod declare;
+mod misc;
+mod statics;
 
 pub use self::backend::{Backend, BackendMethods, BackendTypes};
+pub use self::declare::{DeclareMethods, PreDefineMethods};
+pub use self::misc::MiscMethods;
+pub use self::statics::StaticMethods;
 
 use std::fmt;
 
