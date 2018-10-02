@@ -15,7 +15,7 @@ use rustc::ty::layout::{self, Size};
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashSet;
 use rustc::mir::interpret::{
-    Scalar, AllocType, EvalResult, EvalErrorKind, PointerArithmetic
+    Scalar, AllocType, EvalResult, EvalErrorKind
 };
 
 use super::{
@@ -50,6 +50,13 @@ macro_rules! validation_failure {
 }
 
 macro_rules! try_validation {
+    ($e:expr, $what:expr, $where:expr, $details:expr) => {{
+        match $e {
+            Ok(x) => x,
+            Err(_) => return validation_failure!($what, $where, $details),
+        }
+    }};
+
     ($e:expr, $what:expr, $where:expr) => {{
         match $e {
             Ok(x) => x,
@@ -121,114 +128,65 @@ fn path_format(path: &Vec<PathElem>) -> String {
     out
 }
 
+fn scalar_format(value: ScalarMaybeUndef) -> String {
+    match value {
+        ScalarMaybeUndef::Undef =>
+            "uninitialized bytes".to_owned(),
+        ScalarMaybeUndef::Scalar(Scalar::Ptr(_)) =>
+            "a pointer".to_owned(),
+        ScalarMaybeUndef::Scalar(Scalar::Bits { bits, .. }) =>
+            bits.to_string(),
+    }
+}
+
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     fn validate_scalar(
         &self,
         value: ScalarMaybeUndef,
         size: Size,
-        scalar: &layout::Scalar,
         path: &Vec<PathElem>,
         ty: Ty,
     ) -> EvalResult<'tcx> {
-        trace!("validate scalar: {:#?}, {:#?}, {:#?}, {}", value, size, scalar, ty);
-        let (lo, hi) = scalar.valid_range.clone().into_inner();
+        trace!("validate scalar: {:#?}, {:#?}, {}", value, size, ty);
 
-        let value = match value {
-            ScalarMaybeUndef::Scalar(scalar) => scalar,
-            ScalarMaybeUndef::Undef => return validation_failure!("undefined bytes", path),
-        };
-
-        let bits = match value {
-            Scalar::Bits { bits, size: value_size } => {
-                assert_eq!(value_size as u64, size.bytes());
-                bits
-            },
-            Scalar::Ptr(_) => {
-                match ty.sty {
-                    ty::Bool |
-                    ty::Char |
-                    ty::Float(_) |
-                    ty::Int(_) |
-                    ty::Uint(_) => {
-                        return validation_failure!(
-                                "a pointer",
-                                path,
-                                format!("the type {}", ty.sty)
-                            );
-                    }
-                    ty::RawPtr(_) |
-                    ty::Ref(_, _, _) |
-                    ty::FnPtr(_) => {}
-                    _ => { unreachable!(); }
-                }
-
-                let ptr_size = self.pointer_size();
-                let ptr_max = u128::max_value() >> (128 - ptr_size.bits());
-                return if lo > hi {
-                    if lo - hi == 1 {
-                        // no gap, all values are ok
-                        Ok(())
-                    } else if hi < ptr_max || lo > 1 {
-                        let max = u128::max_value() >> (128 - size.bits());
-                        validation_failure!(
-                            "pointer",
-                            path,
-                            format!("something in the range {:?} or {:?}", 0..=lo, hi..=max)
-                        )
-                    } else {
-                        Ok(())
-                    }
-                } else if hi < ptr_max || lo > 1 {
-                    validation_failure!(
-                        "pointer",
-                        path,
-                        format!("something in the range {:?}", scalar.valid_range)
-                    )
-                } else {
-                    Ok(())
-                };
-            },
-        };
-
-        // char gets a special treatment, because its number space is not contiguous so `TyLayout`
-        // has no special checks for chars
+        // Go over all the primitive types
         match ty.sty {
+            ty::Bool => {
+                try_validation!(value.to_bool(),
+                    scalar_format(value), path, "a boolean");
+            },
             ty::Char => {
-                debug_assert_eq!(size.bytes(), 4);
-                if ::std::char::from_u32(bits as u32).is_none() {
-                    return validation_failure!(
-                        "character",
-                        path,
-                        "a valid unicode codepoint"
-                    );
-                }
+                try_validation!(value.to_char(),
+                    scalar_format(value), path, "a valid unicode codepoint");
+            },
+            ty::Float(_) | ty::Int(_) | ty::Uint(_) => {
+                // Must be scalar bits
+                try_validation!(value.to_bits(size),
+                    scalar_format(value), path, "initialized plain bits");
             }
-            _ => {},
+            ty::RawPtr(_) => {
+                // Anything but undef goes
+                try_validation!(value.not_undef(),
+                    scalar_format(value), path, "a raw pointer");
+            },
+            ty::Ref(..) => {
+                // This is checked by the recursive reference handling, nothing to do here.
+                debug_assert!(ty.builtin_deref(true).is_some() && !ty.is_unsafe_ptr());
+            }
+            ty::FnPtr(_sig) => {
+                let ptr = try_validation!(value.to_ptr(),
+                    scalar_format(value), path, "a pointer");
+                let _fn = try_validation!(self.memory.get_fn(ptr),
+                    scalar_format(value), path, "a function pointer");
+                // TODO: Check if the signature matches
+            }
+            ty::FnDef(..) => {
+                // This is a zero-sized type with all relevant data sitting in the type.
+                // There is nothing to validate.
+            }
+            _ => bug!("Unexpected primitive type {}", ty)
         }
-
-        use std::ops::RangeInclusive;
-        let in_range = |bound: RangeInclusive<u128>| bound.contains(&bits);
-        if lo > hi {
-            if in_range(0..=hi) || in_range(lo..=u128::max_value()) {
-                Ok(())
-            } else {
-                validation_failure!(
-                    bits,
-                    path,
-                    format!("something in the range {:?} or {:?}", ..=hi, lo..)
-                )
-            }
-        } else {
-            if in_range(scalar.valid_range.clone()) {
-                Ok(())
-            } else {
-                validation_failure!(
-                    bits,
-                    path,
-                    format!("something in the range {:?}", scalar.valid_range)
-                )
-            }
-        }
+        Ok(())
     }
 
     /// Validate a reference, potentially recursively. `place` is assumed to already be
@@ -240,10 +198,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         ref_tracking: Option<&mut RefTracking<'tcx>>,
     ) -> EvalResult<'tcx> {
         // Before we do anything else, make sure this is entirely in-bounds.
+        let (size, align) = self.size_and_align_of(place.extra, place.layout)?;
+        try_validation!(self.memory.check_align(place.ptr, align),
+            "unaligned reference", path);
         if !place.layout.is_zst() {
             let ptr = try_validation!(place.ptr.to_ptr(),
                 "integer pointer in non-ZST reference", path);
-            let size = self.size_and_align_of(place.extra, place.layout)?.0;
             try_validation!(self.memory.check_bounds(ptr, size, false),
                 "dangling reference (not entirely in bounds)", path);
             // Skip recursion for some external statics
@@ -277,6 +237,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     /// It will error if the bits at the destination do not match the ones described by the layout.
     /// The `path` may be pushed to, but the part that is present when the function
     /// starts must not be changed!
+    ///
+    /// `ref_tracking` can be None to avoid recursive checking below references.
+    /// This also toggles between "run-time" (no recursion) and "compile-time" (with recursion)
+    /// validation (e.g., pointer values are fine in integers at runtime).
     pub fn validate_operand(
         &self,
         dest: OpTy<'tcx>,
@@ -346,12 +310,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         return validation_failure!("a value of an uninhabited type", path),
                     // check that the scalar is a valid pointer or that its bit range matches the
                     // expectation.
-                    layout::Abi::Scalar(ref scalar_layout) => {
-                        let size = scalar_layout.value.size(self);
+                    layout::Abi::Scalar(_) => {
                         let value = try_validation!(self.read_value(dest),
                             "uninitialized or unrepresentable data", path);
                         let scalar = value.to_scalar_or_undef();
-                        self.validate_scalar(scalar, size, scalar_layout, &path, dest.layout.ty)?;
+                        self.validate_scalar(scalar, dest.layout.size, &path, dest.layout.ty)?;
                         // Recursively check *safe* references
                         if dest.layout.ty.builtin_deref(true).is_some() &&
                             !dest.layout.ty.is_unsafe_ptr()
@@ -365,7 +328,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             layout::FieldPlacement::Arbitrary { .. }
                 if dest.layout.ty.builtin_deref(true).is_some() =>
             {
-                // This is a fat pointer.
+                // This is a fat pointer. We also check fat raw pointers, their metadata must
+                // be valid!
                 let ptr = try_validation!(self.read_value(dest.into()),
                     "undefined location in fat pointer", path);
                 let ptr = try_validation!(self.ref_to_mplace(ptr),

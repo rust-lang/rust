@@ -8,13 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-union Foo {
-    a: &'static u8,
-    b: usize,
-}
+#![feature(const_transmute)]
 
-const USIZE_AS_STATIC_REF: &'static u8 = unsafe { Foo { b: 1337 }.a};
+use std::mem;
+
+const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
 //~^ ERROR this constant likely exhibits undefined behavior
 
-fn main() {
-}
+const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
+//~^ ERROR this constant likely exhibits undefined behavior
+
+const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
+//~^ ERROR this constant likely exhibits undefined behavior
+
+fn main() {}

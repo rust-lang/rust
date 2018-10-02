@@ -41,5 +41,4 @@ const BAD_BOOL: bool = unsafe { DummyUnion { u8: 42 }.bool};
 const BAD_UNION: Foo = unsafe { Bar { u8: 42 }.foo };
 
 
-fn main() {
-}
+fn main() {}
