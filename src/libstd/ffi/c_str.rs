@@ -1040,7 +1040,8 @@ impl CStr {
     /// ```
     #[inline]
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
-    pub unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
+    #[rustc_const_unstable(feature = "const_cstr_unchecked")]
+    pub const unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
         &*(bytes as *const [u8] as *const CStr)
     }
 
@@ -1470,5 +1471,14 @@ mod tests {
 
         assert_eq!(&*rc2, cstr);
         assert_eq!(&*arc2, cstr);
+    }
+
+    #[test]
+    fn cstr_const_constructor() {
+        const CSTR: &'static CStr = unsafe {
+            CStr::from_bytes_with_nul_unchecked(b"Hello, world!\0")
+        };
+
+        assert_eq!(CSTR.to_str().unwrap(), "Hello, world!");
     }
 }
