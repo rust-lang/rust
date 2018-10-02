@@ -474,13 +474,15 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
         // construction site.
         let mut call_caps = Vec::new();
         ir.tcx.with_freevars(expr.id, |freevars| {
-            for fv in freevars {
+            call_caps.extend(freevars.iter().filter_map(|fv| {
                 if let Def::Local(rv) = fv.def {
                     let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
                     let var_hid = ir.tcx.hir.node_to_hir_id(rv);
-                    call_caps.push(CaptureInfo { ln: fv_ln, var_hid });
+                    Some(CaptureInfo { ln: fv_ln, var_hid })
+                } else {
+                    None
                 }
-            }
+            }));
         });
         ir.set_captures(expr.id, call_caps);
 

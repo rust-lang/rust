@@ -371,7 +371,9 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
                     return
                 }
 
-                for default_method in self.tcx.provided_trait_methods(trait_def_id) {
+                let provided_trait_methods = self.tcx.provided_trait_methods(trait_def_id);
+                self.worklist.reserve(provided_trait_methods.len());
+                for default_method in provided_trait_methods {
                     let node_id = self.tcx
                                       .hir
                                       .as_local_node_id(default_method.def_id)
