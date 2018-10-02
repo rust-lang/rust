@@ -25,7 +25,7 @@ impl<'a> SyntaxText<'a> {
         let range = self.range;
         preorder(self.node)
             .filter_map(move |node| {
-                let text = node.leaf_text_ref()?;
+                let text = node.leaf_text()?;
                 let range = intersect(range, node.range())?;
                 let range = range - node.range().start();
                 Some(&text[range])

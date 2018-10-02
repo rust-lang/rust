@@ -3,10 +3,9 @@ mod generated;
 use std::marker::PhantomData;
 
 use itertools::Itertools;
-use smol_str::SmolStr;
 
 use {
-    SyntaxNodeRef, SyntaxKind::*,
+    SmolStr, SyntaxNodeRef, SyntaxKind::*,
     yellow::{RefRoot, SyntaxNodeChildren},
 };
 pub use self::generated::*;
@@ -76,7 +75,7 @@ impl<'a> Attr<'a> {
         let tt = self.value()?;
         let (_bra, attr, _ket) = tt.syntax().children().collect_tuple()?;
         if attr.kind() == IDENT {
-            Some(attr.leaf_text().unwrap())
+            Some(attr.leaf_text().unwrap().clone())
         } else {
             None
         }
@@ -87,7 +86,7 @@ impl<'a> Attr<'a> {
         let (_bra, attr, args, _ket) = tt.syntax().children().collect_tuple()?;
         let args = TokenTree::cast(args)?;
         if attr.kind() == IDENT {
-            Some((attr.leaf_text().unwrap(), args))
+            Some((attr.leaf_text().unwrap().clone(), args))
         } else {
             None
         }
@@ -96,7 +95,7 @@ impl<'a> Attr<'a> {
 
 impl<'a> Lifetime<'a> {
     pub fn text(&self) -> SmolStr {
-        self.syntax().leaf_text().unwrap()
+        self.syntax().leaf_text().unwrap().clone()
     }
 }
 
@@ -104,7 +103,7 @@ impl<'a> Name<'a> {
     pub fn text(&self) -> SmolStr {
         let ident = self.syntax().first_child()
             .unwrap();
-        ident.leaf_text().unwrap()
+        ident.leaf_text().unwrap().clone()
     }
 }
 
@@ -112,7 +111,7 @@ impl<'a> NameRef<'a> {
     pub fn text(&self) -> SmolStr {
         let ident = self.syntax().first_child()
             .unwrap();
-        ident.leaf_text().unwrap()
+        ident.leaf_text().unwrap().clone()
     }
 }
 
