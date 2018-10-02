@@ -205,11 +205,11 @@ impl<'tcx> ty::ParamEnv<'tcx> {
             let mut infringing = Vec::new();
             for variant in &adt.variants {
                 for field in &variant.fields {
-                    let span = tcx.def_span(field.did);
                     let ty = field.ty(tcx, substs);
                     if ty.references_error() {
                         continue;
                     }
+                    let span = tcx.def_span(field.did);
                     let cause = ObligationCause { span, ..ObligationCause::dummy() };
                     let ctx = traits::FulfillmentContext::new();
                     match traits::fully_normalize(&infcx, ctx, cause, self, &ty) {
