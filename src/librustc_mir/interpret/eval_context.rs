@@ -231,6 +231,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     /// Mark a storage as live, killing the previous content and returning it.
     /// Remember to deallocate that!
     pub fn storage_live(&mut self, local: mir::Local) -> EvalResult<'tcx, LocalValue> {
+        assert!(local != mir::RETURN_PLACE, "Cannot make return place live");
         trace!("{:?} is now live", local);
 
         let layout = self.layout_of_local(self.cur_frame(), local)?;
@@ -242,6 +243,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     /// Returns the old value of the local.
     /// Remember to deallocate that!
     pub fn storage_dead(&mut self, local: mir::Local) -> LocalValue {
+        assert!(local != mir::RETURN_PLACE, "Cannot make return place dead");
         trace!("{:?} is now dead", local);
 
         mem::replace(&mut self.frame_mut().locals[local], LocalValue::Dead)
@@ -446,6 +448,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             let dummy =
                 LocalValue::Live(Operand::Immediate(Value::Scalar(ScalarMaybeUndef::Undef)));
             let mut locals = IndexVec::from_elem(dummy, &mir.local_decls);
+            // Return place is handled specially by the `eval_place` functions, and the
+            // entry in `locals` should never be used. Make it dead, to be sure.
+            locals[mir::RETURN_PLACE] = LocalValue::Dead;
             // Now mark those locals as dead that we do not want to initialize
             match self.tcx.describe_def(instance.def_id()) {
                 // statics and constants don't have `Storage*` statements, no need to look for them

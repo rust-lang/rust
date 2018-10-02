@@ -154,6 +154,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                     // FIXME: figure out the rules and start linting
                     | FunctionAbiMismatch(..)
                     | FunctionArgMismatch(..)
+                    | FunctionRetMismatch(..)
                     | FunctionArgCountMismatch
                     // fine at runtime, might be a register address or sth
                     | ReadBytesAsPointer
