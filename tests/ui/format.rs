@@ -14,6 +14,7 @@ fn main() {
     format!("{}", "foo");
     format!("{:?}", "foo"); // don't warn about debug
     format!("{:8}", "foo");
+    format!("{:width$}", "foo", width = 8);
     format!("{:+}", "foo"); // warn when the format makes no difference
     format!("{:<}", "foo"); // warn when the format makes no difference
     format!("foo {}", "bar");
@@ -23,6 +24,7 @@ fn main() {
     format!("{}", arg);
     format!("{:?}", arg); // don't warn about debug
     format!("{:8}", arg);
+    format!("{:width$}", arg, width = 8);
     format!("{:+}", arg); // warn when the format makes no difference
     format!("{:<}", arg); // warn when the format makes no difference
     format!("foo {}", arg);
