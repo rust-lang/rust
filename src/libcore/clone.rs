@@ -204,7 +204,7 @@ mod impls {
 
     // Shared references can be cloned, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, T: ?Sized> Clone for &'a T {
+    impl<T: ?Sized> Clone for &T {
         #[inline]
         fn clone(&self) -> Self {
             *self
