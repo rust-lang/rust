@@ -62,6 +62,15 @@ impl<'a> SyntaxNodeRef<'a> {
     pub fn leaf_text(self) -> Option<&'a SmolStr> {
         self.0.leaf_text()
     }
+    pub fn ancestors(self) -> impl Iterator<Item=SyntaxNodeRef<'a>> {
+        ::algo::generate(Some(self), |&node| node.parent())
+    }
+    pub fn descendants(self) -> impl Iterator<Item=SyntaxNodeRef<'a>> {
+        ::algo::walk::walk(self).filter_map(|event| match event {
+            ::algo::walk::WalkEvent::Enter(node) => Some(node),
+            ::algo::walk::WalkEvent::Exit(_) => None,
+        })
+    }
 }
 
 impl<R: TreeRoot<RaTypes>> SyntaxNode<R> {

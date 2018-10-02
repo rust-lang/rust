@@ -9,7 +9,6 @@ use ra_syntax::{
         Direction, siblings,
         find_leaf_at_offset,
         find_covering_node,
-        ancestors,
     },
 };
 
@@ -101,8 +100,8 @@ pub fn add_impl<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() ->
 
 pub fn introduce_variable<'a>(file: &'a File, range: TextRange) -> Option<impl FnOnce() -> LocalEdit + 'a> {
     let node = find_covering_node(file.syntax(), range);
-    let expr = ancestors(node).filter_map(ast::Expr::cast).next()?;
-    let anchor_stmt = ancestors(expr.syntax()).filter_map(ast::Stmt::cast).next()?;
+    let expr = node.ancestors().filter_map(ast::Expr::cast).next()?;
+    let anchor_stmt = expr.syntax().ancestors().filter_map(ast::Stmt::cast).next()?;
     let indent = anchor_stmt.syntax().prev_sibling()?;
     if indent.kind() != WHITESPACE {
         return None;

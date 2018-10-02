@@ -4,7 +4,6 @@ use ra_syntax::{
     TextUnit, TextRange, SyntaxNodeRef, File, AstNode, SyntaxKind,
     ast,
     algo::{
-        walk::preorder,
         find_covering_node,
     },
     text_utils::{intersect, contains_offset_nonstrict},
@@ -33,7 +32,7 @@ pub fn join_lines(file: &File, range: TextRange) -> LocalEdit {
     };
     let node = find_covering_node(file.syntax(), range);
     let mut edit = EditBuilder::new();
-    for node in preorder(node) {
+    for node in node.descendants() {
         let text = match node.leaf_text() {
             Some(text) => text,
             None => continue,

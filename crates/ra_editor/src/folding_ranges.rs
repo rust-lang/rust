@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use ra_syntax::{
     File, TextRange, SyntaxNodeRef,
     SyntaxKind,
-    algo::{walk, Direction, siblings},
+    algo::{Direction, siblings},
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -19,12 +19,10 @@ pub struct Fold {
 }
 
 pub fn folding_ranges(file: &File) -> Vec<Fold> {
-    let syntax = file.syntax();
-
     let mut res = vec![];
     let mut visited = HashSet::new();
 
-    for node in walk::preorder(syntax) {
+    for node in file.syntax().descendants() {
         if visited.contains(&node) {
             continue;
         }

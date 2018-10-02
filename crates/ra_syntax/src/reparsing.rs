@@ -112,7 +112,7 @@ fn find_reparsable_node<'node>(
     range: TextRange,
 ) -> Option<(SyntaxNodeRef<'node>, fn(&mut Parser))> {
     let node = algo::find_covering_node(node, range);
-    return algo::ancestors(node)
+    return node.ancestors()
         .filter_map(|node| reparser(node).map(|r| (node, r)))
         .next();
 

@@ -1,7 +1,7 @@
 use ra_syntax::{
     File, TextRange, SyntaxNodeRef, TextUnit,
     SyntaxKind::*,
-    algo::{find_leaf_at_offset, LeafAtOffset, find_covering_node, ancestors, Direction, siblings},
+    algo::{find_leaf_at_offset, LeafAtOffset, find_covering_node, Direction, siblings},
 };
 
 pub fn extend_selection(file: &File, range: TextRange) -> Option<TextRange> {
@@ -30,7 +30,7 @@ pub(crate) fn extend(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange>
         }
     }
 
-    match ancestors(node).skip_while(|n| n.range() == range).next() {
+    match node.ancestors().skip_while(|n| n.range() == range).next() {
         None => None,
         Some(parent) => Some(parent.range()),
     }

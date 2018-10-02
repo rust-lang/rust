@@ -4,7 +4,6 @@ use std::{
 
 use {
     SyntaxNodeRef, TextRange, TextUnit,
-    algo::walk::preorder,
     text_utils::{intersect, contains_offset_nonstrict},
 };
 
@@ -23,7 +22,8 @@ impl<'a> SyntaxText<'a> {
     }
     pub fn chunks(&self) -> impl Iterator<Item=&'a str> {
         let range = self.range;
-        preorder(self.node)
+        self.node
+            .descendants()
             .filter_map(move |node| {
                 let text = node.leaf_text()?;
                 let range = intersect(range, node.range())?;
