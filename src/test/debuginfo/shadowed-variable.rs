@@ -50,33 +50,43 @@
 // lldb-command:run
 
 // lldb-command:print x
-// lldb-check:[...]$0 = false
+// lldbg-check:[...]$0 = false
+// lldbr-check:(bool) x = false
 // lldb-command:print y
-// lldb-check:[...]$1 = true
+// lldbg-check:[...]$1 = true
+// lldbr-check:(bool) y = true
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$2 = 10
+// lldbg-check:[...]$2 = 10
+// lldbr-check:(i32) x = 10
 // lldb-command:print y
-// lldb-check:[...]$3 = true
+// lldbg-check:[...]$3 = true
+// lldbr-check:(bool) y = true
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$4 = 10.5
+// lldbg-check:[...]$4 = 10.5
+// lldbr-check:(f64) x = 10.5
 // lldb-command:print y
-// lldb-check:[...]$5 = 20
+// lldbg-check:[...]$5 = 20
+// lldbr-check:(i32) y = 20
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$6 = 10.5
+// lldbg-check:[...]$6 = 10.5
+// lldbr-check:(f64) x = 10.5
 // lldb-command:print y
-// lldb-check:[...]$7 = 20
+// lldbg-check:[...]$7 = 20
+// lldbr-check:(i32) y = 20
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$8 = 11.5
+// lldbg-check:[...]$8 = 11.5
+// lldbr-check:(f64) x = 11.5
 // lldb-command:print y
-// lldb-check:[...]$9 = 20
+// lldbg-check:[...]$9 = 20
+// lldbr-check:(i32) y = 20
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

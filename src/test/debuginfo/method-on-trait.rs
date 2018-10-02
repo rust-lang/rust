@@ -73,47 +73,62 @@
 
 // STACK BY REF
 // lldb-command:print *self
-// lldb-check:[...]$0 = Struct { x: 100 }
+// lldbg-check:[...]$0 = Struct { x: 100 }
+// lldbr-check:(method_on_trait::Struct) *self = Struct { x: 100 }
 // lldb-command:print arg1
-// lldb-check:[...]$1 = -1
+// lldbg-check:[...]$1 = -1
+// lldbr-check:(isize) arg1 = -1
 // lldb-command:print arg2
-// lldb-check:[...]$2 = -2
+// lldbg-check:[...]$2 = -2
+// lldbr-check:(isize) arg2 = -2
 // lldb-command:continue
 
 // STACK BY VAL
 // lldb-command:print self
-// lldb-check:[...]$3 = Struct { x: 100 }
+// lldbg-check:[...]$3 = Struct { x: 100 }
+// lldbr-check:(method_on_trait::Struct) self = Struct { x: 100 }
 // lldb-command:print arg1
-// lldb-check:[...]$4 = -3
+// lldbg-check:[...]$4 = -3
+// lldbr-check:(isize) arg1 = -3
 // lldb-command:print arg2
-// lldb-check:[...]$5 = -4
+// lldbg-check:[...]$5 = -4
+// lldbr-check:(isize) arg2 = -4
 // lldb-command:continue
 
 // OWNED BY REF
 // lldb-command:print *self
-// lldb-check:[...]$6 = Struct { x: 200 }
+// lldbg-check:[...]$6 = Struct { x: 200 }
+// lldbr-check:(method_on_trait::Struct) *self = Struct { x: 200 }
 // lldb-command:print arg1
-// lldb-check:[...]$7 = -5
+// lldbg-check:[...]$7 = -5
+// lldbr-check:(isize) arg1 = -5
 // lldb-command:print arg2
-// lldb-check:[...]$8 = -6
+// lldbg-check:[...]$8 = -6
+// lldbr-check:(isize) arg2 = -6
 // lldb-command:continue
 
 // OWNED BY VAL
 // lldb-command:print self
-// lldb-check:[...]$9 = Struct { x: 200 }
+// lldbg-check:[...]$9 = Struct { x: 200 }
+// lldbr-check:(method_on_trait::Struct) self = Struct { x: 200 }
 // lldb-command:print arg1
-// lldb-check:[...]$10 = -7
+// lldbg-check:[...]$10 = -7
+// lldbr-check:(isize) arg1 = -7
 // lldb-command:print arg2
-// lldb-check:[...]$11 = -8
+// lldbg-check:[...]$11 = -8
+// lldbr-check:(isize) arg2 = -8
 // lldb-command:continue
 
 // OWNED MOVED
 // lldb-command:print *self
-// lldb-check:[...]$12 = Struct { x: 200 }
+// lldbg-check:[...]$12 = Struct { x: 200 }
+// lldbr-check:(method_on_trait::Struct) *self = Struct { x: 200 }
 // lldb-command:print arg1
-// lldb-check:[...]$13 = -9
+// lldbg-check:[...]$13 = -9
+// lldbr-check:(isize) arg1 = -9
 // lldb-command:print arg2
-// lldb-check:[...]$14 = -10
+// lldbg-check:[...]$14 = -10
+// lldbr-check:(isize) arg2 = -10
 // lldb-command:continue
 
 

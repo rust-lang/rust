@@ -236,19 +236,6 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
         }
     }
 
-    let run = |cmd: &mut Command| {
-        cmd.output().map(|output| {
-            String::from_utf8_lossy(&output.stdout)
-                   .lines().next().unwrap_or_else(|| {
-                       panic!("{:?} failed {:?}", cmd, output)
-                   }).to_string()
-        })
-    };
-    build.lldb_version = run(Command::new("lldb").arg("--version")).ok();
-    if build.lldb_version.is_some() {
-        build.lldb_python_dir = run(Command::new("lldb").arg("-P")).ok();
-    }
-
     if let Some(ref s) = build.config.ccache {
         cmd_finder.must_have(s);
     }

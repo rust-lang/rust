@@ -945,13 +945,23 @@ impl<'test> TestCx<'test> {
             }
         }
 
+        let prefixes = if self.config.lldb_native_rust {
+            static PREFIXES: &'static [&'static str] = &["lldb", "lldbr"];
+            println!("NOTE: compiletest thinks it is using LLDB with native rust support");
+            PREFIXES
+        } else {
+            static PREFIXES: &'static [&'static str] = &["lldb", "lldbg"];
+            println!("NOTE: compiletest thinks it is using LLDB without native rust support");
+            PREFIXES
+        };
+
         // Parse debugger commands etc from test files
         let DebuggerCommands {
             commands,
             check_lines,
             breakpoint_lines,
             ..
-        } = self.parse_debugger_commands(&["lldb"]);
+        } = self.parse_debugger_commands(prefixes);
 
         // Write debugger script:
         // We don't want to hang when calling `quit` while the process is still running

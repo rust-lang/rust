@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
+
 // ignore-aarch64
 // ignore-gdb // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
 // min-lldb-version: 310
@@ -107,25 +109,32 @@
 // lldb-command:run
 
 // lldb-command:print auto_one
-// lldb-check:[...]$0 = One
+// lldbg-check:[...]$0 = One
+// lldbr-check:(c_style_enum::AutoDiscriminant) auto_one = c_style_enum::AutoDiscriminant::One
 
 // lldb-command:print auto_two
-// lldb-check:[...]$1 = Two
+// lldbg-check:[...]$1 = Two
+// lldbr-check:(c_style_enum::AutoDiscriminant) auto_two = c_style_enum::AutoDiscriminant::Two
 
 // lldb-command:print auto_three
-// lldb-check:[...]$2 = Three
+// lldbg-check:[...]$2 = Three
+// lldbr-check:(c_style_enum::AutoDiscriminant) auto_three = c_style_enum::AutoDiscriminant::Three
 
 // lldb-command:print manual_one_hundred
-// lldb-check:[...]$3 = OneHundred
+// lldbg-check:[...]$3 = OneHundred
+// lldbr-check:(c_style_enum::ManualDiscriminant) manual_one_hundred = c_style_enum::ManualDiscriminant::OneHundred
 
 // lldb-command:print manual_one_thousand
-// lldb-check:[...]$4 = OneThousand
+// lldbg-check:[...]$4 = OneThousand
+// lldbr-check:(c_style_enum::ManualDiscriminant) manual_one_thousand = c_style_enum::ManualDiscriminant::OneThousand
 
 // lldb-command:print manual_one_million
-// lldb-check:[...]$5 = OneMillion
+// lldbg-check:[...]$5 = OneMillion
+// lldbr-check:(c_style_enum::ManualDiscriminant) manual_one_million = c_style_enum::ManualDiscriminant::OneMillion
 
 // lldb-command:print single_variant
-// lldb-check:[...]$6 = TheOnlyVariant
+// lldbg-check:[...]$6 = TheOnlyVariant
+// lldbr-check:(c_style_enum::SingleVariant) single_variant = c_style_enum::SingleVariant::TheOnlyVariant
 
 #![allow(unused_variables)]
 #![allow(dead_code)]

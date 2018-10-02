@@ -33,15 +33,18 @@
 // lldb-command:run
 
 // lldb-command:print abc
-// lldb-check:[...]$0 = 10101
+// lldbg-check:[...]$0 = 10101
+// lldbr-check:(i32) abc = 10101
 // lldb-command:continue
 
 // lldb-command:print abc
-// lldb-check:[...]$1 = 20202
+// lldbg-check:[...]$1 = 20202
+// lldbr-check:(i32) abc = 20202
 // lldb-command:continue
 
 // lldb-command:print abc
-// lldb-check:[...]$2 = 30303
+// lldbg-check:[...]$2 = 30303
+// lldbr-check:(i32) abc = 30303
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

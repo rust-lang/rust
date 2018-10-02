@@ -133,6 +133,8 @@ impl EarlyProps {
                     // Ignore if actual version is smaller the minimum required
                     // version
                     lldb_version_to_int(actual_version) < lldb_version_to_int(min_version)
+                } else if line.starts_with("rust-lldb") && !config.lldb_native_rust {
+                    true
                 } else {
                     false
                 }
