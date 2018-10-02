@@ -12,24 +12,19 @@ mod builder;
 mod consts;
 mod type_;
 mod intrinsic;
-mod statics;
-mod misc;
 mod debuginfo;
 mod abi;
-mod declare;
 mod asm;
 
 pub use self::builder::{BuilderMethods, HasCodegen};
-pub use rustc_codegen_ssa::interfaces::{Backend, BackendMethods, CodegenObject};
+pub use rustc_codegen_ssa::interfaces::{Backend, BackendMethods, CodegenObject, MiscMethods,
+    StaticMethods, DeclareMethods, PreDefineMethods};
 pub use self::consts::ConstMethods;
 pub use self::type_::{TypeMethods, BaseTypeMethods, DerivedTypeMethods,
     LayoutTypeMethods, ArgTypeMethods};
 pub use self::intrinsic::{IntrinsicCallMethods, IntrinsicDeclarationMethods};
-pub use self::statics::StaticMethods;
-pub use self::misc::MiscMethods;
 pub use self::debuginfo::{DebugInfoMethods, DebugInfoBuilderMethods};
 pub use self::abi::{AbiMethods, AbiBuilderMethods};
-pub use self::declare::{DeclareMethods, PreDefineMethods};
 pub use self::asm::{AsmMethods, AsmBuilderMethods};
 
 pub trait CodegenMethods<'ll, 'tcx: 'll> :

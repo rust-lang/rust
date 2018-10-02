@@ -12,7 +12,7 @@ use rustc::ty::Ty;
 use super::Backend;
 use rustc::hir::def_id::DefId;
 use rustc::mir::mono::{Linkage, Visibility};
-use monomorphize::Instance;
+use rustc_mir::monomorphize::Instance;
 
 pub trait DeclareMethods<'ll, 'tcx: 'll> : Backend<'ll> {
 

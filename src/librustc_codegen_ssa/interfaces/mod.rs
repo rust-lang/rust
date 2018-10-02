@@ -10,7 +10,13 @@
 
 use std::fmt;
 mod backend;
+mod misc;
+mod statics;
+mod declare;
 
 pub use self::backend::{Backend, BackendMethods};
+pub use self::misc::MiscMethods;
+pub use self::statics::StaticMethods;
+pub use self::declare::{DeclareMethods, PreDefineMethods};
 
 pub trait CodegenObject : Copy + PartialEq + fmt::Debug {}

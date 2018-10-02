@@ -16,7 +16,7 @@ use rustc::session::Session;
 use libc::c_uint;
 use rustc::mir::mono::Stats;
 use std::sync::Arc;
-use monomorphize::partitioning::CodegenUnit;
+use rustc_mir::monomorphize::partitioning::CodegenUnit;
 
 pub trait MiscMethods<'ll, 'tcx: 'll> : Backend<'ll> {
     fn vtables(&self) -> &RefCell<FxHashMap<(Ty<'tcx>,
