@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use ra_syntax::{
     File, TextRange, SyntaxNodeRef,
     SyntaxKind,
-    algo::{Direction, siblings},
+    Direction,
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -62,7 +62,7 @@ fn contiguous_range_for<'a>(
 
     let left = node;
     let mut right = node;
-    for node in siblings(node, Direction::Forward) {
+    for node in node.siblings(Direction::Next) {
         visited.insert(node);
         match node.kind() {
             SyntaxKind::WHITESPACE if !node.leaf_text().unwrap().as_str().contains("\n\n") => (),

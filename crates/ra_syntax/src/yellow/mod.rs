@@ -58,6 +58,13 @@ impl SyntaxNode {
         SyntaxNode(::rowan::SyntaxNode::new(green, errors))
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Direction {
+    Next,
+    Prev,
+}
+
 impl<'a> SyntaxNodeRef<'a> {
     pub fn leaf_text(self) -> Option<&'a SmolStr> {
         self.0.leaf_text()
@@ -69,6 +76,12 @@ impl<'a> SyntaxNodeRef<'a> {
         ::algo::walk::walk(self).filter_map(|event| match event {
             ::algo::walk::WalkEvent::Enter(node) => Some(node),
             ::algo::walk::WalkEvent::Exit(_) => None,
+        })
+    }
+    pub fn siblings(self, direction: Direction) -> impl Iterator<Item=SyntaxNodeRef<'a>> {
+        ::algo::generate(Some(self), move |&node| match direction {
+            Direction::Next => node.next_sibling(),
+            Direction::Prev => node.prev_sibling(),
         })
     }
 }
