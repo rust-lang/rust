@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-54505.rs:24:16
+  --> $DIR/issue-54505.rs:14:16
    |
 LL |     take_range(0..1);
    |                ^^^^
@@ -11,7 +11,7 @@ LL |     take_range(0..1);
               found type `std::ops::Range<{integer}>`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-54505.rs:29:16
+  --> $DIR/issue-54505.rs:19:16
    |
 LL |     take_range(1..);
    |                ^^^
@@ -23,7 +23,7 @@ LL |     take_range(1..);
               found type `std::ops::RangeFrom<{integer}>`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-54505.rs:34:16
+  --> $DIR/issue-54505.rs:24:16
    |
 LL |     take_range(..);
    |                ^^
@@ -35,7 +35,7 @@ LL |     take_range(..);
               found type `std::ops::RangeFull`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-54505.rs:39:16
+  --> $DIR/issue-54505.rs:29:16
    |
 LL |     take_range(0..=1);
    |                ^^^^^
@@ -47,7 +47,7 @@ LL |     take_range(0..=1);
               found type `std::ops::RangeInclusive<{integer}>`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-54505.rs:44:16
+  --> $DIR/issue-54505.rs:34:16
    |
 LL |     take_range(..5);
    |                ^^^
@@ -59,7 +59,7 @@ LL |     take_range(..5);
               found type `std::ops::RangeTo<{integer}>`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-54505.rs:49:16
+  --> $DIR/issue-54505.rs:39:16
    |
 LL |     take_range(..=42);
    |                ^^^^^
