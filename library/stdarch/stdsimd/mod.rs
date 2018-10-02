@@ -187,6 +187,7 @@
 /// * [`mips64`]
 /// * [`powerpc`]
 /// * [`powerpc64`]
+/// * [`nvptx`]
 ///
 /// [`x86`]: x86/index.html
 /// [`x86_64`]: x86_64/index.html
@@ -196,6 +197,7 @@
 /// [`mips64`]: mips64/index.html
 /// [`powerpc`]: powerpc/index.html
 /// [`powerpc64`]: powerpc64/index.html
+/// [`nvptx`]: nvptx/index.html
 ///
 /// # Examples
 ///
@@ -380,6 +382,10 @@ pub mod arch {
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub use coresimd::arch::powerpc64;
 
+    #[cfg(all(not(dox), any(target_arch = "nvptx", target_arch = "nvptx64")))]
+    #[unstable(feature = "stdsimd", issue = "27731")]
+    pub use coresimd::arch::nvptx;
+
     #[doc(hidden)] // unstable implementation detail
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod detect;
@@ -479,4 +485,16 @@ pub mod arch {
     #[doc(cfg(target_arch = "powerpc64"))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod powerpc64 {}
+
+    /// Platform-specific intrinsics for the `nvptx` platform.
+    ///
+    /// The documentation with the full listing of `nvptx` intrinsics is
+    /// available in [libcore], but the module is re-exported here in std
+    /// as well.
+    ///
+    /// [libcore]: ../../../core/arch/nvptx/index.html
+    #[cfg(dox)]
+    #[doc(cfg(any(target_arch = "nvptx", target_arch = "nvptx64")))]
+    #[unstable(feature = "stdsimd", issue = "27731")]
+    pub mod nvptx {}
 }
