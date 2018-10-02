@@ -853,6 +853,12 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                     let res = CValue::ByVal(fx.bcx.ins().popcnt(arg), args[0].layout());
                     ret.write_cvalue(fx, res);
                 }
+                "bitreverse" => {
+                    assert_eq!(args.len(), 1);
+                    let arg = args[0].load_value(fx);
+                    let res = CValue::ByVal(fx.bcx.ins().bitrev(arg), args[0].layout());
+                    ret.write_cvalue(fx, res);
+                }
                 "needs_drop" => {
                     assert_eq!(args.len(), 0);
                     let ty = substs.type_at(0);
@@ -884,7 +890,7 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                     let amount = args[1].load_value(fx);
                     let old = fx.bcx.ins().load(clif_ty, MemFlags::new(), ptr, 0);
                     let new = fx.bcx.ins().iadd(old, amount);
-                    fx.bcx.ins().store(MemFlags::new(), ptr, new, 0);
+                    fx.bcx.ins().store(MemFlags::new(), new, ptr, 0);
                     ret.write_cvalue(fx, CValue::ByVal(old, fx.layout_of(substs.type_at(0))));
                 }
                 _ if intrinsic.starts_with("atomic_xsub") => {
@@ -894,7 +900,7 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                     let amount = args[1].load_value(fx);
                     let old = fx.bcx.ins().load(clif_ty, MemFlags::new(), ptr, 0);
                     let new = fx.bcx.ins().isub(old, amount);
-                    fx.bcx.ins().store(MemFlags::new(), ptr, new, 0);
+                    fx.bcx.ins().store(MemFlags::new(), new, ptr, 0);
                     ret.write_cvalue(fx, CValue::ByVal(old, fx.layout_of(substs.type_at(0))));
                 }
                 _ => unimpl!("unsupported intrinsic {}", intrinsic),

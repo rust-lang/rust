@@ -51,17 +51,5 @@ index 5d00949..f077f1d 100644
              }
          }
 
-@@ -2295,7 +2297,9 @@ assert_eq!(m, ", $reversed, ");
-             #[unstable(feature = "reverse_bits", issue = "48763")]
-             #[rustc_const_unstable(feature = "const_int_conversion")]
-             #[inline]
-             #[cfg(not(stage0))]
-             pub const fn reverse_bits(self) -> Self {
--                unsafe { intrinsics::bitreverse(self as $ActualT) as Self }
-+                // TODO support bitreverse
-+                //unsafe { intrinsics::bitreverse(self as $ActualT) as Self }
-+                0
-             }
-         }
 --
 2.11.0
