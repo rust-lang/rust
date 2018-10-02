@@ -101,13 +101,13 @@ macro_rules! newtype_index {
         #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, $($derives),*)]
         #[rustc_layout_scalar_valid_range_end($max)]
         $v struct $type {
-            private: u32
+            private: ::std::num::NonZeroU32
         }
 
         impl $type {
             $v const MAX_AS_U32: u32 = $max;
 
-            $v const MAX: $type = $type::from_u32_const($max);
+            $v const MAX: $type = $type::from_u32($max);
 
             #[inline]
             $v fn from_usize(value: usize) -> Self {
@@ -118,18 +118,7 @@ macro_rules! newtype_index {
             }
 
             #[inline]
-            $v fn from_u32(value: u32) -> Self {
-                assert!(value <= $max);
-                unsafe {
-                    $type::from_u32_unchecked(value)
-                }
-            }
-
-            /// Hacky variant of `from_u32` for use in constants.
-            /// This version checks the "max" constraint by using an
-            /// invalid array dereference.
-            #[inline]
-            $v const fn from_u32_const(value: u32) -> Self {
+            $v const fn from_u32(value: u32) -> Self {
                 // This will fail at const eval time unless `value <=
                 // max` is true (in which case we get the index 0).
                 // It will also fail at runtime, of course, but in a
@@ -139,13 +128,13 @@ macro_rules! newtype_index {
                 ];
 
                 unsafe {
-                    $type { private: value }
+                    $type::from_u32_unchecked(value)
                 }
             }
 
             #[inline]
             $v const unsafe fn from_u32_unchecked(value: u32) -> Self {
-                $type { private: value }
+                $type { private: ::std::num::NonZeroU32::new_unchecked(value + 1) }
             }
 
             /// Extract value of this index as an integer.
@@ -156,8 +145,8 @@ macro_rules! newtype_index {
 
             /// Extract value of this index as a usize.
             #[inline]
-            $v fn as_u32(self) -> u32 {
-                self.private
+            $v const fn as_u32(self) -> u32 {
+                self.private.get() - 1
             }
 
             /// Extract value of this index as a u32.
@@ -445,7 +434,7 @@ macro_rules! newtype_index {
                    const $name:ident = $constant:expr,
                    $($tokens:tt)*) => (
         $(#[doc = $doc])*
-        pub const $name: $type = $type::from_u32_const($constant);
+        pub const $name: $type = $type::from_u32($constant);
         newtype_index!(
             @derives      [$($derives,)*]
             @type         [$type]

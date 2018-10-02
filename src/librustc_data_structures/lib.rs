@@ -29,6 +29,7 @@
 #![feature(nll)]
 #![feature(allow_internal_unstable)]
 #![feature(vec_resize_with)]
+#![feature(const_nonzero_methods)]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]

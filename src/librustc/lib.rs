@@ -70,6 +70,8 @@
 #![feature(macro_at_most_once_rep)]
 #![feature(crate_visibility_modifier)]
 #![feature(transpose_result)]
+#![feature(const_fn)]
+#![feature(const_nonzero_methods)]
 
 #![recursion_limit="512"]
 

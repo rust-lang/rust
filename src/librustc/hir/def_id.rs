@@ -48,7 +48,7 @@ impl ::std::fmt::Debug for CrateNum {
 
 /// Item definitions in the currently-compiled crate would have the CrateNum
 /// LOCAL_CRATE in their DefId.
-pub const LOCAL_CRATE: CrateNum = CrateNum::Index(CrateId::from_u32_const(0));
+pub const LOCAL_CRATE: CrateNum = CrateNum::Index(CrateId::from_u32(0));
 
 
 impl Idx for CrateNum {
