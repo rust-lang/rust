@@ -361,7 +361,7 @@ impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Substs<'tcx> {}
 
 pub trait Subst<'tcx> : Sized {
     fn subst<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                      substs: &[Kind<'tcx>]) -> Self {
+                       substs: &[Kind<'tcx>]) -> Self {
         self.subst_spanned(tcx, substs, None)
     }
 
@@ -489,7 +489,7 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
                 span_bug!(
                     span,
                     "Type parameter `{:?}` ({:?}/{}) out of range \
-                         when substituting (root type={:?}) substs={:?}",
+                     when substituting (root type={:?}) substs={:?}",
                     p,
                     source_ty,
                     p.idx,

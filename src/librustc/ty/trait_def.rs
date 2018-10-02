@@ -173,9 +173,9 @@ pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 fast_reject::simplify_type(tcx, impl_self_ty, false)
             {
                 impls.non_blanket_impls
-                    .entry(simplified_self_ty)
-                    .or_default()
-                    .push(impl_def_id);
+                     .entry(simplified_self_ty)
+                     .or_default()
+                     .push(impl_def_id);
             } else {
                 impls.blanket_impls.push(impl_def_id);
             }

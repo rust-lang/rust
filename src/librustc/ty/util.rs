@@ -119,17 +119,17 @@ pub trait IntTypeExt {
 impl IntTypeExt for attr::IntType {
     fn to_ty<'a, 'gcx, 'tcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match *self {
-            SignedInt(ast::IntTy::I8)      => tcx.types.i8,
-            SignedInt(ast::IntTy::I16)     => tcx.types.i16,
-            SignedInt(ast::IntTy::I32)     => tcx.types.i32,
-            SignedInt(ast::IntTy::I64)     => tcx.types.i64,
+            SignedInt(ast::IntTy::I8)       => tcx.types.i8,
+            SignedInt(ast::IntTy::I16)      => tcx.types.i16,
+            SignedInt(ast::IntTy::I32)      => tcx.types.i32,
+            SignedInt(ast::IntTy::I64)      => tcx.types.i64,
             SignedInt(ast::IntTy::I128)     => tcx.types.i128,
-            SignedInt(ast::IntTy::Isize)   => tcx.types.isize,
+            SignedInt(ast::IntTy::Isize)    => tcx.types.isize,
             UnsignedInt(ast::UintTy::U8)    => tcx.types.u8,
             UnsignedInt(ast::UintTy::U16)   => tcx.types.u16,
             UnsignedInt(ast::UintTy::U32)   => tcx.types.u32,
             UnsignedInt(ast::UintTy::U64)   => tcx.types.u64,
-            UnsignedInt(ast::UintTy::U128)   => tcx.types.u128,
+            UnsignedInt(ast::UintTy::U128)  => tcx.types.u128,
             UnsignedInt(ast::UintTy::Usize) => tcx.types.usize,
         }
     }
@@ -513,7 +513,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         false
                     }
                 }
-            }).map(|(&item_param, _)| item_param).collect();
+            })
+            .map(|(&item_param, _)| item_param)
+            .collect();
         debug!("destructor_constraint({:?}) = {:?}", def.did, result);
         result
     }
@@ -674,8 +676,8 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
     pub fn is_representable(&'tcx self,
                             tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             sp: Span)
-                            -> Representability {
-
+                            -> Representability
+    {
         // Iterate until something non-representable is found
         fn fold_repr<It: Iterator<Item=Representability>>(iter: It) -> Representability {
             iter.fold(Representability::Representable, |r1, r2| {

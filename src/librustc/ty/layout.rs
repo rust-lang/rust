@@ -32,11 +32,11 @@ pub trait IntegerExt {
     fn to_ty<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, signed: bool) -> Ty<'tcx>;
     fn from_attr<C: HasDataLayout>(cx: C, ity: attr::IntType) -> Integer;
     fn repr_discr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                  ty: Ty<'tcx>,
-                  repr: &ReprOptions,
-                  min: i128,
-                  max: i128)
-                  -> (Integer, bool);
+                            ty: Ty<'tcx>,
+                            repr: &ReprOptions,
+                            min: i128,
+                            max: i128)
+                            -> (Integer, bool);
 }
 
 impl IntegerExt for Integer {
@@ -76,11 +76,11 @@ impl IntegerExt for Integer {
     /// N.B.: u128 values above i128::MAX will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
     fn repr_discr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                  ty: Ty<'tcx>,
-                  repr: &ReprOptions,
-                  min: i128,
-                  max: i128)
-                  -> (Integer, bool) {
+                            ty: Ty<'tcx>,
+                            repr: &ReprOptions,
+                            min: i128,
+                            max: i128)
+                            -> (Integer, bool) {
         // Theoretically, negative values could be larger in unsigned representation
         // than the unsigned representation of the signed minimum. However, if there
         // are any negative values, the only valid unsigned representation is u128
@@ -96,7 +96,7 @@ impl IntegerExt for Integer {
             let fit = if ity.is_signed() { signed_fit } else { unsigned_fit };
             if discr < fit {
                 bug!("Integer::repr_discr: `#[repr]` hint too small for \
-                  discriminant range of enum `{}", ty)
+                      discriminant range of enum `{}", ty)
             }
             return (discr, ity.is_signed());
         }
@@ -106,7 +106,7 @@ impl IntegerExt for Integer {
                 // WARNING: the ARM EABI has two variants; the one corresponding
                 // to `at_least == I32` appears to be used on Linux and NetBSD,
                 // but some systems may use the variant corresponding to no
-                // lower bound.  However, we don't run on those yet...?
+                // lower bound. However, we don't run on those yet...?
                 "arm" => min_from_extern = Some(I32),
                 _ => min_from_extern = Some(I32),
             }
@@ -250,6 +250,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             /// A univariant, but with a prefix of an arbitrary size & alignment (e.g. enum tag).
             Prefixed(Size, Align),
         }
+
         let univariant_uninterned = |fields: &[TyLayout<'_>], repr: &ReprOptions, kind| {
             let packed = repr.packed();
             if packed && repr.align > 0 {
@@ -324,7 +325,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 let field = fields[i as usize];
                 if !sized {
                     bug!("univariant: field #{} of `{}` comes after unsized field",
-                        offsets.len(), ty);
+                         offsets.len(), ty);
                 }
 
                 if field.is_unsized() {
@@ -628,7 +629,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 };
 
                 univariant(&tys.iter().map(|ty| self.layout_of(ty)).collect::<Result<Vec<_>, _>>()?,
-                    &ReprOptions::default(), kind)?
+                           &ReprOptions::default(), kind)?
             }
 
             // SIMD vector types.
@@ -640,7 +641,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     Abi::Scalar(ref scalar) => scalar.clone(),
                     _ => {
                         tcx.sess.fatal(&format!("monomorphising SIMD type `{}` with \
-                                                a non-machine element type `{}`",
+                                                 a non-machine element type `{}`",
                                                 ty, element.ty));
                     }
                 };
@@ -743,7 +744,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     // Only one variant is present.
                     (present_second.is_none() &&
                     // Representation optimizations are allowed.
-                     !def.repr.inhibit_enum_layout_opt());
+                    !def.repr.inhibit_enum_layout_opt());
                 if is_struct {
                     // Struct, or univariant enum equivalent to a struct.
                     // (Typechecking will reject discriminant-sizing attrs.)
@@ -755,7 +756,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                         let param_env = tcx.param_env(def.did);
                         let last_field = def.variants[v].fields.last().unwrap();
                         let always_sized = tcx.type_of(last_field.did)
-                          .is_sized(tcx.at(DUMMY_SP), param_env);
+                                              .is_sized(tcx.at(DUMMY_SP), param_env);
                         if !always_sized { StructKind::MaybeUnsized }
                         else { StructKind::AlwaysSized }
                     };
@@ -1258,8 +1259,8 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                         let fields: Vec<_> =
                             variant_def.fields.iter().map(|f| f.ident.name).collect();
                         build_variant_info(Some(variant_def.name),
-                                            &fields,
-                                            layout.for_variant(self, i))
+                                           &fields,
+                                           layout.for_variant(self, i))
                     })
                     .collect();
                 record(adt_kind.into(), adt_packed, match layout.variants {

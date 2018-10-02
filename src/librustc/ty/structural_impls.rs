@@ -386,12 +386,12 @@ impl<'a, 'tcx> Lift<'tcx> for ty::GenSig<'a> {
     type Lifted = ty::GenSig<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&(self.yield_ty, self.return_ty))
-            .map(|(yield_ty, return_ty)| {
-                ty::GenSig {
-                    yield_ty,
-                    return_ty,
-                }
-            })
+           .map(|(yield_ty, return_ty)| {
+               ty::GenSig {
+                   yield_ty,
+                   return_ty,
+               }
+           })
     }
 }
 
@@ -452,7 +452,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             CyclicTy(t) => return tcx.lift(&t).map(|t| CyclicTy(t)),
             ProjectionMismatched(x) => ProjectionMismatched(x),
             ProjectionBoundsLength(x) => ProjectionBoundsLength(x),
-
             Sorts(ref x) => return tcx.lift(x).map(Sorts),
             OldStyleLUB(ref x) => return tcx.lift(x).map(OldStyleLUB),
             ExistentialMismatch(ref x) => return tcx.lift(x).map(ExistentialMismatch)

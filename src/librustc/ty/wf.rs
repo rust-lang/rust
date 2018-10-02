@@ -223,8 +223,8 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
             let predicate = ty::Predicate::ConstEvaluatable(def_id, substs);
             let cause = self.cause(traits::MiscObligation);
             self.out.push(traits::Obligation::new(cause,
-                                                    self.param_env,
-                                                    predicate));
+                                                  self.param_env,
+                                                  predicate));
         }
     }
 

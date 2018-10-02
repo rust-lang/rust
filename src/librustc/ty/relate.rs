@@ -274,9 +274,10 @@ impl<'tcx> Relate<'tcx> for Vec<ty::PolyExistentialProjection<'tcx>> {
         if a.len() != b.len() {
             Err(TypeError::ProjectionBoundsLength(expected_found(relation, &a.len(), &b.len())))
         } else {
-            a.iter().zip(b)
-                .map(|(a, b)| relation.relate(a, b))
-                .collect()
+            a.iter()
+             .zip(b)
+             .map(|(a, b)| relation.relate(a, b))
+             .collect()
         }
     }
 }
