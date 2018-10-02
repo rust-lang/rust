@@ -586,6 +586,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     /// The last argument controls whether we error out when there are undefined
     /// or pointer bytes.  You should never call this, call `get_bytes` or
     /// `get_bytes_with_undef_and_ptr` instead,
+    ///
+    /// This function also guarantees that the resulting pointer will remain stable
+    /// even when new allocations are pushed to the `HashMap`. `copy_repeatedly` relies
+    /// on that.
     fn get_bytes_internal(
         &self,
         ptr: Pointer<M::PointerTag>,
