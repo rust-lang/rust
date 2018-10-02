@@ -637,7 +637,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 name: Field::new(cx.tcx.field_index(expr.id, cx.tables)),
             }
         }
-        hir::ExprKind::Cast(ref source, _) => {
+        hir::ExprKind::Cast(ref source, ref ty) => {
             // Check to see if this cast is a "coercion cast", where the cast is actually done
             // using a coercion (or is a no-op).
             if let Some(&TyCastKind::CoercionCast) = cx.tables()
@@ -714,7 +714,26 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 } else {
                     source.to_ref()
                 };
-                ExprKind::Cast { source }
+
+                let cast = ExprKind::Cast { source };
+
+                if let Some(user_ty) = cx.tables.user_provided_tys().get(ty.hir_id) {
+                    // NOTE: Creating a new Expr and wrapping a Cast inside of it may be
+                    //       inefficient, revisit this when performance becomes an issue.
+                    let cast_expr = Expr {
+                        temp_lifetime,
+                        ty: expr_ty,
+                        span: expr.span,
+                        kind: cast,
+                    };
+
+                    ExprKind::ValueTypeAscription {
+                        source: cast_expr.to_ref(),
+                        user_ty: UserTypeAnnotation::Ty(*user_ty),
+                    }
+                } else {
+                    cast
+                }
             }
         }
         hir::ExprKind::Type(ref source, ref ty) => {

@@ -4166,6 +4166,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
                     match cast::CastCheck::new(self, e, t_expr, t_cast, t.span, expr.span) {
                         Ok(cast_check) => {
+                            let c_ty = self.infcx.canonicalize_response(&t_cast);
+                            self.tables.borrow_mut().user_provided_tys_mut().insert(t.hir_id, c_ty);
                             deferred_cast_checks.push(cast_check);
                             t_cast
                         }
