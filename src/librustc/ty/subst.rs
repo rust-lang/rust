@@ -229,6 +229,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                       mk_kind: &mut F)
     where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
     {
+        substs.reserve(defs.params.len());
         for param in &defs.params {
             let kind = mk_kind(param, substs);
             assert_eq!(param.index as usize, substs.len());
