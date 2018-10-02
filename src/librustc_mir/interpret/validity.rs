@@ -254,8 +254,25 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         place: MPlaceTy<'tcx>,
         path: &mut Vec<PathElem>,
         ref_tracking: Option<&mut RefTracking<'tcx>>,
+        const_mode: bool,
     ) -> EvalResult<'tcx> {
-        // Before we do anything else, make sure this is entirely in-bounds.
+        if const_mode {
+            // Skip validation entirely for some external statics
+            if let Scalar::Ptr(ptr) = place.ptr {
+                let alloc_kind = self.tcx.alloc_map.lock().get(ptr.alloc_id);
+                if let Some(AllocType::Static(did)) = alloc_kind {
+                    // `extern static` cannot be validated as they have no body.
+                    // They are not even properly aligned.
+                    // Statics from other crates are already checked.
+                    // They might be checked at a different type, but for now we want
+                    // to avoid recursing too deeply.  This is not sound!
+                    if !did.is_local() || self.tcx.is_foreign_item(did) {
+                        return Ok(());
+                    }
+                }
+            }
+        }
+        // Make sure this is non-NULL, aligned and entirely in-bounds.
         let (size, align) = self.size_and_align_of(place.extra, place.layout)?;
         try_validation!(self.memory.check_align(place.ptr, align),
             "unaligned reference", path);
@@ -264,24 +281,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 "integer pointer in non-ZST reference", path);
             try_validation!(self.memory.check_bounds(ptr, size, false),
                 "dangling reference (not entirely in bounds)", path);
-            // Skip recursion for some external statics
-            let alloc_kind = self.tcx.alloc_map.lock().get(ptr.alloc_id);
-            if let Some(AllocType::Static(did)) = alloc_kind {
-                // statics from other crates are already checked.
-                // they might be checked at a different type, but for now we want
-                // to avoid recursing too deeply.
-                // extern statics cannot be validated as they have no body.
-                if !did.is_local() || self.tcx.is_foreign_item(did) {
-                    return Ok(());
-                }
-            }
         }
         // Check if we have encountered this pointer+layout combination
         // before.  Proceed recursively even for integer pointers, no
         // reason to skip them! They are valid for some ZST, but not for others
         // (e.g. `!` is a ZST).
-        let op = place.into();
         if let Some(ref_tracking) = ref_tracking {
+            let op = place.into();
             if ref_tracking.seen.insert(op) {
                 trace!("Recursing below ptr {:#?}", *op);
                 ref_tracking.todo.push((op, path_clone_and_deref(path)));
@@ -399,7 +405,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                             self.validate_ref(
                                 self.ref_to_mplace(value)?,
                                 path,
-                                ref_tracking
+                                ref_tracking,
+                                const_mode,
                             )?;
                         }
                     },
@@ -437,7 +444,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 }
                 // for safe ptrs, recursively check it
                 if !dest.layout.ty.is_unsafe_ptr() {
-                    self.validate_ref(ptr, path, ref_tracking)?;
+                    self.validate_ref(ptr, path, ref_tracking, const_mode)?;
                 }
             }
             // Compound data structures
