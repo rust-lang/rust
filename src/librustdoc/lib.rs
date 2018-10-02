@@ -280,7 +280,7 @@ fn opts() -> Vec<RustcOptGroup> {
                        "check if given theme is valid",
                        "FILES")
         }),
-        unstable("resource-suffix", |o| {
+        stable("resource-suffix", |o| {
             o.optopt("",
                      "resource-suffix",
                      "suffix to add to CSS and JavaScript files, e.g. \"light.css\" will become \
