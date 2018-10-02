@@ -205,10 +205,9 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
     {
         Substs::for_item(tcx, def_id, |param, substs| {
-            match self.get(param.index as usize) {
-                Some(&kind) => kind,
-                None => mk_kind(param, substs),
-            }
+            self.get(param.index as usize)
+                .cloned()
+                .unwrap_or_else(|| mk_kind(param, substs))
         })
     }
 

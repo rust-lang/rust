@@ -816,22 +816,16 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
         use ty::InstanceDef::*;
         self.substs.visit_with(visitor) ||
         match self.def {
-            Item(did) => did.visit_with(visitor),
-            Intrinsic(did) => did.visit_with(visitor),
-            FnPtrShim(did, ty) => {
-                did.visit_with(visitor) ||
-                ty.visit_with(visitor)
+            Item(did) | Intrinsic(did) | Virtual(did, _) => {
+                did.visit_with(visitor)
             },
-            Virtual(did, _) => did.visit_with(visitor),
-            ClosureOnceShim { call_once } => call_once.visit_with(visitor),
+            FnPtrShim(did, ty) | CloneShim(did, ty) => {
+                did.visit_with(visitor) || ty.visit_with(visitor)
+            },
             DropGlue(did, ty) => {
-                did.visit_with(visitor) ||
-                ty.visit_with(visitor)
+                did.visit_with(visitor) || ty.visit_with(visitor)
             },
-            CloneShim(did, ty) => {
-                did.visit_with(visitor) ||
-                ty.visit_with(visitor)
-            },
+            ClosureOnceShim { call_once } => call_once.visit_with(visitor),
         }
     }
 }

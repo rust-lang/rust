@@ -257,16 +257,13 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn has_error_field(self, ty: Ty<'tcx>) -> bool {
-        match ty.sty {
-            ty::Adt(def, substs) => {
-                for field in def.all_fields() {
-                    let field_ty = field.ty(self, substs);
-                    if let Error = field_ty.sty {
-                        return true;
-                    }
+        if let ty::Adt(def, substs) = ty.sty {
+            for field in def.all_fields() {
+                let field_ty = field.ty(self, substs);
+                if let Error = field_ty.sty {
+                    return true;
                 }
             }
-            _ => (),
         }
         false
     }
@@ -421,7 +418,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let ty = self.type_of(adt_did);
         self.for_each_relevant_impl(drop_trait, ty, |impl_did| {
             if let Some(item) = self.associated_items(impl_did).next() {
-                if let Ok(()) = validate(self, impl_did) {
+                if validate(self, impl_did).is_ok() {
                     dtor_did = Some(item.def_id);
                 }
             }
@@ -906,20 +903,17 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let (param_env, ty) = query.into_parts();
 
     let needs_drop = |ty: Ty<'tcx>| -> bool {
-        match tcx.try_needs_drop_raw(DUMMY_SP, param_env.and(ty)) {
-            Ok(v) => v,
-            Err(mut bug) => {
-                // Cycles should be reported as an error by `check_representable`.
-                //
-                // Consider the type as not needing drop in the meanwhile to
-                // avoid further errors.
-                //
-                // In case we forgot to emit a bug elsewhere, delay our
-                // diagnostic to get emitted as a compiler bug.
-                bug.delay_as_bug();
-                false
-            }
-        }
+        tcx.try_needs_drop_raw(DUMMY_SP, param_env.and(ty)).unwrap_or_else(|mut bug| {
+            // Cycles should be reported as an error by `check_representable`.
+            //
+            // Consider the type as not needing drop in the meanwhile to
+            // avoid further errors.
+            //
+            // In case we forgot to emit a bug elsewhere, delay our
+            // diagnostic to get emitted as a compiler bug.
+            bug.delay_as_bug();
+            false
+        })
     };
 
     assert!(!ty.needs_infer());
