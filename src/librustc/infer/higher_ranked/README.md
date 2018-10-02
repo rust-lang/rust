@@ -159,7 +159,7 @@ Now we compare the return types, which are covariant, and hence we have:
 
     fn(&'A T) <: for<'b> fn(&'b T)?
 
-Here we skolemize the bound region in the supertype to yield:
+Here we replace the bound region in the supertype with a placeholder to yield:
 
     fn(&'A T) <: fn(&'x T)?
 

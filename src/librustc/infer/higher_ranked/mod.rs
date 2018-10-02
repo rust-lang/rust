@@ -602,7 +602,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }))
         });
 
-        debug!("skolemize_bound_regions(binder={:?}, result={:?}, map={:?})",
+        debug!("replace_late_bound_regions_with_placeholders(binder={:?}, result={:?}, map={:?})",
                binder,
                result,
                map);

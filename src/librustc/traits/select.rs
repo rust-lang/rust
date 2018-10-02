@@ -1190,7 +1190,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
         }
 
-        // Check the cache. Note that we skolemize the trait-ref
+        // Check the cache. Note that we freshen the trait-ref
         // separately rather than using `stack.fresh_trait_ref` --
         // this is because we want the unbound variables to be
         // replaced with fresh types starting from index 0.

@@ -743,7 +743,7 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
 /// Binder is a binder for higher-ranked lifetimes. It is part of the
 /// compiler's representation for things like `for<'a> Fn(&'a isize)`
 /// (which would be represented by the type `PolyTraitRef ==
-/// Binder<TraitRef>`). Note that when we skolemize, instantiate,
+/// Binder<TraitRef>`). Note that when we instantiate,
 /// erase, or otherwise "discharge" these bound regions, we change the
 /// type from `Binder<T>` to just `T` (see
 /// e.g. `liberate_late_bound_regions`).
