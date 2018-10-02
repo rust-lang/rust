@@ -1872,18 +1872,15 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 node: hir::TraitItemKind::Method(_, ref m),
                 ..
             }) => {
-                match self.tcx
+                if let hir::ItemKind::Trait(.., ref trait_items) = self.tcx
                     .hir
                     .expect_item(self.tcx.hir.get_parent(parent))
                     .node
                 {
-                    hir::ItemKind::Trait(.., ref trait_items) => {
-                        assoc_item_kind = trait_items
-                            .iter()
-                            .find(|ti| ti.id.node_id == parent)
-                            .map(|ti| ti.kind);
-                    }
-                    _ => {}
+                    assoc_item_kind = trait_items
+                        .iter()
+                        .find(|ti| ti.id.node_id == parent)
+                        .map(|ti| ti.kind);
                 }
                 match *m {
                     hir::TraitMethod::Required(_) => None,
@@ -1895,19 +1892,16 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 node: hir::ImplItemKind::Method(_, body),
                 ..
             }) => {
-                match self.tcx
+                if let hir::ItemKind::Impl(.., ref self_ty, ref impl_items) = self.tcx
                     .hir
                     .expect_item(self.tcx.hir.get_parent(parent))
                     .node
                 {
-                    hir::ItemKind::Impl(.., ref self_ty, ref impl_items) => {
-                        impl_self = Some(self_ty);
-                        assoc_item_kind = impl_items
-                            .iter()
-                            .find(|ii| ii.id.node_id == parent)
-                            .map(|ii| ii.kind);
-                    }
-                    _ => {}
+                    impl_self = Some(self_ty);
+                    assoc_item_kind = impl_items
+                        .iter()
+                        .find(|ii| ii.id.node_id == parent)
+                        .map(|ii| ii.kind);
                 }
                 Some(body)
             }
@@ -2541,15 +2535,12 @@ fn insert_late_bound_lifetimes(
     appears_in_where_clause.visit_generics(generics);
 
     for param in &generics.params {
-        match param.kind {
-            hir::GenericParamKind::Lifetime { .. } => {
-                if !param.bounds.is_empty() {
-                    // `'a: 'b` means both `'a` and `'b` are referenced
-                    appears_in_where_clause
-                        .regions.insert(hir::LifetimeName::Param(param.name.modern()));
-                }
+        if let hir::GenericParamKind::Lifetime { .. } = param.kind {
+            if !param.bounds.is_empty() {
+                // `'a: 'b` means both `'a` and `'b` are referenced
+                appears_in_where_clause
+                    .regions.insert(hir::LifetimeName::Param(param.name.modern()));
             }
-            hir::GenericParamKind::Type { .. } => {}
         }
     }
 

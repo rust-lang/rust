@@ -253,7 +253,7 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    return ret;
+    ret
 }
 
 fn add_library(tcx: TyCtxt<'_, '_, '_>,

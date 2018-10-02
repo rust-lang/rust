@@ -145,8 +145,8 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
 
     fn collect_item(&mut self, item_index: usize, item_def_id: DefId) {
         // Check for duplicates.
-        match self.items.items[item_index] {
-            Some(original_def_id) if original_def_id != item_def_id => {
+        if let Some(original_def_id) = self.items.items[item_index] {
+            if original_def_id != item_def_id {
                 let name = LangItem::from_u32(item_index as u32).unwrap().name();
                 let mut err = match self.tcx.hir.span_if_local(item_def_id) {
                     Some(span) => struct_span_err!(
@@ -168,9 +168,6 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
                                       self.tcx.crate_name(original_def_id.krate)));
                 }
                 err.emit();
-            }
-            _ => {
-                // OK.
             }
         }
 
@@ -194,7 +191,7 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
         }
     }
 
-    return None;
+    None
 }
 
 pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> LanguageItems {

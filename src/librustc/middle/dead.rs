@@ -131,12 +131,10 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn mark_live_symbols(&mut self) {
         let mut scanned = FxHashSet();
-        while !self.worklist.is_empty() {
-            let id = self.worklist.pop().unwrap();
-            if scanned.contains(&id) {
+        while let Some(id) = self.worklist.pop() {
+            if !scanned.insert(id) {
                 continue
             }
-            scanned.insert(id);
 
             if let Some(ref node) = self.tcx.hir.find(id) {
                 self.live_symbols.insert(id);

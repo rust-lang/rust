@@ -170,7 +170,7 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_, '_, '_>) -> Strin
         VarDefNode(s) => {
             format!("Var def node [{}]", cm.span_to_string(s))
         }
-        ExitNode => "Exit node".to_string(),
+        ExitNode => "Exit node".to_owned(),
     }
 }
 
@@ -330,7 +330,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
             Local(LocalInfo { name, .. }) | Arg(_, name) => {
                 name.to_string()
             },
-            CleanExit => "<clean-exit>".to_string()
+            CleanExit => "<clean-exit>".to_owned()
         }
     }
 
@@ -1049,12 +1049,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
               // the construction of a closure itself is not important,
               // but we have to consider the closed over variables.
-              let caps = match self.ir.capture_info_map.get(&expr.id) {
-                  Some(caps) => caps.clone(),
-                  None => {
-                      span_bug!(expr.span, "no registered caps");
-                  }
-              };
+                let caps = self.ir.capture_info_map.get(&expr.id).cloned().unwrap_or_else(||
+                    span_bug!(expr.span, "no registered caps"));
+
               caps.iter().rev().fold(succ, |succ, cap| {
                   self.init_from_succ(cap.ln, succ);
                   let var = self.variable(cap.var_hid, expr.span);
@@ -1114,15 +1111,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.init_empty(ln, succ);
             let mut first_merge = true;
             for arm in arms {
-                let body_succ =
-                    self.propagate_through_expr(&arm.body, succ);
-                let guard_succ =
-                    self.propagate_through_opt_expr(
-                        arm.guard.as_ref().map(|g|
-                            match g {
-                                hir::Guard::If(e) => &**e,
-                            }),
-                        body_succ);
+                    let body_succ = self.propagate_through_expr(&arm.body, succ);
+
+                    let guard_succ = self.propagate_through_opt_expr(
+                        arm.guard.as_ref().map(|hir::Guard::If(e)| &**e),
+                        body_succ
+                    );
                 // only consider the first pattern; any later patterns must have
                 // the same bindings, and we also consider the first pattern to be
                 // the "authoritative" set of ids
@@ -1146,10 +1140,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               let target = match label.target_id {
                     Ok(node_id) => self.break_ln.get(&node_id),
                     Err(err) => span_bug!(expr.span, "loop scope error: {}", err),
-              }.map(|x| *x);
-
               // Now that we know the label we're going to,
               // look it up in the break loop nodes table
+                }.cloned();
 
               match target {
                   Some(b) => self.propagate_through_opt_expr(opt_expr.as_ref().map(|e| &**e), b),
@@ -1159,18 +1152,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprKind::Continue(label) => {
               // Find which label this expr continues to
-              let sc = match label.target_id {
-                    Ok(node_id) => node_id,
-                    Err(err) => span_bug!(expr.span, "loop scope error: {}", err),
-              };
+                let sc = label.target_id.unwrap_or_else(|err|
+                    span_bug!(expr.span, "loop scope error: {}", err));
 
               // Now that we know the label we're going to,
               // look it up in the continue loop nodes table
-
-              match self.cont_ln.get(&sc) {
-                  Some(&b) => b,
-                  None => span_bug!(expr.span, "continue to unknown label")
-              }
+                self.cont_ln.get(&sc).cloned().unwrap_or_else(||
+                    span_bug!(expr.span, "continue to unknown label"))
           }
 
           hir::ExprKind::Assign(ref l, ref r) => {
@@ -1450,8 +1438,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     self.propagate_through_expr(&cond, ln)
                 }
             };
-            assert!(cond_ln == new_cond_ln);
-            assert!(body_ln == self.propagate_through_block(body, cond_ln));
+            assert_eq!(cond_ln, new_cond_ln);
+            assert_eq!(body_ln, self.propagate_through_block(body, cond_ln));
         }
 
         cond_ln
@@ -1576,7 +1564,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn should_warn(&self, var: Variable) -> Option<String> {
         let name = self.ir.variable_name(var);
-        if name.is_empty() || name.as_bytes()[0] == ('_' as u8) {
+        if name.is_empty() || name.as_bytes()[0] == b'_' {
             None
         } else {
             Some(name)

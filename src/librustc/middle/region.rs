@@ -515,10 +515,8 @@ impl<'tcx> ScopeTree {
 
     /// Returns the lifetime of the local variable `var_id`
     pub fn var_scope(&self, var_id: hir::ItemLocalId) -> Scope {
-        match self.var_map.get(&var_id) {
-            Some(&r) => r,
-            None => { bug!("no enclosing scope for id {:?}", var_id); }
-        }
+        self.var_map.get(&var_id).cloned().unwrap_or_else(||
+            bug!("no enclosing scope for id {:?}", var_id))
     }
 
     pub fn temporary_scope(&self, expr_id: hir::ItemLocalId) -> Option<Scope> {
@@ -828,10 +826,8 @@ fn resolve_block<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, blk:
 fn resolve_arm<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, arm: &'tcx hir::Arm) {
     visitor.terminating_scopes.insert(arm.body.hir_id.local_id);
 
-    if let Some(ref g) = arm.guard {
-        match g {
-            hir::Guard::If(ref expr) => visitor.terminating_scopes.insert(expr.hir_id.local_id),
-        };
+    if let Some(hir::Guard::If(ref expr)) = arm.guard {
+        visitor.terminating_scopes.insert(expr.hir_id.local_id);
     }
 
     intravisit::walk_arm(visitor, arm);

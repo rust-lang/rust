@@ -35,12 +35,8 @@ impl_stable_hash_for!(enum self::SymbolExportLevel {
 
 impl SymbolExportLevel {
     pub fn is_below_threshold(self, threshold: SymbolExportLevel) -> bool {
-        if threshold == SymbolExportLevel::Rust {
-            // We export everything from Rust dylibs
-            true
-        } else {
-            self == SymbolExportLevel::C
-        }
+        threshold == SymbolExportLevel::Rust // export everything from Rust dylibs
+          || self == SymbolExportLevel::C
     }
 }
 
