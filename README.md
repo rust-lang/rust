@@ -145,6 +145,8 @@ enable/disable Clippy lints until `tool_lints` are stable:
 #![cfg_attr(feature = "cargo-clippy", allow(clippy_lint))]
 ```
 
+If you do not want to include your lint levels in your code, you can globally enable/disable lints by passing extra flags to clippy during the run: `cargo clippy -- -A lint_name` will run clippy with `lint_name` disabled and `cargo clippy -- -W lint_name` will run it with that enabled. On newer compilers you may need to use `clippy::lint_name` instead.
+
 ## License
 
 Licensed under [MPL](https://www.mozilla.org/MPL/2.0/).
