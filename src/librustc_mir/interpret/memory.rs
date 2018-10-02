@@ -284,7 +284,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     /// If you want to check bounds before doing a memory access, be sure to
     /// check the pointer one past the end of your access, then everything will
     /// work out exactly.
-    pub fn check_bounds(&self, ptr: Pointer, access: bool) -> EvalResult<'tcx> {
+    pub fn check_bounds_ptr(&self, ptr: Pointer, access: bool) -> EvalResult<'tcx> {
         let alloc = self.get(ptr.alloc_id)?;
         let allocation_size = alloc.bytes.len() as u64;
         if ptr.offset.bytes() > allocation_size {
@@ -295,6 +295,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             });
         }
         Ok(())
+    }
+
+    /// Check if the memory range beginning at `ptr` and of size `Size` is "in-bounds".
+    #[inline(always)]
+    pub fn check_bounds(&self, ptr: Pointer, size: Size, access: bool) -> EvalResult<'tcx> {
+        // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
+        self.check_bounds_ptr(ptr.offset(size, &*self)?, access)
     }
 }
 
@@ -524,8 +531,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, &[u8]> {
         assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
         self.check_align(ptr.into(), align)?;
-        // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
-        self.check_bounds(ptr.offset(size, &*self)?, true)?;
+        self.check_bounds(ptr, size, true)?;
 
         if check_defined_and_ptr {
             self.check_defined(ptr, size)?;
@@ -569,8 +575,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, &mut [u8]> {
         assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
         self.check_align(ptr.into(), align)?;
-        // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
-        self.check_bounds(ptr.offset(size, &self)?, true)?;
+        self.check_bounds(ptr, size, true)?;
 
         self.mark_definedness(ptr, size, true)?;
         self.clear_relocations(ptr, size)?;

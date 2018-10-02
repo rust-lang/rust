@@ -9,14 +9,18 @@
 // except according to those terms.
 
 union Foo {
-    a: u8,
+    a: usize,
     b: Bar,
+    c: &'static Bar,
 }
 
 #[derive(Copy, Clone)]
 enum Bar {}
 
-const BAD_BAD_BAD: Bar = unsafe { Foo { a: 1 }.b};
+const BAD_BAD_BAD: Bar = unsafe { Foo { a: 1 }.b };
+//~^ ERROR this constant likely exhibits undefined behavior
+
+const BAD_BAD_REF: &Bar = unsafe { Foo { a: 1 }.c };
 //~^ ERROR this constant likely exhibits undefined behavior
 
 fn main() {

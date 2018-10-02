@@ -22,7 +22,7 @@ use super::{
     OpTy, MPlaceTy, Machine, EvalContext, ScalarMaybeUndef
 };
 
-macro_rules! validation_failure{
+macro_rules! validation_failure {
     ($what:expr, $where:expr, $details:expr) => {{
         let where_ = path_format($where);
         let where_ = if where_.is_empty() {
@@ -47,6 +47,15 @@ macro_rules! validation_failure{
             $what, where_,
         )))
     }};
+}
+
+macro_rules! try_validation {
+    ($e:expr, $what:expr, $where:expr) => {{
+        match $e {
+            Ok(x) => x,
+            Err(_) => return validation_failure!($what, $where),
+        }
+    }}
 }
 
 /// We want to show a nice path to the invalid field for diagnotsics,
@@ -230,8 +239,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         path: &mut Vec<PathElem>,
         ref_tracking: Option<&mut RefTracking<'tcx>>,
     ) -> EvalResult<'tcx> {
-        // Skip recursion for some external statics
-        if let Scalar::Ptr(ptr) = place.ptr {
+        // Before we do anything else, make sure this is entirely in-bounds.
+        if !place.layout.is_zst() {
+            let ptr = try_validation!(place.ptr.to_ptr(),
+                "integer pointer in non-ZST reference", path);
+            let size = self.size_and_align_of(place.extra, place.layout)?.0;
+            try_validation!(self.memory.check_bounds(ptr, size, false),
+                "dangling reference (not entirely in bounds)", path);
+            // Skip recursion for some external statics
             let alloc_kind = self.tcx.alloc_map.lock().get(ptr.alloc_id);
             if let Some(AllocType::Static(did)) = alloc_kind {
                 // statics from other crates are already checked.
@@ -257,7 +272,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         Ok(())
     }
 
-    /// This function checks the data at `op`.
+    /// This function checks the data at `op`.  `op` is assumed to cover valid memory if it
+    /// is an indirect operand.
     /// It will error if the bits at the destination do not match the ones described by the layout.
     /// The `path` may be pushed to, but the part that is present when the function
     /// starts must not be changed!
@@ -305,13 +321,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let dest = match dest.layout.ty.sty {
                     ty::Dynamic(..) => {
                         let dest = dest.to_mem_place(); // immediate trait objects are not a thing
-                        match self.unpack_dyn_trait(dest) {
-                            Ok(res) => res.1.into(),
-                            Err(_) =>
-                                return validation_failure!(
-                                    "invalid vtable in fat pointer", path
-                                ),
-                        }
+                        try_validation!(self.unpack_dyn_trait(dest),
+                            "invalid vtable in fat pointer", path).1.into()
                     }
                     _ => dest
                 };
@@ -337,20 +348,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     // expectation.
                     layout::Abi::Scalar(ref scalar_layout) => {
                         let size = scalar_layout.value.size(self);
-                        let value = match self.read_value(dest) {
-                            Ok(val) => val,
-                            Err(err) => match err.kind {
-                                EvalErrorKind::PointerOutOfBounds { .. } |
-                                EvalErrorKind::ReadUndefBytes(_) =>
-                                    return validation_failure!(
-                                        "uninitialized or out-of-bounds memory", path
-                                    ),
-                                _ =>
-                                    return validation_failure!(
-                                        "unrepresentable data", path
-                                    ),
-                            }
-                        };
+                        let value = try_validation!(self.read_value(dest),
+                            "uninitialized or unrepresentable data", path);
                         let scalar = value.to_scalar_or_undef();
                         self.validate_scalar(scalar, size, scalar_layout, &path, dest.layout.ty)?;
                         // Recursively check *safe* references
@@ -367,35 +366,24 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 if dest.layout.ty.builtin_deref(true).is_some() =>
             {
                 // This is a fat pointer.
-                let ptr = match self.read_value(dest.into())
-                    .and_then(|val| self.ref_to_mplace(val))
-                {
-                    Ok(ptr) => ptr,
-                    Err(_) =>
-                        return validation_failure!(
-                            "undefined location or metadata in fat pointer", path
-                        ),
-                };
+                let ptr = try_validation!(self.read_value(dest.into()),
+                    "undefined location in fat pointer", path);
+                let ptr = try_validation!(self.ref_to_mplace(ptr),
+                    "undefined metadata in fat pointer", path);
                 // check metadata early, for better diagnostics
                 match self.tcx.struct_tail(ptr.layout.ty).sty {
                     ty::Dynamic(..) => {
-                        match ptr.extra.unwrap().to_ptr() {
-                            Ok(_) => {},
-                            Err(_) =>
-                                return validation_failure!(
-                                    "non-pointer vtable in fat pointer", path
-                                ),
-                        }
+                        let vtable = try_validation!(ptr.extra.unwrap().to_ptr(),
+                            "non-pointer vtable in fat pointer", path);
+                        try_validation!(self.read_drop_type_from_vtable(vtable),
+                            "invalid drop fn in vtable", path);
+                        try_validation!(self.read_size_and_align_from_vtable(vtable),
+                            "invalid size or align in vtable", path);
                         // FIXME: More checks for the vtable.
                     }
                     ty::Slice(..) | ty::Str => {
-                        match ptr.extra.unwrap().to_usize(self) {
-                            Ok(_) => {},
-                            Err(_) =>
-                                return validation_failure!(
-                                    "non-integer slice length in fat pointer", path
-                                ),
-                        }
+                        try_validation!(ptr.extra.unwrap().to_usize(self),
+                            "non-integer slice length in fat pointer", path);
                     }
                     _ =>
                         bug!("Unexpected unsized type tail: {:?}",
@@ -418,23 +406,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 match dest.layout.ty.sty {
                     // Special handling for strings to verify UTF-8
                     ty::Str => {
-                        match self.read_str(dest) {
-                            Ok(_) => {},
-                            Err(err) => match err.kind {
-                                EvalErrorKind::PointerOutOfBounds { .. } |
-                                EvalErrorKind::ReadUndefBytes(_) =>
-                                    // The error here looks slightly different than it does
-                                    // for slices, because we do not report the index into the
-                                    // str at which we are OOB.
-                                    return validation_failure!(
-                                        "uninitialized or out-of-bounds memory", path
-                                    ),
-                                _ =>
-                                    return validation_failure!(
-                                        "non-UTF-8 data in str", path
-                                    ),
-                            }
-                        }
+                        try_validation!(self.read_str(dest),
+                            "uninitialized or non-UTF-8 data in str", path);
                     }
                     // Special handling for arrays/slices of builtin integer types
                     ty::Array(tys, ..) | ty::Slice(tys) if {
@@ -470,18 +443,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                                             "undefined bytes", path
                                         )
                                     },
-                                    EvalErrorKind::PointerOutOfBounds { allocation_size, .. } => {
-                                        // If the array access is out-of-bounds, the first
-                                        // undefined access is the after the end of the array.
-                                        let i = (allocation_size.bytes() * ty_size) as usize;
-                                        path.push(PathElem::ArrayElem(i));
-                                    },
-                                    _ => (),
+                                    // Other errors shouldn't be possible
+                                    _ => return Err(err),
                                 }
-
-                                return validation_failure!(
-                                    "uninitialized or out-of-bounds memory", path
-                                )
                             }
                         }
                     },
