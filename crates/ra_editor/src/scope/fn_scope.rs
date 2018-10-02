@@ -6,7 +6,7 @@ use std::{
 use ra_syntax::{
     SyntaxNodeRef, SyntaxNode, SmolStr, AstNode,
     ast::{self, NameOwner, LoopBodyOwner, ArgListOwner},
-    algo::{ancestors, generate, walk::preorder}
+    algo::{generate}
 };
 
 type ScopeId = usize;
@@ -51,7 +51,7 @@ impl FnScopes {
         res
     }
     fn add_bindings(&mut self, scope: ScopeId, pat: ast::Pat) {
-        let entries = preorder(pat.syntax())
+        let entries = pat.syntax().descendants()
             .filter_map(ast::BindPat::cast)
             .filter_map(ScopeEntry::new);
         self.scopes[scope].entries.extend(entries);
@@ -66,7 +66,7 @@ impl FnScopes {
         self.scope_for.insert(node.owned(), scope);
     }
     fn scope_for(&self, node: SyntaxNodeRef) -> Option<ScopeId> {
-        ancestors(node)
+        node.ancestors()
             .filter_map(|it| self.scope_for.get(&it.owned()).map(|&scope| scope))
             .next()
     }

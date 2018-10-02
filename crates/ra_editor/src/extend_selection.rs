@@ -1,7 +1,7 @@
 use ra_syntax::{
-    File, TextRange, SyntaxNodeRef, TextUnit,
+    File, TextRange, SyntaxNodeRef, TextUnit, Direction,
     SyntaxKind::*,
-    algo::{find_leaf_at_offset, LeafAtOffset, find_covering_node, ancestors, Direction, siblings},
+    algo::{find_leaf_at_offset, LeafAtOffset, find_covering_node},
 };
 
 pub fn extend_selection(file: &File, range: TextRange) -> Option<TextRange> {
@@ -30,7 +30,7 @@ pub(crate) fn extend(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange>
         }
     }
 
-    match ancestors(node).skip_while(|n| n.range() == range).next() {
+    match node.ancestors().skip_while(|n| n.range() == range).next() {
         None => None,
         Some(parent) => Some(parent.range()),
     }
@@ -71,12 +71,12 @@ fn pick_best<'a>(l: SyntaxNodeRef<'a>, r: SyntaxNodeRef<'a>) -> SyntaxNodeRef<'a
 }
 
 fn extend_comments(node: SyntaxNodeRef) -> Option<TextRange> {
-    let left = adj_comments(node, Direction::Backward);
-    let right = adj_comments(node, Direction::Forward);
-    if left != right {
+    let prev = adj_comments(node, Direction::Prev);
+    let next = adj_comments(node, Direction::Next);
+    if prev != next {
         Some(TextRange::from_to(
-            left.range().start(),
-            right.range().end(),
+            prev.range().start(),
+            next.range().end(),
         ))
     } else {
         None
@@ -85,7 +85,7 @@ fn extend_comments(node: SyntaxNodeRef) -> Option<TextRange> {
 
 fn adj_comments(node: SyntaxNodeRef, dir: Direction) -> SyntaxNodeRef {
     let mut res = node;
-    for node in siblings(node, dir) {
+    for node in node.siblings(dir) {
         match node.kind() {
             COMMENT => res = node,
             WHITESPACE if !node.leaf_text().unwrap().as_str().contains("\n\n") => (),

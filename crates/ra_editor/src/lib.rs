@@ -21,7 +21,7 @@ mod test_utils;
 use ra_syntax::{
     File, TextUnit, TextRange, SyntaxNodeRef,
     ast::{self, AstNode, NameOwner},
-    algo::{walk, find_leaf_at_offset, ancestors},
+    algo::find_leaf_at_offset,
     SyntaxKind::{self, *},
 };
 pub use ra_syntax::AtomEdit;
@@ -86,7 +86,7 @@ pub fn matching_brace(file: &File, offset: TextUnit) -> Option<TextUnit> {
 
 pub fn highlight(file: &File) -> Vec<HighlightedRange> {
     let mut res = Vec::new();
-    for node in walk::preorder(file.syntax()) {
+    for node in file.syntax().descendants() {
         let tag = match node.kind() {
             ERROR => "error",
             COMMENT | DOC_COMMENT => "comment",
@@ -110,7 +110,7 @@ pub fn highlight(file: &File) -> Vec<HighlightedRange> {
 pub fn diagnostics(file: &File) -> Vec<Diagnostic> {
     let mut res = Vec::new();
 
-    for node in walk::preorder(file.syntax()) {
+    for node in file.syntax().descendants() {
         if node.kind() == ERROR {
             res.push(Diagnostic {
                 range: node.range(),
@@ -130,7 +130,7 @@ pub fn syntax_tree(file: &File) -> String {
 }
 
 pub fn runnables(file: &File) -> Vec<Runnable> {
-    walk::preorder(file.syntax())
+    file.syntax().descendants()
         .filter_map(ast::FnDef::cast)
         .filter_map(|f| {
             let name = f.name()?.text();
@@ -159,7 +159,7 @@ pub fn find_node_at_offset<'a, N: AstNode<'a>>(
     let leaf = leaves.clone()
         .find(|leaf| !leaf.kind().is_trivia())
         .or_else(|| leaves.right_biased())?;
-    ancestors(leaf)
+    leaf.ancestors()
         .filter_map(N::cast)
         .next()
 }

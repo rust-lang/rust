@@ -53,14 +53,36 @@ impl<R: TreeRoot<RaTypes>> Hash for SyntaxNode<R> {
     }
 }
 
-impl SyntaxNode<OwnedRoot> {
+impl SyntaxNode {
     pub(crate) fn new(green: GreenNode, errors: Vec<SyntaxError>) -> SyntaxNode {
         SyntaxNode(::rowan::SyntaxNode::new(green, errors))
     }
 }
-impl<'a> SyntaxNode<RefRoot<'a>> {
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Direction {
+    Next,
+    Prev,
+}
+
+impl<'a> SyntaxNodeRef<'a> {
     pub fn leaf_text(self) -> Option<&'a SmolStr> {
         self.0.leaf_text()
+    }
+    pub fn ancestors(self) -> impl Iterator<Item=SyntaxNodeRef<'a>> {
+        ::algo::generate(Some(self), |&node| node.parent())
+    }
+    pub fn descendants(self) -> impl Iterator<Item=SyntaxNodeRef<'a>> {
+        ::algo::walk::walk(self).filter_map(|event| match event {
+            ::algo::walk::WalkEvent::Enter(node) => Some(node),
+            ::algo::walk::WalkEvent::Exit(_) => None,
+        })
+    }
+    pub fn siblings(self, direction: Direction) -> impl Iterator<Item=SyntaxNodeRef<'a>> {
+        ::algo::generate(Some(self), move |&node| match direction {
+            Direction::Next => node.next_sibling(),
+            Direction::Prev => node.prev_sibling(),
+        })
     }
 }
 

@@ -3,12 +3,6 @@ use {
     algo::generate,
 };
 
-pub fn preorder<'a>(root: SyntaxNodeRef<'a>) -> impl Iterator<Item = SyntaxNodeRef<'a>> {
-    walk(root).filter_map(|event| match event {
-        WalkEvent::Enter(node) => Some(node),
-        WalkEvent::Exit(_) => None,
-    })
-}
 
 #[derive(Debug, Copy, Clone)]
 pub enum WalkEvent<'a> {

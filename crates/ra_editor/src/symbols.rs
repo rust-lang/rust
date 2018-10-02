@@ -3,7 +3,7 @@ use ra_syntax::{
     ast::{self, NameOwner},
     algo::{
         visit::{visitor, Visitor},
-        walk::{walk, WalkEvent, preorder},
+        walk::{walk, WalkEvent},
     },
 };
 use TextRange;
@@ -25,7 +25,7 @@ pub struct FileSymbol {
 }
 
 pub fn file_symbols(file: &File) -> Vec<FileSymbol> {
-    preorder(file.syntax())
+    file.syntax().descendants()
         .filter_map(to_symbol)
         .collect()
 }

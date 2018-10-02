@@ -51,7 +51,7 @@ pub use {
     ast::AstNode,
     lexer::{tokenize, Token},
     syntax_kinds::SyntaxKind,
-    yellow::{SyntaxNode, SyntaxNodeRef, OwnedRoot, RefRoot, TreeRoot, SyntaxError},
+    yellow::{SyntaxNode, SyntaxNodeRef, OwnedRoot, RefRoot, TreeRoot, SyntaxError, Direction},
     reparsing::AtomEdit,
 };
 

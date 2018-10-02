@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use ra_syntax::{
     File, TextRange, SyntaxNodeRef,
     SyntaxKind,
-    algo::{walk, Direction, siblings},
+    Direction,
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -19,12 +19,10 @@ pub struct Fold {
 }
 
 pub fn folding_ranges(file: &File) -> Vec<Fold> {
-    let syntax = file.syntax();
-
     let mut res = vec![];
     let mut visited = HashSet::new();
 
-    for node in walk::preorder(syntax) {
+    for node in file.syntax().descendants() {
         if visited.contains(&node) {
             continue;
         }
@@ -64,7 +62,7 @@ fn contiguous_range_for<'a>(
 
     let left = node;
     let mut right = node;
-    for node in siblings(node, Direction::Forward) {
+    for node in node.siblings(Direction::Next) {
         visited.insert(node);
         match node.kind() {
             SyntaxKind::WHITESPACE if !node.leaf_text().unwrap().as_str().contains("\n\n") => (),

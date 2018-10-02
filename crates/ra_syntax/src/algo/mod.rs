@@ -94,29 +94,9 @@ pub fn find_covering_node(root: SyntaxNodeRef, range: TextRange) -> SyntaxNodeRe
     common_ancestor(left, right)
 }
 
-pub fn ancestors<'a>(node: SyntaxNodeRef<'a>) -> impl Iterator<Item=SyntaxNodeRef<'a>> {
-    generate(Some(node), |&node| node.parent())
-}
-
-#[derive(Debug)]
-pub enum Direction {
-    Forward,
-    Backward,
-}
-
-pub fn siblings<'a>(
-    node: SyntaxNodeRef<'a>,
-    direction: Direction
-) -> impl Iterator<Item=SyntaxNodeRef<'a>> {
-    generate(Some(node), move |&node| match direction {
-        Direction::Forward => node.next_sibling(),
-        Direction::Backward => node.prev_sibling(),
-    })
-}
-
 fn common_ancestor<'a>(n1: SyntaxNodeRef<'a>, n2: SyntaxNodeRef<'a>) -> SyntaxNodeRef<'a> {
-    for p in ancestors(n1) {
-        if ancestors(n2).any(|a| a == p) {
+    for p in n1.ancestors() {
+        if n2.ancestors().any(|a| a == p) {
             return p;
         }
     }

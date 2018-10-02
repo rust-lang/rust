@@ -1,6 +1,6 @@
 use std::fmt::Write;
 use {
-    algo::walk::{preorder, walk, WalkEvent},
+    algo::walk::{walk, WalkEvent},
     SyntaxKind, File, SyntaxNodeRef
 };
 
@@ -56,7 +56,7 @@ pub fn check_fuzz_invariants(text: &str) {
 
 pub(crate) fn validate_block_structure(root: SyntaxNodeRef) {
     let mut stack = Vec::new();
-    for node in preorder(root) {
+    for node in root.descendants() {
         match node.kind() {
             SyntaxKind::L_CURLY => {
                 stack.push(node)

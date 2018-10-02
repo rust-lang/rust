@@ -4,7 +4,6 @@ use ra_syntax::{
     File, TextUnit, AstNode, SyntaxNodeRef, SyntaxKind::*,
     ast::{self, LoopBodyOwner, ModuleItemOwner},
     algo::{
-        ancestors,
         visit::{visitor, Visitor, visitor_ctx, VisitorCtx},
     },
     text_utils::is_subrange,
@@ -59,7 +58,7 @@ fn complete_name_ref(file: &File, name_ref: ast::NameRef, acc: &mut Vec<Completi
         return;
     }
     let mut visited_fn = false;
-    for node in ancestors(name_ref.syntax()) {
+    for node in name_ref.syntax().ancestors() {
         if let Some(items) = visitor()
             .visit::<ast::Root, _>(|it| Some(it.items()))
             .visit::<ast::Module, _>(|it| Some(it.item_list()?.items()))
@@ -92,7 +91,7 @@ fn complete_name_ref(file: &File, name_ref: ast::NameRef, acc: &mut Vec<Completi
 
 fn param_completions(ctx: SyntaxNodeRef, acc: &mut Vec<CompletionItem>) {
     let mut params = HashMap::new();
-    for node in ancestors(ctx) {
+    for node in ctx.ancestors() {
         let _ = visitor_ctx(&mut params)
             .visit::<ast::Root, _>(process)
             .visit::<ast::ItemList, _>(process)
@@ -123,7 +122,7 @@ fn param_completions(ctx: SyntaxNodeRef, acc: &mut Vec<CompletionItem>) {
 }
 
 fn is_node<'a, N: AstNode<'a>>(node: SyntaxNodeRef<'a>) -> bool {
-    match ancestors(node).filter_map(N::cast).next() {
+    match node.ancestors().filter_map(N::cast).next() {
         None => false,
         Some(n) => n.syntax().range() == node.range(),
     }
@@ -152,7 +151,7 @@ fn complete_expr_keywords(file: &File, fn_def: ast::FnDef, name_ref: ast::NameRe
 }
 
 fn is_in_loop_body(name_ref: ast::NameRef) -> bool {
-    for node in ancestors(name_ref.syntax()) {
+    for node in name_ref.syntax().ancestors() {
         if node.kind() == FN_DEF || node.kind() == LAMBDA_EXPR {
             break;
         }
@@ -171,7 +170,7 @@ fn is_in_loop_body(name_ref: ast::NameRef) -> bool {
 }
 
 fn complete_return(fn_def: ast::FnDef, name_ref: ast::NameRef) -> Option<CompletionItem> {
-    // let is_last_in_block = ancestors(name_ref.syntax()).filter_map(ast::Expr::cast)
+    // let is_last_in_block = name_ref.syntax().ancestors().filter_map(ast::Expr::cast)
     //     .next()
     //     .and_then(|it| it.syntax().parent())
     //     .and_then(ast::Block::cast)
@@ -181,7 +180,7 @@ fn complete_return(fn_def: ast::FnDef, name_ref: ast::NameRef) -> Option<Complet
     //     return None;
     // }
 
-    let is_stmt = match ancestors(name_ref.syntax()).filter_map(ast::ExprStmt::cast).next() {
+    let is_stmt = match name_ref.syntax().ancestors().filter_map(ast::ExprStmt::cast).next() {
         None => false,
         Some(expr_stmt) => expr_stmt.syntax().range() == name_ref.syntax().range()
     };

@@ -1,15 +1,13 @@
 use join_to_string::join;
 
 use ra_syntax::{
-    File, TextUnit, TextRange,
+    File, TextUnit, TextRange, Direction,
     ast::{self, AstNode, AttrsOwner, TypeParamsOwner, NameOwner},
     SyntaxKind::{COMMA, WHITESPACE},
     SyntaxNodeRef,
     algo::{
-        Direction, siblings,
         find_leaf_at_offset,
         find_covering_node,
-        ancestors,
     },
 };
 
@@ -25,12 +23,12 @@ pub fn flip_comma<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() 
     let syntax = file.syntax();
 
     let comma = find_leaf_at_offset(syntax, offset).find(|leaf| leaf.kind() == COMMA)?;
-    let left = non_trivia_sibling(comma, Direction::Backward)?;
-    let right = non_trivia_sibling(comma, Direction::Forward)?;
+    let prev = non_trivia_sibling(comma, Direction::Prev)?;
+    let next = non_trivia_sibling(comma, Direction::Next)?;
     Some(move || {
         let mut edit = EditBuilder::new();
-        edit.replace(left.range(), right.text().to_string());
-        edit.replace(right.range(), left.text().to_string());
+        edit.replace(prev.range(), next.text().to_string());
+        edit.replace(next.range(), prev.text().to_string());
         LocalEdit {
             edit: edit.finish(),
             cursor_position: None,
@@ -101,8 +99,8 @@ pub fn add_impl<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() ->
 
 pub fn introduce_variable<'a>(file: &'a File, range: TextRange) -> Option<impl FnOnce() -> LocalEdit + 'a> {
     let node = find_covering_node(file.syntax(), range);
-    let expr = ancestors(node).filter_map(ast::Expr::cast).next()?;
-    let anchor_stmt = ancestors(expr.syntax()).filter_map(ast::Stmt::cast).next()?;
+    let expr = node.ancestors().filter_map(ast::Expr::cast).next()?;
+    let anchor_stmt = expr.syntax().ancestors().filter_map(ast::Stmt::cast).next()?;
     let indent = anchor_stmt.syntax().prev_sibling()?;
     if indent.kind() != WHITESPACE {
         return None;
@@ -130,7 +128,7 @@ pub fn introduce_variable<'a>(file: &'a File, range: TextRange) -> Option<impl F
 }
 
 fn non_trivia_sibling(node: SyntaxNodeRef, direction: Direction) -> Option<SyntaxNodeRef> {
-    siblings(node, direction)
+    node.siblings(direction)
         .skip(1)
         .find(|node| !node.kind().is_trivia())
 }
