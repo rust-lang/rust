@@ -25,6 +25,7 @@ mod simd;
 /// * [`mips64`]
 /// * [`PowerPC`]
 /// * [`PowerPC64`]
+/// * [`NVPTX`]
 ///
 /// [`x86`]: https://rust-lang-nursery.github.io/stdsimd/x86/stdsimd/arch/index.html
 /// [`x86_64`]: https://rust-lang-nursery.github.io/stdsimd/x86_64/stdsimd/arch/index.html
@@ -34,6 +35,7 @@ mod simd;
 /// [`mips64`]: https://rust-lang-nursery.github.io/stdsimd/mips64/stdsimd/arch/index.html
 /// [`PowerPC`]: https://rust-lang-nursery.github.io/stdsimd/powerpc/stdsimd/arch/index.html
 /// [`PowerPC64`]: https://rust-lang-nursery.github.io/stdsimd/powerpc64/stdsimd/arch/index.html
+/// [`NVPTX`]: https://rust-lang-nursery.github.io/stdsimd/nvptx/stdsimd/arch/index.html
 #[stable(feature = "simd_arch", since = "1.27.0")]
 pub mod arch {
     /// Platform-specific intrinsics for the `x86` platform.
@@ -129,6 +131,16 @@ pub mod arch {
     pub mod powerpc64 {
         pub use coresimd::powerpc64::*;
     }
+    
+    /// Platform-specific intrinsics for the `NVPTX` platform.
+    ///
+    /// See the [module documentation](../index.html) for more details.
+    #[cfg(any(target_arch = "nvptx", target_arch = "nvptx64", dox))]
+    #[doc(cfg(any(target_arch = "nvptx", target_arch = "nvptx64")))]
+    #[unstable(feature = "stdsimd", issue = "27731")]
+    pub mod nvptx {
+        pub use coresimd::nvptx::*;
+    }
 }
 
 mod simd_llvm;
@@ -161,4 +173,6 @@ mod powerpc;
 #[doc(cfg(target_arch = "powerpc64"))]
 mod powerpc64;
 
+#[cfg(any(target_arch = "nvptx", target_arch = "nvptx64", dox))]
+#[doc(cfg(any(target_arch = "nvptx", target_arch = "nvptx64")))]
 mod nvptx;
