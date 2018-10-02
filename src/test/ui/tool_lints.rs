@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(tool_lints)]
+
 
 #[warn(foo::bar)]
 //~^ ERROR an unknown tool name found in scoped lint: `foo::bar`
