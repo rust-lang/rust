@@ -2,12 +2,13 @@ use rustc::mir;
 use rustc::ty::layout::{self, LayoutOf, Size};
 use rustc::ty;
 
-use rustc::mir::interpret::{EvalResult, Scalar, ScalarMaybeUndef, PointerArithmetic};
-use rustc_mir::interpret::{
-    PlaceTy, EvalContext, OpTy, Value
-};
+use rustc::mir::interpret::{EvalResult, PointerArithmetic};
+use rustc_mir::interpret::{EvalContext, PlaceTy, OpTy};
 
-use super::{FalibleScalarExt, OperatorEvalContextExt};
+use super::{
+    Value, Scalar, ScalarMaybeUndef,
+    FalibleScalarExt, OperatorEvalContextExt
+};
 
 pub trait EvalContextExt<'tcx> {
     fn call_intrinsic(
