@@ -882,12 +882,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 let ty = cx.tcx.type_of(def_id);
                 let is_copy = is_copy(cx, ty);
                 for &(ref conv, self_kinds) in &CONVENTIONS {
-                    if_chain! {
-                        if conv.check(&name.as_str());
+                    if conv.check(&name.as_str()) {
                         if !self_kinds
-                            .iter()
-                            .any(|k| k.matches(cx, first_arg_ty, first_arg, self_ty, is_copy, &implitem.generics));
-                        then {
+                                .iter()
+                                .any(|k| k.matches(cx, first_arg_ty, first_arg, self_ty, is_copy, &implitem.generics)) {
                             let lint = if item.vis.node.is_pub() {
                                 WRONG_PUB_SELF_CONVENTION
                             } else {
@@ -904,6 +902,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                                           .collect::<Vec<_>>()
                                                           .join(" or ")));
                         }
+
+                        // Only check the first convention to match (CONVENTIONS should be listed from most to least specific)
+                        break;
                     }
                 }
 
@@ -1183,8 +1184,8 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
                         Applicability::MaybeIncorrect,
                     );
                     db.span_suggestion_with_applicability(
-                        expr.span, 
-                        "or try being explicit about what type to clone", 
+                        expr.span,
+                        "or try being explicit about what type to clone",
                         explicit,
                         Applicability::MaybeIncorrect,
                     );
@@ -2067,12 +2068,13 @@ enum Convention {
 }
 
 #[rustfmt::skip]
-const CONVENTIONS: [(Convention, &[SelfKind]); 6] = [
+const CONVENTIONS: [(Convention, &[SelfKind]); 7] = [
     (Convention::Eq("new"), &[SelfKind::No]),
     (Convention::StartsWith("as_"), &[SelfKind::Ref, SelfKind::RefMut]),
     (Convention::StartsWith("from_"), &[SelfKind::No]),
     (Convention::StartsWith("into_"), &[SelfKind::Value]),
     (Convention::StartsWith("is_"), &[SelfKind::Ref, SelfKind::No]),
+    (Convention::Eq("to_mut"), &[SelfKind::RefMut]),
     (Convention::StartsWith("to_"), &[SelfKind::Ref]),
 ];
 

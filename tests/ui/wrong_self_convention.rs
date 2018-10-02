@@ -59,4 +59,5 @@ impl Bar {
     fn is_(self) {}
     fn to_(self) {}
     fn from_(self) {}
+    fn to_mut(&mut self) {}
 }
