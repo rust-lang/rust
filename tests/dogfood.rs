@@ -1,6 +1,6 @@
 #[test]
 fn dogfood() {
-    if option_env!("RUSTC_TEST_SUITE").is_some() {
+    if option_env!("RUSTC_TEST_SUITE").is_some() || cfg!(windows) {
         return;
     }
     let root_dir = std::env::current_dir().unwrap();
