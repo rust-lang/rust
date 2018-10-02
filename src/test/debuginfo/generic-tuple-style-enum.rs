@@ -41,16 +41,20 @@
 // lldb-command:run
 
 // lldb-command:print case1
-// lldb-check:[...]$0 = Case1(0, 31868, 31868, 31868, 31868)
+// lldbg-check:[...]$0 = Case1(0, 31868, 31868, 31868, 31868)
+// lldbr-check:(generic_tuple_style_enum::Regular<u16, u32, u64>::Case1) case1 = { = 0 = 31868 = 31868 = 31868 = 31868 }
 
 // lldb-command:print case2
-// lldb-check:[...]$1 = Case2(0, 286331153, 286331153)
+// lldbg-check:[...]$1 = Case2(0, 286331153, 286331153)
+// lldbr-check:(generic_tuple_style_enum::Regular<i16, i32, i64>::Case2) case2 = Regular<i16, i32, i64>::Case2 { generic_tuple_style_enum::Regular<i16, i32, i64>::Case1: 0, generic_tuple_style_enum::Regular<i16, i32, i64>::Case2: 286331153, generic_tuple_style_enum::Regular<i16, i32, i64>::Case3: 286331153 }
 
 // lldb-command:print case3
-// lldb-check:[...]$2 = Case3(0, 6438275382588823897)
+// lldbg-check:[...]$2 = Case3(0, 6438275382588823897)
+// lldbr-check:(generic_tuple_style_enum::Regular<i16, i32, i64>::Case3) case3 = Regular<i16, i32, i64>::Case3 { generic_tuple_style_enum::Regular<i16, i32, i64>::Case1: 0, generic_tuple_style_enum::Regular<i16, i32, i64>::Case2: 6438275382588823897 }
 
 // lldb-command:print univariant
-// lldb-check:[...]$3 = TheOnlyCase(-1)
+// lldbg-check:[...]$3 = TheOnlyCase(-1)
+// lldbr-check:(generic_tuple_style_enum::Univariant<i64>) univariant = { generic_tuple_style_enum::TheOnlyCase = { = -1 } }
 
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]

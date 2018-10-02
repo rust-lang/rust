@@ -28,7 +28,8 @@
 
 // lldb-command:run
 // lldb-command:print a
-// lldb-check:[...]$0 = [1, 2, 3]
+// lldbg-check:[...]$0 = [1, 2, 3]
+// lldbr-check:([i32; 3]) a = [1, 2, 3]
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
