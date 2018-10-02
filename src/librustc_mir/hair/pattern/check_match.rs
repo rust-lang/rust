@@ -35,7 +35,7 @@ use std::slice;
 
 use syntax::ast;
 use syntax::ptr::P;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 
 struct OuterVisitor<'a, 'tcx: 'a> { tcx: TyCtxt<'a, 'tcx, 'tcx> }
 
@@ -527,8 +527,8 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
             }
         })
     }
-
-    let check_move = |p: &Pat, sub: Option<&Pat>| {
+    let span_vec = &mut Vec::new();
+    let check_move = |p: &Pat, sub: Option<&Pat>, span_vec: &mut Vec<Span>| {
         // check legality of moving out of the enum
 
         // x @ Foo(..) is legal, but x @ Foo(y) isn't.
@@ -546,16 +546,8 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
                           crate attributes to enable");
             }
             err.emit();
-        } else if let Some(by_ref_span) = by_ref_span {
-            struct_span_err!(
-                cx.tcx.sess,
-                p.span,
-                E0009,
-                "cannot bind by-move and by-ref in the same pattern",
-            )
-            .span_label(p.span, "by-move pattern here")
-            .span_label(by_ref_span, "both by-ref and by-move used")
-            .emit();
+        } else if let Some(_by_ref_span) = by_ref_span {
+            span_vec.push(p.span);
         }
     };
 
@@ -567,7 +559,7 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
                         ty::BindByValue(..) => {
                             let pat_ty = cx.tables.node_id_to_type(p.hir_id);
                             if pat_ty.moves_by_default(cx.tcx, cx.param_env, pat.span) {
-                                check_move(p, sub.as_ref().map(|p| &**p));
+                                check_move(p, sub.as_ref().map(|p| &**p), span_vec);
                             }
                         }
                         _ => {}
@@ -578,6 +570,20 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
             }
             true
         });
+    }
+    if !span_vec.is_empty(){
+        let span = MultiSpan::from_spans(span_vec.clone());
+        let mut err = struct_span_err!(
+            cx.tcx.sess,
+            span,
+            E0009,
+            "cannot bind by-move and by-ref in the same pattern",
+        );
+        err.span_label(by_ref_span.unwrap(), "both by-ref and by-move used");
+        for span in span_vec.iter(){
+            err.span_label(*span, "by-move pattern here");
+        }
+        err.emit();
     }
 }
 
