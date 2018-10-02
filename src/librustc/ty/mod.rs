@@ -1373,7 +1373,7 @@ impl<'tcx> Predicate<'tcx> {
             }
         };
 
-        // The only reason to collect into a vector here is that I was
+        // FIXME: The only reason to collect into a vector here is that I was
         // too lazy to make the full (somewhat complicated) iterator
         // type that would be needed here. But I wanted this fn to
         // return an iterator conceptually, rather than a `Vec`, so as
