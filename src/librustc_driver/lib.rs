@@ -32,7 +32,7 @@
 #![recursion_limit="256"]
 
 extern crate arena;
-extern crate getopts;
+pub extern crate getopts;
 extern crate graphviz;
 extern crate env_logger;
 #[cfg(unix)]

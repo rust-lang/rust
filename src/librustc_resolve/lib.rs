@@ -85,7 +85,7 @@ use macros::{InvocationData, LegacyBinding, ParentScope};
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
 mod diagnostics;
-
+mod error_reporting;
 mod macros;
 mod check_unused;
 mod build_reduced_graph;

@@ -240,7 +240,7 @@ pub trait FnOnce<Args> {
 
 mod impls {
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a,A,F:?Sized> Fn<A> for &'a F
+    impl<A,F:?Sized> Fn<A> for &F
         where F : Fn<A>
     {
         extern "rust-call" fn call(&self, args: A) -> F::Output {
@@ -249,7 +249,7 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a,A,F:?Sized> FnMut<A> for &'a F
+    impl<A,F:?Sized> FnMut<A> for &F
         where F : Fn<A>
     {
         extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
@@ -258,7 +258,7 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a,A,F:?Sized> FnOnce<A> for &'a F
+    impl<A,F:?Sized> FnOnce<A> for &F
         where F : Fn<A>
     {
         type Output = F::Output;
@@ -269,7 +269,7 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a,A,F:?Sized> FnMut<A> for &'a mut F
+    impl<A,F:?Sized> FnMut<A> for &mut F
         where F : FnMut<A>
     {
         extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
@@ -278,7 +278,7 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a,A,F:?Sized> FnOnce<A> for &'a mut F
+    impl<A,F:?Sized> FnOnce<A> for &mut F
         where F : FnMut<A>
     {
         type Output = F::Output;

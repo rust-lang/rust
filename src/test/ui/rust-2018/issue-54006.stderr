@@ -2,7 +2,7 @@ error[E0432]: unresolved import `alloc`
   --> $DIR/issue-54006.rs:16:5
    |
 LL | use alloc::vec;
-   |     ^^^^^ Could not find `alloc` in `{{root}}`
+   |     ^^^^^ Did you mean `std::alloc`?
 
 error: cannot determine resolution for the macro `vec`
   --> $DIR/issue-54006.rs:20:18
