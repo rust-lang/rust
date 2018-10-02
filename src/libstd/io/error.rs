@@ -221,11 +221,9 @@ impl From<ErrorKind> for Error {
     /// ```
     /// use std::io::{Error, ErrorKind};
     ///
-    /// fn main() {
-    ///     let not_found = ErrorKind::NotFound;
-    ///     let error = Error::from(not_found);
-    ///     assert_eq!("entity not found", format!("{}", error));
-    /// }
+    /// let not_found = ErrorKind::NotFound;
+    /// let error = Error::from(not_found);
+    /// assert_eq!("entity not found", format!("{}", error));
     /// ```
     #[inline]
     fn from(kind: ErrorKind) -> Error {
