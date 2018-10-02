@@ -3990,6 +3990,7 @@ pub fn path_to_def(tcx: &TyCtxt, path: &[&str]) -> Option<DefId> {
 
 pub fn get_path_for_type<F>(tcx: TyCtxt, def_id: DefId, def_ctor: F) -> hir::Path
 where F: Fn(DefId) -> Def {
+    #[derive(Debug)]
     struct AbsolutePathBuffer {
         names: Vec<String>,
     }
@@ -4007,7 +4008,7 @@ where F: Fn(DefId) -> Def {
 
     let mut apb = AbsolutePathBuffer { names: vec![] };
 
-    tcx.push_item_path(&mut apb, def_id);
+    tcx.push_item_path(&mut apb, def_id, false);
 
     hir::Path {
         span: DUMMY_SP,
