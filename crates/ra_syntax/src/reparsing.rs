@@ -1,11 +1,11 @@
 use algo;
 use grammar;
 use lexer::{tokenize, Token};
-use text_unit::{TextRange, TextUnit};
-use yellow::{self, SyntaxNodeRef, GreenNode, SyntaxError};
+use yellow::{self, GreenNode, SyntaxNodeRef, SyntaxError};
 use parser_impl;
 use parser_api::Parser;
 use {
+    TextUnit, TextRange,
     SyntaxKind::*,
 };
 use text_utils::replace_range;
@@ -65,7 +65,7 @@ fn reparse_leaf<'node>(
                 return None;
             }
 
-            let green = GreenNode::new_leaf(node.kind(), &text);
+            let green = GreenNode::new_leaf(node.kind(), text.into());
             let new_errors = vec![];
             Some((node, green, new_errors))
         }

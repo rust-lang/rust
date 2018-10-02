@@ -602,9 +602,8 @@ dependencies = [
  "drop_bomb 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools 0.7.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "smol_str 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rowan 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils 0.1.0",
- "text_unit 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "walkdir 2.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -711,6 +710,16 @@ dependencies = [
  "base64 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.79 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rowan"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smol_str 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "text_unit 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1230,6 +1239,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum relative-path 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)" = "e614f96449605730b4f7ad2c019e88c1652d730634b4eba07b810801856635e3"
 "checksum remove_dir_all 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3488ba1b9a2084d38645c4c08276a1752dcbf2c7130d74f1569681ad5d2799c5"
 "checksum ron 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a9fa11b7a38511d46ff1959ae46ebb60bd8a746f17bdd0206b4c8de7559ac47b"
+"checksum rowan 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4a1a7366ece9deee5e7df8316a136d585d5c5042854c2297f7f1aee3014c9130"
 "checksum rustc-demangle 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)" = "bcfe5b13211b4d78e5c2cadfebd7769197d95c639c35a50057eb4c05de811395"
 "checksum rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
 "checksum ryu 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)" = "7153dd96dade874ab973e098cb62fcdbb89a03682e46b144fd09550998d4a4a7"

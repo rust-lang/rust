@@ -1,15 +1,15 @@
+use rowan::GreenNodeBuilder;
 use {
     parser_impl::Sink,
-    yellow::{GreenNode, SyntaxError},
+    yellow::{GreenNode, SyntaxError, RaTypes},
     SyntaxKind, TextRange, TextUnit,
 };
 
 pub(crate) struct GreenBuilder<'a> {
     text: &'a str,
-    parents: Vec<(SyntaxKind, usize)>,
-    children: Vec<GreenNode>,
     pos: TextUnit,
     errors: Vec<SyntaxError>,
+    inner: GreenNodeBuilder<RaTypes>,
 }
 
 impl<'a> Sink<'a> for GreenBuilder<'a> {
@@ -18,35 +18,25 @@ impl<'a> Sink<'a> for GreenBuilder<'a> {
     fn new(text: &'a str) -> Self {
         GreenBuilder {
             text,
-            parents: Vec::new(),
-            children: Vec::new(),
             pos: 0.into(),
             errors: Vec::new(),
+            inner: GreenNodeBuilder::new(),
         }
     }
 
     fn leaf(&mut self, kind: SyntaxKind, len: TextUnit) {
         let range = TextRange::offset_len(self.pos, len);
         self.pos += len;
-        let text = &self.text[range];
-        self.children.push(
-            GreenNode::new_leaf(kind, text)
-        );
+        let text = self.text[range].into();
+        self.inner.leaf(kind, text);
     }
 
     fn start_internal(&mut self, kind: SyntaxKind) {
-        let len = self.children.len();
-        self.parents.push((kind, len));
+        self.inner.start_internal(kind)
     }
 
     fn finish_internal(&mut self) {
-        let (kind, first_child) = self.parents.pop().unwrap();
-        let children: Vec<_> = self.children
-            .drain(first_child..)
-            .collect();
-        self.children.push(
-            GreenNode::new_branch(kind, children.into_boxed_slice())
-        );
+        self.inner.finish_internal();
     }
 
     fn error(&mut self, message: String) {
@@ -56,9 +46,7 @@ impl<'a> Sink<'a> for GreenBuilder<'a> {
         })
     }
 
-    fn finish(mut self) -> (GreenNode, Vec<SyntaxError>) {
-        assert_eq!(self.children.len(), 1);
-        let root = self.children.pop().unwrap();
-        (root, self.errors)
+    fn finish(self) -> (GreenNode, Vec<SyntaxError>) {
+        (self.inner.finish(), self.errors)
     }
 }

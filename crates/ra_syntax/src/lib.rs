@@ -24,8 +24,7 @@ extern crate itertools;
 extern crate unicode_xid;
 extern crate drop_bomb;
 extern crate parking_lot;
-extern crate smol_str;
-extern crate text_unit;
+extern crate rowan;
 
 #[cfg(test)]
 #[macro_use]
@@ -48,8 +47,7 @@ pub mod utils;
 pub mod text_utils;
 
 pub use {
-    text_unit::{TextRange, TextUnit},
-    smol_str::SmolStr,
+    rowan::{SmolStr, TextRange, TextUnit},
     ast::AstNode,
     lexer::{tokenize, Token},
     syntax_kinds::SyntaxKind,
@@ -58,7 +56,7 @@ pub use {
 };
 
 use {
-    yellow::{GreenNode, SyntaxRoot},
+    yellow::{GreenNode},
 };
 
 #[derive(Clone, Debug, Hash)]
@@ -68,8 +66,7 @@ pub struct File {
 
 impl File {
     fn new(green: GreenNode, errors: Vec<SyntaxError>) -> File {
-        let root = SyntaxRoot::new(green, errors);
-        let root = SyntaxNode::new_owned(root);
+        let root = SyntaxNode::new(green, errors);
         if cfg!(debug_assertions) {
             utils::validate_block_structure(root.borrowed());
         }
@@ -100,6 +97,6 @@ impl File {
         self.root.borrowed()
     }
     pub fn errors(&self) -> Vec<SyntaxError> {
-        self.syntax().root.syntax_root().errors.clone()
+        self.root.root_data().clone()
     }
 }
