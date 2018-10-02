@@ -254,6 +254,7 @@
 #![feature(const_int_ops)]
 #![feature(const_ip)]
 #![feature(const_raw_ptr_deref)]
+#![feature(const_cstr_unchecked)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
 #![feature(exact_size_is_empty)]
