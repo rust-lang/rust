@@ -1,0 +1,20 @@
+error[E0659]: `helper` is ambiguous
+  --> $DIR/helper-attr-blocked-by-import-ambig.rs:10:3
+   |
+LL | #[helper] //~ ERROR `helper` is ambiguous
+   |   ^^^^^^ ambiguous name
+   |
+note: `helper` could refer to the name defined here
+  --> $DIR/helper-attr-blocked-by-import-ambig.rs:9:10
+   |
+LL | #[derive(WithHelper)]
+   |          ^^^^^^^^^^
+note: `helper` could also refer to the name imported here
+  --> $DIR/helper-attr-blocked-by-import-ambig.rs:7:5
+   |
+LL | use plugin::helper;
+   |     ^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0659`.

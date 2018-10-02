@@ -199,7 +199,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                     if !(
                         ns == TypeNS &&
                         !ident.is_path_segment_keyword() &&
-                        self.extern_prelude.contains(&ident.name)
+                        self.session.extern_prelude.contains(&ident.name)
                     ) {
                         // ... unless the crate name is not in the `extern_prelude`.
                         return binding;
@@ -218,7 +218,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                 } else if
                     ns == TypeNS &&
                     !ident.is_path_segment_keyword() &&
-                    self.extern_prelude.contains(&ident.name)
+                    self.session.extern_prelude.contains(&ident.name)
                 {
                     let crate_id =
                         self.crate_loader.process_path_extern(ident.name, ident.span);
@@ -735,7 +735,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         let uniform_paths_feature = self.session.features_untracked().uniform_paths;
         for ((span, _, ns), results) in uniform_paths_canaries {
             let name = results.name;
-            let external_crate = if ns == TypeNS && self.extern_prelude.contains(&name) {
+            let external_crate = if ns == TypeNS && self.session.extern_prelude.contains(&name) {
                 let crate_id =
                     self.crate_loader.process_path_extern(name, span);
                 Some(Def::Mod(DefId { krate: crate_id, index: CRATE_DEF_INDEX }))

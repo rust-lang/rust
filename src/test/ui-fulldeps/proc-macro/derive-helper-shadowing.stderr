@@ -4,17 +4,16 @@ error[E0659]: `my_attr` is ambiguous
 LL | #[my_attr] //~ ERROR `my_attr` is ambiguous
    |   ^^^^^^^ ambiguous name
    |
-note: `my_attr` could refer to the name imported here
-  --> $DIR/derive-helper-shadowing.rs:4:5
-   |
-LL | use derive_helper_shadowing::*;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: `my_attr` could also refer to the name defined here
+note: `my_attr` could refer to the name defined here
   --> $DIR/derive-helper-shadowing.rs:7:10
    |
 LL | #[derive(MyTrait)]
    |          ^^^^^^^
-   = note: consider adding an explicit import of `my_attr` to disambiguate
+note: `my_attr` could also refer to the name imported here
+  --> $DIR/derive-helper-shadowing.rs:4:5
+   |
+LL | use derive_helper_shadowing::*;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
