@@ -46,9 +46,9 @@ impl<'tcx> BorrowExplanation<'tcx> {
             },
             BorrowExplanation::UsedLaterInLoop(is_in_closure, var_or_use_span) => {
                 let message = if is_in_closure {
-                    "borrow captured here by closure in later iteration of loop"
+                    "borrow captured here by closure, in later iteration of loop"
                 } else {
-                    "borrow used here in later iteration of loop"
+                    "borrow used here, in later iteration of loop"
                 };
                 err.span_label(var_or_use_span, message);
             },
