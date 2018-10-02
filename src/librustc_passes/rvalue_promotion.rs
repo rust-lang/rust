@@ -348,7 +348,7 @@ fn check_expr_kind<'a, 'tcx>(
                 return NotPromotable;
             }
             match v.tables.node_id_to_type(lhs.hir_id).sty {
-                ty::RawPtr(_) => {
+                ty::RawPtr(_) | ty::FnPtr(..) => {
                     assert!(op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne ||
                             op.node == hir::BinOpKind::Le || op.node == hir::BinOpKind::Lt ||
                             op.node == hir::BinOpKind::Ge || op.node == hir::BinOpKind::Gt);
