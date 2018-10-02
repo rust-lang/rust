@@ -1,24 +1,24 @@
 error[E0080]: this constant likely exhibits undefined behavior
-  --> $DIR/ub-enum.rs:22:1
+  --> $DIR/ub-nonnull.rs:17:1
    |
-LL | const BAD_ENUM: Enum = unsafe { TransmuteEnum { a: &1 }.b };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered non-integer enum discriminant
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
-
-error[E0080]: this constant likely exhibits undefined behavior
-  --> $DIR/ub-enum.rs:35:1
-   |
-LL | const BAD_ENUM2 : Enum2 = unsafe { TransmuteEnum2 { a: 0 }.b };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered invalid enum discriminant 0
+LL | const NULL_PTR: NonNull<u8> = unsafe { mem::transmute(0usize) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0, but expected something in the range 1..=18446744073709551615
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error[E0080]: this constant likely exhibits undefined behavior
-  --> $DIR/ub-enum.rs:45:1
+  --> $DIR/ub-nonnull.rs:20:1
    |
-LL | const BAD_ENUM_CHAR : Option<(char, char)> = Some(('x', unsafe { TransmuteChar { a: !0 }.b }));
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 4294967295 at .Some.0.1, but expected something in the range 0..=1114111
+LL | const NULL_U8: NonZeroU8 = unsafe { mem::transmute(0u8) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0, but expected something in the range 1..=255
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error[E0080]: this constant likely exhibits undefined behavior
+  --> $DIR/ub-nonnull.rs:22:1
+   |
+LL | const NULL_USIZE: NonZeroUsize = unsafe { mem::transmute(0usize) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0, but expected something in the range 1..=18446744073709551615
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 

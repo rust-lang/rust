@@ -140,14 +140,15 @@ fn scalar_format(value: ScalarMaybeUndef) -> String {
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
-    fn validate_scalar(
+    /// Make sure that `value` is valid for `ty`
+    fn validate_scalar_type(
         &self,
         value: ScalarMaybeUndef,
         size: Size,
         path: &Vec<PathElem>,
         ty: Ty,
     ) -> EvalResult<'tcx> {
-        trace!("validate scalar: {:#?}, {:#?}, {}", value, size, ty);
+        trace!("validate scalar by type: {:#?}, {:#?}, {}", value, size, ty);
 
         // Go over all the primitive types
         match ty.sty {
@@ -187,6 +188,62 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             _ => bug!("Unexpected primitive type {}", ty)
         }
         Ok(())
+    }
+
+    /// Make sure that `value` matches the
+    fn validate_scalar_layout(
+        &self,
+        value: ScalarMaybeUndef,
+        size: Size,
+        path: &Vec<PathElem>,
+        layout: &layout::Scalar,
+    ) -> EvalResult<'tcx> {
+        trace!("validate scalar by layout: {:#?}, {:#?}, {:#?}", value, size, layout);
+        let (lo, hi) = layout.valid_range.clone().into_inner();
+        if lo == u128::min_value() && hi == u128::max_value() {
+            // Nothing to check
+            return Ok(());
+        }
+        // At least one value is excluded. Get the bits.
+        let value = try_validation!(value.not_undef(),
+            scalar_format(value), path, format!("something in the range {:?}", layout.valid_range));
+        let bits = match value {
+            Scalar::Ptr(_) => {
+                // Comparing a ptr with a range is not meaningfully possible.
+                // In principle, *if* the pointer is inbonds, we could exclude NULL, but
+                // that does not seem worth it.
+                return Ok(());
+            }
+            Scalar::Bits { bits, size: value_size } => {
+                assert_eq!(value_size as u64, size.bytes());
+                bits
+            }
+        };
+        // Now compare. This is slightly subtle because this is a special "wrap-around" range.
+        use std::ops::RangeInclusive;
+        let in_range = |bound: RangeInclusive<u128>| bound.contains(&bits);
+        if lo > hi {
+            // wrapping around
+            if in_range(0..=hi) || in_range(lo..=u128::max_value()) {
+                Ok(())
+            } else {
+                validation_failure!(
+                    bits,
+                    path,
+                    format!("something in the range {:?} or {:?}", 0..=hi, lo..=u128::max_value())
+                )
+            }
+        } else {
+            if in_range(layout.valid_range.clone()) {
+                Ok(())
+            } else {
+                validation_failure!(
+                    bits,
+                    path,
+                    format!("something in the range {:?}", layout.valid_range)
+                )
+            }
+        }
     }
 
     /// Validate a reference, potentially recursively. `place` is assumed to already be
@@ -297,6 +354,22 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         // Remember the length, in case we need to truncate
         let path_len = path.len();
 
+        // If this is a scalar, validate the scalar layout.
+        // Things can be aggregates and have scalar layout at the same time, and that
+        // is very relevant for `NonNull` and similar structs: We need to validate them
+        // at their scalar layout *before* descending into their fields.
+        match dest.layout.abi {
+            layout::Abi::Uninhabited =>
+                return validation_failure!("a value of an uninhabited type", path),
+            layout::Abi::Scalar(ref layout) => {
+                let value = try_validation!(self.read_scalar(dest),
+                            "uninitialized or unrepresentable data", path);
+                self.validate_scalar_layout(value, dest.layout.size, &path, layout)?;
+            }
+            // FIXME: Should we do something for ScalarPair? Vector?
+            _ => {}
+        }
+
         // Validate all fields
         match dest.layout.fields {
             // Primitives appear as Union with 0 fields -- except for fat pointers.
@@ -305,21 +378,26 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             // fields to get a proper `path`.
             layout::FieldPlacement::Union(0) => {
                 match dest.layout.abi {
-                    // nothing to do, whatever the pointer points to, it is never going to be read
-                    layout::Abi::Uninhabited =>
-                        return validation_failure!("a value of an uninhabited type", path),
                     // check that the scalar is a valid pointer or that its bit range matches the
                     // expectation.
                     layout::Abi::Scalar(_) => {
                         let value = try_validation!(self.read_value(dest),
                             "uninitialized or unrepresentable data", path);
-                        let scalar = value.to_scalar_or_undef();
-                        self.validate_scalar(scalar, dest.layout.size, &path, dest.layout.ty)?;
+                        self.validate_scalar_type(
+                            value.to_scalar_or_undef(),
+                            dest.layout.size,
+                            &path,
+                            dest.layout.ty
+                        )?;
                         // Recursively check *safe* references
                         if dest.layout.ty.builtin_deref(true).is_some() &&
                             !dest.layout.ty.is_unsafe_ptr()
                         {
-                            self.validate_ref(self.ref_to_mplace(value)?, path, ref_tracking)?;
+                            self.validate_ref(
+                                self.ref_to_mplace(value)?,
+                                path,
+                                ref_tracking
+                            )?;
                         }
                     },
                     _ => bug!("bad abi for FieldPlacement::Union(0): {:#?}", dest.layout.abi),
