@@ -131,6 +131,18 @@ impl MemPlace {
 }
 
 impl<'tcx> MPlaceTy<'tcx> {
+    /// Produces a MemPlace that works for ZST but nothing else
+    #[inline]
+    pub fn dangling(layout: TyLayout<'tcx>, cx: impl HasDataLayout) -> Self {
+        MPlaceTy {
+            mplace: MemPlace::from_scalar_ptr(
+                Scalar::from_uint(layout.align.abi(), cx.pointer_size()),
+                layout.align
+            ),
+            layout
+        }
+    }
+
     #[inline]
     fn from_aligned_ptr(ptr: Pointer, layout: TyLayout<'tcx>) -> Self {
         MPlaceTy { mplace: MemPlace::from_ptr(ptr, layout.align), layout }

@@ -365,8 +365,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 // The fields don't need to correspond to any bit pattern of the union's fields.
                 // See https://github.com/rust-lang/rust/issues/32836#issuecomment-406875389
             },
-            layout::FieldPlacement::Array { stride, .. } if !dest.layout.is_zst() => {
-                let dest = dest.to_mem_place(); // non-ZST array/slice/str cannot be immediate
+            layout::FieldPlacement::Array { stride, .. } => {
+                let dest = if dest.layout.is_zst() {
+                    // it's a ZST, the memory content cannot matter
+                    MPlaceTy::dangling(dest.layout, self)
+                } else {
+                    // non-ZST array/slice/str cannot be immediate
+                    dest.to_mem_place()
+                };
                 match dest.layout.ty.sty {
                     // Special handling for strings to verify UTF-8
                     ty::Str => {
@@ -429,9 +435,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     }
                 }
             },
-            layout::FieldPlacement::Array { .. } => {
-                // An empty array.  Nothing to do.
-            }
             layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
                 for i in 0..offsets.len() {
                     let field = self.operand_field(dest, i as u64)?;

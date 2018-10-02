@@ -8,19 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-union Foo {
-    a: usize,
-    b: Bar,
-    c: &'static Bar,
-}
+#![feature(const_transmute)]
+
+use std::mem;
 
 #[derive(Copy, Clone)]
 enum Bar {}
 
-const BAD_BAD_BAD: Bar = unsafe { Foo { a: 1 }.b };
+const BAD_BAD_BAD: Bar = unsafe { mem::transmute(()) };
 //~^ ERROR this constant likely exhibits undefined behavior
 
-const BAD_BAD_REF: &Bar = unsafe { Foo { a: 1 }.c };
+const BAD_BAD_REF: &Bar = unsafe { mem::transmute(1usize) };
+//~^ ERROR this constant likely exhibits undefined behavior
+
+const BAD_BAD_ARRAY: [Bar; 1] = unsafe { mem::transmute(()) };
 //~^ ERROR this constant likely exhibits undefined behavior
 
 fn main() {
