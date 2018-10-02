@@ -688,8 +688,6 @@ All notable changes to this project will be documented in this file.
 [`float_arithmetic`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#float_arithmetic
 [`float_cmp`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#float_cmp
 [`float_cmp_const`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#float_cmp_const
-[`fn_to_numeric_cast`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#fn_to_numeric_cast
-[`fn_to_numeric_cast_with_truncation`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#fn_to_numeric_cast_with_truncation
 [`for_kv_map`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#for_kv_map
 [`for_loop_over_option`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#for_loop_over_option
 [`for_loop_over_result`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#for_loop_over_result

@@ -129,6 +129,7 @@ pub mod let_if_seq;
 pub mod lifetimes;
 pub mod literal_representation;
 pub mod loops;
+pub mod map_clone;
 pub mod map_unit_fn;
 pub mod matches;
 pub mod mem_forget;
@@ -327,6 +328,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box strings::StringAdd);
     reg.register_early_lint_pass(box returns::ReturnPass);
     reg.register_late_lint_pass(box methods::Pass);
+    reg.register_late_lint_pass(box map_clone::Pass);
     reg.register_late_lint_pass(box shadow::Pass);
     reg.register_late_lint_pass(box types::LetPass);
     reg.register_late_lint_pass(box types::UnitCmp);
@@ -583,6 +585,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         loops::WHILE_IMMUTABLE_CONDITION,
         loops::WHILE_LET_LOOP,
         loops::WHILE_LET_ON_ITERATOR,
+        map_clone::MAP_CLONE,
         map_unit_fn::OPTION_MAP_UNIT_FN,
         map_unit_fn::RESULT_MAP_UNIT_FN,
         matches::MATCH_AS_REF,
@@ -742,6 +745,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         loops::FOR_KV_MAP,
         loops::NEEDLESS_RANGE_LOOP,
         loops::WHILE_LET_ON_ITERATOR,
+        map_clone::MAP_CLONE,
         matches::MATCH_BOOL,
         matches::MATCH_OVERLAPPING_ARM,
         matches::MATCH_REF_PATS,
