@@ -16,6 +16,7 @@ use rustc::hir::map as hir_map;
 use hir::Node;
 use rustc_data_structures::sync::Lrc;
 use rustc::ty::{self, Ty, TyCtxt, ToPolyTraitRef, ToPredicate, TypeFoldable};
+use rustc::ty::item_path::with_crate_prefix;
 use hir::def::Def;
 use hir::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::lang_items::FnOnceTraitLangItem;
@@ -515,7 +516,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 } else {
                     "\n"
                 };
-                format!("use {};\n{}", self.tcx.item_path_str(*did), additional_newline)
+                format!(
+                    "use {};\n{}",
+                    with_crate_prefix(|| self.tcx.item_path_str(*did)),
+                    additional_newline
+                )
             }).collect();
 
             err.span_suggestions_with_applicability(
@@ -528,12 +533,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let limit = if candidates.len() == 5 { 5 } else { 4 };
             for (i, trait_did) in candidates.iter().take(limit).enumerate() {
                 if candidates.len() > 1 {
-                    msg.push_str(&format!("\ncandidate #{}: `use {};`",
-                                            i + 1,
-                                            self.tcx.item_path_str(*trait_did)));
+                    msg.push_str(
+                        &format!(
+                            "\ncandidate #{}: `use {};`",
+                            i + 1,
+                            with_crate_prefix(|| self.tcx.item_path_str(*trait_did))
+                        )
+                    );
                 } else {
-                    msg.push_str(&format!("\n`use {};`",
-                                            self.tcx.item_path_str(*trait_did)));
+                    msg.push_str(
+                        &format!(
+                            "\n`use {};`",
+                            with_crate_prefix(|| self.tcx.item_path_str(*trait_did))
+                        )
+                    );
                 }
             }
             if candidates.len() > limit {
