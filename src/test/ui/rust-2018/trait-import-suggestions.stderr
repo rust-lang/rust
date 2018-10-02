@@ -1,0 +1,43 @@
+error[E0599]: no method named `foobar` found for type `u32` in the current scope
+  --> $DIR/trait-import-suggestions.rs:32:11
+   |
+LL |         x.foobar();
+   |           ^^^^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+   = note: the following trait is implemented but not in scope, perhaps add a `use` for it:
+           `use crate::foo::foobar::Foobar;`
+
+error[E0599]: no method named `bar` found for type `u32` in the current scope
+  --> $DIR/trait-import-suggestions.rs:38:7
+   |
+LL |     x.bar();
+   |       ^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: the following trait is implemented but not in scope, perhaps add a `use` for it:
+   |
+LL | use crate::foo::Bar;
+   |
+
+error[E0599]: no method named `baz` found for type `u32` in the current scope
+  --> $DIR/trait-import-suggestions.rs:39:7
+   |
+LL |     x.baz();
+   |       ^^^
+
+error[E0599]: no function or associated item named `from_str` found for type `u32` in the current scope
+  --> $DIR/trait-import-suggestions.rs:40:13
+   |
+LL |     let y = u32::from_str("33");
+   |             ^^^^^^^^^^^^^ function or associated item not found in `u32`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: the following trait is implemented but not in scope, perhaps add a `use` for it:
+   |
+LL | use std::str::FromStr;
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

@@ -83,14 +83,14 @@ pub trait Deref {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> Deref for &'a T {
+impl<T: ?Sized> Deref for &T {
     type Target = T;
 
     fn deref(&self) -> &T { *self }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> Deref for &'a mut T {
+impl<T: ?Sized> Deref for &mut T {
     type Target = T;
 
     fn deref(&self) -> &T { *self }
@@ -174,6 +174,6 @@ pub trait DerefMut: Deref {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> DerefMut for &'a mut T {
+impl<T: ?Sized> DerefMut for &mut T {
     fn deref_mut(&mut self) -> &mut T { *self }
 }

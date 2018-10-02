@@ -207,14 +207,20 @@ impl_stable_hash_for!(struct hir::GenericParam {
     kind
 });
 
+impl_stable_hash_for!(enum hir::LifetimeParamKind {
+    Explicit,
+    InBand,
+    Elided
+});
+
 impl<'a> HashStable<StableHashingContext<'a>> for hir::GenericParamKind {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
-            hir::GenericParamKind::Lifetime { in_band } => {
-                in_band.hash_stable(hcx, hasher);
+            hir::GenericParamKind::Lifetime { kind } => {
+                kind.hash_stable(hcx, hasher);
             }
             hir::GenericParamKind::Type { ref default, synthetic } => {
                 default.hash_stable(hcx, hasher);

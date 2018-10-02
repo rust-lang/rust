@@ -28,7 +28,7 @@ impl<'a> PadAdapter<'a> {
     }
 }
 
-impl<'a> fmt::Write for PadAdapter<'a> {
+impl fmt::Write for PadAdapter<'_> {
     fn write_str(&mut self, mut s: &str) -> fmt::Result {
         while !s.is_empty() {
             if self.on_newline {

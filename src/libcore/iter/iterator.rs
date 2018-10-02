@@ -2557,7 +2557,7 @@ fn select_fold1<I, B, FProj, FCmp>(mut it: I,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, I: Iterator + ?Sized> Iterator for &'a mut I {
+impl<I: Iterator + ?Sized> Iterator for &mut I {
     type Item = I::Item;
     fn next(&mut self) -> Option<I::Item> { (**self).next() }
     fn size_hint(&self) -> (usize, Option<usize>) { (**self).size_hint() }
