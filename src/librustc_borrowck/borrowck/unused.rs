@@ -76,10 +76,14 @@ impl<'a, 'tcx> UnusedMutCx<'a, 'tcx> {
             }
 
             let (hir_id, span) = ids[0];
-            let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
+            if span.compiler_desugaring_kind().is_some() {
+                // If the `mut` arises as part of a desugaring, we should ignore it.
+                continue;
+            }
 
             // Ok, every name wasn't used mutably, so issue a warning that this
             // didn't need to be mutable.
+            let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
             tcx.struct_span_lint_hir(UNUSED_MUT,
                                      hir_id,
                                      span,

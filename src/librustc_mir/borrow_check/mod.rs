@@ -316,7 +316,10 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
             }
 
             let span = local_decl.source_info.span;
-            let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
+            if span.compiler_desugaring_kind().is_some() {
+                // If the `mut` arises as part of a desugaring, we should ignore it.
+                continue;
+            }
 
             let mut err = tcx.struct_span_lint_node(
                 UNUSED_MUT,
@@ -324,6 +327,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
                 span,
                 "variable does not need to be mutable",
             );
+            let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
             err.span_suggestion_short_with_applicability(
                 mut_span,
                 "remove this `mut`",
