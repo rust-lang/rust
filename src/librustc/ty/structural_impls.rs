@@ -386,12 +386,12 @@ impl<'a, 'tcx> Lift<'tcx> for ty::GenSig<'a> {
     type Lifted = ty::GenSig<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&(self.yield_ty, self.return_ty))
-            .map(|(yield_ty, return_ty)| {
-                ty::GenSig {
-                    yield_ty,
-                    return_ty,
-                }
-            })
+           .map(|(yield_ty, return_ty)| {
+               ty::GenSig {
+                   yield_ty,
+                   return_ty,
+               }
+           })
     }
 }
 
@@ -452,7 +452,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             CyclicTy(t) => return tcx.lift(&t).map(|t| CyclicTy(t)),
             ProjectionMismatched(x) => ProjectionMismatched(x),
             ProjectionBoundsLength(x) => ProjectionBoundsLength(x),
-
             Sorts(ref x) => return tcx.lift(x).map(Sorts),
             OldStyleLUB(ref x) => return tcx.lift(x).map(OldStyleLUB),
             ExistentialMismatch(ref x) => return tcx.lift(x).map(ExistentialMismatch)
@@ -817,22 +816,16 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
         use ty::InstanceDef::*;
         self.substs.visit_with(visitor) ||
         match self.def {
-            Item(did) => did.visit_with(visitor),
-            Intrinsic(did) => did.visit_with(visitor),
-            FnPtrShim(did, ty) => {
-                did.visit_with(visitor) ||
-                ty.visit_with(visitor)
+            Item(did) | Intrinsic(did) | Virtual(did, _) => {
+                did.visit_with(visitor)
             },
-            Virtual(did, _) => did.visit_with(visitor),
-            ClosureOnceShim { call_once } => call_once.visit_with(visitor),
+            FnPtrShim(did, ty) | CloneShim(did, ty) => {
+                did.visit_with(visitor) || ty.visit_with(visitor)
+            },
             DropGlue(did, ty) => {
-                did.visit_with(visitor) ||
-                ty.visit_with(visitor)
+                did.visit_with(visitor) || ty.visit_with(visitor)
             },
-            CloneShim(did, ty) => {
-                did.visit_with(visitor) ||
-                ty.visit_with(visitor)
-            },
+            ClosureOnceShim { call_once } => call_once.visit_with(visitor),
         }
     }
 }

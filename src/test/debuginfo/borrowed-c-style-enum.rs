@@ -34,13 +34,16 @@
 // lldb-command:run
 
 // lldb-command:print *the_a_ref
-// lldb-check:[...]$0 = TheA
+// lldbg-check:[...]$0 = TheA
+// lldbr-check:(borrowed_c_style_enum::ABC) *the_a_ref = borrowed_c_style_enum::ABC::TheA
 
 // lldb-command:print *the_b_ref
-// lldb-check:[...]$1 = TheB
+// lldbg-check:[...]$1 = TheB
+// lldbr-check:(borrowed_c_style_enum::ABC) *the_b_ref = borrowed_c_style_enum::ABC::TheB
 
 // lldb-command:print *the_c_ref
-// lldb-check:[...]$2 = TheC
+// lldbg-check:[...]$2 = TheC
+// lldbr-check:(borrowed_c_style_enum::ABC) *the_c_ref = borrowed_c_style_enum::ABC::TheC
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

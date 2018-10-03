@@ -861,24 +861,22 @@ pub struct GenericParamDef {
 
 impl GenericParamDef {
     pub fn to_early_bound_region_data(&self) -> ty::EarlyBoundRegion {
-        match self.kind {
-            GenericParamDefKind::Lifetime => {
-                ty::EarlyBoundRegion {
-                    def_id: self.def_id,
-                    index: self.index,
-                    name: self.name,
-                }
+        if let GenericParamDefKind::Lifetime = self.kind {
+            ty::EarlyBoundRegion {
+                def_id: self.def_id,
+                index: self.index,
+                name: self.name,
             }
-            _ => bug!("cannot convert a non-lifetime parameter def to an early bound region")
+        } else {
+            bug!("cannot convert a non-lifetime parameter def to an early bound region")
         }
     }
 
     pub fn to_bound_region(&self) -> ty::BoundRegion {
-        match self.kind {
-            GenericParamDefKind::Lifetime => {
-                self.to_early_bound_region_data().to_bound_region()
-            }
-            _ => bug!("cannot convert a non-lifetime parameter def to an early bound region")
+        if let GenericParamDefKind::Lifetime = self.kind {
+            self.to_early_bound_region_data().to_bound_region()
+        } else {
+            bug!("cannot convert a non-lifetime parameter def to an early bound region")
         }
     }
 }
@@ -956,7 +954,7 @@ impl<'a, 'gcx, 'tcx> Generics {
             }
         } else {
             tcx.generics_of(self.parent.expect("parent_count>0 but no parent?"))
-                .region_param(param, tcx)
+               .region_param(param, tcx)
         }
     }
 
@@ -973,7 +971,7 @@ impl<'a, 'gcx, 'tcx> Generics {
             }
         } else {
             tcx.generics_of(self.parent.expect("parent_count>0 but no parent?"))
-                .type_param(param, tcx)
+               .type_param(param, tcx)
         }
     }
 }
@@ -1375,7 +1373,7 @@ impl<'tcx> Predicate<'tcx> {
             }
         };
 
-        // The only reason to collect into a vector here is that I was
+        // FIXME: The only reason to collect into a vector here is that I was
         // too lazy to make the full (somewhat complicated) iterator
         // type that would be needed here. But I wanted this fn to
         // return an iterator conceptually, rather than a `Vec`, so as
@@ -2192,7 +2190,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 if !expr_did.is_local() {
                     span_bug!(tcx.def_span(expr_did),
                         "variant discriminant evaluation succeeded \
-                            in its crate but failed locally");
+                         in its crate but failed locally");
                 }
                 None
             }
@@ -2328,9 +2326,9 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 debug!("sized_constraint_for_ty({:?}) intermediate = {:?}",
                        ty, adt_tys);
                 adt_tys.iter()
-                    .map(|ty| ty.subst(tcx, substs))
-                    .flat_map(|ty| self.sized_constraint_for_ty(tcx, ty))
-                    .collect()
+                       .map(|ty| ty.subst(tcx, substs))
+                       .flat_map(|ty| self.sized_constraint_for_ty(tcx, ty))
+                       .collect()
             }
 
             Projection(..) | Opaque(..) => {
@@ -2869,9 +2867,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-fn associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-    -> AssociatedItem
-{
+fn associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> AssociatedItem {
     let id = tcx.hir.as_local_node_id(def_id).unwrap();
     let parent_id = tcx.hir.get_parent(id);
     let parent_def_id = tcx.hir.local_def_id(parent_id);
@@ -2985,8 +2981,8 @@ pub fn is_impl_trait_defn(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<DefI
 /// See `ParamEnv` struct def'n for details.
 fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                        def_id: DefId)
-                       -> ParamEnv<'tcx> {
-
+                       -> ParamEnv<'tcx>
+{
     // The param_env of an impl Trait type is its defining function's param_env
     if let Some(parent) = is_impl_trait_defn(tcx, def_id) {
         return param_env(tcx, parent);

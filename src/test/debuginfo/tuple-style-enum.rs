@@ -41,16 +41,20 @@
 // lldb-command:run
 
 // lldb-command:print case1
-// lldb-check:[...]$0 = Case1(0, 31868, 31868, 31868, 31868)
+// lldbg-check:[...]$0 = Case1(0, 31868, 31868, 31868, 31868)
+// lldbr-check:(tuple_style_enum::Regular::Case1) case1 = { = 0 = 31868 = 31868 = 31868 = 31868 }
 
 // lldb-command:print case2
-// lldb-check:[...]$1 = Case2(0, 286331153, 286331153)
+// lldbg-check:[...]$1 = Case2(0, 286331153, 286331153)
+// lldbr-check:(tuple_style_enum::Regular::Case2) case2 = Case2 { tuple_style_enum::Regular::Case1: 0, tuple_style_enum::Regular::Case2: 286331153, tuple_style_enum::Regular::Case3: 286331153 }
 
 // lldb-command:print case3
-// lldb-check:[...]$2 = Case3(0, 6438275382588823897)
+// lldbg-check:[...]$2 = Case3(0, 6438275382588823897)
+// lldbr-check:(tuple_style_enum::Regular::Case3) case3 = Case3 { tuple_style_enum::Regular::Case1: 0, tuple_style_enum::Regular::Case2: 6438275382588823897 }
 
 // lldb-command:print univariant
-// lldb-check:[...]$3 = TheOnlyCase(-1)
+// lldbg-check:[...]$3 = TheOnlyCase(-1)
+// lldbr-check:(tuple_style_enum::Univariant) univariant = { tuple_style_enum::TheOnlyCase = { = -1 } }
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

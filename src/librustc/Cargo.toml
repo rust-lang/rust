@@ -34,6 +34,7 @@ byteorder = { version = "1.1", features = ["i128"]}
 chalk-engine = { version = "0.7.0", default-features=false }
 rustc_fs_util = { path = "../librustc_fs_util" }
 smallvec = { version = "0.6.5", features = ["union"] }
+getopts = "=0.2.17"
 
 # Note that these dependencies are a lie, they're just here to get linkage to
 # work.

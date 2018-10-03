@@ -1901,6 +1901,7 @@ dependencies = [
  "chalk-engine 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "fmt_macros 0.0.0",
+ "getopts 0.2.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "graphviz 0.0.0",
  "jobserver 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2074,6 +2075,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "rustc-workspace-hack"
 version = "1.0.0"
 dependencies = [
+ "serde_json 1.0.31 (registry+https://github.com/rust-lang/crates.io-index)",
  "syn 0.14.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2186,6 +2188,7 @@ version = "0.0.0"
 dependencies = [
  "arena 0.0.0",
  "env_logger 0.5.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "getopts 0.2.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "graphviz 0.0.0",
  "log 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",

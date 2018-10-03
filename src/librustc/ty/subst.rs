@@ -205,10 +205,9 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
     {
         Substs::for_item(tcx, def_id, |param, substs| {
-            match self.get(param.index as usize) {
-                Some(&kind) => kind,
-                None => mk_kind(param, substs),
-            }
+            self.get(param.index as usize)
+                .cloned()
+                .unwrap_or_else(|| mk_kind(param, substs))
         })
     }
 
@@ -230,6 +229,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                       mk_kind: &mut F)
     where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
     {
+        substs.reserve(defs.params.len());
         for param in &defs.params {
             let kind = mk_kind(param, substs);
             assert_eq!(param.index as usize, substs.len());
@@ -361,7 +361,7 @@ impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Substs<'tcx> {}
 
 pub trait Subst<'tcx> : Sized {
     fn subst<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                      substs: &[Kind<'tcx>]) -> Self {
+                       substs: &[Kind<'tcx>]) -> Self {
         self.subst_spanned(tcx, substs, None)
     }
 
@@ -489,7 +489,7 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
                 span_bug!(
                     span,
                     "Type parameter `{:?}` ({:?}/{}) out of range \
-                         when substituting (root type={:?}) substs={:?}",
+                     when substituting (root type={:?}) substs={:?}",
                     p,
                     source_ty,
                     p.idx,

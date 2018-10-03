@@ -971,7 +971,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
 /// Undefined bytes
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
-    // FIXME(solson): This is a very naive, slow version.
+    // FIXME: Add a fast version for the common, nonoverlapping case
     fn copy_undef_mask(
         &mut self,
         src: Pointer,
