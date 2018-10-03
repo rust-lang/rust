@@ -283,6 +283,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
             | ty::Never
             | ty::Tuple(..)
             | ty::Projection(..)
+            | ty::UnnormalizedProjection(..)
             | ty::Foreign(..)
             | ty::Param(..)
             | ty::Opaque(..) => {

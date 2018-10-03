@@ -150,6 +150,8 @@ impl FlagComputation {
                 self.add_projection_ty(data);
             }
 
+            &ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
+
             &ty::Opaque(_, substs) => {
                 self.add_flags(TypeFlags::HAS_PROJECTION);
                 self.add_substs(substs);

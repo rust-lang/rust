@@ -325,7 +325,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> CodegenUnitNameBuilder<'a, 'gcx, 'tcx> {
                 String::new()
             };
 
-            let crate_disambiguator = format!("{}", tcx.crate_disambiguator(cnum));
+            let crate_disambiguator = tcx.crate_disambiguator(cnum).to_string();
             // Using a shortened disambiguator of about 40 bits
             format!("{}.{}{}",
                 tcx.crate_name(cnum),

@@ -958,6 +958,8 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::Dynamic(..) | ty::Projection(..) | ty::Param(_) |
         ty::Opaque(..) | ty::Infer(_) | ty::Error => true,
 
+        ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
+
         // Structural recursion.
         ty::Array(ty, _) | ty::Slice(ty) => needs_drop(ty),
 

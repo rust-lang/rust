@@ -2228,6 +2228,9 @@ impl<'a> State<'a> {
                 self.word_nbsp("async")?;
                 self.print_capture_clause(capture_clause)?;
                 self.s.space()?;
+                // cbox/ibox in analogy to the `ExprKind::Block` arm above
+                self.cbox(INDENT_UNIT)?;
+                self.ibox(0)?;
                 self.print_block_with_attrs(blk, attrs)?;
             }
             ast::ExprKind::Assign(ref lhs, ref rhs) => {
