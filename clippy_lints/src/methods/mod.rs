@@ -931,7 +931,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             }
         }
 
-        if let hir::ImplItemKind::Method(ref sig, id) = implitem.node {
+        if let hir::ImplItemKind::Method(_, _) = implitem.node {
             let ret_ty = return_ty(cx, implitem.id);
             if name == "new" &&
                 !same_tys(cx, ret_ty, ty) &&
