@@ -3666,7 +3666,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         closure_def_id: DefId,
         substs: ty::ClosureSubsts<'tcx>,
     ) -> ty::PolyTraitRef<'tcx> {
+        debug!(
+            "closure_trait_ref_unnormalized(obligation={:?}, closure_def_id={:?}, substs={:?})",
+            obligation, closure_def_id, substs,
+        );
         let closure_type = self.infcx.closure_sig(closure_def_id, substs);
+
+        debug!("closure_trait_ref_unnormalized: closure_type = {:?}", closure_type);
 
         // (1) Feels icky to skip the binder here, but OTOH we know
         // that the self-type is an unboxed closure type and hence is
