@@ -10,6 +10,7 @@
 
 use borrow_check::nll::constraints::{OutlivesConstraint};
 use borrow_check::nll::region_infer::RegionInferenceContext;
+use borrow_check::nll::type_check::Locations;
 use rustc::hir::def_id::DefId;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc::infer::InferCtxt;
@@ -18,7 +19,6 @@ use rustc::ty::{self, RegionVid};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_errors::{Diagnostic, DiagnosticBuilder};
 use std::collections::VecDeque;
-use std::fmt;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
 use syntax::errors::Applicability;
@@ -93,7 +93,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // Classify each of the constraints along the path.
         let mut categorized_path: Vec<(ConstraintCategory, Span)> = path
             .iter()
-            .map(|constraint| (constraint.category, constraint.locations.span(mir)))
+            .map(|constraint| {
+                if constraint.category == ConstraintCategory::ClosureBounds {
+                    self.retrieve_closure_constraint_info(mir, &constraint)
+                } else {
+                    (constraint.category, constraint.locations.span(mir))
+                }
+            })
             .collect();
         debug!(
             "best_blame_constraint: categorized_path={:#?}",
@@ -474,8 +480,24 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         mir: &Mir<'tcx>,
         fr1: RegionVid,
         fr2: RegionVid,
-    ) -> Span {
-        let (_, span, _) = self.best_blame_constraint(mir, fr1, |r| r == fr2);
-        span
+    ) -> (ConstraintCategory, Span) {
+        let (category, span, _) = self.best_blame_constraint(mir, fr1, |r| r == fr2);
+        (category, span)
+    }
+
+    fn retrieve_closure_constraint_info(
+        &self,
+        mir: &Mir<'tcx>,
+        constraint: &OutlivesConstraint
+    ) -> (ConstraintCategory, Span) {
+        let loc = match constraint.locations {
+            Locations::All(span) => return (constraint.category, span),
+            Locations::Single(loc) => loc,
+        };
+
+        let opt_span_category = self
+            .closure_bounds_mapping[&loc]
+            .get(&(constraint.sup, constraint.sub));
+        *opt_span_category.unwrap_or(&(constraint.category, mir.source_info(loc).span))
     }
 }

@@ -2639,11 +2639,14 @@ pub struct ClosureOutlivesRequirement<'tcx> {
     // This region or type ...
     pub subject: ClosureOutlivesSubject<'tcx>,
 
-    // .. must outlive this one.
+    // ... must outlive this one.
     pub outlived_free_region: ty::RegionVid,
 
-    // If not, report an error here.
+    // If not, report an error here ...
     pub blame_span: Span,
+
+    // ... due to this reason.
+    pub category: ConstraintCategory,
 }
 
 /// Outlives constraints can be categorized to determine whether and why they
