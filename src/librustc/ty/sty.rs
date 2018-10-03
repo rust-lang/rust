@@ -1077,9 +1077,8 @@ pub type Region<'tcx> = &'tcx RegionKind;
 /// it must be ensured that bounds on the region can't be accidentally
 /// assumed without being checked.
 ///
-/// The process of doing that is called "skolemization". The bound regions
-/// are replaced by placeholder markers, which don't satisfy any relation
-/// not explicitly provided.
+/// To do this, we replace the bound regions with placeholder markers,
+/// which don't satisfy any relation not explicitly provided.
 ///
 /// There are 2 kinds of placeholder regions in rustc: `ReFree` and
 /// `RePlaceholder`. When checking an item's body, `ReFree` is supposed

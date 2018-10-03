@@ -127,13 +127,13 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             // Map each placeholder region to a vector of other regions that it
             // must be equated with. (Note that this vector may include other
             // placeholder regions from `placeholder_map`.)
-            let skol_resolution_map: FxHashMap<_, _> =
+            let placeholder_resolution_map: FxHashMap<_, _> =
                 placeholder_map
                 .iter()
-                .map(|(&br, &skol)| {
+                .map(|(&br, &placeholder)| {
                     let tainted_regions =
                         self.infcx.tainted_regions(snapshot,
-                                                   skol,
+                                                   placeholder,
                                                    TaintDirections::incoming()); // [1]
 
                     // [1] this routine executes after the placeholder
@@ -141,7 +141,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                     // else, so examining the incoming edges ought to
                     // be enough to collect all constraints
 
-                    (skol, (br, tainted_regions))
+                    (placeholder, (br, tainted_regions))
                 })
                 .collect();
 
@@ -149,33 +149,33 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             // be any region from the sets above, except for other members of
             // `placeholder_map`. There should always be a representative if things
             // are properly well-formed.
-            let skol_representatives: FxHashMap<_, _> =
-                skol_resolution_map
+            let placeholder_representatives: FxHashMap<_, _> =
+                placeholder_resolution_map
                 .iter()
-                .map(|(&skol, &(_, ref regions))| {
+                .map(|(&placeholder, &(_, ref regions))| {
                     let representative =
                         regions.iter()
-                               .filter(|&&r| !skol_resolution_map.contains_key(r))
+                               .filter(|&&r| !placeholder_resolution_map.contains_key(r))
                                .cloned()
                                .next()
                                .unwrap_or_else(|| {
                                    bug!("no representative region for `{:?}` in `{:?}`",
-                                        skol, regions)
+                                        placeholder, regions)
                                });
 
-                    (skol, representative)
+                    (placeholder, representative)
                 })
                 .collect();
 
-            // Equate all the members of each skolemization set with the
+            // Equate all the members of each placeholder set with the
             // representative.
-            for (skol, &(_br, ref regions)) in &skol_resolution_map {
-                let representative = &skol_representatives[skol];
+            for (placeholder, &(_br, ref regions)) in &placeholder_resolution_map {
+                let representative = &placeholder_representatives[placeholder];
                 debug!("higher_ranked_match: \
-                        skol={:?} representative={:?} regions={:?}",
-                       skol, representative, regions);
+                        placeholder={:?} representative={:?} regions={:?}",
+                       placeholder, representative, regions);
                 for region in regions.iter()
-                                     .filter(|&r| !skol_resolution_map.contains_key(r))
+                                     .filter(|&r| !placeholder_resolution_map.contains_key(r))
                                      .filter(|&r| r != representative)
                 {
                     let origin = SubregionOrigin::Subtype(self.trace.clone());
@@ -192,7 +192,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                 fold_regions_in(
                     self.tcx(),
                     &a_value,
-                    |r, _| skol_representatives.get(&r).cloned().unwrap_or(r));
+                    |r, _| placeholder_representatives.get(&r).cloned().unwrap_or(r));
 
             debug!("higher_ranked_match: value={:?}", a_value);
 
@@ -582,7 +582,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// the pop occurs as part of the rollback, so an explicit call is not
     /// needed (but is also permitted).
     ///
-    /// For more information about how skolemization for HRTBs works, see
+    /// For more information about how placeholders and HRTBs work, see
     /// the [rustc guide].
     ///
     /// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/traits/hrtb.html
@@ -638,11 +638,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         let new_vars = self.region_vars_confined_to_snapshot(snapshot);
-        for (&skol_br, &skol) in placeholder_map {
+        for (&placeholder_br, &placeholder) in placeholder_map {
             // The inputs to a placeholder variable can only
             // be itself or other new variables.
             let incoming_taints = self.tainted_regions(snapshot,
-                                                       skol,
+                                                       placeholder,
                                                        TaintDirections::both());
             for &tainted_region in &incoming_taints {
                 // Each placeholder should only be relatable to itself
@@ -654,21 +654,21 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         }
                     }
                     _ => {
-                        if tainted_region == skol { continue; }
+                        if tainted_region == placeholder { continue; }
                     }
                 };
 
                 debug!("{:?} (which replaced {:?}) is tainted by {:?}",
-                       skol,
-                       skol_br,
+                       placeholder,
+                       placeholder_br,
                        tainted_region);
 
                 return Err(if overly_polymorphic {
                     debug!("Overly polymorphic!");
-                    TypeError::RegionsOverlyPolymorphic(skol_br, tainted_region)
+                    TypeError::RegionsOverlyPolymorphic(placeholder_br, tainted_region)
                 } else {
                     debug!("Not as polymorphic!");
-                    TypeError::RegionsInsufficientlyPolymorphic(skol_br, tainted_region)
+                    TypeError::RegionsInsufficientlyPolymorphic(placeholder_br, tainted_region)
                 })
             }
         }
@@ -725,10 +725,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let inv_placeholder_map: FxHashMap<ty::Region<'tcx>, ty::BoundRegion> =
             placeholder_map
             .iter()
-            .flat_map(|(&skol_br, &skol)| {
-                self.tainted_regions(snapshot, skol, TaintDirections::both())
+            .flat_map(|(&placeholder_br, &placeholder)| {
+                self.tainted_regions(snapshot, placeholder, TaintDirections::both())
                     .into_iter()
-                    .map(move |tainted_region| (tainted_region, skol_br))
+                    .map(move |tainted_region| (tainted_region, placeholder_br))
             })
             .collect();
 
@@ -739,7 +739,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // references to regions from the `fold_regions` code below.
         let value = self.resolve_type_vars_if_possible(&value);
 
-        // Map any skolemization byproducts back to a late-bound
+        // Map any placeholder byproducts back to a late-bound
         // region. Put that late-bound region at whatever the outermost
         // binder is that we encountered in `value`. The caller is
         // responsible for ensuring that (a) `value` contains at least one
@@ -798,10 +798,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         snapshot: &CombinedSnapshot<'a, 'tcx>,
     ) {
         debug!("pop_placeholders({:?})", placeholder_map);
-        let skol_regions: FxHashSet<_> = placeholder_map.values().cloned().collect();
+        let placeholder_regions: FxHashSet<_> = placeholder_map.values().cloned().collect();
         self.borrow_region_constraints()
             .pop_placeholders(
-                &skol_regions,
+                &placeholder_regions,
                 &snapshot.region_constraints_snapshot,
             );
         self.universe.set(snapshot.universe);

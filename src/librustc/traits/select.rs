@@ -1658,7 +1658,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     ) {
         debug!("assemble_candidates_for_projected_tys({:?})", obligation);
 
-        // before we go into the whole skolemization thing, just
+        // before we go into the whole placeholder thing, just
         // quickly check if the self-type is a projection at all.
         match obligation.predicate.skip_binder().trait_ref.self_ty().sty {
             ty::Projection(_) | ty::Opaque(..) => {}
@@ -2230,9 +2230,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     //
     // Winnowing is the process of attempting to resolve ambiguity by
     // probing further. During the winnowing process, we unify all
-    // type variables (ignoring skolemization) and then we also
-    // attempt to evaluate recursive bounds to see if they are
-    // satisfied.
+    // type variables and then we also attempt to evaluate recursive
+    // bounds to see if they are satisfied.
 
     /// Returns true if `victim` should be dropped in favor of
     /// `other`.  Generally speaking we will drop duplicate

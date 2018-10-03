@@ -133,7 +133,7 @@ match. This will ultimately require (as before) that `'a` <= `&x`
 must hold: but this does not hold. `self` and `x` are both distinct
 free regions. So the subtype check fails.
 
-#### Checking for skolemization leaks
+#### Checking for placeholder leaks
 
 You may be wondering about that mysterious last step in the algorithm.
 So far it has not been relevant. The purpose of that last step is to
@@ -175,7 +175,7 @@ region `x` and think that everything is happy. In fact, this behavior
 is *necessary*, it was key to the first example we walked through.
 
 The difference between this example and the first one is that the variable
-`A` already existed at the point where the skolemization occurred. In
+`A` already existed at the point where the placeholders were added. In
 the first example, you had two functions:
 
     for<'a> fn(&'a T) <: for<'b> fn(&'b T)
@@ -191,7 +191,7 @@ constraints that refer to placeholder names. Basically, consider a
 non-directed version of the constraint graph. Let `Tainted(x)` be the
 set of all things reachable from a placeholder variable `x`.
 `Tainted(x)` should not contain any regions that existed before the
-step at which the skolemization was performed. So this case here
+step at which the placeholders were created. So this case here
 would fail because `&x` was created alone, but is relatable to `&A`.
 
 ## Computing the LUB and GLB
