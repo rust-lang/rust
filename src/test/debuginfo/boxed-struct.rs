@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
+
 // min-lldb-version: 310
 
 // compile-flags:-g
@@ -30,10 +32,12 @@
 // lldb-command:run
 
 // lldb-command:print *unique
-// lldb-check:[...]$0 = StructWithSomePadding { x: 99, y: 999, z: 9999, w: 99999 }
+// lldbg-check:[...]$0 = StructWithSomePadding { x: 99, y: 999, z: 9999, w: 99999 }
+// lldbr-check:(boxed_struct::StructWithSomePadding) *unique = StructWithSomePadding { x: 99, y: 999, z: 9999, w: 99999 }
 
 // lldb-command:print *unique_dtor
-// lldb-check:[...]$1 = StructWithDestructor { x: 77, y: 777, z: 7777, w: 77777 }
+// lldbg-check:[...]$1 = StructWithDestructor { x: 77, y: 777, z: 7777, w: 77777 }
+// lldbr-check:(boxed_struct::StructWithDestructor) *unique_dtor = StructWithDestructor { x: 77, y: 777, z: 7777, w: 77777 }
 
 #![allow(unused_variables)]
 #![feature(box_syntax)]

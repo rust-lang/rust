@@ -33,13 +33,17 @@
 // lldb-command:run
 
 // lldb-command:print len
-// lldb-check:[...]$0 = 20
+// lldbg-check:[...]$0 = 20
+// lldbr-check:(i32) len = 20
 // lldb-command:print local0
-// lldb-check:[...]$1 = 19
+// lldbg-check:[...]$1 = 19
+// lldbr-check:(i32) local0 = 19
 // lldb-command:print local1
-// lldb-check:[...]$2 = true
+// lldbg-check:[...]$2 = true
+// lldbr-check:(bool) local1 = true
 // lldb-command:print local2
-// lldb-check:[...]$3 = 20.5
+// lldbg-check:[...]$3 = 20.5
+// lldbr-check:(f64) local2 = 20.5
 
 // lldb-command:continue
 

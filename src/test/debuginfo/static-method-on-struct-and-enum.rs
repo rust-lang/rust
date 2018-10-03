@@ -39,18 +39,23 @@
 
 // STRUCT
 // lldb-command:print arg1
-// lldb-check:[...]$0 = 1
+// lldbg-check:[...]$0 = 1
+// lldbr-check:(isize) arg1 = 1
 // lldb-command:print arg2
-// lldb-check:[...]$1 = 2
+// lldbg-check:[...]$1 = 2
+// lldbr-check:(isize) arg2 = 2
 // lldb-command:continue
 
 // ENUM
 // lldb-command:print arg1
-// lldb-check:[...]$2 = -3
+// lldbg-check:[...]$2 = -3
+// lldbr-check:(isize) arg1 = -3
 // lldb-command:print arg2
-// lldb-check:[...]$3 = 4.5
+// lldbg-check:[...]$3 = 4.5
+// lldbr-check:(f64) arg2 = 4.5
 // lldb-command:print arg3
-// lldb-check:[...]$4 = 5
+// lldbg-check:[...]$4 = 5
+// lldbr-check:(usize) arg3 = 5
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

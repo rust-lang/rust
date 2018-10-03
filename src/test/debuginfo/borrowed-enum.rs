@@ -36,11 +36,14 @@
 // lldb-command:run
 
 // lldb-command:print *the_a_ref
-// lldb-check:[...]$0 = TheA { x: 0, y: 8970181431921507452 }
+// lldbg-check:[...]$0 = TheA { x: 0, y: 8970181431921507452 }
+// lldbr-check:(borrowed_enum::ABC::TheA) *the_a_ref = TheA { borrowed_enum::ABC::TheA: 0, borrowed_enum::ABC::TheB: 8970181431921507452 }
 // lldb-command:print *the_b_ref
-// lldb-check:[...]$1 = TheB(0, 286331153, 286331153)
+// lldbg-check:[...]$1 = TheB(0, 286331153, 286331153)
+// lldbr-check:(borrowed_enum::ABC::TheB) *the_b_ref = { = 0 = 286331153 = 286331153 }
 // lldb-command:print *univariant_ref
-// lldb-check:[...]$2 = TheOnlyCase(4820353753753434)
+// lldbg-check:[...]$2 = TheOnlyCase(4820353753753434)
+// lldbr-check:(borrowed_enum::Univariant) *univariant_ref = { borrowed_enum::TheOnlyCase = { = 4820353753753434 } }
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

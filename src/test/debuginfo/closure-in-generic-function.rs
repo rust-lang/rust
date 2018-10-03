@@ -34,15 +34,19 @@
 // lldb-command:run
 
 // lldb-command:print x
-// lldb-check:[...]$0 = 0.5
+// lldbg-check:[...]$0 = 0.5
+// lldbr-check:(f64) x = 0.5
 // lldb-command:print y
-// lldb-check:[...]$1 = 10
+// lldbg-check:[...]$1 = 10
+// lldbr-check:(i32) y = 10
 // lldb-command:continue
 
 // lldb-command:print *x
-// lldb-check:[...]$2 = 29
+// lldbg-check:[...]$2 = 29
+// lldbr-check:(i32) *x = 29
 // lldb-command:print *y
-// lldb-check:[...]$3 = 110
+// lldbg-check:[...]$3 = 110
+// lldbr-check:(i32) *y = 110
 // lldb-command:continue
 
 #![feature(box_syntax)]

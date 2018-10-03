@@ -205,6 +205,9 @@ pub struct Config {
     /// Version of LLDB
     pub lldb_version: Option<String>,
 
+    /// Whether LLDB has native rust support
+    pub lldb_native_rust: bool,
+
     /// Version of LLVM
     pub llvm_version: Option<String>,
 

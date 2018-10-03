@@ -67,48 +67,57 @@
 // lldb-command:run
 
 // lldb-command:print a
-// lldb-check:[...]$0 = 10
+// lldbg-check:[...]$0 = 10
+// lldbr-check:(i32) a = 10
 // lldb-command:print b
-// lldb-check:[...]$1 = 34
+// lldbg-check:[...]$1 = 34
+// lldbr-check:(i32) b = 34
 // lldb-command:continue
 
 // lldb-command:print a
-// lldb-check:[...]$2 = 890242
+// lldbg-check:[...]$2 = 890242
+// lldbr-check:(i32) a = 10
 // lldb-command:print b
-// lldb-check:[...]$3 = 34
+// lldbg-check:[...]$3 = 34
+// lldbr-check:(i32) b = 34
 // lldb-command:continue
 
 // lldb-command:print a
-// lldb-check:[...]$4 = 10
+// lldbg-check:[...]$4 = 10
+// lldbr-check:(i32) a = 10
 // lldb-command:print b
-// lldb-check:[...]$5 = 34
+// lldbg-check:[...]$5 = 34
+// lldbr-check:(i32) b = 34
 // lldb-command:continue
 
 // lldb-command:print a
-// lldb-check:[...]$6 = 102
+// lldbg-check:[...]$6 = 102
+// lldbr-check:(i32) a = 10
 // lldb-command:print b
-// lldb-check:[...]$7 = 34
+// lldbg-check:[...]$7 = 34
+// lldbr-check:(i32) b = 34
 // lldb-command:continue
 
-// lldb-command:print a
-// lldb-check:[...]$8 = 110
-// lldb-command:print b
-// lldb-check:[...]$9 = 34
-// lldb-command:continue
+// Don't test this with rust-enabled lldb for now; see issue #48807
+// lldbg-command:print a
+// lldbg-check:[...]$8 = 110
+// lldbg-command:print b
+// lldbg-check:[...]$9 = 34
+// lldbg-command:continue
 
-// lldb-command:print a
-// lldb-check:[...]$10 = 10
-// lldb-command:print b
-// lldb-check:[...]$11 = 34
-// lldb-command:continue
+// lldbg-command:print a
+// lldbg-check:[...]$10 = 10
+// lldbg-command:print b
+// lldbg-check:[...]$11 = 34
+// lldbg-command:continue
 
-// lldb-command:print a
-// lldb-check:[...]$12 = 10
-// lldb-command:print b
-// lldb-check:[...]$13 = 34
-// lldb-command:print c
-// lldb-check:[...]$14 = 400
-// lldb-command:continue
+// lldbg-command:print a
+// lldbg-check:[...]$12 = 10
+// lldbg-command:print b
+// lldbg-check:[...]$13 = 34
+// lldbg-command:print c
+// lldbg-check:[...]$14 = 400
+// lldbg-command:continue
 
 
 #![feature(omit_gdb_pretty_printer_section)]
