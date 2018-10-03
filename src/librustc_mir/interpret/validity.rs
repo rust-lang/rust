@@ -162,14 +162,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     scalar_format(value), path, "a valid unicode codepoint");
             },
             ty::Float(_) | ty::Int(_) | ty::Uint(_) if const_mode => {
-                // Integers/floats in CTFE: Must be scalar bits
+                // Integers/floats in CTFE: Must be scalar bits, pointers are dangerous
                 try_validation!(value.to_bits(size),
                     scalar_format(value), path, "initialized plain bits");
             }
             ty::Float(_) | ty::Int(_) | ty::Uint(_) | ty::RawPtr(_) => {
-                // Anything but undef goes
-                try_validation!(value.not_undef(),
-                    scalar_format(value), path, "a raw pointer");
+                if const_mode {
+                    // Anything but undef goes
+                    try_validation!(value.not_undef(),
+                        scalar_format(value), path, "a raw pointer");
+                } else {
+                    // At run-time, for now, we accept *anything* for these types.
+                }
             },
             ty::Ref(..) => {
                 // This is checked by the recursive reference handling, nothing to do here.
@@ -182,10 +186,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     scalar_format(value), path, "a function pointer");
                 // FIXME: Check if the signature matches
             }
-            ty::FnDef(..) => {
-                // This is a zero-sized type with all relevant data sitting in the type.
-                // There is nothing to validate.
-            }
+            // This should be all
+            ty::Never => bug!("Uninhabited type should have been catched earlier"),
             _ => bug!("Unexpected primitive type {}", ty)
         }
         Ok(())
