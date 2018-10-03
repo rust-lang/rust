@@ -10,57 +10,6 @@
  * except according to those terms.
  */
 
-/* See FiraSans-LICENSE.txt for the Fira Sans license. */
-@font-face {
-	font-family: 'Fira Sans';
-	font-style: normal;
-	font-weight: 400;
-	src: local('Fira Sans'), url("FiraSans-Regular.woff") format('woff');
-}
-@font-face {
-	font-family: 'Fira Sans';
-	font-style: normal;
-	font-weight: 500;
-	src: local('Fira Sans Medium'), url("FiraSans-Medium.woff") format('woff');
-}
-
-/* See SourceSerifPro-LICENSE.txt for the Source Serif Pro license and
- * Heuristica-LICENSE.txt for the Heuristica license. */
-@font-face {
-	font-family: 'Source Serif Pro';
-	font-style: normal;
-	font-weight: 400;
-	src: local('Source Serif Pro'), url("SourceSerifPro-Regular.woff") format('woff');
-}
-@font-face {
-	font-family: 'Source Serif Pro';
-	font-style: italic;
-	font-weight: 400;
-	src: url("Heuristica-Italic.woff") format('woff');
-}
-@font-face {
-	font-family: 'Source Serif Pro';
-	font-style: normal;
-	font-weight: 700;
-	src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.woff") format('woff');
-}
-
-/* See SourceCodePro-LICENSE.txt for the Source Code Pro license. */
-@font-face {
-	font-family: 'Source Code Pro';
-	font-style: normal;
-	font-weight: 400;
-	/* Avoid using locally installed font because bad versions are in circulation:
-	 * see https://github.com/rust-lang/rust/issues/24355 */
-	src: url("SourceCodePro-Regular.woff") format('woff');
-}
-@font-face {
-	font-family: 'Source Code Pro';
-	font-style: normal;
-	font-weight: 600;
-	src: url("SourceCodePro-Semibold.woff") format('woff');
-}
-
 * {
   -webkit-box-sizing: border-box;
 	 -moz-box-sizing: border-box;
@@ -70,7 +19,7 @@
 /* General structure and fonts */
 
 body {
-	font: 16px/1.4 "Source Serif Pro", Georgia, Times, "Times New Roman", serif;
+	font-size: 1em;
 	margin: 0;
 	position: relative;
 	padding: 10px 15px 20px 15px;
@@ -115,7 +64,7 @@ h3.impl, h3.method, h3.type {
 h1, h2, h3, h4,
 .sidebar, a.source, .search-input, .content table :not(code)>a,
 .collapse-toggle, div.item-list .out-of-band {
-	font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-family: sans-serif;
 }
 
 ol, ul {
@@ -134,7 +83,7 @@ summary {
 }
 
 code, pre {
-	font-family: "Source Code Pro", Menlo, Monaco, Consolas, "DejaVu Sans Mono", Inconsolata, monospace;
+	font-family: monospace;
 	white-space: pre-wrap;
 }
 .docblock code, .docblock-short code {
@@ -395,7 +344,7 @@ h4 > code, h3 > code, .invisible > code {
 }
 #main > .since {
 	top: inherit;
-	font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-family: sans-serif;
 }
 
 .content table:not(.table-display) {
@@ -1272,7 +1221,7 @@ h3.important {
 kbd {
 	display: inline-block;
 	padding: 3px 5px;
-	font: 15px "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+	font: 0.9rem monospace;
 	line-height: 10px;
 	vertical-align: middle;
 	border: solid 1px;
