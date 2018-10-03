@@ -180,7 +180,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     scalar_format(value), path, "a pointer");
                 let _fn = try_validation!(self.memory.get_fn(ptr),
                     scalar_format(value), path, "a function pointer");
-                // TODO: Check if the signature matches
+                // FIXME: Check if the signature matches
             }
             ty::FnDef(..) => {
                 // This is a zero-sized type with all relevant data sitting in the type.
