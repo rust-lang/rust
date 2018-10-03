@@ -1822,12 +1822,12 @@ impl<T, I> SpecExtend<T, I> for Vec<T>
             unsafe {
                 let mut ptr = self.as_mut_ptr().add(self.len());
                 let mut local_len = SetLenOnDrop::new(&mut self.len);
-                for element in iterator {
+                iterator.for_each(move |element| {
                     ptr::write(ptr, element);
                     ptr = ptr.offset(1);
                     // NB can't overflow since we would have had to alloc the address space
                     local_len.increment_len(1);
-                }
+                });
             }
         } else {
             self.extend_desugared(iterator)
