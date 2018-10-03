@@ -719,6 +719,30 @@ declare_clippy_lint! {
     "cast from a pointer to a more-strictly-aligned pointer"
 }
 
+/// **What it does:** Checks for casts of function pointers to something other than usize
+///
+/// **Why is this bad?**
+/// Depending on the system architechture, casting a function pointer to something other than
+/// `usize` will result in incorrect pointer addresses.
+/// `usize` will always be able to store the function pointer on the given architechture.
+///
+/// **Example**
+///
+/// ```rust
+/// // Bad
+/// fn fun() -> i32 {}
+/// let a = fun as i64;
+///
+/// // Good
+/// fn fun2() -> i32 {}
+/// let a = fun2 as usize;
+/// ```
+declare_clippy_lint! {
+    pub FN_TO_NUMERIC_CAST,
+    style,
+    "casting a function pointer to a numeric type other than usize"
+}
+
 /// Returns the size in bits of an integral type.
 /// Will return 0 if the type is not an int or uint variant
 fn int_ty_to_nbits(typ: Ty<'_>, tcx: TyCtxt<'_, '_, '_>) -> u64 {
@@ -913,6 +937,7 @@ impl LintPass for CastPass {
             CAST_LOSSLESS,
             UNNECESSARY_CAST,
             CAST_PTR_ALIGNMENT,
+            FN_TO_NUMERIC_CAST
         )
     }
 }
@@ -921,6 +946,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprKind::Cast(ref ex, _) = expr.node {
             let (cast_from, cast_to) = (cx.tables.expr_ty(ex), cx.tables.expr_ty(expr));
+            lint_fn_to_numeric_cast(cx, expr, ex, cast_from, cast_to);
             if let ExprKind::Lit(ref lit) = ex.node {
                 use crate::syntax::ast::{LitIntType, LitKind};
                 match lit.node {
@@ -1018,6 +1044,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                 }
             }
         }
+    }
+}
+
+fn lint_fn_to_numeric_cast(cx: &LateContext<'_, '_>, expr: &Expr, cast_expr: &Expr, cast_from: Ty, cast_to: Ty) {
+    match cast_from.sty {
+        ty::FnDef(..) | ty::FnPtr(_) => {
+            let from_snippet = snippet(cx, cast_expr.span, "x");
+            if cast_to.sty != ty::Uint(UintTy::Usize) {
+                span_lint_and_sugg(
+                    cx,
+                    FN_TO_NUMERIC_CAST,
+                    expr.span,
+                    &format!("casting function pointer `{}` to `{}`", from_snippet, cast_to),
+                    "try",
+                    format!("{} as usize", from_snippet)
+                );
+            }
+        },
+        _ => {}
     }
 }
 
