@@ -11,7 +11,7 @@
 use common::CompareMode;
 use common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
 use common::{output_base_dir, output_base_name, output_testname_unique};
-use common::{Codegen, CodegenUnits, DebugInfoGdb, DebugInfoLldb, Rustdoc};
+use common::{Codegen, CodegenUnits, DebugInfoBoth, DebugInfoGdb, DebugInfoLldb, Rustdoc};
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Config, TestPaths};
 use common::{Incremental, MirOpt, RunMake, Ui};
@@ -225,19 +225,20 @@ pub fn run(config: Config, testpaths: &TestPaths, revision: Option<&str>) {
 pub fn compute_stamp_hash(config: &Config) -> String {
     let mut hash = DefaultHasher::new();
     config.stage_id.hash(&mut hash);
-    match config.mode {
-        DebugInfoGdb => match config.gdb {
+
+    if config.mode == DebugInfoGdb || config.mode == DebugInfoBoth {
+        match config.gdb {
             None => env::var_os("PATH").hash(&mut hash),
             Some(ref s) if s.is_empty() => env::var_os("PATH").hash(&mut hash),
             Some(ref s) => s.hash(&mut hash),
-        },
-        DebugInfoLldb => {
-            env::var_os("PATH").hash(&mut hash);
-            env::var_os("PYTHONPATH").hash(&mut hash);
-        },
+        };
+    }
 
-        _ => {},
-    };
+    if config.mode == DebugInfoLldb || config.mode == DebugInfoBoth {
+        env::var_os("PATH").hash(&mut hash);
+        env::var_os("PYTHONPATH").hash(&mut hash);
+    }
+
     format!("{:x}", hash.finish())
 }
 
@@ -268,6 +269,10 @@ impl<'test> TestCx<'test> {
             RunFail => self.run_rfail_test(),
             RunPassValgrind => self.run_valgrind_test(),
             Pretty => self.run_pretty_test(),
+            DebugInfoBoth => {
+                self.run_debuginfo_gdb_test();
+                self.run_debuginfo_lldb_test();
+            },
             DebugInfoGdb => self.run_debuginfo_gdb_test(),
             DebugInfoLldb => self.run_debuginfo_lldb_test(),
             Codegen => self.run_codegen_test(),
@@ -640,6 +645,7 @@ impl<'test> TestCx<'test> {
         let config = Config {
             target_rustcflags: self.cleanup_debug_info_options(&self.config.target_rustcflags),
             host_rustcflags: self.cleanup_debug_info_options(&self.config.host_rustcflags),
+            mode: DebugInfoGdb,
             ..self.config.clone()
         };
 
@@ -910,6 +916,7 @@ impl<'test> TestCx<'test> {
         let config = Config {
             target_rustcflags: self.cleanup_debug_info_options(&self.config.target_rustcflags),
             host_rustcflags: self.cleanup_debug_info_options(&self.config.host_rustcflags),
+            mode: DebugInfoLldb,
             ..self.config.clone()
         };
 
@@ -1774,7 +1781,7 @@ impl<'test> TestCx<'test> {
 
                 rustc.arg(dir_opt);
             }
-            RunFail | RunPassValgrind | Pretty | DebugInfoGdb | DebugInfoLldb
+            RunFail | RunPassValgrind | Pretty | DebugInfoBoth | DebugInfoGdb | DebugInfoLldb
             | Codegen | Rustdoc | RunMake | CodegenUnits => {
                 // do not use JSON output
             }

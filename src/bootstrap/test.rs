@@ -812,8 +812,7 @@ default_test!(Incremental {
 
 default_test!(Debuginfo {
     path: "src/test/debuginfo",
-    // What this runs varies depending on the native platform being apple
-    mode: "debuginfo-XXX",
+    mode: "debuginfo",
     suite: "debuginfo"
 });
 
@@ -950,18 +949,11 @@ impl Step for Compiletest {
                 return;
             }
 
-            if mode == "debuginfo-XXX" {
-                return if builder.config.build.contains("apple") {
-                    builder.ensure(Compiletest {
-                        mode: "debuginfo-lldb",
-                        ..self
-                    });
-                } else {
-                    builder.ensure(Compiletest {
-                        mode: "debuginfo-gdb",
-                        ..self
-                    });
-                };
+            if mode == "debuginfo" {
+                return builder.ensure(Compiletest {
+                    mode: "debuginfo-both",
+                    ..self
+                });
             }
 
             builder.ensure(dist::DebuggerScripts {
