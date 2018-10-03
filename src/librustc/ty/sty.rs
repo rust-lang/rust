@@ -127,9 +127,26 @@ pub enum TyKind<'tcx> {
 
     /// The anonymous type of a function declaration/definition. Each
     /// function has a unique type.
+    ///
+    /// For example the type of `a` here:
+    ///
+    /// ```rust
+    /// fn foo() -> i32 { 1 }
+    ///
+    /// fn hello() {
+    ///     let a = foo;
+    /// }
+    /// ```
     FnDef(DefId, &'tcx Substs<'tcx>),
 
     /// A pointer to a function.  Written as `fn() -> i32`.
+    ///
+    /// For example the type of `a` here:
+    ///
+    /// ```rust
+    /// fn foo() -> i32 { 1 }
+    /// let a: fn() -> i32 = foo;
+    /// ```
     FnPtr(PolyFnSig<'tcx>),
 
     /// A trait, defined with `trait`.
