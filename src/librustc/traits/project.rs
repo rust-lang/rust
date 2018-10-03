@@ -206,10 +206,10 @@ pub fn poly_project_and_unify_type<'cx, 'gcx, 'tcx>(
 
     let infcx = selcx.infcx();
     infcx.commit_if_ok(|snapshot| {
-        let (skol_predicate, placeholder_map) =
+        let (placeholder_predicate, placeholder_map) =
             infcx.replace_late_bound_regions_with_placeholders(&obligation.predicate);
 
-        let skol_obligation = obligation.with(skol_predicate);
+        let skol_obligation = obligation.with(placeholder_predicate);
         let r = match project_and_unify_type(selcx, &skol_obligation) {
             Ok(result) => {
                 let span = obligation.cause.span;
