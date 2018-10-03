@@ -39,7 +39,7 @@ h3 {
 	font-size: 1.3em;
 }
 h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod):not(.important), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
-	font-weight: 500;
+	font-weight: normal;
 	margin: 20px 0 15px 0;
 	padding-bottom: 6px;
 }
@@ -52,7 +52,7 @@ h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.t
 	border-bottom: 1px solid;
 }
 h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant {
-	font-weight: 600;
+	font-weight: normal;
 	margin-top: 10px;
 	margin-bottom: 10px;
 	position: relative;
@@ -172,7 +172,7 @@ nav.sub {
 }
 
 .location a:first-child {
-	font-weight: 500;
+	font-weight: normal;
 }
 
 .block {
@@ -197,7 +197,7 @@ nav.sub {
 	line-height: 15px;
 	padding: 7px 5px;
 	font-size: 14px;
-	font-weight: 300;
+	font-weight: normal;
 	transition: border 500ms ease-out;
 }
 
@@ -532,7 +532,7 @@ a {
 	font-weight: normal;
 }
 
-.block a.current.crate { font-weight: 500; }
+.block a.current.crate { font-weight: normal; }
 
 .search-container {
 	position: relative;
@@ -731,7 +731,7 @@ a.test-arrow:hover{
 }
 
 .collapse-toggle {
-	font-weight: 300;
+	font-weight: normal;
 	position: absolute;
 	left: -23px;
 	top: 0;
@@ -844,7 +844,7 @@ span.since {
 	margin-left: 20px;
 }
 .impl-items .attributes {
-	font-weight: 500;
+	font-weight: normal;
 }
 
 :target > code {
@@ -1184,7 +1184,7 @@ h3.important {
 
 .modal-content > .close {
 	position: absolute;
-	font-weight: 900;
+	font-weight: bold;
 	right: -25px;
 	top: -1px;
 	font-size: 18px;
