@@ -478,6 +478,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                       binding: &'a NameBinding<'a>)
                       -> Result<(), &'a NameBinding<'a>> {
         self.check_reserved_macro_name(ident, ns);
+        self.set_binding_parent_module(binding, module);
         self.update_resolution(module, ident, ns, |this, resolution| {
             if let Some(old_binding) = resolution.binding {
                 if binding.is_glob_import() {

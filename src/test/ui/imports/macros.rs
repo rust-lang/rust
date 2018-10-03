@@ -45,7 +45,7 @@ mod m3 {
 mod m4 {
     macro_rules! m { () => {} }
     use two_macros::m;
-    m!(); //~ ERROR ambiguous
+    m!();
 }
 
 fn main() {}

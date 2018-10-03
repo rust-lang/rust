@@ -957,11 +957,13 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 },
                 (Some(legacy_binding), Ok((binding, FromPrelude(from_prelude))))
                         if legacy_binding.def() != binding.def_ignoring_ambiguity() &&
-                           (!from_prelude ||
+                           (!from_prelude &&
+                            !self.disambiguate_legacy_vs_modern(legacy_binding, binding) ||
                             legacy_binding.may_appear_after(parent_scope.expansion, binding)) => {
                     self.report_ambiguity_error(ident, legacy_binding, binding);
                 },
                 // OK, non-macro-expanded legacy wins over prelude even if defs are different
+                // Also, non-macro-expanded legacy wins over modern from the same module
                 // Also, legacy and modern can co-exist if their defs are same
                 (Some(legacy_binding), Ok(_)) |
                 // OK, unambiguous resolution
@@ -1097,6 +1099,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             let def = Def::Macro(def_id, MacroKind::Bang);
             let vis = ty::Visibility::Invisible; // Doesn't matter for legacy bindings
             let binding = (def, vis, item.span, expansion).to_name_binding(self.arenas);
+            self.set_binding_parent_module(binding, self.current_module);
             let legacy_binding = self.arenas.alloc_legacy_binding(LegacyBinding {
                 parent_legacy_scope: *current_legacy_scope, binding, ident
             });
