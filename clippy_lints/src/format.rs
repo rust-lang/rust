@@ -57,12 +57,24 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         if check_single_piece(&args[0]);
                         if let Some(format_arg) = get_single_string_arg(cx, &args[1]);
                         if check_unformatted(&args[2]);
+                        if let ExprKind::AddrOf(_, ref format_arg) = format_arg.node;
                         then {
-                            let sugg = format!("{}.to_string()", snippet(cx, format_arg, "<arg>").into_owned());
+                            let (message, sugg) = if_chain! {
+                                if let ExprKind::MethodCall(ref path, ref span, ref expr) = format_arg.node;
+                                if path.ident.as_interned_str() == "to_string";
+                                then {
+                                    ("`to_string()` is enough",
+                                    snippet(cx, format_arg.span, "<arg>").to_string())
+                                } else {
+                                    ("consider using .to_string()",
+                                    format!("{}.to_string()", snippet(cx, format_arg.span, "<arg>")))
+                                }
+                            };
+
                             span_lint_and_then(cx, USELESS_FORMAT, span, "useless use of `format!`", |db| {
                                 db.span_suggestion_with_applicability(
                                     expr.span,
-                                    "consider using .to_string()",
+                                    message,
                                     sugg,
                                     Applicability::MachineApplicable,
                                 );
@@ -113,9 +125,9 @@ fn check_single_piece(expr: &Expr) -> bool {
 /// ::std::fmt::Display::fmt)],
 /// }
 /// ```
-/// and that type of `__arg0` is `&str` or `String`
-/// then returns the span of first element of the matched tuple
-fn get_single_string_arg(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<Span> {
+/// and that the type of `__arg0` is `&str` or `String`,
+/// then returns the span of first element of the matched tuple.
+fn get_single_string_arg<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option<&'a Expr> {
     if_chain! {
         if let ExprKind::AddrOf(_, ref expr) = expr.node;
         if let ExprKind::Match(ref match_expr, ref arms, _) = expr.node;
@@ -134,7 +146,7 @@ fn get_single_string_arg(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<Span> 
             let ty = walk_ptrs_ty(cx.tables.pat_ty(&pat[0]));
             if ty.sty == ty::Str || match_type(cx, ty, &paths::STRING) {
                 if let ExprKind::Tup(ref values) = match_expr.node {
-                    return Some(values[0].span);
+                    return Some(&values[0]);
                 }
             }
         }

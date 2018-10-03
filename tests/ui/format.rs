@@ -52,4 +52,8 @@ fn main() {
     format!("{:.10}", "foo"); // could not be "foo"[..10]
     format!("{:.prec$}", "foo", prec = 1);
     format!("{:.prec$}", "foo", prec = 10);
+
+    format!("{}", 42.to_string());
+    let x = std::path::PathBuf::from("/bar/foo/qux");
+    format!("{}", x.display().to_string());
 }
