@@ -157,6 +157,11 @@ pub enum TyKind<'tcx> {
     /// `<T as Trait<..>>::N`.
     Projection(ProjectionTy<'tcx>),
 
+    /// A placeholder type used when we do not have enough information
+    /// to normalize the projection of an associated type to an
+    /// existing concrete type. Currently only used with chalk-engine.
+    UnnormalizedProjection(ProjectionTy<'tcx>),
+
     /// Opaque (`impl Trait`) type found in a return type.
     /// The `DefId` comes either from
     /// * the `impl Trait` ast::Ty node,
@@ -1806,7 +1811,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             Generator(_, GeneratorSubsts { ref substs }, _) => {
                 substs.regions().collect()
             }
-            Projection(ref data) => {
+            Projection(ref data) | UnnormalizedProjection(ref data) => {
                 data.substs.regions().collect()
             }
             FnDef(..) |
@@ -1885,6 +1890,8 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
                 def.sized_constraint(tcx).is_empty(),
 
             ty::Projection(_) | ty::Param(_) | ty::Opaque(..) => false,
+
+            ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
 
             ty::Infer(ty::TyVar(_)) => false,
 

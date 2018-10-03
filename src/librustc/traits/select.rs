@@ -2200,6 +2200,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::Projection(_) | ty::Param(_) | ty::Opaque(..) => None,
             ty::Infer(ty::TyVar(_)) => Ambiguous,
 
+            ty::UnnormalizedProjection(..) |
             ty::Infer(ty::CanonicalTy(_)) |
             ty::Infer(ty::FreshTy(_)) |
             ty::Infer(ty::FreshIntTy(_)) |
@@ -2272,6 +2273,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Ambiguous
             }
 
+            ty::UnnormalizedProjection(..) |
             ty::Infer(ty::CanonicalTy(_)) |
             ty::Infer(ty::FreshTy(_)) |
             ty::Infer(ty::FreshIntTy(_)) |
@@ -2310,6 +2312,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Vec::new()
             }
 
+            ty::UnnormalizedProjection(..) |
             ty::Dynamic(..) |
             ty::Param(..) |
             ty::Foreign(..) |

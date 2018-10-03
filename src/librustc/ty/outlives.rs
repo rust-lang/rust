@@ -124,6 +124,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
+            ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
+
             // We assume that inference variables are fully resolved.
             // So, if we encounter an inference variable, just record
             // the unresolved variable as a component.

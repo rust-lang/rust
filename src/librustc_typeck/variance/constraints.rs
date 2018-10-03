@@ -336,6 +336,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // types, where we use Error as the Self type
             }
 
+            ty::UnnormalizedProjection(..) |
             ty::GeneratorWitness(..) |
             ty::Infer(..) => {
                 bug!("unexpected type encountered in \

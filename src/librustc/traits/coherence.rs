@@ -475,6 +475,7 @@ fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
 
         ty::Error => true,
 
+        ty::UnnormalizedProjection(..) |
         ty::Closure(..) |
         ty::Generator(..) |
         ty::GeneratorWitness(..) |
