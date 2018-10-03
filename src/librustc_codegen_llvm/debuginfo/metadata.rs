@@ -17,9 +17,8 @@ use super::utils::{debug_context, DIB, span_start,
 use super::namespace::mangled_name_of_instance;
 use super::type_names::compute_debuginfo_type_name;
 use super::{CrateDebugContext};
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 use abi;
-use interfaces::ConstMethods;
 use value::Value;
 
 use llvm;

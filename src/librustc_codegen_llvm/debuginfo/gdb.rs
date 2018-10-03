@@ -16,7 +16,7 @@ use common::CodegenCx;
 use builder::Builder;
 use rustc::session::config::DebugInfo;
 use value::Value;
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 
 use syntax::attr;
 

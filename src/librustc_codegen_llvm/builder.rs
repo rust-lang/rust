@@ -11,7 +11,7 @@
 use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
 use llvm::{self, False, BasicBlock};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind, RealPredicate};
-use rustc_codegen_ssa;
+use rustc_codegen_ssa::{self, MemFlags};
 use common::Funclet;
 use context::CodegenCx;
 use type_::Type;
@@ -22,11 +22,11 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, Size, TyLayout};
 use rustc::session::config;
 use rustc_data_structures::small_c_str::SmallCStr;
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 use syntax;
-use base;
-use mir::operand::{OperandValue, OperandRef};
-use mir::place::PlaceRef;
+use rustc_codegen_ssa::base::to_immediate;
+use rustc_codegen_ssa::mir::operand::{OperandValue, OperandRef};
+use rustc_codegen_ssa::mir::place::PlaceRef;
 use std::borrow::Cow;
 use std::ops::Range;
 use std::ptr;
@@ -582,7 +582,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 }
                 load
             });
-            OperandValue::Immediate(base::to_immediate(self, llval, place.layout))
+            OperandValue::Immediate(to_immediate(self, llval, place.layout))
         } else if let layout::Abi::ScalarPair(ref a, ref b) = place.layout.abi {
             let load = |i, scalar: &layout::Scalar| {
                 let llptr = self.struct_gep(place.llval, i as u64);

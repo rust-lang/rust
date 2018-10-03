@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::{FunctionDebugContext, FunctionDebugContextData};
+use rustc_codegen_ssa::debuginfo::{FunctionDebugContext, FunctionDebugContextData, MirDebugScope};
 use super::metadata::file_metadata;
 use super::utils::{DIB, span_start};
 

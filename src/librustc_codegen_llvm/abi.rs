@@ -9,16 +9,17 @@
 // except according to those terms.
 
 use llvm::{self, AttributePlace};
-use builder::{Builder, MemFlags};
+use rustc_codegen_ssa::MemFlags;
+use builder::Builder;
 use context::CodegenCx;
-use mir::place::PlaceRef;
-use mir::operand::OperandValue;
+use rustc_codegen_ssa::mir::place::PlaceRef;
+use rustc_codegen_ssa::mir::operand::OperandValue;
 use type_::Type;
 use type_of::{LayoutLlvmExt, PointerKind};
 use value::Value;
 use rustc_target::abi::call::ArgType;
 
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TyLayout, Abi as LayoutAbi};
 use rustc::ty::{self, Ty, Instance};

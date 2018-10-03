@@ -11,8 +11,8 @@
 // See doc.rs for documentation.
 mod doc;
 
-use self::VariableAccess::*;
-use self::VariableKind::*;
+use rustc_codegen_ssa::debuginfo::VariableAccess::*;
+use rustc_codegen_ssa::debuginfo::VariableKind::*;
 
 use self::utils::{DIB, span_start, create_DIArray, is_node_local_to_unit};
 use self::namespace::mangled_name_of_instance;
@@ -38,6 +38,8 @@ use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::indexed_vec::IndexVec;
 use value::Value;
+use rustc_codegen_ssa::debuginfo::{FunctionDebugContext, MirDebugScope, VariableAccess,
+    VariableKind, FunctionDebugContextData};
 
 use libc::c_uint;
 use std::cell::{Cell, RefCell};
@@ -47,7 +49,7 @@ use syntax_pos::{self, Span, Pos};
 use syntax::ast;
 use syntax::symbol::{Symbol, InternedString};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 
 pub mod gdb;
 mod utils;
@@ -57,8 +59,7 @@ pub mod metadata;
 mod create_scope_map;
 mod source_loc;
 
-pub use self::create_scope_map::{create_mir_scopes, MirDebugScope};
-pub use self::source_loc::start_emitting_source_locations;
+pub use self::create_scope_map::{create_mir_scopes};
 pub use self::metadata::create_global_var_metadata;
 pub use self::metadata::extend_scope_to_file;
 pub use self::source_loc::set_source_location;
@@ -542,12 +543,12 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         finalize(self)
     }
 
-    fn debuginfo_upvar_decls_ops_sequence(&self, byte_offset_of_var_in_env: u64) -> &[i64] {
+    fn debuginfo_upvar_decls_ops_sequence(&self, byte_offset_of_var_in_env: u64) -> [i64; 4] {
         unsafe {
             [llvm::LLVMRustDIBuilderCreateOpDeref(),
              llvm::LLVMRustDIBuilderCreateOpPlusUconst(),
              byte_offset_of_var_in_env as i64,
              llvm::LLVMRustDIBuilderCreateOpDeref()]
-        };
+        }
     }
 }

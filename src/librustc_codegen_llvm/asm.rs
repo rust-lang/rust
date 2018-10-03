@@ -15,10 +15,10 @@ use builder::Builder;
 use value::Value;
 
 use rustc::hir;
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 
-use mir::place::PlaceRef;
-use mir::operand::OperandValue;
+use rustc_codegen_ssa::mir::place::PlaceRef;
+use rustc_codegen_ssa::mir::operand::OperandValue;
 
 use std::ffi::CString;
 use libc::{c_uint, c_char};

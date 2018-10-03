@@ -12,12 +12,12 @@ use self::InternalDebugLocation::*;
 
 use super::utils::{debug_context, span_start};
 use super::metadata::UNKNOWN_COLUMN_NUMBER;
-use super::FunctionDebugContext;
+use rustc_codegen_ssa::debuginfo::FunctionDebugContext;
 
 use llvm;
 use llvm::debuginfo::DIScope;
 use builder::Builder;
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 
 use libc::c_uint;
 use syntax_pos::{Span, Pos};

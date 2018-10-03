@@ -57,8 +57,8 @@ pub fn start_emitting_source_locations<D>(dbg_context: &FunctionDebugContext<D>)
 }
 
 pub struct FunctionDebugContextData<D> {
-    fn_metadata: D,
-    source_locations_enabled: Cell<bool>,
+    pub fn_metadata: D,
+    pub source_locations_enabled: Cell<bool>,
     pub defining_crate: CrateNum,
 }
 

@@ -14,14 +14,11 @@ use context::CodegenCx;
 use llvm;
 use monomorphize::Instance;
 use type_of::LayoutLlvmExt;
-use rustc::hir;
-use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty::TypeFoldable;
 use rustc::ty::layout::{LayoutOf, HasTyCtxt};
-use std::fmt;
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 
 pub use rustc::mir::mono::MonoItem;
 

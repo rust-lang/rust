@@ -15,7 +15,7 @@ pub use llvm::Type;
 use llvm;
 use llvm::{Bool, False, True};
 use context::CodegenCx;
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 use value::Value;
 
 
@@ -400,11 +400,11 @@ impl LayoutTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn is_backend_immediate(&self, layout: TyLayout<'tcx>) -> bool {
         layout.is_llvm_immediate()
     }
-    fn is_backend_scalar_pair(&self, ty: &TyLayout<'tcx>) -> bool {
-        ty.is_llvm_scalar_pair()
+    fn is_backend_scalar_pair(&self, layout: TyLayout<'tcx>) -> bool {
+        layout.is_llvm_scalar_pair()
     }
-    fn backend_field_index(&self, ty: &TyLayout<'tcx>, index: usize) -> u64 {
-        ty.llvm_field_index()
+    fn backend_field_index(&self, layout: TyLayout<'tcx>, index: usize) -> u64 {
+        layout.llvm_field_index(index)
     }
     fn scalar_pair_element_backend_type<'a>(
         &self,

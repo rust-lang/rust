@@ -24,68 +24,34 @@
 //!     int) and rec(x=int, y=int, z=int) will have the same llvm::Type.
 
 use super::ModuleLlvm;
-use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, CachedModuleCodegen};
+use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
+use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use super::LlvmCodegenBackend;
 
-use abi;
 use back::write;
 use llvm;
 use metadata;
-use rustc::dep_graph::cgu_reuse_tracker::CguReuse;
-use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::middle::lang_items::StartFnLangItem;
-use rustc::middle::weak_lang_items;
-use rustc::mir::mono::{Linkage, Visibility, Stats, CodegenUnitNameBuilder};
+use rustc::mir::mono::{Linkage, Visibility, Stats};
 use rustc::middle::cstore::{EncodedMetadata};
-use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, HasTyCtxt};
-use rustc::ty::query::Providers;
-use rustc::middle::cstore::{self, LinkagePreference};
+use rustc::ty::TyCtxt;
 use rustc::middle::exported_symbols;
-use rustc::util::common::{time, print_time_passes_entry};
-use rustc::util::profiling::ProfileCategory;
-use rustc::session::config::{self, DebugInfo, EntryFnType, Lto};
-use rustc::session::Session;
-use rustc_incremental;
-use mir::place::PlaceRef;
-use builder::{Builder, MemFlags};
-use callee;
-use rustc_mir::monomorphize::item::DefPathBasedNames;
+use rustc::session::config::{self, DebugInfo};
+use builder::Builder;
 use common;
-use rustc_codegen_ssa::common::{RealPredicate, TypeKind, IntPredicate};
-use meth;
-use mir;
 use context::CodegenCx;
-use monomorphize::Instance;
-use monomorphize::partitioning::{CodegenUnit, CodegenUnitExt};
-use rustc_codegen_utils::symbol_names_test;
-use time_graph;
-use mono_item::{MonoItem, MonoItemExt};
-
-use rustc::util::nodemap::FxHashMap;
-use CrateInfo;
+use monomorphize::partitioning::CodegenUnitExt;
+use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_data_structures::sync::Lrc;
 
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 
-use std::any::Any;
-use std::cmp;
 use std::ffi::CString;
-use std::marker;
-use std::ops::{Deref, DerefMut};
-use std::sync::mpsc;
-use std::time::{Instant, Duration};
-use syntax_pos::Span;
+use std::time::Instant;
 use syntax_pos::symbol::InternedString;
-use syntax::attr;
-use rustc::hir::{self, CodegenFnAttrs};
+use rustc::hir::CodegenFnAttrs;
 
 use value::Value;
 
-use mir::operand::OperandValue;
-
-use rustc_codegen_utils::check_for_rustc_errors_attr;
 
 pub(crate) fn write_metadata<'a, 'gcx>(
     tcx: TyCtxt<'a, 'gcx, 'gcx>,
