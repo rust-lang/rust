@@ -889,6 +889,7 @@ fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                     ret.write_cvalue(fx, needs_drop);
                 }
                 _ if intrinsic.starts_with("atomic_fence") => {}
+                _ if intrinsic.starts_with("atomic_singlethreadfence") => {}
                 _ if intrinsic.starts_with("atomic_load") => {
                     assert_eq!(args.len(), 1);
                     let inner_layout =
