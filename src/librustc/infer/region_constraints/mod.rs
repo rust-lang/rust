@@ -309,7 +309,7 @@ pub struct RegionSnapshot {
 /// When working with placeholder regions, we often wish to find all of
 /// the regions that are either reachable from a placeholder region, or
 /// which can reach a placeholder region, or both. We call such regions
-/// *tained* regions.  This struct allows you to decide what set of
+/// *tainted* regions.  This struct allows you to decide what set of
 /// tainted regions you want.
 #[derive(Debug)]
 pub struct TaintDirections {
