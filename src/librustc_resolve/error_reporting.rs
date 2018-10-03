@@ -10,8 +10,10 @@
 
 use {CrateLint, PathResult};
 
+use std::collections::BTreeSet;
+
 use syntax::ast::Ident;
-use syntax::symbol::keywords;
+use syntax::symbol::{keywords, Symbol};
 use syntax_pos::Span;
 
 use resolve_imports::ImportResolver;
@@ -131,14 +133,19 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         span: Span,
         mut path: Vec<Ident>
     ) -> Option<Vec<Ident>> {
-        // Need to clone else we can't call `resolve_path` without a borrow error.
-        let external_crate_names = self.resolver.session.extern_prelude.clone();
+        // Need to clone else we can't call `resolve_path` without a borrow error. We also store
+        // into a `BTreeMap` so we can get consistent ordering (and therefore the same diagnostic)
+        // each time.
+        let external_crate_names: BTreeSet<Symbol> = self.resolver.session.extern_prelude
+            .clone().drain().collect();
 
         // Insert a new path segment that we can replace.
         let new_path_segment = path[0].clone();
         path.insert(1, new_path_segment);
 
-        for name in &external_crate_names {
+        // Iterate in reverse so that we start with crates at the end of the alphabet. This means
+        // that we'll always get `std` before `core`.
+        for name in external_crate_names.iter().rev() {
             let ident = Ident::with_empty_ctxt(*name);
             // Calling `maybe_process_path_extern` ensures that we're only running `resolve_path`
             // on a crate name that won't ICE.
