@@ -744,7 +744,8 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 
 .collapse-toggle > .inner {
 	display: inline-block;
-	width: 1.2ch;
+	width: 1.8ch;
+	font-size: 80%;
 	text-align: center;
 }
 
