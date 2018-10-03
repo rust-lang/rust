@@ -355,12 +355,20 @@ impl_stable_hash_for!(struct hir::FnDecl {
     inputs,
     output,
     variadic,
-    has_implicit_self
+    implicit_self
 });
 
 impl_stable_hash_for!(enum hir::FunctionRetTy {
     DefaultReturn(span),
     Return(t)
+});
+
+impl_stable_hash_for!(enum hir::ImplicitSelfKind {
+    Imm,
+    Mut,
+    ImmRef,
+    MutRef,
+    None
 });
 
 impl_stable_hash_for!(struct hir::TraitRef {
