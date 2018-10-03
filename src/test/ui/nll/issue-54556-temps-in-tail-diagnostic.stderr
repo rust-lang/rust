@@ -1,0 +1,14 @@
+error[E0597]: `_thing1` does not live long enough
+  --> $DIR/issue-54556-temps-in-tail-diagnostic.rs:5:12
+   |
+LL |         D(&_thing1).end()
+   |            ^^^^^^^ borrowed value does not live long enough
+LL |     }
+   |     - `_thing1` dropped here while still borrowed
+LL | 
+LL |     ;
+   |     - borrowed value needs to live until here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

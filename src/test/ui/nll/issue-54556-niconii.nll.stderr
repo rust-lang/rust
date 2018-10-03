@@ -1,0 +1,20 @@
+error[E0597]: `counter` does not live long enough
+  --> $DIR/issue-54556-niconii.rs:22:20
+   |
+LL |     if let Ok(_) = counter.lock() { }
+   |                    ^^^^^^^-------
+   |                    |
+   |                    borrowed value does not live long enough
+   |                    a temporary with access to the borrow is created here ...
+...
+LL | }
+   | -
+   | |
+   | `counter` dropped here while still borrowed
+   | ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `std::result::Result<MutexGuard<'_>, ()>`
+   |
+   = note: The temporary is part of an expression at the end of a block. Consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped.
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.
