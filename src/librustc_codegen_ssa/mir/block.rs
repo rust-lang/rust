@@ -13,14 +13,13 @@ use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, TyLayout};
 use rustc::mir;
 use rustc::mir::interpret::EvalErrorKind;
-use abi::{Abi, FnType, PassMode};
-use rustc_target::abi::call::ArgType;
+use rustc_target::abi::call::{ArgType, FnType, PassMode};
+use rustc_target::spec::abi::Abi;
 use base;
-use builder::MemFlags;
-use common;
-use rustc_codegen_ssa::common::IntPredicate;
+use MemFlags;
+use common::{self, IntPredicate};
 use meth;
-use monomorphize;
+use rustc_mir::monomorphize;
 
 use interfaces::*;
 

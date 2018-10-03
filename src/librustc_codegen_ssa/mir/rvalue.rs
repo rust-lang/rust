@@ -18,10 +18,8 @@ use std::{u128, i128};
 
 use base;
 use callee;
-use common;
-use rustc_codegen_ssa::common::{RealPredicate, IntPredicate};
-use monomorphize;
-use type_of::LayoutLlvmExt;
+use common::{self, RealPredicate, IntPredicate};
+use rustc_mir::monomorphize;
 
 use interfaces::*;
 
@@ -54,7 +52,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
             mir::Rvalue::Cast(mir::CastKind::Unsize, ref source, _) => {
                 // The destination necessarily contains a fat pointer, so if
                 // it's a scalar pair, it's a fat pointer or newtype thereof.
-                if dest.layout.is_llvm_scalar_pair() {
+                if bx.cx().is_backend_scalar_pair(&dest.layout) {
                     // into-coerce of a thin pointer to a fat pointer - just
                     // use the operand path.
                     let (bx, temp) = self.codegen_rvalue_operand(bx, rvalue);
@@ -244,7 +242,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
                         operand.val
                     }
                     mir::CastKind::Unsize => {
-                        assert!(cast.is_llvm_scalar_pair());
+                        assert!(bx.cx().is_backend_scalar_pair(&cast));
                         match operand.val {
                             OperandValue::Pair(lldata, llextra) => {
                                 // unsize from a fat pointer - this is a
@@ -270,9 +268,9 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
                             }
                         }
                     }
-                    mir::CastKind::Misc if operand.layout.is_llvm_scalar_pair() => {
+                    mir::CastKind::Misc if bx.cx().is_backend_scalar_pair(&operand.layout) => {
                         if let OperandValue::Pair(data_ptr, meta) = operand.val {
-                            if cast.is_llvm_scalar_pair() {
+                            if bx.cx().is_backend_scalar_pair(&cast) {
                                 let data_cast = bx.pointercast(data_ptr,
                                     bx.cx().scalar_pair_element_backend_type(&cast, 0, true));
                                 OperandValue::Pair(data_cast, meta)
@@ -288,7 +286,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
                         }
                     }
                     mir::CastKind::Misc => {
-                        assert!(cast.is_llvm_immediate());
+                        assert!(bx.cx().is_backend_immediate(&cast));
                         let ll_t_out = bx.cx().immediate_backend_type(&cast);
                         if operand.layout.abi.is_uninhabited() {
                             let val = OperandValue::Immediate(bx.cx().const_undef(ll_t_out));

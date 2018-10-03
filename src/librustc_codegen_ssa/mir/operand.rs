@@ -15,8 +15,7 @@ use rustc::ty::layout::{self, Align, LayoutOf, TyLayout, HasTyCtxt};
 use rustc_data_structures::sync::Lrc;
 
 use base;
-use builder::{Builder, MemFlags};
-use value::Value;
+use MemFlags;
 use glue;
 
 use interfaces::*;
@@ -283,34 +282,34 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandValue<V> {
     }
 }
 
-impl OperandValue<&'ll Value> {
-
-    pub fn volatile_store(
-        self,
-        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-        dest: PlaceRef<'tcx, &'ll Value>
-    ) {
-        self.store_with_flags(bx, dest, MemFlags::VOLATILE);
-    }
-
-    pub fn unaligned_volatile_store(
-        self,
-        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-        dest: PlaceRef<'tcx, &'ll Value>
-    ) {
-        self.store_with_flags(bx, dest, MemFlags::VOLATILE | MemFlags::UNALIGNED);
-    }
-}
-
-impl<'a, 'll: 'a, 'tcx: 'll> OperandValue<&'ll Value> {
-    pub fn nontemporal_store(
-        self,
-        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-        dest: PlaceRef<'tcx, &'ll Value>
-    ) {
-        self.store_with_flags(bx, dest, MemFlags::NONTEMPORAL);
-    }
-}
+// impl OperandValue<&'ll Value> {
+//
+//     pub fn volatile_store(
+//         self,
+//         bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+//         dest: PlaceRef<'tcx, &'ll Value>
+//     ) {
+//         self.store_with_flags(bx, dest, MemFlags::VOLATILE);
+//     }
+//
+//     pub fn unaligned_volatile_store(
+//         self,
+//         bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+//         dest: PlaceRef<'tcx, &'ll Value>
+//     ) {
+//         self.store_with_flags(bx, dest, MemFlags::VOLATILE | MemFlags::UNALIGNED);
+//     }
+// }
+//
+// impl<'a, 'll: 'a, 'tcx: 'll> OperandValue<&'ll Value> {
+//     pub fn nontemporal_store(
+//         self,
+//         bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+//         dest: PlaceRef<'tcx, &'ll Value>
+//     ) {
+//         self.store_with_flags(bx, dest, MemFlags::NONTEMPORAL);
+//     }
+// }
 
 impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandValue<V> {
     fn store_with_flags<Bx: BuilderMethods<'a, 'll, 'tcx>>(

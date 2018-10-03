@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use super::CodegenObject;
-use ModuleCodegen;
+use {ModuleCodegen, CachedModuleCodegen};
 use rustc::session::Session;
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::allocator::AllocatorKind;
@@ -55,6 +55,8 @@ pub trait BackendMethods {
         tcx: TyCtxt,
         module: ModuleCodegen<Self::Metadata>
     );
+    fn submit_pre_lto_module_to_llvm(&self, tcx: TyCtxt, module: CachedModuleCodegen);
+    fn submit_post_lto_module_to_llvm(&self, tcx: TyCtxt, module: CachedModuleCodegen);
     fn codegen_finished(&self, codegen: &Self::OngoingCodegen, tcx: TyCtxt);
     fn check_for_errors(&self, codegen: &Self::OngoingCodegen, sess: &Session);
     fn wait_for_signal_to_codegen_item(&self, codegen: &Self::OngoingCodegen);

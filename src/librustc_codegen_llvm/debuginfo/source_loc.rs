@@ -51,18 +51,6 @@ pub fn set_source_location(
     set_debug_location(bx, dbg_loc);
 }
 
-/// Enables emitting source locations for the given functions.
-///
-/// Since we don't want source locations to be emitted for the function prelude,
-/// they are disabled when beginning to codegen a new function. This functions
-/// switches source location emitting on and must therefore be called before the
-/// first real statement/expression of the function is codegened.
-pub fn start_emitting_source_locations(dbg_context: &FunctionDebugContext<'ll>) {
-    if let FunctionDebugContext::RegularContext(ref data) = *dbg_context {
-        data.source_locations_enabled.set(true);
-    }
-}
-
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum InternalDebugLocation<'ll> {

@@ -203,18 +203,3 @@ pub fn get_fn(
 
     llfn
 }
-
-pub fn resolve_and_get_fn<'ll, 'tcx: 'll, Cx : CodegenMethods<'ll, 'tcx>>(
-    cx: &Cx,
-    def_id: DefId,
-    substs: &'tcx Substs<'tcx>,
-) -> Cx::Value {
-    cx.get_fn(
-        ty::Instance::resolve(
-            *cx.tcx(),
-            ty::ParamEnv::reveal_all(),
-            def_id,
-            substs
-        ).unwrap()
-    )
-}

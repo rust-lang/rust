@@ -12,8 +12,7 @@ use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, HasTyCtxt};
 use rustc::mir;
 use rustc::mir::tcx::PlaceTy;
-use rustc_codegen_ssa::common::IntPredicate;
-use type_of::LayoutLlvmExt;
+use common::IntPredicate;
 use glue;
 
 use interfaces::*;
@@ -120,7 +119,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
                 assert_eq!(offset, a.value.size(cx).abi_align(b.value.align(cx)));
                 bx.struct_gep(self.llval, 1)
             } else {
-                bx.struct_gep(self.llval, self.layout.llvm_field_index(ix))
+                bx.struct_gep(self.llval, bx.cx().backend_field_index(&self.layout, ix))
             };
             PlaceRef {
                 // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.

@@ -410,6 +410,12 @@ impl LayoutTypeMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
     fn is_backend_immediate(&self, ty: &TyLayout<'tcx>) -> bool {
         ty.is_llvm_immediate()
     }
+    fn is_backend_scalar_pair(&self, ty: &TyLayout<'tcx>) -> bool {
+        ty.is_llvm_scalar_pair()
+    }
+    fn backend_field_index(&self, ty: &TyLayout<'tcx>, index: usize) -> u64 {
+        ty.llvm_field_index()
+    }
     fn scalar_pair_element_backend_type<'a>(
         &self,
         ty: &TyLayout<'tcx>,

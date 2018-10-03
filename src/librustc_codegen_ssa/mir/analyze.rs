@@ -19,7 +19,6 @@ use rustc::mir::visit::{Visitor, PlaceContext};
 use rustc::mir::traversal;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{LayoutOf, HasTyCtxt, TyLayout};
-use type_of::LayoutLlvmExt;
 use super::FunctionCx;
 use interfaces::*;
 
@@ -37,10 +36,10 @@ pub fn non_ssa_locals<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'
         let ty = fx.monomorphize(&ty);
         debug!("local {} has type {:?}", index, ty);
         let layout = fx.cx.layout_of(ty);
-        if layout.is_llvm_immediate() {
+        if fx.cx.is_backend_immediate(&layout) {
             // These sorts of types are immediates that we can store
             // in an Value without an alloca.
-        } else if layout.is_llvm_scalar_pair() {
+        } else if fx.cx.is_backend_scalar_pair(&layout) {
             // We allow pairs and uses of any of their 2 fields.
         } else {
             // These sorts of types require an alloca. Note that
@@ -189,7 +188,7 @@ impl<'mir, 'a: 'mir, 'f: 'mir, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<
 
                 if let mir::ProjectionElem::Field(..) = proj.elem {
                     let layout = cx.layout_of(base_ty.to_ty(*cx.tcx()));
-                    if layout.is_llvm_immediate() || layout.is_llvm_scalar_pair() {
+                    if cx.is_backend_immediate(&layout) || cx.is_backend_scalar_pair(&layout) {
                         // Recurse with the same context, instead of `Projection`,
                         // potentially stopping at non-operand projections,
                         // which would trigger `not_ssa` on locals.

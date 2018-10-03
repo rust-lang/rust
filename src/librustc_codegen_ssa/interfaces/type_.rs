@@ -10,7 +10,7 @@
 
 use super::Backend;
 use super::builder::HasCodegen;
-use rustc_codegen_ssa::common::TypeKind;
+use common::TypeKind;
 use syntax::ast;
 use rustc::ty::layout::{self, Align, Size};
 use std::cell::RefCell;
@@ -108,6 +108,8 @@ pub trait LayoutTypeMethods<'ll, 'tcx> : Backend<'ll> {
     fn reg_backend_type(&self, ty: &Reg) -> Self::Type;
     fn immediate_backend_type(&self, ty: &TyLayout<'tcx>) -> Self::Type;
     fn is_backend_immediate(&self, ty: &TyLayout<'tcx>) -> bool;
+    fn is_backend_scalar_pair(&self, ty: &TyLayout<'tcx>) -> bool;
+    fn backend_field_index(&self, ty: &TyLayout<'tcx>, index: usize) -> u64;
     fn scalar_pair_element_backend_type<'a>(
         &self,
         ty: &TyLayout<'tcx>,

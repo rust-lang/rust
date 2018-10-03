@@ -39,7 +39,6 @@
 use back::write::create_target_machine;
 use syntax_pos::symbol::Symbol;
 
-#[macro_use] extern crate bitflags;
 extern crate flate2;
 extern crate libc;
 #[macro_use] extern crate rustc;
@@ -180,6 +179,12 @@ impl BackendMethods for LlvmCodegenBackend {
         module: ModuleCodegen<ModuleLlvm>
     ) {
         codegen.submit_pre_codegened_module_to_llvm(tcx, module)
+    }
+    fn submit_pre_lto_module_to_llvm(&self, tcx: TyCtxt, module: CachedModuleCodegen) {
+        write::submit_pre_lto_module_to_llvm(tcx, module)
+    }
+    fn submit_post_lto_module_to_llvm(&self, tcx: TyCtxt, module: CachedModuleCodegen) {
+        write::submit_post_lto_module_to_llvm(tcx, module)
     }
     fn codegen_finished(&self, codegen : &OngoingCodegen, tcx: TyCtxt) {
         codegen.codegen_finished(tcx)
@@ -385,24 +390,4 @@ struct CodegenResults {
     linker_info: back::linker::LinkerInfo,
     crate_info: CrateInfo,
 }
-
-/// Misc info we load from metadata to persist beyond the tcx
-struct CrateInfo {
-    panic_runtime: Option<CrateNum>,
-    compiler_builtins: Option<CrateNum>,
-    profiler_runtime: Option<CrateNum>,
-    sanitizer_runtime: Option<CrateNum>,
-    is_no_builtins: FxHashSet<CrateNum>,
-    native_libraries: FxHashMap<CrateNum, Lrc<Vec<NativeLibrary>>>,
-    crate_name: FxHashMap<CrateNum, String>,
-    used_libraries: Lrc<Vec<NativeLibrary>>,
-    link_args: Lrc<Vec<String>>,
-    used_crate_source: FxHashMap<CrateNum, Lrc<CrateSource>>,
-    used_crates_static: Vec<(CrateNum, LibSource)>,
-    used_crates_dynamic: Vec<(CrateNum, LibSource)>,
-    wasm_imports: FxHashMap<String, String>,
-    lang_item_to_crate: FxHashMap<LangItem, CrateNum>,
-    missing_lang_items: FxHashMap<CrateNum, Vec<LangItem>>,
-}
-
 __build_diagnostic_array! { librustc_codegen_llvm, DIAGNOSTICS }

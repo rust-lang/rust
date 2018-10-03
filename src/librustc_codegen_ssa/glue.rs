@@ -14,7 +14,7 @@
 
 use std;
 
-use rustc_codegen_ssa::common::IntPredicate;
+use common::IntPredicate;
 use meth;
 use rustc::ty::layout::{LayoutOf, TyLayout, HasTyCtxt};
 use rustc::ty::{self, Ty};

@@ -10,9 +10,15 @@ crate-type = ["dylib"]
 test = false
 
 [dependencies]
+bitflags = "1.0"
+log = "0.4"
+
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
 rustc = { path = "../librustc" }
 rustc_target = { path = "../librustc_target" }
 rustc_data_structures = { path = "../librustc_data_structures" }
+rustc_apfloat = { path = "../librustc_apfloat" }
 rustc_mir = { path = "../librustc_mir" }
+rustc_codegen_utils = { path = "../librustc_codegen_utils" }
+rustc_incremental = { path = "../librustc_incremental" }

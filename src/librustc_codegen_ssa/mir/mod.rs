@@ -9,18 +9,17 @@
 // except according to those terms.
 
 use libc::c_uint;
-use llvm;
 use rustc::ty::{self, Ty, TypeFoldable, UpvarSubsts};
 use rustc::ty::layout::{LayoutOf, TyLayout, HasTyCtxt};
 use rustc::mir::{self, Mir};
 use rustc::ty::subst::Substs;
 use rustc::session::config::DebugInfo;
-use base;
-use rustc_codegen_ssa::common::Funclet;
+use common::Funclet;
 use debuginfo::{self, VariableAccess, VariableKind, FunctionDebugContext};
-use monomorphize::Instance;
-use abi::{FnType, PassMode};
+use rustc_mir::monomorphize::Instance;
+use rustc_target::abi::call::{FnType, PassMode};
 use interfaces::*;
+use base;
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
 use syntax::symbol::keywords;
@@ -29,8 +28,6 @@ use std::iter;
 
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::indexed_vec::IndexVec;
-
-pub use self::constant::codegen_static_initializer;
 
 use self::analyze::CleanupKind;
 use self::place::PlaceRef;
@@ -44,7 +41,7 @@ pub struct FunctionCx<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a +  CodegenMethods<
 
     mir: &'a mir::Mir<'tcx>,
 
-    debug_context: FunctionDebugContext<'ll>,
+    debug_context: FunctionDebugContext<<Cx as DebugInfoMethods<'ll, 'tcx>>::DIScope>,
 
     llfn: Cx::Value,
 
@@ -625,7 +622,7 @@ fn arg_local_refs<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, '
             // doesn't actually strip the offset when splitting the closure
             // environment into its components so it ends up out of bounds.
             // (cuviper) It seems to be fine without the alloca on LLVM 6 and later.
-            let env_alloca = !env_ref && unsafe { llvm::LLVMRustVersionMajor() < 6 };
+            let env_alloca = !env_ref && bx.cx().env_alloca_allowed();
             let env_ptr = if env_alloca {
                 let scratch = PlaceRef::alloca(bx,
                     bx.cx().layout_of(tcx.mk_mut_ptr(arg.layout.ty)),
@@ -639,12 +636,7 @@ fn arg_local_refs<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, '
             for (i, (decl, ty)) in mir.upvar_decls.iter().zip(upvar_tys).enumerate() {
                 let byte_offset_of_var_in_env = closure_layout.fields.offset(i).bytes();
 
-                let ops = unsafe {
-                    [llvm::LLVMRustDIBuilderCreateOpDeref(),
-                     llvm::LLVMRustDIBuilderCreateOpPlusUconst(),
-                     byte_offset_of_var_in_env as i64,
-                     llvm::LLVMRustDIBuilderCreateOpDeref()]
-                };
+                let ops = bx.cx().debuginfo_upvar_decls_ops_sequence(byte_offset_of_var_in_env);
 
                 // The environment and the capture can each be indirect.
 

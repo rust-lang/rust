@@ -8,8 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use rustc_codegen_ssa::interfaces::{Backend, BackendMethods, CodegenObject, MiscMethods,
-    StaticMethods, DeclareMethods, PreDefineMethods, BuilderMethods, HasCodegen, ConstMethods,
-    TypeMethods, BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods, ArgTypeMethods,
-    IntrinsicCallMethods, IntrinsicDeclarationMethods, DebugInfoMethods, DebugInfoBuilderMethods,
-    AbiMethods, AbiBuilderMethods, AsmMethods, AsmBuilderMethods, CodegenMethods};
+use interfaces::*;
+use rustc::ty;
+use rustc::ty::subst::Substs;
+use rustc::hir::def_id::DefId;
+
+pub fn resolve_and_get_fn<'ll, 'tcx: 'll, Cx : CodegenMethods<'ll, 'tcx>>(
+    cx: &Cx,
+    def_id: DefId,
+    substs: &'tcx Substs<'tcx>,
+) -> Cx::Value {
+    cx.get_fn(
+        ty::Instance::resolve(
+            *cx.tcx(),
+            ty::ParamEnv::reveal_all(),
+            def_id,
+            substs
+        ).unwrap()
+    )
+}

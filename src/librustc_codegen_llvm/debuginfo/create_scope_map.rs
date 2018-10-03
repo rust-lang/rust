@@ -27,21 +27,6 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
 use syntax_pos::BytePos;
 
-#[derive(Clone, Copy, Debug)]
-pub struct MirDebugScope<D> {
-    pub scope_metadata: Option<D>,
-    // Start and end offsets of the file to which this DIScope belongs.
-    // These are used to quickly determine whether some span refers to the same file.
-    pub file_start_pos: BytePos,
-    pub file_end_pos: BytePos,
-}
-
-impl<D> MirDebugScope<D> {
-    pub fn is_valid(&self) -> bool {
-        self.scope_metadata.is_some()
-    }
-}
-
 /// Produce DIScope DIEs for each MIR Scope which has variables defined in it.
 /// If debuginfo is disabled, the returned vector is empty.
 pub fn create_mir_scopes(

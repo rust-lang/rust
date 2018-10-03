@@ -446,6 +446,9 @@ impl MiscMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
         attributes::apply_target_cpu_attr(self, llfn)
     }
 
+    fn env_alloca_allowed(&self) {
+        unsafe { llvm::LLVMRustVersionMajor() < 6 }
+    }
 
     fn create_used_variable(&self) {
         let name = const_cstr!("llvm.used");

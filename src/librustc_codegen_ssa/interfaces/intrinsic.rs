@@ -12,7 +12,7 @@ use super::Backend;
 use super::builder::HasCodegen;
 use mir::operand::OperandRef;
 use rustc::ty::Ty;
-use abi::FnType;
+use rustc_target::abi::call::FnType;
 use syntax_pos::Span;
 
 pub trait IntrinsicCallMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> {

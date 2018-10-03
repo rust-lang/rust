@@ -12,7 +12,7 @@ use rustc::ty::{Ty, FnSig};
 use super::Backend;
 use super::builder::HasCodegen;
 use rustc::mir;
-use monomorphize::Instance;
+use rustc_mir::monomorphize::Instance;
 use debuginfo::{FunctionDebugContext, MirDebugScope, VariableAccess, VariableKind};
 use rustc_data_structures::indexed_vec::IndexVec;
 use syntax_pos;
@@ -40,12 +40,12 @@ pub trait DebugInfoMethods<'ll, 'tcx: 'll> : Backend<'ll> {
         sig: FnSig<'tcx>,
         llfn: Self::Value,
         mir: &mir::Mir,
-    ) -> FunctionDebugContext<'ll>;
+    ) -> FunctionDebugContext<Self::DIScope>;
 
     fn create_mir_scopes(
         &self,
         mir: &mir::Mir,
-        debug_context: &FunctionDebugContext<'ll>,
+        debug_context: &FunctionDebugContext<Self::DIScope>,
     ) -> IndexVec<mir::SourceScope, MirDebugScope<Self::DIScope>>;
     fn extend_scope_to_file(
         &self,
@@ -54,12 +54,13 @@ pub trait DebugInfoMethods<'ll, 'tcx: 'll> : Backend<'ll> {
         defining_crate: CrateNum,
     ) -> Self::DIScope;
     fn debuginfo_finalize(&self);
+    fn debuginfo_upvar_decls_ops_sequence(&self, byte_offset_of_var_in_env: u64) -> &[i64];
 }
 
 pub trait DebugInfoBuilderMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> {
     fn declare_local(
         &self,
-        dbg_context: &FunctionDebugContext<'ll>,
+        dbg_context: &FunctionDebugContext<<Self::CodegenCx as DebugInfoMethods<'ll, 'tcx>>::DIScope>,
         variable_name: Name,
         variable_type: Ty<'tcx>,
         scope_metadata: <Self::CodegenCx as DebugInfoMethods<'ll, 'tcx>>::DIScope,
@@ -69,7 +70,7 @@ pub trait DebugInfoBuilderMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 
     );
     fn set_source_location(
         &self,
-        debug_context: &FunctionDebugContext<'ll>,
+        debug_context: &FunctionDebugContext<<Self::CodegenCx as DebugInfoMethods<'ll, 'tcx>>::DIScope>,
         scope: Option<<Self::CodegenCx as DebugInfoMethods<'ll, 'tcx>>::DIScope>,
         span: syntax_pos::Span,
     );

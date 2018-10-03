@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, AtomicOrdering,
+use common::{IntPredicate, RealPredicate, AtomicOrdering,
     SynchronizationScope, AtomicRmwBinOp, OperandBundleDef};
 use libc::c_char;
 use rustc::ty::TyCtxt;
 use rustc::ty::layout::{Align, Size};
-use builder::MemFlags;
+use MemFlags;
 use super::Backend;
 use super::CodegenMethods;
 use super::debuginfo::DebugInfoBuilderMethods;

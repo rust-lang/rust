@@ -52,14 +52,6 @@ fn noname() -> *const c_char {
     &CNULL
 }
 
-bitflags! {
-    pub struct MemFlags: u8 {
-        const VOLATILE = 1 << 0;
-        const NONTEMPORAL = 1 << 1;
-        const UNALIGNED = 1 << 2;
-    }
-}
-
 impl HasCodegen<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> {
     type CodegenCx = CodegenCx<'ll, 'tcx, &'ll Value>;
 }
