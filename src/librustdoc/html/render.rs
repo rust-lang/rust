@@ -873,28 +873,6 @@ themePicker.onblur = handleThemeButtonsBlur;
     write_minify(cx.dst.join(&format!("normalize{}.css", cx.shared.resource_suffix)),
                  include_str!("static/normalize.css"),
                  enable_minification)?;
-    write(cx.dst.join("FiraSans-Regular.woff"),
-          include_bytes!("static/FiraSans-Regular.woff"))?;
-    write(cx.dst.join("FiraSans-Medium.woff"),
-          include_bytes!("static/FiraSans-Medium.woff"))?;
-    write(cx.dst.join("FiraSans-LICENSE.txt"),
-          include_bytes!("static/FiraSans-LICENSE.txt"))?;
-    write(cx.dst.join("Heuristica-Italic.woff"),
-          include_bytes!("static/Heuristica-Italic.woff"))?;
-    write(cx.dst.join("Heuristica-LICENSE.txt"),
-          include_bytes!("static/Heuristica-LICENSE.txt"))?;
-    write(cx.dst.join("SourceSerifPro-Regular.woff"),
-          include_bytes!("static/SourceSerifPro-Regular.woff"))?;
-    write(cx.dst.join("SourceSerifPro-Bold.woff"),
-          include_bytes!("static/SourceSerifPro-Bold.woff"))?;
-    write(cx.dst.join("SourceSerifPro-LICENSE.txt"),
-          include_bytes!("static/SourceSerifPro-LICENSE.txt"))?;
-    write(cx.dst.join("SourceCodePro-Regular.woff"),
-          include_bytes!("static/SourceCodePro-Regular.woff"))?;
-    write(cx.dst.join("SourceCodePro-Semibold.woff"),
-          include_bytes!("static/SourceCodePro-Semibold.woff"))?;
-    write(cx.dst.join("SourceCodePro-LICENSE.txt"),
-          include_bytes!("static/SourceCodePro-LICENSE.txt"))?;
     write(cx.dst.join("LICENSE-MIT.txt"),
           include_bytes!("static/LICENSE-MIT.txt"))?;
     write(cx.dst.join("LICENSE-APACHE.txt"),
