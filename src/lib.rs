@@ -52,6 +52,7 @@ mod analyze;
 mod base;
 mod common;
 mod constant;
+mod intrinsics;
 mod metadata;
 mod pretty_clif;
 mod vtable;
