@@ -9,8 +9,9 @@
 // except according to those terms.
 
 use borrow_check::nll::type_check::Locations;
-use borrow_check::nll::constraints::{ConstraintCategory, ConstraintIndex};
+use borrow_check::nll::constraints::ConstraintIndex;
 use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
+use rustc::mir::ConstraintCategory;
 use rustc::ty::RegionVid;
 use rustc_data_structures::graph;
 use rustc_data_structures::indexed_vec::IndexVec;

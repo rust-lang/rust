@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow_check::nll::constraints::{OutlivesConstraint, ConstraintCategory};
+use borrow_check::nll::constraints::{OutlivesConstraint};
 use borrow_check::nll::region_infer::RegionInferenceContext;
 use rustc::hir::def_id::DefId;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc::infer::InferCtxt;
-use rustc::mir::{Location, Mir};
+use rustc::mir::{ConstraintCategory, Location, Mir};
 use rustc::ty::{self, RegionVid};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_errors::{Diagnostic, DiagnosticBuilder};
@@ -28,22 +28,26 @@ mod var_name;
 
 use self::region_name::RegionName;
 
-impl fmt::Display for ConstraintCategory {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+trait ConstraintDescription {
+    fn description(&self) -> &'static str;
+}
+
+impl ConstraintDescription for ConstraintCategory {
+    fn description(&self) -> &'static str {
         // Must end with a space. Allows for empty names to be provided.
         match self {
-            ConstraintCategory::Assignment => write!(f, "assignment "),
-            ConstraintCategory::Return => write!(f, "returning this value "),
-            ConstraintCategory::Cast => write!(f, "cast "),
-            ConstraintCategory::CallArgument => write!(f, "argument "),
-            ConstraintCategory::TypeAnnotation => write!(f, "type annotation "),
-            ConstraintCategory::ClosureBounds => write!(f, "closure body "),
-            ConstraintCategory::SizedBound => write!(f, "proving this value is `Sized` "),
-            ConstraintCategory::CopyBound => write!(f, "copying this value "),
-            ConstraintCategory::OpaqueType => write!(f, "opaque type "),
+            ConstraintCategory::Assignment => "assignment ",
+            ConstraintCategory::Return => "returning this value ",
+            ConstraintCategory::Cast => "cast ",
+            ConstraintCategory::CallArgument => "argument ",
+            ConstraintCategory::TypeAnnotation => "type annotation ",
+            ConstraintCategory::ClosureBounds => "closure body ",
+            ConstraintCategory::SizedBound => "proving this value is `Sized` ",
+            ConstraintCategory::CopyBound => "copying this value ",
+            ConstraintCategory::OpaqueType => "opaque type ",
             ConstraintCategory::Boring
             | ConstraintCategory::BoringNoLocation
-            | ConstraintCategory::Internal => write!(f, ""),
+            | ConstraintCategory::Internal => "",
         }
     }
 }
@@ -358,7 +362,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             _ => {
                 diag.span_label(span, format!(
                     "{}requires that `{}` must outlive `{}`",
-                    category, fr_name, outlived_fr_name,
+                    category.description(), fr_name, outlived_fr_name,
                 ));
             },
         }

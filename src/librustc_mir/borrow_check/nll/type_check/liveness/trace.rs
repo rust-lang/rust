@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use borrow_check::location::LocationTable;
-use borrow_check::nll::constraints::ConstraintCategory;
 use borrow_check::nll::region_infer::values::{self, PointIndex, RegionValueElements};
 use borrow_check::nll::type_check::liveness::liveness_map::{LiveVar, NllLivenessMap};
 use borrow_check::nll::type_check::liveness::local_use_map::LocalUseMap;
@@ -19,7 +18,7 @@ use dataflow::move_paths::indexes::MovePathIndex;
 use dataflow::move_paths::MoveData;
 use dataflow::{FlowAtLocation, FlowsAtLocation, MaybeInitializedPlaces};
 use rustc::infer::canonical::QueryRegionConstraint;
-use rustc::mir::{BasicBlock, Local, Location, Mir};
+use rustc::mir::{BasicBlock, ConstraintCategory, Local, Location, Mir};
 use rustc::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc::traits::query::type_op::outlives::DropckOutlives;
 use rustc::traits::query::type_op::TypeOp;

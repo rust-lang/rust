@@ -13,7 +13,7 @@
 
 use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::LocationTable;
-use borrow_check::nll::constraints::{ConstraintCategory, ConstraintSet, OutlivesConstraint};
+use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
 use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::values::LivenessValues;
 use borrow_check::nll::region_infer::values::PlaceholderIndices;

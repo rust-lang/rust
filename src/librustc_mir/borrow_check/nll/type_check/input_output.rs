@@ -24,7 +24,7 @@ use rustc::ty::Ty;
 use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
 
-use super::{ConstraintCategory, Locations, TypeChecker};
+use super::{Locations, TypeChecker};
 
 impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     pub(super) fn equate_inputs_and_outputs(
