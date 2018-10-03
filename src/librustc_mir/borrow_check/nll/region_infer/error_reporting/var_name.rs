@@ -50,11 +50,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .defining_ty
             .upvar_tys(tcx)
             .position(|upvar_ty| {
-                debug!(
-                    "get_upvar_index_for_region: upvar_ty = {:?}",
-                    upvar_ty,
-                );
-                tcx.any_free_region_meets(&upvar_ty, |r| r.to_region_vid() == fr)
+                debug!("get_upvar_index_for_region: upvar_ty={:?}", upvar_ty);
+                tcx.any_free_region_meets(&upvar_ty, |r| {
+                    let r = r.to_region_vid();
+                    debug!("get_upvar_index_for_region: r={:?} fr={:?}", r, fr);
+                    r == fr
+                })
             })?;
 
         let upvar_ty = self
