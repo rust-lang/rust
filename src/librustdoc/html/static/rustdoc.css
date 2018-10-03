@@ -30,13 +30,13 @@ body {
 }
 
 h1 {
-	font-size: 1.5em;
+	font-size: 140%;
 }
 h2 {
-	font-size: 1.4em;
+	font-size: 130%;
 }
 h3 {
-	font-size: 1.3em;
+	font-size: 120%;
 }
 h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod):not(.important), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	font-weight: normal;
@@ -52,7 +52,7 @@ h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.t
 	border-bottom: 1px solid;
 }
 h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant {
-	font-weight: normal;
+	font-weight: 500;
 	margin-top: 10px;
 	margin-bottom: 10px;
 	position: relative;
@@ -116,11 +116,6 @@ img {
 	min-width: 70em;
 }
 
-nav.sub {
-	font-size: 16px;
-	text-transform: uppercase;
-}
-
 .sidebar {
 	width: 200px;
 	position: fixed;
@@ -152,14 +147,12 @@ nav.sub {
 
 .sidebar .location {
 	border: 1px solid;
-	font-size: 17px;
 	margin: 30px 10px 20px 10px;
 	text-align: center;
 	word-wrap: break-word;
 }
 
 .sidebar .version {
-	font-size: 15px;
 	text-align: center;
 	border-bottom: 1px solid;
 	overflow-wrap: break-word;
@@ -196,7 +189,6 @@ nav.sub {
 	overflow: hidden;
 	line-height: 15px;
 	padding: 7px 5px;
-	font-size: 14px;
 	font-weight: normal;
 	transition: border 500ms ease-out;
 }
@@ -205,7 +197,6 @@ nav.sub {
 	border-top: 1px solid;
 	border-bottom: 1px solid;
 	text-align: center;
-	font-size: 17px;
 	margin-bottom: 5px;
 }
 
@@ -287,13 +278,13 @@ nav.sub {
 	border-bottom: 1px solid;
 }
 
-#main > .docblock h1 { font-size: 1.3em; }
-#main > .docblock h2 { font-size: 1.15em; }
-#main > .docblock h3, #main > .docblock h4, #main > .docblock h5 { font-size: 1em; }
+#main > .docblock h1 { font-size: 130%; }
+#main > .docblock h2 { font-size: 115%; }
+#main > .docblock h3, #main > .docblock h4, #main > .docblock h5 { font-size: 100%; }
 
-.docblock h1 { font-size: 1em; }
-.docblock h2 { font-size: 0.95em; }
-.docblock h3, .docblock h4, .docblock h5 { font-size: 0.9em; }
+.docblock h1 { font-size: 100%; }
+.docblock h2 { font-size: 95%; }
+.docblock h3, .docblock h4, .docblock h5 { font-size: 90%; }
 
 .docblock {
 	margin-left: 24px;
@@ -302,18 +293,13 @@ nav.sub {
 
 .content .out-of-band {
 	float: right;
-	font-size: 23px;
 	margin: 0px;
 	padding: 0px;
 	font-weight: normal;
 }
 
 h3.impl > .out-of-band {
-	font-size: 21px;
-}
-
-h4.method > .out-of-band {
-	font-size: 19px;
+	font-size: 110%;
 }
 
 h4 > code, h3 > code, .invisible > code {
@@ -353,7 +339,7 @@ h4 > code, h3 > code, .invisible > code {
 .content td { vertical-align: top; }
 .content td:first-child { padding-right: 20px; }
 .content td p:first-child { margin-top: 0; }
-.content td h1, .content td h2 { margin-left: 0; font-size: 1.1em; }
+.content td h1, .content td h2 { margin-left: 0; font-size: 110%; }
 .content tr:first-child td { border-top: 0; }
 
 .docblock table {
@@ -400,7 +386,7 @@ h4 > code, h3 > code, .invisible > code {
 .content .fn .where,
 .content .where.fmt-newline {
 	display: block;
-	font-size: 0.8em;
+	font-size: 0.9em;
 }
 
 .content .methods > div:not(.important-traits) {
@@ -528,7 +514,6 @@ a {
 	position: absolute;
 	top: 0;
 	right: 0;
-	font-size: 17px;
 	font-weight: normal;
 }
 
@@ -554,7 +539,6 @@ a {
 	border-radius: 1px;
 	margin-top: 5px;
 	padding: 10px 16px;
-	font-size: 17px;
 	transition: border-color 300ms ease;
 	transition: border-radius 300ms ease-in-out;
 	transition: box-shadow 300ms ease-in-out;
@@ -648,7 +632,7 @@ body.blur > :not(#help) {
 	border-style: solid;
 	padding: 3px;
 	margin-bottom: 5px;
-	font-size: 90%;
+	font-size: 80%;
 }
 .stab p {
 	display: inline;
@@ -659,7 +643,7 @@ body.blur > :not(#help) {
 }
 
 .stab .microscope {
-	font-size: 1.5em;
+	font-size: 150%;
 }
 
 .module-item .stab {
@@ -738,7 +722,7 @@ a.test-arrow:hover{
 }
 
 h3 > .collapse-toggle, h4 > .collapse-toggle {
-	font-size: 0.8em;
+	font-size: 80%;
 	top: 5px;
 }
 
@@ -785,7 +769,6 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 
 span.since {
 	position: initial;
-	font-size: 20px;
 	margin-right: 5px;
 }
 
@@ -805,6 +788,7 @@ span.since {
 	display: inline-block;
 	margin-left: 4px;
 	margin-top: 3px;
+	font-size: 100% !important;
 }
 
 .enum > .toggle-wrapper + .docblock, .struct > .toggle-wrapper + .docblock {
@@ -877,7 +861,6 @@ span.since {
 		min-height: 39px;
 		background: inherit;
 		text-align: left;
-		font-size: 24px;
 	}
 
 	.sidebar .location:empty {
@@ -1034,7 +1017,6 @@ pre.rust {
 	width: 33.3%;
 	text-align: center;
 	border-bottom: 1px solid;
-	font-size: 18px;
 	cursor: pointer;
 }
 
@@ -1048,7 +1030,6 @@ pre.rust {
 
 #titles > div > div.count {
 	display: inline-block;
-	font-size: 16px;
 }
 
 .important-traits {
@@ -1105,7 +1086,7 @@ h4 > .important-traits {
 	}
 
 	.show-it > .block.items > ul > li > a {
-		font-size: 21px;
+		font-size: 140%;
 	}
 
 	/* Because of ios, we need to actually have a full height sidebar title so the
@@ -1173,13 +1154,11 @@ h4 > .important-traits {
 h3.important {
 	margin: 0;
 	margin-bottom: 13px;
-	font-size: 19px;
 }
 
 .modal-content > .docblock > code.content {
 	margin: 0;
 	padding: 0;
-	font-size: 20px;
 }
 
 .modal-content > .close {
@@ -1187,7 +1166,6 @@ h3.important {
 	font-weight: bold;
 	right: -25px;
 	top: -1px;
-	font-size: 18px;
 	width: 25px;
 	padding-right: 2px;
 	border-top-right-radius: 5px;
@@ -1302,7 +1280,6 @@ kbd {
 	border: 0;
 	border-collapse: collapse;
 	border-spacing: 0;
-	font-size: 16px;
 }
 
 .table-display tr td:first-child {
@@ -1314,11 +1291,10 @@ kbd {
 }
 .table-display .out-of-band {
 	position: relative;
-	font-size: 19px;
 	display: block;
 }
 #implementors-list > .impl-items .table-display .out-of-band {
-	font-size: 17px;
+	font-size: 110%;
 }
 
 .table-display td:hover .anchor {
