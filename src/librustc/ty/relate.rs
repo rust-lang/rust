@@ -274,9 +274,10 @@ impl<'tcx> Relate<'tcx> for Vec<ty::PolyExistentialProjection<'tcx>> {
         if a.len() != b.len() {
             Err(TypeError::ProjectionBoundsLength(expected_found(relation, &a.len(), &b.len())))
         } else {
-            a.iter().zip(b)
-                .map(|(a, b)| relation.relate(a, b))
-                .collect()
+            a.iter()
+             .zip(b)
+             .map(|(a, b)| relation.relate(a, b))
+             .collect()
         }
     }
 }
@@ -331,7 +332,7 @@ impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
                            -> RelateResult<'tcx, GeneratorWitness<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
-        assert!(a.0.len() == b.0.len());
+        assert_eq!(a.0.len(), b.0.len());
         let tcx = relation.tcx();
         let types = tcx.mk_type_list(a.0.iter().zip(b.0).map(|(a, b)| relation.relate(a, b)))?;
         Ok(GeneratorWitness(types))
@@ -478,27 +479,24 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
                     ConstValue::Unevaluated(def_id, substs) => {
                         // FIXME(eddyb) get the right param_env.
                         let param_env = ty::ParamEnv::empty();
-                        match tcx.lift_to_global(&substs) {
-                            Some(substs) => {
-                                let instance = ty::Instance::resolve(
-                                    tcx.global_tcx(),
-                                    param_env,
-                                    def_id,
-                                    substs,
-                                );
-                                if let Some(instance) = instance {
-                                    let cid = GlobalId {
-                                        instance,
-                                        promoted: None
-                                    };
-                                    if let Some(s) = tcx.const_eval(param_env.and(cid))
-                                                        .ok()
-                                                        .map(|c| c.unwrap_usize(tcx)) {
-                                        return Ok(s)
-                                    }
+                        if let Some(substs) = tcx.lift_to_global(&substs) {
+                            let instance = ty::Instance::resolve(
+                                tcx.global_tcx(),
+                                param_env,
+                                def_id,
+                                substs,
+                            );
+                            if let Some(instance) = instance {
+                                let cid = GlobalId {
+                                    instance,
+                                    promoted: None
+                                };
+                                if let Some(s) = tcx.const_eval(param_env.and(cid))
+                                                    .ok()
+                                                    .map(|c| c.unwrap_usize(tcx)) {
+                                    return Ok(s)
                                 }
-                            },
-                            None => {}
+                            }
                         }
                         tcx.sess.delay_span_bug(tcx.def_span(def_id),
                             "array length could not be evaluated");
