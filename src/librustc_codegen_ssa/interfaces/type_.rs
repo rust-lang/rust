@@ -10,13 +10,13 @@
 
 use super::Backend;
 use super::HasCodegen;
+use common::TypeKind;
 use mir::place::PlaceRef;
 use rustc::ty::layout::TyLayout;
 use rustc::ty::layout::{self, Align, Size};
 use rustc::ty::Ty;
 use rustc::util::nodemap::FxHashMap;
-use rustc_codegen_ssa::common::TypeKind;
-use rustc_target::abi::call::{ArgType, CastTarget, FnType, Reg};
+    use rustc_target::abi::call::{ArgType, CastTarget, FnType, Reg};
 use std::cell::RefCell;
 use syntax::ast;
 
@@ -93,6 +93,8 @@ pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
     fn reg_backend_type(&self, ty: &Reg) -> Self::Type;
     fn immediate_backend_type(&self, layout: TyLayout<'tcx>) -> Self::Type;
     fn is_backend_immediate(&self, layout: TyLayout<'tcx>) -> bool;
+    fn is_backend_scalar_pair(&self, layout: TyLayout<'tcx>) -> bool;
+    fn backend_field_index(&self, layout: TyLayout<'tcx>, index: usize) -> u64;
     fn scalar_pair_element_backend_type<'a>(
         &self,
         layout: TyLayout<'tcx>,

@@ -21,7 +21,7 @@ use rustc::util::time_graph::TimeGraph;
 use std::any::Any;
 use std::sync::mpsc::Receiver;
 use syntax_pos::symbol::InternedString;
-use ModuleCodegen;
+use {CachedModuleCodegen, ModuleCodegen};
 
 pub trait BackendTypes {
     type Value: CodegenObject;
@@ -62,12 +62,14 @@ pub trait BackendMethods {
         coordinator_receive: Receiver<Box<dyn Any + Send>>,
         total_cgus: usize,
     ) -> Self::OngoingCodegen;
-    fn submit_pre_codegened_module_to_llvm(
+    fn submit_pre_codegened_module_to_backend(
         &self,
         codegen: &Self::OngoingCodegen,
         tcx: TyCtxt,
         module: ModuleCodegen<Self::Module>,
     );
+    fn submit_pre_lto_module_to_backend(&self, tcx: TyCtxt, module: CachedModuleCodegen);
+    fn submit_post_lto_module_to_backend(&self, tcx: TyCtxt, module: CachedModuleCodegen);
     fn codegen_aborted(codegen: Self::OngoingCodegen);
     fn codegen_finished(&self, codegen: &Self::OngoingCodegen, tcx: TyCtxt);
     fn check_for_errors(&self, codegen: &Self::OngoingCodegen, sess: &Session);

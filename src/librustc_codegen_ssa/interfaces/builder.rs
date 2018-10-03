@@ -14,14 +14,12 @@ use super::debuginfo::DebugInfoBuilderMethods;
 use super::intrinsic::IntrinsicCallMethods;
 use super::type_::ArgTypeMethods;
 use super::HasCodegen;
-use builder::MemFlags;
+use common::{AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope};
 use libc::c_char;
 use mir::operand::OperandRef;
 use mir::place::PlaceRef;
 use rustc::ty::layout::{Align, Size};
-use rustc_codegen_ssa::common::{
-    AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope,
-};
+use MemFlags;
 
 use std::borrow::Cow;
 use std::ops::Range;

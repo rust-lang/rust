@@ -111,54 +111,6 @@ impl<'a, 'tcx> CrateDebugContext<'a, 'tcx> {
     }
 }
 
-pub enum FunctionDebugContext<D> {
-    RegularContext(FunctionDebugContextData<D>),
-    DebugInfoDisabled,
-    FunctionWithoutDebugInfo,
-}
-
-impl<D> FunctionDebugContext<D> {
-    pub fn get_ref<'a>(&'a self, span: Span) -> &'a FunctionDebugContextData<D> {
-        match *self {
-            FunctionDebugContext::RegularContext(ref data) => data,
-            FunctionDebugContext::DebugInfoDisabled => {
-                span_bug!(span, "{}", Self::debuginfo_disabled_message());
-            }
-            FunctionDebugContext::FunctionWithoutDebugInfo => {
-                span_bug!(span, "{}", Self::should_be_ignored_message());
-            }
-        }
-    }
-
-    fn debuginfo_disabled_message() -> &'static str {
-        "debuginfo: Error trying to access FunctionDebugContext although debug info is disabled!"
-    }
-
-    fn should_be_ignored_message() -> &'static str {
-        "debuginfo: Error trying to access FunctionDebugContext for function that should be \
-         ignored by debug info!"
-    }
-}
-
-pub struct FunctionDebugContextData<D> {
-    fn_metadata: D,
-    source_locations_enabled: Cell<bool>,
-    pub defining_crate: CrateNum,
-}
-
-pub enum VariableAccess<'a, V> {
-    // The llptr given is an alloca containing the variable's value
-    DirectVariable { alloca: V },
-    // The llptr given is an alloca containing the start of some pointer chain
-    // leading to the variable's content.
-    IndirectVariable { alloca: V, address_operations: &'a [i64] }
-}
-
-pub enum VariableKind {
-    ArgumentVariable(usize /*index*/),
-    LocalVariable,
-}
-
 /// Create any deferred debug metadata nodes
 pub fn finalize(cx: &CodegenCx) {
     if cx.dbg_cx.is_none() {
@@ -578,15 +530,24 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn extend_scope_to_file(
-        &self,
-        scope_metadata: &'ll DIScope,
-        file: &syntax_pos::SourceFile,
-        defining_crate: CrateNum,
-    ) -> &'ll DILexicalBlock {
-        metadata::extend_scope_to_file(&self, scope_metadata, file, defining_crate)
-    }
+         &self,
+         scope_metadata: &'ll DIScope,
+         file: &syntax_pos::SourceFile,
+         defining_crate: CrateNum,
+     ) -> &'ll DILexicalBlock {
+         metadata::extend_scope_to_file(&self, scope_metadata, file, defining_crate)
+     }
 
     fn debuginfo_finalize(&self) {
         finalize(self)
+    }
+
+    fn debuginfo_upvar_decls_ops_sequence(&self, byte_offset_of_var_in_env: u64) -> &[i64] {
+        unsafe {
+            [llvm::LLVMRustDIBuilderCreateOpDeref(),
+             llvm::LLVMRustDIBuilderCreateOpPlusUconst(),
+             byte_offset_of_var_in_env as i64,
+             llvm::LLVMRustDIBuilderCreateOpDeref()]
+        };
     }
 }

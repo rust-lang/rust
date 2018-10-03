@@ -39,7 +39,6 @@
 use back::write::create_target_machine;
 use syntax_pos::symbol::Symbol;
 
-#[macro_use] extern crate bitflags;
 extern crate flate2;
 extern crate libc;
 #[macro_use] extern crate rustc;
@@ -92,7 +91,7 @@ use rustc::util::time_graph;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::util::profiling::ProfileCategory;
 use rustc_mir::monomorphize;
-use rustc_codegen_ssa::{ModuleCodegen, CompiledModule};
+use rustc_codegen_ssa::{interfaces, ModuleCodegen, CompiledModule};
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::svh::Svh;
 
@@ -108,8 +107,6 @@ mod back {
     pub mod wasm;
 }
 
-mod interfaces;
-
 mod abi;
 mod allocator;
 mod asm;
@@ -122,7 +119,6 @@ mod consts;
 mod context;
 mod debuginfo;
 mod declare;
-mod glue;
 mod intrinsic;
 
 // The following is a work around that replaces `pub mod llvm;` and that fixes issue 53912.
@@ -130,8 +126,6 @@ mod intrinsic;
 
 mod llvm_util;
 mod metadata;
-mod meth;
-mod mir;
 mod mono_item;
 mod type_;
 mod type_of;
@@ -170,6 +164,12 @@ impl BackendMethods for LlvmCodegenBackend {
         module: ModuleCodegen<ModuleLlvm>
     ) {
         codegen.submit_pre_codegened_module_to_llvm(tcx, module)
+    }
+    fn submit_pre_lto_module_to_llvm(&self, tcx: TyCtxt, module: CachedModuleCodegen) {
+        write::submit_pre_lto_module_to_llvm(tcx, module)
+    }
+    fn submit_post_lto_module_to_llvm(&self, tcx: TyCtxt, module: CachedModuleCodegen) {
+        write::submit_post_lto_module_to_llvm(tcx, module)
     }
     fn codegen_aborted(codegen: OngoingCodegen) {
         codegen.codegen_aborted();
@@ -378,24 +378,4 @@ struct CodegenResults {
     linker_info: rustc_codegen_utils::linker::LinkerInfo,
     crate_info: CrateInfo,
 }
-
-/// Misc info we load from metadata to persist beyond the tcx
-struct CrateInfo {
-    panic_runtime: Option<CrateNum>,
-    compiler_builtins: Option<CrateNum>,
-    profiler_runtime: Option<CrateNum>,
-    sanitizer_runtime: Option<CrateNum>,
-    is_no_builtins: FxHashSet<CrateNum>,
-    native_libraries: FxHashMap<CrateNum, Lrc<Vec<NativeLibrary>>>,
-    crate_name: FxHashMap<CrateNum, String>,
-    used_libraries: Lrc<Vec<NativeLibrary>>,
-    link_args: Lrc<Vec<String>>,
-    used_crate_source: FxHashMap<CrateNum, Lrc<CrateSource>>,
-    used_crates_static: Vec<(CrateNum, LibSource)>,
-    used_crates_dynamic: Vec<(CrateNum, LibSource)>,
-    wasm_imports: FxHashMap<String, String>,
-    lang_item_to_crate: FxHashMap<LangItem, CrateNum>,
-    missing_lang_items: FxHashMap<CrateNum, Vec<LangItem>>,
-}
-
 __build_diagnostic_array! { librustc_codegen_llvm, DIAGNOSTICS }

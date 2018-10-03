@@ -31,6 +31,58 @@ use rustc::hir::{self, CodegenFnAttrs, CodegenFnAttrFlags};
 
 use std::ffi::{CStr, CString};
 
+pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll Value {
+    let mut llvals = Vec::with_capacity(alloc.relocations.len() + 1);
+    let dl = cx.data_layout();
+    let pointer_size = dl.pointer_size.bytes() as usize;
+
+    let mut next_offset = 0;
+    for &(offset, ((), alloc_id)) in alloc.relocations.iter() {
+        let offset = offset.bytes();
+        assert_eq!(offset as usize as u64, offset);
+        let offset = offset as usize;
+        if offset > next_offset {
+            llvals.push(cx.const_bytes(&alloc.bytes[next_offset..offset]));
+        }
+        let ptr_offset = read_target_uint(
+            dl.endian,
+            &alloc.bytes[offset..(offset + pointer_size)],
+        ).expect("const_alloc_to_llvm: could not read relocation pointer") as u64;
+        llvals.push(cx.scalar_to_backend(
+            Pointer::new(alloc_id, Size::from_bytes(ptr_offset)).into(),
+            &layout::Scalar {
+                value: layout::Primitive::Pointer,
+                valid_range: 0..=!0
+            },
+            cx.type_i8p()
+        ));
+        next_offset = offset + pointer_size;
+    }
+    if alloc.bytes.len() >= next_offset {
+        llvals.push(cx.const_bytes(&alloc.bytes[next_offset ..]));
+    }
+
+    cx.const_struct(&llvals, true)
+}
+
+pub fn codegen_static_initializer(
+    cx: &CodegenCx<'ll, 'tcx>,
+    def_id: DefId,
+) -> Result<(&'ll Value, &'tcx Allocation), ErrorHandled> {
+    let instance = ty::Instance::mono(cx.tcx, def_id);
+    let cid = GlobalId {
+        instance,
+        promoted: None,
+    };
+    let param_env = ty::ParamEnv::reveal_all();
+    let static_ = cx.tcx.const_eval(param_env.and(cid))?;
+
+    let alloc = match static_.val {
+        ConstValue::ByRef(_, alloc, n) if n.bytes() == 0 => alloc,
+        _ => bug!("static const eval returned {:#?}", static_),
+    };
+    Ok((const_alloc_to_llvm(cx, alloc), alloc))
+}
 
 fn set_global_alignment(cx: &CodegenCx<'ll, '_>,
                         gv: &'ll Value,

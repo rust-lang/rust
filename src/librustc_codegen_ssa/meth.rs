@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::FnType;
+use rustc_target::abi::call::FnType;
 use callee;
-use monomorphize;
+use rustc_mir::monomorphize;
 
 use interfaces::*;
 

@@ -14,7 +14,7 @@ use rustc::ty;
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 
 use base;
-use builder::MemFlags;
+use MemFlags;
 use glue;
 
 use interfaces::*;

@@ -20,28 +20,49 @@
 #![feature(box_syntax)]
 #![feature(custom_attribute)]
 #![feature(libc)]
+#![feature(rustc_diagnostic_macros)]
+#![feature(in_band_lifetimes)]
+#![feature(slice_sort_by_cached_key)]
 #![feature(nll)]
 #![allow(unused_attributes)]
 #![allow(dead_code)]
 #![feature(quote)]
-#![feature(rustc_diagnostic_macros)]
 
-#![recursion_limit="256"]
-
-extern crate rustc;
+#[macro_use] extern crate bitflags;
+#[macro_use] extern crate log;
+extern crate rustc_apfloat;
+#[macro_use]  extern crate rustc;
 extern crate rustc_target;
 extern crate rustc_mir;
-extern crate syntax;
+#[macro_use] extern crate syntax;
 extern crate syntax_pos;
+extern crate rustc_incremental;
+extern crate rustc_codegen_utils;
 extern crate rustc_data_structures;
 extern crate libc;
 
 use std::path::PathBuf;
 use rustc::dep_graph::WorkProduct;
 use rustc::session::config::{OutputFilenames, OutputType};
+use rustc::middle::lang_items::LangItem;
+use rustc::hir::def_id::CrateNum;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::sync::Lrc;
+use rustc::middle::cstore::{LibSource, CrateSource, NativeLibrary};
+
+// NB: This module needs to be declared first so diagnostics are
+// registered before they are used.
+mod diagnostics;
 
 pub mod common;
 pub mod interfaces;
+pub mod mir;
+pub mod debuginfo;
+pub mod base;
+pub mod callee;
+pub mod glue;
+pub mod meth;
+pub mod mono_item;
 
 pub struct ModuleCodegen<M> {
     /// The name of the module. When the crate may be saved between
@@ -111,5 +132,31 @@ pub enum ModuleKind {
     Allocator,
 }
 
+bitflags! {
+    pub struct MemFlags: u8 {
+        const VOLATILE = 1 << 0;
+        const NONTEMPORAL = 1 << 1;
+        const UNALIGNED = 1 << 2;
+    }
+}
+
+/// Misc info we load from metadata to persist beyond the tcx
+struct CrateInfo {
+    panic_runtime: Option<CrateNum>,
+    compiler_builtins: Option<CrateNum>,
+    profiler_runtime: Option<CrateNum>,
+    sanitizer_runtime: Option<CrateNum>,
+    is_no_builtins: FxHashSet<CrateNum>,
+    native_libraries: FxHashMap<CrateNum, Lrc<Vec<NativeLibrary>>>,
+    crate_name: FxHashMap<CrateNum, String>,
+    used_libraries: Lrc<Vec<NativeLibrary>>,
+    link_args: Lrc<Vec<String>>,
+    used_crate_source: FxHashMap<CrateNum, Lrc<CrateSource>>,
+    used_crates_static: Vec<(CrateNum, LibSource)>,
+    used_crates_dynamic: Vec<(CrateNum, LibSource)>,
+    wasm_imports: FxHashMap<String, String>,
+    lang_item_to_crate: FxHashMap<LangItem, CrateNum>,
+    missing_lang_items: FxHashMap<CrateNum, Vec<LangItem>>,
+}
 
 __build_diagnostic_array! { librustc_codegen_ssa, DIAGNOSTICS }

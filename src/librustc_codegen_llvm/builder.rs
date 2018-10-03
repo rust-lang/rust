@@ -53,14 +53,6 @@ fn noname() -> *const c_char {
     &CNULL
 }
 
-bitflags! {
-    pub struct MemFlags: u8 {
-        const VOLATILE = 1 << 0;
-        const NONTEMPORAL = 1 << 1;
-        const UNALIGNED = 1 << 2;
-    }
-}
-
 impl BackendTypes for Builder<'_, 'll, 'tcx> {
     type Value = <CodegenCx<'ll, 'tcx> as BackendTypes>::Value;
     type BasicBlock = <CodegenCx<'ll, 'tcx> as BackendTypes>::BasicBlock;

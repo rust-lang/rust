@@ -10,9 +10,9 @@
 
 use super::Backend;
 use super::HasCodegen;
-use abi::FnType;
 use mir::operand::OperandRef;
 use rustc::ty::Ty;
+use rustc_target::abi::call::FnType;
 use syntax_pos::Span;
 
 pub trait IntrinsicCallMethods<'tcx>: HasCodegen<'tcx> {

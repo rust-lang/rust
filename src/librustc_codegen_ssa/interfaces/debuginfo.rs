@@ -11,11 +11,11 @@
 use super::Backend;
 use super::HasCodegen;
 use debuginfo::{FunctionDebugContext, MirDebugScope, VariableAccess, VariableKind};
-use monomorphize::Instance;
 use rustc::hir::def_id::CrateNum;
 use rustc::mir;
 use rustc::ty::{self, Ty};
 use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_mir::monomorphize::Instance;
 use syntax::ast::Name;
 use syntax_pos::{SourceFile, Span};
 
@@ -48,6 +48,7 @@ pub trait DebugInfoMethods<'tcx>: Backend<'tcx> {
         defining_crate: CrateNum,
     ) -> Self::DIScope;
     fn debuginfo_finalize(&self);
+    fn debuginfo_upvar_decls_ops_sequence(&self, byte_offset_of_var_in_env: u64) -> &[i64];
 }
 
 pub trait DebugInfoBuilderMethods<'tcx>: HasCodegen<'tcx> {

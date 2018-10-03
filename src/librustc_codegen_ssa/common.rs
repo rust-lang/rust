@@ -10,8 +10,15 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
 use rustc::ty::{self, Ty, TyCtxt};
-use syntax_pos::DUMMY_SP;
+use syntax_pos::{DUMMY_SP, Span};
 
+use rustc::hir::def_id::DefId;
+use rustc::middle::lang_items::LangItem;
+use base;
+use interfaces::*;
+
+use rustc::hir;
+use interfaces::BuilderMethods;
 
 pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
     ty.needs_drop(tcx, ty::ParamEnv::reveal_all())
@@ -133,5 +140,90 @@ mod temp_stable_hash_impls {
                                               _: &mut StableHasher<W>) {
             // do nothing
         }
+    }
+}
+
+pub fn langcall(tcx: TyCtxt,
+                span: Option<Span>,
+                msg: &str,
+                li: LangItem)
+                -> DefId {
+    tcx.lang_items().require(li).unwrap_or_else(|s| {
+        let msg = format!("{} {}", msg, s);
+        match span {
+            Some(span) => tcx.sess.span_fatal(span, &msg[..]),
+            None => tcx.sess.fatal(&msg[..]),
+        }
+    })
+}
+
+// To avoid UB from LLVM, these two functions mask RHS with an
+// appropriate mask unconditionally (i.e. the fallback behavior for
+// all shifts). For 32- and 64-bit types, this matches the semantics
+// of Java. (See related discussion on #1877 and #10183.)
+
+pub fn build_unchecked_lshift<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &Bx,
+    lhs: Bx::Value,
+    rhs: Bx::Value
+) -> Bx::Value {
+    let rhs = base::cast_shift_expr_rhs(bx, hir::BinOpKind::Shl, lhs, rhs);
+    // #1877, #10183: Ensure that input is always valid
+    let rhs = shift_mask_rhs(bx, rhs);
+    bx.shl(lhs, rhs)
+}
+
+pub fn build_unchecked_rshift<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &Bx,
+    lhs_t: Ty<'tcx>,
+    lhs: Bx::Value,
+    rhs: Bx::Value
+) -> Bx::Value {
+    let rhs = base::cast_shift_expr_rhs(bx, hir::BinOpKind::Shr, lhs, rhs);
+    // #1877, #10183: Ensure that input is always valid
+    let rhs = shift_mask_rhs(bx, rhs);
+    let is_signed = lhs_t.is_signed();
+    if is_signed {
+        bx.ashr(lhs, rhs)
+    } else {
+        bx.lshr(lhs, rhs)
+    }
+}
+
+fn shift_mask_rhs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &Bx,
+    rhs: Bx::Value
+) -> Bx::Value {
+    let rhs_llty = bx.cx().val_ty(rhs);
+    bx.and(rhs, shift_mask_val(bx, rhs_llty, rhs_llty, false))
+}
+
+pub fn shift_mask_val<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &Bx,
+    llty: Bx::Type,
+    mask_llty: Bx::Type,
+    invert: bool
+) -> Bx::Value {
+    let kind = bx.cx().type_kind(llty);
+    match kind {
+        TypeKind::Integer => {
+            // i8/u8 can shift by at most 7, i16/u16 by at most 15, etc.
+            let val = bx.cx().int_width(llty) - 1;
+            if invert {
+                bx.cx().const_int(mask_llty, !val as i64)
+            } else {
+                bx.cx().const_uint(mask_llty, val)
+            }
+        },
+        TypeKind::Vector => {
+            let mask = shift_mask_val(
+                bx,
+                bx.cx().element_type(llty),
+                bx.cx().element_type(mask_llty),
+                invert
+            );
+            bx.vector_splat(bx.cx().vector_length(mask_llty), mask)
+        },
+        _ => bug!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
     }
 }

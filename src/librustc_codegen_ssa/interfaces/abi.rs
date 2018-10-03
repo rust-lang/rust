@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use super::HasCodegen;
-use abi::FnType;
 use rustc::ty::{FnSig, Instance, Ty};
+use rustc_target::abi::call::FnType;
 
 pub trait AbiMethods<'tcx> {
     fn new_fn_type(&self, sig: FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> FnType<'tcx, Ty<'tcx>>;
