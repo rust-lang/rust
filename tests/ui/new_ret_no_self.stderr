@@ -1,17 +1,19 @@
 error: methods called `new` usually return `Self`
-  --> $DIR/new_ret_no_self.rs:51:5
+  --> $DIR/new_ret_no_self.rs:64:5
    |
-51 | /     pub fn new() -> u32 {
-52 | |         unimplemented!();
-53 | |     }
+64 | /     pub fn new() -> u32 {
+65 | |         unimplemented!();
+66 | |     }
    | |_____^
+   |
+   = note: `-D clippy::new-ret-no-self` implied by `-D warnings`
 
 error: methods called `new` usually return `Self`
-  --> $DIR/new_ret_no_self.rs:60:5
+  --> $DIR/new_ret_no_self.rs:73:5
    |
-60 | /     pub fn new(_: String) -> u32 {
-61 | |         unimplemented!();
-62 | |     }
+73 | /     pub fn new(_: String) -> u32 {
+74 | |         unimplemented!();
+75 | |     }
    | |_____^
 
 error: aborting due to 2 previous errors

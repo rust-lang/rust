@@ -35,6 +35,19 @@ impl S2 {
     }
 }
 
+struct S3;
+
+impl R for S3 {
+    type Item = u32;
+}
+
+impl S3 {
+    // should trigger the lint, but currently does not
+    pub fn new(_: String) -> impl R<Item = u32> {
+        S3
+    }
+}
+
 struct T;
 
 impl T {

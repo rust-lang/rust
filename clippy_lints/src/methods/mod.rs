@@ -934,7 +934,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if let hir::ImplItemKind::Method(ref sig, id) = implitem.node {
             let ret_ty = return_ty(cx, implitem.id);
             if name == "new" &&
-                !ret_ty.walk().any(|t| same_tys(cx, t, ty)) {
+                !same_tys(cx, ret_ty, ty) &&
+                !ret_ty.is_impl_trait() {
                 span_lint(cx,
                           NEW_RET_NO_SELF,
                           implitem.span,
