@@ -5,44 +5,44 @@
 
 fn main(){}
 
-//trait R {
-//    type Item;
-//}
-//
-//struct S;
-//
-//impl R for S {
-//    type Item = Self;
-//}
-//
-//impl S {
-//    // should not trigger the lint
-//    pub fn new() -> impl R<Item = Self> {
-//        S
-//    }
-//}
-//
-//struct S2;
-//
-//impl R for S2 {
-//    type Item = Self;
-//}
-//
-//impl S2 {
-//    // should not trigger the lint
-//    pub fn new(_: String) -> impl R<Item = Self> {
-//        S2
-//    }
-//}
-//
-//struct T;
-//
-//impl T {
-//    // should not trigger lint
-//    pub fn new() -> Self {
-//        unimplemented!();
-//    }
-//}
+trait R {
+    type Item;
+}
+
+struct S;
+
+impl R for S {
+    type Item = Self;
+}
+
+impl S {
+    // should not trigger the lint
+    pub fn new() -> impl R<Item = Self> {
+        S
+    }
+}
+
+struct S2;
+
+impl R for S2 {
+    type Item = Self;
+}
+
+impl S2 {
+    // should not trigger the lint
+    pub fn new(_: String) -> impl R<Item = Self> {
+        S2
+    }
+}
+
+struct T;
+
+impl T {
+    // should not trigger lint
+    pub fn new() -> Self {
+        unimplemented!();
+    }
+}
 
 struct U;
 

@@ -931,13 +931,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             }
         }
 
-        let ret_ty = return_ty(cx, implitem.id);
-        if name == "new" &&
-            !ret_ty.walk().any(|t| same_tys(cx, t, ty)) {
-            span_lint(cx,
-                      NEW_RET_NO_SELF,
-                      implitem.span,
-                      "methods called `new` usually return `Self`");
+        if let hir::ImplItemKind::Method(ref sig, id) = implitem.node {
+            let ret_ty = return_ty(cx, implitem.id);
+            if name == "new" &&
+                !ret_ty.walk().any(|t| same_tys(cx, t, ty)) {
+                span_lint(cx,
+                          NEW_RET_NO_SELF,
+                          implitem.span,
+                          "methods called `new` usually return `Self`");
+            }
         }
     }
 }
