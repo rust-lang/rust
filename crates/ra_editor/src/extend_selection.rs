@@ -16,12 +16,18 @@ pub(crate) fn extend(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange>
         if leaves.clone().all(|it| it.kind() == WHITESPACE) {
             return Some(extend_ws(root, leaves.next()?, offset));
         }
-        let leaf = match leaves {
+        let leaf_range = match leaves {
             LeafAtOffset::None => return None,
-            LeafAtOffset::Single(l) => l,
-            LeafAtOffset::Between(l, r) => pick_best(l, r),
+            LeafAtOffset::Single(l) => {
+                if l.kind() == COMMENT {
+                    extend_single_word_in_comment(l, range).unwrap_or_else(||l.range())
+                } else {
+                    l.range()
+                }
+            },
+            LeafAtOffset::Between(l, r) => pick_best(l, r).range(),
         };
-        return Some(leaf.range());
+        return Some(leaf_range);
     };
     let node = find_covering_node(root, range);
     if node.kind() == COMMENT && range == node.range() {
@@ -33,6 +39,24 @@ pub(crate) fn extend(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange>
     match node.ancestors().skip_while(|n| n.range() == range).next() {
         None => None,
         Some(parent) => Some(parent.range()),
+    }
+}
+
+fn extend_single_word_in_comment(leaf: SyntaxNodeRef, range: TextRange) -> Option<TextRange> {
+    let text : &str = leaf.leaf_text().unwrap();
+    let cursor_position: u32 = (range.start() - leaf.range().start()).into();
+
+    let (before, after) = text.split_at(cursor_position as usize);
+    let start_idx = before.rfind(char::is_whitespace);
+    let end_idx = after.find(char::is_whitespace);
+
+    match (start_idx, end_idx) {
+        (Some(start), Some(end)) => {
+            let from : TextUnit = (start as u32 + 1).into();
+            let to : TextUnit = (cursor_position + (end as u32)).into();
+            Some(TextRange::from_to(from, to))
+        },
+        (_, _) => None
     }
 }
 
@@ -174,6 +198,14 @@ fn main() { foo+<|>bar;}
         do_check(
             r#"fn foo<'a<|>>() {}"#,
             &["'a", "<'a>"]
+        );
+    }
+
+    #[test]
+    fn test_extend_selection_select_first_word() {
+        do_check(
+            r#"// foo bar b<|>az quxx"#,
+            &["baz", "// foo bar baz quxx"]
         );
     }
 }
