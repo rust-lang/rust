@@ -6718,10 +6718,9 @@ impl<'a> Parser<'a> {
         attrs.extend(self.parse_inner_attributes()?);
 
         let mut foreign_items = vec![];
-        while let Some(item) = self.parse_foreign_item()? {
-            foreign_items.push(item);
+        while !self.eat(&token::CloseDelim(token::Brace)) {
+            foreign_items.push(self.parse_foreign_item()?);
         }
-        self.expect(&token::CloseDelim(token::Brace))?;
 
         let prev_span = self.prev_span;
         let m = ast::ForeignMod {
@@ -7305,8 +7304,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a foreign item.
-    crate fn parse_foreign_item(&mut self) -> PResult<'a, Option<ForeignItem>> {
-        maybe_whole!(self, NtForeignItem, |ni| Some(ni));
+    crate fn parse_foreign_item(&mut self) -> PResult<'a, ForeignItem> {
+        maybe_whole!(self, NtForeignItem, |ni| ni);
 
         let attrs = self.parse_outer_attributes()?;
         let lo = self.span;
@@ -7326,20 +7325,20 @@ impl<'a> Parser<'a> {
                     ).emit();
             }
             self.bump(); // `static` or `const`
-            return Ok(Some(self.parse_item_foreign_static(visibility, lo, attrs)?));
+            return Ok(self.parse_item_foreign_static(visibility, lo, attrs)?);
         }
         // FOREIGN FUNCTION ITEM
         if self.check_keyword(keywords::Fn) {
-            return Ok(Some(self.parse_item_foreign_fn(visibility, lo, attrs)?));
+            return Ok(self.parse_item_foreign_fn(visibility, lo, attrs)?);
         }
         // FOREIGN TYPE ITEM
         if self.check_keyword(keywords::Type) {
-            return Ok(Some(self.parse_item_foreign_type(visibility, lo, attrs)?));
+            return Ok(self.parse_item_foreign_type(visibility, lo, attrs)?);
         }
 
         match self.parse_assoc_macro_invoc("extern", Some(&visibility), &mut false)? {
             Some(mac) => {
-                Ok(Some(
+                Ok(
                     ForeignItem {
                         ident: keywords::Invalid.ident(),
                         span: lo.to(self.prev_span),
@@ -7348,14 +7347,14 @@ impl<'a> Parser<'a> {
                         vis: visibility,
                         node: ForeignItemKind::Macro(mac),
                     }
-                ))
+                )
             }
             None => {
-                if !attrs.is_empty() {
+                if !attrs.is_empty()  {
                     self.expected_item_err(&attrs);
                 }
 
-                Ok(None)
+                self.unexpected()
             }
         }
     }
