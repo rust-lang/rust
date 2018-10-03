@@ -141,22 +141,22 @@ bitflags! {
 }
 
 /// Misc info we load from metadata to persist beyond the tcx
-struct CrateInfo {
-    panic_runtime: Option<CrateNum>,
-    compiler_builtins: Option<CrateNum>,
-    profiler_runtime: Option<CrateNum>,
-    sanitizer_runtime: Option<CrateNum>,
-    is_no_builtins: FxHashSet<CrateNum>,
-    native_libraries: FxHashMap<CrateNum, Lrc<Vec<NativeLibrary>>>,
-    crate_name: FxHashMap<CrateNum, String>,
-    used_libraries: Lrc<Vec<NativeLibrary>>,
-    link_args: Lrc<Vec<String>>,
-    used_crate_source: FxHashMap<CrateNum, Lrc<CrateSource>>,
-    used_crates_static: Vec<(CrateNum, LibSource)>,
-    used_crates_dynamic: Vec<(CrateNum, LibSource)>,
-    wasm_imports: FxHashMap<String, String>,
-    lang_item_to_crate: FxHashMap<LangItem, CrateNum>,
-    missing_lang_items: FxHashMap<CrateNum, Vec<LangItem>>,
+pub struct CrateInfo {
+    pub panic_runtime: Option<CrateNum>,
+    pub compiler_builtins: Option<CrateNum>,
+    pub profiler_runtime: Option<CrateNum>,
+    pub sanitizer_runtime: Option<CrateNum>,
+    pub is_no_builtins: FxHashSet<CrateNum>,
+    pub native_libraries: FxHashMap<CrateNum, Lrc<Vec<NativeLibrary>>>,
+    pub crate_name: FxHashMap<CrateNum, String>,
+    pub used_libraries: Lrc<Vec<NativeLibrary>>,
+    pub link_args: Lrc<Vec<String>>,
+    pub used_crate_source: FxHashMap<CrateNum, Lrc<CrateSource>>,
+    pub used_crates_static: Vec<(CrateNum, LibSource)>,
+    pub used_crates_dynamic: Vec<(CrateNum, LibSource)>,
+    pub wasm_imports: FxHashMap<String, String>,
+    pub lang_item_to_crate: FxHashMap<LangItem, CrateNum>,
+    pub missing_lang_items: FxHashMap<CrateNum, Vec<LangItem>>,
 }
 
 __build_diagnostic_array! { librustc_codegen_ssa, DIAGNOSTICS }

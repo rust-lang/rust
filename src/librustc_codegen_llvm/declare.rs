@@ -30,9 +30,9 @@ use rustc_target::spec::PanicStrategy;
 use abi::{Abi, FnType, FnTypeExt};
 use attributes;
 use context::CodegenCx;
-use common;
+use rustc_codegen_ssa::common;
 use type_::Type;
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 use value::Value;
 
 /// Declare a function.

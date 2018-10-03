@@ -54,7 +54,7 @@ pub trait DebugInfoMethods<'ll, 'tcx: 'll> : Backend<'ll> {
         defining_crate: CrateNum,
     ) -> Self::DIScope;
     fn debuginfo_finalize(&self);
-    fn debuginfo_upvar_decls_ops_sequence(&self, byte_offset_of_var_in_env: u64) -> &[i64];
+    fn debuginfo_upvar_decls_ops_sequence(&self, byte_offset_of_var_in_env: u64) -> [i64; 4];
 }
 
 pub trait DebugInfoBuilderMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> {

@@ -119,3 +119,6 @@ pub trait MonoItemExt<'a, 'll: 'a, 'tcx: 'll> : fmt::Debug + BaseMonoItemExt<'ll
         }
     }
 }
+
+impl<'a, 'll:'a, 'tcx: 'll> MonoItemExt<'a, 'll, 'tcx>
+    for MonoItem<'tcx> {}

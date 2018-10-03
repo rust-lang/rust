@@ -280,38 +280,31 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandValue<V> {
     ) where Bx::CodegenCx : Backend<'ll, Value = V> {
         self.store_with_flags(bx, dest, MemFlags::empty());
     }
-}
 
-// impl OperandValue<&'ll Value> {
-//
-//     pub fn volatile_store(
-//         self,
-//         bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-//         dest: PlaceRef<'tcx, &'ll Value>
-//     ) {
-//         self.store_with_flags(bx, dest, MemFlags::VOLATILE);
-//     }
-//
-//     pub fn unaligned_volatile_store(
-//         self,
-//         bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-//         dest: PlaceRef<'tcx, &'ll Value>
-//     ) {
-//         self.store_with_flags(bx, dest, MemFlags::VOLATILE | MemFlags::UNALIGNED);
-//     }
-// }
-//
-// impl<'a, 'll: 'a, 'tcx: 'll> OperandValue<&'ll Value> {
-//     pub fn nontemporal_store(
-//         self,
-//         bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
-//         dest: PlaceRef<'tcx, &'ll Value>
-//     ) {
-//         self.store_with_flags(bx, dest, MemFlags::NONTEMPORAL);
-//     }
-// }
+    pub fn volatile_store<Bx: BuilderMethods<'a, 'll, 'tcx>>(
+        self,
+        bx: &Bx,
+        dest: PlaceRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>
+    ) where Bx::CodegenCx : Backend<'ll, Value = V> {
+        self.store_with_flags(bx, dest, MemFlags::VOLATILE);
+    }
 
-impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandValue<V> {
+    pub fn unaligned_volatile_store<Bx: BuilderMethods<'a, 'll, 'tcx>>(
+        self,
+        bx: &Bx,
+        dest: PlaceRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>
+    ) where Bx::CodegenCx : Backend<'ll, Value = V> {
+        self.store_with_flags(bx, dest, MemFlags::VOLATILE | MemFlags::UNALIGNED);
+    }
+
+    pub fn nontemporal_store<Bx: BuilderMethods<'a, 'll, 'tcx>>(
+        self,
+        bx: &Bx,
+        dest: PlaceRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>
+    ) where Bx::CodegenCx : Backend<'ll, Value = V> {
+        self.store_with_flags(bx, dest, MemFlags::NONTEMPORAL);
+    }
+
     fn store_with_flags<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         self,
         bx: &Bx,

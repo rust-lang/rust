@@ -14,11 +14,11 @@ use attributes;
 use intrinsics::{self, Intrinsic};
 use llvm;
 use abi::{Abi, FnType, LlvmType, PassMode};
-use mir::place::PlaceRef;
-use mir::operand::{OperandRef, OperandValue};
-use base::*;
+use rustc_codegen_ssa::mir::place::PlaceRef;
+use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
+use rustc_codegen_ssa::glue;
+use rustc_codegen_ssa::base::{to_immediate, wants_msvc_seh, compare_simd_types};
 use context::CodegenCx;
-use glue;
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use rustc::ty::{self, Ty};
@@ -30,7 +30,7 @@ use syntax::symbol::Symbol;
 use builder::Builder;
 use value::Value;
 
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 
 use rustc::session::Session;
 use syntax_pos::Span;
@@ -259,12 +259,12 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
             },
             "volatile_store" => {
                 let dst = args[0].deref(cx);
-                args[1].val.volatile_store(&self, dst);
+                args[1].val.volatile_store(self, dst);
                 return;
             },
             "unaligned_volatile_store" => {
                 let dst = args[0].deref(cx);
-                args[1].val.unaligned_volatile_store(&self, dst);
+                args[1].val.unaligned_volatile_store(self, dst);
                 return;
             },
             "prefetch_read_data" | "prefetch_write_data" |
@@ -559,7 +559,7 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
 
             "nontemporal_store" => {
                 let dst = args[0].deref(cx);
-                args[1].val.nontemporal_store(&self, dst);
+                args[1].val.nontemporal_store(self, dst);
                 return;
             }
 

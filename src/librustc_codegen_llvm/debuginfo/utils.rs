@@ -20,7 +20,7 @@ use llvm;
 use llvm::debuginfo::{DIScope, DIBuilder, DIDescriptor, DIArray};
 use common::{CodegenCx};
 use value::Value;
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 
 use syntax_pos::{self, Span};
 

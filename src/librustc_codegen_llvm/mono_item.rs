@@ -14,23 +14,16 @@ use context::CodegenCx;
 use llvm;
 use monomorphize::Instance;
 use type_of::LayoutLlvmExt;
-use rustc::hir;
-use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::mono::{Linkage, Visibility};
-use rustc::ty::{TypeFoldable, Ty};
-use rustc::ty::layout::{LayoutOf, HasTyCtxt, TyLayout};
-use std::fmt;
+use rustc::ty::TypeFoldable;
+use rustc::ty::layout::LayoutOf;
 use value::Value;
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 
 pub use rustc::mir::mono::MonoItem;
 
 pub use rustc_mir::monomorphize::item::MonoItemExt as BaseMonoItemExt;
-
-
-impl<'a, 'll:'a, 'tcx: 'll> MonoItemExt<'a, 'll, 'tcx>
-    for MonoItem<'tcx> {}
 
 impl<'ll, 'tcx: 'll> PreDefineMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
     fn predefine_static(&self,

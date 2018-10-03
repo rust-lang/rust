@@ -16,7 +16,7 @@ use llvm;
 use llvm::{Bool, False, True};
 use context::CodegenCx;
 use value::Value;
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 
 
 use syntax::ast;
@@ -414,7 +414,7 @@ impl LayoutTypeMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
         ty.is_llvm_scalar_pair()
     }
     fn backend_field_index(&self, ty: &TyLayout<'tcx>, index: usize) -> u64 {
-        ty.llvm_field_index()
+        ty.llvm_field_index(index)
     }
     fn scalar_pair_element_backend_type<'a>(
         &self,

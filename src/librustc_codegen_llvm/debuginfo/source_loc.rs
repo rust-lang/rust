@@ -12,12 +12,12 @@ use self::InternalDebugLocation::*;
 
 use super::utils::{debug_context, span_start};
 use super::metadata::UNKNOWN_COLUMN_NUMBER;
-use super::FunctionDebugContext;
+use rustc_codegen_ssa::debuginfo::FunctionDebugContext;
 
 use llvm;
-use llvm::debuginfo::DIScope;
+use llvm::debuginfo::{DIScope, DISubprogram};
 use builder::Builder;
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 
 use libc::c_uint;
 use syntax_pos::{Span, Pos};
@@ -27,7 +27,7 @@ use value::Value;
 ///
 /// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...).
 pub fn set_source_location(
-    debug_context: &FunctionDebugContext<'ll>,
+    debug_context: &FunctionDebugContext<&'ll DISubprogram>,
     bx: &Builder<'_, 'll, '_, &'ll Value>,
     scope: Option<&'ll DIScope>,
     span: Span,

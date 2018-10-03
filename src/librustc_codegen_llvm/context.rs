@@ -13,15 +13,13 @@ use llvm;
 use rustc::dep_graph::DepGraphSafe;
 use rustc::hir;
 use debuginfo;
-use callee;
-use base;
 use monomorphize::Instance;
 use value::Value;
 
 use monomorphize::partitioning::CodegenUnit;
 use type_::Type;
 use type_of::PointeeInfo;
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 use libc::c_uint;
 
 use rustc_data_structures::base_n;
@@ -33,6 +31,9 @@ use rustc::ty::layout::{LayoutError, LayoutOf, Size, TyLayout};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
 use rustc_target::spec::{HasTargetSpec, Target};
+use rustc_codegen_ssa::callee::resolve_and_get_fn;
+use rustc_codegen_ssa::base::wants_msvc_seh;
+use callee::get_fn;
 
 use std::ffi::CStr;
 use std::cell::{Cell, RefCell};
@@ -327,7 +328,7 @@ impl MiscMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
     }
 
     fn get_fn(&self, instance: Instance<'tcx>) -> &'ll Value {
-        callee::get_fn(&&self,instance)
+        get_fn(&&self,instance)
     }
 
     fn get_param(&self, llfn: &'ll Value, index: c_uint) -> &'ll Value {
@@ -360,11 +361,11 @@ impl MiscMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
         }
         let tcx = self.tcx;
         let llfn = match tcx.lang_items().eh_personality() {
-            Some(def_id) if !base::wants_msvc_seh(self.sess()) => {
-                callee::resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]))
+            Some(def_id) if !wants_msvc_seh(self.sess()) => {
+                resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]))
             }
             _ => {
-                let name = if base::wants_msvc_seh(self.sess()) {
+                let name = if wants_msvc_seh(self.sess()) {
                     "__CxxFrameHandler3"
                 } else {
                     "rust_eh_personality"
@@ -390,7 +391,7 @@ impl MiscMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
         let tcx = self.tcx;
         assert!(self.sess().target.target.options.custom_unwind_resume);
         if let Some(def_id) = tcx.lang_items().eh_unwind_resume() {
-            let llfn = callee::resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]));
+            let llfn = resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]));
             unwresume.set(Some(llfn));
             return llfn;
         }
@@ -446,7 +447,7 @@ impl MiscMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
         attributes::apply_target_cpu_attr(self, llfn)
     }
 
-    fn env_alloca_allowed(&self) {
+    fn env_alloca_allowed(&self) -> bool {
         unsafe { llvm::LLVMRustVersionMajor() < 6 }
     }
 

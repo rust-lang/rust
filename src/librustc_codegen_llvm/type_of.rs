@@ -17,7 +17,7 @@ use rustc_target::abi::FloatTy;
 use rustc_mir::monomorphize::item::DefPathBasedNames;
 use type_::Type;
 use value::Value;
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 
 use std::fmt::Write;
 

@@ -15,7 +15,7 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
 use value::Value;
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 
 use rustc::hir;
 

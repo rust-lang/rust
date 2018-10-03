@@ -13,32 +13,22 @@
 //! Code that is useful in various codegen modules.
 
 use llvm::{self, True, False, Bool, BasicBlock};
-use rustc::hir::def_id::DefId;
-use rustc::middle::lang_items::LangItem;
 use abi;
-use base;
 use consts;
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{HasDataLayout, LayoutOf, self, TyLayout, Size};
 use rustc::mir::interpret::{Scalar, AllocType, Allocation};
-use rustc::hir;
-use interfaces::BuilderMethods;
-use mir::constant::const_alloc_to_llvm;
-use mir::place::PlaceRef;
-use rustc_codegen_ssa::common::TypeKind;
+use consts::const_alloc_to_llvm;
+use rustc_codegen_ssa::mir::place::PlaceRef;
 
 use libc::{c_uint, c_char};
-use std::iter;
 
-use rustc_target::spec::abi::Abi;
 use syntax::symbol::LocalInternedString;
 use syntax::ast::Mutability;
-use syntax_pos::Span;
 
 pub use context::CodegenCx;
 

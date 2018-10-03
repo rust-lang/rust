@@ -473,7 +473,7 @@ pub fn codegen_instance<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx
 
 /// Create the `main` function which will initialize the rust runtime and call
 /// users main function.
-fn maybe_create_entry_wrapper<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
+pub fn maybe_create_entry_wrapper<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     cx: &'a Bx::CodegenCx
 ) {
     let (main_def_id, span) = match *cx.sess().entry_fn.borrow() {

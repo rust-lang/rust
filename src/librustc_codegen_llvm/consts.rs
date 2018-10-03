@@ -11,21 +11,24 @@
 use libc::c_uint;
 use llvm::{self, SetUnnamedAddr, True};
 use rustc::hir::def_id::DefId;
+use rustc::mir::interpret::{ConstValue, Allocation, read_target_uint, Pointer, ConstEvalErr, GlobalId};
 use rustc::hir::Node;
 use debuginfo;
-use base;
 use monomorphize::MonoItem;
 use common::CodegenCx;
 use monomorphize::Instance;
 use syntax_pos::Span;
+use rustc_target::abi::HasDataLayout;
 use syntax_pos::symbol::LocalInternedString;
+use base;
 use type_::Type;
 use type_of::LayoutLlvmExt;
+use rustc_data_structures::sync::Lrc;
 use value::Value;
 use rustc::ty::{self, Ty};
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 
-use rustc::ty::layout::{Align, LayoutOf};
+use rustc::ty::layout::{self, Size, Align, LayoutOf};
 
 use rustc::hir::{self, CodegenFnAttrs, CodegenFnAttrFlags};
 
@@ -363,7 +366,7 @@ impl StaticMethods<'ll> for CodegenCx<'ll, 'tcx, &'ll Value> {
         unsafe {
             let attrs = &self.tcx.codegen_fn_attrs(def_id);
 
-            let (v, alloc) = match ::mir::codegen_static_initializer(&self, def_id) {
+            let (v, alloc) = match codegen_static_initializer(&self, def_id) {
                 Ok(v) => v,
                 // Error has already been reported
                 Err(_) => return,

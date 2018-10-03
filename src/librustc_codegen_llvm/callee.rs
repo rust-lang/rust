@@ -15,17 +15,15 @@
 //! closure.
 
 use attributes;
-use common;
+use rustc_codegen_ssa::common;
 use llvm;
 use monomorphize::Instance;
 use context::CodegenCx;
 use value::Value;
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 
-use rustc::hir::def_id::DefId;
-use rustc::ty::{self, TypeFoldable};
+use rustc::ty::TypeFoldable;
 use rustc::ty::layout::LayoutOf;
-use rustc::ty::subst::Substs;
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.

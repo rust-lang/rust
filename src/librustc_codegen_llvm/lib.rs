@@ -40,6 +40,7 @@ use back::write::create_target_machine;
 use syntax_pos::symbol::Symbol;
 
 extern crate flate2;
+#[macro_use] extern crate bitflags;
 extern crate libc;
 #[macro_use] extern crate rustc;
 extern crate jobserver;
@@ -66,7 +67,7 @@ extern crate cc; // Used to locate MSVC
 extern crate tempfile;
 extern crate memmap;
 
-use interfaces::*;
+use rustc_codegen_ssa::interfaces::*;
 use time_graph::TimeGraph;
 use std::sync::mpsc::Receiver;
 use back::write::{self, OngoingCodegen};
@@ -76,22 +77,17 @@ use rustc::mir::mono::Stats;
 pub use llvm_util::target_features;
 use std::any::Any;
 use std::sync::mpsc;
-use rustc_data_structures::sync::Lrc;
 
 use rustc::dep_graph::DepGraph;
-use rustc::hir::def_id::CrateNum;
 use rustc::middle::allocator::AllocatorKind;
 use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
-use rustc::middle::cstore::{NativeLibrary, CrateSource, LibSource};
-use rustc::middle::lang_items::LangItem;
 use rustc::session::{Session, CompileIncomplete};
 use rustc::session::config::{OutputFilenames, OutputType, PrintRequest};
 use rustc::ty::{self, TyCtxt};
 use rustc::util::time_graph;
-use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::util::profiling::ProfileCategory;
 use rustc_mir::monomorphize;
-use rustc_codegen_ssa::{ModuleCodegen, CompiledModule};
+use rustc_codegen_ssa::{ModuleCodegen, CompiledModule, CachedModuleCodegen, CrateInfo};
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::svh::Svh;
 
@@ -111,31 +107,26 @@ mod back {
     pub mod wasm;
 }
 
-mod interfaces;
-
 mod abi;
 mod allocator;
 mod asm;
 mod attributes;
 mod base;
-mod builder;
 mod callee;
+mod builder;
 mod common;
 mod consts;
 mod context;
 mod debuginfo;
 mod declare;
-mod glue;
 mod intrinsic;
+mod mono_item;
 
 // The following is a work around that replaces `pub mod llvm;` and that fixes issue 53912.
 #[path = "llvm/mod.rs"] mod llvm_; pub mod llvm { pub use super::llvm_::*; }
 
 mod llvm_util;
 mod metadata;
-mod meth;
-mod mir;
-mod mono_item;
 mod type_;
 mod type_of;
 mod value;
@@ -272,13 +263,13 @@ impl CodegenBackend for LlvmCodegenBackend {
     fn provide(&self, providers: &mut ty::query::Providers) {
         back::symbol_names::provide(providers);
         back::symbol_export::provide(providers);
-        base::provide(providers);
+        rustc_codegen_ssa::base::provide(providers);
         attributes::provide(providers);
     }
 
     fn provide_extern(&self, providers: &mut ty::query::Providers) {
         back::symbol_export::provide_extern(providers);
-        base::provide_extern(providers);
+        rustc_codegen_ssa::base::provide_extern(providers);
         attributes::provide_extern(providers);
     }
 
@@ -287,7 +278,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         rx: mpsc::Receiver<Box<dyn Any + Send>>
     ) -> Box<dyn Any> {
-        box base::codegen_crate(LlvmCodegenBackend(()), tcx, rx)
+        box rustc_codegen_ssa::base::codegen_crate(LlvmCodegenBackend(()), tcx, rx)
     }
 
     fn join_codegen_and_link(

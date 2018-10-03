@@ -12,7 +12,7 @@ pub use llvm::Value;
 
 use llvm;
 
-use interfaces::CodegenObject;
+use rustc_codegen_ssa::interfaces::CodegenObject;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
