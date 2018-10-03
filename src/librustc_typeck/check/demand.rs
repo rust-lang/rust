@@ -384,7 +384,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// This function checks if the specified expression is a built-in range literal.
-    /// (See: ``librustc::hir::lowering::LoweringContext::lower_expr()``).
+    /// (See: `LoweringContext::lower_expr()` in `src/librustc/hir/lowering.rs`).
     fn is_range_literal(&self, expr: &hir::Expr) -> bool {
         use hir::{Path, QPath, ExprKind, TyKind};
 
@@ -404,10 +404,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        let is_range_literal = |span: &Span| {
-            // Tell if expression span snippet doesn't look like an explicit
-            // Range struct or `new()` call.  This is to allow inferring
-            // that this is a range literal.
+        let span_is_range_literal = |span: &Span| {
+            // Check whether a span corresponding to a range expression
+            // is a range literal, rather than an explicit struct or `new()` call.
             let source_map = self.tcx.sess.source_map();
             let end_point = source_map.end_point(*span);
 
@@ -423,7 +422,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ExprKind::Struct(QPath::Resolved(None, ref path), _, _) |
             // `..` desugars to its struct path
             ExprKind::Path(QPath::Resolved(None, ref path)) => {
-                return is_range_path(&path) && is_range_literal(&expr.span);
+                return is_range_path(&path) && span_is_range_literal(&expr.span);
             }
 
             // `..=` desugars into `::std::ops::RangeInclusive::new(...)`
@@ -432,7 +431,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if let TyKind::Path(QPath::Resolved(None, ref path)) = ty.node {
                         let call_to_new = segment.ident.as_str() == "new";
 
-                        return is_range_path(&path) && is_range_literal(&expr.span) && call_to_new;
+                        return is_range_path(&path) && span_is_range_literal(&expr.span)
+                            && call_to_new;
                     }
                 }
             }
