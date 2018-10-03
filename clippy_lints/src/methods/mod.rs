@@ -878,6 +878,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         let name = implitem.ident.name;
         let parent = cx.tcx.hir.get_parent(implitem.id);
         let item = cx.tcx.hir.expect_item(parent);
+        let def_id = cx.tcx.hir.local_def_id(item.id);
+        let ty = cx.tcx.type_of(def_id);
         if_chain! {
             if let hir::ImplItemKind::Method(ref sig, id) = implitem.node;
             if let Some(first_arg_ty) = sig.decl.inputs.get(0);
@@ -899,8 +901,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 }
 
                 // check conventions w.r.t. conversion method names and predicates
-                let def_id = cx.tcx.hir.local_def_id(item.id);
-                let ty = cx.tcx.type_of(def_id);
                 let is_copy = is_copy(cx, ty);
                 for &(ref conv, self_kinds) in &CONVENTIONS {
                     if conv.check(&name.as_str()) {
@@ -928,16 +928,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         break;
                     }
                 }
-
-                let ret_ty = return_ty(cx, implitem.id);
-                if name == "new" &&
-                   !ret_ty.walk().any(|t| same_tys(cx, t, ty)) {
-                    span_lint(cx,
-                              NEW_RET_NO_SELF,
-                              implitem.span,
-                              "methods called `new` usually return `Self`");
-                }
             }
+        }
+
+        let ret_ty = return_ty(cx, implitem.id);
+        if name == "new" &&
+            !ret_ty.walk().any(|t| same_tys(cx, t, ty)) {
+            span_lint(cx,
+                      NEW_RET_NO_SELF,
+                      implitem.span,
+                      "methods called `new` usually return `Self`");
         }
     }
 }
