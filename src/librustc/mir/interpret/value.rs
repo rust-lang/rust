@@ -171,7 +171,7 @@ impl<'tcx> Scalar {
     pub fn from_uint(i: impl Into<u128>, size: Size) -> Self {
         let i = i.into();
         debug_assert_eq!(truncate(i, size), i,
-                    "Unsigned value {} does not fit in {} bits", i, size.bits());
+                         "Unsigned value {} does not fit in {} bits", i, size.bits());
         Scalar::Bits { bits: i, size: size.bytes() as u8 }
     }
 
@@ -181,7 +181,7 @@ impl<'tcx> Scalar {
         // `into` performed sign extension, we have to truncate
         let truncated = truncate(i as u128, size);
         debug_assert_eq!(sign_extend(truncated, size) as i128, i,
-                    "Signed value {} does not fit in {} bits", i, size.bits());
+                         "Signed value {} does not fit in {} bits", i, size.bits());
         Scalar::Bits { bits: truncated, size: size.bytes() as u8 }
     }
 
