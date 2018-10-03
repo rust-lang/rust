@@ -391,7 +391,7 @@ pub fn read_conf(args: &[rustc_ast::ast::NestedMetaItem], sess: &Session) -> Con
             }
 
             conf
-        },
+        }
         Err((err, span)) => {
             sess.struct_span_err(span, err)
                 .span_note(span, "Clippy will use default configuration")
@@ -513,6 +513,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &copy_iterator::COPY_ITERATOR,
         &dbg_macro::DBG_MACRO,
         &default_trait_access::DEFAULT_TRAIT_ACCESS,
+        &dereference::DEREF_METHOD_EXPLICIT,
         &derive::DERIVE_HASH_XOR_EQ,
         &derive::EXPL_IMPL_CLONE_ON_COPY,
         &doc::DOC_MARKDOWN,
@@ -1039,6 +1040,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box verbose_file_reads::VerboseFileReads);
     store.register_late_pass(|| box redundant_pub_crate::RedundantPubCrate::default());
     store.register_late_pass(|| box unnamed_address::UnnamedAddress);
+    store.register_late_pass(|| box dereference::DerefMethodExplicit);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1089,6 +1091,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&copies::SAME_FUNCTIONS_IN_IF_CONDITION),
         LintId::of(&copy_iterator::COPY_ITERATOR),
         LintId::of(&default_trait_access::DEFAULT_TRAIT_ACCESS),
+        LintId::of(&dereference::EXPLICIT_DEREF_METHOD),
         LintId::of(&derive::EXPL_IMPL_CLONE_ON_COPY),
         LintId::of(&doc::DOC_MARKDOWN),
         LintId::of(&doc::MISSING_ERRORS_DOC),
@@ -1178,6 +1181,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&comparison_chain::COMPARISON_CHAIN),
         LintId::of(&copies::IFS_SAME_COND),
         LintId::of(&copies::IF_SAME_THEN_ELSE),
+        LintId::of(&dereference::EXPLICIT_DEREF_METHOD),
         LintId::of(&derive::DERIVE_HASH_XOR_EQ),
         LintId::of(&doc::MISSING_SAFETY_DOC),
         LintId::of(&doc::NEEDLESS_DOCTEST_MAIN),
