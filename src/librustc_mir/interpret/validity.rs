@@ -209,22 +209,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 }
                 // for safe ptrs, recursively check
                 if let ty::Ref(..) = value.layout.ty.sty {
-                    if const_mode {
-                        // Skip validation entirely for some external statics
-                        if let Scalar::Ptr(ptr) = place.ptr {
-                            let alloc_kind = self.tcx.alloc_map.lock().get(ptr.alloc_id);
-                            if let Some(AllocType::Static(did)) = alloc_kind {
-                                // `extern static` cannot be validated as they have no body.
-                                // They are not even properly aligned.
-                                // Statics from other crates are already checked.
-                                // They might be checked at a different type, but for now we want
-                                // to avoid recursing too deeply.  This is not sound!
-                                if !did.is_local() || self.tcx.is_foreign_item(did) {
-                                    return Ok(());
-                                }
-                            }
-                        }
-                    }
                     // Make sure this is non-NULL and aligned
                     let (size, align) = self.size_and_align_of(place.extra, place.layout)?;
                     match self.memory.check_align(place.ptr, align) {
@@ -244,6 +228,19 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     if !place.layout.is_zst() {
                         let ptr = try_validation!(place.ptr.to_ptr(),
                             "integer pointer in non-ZST reference", path);
+                        if const_mode {
+                            // Skip validation entirely for some external statics
+                            let alloc_kind = self.tcx.alloc_map.lock().get(ptr.alloc_id);
+                            if let Some(AllocType::Static(did)) = alloc_kind {
+                                // `extern static` cannot be validated as they have no body.
+                                // FIXME: Statics from other crates are also skipped.
+                                // They might be checked at a different type, but for now we
+                                // want to avoid recursing too deeply.  This is not sound!
+                                if !did.is_local() || self.tcx.is_foreign_item(did) {
+                                    return Ok(());
+                                }
+                            }
+                        }
                         try_validation!(self.memory.check_bounds(ptr, size, false),
                             "dangling (not entirely in bounds) reference", path);
                     }

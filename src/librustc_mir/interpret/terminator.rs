@@ -384,7 +384,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     } else {
                         // FIXME: The caller thinks this function cannot return. How do
                         // we verify that the callee agrees?
-                        // On the plus side, the the callee every writes to its return place,
+                        // On the plus side, the the callee ever writes to its return place,
                         // that will be detected as UB (because we set that to NULL above).
                     }
                     Ok(())
