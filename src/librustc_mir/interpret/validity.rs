@@ -11,15 +11,15 @@
 use std::fmt::Write;
 
 use syntax_pos::symbol::Symbol;
-use rustc::ty::layout::{self, Size};
-use rustc::ty::{self, Ty};
+use rustc::ty::layout::{self, Size, Align, TyLayout};
+use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 use rustc::mir::interpret::{
     Scalar, AllocType, EvalResult, EvalErrorKind
 };
 
 use super::{
-    OpTy, MPlaceTy, Machine, EvalContext, ScalarMaybeUndef
+    ValTy, OpTy, MPlaceTy, Machine, EvalContext, ScalarMaybeUndef
 };
 
 macro_rules! validation_failure {
@@ -140,55 +140,137 @@ fn scalar_format(value: ScalarMaybeUndef) -> String {
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
-    /// Make sure that `value` is valid for `ty`
-    fn validate_scalar_type(
+    /// Make sure that `value` is valid for `ty`, *assuming* `ty` is a primitive type.
+    fn validate_primitive_type(
         &self,
-        value: ScalarMaybeUndef,
-        size: Size,
+        value: ValTy<'tcx>,
         path: &Vec<PathElem>,
-        ty: Ty,
+        ref_tracking: Option<&mut RefTracking<'tcx>>,
         const_mode: bool,
     ) -> EvalResult<'tcx> {
-        trace!("validate scalar by type: {:#?}, {:#?}, {}", value, size, ty);
+        trace!("validate scalar by type: {:#?}, {:#?}, {}",
+            *value, value.layout.size, value.layout.ty);
 
         // Go over all the primitive types
-        match ty.sty {
+        match value.layout.ty.sty {
             ty::Bool => {
+                let value = value.to_scalar_or_undef();
                 try_validation!(value.to_bool(),
                     scalar_format(value), path, "a boolean");
             },
             ty::Char => {
+                let value = value.to_scalar_or_undef();
                 try_validation!(value.to_char(),
                     scalar_format(value), path, "a valid unicode codepoint");
             },
-            ty::Float(_) | ty::Int(_) | ty::Uint(_) if const_mode => {
-                // Integers/floats in CTFE: Must be scalar bits, pointers are dangerous
-                try_validation!(value.to_bits(size),
-                    scalar_format(value), path, "initialized plain bits");
-            }
-            ty::Float(_) | ty::Int(_) | ty::Uint(_) | ty::RawPtr(_) => {
+            ty::Float(_) | ty::Int(_) | ty::Uint(_) => {
+                let size = value.layout.size;
+                let value = value.to_scalar_or_undef();
                 if const_mode {
-                    // Anything but undef goes
-                    try_validation!(value.not_undef(),
-                        scalar_format(value), path, "a raw pointer");
+                    // Integers/floats in CTFE: Must be scalar bits, pointers are dangerous
+                    try_validation!(value.to_bits(size),
+                        scalar_format(value), path, "initialized plain bits");
                 } else {
-                    // At run-time, for now, we accept *anything* for these types.
+                    // At run-time, for now, we accept *anything* for these types, including
+                    // undef. We should fix that, but let's start low.
                 }
-            },
-            ty::Ref(..) => {
-                // This is checked by the recursive reference handling, nothing to do here.
-                debug_assert!(ty.builtin_deref(true).is_some() && !ty.is_unsafe_ptr());
+            }
+            ty::RawPtr(..) | ty::Ref(..) => {
+                // Handle fat pointers. We also check fat raw pointers,
+                // their metadata must be valid!
+                // This also checks that the ptr itself is initialized, which
+                // seems reasonable even for raw pointers.
+                let place = try_validation!(self.ref_to_mplace(value),
+                    "undefined data in pointer", path);
+                // Check metadata early, for better diagnostics
+                if place.layout.is_unsized() {
+                    match self.tcx.struct_tail(place.layout.ty).sty {
+                        ty::Dynamic(..) => {
+                            let vtable = try_validation!(place.extra.unwrap().to_ptr(),
+                                "non-pointer vtable in fat pointer", path);
+                            try_validation!(self.read_drop_type_from_vtable(vtable),
+                                "invalid drop fn in vtable", path);
+                            try_validation!(self.read_size_and_align_from_vtable(vtable),
+                                "invalid size or align in vtable", path);
+                            // FIXME: More checks for the vtable.
+                        }
+                        ty::Slice(..) | ty::Str => {
+                            try_validation!(place.extra.unwrap().to_usize(self),
+                                "non-integer slice length in fat pointer", path);
+                        }
+                        ty::Foreign(..) => {
+                            // Unsized, but not fat.
+                        }
+                        _ =>
+                            bug!("Unexpected unsized type tail: {:?}",
+                                self.tcx.struct_tail(place.layout.ty)
+                            ),
+                    }
+                }
+                // for safe ptrs, recursively check
+                if let ty::Ref(..) = value.layout.ty.sty {
+                    if const_mode {
+                        // Skip validation entirely for some external statics
+                        if let Scalar::Ptr(ptr) = place.ptr {
+                            let alloc_kind = self.tcx.alloc_map.lock().get(ptr.alloc_id);
+                            if let Some(AllocType::Static(did)) = alloc_kind {
+                                // `extern static` cannot be validated as they have no body.
+                                // They are not even properly aligned.
+                                // Statics from other crates are already checked.
+                                // They might be checked at a different type, but for now we want
+                                // to avoid recursing too deeply.  This is not sound!
+                                if !did.is_local() || self.tcx.is_foreign_item(did) {
+                                    return Ok(());
+                                }
+                            }
+                        }
+                    }
+                    // Make sure this is non-NULL and aligned
+                    let (size, align) = self.size_and_align_of(place.extra, place.layout)?;
+                    match self.memory.check_align(place.ptr, align) {
+                        Ok(_) => {},
+                        Err(err) => match err.kind {
+                            EvalErrorKind::InvalidNullPointerUsage =>
+                                return validation_failure!("NULL reference", path),
+                            EvalErrorKind::AlignmentCheckFailed { .. } =>
+                                return validation_failure!("unaligned reference", path),
+                            _ =>
+                                return validation_failure!(
+                                    "dangling (deallocated) reference", path
+                                ),
+                        }
+                    }
+                    // non-ZST also have to be dereferencable
+                    if !place.layout.is_zst() {
+                        let ptr = try_validation!(place.ptr.to_ptr(),
+                            "integer pointer in non-ZST reference", path);
+                        try_validation!(self.memory.check_bounds(ptr, size, false),
+                            "dangling (not entirely in bounds) reference", path);
+                    }
+                    if let Some(ref_tracking) = ref_tracking {
+                        // Check if we have encountered this pointer+layout combination
+                        // before.  Proceed recursively even for integer pointers, no
+                        // reason to skip them! They are (recursively) valid for some ZST,
+                        // but not for others (e.g. `!` is a ZST).
+                        let op = place.into();
+                        if ref_tracking.seen.insert(op) {
+                            trace!("Recursing below ptr {:#?}", *op);
+                            ref_tracking.todo.push((op, path_clone_and_deref(path)));
+                        }
+                    }
+                }
             }
             ty::FnPtr(_sig) => {
+                let value = value.to_scalar_or_undef();
                 let ptr = try_validation!(value.to_ptr(),
                     scalar_format(value), path, "a pointer");
                 let _fn = try_validation!(self.memory.get_fn(ptr),
                     scalar_format(value), path, "a function pointer");
                 // FIXME: Check if the signature matches
             }
-            // This should be all
+            // This should be all the primitive types
             ty::Never => bug!("Uninhabited type should have been catched earlier"),
-            _ => bug!("Unexpected primitive type {}", ty)
+            _ => bug!("Unexpected primitive type {}", value.layout.ty)
         }
         Ok(())
     }
@@ -203,7 +285,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     ) -> EvalResult<'tcx> {
         trace!("validate scalar by layout: {:#?}, {:#?}, {:#?}", value, size, layout);
         let (lo, hi) = layout.valid_range.clone().into_inner();
-        if lo == u128::min_value() && hi == u128::max_value() {
+        let max_hi = u128::max_value() >> (128 - size.bits()); // as big as the size fits
+        assert!(hi <= max_hi);
+        if lo == 0 && hi == max_hi {
             // Nothing to check
             return Ok(());
         }
@@ -211,11 +295,33 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         let value = try_validation!(value.not_undef(),
             scalar_format(value), path, format!("something in the range {:?}", layout.valid_range));
         let bits = match value {
-            Scalar::Ptr(_) => {
-                // Comparing a ptr with a range is not meaningfully possible.
-                // In principle, *if* the pointer is inbonds, we could exclude NULL, but
-                // that does not seem worth it.
-                return Ok(());
+            Scalar::Ptr(ptr) => {
+                if lo == 1 && hi == max_hi {
+                    // only NULL is not allowed.
+                    // We can call `check_align` to check non-NULL-ness, but have to also look
+                    // for function pointers.
+                    let non_null =
+                        self.memory.check_align(
+                            Scalar::Ptr(ptr), Align::from_bytes(1, 1).unwrap()
+                        ).is_ok() ||
+                        self.memory.get_fn(ptr).is_ok();
+                    if !non_null {
+                        // could be NULL
+                        return validation_failure!("a potentially NULL pointer", path);
+                    }
+                    return Ok(());
+                } else {
+                    // Conservatively, we reject, because the pointer *could* have this
+                    // value.
+                    return validation_failure!(
+                        "a pointer",
+                        path,
+                        format!(
+                            "something that cannot possibly be outside the (wrapping) range {:?}",
+                            layout.valid_range
+                        )
+                    );
+                }
             }
             Scalar::Bits { bits, size: value_size } => {
                 assert_eq!(value_size as u64, size.bytes());
@@ -227,13 +333,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         let in_range = |bound: RangeInclusive<u128>| bound.contains(&bits);
         if lo > hi {
             // wrapping around
-            if in_range(0..=hi) || in_range(lo..=u128::max_value()) {
+            if in_range(0..=hi) || in_range(lo..=max_hi) {
                 Ok(())
             } else {
                 validation_failure!(
                     bits,
                     path,
-                    format!("something in the range {:?} or {:?}", 0..=hi, lo..=u128::max_value())
+                    format!("something in the range {:?} or {:?}", 0..=hi, lo..=max_hi)
                 )
             }
         } else {
@@ -243,59 +349,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 validation_failure!(
                     bits,
                     path,
-                    format!("something in the range {:?}", layout.valid_range)
+                    if hi == max_hi {
+                        format!("something greater or equal to {}", lo)
+                    } else {
+                        format!("something in the range {:?}", layout.valid_range)
+                    }
                 )
             }
         }
-    }
-
-    /// Validate a reference, potentially recursively. `place` is assumed to already be
-    /// dereferenced, i.e. it describes the target.
-    fn validate_ref(
-        &self,
-        place: MPlaceTy<'tcx>,
-        path: &mut Vec<PathElem>,
-        ref_tracking: Option<&mut RefTracking<'tcx>>,
-        const_mode: bool,
-    ) -> EvalResult<'tcx> {
-        if const_mode {
-            // Skip validation entirely for some external statics
-            if let Scalar::Ptr(ptr) = place.ptr {
-                let alloc_kind = self.tcx.alloc_map.lock().get(ptr.alloc_id);
-                if let Some(AllocType::Static(did)) = alloc_kind {
-                    // `extern static` cannot be validated as they have no body.
-                    // They are not even properly aligned.
-                    // Statics from other crates are already checked.
-                    // They might be checked at a different type, but for now we want
-                    // to avoid recursing too deeply.  This is not sound!
-                    if !did.is_local() || self.tcx.is_foreign_item(did) {
-                        return Ok(());
-                    }
-                }
-            }
-        }
-        // Make sure this is non-NULL, aligned and entirely in-bounds.
-        let (size, align) = self.size_and_align_of(place.extra, place.layout)?;
-        try_validation!(self.memory.check_align(place.ptr, align),
-            "unaligned reference", path);
-        if !place.layout.is_zst() {
-            let ptr = try_validation!(place.ptr.to_ptr(),
-                "integer pointer in non-ZST reference", path);
-            try_validation!(self.memory.check_bounds(ptr, size, false),
-                "dangling reference (not entirely in bounds)", path);
-        }
-        // Check if we have encountered this pointer+layout combination
-        // before.  Proceed recursively even for integer pointers, no
-        // reason to skip them! They are valid for some ZST, but not for others
-        // (e.g. `!` is a ZST).
-        if let Some(ref_tracking) = ref_tracking {
-            let op = place.into();
-            if ref_tracking.seen.insert(op) {
-                trace!("Recursing below ptr {:#?}", *op);
-                ref_tracking.todo.push((op, path_clone_and_deref(path)));
-            }
-        }
-        Ok(())
     }
 
     /// This function checks the data at `op`.  `op` is assumed to cover valid memory if it
@@ -316,10 +377,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     ) -> EvalResult<'tcx> {
         trace!("validate_operand: {:?}, {:#?}", *dest, dest.layout);
 
-        // Find the right variant.  We have to handle this as a prelude, not via
-        // proper recursion with the new inner layout, to be able to later nicely
-        // print the field names of the enum field that is being accessed.
-        let (variant, dest) = match dest.layout.variants {
+        // If this is a multi-variant layout, we have find the right one and proceed with that.
+        // (No good reasoning to make this recursion, but it is equivalent to that.)
+        let dest = match dest.layout.variants {
             layout::Variants::NicheFilling { .. } |
             layout::Variants::Tagged { .. } => {
                 let variant = match self.read_discriminant(dest) {
@@ -335,34 +395,28 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                             ),
                     }
                 };
-                let inner_dest = self.operand_downcast(dest, variant)?;
                 // Put the variant projection onto the path, as a field
                 path.push(PathElem::Field(dest.layout.ty
                                           .ty_adt_def()
                                           .unwrap()
                                           .variants[variant].name));
+                // Proceed with this variant
+                let dest = self.operand_downcast(dest, variant)?;
                 trace!("variant layout: {:#?}", dest.layout);
-                (variant, inner_dest)
+                dest
             },
-            layout::Variants::Single { index } => {
-                // Pre-processing for trait objects: Treat them at their real type.
-                // (We do not do this for slices and strings: For slices it is not needed,
-                // `mplace_array_fields` does the right thing, and for strings there is no
-                // real type that would show the actual length.)
-                let dest = match dest.layout.ty.sty {
-                    ty::Dynamic(..) => {
-                        let dest = dest.to_mem_place(); // immediate trait objects are not a thing
-                        try_validation!(self.unpack_dyn_trait(dest),
-                            "invalid vtable in fat pointer", path).1.into()
-                    }
-                    _ => dest
-                };
-                (index, dest)
-            }
+            layout::Variants::Single { .. } => dest,
         };
 
-        // Remember the length, in case we need to truncate
-        let path_len = path.len();
+        // First thing, find the real type:
+        // If it is a trait object, switch to the actual type that was used to create it.
+        let dest = match dest.layout.ty.sty {
+            ty::Dynamic(..) => {
+                let dest = dest.to_mem_place(); // immediate trait objects are not a thing
+                self.unpack_dyn_trait(dest)?.1.into()
+            },
+            _ => dest
+        };
 
         // If this is a scalar, validate the scalar layout.
         // Things can be aggregates and have scalar layout at the same time, and that
@@ -380,81 +434,49 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             _ => {}
         }
 
-        // Validate all fields
-        match dest.layout.fields {
+        // Check primitive types.  We do this after checking the scalar layout,
+        // just to have that done as well.  Primitives can have varying layout,
+        // so we check them separately and before aggregate handling.
+        // It is CRITICAL that we get this check right, or we might be
+        // validating the wrong thing!
+        let primitive = match dest.layout.fields {
             // Primitives appear as Union with 0 fields -- except for fat pointers.
-            // We still check `layout.fields`, not `layout.abi`, because `layout.abi`
-            // is `Scalar` for newtypes around scalars, but we want to descend through the
-            // fields to get a proper `path`.
-            layout::FieldPlacement::Union(0) => {
-                match dest.layout.abi {
-                    // check that the scalar is a valid pointer or that its bit range matches the
-                    // expectation.
-                    layout::Abi::Scalar(_) => {
-                        let value = try_validation!(self.read_value(dest),
-                            "uninitialized or unrepresentable data", path);
-                        self.validate_scalar_type(
-                            value.to_scalar_or_undef(),
-                            dest.layout.size,
-                            &path,
-                            dest.layout.ty,
-                            const_mode,
-                        )?;
-                        // Recursively check *safe* references
-                        if dest.layout.ty.builtin_deref(true).is_some() &&
-                            !dest.layout.ty.is_unsafe_ptr()
-                        {
-                            self.validate_ref(
-                                self.ref_to_mplace(value)?,
-                                path,
-                                ref_tracking,
-                                const_mode,
-                            )?;
-                        }
-                    },
-                    _ => bug!("bad abi for FieldPlacement::Union(0): {:#?}", dest.layout.abi),
-                }
-            }
-            layout::FieldPlacement::Arbitrary { .. }
-                if dest.layout.ty.builtin_deref(true).is_some() =>
-            {
-                // This is a fat pointer. We also check fat raw pointers, their metadata must
-                // be valid!
-                let ptr = try_validation!(self.read_value(dest.into()),
-                    "undefined location in fat pointer", path);
-                let ptr = try_validation!(self.ref_to_mplace(ptr),
-                    "undefined metadata in fat pointer", path);
-                // check metadata early, for better diagnostics
-                match self.tcx.struct_tail(ptr.layout.ty).sty {
-                    ty::Dynamic(..) => {
-                        let vtable = try_validation!(ptr.extra.unwrap().to_ptr(),
-                            "non-pointer vtable in fat pointer", path);
-                        try_validation!(self.read_drop_type_from_vtable(vtable),
-                            "invalid drop fn in vtable", path);
-                        try_validation!(self.read_size_and_align_from_vtable(vtable),
-                            "invalid size or align in vtable", path);
-                        // FIXME: More checks for the vtable.
-                    }
-                    ty::Slice(..) | ty::Str => {
-                        try_validation!(ptr.extra.unwrap().to_usize(self),
-                            "non-integer slice length in fat pointer", path);
-                    }
-                    _ =>
-                        bug!("Unexpected unsized type tail: {:?}",
-                            self.tcx.struct_tail(ptr.layout.ty)
-                        ),
-                }
-                // for safe ptrs, recursively check it
-                if !dest.layout.ty.is_unsafe_ptr() {
-                    self.validate_ref(ptr, path, ref_tracking, const_mode)?;
-                }
-            }
-            // Compound data structures
-            layout::FieldPlacement::Union(_) => {
+            layout::FieldPlacement::Union(0) => true,
+            _ => dest.layout.ty.builtin_deref(true).is_some(),
+        };
+        if primitive {
+            let value = try_validation!(self.read_value(dest),
+                "uninitialized or unrepresentable data", path);
+            return self.validate_primitive_type(
+                value,
+                &path,
+                ref_tracking,
+                const_mode,
+            );
+        }
+
+        // Validate all fields of compound data structures
+        let path_len = path.len(); // Remember the length, in case we need to truncate
+        match dest.layout.fields {
+            layout::FieldPlacement::Union(..) => {
                 // We can't check unions, their bits are allowed to be anything.
                 // The fields don't need to correspond to any bit pattern of the union's fields.
                 // See https://github.com/rust-lang/rust/issues/32836#issuecomment-406875389
             },
+            layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
+                // Go look at all the fields
+                for i in 0..offsets.len() {
+                    let field = self.operand_field(dest, i as u64)?;
+                    path.push(self.aggregate_field_path_elem(dest.layout, i));
+                    self.validate_operand(
+                        field,
+                        path,
+                        ref_tracking.as_mut().map(|r| &mut **r),
+                        const_mode,
+                    )?;
+                    path.truncate(path_len);
+                }
+            }
             layout::FieldPlacement::Array { stride, .. } => {
                 let dest = if dest.layout.is_zst() {
                     // it's a ZST, the memory content cannot matter
@@ -526,25 +548,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     }
                 }
             },
-            layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
-                for i in 0..offsets.len() {
-                    let field = self.operand_field(dest, i as u64)?;
-                    path.push(self.aggregate_field_path_elem(dest.layout.ty, variant, i));
-                    self.validate_operand(
-                        field,
-                        path,
-                        ref_tracking.as_mut().map(|r| &mut **r),
-                        const_mode,
-                    )?;
-                    path.truncate(path_len);
-                }
-            }
         }
         Ok(())
     }
 
-    fn aggregate_field_path_elem(&self, ty: Ty<'tcx>, variant: usize, field: usize) -> PathElem {
-        match ty.sty {
+    fn aggregate_field_path_elem(&self, layout: TyLayout<'tcx>, field: usize) -> PathElem {
+        match layout.ty.sty {
             // generators and closures.
             ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
                 let node_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
@@ -557,7 +566,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
             // enums
             ty::Adt(def, ..) if def.is_enum() => {
-                let variant = &def.variants[variant];
+                let variant = match layout.variants {
+                    layout::Variants::Single { index } => &def.variants[index],
+                    _ => bug!("aggregate_field_path_elem: got enum but not in a specific variant"),
+                };
                 PathElem::Field(variant.fields[field].ident.name)
             }
 
@@ -565,7 +577,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             ty::Adt(def, _) => PathElem::Field(def.non_enum_variant().fields[field].ident.name),
 
             // nothing else has an aggregate layout
-            _ => bug!("aggregate_field_path_elem: got non-aggregate type {:?}", ty),
+            _ => bug!("aggregate_field_path_elem: got non-aggregate type {:?}", layout.ty),
         }
     }
 }

@@ -15,6 +15,9 @@ use std::mem;
 const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
 //~^ ERROR this constant likely exhibits undefined behavior
 
+const NULL: &u16 = unsafe { mem::transmute(0usize) };
+//~^ ERROR this constant likely exhibits undefined behavior
+
 const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
 //~^ ERROR this constant likely exhibits undefined behavior
 
