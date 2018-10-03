@@ -125,9 +125,8 @@ pub struct LoweringContext<'a> {
 
     // Whether or not in-band lifetimes are being collected. This is used to
     // indicate whether or not we're in a place where new lifetimes will result
-    // in in-band lifetime definitions, such a function or an impl header.
-    // This will always be false unless the `in_band_lifetimes` or
-    // `impl_header_lifetime_elision` feature is enabled.
+    // in in-band lifetime definitions, such a function or an impl header,
+    // including implicit lifetimes from `impl_header_lifetime_elision`.
     is_collecting_in_band_lifetimes: bool,
 
     // Currently in-scope lifetimes defined in impl headers, fn headers, or HRTB.
@@ -709,12 +708,8 @@ impl<'a> LoweringContext<'a> {
         assert!(self.lifetimes_to_define.is_empty());
         let old_anonymous_lifetime_mode = self.anonymous_lifetime_mode;
 
-        if self.sess.features_untracked().impl_header_lifetime_elision {
-            self.anonymous_lifetime_mode = anonymous_lifetime_mode;
-            self.is_collecting_in_band_lifetimes = true;
-        } else if self.sess.features_untracked().in_band_lifetimes {
-            self.is_collecting_in_band_lifetimes = true;
-        }
+        self.anonymous_lifetime_mode = anonymous_lifetime_mode;
+        self.is_collecting_in_band_lifetimes = true;
 
         let (in_band_ty_params, res) = f(self);
 

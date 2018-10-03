@@ -15,8 +15,6 @@
 
 #![allow(warnings)]
 
-#![feature(impl_header_lifetime_elision)]
-
 trait MyTrait<'a> { }
 
 // This is equivalent to `MyTrait<'a> for &'b i32`, which is proven by

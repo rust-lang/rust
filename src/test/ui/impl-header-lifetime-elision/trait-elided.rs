@@ -9,8 +9,6 @@
 // except according to those terms.
 #![allow(warnings)]
 
-#![feature(impl_header_lifetime_elision)]
-
 trait MyTrait<'a> { }
 
 impl MyTrait for u32 {

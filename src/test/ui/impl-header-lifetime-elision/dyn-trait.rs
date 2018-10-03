@@ -13,8 +13,6 @@
 
 #![allow(warnings)]
 
-#![feature(impl_header_lifetime_elision)]
-
 use std::fmt::Debug;
 
 // Equivalent to `Box<dyn Debug + 'static>`:

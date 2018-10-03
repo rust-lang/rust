@@ -13,8 +13,6 @@
 
 #![allow(warnings)]
 
-#![feature(impl_header_lifetime_elision)]
-
 trait MyTrait {
     type Output;
 }

@@ -14,8 +14,6 @@
 
 #![allow(warnings)]
 
-#![feature(impl_header_lifetime_elision)]
-
 trait MyTrait { }
 
 impl MyTrait for &i32 {

@@ -12,8 +12,6 @@
 
 #![allow(warnings)]
 
-#![feature(impl_header_lifetime_elision)]
-
 // This works for functions...
 fn foo<'a>(x: &str, y: &'a str) {}
 

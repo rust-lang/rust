@@ -10,7 +10,6 @@
 
 #![feature(nll)]
 #![feature(in_band_lifetimes)]
-#![feature(impl_header_lifetime_elision)]
 
 struct Foo<'a, 'b> {
     x: &'a u32,
