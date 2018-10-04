@@ -722,9 +722,12 @@ declare_clippy_lint! {
 /// **What it does:** Checks for casts of function pointers to something other than usize
 ///
 /// **Why is this bad?**
-/// Depending on the system architechture, casting a function pointer to something other than
-/// `usize` will result in incorrect pointer addresses.
-/// `usize` will always be able to store the function pointer on the given architechture.
+/// Casting a function pointer to anything other than usize/isize is not portable across
+/// architectures, because you end up losing bits if the target type is too small or end up with a
+/// bunch of extra bits that waste space and add more instructions to the final binary than
+/// strictly necessary for the problem
+///
+/// Casting to isize also doesn't make sense since there are no signed addresses.
 ///
 /// **Example**
 ///
