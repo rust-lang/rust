@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that we HTML-escape Rust expressions, where HTML special chars
-// can occur, and we know it's definitely not markup.
+// Test that the contents of constants are not displayed as part of the
+// documentation.
 
-// @!has escape_rust_expr/constant.CONST_S.html '//pre[@class="rust const"]' '"<script>"'
-pub const CONST_S: &'static str = "<script>";
+// @!has dont_show_const_contents/constant.CONST_S.html 'dont show this'
+pub const CONST_S: &'static str = "dont show this";
