@@ -20,7 +20,7 @@ pub(crate) fn extend(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange>
             LeafAtOffset::None => return None,
             LeafAtOffset::Single(l) => {
                 if l.kind() == COMMENT {
-                    extend_single_word_in_comment(l, range).unwrap_or_else(||l.range())
+                    extend_single_word_in_comment(l, offset).unwrap_or_else(||l.range())
                 } else {
                     l.range()
                 }
@@ -42,22 +42,18 @@ pub(crate) fn extend(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange>
     }
 }
 
-fn extend_single_word_in_comment(leaf: SyntaxNodeRef, range: TextRange) -> Option<TextRange> {
-    let text : &str = leaf.leaf_text().unwrap();
-    let cursor_position: u32 = (range.start() - leaf.range().start()).into();
+fn extend_single_word_in_comment(leaf: SyntaxNodeRef, offset: TextUnit) -> Option<TextRange> {
+    let text : &str = leaf.leaf_text()?;
+    let cursor_position: u32 = (offset - leaf.range().start()).into();
 
     let (before, after) = text.split_at(cursor_position as usize);
-    let start_idx = before.rfind(char::is_whitespace);
-    let end_idx = after.find(char::is_whitespace);
+    let start_idx = before.rfind(char::is_whitespace)?;
+    let end_idx = after.find(char::is_whitespace)?;
 
-    match (start_idx, end_idx) {
-        (Some(start), Some(end)) => {
-            let from : TextUnit = (start as u32 + 1).into();
-            let to : TextUnit = (cursor_position + (end as u32)).into();
-            Some(TextRange::from_to(from, to))
-        },
-        (_, _) => None
-    }
+    let from : TextUnit = (start_idx as u32 + 1).into();
+    let to : TextUnit = (cursor_position + (end_idx as u32)).into();
+
+    Some(TextRange::from_to(from, to))
 }
 
 fn extend_ws(root: SyntaxNodeRef, ws: SyntaxNodeRef, offset: TextUnit) -> TextRange {
