@@ -16,12 +16,18 @@ pub(crate) fn extend(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange>
         if leaves.clone().all(|it| it.kind() == WHITESPACE) {
             return Some(extend_ws(root, leaves.next()?, offset));
         }
-        let leaf = match leaves {
+        let leaf_range = match leaves {
             LeafAtOffset::None => return None,
-            LeafAtOffset::Single(l) => l,
-            LeafAtOffset::Between(l, r) => pick_best(l, r),
+            LeafAtOffset::Single(l) => {
+                if l.kind() == COMMENT {
+                    extend_single_word_in_comment(l, offset).unwrap_or_else(||l.range())
+                } else {
+                    l.range()
+                }
+            },
+            LeafAtOffset::Between(l, r) => pick_best(l, r).range(),
         };
-        return Some(leaf.range());
+        return Some(leaf_range);
     };
     let node = find_covering_node(root, range);
     if node.kind() == COMMENT && range == node.range() {
@@ -34,6 +40,20 @@ pub(crate) fn extend(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange>
         None => None,
         Some(parent) => Some(parent.range()),
     }
+}
+
+fn extend_single_word_in_comment(leaf: SyntaxNodeRef, offset: TextUnit) -> Option<TextRange> {
+    let text : &str = leaf.leaf_text()?;
+    let cursor_position: u32 = (offset - leaf.range().start()).into();
+
+    let (before, after) = text.split_at(cursor_position as usize);
+    let start_idx = before.rfind(char::is_whitespace)? as u32;
+    let end_idx = after.find(char::is_whitespace)? as u32;
+
+    let from : TextUnit = (start_idx + 1).into();
+    let to : TextUnit = (cursor_position + end_idx).into();
+
+    Some(TextRange::from_to(from, to))
 }
 
 fn extend_ws(root: SyntaxNodeRef, ws: SyntaxNodeRef, offset: TextUnit) -> TextRange {
@@ -174,6 +194,14 @@ fn main() { foo+<|>bar;}
         do_check(
             r#"fn foo<'a<|>>() {}"#,
             &["'a", "<'a>"]
+        );
+    }
+
+    #[test]
+    fn test_extend_selection_select_first_word() {
+        do_check(
+            r#"// foo bar b<|>az quxx"#,
+            &["baz", "// foo bar baz quxx"]
         );
     }
 }
