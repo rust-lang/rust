@@ -4060,7 +4060,7 @@ impl<'a> LoweringContext<'a> {
                 let head_sp = head.span;
                 let desugared_span = self.allow_internal_unstable(
                     CompilerDesugaringKind::ForLoop,
-                    head.span,
+                    head_sp,
                 );
 
                 let iter = self.str_to_ident("iter");
