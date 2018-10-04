@@ -133,7 +133,7 @@ mod value;
 
 pub struct LlvmCodegenBackend(());
 
-impl BackendMethods for LlvmCodegenBackend {
+impl ExtraBackendMethods for LlvmCodegenBackend {
     type Metadata = ModuleLlvm;
     type OngoingCodegen = OngoingCodegen;
 

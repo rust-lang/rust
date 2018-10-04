@@ -50,14 +50,14 @@ pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> +
     fn llbb(&self) -> <Self::CodegenCx as Backend<'ll>>::BasicBlock;
     fn count_insn(&self, category: &str);
 
-    fn set_value_name(&self, value: <Self::CodegenCx as Backend<'ll>>::Value, name: &str);
-    fn position_at_end(&self, llbb: <Self::CodegenCx as Backend<'ll>>::BasicBlock);
-    fn position_at_start(&self, llbb: <Self::CodegenCx as Backend<'ll>>::BasicBlock);
-    fn ret_void(&self);
-    fn ret(&self, v: <Self::CodegenCx as Backend<'ll>>::Value);
-    fn br(&self, dest: <Self::CodegenCx as Backend<'ll>>::BasicBlock);
+    fn set_value_name(&mut self, value: <Self::CodegenCx as Backend<'ll>>::Value, name: &str);
+    fn position_at_end(&mut self, llbb: <Self::CodegenCx as Backend<'ll>>::BasicBlock);
+    fn position_at_start(&mut self, llbb: <Self::CodegenCx as Backend<'ll>>::BasicBlock);
+    fn ret_void(&mut self);
+    fn ret(&mut self, v: <Self::CodegenCx as Backend<'ll>>::Value);
+    fn br(&mut self, dest: <Self::CodegenCx as Backend<'ll>>::BasicBlock);
     fn cond_br(
-        &self,
+        &mut self,
         cond: <Self::CodegenCx as Backend<'ll>>::Value,
         then_llbb: <Self::CodegenCx as Backend<'ll>>::BasicBlock,
         else_llbb: <Self::CodegenCx as Backend<'ll>>::BasicBlock,

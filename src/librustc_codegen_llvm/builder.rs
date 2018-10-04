@@ -64,7 +64,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
         llfn: &'ll Value,
         name: &'b str
     ) -> Self {
-        let bx = Builder::with_cx(cx);
+        let mut bx = Builder::with_cx(cx);
         let llbb = unsafe {
             let name = SmallCStr::new(name);
             llvm::LLVMAppendBasicBlockInContext(
@@ -121,40 +121,40 @@ impl BuilderMethods<'a, 'll, 'tcx>
         }
     }
 
-    fn set_value_name(&self, value: &'ll Value, name: &str) {
+    fn set_value_name(&mut self, value: &'ll Value, name: &str) {
         let cname = SmallCStr::new(name);
         unsafe {
             llvm::LLVMSetValueName(value, cname.as_ptr());
         }
     }
 
-    fn position_at_end(&self, llbb: &'ll BasicBlock) {
+    fn position_at_end(&mut self, llbb: &'ll BasicBlock) {
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(self.llbuilder, llbb);
         }
     }
 
-    fn position_at_start(&self, llbb: &'ll BasicBlock) {
+    fn position_at_start(&mut self, llbb: &'ll BasicBlock) {
         unsafe {
             llvm::LLVMRustPositionBuilderAtStart(self.llbuilder, llbb);
         }
     }
 
-    fn ret_void(&self) {
+    fn ret_void(&mut self) {
         self.count_insn("retvoid");
         unsafe {
             llvm::LLVMBuildRetVoid(self.llbuilder);
         }
     }
 
-    fn ret(&self, v: &'ll Value) {
+    fn ret(&mut self, v: &'ll Value) {
         self.count_insn("ret");
         unsafe {
             llvm::LLVMBuildRet(self.llbuilder, v);
         }
     }
 
-    fn br(&self, dest: &'ll BasicBlock) {
+    fn br(&mut self, dest: &'ll BasicBlock) {
         self.count_insn("br");
         unsafe {
             llvm::LLVMBuildBr(self.llbuilder, dest);
@@ -162,7 +162,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
     }
 
     fn cond_br(
-        &self,
+        &mut self,
         cond: &'ll Value,
         then_llbb: &'ll BasicBlock,
         else_llbb: &'ll BasicBlock,
@@ -446,7 +446,7 @@ impl BuilderMethods<'a, 'll, 'tcx>
     }
 
     fn alloca(&self, ty: &'ll Type, name: &str, align: Align) -> &'ll Value {
-        let bx = Builder::with_cx(self.cx);
+        let mut bx = Builder::with_cx(self.cx);
         bx.position_at_start(unsafe {
             llvm::LLVMGetFirstBasicBlock(self.llfn())
         });

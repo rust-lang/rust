@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! # Note
-//!
-//! This API is completely unstable and subject to change.
-
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
@@ -27,6 +23,10 @@
 #![allow(unused_attributes)]
 #![allow(dead_code)]
 #![feature(quote)]
+
+//! This crate contains codegen code that is used by all codegen backends (LLVM and others).
+//! The backend-agnostic functions of this crate use functions defined in various traits that
+//! have to be implemented by each backends.
 
 #[macro_use] extern crate bitflags;
 #[macro_use] extern crate log;

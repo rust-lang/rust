@@ -535,7 +535,7 @@ pub fn maybe_create_entry_wrapper<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a,
         cx.set_frame_pointer_elimination(llfn);
         cx.apply_target_cpu_attr(llfn);
 
-        let bx = Bx::new_block(&cx, llfn, "top");
+        let mut bx = Bx::new_block(&cx, llfn, "top");
 
         bx.insert_reference_to_gdb_debug_scripts_section_global();
 
@@ -571,7 +571,7 @@ pub const CODEGEN_WORK_PACKAGE_KIND: time_graph::WorkPackageKind =
     time_graph::WorkPackageKind(&["#DE9597", "#FED1D3", "#FDC5C7", "#B46668", "#88494B"]);
 
 
-pub fn codegen_crate<B : BackendMethods>(
+pub fn codegen_crate<B : ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'ll, 'tcx, 'tcx>,
     rx: mpsc::Receiver<Box<dyn Any + Send>>

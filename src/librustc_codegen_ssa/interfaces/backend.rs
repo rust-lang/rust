@@ -11,6 +11,7 @@
 use super::CodegenObject;
 use {ModuleCodegen, CachedModuleCodegen};
 use rustc::session::Session;
+use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::allocator::AllocatorKind;
 use rustc::ty::TyCtxt;
@@ -27,7 +28,7 @@ pub trait Backend<'ll> {
     type Context;
 }
 
-pub trait BackendMethods {
+pub trait ExtraBackendMethods : CodegenBackend {
     type Metadata;
     type OngoingCodegen;
 

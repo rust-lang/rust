@@ -33,7 +33,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
 {
     pub fn codegen_rvalue<Bx: BuilderMethods<'a, 'll, 'tcx, CodegenCx=Cx>>(
         &mut self,
-        bx: Bx,
+        mut bx: Bx,
         dest: PlaceRef<'tcx, Cx::Value>,
         rvalue: &mir::Rvalue<'tcx>
     ) -> Bx {
@@ -124,8 +124,8 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
                 let count = bx.cx().const_usize(count);
                 let end = dest.project_index(&bx, count).llval;
 
-                let header_bx = bx.build_sibling_block("repeat_loop_header");
-                let body_bx = bx.build_sibling_block("repeat_loop_body");
+                let mut header_bx = bx.build_sibling_block("repeat_loop_header");
+                let mut body_bx = bx.build_sibling_block("repeat_loop_body");
                 let next_bx = bx.build_sibling_block("repeat_loop_next");
 
                 bx.br(header_bx.llbb());

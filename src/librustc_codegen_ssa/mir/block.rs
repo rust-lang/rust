@@ -102,7 +102,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
         };
 
         let funclet_br =
-            |this: &mut Self, bx: &Bx, target: mir::BasicBlock| {
+            |this: &mut Self, bx: &mut Bx, target: mir::BasicBlock| {
                 let (lltarget, is_cleanupret) = lltarget(this, target);
                 if is_cleanupret {
                     // micro-optimization: generate a `ret` rather than a jump
@@ -115,7 +115,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
 
         let do_call = |
             this: &mut Self,
-            bx: &Bx,
+            bx: &mut Bx,
             fn_ty: FnType<'tcx, Ty<'tcx>>,
             fn_ptr: Cx::Value,
             llargs: &[Cx::Value],
@@ -191,7 +191,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
             }
 
             mir::TerminatorKind::Goto { target } => {
-                funclet_br(self, &bx, target);
+                funclet_br(self, &mut bx, target);
             }
 
             mir::TerminatorKind::SwitchInt { ref discr, switch_ty, ref values, ref targets } => {
@@ -293,7 +293,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
 
                 if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
                     // we don't actually need to drop anything.
-                    funclet_br(self, &bx, target);
+                    funclet_br(self, &mut bx, target);
                     return
                 }
 
@@ -324,7 +324,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
                          bx.cx().fn_type_of_instance(&drop_fn))
                     }
                 };
-                do_call(self, &bx, fn_ty, drop_fn, args,
+                do_call(self, &mut bx, fn_ty, drop_fn, args,
                         Some((ReturnDest::Nothing, target)),
                         unwind);
             }
@@ -348,7 +348,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
 
                 // Don't codegen the panic block if success if known.
                 if const_cond == Some(expected) {
-                    funclet_br(self, &bx, target);
+                    funclet_br(self, &mut bx, target);
                     return;
                 }
 
@@ -419,7 +419,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
                 let llfn = bx.cx().get_fn(instance);
 
                 // Codegen the actual panic invoke/call.
-                do_call(self, &bx, fn_ty, llfn, &args, None, cleanup);
+                do_call(self, &mut bx, fn_ty, llfn, &args, None, cleanup);
             }
 
             mir::TerminatorKind::DropAndReplace { .. } => {
@@ -469,7 +469,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
                     if let Some(destination_ref) = destination.as_ref() {
                         let &(ref dest, target) = destination_ref;
                         self.codegen_transmute(&bx, &args[0], dest);
-                        funclet_br(self, &bx, target);
+                        funclet_br(self, &mut bx, target);
                     } else {
                         // If we are trying to transmute to an uninhabited type,
                         // it is likely there is no allotted destination. In fact,
@@ -496,7 +496,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
                     Some(ty::InstanceDef::DropGlue(_, None)) => {
                         // empty drop glue - a nop.
                         let &(_, target) = destination.as_ref().unwrap();
-                        funclet_br(self, &bx, target);
+                        funclet_br(self, &mut bx, target);
                         return;
                     }
                     _ => bx.cx().new_fn_type(sig, &extra_args)
@@ -542,7 +542,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
                     // Codegen the actual panic invoke/call.
                     do_call(
                         self,
-                        &bx,
+                        &mut bx,
                         fn_ty,
                         llfn,
                         &[msg_file_line_col],
@@ -640,7 +640,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
                     }
 
                     if let Some((_, target)) = *destination {
-                        funclet_br(self, &bx, target);
+                        funclet_br(self, &mut bx, target);
                     } else {
                         bx.unreachable();
                     }
@@ -692,7 +692,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
                     _ => span_bug!(span, "no llfn for call"),
                 };
 
-                do_call(self, &bx, fn_ty, fn_ptr, &llargs,
+                do_call(self, &mut bx, fn_ty, fn_ptr, &llargs,
                         destination.as_ref().map(|&(_, target)| (ret_dest, target)),
                         cleanup);
             }
@@ -864,7 +864,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
             span_bug!(self.mir.span, "landing pad was not inserted?")
         }
 
-        let bx : Bx = self.new_block("cleanup");
+        let mut bx : Bx = self.new_block("cleanup");
 
         let llpersonality = self.cx.eh_personality();
         let llretty = self.landing_pad_type();
@@ -903,7 +903,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
         &self,
         bb: mir::BasicBlock
     ) -> Bx {
-        let bx = Bx::with_cx(self.cx);
+        let mut bx = Bx::with_cx(self.cx);
         bx.position_at_end(self.blocks[bb]);
         bx
     }
