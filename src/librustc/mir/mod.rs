@@ -12,7 +12,6 @@
 //!
 //! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/mir/index.html
 
-use graphviz::IntoCow;
 use hir::def::CtorKind;
 use hir::def_id::DefId;
 use hir::{self, HirId, InlineAsm};
@@ -327,22 +326,20 @@ impl<'tcx> Mir<'tcx> {
         if idx < stmts.len() {
             &stmts[idx].source_info
         } else {
-            assert!(idx == stmts.len());
+            assert_eq!(idx, stmts.len());
             &block.terminator().source_info
         }
     }
 
     /// Check if `sub` is a sub scope of `sup`
     pub fn is_sub_scope(&self, mut sub: SourceScope, sup: SourceScope) -> bool {
-        loop {
-            if sub == sup {
-                return true;
-            }
+        while sub != sup {
             match self.source_scopes[sub].parent_scope {
                 None => return false,
                 Some(p) => sub = p,
             }
         }
+        true
     }
 
     /// Return the return type, it always return first element from `local_decls` array
@@ -526,9 +523,7 @@ impl BorrowKind {
     pub fn allows_two_phase_borrow(&self) -> bool {
         match *self {
             BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => false,
-            BorrowKind::Mut {
-                allow_two_phase_borrow,
-            } => allow_two_phase_borrow,
+            BorrowKind::Mut { allow_two_phase_borrow } => allow_two_phase_borrow,
         }
     }
 }
@@ -1574,42 +1569,42 @@ impl<'tcx> TerminatorKind<'tcx> {
                         };
                         fmt_const_val(&mut s, &c).unwrap();
                         s.into()
-                    }).chain(iter::once(String::from("otherwise").into()))
+                    }).chain(iter::once("otherwise".into()))
                     .collect()
             }
             Call {
                 destination: Some(_),
                 cleanup: Some(_),
                 ..
-            } => vec!["return".into_cow(), "unwind".into_cow()],
+            } => vec!["return".into(), "unwind".into()],
             Call {
                 destination: Some(_),
                 cleanup: None,
                 ..
-            } => vec!["return".into_cow()],
+            } => vec!["return".into()],
             Call {
                 destination: None,
                 cleanup: Some(_),
                 ..
-            } => vec!["unwind".into_cow()],
+            } => vec!["unwind".into()],
             Call {
                 destination: None,
                 cleanup: None,
                 ..
             } => vec![],
-            Yield { drop: Some(_), .. } => vec!["resume".into_cow(), "drop".into_cow()],
-            Yield { drop: None, .. } => vec!["resume".into_cow()],
+            Yield { drop: Some(_), .. } => vec!["resume".into(), "drop".into()],
+            Yield { drop: None, .. } => vec!["resume".into()],
             DropAndReplace { unwind: None, .. } | Drop { unwind: None, .. } => {
-                vec!["return".into_cow()]
+                vec!["return".into()]
             }
             DropAndReplace {
                 unwind: Some(_), ..
             }
             | Drop {
                 unwind: Some(_), ..
-            } => vec!["return".into_cow(), "unwind".into_cow()],
+            } => vec!["return".into(), "unwind".into()],
             Assert { cleanup: None, .. } => vec!["".into()],
-            Assert { .. } => vec!["success".into_cow(), "unwind".into_cow()],
+            Assert { .. } => vec!["success".into(), "unwind".into()],
             FalseEdges {
                 ref imaginary_targets,
                 ..
