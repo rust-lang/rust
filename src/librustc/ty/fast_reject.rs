@@ -103,6 +103,7 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::FnPtr(ref f) => {
             Some(FunctionSimplifiedType(f.skip_binder().inputs().len()))
         }
+        ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
         ty::Projection(_) | ty::Param(_) => {
             if can_simplify_params {
                 // In normalized types, projections don't unify with

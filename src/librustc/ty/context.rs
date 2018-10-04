@@ -2234,7 +2234,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             self,
             Adt, Array, Slice, RawPtr, Ref, FnDef, FnPtr,
             Generator, GeneratorWitness, Dynamic, Closure, Tuple,
-            Param, Infer, Projection, Opaque, Foreign);
+            Param, Infer, UnnormalizedProjection, Projection, Opaque, Foreign);
 
         println!("Substs interner: #{}", self.interners.substs.borrow().len());
         println!("Region interner: #{}", self.interners.region.borrow().len());

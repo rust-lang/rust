@@ -204,5 +204,11 @@ error: there is no argument named `foo`
 LL |         {foo}
    |         ^^^^^
 
-error: aborting due to 27 previous errors
+error: invalid format string: expected `'}'`, found `'t'`
+  --> $DIR/ifmt-bad-arg.rs:85:1
+   |
+LL | tenth number: {}",
+   | ^ expected `}` in format string
+
+error: aborting due to 28 previous errors
 

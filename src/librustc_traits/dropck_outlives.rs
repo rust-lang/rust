@@ -272,6 +272,8 @@ fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
             overflows: vec![],
         }),
 
+        ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
+
         ty::Infer(..) | ty::Error => {
             // By the time this code runs, all type variables ought to
             // be fully resolved.

@@ -253,5 +253,7 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) ->
         | ty::Opaque(..)
         | ty::Infer(_)
         | ty::Generator(..) => false,
+
+        ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
     }
 }

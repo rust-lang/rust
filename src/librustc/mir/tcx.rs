@@ -87,8 +87,8 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
                         assert!(index < adt_def.variants.len());
                         assert_eq!(adt_def, adt_def1);
                         PlaceTy::Downcast { adt_def,
-                                             substs,
-                                             variant_index: index }
+                                            substs,
+                                            variant_index: index }
                     }
                     _ => {
                         bug!("cannot downcast non-ADT type: `{:?}`", self)
@@ -151,7 +151,7 @@ impl<'tcx> Place<'tcx> {
                     }
                 },
                 _ => None,
-            }
+            }
             _ => None,
         }
     }
@@ -255,9 +255,9 @@ impl<'tcx> Operand<'tcx> {
 
 impl<'tcx> BinOp {
       pub fn ty<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                    lhs_ty: Ty<'tcx>,
-                    rhs_ty: Ty<'tcx>)
-                    -> Ty<'tcx> {
+                          lhs_ty: Ty<'tcx>,
+                          rhs_ty: Ty<'tcx>)
+                          -> Ty<'tcx> {
         // FIXME: handle SIMD correctly
         match self {
             &BinOp::Add | &BinOp::Sub | &BinOp::Mul | &BinOp::Div | &BinOp::Rem |
