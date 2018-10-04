@@ -160,8 +160,23 @@ define_queries! { <'tcx>
             DefId
         ) -> Result<DtorckConstraint<'tcx>, NoSolution>,
 
-        /// True if this is a const fn
-        [] fn is_const_fn: IsConstFn(DefId) -> bool,
+        /// True if this is a const fn, use the `is_const_fn` to know whether your crate actually
+        /// sees it as const fn (e.g. the const-fn-ness might be unstable and you might not have
+        /// the feature gate active)
+        ///
+        /// DO NOT CALL MANUALLY, it is only meant to cache the base data for the `is_const_fn`
+        /// function
+        [] fn is_const_fn_raw: IsConstFn(DefId) -> bool,
+
+
+        /// Returns true if calls to the function may be promoted
+        ///
+        /// This is either because the function is e.g. a tuple-struct or tuple-variant constructor,
+        /// or because it has the `#[rustc_promotable]` attribute. The attribute should be removed
+        /// in the future in favour of some form of check which figures out whether the function
+        /// does not inspect the bits of any of its arguments (so is essentially just a constructor
+        /// function)
+        [] fn is_promotable_const_fn: IsPromotableConstFn(DefId) -> bool,
 
         /// True if this is a foreign item (i.e., linked via `extern { ... }`).
         [] fn is_foreign_item: IsForeignItem(DefId) -> bool,

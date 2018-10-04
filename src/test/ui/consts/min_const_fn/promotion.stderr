@@ -1,0 +1,68 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/promotion.rs:13:27
+   |
+LL |     let x: &'static () = &foo1(); //~ ERROR does not live long enough
+   |                           ^^^^^^ temporary value does not live long enough
+...
+LL | }
+   | - temporary value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/promotion.rs:14:28
+   |
+LL |     let y: &'static i32 = &foo2(42); //~ ERROR does not live long enough
+   |                            ^^^^^^^^ temporary value does not live long enough
+...
+LL | }
+   | - temporary value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/promotion.rs:15:28
+   |
+LL |     let z: &'static i32 = &foo3(); //~ ERROR does not live long enough
+   |                            ^^^^^^ temporary value does not live long enough
+...
+LL | }
+   | - temporary value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/promotion.rs:16:34
+   |
+LL |     let a: &'static Cell<i32> = &foo4();  //~ ERROR does not live long enough
+   |                                  ^^^^^^ temporary value does not live long enough
+...
+LL | }
+   | - temporary value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/promotion.rs:17:42
+   |
+LL |     let a: &'static Option<Cell<i32>> = &foo5(); //~ ERROR does not live long enough
+   |                                          ^^^^^^ temporary value does not live long enough
+LL |     let a: &'static Option<Cell<i32>> = &foo6(); //~ ERROR does not live long enough
+LL | }
+   | - temporary value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/promotion.rs:18:42
+   |
+LL |     let a: &'static Option<Cell<i32>> = &foo6(); //~ ERROR does not live long enough
+   |                                          ^^^^^^ temporary value does not live long enough
+LL | }
+   | - temporary value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

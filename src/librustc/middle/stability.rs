@@ -441,6 +441,7 @@ impl<'a, 'tcx> Index<'tcx> {
                     feature: Symbol::intern("rustc_private"),
                     rustc_depr: None,
                     const_stability: None,
+                    promotable: false,
                 });
                 annotator.parent_stab = Some(stability);
             }

@@ -31,5 +31,5 @@ fn a() {
 fn main() {
     let _: &'static u32 = &meh(); //~ ERROR does not live long enough
     let x: &'static _ = &std::time::Duration::from_millis(42).subsec_millis();
-    //~^ does not live long enough
+    //~^ ERROR does not live long enough
 }
