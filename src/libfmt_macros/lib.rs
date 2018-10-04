@@ -288,7 +288,7 @@ impl<'a> Parser<'a> {
                 self.cur.next();
                 Some(pos)
             } else {
-                let pos = pos + padding + 1;
+                let pos = pos + raw + 1;
                 self.err(format!("expected `{:?}`, found `{:?}`", c, maybe),
                          format!("expected `{}`", c),
                          pos,

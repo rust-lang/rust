@@ -71,4 +71,18 @@ fn main() {
 
     "##);
     //~^^^ ERROR: there is no argument named `foo`
+
+    // bad syntax in format string with multiple newlines, #53836
+    format!("first number: {}
+second number: {}
+third number: {}
+fourth number: {}
+fifth number: {}
+sixth number: {}
+seventh number: {}
+eighth number: {}
+ninth number: {
+tenth number: {}",
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+    //~^^ ERROR: invalid format string
 }
