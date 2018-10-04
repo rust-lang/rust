@@ -1,0 +1,8 @@
+warning: function is never used: `iter`
+  --> $DIR/issue-49556.rs:12:1
+   |
+LL | fn iter<'a>(data: &'a [usize]) -> impl Iterator<Item = usize> + 'a {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: #[warn(dead_code)] on by default
+

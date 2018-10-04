@@ -1,0 +1,14 @@
+warning: struct is never constructed: `Foo`
+  --> $DIR/issue-42479.rs:15:1
+   |
+LL | struct Foo {
+   | ^^^^^^^^^^
+   |
+   = note: #[warn(dead_code)] on by default
+
+warning: method is never used: `inside`
+  --> $DIR/issue-42479.rs:20:5
+   |
+LL |     fn inside(&self) -> impl Iterator<Item = &i32> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+

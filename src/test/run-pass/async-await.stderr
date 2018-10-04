@@ -1,0 +1,14 @@
+warning: struct is never constructed: `Foo`
+  --> $DIR/async-await.rs:122:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^^
+   |
+   = note: #[warn(dead_code)] on by default
+
+warning: method is never used: `async_method`
+  --> $DIR/async-await.rs:129:5
+   |
+LL |     async fn async_method(x: u8) -> u8 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
