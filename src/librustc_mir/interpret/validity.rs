@@ -419,6 +419,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         // Things can be aggregates and have scalar layout at the same time, and that
         // is very relevant for `NonNull` and similar structs: We need to validate them
         // at their scalar layout *before* descending into their fields.
+        // FIXME: We could avoid some redundant checks here. For newtypes wrapping
+        // scalars, we do the same check on every "level" (e.g. first we check
+        // MyNewtype and then the scalar in there).
         match dest.layout.abi {
             layout::Abi::Uninhabited =>
                 return validation_failure!("a value of an uninhabited type", path),
