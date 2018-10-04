@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// run-pass
+// compile-pass
 fn iter<'a>(data: &'a [usize]) -> impl Iterator<Item = usize> + 'a {
     data.iter()
         .map(
