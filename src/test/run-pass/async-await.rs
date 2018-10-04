@@ -170,6 +170,7 @@ fn main() {
         async_closure,
         async_fn,
         async_fn_with_internal_borrow,
+        Foo::async_method,
         |x| {
             async move {
                 unsafe { await!(unsafe_async_fn(x)) }
