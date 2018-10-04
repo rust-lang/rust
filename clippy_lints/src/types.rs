@@ -16,6 +16,7 @@ use std::borrow::Cow;
 use crate::syntax::ast::{FloatTy, IntTy, UintTy};
 use crate::syntax::source_map::Span;
 use crate::syntax::errors::DiagnosticBuilder;
+use crate::rustc_target::spec::abi::Abi;
 use crate::utils::{comparisons, differing_macro_contexts, higher, in_constant, in_macro, last_path_segment, match_def_path, match_path,
             match_type, multispan_sugg, opt_def_id, same_tys, snippet, snippet_opt, span_help_and_lint, span_lint,
             span_lint_and_sugg, span_lint_and_then, clip, unsext, sext, int_bits};
@@ -1224,7 +1225,7 @@ impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
             TyKind::Path(..) | TyKind::Slice(..) | TyKind::Tup(..) | TyKind::Array(..) => (10 * self.nest, 1),
 
             // function types bring a lot of overhead
-            TyKind::BareFn(..) => (50 * self.nest, 1),
+            TyKind::BareFn(ref bare) if bare.abi == Abi::Rust => (50 * self.nest, 1),
 
             TyKind::TraitObject(ref param_bounds, _) => {
                 let has_lifetime_parameters = param_bounds
