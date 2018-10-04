@@ -150,6 +150,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 }
                 self.write_scalar(val, dest)?;
             }
+            "init" => {
+                self.force_allocation(dest)?;
+            }
             "transmute" => {
                 // Go through an allocation, to make sure the completely different layouts
                 // do not pose a problem.  (When the user transmutes through a union,

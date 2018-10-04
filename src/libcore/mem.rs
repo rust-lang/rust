@@ -1039,6 +1039,14 @@ impl<T> MaybeUninit<T> {
     /// Note that dropping a `MaybeUninit` will never call `T`'s drop code.
     /// It is your responsibility to make sure `T` gets dropped if it got initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[cfg(not(stage0))]
+    pub const fn zeroed() -> MaybeUninit<T> {
+        MaybeUninit { value: unsafe { intrinsics::init() } }
+    }
+
+    #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[cfg(stage0)]
+    /// Ceci n'est pas la documentation
     pub fn zeroed() -> MaybeUninit<T> {
         let mut u = MaybeUninit::<T>::uninitialized();
         unsafe {
