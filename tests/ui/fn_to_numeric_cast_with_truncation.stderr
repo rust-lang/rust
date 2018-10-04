@@ -1,39 +1,39 @@
 error: casting function pointer `foo` to `i8`, which truncates the value
- --> $DIR/fn_to_numeric_cast_with_truncation.rs:9:13
-  |
-9 |     let _ = foo as i8;
-  |             ^^^^^^^^^ help: try: `foo as usize`
-  |
-  = note: `-D clippy::fn-to-numeric-cast-with-truncation` implied by `-D warnings`
-
-error: casting function pointer `foo` to `i16`, which truncates the value
   --> $DIR/fn_to_numeric_cast_with_truncation.rs:10:13
    |
-10 |     let _ = foo as i16;
+10 |     let _ = foo as i8;
+   |             ^^^^^^^^^ help: try: `foo as usize`
+   |
+   = note: `-D clippy::fn-to-numeric-cast-with-truncation` implied by `-D warnings`
+
+error: casting function pointer `foo` to `i16`, which truncates the value
+  --> $DIR/fn_to_numeric_cast_with_truncation.rs:11:13
+   |
+11 |     let _ = foo as i16;
    |             ^^^^^^^^^^ help: try: `foo as usize`
 
 error: casting function pointer `foo` to `i32`, which truncates the value
-  --> $DIR/fn_to_numeric_cast_with_truncation.rs:11:13
+  --> $DIR/fn_to_numeric_cast_with_truncation.rs:12:13
    |
-11 |     let _ = foo as i32;
+12 |     let _ = foo as i32;
    |             ^^^^^^^^^^ help: try: `foo as usize`
 
 error: casting function pointer `foo` to `u8`, which truncates the value
-  --> $DIR/fn_to_numeric_cast_with_truncation.rs:12:13
+  --> $DIR/fn_to_numeric_cast_with_truncation.rs:13:13
    |
-12 |     let _ = foo as u8;
+13 |     let _ = foo as u8;
    |             ^^^^^^^^^ help: try: `foo as usize`
 
 error: casting function pointer `foo` to `u16`, which truncates the value
-  --> $DIR/fn_to_numeric_cast_with_truncation.rs:13:13
+  --> $DIR/fn_to_numeric_cast_with_truncation.rs:14:13
    |
-13 |     let _ = foo as u16;
+14 |     let _ = foo as u16;
    |             ^^^^^^^^^^ help: try: `foo as usize`
 
 error: casting function pointer `foo` to `u32`, which truncates the value
-  --> $DIR/fn_to_numeric_cast_with_truncation.rs:14:13
+  --> $DIR/fn_to_numeric_cast_with_truncation.rs:15:13
    |
-14 |     let _ = foo as u32;
+15 |     let _ = foo as u32;
    |             ^^^^^^^^^^ help: try: `foo as usize`
 
 error: aborting due to 6 previous errors
