@@ -64,7 +64,7 @@ impl<'a> StringFormat<'a> {
 
     /// Like max_chars_with_indent but the indentation is not substracted.
     /// This allows to fit more graphemes from the string on a line when
-    /// SnippetState::Overflow.
+    /// SnippetState::EndWithLineFeed.
     fn max_chars_without_indent(&self) -> Option<usize> {
         Some(self.config.max_width().checked_sub(self.line_end.len())?)
     }
@@ -73,7 +73,8 @@ impl<'a> StringFormat<'a> {
 pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> {
     let max_chars_with_indent = fmt.max_chars_with_indent()?;
     let max_chars_without_indent = fmt.max_chars_without_indent()?;
-    let indent = fmt.shape.indent.to_string_with_newline(fmt.config);
+    let indent_with_newline = fmt.shape.indent.to_string_with_newline(fmt.config);
+    let indent_without_newline = fmt.shape.indent.to_string(fmt.config);
 
     // Strip line breaks.
     // With this regex applied, all remaining whitespaces are significant
@@ -95,6 +96,7 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
     // Snip a line at a time from `stripped_str` until it is used up. Push the snippet
     // onto result.
     let mut cur_max_chars = max_chars_with_indent;
+    let is_overflow_allowed = is_whitespace(fmt.line_start);
     loop {
         // All the input starting at cur_start fits on the current line
         if graphemes.len() - cur_start <= cur_max_chars {
@@ -112,14 +114,21 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
             SnippetState::LineEnd(line, len) => {
                 result.push_str(&line);
                 result.push_str(fmt.line_end);
-                result.push_str(&indent);
+                result.push_str(&indent_with_newline);
                 result.push_str(fmt.line_start);
                 cur_max_chars = max_chars_with_indent;
                 cur_start += len;
             }
-            SnippetState::Overflow(line, len) => {
+            SnippetState::EndWithLineFeed(line, len) => {
                 result.push_str(&line);
-                cur_max_chars = max_chars_without_indent;
+                if is_overflow_allowed {
+                    // the next line can benefit from the full width
+                    cur_max_chars = max_chars_without_indent;
+                } else {
+                    result.push_str(&indent_without_newline);
+                    result.push_str(fmt.line_start);
+                    cur_max_chars = max_chars_with_indent;
+                }
                 cur_start += len;
             }
             SnippetState::EndOfInput(line) => {
@@ -141,14 +150,19 @@ enum SnippetState {
     EndOfInput(String),
     /// The input could be broken and the returned snippet should be ended with a
     /// `[StringFormat::line_end]`. The next snippet needs to be indented.
+    ///
     /// The returned string is the line to print out and the number is the length that got read in
     /// the text being rewritten. That length may be greater than the returned string if trailing
     /// whitespaces got trimmed.
     LineEnd(String, usize),
-    /// The input could be broken but the returned snippet should not be ended with a
-    /// `[StringFormat::line_end]` because the whitespace is significant. Therefore, the next
-    /// snippet should not be indented.
-    Overflow(String, usize),
+    /// The input could be broken but a newline is present that cannot be trimmed. The next snippet
+    /// to be rewritten *could* use more width than what is specified by the given shape. For
+    /// example with a multiline string, the next snippet does not need to be indented, allowing
+    /// more characters to be fit within a line.
+    ///
+    /// The returned string is the line to print out and the number is the length that got read in
+    /// the text being rewritten.
+    EndWithLineFeed(String, usize),
 }
 
 /// Break the input string at a boundary character around the offset `max_chars`. A boundary
@@ -170,7 +184,7 @@ fn break_string(max_chars: usize, trim_end: bool, input: &[&str]) -> SnippetStat
         for (i, grapheme) in input[0..=index].iter().enumerate() {
             if is_line_feed(grapheme) {
                 if i < index_minus_ws || !trim_end {
-                    return SnippetState::Overflow(input[0..=i].join("").to_string(), i + 1);
+                    return SnippetState::EndWithLineFeed(input[0..=i].join("").to_string(), i + 1);
                 }
                 break;
             }
@@ -179,7 +193,7 @@ fn break_string(max_chars: usize, trim_end: bool, input: &[&str]) -> SnippetStat
         let mut index_plus_ws = index;
         for (i, grapheme) in input[index + 1..].iter().enumerate() {
             if !trim_end && is_line_feed(grapheme) {
-                return SnippetState::Overflow(
+                return SnippetState::EndWithLineFeed(
                     input[0..=index + 1 + i].join("").to_string(),
                     index + 2 + i,
                 );
@@ -314,11 +328,11 @@ mod test {
         let graphemes = UnicodeSegmentation::graphemes(&*string, false).collect::<Vec<&str>>();
         assert_eq!(
             break_string(15, false, &graphemes[..]),
-            SnippetState::Overflow("Neque in sem.      \n".to_string(), 20)
+            SnippetState::EndWithLineFeed("Neque in sem.      \n".to_string(), 20)
         );
         assert_eq!(
             break_string(25, false, &graphemes[..]),
-            SnippetState::Overflow("Neque in sem.      \n".to_string(), 20)
+            SnippetState::EndWithLineFeed("Neque in sem.      \n".to_string(), 20)
         );
         // if `StringFormat::line_end` is true, then the line feed does not matter anymore
         assert_eq!(
@@ -352,11 +366,11 @@ mod test {
         let graphemes = UnicodeSegmentation::graphemes(&*string, false).collect::<Vec<&str>>();
         assert_eq!(
             break_string(25, false, &graphemes[..]),
-            SnippetState::Overflow("Nulla\n".to_string(), 6)
+            SnippetState::EndWithLineFeed("Nulla\n".to_string(), 6)
         );
         assert_eq!(
             break_string(25, true, &graphemes[..]),
-            SnippetState::Overflow("Nulla\n".to_string(), 6)
+            SnippetState::EndWithLineFeed("Nulla\n".to_string(), 6)
         );
 
         let mut config: Config = Default::default();
@@ -382,5 +396,51 @@ mod test {
         fmt.trim_end = false; // default value of trim_end
         let rewritten_string = rewrite_string(string, &fmt);
         assert_eq!(rewritten_string, Some("\"Vivamus id mi.  \"".to_string()));
+    }
+
+    #[test]
+    fn overflow_in_non_string_content() {
+        let comment = "Aenean metus.\nVestibulum ac lacus. Vivamus porttitor";
+        let config: Config = Default::default();
+        let fmt = StringFormat {
+            opener: "",
+            closer: "",
+            line_start: "// ",
+            line_end: "",
+            shape: Shape::legacy(30, Indent::from_width(&config, 8)),
+            trim_end: true,
+            config: &config,
+        };
+
+        assert_eq!(
+            rewrite_string(comment, &fmt),
+            Some(
+                "Aenean metus.\n        // Vestibulum ac lacus. Vivamus\n        // porttitor"
+                    .to_string()
+            )
+        );
+    }
+
+    #[test]
+    fn overflow_in_non_string_content_with_line_end() {
+        let comment = "Aenean metus.\nVestibulum ac lacus. Vivamus porttitor";
+        let config: Config = Default::default();
+        let fmt = StringFormat {
+            opener: "",
+            closer: "",
+            line_start: "// ",
+            line_end: "@",
+            shape: Shape::legacy(30, Indent::from_width(&config, 8)),
+            trim_end: true,
+            config: &config,
+        };
+
+        assert_eq!(
+            rewrite_string(comment, &fmt),
+            Some(
+                "Aenean metus.\n        // Vestibulum ac lacus. Vivamus@\n        // porttitor"
+                    .to_string()
+            )
+        );
     }
 }
