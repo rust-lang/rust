@@ -332,6 +332,8 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             let operand = Operand::Copy(promoted_place(ty, span));
                             mem::replace(&mut args[index], operand)
                         }
+                        // already promoted out
+                        TerminatorKind::Goto { .. } => return,
                         _ => bug!()
                     }
                 }

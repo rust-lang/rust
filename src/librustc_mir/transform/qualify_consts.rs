@@ -812,7 +812,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
             let fn_ty = func.ty(self.mir, self.tcx);
             let mut callee_def_id = None;
-            let (mut is_shuffle, mut is_const_fn) = (false, false);
+            let mut is_shuffle = false;
+            let mut is_const_fn = false;
+            let mut is_promotable_const_fn = false;
             if let ty::FnDef(def_id, _) = fn_ty.sty {
                 callee_def_id = Some(def_id);
                 match self.tcx.fn_sig(def_id).abi() {
@@ -872,6 +874,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             // never promote const fn calls of
                             // functions without #[rustc_promotable]
                             if self.tcx.is_promotable_const_fn(def_id) {
+                                is_const_fn = true;
+                                is_promotable_const_fn = true;
+                            } else if self.tcx.is_const_fn(def_id) {
                                 is_const_fn = true;
                             }
                         } else {
@@ -974,7 +979,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     if !constant_arguments.contains(&i) {
                         return
                     }
-                    if this.qualif.is_empty() {
+                    // if the argument requires a constant, we care about constness, not
+                    // promotability
+                    if (this.qualif - Qualif::NOT_PROMOTABLE).is_empty() {
                         this.promotion_candidates.push(candidate);
                     } else {
                         this.tcx.sess.span_err(this.span,
@@ -985,7 +992,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             }
 
             // non-const fn calls.
-            if !is_const_fn {
+            if is_const_fn {
+                if !is_promotable_const_fn && self.mode == Mode::Fn {
+                    self.qualif = Qualif::NOT_PROMOTABLE;
+                }
+            } else {
                 self.qualif = Qualif::NOT_CONST;
                 if self.mode != Mode::Fn {
                     self.tcx.sess.delay_span_bug(
@@ -1003,7 +1014,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     // Be conservative about the returned value of a const fn.
                     let tcx = self.tcx;
                     let ty = dest.ty(self.mir, tcx).to_ty(tcx);
-                    self.qualif = Qualif::empty();
                     self.add_type(ty);
                 }
                 self.assign(dest, location);
