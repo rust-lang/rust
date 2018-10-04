@@ -1,6 +1,6 @@
 #![feature(tool_lints)]
 
-#[warn(clippy::fn_to_numeric_cast)]
+#![warn(clippy::fn_to_numeric_cast)]
 
 fn foo() -> String { String::new() }
 

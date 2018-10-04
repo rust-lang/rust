@@ -746,6 +746,32 @@ declare_clippy_lint! {
     "casting a function pointer to a numeric type other than usize"
 }
 
+/// **What it does:** Checks for casts of a function pointer to a numeric type not wide enough to
+/// store address.
+///
+/// **Why is this bad?**
+/// Such a cast discards some bits of the function's address. If this is intended, it would be more
+/// clearly expressed by casting to usize first, then casting the usize to the intended type (with
+/// a comment) to perform the truncation.
+///
+/// **Example**
+///
+/// ```rust
+/// // Bad
+/// fn fn1() -> i16 { 1 };
+/// let _ = fn1 as i32;
+///
+/// // Better: Cast to usize first, then comment with the reason for the truncation
+/// fn fn2() -> i16 { 1 };
+/// let fn_ptr = fn2 as usize;
+/// let fn_ptr_truncated = fn_ptr as i32;
+/// ```
+declare_clippy_lint! {
+    pub FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
+    style,
+    "casting a function pointer to a numeric type not wide enough to store the address"
+}
+
 /// Returns the size in bits of an integral type.
 /// Will return 0 if the type is not an int or uint variant
 fn int_ty_to_nbits(typ: Ty<'_>, tcx: TyCtxt<'_, '_, '_>) -> u64 {
@@ -1054,7 +1080,19 @@ fn lint_fn_to_numeric_cast(cx: &LateContext<'_, '_>, expr: &Expr, cast_expr: &Ex
     match cast_from.sty {
         ty::FnDef(..) | ty::FnPtr(_) => {
             let from_snippet = snippet(cx, cast_expr.span, "x");
-            if cast_to.sty != ty::Uint(UintTy::Usize) {
+
+            let to_nbits = int_ty_to_nbits(cast_to, cx.tcx);
+            if to_nbits < cx.tcx.data_layout.pointer_size.bits() {
+                span_lint_and_sugg(
+                    cx,
+                    FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
+                    expr.span,
+                    &format!("casting function pointer `{}` to `{}`, which truncates the value", from_snippet, cast_to),
+                    "try",
+                    format!("{} as usize", from_snippet)
+                );
+
+            } else if cast_to.sty != ty::Uint(UintTy::Usize) {
                 span_lint_and_sugg(
                     cx,
                     FN_TO_NUMERIC_CAST,
