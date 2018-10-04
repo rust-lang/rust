@@ -4,7 +4,6 @@ use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use crate::rustc::ty;
 use crate::syntax::ast::LitKind;
-use crate::syntax_pos::Span;
 use crate::utils::paths;
 use crate::utils::{in_macro, is_expn_of, last_path_segment, match_def_path, match_type, opt_def_id, resolve_node, snippet, span_lint_and_then, walk_ptrs_ty};
 use crate::rustc_errors::Applicability;
@@ -60,7 +59,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         if let ExprKind::AddrOf(_, ref format_arg) = format_arg.node;
                         then {
                             let (message, sugg) = if_chain! {
-                                if let ExprKind::MethodCall(ref path, ref span, ref expr) = format_arg.node;
+                                if let ExprKind::MethodCall(ref path, _, _) = format_arg.node;
                                 if path.ident.as_interned_str() == "to_string";
                                 then {
                                     ("`to_string()` is enough",
