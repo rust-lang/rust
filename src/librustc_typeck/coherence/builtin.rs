@@ -32,7 +32,8 @@ pub fn check_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trait_def_id: DefId) {
         .check(tcx.lang_items().drop_trait(), visit_implementation_of_drop)
         .check(tcx.lang_items().copy_trait(), visit_implementation_of_copy)
         .check(tcx.lang_items().coerce_unsized_trait(), visit_implementation_of_coerce_unsized)
-        .check(tcx.lang_items().coerce_sized_trait(), visit_implementation_of_coerce_sized);
+        .check(tcx.lang_items().dispatch_from_dyn_trait(),
+            visit_implementation_of_dispatch_from_dyn);
 }
 
 struct Checker<'a, 'tcx: 'a> {
@@ -162,11 +163,14 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn visit_implementation_of_coerce_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did: DefId) {
-    debug!("visit_implementation_of_coerce_sized: impl_did={:?}",
+fn visit_implementation_of_dispatch_from_dyn<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    impl_did: DefId,
+) {
+    debug!("visit_implementation_of_dispatch_from_dyn: impl_did={:?}",
            impl_did);
     if impl_did.is_local() {
-        let coerce_sized_trait = tcx.lang_items().coerce_sized_trait().unwrap();
+        let dispatch_from_dyn_trait = tcx.lang_items().dispatch_from_dyn_trait().unwrap();
 
         let impl_node_id = tcx.hir.as_local_node_id(impl_did).unwrap();
         let span = tcx.hir.span(impl_node_id);
@@ -175,12 +179,12 @@ fn visit_implementation_of_coerce_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, i
         assert!(!source.has_escaping_regions());
         let target = {
             let trait_ref = tcx.impl_trait_ref(impl_did).unwrap();
-            assert_eq!(trait_ref.def_id, coerce_sized_trait);
+            assert_eq!(trait_ref.def_id, dispatch_from_dyn_trait);
 
             trait_ref.substs.type_at(1)
         };
 
-        debug!("visit_implementation_of_coerce_sized: {:?} -> {:?}",
+        debug!("visit_implementation_of_dispatch_from_dyn: {:?} -> {:?}",
             source,
             target);
 
@@ -209,7 +213,7 @@ fn visit_implementation_of_coerce_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, i
 
                         create_err(
                             &format!(
-                                "the trait `CoerceSized` may only be implemented \
+                                "the trait `DispatchFromDyn` may only be implemented \
                                 for a coercion between structures with the same \
                                 definition; expected {}, found {}",
                                 source_path, target_path,
@@ -232,9 +236,9 @@ fn visit_implementation_of_coerce_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, i
                         if let Ok(ok) = infcx.at(&cause, param_env).eq(ty_a, ty_b) {
                             if ok.obligations.is_empty() {
                                 create_err(
-                                    "the trait `CoerceSized` may only be implemented for structs \
-                                     containing the field being coerced, `PhantomData` fields, \
-                                     and nothing else"
+                                    "the trait `DispatchFromDyn` may only be implemented \
+                                     for structs containing the field being coerced, \
+                                     `PhantomData` fields, and nothing else"
                                 ).note(
                                     &format!(
                                         "extra field `{}` of type `{}` is not allowed",
@@ -251,15 +255,15 @@ fn visit_implementation_of_coerce_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, i
 
                     if coerced_fields.is_empty() {
                         create_err(
-                            "the trait `CoerceSized` may only be implemented \
+                            "the trait `DispatchFromDyn` may only be implemented \
                             for a coercion between structures with a single field \
                             being coerced, none found"
                         ).emit();
                     } else if coerced_fields.len() > 1 {
                         create_err(
-                            "implementing the `CoerceSized` trait requires multiple coercions",
+                            "implementing the `DispatchFromDyn` trait requires multiple coercions",
                         ).note(
-                            "the trait `CoerceSized` may only be implemented \
+                            "the trait `DispatchFromDyn` may only be implemented \
                                 for a coercion between structures with a single field \
                                 being coerced"
                         ).note(
@@ -284,7 +288,7 @@ fn visit_implementation_of_coerce_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, i
                             let predicate = tcx.predicate_for_trait_def(
                                 param_env,
                                 cause.clone(),
-                                coerce_sized_trait,
+                                dispatch_from_dyn_trait,
                                 0,
                                 field.ty(tcx, substs_a),
                                 &[field.ty(tcx, substs_b).into()]
@@ -311,7 +315,7 @@ fn visit_implementation_of_coerce_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, i
                 }
                 _ => {
                     create_err(
-                        "the trait `CoerceSsized` may only be implemented \
+                        "the trait `DispatchFromDyn` may only be implemented \
                         for a coercion between structures"
                     ).emit();
                 }

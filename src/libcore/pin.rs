@@ -91,7 +91,7 @@
 
 use fmt;
 use marker::Sized;
-use ops::{Deref, DerefMut, CoerceUnsized, CoerceSized};
+use ops::{Deref, DerefMut, CoerceUnsized, DispatchFromDyn};
 
 #[doc(inline)]
 pub use marker::Unpin;
@@ -325,10 +325,9 @@ where
 {}
 
 #[unstable(feature = "pin", issue = "49150")]
-impl<'a, P, U> CoerceSized<Pin<P>> for Pin<U>
+impl<'a, P, U> DispatchFromDyn<Pin<U>> for Pin<P>
 where
-    P: CoerceUnsized<U>,
-    U: CoerceSized<P>,
+    P: DispatchFromDyn<U>,
 {}
 
 #[unstable(feature = "pin", issue = "49150")]

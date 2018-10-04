@@ -7,13 +7,12 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(arbitrary_self_types, unsize, coerce_unsized, coerce_sized)]
+#![feature(arbitrary_self_types, unsize, coerce_unsized, dispatch_from_dyn)]
 #![feature(rustc_attrs)]
 
 use std::{
-    ops::{Deref, CoerceUnsized, CoerceSized},
+    ops::{Deref, CoerceUnsized, DispatchFromDyn},
     marker::Unsize,
-    fmt::Debug,
 };
 
 struct Ptr<T: ?Sized>(Box<T>);
@@ -27,7 +26,7 @@ impl<T: ?Sized> Deref for Ptr<T> {
 }
 
 impl<T: Unsize<U> + ?Sized, U: ?Sized> CoerceUnsized<Ptr<U>> for Ptr<T> {}
-impl<T: Unsize<U> + ?Sized, U: ?Sized> CoerceSized<Ptr<T>> for Ptr<U> {}
+impl<T: Unsize<U> + ?Sized, U: ?Sized> DispatchFromDyn<Ptr<U>> for Ptr<T> {}
 
 struct Wrapper<T: ?Sized>(T);
 
@@ -40,12 +39,13 @@ impl<T: ?Sized> Deref for Wrapper<T> {
 }
 
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<Wrapper<U>> for Wrapper<T> {}
-impl<T: CoerceUnsized<U>, U: CoerceSized<T>> CoerceSized<Wrapper<T>> for Wrapper<U> {}
+impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<Wrapper<U>> for Wrapper<T> {}
 
 
 trait Trait {
-    // This method can't be called on trait objects, since the receiver would be unsized,
-    // but should not cause an object safety error
+    // This method isn't object-safe yet. Unsized by-value `self` is object-safe (but not callable
+    // without unsized_locals), but wrappers arond `Self` currently are not.
+    // FIXME (mikeyhew) uncomment this when unsized rvalues object-safety is implemented
     // fn wrapper(self: Wrapper<Self>) -> i32;
     fn ptr_wrapper(self: Ptr<Wrapper<Self>>) -> i32;
     fn wrapper_ptr(self: Wrapper<Ptr<Self>>) -> i32;
@@ -53,9 +53,6 @@ trait Trait {
 }
 
 impl Trait for i32 {
-    // fn wrapper(self: Wrapper<Self>) -> i32 {
-    //     *self
-    // }
     fn ptr_wrapper(self: Ptr<Wrapper<Self>>) -> i32 {
         **self
     }

@@ -3085,75 +3085,58 @@ struct.
 "##,
 
 E0378: r##"
-The `CoerceSized` trait currently can only be implemented for builtin pointer
-types and structs that are newtype wrappers around them — that is, the struct
-must have only one field (except for`PhantomData`), and that field must itself
-implement `CoerceSized`.
+The `DispatchFromDyn` trait currently can only be implemented for
+builtin pointer types and structs that are newtype wrappers around them
+— that is, the struct must have only one field (except for`PhantomData`),
+and that field must itself implement `DispatchFromDyn`.
 
 Examples:
 
 ```
-#![feature(coerce_sized, unsize)]
+#![feature(dispatch_from_dyn, unsize)]
 use std::{
     marker::Unsize,
-    ops::CoerceSized,
+    ops::DispatchFromDyn,
 };
 
 struct Ptr<T: ?Sized>(*const T);
 
-impl<T: ?Sized, U: ?Sized> CoerceUnsized<Ptr<U>> for Ptr<T>
-where
-    T: Unsize<U>,
-{}
-
-impl<T: ?Sized, U: ?Sized> CoerceSized<Ptr<T>> for Ptr<U>
+impl<T: ?Sized, U: ?Sized> DispatchFromDyn<Ptr<U>> for Ptr<T>
 where
     T: Unsize<U>,
 {}
 ```
 
 ```
-#![feature(coerce_unsized, coerce_sized)]
-use std::ops::{CoerceUnsized, CoerceSized};
+#![feature(dispatch_from_dyn)]
+use std::ops::DispatchFromDyn;
 
 struct Wrapper<T> {
     ptr: T,
     _phantom: PhantomData<()>,
 }
 
-impl<T, U> CoerceUnsized<Wrapper<U>> for Wrapper<T>
+impl<T, U> DispatchFromDyn<Wrapper<U>> for Wrapper<T>
 where
-    T: CoerceUnsized<U>,
-{}
-
-impl<T, U> CoerceSized<Wrapper<T>> for Wrapper<U>
-where
-    T: CoerceUnsized<U>,
-    U: CoerceSized<T>,
+    T: DispatchFromDyn<U>,
 {}
 ```
 
-Example of illegal CoerceSized implementation
+Example of illegal `DispatchFromDyn` implementation
 (illegal because of extra field)
 
 ```compile-fail,E0378
-#![feature(coerce_unsized, coerce_sized)]
-use std::ops::{CoerceUnsized, CoerceSized};
+#![feature(dispatch_from_dyn)]
+use std::ops::DispatchFromDyn;
 
-struct WrapperWithExtraField<T> {
+struct WrapperExtraField<T> {
     ptr: T,
     extra_stuff: i32,
 }
 
-impl<T, U> CoerceUnsized<WrapperWithExtraField<U>> for WrapperWithExtraField<T>
+impl<T, U> DispatchFromDyn<WrapperExtraField<U>> for WrapperExtraField<T>
 where
-    T: CoerceUnsized<U>,
-{}
-
-impl<T, U> CoerceSized<WrapperWithExtraField<T>> for WrapperWithExtraField<U>
-where
-    T: CoerceUnsized<U>,
-    U: CoerceSized<T>,
+    T: DispatchFromDyn<U>,
 {}
 ```
 "##,

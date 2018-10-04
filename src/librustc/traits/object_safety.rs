@@ -319,13 +319,12 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             &sig.map_bound(|sig| sig.inputs()[0]),
         );
 
-        // until `unsized_locals` is fully implemented, `self: Self` can't be coerced from
-        // `Self=dyn Trait` to `Self=T`. However, this is already considered object-safe. We allow
-        // it as a special case here.
-        // FIXME(mikeyhew) get rid of this `if` statement once `receiver_is_coercible` allows
+        // until `unsized_locals` is fully implemented, `self: Self` can't be dispatched on.
+        // However, this is already considered object-safe. We allow it as a special case here.
+        // FIXME(mikeyhew) get rid of this `if` statement once `receiver_is_dispatchable` allows
         // `Receiver: Unsize<Receiver[Self => dyn Trait]>`
         if receiver_ty != self.mk_self_type() {
-            if !self.receiver_is_coercible(method, receiver_ty) {
+            if !self.receiver_is_dispatchable(method, receiver_ty) {
                 return Some(MethodViolationCode::UncoercibleReceiver);
             }
         }
@@ -333,27 +332,29 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         None
     }
 
-    /// checks the method's receiver (the `self` argument) can be coerced from
-    /// a fat pointer, including the trait object vtable, to a thin pointer.
-    /// e.g. from `Rc<dyn Trait>` to `Rc<T>`, where `T` is the erased type of the underlying object.
-    /// More formally:
+    /// checks the method's receiver (the `self` argument) can be dispatched on when `Self` is a
+    /// trait object. We require that `DispatchableFromDyn` be implemented for the receiver type
+    /// in the following way:
     /// - let `Receiver` be the type of the `self` argument, i.e `Self`, `&Self`, `Rc<Self>`
     /// - require the following bound:
     ///       forall(T: Trait) {
-    ///           Receiver[Self => dyn Trait]: CoerceSized<Receiver[Self => T]>
+    ///           Receiver[Self => T]: DispatchFromDyn<Receiver[Self => dyn Trait]>
     ///       }
     ///   where `Foo[X => Y]` means "the same type as `Foo`, but with `X` replaced with `Y`"
     ///   (substitution notation).
     ///
     /// some examples of receiver types and their required obligation
-    /// - `&'a mut self` requires `&'a mut dyn Trait: CoerceSized<&'a mut T>`
-    /// - `self: Rc<Self>` requires `Rc<dyn Trait>: CoerceSized<Rc<T>>`
+    /// - `&'a mut self` requires `&'a mut T: DispatchFromDyn<&'a mut dyn Trait>`
+    /// - `self: Rc<Self>` requires `Rc<T>: DispatchFromDyn<Rc<dyn Trait>>`
+    /// - `self: Pin<Box<Self>>` requires `Pin<Box<T>>: DispatchFromDyn<Pin<Box<dyn Trait>>>`
     ///
-    /// The only case where the receiver is not coercible, but is still a valid receiver
+    /// The only case where the receiver is not dispatchable, but is still a valid receiver
     /// type (just not object-safe), is when there is more than one level of pointer indirection.
     /// e.g. `self: &&Self`, `self: &Rc<Self>`, `self: Box<Box<Self>>`. In these cases, there
-    /// is no way, or at least no inexpensive way, to coerce the receiver, because the object that
-    /// needs to be coerced is behind a pointer.
+    /// is no way, or at least no inexpensive way, to coerce the receiver from the version where
+    /// `Self = dyn Trait` to the version where `Self = T`, where `T` is the unknown erased type
+    /// contained by the trait object, because the object that needs to be coerced is behind
+    /// a pointer.
     ///
     /// In practice, there are issues with the above bound: `where` clauses that apply to `Self`
     /// would have to apply to `T`, trait object types have a lot of parameters that need to
@@ -364,37 +365,38 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     ///
     ///     forall (U: ?Sized) {
     ///         if (Self: Unsize<U>) {
-    ///             Receiver[Self => U]: CoerceSized<Receiver>
+    ///             Receiver: DispatchFromDyn<Receiver[Self => U]>
     ///         }
     ///     }
     ///
-    /// for `self: &'a mut Self`, this means `&'a mut U: CoerceSized<&'a mut Self>`
-    /// for `self: Rc<Self>`, this means `Rc<U>: CoerceSized<Rc<Self>>`
+    /// for `self: &'a mut Self`, this means `&'a mut Self: DispatchFromDyn<&'a mut U>`
+    /// for `self: Rc<Self>`, this means `Rc<Self>: DispatchFromDyn<Rc<U>>`
+    /// for `self: Pin<Box<Self>>, this means `Pin<Box<Self>>: DispatchFromDyn<Pin<Box<U>>>`
     //
     // FIXME(mikeyhew) when unsized receivers are implemented as part of unsized rvalues, add this
     // fallback query: `Receiver: Unsize<Receiver[Self => U]>` to support receivers like
     // `self: Wrapper<Self>`.
     #[allow(dead_code)]
-    fn receiver_is_coercible(
+    fn receiver_is_dispatchable(
         self,
         method: &ty::AssociatedItem,
         receiver_ty: Ty<'tcx>,
     ) -> bool {
-        debug!("receiver_is_coercible: method = {:?}, receiver_ty = {:?}", method, receiver_ty);
+        debug!("receiver_is_dispatchable: method = {:?}, receiver_ty = {:?}", method, receiver_ty);
 
         let traits = (self.lang_items().unsize_trait(),
-                      self.lang_items().coerce_sized_trait());
-        let (unsize_did, coerce_sized_did) = if let (Some(u), Some(cu)) = traits {
+                      self.lang_items().dispatch_from_dyn_trait());
+        let (unsize_did, dispatch_from_dyn_did) = if let (Some(u), Some(cu)) = traits {
             (u, cu)
         } else {
-            debug!("receiver_is_coercible: Missing Unsize or CoerceSized traits");
+            debug!("receiver_is_dispatchable: Missing Unsize or DispatchFromDyn traits");
             return false;
         };
 
         // use a bogus type parameter to mimick a forall(U) query using u32::MAX for now.
         // FIXME(mikeyhew) this is a total hack, and we should replace it when real forall queries
         // are implemented
-        let target_self_ty: Ty<'tcx> = self.mk_ty_param(
+        let unsized_self_ty: Ty<'tcx> = self.mk_ty_param(
             ::std::u32::MAX,
             Name::intern("RustaceansAreAwesome").as_interned_str(),
         );
@@ -405,7 +407,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
             let predicate = ty::TraitRef {
                 def_id: unsize_did,
-                substs: self.mk_substs_trait(self.mk_self_type(), &[target_self_ty.into()]),
+                substs: self.mk_substs_trait(self.mk_self_type(), &[unsized_self_ty.into()]),
             }.to_predicate();
 
             let caller_bounds: Vec<Predicate<'tcx>> = param_env.caller_bounds.iter().cloned()
@@ -419,7 +421,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
         let receiver_substs = Substs::for_item(self, method.def_id, |param, _| {
             if param.index == 0 {
-                target_self_ty.into()
+                unsized_self_ty.into()
             } else {
                 self.mk_param_from_def(param)
             }
@@ -427,11 +429,11 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         // the type `Receiver[Self => U]` in the query
         let unsized_receiver_ty = receiver_ty.subst(self, receiver_substs);
 
-        // Receiver[Self => U]: CoerceSized<Receiver>
+        // Receiver: DispatchFromDyn<Receiver[Self => U]>
         let obligation = {
             let predicate = ty::TraitRef {
-                def_id: coerce_sized_did,
-                substs: self.mk_substs_trait(unsized_receiver_ty, &[receiver_ty.into()]),
+                def_id: dispatch_from_dyn_did,
+                substs: self.mk_substs_trait(receiver_ty, &[unsized_receiver_ty.into()]),
             }.to_predicate();
 
             Obligation::new(
@@ -442,7 +444,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         };
 
         self.infer_ctxt().enter(|ref infcx| {
-            // the receiver is coercible iff the obligation holds
+            // the receiver is dispatchable iff the obligation holds
             infcx.predicate_must_hold(&obligation)
         })
     }
