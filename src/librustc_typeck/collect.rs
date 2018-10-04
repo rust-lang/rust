@@ -1637,8 +1637,38 @@ fn explicit_predicates_of<'a, 'tcx>(
     def_id: DefId,
 ) -> ty::GenericPredicates<'tcx> {
     use rustc::hir::*;
+    use rustc_data_structures::fx::FxHashSet;
 
     debug!("explicit_predicates_of(def_id={:?})", def_id);
+
+    /// A data structure with unique elements, which preserves order of insertion.
+    /// Preserving the order of insertion is important here so as not to break
+    /// compile-fail UI tests.
+    struct UniquePredicates<'tcx> {
+        predicates: Vec<(ty::Predicate<'tcx>, Span)>,
+        uniques: FxHashSet<(ty::Predicate<'tcx>, Span)>,
+    }
+
+    impl<'tcx> UniquePredicates<'tcx> {
+        fn new() -> Self {
+            UniquePredicates {
+                predicates: vec![],
+                uniques: FxHashSet::default(),
+            }
+        }
+
+        fn push(&mut self, value: (ty::Predicate<'tcx>, Span)) {
+            if self.uniques.insert(value) {
+                self.predicates.push(value);
+            }
+        }
+
+        fn extend<I: IntoIterator<Item = (ty::Predicate<'tcx>, Span)>>(&mut self, iter: I) {
+            for value in iter {
+                self.push(value);
+            }
+        }
+    }
 
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
     let node = tcx.hir.get(node_id);
@@ -1649,7 +1679,7 @@ fn explicit_predicates_of<'a, 'tcx>(
     let icx = ItemCtxt::new(tcx, def_id);
     let no_generics = hir::Generics::empty();
 
-    let mut predicates = vec![];
+    let mut predicates = UniquePredicates::new();
 
     let ast_generics = match node {
         Node::TraitItem(item) => &item.generics,
@@ -1744,7 +1774,7 @@ fn explicit_predicates_of<'a, 'tcx>(
     // on a trait we need to add in the supertrait bounds and bounds found on
     // associated types.
     if let Some((_trait_ref, _)) = is_trait {
-        predicates = tcx.super_predicates_of(def_id).predicates;
+        predicates.extend(tcx.super_predicates_of(def_id).predicates);
     }
 
     // In default impls, we can assume that the self type implements
@@ -1894,6 +1924,8 @@ fn explicit_predicates_of<'a, 'tcx>(
             bounds.predicates(tcx, assoc_ty).into_iter()
         }))
     }
+
+    let mut predicates = predicates.predicates;
 
     // Subtle: before we store the predicates into the tcx, we
     // sort them so that predicates like `T: Foo<Item=U>` come
