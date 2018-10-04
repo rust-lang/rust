@@ -2,7 +2,7 @@ error: captured variable cannot escape `FnMut` closure body
   --> $DIR/regions-return-ref-to-upvar-issue-17403.rs:17:24
    |
 LL |         let mut f = || &mut x; //~ ERROR cannot infer
-   |                      - ^^^^^^ creates a reference to a captured variable which escapes the closure body
+   |                      - ^^^^^^ returns a reference to a captured variable which escapes the closure body
    |                      |
    |                      inferred to be a `FnMut` closure
    |

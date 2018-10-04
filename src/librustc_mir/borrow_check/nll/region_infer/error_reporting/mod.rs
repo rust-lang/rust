@@ -310,9 +310,19 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             "captured variable cannot escape `FnMut` closure body",
         );
 
+        // We should check if the return type of this closure is in fact a closure - in that
+        // case, we can special case the error further.
+        let return_type_is_closure = self.universal_regions.unnormalized_output_ty.is_closure();
+        let message = if return_type_is_closure {
+            "returns a closure that contains a reference to a captured variable, which then \
+             escapes the closure body"
+        } else {
+            "returns a reference to a captured variable which escapes the closure body"
+        };
+
         diag.span_label(
             span,
-            "creates a reference to a captured variable which escapes the closure body",
+            message,
         );
 
         match self.give_region_a_name(infcx, mir, mir_def_id, outlived_fr, &mut 1).source {
