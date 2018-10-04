@@ -29,6 +29,7 @@ A syntactical example of a generator is:
 #![feature(generators, generator_trait)]
 
 use std::ops::{Generator, GeneratorState};
+use std::pin::Pin;
 
 fn main() {
     let mut generator = || {
@@ -36,11 +37,11 @@ fn main() {
         return "foo"
     };
 
-    match unsafe { generator.resume() } {
+    match Pin::new(&mut generator).resume() {
         GeneratorState::Yielded(1) => {}
         _ => panic!("unexpected value from resume"),
     }
-    match unsafe { generator.resume() } {
+    match Pin::new(&mut generator).resume() {
         GeneratorState::Complete("foo") => {}
         _ => panic!("unexpected value from resume"),
     }
@@ -60,6 +61,7 @@ prints all numbers in order:
 #![feature(generators, generator_trait)]
 
 use std::ops::Generator;
+use std::pin::Pin;
 
 fn main() {
     let mut generator = || {
@@ -69,9 +71,9 @@ fn main() {
     };
 
     println!("1");
-    unsafe { generator.resume() };
+    Pin::new(&mut generator).resume();
     println!("3");
-    unsafe { generator.resume() };
+    Pin::new(&mut generator).resume();
     println!("5");
 }
 ```
@@ -86,13 +88,14 @@ Feedback on the design and usage is always appreciated!
 The `Generator` trait in `std::ops` currently looks like:
 
 ```
-# #![feature(generator_trait)]
+# #![feature(arbitrary_self_types, generator_trait)]
 # use std::ops::GeneratorState;
+# use std::pin::Pin;
 
 pub trait Generator {
     type Yield;
     type Return;
-    unsafe fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return>;
+    fn resume(self: Pin<&mut Self>) -> GeneratorState<Self::Yield, Self::Return>;
 }
 ```
 
@@ -167,6 +170,7 @@ Let's take a look at an example to see what's going on here:
 #![feature(generators, generator_trait)]
 
 use std::ops::Generator;
+use std::pin::Pin;
 
 fn main() {
     let ret = "foo";
@@ -175,17 +179,18 @@ fn main() {
         return ret
     };
 
-    unsafe { generator.resume() };
-    unsafe { generator.resume() };
+    Pin::new(&mut generator).resume();
+    Pin::new(&mut generator).resume();
 }
 ```
 
 This generator literal will compile down to something similar to:
 
 ```rust
-#![feature(generators, generator_trait)]
+#![feature(arbitrary_self_types, generators, generator_trait)]
 
 use std::ops::{Generator, GeneratorState};
+use std::pin::Pin;
 
 fn main() {
     let ret = "foo";
@@ -200,9 +205,9 @@ fn main() {
             type Yield = i32;
             type Return = &'static str;
 
-            unsafe fn resume(&mut self) -> GeneratorState<i32, &'static str> {
+            fn resume(mut self: Pin<&mut Self>) -> GeneratorState<i32, &'static str> {
                 use std::mem;
-                match mem::replace(self, __Generator::Done) {
+                match mem::replace(&mut *self, __Generator::Done) {
                     __Generator::Start(s) => {
                         *self = __Generator::Yield1(s);
                         GeneratorState::Yielded(1)
@@ -223,8 +228,8 @@ fn main() {
         __Generator::Start(ret)
     };
 
-    unsafe { generator.resume() };
-    unsafe { generator.resume() };
+    Pin::new(&mut generator).resume();
+    Pin::new(&mut generator).resume();
 }
 ```
 

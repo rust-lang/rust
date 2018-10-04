@@ -3,6 +3,7 @@
 #![feature(generators, generator_trait)]
 
 use std::ops::Generator;
+use std::pin::Pin;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 static A: AtomicUsize = AtomicUsize::new(0);
@@ -29,7 +30,7 @@ fn t1() {
     };
 
     let n = A.load(Ordering::SeqCst);
-    drop(unsafe { foo.resume() });
+    drop(Pin::new(&mut foo).resume());
     assert_eq!(A.load(Ordering::SeqCst), n);
     drop(foo);
     assert_eq!(A.load(Ordering::SeqCst), n + 1);
@@ -42,7 +43,7 @@ fn t2() {
     };
 
     let n = A.load(Ordering::SeqCst);
-    drop(unsafe { foo.resume() });
+    drop(Pin::new(&mut foo).resume());
     assert_eq!(A.load(Ordering::SeqCst), n + 1);
     drop(foo);
     assert_eq!(A.load(Ordering::SeqCst), n + 1);
