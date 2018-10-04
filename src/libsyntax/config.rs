@@ -9,7 +9,14 @@
 // except according to those terms.
 
 use attr::HasAttrs;
-use feature_gate::{feature_err, EXPLAIN_STMT_ATTR_SYNTAX, Features, get_features, GateIssue};
+use feature_gate::{
+    feature_err,
+    EXPLAIN_STMT_ATTR_SYNTAX,
+    Features,
+    get_features,
+    GateIssue,
+    emit_feature_err,
+};
 use {fold, attr};
 use ast;
 use source_map::Spanned;
@@ -97,6 +104,13 @@ impl<'a> StripUnconfigured<'a> {
             return vec![attr];
         }
 
+        let gate_cfg_attr_multi = if let Some(ref features) = self.features {
+            !features.cfg_attr_multi
+        } else {
+            false
+        };
+        let cfg_attr_span = attr.span;
+
         let (cfg_predicate, expanded_attrs) = match attr.parse(self.sess, |parser| {
             parser.expect(&token::OpenDelim(token::Paren))?;
 
@@ -122,6 +136,26 @@ impl<'a> StripUnconfigured<'a> {
                 return Vec::new();
             }
         };
+
+        // Check feature gate and lint on zero attributes in source. Even if the feature is gated,
+        // we still compute as if it wasn't, since the emitted error will stop compilation futher
+        // along the compilation.
+        match (expanded_attrs.len(), gate_cfg_attr_multi) {
+            (0, false) => {
+                // FIXME: Emit unused attribute lint here.
+            },
+            (1, _) => {},
+            (_, true) => {
+                emit_feature_err(
+                    self.sess,
+                    "cfg_attr_multi",
+                    cfg_attr_span,
+                    GateIssue::Language,
+                    "cfg_attr with zero or more than one attributes is experimental",
+                );
+            },
+            (_, false) => {}
+        }
 
         if attr::cfg_matches(&cfg_predicate, self.sess, self.features) {
             // We call `process_cfg_attr` recursively in case there's a
