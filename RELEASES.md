@@ -1,3 +1,11 @@
+Version 1.29.2 (2018-10-11)
+===========================
+
+- [Workaround for an aliasing-related LLVM bug, which caused miscompilation.][54639]
+- The `rls-preview` component on the windows-gnu targets has been restored.
+
+[54639]: https://github.com/rust-lang/rust/pull/54639
+
 Version 1.29.1 (2018-09-25)
 ===========================
 
