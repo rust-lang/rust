@@ -134,6 +134,7 @@ pub struct Config {
     pub test_miri: bool,
     pub save_toolstates: Option<PathBuf>,
     pub print_step_timings: bool,
+    pub missing_tools: bool,
 
     // Fallback musl-root for all targets
     pub musl_root: Option<PathBuf>,
@@ -271,6 +272,7 @@ struct Dist {
     gpg_password_file: Option<String>,
     upload_addr: Option<String>,
     src_tarball: Option<bool>,
+    missing_tools: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -375,6 +377,7 @@ impl Config {
         config.rust_codegen_backends = vec![INTERNER.intern_str("llvm")];
         config.rust_codegen_backends_dir = "codegen-backends".to_owned();
         config.deny_warnings = true;
+        config.missing_tools = false;
 
         // set by bootstrap.py
         config.build = INTERNER.intern_str(&env::var("BUILD").expect("'BUILD' to be set"));
@@ -613,6 +616,7 @@ impl Config {
             config.dist_gpg_password_file = t.gpg_password_file.clone().map(PathBuf::from);
             config.dist_upload_addr = t.upload_addr.clone();
             set(&mut config.rust_dist_src, t.src_tarball);
+            set(&mut config.missing_tools, t.missing_tools);
         }
 
         // Now that we've reached the end of our configuration, infer the
