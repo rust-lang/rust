@@ -1076,7 +1076,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
     }
 }
 
-fn lint_fn_to_numeric_cast(cx: &LateContext<'_, '_>, expr: &Expr, cast_expr: &Expr, cast_from: Ty, cast_to: Ty) {
+fn lint_fn_to_numeric_cast(cx: &LateContext<'_, '_>, expr: &Expr, cast_expr: &Expr, cast_from: Ty<'_>, cast_to: Ty<'_>) {
     match cast_from.sty {
         ty::FnDef(..) | ty::FnPtr(_) => {
             let from_snippet = snippet(cx, cast_expr.span, "x");
