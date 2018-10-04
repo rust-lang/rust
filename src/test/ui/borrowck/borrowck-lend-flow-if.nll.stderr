@@ -7,7 +7,7 @@ LL |     }
 LL |     borrow_mut(&mut *v); //~ ERROR cannot borrow
    |                ^^^^^^^ mutable borrow occurs here
 LL |     _w.use_ref();
-   |     -- borrow later used here
+   |     -- immutable borrow later used here
 
 error: aborting due to previous error
 

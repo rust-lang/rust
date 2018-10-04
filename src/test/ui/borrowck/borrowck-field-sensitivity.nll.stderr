@@ -62,7 +62,7 @@ LL |     let p = &mut x.a;
 LL |     let q = &mut x.a; //~ ERROR cannot borrow `x.a` as mutable more than once at a time
    |             ^^^^^^^^ second mutable borrow occurs here
 LL |     drop(*p);
-   |          -- borrow later used here
+   |          -- first borrow later used here
 
 error[E0382]: use of moved value: `x.b`
   --> $DIR/borrowck-field-sensitivity.rs:66:10

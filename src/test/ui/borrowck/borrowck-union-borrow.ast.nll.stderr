@@ -7,7 +7,7 @@ LL |             let rma = &mut u.a; //[ast]~ ERROR cannot borrow `u.a` as mutab
    |                       ^^^^^^^^ mutable borrow occurs here
 LL |                                 //[mir]~^ ERROR cannot borrow `u.a` as mutable because it is also borrowed as immutable
 LL |             drop(ra);
-   |                  -- borrow later used here
+   |                  -- immutable borrow later used here
 
 error[E0506]: cannot assign to `u.a` because it is borrowed
   --> $DIR/borrowck-union-borrow.rs:43:13
@@ -29,7 +29,7 @@ LL |             let rmb = &mut u.b; //[ast]~ ERROR cannot borrow `u` (via `u.b`
    |                       ^^^^^^^^ mutable borrow occurs here
 LL |                                 //[mir]~^ ERROR cannot borrow `u.b` as mutable because it is also borrowed as immutable
 LL |             drop(ra);
-   |                  -- borrow later used here
+   |                  -- immutable borrow later used here
 
 error[E0506]: cannot assign to `u.b` because it is borrowed
   --> $DIR/borrowck-union-borrow.rs:66:13
@@ -51,7 +51,7 @@ LL |             let ra = &u.a; //[ast]~ ERROR cannot borrow `u.a` as immutable 
    |                      ^^^^ immutable borrow occurs here
 LL |                          //[mir]~^ ERROR cannot borrow `u.a` as immutable because it is also borrowed as mutable
 LL |             drop(rma);
-   |                  --- borrow later used here
+   |                  --- mutable borrow later used here
 
 error[E0503]: cannot use `u.a` because it was mutably borrowed
   --> $DIR/borrowck-union-borrow.rs:79:21
@@ -73,7 +73,7 @@ LL |             let rma2 = &mut u.a; //[ast]~ ERROR cannot borrow `u.a` as muta
    |                        ^^^^^^^^ second mutable borrow occurs here
 LL |                                  //[mir]~^ ERROR cannot borrow `u.a` as mutable more than once at a time
 LL |             drop(rma);
-   |                  --- borrow later used here
+   |                  --- first borrow later used here
 
 error[E0506]: cannot assign to `u.a` because it is borrowed
   --> $DIR/borrowck-union-borrow.rs:91:13
@@ -95,7 +95,7 @@ LL |             let rb = &u.b; //[ast]~ ERROR cannot borrow `u` (via `u.b`) as 
    |                      ^^^^ immutable borrow occurs here
 LL |                            //[mir]~^ ERROR cannot borrow `u.b` as immutable because it is also borrowed as mutable
 LL |             drop(rma);
-   |                  --- borrow later used here
+   |                  --- mutable borrow later used here
 
 error[E0503]: cannot use `u.b` because it was mutably borrowed
   --> $DIR/borrowck-union-borrow.rs:104:21
@@ -117,7 +117,7 @@ LL |             let rmb2 = &mut u.b; //[ast]~ ERROR cannot borrow `u` (via `u.b
    |                        ^^^^^^^^ second mutable borrow occurs here
 LL |                                  //[mir]~^ ERROR cannot borrow `u.b` as mutable more than once at a time
 LL |             drop(rma);
-   |                  --- borrow later used here
+   |                  --- first borrow later used here
 
 error[E0506]: cannot assign to `u.b` because it is borrowed
   --> $DIR/borrowck-union-borrow.rs:117:13

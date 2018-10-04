@@ -264,7 +264,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 );
                 exit_block.unit()
             }
-            ExprKind::Call { ty, fun, args } => {
+            ExprKind::Call { ty, fun, args, from_hir_call } => {
                 // FIXME(canndrew): This is_never should probably be an is_uninhabited
                 let diverges = expr.ty.is_never();
                 let intrinsic = match ty.sty {
@@ -326,6 +326,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             } else {
                                 Some((destination.clone(), success))
                             },
+                            from_hir_call,
                         },
                     );
                     success.unit()

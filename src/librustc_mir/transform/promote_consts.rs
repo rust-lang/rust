@@ -258,7 +258,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             };
 
             match terminator.kind {
-                TerminatorKind::Call { mut func, mut args, .. } => {
+                TerminatorKind::Call { mut func, mut args, from_hir_call, .. } => {
                     self.visit_operand(&mut func, loc);
                     for arg in &mut args {
                         self.visit_operand(arg, loc);
@@ -272,7 +272,8 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             func,
                             args,
                             cleanup: None,
-                            destination: Some((Place::Local(new_temp), new_target))
+                            destination: Some((Place::Local(new_temp), new_target)),
+                            from_hir_call,
                         },
                         ..terminator
                     };

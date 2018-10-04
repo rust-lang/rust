@@ -468,6 +468,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             args: vec![Operand::Move(ref_loc)],
             destination: Some((dest, next)),
             cleanup: Some(cleanup),
+            from_hir_call: true,
         }, false);
     }
 
@@ -766,7 +767,8 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             Some(BasicBlock::new(3))
         } else {
             None
-        }
+        },
+        from_hir_call: true,
     }, false);
 
     if let Adjustment::RefMut = rcvr_adjustment {

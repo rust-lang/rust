@@ -412,7 +412,13 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 bug!("undesugared DropAndReplace in codegen: {:?}", terminator);
             }
 
-            mir::TerminatorKind::Call { ref func, ref args, ref destination, cleanup } => {
+            mir::TerminatorKind::Call {
+                ref func,
+                ref args,
+                ref destination,
+                cleanup,
+                from_hir_call: _
+            } => {
                 // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
                 let callee = self.codegen_operand(&bx, func);
 

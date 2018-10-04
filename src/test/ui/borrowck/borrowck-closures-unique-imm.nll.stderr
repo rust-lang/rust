@@ -6,7 +6,7 @@ LL |         let p = &this.x;
 LL |         &mut this.x; //~ ERROR cannot borrow
    |         ^^^^^^^^^^^ mutable borrow occurs here
 LL |         p.use_ref();
-   |         - borrow later used here
+   |         - immutable borrow later used here
 
 error: aborting due to previous error
 

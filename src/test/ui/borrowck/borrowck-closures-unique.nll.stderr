@@ -10,7 +10,7 @@ LL |     let c2 = || set(x); //~ ERROR closure requires unique access to `x`
    |              |
    |              closure construction occurs here
 LL |     c1;
-   |     -- borrow later used here
+   |     -- first borrow later used here
 
 error[E0500]: closure requires unique access to `x` but it is already borrowed
   --> $DIR/borrowck-closures-unique.rs:42:14
@@ -24,7 +24,7 @@ LL |     let c2 = || { get(x); set(x); }; //~ ERROR closure requires unique acce
    |              |
    |              closure construction occurs here
 LL |     c1;
-   |     -- borrow later used here
+   |     -- first borrow later used here
 
 error[E0524]: two closures require unique access to `x` at the same time
   --> $DIR/borrowck-closures-unique.rs:48:14
@@ -38,7 +38,7 @@ LL |     let c2 = || set(x); //~ ERROR two closures require unique access to `x`
    |              |
    |              second closure is constructed here
 LL |     c1;
-   |     -- borrow later used here
+   |     -- first borrow later used here
 
 error[E0594]: cannot assign to `x`, as it is not declared as mutable
   --> $DIR/borrowck-closures-unique.rs:57:38

@@ -6,7 +6,7 @@ LL |     let _a = &collection;
 LL |     collection.swap(1, 2); //~ ERROR also borrowed as immutable
    |     ^^^^^^^^^^ mutable borrow occurs here
 LL |     _a.use_ref();
-   |     -- borrow later used here
+   |     -- immutable borrow later used here
 
 error: aborting due to previous error
 

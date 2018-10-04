@@ -7,7 +7,7 @@ LL |     println!("{}", f[&s]);
    |                      ^^ immutable borrow occurs here
 ...
 LL |     drop(rs);
-   |          -- borrow later used here
+   |          -- mutable borrow later used here
 
 error[E0502]: cannot borrow `s` as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-overloaded-index-ref-index.rs:65:7
@@ -19,7 +19,7 @@ LL |     f[&s] = 10;
    |       ^^ immutable borrow occurs here
 ...
 LL |     drop(rs);
-   |          -- borrow later used here
+   |          -- mutable borrow later used here
 
 error[E0594]: cannot assign to data in a `&` reference
   --> $DIR/borrowck-overloaded-index-ref-index.rs:71:5

@@ -121,6 +121,7 @@ impl Lower128Bit {
                             args: vec![lhs, rhs],
                             destination: Some((place, bb)),
                             cleanup: None,
+                            from_hir_call: false,
                         },
                     });
             }

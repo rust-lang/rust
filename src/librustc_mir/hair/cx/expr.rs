@@ -21,6 +21,7 @@ use rustc::ty::cast::CastKind as TyCastKind;
 use rustc::hir;
 use rustc::hir::def_id::LocalDefId;
 use rustc::mir::{BorrowKind};
+use syntax_pos::Span;
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
     type Output = Expr<'tcx>;
@@ -232,9 +233,9 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
     let kind = match expr.node {
         // Here comes the interesting stuff:
-        hir::ExprKind::MethodCall(.., ref args) => {
+        hir::ExprKind::MethodCall(_, method_span, ref args) => {
             // Rewrite a.b(c) into UFCS form like Trait::b(a, c)
-            let expr = method_callee(cx, expr, None);
+            let expr = method_callee(cx, expr, method_span,None);
             let args = args.iter()
                 .map(|e| e.to_ref())
                 .collect();
@@ -242,6 +243,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 ty: expr.ty,
                 fun: expr.to_ref(),
                 args,
+                from_hir_call: true,
             }
         }
 
@@ -254,7 +256,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
                 // rewrite f(u, v) into FnOnce::call_once(f, (u, v))
 
-                let method = method_callee(cx, expr, None);
+                let method = method_callee(cx, expr, fun.span,None);
 
                 let arg_tys = args.iter().map(|e| cx.tables().expr_ty_adjusted(e));
                 let tupled_args = Expr {
@@ -268,6 +270,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     ty: method.ty,
                     fun: method.to_ref(),
                     args: vec![fun.to_ref(), tupled_args.to_ref()],
+                    from_hir_call: true,
                 }
             } else {
                 let adt_data = if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) =
@@ -321,6 +324,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         ty: cx.tables().node_id_to_type(fun.hir_id),
                         fun: fun.to_ref(),
                         args: args.to_ref(),
+                        from_hir_call: true,
                     }
                 }
             }
@@ -828,6 +832,7 @@ fn user_annotated_ty_for_adt(
 fn method_callee<'a, 'gcx, 'tcx>(
     cx: &mut Cx<'a, 'gcx, 'tcx>,
     expr: &hir::Expr,
+    span: Span,
     overloaded_callee: Option<(DefId, &'tcx Substs<'tcx>)>,
 ) -> Expr<'tcx> {
     let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
@@ -848,7 +853,7 @@ fn method_callee<'a, 'gcx, 'tcx>(
     Expr {
         temp_lifetime,
         ty,
-        span: expr.span,
+        span,
         kind: ExprKind::Literal {
             literal: ty::Const::zero_sized(cx.tcx(), ty),
             user_ty,
@@ -1109,11 +1114,12 @@ fn overloaded_operator<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                        expr: &'tcx hir::Expr,
                                        args: Vec<ExprRef<'tcx>>)
                                        -> ExprKind<'tcx> {
-    let fun = method_callee(cx, expr, None);
+    let fun = method_callee(cx, expr, expr.span, None);
     ExprKind::Call {
         ty: fun.ty,
         fun: fun.to_ref(),
         args,
+        from_hir_call: false,
     }
 }
 
@@ -1148,7 +1154,7 @@ fn overloaded_place<'a, 'gcx, 'tcx>(
     // construct the complete expression `foo()` for the overloaded call,
     // which will yield the &T type
     let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
-    let fun = method_callee(cx, expr, overloaded_callee);
+    let fun = method_callee(cx, expr, expr.span, overloaded_callee);
     let ref_expr = Expr {
         temp_lifetime,
         ty: ref_ty,
@@ -1157,6 +1163,7 @@ fn overloaded_place<'a, 'gcx, 'tcx>(
             ty: fun.ty,
             fun: fun.to_ref(),
             args,
+            from_hir_call: false,
         },
     };
 

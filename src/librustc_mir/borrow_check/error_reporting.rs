@@ -15,9 +15,9 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::region::ScopeTree;
 use rustc::mir::{
-    self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, FakeReadCause, Field, Local,
-    LocalDecl, LocalKind, Location, Operand, Place, PlaceProjection, ProjectionElem, Rvalue,
-    Statement, StatementKind, TerminatorKind, VarBindingForm,
+    self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, Field, Local,
+    LocalDecl, LocalKind, Location, Operand, Place, PlaceProjection, ProjectionElem,
+    Rvalue, Statement, StatementKind, TerminatorKind, VarBindingForm,
 };
 use rustc::ty;
 use rustc::util::ppaux::with_highlight_region_for_bound_region;
@@ -262,7 +262,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         move_spans.var_span_label(&mut err, "move occurs due to use in closure");
 
         self.explain_why_borrow_contains_point(context, borrow, None)
-            .emit(self.infcx.tcx, &mut err);
+            .emit(self.infcx.tcx, &mut err, String::new());
         err.buffer(&mut self.errors_buffer);
     }
 
@@ -299,7 +299,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         });
 
         self.explain_why_borrow_contains_point(context, borrow, None)
-            .emit(self.infcx.tcx, &mut err);
+            .emit(self.infcx.tcx, &mut err, String::new());
         err.buffer(&mut self.errors_buffer);
     }
 
@@ -319,6 +319,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let desc_place = self.describe_place(place).unwrap_or("_".to_owned());
         let tcx = self.infcx.tcx;
 
+        let first_borrow_desc;
+
         // FIXME: supply non-"" `opt_via` when appropriate
         let mut err = match (
             gen_borrow_kind,
@@ -328,8 +330,23 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             "immutable",
             "mutable",
         ) {
-            (BorrowKind::Shared, lft, _, BorrowKind::Mut { .. }, _, rgt)
-            | (BorrowKind::Mut { .. }, _, lft, BorrowKind::Shared, rgt, _) => {
+            (BorrowKind::Shared, lft, _, BorrowKind::Mut { .. }, _, rgt) => {
+                first_borrow_desc = "mutable ";
+                tcx.cannot_reborrow_already_borrowed(
+                    span,
+                    &desc_place,
+                    "",
+                    lft,
+                    issued_span,
+                    "it",
+                    rgt,
+                    "",
+                    None,
+                    Origin::Mir,
+                )
+            }
+            (BorrowKind::Mut { .. }, _, lft, BorrowKind::Shared, rgt, _) => {
+                first_borrow_desc = "immutable ";
                 tcx.cannot_reborrow_already_borrowed(
                     span,
                     &desc_place,
@@ -345,6 +362,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
 
             (BorrowKind::Mut { .. }, _, _, BorrowKind::Mut { .. }, _, _) => {
+                first_borrow_desc = "first ";
                 tcx.cannot_mutably_borrow_multiply(
                     span,
                     &desc_place,
@@ -357,6 +375,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
 
             (BorrowKind::Unique, _, _, BorrowKind::Unique, _, _) => {
+                first_borrow_desc = "first ";
                 tcx.cannot_uniquely_borrow_by_two_closures(
                     span,
                     &desc_place,
@@ -384,18 +403,22 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 return;
             }
 
-            (BorrowKind::Unique, _, _, _, _, _) => tcx.cannot_uniquely_borrow_by_one_closure(
-                span,
-                &desc_place,
-                "",
-                issued_span,
-                "it",
-                "",
-                None,
-                Origin::Mir,
-            ),
+            (BorrowKind::Unique, _, _, _, _, _) => {
+                first_borrow_desc = "first ";
+                tcx.cannot_uniquely_borrow_by_one_closure(
+                    span,
+                    &desc_place,
+                    "",
+                    issued_span,
+                    "it",
+                    "",
+                    None,
+                    Origin::Mir,
+                )
+            },
 
             (BorrowKind::Shared, lft, _, BorrowKind::Unique, _, _) => {
+                first_borrow_desc = "first ";
                 tcx.cannot_reborrow_already_uniquely_borrowed(
                     span,
                     &desc_place,
@@ -409,6 +432,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
 
             (BorrowKind::Mut { .. }, _, lft, BorrowKind::Unique, _, _) => {
+                first_borrow_desc = "first ";
                 tcx.cannot_reborrow_already_uniquely_borrowed(
                     span,
                     &desc_place,
@@ -459,7 +483,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
 
         self.explain_why_borrow_contains_point(context, issued_borrow, None)
-            .emit(self.infcx.tcx, &mut err);
+            .emit(self.infcx.tcx, &mut err, first_borrow_desc.to_string());
 
         err.buffer(&mut self.errors_buffer);
     }
@@ -614,7 +638,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             if let BorrowExplanation::MustBeValidFor(..) = explanation {
             } else {
-                explanation.emit(self.infcx.tcx, &mut err);
+                explanation.emit(self.infcx.tcx, &mut err, String::new());
             }
         } else {
             err.span_label(borrow_span, "borrowed value does not live long enough");
@@ -625,7 +649,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             borrow_spans.args_span_label(&mut err, "value captured here");
 
-            explanation.emit(self.infcx.tcx, &mut err);
+            explanation.emit(self.infcx.tcx, &mut err, String::new());
         }
 
         err
@@ -685,7 +709,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             _ => {}
         }
 
-        explanation.emit(self.infcx.tcx, &mut err);
+        explanation.emit(self.infcx.tcx, &mut err, String::new());
 
         err.buffer(&mut self.errors_buffer);
     }
@@ -752,7 +776,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
             _ => {}
         }
-        explanation.emit(self.infcx.tcx, &mut err);
+        explanation.emit(self.infcx.tcx, &mut err, String::new());
 
         borrow_spans.args_span_label(&mut err, "value captured here");
 
@@ -889,7 +913,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         loan_spans.var_span_label(&mut err, "borrow occurs due to use in closure");
 
         self.explain_why_borrow_contains_point(context, loan, None)
-            .emit(self.infcx.tcx, &mut err);
+            .emit(self.infcx.tcx, &mut err, String::new());
 
         err.buffer(&mut self.errors_buffer);
     }
@@ -1259,21 +1283,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         } else {
             debug!("is_place_thread_local: no");
             false
-        }
-    }
-
-    /// Returns the `FakeReadCause` at this location if it is a `FakeRead` statement.
-    pub(super) fn retrieve_fake_read_cause_for_location(
-        &self,
-        location: &Location,
-    ) -> Option<FakeReadCause> {
-        let stmt = self.mir.basic_blocks()[location.block]
-            .statements
-            .get(location.statement_index)?;
-        if let StatementKind::FakeRead(cause, _) = stmt.kind {
-            Some(cause)
-        } else {
-            None
         }
     }
 

@@ -9,10 +9,11 @@
 // except according to those terms.
 
 use borrow_check::borrow_set::BorrowData;
+use borrow_check::error_reporting::UseSpans;
 use borrow_check::nll::region_infer::Cause;
 use borrow_check::{Context, MirBorrowckCtxt, WriteKind};
 use rustc::ty::{Region, TyCtxt};
-use rustc::mir::{FakeReadCause, Location, Place, TerminatorKind};
+use rustc::mir::{FakeReadCause, Location, Operand, Place, StatementKind, TerminatorKind};
 use rustc_errors::DiagnosticBuilder;
 use syntax_pos::Span;
 use syntax_pos::symbol::Symbol;
@@ -20,42 +21,57 @@ use syntax_pos::symbol::Symbol;
 mod find_use;
 
 pub(in borrow_check) enum BorrowExplanation<'tcx> {
-    UsedLater(bool, Option<FakeReadCause>, Span),
-    UsedLaterInLoop(bool, Span),
+    UsedLater(LaterUseKind, Span),
+    UsedLaterInLoop(LaterUseKind, Span),
     UsedLaterWhenDropped(Span, Symbol, bool),
     MustBeValidFor(Region<'tcx>),
     Unexplained,
+}
+
+#[derive(Clone, Copy)]
+pub(in borrow_check) enum LaterUseKind {
+    ClosureCapture,
+    Call,
+    FakeLetRead,
+    Other,
 }
 
 impl<'tcx> BorrowExplanation<'tcx> {
     pub(in borrow_check) fn emit<'cx, 'gcx>(
         &self,
         tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-        err: &mut DiagnosticBuilder<'_>
+        err: &mut DiagnosticBuilder<'_>,
+        borrow_desc: String,
     ) {
         match *self {
-            BorrowExplanation::UsedLater(is_in_closure, fake_read_cause, var_or_use_span) => {
-                let message = if is_in_closure {
-                    "borrow later captured here by closure"
-                } else if let Some(FakeReadCause::ForLet) = fake_read_cause {
-                    "borrow later stored here"
-                } else {
-                    "borrow later used here"
+            BorrowExplanation::UsedLater(later_use_kind, var_or_use_span) => {
+                let message = borrow_desc + match later_use_kind {
+                    LaterUseKind::ClosureCapture => "borrow later captured here by closure",
+                    LaterUseKind::Call =>  "borrow later used by call",
+                    LaterUseKind::FakeLetRead => "borrow later stored here",
+                    LaterUseKind::Other => "borrow later used here",
                 };
                 err.span_label(var_or_use_span, message);
             },
-            BorrowExplanation::UsedLaterInLoop(is_in_closure, var_or_use_span) => {
-                let message = if is_in_closure {
-                    "borrow captured here by closure, in later iteration of loop"
-                } else {
-                    "borrow used here, in later iteration of loop"
+            BorrowExplanation::UsedLaterInLoop(later_use_kind, var_or_use_span) => {
+                let message = borrow_desc + match later_use_kind {
+                    LaterUseKind::ClosureCapture => {
+                        "borrow captured here by closure, in later iteration of loop"
+                    },
+                    LaterUseKind::Call =>  "borrow used by call, in later iteration of loop",
+                    LaterUseKind::FakeLetRead => "borrow later stored here",
+                    LaterUseKind::Other => "borrow used here, in later iteration of loop",
                 };
                 err.span_label(var_or_use_span, message);
             },
             BorrowExplanation::UsedLaterWhenDropped(span, local_name, should_note_order) => {
                 err.span_label(
                     span,
-                    format!("borrow later used here, when `{}` is dropped", local_name),
+                    format!(
+                        "{}borrow later used here, when `{}` is dropped",
+                        borrow_desc,
+                        local_name,
+                    ),
                 );
 
                 if should_note_order {
@@ -68,7 +84,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
             BorrowExplanation::MustBeValidFor(region) => {
                 tcx.note_and_explain_free_region(
                     err,
-                    "borrowed value must be valid for ",
+                    &(borrow_desc + "borrowed value must be valid for "),
                     region,
                     "...",
                 );
@@ -127,16 +143,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     .or_else(|| self.borrow_spans(span, location));
 
                 if self.is_borrow_location_in_loop(context.loc) {
-                    BorrowExplanation::UsedLaterInLoop(spans.for_closure(), spans.var_or_use())
+                    let later_use = self.later_use_kind(spans, location);
+                    BorrowExplanation::UsedLaterInLoop(later_use.0, later_use.1)
                 } else {
                     // Check if the location represents a `FakeRead`, and adapt the error
                     // message to the `FakeReadCause` it is from: in particular,
                     // the ones inserted in optimized `let var = <expr>` patterns.
-                    BorrowExplanation::UsedLater(
-                        spans.for_closure(),
-                        self.retrieve_fake_read_cause_for_location(&location),
-                        spans.var_or_use()
-                    )
+                    let later_use = self.later_use_kind(spans, location);
+                    BorrowExplanation::UsedLater(later_use.0, later_use.1)
                 }
             }
 
@@ -245,5 +259,44 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
 
         false
+    }
+
+    fn later_use_kind(&self, use_spans: UseSpans, location: Location) -> (LaterUseKind, Span) {
+        use self::LaterUseKind::*;
+
+        let block = &self.mir.basic_blocks()[location.block];
+        match use_spans {
+            UseSpans::ClosureUse { var_span, .. } => (LaterUseKind::ClosureCapture, var_span),
+            UseSpans::OtherUse(span) => {
+                (if let Some(stmt) = block.statements.get(location.statement_index) {
+                    match stmt.kind {
+                        StatementKind::FakeRead(FakeReadCause::ForLet, _) => FakeLetRead,
+                        _ => Other,
+                    }
+                } else {
+                    assert_eq!(location.statement_index, block.statements.len());
+                    match block.terminator().kind {
+                        TerminatorKind::Call { ref func, from_hir_call: true, .. } => {
+                            // Just point to the function, to reduce the chance
+                            // of overlapping spans.
+                            let function_span = match func {
+                                Operand::Constant(c) => c.span,
+                                Operand::Copy(Place::Local(l)) | Operand::Move(Place::Local(l)) => {
+                                    let local_decl = &self.mir.local_decls[*l];
+                                    if local_decl.name.is_none() {
+                                        local_decl.source_info.span
+                                    } else {
+                                        span
+                                    }
+                                },
+                                _ => span,
+                            };
+                            return (Call, function_span);
+                        },
+                        _ => Other,
+                    }
+                }, span)
+            }
+        }
     }
 }

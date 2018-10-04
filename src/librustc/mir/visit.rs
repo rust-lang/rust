@@ -468,7 +468,8 @@ macro_rules! make_mir_visitor {
                     TerminatorKind::Call { ref $($mutability)* func,
                                            ref $($mutability)* args,
                                            ref $($mutability)* destination,
-                                           cleanup } => {
+                                           cleanup,
+                                           from_hir_call: _, } => {
                         self.visit_operand(func, source_location);
                         for arg in args {
                             self.visit_operand(arg, source_location);

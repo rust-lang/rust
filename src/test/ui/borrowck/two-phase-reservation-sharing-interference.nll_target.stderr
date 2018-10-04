@@ -8,7 +8,7 @@ LL |         delay = &mut vec;
    |                 ^^^^^^^^ mutable borrow occurs here
 ...
 LL |         shared[0];
-   |         ------ borrow later used here
+   |         ------ immutable borrow later used here
 
 error: aborting due to previous error
 

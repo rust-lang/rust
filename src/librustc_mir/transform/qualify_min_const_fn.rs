@@ -318,6 +318,7 @@ fn check_terminator(
         TerminatorKind::Call {
             func,
             args,
+            from_hir_call: _,
             destination: _,
             cleanup: _,
         } => {

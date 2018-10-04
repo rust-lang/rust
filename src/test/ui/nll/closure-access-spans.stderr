@@ -8,7 +8,7 @@ LL |     || x; //~ ERROR
    |     |
    |     immutable borrow occurs here
 LL |     r.use_mut();
-   |     - borrow later used here
+   |     - mutable borrow later used here
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time
   --> $DIR/closure-access-spans.rs:23:5
@@ -20,7 +20,7 @@ LL |     || x = 2; //~ ERROR
    |     |
    |     second mutable borrow occurs here
 LL |     r.use_mut();
-   |     - borrow later used here
+   |     - first borrow later used here
 
 error[E0500]: closure requires unique access to `x` but it is already borrowed
   --> $DIR/closure-access-spans.rs:29:5
@@ -32,7 +32,7 @@ LL |     || *x = 2; //~ ERROR
    |     |
    |     closure construction occurs here
 LL |     r.use_mut();
-   |     - borrow later used here
+   |     - first borrow later used here
 
 error[E0503]: cannot use `x` because it was mutably borrowed
   --> $DIR/closure-access-spans.rs:35:13
