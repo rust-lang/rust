@@ -349,7 +349,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     fn static_with_default_tag(
         alloc: &'_ Allocation
     ) -> Cow<'_, Allocation<Self::PointerTag>> {
-        // We do not use a tag so we can just cheapyl forward the reference
+        // We do not use a tag so we can just cheaply forward the reference
         Cow::Borrowed(alloc)
     }
 

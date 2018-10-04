@@ -91,7 +91,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// the appropriate tags on each pointer.
     ///
     /// This should avoid copying if no work has to be done! If this returns an owned
-    /// allocation (because a copy had to be done to add the tags), machibe memory will
+    /// allocation (because a copy had to be done to add the tags), machine memory will
     /// cache the result.
     fn static_with_default_tag(
         alloc: &'_ Allocation
