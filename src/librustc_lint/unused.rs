@@ -273,43 +273,8 @@ impl UnusedParens {
             let necessary = struct_lit_needs_parens &&
                             parser::contains_exterior_struct_lit(&inner);
             if !necessary {
-                let span_msg = format!("unnecessary parentheses around {}", msg);
-                let mut err = cx.struct_span_lint(UNUSED_PARENS,
-                                                  value.span,
-                                                  &span_msg);
-                // Remove exactly one pair of parentheses (rather than naïvely
-                // stripping all paren characters)
-                let mut ate_left_paren = false;
-                let mut ate_right_paren = false;
-                let parens_removed = pprust::expr_to_string(value)
-                    .trim_matches(|c| {
-                        match c {
-                            '(' => {
-                                if ate_left_paren {
-                                    false
-                                } else {
-                                    ate_left_paren = true;
-                                    true
-                                }
-                            },
-                            ')' => {
-                                if ate_right_paren {
-                                    false
-                                } else {
-                                    ate_right_paren = true;
-                                    true
-                                }
-                            },
-                            _ => false,
-                        }
-                    }).to_owned();
-                err.span_suggestion_short_with_applicability(
-                    value.span,
-                    "remove these parentheses",
-                    parens_removed,
-                    Applicability::MachineApplicable
-                );
-                err.emit();
+                let pattern = pprust::expr_to_string(value);
+                Self::remove_outer_parens(cx, value.span, &pattern, msg)
             }
         }
     }
@@ -320,48 +285,47 @@ impl UnusedParens {
                                 msg: &str,
                                 struct_lit_needs_parens: bool) {
         if let ast::PatKind::Paren(_) = value.node {
-            // Does there need to be a check similar to `parser::contains_exterior_struct_lit`
-            // here?
             if !struct_lit_needs_parens {
-                let span_msg = format!("unnecessary parentheses around {}", msg);
-                let mut err = cx.struct_span_lint(UNUSED_PARENS,
-                                                  value.span,
-                                                  &span_msg);
-                // Remove exactly one pair of parentheses (rather than naïvely
-                // stripping all paren characters)
-                let mut ate_left_paren = false;
-                let mut ate_right_paren = false;
-                let parens_removed = pprust::pat_to_string(value)
-                    .trim_matches(|c| {
-                        match c {
-                            '(' => {
-                                if ate_left_paren {
-                                    false
-                                } else {
-                                    ate_left_paren = true;
-                                    true
-                                }
-                            },
-                            ')' => {
-                                if ate_right_paren {
-                                    false
-                                } else {
-                                    ate_right_paren = true;
-                                    true
-                                }
-                            },
-                            _ => false,
-                        }
-                    }).to_owned();
-                err.span_suggestion_short_with_applicability(
-                    value.span,
-                    "remove these parentheses",
-                    parens_removed,
-                    Applicability::MachineApplicable
-                );
-                err.emit();
+                let pattern = pprust::pat_to_string(value);
+                Self::remove_outer_parens(cx, value.span, &pattern, msg)
             }
         }
+    }
+
+    fn remove_outer_parens(cx: &EarlyContext, span: Span, pattern: &str, msg: &str) {
+        let span_msg = format!("unnecessary parentheses around {}", msg);
+        let mut err = cx.struct_span_lint(UNUSED_PARENS, span, &span_msg);
+        let mut ate_left_paren = false;
+        let mut ate_right_paren = false;
+        let parens_removed = pattern
+            .trim_matches(|c| {
+                match c {
+                    '(' => {
+                        if ate_left_paren {
+                            false
+                        } else {
+                            ate_left_paren = true;
+                            true
+                        }
+                    },
+                    ')' => {
+                        if ate_right_paren {
+                            false
+                        } else {
+                            ate_right_paren = true;
+                            true
+                        }
+                    },
+                    _ => false,
+                }
+            }).to_owned();
+        err.span_suggestion_short_with_applicability(
+                span,
+                "remove these parentheses",
+                parens_removed,
+                Applicability::MachineApplicable
+            );
+        err.emit();
     }
 }
 
@@ -414,16 +378,14 @@ impl EarlyLintPass for UnusedParens {
 
     fn check_pat(&mut self, cx: &EarlyContext, p: &ast::Pat) {
         use ast::PatKind::*;
-        let (value, msg) = match p.node {
-            Paren(ref pat) => {
-                match pat.node {
-                    Wild => (p, "wildcard pattern"),
-                    _ => return,
-                }
-            }
+        let (value, msg, struct_lit_needs_parens) = match p.node {
+            Ident(.., Some(ref pat)) => (pat, "optional subpattern", false),
+            Ref(ref pat, _) => (pat, "reference pattern", false),
+            Slice(_, Some(ref pat), _) => (pat, "optional position pattern", false),
+            Paren(_) => (p, "pattern", false),
             _ => return,
         };
-        self.check_unused_parens_pat(cx, &value, msg, false);
+        self.check_unused_parens_pat(cx, &value, msg, struct_lit_needs_parens);
     }
 
     fn check_stmt(&mut self, cx: &EarlyContext, s: &ast::Stmt) {
