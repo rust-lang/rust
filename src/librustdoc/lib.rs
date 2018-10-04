@@ -286,7 +286,7 @@ fn opts() -> Vec<RustcOptGroup> {
                      "How errors and other messages are produced",
                      "human|json|short")
         }),
-        unstable("disable-minification", |o| {
+        stable("disable-minification", |o| {
              o.optflag("",
                        "disable-minification",
                        "Disable minification applied on JS files")
