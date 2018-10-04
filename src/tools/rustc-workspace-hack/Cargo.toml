@@ -47,3 +47,11 @@ features = [
   "wincon",
   "wincrypt",
 ]
+
+[dependencies.serde_json]
+version = "1.0.31"
+features = ["raw_value"]
+
+[dependencies.rand]
+version = "0.5.5"
+features = ["i128_support"]

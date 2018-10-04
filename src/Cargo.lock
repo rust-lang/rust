@@ -2074,6 +2074,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "rustc-workspace-hack"
 version = "1.0.0"
 dependencies = [
+ "rand 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.31 (registry+https://github.com/rust-lang/crates.io-index)",
  "syn 0.14.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
