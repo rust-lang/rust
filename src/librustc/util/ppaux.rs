@@ -18,7 +18,7 @@ use ty::{Bool, Char, Adt};
 use ty::{Error, Str, Array, Slice, Float, FnDef, FnPtr};
 use ty::{Param, RawPtr, Ref, Never, Tuple};
 use ty::{Closure, Generator, GeneratorWitness, Foreign, Projection, Opaque};
-use ty::{Dynamic, Int, Uint, Infer};
+use ty::{UnnormalizedProjection, Dynamic, Int, Uint, Infer};
 use ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind};
 use util::nodemap::FxHashSet;
 
@@ -1143,6 +1143,11 @@ define_print! {
                 }
                 Foreign(def_id) => parameterized(f, subst::Substs::empty(), def_id, &[]),
                 Projection(ref data) => data.print(f, cx),
+                UnnormalizedProjection(ref data) => {
+                    write!(f, "Unnormalized(")?;
+                    data.print(f, cx)?;
+                    write!(f, ")")
+                }
                 Opaque(def_id, substs) => {
                     if cx.is_verbose {
                         return write!(f, "Opaque({:?}, {:?})", def_id, substs);

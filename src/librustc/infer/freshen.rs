@@ -193,6 +193,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             ty::Never |
             ty::Tuple(..) |
             ty::Projection(..) |
+            ty::UnnormalizedProjection(..) |
             ty::Foreign(..) |
             ty::Param(..) |
             ty::Closure(..) |

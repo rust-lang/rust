@@ -97,7 +97,7 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
         ty::Ref(_, ty, _) => {
             stack.push(ty);
         }
-        ty::Projection(ref data) => {
+        ty::Projection(ref data) | ty::UnnormalizedProjection(ref data) => {
             stack.extend(data.substs.types().rev());
         }
         ty::Dynamic(ref obj, ..) => {
