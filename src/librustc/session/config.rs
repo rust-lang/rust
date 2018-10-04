@@ -646,7 +646,6 @@ impl Options {
         match self.debugging_opts.share_generics {
             Some(setting) => setting,
             None => {
-                self.incremental.is_some() ||
                 match self.optimize {
                     OptLevel::No   |
                     OptLevel::Less |
