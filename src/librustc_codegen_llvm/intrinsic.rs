@@ -832,10 +832,10 @@ fn codegen_msvc_try(
 
         bx.set_personality_fn(bx.cx().eh_personality());
 
-        let normal = bx.build_sibling_block("normal");
+        let mut normal = bx.build_sibling_block("normal");
         let catchswitch = bx.build_sibling_block("catchswitch");
         let catchpad = bx.build_sibling_block("catchpad");
-        let caught = bx.build_sibling_block("caught");
+        let mut caught = bx.build_sibling_block("caught");
 
         let func = llvm::get_param(bx.llfn(), 0);
         let data = llvm::get_param(bx.llfn(), 1);
@@ -956,8 +956,8 @@ fn codegen_gnu_try(
         // expected to be `*mut *mut u8` for this to actually work, but that's
         // managed by the standard library.
 
-        let then = bx.build_sibling_block("then");
-        let catch = bx.build_sibling_block("catch");
+        let mut then = bx.build_sibling_block("then");
+        let mut catch = bx.build_sibling_block("catch");
 
         let func = llvm::get_param(bx.llfn(), 0);
         let data = llvm::get_param(bx.llfn(), 1);

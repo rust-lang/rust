@@ -31,7 +31,7 @@ use super::place::PlaceRef;
 impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_rvalue(
         &mut self,
-        bx: Bx,
+        mut bx: Bx,
         dest: PlaceRef<'tcx, Bx::Value>,
         rvalue: &mir::Rvalue<'tcx>
     ) -> Bx {
@@ -121,8 +121,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let count = bx.cx().const_usize(count);
                 let end = dest.project_index(&bx, count).llval;
 
-                let header_bx = bx.build_sibling_block("repeat_loop_header");
-                let body_bx = bx.build_sibling_block("repeat_loop_body");
+                let mut header_bx = bx.build_sibling_block("repeat_loop_header");
+                let mut body_bx = bx.build_sibling_block("repeat_loop_body");
                 let next_bx = bx.build_sibling_block("repeat_loop_next");
 
                 bx.br(header_bx.llbb());

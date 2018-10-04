@@ -18,6 +18,7 @@ use rustc::mir::mono::Stats;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::util::time_graph::TimeGraph;
+use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use std::any::Any;
 use std::sync::mpsc::Receiver;
 use syntax_pos::symbol::InternedString;
@@ -42,7 +43,7 @@ impl<'tcx, T> Backend<'tcx> for T where
     Self: BackendTypes + HasTyCtxt<'tcx> + LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
 {}
 
-pub trait BackendMethods {
+pub trait ExtraBackendMethods: CodegenBackend {
     type Module;
     type OngoingCodegen;
 

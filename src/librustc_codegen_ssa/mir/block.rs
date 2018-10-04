@@ -111,7 +111,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         let funclet_br =
-            |this: &mut Self, bx: &Bx, target: mir::BasicBlock| {
+            |this: &mut Self, bx: &mut Bx, target: mir::BasicBlock| {
                 let (lltarget, is_cleanupret) = lltarget(this, target);
                 if is_cleanupret {
                     // micro-optimization: generate a `ret` rather than a jump
@@ -124,7 +124,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let do_call = |
             this: &mut Self,
-            bx: &Bx,
+            bx: &mut Bx,
             fn_ty: FnType<'tcx, Ty<'tcx>>,
             fn_ptr: Bx::Value,
             llargs: &[Bx::Value],
@@ -200,7 +200,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::TerminatorKind::Goto { target } => {
-                funclet_br(self, &bx, target);
+                funclet_br(self, &mut bx, target);
             }
 
             mir::TerminatorKind::SwitchInt { ref discr, switch_ty, ref values, ref targets } => {
@@ -302,7 +302,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
                     // we don't actually need to drop anything.
-                    funclet_br(self, &bx, target);
+                    funclet_br(self, &mut bx, target);
                     return
                 }
 
@@ -332,7 +332,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                          bx.cx().fn_type_of_instance(&drop_fn))
                     }
                 };
-                do_call(self, &bx, fn_ty, drop_fn, args,
+                do_call(self, &mut bx, fn_ty, drop_fn, args,
                         Some((ReturnDest::Nothing, target)),
                         unwind);
             }
@@ -356,7 +356,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 // Don't codegen the panic block if success if known.
                 if const_cond == Some(expected) {
-                    funclet_br(self, &bx, target);
+                    funclet_br(self, &mut bx, target);
                     return;
                 }
 
@@ -427,7 +427,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let llfn = bx.cx().get_fn(instance);
 
                 // Codegen the actual panic invoke/call.
-                do_call(self, &bx, fn_ty, llfn, &args, None, cleanup);
+                do_call(self, &mut bx, fn_ty, llfn, &args, None, cleanup);
             }
 
             mir::TerminatorKind::DropAndReplace { .. } => {
@@ -477,7 +477,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     if let Some(destination_ref) = destination.as_ref() {
                         let &(ref dest, target) = destination_ref;
                         self.codegen_transmute(&bx, &args[0], dest);
-                        funclet_br(self, &bx, target);
+                        funclet_br(self, &mut bx, target);
                     } else {
                         // If we are trying to transmute to an uninhabited type,
                         // it is likely there is no allotted destination. In fact,
@@ -504,7 +504,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     Some(ty::InstanceDef::DropGlue(_, None)) => {
                         // empty drop glue - a nop.
                         let &(_, target) = destination.as_ref().unwrap();
-                        funclet_br(self, &bx, target);
+                        funclet_br(self, &mut bx, target);
                         return;
                     }
                     _ => bx.cx().new_fn_type(sig, &extra_args)
@@ -550,7 +550,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // Codegen the actual panic invoke/call.
                     do_call(
                         self,
-                        &bx,
+                        &mut bx,
                         fn_ty,
                         llfn,
                         &[msg_file_line_col],
@@ -648,7 +648,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
 
                     if let Some((_, target)) = *destination {
-                        funclet_br(self, &bx, target);
+                        funclet_br(self, &mut bx, target);
                     } else {
                         bx.unreachable();
                     }
@@ -740,7 +740,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     _ => span_bug!(span, "no llfn for call"),
                 };
 
-                do_call(self, &bx, fn_ty, fn_ptr, &llargs,
+                do_call(self, &mut bx, fn_ty, fn_ptr, &llargs,
                         destination.as_ref().map(|&(_, target)| (ret_dest, target)),
                         cleanup);
             }
@@ -913,7 +913,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             span_bug!(self.mir.span, "landing pad was not inserted?")
         }
 
-        let bx = self.new_block("cleanup");
+        let mut bx = self.new_block("cleanup");
 
         let llpersonality = self.cx.eh_personality();
         let llretty = self.landing_pad_type();
@@ -952,7 +952,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &self,
         bb: mir::BasicBlock
     ) -> Bx {
-        let bx = Bx::with_cx(self.cx);
+        let mut bx = Bx::with_cx(self.cx);
         bx.position_at_end(self.blocks[bb]);
         bx
     }

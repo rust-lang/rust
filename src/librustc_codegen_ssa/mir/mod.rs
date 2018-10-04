@@ -214,7 +214,7 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     debug!("fn_ty: {:?}", fn_ty);
     let debug_context =
         cx.create_function_debug_context(instance, sig, llfn, mir);
-    let bx = Bx::new_block(cx, llfn, "start");
+    let mut bx = Bx::new_block(cx, llfn, "start");
 
     if mir.basic_blocks().iter().any(|bb| bb.is_cleanup) {
         bx.set_personality_fn(cx.eh_personality());
@@ -235,7 +235,7 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 
     // Compute debuginfo scopes from MIR scopes.
     let scopes = cx.create_mir_scopes(mir, &debug_context);
-    let (landing_pads, funclets) = create_funclets(mir, &bx, &cleanup_kinds, &block_bxs);
+    let (landing_pads, funclets) = create_funclets(mir, &mut bx, &cleanup_kinds, &block_bxs);
 
     let mut fx = FunctionCx {
         instance,
@@ -262,7 +262,7 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 
     // Allocate variable and temp allocas
     fx.locals = {
-        let args = arg_local_refs(&bx, &fx, &fx.scopes, &memory_locals);
+        let args = arg_local_refs(&mut bx, &fx, &fx.scopes, &memory_locals);
 
         let allocate_local = |local| {
             let decl = &mir.local_decls[local];
@@ -363,7 +363,7 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 
 fn create_funclets<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     mir: &'a Mir<'tcx>,
-    bx: &Bx,
+    bx: &mut Bx,
     cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
     block_bxs: &IndexVec<mir::BasicBlock, Bx::BasicBlock>)
     -> (IndexVec<mir::BasicBlock, Option<Bx::BasicBlock>>,
@@ -400,7 +400,7 @@ fn create_funclets<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             //      }
             Some(&mir::TerminatorKind::Abort) => {
                 let cs_bx = bx.build_sibling_block(&format!("cs_funclet{:?}", bb));
-                let cp_bx = bx.build_sibling_block(&format!("cp_funclet{:?}", bb));
+                let mut cp_bx = bx.build_sibling_block(&format!("cp_funclet{:?}", bb));
                 ret_llbb = cs_bx.llbb();
 
                 let cs = cs_bx.catch_switch(None, None, 1);
@@ -416,7 +416,7 @@ fn create_funclets<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 cp_bx.br(llbb);
             }
             _ => {
-                let cleanup_bx = bx.build_sibling_block(&format!("funclet_{:?}", bb));
+                let mut cleanup_bx = bx.build_sibling_block(&format!("funclet_{:?}", bb));
                 ret_llbb = cleanup_bx.llbb();
                 funclet = cleanup_bx.cleanup_pad(None, &[]);
                 cleanup_bx.br(llbb);
@@ -431,7 +431,7 @@ fn create_funclets<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 /// argument's value. As arguments are places, these are always
 /// indirect.
 fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &Bx,
+    bx: &mut Bx,
     fx: &FunctionCx<'a, 'tcx, Bx>,
     scopes: &IndexVec<
         mir::SourceScope,
@@ -440,7 +440,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     memory_locals: &BitSet<mir::Local>,
 ) -> Vec<LocalRef<'tcx, Bx::Value>> {
     let mir = fx.mir;
-    let tcx = bx.tcx();
+    let tcx = fx.cx.tcx();
     let mut idx = 0;
     let mut llarg_idx = fx.fn_ty.ret.is_indirect() as usize;
 

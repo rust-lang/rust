@@ -16,7 +16,7 @@ use rustc::ty::layout::TyLayout;
 use rustc::ty::layout::{self, Align, Size};
 use rustc::ty::Ty;
 use rustc::util::nodemap::FxHashMap;
-    use rustc_target::abi::call::{ArgType, CastTarget, FnType, Reg};
+use rustc_target::abi::call::{ArgType, CastTarget, FnType, Reg};
 use std::cell::RefCell;
 use syntax::ast;
 

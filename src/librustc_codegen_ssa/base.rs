@@ -524,7 +524,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         cx.set_frame_pointer_elimination(llfn);
         cx.apply_target_cpu_attr(llfn);
 
-        let bx = Bx::new_block(&cx, llfn, "top");
+        let mut bx = Bx::new_block(&cx, llfn, "top");
 
         bx.insert_reference_to_gdb_debug_scripts_section_global();
 
@@ -560,7 +560,7 @@ pub const CODEGEN_WORK_PACKAGE_KIND: time_graph::WorkPackageKind =
     time_graph::WorkPackageKind(&["#DE9597", "#FED1D3", "#FDC5C7", "#B46668", "#88494B"]);
 
 
-pub fn codegen_crate<B: BackendMethods>(
+pub fn codegen_crate<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     rx: mpsc::Receiver<Box<dyn Any + Send>>
@@ -785,15 +785,15 @@ pub fn codegen_crate<B: BackendMethods>(
 /// If you see this comment in the code, then it means that this workaround
 /// worked! We may yet one day track down the mysterious cause of that
 /// segfault...
-struct AbortCodegenOnDrop<B: BackendMethods>(Option<B::OngoingCodegen>);
+struct AbortCodegenOnDrop<B: ExtraBackendMethods>(Option<B::OngoingCodegen>);
 
-impl<B: BackendMethods> AbortCodegenOnDrop<B> {
+impl<B: ExtraBackendMethods> AbortCodegenOnDrop<B> {
     fn into_inner(mut self) -> B::OngoingCodegen {
         self.0.take().unwrap()
     }
 }
 
-impl<B: BackendMethods> Deref for AbortCodegenOnDrop<B> {
+impl<B: ExtraBackendMethods> Deref for AbortCodegenOnDrop<B> {
     type Target = B::OngoingCodegen;
 
     fn deref(&self) -> &B::OngoingCodegen {
@@ -801,13 +801,13 @@ impl<B: BackendMethods> Deref for AbortCodegenOnDrop<B> {
     }
 }
 
-impl<B: BackendMethods> DerefMut for AbortCodegenOnDrop<B> {
+impl<B: ExtraBackendMethods> DerefMut for AbortCodegenOnDrop<B> {
     fn deref_mut(&mut self) -> &mut B::OngoingCodegen {
         self.0.as_mut().unwrap()
     }
 }
 
-impl<B: BackendMethods> Drop for AbortCodegenOnDrop<B> {
+impl<B: ExtraBackendMethods> Drop for AbortCodegenOnDrop<B> {
     fn drop(&mut self) {
         if let Some(codegen) = self.0.take() {
             B::codegen_aborted(codegen);

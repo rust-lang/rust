@@ -41,13 +41,18 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     fn llbb(&self) -> Self::BasicBlock;
     fn count_insn(&self, category: &str);
 
-    fn set_value_name(&self, value: Self::Value, name: &str);
-    fn position_at_end(&self, llbb: Self::BasicBlock);
-    fn position_at_start(&self, llbb: Self::BasicBlock);
-    fn ret_void(&self);
-    fn ret(&self, v: Self::Value);
-    fn br(&self, dest: Self::BasicBlock);
-    fn cond_br(&self, cond: Self::Value, then_llbb: Self::BasicBlock, else_llbb: Self::BasicBlock);
+    fn set_value_name(&mut self, value: Self::Value, name: &str);
+    fn position_at_end(&mut self, llbb: Self::BasicBlock);
+    fn position_at_start(&mut self, llbb: Self::BasicBlock);
+    fn ret_void(&mut self);
+    fn ret(&mut self, v: Self::Value);
+    fn br(&mut self, dest: Self::BasicBlock);
+    fn cond_br(
+        &mut self,
+        cond: Self::Value,
+        then_llbb: Self::BasicBlock,
+        else_llbb: Self::BasicBlock,
+    );
     fn switch(&self, v: Self::Value, else_llbb: Self::BasicBlock, num_cases: usize) -> Self::Value;
     fn invoke(
         &self,
