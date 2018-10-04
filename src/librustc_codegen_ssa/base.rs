@@ -48,7 +48,8 @@ use meth;
 use mir;
 use rustc::util::time_graph;
 use rustc_mir::monomorphize::Instance;
-use rustc_mir::monomorphize::partitioning::{self, PartitioningStrategy, CodegenUnit, CodegenUnitExt};
+use rustc_mir::monomorphize::partitioning::{self, PartitioningStrategy,
+    CodegenUnit, CodegenUnitExt};
 use mono_item::{MonoItem, BaseMonoItemExt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet, DefIdSet};
 use rustc_data_structures::sync::Lrc;

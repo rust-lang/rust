@@ -60,7 +60,9 @@ pub trait DebugInfoMethods<'ll, 'tcx: 'll> : Backend<'ll> {
 pub trait DebugInfoBuilderMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> {
     fn declare_local(
         &self,
-        dbg_context: &FunctionDebugContext<<Self::CodegenCx as DebugInfoMethods<'ll, 'tcx>>::DIScope>,
+        dbg_context: &FunctionDebugContext<
+            <Self::CodegenCx as DebugInfoMethods<'ll, 'tcx>>::DIScope
+        >,
         variable_name: Name,
         variable_type: Ty<'tcx>,
         scope_metadata: <Self::CodegenCx as DebugInfoMethods<'ll, 'tcx>>::DIScope,
@@ -70,7 +72,9 @@ pub trait DebugInfoBuilderMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 
     );
     fn set_source_location(
         &self,
-        debug_context: &FunctionDebugContext<<Self::CodegenCx as DebugInfoMethods<'ll, 'tcx>>::DIScope>,
+        debug_context: &FunctionDebugContext<
+            <Self::CodegenCx as DebugInfoMethods<'ll, 'tcx>>::DIScope
+        >,
         scope: Option<<Self::CodegenCx as DebugInfoMethods<'ll, 'tcx>>::DIScope>,
         span: syntax_pos::Span,
     );

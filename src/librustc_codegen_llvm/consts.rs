@@ -11,7 +11,8 @@
 use libc::c_uint;
 use llvm::{self, SetUnnamedAddr, True};
 use rustc::hir::def_id::DefId;
-use rustc::mir::interpret::{ConstValue, Allocation, read_target_uint, Pointer, ConstEvalErr, GlobalId};
+use rustc::mir::interpret::{ConstValue, Allocation, read_target_uint,
+    Pointer, ConstEvalErr, GlobalId};
 use rustc::hir::Node;
 use debuginfo;
 use monomorphize::MonoItem;
