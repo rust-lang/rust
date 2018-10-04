@@ -96,15 +96,35 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
     // Snip a line at a time from `stripped_str` until it is used up. Push the snippet
     // onto result.
     let mut cur_max_chars = max_chars_with_indent;
-    let is_overflow_allowed = is_whitespace(fmt.line_start);
+    let is_bareline_ok = fmt.line_start.is_empty() || is_whitespace(fmt.line_start);
     loop {
         // All the input starting at cur_start fits on the current line
         if graphemes.len() - cur_start <= cur_max_chars {
-            let last_line = graphemes[cur_start..].join("");
-            if fmt.trim_end {
-                result.push_str(&last_line.trim_right());
+            // trim trailing whitespaces
+            let graphemes_minus_ws = if !fmt.trim_end {
+                &graphemes[cur_start..]
             } else {
-                result.push_str(&last_line);
+                match graphemes[cur_start..]
+                    .iter()
+                    .rposition(|grapheme| !is_whitespace(grapheme))
+                {
+                    Some(index) => &graphemes[cur_start..=cur_start + index],
+                    None => &graphemes[cur_start..],
+                }
+            };
+            if is_bareline_ok {
+                // new lines don't need to start with line_start
+                result.push_str(&graphemes_minus_ws.join(""));
+            } else {
+                // new lines need to be indented and prefixed with line_start
+                for grapheme in graphemes_minus_ws {
+                    if is_line_feed(grapheme) {
+                        result.push_str(&indent_with_newline);
+                        result.push_str(fmt.line_start);
+                    } else {
+                        result.push_str(grapheme);
+                    }
+                }
             }
             break;
         }
@@ -121,7 +141,7 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
             }
             SnippetState::EndWithLineFeed(line, len) => {
                 result.push_str(&line);
-                if is_overflow_allowed {
+                if is_bareline_ok {
                     // the next line can benefit from the full width
                     cur_max_chars = max_chars_without_indent;
                 } else {
@@ -171,13 +191,10 @@ fn break_string(max_chars: usize, trim_end: bool, input: &[&str]) -> SnippetStat
     let break_at = |index /* grapheme at index is included */| {
         // Take in any whitespaces to the left/right of `input[index]` and
         // check if there is a line feed, in which case whitespaces needs to be kept.
-        let mut index_minus_ws = index;
-        for (i, grapheme) in input[0..=index].iter().enumerate().rev() {
-            if !is_whitespace(grapheme) {
-                index_minus_ws = i;
-                break;
-            }
-        }
+        let index_minus_ws = input[0..=index]
+            .iter()
+            .rposition(|grapheme| !is_whitespace(grapheme))
+            .unwrap_or(index);
         // Take into account newlines occuring in input[0..=index], i.e., the possible next new
         // line. If there is one, then text after it could be rewritten in a way that the available
         // space is fully used.
@@ -396,6 +413,27 @@ mod test {
         fmt.trim_end = false; // default value of trim_end
         let rewritten_string = rewrite_string(string, &fmt);
         assert_eq!(rewritten_string, Some("\"Vivamus id mi.  \"".to_string()));
+    }
+
+    #[test]
+    fn last_line_fit_with_newline() {
+        let string = "Vivamus id mi.\nVivamus id mi.";
+        let config: Config = Default::default();
+        let fmt = StringFormat {
+            opener: "",
+            closer: "",
+            line_start: "// ",
+            line_end: "",
+            shape: Shape::legacy(100, Indent::from_width(&config, 4)),
+            trim_end: true,
+            config: &config,
+        };
+
+        let rewritten_string = rewrite_string(string, &fmt);
+        assert_eq!(
+            rewritten_string,
+            Some("Vivamus id mi.\n    // Vivamus id mi.".to_string())
+        );
     }
 
     #[test]
