@@ -292,7 +292,7 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
             ty::Predicate::Trait(ref data) => {
                 let trait_obligation = obligation.with(data.clone());
 
-                if data.is_global() && !data.has_late_bound_regions() {
+                if data.is_global() {
                     // no type variables present, can use evaluation for better caching.
                     // FIXME: consider caching errors too.
                     if self.selcx.infcx().predicate_must_hold(&obligation) {
@@ -362,6 +362,7 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
                         match binder.no_late_bound_regions() {
                             // If so, this obligation is an error (for now). Eventually we should be
                             // able to support additional cases here, like `for<'a> &'a str: 'a`.
+                            // NOTE: this is duplicate-implemented between here and fulfillment.
                             None => {
                                 ProcessResult::Error(CodeSelectionError(Unimplemented))
                             }
