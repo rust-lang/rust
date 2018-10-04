@@ -1,8 +1,0 @@
-warning: function is never used: `batches`
-  --> $DIR/conservative_impl_trait.rs:14:1
-   |
-LL | fn batches(n: &u32) -> impl Iterator<Item=&u32> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: #[warn(dead_code)] on by default
-
