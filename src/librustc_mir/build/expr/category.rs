@@ -50,7 +50,9 @@ impl Category {
             | ExprKind::Index { .. }
             | ExprKind::SelfRef
             | ExprKind::VarRef { .. }
-            | ExprKind::StaticRef { .. } => Some(Category::Place),
+            | ExprKind::StaticRef { .. }
+            | ExprKind::PlaceTypeAscription { .. }
+            | ExprKind::ValueTypeAscription { .. } => Some(Category::Place),
 
             ExprKind::LogicalOp { .. }
             | ExprKind::If { .. }

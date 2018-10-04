@@ -268,6 +268,16 @@ pub enum ExprKind<'tcx> {
         fields: Vec<FieldExprRef<'tcx>>,
         base: Option<FruInfo<'tcx>>
     },
+    PlaceTypeAscription {
+        source: ExprRef<'tcx>,
+        /// Type that the user gave to this expression
+        user_ty: CanonicalTy<'tcx>,
+    },
+    ValueTypeAscription {
+        source: ExprRef<'tcx>,
+        /// Type that the user gave to this expression
+        user_ty: CanonicalTy<'tcx>,
+    },
     Closure {
         closure_id: DefId,
         substs: UpvarSubsts<'tcx>,
