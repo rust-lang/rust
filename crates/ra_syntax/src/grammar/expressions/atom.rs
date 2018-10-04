@@ -319,10 +319,13 @@ pub(crate) fn match_arm_list(p: &mut Parser) {
 //     match () {
 //         _ => (),
 //         X | Y if Z => (),
+//         | X | Y if Z => (),
+//         | X => (),
 //     };
 // }
 fn match_arm(p: &mut Parser) -> BlockLike {
     let m = p.start();
+    p.eat(PIPE);
     patterns::pattern_r(p, TokenSet::EMPTY);
     while p.eat(PIPE) {
         patterns::pattern(p);
