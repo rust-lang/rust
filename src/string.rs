@@ -98,7 +98,12 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
     loop {
         // All the input starting at cur_start fits on the current line
         if graphemes.len() - cur_start <= cur_max_chars {
-            result.push_str(&graphemes[cur_start..].join(""));
+            let last_line = graphemes[cur_start..].join("");
+            if fmt.trim_end {
+                result.push_str(&last_line.trim_right());
+            } else {
+                result.push_str(&last_line);
+            }
             break;
         }
 
@@ -362,5 +367,20 @@ mod test {
             rewritten_string,
             Some("\"Nulla\nconsequat erat at massa. \\\n Vivamus id mi.\"".to_string())
         );
+    }
+
+    #[test]
+    fn last_line_fit_with_trailing_whitespaces() {
+        let string = "Vivamus id mi.  ";
+        let config: Config = Default::default();
+        let mut fmt = StringFormat::new(Shape::legacy(25, Indent::empty()), &config);
+
+        fmt.trim_end = true;
+        let rewritten_string = rewrite_string(string, &fmt);
+        assert_eq!(rewritten_string, Some("\"Vivamus id mi.\"".to_string()));
+
+        fmt.trim_end = false; // default value of trim_end
+        let rewritten_string = rewrite_string(string, &fmt);
+        assert_eq!(rewritten_string, Some("\"Vivamus id mi.  \"".to_string()));
     }
 }
