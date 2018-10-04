@@ -12,9 +12,9 @@ are some areas where contributions would be **especially** welcome:
 * Porting libsyntax parser to rust-analyzer: currently rust-analyzer parses
   only a tiny subset of Rust. This should be fixed by porting parsing
   functions from libsyntax one by one. Take a look at the
-  [libsyntax parser](https://github.com/rust-lang/rust/blob/6b99adeb11313197f409b4f7c4083c2ceca8a4fe/src/libsyntax/parse/parser.rs)
+  [libsyntax parser]
   for "what to port" and at the
-  [Kotlin parser](https://github.com/JetBrains/kotlin/blob/4d951de616b20feca92f3e9cc9679b2de9e65195/compiler/frontend/src/org/jetbrains/kotlin/parsing/KotlinParsing.java)
+  [Kotlin parser]
   for "how to port".
 
 * Writing validators: by design, rust-analyzer is very lax about the
@@ -35,4 +35,23 @@ are some areas where contributions would be **especially** welcome:
 Do take a look at the issue tracker.
 
 If you don't know where to start, or have *any* questions or suggestions,
-don't hesitate to chat at [Gitter](https://gitter.im/libsyntax2/Lobby)!
+don't hesitate to chat at [Gitter]!
+
+# Code generation
+
+Some of the components of this repository are generated through automatic processes. These are outlined below:
+
+ - `gen-kinds`: The kinds of tokens are reused in several places, so a generator is used.
+   This process uses [tera] to generate, using data in [grammar.ron], the files:  
+   - [ast/generated.rs][ast generated] in `ra_syntax` based on [ast/generated.tera.rs][ast source]
+   - [syntax_kinds/generated.rs][syntax_kinds generated] in `ra_syntax` based on [syntax_kinds/generated.tera.rs][syntax_kinds source]
+
+[libsyntax parser]: https://github.com/rust-lang/rust/blob/6b99adeb11313197f409b4f7c4083c2ceca8a4fe/src/libsyntax/parse/parser.rs
+[Kotlin parser]: https://github.com/JetBrains/kotlin/blob/4d951de616b20feca92f3e9cc9679b2de9e65195/compiler/frontend/src/org/jetbrains/kotlin/parsing/KotlinParsing.java
+[Gitter]: https://gitter.im/libsyntax2/Lobby
+[tera]: https://tera.netlify.com/
+[grammar.ron]: ./crates/ra_syntax/src/grammar.ron
+[ast generated]: ./crates/ra_syntax/src/ast/generated.rs
+[ast source]: ./crates/ra_syntax/src/ast/generated.tera.rs
+[syntax_kinds generated]: ./crates/ra_syntax/src/syntax_kinds/generated.rs
+[syntax_kinds source]: ./crates/ra_syntax/src/syntax_kinds/generated.tera.rs
