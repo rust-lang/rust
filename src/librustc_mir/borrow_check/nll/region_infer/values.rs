@@ -11,6 +11,7 @@
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::ty::{self, RegionVid};
 use rustc_data_structures::bit_set::{HybridBitSet, SparseBitMatrix};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::fmt::Debug;
@@ -31,8 +32,7 @@ crate struct RegionValueElements {
 impl RegionValueElements {
     crate fn new(mir: &Mir<'_>) -> Self {
         let mut num_points = 0;
-        let statements_before_block: IndexVec<BasicBlock, usize> = mir
-            .basic_blocks()
+        let statements_before_block: IndexVec<BasicBlock, usize> = mir.basic_blocks()
             .iter()
             .map(|block_data| {
                 let v = num_points;
@@ -48,7 +48,7 @@ impl RegionValueElements {
 
         let mut basic_blocks = IndexVec::with_capacity(num_points);
         for (bb, bb_data) in mir.basic_blocks().iter_enumerated() {
-            basic_blocks.extend((0 .. bb_data.statements.len() + 1).map(|_| bb));
+            basic_blocks.extend((0..bb_data.statements.len() + 1).map(|_| bb));
         }
 
         Self {
@@ -85,7 +85,10 @@ impl RegionValueElements {
         let block = self.basic_blocks[index];
         let start_index = self.statements_before_block[block];
         let statement_index = index.index() - start_index;
-        Location { block, statement_index }
+        Location {
+            block,
+            statement_index,
+        }
     }
 
     /// Sometimes we get point-indices back from bitsets that may be
@@ -103,13 +106,15 @@ impl RegionValueElements {
         index: PointIndex,
         stack: &mut Vec<PointIndex>,
     ) {
-        let Location { block, statement_index } = self.to_location(index);
+        let Location {
+            block,
+            statement_index,
+        } = self.to_location(index);
         if statement_index == 0 {
             // If this is a basic block head, then the predecessors are
             // the the terminators of other basic blocks
             stack.extend(
-                mir
-                    .predecessors_for(block)
+                mir.predecessors_for(block)
                     .iter()
                     .map(|&pred_bb| mir.terminator_loc(pred_bb))
                     .map(|pred_loc| self.point_from_location(pred_loc)),
@@ -127,10 +132,7 @@ newtype_index! {
     pub struct PointIndex { DEBUG_FORMAT = "PointIndex({})" }
 }
 
-/// A single integer representing a (non-zero) `UniverseIndex`.
-/// Computed just by subtracting one from `UniverseIndex`; this is
-/// because the `0` value for `UniverseIndex` represents the root
-/// universe, and we don't need/want a bit for that one.
+/// A single integer representing a `ty::Placeholder`.
 newtype_index! {
     pub struct PlaceholderIndex { DEBUG_FORMAT = "PlaceholderIndex({})" }
 }
@@ -148,7 +150,7 @@ crate enum RegionElement {
 
     /// A subuniverse from a subuniverse (e.g., instantiated from a
     /// `for<'a> fn(&'a u32)` type).
-    SubUniversalRegion(ty::UniverseIndex),
+    PlaceholderRegion(ty::Placeholder),
 }
 
 /// When we initially compute liveness, we use a bit matrix storing
@@ -185,7 +187,10 @@ impl<N: Idx> LivenessValues<N> {
     /// Adds all the elements in the given bit array into the given
     /// region. Returns true if any of them are newly added.
     crate fn add_elements(&mut self, row: N, locations: &HybridBitSet<PointIndex>) -> bool {
-        debug!("LivenessValues::add_elements(row={:?}, locations={:?})", row, locations);
+        debug!(
+            "LivenessValues::add_elements(row={:?}, locations={:?})",
+            row, locations
+        );
         self.points.union_into_row(row, locations)
     }
 
@@ -214,6 +219,52 @@ impl<N: Idx> LivenessValues<N> {
     }
 }
 
+/// Maps from `ty::Placeholder` values that are used in the rest of
+/// rustc to the internal `PlaceholderIndex` values that are used in
+/// NLL.
+#[derive(Default)]
+crate struct PlaceholderIndices {
+    to_index: FxHashMap<ty::Placeholder, PlaceholderIndex>,
+    from_index: IndexVec<PlaceholderIndex, ty::Placeholder>,
+}
+
+impl PlaceholderIndices {
+    crate fn insert(&mut self, placeholder: ty::Placeholder) -> PlaceholderIndex {
+        let PlaceholderIndices {
+            to_index,
+            from_index,
+        } = self;
+        *to_index
+            .entry(placeholder)
+            .or_insert_with(|| from_index.push(placeholder))
+    }
+
+    crate fn lookup_index(&self, placeholder: ty::Placeholder) -> PlaceholderIndex {
+        self.to_index[&placeholder]
+    }
+
+    crate fn lookup_placeholder(&self, placeholder: PlaceholderIndex) -> ty::Placeholder {
+        self.from_index[placeholder]
+    }
+
+    crate fn len(&self) -> usize {
+        self.from_index.len()
+    }
+}
+
+impl ::std::iter::FromIterator<ty::Placeholder> for PlaceholderIndices {
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = ty::Placeholder>,
+    {
+        let mut result = Self::default();
+        iter.into_iter().for_each(|p| {
+            result.insert(p);
+        });
+        result
+    }
+}
+
 /// Stores the full values for a set of regions (in contrast to
 /// `LivenessValues`, which only stores those points in the where a
 /// region is live). The full value for a region may contain points in
@@ -235,6 +286,7 @@ impl<N: Idx> LivenessValues<N> {
 #[derive(Clone)]
 crate struct RegionValues<N: Idx> {
     elements: Rc<RegionValueElements>,
+    placeholder_indices: Rc<PlaceholderIndices>,
     points: SparseBitMatrix<N, PointIndex>,
     free_regions: SparseBitMatrix<N, RegionVid>,
 
@@ -250,12 +302,13 @@ impl<N: Idx> RegionValues<N> {
     crate fn new(
         elements: &Rc<RegionValueElements>,
         num_universal_regions: usize,
-        max_universe: ty::UniverseIndex,
+        placeholder_indices: &Rc<PlaceholderIndices>,
     ) -> Self {
-        let num_placeholders = max_universe.as_usize();
+        let num_placeholders = placeholder_indices.len();
         Self {
             elements: elements.clone(),
             points: SparseBitMatrix::new(elements.num_points),
+            placeholder_indices: placeholder_indices.clone(),
             free_regions: SparseBitMatrix::new(num_universal_regions),
             placeholders: SparseBitMatrix::new(num_placeholders),
         }
@@ -313,14 +366,11 @@ impl<N: Idx> RegionValues<N> {
 
     /// Returns the locations contained within a given region `r`.
     crate fn locations_outlived_by<'a>(&'a self, r: N) -> impl Iterator<Item = Location> + 'a {
-        self.points
-            .row(r)
-            .into_iter()
-            .flat_map(move |set| {
-                set.iter()
-                    .take_while(move |&p| self.elements.point_in_range(p))
-                    .map(move |p| self.elements.to_location(p))
-            })
+        self.points.row(r).into_iter().flat_map(move |set| {
+            set.iter()
+                .take_while(move |&p| self.elements.point_in_range(p))
+                .map(move |p| self.elements.to_location(p))
+        })
     }
 
     /// Returns just the universal regions that are contained in a given region's value.
@@ -335,32 +385,30 @@ impl<N: Idx> RegionValues<N> {
     }
 
     /// Returns all the elements contained in a given region's value.
-    crate fn subuniverses_contained_in<'a>(
+    crate fn placeholders_contained_in<'a>(
         &'a self,
         r: N,
-    ) -> impl Iterator<Item = ty::UniverseIndex> + 'a {
+    ) -> impl Iterator<Item = ty::Placeholder> + 'a {
         self.placeholders
             .row(r)
             .into_iter()
             .flat_map(|set| set.iter())
-            .map(|p| ty::UniverseIndex::from_u32((p.index() + 1) as u32))
+            .map(move |p| self.placeholder_indices.lookup_placeholder(p))
     }
 
     /// Returns all the elements contained in a given region's value.
     crate fn elements_contained_in<'a>(&'a self, r: N) -> impl Iterator<Item = RegionElement> + 'a {
         let points_iter = self.locations_outlived_by(r).map(RegionElement::Location);
 
-        let free_regions_iter = self
-            .universal_regions_outlived_by(r)
+        let free_regions_iter = self.universal_regions_outlived_by(r)
             .map(RegionElement::RootUniversalRegion);
 
-        let subuniverses_iter = self
-            .subuniverses_contained_in(r)
-            .map(RegionElement::SubUniversalRegion);
+        let placeholder_universes_iter = self.placeholders_contained_in(r)
+            .map(RegionElement::PlaceholderRegion);
 
         points_iter
             .chain(free_regions_iter)
-            .chain(subuniverses_iter)
+            .chain(placeholder_universes_iter)
     }
 
     /// Returns a "pretty" string value of the region. Meant for debugging.
@@ -397,14 +445,14 @@ impl ToElementIndex for RegionVid {
     }
 }
 
-impl ToElementIndex for ty::UniverseIndex {
+impl ToElementIndex for ty::Placeholder {
     fn add_to_row<N: Idx>(self, values: &mut RegionValues<N>, row: N) -> bool {
-        let index = PlaceholderIndex::new(self.as_usize() - 1);
+        let index = values.placeholder_indices.lookup_index(self);
         values.placeholders.insert(row, index)
     }
 
     fn contained_in_row<N: Idx>(self, values: &RegionValues<N>, row: N) -> bool {
-        let index = PlaceholderIndex::new(self.as_usize() - 1);
+        let index = values.placeholder_indices.lookup_index(self);
         values.placeholders.contains(row, index)
     }
 }
@@ -467,7 +515,7 @@ fn region_value_str(elements: impl IntoIterator<Item = RegionElement>) -> String
                 result.push_str(&format!("{:?}", fr));
             }
 
-            RegionElement::SubUniversalRegion(ur) => {
+            RegionElement::PlaceholderRegion(placeholder) => {
                 if let Some((location1, location2)) = open_location {
                     push_sep(&mut result);
                     push_location_range(&mut result, location1, location2);
@@ -475,7 +523,7 @@ fn region_value_str(elements: impl IntoIterator<Item = RegionElement>) -> String
                 }
 
                 push_sep(&mut result);
-                result.push_str(&format!("{:?}", ur));
+                result.push_str(&format!("{:?}", placeholder));
             }
         }
     }

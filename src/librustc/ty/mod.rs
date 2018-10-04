@@ -1479,18 +1479,17 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 /// region `'a` is in a subuniverse U2 of U1, because we can name it
 /// inside the fn type but not outside.
 ///
-/// Universes are related to **skolemization** -- which is a way of
-/// doing type- and trait-checking around these "forall" binders (also
-/// called **universal quantification**). The idea is that when, in
-/// the body of `bar`, we refer to `T` as a type, we aren't referring
-/// to any type in particular, but rather a kind of "fresh" type that
-/// is distinct from all other types we have actually declared. This
-/// is called a **skolemized** type, and we use universes to talk
-/// about this. In other words, a type name in universe 0 always
-/// corresponds to some "ground" type that the user declared, but a
-/// type name in a non-zero universe is a skolemized type -- an
-/// idealized representative of "types in general" that we use for
-/// checking generic functions.
+/// Universes are used to do type- and trait-checking around these
+/// "forall" binders (also called **universal quantification**). The
+/// idea is that when, in the body of `bar`, we refer to `T` as a
+/// type, we aren't referring to any type in particular, but rather a
+/// kind of "fresh" type that is distinct from all other types we have
+/// actually declared. This is called a **placeholder** type, and we
+/// use universes to talk about this. In other words, a type name in
+/// universe 0 always corresponds to some "ground" type that the user
+/// declared, but a type name in a non-zero universe is a placeholder
+/// type -- an idealized representative of "types in general" that we
+/// use for checking generic functions.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct UniverseIndex(u32);
 
@@ -1551,6 +1550,18 @@ impl From<u32> for UniverseIndex {
     fn from(index: u32) -> Self {
         UniverseIndex(index)
     }
+}
+
+/// The "placeholder index" fully defines a placeholder region.
+/// Placeholder regions are identified by both a **universe** as well
+/// as a "bound-region" within that universe. The `bound_region` is
+/// basically a name -- distinct bound regions within the same
+/// universe are just two regions with an unknown relationship to one
+/// another.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, PartialOrd, Ord)]
+pub struct Placeholder {
+    pub universe: UniverseIndex,
+    pub name: BoundRegion,
 }
 
 /// When type checking, we use the `ParamEnv` to track

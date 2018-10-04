@@ -184,7 +184,7 @@ pub(super) fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return false;
     }
 
-    // create a parameter environment corresponding to a (skolemized) instantiation of impl1
+    // create a parameter environment corresponding to a (placeholder) instantiation of impl1
     let penv = tcx.param_env(impl1_def_id);
     let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id).unwrap();
 

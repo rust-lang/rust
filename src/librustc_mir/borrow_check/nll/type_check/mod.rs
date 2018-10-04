@@ -15,7 +15,9 @@ use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::LocationTable;
 use borrow_check::nll::constraints::{ConstraintCategory, ConstraintSet, OutlivesConstraint};
 use borrow_check::nll::facts::AllFacts;
-use borrow_check::nll::region_infer::values::{LivenessValues, RegionValueElements};
+use borrow_check::nll::region_infer::values::LivenessValues;
+use borrow_check::nll::region_infer::values::PlaceholderIndices;
+use borrow_check::nll::region_infer::values::RegionValueElements;
 use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
 use borrow_check::nll::renumber;
 use borrow_check::nll::type_check::free_region_relations::{
@@ -42,13 +44,13 @@ use rustc::traits::{ObligationCause, PredicateObligations};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, CanonicalTy, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind};
-use std::{fmt, iter};
 use std::rc::Rc;
+use std::{fmt, iter};
 use syntax_pos::{Span, DUMMY_SP};
 use transform::{MirPass, MirSource};
 
-use rustc_data_structures::fx::FxHashSet;
 use either::Either;
+use rustc_data_structures::fx::FxHashSet;
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
@@ -128,6 +130,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
         outlives_constraints: ConstraintSet::default(),
         type_tests: Vec::default(),
     };
+    let mut placeholder_indices = PlaceholderIndices::default();
 
     let CreateResult {
         universal_region_relations,
@@ -147,6 +150,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
         borrow_set,
         all_facts,
         constraints: &mut constraints,
+        placeholder_indices: &mut placeholder_indices,
     };
 
     type_check_internal(
@@ -162,12 +166,15 @@ pub(crate) fn type_check<'gcx, 'tcx>(
             cx.equate_inputs_and_outputs(mir, universal_regions, &normalized_inputs_and_output);
             liveness::generate(cx, mir, elements, flow_inits, move_data, location_table);
 
-            cx.borrowck_context.as_mut().map(|bcx| translate_outlives_facts(bcx));
+            cx.borrowck_context
+                .as_mut()
+                .map(|bcx| translate_outlives_facts(bcx));
         },
     );
 
     MirTypeckResults {
         constraints,
+        placeholder_indices,
         universal_region_relations,
     }
 }
@@ -210,21 +217,25 @@ fn type_check_internal<'a, 'gcx, 'tcx, R>(
 fn translate_outlives_facts(cx: &mut BorrowCheckContext) {
     if let Some(facts) = cx.all_facts {
         let location_table = cx.location_table;
-        facts.outlives.extend(
-            cx.constraints.outlives_constraints.iter().flat_map(|constraint: &OutlivesConstraint| {
-                if let Some(from_location) = constraint.locations.from_location() {
-                    Either::Left(iter::once((
-                        constraint.sup,
-                        constraint.sub,
-                        location_table.mid_index(from_location),
-                    )))
-                } else {
-                    Either::Right(location_table.all_points().map(move |location| {
-                       (constraint.sup, constraint.sub, location)
-                    }))
-                }
-            })
-        );
+        facts
+            .outlives
+            .extend(cx.constraints.outlives_constraints.iter().flat_map(
+                |constraint: &OutlivesConstraint| {
+                    if let Some(from_location) = constraint.locations.from_location() {
+                        Either::Left(iter::once((
+                            constraint.sup,
+                            constraint.sub,
+                            location_table.mid_index(from_location),
+                        )))
+                    } else {
+                        Either::Right(
+                            location_table
+                                .all_points()
+                                .map(move |location| (constraint.sup, constraint.sub, location)),
+                        )
+                    }
+                },
+            ));
     }
 }
 
@@ -718,10 +729,12 @@ struct BorrowCheckContext<'a, 'tcx: 'a> {
     all_facts: &'a mut Option<AllFacts>,
     borrow_set: &'a BorrowSet<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
+    placeholder_indices: &'a mut PlaceholderIndices,
 }
 
 crate struct MirTypeckResults<'tcx> {
     crate constraints: MirTypeckRegionConstraints<'tcx>,
+    crate placeholder_indices: PlaceholderIndices,
     crate universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
 }
 

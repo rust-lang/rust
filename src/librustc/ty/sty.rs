@@ -709,7 +709,7 @@ impl<'a, 'gcx, 'tcx> ExistentialTraitRef<'tcx> {
     /// Object types don't have a self-type specified. Therefore, when
     /// we convert the principal trait-ref into a normal trait-ref,
     /// you must give *some* self-type. A common choice is `mk_err()`
-    /// or some skolemized type.
+    /// or some placeholder type.
     pub fn with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, self_ty: Ty<'tcx>)
         -> ty::TraitRef<'tcx>  {
         // otherwise the escaping regions would be captured by the binder
@@ -732,7 +732,7 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
     /// Object types don't have a self-type specified. Therefore, when
     /// we convert the principal trait-ref into a normal trait-ref,
     /// you must give *some* self-type. A common choice is `mk_err()`
-    /// or some skolemized type.
+    /// or some placeholder type.
     pub fn with_self_ty(&self, tcx: TyCtxt<'_, '_, 'tcx>,
                         self_ty: Ty<'tcx>)
                         -> ty::PolyTraitRef<'tcx>  {
@@ -743,7 +743,7 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
 /// Binder is a binder for higher-ranked lifetimes. It is part of the
 /// compiler's representation for things like `for<'a> Fn(&'a isize)`
 /// (which would be represented by the type `PolyTraitRef ==
-/// Binder<TraitRef>`). Note that when we skolemize, instantiate,
+/// Binder<TraitRef>`). Note that when we instantiate,
 /// erase, or otherwise "discharge" these bound regions, we change the
 /// type from `Binder<T>` to just `T` (see
 /// e.g. `liberate_late_bound_regions`).
@@ -1066,10 +1066,10 @@ pub type Region<'tcx> = &'tcx RegionKind;
 ///
 /// Unlike Param-s, bound regions are not supposed to exist "in the wild"
 /// outside their binder, e.g. in types passed to type inference, and
-/// should first be substituted (by skolemized regions, free regions,
+/// should first be substituted (by placeholder regions, free regions,
 /// or region variables).
 ///
-/// ## Skolemized and Free Regions
+/// ## Placeholder and Free Regions
 ///
 /// One often wants to work with bound regions without knowing their precise
 /// identity. For example, when checking a function, the lifetime of a borrow
@@ -1077,12 +1077,11 @@ pub type Region<'tcx> = &'tcx RegionKind;
 /// it must be ensured that bounds on the region can't be accidentally
 /// assumed without being checked.
 ///
-/// The process of doing that is called "skolemization". The bound regions
-/// are replaced by skolemized markers, which don't satisfy any relation
-/// not explicitly provided.
+/// To do this, we replace the bound regions with placeholder markers,
+/// which don't satisfy any relation not explicitly provided.
 ///
-/// There are 2 kinds of skolemized regions in rustc: `ReFree` and
-/// `ReSkolemized`. When checking an item's body, `ReFree` is supposed
+/// There are 2 kinds of placeholder regions in rustc: `ReFree` and
+/// `RePlaceholder`. When checking an item's body, `ReFree` is supposed
 /// to be used. These also support explicit bounds: both the internally-stored
 /// *scope*, which the region is assumed to outlive, as well as other
 /// relations stored in the `FreeRegionMap`. Note that these relations
@@ -1091,14 +1090,14 @@ pub type Region<'tcx> = &'tcx RegionKind;
 ///
 /// When working with higher-ranked types, some region relations aren't
 /// yet known, so you can't just call `resolve_regions_and_report_errors`.
-/// `ReSkolemized` is designed for this purpose. In these contexts,
+/// `RePlaceholder` is designed for this purpose. In these contexts,
 /// there's also the risk that some inference variable laying around will
-/// get unified with your skolemized region: if you want to check whether
+/// get unified with your placeholder region: if you want to check whether
 /// `for<'a> Foo<'_>: 'a`, and you substitute your bound region `'a`
-/// with a skolemized region `'%a`, the variable `'_` would just be
-/// instantiated to the skolemized region `'%a`, which is wrong because
+/// with a placeholder region `'%a`, the variable `'_` would just be
+/// instantiated to the placeholder region `'%a`, which is wrong because
 /// the inference variable is supposed to satisfy the relation
-/// *for every value of the skolemized region*. To ensure that doesn't
+/// *for every value of the placeholder region*. To ensure that doesn't
 /// happen, you can use `leak_check`. This is more clearly explained
 /// by the [rustc guide].
 ///
@@ -1132,9 +1131,9 @@ pub enum RegionKind {
     /// A region variable.  Should not exist after typeck.
     ReVar(RegionVid),
 
-    /// A skolemized region - basically the higher-ranked version of ReFree.
+    /// A placeholder region - basically the higher-ranked version of ReFree.
     /// Should not exist after typeck.
-    ReSkolemized(ty::UniverseIndex, BoundRegion),
+    RePlaceholder(ty::Placeholder),
 
     /// Empty lifetime is for data that is never accessed.
     /// Bottom in the region lattice. We treat ReEmpty somewhat
@@ -1338,7 +1337,7 @@ impl RegionKind {
             RegionKind::ReScope(..) => false,
             RegionKind::ReStatic => true,
             RegionKind::ReVar(..) => false,
-            RegionKind::ReSkolemized(_, br) => br.is_named(),
+            RegionKind::RePlaceholder(placeholder) => placeholder.name.is_named(),
             RegionKind::ReEmpty => false,
             RegionKind::ReErased => false,
             RegionKind::ReClosureBound(..) => false,
@@ -1410,7 +1409,7 @@ impl RegionKind {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_INFER;
             }
-            ty::ReSkolemized(..) => {
+            ty::RePlaceholder(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_SKOL;
             }

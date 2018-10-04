@@ -458,9 +458,10 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                 return Ok(r);
             }
 
-            // Always make a fresh region variable for skolemized regions;
-            // the higher-ranked decision procedures rely on this.
-            ty::ReSkolemized(..) => { }
+            // Always make a fresh region variable for placeholder
+            // regions; the higher-ranked decision procedures rely on
+            // this.
+            ty::RePlaceholder(..) => { }
 
             // For anything else, we make a region variable, unless we
             // are *equating*, in which case it's just wasteful.

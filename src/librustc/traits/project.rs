@@ -206,15 +206,15 @@ pub fn poly_project_and_unify_type<'cx, 'gcx, 'tcx>(
 
     let infcx = selcx.infcx();
     infcx.commit_if_ok(|snapshot| {
-        let (skol_predicate, skol_map) =
-            infcx.skolemize_late_bound_regions(&obligation.predicate);
+        let (placeholder_predicate, placeholder_map) =
+            infcx.replace_late_bound_regions_with_placeholders(&obligation.predicate);
 
-        let skol_obligation = obligation.with(skol_predicate);
+        let skol_obligation = obligation.with(placeholder_predicate);
         let r = match project_and_unify_type(selcx, &skol_obligation) {
             Ok(result) => {
                 let span = obligation.cause.span;
-                match infcx.leak_check(false, span, &skol_map, snapshot) {
-                    Ok(()) => Ok(infcx.plug_leaks(skol_map, snapshot, result)),
+                match infcx.leak_check(false, span, &placeholder_map, snapshot) {
+                    Ok(()) => Ok(infcx.plug_leaks(placeholder_map, snapshot, result)),
                     Err(e) => {
                         debug!("poly_project_and_unify_type: leak check encountered error {:?}", e);
                         Err(MismatchedProjectionTypes { err: e })
@@ -1571,11 +1571,11 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
 
 // # Cache
 
-/// The projection cache. Unlike the standard caches, this can
-/// include infcx-dependent type variables - therefore, we have to roll
-/// the cache back each time we roll a snapshot back, to avoid assumptions
-/// on yet-unresolved inference variables. Types with skolemized regions
-/// also have to be removed when the respective snapshot ends.
+/// The projection cache. Unlike the standard caches, this can include
+/// infcx-dependent type variables - therefore, we have to roll the
+/// cache back each time we roll a snapshot back, to avoid assumptions
+/// on yet-unresolved inference variables. Types with placeholder
+/// regions also have to be removed when the respective snapshot ends.
 ///
 /// Because of that, projection cache entries can be "stranded" and left
 /// inaccessible when type variables inside the key are resolved. We make no
@@ -1661,7 +1661,7 @@ impl<'tcx> ProjectionCache<'tcx> {
         self.map.rollback_to(&snapshot.snapshot);
     }
 
-    pub fn rollback_skolemized(&mut self, snapshot: &ProjectionCacheSnapshot) {
+    pub fn rollback_placeholder(&mut self, snapshot: &ProjectionCacheSnapshot) {
         self.map.partial_rollback(&snapshot.snapshot, &|k| k.ty.has_re_skol());
     }
 

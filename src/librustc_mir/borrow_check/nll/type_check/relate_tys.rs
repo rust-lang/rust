@@ -146,18 +146,27 @@ trait TypeRelatingDelegate<'tcx> {
     /// delegate.
     fn push_outlives(&mut self, sup: ty::Region<'tcx>, sub: ty::Region<'tcx>);
 
-    /// Creates a new region variable representing an instantiated
-    /// higher-ranked region; this will be either existential or
-    /// universal depending on the context.  So e.g. if you have
-    /// `for<'a> fn(..) <: for<'b> fn(..)`, then we will first
-    /// instantiate `'b` with a universally quantitifed region and
-    /// then `'a` with an existentially quantified region (the order
-    /// is important so that the existential region `'a` can see the
-    /// universal one).
-    fn next_region_var(
-        &mut self,
-        universally_quantified: UniversallyQuantified,
-    ) -> ty::Region<'tcx>;
+    /// Creates a new universe index. Used when instantiating placeholders.
+    fn next_subuniverse(&mut self) -> ty::UniverseIndex;
+
+    /// Creates a new region variable representing a higher-ranked
+    /// region that is instantiated existentially. This creates an
+    /// inference variable, typically.
+    ///
+    /// So e.g. if you have `for<'a> fn(..) <: for<'b> fn(..)`, then
+    /// we will invoke this method to instantiate `'a` with an
+    /// inference variable (though `'b` would be instantiated first,
+    /// as a placeholder).
+    fn next_existential_region_var(&mut self) -> ty::Region<'tcx>;
+
+    /// Creates a new region variable representing a
+    /// higher-ranked region that is instantiated universally.
+    /// This creates a new region placeholder, typically.
+    ///
+    /// So e.g. if you have `for<'a> fn(..) <: for<'b> fn(..)`, then
+    /// we will invoke this method to instantiate `'b` with a
+    /// placeholder region.
+    fn next_placeholder_region(&mut self, placeholder: ty::Placeholder) -> ty::Region<'tcx>;
 
     /// Creates a new existential region in the given universe. This
     /// is used when handling subtyping and type variables -- if we
@@ -197,15 +206,20 @@ impl NllTypeRelatingDelegate<'me, 'bccx, 'gcx, 'tcx> {
 }
 
 impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, '_, 'tcx> {
-    fn next_region_var(
-        &mut self,
-        universally_quantified: UniversallyQuantified,
-    ) -> ty::Region<'tcx> {
-        let origin = if universally_quantified.0 {
-            NLLRegionVariableOrigin::BoundRegion(self.infcx.create_subuniverse())
-        } else {
-            NLLRegionVariableOrigin::Existential
-        };
+    fn next_subuniverse(&mut self) -> ty::UniverseIndex {
+        self.infcx.create_subuniverse()
+    }
+
+    fn next_existential_region_var(&mut self) -> ty::Region<'tcx> {
+        let origin = NLLRegionVariableOrigin::Existential;
+        self.infcx.next_nll_region_var(origin)
+    }
+
+    fn next_placeholder_region(&mut self, placeholder: ty::Placeholder) -> ty::Region<'tcx> {
+        let origin = NLLRegionVariableOrigin::Placeholder(placeholder);
+        if let Some(borrowck_context) = &mut self.borrowck_context {
+            borrowck_context.placeholder_indices.insert(placeholder);
+        }
         self.infcx.next_nll_region_var(origin)
     }
 
@@ -286,12 +300,37 @@ where
         universally_quantified: UniversallyQuantified,
     ) -> BoundRegionScope<'tcx> {
         let mut scope = BoundRegionScope::default();
+
+        // Create a callback that creates (via the delegate) either an
+        // existential or placeholder region as needed.
+        let mut next_region = {
+            let delegate = &mut self.delegate;
+            let mut lazy_universe = None;
+            move |br: ty::BoundRegion| {
+                if universally_quantified.0 {
+                    // The first time this closure is called, create a
+                    // new universe for the placeholders we will make
+                    // from here out.
+                    let universe = lazy_universe.unwrap_or_else(|| {
+                        let universe = delegate.next_subuniverse();
+                        lazy_universe = Some(universe);
+                        universe
+                    });
+
+                    let placeholder = ty::Placeholder { universe, name: br };
+                    delegate.next_placeholder_region(placeholder)
+                } else {
+                    delegate.next_existential_region_var()
+                }
+            }
+        };
+
         value.skip_binder().visit_with(&mut ScopeInstantiator {
-            delegate: &mut self.delegate,
+            next_region: &mut next_region,
             target_index: ty::INNERMOST,
-            universally_quantified,
             bound_region_scope: &mut scope,
         });
+
         scope
     }
 
@@ -604,21 +643,14 @@ where
 /// binder depth, and finds late-bound regions targeting the
 /// `for<..`>.  For each of those, it creates an entry in
 /// `bound_region_scope`.
-struct ScopeInstantiator<'me, 'tcx: 'me, D>
-where
-    D: TypeRelatingDelegate<'tcx> + 'me,
-{
-    delegate: &'me mut D,
+struct ScopeInstantiator<'me, 'tcx: 'me> {
+    next_region: &'me mut dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
     // The debruijn index of the scope we are instantiating.
     target_index: ty::DebruijnIndex,
-    universally_quantified: UniversallyQuantified,
     bound_region_scope: &'me mut BoundRegionScope<'tcx>,
 }
 
-impl<'me, 'tcx, D> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx, D>
-where
-    D: TypeRelatingDelegate<'tcx>,
-{
+impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
     fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> bool {
         self.target_index.shift_in(1);
         t.super_visit_with(self);
@@ -629,9 +661,8 @@ where
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
         let ScopeInstantiator {
-            universally_quantified,
             bound_region_scope,
-            delegate,
+            next_region,
             ..
         } = self;
 
@@ -640,7 +671,7 @@ where
                 bound_region_scope
                     .map
                     .entry(*br)
-                    .or_insert_with(|| delegate.next_region_var(*universally_quantified));
+                    .or_insert_with(|| next_region(*br));
             }
 
             _ => {}

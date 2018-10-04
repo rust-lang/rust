@@ -170,7 +170,7 @@ fn is_free_region<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, region: Region<'_>) -> bool
         | RegionKind::ReCanonical(..)
         | RegionKind::ReScope(..)
         | RegionKind::ReVar(..)
-        | RegionKind::ReSkolemized(..)
+        | RegionKind::RePlaceholder(..)
         | RegionKind::ReFree(..) => {
             bug!("unexpected region in outlives inference: {:?}", region);
         }

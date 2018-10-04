@@ -128,14 +128,14 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // We create a mapping `dummy_substs` that maps from the impl type
     // parameters to fresh types and regions. For type parameters,
     // this is the identity transform, but we could as well use any
-    // skolemized types. For regions, we convert from bound to free
+    // placeholder types. For regions, we convert from bound to free
     // regions (Note: but only early-bound regions, i.e., those
     // declared on the impl or used in type parameter bounds).
     //
     //     impl_to_skol_substs = {'i => 'i0, U => U0, N => N0 }
     //
     // Now we can apply skol_substs to the type of the impl method
-    // to yield a new function type in terms of our fresh, skolemized
+    // to yield a new function type in terms of our fresh, placeholder
     // types:
     //
     //     <'b> fn(t: &'i0 U0, m: &'b) -> Foo
@@ -163,15 +163,15 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // We do this by creating a parameter environment which contains a
     // substitution corresponding to impl_to_skol_substs. We then build
     // trait_to_skol_substs and use it to convert the predicates contained
-    // in the trait_m.generics to the skolemized form.
+    // in the trait_m.generics to the placeholder form.
     //
     // Finally we register each of these predicates as an obligation in
     // a fresh FulfillmentCtxt, and invoke select_all_or_error.
 
-    // Create mapping from impl to skolemized.
+    // Create mapping from impl to placeholder.
     let impl_to_skol_substs = Substs::identity_for_item(tcx, impl_m.def_id);
 
-    // Create mapping from trait to skolemized.
+    // Create mapping from trait to placeholder.
     let trait_to_skol_substs = impl_to_skol_substs.rebase_onto(tcx,
                                                                impl_m.container.id(),
                                                                trait_to_impl_substs);
@@ -212,7 +212,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     hybrid_preds.predicates.extend(
         trait_m_predicates.instantiate_own(tcx, trait_to_skol_substs).predicates);
 
-    // Construct trait parameter environment and then shift it into the skolemized viewpoint.
+    // Construct trait parameter environment and then shift it into the placeholder viewpoint.
     // The key step here is to update the caller_bounds's predicates to be
     // the new hybrid bounds we computed.
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_node_id);
@@ -259,7 +259,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // any associated types appearing in the fn arguments or return
         // type.
 
-        // Compute skolemized form of impl and trait method tys.
+        // Compute placeholder form of impl and trait method tys.
         let tcx = infcx.tcx;
 
         let (impl_sig, _) =
@@ -894,7 +894,7 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // method.
         let impl_c_node_id = tcx.hir.as_local_node_id(impl_c.def_id).unwrap();
 
-        // Compute skolemized form of impl and trait const tys.
+        // Compute placeholder form of impl and trait const tys.
         let impl_ty = tcx.type_of(impl_c.def_id);
         let trait_ty = tcx.type_of(trait_c.def_id).subst(tcx, trait_to_impl_substs);
         let mut cause = ObligationCause::misc(impl_c_span, impl_c_node_id);

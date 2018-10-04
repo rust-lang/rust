@@ -11,7 +11,7 @@
 use super::universal_regions::UniversalRegions;
 use borrow_check::nll::constraints::graph::NormalConstraintGraph;
 use borrow_check::nll::constraints::{ConstraintSccIndex, ConstraintSet, OutlivesConstraint};
-use borrow_check::nll::region_infer::values::{RegionElement, ToElementIndex};
+use borrow_check::nll::region_infer::values::{PlaceholderIndices, RegionElement, ToElementIndex};
 use borrow_check::nll::type_check::free_region_relations::UniversalRegionRelations;
 use borrow_check::nll::type_check::Locations;
 use rustc::hir::def_id::DefId;
@@ -183,6 +183,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn new(
         var_infos: VarInfos,
         universal_regions: Rc<UniversalRegions<'tcx>>,
+        placeholder_indices: Rc<PlaceholderIndices>,
         universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
         _mir: &Mir<'tcx>,
         outlives_constraints: ConstraintSet,
@@ -196,19 +197,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .map(|info| RegionDefinition::new(info.universe, info.origin))
             .collect();
 
-        // Compute the max universe used anywhere amongst the regions.
-        let max_universe = definitions
-            .iter()
-            .map(|d| d.universe)
-            .max()
-            .unwrap_or(ty::UniverseIndex::ROOT);
-
         let constraints = Rc::new(outlives_constraints); // freeze constraints
         let constraint_graph = Rc::new(constraints.graph(definitions.len()));
         let fr_static = universal_regions.fr_static;
         let constraint_sccs = Rc::new(constraints.compute_sccs(&constraint_graph, fr_static));
 
-        let mut scc_values = RegionValues::new(elements, universal_regions.len(), max_universe);
+        let mut scc_values =
+            RegionValues::new(elements, universal_regions.len(), &placeholder_indices);
 
         for region in liveness_constraints.rows() {
             let scc = constraint_sccs.scc(region);
@@ -329,17 +324,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     self.scc_values.add_element(scc, variable);
                 }
 
-                NLLRegionVariableOrigin::BoundRegion(ui) => {
-                    // Each placeholder region X outlives its
-                    // associated universe but nothing else. Every
-                    // placeholder region is always in a universe that
-                    // contains `ui` -- but when placeholder regions
-                    // are placed into an SCC, that SCC may include
-                    // things from other universes that do not include
-                    // `ui`.
+                NLLRegionVariableOrigin::Placeholder(placeholder) => {
+                    // Each placeholder region is only visible from
+                    // its universe `ui` and its superuniverses. So we
+                    // can't just add it into `scc` unless the
+                    // universe of the scc can name this region.
                     let scc_universe = self.scc_universes[scc];
-                    if ui.is_subset_of(scc_universe) {
-                        self.scc_values.add_element(scc, ui);
+                    if placeholder.universe.is_subset_of(scc_universe) {
+                        self.scc_values.add_element(scc, placeholder);
                     } else {
                         self.add_incompatible_universe(scc);
                     }
@@ -544,8 +536,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // B's value, and check whether all of them are nameable
         // from universe_a
         self.scc_values
-            .subuniverses_contained_in(scc_b)
-            .all(|u| u.is_subset_of(universe_a))
+            .placeholders_contained_in(scc_b)
+            .all(|p| p.universe.is_subset_of(universe_a))
     }
 
     /// Extend `scc` so that it can outlive some placeholder region
@@ -1076,8 +1068,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     );
                 }
 
-                NLLRegionVariableOrigin::BoundRegion(universe) => {
-                    self.check_bound_universal_region(infcx, mir, mir_def_id, fr, universe);
+                NLLRegionVariableOrigin::Placeholder(placeholder) => {
+                    self.check_bound_universal_region(infcx, mir, mir_def_id, fr, placeholder);
                 }
 
                 NLLRegionVariableOrigin::Existential => {
@@ -1113,7 +1105,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         assert!(self.scc_universes[longer_fr_scc] == ty::UniverseIndex::ROOT);
         debug_assert!(
             self.scc_values
-                .subuniverses_contained_in(longer_fr_scc)
+                .placeholders_contained_in(longer_fr_scc)
                 .next()
                 .is_none()
         );
@@ -1181,9 +1173,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         mir: &Mir<'tcx>,
         _mir_def_id: DefId,
         longer_fr: RegionVid,
-        universe: ty::UniverseIndex,
+        placeholder: ty::Placeholder,
     ) {
-        debug!("check_bound_universal_region(fr={:?})", longer_fr);
+        debug!(
+            "check_bound_universal_region(fr={:?}, placeholder={:?})",
+            longer_fr, placeholder,
+        );
 
         let longer_fr_scc = self.constraint_sccs.scc(longer_fr);
 
@@ -1196,7 +1191,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 .find(|element| match element {
                     RegionElement::Location(_) => true,
                     RegionElement::RootUniversalRegion(_) => true,
-                    RegionElement::SubUniversalRegion(ui) => *ui != universe,
+                    RegionElement::PlaceholderRegion(placeholder1) => placeholder != *placeholder1,
                 })
         } {
             Some(v) => v,
@@ -1207,10 +1202,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let error_region = match error_element {
             RegionElement::Location(l) => self.find_sub_region_live_at(longer_fr, l),
             RegionElement::RootUniversalRegion(r) => r,
-            RegionElement::SubUniversalRegion(error_ui) => self.definitions
+            RegionElement::PlaceholderRegion(error_placeholder) => self.definitions
                 .iter_enumerated()
                 .filter_map(|(r, definition)| match definition.origin {
-                    NLLRegionVariableOrigin::BoundRegion(ui) if error_ui == ui => Some(r),
+                    NLLRegionVariableOrigin::Placeholder(p) if p == error_placeholder => Some(r),
                     _ => None,
                 })
                 .next()
