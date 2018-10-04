@@ -642,7 +642,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 }
                 WhereToResolve::MacroRules(legacy_scope) => match legacy_scope {
                     LegacyScope::Binding(legacy_binding) if ident == legacy_binding.ident =>
-                        Ok((legacy_binding.binding, Flags::MACRO_RULES, Flags::MODULE)),
+                        Ok((legacy_binding.binding, Flags::MACRO_RULES, Flags::empty())),
                     _ => Err(Determinacy::Determined),
                 }
                 WhereToResolve::Module(module) => {
@@ -804,7 +804,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                            (innermost_binding.is_glob_import() ||
                             innermost_binding.may_appear_after(parent_scope.expansion, binding) ||
                             innermost_flags.intersects(ambig_flags) ||
-                            flags.intersects(innermost_ambig_flags)) {
+                            flags.intersects(innermost_ambig_flags) ||
+                            (innermost_flags.contains(Flags::MACRO_RULES) &&
+                             flags.contains(Flags::MODULE) &&
+                             !self.disambiguate_legacy_vs_modern(innermost_binding, binding))) {
                             self.ambiguity_errors.push(AmbiguityError {
                                 ident,
                                 b1: innermost_binding,
