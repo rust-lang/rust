@@ -26,19 +26,12 @@ $ ./prepare_libcore.sh
 $ ./build.sh
 ```
 
-> This should stop with `error: aborting due to <...> previous errors`
->
-> Please submit a bug if not
-
 ## Not yet supported
 
 * Checked binops
 * Drop glue
 
-* Building libraries
 * Other call abi's
-* Unsized types
-* Slice indexing
 * Sub slice
 
 * Inline assembly
