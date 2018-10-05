@@ -36,6 +36,8 @@ pub enum NonMacroAttrKind {
     Tool,
     /// Single-segment custom attribute registered by a derive macro (`#[serde(default)]`).
     DeriveHelper,
+    /// Single-segment custom attriubte registered by a legacy plugin (`register_attribute`).
+    LegacyPluginHelper,
     /// Single-segment custom attribute not registered in any way (`#[my_attr]`).
     Custom,
 }
@@ -259,6 +261,7 @@ impl NonMacroAttrKind {
             NonMacroAttrKind::Builtin => "built-in attribute",
             NonMacroAttrKind::Tool => "tool attribute",
             NonMacroAttrKind::DeriveHelper => "derive helper attribute",
+            NonMacroAttrKind::LegacyPluginHelper => "legacy plugin helper attribute",
             NonMacroAttrKind::Custom => "custom attribute",
         }
     }

@@ -18,6 +18,8 @@
 #![feature(slice_sort_by_cached_key)]
 
 #[macro_use]
+extern crate bitflags;
+#[macro_use]
 extern crate log;
 #[macro_use]
 extern crate syntax;
@@ -1012,7 +1014,8 @@ pub struct ModuleData<'a> {
     normal_ancestor_id: DefId,
 
     resolutions: RefCell<FxHashMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>,
-    legacy_macro_resolutions: RefCell<Vec<(Ident, MacroKind, ParentScope<'a>, Option<Def>)>>,
+    legacy_macro_resolutions: RefCell<Vec<(Ident, MacroKind, ParentScope<'a>,
+                                           Option<&'a NameBinding<'a>>)>>,
     macro_resolutions: RefCell<Vec<(Box<[Ident]>, Span)>>,
     builtin_attrs: RefCell<Vec<(Ident, ParentScope<'a>)>>,
 
@@ -1208,10 +1211,6 @@ impl<'a> NameBinding<'a> {
             NameBindingKind::Ambiguity { b1, .. } => b1.def_ignoring_ambiguity(),
             _ => self.def(),
         }
-    }
-
-    fn get_macro<'b: 'a>(&self, resolver: &mut Resolver<'a, 'b>) -> Lrc<SyntaxExtension> {
-        resolver.get_macro(self.def_ignoring_ambiguity())
     }
 
     // We sometimes need to treat variants as `pub` for backwards compatibility
@@ -3664,8 +3663,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 self.resolve_ident_in_module(module, ident, ns, record_used, path_span)
             } else if opt_ns == Some(MacroNS) {
                 assert!(ns == TypeNS);
-                self.resolve_lexical_macro_path_segment(ident, ns, None, parent_scope, record_used,
-                                                        record_used, path_span).map(|(b, _)| b)
+                self.early_resolve_ident_in_lexical_scope(ident, ns, None, parent_scope,
+                                                          record_used, record_used, path_span)
             } else {
                 let record_used_id =
                     if record_used { crate_lint.node_id().or(Some(CRATE_NODE_ID)) } else { None };
