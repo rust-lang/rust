@@ -4132,16 +4132,16 @@ impl<'a> LoweringContext<'a> {
                 // expand <head>
                 let head = self.lower_expr(head);
                 let head_sp = head.span;
+                let desugared_span = self.allow_internal_unstable(
+                    CompilerDesugaringKind::ForLoop,
+                    head_sp,
+                );
 
                 let iter = self.str_to_ident("iter");
 
                 let next_ident = self.str_to_ident("__next");
-                let next_sp = self.allow_internal_unstable(
-                    CompilerDesugaringKind::ForLoop,
-                    head_sp,
-                );
                 let next_pat = self.pat_ident_binding_mode(
-                    next_sp,
+                    desugared_span,
                     next_ident,
                     hir::BindingAnnotation::Mutable,
                 );
@@ -4170,8 +4170,11 @@ impl<'a> LoweringContext<'a> {
                 };
 
                 // `mut iter`
-                let iter_pat =
-                    self.pat_ident_binding_mode(head_sp, iter, hir::BindingAnnotation::Mutable);
+                let iter_pat = self.pat_ident_binding_mode(
+                    desugared_span,
+                    iter,
+                    hir::BindingAnnotation::Mutable
+                );
 
                 // `match ::std::iter::Iterator::next(&mut iter) { ... }`
                 let match_expr = {
@@ -4200,8 +4203,12 @@ impl<'a> LoweringContext<'a> {
                 let next_expr = P(self.expr_ident(head_sp, next_ident, next_pat.id));
 
                 // `let mut __next`
-                let next_let =
-                    self.stmt_let_pat(head_sp, None, next_pat, hir::LocalSource::ForLoopDesugar);
+                let next_let = self.stmt_let_pat(
+                    desugared_span,
+                    None,
+                    next_pat,
+                    hir::LocalSource::ForLoopDesugar,
+                );
 
                 // `let <pat> = __next`
                 let pat = self.lower_pat(pat);

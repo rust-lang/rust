@@ -46,7 +46,7 @@ use ty::subst::Subst;
 use ty::SubtypePredicate;
 use util::nodemap::{FxHashMap, FxHashSet};
 
-use syntax_pos::{DUMMY_SP, Span};
+use syntax_pos::{DUMMY_SP, Span, ExpnInfo, ExpnFormat};
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn report_fulfillment_errors(&self,
@@ -68,18 +68,30 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }).collect();
 
         for (index, error) in errors.iter().enumerate() {
-            error_map.entry(error.obligation.cause.span).or_default().push(
+            // We want to ignore desugarings here: spans are equivalent even
+            // if one is the result of a desugaring and the other is not.
+            let mut span = error.obligation.cause.span;
+            if let Some(ExpnInfo {
+                format: ExpnFormat::CompilerDesugaring(_),
+                def_site: Some(def_span),
+                ..
+            }) = span.ctxt().outer().expn_info() {
+                span = def_span;
+            }
+
+            error_map.entry(span).or_default().push(
                 ErrorDescriptor {
                     predicate: error.obligation.predicate.clone(),
                     index: Some(index)
-                });
+                }
+            );
 
             self.reported_trait_errors.borrow_mut()
-                .entry(error.obligation.cause.span).or_default()
+                .entry(span).or_default()
                 .push(error.obligation.predicate.clone());
         }
 
-        // We do this in 2 passes because we want to display errors in order, tho
+        // We do this in 2 passes because we want to display errors in order, though
         // maybe it *is* better to sort errors by span or something.
         let mut is_suppressed = vec![false; errors.len()];
         for (_, error_set) in error_map.iter() {
