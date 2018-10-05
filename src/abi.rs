@@ -481,7 +481,7 @@ pub fn codegen_terminator_call<'a, 'tcx: 'a>(
         let sig = ty_fn_sig(fx.tcx, fn_ty);
 
         if sig.abi == Abi::RustIntrinsic {
-            crate::intrinsics::codegen_intrinsic_call(fx, def_id, substs, &args, destination);
+            crate::intrinsics::codegen_intrinsic_call(fx, def_id, substs, args, destination);
             return;
         }
     }
