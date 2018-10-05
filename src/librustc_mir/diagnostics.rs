@@ -665,24 +665,6 @@ fn main() {
 ```
 "##,
 
-E0022: r##"
-Constant functions are not allowed to mutate anything. Thus, binding to an
-argument with a mutable pattern is not allowed. For example,
-
-```compile_fail
-const fn foo(mut x: u8) {
-    // do stuff
-}
-```
-
-Is incorrect because the function body may not mutate `x`.
-
-Remove any mutable bindings from the argument list to fix this error. In case
-you need to mutate the argument, try lazily initializing a global variable
-instead of using a `const fn`, or refactoring the code to a functional style to
-avoid mutation if possible.
-"##,
-
 E0133: r##"
 Unsafe code was used outside of an unsafe function or block.
 
