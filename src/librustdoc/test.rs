@@ -402,29 +402,62 @@ pub fn make_test(s: &str,
     // are intended to be crate attributes.
     prog.push_str(&crate_attrs);
 
+    // Uses libsyntax to parse the doctest and find if there's a main fn and the extern
+    // crate already is included.
+    let (already_has_main, already_has_extern_crate) = crate::syntax::with_globals(|| {
+        use crate::syntax::{ast, parse::{self, ParseSess}, source_map::FilePathMapping};
+        use crate::syntax_pos::FileName;
+        
+        let filename = FileName::Anon;
+        let source = s.to_owned();
+        let sess = ParseSess::new(FilePathMapping::empty());
+
+        let mut parser = parse::new_parser_from_source_str(&sess, filename, source);
+
+        let mut found_main = false;
+        let mut found_extern_crate = cratename.is_none();
+
+        while let Ok(Some(item)) = parser.parse_item() {
+            if !found_main {
+                if let ast::ItemKind::Fn(..) = item.node {
+                    if item.ident.as_str() == "main" {
+                        found_main = true;
+                    }
+                }
+            } 
+            
+            if !found_extern_crate { 
+                if let ast::ItemKind::ExternCrate(original) = item.node {
+                    // This code will never be reached if `cratename` is none ecause
+                    // `found_extern_crate` is initialized to `true` if it is none.
+                    let cratename = cratename.unwrap();
+
+                    match original {
+                        Some(name) => found_extern_crate = name.as_str() == cratename,
+                        None => found_extern_crate = item.ident.as_str() == cratename,
+                    }
+                }
+            }
+
+            if found_main && found_extern_crate {
+                break;
+            }
+        }
+
+        (found_main, found_extern_crate)
+    });
+
     // Don't inject `extern crate std` because it's already injected by the
     // compiler.
-    if !s.contains("extern crate") && !opts.no_crate_inject && cratename != Some("std") {
+    if !already_has_extern_crate && !opts.no_crate_inject && cratename != Some("std") {
         if let Some(cratename) = cratename {
+            // Make sure its actually used if not included.
             if s.contains(cratename) {
                 prog.push_str(&format!("extern crate {};\n", cratename));
                 line_offset += 1;
             }
         }
     }
-
-    // FIXME (#21299): prefer libsyntax or some other actual parser over this
-    // best-effort ad hoc approach
-    let already_has_main = s.lines()
-        .map(|line| {
-            let comment = line.find("//");
-            if let Some(comment_begins) = comment {
-                &line[0..comment_begins]
-            } else {
-                line
-            }
-        })
-        .any(|code| code.contains("fn main"));
 
     if dont_insert_main || already_has_main {
         prog.push_str(everything_else);
@@ -1013,5 +1046,39 @@ assert_eq!(2+2, 4);
 }".to_string();
         let output = make_test(input, None, false, &opts);
         assert_eq!(output, (expected, 1));
+    }
+
+    #[test]
+    fn make_test_issues_21299_33731() {
+        let opts = TestOptions::default();
+        
+        let input =
+"// fn main
+assert_eq!(2+2, 4);";
+
+        let expected =
+"#![allow(unused)]
+fn main() {
+// fn main
+assert_eq!(2+2, 4);
+}".to_string();
+
+        let output = make_test(input, None, false, &opts);
+        assert_eq!(output, (expected, 2));
+
+        let input =
+"extern crate hella_qwop;
+assert_eq!(asdf::foo, 4);";
+
+        let expected =
+"#![allow(unused)]
+extern crate hella_qwop;
+extern crate asdf;
+fn main() {
+assert_eq!(asdf::foo, 4);
+}".to_string();
+
+        let output = make_test(input, Some("asdf"), false, &opts);
+        assert_eq!(output, (expected, 3));
     }
 }
