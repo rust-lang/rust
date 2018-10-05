@@ -21,6 +21,7 @@ fn show_version() {
 }
 
 pub fn main() {
+    rustc_driver::init_rustc_env_logger();
     exit(rustc_driver::run(move || {
         use std::env;
 

@@ -4,7 +4,6 @@ use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use crate::rustc::ty;
 use crate::syntax::ast::LitKind;
-use crate::syntax_pos::Span;
 use crate::utils::paths;
 use crate::utils::{in_macro, is_expn_of, last_path_segment, match_def_path, match_type, opt_def_id, resolve_node, snippet, span_lint_and_then, walk_ptrs_ty};
 use crate::rustc_errors::Applicability;
@@ -47,7 +46,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 return;
             }
             match expr.node {
-
                 // `format!("{}", foo)` expansion
                 ExprKind::Call(ref fun, ref args) => {
                     if_chain! {
@@ -58,12 +56,24 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         if check_single_piece(&args[0]);
                         if let Some(format_arg) = get_single_string_arg(cx, &args[1]);
                         if check_unformatted(&args[2]);
+                        if let ExprKind::AddrOf(_, ref format_arg) = format_arg.node;
                         then {
-                            let sugg = format!("{}.to_string()", snippet(cx, format_arg, "<arg>").into_owned());
+                            let (message, sugg) = if_chain! {
+                                if let ExprKind::MethodCall(ref path, _, _) = format_arg.node;
+                                if path.ident.as_interned_str() == "to_string";
+                                then {
+                                    ("`to_string()` is enough",
+                                    snippet(cx, format_arg.span, "<arg>").to_string())
+                                } else {
+                                    ("consider using .to_string()",
+                                    format!("{}.to_string()", snippet(cx, format_arg.span, "<arg>")))
+                                }
+                            };
+
                             span_lint_and_then(cx, USELESS_FORMAT, span, "useless use of `format!`", |db| {
                                 db.span_suggestion_with_applicability(
                                     expr.span,
-                                    "consider using .to_string()",
+                                    message,
                                     sugg,
                                     Applicability::MachineApplicable,
                                 );
@@ -114,9 +124,9 @@ fn check_single_piece(expr: &Expr) -> bool {
 /// ::std::fmt::Display::fmt)],
 /// }
 /// ```
-/// and that type of `__arg0` is `&str` or `String`
-/// then returns the span of first element of the matched tuple
-fn get_single_string_arg(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<Span> {
+/// and that the type of `__arg0` is `&str` or `String`,
+/// then returns the span of first element of the matched tuple.
+fn get_single_string_arg<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option<&'a Expr> {
     if_chain! {
         if let ExprKind::AddrOf(_, ref expr) = expr.node;
         if let ExprKind::Match(ref match_expr, ref arms, _) = expr.node;
@@ -135,7 +145,7 @@ fn get_single_string_arg(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<Span> 
             let ty = walk_ptrs_ty(cx.tables.pat_ty(&pat[0]));
             if ty.sty == ty::Str || match_type(cx, ty, &paths::STRING) {
                 if let ExprKind::Tup(ref values) = match_expr.node {
-                    return Some(values[0].span);
+                    return Some(&values[0]);
                 }
             }
         }
@@ -162,9 +172,12 @@ fn check_unformatted(expr: &Expr) -> bool {
         if let ExprKind::Struct(_, ref fields, _) = exprs[0].node;
         if let Some(format_field) = fields.iter().find(|f| f.ident.name == "format");
         if let ExprKind::Struct(_, ref fields, _) = format_field.expr.node;
-        if let Some(align_field) = fields.iter().find(|f| f.ident.name == "width");
-        if let ExprKind::Path(ref qpath) = align_field.expr.node;
-        if last_path_segment(qpath).ident.name == "Implied";
+        if let Some(width_field) = fields.iter().find(|f| f.ident.name == "width");
+        if let ExprKind::Path(ref width_qpath) = width_field.expr.node;
+        if last_path_segment(width_qpath).ident.name == "Implied";
+        if let Some(precision_field) = fields.iter().find(|f| f.ident.name == "precision");
+        if let ExprKind::Path(ref precision_path) = precision_field.expr.node;
+        if last_path_segment(precision_path).ident.name == "Implied";
         then {
             return true;
         }
