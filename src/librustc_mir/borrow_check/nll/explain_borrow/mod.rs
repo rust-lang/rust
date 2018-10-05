@@ -13,8 +13,10 @@ use borrow_check::error_reporting::UseSpans;
 use borrow_check::nll::region_infer::Cause;
 use borrow_check::{Context, MirBorrowckCtxt, WriteKind};
 use rustc::ty::{self, Region, TyCtxt};
-use rustc::mir::{FakeReadCause, Local, Location, Mir, Operand};
-use rustc::mir::{Place, StatementKind, TerminatorKind};
+use rustc::mir::{
+    FakeReadCause, Local, Location, Mir, Operand, Place, Rvalue, Statement, StatementKind,
+    TerminatorKind
+};
 use rustc_errors::DiagnosticBuilder;
 use syntax_pos::Span;
 
@@ -34,6 +36,7 @@ pub(in borrow_check) enum BorrowExplanation<'tcx> {
 
 #[derive(Clone, Copy)]
 pub(in borrow_check) enum LaterUseKind {
+    TraitCapture,
     ClosureCapture,
     Call,
     FakeLetRead,
@@ -51,6 +54,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
         match *self {
             BorrowExplanation::UsedLater(later_use_kind, var_or_use_span) => {
                 let message = match later_use_kind {
+                    LaterUseKind::TraitCapture => "borrow later captured here by trait object",
                     LaterUseKind::ClosureCapture => "borrow later captured here by closure",
                     LaterUseKind::Call =>  "borrow later used by call",
                     LaterUseKind::FakeLetRead => "borrow later stored here",
@@ -60,9 +64,10 @@ impl<'tcx> BorrowExplanation<'tcx> {
             },
             BorrowExplanation::UsedLaterInLoop(later_use_kind, var_or_use_span) => {
                 let message = match later_use_kind {
-                    LaterUseKind::ClosureCapture => {
-                        "borrow captured here by closure, in later iteration of loop"
-                    },
+                    LaterUseKind::TraitCapture =>
+                        "borrow later captured here by trait object, in later iteration of loop",
+                    LaterUseKind::ClosureCapture =>
+                        "borrow captured here by closure, in later iteration of loop",
                     LaterUseKind::Call =>  "borrow used by call, in later iteration of loop",
                     LaterUseKind::FakeLetRead => "borrow later stored here",
                     LaterUseKind::Other => "borrow used here, in later iteration of loop",
@@ -200,13 +205,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     .or_else(|| self.borrow_spans(span, location));
 
                 if self.is_borrow_location_in_loop(context.loc) {
-                    let later_use = self.later_use_kind(spans, location);
+                    let later_use = self.later_use_kind(borrow, spans, location);
                     BorrowExplanation::UsedLaterInLoop(later_use.0, later_use.1)
                 } else {
                     // Check if the location represents a `FakeRead`, and adapt the error
                     // message to the `FakeReadCause` it is from: in particular,
                     // the ones inserted in optimized `let var = <expr>` patterns.
-                    let later_use = self.later_use_kind(spans, location);
+                    let later_use = self.later_use_kind(borrow, spans, location);
                     BorrowExplanation::UsedLater(later_use.0, later_use.1)
                 }
             }
@@ -316,42 +321,136 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         false
     }
 
-    fn later_use_kind(&self, use_spans: UseSpans, location: Location) -> (LaterUseKind, Span) {
-        use self::LaterUseKind::*;
-
-        let block = &self.mir.basic_blocks()[location.block];
+    /// Determine how the borrow was later used.
+    fn later_use_kind(
+        &self,
+        borrow: &BorrowData<'tcx>,
+        use_spans: UseSpans,
+        location: Location
+    ) -> (LaterUseKind, Span) {
         match use_spans {
-            UseSpans::ClosureUse { var_span, .. } => (LaterUseKind::ClosureCapture, var_span),
+            UseSpans::ClosureUse { var_span, .. } => {
+                // Used in a closure.
+                (LaterUseKind::ClosureCapture, var_span)
+            },
             UseSpans::OtherUse(span) => {
-                (if let Some(stmt) = block.statements.get(location.statement_index) {
-                    match stmt.kind {
-                        StatementKind::FakeRead(FakeReadCause::ForLet, _) => FakeLetRead,
-                        _ => Other,
+                let block = &self.mir.basic_blocks()[location.block];
+
+                let kind = if let Some(&Statement {
+                    kind: StatementKind::FakeRead(FakeReadCause::ForLet, _),
+                    ..
+                }) = block.statements.get(location.statement_index) {
+                    LaterUseKind::FakeLetRead
+                } else if self.was_captured_by_trait_object(borrow) {
+                    LaterUseKind::TraitCapture
+                } else if location.statement_index == block.statements.len() {
+                    if let TerminatorKind::Call {
+                        ref func, from_hir_call: true, ..
+                    } = block.terminator().kind {
+                        // Just point to the function, to reduce the chance of overlapping spans.
+                        let function_span = match func {
+                            Operand::Constant(c) => c.span,
+                            Operand::Copy(Place::Local(l)) | Operand::Move(Place::Local(l)) => {
+                                let local_decl = &self.mir.local_decls[*l];
+                                if local_decl.name.is_none() {
+                                    local_decl.source_info.span
+                                } else {
+                                    span
+                                }
+                            },
+                            _ => span,
+                        };
+                        return (LaterUseKind::Call, function_span);
+                    } else {
+                        LaterUseKind::Other
                     }
                 } else {
-                    assert_eq!(location.statement_index, block.statements.len());
-                    match block.terminator().kind {
-                        TerminatorKind::Call { ref func, from_hir_call: true, .. } => {
-                            // Just point to the function, to reduce the chance
-                            // of overlapping spans.
-                            let function_span = match func {
-                                Operand::Constant(c) => c.span,
-                                Operand::Copy(Place::Local(l)) | Operand::Move(Place::Local(l)) => {
-                                    let local_decl = &self.mir.local_decls[*l];
-                                    if local_decl.name.is_none() {
-                                        local_decl.source_info.span
-                                    } else {
-                                        span
-                                    }
-                                },
-                                _ => span,
-                            };
-                            return (Call, function_span);
-                        },
-                        _ => Other,
-                    }
-                }, span)
+                    LaterUseKind::Other
+                };
+
+                (kind, span)
             }
         }
+    }
+
+    /// Check if a borrowed value was captured by a trait object.
+    fn was_captured_by_trait_object(&self, borrow: &BorrowData<'tcx>) -> bool {
+        // In order to check if a value was captured by a trait object, we want to look through
+        // statements after the reserve location in the current block. We expect the reserve
+        // location to be a statement assigning to a local. We follow that local in the subsequent
+        // statements, checking for an assignment of our local (or something intermediate that
+        // it was assigned into) that results in a trait object.
+        let location = borrow.reserve_location;
+        let block = &self.mir[location.block];
+        let stmt = block.statements.get(location.statement_index);
+        debug!(
+            "was_captured_by_trait_object: location={:?} block={:?} stmt={:?}",
+            location, block, stmt
+        );
+        let mut target = if let Some(&Statement {
+            kind: StatementKind::Assign(Place::Local(local), _),
+            ..
+        }) = stmt {
+            local
+        } else {
+            return false;
+        };
+
+        debug!("was_captured_by_trait_object: target={:?}", target);
+        for stmt in &block.statements[location.statement_index + 1..] {
+            debug!("was_captured_by_trait_object: stmt={:?}", stmt);
+            // Simple case where our target is assigned into another local, and we start
+            // watching that local instead.
+            if let StatementKind::Assign(
+                Place::Local(into),
+                box Rvalue::Use(operand),
+            ) = &stmt.kind {
+                debug!("was_captured_by_trait_object: target={:?} operand={:?}", target, operand);
+                match operand {
+                    Operand::Copy(Place::Local(from)) |
+                    Operand::Move(Place::Local(from)) if *from == target => target = *into,
+                    _ => {},
+                }
+            }
+        }
+
+        if let Some(terminator) = &block.terminator {
+            if let TerminatorKind::Call {
+                destination: Some((Place::Local(dest), _)),
+                args,
+                ..
+            } = &terminator.kind {
+                debug!(
+                    "was_captured_by_trait_object: target={:?} dest={:?} args={:?}",
+                    target, dest, args
+                );
+                let mut found_target = false;
+                for arg in args {
+                    if let Operand::Move(Place::Local(potential)) = arg {
+                        if *potential == target {
+                            found_target = true;
+                        }
+                    }
+                }
+
+                if found_target {
+                    let local_decl_ty = &self.mir.local_decls[*dest].ty;
+                    debug!("was_captured_by_trait_object: local_decl_ty={:?}", local_decl_ty);
+                    match local_decl_ty.sty {
+                        // `&dyn Trait`
+                        ty::TyKind::Ref(_, ty, _) if ty.is_trait() => return true,
+                        // `Box<dyn Trait>`
+                        _ if local_decl_ty.is_box() && local_decl_ty.boxed_ty().is_trait() =>
+                            return true,
+                        // `dyn Trait`
+                        _ if local_decl_ty.is_trait() => return true,
+                        // Anything else.
+                        _ => return false,
+                    }
+                }
+            }
+        }
+
+        false
     }
 }
