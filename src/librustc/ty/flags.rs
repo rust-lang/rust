@@ -62,9 +62,7 @@ impl FlagComputation {
         let outer_exclusive_binder = computation.outer_exclusive_binder;
         if outer_exclusive_binder > ty::INNERMOST {
             self.add_exclusive_binder(outer_exclusive_binder.shifted_out(1));
-        } else {
-            // otherwise, this binder captures nothing
-        }
+        } // otherwise, this binder captures nothing
     }
 
     fn add_sty(&mut self, st: &ty::TyKind<'_>) {

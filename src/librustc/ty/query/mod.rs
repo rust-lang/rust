@@ -56,6 +56,7 @@ use rustc_data_structures::stable_hasher::StableVec;
 use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::PanicStrategy;
 
+use std::borrow::Cow;
 use std::ops::Deref;
 use std::sync::Arc;
 use syntax_pos::{Span, DUMMY_SP};

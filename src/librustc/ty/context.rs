@@ -190,8 +190,8 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
             // types/regions in the global interner
             if local as *const _ as usize == global as *const _ as usize {
                 bug!("Attempted to intern `{:?}` which contains \
-                    inference types/regions in the global type context",
-                    &ty_struct);
+                      inference types/regions in the global type context",
+                     &ty_struct);
             }
 
             // Don't be &mut TyS.
@@ -272,9 +272,9 @@ fn validate_hir_id_for_typeck_tables(local_id_root: Option<DefId>,
 
                     bug!("node {} with HirId::owner {:?} cannot be placed in \
                           TypeckTables with local_id_root {:?}",
-                          tcx.hir.node_to_string(node_id),
-                          DefId::local(hir_id.owner),
-                          local_id_root)
+                         tcx.hir.node_to_string(node_id),
+                         DefId::local(hir_id.owner),
+                         local_id_root)
                 });
             }
         } else {
@@ -540,16 +540,13 @@ impl<'tcx> TypeckTables<'tcx> {
     }
 
     pub fn node_id_to_type(&self, id: hir::HirId) -> Ty<'tcx> {
-        match self.node_id_to_type_opt(id) {
-            Some(ty) => ty,
-            None => {
-                bug!("node_id_to_type: no type for node `{}`",
-                    tls::with(|tcx| {
-                        let id = tcx.hir.hir_to_node_id(id);
-                        tcx.hir.node_to_string(id)
-                    }))
-            }
-        }
+        self.node_id_to_type_opt(id).unwrap_or_else(||
+            bug!("node_id_to_type: no type for node `{}`",
+                 tls::with(|tcx| {
+                     let id = tcx.hir.hir_to_node_id(id);
+                     tcx.hir.node_to_string(id)
+                 }))
+        )
     }
 
     pub fn node_id_to_type_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {
@@ -686,7 +683,7 @@ impl<'tcx> TypeckTables<'tcx> {
     }
 
     pub fn pat_adjustments_mut(&mut self)
-                           -> LocalTableInContextMut<'_, Vec<Ty<'tcx>>> {
+                               -> LocalTableInContextMut<'_, Vec<Ty<'tcx>>> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.pat_adjustments,
@@ -1199,8 +1196,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             let hir_id = hir.node_to_hir_id(k);
             let map = trait_map.entry(hir_id.owner).or_default();
             Lrc::get_mut(map).unwrap()
-                            .insert(hir_id.local_id,
-                                    Lrc::new(StableVec::new(v)));
+                             .insert(hir_id.local_id,
+                                     Lrc::new(StableVec::new(v)));
         }
 
         let gcx = &GlobalCtxt {
@@ -2188,7 +2185,6 @@ macro_rules! sty_debug_print {
                 };
                 $(let mut $variant = total;)*
 
-
                 for &Interned(t) in tcx.interners.type_.borrow().iter() {
                     let variant = match t.sty {
                         ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
@@ -2207,7 +2203,7 @@ macro_rules! sty_debug_print {
                 }
                 println!("Ty interner             total           ty region  both");
                 $(println!("    {:18}: {uses:6} {usespc:4.1}%, \
-{ty:4.1}% {region:5.1}% {both:4.1}%",
+                            {ty:4.1}% {region:5.1}% {both:4.1}%",
                            stringify!($variant),
                            uses = $variant.total,
                            usespc = $variant.total as f64 * 100.0 / total.total as f64,
@@ -2216,7 +2212,7 @@ macro_rules! sty_debug_print {
                            both = $variant.both_infer as f64 * 100.0  / total.total as f64);
                   )*
                 println!("                  total {uses:6}        \
-{ty:4.1}% {region:5.1}% {both:4.1}%",
+                          {ty:4.1}% {region:5.1}% {both:4.1}%",
                          uses = total.total,
                          ty = total.ty_infer as f64 * 100.0  / total.total as f64,
                          region = total.region_infer as f64 * 100.0  / total.total as f64,
@@ -2653,7 +2649,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
 
     pub fn mk_closure(self, closure_id: DefId, closure_substs: ClosureSubsts<'tcx>)
-                                          -> Ty<'tcx> {
+                      -> Ty<'tcx> {
         self.mk_ty(Closure(closure_id, closure_substs))
     }
 
@@ -2686,8 +2682,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_ty_param(self,
-                    index: u32,
-                    name: InternedString) -> Ty<'tcx> {
+                       index: u32,
+                       name: InternedString) -> Ty<'tcx> {
         self.mk_ty(Param(ParamTy { idx: index, name: name }))
     }
 

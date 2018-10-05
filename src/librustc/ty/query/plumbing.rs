@@ -449,14 +449,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             let prev_dep_node_index =
                 self.dep_graph.prev_dep_node_index_of(dep_node);
             let result = Q::try_load_from_disk(self.global_tcx(),
-                                                    prev_dep_node_index);
+                                               prev_dep_node_index);
 
             // We always expect to find a cached result for things that
             // can be forced from DepNode.
             debug_assert!(!dep_node.kind.can_reconstruct_query_key() ||
-                            result.is_some(),
-                            "Missing on-disk cache entry for {:?}",
-                            dep_node);
+                          result.is_some(),
+                          "Missing on-disk cache entry for {:?}",
+                          dep_node);
             result
         } else {
             // Some things are never cached on disk.
@@ -491,7 +491,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             assert!(Some(self.dep_graph.fingerprint_of(dep_node_index)) ==
                     self.dep_graph.prev_fingerprint_of(dep_node),
                     "Fingerprint for green query instance not loaded \
-                        from cache: {:?}", dep_node);
+                     from cache: {:?}", dep_node);
 
             debug!("BEGIN verify_ich({:?})", dep_node);
             let mut hcx = self.create_stable_hashing_context();
@@ -530,8 +530,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         //    (see for example #48923)
         assert!(!self.dep_graph.dep_node_exists(&dep_node),
                 "Forcing query with already existing DepNode.\n\
-                    - query-key: {:?}\n\
-                    - dep-node: {:?}",
+                 - query-key: {:?}\n\
+                 - dep-node: {:?}",
                 key, dep_node);
 
         profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
@@ -709,14 +709,19 @@ macro_rules! define_queries_inner {
 
                 // We use try_lock here since we are only called from the
                 // deadlock handler, and this shouldn't be locked
-                $(for v in self.$name.try_lock().unwrap().active.values() {
-                    match *v {
-                        QueryResult::Started(ref job) => jobs.push(job.clone()),
-                        _ => (),
-                    }
-                })*
+                $(
+                    jobs.extend(
+                        self.$name.try_lock().unwrap().active.values().filter_map(|v|
+                            if let QueryResult::Started(ref job) = *v {
+                                Some(job.clone())
+                            } else {
+                                None
+                            }
+                        )
+                    );
+                )*
 
-                return jobs;
+                jobs
             }
         }
 
@@ -733,14 +738,14 @@ macro_rules! define_queries_inner {
                 }
             }
 
-            pub fn describe(&self, tcx: TyCtxt<'_, '_, '_>) -> String {
+            pub fn describe(&self, tcx: TyCtxt<'_, '_, '_>) -> Cow<'static, str> {
                 let (r, name) = match *self {
                     $(Query::$name(key) => {
                         (queries::$name::describe(tcx, key), stringify!($name))
                     })*
                 };
                 if tcx.sess.verbose() {
-                    format!("{} [{}]", r, name)
+                    format!("{} [{}]", r, name).into()
                 } else {
                     r
                 }
@@ -753,9 +758,8 @@ macro_rules! define_queries_inner {
                 }
                 // The def_span query is used to calculate default_span,
                 // so exit to avoid infinite recursion
-                match *self {
-                    Query::def_span(..) => return span,
-                    _ => ()
+                if let Query::def_span(..) = *self {
+                    return span
                 }
                 match *self {
                     $(Query::$name(key) => key.default_span(tcx),)*
@@ -1028,13 +1032,10 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
                     )
                 );
 
-                match tcx.force_query::<::ty::query::queries::$query<'_>>(
+                if let Err(e) = tcx.force_query::<::ty::query::queries::$query<'_>>(
                     $key, DUMMY_SP, *dep_node
                 ) {
-                    Ok(_) => {},
-                    Err(e) => {
-                        tcx.report_cycle(e).emit();
-                    }
+                    tcx.report_cycle(e).emit();
                 }
             }
         }
