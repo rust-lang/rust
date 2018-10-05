@@ -52,10 +52,12 @@ pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
     /// Allocations local to this instance of the miri engine.  The kind
     /// helps ensure that the same mechanism is used for allocation and
     /// deallocation.  When an allocation is not found here, it is a
-    /// static and looked up in the `tcx` for read access.  Writing to
-    /// a static creates a copy here, in the machine.
-    /// We have this in a RefCell to be able to cache when a new allocation
-    /// for a static has to be created on a read access.
+    /// static and looked up in the `tcx` for read access.  If this machine
+    /// does pointer provenance tracking, the type of alloctions in `tcx`
+    /// and here do not match, so we have a `MonoHashMap` to be able to
+    /// put the "mapped" allocation into `alloc_map` even on a read access.
+    /// Either way, if the machine allows writing to a static, doing so will
+    /// create a copy of the static allocation here.
     alloc_map: MonoHashMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<M::PointerTag>)>,
 
     /// To be able to compare pointers with NULL, and to check alignment for accesses
