@@ -120,7 +120,9 @@ use raw_vec::RawVec;
 /// assert_eq!(vec, [1, 2, 3, 4]);
 /// ```
 ///
-/// It can also initialize each element of a `Vec<T>` with a given value:
+/// It can also initialize each element of a `Vec<T>` with a given value.
+/// Initializing a `Vec<T>` in this manner is the most efficient and safest way to allocate a
+/// vector of zeros as previously zeroed memory is requested from the operating system:
 ///
 /// ```
 /// let vec = vec![0; 5];
