@@ -110,7 +110,7 @@ macro_rules! impl_snapshot_for {
         impl<'a, Ctx> self::Snapshot<'a, Ctx> for $enum_name
             where Ctx: self::SnapshotContext<'a>,
         {
-            type Item = $enum_name<(),AllocIdSnapshot<'a>>;
+            type Item = $enum_name<(), AllocIdSnapshot<'a>>;
 
             #[inline]
             fn snapshot(&self, __ctx: &'a Ctx) -> Self::Item {
@@ -131,7 +131,7 @@ macro_rules! impl_snapshot_for {
         impl<'a, Ctx> self::Snapshot<'a, Ctx> for $struct_name
             where Ctx: self::SnapshotContext<'a>,
         {
-            type Item = $struct_name<(),AllocIdSnapshot<'a>>;
+            type Item = $struct_name<(), AllocIdSnapshot<'a>>;
 
             #[inline]
             fn snapshot(&self, __ctx: &'a Ctx) -> Self::Item {
@@ -183,7 +183,7 @@ impl_snapshot_for!(struct Pointer {
 impl<'a, Ctx> Snapshot<'a, Ctx> for Scalar
     where Ctx: SnapshotContext<'a>,
 {
-    type Item = Scalar<(),AllocIdSnapshot<'a>>;
+    type Item = Scalar<(), AllocIdSnapshot<'a>>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
         match self {
@@ -237,7 +237,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Place {
 impl<'a, Ctx> Snapshot<'a, Ctx> for Place
     where Ctx: SnapshotContext<'a>,
 {
-    type Item = Place<(),AllocIdSnapshot<'a>>;
+    type Item = Place<(), AllocIdSnapshot<'a>>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
         match self {
@@ -281,7 +281,7 @@ impl_snapshot_for!(enum LocalValue {
 impl<'a, Ctx> Snapshot<'a, Ctx> for Relocations
     where Ctx: SnapshotContext<'a>,
 {
-    type Item = Relocations<(),AllocIdSnapshot<'a>>;
+    type Item = Relocations<(), AllocIdSnapshot<'a>>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
         Relocations::from_presorted(self.iter()
@@ -293,7 +293,7 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for Relocations
 #[derive(Eq, PartialEq)]
 struct AllocationSnapshot<'a> {
     bytes: &'a [u8],
-    relocations: Relocations<(),AllocIdSnapshot<'a>>,
+    relocations: Relocations<(), AllocIdSnapshot<'a>>,
     undef_mask: &'a UndefMask,
     align: &'a Align,
     mutability: &'a Mutability,
@@ -337,8 +337,8 @@ struct FrameSnapshot<'a, 'tcx: 'a> {
     instance: &'a ty::Instance<'tcx>,
     span: &'a Span,
     return_to_block: &'a StackPopCleanup,
-    return_place: Place<(),AllocIdSnapshot<'a>>,
-    locals: IndexVec<mir::Local, LocalValue<(),AllocIdSnapshot<'a>>>,
+    return_place: Place<(), AllocIdSnapshot<'a>>,
+    locals: IndexVec<mir::Local, LocalValue<(), AllocIdSnapshot<'a>>>,
     block: &'a mir::BasicBlock,
     stmt: usize,
 }

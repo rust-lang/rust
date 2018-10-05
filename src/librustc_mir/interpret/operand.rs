@@ -25,8 +25,8 @@ use rustc::mir::interpret::{
 use super::{EvalContext, Machine, MemPlace, MPlaceTy, MemoryKind};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
-pub enum ScalarMaybeUndef<Tag=(),Id=AllocId> {
-    Scalar(Scalar<Tag,Id>),
+pub enum ScalarMaybeUndef<Tag=(), Id=AllocId> {
+    Scalar(Scalar<Tag, Id>),
     Undef,
 }
 
@@ -147,9 +147,9 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
 /// In particular, thanks to `ScalarPair`, arithmetic operations and casts can be entirely
 /// defined on `Value`, and do not have to work with a `Place`.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum Value<Tag=(),Id=AllocId> {
-    Scalar(ScalarMaybeUndef<Tag,Id>),
-    ScalarPair(ScalarMaybeUndef<Tag,Id>, ScalarMaybeUndef<Tag,Id>),
+pub enum Value<Tag=(), Id=AllocId> {
+    Scalar(ScalarMaybeUndef<Tag, Id>),
+    ScalarPair(ScalarMaybeUndef<Tag, Id>, ScalarMaybeUndef<Tag, Id>),
 }
 
 impl Value {
