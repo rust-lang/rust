@@ -43,6 +43,7 @@ mod private_no_inline {
 
 // @has redirect/index.html
 // @has - '//code' 'pub use private_no_inline::Qux'
-// @!has - '//code/a' 'Qux'
+// @!has - '//a' 'Qux'
+// @!has redirect/struct.Qux.html
 #[doc(no_inline)]
 pub use private_no_inline::Qux;
