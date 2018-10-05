@@ -40,5 +40,22 @@ fn test3() {
     let _y: Vec<Vec<Box<(u32, u32, u32, u32)>>> = vec![];
 }
 
+#[repr(C)]
+struct D {
+    // should not warn, since we don't have control over the signature (#3222)
+    test4: extern "C" fn(
+        itself: &D,
+        a: usize,
+        b: usize,
+        c: usize,
+        d: usize,
+        e: usize,
+        f: usize,
+        g: usize,
+        h: usize,
+        i: usize,
+    ),
+}
+
 fn main() {
 }
