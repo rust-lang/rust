@@ -2416,6 +2416,14 @@ impl Clean<Type> for hir::Ty {
                 Array(box ty.clean(cx), length)
             },
             TyKind::Tup(ref tys) => Tuple(tys.clean(cx)),
+            TyKind::Def(item_id, _) => {
+                let item = cx.tcx.hir.expect_item(item_id.id);
+                if let hir::ItemKind::Existential(ref ty) = item.node {
+                    ImplTrait(ty.bounds.clean(cx))
+                } else {
+                    unreachable!()
+                }
+            }
             TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
                 if let Some(new_ty) = cx.ty_substs.borrow().get(&path.def).cloned() {
                     return new_ty;
@@ -2424,14 +2432,6 @@ impl Clean<Type> for hir::Ty {
                 if let Def::TyParam(did) = path.def {
                     if let Some(bounds) = cx.impl_trait_bounds.borrow_mut().remove(&did) {
                         return ImplTrait(bounds);
-                    }
-                } else if let Def::Existential(did) = path.def {
-                    // This block is for returned impl trait only.
-                    if let Some(node_id) = cx.tcx.hir.as_local_node_id(did) {
-                        let item = cx.tcx.hir.expect_item(node_id);
-                        if let hir::ItemKind::Existential(ref ty) = item.node {
-                            return ImplTrait(ty.bounds.clean(cx));
-                        }
                     }
                 }
 

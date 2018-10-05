@@ -1338,10 +1338,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         match path.def {
             Def::Existential(did) => {
                 // check for desugared impl trait
-                if ty::is_impl_trait_defn(tcx, did).is_some() {
-                    let lifetimes = &path.segments[0].args.as_ref().unwrap().args;
-                    return self.impl_trait_ty_to_ty(did, lifetimes);
-                }
+                assert!(ty::is_impl_trait_defn(tcx, did).is_none());
                 let item_segment = path.segments.split_last().unwrap();
                 self.prohibit_generics(item_segment.1);
                 let substs = self.ast_path_substs_for_ty(span, did, item_segment.0);
@@ -1462,6 +1459,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 });
                 self.def_to_ty(opt_self_ty, path, false)
             }
+            hir::TyKind::Def(item_id, ref lifetimes) => {
+                let did = tcx.hir.local_def_id(item_id.id);
+                self.impl_trait_ty_to_ty(did, lifetimes)
+            },
             hir::TyKind::Path(hir::QPath::TypeRelative(ref qself, ref segment)) => {
                 debug!("ast_ty_to_ty: qself={:?} segment={:?}", qself, segment);
                 let ty = self.ast_ty_to_ty(qself);
