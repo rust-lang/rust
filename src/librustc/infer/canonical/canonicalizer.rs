@@ -48,7 +48,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     pub fn canonicalize_query<V>(
         &self,
         value: &V,
-        var_values: &mut SmallCanonicalVarValues<'tcx>
+        var_values: &mut SmallCanonicalVarValues<'tcx>,
     ) -> Canonicalized<'gcx, V>
     where
         V: TypeFoldable<'tcx> + Lift<'gcx>,
@@ -96,10 +96,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// out the [chapter in the rustc guide][c].
     ///
     /// [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html#canonicalizing-the-query-result
-    pub fn canonicalize_response<V>(
-        &self,
-        value: &V,
-    ) -> Canonicalized<'gcx, V>
+    pub fn canonicalize_response<V>(&self, value: &V) -> Canonicalized<'gcx, V>
     where
         V: TypeFoldable<'tcx> + Lift<'gcx>,
     {
@@ -112,7 +109,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 static_region: false,
                 other_free_regions: false,
             },
-            &mut var_values
+            &mut var_values,
         )
     }
 
@@ -128,7 +125,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     pub fn canonicalize_hr_query_hack<V>(
         &self,
         value: &V,
-        var_values: &mut SmallCanonicalVarValues<'tcx>
+        var_values: &mut SmallCanonicalVarValues<'tcx>,
     ) -> Canonicalized<'gcx, V>
     where
         V: TypeFoldable<'tcx> + Lift<'gcx>,
@@ -147,7 +144,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 static_region: false,
                 other_free_regions: true,
             },
-            var_values
+            var_values,
         )
     }
 }
@@ -192,8 +189,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
             }
 
             ty::ReVar(vid) => {
-                let r = self
-                    .infcx
+                let r = self.infcx
                     .unwrap()
                     .borrow_region_constraints()
                     .opportunistic_resolve_var(self.tcx, vid);
@@ -305,7 +301,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         infcx: Option<&'cx InferCtxt<'cx, 'gcx, 'tcx>>,
         tcx: TyCtxt<'cx, 'gcx, 'tcx>,
         canonicalize_region_mode: CanonicalizeRegionMode,
-        var_values: &'cx mut SmallCanonicalVarValues<'tcx>
+        var_values: &'cx mut SmallCanonicalVarValues<'tcx>,
     ) -> Canonicalized<'gcx, V>
     where
         V: TypeFoldable<'tcx> + Lift<'gcx>,
@@ -398,25 +394,23 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
                 // fill up `indices` to facilitate subsequent lookups.
                 if var_values.spilled() {
                     assert!(indices.is_empty());
-                    *indices =
-                        var_values.iter()
-                            .enumerate()
-                            .map(|(i, &kind)| (kind, CanonicalVar::new(i)))
-                            .collect();
+                    *indices = var_values
+                        .iter()
+                        .enumerate()
+                        .map(|(i, &kind)| (kind, CanonicalVar::new(i)))
+                        .collect();
                 }
                 // The cv is the index of the appended element.
                 CanonicalVar::new(var_values.len() - 1)
             }
         } else {
             // `var_values` is large. Do a hashmap search via `indices`.
-            *indices
-                .entry(kind)
-                .or_insert_with(|| {
-                    variables.push(info);
-                    var_values.push(kind);
-                    assert_eq!(variables.len(), var_values.len());
-                    CanonicalVar::new(variables.len() - 1)
-                })
+            *indices.entry(kind).or_insert_with(|| {
+                variables.push(info);
+                var_values.push(kind);
+                assert_eq!(variables.len(), var_values.len());
+                CanonicalVar::new(variables.len() - 1)
+            })
         }
     }
 
