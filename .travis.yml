@@ -4,7 +4,7 @@ rust: nightly
 
 os:
   - linux
-  # - osx # doesn't even start atm. Not sure what travis is up to. Disabling to reduce the noise
+  - osx
 
 sudo: false
 
@@ -32,7 +32,10 @@ install:
 
 matrix:
   include:
-    - env: BASE_TESTS=true # runs the base tests
+    - os: osx # run base tests on both platforms
+      env: BASE_TESTS=true
+    - os: linux
+      env: BASE_TESTS=true
     - env: INTEGRATION=rust-lang/cargo
     - env: INTEGRATION=rust-lang-nursery/rand
     - env: INTEGRATION=rust-lang-nursery/stdsimd
@@ -46,6 +49,10 @@ matrix:
     - env: INTEGRATION=serde-rs/serde
     - env: INTEGRATION=Geal/nom
     - env: INTEGRATION=hyperium/hyper
+# prevent these jobs with default env vars
+  exclude:
+    - os: linux
+    - os: osx
 
 script:
   - |
