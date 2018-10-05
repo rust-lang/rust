@@ -72,9 +72,12 @@ def parse_lints(lints, filepath):
                             g = group_re.search(line)
                             if g:
                                 group = g.group(1).lower()
-                                level = lint_levels[group]
+                                level = lint_levels.get(group, None)
                                 break
                             line = next(fp)
+
+                    if level is None:
+                        continue
 
                     log.info("found %s with level %s in %s",
                              name, level, filepath)
@@ -103,9 +106,11 @@ def parse_configs(path):
 
 def parse_all(path="clippy_lints/src"):
     lints = []
-    for filename in os.listdir(path):
-        if filename.endswith(".rs"):
-            parse_lints(lints, os.path.join(path, filename))
+    for root, dirs, files in os.walk(path):
+        for fn in files:
+            if fn.endswith('.rs'):
+                parse_lints(lints, os.path.join(root, fn))
+
     log.info("got %s lints", len(lints))
 
     configs = parse_configs(path)
