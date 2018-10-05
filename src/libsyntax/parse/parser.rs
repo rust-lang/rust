@@ -1777,7 +1777,26 @@ impl<'a> Parser<'a> {
                    require_name);
             let pat = self.parse_pat()?;
 
-            self.expect(&token::Colon)?;
+            if let Err(mut err) = self.expect(&token::Colon) {
+                // If we find a pattern followed by an identifier, it could be an (incorrect)
+                // C-style parameter declaration.
+                if self.check_ident() && self.look_ahead(1, |t| {
+                    *t == token::Comma || *t == token::CloseDelim(token::Paren)
+                }) {
+                    let ident = self.parse_ident().unwrap();
+                    let span = pat.span.with_hi(ident.span.hi());
+
+                    err.span_suggestion_with_applicability(
+                        span,
+                        "declare the type after the parameter binding",
+                        String::from("<identifier>: <type>"),
+                        Applicability::HasPlaceholders,
+                    );
+                }
+
+                return Err(err);
+            }
+
             (pat, self.parse_ty()?)
         } else {
             debug!("parse_arg_general ident_to_pat");
