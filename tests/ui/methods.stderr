@@ -23,16 +23,8 @@ error: methods called `to_*` usually take self by reference; consider choosing a
 error: methods called `new` usually take no self; consider choosing a less ambiguous name
   --> $DIR/methods.rs:46:12
    |
-46 |     fn new(self) {}
+46 |     fn new(self) -> Self { unimplemented!(); }
    |            ^^^^
-
-error: methods called `new` usually return `Self`
-  --> $DIR/methods.rs:46:5
-   |
-46 |     fn new(self) {}
-   |     ^^^^^^^^^^^^^^^
-   |
-   = note: `-D clippy::new-ret-no-self` implied by `-D warnings`
 
 error: called `map(f).unwrap_or(a)` on an Option value. This can be done more directly by calling `map_or(a, f)` instead
    --> $DIR/methods.rs:114:13
@@ -465,5 +457,5 @@ error: used unwrap() on an Option value. If you don't want to handle the None ca
     |
     = note: `-D clippy::option-unwrap-used` implied by `-D warnings`
 
-error: aborting due to 58 previous errors
+error: aborting due to 57 previous errors
 
