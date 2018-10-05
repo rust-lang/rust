@@ -1,0 +1,11 @@
+error[E0658]: The use of std::ptr::write_bytes() is gated in constant functions (see issue #53491)
+  --> $DIR/feature-gate-const_write_bytes.rs:16:5
+   |
+LL |     std::ptr::write_bytes(u, 0u8, 1);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(const_write_bytes)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

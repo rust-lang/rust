@@ -243,6 +243,9 @@ declare_features! (
     // Allows panicking during const eval (produces compile-time errors)
     (active, const_panic, "1.30.0", Some(51999), None),
 
+    // Allows writing repeated bytes to a pointer during const eval.
+    (active, const_write_bytes, "1.31.0", Some(53491), None),
+
     // Allows using #[prelude_import] on glob `use` items.
     //
     // rustc internal

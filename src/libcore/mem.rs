@@ -1040,8 +1040,24 @@ impl<T> MaybeUninit<T> {
     /// It is your responsibility to make sure `T` gets dropped if it got initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[rustc_const_unstable(feature = "const_maybe_uninit_zeroed")]
+    #[cfg(not(stage0))]
     pub const fn zeroed() -> MaybeUninit<T> {
-        MaybeUninit { value: unsafe { intrinsics::init() } }
+        let mut u = MaybeUninit::<T>::uninitialized();
+        unsafe {
+            (&mut *u.value as *mut T).write_bytes(0u8, 1);
+        }
+        u
+    }
+
+    #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[cfg(stage0)]
+    /// Ceci n'est pas la documentation
+    pub fn zeroed() -> MaybeUninit<T> {
+        let mut u = MaybeUninit::<T>::uninitialized();
+        unsafe {
+            u.as_mut_ptr().write_bytes(0u8, 1);
+        }
+        u
     }
 
     /// Set the value of the `MaybeUninit`. This overwrites any previous value without dropping it.

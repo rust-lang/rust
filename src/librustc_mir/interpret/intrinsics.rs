@@ -150,36 +150,29 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 }
                 self.write_scalar(val, dest)?;
             }
-            "init" => {
-                // Check fast path: we don't want to force an allocation in case the destination is
-                // a simple value, but we also do not want to create a new allocation with 0s and
-                // then copy that over.
-                if !dest.layout.is_zst() { // notzhing to do for ZST
-                    match dest.layout.abi {
-                        layout::Abi::Scalar(ref s) => {
-                            let x = Scalar::from_int(0, s.value.size(&self));
-                            self.write_value(Value::Scalar(x.into()), dest)?;
-                        }
-                        layout::Abi::ScalarPair(ref s1, ref s2) => {
-                            let x = Scalar::from_int(0, s1.value.size(&self));
-                            let y = Scalar::from_int(0, s2.value.size(&self));
-                            self.write_value(Value::ScalarPair(x.into(), y.into()), dest)?;
-                        }
-                        _ => {
-                            // Do it in memory
-                            let mplace = self.force_allocation(dest)?;
-                            assert!(mplace.extra.is_none());
-                            self.memory.write_repeat(mplace.ptr, 0, dest.layout.size)?;
-                        }
-                    }
-                }
-            }
             "transmute" => {
                 // Go through an allocation, to make sure the completely different layouts
                 // do not pose a problem.  (When the user transmutes through a union,
                 // there will not be a layout mismatch.)
                 let dest = self.force_allocation(dest)?;
                 self.copy_op(args[0], dest.into())?;
+            }
+            "write_bytes" => {
+                let ptr = self.read_value(args[0])?;
+                let mplace = self.ref_to_mplace(ptr)?;
+                let val = self.read_scalar(args[1])?.to_u8()?;
+                let count = self.read_scalar(args[2])?.to_usize(&self.memory)?;
+                if mplace.layout.is_zst() || count == 0 {
+                    return Ok(true);
+                }
+                if let Some(byte_count) = mplace.layout.size.checked_mul(count, &self.memory) {
+                    self.memory.write_repeat(mplace.ptr, val, byte_count)?;
+                } else {
+                    return err!(Intrinsic(
+                        format!("Overflowing computing `count * size_of::<T>()` ({} * {}) in {}",
+                                count, mplace.layout.size.bytes(), intrinsic_name),
+                    ));
+                }
             }
 
             _ => return Ok(false),

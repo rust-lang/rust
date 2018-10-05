@@ -128,6 +128,7 @@
 #![feature(const_transmute)]
 #![feature(reverse_bits)]
 #![feature(non_exhaustive)]
+#![cfg_attr(not(stage0), feature(const_write_bytes))]
 
 #[prelude_import]
 #[allow(unused)]

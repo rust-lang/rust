@@ -839,7 +839,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             | "add_with_overflow"
                             | "sub_with_overflow"
                             | "mul_with_overflow"
-                            | "init"
                             // no need to check feature gates, intrinsics are only callable from the
                             // libstd or with forever unstable feature gates
                             => is_const_fn = true,
@@ -857,6 +856,19 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                             &format!("The use of std::mem::transmute() \
                                             is gated in {}s", self.mode));
                                     }
+                                }
+                            }
+                            "write_bytes" => {
+                                if self.tcx.sess.features_untracked().const_write_bytes {
+                                    is_const_fn = true;
+                                } else if self.mode != Mode::Fn {
+                                    // Using write_bytes in a const expression requires the feature
+                                    // gate.
+                                    emit_feature_err(
+                                        &self.tcx.sess.parse_sess, "const_write_bytes",
+                                        self.span, GateIssue::Language,
+                                        &format!("The use of std::ptr::write_bytes() \
+                                        is gated in {}s", self.mode));
                                 }
                             }
 
