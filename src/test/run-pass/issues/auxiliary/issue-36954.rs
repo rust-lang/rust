@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(min_const_fn)]
 #![crate_type = "lib"]
 
 const fn foo(i: i32) -> i32 {

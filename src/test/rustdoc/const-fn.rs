@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(min_const_fn)]
 #![crate_name = "foo"]
 
 // @has foo/fn.bar.html

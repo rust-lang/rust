@@ -10,8 +10,6 @@
 
 // compile-pass
 
-#![feature(min_const_fn)]
-
 struct S(pub &'static u32, pub u32);
 
 const fn g(ss: &S) -> &u32 { &ss.1 }

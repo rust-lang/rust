@@ -10,8 +10,6 @@
 
 // run-pass
 
-#![feature(min_const_fn)]
-
 struct A;
 
 impl A {

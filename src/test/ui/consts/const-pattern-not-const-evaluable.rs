@@ -10,8 +10,6 @@
 
 // compile-pass
 
-#![feature(min_const_fn)]
-
 #[derive(PartialEq, Eq)]
 enum Cake {
     BlackForest,

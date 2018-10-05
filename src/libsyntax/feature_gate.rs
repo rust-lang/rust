@@ -1806,9 +1806,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 if header.asyncness.is_async() {
                     gate_feature_post!(&self, async_await, span, "async fn is unstable");
                 }
-                if header.constness.node == ast::Constness::Const {
-                    gate_feature_post!(&self, min_const_fn, span, "const fn is unstable");
-                }
                 // stability of const fn methods are covered in
                 // visit_trait_item and visit_impl_item below; this is
                 // because default methods don't pass through this
@@ -1863,11 +1860,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
 
         match ii.node {
-            ast::ImplItemKind::Method(ref sig, _) => {
-                if sig.header.constness.node == ast::Constness::Const {
-                    gate_feature_post!(&self, min_const_fn, ii.span, "const fn is unstable");
-                }
-            }
+            ast::ImplItemKind::Method(..) => {}
             ast::ImplItemKind::Existential(..) => {
                 gate_feature_post!(
                     &self,

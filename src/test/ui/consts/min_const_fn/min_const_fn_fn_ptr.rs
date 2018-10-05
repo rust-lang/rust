@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(min_const_fn)]
-
 struct HasPtr {
     field: fn(),
 }

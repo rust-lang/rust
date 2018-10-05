@@ -11,8 +11,6 @@
 // run-pass
 // Test a call whose argument is the result of another call.
 
-#![feature(min_const_fn)]
-
 const fn sub(x: u32, y: u32) -> u32 {
     x - y
 }

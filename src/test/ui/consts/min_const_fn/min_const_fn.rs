@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(min_const_fn)]
-
 // ok
 const fn foo1() {}
 const fn foo2(x: i32) -> i32 { x }

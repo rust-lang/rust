@@ -13,8 +13,6 @@
 
 // https://github.com/rust-lang/rust/issues/46114
 
-#![feature(min_const_fn)]
-
 #[derive(Eq, PartialEq)]
 struct A { value: u32 }
 

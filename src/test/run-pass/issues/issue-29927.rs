@@ -10,7 +10,6 @@
 
 // run-pass
 #![allow(dead_code)]
-#![feature(min_const_fn)]
 struct A {
     field: usize,
 }

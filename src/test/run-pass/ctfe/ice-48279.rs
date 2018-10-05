@@ -14,8 +14,6 @@
 
 // https://github.com/rust-lang/rust/issues/48279
 
-#![feature(min_const_fn)]
-
 #[derive(PartialEq, Eq)]
 pub struct NonZeroU32 {
     value: u32

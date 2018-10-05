@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(integer_atomics, min_const_fn)]
+#![feature(integer_atomics)]
 
 // compile-pass
 

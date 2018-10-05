@@ -10,8 +10,6 @@
 
 #![warn(const_err)]
 
-#![feature(min_const_fn)]
-
 const fn foo(x: u32) -> u32 {
     x
 }
