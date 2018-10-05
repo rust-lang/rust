@@ -638,6 +638,14 @@ mod binding_form_impl {
     }
 }
 
+/// `BlockTailInfo` is attached to the `LocalDecl` for temporaries
+/// created during evaluation of expressions in a block tail
+/// expression; that is, a block like `{ STMT_1; STMT_2; EXPR }`.
+///
+/// It is used to improve diagnostics when such temporaries are
+/// involved in borrow_check errors, e.g. explanations of where the
+/// temporaries come from, when their destructors are run, and/or how
+/// one might revise the code to satisfy the borrow checker's rules.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct BlockTailInfo {
     /// If `true`, then the value resulting from evaluating this tail
