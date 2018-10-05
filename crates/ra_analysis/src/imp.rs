@@ -9,7 +9,7 @@ use std::{
 };
 
 use relative_path::RelativePath;
-use ra_editor::{self, FileSymbol, LineIndex, find_node_at_offset, LocalEdit};
+use ra_editor::{self, FileSymbol, LineIndex, find_node_at_offset, LocalEdit, resolve_local_name};
 use ra_syntax::{
     TextUnit, TextRange, SmolStr, File, AstNode,
     SyntaxKind::*,
@@ -197,7 +197,21 @@ impl AnalysisImpl {
         let file = root.syntax(file_id);
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, offset) {
-            return self.index_resolve(name_ref, token);
+
+            // First try to resolve the symbol locally
+            if let Some(name) = resolve_local_name(&file, offset, name_ref) {
+                let vec: Vec<(FileId, FileSymbol)>::new();
+                vec.push((file_id, FileSymbol {
+                    name: name.text(),
+                    node_range: name.syntax().range(),
+                    kind : NAME
+                }));
+
+                return vec;
+            } else {
+                // If that fails try the index based approach.
+                return self.index_resolve(name_ref, token);
+            }
         }
         if let Some(name) = find_node_at_offset::<ast::Name>(syntax, offset) {
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {

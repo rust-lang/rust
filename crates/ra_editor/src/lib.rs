@@ -164,6 +164,14 @@ pub fn find_node_at_offset<'a, N: AstNode<'a>>(
         .next()
 }
 
+pub fn resolve_local_name<'a>(file: &'a File, offset: TextUnit, name_ref: ast::NameRef) -> Option<ast::Name<'a>> {
+    let fn_def = find_node_at_offset::<ast::FnDef>(file.syntax(), offset)?;
+    let scopes = scope::FnScopes::new(fn_def);
+
+    // TODO: This doesn't work because of scopes lifetime
+    scope::resolve_local_name(name_ref, &scopes)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
