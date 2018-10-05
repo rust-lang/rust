@@ -221,7 +221,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             let data = cur_def_key.disambiguated_data.data;
             let symbol = data.get_opt_name().map(|n| n.as_str()).unwrap_or_else(|| {
-                if let DefPathData::CrateRoot = data {  // reexported `extern crate` (#43189)
+                if let DefPathData::CrateRoot = data { // reexported `extern crate` (#43189)
                     self.original_crate_name(cur_def.krate).as_str()
                 } else {
                     Symbol::intern("<unnamed>").as_str()
@@ -365,9 +365,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         if let Some(trait_ref) = impl_trait_ref {
             // Trait impls.
-            buffer.push(&format!("<{} as {}>",
-                                 self_ty,
-                                 trait_ref));
+            buffer.push(&format!("<{} as {}>", self_ty, trait_ref));
             return;
         }
 

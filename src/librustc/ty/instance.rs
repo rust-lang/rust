@@ -231,11 +231,11 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
     }
 
     pub fn resolve_closure(
-                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    def_id: DefId,
-                    substs: ty::ClosureSubsts<'tcx>,
-                    requested_kind: ty::ClosureKind)
-    -> Instance<'tcx>
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        def_id: DefId,
+        substs: ty::ClosureSubsts<'tcx>,
+        requested_kind: ty::ClosureKind)
+        -> Instance<'tcx>
     {
         let actual_kind = substs.closure_kind(def_id, tcx);
 
@@ -255,8 +255,8 @@ fn resolve_associated_item<'a, 'tcx>(
 ) -> Option<Instance<'tcx>> {
     let def_id = trait_item.def_id;
     debug!("resolve_associated_item(trait_item={:?}, \
-                                    trait_id={:?}, \
-           rcvr_substs={:?})",
+            trait_id={:?}, \
+            rcvr_substs={:?})",
            def_id, trait_id, rcvr_substs);
 
     let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
@@ -280,7 +280,7 @@ fn resolve_associated_item<'a, 'tcx>(
         traits::VtableClosure(closure_data) => {
             let trait_closure_kind = tcx.lang_items().fn_trait_kind(trait_id).unwrap();
             Some(Instance::resolve_closure(tcx, closure_data.closure_def_id, closure_data.substs,
-                                 trait_closure_kind))
+                                           trait_closure_kind))
         }
         traits::VtableFnPointer(ref data) => {
             Some(Instance {
@@ -310,7 +310,7 @@ fn resolve_associated_item<'a, 'tcx>(
 }
 
 fn needs_fn_once_adapter_shim<'a, 'tcx>(actual_closure_kind: ty::ClosureKind,
-                              trait_closure_kind: ty::ClosureKind)
+                                        trait_closure_kind: ty::ClosureKind)
     -> Result<bool, ()>
 {
     match (actual_closure_kind, trait_closure_kind) {
@@ -344,13 +344,14 @@ fn needs_fn_once_adapter_shim<'a, 'tcx>(actual_closure_kind: ty::ClosureKind,
 }
 
 fn fn_once_adapter_instance<'a, 'tcx>(
-                            tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            closure_did: DefId,
-                            substs: ty::ClosureSubsts<'tcx>,
-                            ) -> Instance<'tcx> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    closure_did: DefId,
+    substs: ty::ClosureSubsts<'tcx>)
+    -> Instance<'tcx>
+{
     debug!("fn_once_adapter_shim({:?}, {:?})",
-    closure_did,
-    substs);
+           closure_did,
+           substs);
     let fn_once = tcx.lang_items().fn_once_trait().unwrap();
     let call_once = tcx.associated_items(fn_once)
         .find(|it| it.kind == ty::AssociatedKind::Method)

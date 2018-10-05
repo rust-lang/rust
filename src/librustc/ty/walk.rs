@@ -54,7 +54,7 @@ impl<'tcx> Iterator for TypeWalker<'tcx> {
         debug!("next(): stack={:?}", self.stack);
         match self.stack.pop() {
             None => {
-                return None;
+                None
             }
             Some(ty) => {
                 self.last_subtree = self.stack.len();

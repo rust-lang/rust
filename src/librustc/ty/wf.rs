@@ -223,8 +223,8 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
             let predicate = ty::Predicate::ConstEvaluatable(def_id, substs);
             let cause = self.cause(traits::MiscObligation);
             self.out.push(traits::Obligation::new(cause,
-                                                    self.param_env,
-                                                    predicate));
+                                                  self.param_env,
+                                                  predicate));
         }
     }
 
@@ -495,6 +495,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
             let explicit_bound = region;
 
+            self.out.reserve(implicit_bounds.len());
             for implicit_bound in implicit_bounds {
                 let cause = self.cause(traits::ObjectTypeBound(ty, explicit_bound));
                 let outlives = ty::Binder::dummy(

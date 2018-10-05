@@ -992,11 +992,7 @@ impl<'a, 'gcx, 'tcx> ParamTy {
         // FIXME(#50125): Ignoring `Self` with `idx != 0` might lead to weird behavior elsewhere,
         // but this should only be possible when using `-Z continue-parse-after-error` like
         // `compile-fail/issue-36638.rs`.
-        if self.name == keywords::SelfType.name().as_str() && self.idx == 0 {
-            true
-        } else {
-            false
-        }
+        self.name == keywords::SelfType.name().as_str() && self.idx == 0
     }
 }
 
@@ -2043,18 +2039,14 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'_, '_, '_>,
         ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
     ) -> u128 {
-        match self.assert_bits(tcx, ty) {
-            Some(val) => val,
-            None => bug!("expected bits of {}, got {:#?}", ty.value, self),
-        }
+        self.assert_bits(tcx, ty).unwrap_or_else(||
+            bug!("expected bits of {}, got {:#?}", ty.value, self))
     }
 
     #[inline]
     pub fn unwrap_usize(&self, tcx: TyCtxt<'_, '_, '_>) -> u64 {
-        match self.assert_usize(tcx) {
-            Some(val) => val,
-            None => bug!("expected constant usize, got {:#?}", self),
-        }
+        self.assert_usize(tcx).unwrap_or_else(||
+            bug!("expected constant usize, got {:#?}", self))
     }
 }
 

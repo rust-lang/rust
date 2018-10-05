@@ -73,7 +73,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // projection).
         match ty.sty {
             ty::Closure(def_id, ref substs) => {
-
                 for upvar_ty in substs.upvar_tys(def_id, *self) {
                     self.compute_components(upvar_ty, out);
                 }
@@ -183,9 +182,5 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 fn push_region_constraints<'tcx>(out: &mut Vec<Component<'tcx>>, regions: Vec<ty::Region<'tcx>>) {
-    for r in regions {
-        if !r.is_late_bound() {
-            out.push(Component::Region(r));
-        }
-    }
+    out.extend(regions.iter().filter(|&r| !r.is_late_bound()).map(|r| Component::Region(r)));
 }

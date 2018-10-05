@@ -782,11 +782,10 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
-        match *r {
-            ty::ReLateBound(debruijn, br) if debruijn == self.current_index => {
+        if let ty::ReLateBound(debruijn, br) = *r {
+             if debruijn == self.current_index {
                 self.regions.insert(br);
             }
-            _ => { }
         }
         false
     }
