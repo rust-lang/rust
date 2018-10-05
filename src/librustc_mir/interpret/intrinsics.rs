@@ -151,8 +151,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 self.write_scalar(val, dest)?;
             }
             "init" => {
-                // Check fast path: we don't want to force an allocation in case the destination is a simple value,
-                // but we also do not want to create a new allocation with 0s and then copy that over.
+                // Check fast path: we don't want to force an allocation in case the destination is
+                // a simple value, but we also do not want to create a new allocation with 0s and
+                // then copy that over.
                 if !dest.layout.is_zst() { // notzhing to do for ZST
                     match dest.layout.abi {
                         layout::Abi::Scalar(ref s) => {
