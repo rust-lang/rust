@@ -19,23 +19,37 @@ macro_rules! intrinsic_arg {
     };
 }
 
+macro_rules! intrinsic_substs {
+    ($substs:expr, $index:expr,) => {};
+    ($substs:expr, $index:expr, $first:ident $(,$rest:ident)*) => {
+        let $first = $substs.type_at($index);
+        intrinsic_substs!($substs, $index+1, $($rest),*);
+    };
+}
+
 macro_rules! intrinsic_match {
-    ($fx:expr, $intrinsic:expr, $args:expr, $(
-        $($name:tt)|+ $(if $cond:expr)?, |$($a:ident $arg:ident),*| $content:block;
+    ($fx:expr, $intrinsic:expr, $substs:expr, $args:expr, $(
+        $($name:tt)|+ $(if $cond:expr)?, $(<$($subst:ident),*>)? ($($a:ident $arg:ident),*) $content:block;
     )*) => {
         match $intrinsic {
             $(
                 $(intrinsic_pat!($name))|* $(if $cond)? => {
-                    if let [$($arg),*] = *$args {
-                        #[allow(unused_parens)]
-                        {
+                    #[allow(unused_parens, non_snake_case)]
+                    {
+                        $(
+                            intrinsic_substs!($substs, 0, $($subst),*);
+                        )?
+                        if let [$($arg),*] = *$args {
                             let ($($arg),*) = (
                                 $(intrinsic_arg!($a $fx, $arg)),*
                             );
-                            $content
+                            #[warn(unused_parens, non_snake_case)]
+                            {
+                                $content
+                            }
+                        } else {
+                            bug!("wrong number of args for intrinsic {:?}", $intrinsic);
                         }
-                    } else {
-                        bug!("wrong number of args for intrinsic {:?}", $intrinsic);
                     }
                 }
             )*
@@ -75,19 +89,18 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
     let usize_layout = fx.layout_of(fx.tcx.types.usize);
 
     intrinsic_match! {
-        fx, intrinsic, args,
+        fx, intrinsic, substs, args,
 
-        assume, |c _a| {};
-        arith_offset, |v base, v offset| {
+        assume, (c _a) {};
+        arith_offset, (v base, v offset) {
             let res = fx.bcx.ins().iadd(base, offset);
             let res = CValue::ByVal(res, ret.layout());
             ret.write_cvalue(fx, res);
         };
-        likely | unlikely, |c a| {
+        likely | unlikely, (c a) {
             ret.write_cvalue(fx, a);
         };
-        copy | copy_nonoverlapping, |v src, v dst, v count| {
-            let elem_ty = substs.type_at(0);
+        copy | copy_nonoverlapping, <elem_ty> (v src, v dst, v count) {
             let elem_size: u64 = fx.layout_of(elem_ty).size.bytes();
             let elem_size = fx
                 .bcx
@@ -102,17 +115,17 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 fx.bcx.call_memmove(fx.isa, dst, src, byte_amount);
             }
         };
-        discriminant_value, |c val| {
-            let discr = crate::base::trans_get_discriminant(fx, args[0], ret.layout());
+        discriminant_value, (c val) {
+            let discr = crate::base::trans_get_discriminant(fx, val, ret.layout());
             ret.write_cvalue(fx, discr);
         };
-        size_of, | | {
-            let size_of = fx.layout_of(substs.type_at(0)).size.bytes();
+        size_of, <T> () {
+            let size_of = fx.layout_of(T).size.bytes();
             let size_of = CValue::const_val(fx, usize_layout.ty, size_of as i64);
             ret.write_cvalue(fx, size_of);
         };
-        size_of_val, |c ptr| {
-            let layout = fx.layout_of(substs.type_at(0));
+        size_of_val, <T> (c ptr) {
+            let layout = fx.layout_of(T);
             let size = match &layout.ty.sty {
                 _ if !layout.is_unsized() => fx
                     .bcx
@@ -128,13 +141,13 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             };
             ret.write_cvalue(fx, CValue::ByVal(size, usize_layout));
         };
-        min_align_of, | | {
-            let min_align = fx.layout_of(substs.type_at(0)).align.abi();
+        min_align_of, <T> () {
+            let min_align = fx.layout_of(T).align.abi();
             let min_align = CValue::const_val(fx, usize_layout.ty, min_align as i64);
             ret.write_cvalue(fx, min_align);
         };
-        min_align_of_val, |c ptr| {
-            let layout = fx.layout_of(substs.type_at(0));
+        min_align_of_val, <T> (c ptr) {
+            let layout = fx.layout_of(T);
             let align = match &layout.ty.sty {
                 _ if !layout.is_unsized() => fx
                     .bcx
@@ -149,12 +162,12 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             };
             ret.write_cvalue(fx, CValue::ByVal(align, usize_layout));
         };
-        type_id, | | {
-            let type_id = fx.tcx.type_id_hash(substs.type_at(0));
+        type_id, <T> () {
+            let type_id = fx.tcx.type_id_hash(T);
             let type_id = CValue::const_val(fx, u64_layout.ty, type_id as i64);
             ret.write_cvalue(fx, type_id);
         };
-        _ if intrinsic.starts_with("unchecked_"), |c x, c y| {
+        _ if intrinsic.starts_with("unchecked_"), (c x, c y) {
             let bin_op = match intrinsic {
                 "unchecked_div" => BinOp::Div,
                 "unchecked_rem" => BinOp::Rem,
@@ -183,7 +196,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             };
             ret.write_cvalue(fx, res);
         };
-        _ if intrinsic.ends_with("_with_overflow"), |c x, c y| {
+        _ if intrinsic.ends_with("_with_overflow"), <T> (c x, c y) {
             assert_eq!(x.layout().ty, y.layout().ty);
             let bin_op = match intrinsic {
                 "add_with_overflow" => BinOp::Add,
@@ -191,7 +204,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 "mul_with_overflow" => BinOp::Mul,
                 _ => unimplemented!("intrinsic {}", intrinsic),
             };
-            let res = match args[0].layout().ty.sty {
+            let res = match T.sty {
                 ty::Uint(_) => crate::base::trans_checked_int_binop(
                     fx,
                     bin_op,
@@ -212,7 +225,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             };
             ret.write_cvalue(fx, res);
         };
-        _ if intrinsic.starts_with("overflowing_"), |c x, c y| {
+        _ if intrinsic.starts_with("overflowing_"), <T> (c x, c y) {
             assert_eq!(x.layout().ty, y.layout().ty);
             let bin_op = match intrinsic {
                 "overflowing_add" => BinOp::Add,
@@ -220,7 +233,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 "overflowing_mul" => BinOp::Mul,
                 _ => unimplemented!("intrinsic {}", intrinsic),
             };
-            let res = match x.layout().ty.sty {
+            let res = match T.sty {
                 ty::Uint(_) => crate::base::trans_int_binop(
                     fx,
                     bin_op,
@@ -241,21 +254,18 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             };
             ret.write_cvalue(fx, res);
         };
-        offset, |v base, v offset| {
+        offset, (v base, v offset) {
             let res = fx.bcx.ins().iadd(base, offset);
             ret.write_cvalue(fx, CValue::ByVal(res, args[0].layout()));
         };
-        transmute, |c from| {
-            let src_ty = substs.type_at(0);
-            let dst_ty = substs.type_at(1);
+        transmute, <src_ty, dst_ty> (c from) {
             assert_eq!(from.layout().ty, src_ty);
             let addr = from.force_stack(fx);
             let dst_layout = fx.layout_of(dst_ty);
             ret.write_cvalue(fx, CValue::ByRef(addr, dst_layout))
         };
-        init, | | {
-            let ty = substs.type_at(0);
-            let layout = fx.layout_of(ty);
+        init, <T> () {
+            let layout = fx.layout_of(T);
             let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
                 kind: StackSlotKind::ExplicitSlot,
                 size: layout.size.bytes() as u32,
@@ -266,42 +276,40 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let len_val = fx.bcx.ins().iconst(pointer_ty(fx.tcx), layout.size.bytes() as i64);
             fx.bcx.call_memset(fx.isa, addr, zero_val, len_val);
 
-            let uninit_place = CPlace::from_stack_slot(fx, stack_slot, ty);
+            let uninit_place = CPlace::from_stack_slot(fx, stack_slot, T);
             let uninit_val = uninit_place.to_cvalue(fx);
             ret.write_cvalue(fx, uninit_val);
         };
-        uninit, | | {
-            let ty = substs.type_at(0);
-            let layout = fx.layout_of(ty);
+        uninit, <T> () {
+            let layout = fx.layout_of(T);
             let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
                 kind: StackSlotKind::ExplicitSlot,
                 size: layout.size.bytes() as u32,
                 offset: None,
             });
 
-            let uninit_place = CPlace::from_stack_slot(fx, stack_slot, ty);
+            let uninit_place = CPlace::from_stack_slot(fx, stack_slot, T);
             let uninit_val = uninit_place.to_cvalue(fx);
             ret.write_cvalue(fx, uninit_val);
         };
-        ctlz | ctlz_nonzero, |v arg| {
-            let res = CValue::ByVal(fx.bcx.ins().clz(arg), args[0].layout());
+        ctlz | ctlz_nonzero, <T> (v arg) {
+            let res = CValue::ByVal(fx.bcx.ins().clz(arg), fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
-        cttz | cttz_nonzero, |v arg| {
-            let res = CValue::ByVal(fx.bcx.ins().clz(arg), args[0].layout());
+        cttz | cttz_nonzero, <T> (v arg) {
+            let res = CValue::ByVal(fx.bcx.ins().clz(arg), fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
-        ctpop, |v arg| {
-            let res = CValue::ByVal(fx.bcx.ins().popcnt(arg), args[0].layout());
+        ctpop, <T> (v arg) {
+            let res = CValue::ByVal(fx.bcx.ins().popcnt(arg), fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
-        bitreverse, |v arg| {
-            let res = CValue::ByVal(fx.bcx.ins().bitrev(arg), args[0].layout());
+        bitreverse, <T> (v arg) {
+            let res = CValue::ByVal(fx.bcx.ins().bitrev(arg), fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
-        needs_drop, | | {
-            let ty = substs.type_at(0);
-            let needs_drop = if ty.needs_drop(fx.tcx, ParamEnv::reveal_all()) {
+        needs_drop, <T> () {
+            let needs_drop = if T.needs_drop(fx.tcx, ParamEnv::reveal_all()) {
                 1
             } else {
                 0
@@ -309,31 +317,31 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let needs_drop = CValue::const_val(fx, fx.tcx.types.bool, needs_drop);
             ret.write_cvalue(fx, needs_drop);
         };
-        _ if intrinsic.starts_with("atomic_fence"), | | {};
-        _ if intrinsic.starts_with("atomic_singlethreadfence"), | | {};
-        _ if intrinsic.starts_with("atomic_load"), |c ptr| {
+        _ if intrinsic.starts_with("atomic_fence"), () {};
+        _ if intrinsic.starts_with("atomic_singlethreadfence"), () {};
+        _ if intrinsic.starts_with("atomic_load"), (c ptr) {
             let inner_layout =
                 fx.layout_of(ptr.layout().ty.builtin_deref(true).unwrap().ty);
             let val = CValue::ByRef(ptr.load_value(fx), inner_layout);
             ret.write_cvalue(fx, val);
         };
-        _ if intrinsic.starts_with("atomic_store"), |v ptr, c val| {
+        _ if intrinsic.starts_with("atomic_store"), (v ptr, c val) {
             let dest = CPlace::Addr(ptr, None, val.layout());
             dest.write_cvalue(fx, val);
         };
-        _ if intrinsic.starts_with("atomic_xadd"), |v ptr, v amount| {
-            let clif_ty = fx.cton_type(substs.type_at(0)).unwrap();
+        _ if intrinsic.starts_with("atomic_xadd"), <T> (v ptr, v amount) {
+            let clif_ty = fx.cton_type(T).unwrap();
             let old = fx.bcx.ins().load(clif_ty, MemFlags::new(), ptr, 0);
             let new = fx.bcx.ins().iadd(old, amount);
             fx.bcx.ins().store(MemFlags::new(), new, ptr, 0);
-            ret.write_cvalue(fx, CValue::ByVal(old, fx.layout_of(substs.type_at(0))));
+            ret.write_cvalue(fx, CValue::ByVal(old, fx.layout_of(T)));
         };
-        _ if intrinsic.starts_with("atomic_xsub"), |v ptr, v amount| {
-            let clif_ty = fx.cton_type(substs.type_at(0)).unwrap();
+        _ if intrinsic.starts_with("atomic_xsub"), <T> (v ptr, v amount) {
+            let clif_ty = fx.cton_type(T).unwrap();
             let old = fx.bcx.ins().load(clif_ty, MemFlags::new(), ptr, 0);
             let new = fx.bcx.ins().isub(old, amount);
             fx.bcx.ins().store(MemFlags::new(), new, ptr, 0);
-            ret.write_cvalue(fx, CValue::ByVal(old, fx.layout_of(substs.type_at(0))));
+            ret.write_cvalue(fx, CValue::ByVal(old, fx.layout_of(T)));
         };
     }
 
