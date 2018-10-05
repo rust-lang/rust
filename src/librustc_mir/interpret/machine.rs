@@ -122,7 +122,8 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// Called for read access to a foreign static item.
     ///
     /// This will only be called once per static and machine; the result is cached in
-    /// the machine memory.
+    /// the machine memory. (This relies on `AllocMap::get_or` being able to add the
+    /// owned allocation to the map even when the map is shared.)
     fn find_foreign_static(
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         def_id: DefId,
@@ -133,7 +134,8 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     ///
     /// This should avoid copying if no work has to be done! If this returns an owned
     /// allocation (because a copy had to be done to add the tags), machine memory will
-    /// cache the result.
+    /// cache the result. (This relies on `AllocMap::get_or` being able to add the
+    /// owned allocation to the map even when the map is shared.)
     fn static_with_default_tag(
         alloc: &'_ Allocation
     ) -> Cow<'_, Allocation<Self::PointerTag>>;

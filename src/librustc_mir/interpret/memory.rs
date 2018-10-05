@@ -321,7 +321,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
 /// Allocation accessors
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
-    /// Helper function to obtain the global (tcx) allocation for a static
+    /// Helper function to obtain the global (tcx) allocation for a static.
+    /// This attempts to return a reference to an existing allocation if
+    /// one can be found in `tcx`. That, however, is only possible if `tcx` and
+    /// this machine use the same pointer tag, so it is indirected through
+    /// `M::static_with_default_tag`.
     fn get_static_alloc(
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         id: AllocId,
@@ -329,6 +333,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         let alloc = tcx.alloc_map.lock().get(id);
         let def_id = match alloc {
             Some(AllocType::Memory(mem)) => {
+                // We got tcx memory. Let the machine figure out whether and how to
+                // turn that into memory with the right pointer tag.
                 return Ok(M::static_with_default_tag(mem))
             }
             Some(AllocType::Function(..)) => {
@@ -356,6 +362,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             EvalErrorKind::ReferencedConstant(err).into()
         }).map(|const_val| {
             if let ConstValue::ByRef(_, allocation, _) = const_val.val {
+                // We got tcx memory. Let the machine figure out whether and how to
+                // turn that into memory with the right pointer tag.
                 M::static_with_default_tag(allocation)
             } else {
                 bug!("Matching on non-ByRef static")
@@ -372,7 +380,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             let alloc = Self::get_static_alloc(self.tcx, id).map_err(Err)?;
             match alloc {
                 Cow::Borrowed(alloc) => {
-                    // We got a ref, cheaply return that as an "error"
+                    // We got a ref, cheaply return that as an "error" so that the
+                    // map does not get mutated.
                     Err(Ok(alloc))
                 }
                 Cow::Owned(alloc) => {
@@ -392,30 +401,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
     }
 
-    pub fn get_size_and_align(&self, id: AllocId) -> (Size, Align) {
-        if let Ok(alloc) = self.get(id) {
-            return (Size::from_bytes(alloc.bytes.len() as u64), alloc.align);
-        }
-        // Could also be a fn ptr or extern static
-        match self.tcx.alloc_map.lock().get(id) {
-            Some(AllocType::Function(..)) => (Size::ZERO, Align::from_bytes(1, 1).unwrap()),
-            Some(AllocType::Static(did)) => {
-                // The only way `get` couldnÄt have worked here is if this is an extern static
-                assert!(self.tcx.is_foreign_item(did));
-                // Use size and align of the type
-                let ty = self.tcx.type_of(did);
-                let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
-                (layout.size, layout.align)
-            }
-            _ => {
-                // Must be a deallocated pointer
-                *self.dead_alloc_map.get(&id).expect(
-                    "allocation missing in dead_alloc_map"
-                )
-            }
-        }
-    }
-
     pub fn get_mut(
         &mut self,
         id: AllocId,
@@ -429,8 +414,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 return err!(ModifiedConstantMemory);
             }
             let kind = M::STATIC_KIND.expect(
-                "I got an owned allocation that I have to copy but the machine does \
-                    not expect that to happen"
+                "An allocation is being mutated but the machine does not expect that to happen"
             );
             Ok((MemoryKind::Machine(kind), alloc.into_owned()))
         });
@@ -444,6 +428,30 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                     return err!(ModifiedConstantMemory);
                 }
                 Ok(a)
+            }
+        }
+    }
+
+    pub fn get_size_and_align(&self, id: AllocId) -> (Size, Align) {
+        if let Ok(alloc) = self.get(id) {
+            return (Size::from_bytes(alloc.bytes.len() as u64), alloc.align);
+        }
+        // Could also be a fn ptr or extern static
+        match self.tcx.alloc_map.lock().get(id) {
+            Some(AllocType::Function(..)) => (Size::ZERO, Align::from_bytes(1, 1).unwrap()),
+            Some(AllocType::Static(did)) => {
+                // The only way `get` couldn't have worked here is if this is an extern static
+                assert!(self.tcx.is_foreign_item(did));
+                // Use size and align of the type
+                let ty = self.tcx.type_of(did);
+                let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
+                (layout.size, layout.align)
+            }
+            _ => {
+                // Must be a deallocated pointer
+                *self.dead_alloc_map.get(&id).expect(
+                    "allocation missing in dead_alloc_map"
+                )
             }
         }
     }
