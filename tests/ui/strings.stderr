@@ -60,17 +60,5 @@ error: calling `as_bytes()` on a string literal
    |
    = note: `-D clippy::string-lit-as-bytes` implied by `-D warnings`
 
-error: calling `as_bytes()` on a string literal
-  --> $DIR/strings.rs:65:18
-   |
-65 |     let strify = stringify!(foobar).as_bytes();
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using a byte string literal instead: `bstringify!(foobar)`
-
-error: manual implementation of an assign operation
-  --> $DIR/strings.rs:75:7
-   |
-75 |     ; x = x + 1;
-   |       ^^^^^^^^^ help: replace it with: `x += 1`
-
 error: aborting due to 11 previous errors
 
