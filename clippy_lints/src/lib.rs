@@ -328,6 +328,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box strings::StringAdd);
     reg.register_early_lint_pass(box returns::ReturnPass);
     reg.register_late_lint_pass(box methods::Pass);
+    reg.register_late_lint_pass(box map_clone::Pass);
     reg.register_late_lint_pass(box shadow::Pass);
     reg.register_late_lint_pass(box types::LetPass);
     reg.register_late_lint_pass(box types::UnitCmp);
@@ -346,7 +347,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box needless_borrow::NeedlessBorrow);
     reg.register_late_lint_pass(box needless_borrowed_ref::NeedlessBorrowedRef);
     reg.register_late_lint_pass(box no_effect::Pass);
-    reg.register_late_lint_pass(box map_clone::Pass);
     reg.register_late_lint_pass(box temporary_assignment::Pass);
     reg.register_late_lint_pass(box transmute::Transmute);
     reg.register_late_lint_pass(
@@ -792,6 +792,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         returns::NEEDLESS_RETURN,
         strings::STRING_LIT_AS_BYTES,
         types::FN_TO_NUMERIC_CAST,
+        types::FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
         types::IMPLICIT_HASHER,
         types::LET_UNIT_VALUE,
         unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,
@@ -921,7 +922,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         transmute::WRONG_TRANSMUTE,
         types::ABSURD_EXTREME_COMPARISONS,
         types::CAST_PTR_ALIGNMENT,
-        types::FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
         types::UNIT_CMP,
         unicode::ZERO_WIDTH_SPACE,
         unused_io_amount::UNUSED_IO_AMOUNT,

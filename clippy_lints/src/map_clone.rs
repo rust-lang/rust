@@ -1,140 +1,98 @@
+use crate::rustc::hir;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
+use crate::syntax::source_map::Span;
+use crate::utils::paths;
+use crate::utils::{
+    in_macro, match_trait_method, match_type,
+    remove_blocks, snippet,
+    span_lint_and_sugg,
+};
 use if_chain::if_chain;
-use crate::rustc::hir::*;
-use crate::rustc::ty;
-use crate::syntax::ast;
-use crate::utils::{get_arg_ident, is_adjusted, iter_input_pats, match_qpath, match_trait_method, match_type,
-            paths, remove_blocks, snippet, span_help_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq};
+use crate::syntax::ast::Ident;
 
-/// **What it does:** Checks for mapping `clone()` over an iterator.
+#[derive(Clone)]
+pub struct Pass;
+
+/// **What it does:** Checks for usage of `iterator.map(|x| x.clone())` and suggests
+/// `iterator.cloned()` instead
 ///
-/// **Why is this bad?** It makes the code less readable than using the
-/// `.cloned()` adapter.
+/// **Why is this bad?** Readability, this can be written more concisely
 ///
-/// **Known problems:** Sometimes `.cloned()` requires stricter trait
-/// bound than `.map(|e| e.clone())` (which works because of the coercion).
-/// See [#498](https://github.com/rust-lang-nursery/rust-clippy/issues/498).
+/// **Known problems:** None.
 ///
 /// **Example:**
+///
 /// ```rust
-/// x.map(|e| e.clone());
+/// let x = vec![42, 43];
+/// let y = x.iter();
+/// let z = y.map(|i| *i);
+/// ```
+///
+/// The correct use would be:
+///
+/// ```rust
+/// let x = vec![42, 43];
+/// let y = x.iter();
+/// let z = y.cloned();
 /// ```
 declare_clippy_lint! {
     pub MAP_CLONE,
     style,
-    "using `.map(|x| x.clone())` to clone an iterator or option's contents"
+    "using `iterator.map(|x| x.clone())`, or dereferencing closures for `Copy` types"
 }
 
-#[derive(Copy, Clone)]
-pub struct Pass;
+impl LintPass for Pass {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(MAP_CLONE)
+    }
+}
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        // call to .map()
-        if let ExprKind::MethodCall(ref method, _, ref args) = expr.node {
-            if method.ident.name == "map" && args.len() == 2 {
-                match args[1].node {
-                    ExprKind::Closure(_, ref decl, closure_eid, _, _) => {
-                        let body = cx.tcx.hir.body(closure_eid);
-                        let closure_expr = remove_blocks(&body.value);
-                        if_chain! {
-                            // nothing special in the argument, besides reference bindings
-                            // (e.g. .map(|&x| x) )
-                            if let Some(first_arg) = iter_input_pats(decl, body).next();
-                            if let Some(arg_ident) = get_arg_ident(&first_arg.pat);
-                            // the method is being called on a known type (option or iterator)
-                            if let Some(type_name) = get_type_name(cx, expr, &args[0]);
-                            then {
-                                // We know that body.arguments is not empty at this point
-                                let ty = cx.tables.pat_ty(&body.arguments[0].pat);
-                                // look for derefs, for .map(|x| *x)
-                                if only_derefs(cx, &*closure_expr, arg_ident) &&
-                                    // .cloned() only removes one level of indirection, don't lint on more
-                                    walk_ptrs_ty_depth(cx.tables.pat_ty(&first_arg.pat)).1 == 1
-                                {
-                                    // the argument is not an &mut T
-                                    if let ty::Ref(_, _, mutbl) = ty.sty {
-                                        if mutbl == MutImmutable {
-                                            span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
-                                                "you seem to be using .map() to clone the contents of an {}, consider \
-                                                using `.cloned()`", type_name),
-                                                &format!("try\n{}.cloned()", snippet(cx, args[0].span, "..")));
-                                        }
-                                    }
-                                }
-                                // explicit clone() calls ( .map(|x| x.clone()) )
-                                else if let ExprKind::MethodCall(ref clone_call, _, ref clone_args) = closure_expr.node {
-                                    if clone_call.ident.name == "clone" &&
-                                        clone_args.len() == 1 &&
-                                        match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) &&
-                                        expr_eq_name(cx, &clone_args[0], arg_ident)
-                                    {
-                                        span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
-                                            "you seem to be using .map() to clone the contents of an {}, consider \
-                                            using `.cloned()`", type_name),
-                                            &format!("try\n{}.cloned()", snippet(cx, args[0].span, "..")));
-                                    }
-                                }
-                            }
+    fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr) {
+        if in_macro(e.span) {
+            return;
+        }
+
+        if_chain! {
+            if let hir::ExprKind::MethodCall(ref method, _, ref args) = e.node;
+            if args.len() == 2;
+            if method.ident.as_str() == "map";
+            let ty = cx.tables.expr_ty(&args[0]);
+            if match_type(cx, ty, &paths::OPTION) || match_trait_method(cx, e, &paths::ITERATOR);
+            if let hir::ExprKind::Closure(_, _, body_id, _, _) = args[1].node;
+            let closure_body = cx.tcx.hir.body(body_id);
+            let closure_expr = remove_blocks(&closure_body.value);
+            then {
+                match closure_body.arguments[0].pat.node {
+                    hir::PatKind::Ref(ref inner, _) => if let hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, name, None) = inner.node {
+                        lint(cx, e.span, args[0].span, name, closure_expr);
+                    },
+                    hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, name, None) => match closure_expr.node {
+                        hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner) => lint(cx, e.span, args[0].span, name, inner),
+                        hir::ExprKind::MethodCall(ref method, _, ref obj) => if method.ident.as_str() == "clone" && match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) {
+                            lint(cx, e.span, args[0].span, name, &obj[0]);
                         }
+                        _ => {},
                     },
-                    ExprKind::Path(ref path) => if match_qpath(path, &paths::CLONE) {
-                        let type_name = get_type_name(cx, expr, &args[0]).unwrap_or("_");
-                        span_help_and_lint(
-                            cx,
-                            MAP_CLONE,
-                            expr.span,
-                            &format!(
-                                "you seem to be using .map() to clone the contents of an \
-                                 {}, consider using `.cloned()`",
-                                type_name
-                            ),
-                            &format!("try\n{}.cloned()", snippet(cx, args[0].span, "..")),
-                        );
-                    },
-                    _ => (),
+                    _ => {},
                 }
             }
         }
     }
 }
 
-fn expr_eq_name(cx: &LateContext<'_, '_>, expr: &Expr, id: ast::Ident) -> bool {
-    match expr.node {
-        ExprKind::Path(QPath::Resolved(None, ref path)) => {
-            let arg_segment = [
-                PathSegment {
-                    ident: id,
-                    args: None,
-                    infer_types: true,
-                },
-            ];
-            !path.is_global() && SpanlessEq::new(cx).eq_path_segments(&path.segments[..], &arg_segment)
-        },
-        _ => false,
-    }
-}
-
-fn get_type_name(cx: &LateContext<'_, '_>, expr: &Expr, arg: &Expr) -> Option<&'static str> {
-    if match_trait_method(cx, expr, &paths::ITERATOR) {
-        Some("iterator")
-    } else if match_type(cx, walk_ptrs_ty(cx.tables.expr_ty(arg)), &paths::OPTION) {
-        Some("Option")
-    } else {
-        None
-    }
-}
-
-fn only_derefs(cx: &LateContext<'_, '_>, expr: &Expr, id: ast::Ident) -> bool {
-    match expr.node {
-        ExprKind::Unary(UnDeref, ref subexpr) if !is_adjusted(cx, subexpr) => only_derefs(cx, subexpr, id),
-        _ => expr_eq_name(cx, expr, id),
-    }
-}
-
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(MAP_CLONE)
+fn lint(cx: &LateContext<'_, '_>, replace: Span, root: Span, name: Ident, path: &hir::Expr) {
+    if let hir::ExprKind::Path(hir::QPath::Resolved(None, ref path)) = path.node {
+        if path.segments.len() == 1 && path.segments[0].ident == name {
+            span_lint_and_sugg(
+                cx,
+                MAP_CLONE,
+                replace,
+                "You are using an explicit closure for cloning elements",
+                "Consider calling the dedicated `cloned` method",
+                format!("{}.cloned()", snippet(cx, root, "..")),
+            )
+        }
     }
 }

@@ -1,102 +1,22 @@
-error: you seem to be using .map() to clone the contents of an iterator, consider using `.cloned()`
-  --> $DIR/map_clone.rs:12:5
-   |
-12 |     x.iter().map(|y| y.clone());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D clippy::map-clone` implied by `-D warnings`
-   = help: try
-           x.iter().cloned()
+error: You are using an explicit closure for cloning elements
+ --> $DIR/map_clone.rs:6:22
+  |
+6 |     let _: Vec<i8> = vec![5_i8; 6].iter().map(|x| *x).collect();
+  |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Consider calling the dedicated `cloned` method: `vec![5_i8; 6].iter().cloned()`
+  |
+  = note: `-D clippy::map-clone` implied by `-D warnings`
 
-error: you seem to be using .map() to clone the contents of an iterator, consider using `.cloned()`
-  --> $DIR/map_clone.rs:14:5
-   |
-14 |     x.iter().map(|&y| y);
-   |     ^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: try
-           x.iter().cloned()
+error: You are using an explicit closure for cloning elements
+ --> $DIR/map_clone.rs:7:26
+  |
+7 |     let _: Vec<String> = vec![String::new()].iter().map(|x| x.clone()).collect();
+  |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Consider calling the dedicated `cloned` method: `vec![String::new()].iter().cloned()`
 
-error: you seem to be using .map() to clone the contents of an iterator, consider using `.cloned()`
-  --> $DIR/map_clone.rs:16:5
-   |
-16 |     x.iter().map(|y| *y);
-   |     ^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: try
-           x.iter().cloned()
+error: You are using an explicit closure for cloning elements
+ --> $DIR/map_clone.rs:8:23
+  |
+8 |     let _: Vec<u32> = vec![42, 43].iter().map(|&x| x).collect();
+  |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Consider calling the dedicated `cloned` method: `vec![42, 43].iter().cloned()`
 
-error: you seem to be using .map() to clone the contents of an iterator, consider using `.cloned()`
-  --> $DIR/map_clone.rs:18:5
-   |
-18 |     x.iter().map(|y| { y.clone() });
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: try
-           x.iter().cloned()
-
-error: you seem to be using .map() to clone the contents of an iterator, consider using `.cloned()`
-  --> $DIR/map_clone.rs:20:5
-   |
-20 |     x.iter().map(|&y| { y });
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: try
-           x.iter().cloned()
-
-error: you seem to be using .map() to clone the contents of an iterator, consider using `.cloned()`
-  --> $DIR/map_clone.rs:22:5
-   |
-22 |     x.iter().map(|y| { *y });
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: try
-           x.iter().cloned()
-
-error: you seem to be using .map() to clone the contents of an iterator, consider using `.cloned()`
-  --> $DIR/map_clone.rs:24:5
-   |
-24 |     x.iter().map(Clone::clone);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: try
-           x.iter().cloned()
-
-error: you seem to be using .map() to clone the contents of an Option, consider using `.cloned()`
-  --> $DIR/map_clone.rs:30:5
-   |
-30 |     x.as_ref().map(|y| y.clone());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: try
-           x.as_ref().cloned()
-
-error: you seem to be using .map() to clone the contents of an Option, consider using `.cloned()`
-  --> $DIR/map_clone.rs:32:5
-   |
-32 |     x.as_ref().map(|&y| y);
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: try
-           x.as_ref().cloned()
-
-error: you seem to be using .map() to clone the contents of an Option, consider using `.cloned()`
-  --> $DIR/map_clone.rs:34:5
-   |
-34 |     x.as_ref().map(|y| *y);
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: try
-           x.as_ref().cloned()
-
-error: you seem to be using .map() to clone the contents of an Option, consider using `.cloned()`
-  --> $DIR/map_clone.rs:90:35
-   |
-90 |     let _: Option<UnusualDeref> = x.as_ref().map(|y| *y);
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: try
-           x.as_ref().cloned()
-
-error: aborting due to 11 previous errors
+error: aborting due to 3 previous errors
 
