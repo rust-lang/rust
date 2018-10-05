@@ -282,6 +282,7 @@ struct RcBox<T: ?Sized> {
 /// type `T`.
 ///
 /// [get_mut]: #method.get_mut
+#[cfg_attr(all(not(stage0), not(test)), lang = "rc")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Rc<T: ?Sized> {
     ptr: NonNull<RcBox<T>>,
