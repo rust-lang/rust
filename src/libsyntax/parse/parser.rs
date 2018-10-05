@@ -1430,6 +1430,23 @@ impl<'a> Parser<'a> {
                     attrs.extend(inner_attrs.iter().cloned());
                     Some(body)
                 }
+                token::Interpolated(ref nt) => {
+                    match &nt.0 {
+                        token::NtBlock(..) => {
+                            *at_end = true;
+                            let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
+                            attrs.extend(inner_attrs.iter().cloned());
+                            Some(body)
+                        }
+                        _ => {
+                            let token_str = self.this_token_to_string();
+                            let mut err = self.fatal(&format!("expected `;` or `{{`, found `{}`",
+                                                              token_str));
+                            err.span_label(self.span, "expected `;` or `{`");
+                            return Err(err);
+                        }
+                    }
+                }
                 _ => {
                     let token_str = self.this_token_to_string();
                     let mut err = self.fatal(&format!("expected `;` or `{{`, found `{}`",
