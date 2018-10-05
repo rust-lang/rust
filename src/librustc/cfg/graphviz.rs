@@ -13,7 +13,6 @@
 
 // For clarity, rename the graphviz crate locally to dot.
 use graphviz as dot;
-use graphviz::IntoCow;
 
 use cfg;
 use hir;
@@ -71,21 +70,21 @@ impl<'a, 'hir> dot::Labeller<'a> for LabelledCFG<'a, 'hir> {
 
     fn node_label(&'a self, &(i, n): &Node<'a>) -> dot::LabelText<'a> {
         if i == self.cfg.entry {
-            dot::LabelText::LabelStr("entry".into_cow())
+            dot::LabelText::LabelStr("entry".into())
         } else if i == self.cfg.exit {
-            dot::LabelText::LabelStr("exit".into_cow())
+            dot::LabelText::LabelStr("exit".into())
         } else if n.data.id() == hir::DUMMY_ITEM_LOCAL_ID {
-            dot::LabelText::LabelStr("(dummy_node)".into_cow())
+            dot::LabelText::LabelStr("(dummy_node)".into())
         } else {
             let s = self.local_id_to_string(n.data.id());
-            dot::LabelText::EscStr(s.into_cow())
+            dot::LabelText::EscStr(s.into())
         }
     }
 
     fn edge_label(&self, e: &Edge<'a>) -> dot::LabelText<'a> {
         let mut label = String::new();
         if !self.labelled_edges {
-            return dot::LabelText::EscStr(label.into_cow());
+            return dot::LabelText::EscStr(label.into());
         }
         let mut put_one = false;
         for (i, &id) in e.data.exiting_scopes.iter().enumerate() {
@@ -99,7 +98,7 @@ impl<'a, 'hir> dot::Labeller<'a> for LabelledCFG<'a, 'hir> {
                                    i,
                                    &s[..]));
         }
-        dot::LabelText::EscStr(label.into_cow())
+        dot::LabelText::EscStr(label.into())
     }
 }
 
@@ -109,7 +108,7 @@ impl<'a> dot::GraphWalk<'a> for &'a cfg::CFG {
     fn nodes(&'a self) -> dot::Nodes<'a, Node<'a>> {
         let mut v = Vec::new();
         self.graph.each_node(|i, nd| { v.push((i, nd)); true });
-        v.into_cow()
+        v.into()
     }
     fn edges(&'a self) -> dot::Edges<'a, Edge<'a>> {
         self.graph.all_edges().iter().collect()

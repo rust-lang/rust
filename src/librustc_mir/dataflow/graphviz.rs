@@ -14,7 +14,6 @@ use syntax::ast::NodeId;
 use rustc::mir::{BasicBlock, Mir};
 
 use dot;
-use dot::IntoCow;
 
 use std::fs;
 use std::io;
@@ -257,7 +256,7 @@ impl<'a, 'tcx, MWF, P> dot::GraphWalk<'a> for Graph<'a, 'tcx, MWF, P>
             .basic_blocks()
             .indices()
             .collect::<Vec<_>>()
-            .into_cow()
+            .into()
     }
 
     fn edges(&self) -> dot::Edges<Edge> {
@@ -267,7 +266,7 @@ impl<'a, 'tcx, MWF, P> dot::GraphWalk<'a> for Graph<'a, 'tcx, MWF, P>
            .indices()
            .flat_map(|bb| outgoing(mir, bb))
            .collect::<Vec<_>>()
-           .into_cow()
+           .into()
     }
 
     fn source(&self, edge: &Edge) -> Node {
