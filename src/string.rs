@@ -119,6 +119,10 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
                 // new lines need to be indented and prefixed with line_start
                 for grapheme in graphemes_minus_ws {
                     if is_line_feed(grapheme) {
+                        // take care of blank lines
+                        if fmt.trim_end && result.ends_with(' ') {
+                            result = result.trim_right().to_string();
+                        }
                         result.push_str(&indent_with_newline);
                         result.push_str(fmt.line_start);
                     } else {
@@ -140,6 +144,9 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
                 cur_start += len;
             }
             SnippetState::EndWithLineFeed(line, len) => {
+                if line == "\n" && fmt.trim_end {
+                    result = result.trim_right().to_string();
+                }
                 result.push_str(&line);
                 if is_bareline_ok {
                     // the next line can benefit from the full width
@@ -189,8 +196,8 @@ enum SnippetState {
 /// character is either a punctuation or a whitespace.
 fn break_string(max_chars: usize, trim_end: bool, input: &[&str]) -> SnippetState {
     let break_at = |index /* grapheme at index is included */| {
-        // Take in any whitespaces to the left/right of `input[index]` and
-        // check if there is a line feed, in which case whitespaces needs to be kept.
+        // Take in any whitespaces to the left/right of `input[index]` while
+        // preserving line feeds
         let index_minus_ws = input[0..=index]
             .iter()
             .rposition(|grapheme| !is_whitespace(grapheme))
@@ -477,6 +484,42 @@ mod test {
             rewrite_string(comment, &fmt),
             Some(
                 "Aenean metus.\n        // Vestibulum ac lacus. Vivamus@\n        // porttitor"
+                    .to_string()
+            )
+        );
+    }
+
+    #[test]
+    fn blank_line_with_non_empty_line_start() {
+        let config: Config = Default::default();
+        let mut fmt = StringFormat {
+            opener: "",
+            closer: "",
+            line_start: "// ",
+            line_end: "",
+            shape: Shape::legacy(30, Indent::from_width(&config, 4)),
+            trim_end: true,
+            config: &config,
+        };
+
+        let comment = "Aenean metus. Vestibulum\n\nac lacus. Vivamus porttitor";
+        assert_eq!(
+            rewrite_string(comment, &fmt),
+            Some(
+                "Aenean metus. Vestibulum\n    //\n    // ac lacus. Vivamus porttitor".to_string()
+            )
+        );
+
+        fmt.shape = Shape::legacy(15, Indent::from_width(&config, 4));
+        let comment = "Aenean\n\nmetus. Vestibulum ac lacus. Vivamus porttitor";
+        assert_eq!(
+            rewrite_string(comment, &fmt),
+            Some(
+                r#"Aenean
+    //
+    // metus. Vestibulum
+    // ac lacus. Vivamus
+    // porttitor"#
                     .to_string()
             )
         );
