@@ -42,20 +42,20 @@ impl<'tcx> BorrowExplanation<'tcx> {
         tcx: TyCtxt<'cx, 'gcx, 'tcx>,
         _mir: &Mir<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
-        borrow_desc: String,
+        borrow_desc: &str,
     ) {
         match *self {
             BorrowExplanation::UsedLater(later_use_kind, var_or_use_span) => {
-                let message = borrow_desc + match later_use_kind {
+                let message = match later_use_kind {
                     LaterUseKind::ClosureCapture => "borrow later captured here by closure",
                     LaterUseKind::Call =>  "borrow later used by call",
                     LaterUseKind::FakeLetRead => "borrow later stored here",
                     LaterUseKind::Other => "borrow later used here",
                 };
-                err.span_label(var_or_use_span, message);
+                err.span_label(var_or_use_span, format!("{}{}", borrow_desc, message));
             },
             BorrowExplanation::UsedLaterInLoop(later_use_kind, var_or_use_span) => {
-                let message = borrow_desc + match later_use_kind {
+                let message = match later_use_kind {
                     LaterUseKind::ClosureCapture => {
                         "borrow captured here by closure, in later iteration of loop"
                     },
@@ -63,7 +63,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     LaterUseKind::FakeLetRead => "borrow later stored here",
                     LaterUseKind::Other => "borrow used here, in later iteration of loop",
                 };
-                err.span_label(var_or_use_span, message);
+                err.span_label(var_or_use_span, format!("{}{}", borrow_desc, message));
             },
             BorrowExplanation::UsedLaterWhenDropped(span, local_name, should_note_order) => {
                 err.span_label(
@@ -85,7 +85,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
             BorrowExplanation::MustBeValidFor(region) => {
                 tcx.note_and_explain_free_region(
                     err,
-                    &(borrow_desc + "borrowed value must be valid for "),
+                    &format!("{}{}", borrow_desc, "borrowed value must be valid for "),
                     region,
                     "...",
                 );
