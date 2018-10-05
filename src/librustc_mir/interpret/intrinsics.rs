@@ -151,7 +151,27 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 self.write_scalar(val, dest)?;
             }
             "init" => {
-                self.force_allocation(dest)?;
+                // Check fast path: we don't want to force an allocation in case the destination is a simple value,
+                // but we also do not want to create a new allocation with 0s and then copy that over.
+                if !dest.layout.is_zst() { // notzhing to do for ZST
+                    match dest.layout.abi {
+                        layout::Abi::Scalar(ref s) => {
+                            let x = Scalar::from_int(0, s.value.size(&self));
+                            self.write_value(Value::Scalar(x.into()), dest)?;
+                        }
+                        layout::Abi::ScalarPair(ref s1, ref s2) => {
+                            let x = Scalar::from_int(0, s1.value.size(&self));
+                            let y = Scalar::from_int(0, s2.value.size(&self));
+                            self.write_value(Value::ScalarPair(x.into(), y.into()), dest)?;
+                        }
+                        _ => {
+                            // Do it in memory
+                            let mplace = self.force_allocation(dest)?;
+                            assert!(mplace.extra.is_none());
+                            self.memory.write_repeat(mplace.ptr, 0, dest.layout.size)?;
+                        }
+                    }
+                }
             }
             "transmute" => {
                 // Go through an allocation, to make sure the completely different layouts
