@@ -3109,7 +3109,10 @@ where
 
 ```
 #![feature(dispatch_from_dyn)]
-use std::ops::DispatchFromDyn;
+use std::{
+    ops::DispatchFromDyn,
+    marker::PhantomData,
+};
 
 struct Wrapper<T> {
     ptr: T,
