@@ -33,8 +33,29 @@ impl Thread {
         // nope
     }
 
+    #[cfg(not(target_feature = "atomics"))]
     pub fn sleep(_dur: Duration) {
         panic!("can't sleep");
+    }
+
+    #[cfg(target_feature = "atomics")]
+    pub fn sleep(dur: Duration) {
+        use arch::wasm32::atomic;
+        use cmp;
+
+        // Use an atomic wait to block the current thread artificially with a
+        // timeout listed. Note that we should never be notified (return value
+        // of 0) or our comparison should never fail (return value of 1) so we
+        // should always only resume execution through a timeout (return value
+        // 2).
+        let mut nanos = dur.as_nanos();
+        while nanos > 0 {
+            let amt = cmp::min(i64::max_value() as u128, nanos);
+            let mut x = 0;
+            let val = unsafe { atomic::wait_i32(&mut x, 0, amt as i64) };
+            debug_assert_eq!(val, 2);
+            nanos -= amt;
+        }
     }
 
     pub fn join(self) {

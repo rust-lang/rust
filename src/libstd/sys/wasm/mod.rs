@@ -36,23 +36,37 @@ pub mod args;
 #[cfg(feature = "backtrace")]
 pub mod backtrace;
 pub mod cmath;
-pub mod condvar;
 pub mod env;
 pub mod fs;
 pub mod memchr;
-pub mod mutex;
 pub mod net;
 pub mod os;
 pub mod os_str;
 pub mod path;
 pub mod pipe;
 pub mod process;
-pub mod rwlock;
 pub mod stack_overflow;
 pub mod thread;
-pub mod thread_local;
 pub mod time;
 pub mod stdio;
+
+cfg_if! {
+    if #[cfg(target_feature = "atomics")] {
+        #[path = "condvar_atomics.rs"]
+        pub mod condvar;
+        #[path = "mutex_atomics.rs"]
+        pub mod mutex;
+        #[path = "rwlock_atomics.rs"]
+        pub mod rwlock;
+        #[path = "thread_local_atomics.rs"]
+        pub mod thread_local;
+    } else {
+        pub mod condvar;
+        pub mod mutex;
+        pub mod rwlock;
+        pub mod thread_local;
+    }
+}
 
 #[cfg(not(test))]
 pub fn init() {
