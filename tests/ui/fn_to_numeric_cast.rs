@@ -1,6 +1,7 @@
+// only-64bit
 #![feature(tool_lints)]
 
-#![warn(clippy::fn_to_numeric_cast)]
+#![warn(clippy::fn_to_numeric_cast, clippy::fn_to_numeric_cast_with_truncation)]
 
 fn foo() -> String { String::new() }
 
