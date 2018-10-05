@@ -957,14 +957,6 @@ pub fn get_arg_name(pat: &Pat) -> Option<ast::Name> {
     }
 }
 
-pub fn get_arg_ident(pat: &Pat) -> Option<ast::Ident> {
-    match pat.node {
-        PatKind::Binding(_, _, ident, None) => Some(ident),
-        PatKind::Ref(ref subpat, _) => get_arg_ident(subpat),
-        _ => None,
-    }
-}
-
 pub fn int_bits(tcx: TyCtxt<'_, '_, '_>, ity: ast::IntTy) -> u64 {
     layout::Integer::from_attr(tcx, attr::IntType::SignedInt(ity)).size().bits()
 }

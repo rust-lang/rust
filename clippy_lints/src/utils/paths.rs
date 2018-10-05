@@ -12,7 +12,6 @@ pub const BORROW_TRAIT: [&str; 3] = ["core", "borrow", "Borrow"];
 pub const BTREEMAP: [&str; 5] = ["alloc", "collections", "btree", "map", "BTreeMap"];
 pub const BTREEMAP_ENTRY: [&str; 5] = ["alloc", "collections", "btree", "map", "Entry"];
 pub const BTREESET: [&str; 5] = ["alloc", "collections", "btree", "set", "BTreeSet"];
-pub const CLONE: [&str; 4] = ["core", "clone", "Clone", "clone"];
 pub const CLONE_TRAIT: [&str; 3] = ["core", "clone", "Clone"];
 pub const CMP_MAX: [&str; 3] = ["core", "cmp", "max"];
 pub const CMP_MIN: [&str; 3] = ["core", "cmp", "min"];
