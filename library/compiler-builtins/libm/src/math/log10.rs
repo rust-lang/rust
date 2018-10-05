@@ -114,5 +114,5 @@ pub fn log10(mut x: f64) -> f64 {
     val_lo += (y - w) + val_hi;
     val_hi = w;
 
-    return val_lo + val_hi;
+    val_lo + val_hi
 }

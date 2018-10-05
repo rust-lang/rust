@@ -26,7 +26,7 @@ pub fn floor(x: f64) -> f64 {
         x + TOINT - TOINT - x
     };
     /* special case because of non-nearest rounding modes */
-    if e <= 0x3ff - 1 {
+    if e < 0x3ff {
         force_eval!(y);
         return if (ui >> 63) != 0 { -1. } else { 0. };
     }

@@ -52,7 +52,7 @@ const QS4: f64 = 7.70381505559019352791e-02; /* 0x3FB3B8C5, 0xB12E9282 */
 fn r(z: f64) -> f64 {
     let p: f64 = z * (PS0 + z * (PS1 + z * (PS2 + z * (PS3 + z * (PS4 + z * PS5)))));
     let q: f64 = 1.0 + z * (QS1 + z * (QS2 + z * (QS3 + z * QS4)));
-    return p / q;
+    p / q
 }
 
 #[inline]
@@ -73,7 +73,7 @@ pub fn acos(x: f64) -> f64 {
     if ix >= 0x3ff00000 {
         let lx: u32 = x.to_bits() as u32;
 
-        if (ix - 0x3ff00000 | lx) == 0 {
+        if ((ix - 0x3ff00000) | lx) == 0 {
             /* acos(1)=0, acos(-1)=pi */
             if (hx >> 31) != 0 {
                 return 2. * PIO2_HI + x1p_120f;
@@ -105,5 +105,5 @@ pub fn acos(x: f64) -> f64 {
 
     c = (z - df * df) / (s + df);
     w = r(z) * s + c;
-    return 2. * (df + w);
+    2. * (df + w)
 }

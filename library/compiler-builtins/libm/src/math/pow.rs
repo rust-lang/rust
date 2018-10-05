@@ -406,5 +406,5 @@ pub fn pow(x: f64, y: f64) -> f64 {
         z = with_set_high_word(z, j as u32);
     }
 
-    return s * z;
+    s * z
 }

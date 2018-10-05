@@ -59,7 +59,7 @@ const Q_S4: f64 = 7.70381505559019352791e-02; /* 0x3FB3B8C5, 0xB12E9282 */
 fn comp_r(z: f64) -> f64 {
     let p = z * (P_S0 + z * (P_S1 + z * (P_S2 + z * (P_S3 + z * (P_S4 + z * P_S5)))));
     let q = 1.0 + z * (Q_S1 + z * (Q_S2 + z * (Q_S3 + z * Q_S4)));
-    return p / q;
+    p / q
 }
 
 #[inline]
@@ -77,7 +77,7 @@ pub fn asin(mut x: f64) -> f64 {
     if ix >= 0x3ff00000 {
         let lx: u32;
         lx = get_low_word(x);
-        if (ix - 0x3ff00000 | lx) == 0 {
+        if ((ix - 0x3ff00000) | lx) == 0 {
             /* asin(1) = +-pi/2 with inexact */
             return x * PIO2_HI + f64::from_bits(0x3870000000000000);
         } else {
@@ -109,8 +109,8 @@ pub fn asin(mut x: f64) -> f64 {
         x = 0.5 * PIO2_HI - (2.0 * s * r - (PIO2_LO - 2.0 * c) - (0.5 * PIO2_HI - 2.0 * f));
     }
     if hx >> 31 != 0 {
-        return -x;
+        -x
     } else {
-        return x;
+        x
     }
 }

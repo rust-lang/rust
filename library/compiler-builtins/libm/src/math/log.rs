@@ -114,5 +114,5 @@ pub fn log(mut x: f64) -> f64 {
     let t2: f64 = z * (LG1 + w * (LG3 + w * (LG5 + w * LG7)));
     let r: f64 = t2 + t1;
     let dk: f64 = k as f64;
-    return s * (hfsq + r) + dk * LN2_LO - hfsq + f + dk * LN2_HI;
+    s * (hfsq + r) + dk * LN2_LO - hfsq + f + dk * LN2_HI
 }

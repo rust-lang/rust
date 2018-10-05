@@ -84,5 +84,5 @@ pub fn log2f(mut x: f32) -> f32 {
     ui &= 0xfffff000;
     hi = f32::from_bits(ui);
     lo = f - hi - hfsq + s * (hfsq + r);
-    return (lo + hi) * IVLN2LO + lo * IVLN2HI + hi * IVLN2HI + k as f32;
+    (lo + hi) * IVLN2LO + lo * IVLN2HI + hi * IVLN2HI + k as f32
 }

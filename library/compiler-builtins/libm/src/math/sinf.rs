@@ -88,7 +88,7 @@ pub fn sinf(x: f32) -> f32 {
     match n & 3 {
         0 => k_sinf(y),
         1 => k_cosf(y),
-        2 => return k_sinf(-y),
+        2 => k_sinf(-y),
         _ => -k_cosf(y),
     }
 }
