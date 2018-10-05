@@ -45,7 +45,7 @@ Some things that might be helpful to you though:
     -->
     <fieldset id="search-from" style="display:none">
       <label><input name="from" value="library" type="radio"> From the Standard Library</label>
-      <label><input name="from" value="dro" type="radio" checked> From DuckDuckGo</label>
+      <label><input name="from" value="duckduckgo" type="radio" checked> From DuckDuckGo</label>
     </fieldset>
   </form>
 </div>
@@ -81,7 +81,7 @@ function on_submit(event) {
 
     event.preventDefault();
 
-    if (form['from'].value === 'dro') {
+    if (form['from'].value === 'duckduckgo') {
         document.location.href = form.action + '?q=' + encodeURIComponent(q + ' site:doc.rust-lang.org');
     } else if (form['from'].value === 'library') {
         document.location.href = 'std/index.html?search=' + encodeURIComponent(q);
