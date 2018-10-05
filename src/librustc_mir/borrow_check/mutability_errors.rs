@@ -241,7 +241,12 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx),
                     field,
                 ) {
-                    err.span_label(span, message);
+                    err.span_suggestion_with_applicability(
+                        span,
+                        "consider changing this to be mutable",
+                        message,
+                        Applicability::MaybeIncorrect,
+                    );
                 }
             },
 
@@ -636,8 +641,6 @@ fn annotate_struct_field(
     if let ty::TyKind::Ref(_, ty, _) = ty.sty {
         if let ty::TyKind::Adt(def, _) = ty.sty {
             let field = def.all_fields().nth(field.index())?;
-            let span = tcx.def_span(field.did);
-
             // Use the HIR types to construct the diagnostic message.
             let node_id = tcx.hir.as_local_node_id(field.did)?;
             let node = tcx.hir.find(node_id)?;
@@ -659,9 +662,9 @@ fn annotate_struct_field(
                     };
 
                     return Some((
-                        span,
+                        field.ty.span,
                         format!(
-                            "use `&{}mut {}` here to make mutable",
+                            "&{}mut {}",
                             lifetime_snippet, &*type_snippet,
                         ),
                     ));
