@@ -14,8 +14,8 @@ use borrow_check::nll::region_infer::Cause;
 use borrow_check::{Context, MirBorrowckCtxt, WriteKind};
 use rustc::ty::{self, Region, TyCtxt};
 use rustc::mir::{
-    FakeReadCause, Local, Location, Mir, Operand, Place, Rvalue, Statement, StatementKind,
-    TerminatorKind
+    CastKind, FakeReadCause, Local, Location, Mir, Operand, Place, Projection, ProjectionElem,
+    Rvalue, Statement, StatementKind, TerminatorKind
 };
 use rustc_errors::DiagnosticBuilder;
 use syntax_pos::Span;
@@ -65,7 +65,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
             BorrowExplanation::UsedLaterInLoop(later_use_kind, var_or_use_span) => {
                 let message = match later_use_kind {
                     LaterUseKind::TraitCapture =>
-                        "borrow later captured here by trait object, in later iteration of loop",
+                        "borrow captured here by trait object, in later iteration of loop",
                     LaterUseKind::ClosureCapture =>
                         "borrow captured here by closure, in later iteration of loop",
                     LaterUseKind::Call =>  "borrow used by call, in later iteration of loop",
@@ -373,20 +373,20 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
     }
 
-    /// Check if a borrowed value was captured by a trait object.
+    /// Check if a borrowed value was captured by a trait object. We do this by
+    /// looking forward in the MIR from the reserve location and checking if we see
+    /// a unsized cast to a trait object on our data.
     fn was_captured_by_trait_object(&self, borrow: &BorrowData<'tcx>) -> bool {
-        // In order to check if a value was captured by a trait object, we want to look through
-        // statements after the reserve location in the current block. We expect the reserve
-        // location to be a statement assigning to a local. We follow that local in the subsequent
-        // statements, checking for an assignment of our local (or something intermediate that
-        // it was assigned into) that results in a trait object.
+        // Start at the reserve location, find the place that we want to see cast to a trait object.
         let location = borrow.reserve_location;
         let block = &self.mir[location.block];
         let stmt = block.statements.get(location.statement_index);
-        debug!(
-            "was_captured_by_trait_object: location={:?} block={:?} stmt={:?}",
-            location, block, stmt
-        );
+        debug!("was_captured_by_trait_object: location={:?} stmt={:?}", location, stmt);
+
+        // We make a `queue` vector that has the locations we want to visit. As of writing, this
+        // will only ever have one item at any given time, but by using a vector, we can pop from
+        // it which simplifies the termination logic.
+        let mut queue = vec![location];
         let mut target = if let Some(&Statement {
             kind: StatementKind::Assign(Place::Local(local), _),
             ..
@@ -396,61 +396,109 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             return false;
         };
 
-        debug!("was_captured_by_trait_object: target={:?}", target);
-        for stmt in &block.statements[location.statement_index + 1..] {
-            debug!("was_captured_by_trait_object: stmt={:?}", stmt);
-            // Simple case where our target is assigned into another local, and we start
-            // watching that local instead.
-            if let StatementKind::Assign(
-                Place::Local(into),
-                box Rvalue::Use(operand),
-            ) = &stmt.kind {
-                debug!("was_captured_by_trait_object: target={:?} operand={:?}", target, operand);
-                match operand {
-                    Operand::Copy(Place::Local(from)) |
-                    Operand::Move(Place::Local(from)) if *from == target => target = *into,
+        debug!("was_captured_by_trait: target={:?} queue={:?}", target, queue);
+        while let Some(current_location) = queue.pop() {
+            debug!("was_captured_by_trait: target={:?}", target);
+            let block = &self.mir[current_location.block];
+            // We need to check the current location to find out if it is a terminator.
+            let is_terminator = current_location.statement_index == block.statements.len();
+            if !is_terminator {
+                let stmt = &block.statements[current_location.statement_index];
+                debug!("was_captured_by_trait_object: stmt={:?}", stmt);
+
+                // The only kind of statement that we care about is assignments...
+                if let StatementKind::Assign(
+                    place,
+                    box rvalue,
+                ) = &stmt.kind {
+                    let into = match place {
+                        Place::Local(into) => into,
+                        Place::Projection(box Projection {
+                            base: Place::Local(into),
+                            elem: ProjectionElem::Deref,
+                        }) => into,
+                        _ =>  {
+                            // Continue at the next location.
+                            queue.push(current_location.successor_within_block());
+                            continue;
+                        },
+                    };
+
+                    match rvalue {
+                        // If we see a use, we should check whether it is our data, and if so
+                        // update the place that we're looking for to that new place.
+                        Rvalue::Use(operand) => match operand {
+                            Operand::Copy(Place::Local(from)) |
+                            Operand::Move(Place::Local(from)) if *from == target => {
+                                target = *into;
+                            },
+                            _ => {},
+                        },
+                        // If we see a unsized cast, then if it is our data we should check
+                        // whether it is being cast to a trait object.
+                        Rvalue::Cast(CastKind::Unsize, operand, ty) => match operand {
+                            Operand::Copy(Place::Local(from)) |
+                            Operand::Move(Place::Local(from)) if *from == target => {
+                                debug!("was_captured_by_trait_object: ty={:?}", ty);
+                                // Check the type for a trait object.
+                                match ty.sty {
+                                    // `&dyn Trait`
+                                    ty::TyKind::Ref(_, ty, _) if ty.is_trait() => return true,
+                                    // `Box<dyn Trait>`
+                                    _ if ty.is_box() && ty.boxed_ty().is_trait() =>
+                                        return true,
+                                    // `dyn Trait`
+                                    _ if ty.is_trait() => return true,
+                                    // Anything else.
+                                    _ => return false,
+                                }
+                            },
+                            _ => return false,
+                        },
+                        _ => {},
+                    }
+                }
+
+                // Continue at the next location.
+                queue.push(current_location.successor_within_block());
+            } else {
+                // The only thing we need to do for terminators is progress to the next block.
+                let terminator = block.terminator();
+                debug!("was_captured_by_trait_object: terminator={:?}", terminator);
+
+                match &terminator.kind {
+                    TerminatorKind::Call {
+                        destination: Some((Place::Local(dest), block)),
+                        args,
+                        ..
+                    } => {
+                        debug!(
+                            "was_captured_by_trait_object: target={:?} dest={:?} args={:?}",
+                            target, dest, args
+                        );
+                        // Check if one of the arguments to this function is the target place.
+                        let found_target = args.iter().any(|arg| {
+                            if let Operand::Move(Place::Local(potential)) = arg {
+                                *potential == target
+                            } else {
+                                false
+                            }
+                        });
+
+                        // If it is, follow this to the next block and update the target.
+                        if found_target {
+                            target = *dest;
+                            queue.push(block.start_location());
+                        }
+                    },
                     _ => {},
                 }
             }
+
+            debug!("was_captured_by_trait: queue={:?}", queue);
         }
 
-        if let Some(terminator) = &block.terminator {
-            if let TerminatorKind::Call {
-                destination: Some((Place::Local(dest), _)),
-                args,
-                ..
-            } = &terminator.kind {
-                debug!(
-                    "was_captured_by_trait_object: target={:?} dest={:?} args={:?}",
-                    target, dest, args
-                );
-                let mut found_target = false;
-                for arg in args {
-                    if let Operand::Move(Place::Local(potential)) = arg {
-                        if *potential == target {
-                            found_target = true;
-                        }
-                    }
-                }
-
-                if found_target {
-                    let local_decl_ty = &self.mir.local_decls[*dest].ty;
-                    debug!("was_captured_by_trait_object: local_decl_ty={:?}", local_decl_ty);
-                    match local_decl_ty.sty {
-                        // `&dyn Trait`
-                        ty::TyKind::Ref(_, ty, _) if ty.is_trait() => return true,
-                        // `Box<dyn Trait>`
-                        _ if local_decl_ty.is_box() && local_decl_ty.boxed_ty().is_trait() =>
-                            return true,
-                        // `dyn Trait`
-                        _ if local_decl_ty.is_trait() => return true,
-                        // Anything else.
-                        _ => return false,
-                    }
-                }
-            }
-        }
-
+        // We didn't find anything and ran out of locations to check.
         false
     }
 }
