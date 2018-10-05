@@ -77,7 +77,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandRef<'tcx, V> {
     }
 
     pub fn from_const<Bx: BuilderMethods<'a, 'll, 'tcx>>(
-        bx: &Bx,
+        bx: &mut Bx,
         val: &'tcx ty::Const<'tcx>
     ) -> Result<OperandRef<'tcx, V>, Lrc<ConstEvalErr<'tcx>>> where
         Bx::CodegenCx : Backend<'ll, Value = V>,
@@ -170,7 +170,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandRef<'tcx, V> {
     /// For other cases, see `immediate`.
     pub fn immediate_or_packed_pair<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         self,
-        bx: &Bx
+        bx: &mut Bx
     ) -> V where Bx::CodegenCx : Backend<'ll, Value=V> {
         if let OperandValue::Pair(a, b) = self.val {
             let llty = bx.cx().backend_type(&self.layout);
@@ -178,8 +178,10 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandRef<'tcx, V> {
                    self, llty);
             // Reconstruct the immediate aggregate.
             let mut llpair = bx.cx().const_undef(llty);
-            llpair = bx.insert_value(llpair, base::from_immediate(bx, a), 0);
-            llpair = bx.insert_value(llpair, base::from_immediate(bx, b), 1);
+            let imm_a = base::from_immediate(bx, a);
+            let imm_b = base::from_immediate(bx, b);
+            llpair = bx.insert_value(llpair, imm_a, 0);
+            llpair = bx.insert_value(llpair, imm_b, 1);
             llpair
         } else {
             self.immediate()
@@ -188,7 +190,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandRef<'tcx, V> {
 
     /// If the type is a pair, we return a `Pair`, otherwise, an `Immediate`.
     pub fn from_immediate_or_packed_pair<Bx: BuilderMethods<'a, 'll, 'tcx>>(
-        bx: &Bx,
+        bx: &mut Bx,
         llval: <Bx::CodegenCx as Backend<'ll>>::Value,
         layout: TyLayout<'tcx>
     ) -> OperandRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>
@@ -199,8 +201,10 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandRef<'tcx, V> {
                     llval, layout);
 
             // Deconstruct the immediate aggregate.
-            let a_llval = base::to_immediate_scalar(bx, bx.extract_value(llval, 0), a);
-            let b_llval = base::to_immediate_scalar(bx, bx.extract_value(llval, 1), b);
+            let a_llval = bx.extract_value(llval, 0);
+            let a_llval = base::to_immediate_scalar(bx, a_llval, a);
+            let b_llval = bx.extract_value(llval, 1);
+            let b_llval = base::to_immediate_scalar(bx, b_llval, b);
             OperandValue::Pair(a_llval, b_llval)
         } else {
             OperandValue::Immediate(llval)
@@ -209,7 +213,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandRef<'tcx, V> {
     }
 
     pub fn extract_field<Bx: BuilderMethods<'a, 'll, 'tcx>>(
-        &self, bx: &Bx,
+        &self, bx: &mut Bx,
         i: usize
     ) -> OperandRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value> where
         Bx::CodegenCx : Backend<'ll, Value=V>,
@@ -275,7 +279,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandRef<'tcx, V> {
 impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandValue<V> {
     pub fn store<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         self,
-        bx: &Bx,
+        bx: &mut Bx,
         dest: PlaceRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>
     ) where Bx::CodegenCx : Backend<'ll, Value = V> {
         self.store_with_flags(bx, dest, MemFlags::empty());
@@ -283,7 +287,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandValue<V> {
 
     pub fn volatile_store<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         self,
-        bx: &Bx,
+        bx: &mut Bx,
         dest: PlaceRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>
     ) where Bx::CodegenCx : Backend<'ll, Value = V> {
         self.store_with_flags(bx, dest, MemFlags::VOLATILE);
@@ -291,7 +295,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandValue<V> {
 
     pub fn unaligned_volatile_store<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         self,
-        bx: &Bx,
+        bx: &mut Bx,
         dest: PlaceRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>
     ) where Bx::CodegenCx : Backend<'ll, Value = V> {
         self.store_with_flags(bx, dest, MemFlags::VOLATILE | MemFlags::UNALIGNED);
@@ -299,7 +303,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandValue<V> {
 
     pub fn nontemporal_store<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         self,
-        bx: &Bx,
+        bx: &mut Bx,
         dest: PlaceRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>
     ) where Bx::CodegenCx : Backend<'ll, Value = V> {
         self.store_with_flags(bx, dest, MemFlags::NONTEMPORAL);
@@ -307,7 +311,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandValue<V> {
 
     fn store_with_flags<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         self,
-        bx: &Bx,
+        bx: &mut Bx,
         dest: PlaceRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>,
         flags: MemFlags,
     ) where Bx::CodegenCx : Backend<'ll, Value = V> {
@@ -340,7 +344,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandValue<V> {
     }
     pub fn store_unsized<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         self,
-        bx: &Bx,
+        bx: &mut Bx,
         indirect_dest: PlaceRef<'tcx, V>
     ) where
         Bx::CodegenCx : Backend<'ll, Value = V>,
@@ -380,7 +384,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
 {
     fn maybe_codegen_consume_direct<Bx: BuilderMethods<'a, 'll, 'tcx, CodegenCx=Cx>>(
         &mut self,
-        bx: &Bx,
+        bx: &mut Bx,
         place: &mir::Place<'tcx>
     ) -> Option<OperandRef<'tcx, Cx::Value>> where
         &'a Bx::CodegenCx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
@@ -430,7 +434,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
 
     pub fn codegen_consume<Bx: BuilderMethods<'a, 'll, 'tcx, CodegenCx=Cx>>(
         &mut self,
-        bx: &Bx,
+        bx: &mut Bx,
         place: &mir::Place<'tcx>
     ) -> OperandRef<'tcx, Cx::Value> where
         &'a Bx::CodegenCx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
@@ -451,12 +455,13 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
 
         // for most places, to consume them we just load them
         // out from their home
-        bx.load_ref(&self.codegen_place(bx, place))
+        let addr = self.codegen_place(bx, place);
+        bx.load_ref(&addr)
     }
 
     pub fn codegen_operand<Bx : BuilderMethods<'a, 'll, 'tcx>>(
         &mut self,
-        bx: &Bx,
+        bx: &mut Bx,
         operand: &mir::Operand<'tcx>
     ) -> OperandRef<'tcx, Cx::Value> where
         Bx : BuilderMethods<'a, 'll, 'tcx, CodegenCx=Cx>,

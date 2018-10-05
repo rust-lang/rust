@@ -172,13 +172,13 @@ pub trait ArgTypeExt<'ll, 'tcx> {
     fn memory_ty(&self, cx: &CodegenCx<'ll, 'tcx, &'ll Value>) -> &'ll Type;
     fn store(
         &self,
-        bx: &Builder<'_, 'll, 'tcx, &'ll Value>,
+        bx: &mut Builder<'_, 'll, 'tcx, &'ll Value>,
         val: &'ll Value,
         dst: PlaceRef<'tcx, &'ll Value>
     );
     fn store_fn_arg(
         &self,
-        bx: &Builder<'_, 'll, 'tcx, &'ll Value>,
+        bx: &mut Builder<'_, 'll, 'tcx, &'ll Value>,
         idx: &mut usize, dst: PlaceRef<'tcx, &'ll Value>
     );
 }
@@ -196,7 +196,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
     /// or results of call/invoke instructions into their destinations.
     fn store(
         &self,
-        bx: &Builder<'_, 'll, 'tcx, &'ll Value>,
+        bx: &mut Builder<'_, 'll, 'tcx, &'ll Value>,
         val: &'ll Value,
         dst: PlaceRef<'tcx, &'ll Value>
     ) {
@@ -240,10 +240,13 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                 bx.store(val, llscratch, scratch_align);
 
                 // ...and then memcpy it to the intended destination.
+                let llval_cast = bx.pointercast(dst.llval, cx.type_i8p());
+                let llscratch_cast = bx.pointercast(llscratch, cx.type_i8p());
+                let size = cx.const_usize(self.layout.size.bytes());
                 bx.call_memcpy(
-                    bx.pointercast(dst.llval, cx.type_i8p()),
-                    bx.pointercast(llscratch, cx.type_i8p()),
-                    cx.const_usize(self.layout.size.bytes()),
+                    llval_cast,
+                    llscratch_cast,
+                    size,
                     self.layout.align.min(scratch_align),
                     MemFlags::empty()
                 );
@@ -257,7 +260,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
 
     fn store_fn_arg(
         &self,
-        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+        bx: &mut Builder<'a, 'll, 'tcx, &'ll Value>,
         idx: &mut usize,
         dst: PlaceRef<'tcx, &'ll Value>
     ) {
@@ -283,19 +286,19 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
 
 impl<'a, 'll: 'a, 'tcx: 'll> ArgTypeMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> {
     fn store_fn_arg(
-        &self,
+        &mut self,
         ty: &ArgType<'tcx, Ty<'tcx>>,
         idx: &mut usize, dst: PlaceRef<'tcx, <Self::CodegenCx as Backend<'ll>>::Value>
     ) {
-        ty.store_fn_arg(&self, idx, dst)
+        ty.store_fn_arg(self, idx, dst)
     }
     fn store_arg_ty(
-        &self,
+        &mut self,
         ty: &ArgType<'tcx, Ty<'tcx>>,
         val: &'ll Value,
         dst: PlaceRef<'tcx, &'ll Value>
     ) {
-        ty.store(&self, val, dst)
+        ty.store(self, val, dst)
     }
     fn memory_ty(&self, ty: &ArgType<'tcx, Ty<'tcx>>) -> &'ll Type {
         ty.memory_ty(self.cx())
@@ -322,7 +325,7 @@ pub trait FnTypeExt<'tcx> {
     fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx, &'ll Value>) -> &'ll Type;
     fn llvm_cconv(&self) -> llvm::CallConv;
     fn apply_attrs_llfn(&self, llfn: &'ll Value);
-    fn apply_attrs_callsite(&self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>, callsite: &'ll Value);
+    fn apply_attrs_callsite(&self, bx: &mut Builder<'a, 'll, 'tcx, &'ll Value>, callsite: &'ll Value);
 }
 
 impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
@@ -725,7 +728,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         }
     }
 
-    fn apply_attrs_callsite(&self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>, callsite: &'ll Value) {
+    fn apply_attrs_callsite(&self, bx: &mut Builder<'a, 'll, 'tcx, &'ll Value>, callsite: &'ll Value) {
         let mut i = 0;
         let mut apply = |attrs: &ArgAttributes| {
             attrs.apply_callsite(llvm::AttributePlace::Argument(i), callsite);
@@ -796,10 +799,10 @@ impl AbiMethods<'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
 
 impl AbiBuilderMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> {
     fn apply_attrs_callsite(
-        &self,
+        &mut self,
         ty: &FnType<'tcx, Ty<'tcx>>,
         callsite: <Self::CodegenCx as Backend<'ll>>::Value
     ) {
-        ty.apply_attrs_callsite(&self, callsite)
+        ty.apply_attrs_callsite(self, callsite)
     }
 }

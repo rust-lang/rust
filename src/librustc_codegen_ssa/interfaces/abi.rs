@@ -25,7 +25,7 @@ pub trait AbiMethods<'tcx> {
 
 pub trait AbiBuilderMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx>  {
     fn apply_attrs_callsite(
-        &self,
+        &mut self,
         ty: &FnType<'tcx, Ty<'tcx>>,
         callsite: <Self::CodegenCx as Backend<'ll>>::Value
     );

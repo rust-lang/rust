@@ -23,7 +23,7 @@ use interfaces::*;
 pub fn size_and_align_of_dst<'a, 'll: 'a, 'tcx: 'll,
     Bx: BuilderMethods<'a, 'll, 'tcx>
     >(
-    bx: &Bx,
+    bx: &mut Bx,
     t: Ty<'tcx>,
     info: Option<<Bx::CodegenCx as Backend<'ll>>::Value>
 ) -> (<Bx::CodegenCx as Backend<'ll>>::Value, <Bx::CodegenCx as Backend<'ll>>::Value)  where
@@ -101,9 +101,10 @@ pub fn size_and_align_of_dst<'a, 'll: 'a, 'tcx: 'll,
                     // pick the correct alignment statically.
                     cx.const_usize(std::cmp::max(sized_align, unsized_align) as u64)
                 }
-                _ => bx.select(bx.icmp(IntPredicate::IntUGT, sized_align, unsized_align),
-                               sized_align,
-                               unsized_align)
+                _ => {
+                    let cmp = bx.icmp(IntPredicate::IntUGT, sized_align, unsized_align);
+                    bx.select(cmp, sized_align, unsized_align)
+                }
             };
 
             // Issue #27023: must add any necessary padding to `size`
@@ -116,9 +117,11 @@ pub fn size_and_align_of_dst<'a, 'll: 'a, 'tcx: 'll,
             // emulated via the semi-standard fast bit trick:
             //
             //   `(size + (align-1)) & -align`
-
-            let addend = bx.sub(align, bx.cx().const_usize(1));
-            let size = bx.and(bx.add(size, addend), bx.neg(align));
+            let one = bx.cx().const_usize(1);
+            let addend = bx.sub(align, one);
+            let add = bx.add(size, addend);
+            let neg =  bx.neg(align);
+            let size = bx.and(add, neg);
 
             (size, align)
         }

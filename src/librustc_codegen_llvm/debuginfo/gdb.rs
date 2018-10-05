@@ -23,7 +23,7 @@ use syntax::attr;
 
 /// Inserts a side-effect free instruction sequence that makes sure that the
 /// .debug_gdb_scripts global is referenced, so it isn't removed by the linker.
-pub fn insert_reference_to_gdb_debug_scripts_section_global(bx: &Builder<'_, 'll, '_, &'ll Value>) {
+pub fn insert_reference_to_gdb_debug_scripts_section_global(bx: &mut Builder<'_, 'll, '_, &'ll Value>) {
     if needs_gdb_debug_scripts_section(bx.cx()) {
         let gdb_debug_scripts_section = get_or_insert_gdb_debug_scripts_section_global(bx.cx());
         // Load just the first byte as that's all that's necessary to force

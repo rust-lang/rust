@@ -51,7 +51,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
     }
 
     pub fn alloca<Bx: BuilderMethods<'a, 'll, 'tcx>>(
-        bx: &Bx,
+        bx: &mut Bx,
         layout: TyLayout<'tcx>,
         name: &str
     ) -> PlaceRef<'tcx, V> where Bx::CodegenCx : Backend<'ll, Value=V> {
@@ -63,7 +63,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
 
     /// Returns a place for an indirect reference to an unsized place.
     pub fn alloca_unsized_indirect<Bx: BuilderMethods<'a, 'll, 'tcx>>(
-        bx: &Bx,
+        bx: &mut Bx,
         layout: TyLayout<'tcx>,
         name: &str
     ) -> PlaceRef<'tcx, V>
@@ -98,7 +98,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
 impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
     /// Access a field, at a point when the value's case is known.
     pub fn project_field<Bx: BuilderMethods<'a, 'll, 'tcx>>(
-        self, bx: &Bx,
+        self, bx: &mut Bx,
         ix: usize
     ) -> PlaceRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>
         where
@@ -110,7 +110,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
         let offset = self.layout.fields.offset(ix);
         let effective_field_align = self.align.restrict_for_offset(offset);
 
-        let simple = || {
+        let mut simple = || {
             // Unions and newtypes only use an offset of 0.
             let llval = if offset.bytes() == 0 {
                 self.llval
@@ -186,8 +186,9 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
 
         // Calculate offset
         let align_sub_1 = bx.sub(unsized_align, cx.const_usize(1u64));
-        let offset = bx.and(bx.add(unaligned_offset, align_sub_1),
-        bx.neg(unsized_align));
+        let and_lhs = bx.add(unaligned_offset, align_sub_1);
+        let and_rhs = bx.neg(unsized_align);
+        let offset = bx.and(and_lhs, and_rhs);
 
         debug!("struct_field_ptr: DST field offset: {:?}", offset);
 
@@ -210,7 +211,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
     /// Obtain the actual discriminant of a value.
     pub fn codegen_get_discr<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         self,
-        bx: &Bx,
+        bx: &mut Bx,
         cast_to: Ty<'tcx>
     ) -> V where
         Bx::CodegenCx : Backend<'ll, Value = V>,
@@ -261,7 +262,8 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
                     } else {
                         bx.cx().const_uint_big(niche_llty, niche_start)
                     };
-                    bx.select(bx.icmp(IntPredicate::IntEQ, lldiscr, niche_llval),
+                    let select_arg = bx.icmp(IntPredicate::IntEQ, lldiscr, niche_llval);
+                    bx.select(select_arg,
                         bx.cx().const_uint(cast_to, *niche_variants.start() as u64),
                         bx.cx().const_uint(cast_to, dataful_variant as u64))
                 } else {
@@ -269,8 +271,10 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
                     let delta = niche_start.wrapping_sub(*niche_variants.start() as u128);
                     let lldiscr = bx.sub(lldiscr, bx.cx().const_uint_big(niche_llty, delta));
                     let lldiscr_max = bx.cx().const_uint(niche_llty, *niche_variants.end() as u64);
-                    bx.select(bx.icmp(IntPredicate::IntULE, lldiscr, lldiscr_max),
-                        bx.intcast(lldiscr, cast_to, false),
+                    let select_arg = bx.icmp(IntPredicate::IntULE, lldiscr, lldiscr_max);
+                    let cast = bx.intcast(lldiscr, cast_to, false);
+                    bx.select(select_arg,
+                        cast,
                         bx.cx().const_uint(cast_to, dataful_variant as u64))
                 }
             }
@@ -281,7 +285,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
     /// representation.
     pub fn codegen_set_discr<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         &self,
-        bx: &Bx,
+        bx: &mut Bx,
         variant_index: usize
     ) where
         Bx::CodegenCx : Backend<'ll, Value=V>,
@@ -347,7 +351,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
 impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
     pub fn project_index<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         &self,
-        bx: &Bx,
+        bx: &mut Bx,
         llindex: V
     ) -> PlaceRef<'tcx, V> where
         Bx::CodegenCx : Backend<'ll, Value=V>,
@@ -363,7 +367,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
 
     pub fn project_downcast<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         &self,
-        bx: &Bx,
+        bx: &mut Bx,
         variant_index: usize
     ) -> PlaceRef<'tcx, V> where
         Bx::CodegenCx : Backend<'ll, Value=V>,
@@ -381,13 +385,13 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
 }
 
 impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
-    pub fn storage_live<Bx: BuilderMethods<'a, 'll, 'tcx>>(&self, bx: &Bx)
+    pub fn storage_live<Bx: BuilderMethods<'a, 'll, 'tcx>>(&self, bx: &mut Bx)
         where Bx::CodegenCx : Backend<'ll, Value = V>
     {
         bx.lifetime_start(self.llval, self.layout.size);
     }
 
-    pub fn storage_dead<Bx: BuilderMethods<'a, 'll, 'tcx>>(&self, bx: &Bx)
+    pub fn storage_dead<Bx: BuilderMethods<'a, 'll, 'tcx>>(&self, bx: &mut Bx)
         where Bx::CodegenCx : Backend<'ll, Value = V>
     {
         bx.lifetime_end(self.llval, self.layout.size);
@@ -400,7 +404,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
 {
     pub fn codegen_place<Bx: BuilderMethods<'a, 'll, 'tcx, CodegenCx=Cx>>(
         &mut self,
-        bx: &Bx,
+        bx: &mut Bx,
         place: &mir::Place<'tcx>
     ) -> PlaceRef<'tcx, Cx::Value> {
         debug!("codegen_place(place={:?})", place);

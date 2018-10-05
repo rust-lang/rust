@@ -120,12 +120,12 @@ pub trait LayoutTypeMethods<'ll, 'tcx> : Backend<'ll> {
 
 pub trait ArgTypeMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> {
     fn store_fn_arg(
-        &self,
+        &mut self,
         ty: &ArgType<'tcx, Ty<'tcx>>,
         idx: &mut usize, dst: PlaceRef<'tcx, <Self::CodegenCx as Backend<'ll>>::Value>
     );
     fn store_arg_ty(
-        &self,
+        &mut self,
         ty: &ArgType<'tcx, Ty<'tcx>>,
         val: <Self::CodegenCx as Backend<'ll>>::Value,
         dst: PlaceRef<'tcx, <Self::CodegenCx as Backend<'ll>>::Value>

@@ -208,7 +208,7 @@ mod temp_stable_hash_impls {
 // of Java. (See related discussion on #1877 and #10183.)
 
 pub fn build_unchecked_lshift<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
-    bx: &Bx,
+    bx: &mut Bx,
     lhs: <Bx::CodegenCx as Backend<'ll>>::Value,
     rhs: <Bx::CodegenCx as Backend<'ll>>::Value
 ) -> <Bx::CodegenCx as Backend<'ll>>::Value {
@@ -219,7 +219,7 @@ pub fn build_unchecked_lshift<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll
 }
 
 pub fn build_unchecked_rshift<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
-    bx: &Bx,
+    bx: &mut Bx,
     lhs_t: Ty<'tcx>,
     lhs: <Bx::CodegenCx as Backend<'ll>>::Value,
     rhs: <Bx::CodegenCx as Backend<'ll>>::Value
@@ -236,15 +236,16 @@ pub fn build_unchecked_rshift<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll
 }
 
 fn shift_mask_rhs<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
-    bx: &Bx,
+    bx: &mut Bx,
     rhs: <Bx::CodegenCx as Backend<'ll>>::Value
 ) -> <Bx::CodegenCx as Backend<'ll>>::Value {
     let rhs_llty = bx.cx().val_ty(rhs);
-    bx.and(rhs, shift_mask_val(bx, rhs_llty, rhs_llty, false))
+    let shift_val = shift_mask_val(bx, rhs_llty, rhs_llty, false);
+    bx.and(rhs, shift_val)
 }
 
 pub fn shift_mask_val<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
-    bx: &Bx,
+    bx: &mut Bx,
     llty: <Bx::CodegenCx as Backend<'ll>>::Type,
     mask_llty: <Bx::CodegenCx as Backend<'ll>>::Type,
     invert: bool

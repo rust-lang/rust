@@ -31,7 +31,7 @@ impl<'a, 'tcx> VirtualIndex {
 
     pub fn get_fn<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         self,
-        bx: &Bx,
+        bx: &mut Bx,
         llvtable: <Bx::CodegenCx as Backend<'ll>>::Value,
         fn_ty: &FnType<'tcx, Ty<'tcx>>
     ) -> <Bx::CodegenCx as Backend<'ll>>::Value {
@@ -43,10 +43,8 @@ impl<'a, 'tcx> VirtualIndex {
             bx.cx().type_ptr_to(bx.cx().type_ptr_to(bx.cx().fn_backend_type(fn_ty)))
         );
         let ptr_align = bx.tcx().data_layout.pointer_align;
-        let ptr = bx.load(
-            bx.inbounds_gep(llvtable, &[bx.cx().const_usize(self.0)]),
-            ptr_align
-        );
+        let gep = bx.inbounds_gep(llvtable, &[bx.cx().const_usize(self.0)]);
+        let ptr = bx.load(gep, ptr_align);
         bx.nonnull_metadata(ptr);
         // Vtable loads are invariant
         bx.set_invariant_load(ptr);
@@ -55,7 +53,7 @@ impl<'a, 'tcx> VirtualIndex {
 
     pub fn get_usize<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         self,
-        bx: &Bx,
+        bx: &mut Bx,
         llvtable: <Bx::CodegenCx as Backend<'ll>>::Value
     ) -> <Bx::CodegenCx as Backend<'ll>>::Value {
         // Load the data pointer from the object.
@@ -63,10 +61,8 @@ impl<'a, 'tcx> VirtualIndex {
 
         let llvtable = bx.pointercast(llvtable, bx.cx().type_ptr_to(bx.cx().type_isize()));
         let usize_align = bx.tcx().data_layout.pointer_align;
-        let ptr = bx.load(
-            bx.inbounds_gep(llvtable, &[bx.cx().const_usize(self.0)]),
-            usize_align
-        );
+        let gep = bx.inbounds_gep(llvtable, &[bx.cx().const_usize(self.0)]);
+        let ptr = bx.load(gep, usize_align);
         // Vtable loads are invariant
         bx.set_invariant_load(ptr);
         ptr

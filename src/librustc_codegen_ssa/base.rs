@@ -141,7 +141,7 @@ pub fn bin_op_to_fcmp_predicate(op: hir::BinOpKind) -> RealPredicate {
 }
 
 pub fn compare_simd_types<'a, 'll:'a, 'tcx:'ll, Bx : BuilderMethods<'a, 'll, 'tcx>>(
-    bx: &Bx,
+    bx: &mut Bx,
     lhs: <Bx::CodegenCx as Backend<'ll>>::Value,
     rhs: <Bx::CodegenCx as Backend<'ll>>::Value,
     t: Ty<'tcx>,
@@ -151,7 +151,8 @@ pub fn compare_simd_types<'a, 'll:'a, 'tcx:'ll, Bx : BuilderMethods<'a, 'll, 'tc
     let signed = match t.sty {
         ty::Float(_) => {
             let cmp = bin_op_to_fcmp_predicate(op);
-            return bx.sext(bx.fcmp(cmp, lhs, rhs), ret_ty);
+            let cmp = bx.fcmp(cmp, lhs, rhs);
+            return bx.sext(cmp, ret_ty);
         },
         ty::Uint(_) => false,
         ty::Int(_) => true,
@@ -159,11 +160,12 @@ pub fn compare_simd_types<'a, 'll:'a, 'tcx:'ll, Bx : BuilderMethods<'a, 'll, 'tc
     };
 
     let cmp = bin_op_to_icmp_predicate(op, signed);
+    let cmp = bx.icmp(cmp, lhs, rhs);
     // LLVM outputs an `< size x i1 >`, so we need to perform a sign extension
     // to get the correctly sized type. This will compile to a single instruction
     // once the IR is converted to assembly if the SIMD instruction is supported
     // by the target architecture.
-    bx.sext(bx.icmp(cmp, lhs, rhs), ret_ty)
+    bx.sext(cmp, ret_ty)
 }
 
 /// Retrieve the information we are losing (making dynamic) in an unsizing
@@ -203,7 +205,7 @@ pub fn unsized_info<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>(
 
 /// Coerce `src` to `dst_ty`. `src_ty` must be a thin pointer.
 pub fn unsize_thin_ptr<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
-    bx: &Bx,
+    bx: &mut Bx,
     src: <Bx::CodegenCx as Backend<'ll>>::Value,
     src_ty: Ty<'tcx>,
     dst_ty: Ty<'tcx>
@@ -260,14 +262,14 @@ pub fn unsize_thin_ptr<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
 pub fn coerce_unsized_into<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
-    bx: &Bx,
+    bx: &mut Bx,
     src: PlaceRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>,
     dst: PlaceRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>
 ) where &'a Bx::CodegenCx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
     let src_ty = src.layout.ty;
     let dst_ty = dst.layout.ty;
-    let coerce_ptr = || {
+    let mut coerce_ptr = || {
         let (base, info) = match bx.load_ref(&src).val {
             OperandValue::Pair(base, info) => {
                 // fat-ptr to fat-ptr unsize preserves the vtable
@@ -320,31 +322,20 @@ pub fn coerce_unsized_into<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, '
 }
 
 pub fn cast_shift_expr_rhs<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll, 'tcx>>(
-    bx: &Bx,
+    bx: &mut Bx,
     op: hir::BinOpKind,
     lhs: <Bx::CodegenCx as Backend<'ll>>::Value,
     rhs: <Bx::CodegenCx as Backend<'ll>>::Value
 ) -> <Bx::CodegenCx as Backend<'ll>>::Value {
-    cast_shift_rhs(bx, op, lhs, rhs, |a, b| bx.trunc(a, b), |a, b| bx.zext(a, b))
+    cast_shift_rhs(bx, op, lhs, rhs)
 }
 
-fn cast_shift_rhs<'a, 'll :'a, 'tcx : 'll, F, G, Bx : BuilderMethods<'a, 'll, 'tcx>>(
-    bx: &Bx,
+fn cast_shift_rhs<'a, 'll :'a, 'tcx : 'll, Bx : BuilderMethods<'a, 'll, 'tcx>>(
+    bx: &mut Bx,
     op: hir::BinOpKind,
     lhs: <Bx::CodegenCx as Backend<'ll>>::Value,
     rhs: <Bx::CodegenCx as Backend<'ll>>::Value,
-    trunc: F,
-    zext: G
-) -> <Bx::CodegenCx as Backend<'ll>>::Value
-    where F: FnOnce(
-        <Bx::CodegenCx as Backend<'ll>>::Value,
-        <Bx::CodegenCx as Backend<'ll>>::Type
-    ) -> <Bx::CodegenCx as Backend<'ll>>::Value,
-    G: FnOnce(
-        <Bx::CodegenCx as Backend<'ll>>::Value,
-        <Bx::CodegenCx as Backend<'ll>>::Type
-    ) -> <Bx::CodegenCx as Backend<'ll>>::Value
-{
+) -> <Bx::CodegenCx as Backend<'ll>>::Value {
     // Shifts may have any size int on the rhs
     if op.is_shift() {
         let mut rhs_llty = bx.cx().val_ty(rhs);
@@ -358,11 +349,11 @@ fn cast_shift_rhs<'a, 'll :'a, 'tcx : 'll, F, G, Bx : BuilderMethods<'a, 'll, 't
         let rhs_sz = bx.cx().int_width(rhs_llty);
         let lhs_sz = bx.cx().int_width(lhs_llty);
         if lhs_sz < rhs_sz {
-            trunc(rhs, lhs_llty)
+            bx.trunc(rhs, lhs_llty)
         } else if lhs_sz > rhs_sz {
             // FIXME (#1877: If shifting by negative
             // values becomes not undefined then this is wrong.
-            zext(rhs, lhs_llty)
+            bx.zext(rhs, lhs_llty)
         } else {
             rhs
         }
@@ -381,7 +372,7 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
 }
 
 pub fn call_assume<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll ,'tcx>>(
-    bx: &Bx,
+    bx: &mut Bx,
     val: <Bx::CodegenCx as Backend<'ll>>::Value
 ) {
     let assume_intrinsic = bx.cx().get_intrinsic("llvm.assume");
@@ -389,7 +380,7 @@ pub fn call_assume<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll ,'tcx>>(
 }
 
 pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll ,'tcx>>(
-    bx: &Bx,
+    bx: &mut Bx,
     val: <Bx::CodegenCx as Backend<'ll>>::Value
 ) -> <Bx::CodegenCx as Backend<'ll>>::Value {
     if bx.cx().val_ty(val) == bx.cx().type_i1() {
@@ -400,7 +391,7 @@ pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll ,'tcx>
 }
 
 pub fn to_immediate<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll, 'tcx>>(
-    bx: &Bx,
+    bx: &mut Bx,
     val: <Bx::CodegenCx as Backend<'ll>>::Value,
     layout: layout::TyLayout,
 ) -> <Bx::CodegenCx as Backend<'ll>>::Value {
@@ -411,7 +402,7 @@ pub fn to_immediate<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll, 'tcx>>(
 }
 
 pub fn to_immediate_scalar<'a, 'll :'a, 'tcx :'ll, Bx : BuilderMethods<'a, 'll, 'tcx>>(
-    bx: &Bx,
+    bx: &mut Bx,
     val: <Bx::CodegenCx as Backend<'ll>>::Value,
     scalar: &layout::Scalar,
 ) -> <Bx::CodegenCx as Backend<'ll>>::Value {
@@ -422,7 +413,7 @@ pub fn to_immediate_scalar<'a, 'll :'a, 'tcx :'ll, Bx : BuilderMethods<'a, 'll, 
 }
 
 pub fn memcpy_ty<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll, 'tcx>>(
-    bx: &Bx,
+    bx: &mut Bx,
     dst: <Bx::CodegenCx as Backend<'ll>>::Value,
     src: <Bx::CodegenCx as Backend<'ll>>::Value,
     layout: TyLayout<'tcx>,
@@ -560,7 +551,8 @@ pub fn maybe_create_entry_wrapper<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a,
         };
 
         let result = bx.call(start_fn, &args, None);
-        bx.ret(bx.intcast(result, cx.type_int(), true));
+        let cast = bx.intcast(result, cx.type_int(), true); 
+        bx.ret(cast);
     }
 }
 

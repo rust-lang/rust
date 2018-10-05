@@ -88,7 +88,7 @@ fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_, &'ll Value>, name: &str) -> Opti
 impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> {
 
     fn codegen_intrinsic_call(
-        &self,
+        &mut self,
         callee_ty: Ty<'tcx>,
         fn_ty: &FnType<'tcx, Ty<'tcx>>,
         args: &[OperandRef<'tcx, &'ll Value>],
@@ -126,7 +126,7 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
                 bx.call(expect, &[args[0].immediate(), bx.cx().const_bool(false)], None)
             }
             "try" => {
-                try_intrinsic(bx, cx,
+                try_intrinsic(self, cx,
                               args[0].immediate(),
                               args[1].immediate(),
                               args[2].immediate(),
@@ -185,7 +185,7 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
                     // data structures, and the generated code will be awful. (A telltale sign of
                     // this is large quantities of `mov [byte ptr foo],0` in the generated code.)
                     memset_intrinsic(
-                        &self,
+                        self,
                         false,
                         ty,
                         llresult,
@@ -216,28 +216,28 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
             }
 
             "copy_nonoverlapping" => {
-                copy_intrinsic(&self, false, false, substs.type_at(0),
+                copy_intrinsic(self, false, false, substs.type_at(0),
                                args[1].immediate(), args[0].immediate(), args[2].immediate())
             }
             "copy" => {
-                copy_intrinsic(&self, true, false, substs.type_at(0),
+                copy_intrinsic(self, true, false, substs.type_at(0),
                                args[1].immediate(), args[0].immediate(), args[2].immediate())
             }
             "write_bytes" => {
-                memset_intrinsic(&self, false, substs.type_at(0),
+                memset_intrinsic(self, false, substs.type_at(0),
                                  args[0].immediate(), args[1].immediate(), args[2].immediate())
             }
 
             "volatile_copy_nonoverlapping_memory" => {
-                copy_intrinsic(&self, false, true, substs.type_at(0),
+                copy_intrinsic(self, false, true, substs.type_at(0),
                                args[0].immediate(), args[1].immediate(), args[2].immediate())
             }
             "volatile_copy_memory" => {
-                copy_intrinsic(&self, true, true, substs.type_at(0),
+                copy_intrinsic(self, true, true, substs.type_at(0),
                                args[0].immediate(), args[1].immediate(), args[2].immediate())
             }
             "volatile_set_memory" => {
-                memset_intrinsic(&self, true, substs.type_at(0),
+                memset_intrinsic(self, true, substs.type_at(0),
                                  args[0].immediate(), args[1].immediate(), args[2].immediate())
             }
             "volatile_load" | "unaligned_volatile_load" => {
@@ -332,8 +332,9 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
                                     args[1].immediate()
                                 ], None);
                                 let val = &self.extract_value(pair, 0);
+                                let val1 = &self.extract_value(pair, 1);
                                 let overflow = &self.zext(
-                                    &self.extract_value(pair, 1),
+                                    val1,
                                     cx.type_bool()
                                 );
 
@@ -412,7 +413,7 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
             }
 
             name if name.starts_with("simd_") => {
-                match generic_simd_intrinsic(&self, name,
+                match generic_simd_intrinsic(self, name,
                                              callee_ty,
                                              args,
                                              ret_ty, llret_ty,
@@ -474,8 +475,9 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
                                 failorder,
                                 weak);
                             let val = &self.extract_value(pair, 0);
+                            let val1 = &self.extract_value(pair, 1);
                             let success = &self.zext(
-                                &self.extract_value(pair, 1),
+                                val1,
                                 &self.cx().type_bool()
                             );
 
@@ -618,7 +620,7 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
                 // arguments to be truncated as needed and pointers to be
                 // cast.
                 fn modify_as_needed<'a, 'll: 'a, 'tcx: 'll>(
-                    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+                    bx: &mut Builder<'a, 'll, 'tcx, &'ll Value>,
                     t: &intrinsics::Type,
                     arg: &OperandRef<'tcx, &'ll Value>,
                 ) -> Vec<&'ll Value> {
@@ -637,7 +639,8 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
                             };
                             let arg = PlaceRef::new_sized(ptr, arg.layout, align);
                             (0..contents.len()).map(|i| {
-                                bx.load_ref(&arg.project_field(bx, i)).immediate()
+                                let field = arg.project_field(bx, i);
+                                bx.load_ref(&field).immediate()
                             }).collect()
                         }
                         intrinsics::Type::Pointer(_, Some(ref llvm_elem), _) => {
@@ -669,7 +672,7 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
                 let outputs = one(ty_to_type(cx, &intr.output));
 
                 let llargs: Vec<_> = intr.inputs.iter().zip(args).flat_map(|(t, arg)| {
-                    modify_as_needed(&self, t, arg)
+                    modify_as_needed(self, t, arg)
                 }).collect();
                 assert_eq!(inputs.len(), llargs.len());
 
@@ -713,7 +716,7 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
 }
 
 fn copy_intrinsic(
-    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+    bx: &mut Builder<'a, 'll, 'tcx, &'ll Value>,
     allow_overlap: bool,
     volatile: bool,
     ty: Ty<'tcx>,
@@ -738,18 +741,19 @@ fn copy_intrinsic(
     let dst_ptr = bx.pointercast(dst, cx.type_i8p());
     let src_ptr = bx.pointercast(src, cx.type_i8p());
     let llfn = cx.get_intrinsic(&name);
-
+    let mul = bx.mul(size, count);
+    let volatile_const = cx.const_bool(volatile);
     bx.call(llfn,
         &[dst_ptr,
         src_ptr,
-        bx.mul(size, count),
+        mul,
         align,
-        cx.const_bool(volatile)],
+        volatile_const],
         None)
 }
 
 fn memset_intrinsic(
-    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+    bx: &mut Builder<'a, 'll, 'tcx, &'ll Value>,
     volatile: bool,
     ty: Ty<'tcx>,
     dst: &'ll Value,
@@ -761,11 +765,12 @@ fn memset_intrinsic(
     let size = cx.const_usize(size.bytes());
     let align = cx.const_i32(align.abi() as i32);
     let dst = bx.pointercast(dst, cx.type_i8p());
-    bx.call_memset(dst, val, bx.mul(size, count), align, volatile)
+    let mul = bx.mul(size, count);
+    bx.call_memset(dst, val, mul, align, volatile)
 }
 
 fn try_intrinsic(
-    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+    bx: &mut Builder<'a, 'll, 'tcx, &'ll Value>,
     cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
     func: &'ll Value,
     data: &'ll Value,
@@ -791,21 +796,21 @@ fn try_intrinsic(
 // writing, however, LLVM does not recommend the usage of these new instructions
 // as the old ones are still more optimized.
 fn codegen_msvc_try(
-    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+    bx: &mut Builder<'a, 'll, 'tcx, &'ll Value>,
     cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
     func: &'ll Value,
     data: &'ll Value,
     local_ptr: &'ll Value,
     dest: &'ll Value,
 ) {
-    let llfn = get_rust_try_fn(cx, &mut |bx| {
+    let llfn = get_rust_try_fn(cx, &mut |mut bx| {
         let cx = bx.cx();
 
         bx.set_personality_fn(bx.cx().eh_personality());
 
         let mut normal = bx.build_sibling_block("normal");
-        let catchswitch = bx.build_sibling_block("catchswitch");
-        let catchpad = bx.build_sibling_block("catchpad");
+        let mut catchswitch = bx.build_sibling_block("catchswitch");
+        let mut catchpad = bx.build_sibling_block("catchpad");
         let mut caught = bx.build_sibling_block("caught");
 
         let func = llvm::get_param(bx.llfn(), 0);
@@ -872,10 +877,12 @@ fn codegen_msvc_try(
         let i64_align = bx.tcx().data_layout.i64_align;
         let arg1 = catchpad.load(addr, i64_align);
         let val1 = cx.const_i32(1);
-        let arg2 = catchpad.load(catchpad.inbounds_gep(addr, &[val1]), i64_align);
+        let gep1 = catchpad.inbounds_gep(addr, &[val1]);
+        let arg2 = catchpad.load(gep1, i64_align);
         let local_ptr = catchpad.bitcast(local_ptr, i64p);
+        let gep2 = catchpad.inbounds_gep(local_ptr, &[val1]);
         catchpad.store(arg1, local_ptr, i64_align);
-        catchpad.store(arg2, catchpad.inbounds_gep(local_ptr, &[val1]), i64_align);
+        catchpad.store(arg2, gep2, i64_align);
         catchpad.catch_ret(tok, caught.llbb());
 
         caught.ret(cx.const_i32(1));
@@ -900,14 +907,14 @@ fn codegen_msvc_try(
 // functions in play. By calling a shim we're guaranteed that our shim will have
 // the right personality function.
 fn codegen_gnu_try(
-    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+    bx: &mut Builder<'a, 'll, 'tcx, &'ll Value>,
     cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
     func: &'ll Value,
     data: &'ll Value,
     local_ptr: &'ll Value,
     dest: &'ll Value,
 ) {
-    let llfn = get_rust_try_fn(cx, &mut |bx| {
+    let llfn = get_rust_try_fn(cx, &mut |mut bx| {
         let cx = bx.cx();
 
         // Codegens the shims described above:
@@ -947,7 +954,8 @@ fn codegen_gnu_try(
         catch.add_clause(vals, bx.cx().const_null(cx.type_i8p()));
         let ptr = catch.extract_value(vals, 0);
         let ptr_align = bx.tcx().data_layout.pointer_align;
-        catch.store(ptr, catch.bitcast(local_ptr, cx.type_ptr_to(cx.type_i8p())), ptr_align);
+        let bitcast = catch.bitcast(local_ptr, cx.type_ptr_to(cx.type_i8p()));
+        catch.store(ptr, bitcast, ptr_align);
         catch.ret(cx.const_i32(1));
     });
 
@@ -1014,7 +1022,7 @@ fn span_invalid_monomorphization_error(a: &Session, b: Span, c: &str) {
 }
 
 fn generic_simd_intrinsic(
-    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+    bx: &mut Builder<'a, 'll, 'tcx, &'ll Value>,
     name: &str,
     callee_ty: Ty<'tcx>,
     args: &[OperandRef<'tcx, &'ll Value>],
@@ -1190,7 +1198,7 @@ fn generic_simd_intrinsic(
         in_elem: &::rustc::ty::TyS,
         in_ty: &::rustc::ty::TyS,
         in_len: usize,
-        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+        bx: &mut Builder<'a, 'll, 'tcx, &'ll Value>,
         span: Span,
         args: &[OperandRef<'tcx, &'ll Value>],
     ) -> Result<&'ll Value, ()> {

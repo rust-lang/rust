@@ -26,7 +26,7 @@ use libc::{c_uint, c_char};
 
 impl AsmBuilderMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> {
     fn codegen_inline_asm(
-        &self,
+        &mut self,
         ia: &hir::InlineAsm,
         outputs: Vec<PlaceRef<'tcx, &'ll Value>>,
         mut inputs: Vec<&'ll Value>
