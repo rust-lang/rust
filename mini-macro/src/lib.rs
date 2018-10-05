@@ -1,4 +1,4 @@
-#![feature(proc_macro_quote, proc_macro_non_items)]
+#![feature(proc_macro_quote, proc_macro_hygiene)]
 extern crate proc_macro;
 
 use proc_macro::{TokenStream, quote};
