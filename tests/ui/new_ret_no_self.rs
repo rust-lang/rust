@@ -9,6 +9,11 @@ trait R {
     type Item;
 }
 
+trait Q {
+    type Item;
+    type Item2;
+}
+
 struct S;
 
 impl R for S {
@@ -42,9 +47,23 @@ impl R for S3 {
 }
 
 impl S3 {
-    // should trigger the lint, but currently does not
+    // should trigger the lint
     pub fn new(_: String) -> impl R<Item = u32> {
         S3
+    }
+}
+
+struct S4;
+
+impl Q for S4 {
+    type Item = u32;
+    type Item2 = Self;
+}
+
+impl S4 {
+    // should not trigger the lint
+    pub fn new(_: String) -> impl Q<Item = u32, Item2 = Self> {
+        S4
     }
 }
 

@@ -11,7 +11,7 @@
 use crate::rustc::hir;
 use crate::rustc::hir::def::Def;
 use crate::rustc::lint::{in_external_macro, LateContext, LateLintPass, Lint, LintArray, LintContext, LintPass};
-use crate::rustc::ty::{self, Ty};
+use crate::rustc::ty::{self, Ty, TyKind, Predicate};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
 use crate::syntax::ast;
@@ -933,9 +933,27 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
         if let hir::ImplItemKind::Method(_, _) = implitem.node {
             let ret_ty = return_ty(cx, implitem.id);
-            if name == "new" &&
-                !same_tys(cx, ret_ty, ty) &&
-                !ret_ty.is_impl_trait() {
+
+            // if return type is impl trait
+            if let TyKind::Opaque(def_id, _) = ret_ty.sty {
+
+                // then one of the associated types must be Self
+                for predicate in cx.tcx.predicates_of(def_id).predicates.iter() {
+                    match predicate {
+                        (Predicate::Projection(poly_projection_predicate), _) => {
+                            let binder = poly_projection_predicate.ty();
+                            let associated_type = binder.skip_binder();
+                            let associated_type_is_self_type = same_tys(cx, ty, associated_type);
+
+                            // if the associated type is self, early return and do not trigger lint
+                            if associated_type_is_self_type { return; }
+                        },
+                        (_, _) => {},
+                    }
+                }
+            }
+
+            if name == "new" && !same_tys(cx, ret_ty, ty) {
                 span_lint(cx,
                           NEW_RET_NO_SELF,
                           implitem.span,
