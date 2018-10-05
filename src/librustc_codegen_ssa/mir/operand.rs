@@ -76,7 +76,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
     }
 
     pub fn from_const<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
-        bx: &Bx,
+        bx: &mut Bx,
         val: &'tcx ty::Const<'tcx>
     ) -> Result<Self, ErrorHandled> {
         let layout = bx.cx().layout_of(val.ty);
@@ -160,7 +160,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
     /// For other cases, see `immediate`.
     pub fn immediate_or_packed_pair<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
-        bx: &Bx
+        bx: &mut Bx
     ) -> V {
         if let OperandValue::Pair(a, b) = self.val {
             let llty = bx.cx().backend_type(self.layout);
@@ -168,8 +168,10 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
                    self, llty);
             // Reconstruct the immediate aggregate.
             let mut llpair = bx.cx().const_undef(llty);
-            llpair = bx.insert_value(llpair, base::from_immediate(bx, a), 0);
-            llpair = bx.insert_value(llpair, base::from_immediate(bx, b), 1);
+            let imm_a = base::from_immediate(bx, a);
+            let imm_b = base::from_immediate(bx, b);
+            llpair = bx.insert_value(llpair, imm_a, 0);
+            llpair = bx.insert_value(llpair, imm_b, 1);
             llpair
         } else {
             self.immediate()
@@ -178,7 +180,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
 
     /// If the type is a pair, we return a `Pair`, otherwise, an `Immediate`.
     pub fn from_immediate_or_packed_pair<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
-        bx: &Bx,
+        bx: &mut Bx,
         llval: V,
         layout: TyLayout<'tcx>
     ) -> Self {
@@ -187,8 +189,10 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
                     llval, layout);
 
             // Deconstruct the immediate aggregate.
-            let a_llval = base::to_immediate_scalar(bx, bx.extract_value(llval, 0), a);
-            let b_llval = base::to_immediate_scalar(bx, bx.extract_value(llval, 1), b);
+            let a_llval = bx.extract_value(llval, 0);
+            let a_llval = base::to_immediate_scalar(bx, a_llval, a);
+            let b_llval = bx.extract_value(llval, 1);
+            let b_llval = base::to_immediate_scalar(bx, b_llval, b);
             OperandValue::Pair(a_llval, b_llval)
         } else {
             OperandValue::Immediate(llval)
@@ -198,7 +202,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
 
     pub fn extract_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         &self,
-        bx: &Bx,
+        bx: &mut Bx,
         i: usize
     ) -> Self {
         let field = self.layout.field(bx.cx(), i);
@@ -261,7 +265,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
 impl<'a, 'tcx: 'a, V: CodegenObject> OperandValue<V> {
     pub fn store<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
-        bx: &Bx,
+        bx: &mut Bx,
         dest: PlaceRef<'tcx, V>
     ) {
         self.store_with_flags(bx, dest, MemFlags::empty());
@@ -269,7 +273,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandValue<V> {
 
     pub fn volatile_store<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
-        bx: &Bx,
+        bx: &mut Bx,
         dest: PlaceRef<'tcx, V>
     ) {
         self.store_with_flags(bx, dest, MemFlags::VOLATILE);
@@ -277,7 +281,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandValue<V> {
 
     pub fn unaligned_volatile_store<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
-        bx: &Bx,
+        bx: &mut Bx,
         dest: PlaceRef<'tcx, V>,
     ) {
         self.store_with_flags(bx, dest, MemFlags::VOLATILE | MemFlags::UNALIGNED);
@@ -285,7 +289,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandValue<V> {
 
     pub fn nontemporal_store<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
-        bx: &Bx,
+        bx: &mut Bx,
         dest: PlaceRef<'tcx, V>
     ) {
         self.store_with_flags(bx, dest, MemFlags::NONTEMPORAL);
@@ -293,7 +297,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandValue<V> {
 
     fn store_with_flags<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
-        bx: &Bx,
+        bx: &mut Bx,
         dest: PlaceRef<'tcx, V>,
         flags: MemFlags,
     ) {
@@ -326,7 +330,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandValue<V> {
     }
     pub fn store_unsized<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
-        bx: &Bx,
+        bx: &mut Bx,
         indirect_dest: PlaceRef<'tcx, V>
     ) {
         debug!("OperandRef::store_unsized: operand={:?}, indirect_dest={:?}", self, indirect_dest);
@@ -361,7 +365,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandValue<V> {
 impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn maybe_codegen_consume_direct(
         &mut self,
-        bx: &Bx,
+        bx: &mut Bx,
         place: &mir::Place<'tcx>
     ) -> Option<OperandRef<'tcx, Bx::Value>> {
         debug!("maybe_codegen_consume_direct(place={:?})", place);
@@ -409,7 +413,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     pub fn codegen_consume(
         &mut self,
-        bx: &Bx,
+        bx: &mut Bx,
         place: &mir::Place<'tcx>
     ) -> OperandRef<'tcx, Bx::Value> {
         debug!("codegen_consume(place={:?})", place);
@@ -428,12 +432,13 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // for most places, to consume them we just load them
         // out from their home
-        bx.load_operand(self.codegen_place(bx, place))
+        let place = self.codegen_place(bx, place);
+        bx.load_operand(place)
     }
 
     pub fn codegen_operand(
         &mut self,
-        bx: &Bx,
+        bx: &mut Bx,
         operand: &mir::Operand<'tcx>
     ) -> OperandRef<'tcx, Bx::Value> {
         debug!("codegen_operand(operand={:?})", operand);

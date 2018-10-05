@@ -53,7 +53,7 @@ pub trait DebugInfoMethods<'tcx>: Backend<'tcx> {
 
 pub trait DebugInfoBuilderMethods<'tcx>: HasCodegen<'tcx> {
     fn declare_local(
-        &self,
+        &mut self,
         dbg_context: &FunctionDebugContext<Self::DIScope>,
         variable_name: Name,
         variable_type: Ty<'tcx>,
@@ -63,10 +63,10 @@ pub trait DebugInfoBuilderMethods<'tcx>: HasCodegen<'tcx> {
         span: Span,
     );
     fn set_source_location(
-        &self,
+        &mut self,
         debug_context: &FunctionDebugContext<Self::DIScope>,
         scope: Option<Self::DIScope>,
         span: Span,
     );
-    fn insert_reference_to_gdb_debug_scripts_section_global(&self);
+    fn insert_reference_to_gdb_debug_scripts_section_global(&mut self);
 }

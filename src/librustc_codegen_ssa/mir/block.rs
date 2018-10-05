@@ -102,7 +102,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 debug!("llblock: creating cleanup trampoline for {:?}", target);
                 let name = &format!("{:?}_cleanup_trampoline_{:?}", bb, target);
-                let trampoline = this.new_block(name);
+                let mut trampoline = this.new_block(name);
                 trampoline.cleanup_ret(funclet(this).unwrap(), Some(lltarget));
                 trampoline.llbb()
             } else {
@@ -145,9 +145,9 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.apply_attrs_callsite(&fn_ty, invokeret);
 
                 if let Some((ret_dest, target)) = destination {
-                    let ret_bx = this.build_block(target);
-                    this.set_debug_loc(&ret_bx, terminator.source_info);
-                    this.store_return(&ret_bx, ret_dest, &fn_ty.ret, invokeret);
+                    let mut ret_bx = this.build_block(target);
+                    this.set_debug_loc(&mut ret_bx, terminator.source_info);
+                    this.store_return(&mut ret_bx, ret_dest, &fn_ty.ret, invokeret);
                 }
             } else {
                 let llret = bx.call(fn_ptr, &llargs, funclet(this));
@@ -169,16 +169,18 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         };
 
-        self.set_debug_loc(&bx, terminator.source_info);
+        self.set_debug_loc(&mut bx, terminator.source_info);
         match terminator.kind {
             mir::TerminatorKind::Resume => {
                 if let Some(funclet) = funclet(self) {
                     bx.cleanup_ret(funclet, None);
                 } else {
-                    let slot = self.get_personality_slot(&bx);
-                    let lp0 = bx.load_operand(slot.project_field(&bx, 0)).immediate();
-                    let lp1 = bx.load_operand(slot.project_field(&bx, 1)).immediate();
-                    slot.storage_dead(&bx);
+                    let slot = self.get_personality_slot(&mut bx);
+                    let lp0 = slot.project_field(&mut bx, 0);
+                    let lp0 = bx.load_operand(lp0).immediate();
+                    let lp1 = slot.project_field(&mut bx, 1);
+                    let lp1 = bx.load_operand(lp1).immediate();
+                    slot.storage_dead(&mut bx);
 
                     if !bx.cx().sess().target.target.options.custom_unwind_resume {
                         let mut lp = bx.cx().const_undef(self.landing_pad_type());
@@ -204,7 +206,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::TerminatorKind::SwitchInt { ref discr, switch_ty, ref values, ref targets } => {
-                let discr = self.codegen_operand(&bx, discr);
+                let discr = self.codegen_operand(&mut bx, discr);
                 if targets.len() == 2 {
                     // If there are two targets, emit br instead of switch
                     let lltrue = llblock(self, targets[0]);
@@ -249,11 +251,12 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
 
                     PassMode::Direct(_) | PassMode::Pair(..) => {
-                        let op = self.codegen_consume(&bx, &mir::Place::Local(mir::RETURN_PLACE));
+                        let op =
+                            self.codegen_consume(&mut bx, &mir::Place::Local(mir::RETURN_PLACE));
                         if let Ref(llval, _, align) = op.val {
                             bx.load(llval, align)
                         } else {
-                            op.immediate_or_packed_pair(&bx)
+                            op.immediate_or_packed_pair(&mut bx)
                         }
                     }
 
@@ -271,8 +274,9 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         };
                         let llslot = match op.val {
                             Immediate(_) | Pair(..) => {
-                                let scratch = PlaceRef::alloca(&bx, self.fn_ty.ret.layout, "ret");
-                                op.val.store(&bx, scratch);
+                                let scratch =
+                                    PlaceRef::alloca(&mut bx, self.fn_ty.ret.layout, "ret");
+                                op.val.store(&mut bx, scratch);
                                 scratch.llval
                             }
                             Ref(llval, _, align) => {
@@ -281,11 +285,10 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 llval
                             }
                         };
-                        bx.load(
-                            bx.pointercast(llslot, bx.cx().type_ptr_to(
-                                bx.cx().cast_backend_type(&cast_ty)
-                            )),
-                            self.fn_ty.ret.layout.align)
+                        let addr = bx.pointercast(llslot, bx.cx().type_ptr_to(
+                            bx.cx().cast_backend_type(&cast_ty)
+                        ));
+                        bx.load(addr, self.fn_ty.ret.layout.align)
                     }
                 };
                 bx.ret(llval);
@@ -306,7 +309,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return
                 }
 
-                let place = self.codegen_place(&bx, location);
+                let place = self.codegen_place(&mut bx, location);
                 let (args1, args2);
                 let mut args = if let Some(llextra) = place.llextra {
                     args2 = [place.llval, llextra];
@@ -325,7 +328,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let fn_ty = bx.cx().new_vtable(sig, &[]);
                         let vtable = args[1];
                         args = &args[..1];
-                        (meth::DESTRUCTOR.get_fn(&bx, vtable, &fn_ty), fn_ty)
+                        (meth::DESTRUCTOR.get_fn(&mut bx, vtable, &fn_ty), fn_ty)
                     }
                     _ => {
                         (bx.cx().get_fn(drop_fn),
@@ -338,7 +341,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, cleanup } => {
-                let cond = self.codegen_operand(&bx, cond).immediate();
+                let cond = self.codegen_operand(&mut bx, cond).immediate();
                 let mut const_cond = bx.cx().const_to_opt_u128(cond, false).map(|c| c == 1);
 
                 // This case can currently arise only from functions marked
@@ -375,7 +378,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 // After this point, bx is the block for the call to panic.
                 bx = panic_block;
-                self.set_debug_loc(&bx, terminator.source_info);
+                self.set_debug_loc(&mut bx, terminator.source_info);
 
                 // Get the location information.
                 let loc = bx.cx().sess().source_map().lookup_char_pos(span.lo());
@@ -390,8 +393,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // Put together the arguments to the panic entry point.
                 let (lang_item, args) = match *msg {
                     EvalErrorKind::BoundsCheck { ref len, ref index } => {
-                        let len = self.codegen_operand(&bx, len).immediate();
-                        let index = self.codegen_operand(&bx, index).immediate();
+                        let len = self.codegen_operand(&mut bx, len).immediate();
+                        let index = self.codegen_operand(&mut bx, index).immediate();
 
                         let file_line_col = bx.cx().const_struct(&[filename, line, col], false);
                         let file_line_col = bx.cx().static_addr_of(
@@ -442,7 +445,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 from_hir_call: _
             } => {
                 // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
-                let callee = self.codegen_operand(&bx, func);
+                let callee = self.codegen_operand(&mut bx, func);
 
                 let (instance, mut llfn) = match callee.layout.ty.sty {
                     ty::FnDef(def_id, substs) => {
@@ -476,7 +479,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 if intrinsic == Some("transmute") {
                     if let Some(destination_ref) = destination.as_ref() {
                         let &(ref dest, target) = destination_ref;
-                        self.codegen_transmute(&bx, &args[0], dest);
+                        self.codegen_transmute(&mut bx, &args[0], dest);
                         funclet_br(self, &mut bx, target);
                     } else {
                         // If we are trying to transmute to an uninhabited type,
@@ -567,7 +570,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // Prepare the return value destination
                 let ret_dest = if let Some((ref dest, _)) = *destination {
                     let is_intrinsic = intrinsic.is_some();
-                    self.make_return_dest(&bx, dest, &fn_ty.ret, &mut llargs,
+                    self.make_return_dest(&mut bx, dest, &fn_ty.ret, &mut llargs,
                                           is_intrinsic)
                 } else {
                     ReturnDest::Nothing
@@ -635,7 +638,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             }
                         }
 
-                        self.codegen_operand(&bx, arg)
+                        self.codegen_operand(&mut bx, arg)
                     }).collect();
 
 
@@ -644,7 +647,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                                terminator.source_info.span);
 
                     if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
-                        self.store_return(&bx, ret_dest, &fn_ty.ret, dst.llval);
+                        self.store_return(&mut bx, ret_dest, &fn_ty.ret, dst.llval);
                     }
 
                     if let Some((_, target)) = *destination {
@@ -665,7 +668,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
 
                 'make_args: for (i, arg) in first_args.iter().enumerate() {
-                    let mut op = self.codegen_operand(&bx, arg);
+                    let mut op = self.codegen_operand(&mut bx, arg);
 
                     if let (0, Some(ty::InstanceDef::Virtual(_, idx))) = (i, def) {
                         if let Pair(..) = op.val {
@@ -679,7 +682,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                             && !op.layout.ty.is_region_ptr()
                             {
                                 'iter_fields: for i in 0..op.layout.fields.count() {
-                                    let field = op.extract_field(&bx, i);
+                                    let field = op.extract_field(&mut bx, i);
                                     if !field.layout.is_zst() {
                                         // we found the one non-zero-sized field that is allowed
                                         // now find *its* non-zero-sized field, or stop if it's a
@@ -698,7 +701,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             match op.val {
                                 Pair(data_ptr, meta) => {
                                     llfn = Some(meth::VirtualIndex::from_index(idx)
-                                        .get_fn(&bx, meta, &fn_ty));
+                                        .get_fn(&mut bx, meta, &fn_ty));
                                     llargs.push(data_ptr);
                                     continue 'make_args
                                 }
@@ -707,7 +710,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         } else if let Ref(data_ptr, Some(meta), _) = op.val {
                             // by-value dynamic dispatch
                             llfn = Some(meth::VirtualIndex::from_index(idx)
-                                .get_fn(&bx, meta, &fn_ty));
+                                .get_fn(&mut bx, meta, &fn_ty));
                             llargs.push(data_ptr);
                             continue;
                         } else {
@@ -720,17 +723,17 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     match (arg, op.val) {
                         (&mir::Operand::Copy(_), Ref(_, None, _)) |
                         (&mir::Operand::Constant(_), Ref(_, None, _)) => {
-                            let tmp = PlaceRef::alloca(&bx, op.layout, "const");
-                            op.val.store(&bx, tmp);
+                            let tmp = PlaceRef::alloca(&mut bx, op.layout, "const");
+                            op.val.store(&mut bx, tmp);
                             op.val = Ref(tmp.llval, None, tmp.align);
                         }
                         _ => {}
                     }
 
-                    self.codegen_argument(&bx, op, &mut llargs, &fn_ty.args[i]);
+                    self.codegen_argument(&mut bx, op, &mut llargs, &fn_ty.args[i]);
                 }
                 if let Some(tup) = untuple {
-                    self.codegen_arguments_untupled(&bx, tup, &mut llargs,
+                    self.codegen_arguments_untupled(&mut bx, tup, &mut llargs,
                         &fn_ty.args[first_args.len()..])
                 }
 
@@ -753,7 +756,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn codegen_argument(
         &mut self,
-        bx: &Bx,
+        bx: &mut Bx,
         op: OperandRef<'tcx, Bx::Value>,
         llargs: &mut Vec<Bx::Value>,
         arg: &ArgType<'tcx, Ty<'tcx>>
@@ -820,9 +823,10 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if by_ref && !arg.is_indirect() {
             // Have to load the argument, maybe while casting it.
             if let PassMode::Cast(ty) = arg.mode {
-                llval = bx.load(bx.pointercast(llval, bx.cx().type_ptr_to(
+                let addr = bx.pointercast(llval, bx.cx().type_ptr_to(
                     bx.cx().cast_backend_type(&ty))
-                ), align.min(arg.layout.align));
+                );
+                llval = bx.load(addr, align.min(arg.layout.align));
             } else {
                 // We can't use `PlaceRef::load` here because the argument
                 // may have a type we don't treat as immediate, but the ABI
@@ -845,7 +849,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn codegen_arguments_untupled(
         &mut self,
-        bx: &Bx,
+        bx: &mut Bx,
         operand: &mir::Operand<'tcx>,
         llargs: &mut Vec<Bx::Value>,
         args: &[ArgType<'tcx, Ty<'tcx>>]
@@ -857,7 +861,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let tuple_ptr = PlaceRef::new_sized(llval, tuple.layout, align);
             for i in 0..tuple.layout.fields.count() {
                 let field_ptr = tuple_ptr.project_field(bx, i);
-                self.codegen_argument(bx, bx.load_operand(field_ptr), llargs, &args[i]);
+                let field = bx.load_operand(field_ptr);
+                self.codegen_argument(bx, field, llargs, &args[i]);
             }
         } else if let Ref(_, Some(_), _) = tuple.val {
             bug!("closure arguments must be sized")
@@ -872,7 +877,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn get_personality_slot(
         &mut self,
-        bx: &Bx
+        bx: &mut Bx
     ) -> PlaceRef<'tcx, Bx::Value> {
         let cx = bx.cx();
         if let Some(slot) = self.personality_slot {
@@ -920,9 +925,9 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let lp = bx.landing_pad(llretty, llpersonality, 1);
         bx.set_cleanup(lp);
 
-        let slot = self.get_personality_slot(&bx);
-        slot.storage_live(&bx);
-        Pair(bx.extract_value(lp, 0), bx.extract_value(lp, 1)).store(&bx, slot);
+        let slot = self.get_personality_slot(&mut bx);
+        slot.storage_live(&mut bx);
+        Pair(bx.extract_value(lp, 0), bx.extract_value(lp, 1)).store(&mut bx, slot);
 
         bx.br(target_bb);
         bx.llbb()
@@ -937,7 +942,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self
     ) -> Bx::BasicBlock {
         self.unreachable_block.unwrap_or_else(|| {
-            let bx = self.new_block("unreachable");
+            let mut bx = self.new_block("unreachable");
             bx.unreachable();
             self.unreachable_block = Some(bx.llbb());
             bx.llbb()
@@ -959,7 +964,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn make_return_dest(
         &mut self,
-        bx: &Bx,
+        bx: &mut Bx,
         dest: &mir::Place<'tcx>,
         fn_ret: &ArgType<'tcx, Ty<'tcx>>,
         llargs: &mut Vec<Bx::Value>, is_intrinsic: bool
@@ -1019,7 +1024,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn codegen_transmute(
         &mut self,
-        bx: &Bx,
+        bx: &mut Bx,
         src: &mir::Operand<'tcx>,
         dst: &mir::Place<'tcx>
     ) {
@@ -1050,7 +1055,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn codegen_transmute_into(
         &mut self,
-        bx: &Bx,
+        bx: &mut Bx,
         src: &mir::Operand<'tcx>,
         dst: PlaceRef<'tcx, Bx::Value>
     ) {
@@ -1065,7 +1070,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     // Stores the return value of a function call into it's final location.
     fn store_return(
         &mut self,
-        bx: &Bx,
+        bx: &mut Bx,
         dest: ReturnDest<'tcx, Bx::Value>,
         ret_ty: &ArgType<'tcx, Ty<'tcx>>,
         llval: Bx::Value

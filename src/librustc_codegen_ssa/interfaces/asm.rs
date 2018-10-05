@@ -16,7 +16,7 @@ use rustc::hir::{GlobalAsm, InlineAsm};
 pub trait AsmBuilderMethods<'tcx>: HasCodegen<'tcx> {
     // Take an inline assembly expression and splat it out via LLVM
     fn codegen_inline_asm(
-        &self,
+        &mut self,
         ia: &InlineAsm,
         outputs: Vec<PlaceRef<'tcx, Self::Value>>,
         inputs: Vec<Self::Value>,

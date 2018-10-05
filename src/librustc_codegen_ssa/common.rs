@@ -163,7 +163,7 @@ pub fn langcall(tcx: TyCtxt,
 // of Java. (See related discussion on #1877 and #10183.)
 
 pub fn build_unchecked_lshift<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &Bx,
+    bx: &mut Bx,
     lhs: Bx::Value,
     rhs: Bx::Value
 ) -> Bx::Value {
@@ -174,7 +174,7 @@ pub fn build_unchecked_lshift<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 }
 
 pub fn build_unchecked_rshift<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &Bx,
+    bx: &mut Bx,
     lhs_t: Ty<'tcx>,
     lhs: Bx::Value,
     rhs: Bx::Value
@@ -191,15 +191,16 @@ pub fn build_unchecked_rshift<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 }
 
 fn shift_mask_rhs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &Bx,
+    bx: &mut Bx,
     rhs: Bx::Value
 ) -> Bx::Value {
     let rhs_llty = bx.cx().val_ty(rhs);
-    bx.and(rhs, shift_mask_val(bx, rhs_llty, rhs_llty, false))
+    let shift_val = shift_mask_val(bx, rhs_llty, rhs_llty, false);
+    bx.and(rhs, shift_val)
 }
 
 pub fn shift_mask_val<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &Bx,
+    bx: &mut Bx,
     llty: Bx::Type,
     mask_llty: Bx::Type,
     invert: bool

@@ -52,7 +52,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
     }
 
     pub fn alloca<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
-        bx: &Bx,
+        bx: &mut Bx,
         layout: TyLayout<'tcx>,
         name: &str
     ) -> Self {
@@ -64,7 +64,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
 
     /// Returns a place for an indirect reference to an unsized place.
     pub fn alloca_unsized_indirect<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
-        bx: &Bx,
+        bx: &mut Bx,
         layout: TyLayout<'tcx>,
         name: &str,
     ) -> Self {
@@ -96,29 +96,28 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
 impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
     /// Access a field, at a point when the value's case is known.
     pub fn project_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
-        self, bx: &Bx,
+        self, bx: &mut Bx,
         ix: usize,
     ) -> Self {
-        let cx = bx.cx();
-        let field = self.layout.field(cx, ix);
+        let field = self.layout.field(bx.cx(), ix);
         let offset = self.layout.fields.offset(ix);
         let effective_field_align = self.align.restrict_for_offset(offset);
 
-        let simple = || {
+        let mut simple = || {
             // Unions and newtypes only use an offset of 0.
             let llval = if offset.bytes() == 0 {
                 self.llval
             } else if let layout::Abi::ScalarPair(ref a, ref b) = self.layout.abi {
                 // Offsets have to match either first or second field.
-                assert_eq!(offset, a.value.size(cx).abi_align(b.value.align(cx)));
+                assert_eq!(offset, a.value.size(bx.cx()).abi_align(b.value.align(bx.cx())));
                 bx.struct_gep(self.llval, 1)
             } else {
                 bx.struct_gep(self.llval, bx.cx().backend_field_index(self.layout, ix))
             };
             PlaceRef {
                 // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-                llval: bx.pointercast(llval, cx.type_ptr_to(cx.backend_type(field))),
-                llextra: if cx.type_has_metadata(field.ty) {
+                llval: bx.pointercast(llval, bx.cx().type_ptr_to(bx.cx().backend_type(field))),
+                llextra: if bx.cx().type_has_metadata(field.ty) {
                     self.llextra
                 } else {
                     None
@@ -168,7 +167,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
 
         let meta = self.llextra;
 
-        let unaligned_offset = cx.const_usize(offset.bytes());
+        let unaligned_offset = bx.cx().const_usize(offset.bytes());
 
         // Get the alignment of the field
         let (_, unsized_align) = glue::size_and_align_of_dst(bx, field.ty, meta);
@@ -179,18 +178,19 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
         //   (unaligned offset + (align - 1)) & -align
 
         // Calculate offset
-        let align_sub_1 = bx.sub(unsized_align, cx.const_usize(1u64));
-        let offset = bx.and(bx.add(unaligned_offset, align_sub_1),
-        bx.neg(unsized_align));
+        let align_sub_1 = bx.sub(unsized_align, bx.cx().const_usize(1u64));
+        let and_lhs = bx.add(unaligned_offset, align_sub_1);
+        let and_rhs = bx.neg(unsized_align);
+        let offset = bx.and(and_lhs, and_rhs);
 
         debug!("struct_field_ptr: DST field offset: {:?}", offset);
 
         // Cast and adjust pointer
-        let byte_ptr = bx.pointercast(self.llval, cx.type_i8p());
+        let byte_ptr = bx.pointercast(self.llval, bx.cx().type_i8p());
         let byte_ptr = bx.gep(byte_ptr, &[offset]);
 
         // Finally, cast back to the type expected
-        let ll_fty = cx.backend_type(field);
+        let ll_fty = bx.cx().backend_type(field);
         debug!("struct_field_ptr: Field type is {:?}", ll_fty);
 
         PlaceRef {
@@ -204,7 +204,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
     /// Obtain the actual discriminant of a value.
     pub fn codegen_get_discr<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
-        bx: &Bx,
+        bx: &mut Bx,
         cast_to: Ty<'tcx>
     ) -> V {
         let cast_to = bx.cx().immediate_backend_type(bx.cx().layout_of(cast_to));
@@ -252,7 +252,8 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
                     } else {
                         bx.cx().const_uint_big(niche_llty, niche_start)
                     };
-                    bx.select(bx.icmp(IntPredicate::IntEQ, lldiscr, niche_llval),
+                    let select_arg = bx.icmp(IntPredicate::IntEQ, lldiscr, niche_llval);
+                    bx.select(select_arg,
                         bx.cx().const_uint(cast_to, niche_variants.start().as_u32() as u64),
                         bx.cx().const_uint(cast_to, dataful_variant.as_u32() as u64))
                 } else {
@@ -261,8 +262,10 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
                     let lldiscr = bx.sub(lldiscr, bx.cx().const_uint_big(niche_llty, delta));
                     let lldiscr_max =
                         bx.cx().const_uint(niche_llty, niche_variants.end().as_u32() as u64);
-                    bx.select(bx.icmp(IntPredicate::IntULE, lldiscr, lldiscr_max),
-                        bx.intcast(lldiscr, cast_to, false),
+                    let select_arg = bx.icmp(IntPredicate::IntULE, lldiscr, lldiscr_max);
+                    let cast = bx.intcast(lldiscr, cast_to, false);
+                    bx.select(select_arg,
+                        cast,
                         bx.cx().const_uint(cast_to, dataful_variant.as_u32() as u64))
                 }
             }
@@ -273,7 +276,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
     /// representation.
     pub fn codegen_set_discr<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         &self,
-        bx: &Bx,
+        bx: &mut Bx,
         variant_index: VariantIdx
     ) {
         if self.layout.for_variant(bx.cx(), variant_index).abi.is_uninhabited() {
@@ -330,7 +333,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
 
     pub fn project_index<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         &self,
-        bx: &Bx,
+        bx: &mut Bx,
         llindex: V
     ) -> Self {
         PlaceRef {
@@ -343,7 +346,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
 
     pub fn project_downcast<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         &self,
-        bx: &Bx,
+        bx: &mut Bx,
         variant_index: VariantIdx
     ) -> Self {
         let mut downcast = *self;
@@ -356,11 +359,11 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
         downcast
     }
 
-    pub fn storage_live<Bx: BuilderMethods<'a, 'tcx, Value = V>>(&self, bx: &Bx) {
+    pub fn storage_live<Bx: BuilderMethods<'a, 'tcx, Value = V>>(&self, bx: &mut Bx) {
         bx.lifetime_start(self.llval, self.layout.size);
     }
 
-    pub fn storage_dead<Bx: BuilderMethods<'a, 'tcx, Value = V>>(&self, bx: &Bx) {
+    pub fn storage_dead<Bx: BuilderMethods<'a, 'tcx, Value = V>>(&self, bx: &mut Bx) {
         bx.lifetime_end(self.llval, self.layout.size);
     }
 }
@@ -368,13 +371,13 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
 impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_place(
         &mut self,
-        bx: &Bx,
+        bx: &mut Bx,
         place: &mir::Place<'tcx>
     ) -> PlaceRef<'tcx, Bx::Value> {
         debug!("codegen_place(place={:?})", place);
 
-        let cx = bx.cx();
-        let tcx = cx.tcx();
+        let cx = self.cx;
+        let tcx = self.cx.tcx();
 
         if let mir::Place::Local(index) = *place {
             match self.locals[index] {

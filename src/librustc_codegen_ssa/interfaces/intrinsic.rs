@@ -20,7 +20,7 @@ pub trait IntrinsicCallMethods<'tcx>: HasCodegen<'tcx> {
     /// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
     /// add them to librustc_codegen_llvm/context.rs
     fn codegen_intrinsic_call(
-        &self,
+        &mut self,
         callee_ty: Ty<'tcx>,
         fn_ty: &FnType<'tcx, Ty<'tcx>>,
         args: &[OperandRef<'tcx, Self::Value>],

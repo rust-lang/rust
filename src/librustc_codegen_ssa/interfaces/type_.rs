@@ -105,13 +105,13 @@ pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
 
 pub trait ArgTypeMethods<'tcx>: HasCodegen<'tcx> {
     fn store_fn_arg(
-        &self,
+        &mut self,
         ty: &ArgType<'tcx, Ty<'tcx>>,
         idx: &mut usize,
         dst: PlaceRef<'tcx, Self::Value>,
     );
     fn store_arg_ty(
-        &self,
+        &mut self,
         ty: &ArgType<'tcx, Ty<'tcx>>,
         val: Self::Value,
         dst: PlaceRef<'tcx, Self::Value>,

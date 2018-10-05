@@ -111,7 +111,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     pub fn set_debug_loc(
         &mut self,
-        bx: &Bx,
+        bx: &mut Bx,
         source_info: mir::SourceInfo
     ) {
         let (scope, span) = self.debug_loc(source_info);
@@ -264,7 +264,7 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     fx.locals = {
         let args = arg_local_refs(&mut bx, &fx, &fx.scopes, &memory_locals);
 
-        let allocate_local = |local| {
+        let mut allocate_local = |local| {
             let decl = &mir.local_decls[local];
             let layout = bx.cx().layout_of(fx.monomorphize(&decl.ty));
             assert!(!layout.ty.has_erasable_regions());
@@ -283,11 +283,11 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 debug!("alloc: {:?} ({}) -> place", local, name);
                 if layout.is_unsized() {
                     let indirect_place =
-                        PlaceRef::alloca_unsized_indirect(&bx, layout, &name.as_str());
+                        PlaceRef::alloca_unsized_indirect(&mut bx, layout, &name.as_str());
                     // FIXME: add an appropriate debuginfo
                     LocalRef::UnsizedPlace(indirect_place)
                 } else {
-                    let place = PlaceRef::alloca(&bx, layout, &name.as_str());
+                    let place = PlaceRef::alloca(&mut bx, layout, &name.as_str());
                     if dbg {
                         let (scope, span) = fx.debug_loc(mir::SourceInfo {
                             span: decl.source_info.span,
@@ -308,11 +308,14 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 } else if memory_locals.contains(local) {
                     debug!("alloc: {:?} -> place", local);
                     if layout.is_unsized() {
-                        let indirect_place =
-                            PlaceRef::alloca_unsized_indirect(&bx, layout, &format!("{:?}", local));
+                        let indirect_place = PlaceRef::alloca_unsized_indirect(
+                            &mut bx,
+                            layout,
+                            &format!("{:?}", local),
+                        );
                         LocalRef::UnsizedPlace(indirect_place)
                     } else {
-                        LocalRef::Place(PlaceRef::alloca(&bx, layout, &format!("{:?}", local)))
+                        LocalRef::Place(PlaceRef::alloca(&mut bx, layout, &format!("{:?}", local)))
                     }
                 } else {
                     // If this is an immediate local, we do not create an
@@ -399,7 +402,7 @@ fn create_funclets<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             //          bar();
             //      }
             Some(&mir::TerminatorKind::Abort) => {
-                let cs_bx = bx.build_sibling_block(&format!("cs_funclet{:?}", bb));
+                let mut cs_bx = bx.build_sibling_block(&format!("cs_funclet{:?}", bb));
                 let mut cp_bx = bx.build_sibling_block(&format!("cp_funclet{:?}", bb));
                 ret_llbb = cs_bx.llbb();
 
@@ -480,7 +483,8 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 if arg.pad.is_some() {
                     llarg_idx += 1;
                 }
-                bx.store_fn_arg(arg, &mut llarg_idx, place.project_field(bx, i));
+                let pr_field = place.project_field(bx, i);
+                bx.store_fn_arg(arg, &mut llarg_idx, pr_field);
             }
 
             // Now that we have one alloca that contains the aggregate value,

@@ -159,7 +159,7 @@ pub fn finalize(cx: &CodegenCx) {
 
 impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn declare_local(
-        &self,
+        &mut self,
         dbg_context: &FunctionDebugContext<&'ll DISubprogram>,
         variable_name: ast::Name,
         variable_type: Ty<'tcx>,
@@ -225,14 +225,14 @@ impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn set_source_location(
-        &self,
+        &mut self,
         debug_context: &FunctionDebugContext<&'ll DISubprogram>,
         scope: Option<&'ll DIScope>,
         span: Span,
     ) {
         set_source_location(debug_context, &self, scope, span)
     }
-    fn insert_reference_to_gdb_debug_scripts_section_global(&self) {
+    fn insert_reference_to_gdb_debug_scripts_section_global(&mut self) {
         gdb::insert_reference_to_gdb_debug_scripts_section_global(self)
     }
 }

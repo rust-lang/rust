@@ -171,13 +171,13 @@ pub trait ArgTypeExt<'ll, 'tcx> {
     fn memory_ty(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn store(
         &self,
-        bx: &Builder<'_, 'll, 'tcx>,
+        bx: &mut Builder<'_, 'll, 'tcx>,
         val: &'ll Value,
         dst: PlaceRef<'tcx, &'ll Value>,
     );
     fn store_fn_arg(
         &self,
-        bx: &Builder<'_, 'll, 'tcx>,
+        bx: &mut Builder<'_, 'll, 'tcx>,
         idx: &mut usize,
         dst: PlaceRef<'tcx, &'ll Value>,
     );
@@ -196,14 +196,13 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
     /// or results of call/invoke instructions into their destinations.
     fn store(
         &self,
-        bx: &Builder<'_, 'll, 'tcx>,
+        bx: &mut Builder<'_, 'll, 'tcx>,
         val: &'ll Value,
         dst: PlaceRef<'tcx, &'ll Value>,
     ) {
         if self.is_ignore() {
             return;
         }
-        let cx = bx.cx();
         if self.is_sized_indirect() {
             OperandValue::Ref(val, None, self.layout.align).store(bx, dst)
         } else if self.is_unsized_indirect() {
@@ -213,7 +212,8 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
             // uses it for i16 -> {i8, i8}, but not for i24 -> {i8, i8, i8}.
             let can_store_through_cast_ptr = false;
             if can_store_through_cast_ptr {
-                let cast_dst = bx.pointercast(dst.llval, cx.type_ptr_to(cast.llvm_type(cx)));
+                let cast_ptr_llty = bx.cx().type_ptr_to(cast.llvm_type(bx.cx()));
+                let cast_dst = bx.pointercast(dst.llval, cast_ptr_llty);
                 bx.store(val, cast_dst, self.layout.align);
             } else {
                 // The actual return type is a struct, but the ABI
@@ -231,9 +231,9 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                 //   bitcasting to the struct type yields invalid cast errors.
 
                 // We instead thus allocate some scratch space...
-                let scratch_size = cast.size(cx);
-                let scratch_align = cast.align(cx);
-                let llscratch = bx.alloca(cast.llvm_type(cx), "abi_cast", scratch_align);
+                let scratch_size = cast.size(bx.cx());
+                let scratch_align = cast.align(bx.cx());
+                let llscratch = bx.alloca(cast.llvm_type(bx.cx()), "abi_cast", scratch_align);
                 bx.lifetime_start(llscratch, scratch_size);
 
                 // ...where we first store the value...
@@ -241,11 +241,11 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
 
                 // ...and then memcpy it to the intended destination.
                 bx.memcpy(
-                    bx.pointercast(dst.llval, cx.type_i8p()),
+                    dst.llval,
                     self.layout.align,
-                    bx.pointercast(llscratch, cx.type_i8p()),
+                    llscratch,
                     scratch_align,
-                    cx.const_usize(self.layout.size.bytes()),
+                    bx.cx().const_usize(self.layout.size.bytes()),
                     MemFlags::empty()
                 );
 
@@ -258,7 +258,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
 
     fn store_fn_arg(
         &self,
-        bx: &Builder<'a, 'll, 'tcx>,
+        bx: &mut Builder<'a, 'll, 'tcx>,
         idx: &mut usize,
         dst: PlaceRef<'tcx, &'ll Value>,
     ) {
@@ -284,14 +284,14 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
 
 impl ArgTypeMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn store_fn_arg(
-        &self,
+        &mut self,
         ty: &ArgType<'tcx, Ty<'tcx>>,
         idx: &mut usize, dst: PlaceRef<'tcx, Self::Value>
     ) {
         ty.store_fn_arg(self, idx, dst)
     }
     fn store_arg_ty(
-        &self,
+        &mut self,
         ty: &ArgType<'tcx, Ty<'tcx>>,
         val: &'ll Value,
         dst: PlaceRef<'tcx, &'ll Value>
@@ -324,7 +324,7 @@ pub trait FnTypeExt<'tcx> {
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn llvm_cconv(&self) -> llvm::CallConv;
     fn apply_attrs_llfn(&self, llfn: &'ll Value);
-    fn apply_attrs_callsite(&self, bx: &Builder<'a, 'll, 'tcx>, callsite: &'ll Value);
+    fn apply_attrs_callsite(&self, bx: &mut Builder<'a, 'll, 'tcx>, callsite: &'ll Value);
 }
 
 impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
@@ -761,7 +761,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         }
     }
 
-    fn apply_attrs_callsite(&self, bx: &Builder<'a, 'll, 'tcx>, callsite: &'ll Value) {
+    fn apply_attrs_callsite(&self, bx: &mut Builder<'a, 'll, 'tcx>, callsite: &'ll Value) {
         let mut i = 0;
         let mut apply = |attrs: &ArgAttributes| {
             attrs.apply_callsite(llvm::AttributePlace::Argument(i), callsite);
@@ -832,7 +832,7 @@ impl AbiMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
 impl AbiBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn apply_attrs_callsite(
-        &self,
+        &mut self,
         ty: &FnType<'tcx, Ty<'tcx>>,
         callsite: Self::Value
     ) {
