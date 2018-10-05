@@ -227,6 +227,7 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
                 args,
                 destination,
                 cleanup: _,
+                from_hir_call: _,
             } => {
                 crate::abi::codegen_terminator_call(fx, func, args, destination);
             }
