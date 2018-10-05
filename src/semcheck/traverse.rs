@@ -322,7 +322,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
 }
 
 /// Given two fn items, perform structural checks.
-fn diff_fn(changes: &mut ChangeSet, tcx: TyCtxt, old: Def, new: Def) {
+fn diff_fn<'a, 'tcx>(changes: &mut ChangeSet, tcx: TyCtxt<'a, 'tcx, 'tcx>, old: Def, new: Def) {
     let old_def_id = old.def_id();
     let new_def_id = new.def_id();
 
@@ -335,7 +335,10 @@ fn diff_fn(changes: &mut ChangeSet, tcx: TyCtxt, old: Def, new: Def) {
 }
 
 /// Given two method items, perform structural checks.
-fn diff_method(changes: &mut ChangeSet, tcx: TyCtxt, old: AssociatedItem, new: AssociatedItem) {
+fn diff_method<'a, 'tcx>(changes: &mut ChangeSet,
+                         tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                         old: AssociatedItem,
+                         new: AssociatedItem) {
     if old.method_has_self_argument != new.method_has_self_argument {
         changes.add_change(MethodSelfChanged { now_self: new.method_has_self_argument },
                            old.def_id,
@@ -490,12 +493,12 @@ fn diff_adts(changes: &mut ChangeSet,
 ///
 /// This establishes the needed correspondence between non-toplevel items found in the trait
 /// definition.
-fn diff_traits(changes: &mut ChangeSet,
-               id_mapping: &mut IdMapping,
-               tcx: TyCtxt,
-               old: DefId,
-               new: DefId,
-               output: bool) {
+fn diff_traits<'a, 'tcx>(changes: &mut ChangeSet,
+                         id_mapping: &mut IdMapping,
+                         tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                         old: DefId,
+                         new: DefId,
+                         output: bool) {
     use rustc::hir::Unsafety::Unsafe;
     use rustc::ty::subst::UnpackedKind::Type;
     use rustc::ty::{ParamTy, Predicate, TyS, TyKind};
