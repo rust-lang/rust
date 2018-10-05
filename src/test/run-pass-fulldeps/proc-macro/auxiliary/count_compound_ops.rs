@@ -10,7 +10,7 @@
 
 // no-prefer-dynamic
 
-#![feature(proc_macro_non_items, proc_macro_quote)]
+#![feature(proc_macro_hygiene, proc_macro_quote)]
 #![crate_type = "proc-macro"]
 
 extern crate proc_macro;

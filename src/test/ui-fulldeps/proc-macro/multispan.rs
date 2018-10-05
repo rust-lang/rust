@@ -11,7 +11,7 @@
 // aux-build:multispan.rs
 // ignore-stage1
 
-#![feature(proc_macro_non_items)]
+#![feature(proc_macro_hygiene)]
 
 extern crate multispan;
 

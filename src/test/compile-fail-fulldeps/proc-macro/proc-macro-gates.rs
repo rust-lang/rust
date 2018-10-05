@@ -9,11 +9,7 @@
 // except according to those terms.
 
 // aux-build:proc-macro-gates.rs
-// gate-test-proc_macro_non_items
-// gate-test-proc_macro_mod line
-// gate-test-proc_macro_expr
-// gate-test-proc_macro_mod
-// gate-test-proc_macro_gen
+// gate-test-proc_macro_hygiene
 
 #![feature(stmt_expr_attributes)]
 
