@@ -344,23 +344,20 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                 self.record(&None);
             },
             TyKind::Path(ref path) => {
-                if let QPath::Resolved(_, ref path) = *path {
-                    if let Def::Existential(def_id) = path.def {
-                        let node_id = self.cx.tcx.hir.as_local_node_id(def_id).unwrap();
-                        if let ItemKind::Existential(ref exist_ty) = self.cx.tcx.hir.expect_item(node_id).node {
-                            for bound in &exist_ty.bounds {
-                                if let GenericBound::Outlives(_) = *bound {
-                                    self.record(&None);
-                                }
-                            }
-                        } else {
-                            unreachable!()
-                        }
-                        walk_ty(self, ty);
-                        return;
-                    }
-                }
+
                 self.collect_anonymous_lifetimes(path, ty);
+            }
+            TyKind::Def(item, _) => {
+                if let ItemKind::Existential(ref exist_ty) = self.cx.tcx.hir.expect_item(item.id).node {
+                    for bound in &exist_ty.bounds {
+                        if let GenericBound::Outlives(_) = *bound {
+                            self.record(&None);
+                        }
+                    }
+                } else {
+                    unreachable!()
+                }
+                walk_ty(self, ty);
             }
             TyKind::TraitObject(ref bounds, ref lt) => {
                 if !lt.is_elided() {
