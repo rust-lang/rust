@@ -584,10 +584,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     pub fn leak_report(&self) -> usize {
         trace!("### LEAK REPORT ###");
-        let static_kind = M::STATIC_KIND.map(|k| MemoryKind::Machine(k));
-        let leaks: Vec<_> = self.alloc_map.filter_map_collect(|&id, &(kind, _)|
-                // exclude mutable statics
-                if Some(kind) == static_kind { None } else { Some(id) } );
+        let leaks: Vec<_> = self.alloc_map.filter_map_collect(|&id, &(kind, _)| {
+            // exclude statics and vtables
+            let exclude = match kind {
+                MemoryKind::Stack => false,
+                MemoryKind::Vtable => true,
+                MemoryKind::Machine(k) => Some(k) == M::STATIC_KIND,
+            };
+            if exclude { None } else { Some(id) }
+        });
         let n = leaks.len();
         self.dump_allocs(leaks);
         n
