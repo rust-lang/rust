@@ -12,26 +12,67 @@
 //! This separation exists to ensure that no fancy miri features like
 //! interpreting common C functions leak into CTFE.
 
-use std::borrow::Cow;
+use std::borrow::{Borrow, Cow};
 use std::hash::Hash;
 
 use rustc::hir::def_id::DefId;
-use rustc::mir::interpret::{Allocation, EvalResult, Scalar};
+use rustc::mir::interpret::{Allocation, AllocId, EvalResult, Scalar};
 use rustc::mir;
 use rustc::ty::{self, layout::TyLayout, query::TyCtxtAt};
 
-use super::{EvalContext, PlaceTy, OpTy};
+use super::{EvalContext, PlaceTy, OpTy, MemoryKind};
+
+/// The functionality needed by memory to manage its allocations
+pub trait AllocMap<K: Hash + Eq, V> {
+    /// Test if the map contains the given key.
+    /// Deliberately takes `&mut` because that is sufficient, and some implementations
+    /// can be more efficient then (using `RefCell::get_mut`).
+    fn contains_key<Q: ?Sized + Hash + Eq>(&mut self, k: &Q) -> bool
+        where K: Borrow<Q>;
+
+    /// Insert new entry into the map.
+    fn insert(&mut self, k: K, v: V) -> Option<V>;
+
+    /// Remove entry from the map.
+    fn remove<Q: ?Sized + Hash + Eq>(&mut self, k: &Q) -> Option<V>
+        where K: Borrow<Q>;
+
+    /// Return data based the keys and values in the map.
+    fn filter_map_collect<T>(&self, f: impl FnMut(&K, &V) -> Option<T>) -> Vec<T>;
+
+    /// Return a reference to entry `k`.  If no such entry exists, call
+    /// `vacant` and either forward its error, or add its result to the map
+    /// and return a reference to *that*.
+    fn get_or<E>(
+        &self,
+        k: K,
+        vacant: impl FnOnce() -> Result<V, E>
+    ) -> Result<&V, E>;
+
+    /// Return a mutable reference to entry `k`.  If no such entry exists, call
+    /// `vacant` and either forward its error, or add its result to the map
+    /// and return a reference to *that*.
+    fn get_mut_or<E>(
+        &mut self,
+        k: K,
+        vacant: impl FnOnce() -> Result<V, E>
+    ) -> Result<&mut V, E>;
+}
 
 /// Methods of this trait signifies a point where CTFE evaluation would fail
 /// and some use case dependent behaviour can instead be applied.
-/// FIXME: We should be able to get rid of the 'a here if we can get rid of the 'a in
-/// `snapshot::EvalSnapshot`.
 pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// Additional data that can be accessed via the Memory
     type MemoryData;
 
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
     type MemoryKinds: ::std::fmt::Debug + Copy + Eq;
+
+    /// Memory's allocation map
+    type MemoryMap:
+        AllocMap<AllocId, (MemoryKind<Self::MemoryKinds>, Allocation<Self::PointerTag>)> +
+        Default +
+        Clone;
 
     /// Tag tracked alongside every pointer.  This is inert for now, in preparation for
     /// a future implementation of "Stacked Borrows"

@@ -20,9 +20,12 @@ use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout};
 
 use rustc::mir::interpret::{
-    GlobalId, AllocId, Scalar, EvalResult, Pointer, PointerArithmetic
+    GlobalId, AllocId, Allocation, Scalar, EvalResult, Pointer, PointerArithmetic
 };
-use super::{EvalContext, Machine, Value, ValTy, ScalarMaybeUndef, Operand, OpTy, MemoryKind};
+use super::{
+    EvalContext, Machine, AllocMap,
+    Value, ValTy, ScalarMaybeUndef, Operand, OpTy, MemoryKind
+};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct MemPlace<Tag=(), Id=AllocId> {
@@ -266,12 +269,11 @@ impl<'tcx, Tag: ::std::fmt::Debug> PlaceTy<'tcx, Tag> {
 }
 
 // separating the pointer tag for `impl Trait`, see https://github.com/rust-lang/rust/issues/54385
-impl
-    <'a, 'mir, 'tcx,
-        Tag: ::std::fmt::Debug+Default+Copy+Eq+Hash+'static,
-        M: Machine<'a, 'mir, 'tcx, PointerTag=Tag>
-    >
-    EvalContext<'a, 'mir, 'tcx, M>
+impl<'a, 'mir, 'tcx, Tag, M> EvalContext<'a, 'mir, 'tcx, M>
+where
+    Tag: ::std::fmt::Debug+Default+Copy+Eq+Hash+'static,
+    M: Machine<'a, 'mir, 'tcx, PointerTag=Tag>,
+    M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<Tag>)>,
 {
     /// Take a value, which represents a (thin or fat) reference, and make it a place.
     /// Alignment is just based on the type.  This is the inverse of `MemPlace::to_ref`.

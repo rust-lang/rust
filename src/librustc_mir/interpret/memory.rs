@@ -16,22 +16,23 @@
 //! integer.  It is crucial that these operations call `check_align` *before*
 //! short-circuiting the empty case!
 
-use std::collections::hash_map::Entry;
 use std::collections::VecDeque;
 use std::ptr;
 use std::borrow::Cow;
 
 use rustc::ty::{self, Instance, ParamEnv, query::TyCtxtAt};
 use rustc::ty::layout::{self, Align, TargetDataLayout, Size, HasDataLayout};
-use rustc::mir::interpret::{Pointer, AllocId, Allocation, ConstValue, GlobalId,
-                            EvalResult, Scalar, EvalErrorKind, AllocType, PointerArithmetic,
-                            truncate};
+use rustc::mir::interpret::{
+    Pointer, AllocId, Allocation, ConstValue, GlobalId,
+    EvalResult, Scalar, EvalErrorKind, AllocType, PointerArithmetic,
+    truncate
+};
 pub use rustc::mir::interpret::{write_target_uint, read_target_uint};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 
 use syntax::ast::Mutability;
 
-use super::{Machine, MonoHashMap, ScalarMaybeUndef};
+use super::{Machine, AllocMap, ScalarMaybeUndef};
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub enum MemoryKind<T> {
@@ -52,13 +53,13 @@ pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
     /// Allocations local to this instance of the miri engine.  The kind
     /// helps ensure that the same mechanism is used for allocation and
     /// deallocation.  When an allocation is not found here, it is a
-    /// static and looked up in the `tcx` for read access.  If this machine
-    /// does pointer provenance tracking, the type of alloctions in `tcx`
-    /// and here do not match, so we have a `MonoHashMap` to be able to
-    /// put the "mapped" allocation into `alloc_map` even on a read access.
+    /// static and looked up in the `tcx` for read access.  Some machines may
+    /// have to mutate this map even on a read-only access to a static (because
+    /// they do pointer provenance tracking and the allocations in `tcx` have
+    /// the wrong type), so we let the machine override this type.
     /// Either way, if the machine allows writing to a static, doing so will
     /// create a copy of the static allocation here.
-    alloc_map: MonoHashMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<M::PointerTag>)>,
+    alloc_map: M::MemoryMap,
 
     /// To be able to compare pointers with NULL, and to check alignment for accesses
     /// to ZSTs (where pointers may dangle), we keep track of the size even for allocations
@@ -106,7 +107,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn new(tcx: TyCtxtAt<'a, 'tcx, 'tcx>, data: M::MemoryData) -> Self {
         Memory {
             data,
-            alloc_map: MonoHashMap::default(),
+            alloc_map: Default::default(),
             dead_alloc_map: FxHashMap::default(),
             tcx,
         }
@@ -419,30 +420,32 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         &mut self,
         id: AllocId,
     ) -> EvalResult<'tcx, &mut Allocation<M::PointerTag>> {
-        Ok(match self.alloc_map.entry(id) {
-            // Normal alloc?
-            Entry::Occupied(alloc) => {
-                let alloc = &mut alloc.into_mut().1;
-                if alloc.mutability == Mutability::Immutable {
+        let tcx = self.tcx;
+        let a = self.alloc_map.get_mut_or(id, || {
+            // Need to make a copy, even if `get_static_alloc` is able
+            // to give us a cheap reference.
+            let alloc = Self::get_static_alloc(tcx, id)?;
+            if alloc.mutability == Mutability::Immutable {
+                return err!(ModifiedConstantMemory);
+            }
+            let kind = M::STATIC_KIND.expect(
+                "I got an owned allocation that I have to copy but the machine does \
+                    not expect that to happen"
+            );
+            Ok((MemoryKind::Machine(kind), alloc.into_owned()))
+        });
+        // Unpack the error type manually because type inference doesn't
+        // work otherwise (and we cannot help it because `impl Trait`)
+        match a {
+            Err(e) => Err(e),
+            Ok(a) => {
+                let a = &mut a.1;
+                if a.mutability == Mutability::Immutable {
                     return err!(ModifiedConstantMemory);
                 }
-                alloc
+                Ok(a)
             }
-            // Static.
-            Entry::Vacant(entry) => {
-                // Need to make a copy, even if `get_static_alloc` is able
-                // to give us a cheap reference.
-                let alloc = Self::get_static_alloc(self.tcx, id)?;
-                if alloc.mutability == Mutability::Immutable {
-                    return err!(ModifiedConstantMemory);
-                }
-                let kind = M::STATIC_KIND.expect(
-                    "I got an owned allocation that I have to copy but the machine does \
-                        not expect that to happen"
-                );
-                &mut entry.insert(Box::new((MemoryKind::Machine(kind), alloc.into_owned()))).1
-            }
-        })
+        }
     }
 
     pub fn get_fn(&self, ptr: Pointer<M::PointerTag>) -> EvalResult<'tcx, Instance<'tcx>> {
@@ -534,8 +537,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             let msg = format!("Alloc {:<5} ", format!("{}:", id));
 
             // normal alloc?
-            match self.alloc_map.get(&id) {
-                Some((kind, alloc)) => {
+            match self.alloc_map.get_or(id, || Err(())) {
+                Ok((kind, alloc)) => {
                     let extra = match kind {
                         MemoryKind::Stack => " (stack)".to_owned(),
                         MemoryKind::Vtable => " (vtable)".to_owned(),
@@ -546,7 +549,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                         msg, alloc, extra
                     );
                 },
-                None => {
+                Err(()) => {
                     // static alloc?
                     match self.tcx.alloc_map.lock().get(id) {
                         Some(AllocType::Memory(alloc)) => {
@@ -664,7 +667,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 }
 
 /// Interning (for CTFE)
-impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx, PointerTag=()>> Memory<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M> Memory<'a, 'mir, 'tcx, M>
+where
+    M: Machine<'a, 'mir, 'tcx, PointerTag=()>,
+    M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<()>)>,
+{
     /// mark an allocation as static and initialized, either mutable or not
     pub fn intern_static(
         &mut self,
