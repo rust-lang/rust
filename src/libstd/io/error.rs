@@ -212,7 +212,7 @@ impl ErrorKind {
 /// the heap (for normal construction via Error::new) is too costly.
 #[stable(feature = "io_error_from_errorkind", since = "1.14.0")]
 impl From<ErrorKind> for Error {
-    /// Converts a [`ErrorKind`] into a [`Error`].
+    /// Converts an [`ErrorKind`] into an [`Error`].
     ///
     /// This conversion allocates a new error with a simple representation of error kind.
     ///
