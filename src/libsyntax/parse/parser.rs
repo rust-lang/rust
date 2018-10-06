@@ -3866,6 +3866,9 @@ impl<'a> Parser<'a> {
             // check that a comma comes after every field
             if !ate_comma {
                 let err = self.struct_span_err(self.prev_span, "expected `,`");
+                if let Some(mut delayed) = delayed_err {
+                    delayed.emit();
+                }
                 return Err(err);
             }
             ate_comma = false;
