@@ -1,27 +1,27 @@
 error: equality checks against true are unnecessary
- --> $DIR/bool_comparison.rs:7:8
-  |
-7 |     if x == true { "yes" } else { "no" };
-  |        ^^^^^^^^^ help: try simplifying it as shown: `x`
-  |
-  = note: `-D clippy::bool-comparison` implied by `-D warnings`
+  --> $DIR/bool_comparison.rs:17:8
+   |
+17 |     if x == true { "yes" } else { "no" };
+   |        ^^^^^^^^^ help: try simplifying it as shown: `x`
+   |
+   = note: `-D clippy::bool-comparison` implied by `-D warnings`
 
 error: equality checks against false can be replaced by a negation
- --> $DIR/bool_comparison.rs:8:8
-  |
-8 |     if x == false { "yes" } else { "no" };
-  |        ^^^^^^^^^^ help: try simplifying it as shown: `!x`
+  --> $DIR/bool_comparison.rs:18:8
+   |
+18 |     if x == false { "yes" } else { "no" };
+   |        ^^^^^^^^^^ help: try simplifying it as shown: `!x`
 
 error: equality checks against true are unnecessary
- --> $DIR/bool_comparison.rs:9:8
-  |
-9 |     if true == x { "yes" } else { "no" };
-  |        ^^^^^^^^^ help: try simplifying it as shown: `x`
+  --> $DIR/bool_comparison.rs:19:8
+   |
+19 |     if true == x { "yes" } else { "no" };
+   |        ^^^^^^^^^ help: try simplifying it as shown: `x`
 
 error: equality checks against false can be replaced by a negation
-  --> $DIR/bool_comparison.rs:10:8
+  --> $DIR/bool_comparison.rs:20:8
    |
-10 |     if false == x { "yes" } else { "no" };
+20 |     if false == x { "yes" } else { "no" };
    |        ^^^^^^^^^^ help: try simplifying it as shown: `!x`
 
 error: aborting due to 4 previous errors

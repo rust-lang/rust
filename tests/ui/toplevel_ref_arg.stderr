@@ -1,33 +1,33 @@
 error: `ref` directly on a function argument is ignored. Consider using a reference type instead.
- --> $DIR/toplevel_ref_arg.rs:7:15
-  |
-7 | fn the_answer(ref mut x: u8) {
-  |               ^^^^^^^^^
-  |
-  = note: `-D clippy::toplevel-ref-arg` implied by `-D warnings`
+  --> $DIR/toplevel_ref_arg.rs:17:15
+   |
+17 | fn the_answer(ref mut x: u8) {
+   |               ^^^^^^^^^
+   |
+   = note: `-D clippy::toplevel-ref-arg` implied by `-D warnings`
 
 error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
-  --> $DIR/toplevel_ref_arg.rs:18:7
+  --> $DIR/toplevel_ref_arg.rs:28:7
    |
-18 |   let ref x = 1;
+28 |   let ref x = 1;
    |   ----^^^^^----- help: try: `let x = &1;`
 
 error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
-  --> $DIR/toplevel_ref_arg.rs:20:7
+  --> $DIR/toplevel_ref_arg.rs:30:7
    |
-20 |   let ref y: (&_, u8) = (&1, 2);
+30 |   let ref y: (&_, u8) = (&1, 2);
    |   ----^^^^^--------------------- help: try: `let y: &(&_, u8) = &(&1, 2);`
 
 error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
-  --> $DIR/toplevel_ref_arg.rs:22:7
+  --> $DIR/toplevel_ref_arg.rs:32:7
    |
-22 |   let ref z = 1 + 2;
+32 |   let ref z = 1 + 2;
    |   ----^^^^^--------- help: try: `let z = &(1 + 2);`
 
 error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
-  --> $DIR/toplevel_ref_arg.rs:24:7
+  --> $DIR/toplevel_ref_arg.rs:34:7
    |
-24 |   let ref mut z = 1 + 2;
+34 |   let ref mut z = 1 + 2;
    |   ----^^^^^^^^^--------- help: try: `let z = &mut (1 + 2);`
 
 error: aborting due to 5 previous errors

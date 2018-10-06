@@ -1,45 +1,45 @@
 error: this min/max combination leads to constant result
-  --> $DIR/min_max.rs:15:5
+  --> $DIR/min_max.rs:25:5
    |
-15 |     min(1, max(3, x));
+25 |     min(1, max(3, x));
    |     ^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::min-max` implied by `-D warnings`
 
 error: this min/max combination leads to constant result
-  --> $DIR/min_max.rs:16:5
+  --> $DIR/min_max.rs:26:5
    |
-16 |     min(max(3, x), 1);
+26 |     min(max(3, x), 1);
    |     ^^^^^^^^^^^^^^^^^
 
 error: this min/max combination leads to constant result
-  --> $DIR/min_max.rs:17:5
+  --> $DIR/min_max.rs:27:5
    |
-17 |     max(min(x, 1), 3);
+27 |     max(min(x, 1), 3);
    |     ^^^^^^^^^^^^^^^^^
 
 error: this min/max combination leads to constant result
-  --> $DIR/min_max.rs:18:5
+  --> $DIR/min_max.rs:28:5
    |
-18 |     max(3, min(x, 1));
+28 |     max(3, min(x, 1));
    |     ^^^^^^^^^^^^^^^^^
 
 error: this min/max combination leads to constant result
-  --> $DIR/min_max.rs:20:5
+  --> $DIR/min_max.rs:30:5
    |
-20 |     my_max(3, my_min(x, 1));
+30 |     my_max(3, my_min(x, 1));
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this min/max combination leads to constant result
-  --> $DIR/min_max.rs:32:5
+  --> $DIR/min_max.rs:42:5
    |
-32 |     min("Apple", max("Zoo", s));
+42 |     min("Apple", max("Zoo", s));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this min/max combination leads to constant result
-  --> $DIR/min_max.rs:33:5
+  --> $DIR/min_max.rs:43:5
    |
-33 |     max(min(s, "Apple"), "Zoo");
+43 |     max(min(s, "Apple"), "Zoo");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 7 previous errors

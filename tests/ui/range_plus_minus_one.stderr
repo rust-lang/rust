@@ -1,53 +1,53 @@
 error: an inclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:12:14
+  --> $DIR/range_plus_minus_one.rs:22:14
    |
-12 |     for _ in 0..3+1 { }
+22 |     for _ in 0..3+1 { }
    |              ^^^^^^ help: use: `0..=3`
    |
    = note: `-D clippy::range-plus-one` implied by `-D warnings`
 
 error: an inclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:15:14
+  --> $DIR/range_plus_minus_one.rs:25:14
    |
-15 |     for _ in 0..1+5 { }
+25 |     for _ in 0..1+5 { }
    |              ^^^^^^ help: use: `0..=5`
 
 error: an inclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:18:14
+  --> $DIR/range_plus_minus_one.rs:28:14
    |
-18 |     for _ in 1..1+1 { }
+28 |     for _ in 1..1+1 { }
    |              ^^^^^^ help: use: `1..=1`
 
 error: an inclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:24:14
+  --> $DIR/range_plus_minus_one.rs:34:14
    |
-24 |     for _ in 0..(1+f()) { }
+34 |     for _ in 0..(1+f()) { }
    |              ^^^^^^^^^^ help: use: `0..=f()`
 
 error: an exclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:28:13
+  --> $DIR/range_plus_minus_one.rs:38:13
    |
-28 |     let _ = ..=11-1;
+38 |     let _ = ..=11-1;
    |             ^^^^^^^ help: use: `..11`
    |
    = note: `-D clippy::range-minus-one` implied by `-D warnings`
 
 error: an exclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:29:13
+  --> $DIR/range_plus_minus_one.rs:39:13
    |
-29 |     let _ = ..=(11-1);
+39 |     let _ = ..=(11-1);
    |             ^^^^^^^^^ help: use: `..11`
 
 error: an inclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:30:13
+  --> $DIR/range_plus_minus_one.rs:40:13
    |
-30 |     let _ = (1..11+1);
+40 |     let _ = (1..11+1);
    |             ^^^^^^^^^ help: use: `(1..=11)`
 
 error: an inclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:31:13
+  --> $DIR/range_plus_minus_one.rs:41:13
    |
-31 |     let _ = (f()+1)..(f()+1);
+41 |     let _ = (f()+1)..(f()+1);
    |             ^^^^^^^^^^^^^^^^ help: use: `((f()+1)..=f())`
 
 error: aborting due to 8 previous errors

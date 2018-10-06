@@ -1,16 +1,16 @@
 error: using `println!("")`
- --> $DIR/println_empty_string.rs:3:5
-  |
-3 |     println!("");
-  |     ^^^^^^^^^^^^ help: replace it with: `println!()`
-  |
-  = note: `-D clippy::println-empty-string` implied by `-D warnings`
+  --> $DIR/println_empty_string.rs:13:5
+   |
+13 |     println!("");
+   |     ^^^^^^^^^^^^ help: replace it with: `println!()`
+   |
+   = note: `-D clippy::println-empty-string` implied by `-D warnings`
 
 error: using `println!("")`
- --> $DIR/println_empty_string.rs:6:14
-  |
-6 |         _ => println!(""),
-  |              ^^^^^^^^^^^^ help: replace it with: `println!()`
+  --> $DIR/println_empty_string.rs:16:14
+   |
+16 |         _ => println!(""),
+   |              ^^^^^^^^^^^^ help: replace it with: `println!()`
 
 error: aborting due to 2 previous errors
 

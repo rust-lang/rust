@@ -1,51 +1,51 @@
 error: Calling std::string::String::default() is more clear than this expression
-  --> $DIR/default_trait_access.rs:10:22
+  --> $DIR/default_trait_access.rs:20:22
    |
-10 |     let s1: String = Default::default();
+20 |     let s1: String = Default::default();
    |                      ^^^^^^^^^^^^^^^^^^ help: try: `std::string::String::default()`
    |
    = note: `-D clippy::default-trait-access` implied by `-D warnings`
 
 error: Calling std::string::String::default() is more clear than this expression
-  --> $DIR/default_trait_access.rs:14:22
+  --> $DIR/default_trait_access.rs:24:22
    |
-14 |     let s3: String = D2::default();
+24 |     let s3: String = D2::default();
    |                      ^^^^^^^^^^^^^ help: try: `std::string::String::default()`
 
 error: Calling std::string::String::default() is more clear than this expression
-  --> $DIR/default_trait_access.rs:16:22
+  --> $DIR/default_trait_access.rs:26:22
    |
-16 |     let s4: String = std::default::Default::default();
+26 |     let s4: String = std::default::Default::default();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::string::String::default()`
 
 error: Calling std::string::String::default() is more clear than this expression
-  --> $DIR/default_trait_access.rs:20:22
+  --> $DIR/default_trait_access.rs:30:22
    |
-20 |     let s6: String = default::Default::default();
+30 |     let s6: String = default::Default::default();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::string::String::default()`
 
 error: Calling GenericDerivedDefault<std::string::String>::default() is more clear than this expression
-  --> $DIR/default_trait_access.rs:30:46
+  --> $DIR/default_trait_access.rs:40:46
    |
-30 |     let s11: GenericDerivedDefault<String> = Default::default();
+40 |     let s11: GenericDerivedDefault<String> = Default::default();
    |                                              ^^^^^^^^^^^^^^^^^^ help: try: `GenericDerivedDefault<std::string::String>::default()`
 
 error: Calling TupleDerivedDefault::default() is more clear than this expression
-  --> $DIR/default_trait_access.rs:36:36
+  --> $DIR/default_trait_access.rs:46:36
    |
-36 |     let s14: TupleDerivedDefault = Default::default();
+46 |     let s14: TupleDerivedDefault = Default::default();
    |                                    ^^^^^^^^^^^^^^^^^^ help: try: `TupleDerivedDefault::default()`
 
 error: Calling ArrayDerivedDefault::default() is more clear than this expression
-  --> $DIR/default_trait_access.rs:38:36
+  --> $DIR/default_trait_access.rs:48:36
    |
-38 |     let s15: ArrayDerivedDefault = Default::default();
+48 |     let s15: ArrayDerivedDefault = Default::default();
    |                                    ^^^^^^^^^^^^^^^^^^ help: try: `ArrayDerivedDefault::default()`
 
 error: Calling TupleStructDerivedDefault::default() is more clear than this expression
-  --> $DIR/default_trait_access.rs:42:42
+  --> $DIR/default_trait_access.rs:52:42
    |
-42 |     let s17: TupleStructDerivedDefault = Default::default();
+52 |     let s17: TupleStructDerivedDefault = Default::default();
    |                                          ^^^^^^^^^^^^^^^^^^ help: try: `TupleStructDerivedDefault::default()`
 
 error: aborting due to 8 previous errors

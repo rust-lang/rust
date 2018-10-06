@@ -1,93 +1,93 @@
 error: very complex type used. Consider factoring parts into `type` definitions
- --> $DIR/complex_types.rs:9:12
-  |
-9 | const CST: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0))));
-  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |
-  = note: `-D clippy::type-complexity` implied by `-D warnings`
+  --> $DIR/complex_types.rs:19:12
+   |
+19 | const CST: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0))));
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::type-complexity` implied by `-D warnings`
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/complex_types.rs:10:12
+  --> $DIR/complex_types.rs:20:12
    |
-10 | static ST: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0))));
+20 | static ST: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0))));
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/complex_types.rs:13:8
+  --> $DIR/complex_types.rs:23:8
    |
-13 |     f: Vec<Vec<Box<(u32, u32, u32, u32)>>>,
+23 |     f: Vec<Vec<Box<(u32, u32, u32, u32)>>>,
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/complex_types.rs:16:11
+  --> $DIR/complex_types.rs:26:11
    |
-16 | struct TS(Vec<Vec<Box<(u32, u32, u32, u32)>>>);
+26 | struct TS(Vec<Vec<Box<(u32, u32, u32, u32)>>>);
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/complex_types.rs:19:11
+  --> $DIR/complex_types.rs:29:11
    |
-19 |     Tuple(Vec<Vec<Box<(u32, u32, u32, u32)>>>),
+29 |     Tuple(Vec<Vec<Box<(u32, u32, u32, u32)>>>),
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/complex_types.rs:20:17
+  --> $DIR/complex_types.rs:30:17
    |
-20 |     Struct { f: Vec<Vec<Box<(u32, u32, u32, u32)>>> },
+30 |     Struct { f: Vec<Vec<Box<(u32, u32, u32, u32)>>> },
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/complex_types.rs:24:14
+  --> $DIR/complex_types.rs:34:14
    |
-24 |     const A: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0))));
+34 |     const A: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0))));
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/complex_types.rs:25:30
+  --> $DIR/complex_types.rs:35:30
    |
-25 |     fn impl_method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>) { }
+35 |     fn impl_method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>) { }
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/complex_types.rs:29:14
+  --> $DIR/complex_types.rs:39:14
    |
-29 |     const A: Vec<Vec<Box<(u32, u32, u32, u32)>>>;
+39 |     const A: Vec<Vec<Box<(u32, u32, u32, u32)>>>;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/complex_types.rs:30:14
+  --> $DIR/complex_types.rs:40:14
    |
-30 |     type B = Vec<Vec<Box<(u32, u32, u32, u32)>>>;
+40 |     type B = Vec<Vec<Box<(u32, u32, u32, u32)>>>;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/complex_types.rs:31:25
+  --> $DIR/complex_types.rs:41:25
    |
-31 |     fn method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>);
+41 |     fn method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>);
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/complex_types.rs:32:29
+  --> $DIR/complex_types.rs:42:29
    |
-32 |     fn def_method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>) { }
+42 |     fn def_method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>) { }
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/complex_types.rs:35:15
+  --> $DIR/complex_types.rs:45:15
    |
-35 | fn test1() -> Vec<Vec<Box<(u32, u32, u32, u32)>>> { vec![] }
+45 | fn test1() -> Vec<Vec<Box<(u32, u32, u32, u32)>>> { vec![] }
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/complex_types.rs:37:14
+  --> $DIR/complex_types.rs:47:14
    |
-37 | fn test2(_x: Vec<Vec<Box<(u32, u32, u32, u32)>>>) { }
+47 | fn test2(_x: Vec<Vec<Box<(u32, u32, u32, u32)>>>) { }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/complex_types.rs:40:13
+  --> $DIR/complex_types.rs:50:13
    |
-40 |     let _y: Vec<Vec<Box<(u32, u32, u32, u32)>>> = vec![];
+50 |     let _y: Vec<Vec<Box<(u32, u32, u32, u32)>>> = vec![];
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 15 previous errors

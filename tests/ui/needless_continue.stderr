@@ -1,11 +1,11 @@
 error: This else block is redundant.
 
-  --> $DIR/needless_continue.rs:26:16
+  --> $DIR/needless_continue.rs:36:16
    |
-26 |           } else {
+36 |           } else {
    |  ________________^
-27 | |             continue;
-28 | |         }
+37 | |             continue;
+38 | |         }
    | |_________^
    |
    = note: `-D clippy::needless-continue` implied by `-D warnings`
@@ -37,14 +37,14 @@ error: This else block is redundant.
 
 error: There is no need for an explicit `else` block for this `if` expression
 
-  --> $DIR/needless_continue.rs:41:9
+  --> $DIR/needless_continue.rs:51:9
    |
-41 | /         if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
-42 | |             continue;
-43 | |         } else {
-44 | |             println!("Blabber");
-45 | |             println!("Jabber");
-46 | |         }
+51 | /         if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
+52 | |             continue;
+53 | |         } else {
+54 | |             println!("Blabber");
+55 | |             println!("Jabber");
+56 | |         }
    | |_________^
    |
    = help: Consider dropping the else clause, and moving out the code in the else block, like so:

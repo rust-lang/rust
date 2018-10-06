@@ -1,39 +1,39 @@
 error: Prefer FxHashMap over HashMap, it has better performance and we don't need any collision prevention in clippy
- --> $DIR/fxhash.rs:8:24
-  |
-8 | use std::collections::{HashMap, HashSet};
-  |                        ^^^^^^^ help: use: `FxHashMap`
-  |
-  = note: `-D clippy::default-hash-types` implied by `-D warnings`
+  --> $DIR/fxhash.rs:18:24
+   |
+18 | use std::collections::{HashMap, HashSet};
+   |                        ^^^^^^^ help: use: `FxHashMap`
+   |
+   = note: `-D clippy::default-hash-types` implied by `-D warnings`
 
 error: Prefer FxHashSet over HashSet, it has better performance and we don't need any collision prevention in clippy
- --> $DIR/fxhash.rs:8:33
-  |
-8 | use std::collections::{HashMap, HashSet};
-  |                                 ^^^^^^^ help: use: `FxHashSet`
+  --> $DIR/fxhash.rs:18:33
+   |
+18 | use std::collections::{HashMap, HashSet};
+   |                                 ^^^^^^^ help: use: `FxHashSet`
 
 error: Prefer FxHashMap over HashMap, it has better performance and we don't need any collision prevention in clippy
-  --> $DIR/fxhash.rs:12:15
+  --> $DIR/fxhash.rs:22:15
    |
-12 |     let _map: HashMap<String, String> = HashMap::default();
+22 |     let _map: HashMap<String, String> = HashMap::default();
    |               ^^^^^^^ help: use: `FxHashMap`
 
 error: Prefer FxHashMap over HashMap, it has better performance and we don't need any collision prevention in clippy
-  --> $DIR/fxhash.rs:12:41
+  --> $DIR/fxhash.rs:22:41
    |
-12 |     let _map: HashMap<String, String> = HashMap::default();
+22 |     let _map: HashMap<String, String> = HashMap::default();
    |                                         ^^^^^^^ help: use: `FxHashMap`
 
 error: Prefer FxHashSet over HashSet, it has better performance and we don't need any collision prevention in clippy
-  --> $DIR/fxhash.rs:13:15
+  --> $DIR/fxhash.rs:23:15
    |
-13 |     let _set: HashSet<String> = HashSet::default();
+23 |     let _set: HashSet<String> = HashSet::default();
    |               ^^^^^^^ help: use: `FxHashSet`
 
 error: Prefer FxHashSet over HashSet, it has better performance and we don't need any collision prevention in clippy
-  --> $DIR/fxhash.rs:13:33
+  --> $DIR/fxhash.rs:23:33
    |
-13 |     let _set: HashSet<String> = HashSet::default();
+23 |     let _set: HashSet<String> = HashSet::default();
    |                                 ^^^^^^^ help: use: `FxHashSet`
 
 error: aborting due to 6 previous errors

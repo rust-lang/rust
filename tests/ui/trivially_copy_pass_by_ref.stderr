@@ -1,81 +1,81 @@
 error: this argument is passed by reference, but would be more efficient if passed by value
-  --> $DIR/trivially_copy_pass_by_ref.rs:42:11
+  --> $DIR/trivially_copy_pass_by_ref.rs:52:11
    |
-42 | fn bad(x: &u32, y: &Foo, z: &Baz) {
+52 | fn bad(x: &u32, y: &Foo, z: &Baz) {
    |           ^^^^ help: consider passing by value instead: `u32`
    |
    = note: `-D clippy::trivially-copy-pass-by-ref` implied by `-D warnings`
 
 error: this argument is passed by reference, but would be more efficient if passed by value
-  --> $DIR/trivially_copy_pass_by_ref.rs:42:20
+  --> $DIR/trivially_copy_pass_by_ref.rs:52:20
    |
-42 | fn bad(x: &u32, y: &Foo, z: &Baz) {
+52 | fn bad(x: &u32, y: &Foo, z: &Baz) {
    |                    ^^^^ help: consider passing by value instead: `Foo`
 
 error: this argument is passed by reference, but would be more efficient if passed by value
-  --> $DIR/trivially_copy_pass_by_ref.rs:42:29
+  --> $DIR/trivially_copy_pass_by_ref.rs:52:29
    |
-42 | fn bad(x: &u32, y: &Foo, z: &Baz) {
+52 | fn bad(x: &u32, y: &Foo, z: &Baz) {
    |                             ^^^^ help: consider passing by value instead: `Baz`
 
 error: this argument is passed by reference, but would be more efficient if passed by value
-  --> $DIR/trivially_copy_pass_by_ref.rs:52:12
+  --> $DIR/trivially_copy_pass_by_ref.rs:62:12
    |
-52 |     fn bad(&self, x: &u32, y: &Foo, z: &Baz) {
+62 |     fn bad(&self, x: &u32, y: &Foo, z: &Baz) {
    |            ^^^^^ help: consider passing by value instead: `self`
 
 error: this argument is passed by reference, but would be more efficient if passed by value
-  --> $DIR/trivially_copy_pass_by_ref.rs:52:22
+  --> $DIR/trivially_copy_pass_by_ref.rs:62:22
    |
-52 |     fn bad(&self, x: &u32, y: &Foo, z: &Baz) {
+62 |     fn bad(&self, x: &u32, y: &Foo, z: &Baz) {
    |                      ^^^^ help: consider passing by value instead: `u32`
 
 error: this argument is passed by reference, but would be more efficient if passed by value
-  --> $DIR/trivially_copy_pass_by_ref.rs:52:31
+  --> $DIR/trivially_copy_pass_by_ref.rs:62:31
    |
-52 |     fn bad(&self, x: &u32, y: &Foo, z: &Baz) {
+62 |     fn bad(&self, x: &u32, y: &Foo, z: &Baz) {
    |                               ^^^^ help: consider passing by value instead: `Foo`
 
 error: this argument is passed by reference, but would be more efficient if passed by value
-  --> $DIR/trivially_copy_pass_by_ref.rs:52:40
+  --> $DIR/trivially_copy_pass_by_ref.rs:62:40
    |
-52 |     fn bad(&self, x: &u32, y: &Foo, z: &Baz) {
+62 |     fn bad(&self, x: &u32, y: &Foo, z: &Baz) {
    |                                        ^^^^ help: consider passing by value instead: `Baz`
 
 error: this argument is passed by reference, but would be more efficient if passed by value
-  --> $DIR/trivially_copy_pass_by_ref.rs:55:16
+  --> $DIR/trivially_copy_pass_by_ref.rs:65:16
    |
-55 |     fn bad2(x: &u32, y: &Foo, z: &Baz) {
+65 |     fn bad2(x: &u32, y: &Foo, z: &Baz) {
    |                ^^^^ help: consider passing by value instead: `u32`
 
 error: this argument is passed by reference, but would be more efficient if passed by value
-  --> $DIR/trivially_copy_pass_by_ref.rs:55:25
+  --> $DIR/trivially_copy_pass_by_ref.rs:65:25
    |
-55 |     fn bad2(x: &u32, y: &Foo, z: &Baz) {
+65 |     fn bad2(x: &u32, y: &Foo, z: &Baz) {
    |                         ^^^^ help: consider passing by value instead: `Foo`
 
 error: this argument is passed by reference, but would be more efficient if passed by value
-  --> $DIR/trivially_copy_pass_by_ref.rs:55:34
+  --> $DIR/trivially_copy_pass_by_ref.rs:65:34
    |
-55 |     fn bad2(x: &u32, y: &Foo, z: &Baz) {
+65 |     fn bad2(x: &u32, y: &Foo, z: &Baz) {
    |                                  ^^^^ help: consider passing by value instead: `Baz`
 
 error: this argument is passed by reference, but would be more efficient if passed by value
-  --> $DIR/trivially_copy_pass_by_ref.rs:69:16
+  --> $DIR/trivially_copy_pass_by_ref.rs:79:16
    |
-69 |     fn bad2(x: &u32, y: &Foo, z: &Baz) {
+79 |     fn bad2(x: &u32, y: &Foo, z: &Baz) {
    |                ^^^^ help: consider passing by value instead: `u32`
 
 error: this argument is passed by reference, but would be more efficient if passed by value
-  --> $DIR/trivially_copy_pass_by_ref.rs:69:25
+  --> $DIR/trivially_copy_pass_by_ref.rs:79:25
    |
-69 |     fn bad2(x: &u32, y: &Foo, z: &Baz) {
+79 |     fn bad2(x: &u32, y: &Foo, z: &Baz) {
    |                         ^^^^ help: consider passing by value instead: `Foo`
 
 error: this argument is passed by reference, but would be more efficient if passed by value
-  --> $DIR/trivially_copy_pass_by_ref.rs:69:34
+  --> $DIR/trivially_copy_pass_by_ref.rs:79:34
    |
-69 |     fn bad2(x: &u32, y: &Foo, z: &Baz) {
+79 |     fn bad2(x: &u32, y: &Foo, z: &Baz) {
    |                                  ^^^^ help: consider passing by value instead: `Baz`
 
 error: aborting due to 13 previous errors

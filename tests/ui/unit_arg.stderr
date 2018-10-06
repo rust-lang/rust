@@ -1,67 +1,67 @@
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:25:9
+  --> $DIR/unit_arg.rs:35:9
    |
-25 |     foo({});
+35 |     foo({});
    |         ^^
    |
    = note: `-D clippy::unit-arg` implied by `-D warnings`
 help: if you intended to pass a unit value, use a unit literal instead
    |
-25 |     foo(());
+35 |     foo(());
    |         ^^
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:26:9
+  --> $DIR/unit_arg.rs:36:9
    |
-26 |     foo({ 1; });
+36 |     foo({ 1; });
    |         ^^^^^^
 help: if you intended to pass a unit value, use a unit literal instead
    |
-26 |     foo(());
+36 |     foo(());
    |         ^^
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:27:9
+  --> $DIR/unit_arg.rs:37:9
    |
-27 |     foo(foo(1));
+37 |     foo(foo(1));
    |         ^^^^^^
 help: if you intended to pass a unit value, use a unit literal instead
    |
-27 |     foo(());
+37 |     foo(());
    |         ^^
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:28:9
+  --> $DIR/unit_arg.rs:38:9
    |
-28 |       foo({
+38 |       foo({
    |  _________^
-29 | |         foo(1);
-30 | |         foo(2);
-31 | |     });
+39 | |         foo(1);
+40 | |         foo(2);
+41 | |     });
    | |_____^
 help: if you intended to pass a unit value, use a unit literal instead
    |
-28 |     foo(());
+38 |     foo(());
    |         ^^
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:32:10
+  --> $DIR/unit_arg.rs:42:10
    |
-32 |     foo3({}, 2, 2);
+42 |     foo3({}, 2, 2);
    |          ^^
 help: if you intended to pass a unit value, use a unit literal instead
    |
-32 |     foo3((), 2, 2);
+42 |     foo3((), 2, 2);
    |          ^^
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:34:11
+  --> $DIR/unit_arg.rs:44:11
    |
-34 |     b.bar({ 1; });
+44 |     b.bar({ 1; });
    |           ^^^^^^
 help: if you intended to pass a unit value, use a unit literal instead
    |
-34 |     b.bar(());
+44 |     b.bar(());
    |           ^^
 
 error: aborting due to 6 previous errors

@@ -1,61 +1,61 @@
 error: identical conversion
- --> $DIR/identity_conversion.rs:6:13
-  |
-6 |     let _ = T::from(val);
-  |             ^^^^^^^^^^^^ help: consider removing `T::from()`: `val`
-  |
-note: lint level defined here
- --> $DIR/identity_conversion.rs:3:9
-  |
-3 | #![deny(clippy::identity_conversion)]
-  |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: identical conversion
- --> $DIR/identity_conversion.rs:7:5
-  |
-7 |     val.into()
-  |     ^^^^^^^^^^ help: consider removing `.into()`: `val`
-
-error: identical conversion
-  --> $DIR/identity_conversion.rs:19:22
+  --> $DIR/identity_conversion.rs:16:13
    |
-19 |         let _: i32 = 0i32.into();
+16 |     let _ = T::from(val);
+   |             ^^^^^^^^^^^^ help: consider removing `T::from()`: `val`
+   |
+note: lint level defined here
+  --> $DIR/identity_conversion.rs:13:9
+   |
+13 | #![deny(clippy::identity_conversion)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: identical conversion
+  --> $DIR/identity_conversion.rs:17:5
+   |
+17 |     val.into()
+   |     ^^^^^^^^^^ help: consider removing `.into()`: `val`
+
+error: identical conversion
+  --> $DIR/identity_conversion.rs:29:22
+   |
+29 |         let _: i32 = 0i32.into();
    |                      ^^^^^^^^^^^ help: consider removing `.into()`: `0i32`
 
 error: identical conversion
-  --> $DIR/identity_conversion.rs:40:21
+  --> $DIR/identity_conversion.rs:50:21
    |
-40 |     let _: String = "foo".to_string().into();
+50 |     let _: String = "foo".to_string().into();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into()`: `"foo".to_string()`
 
 error: identical conversion
-  --> $DIR/identity_conversion.rs:41:21
+  --> $DIR/identity_conversion.rs:51:21
    |
-41 |     let _: String = From::from("foo".to_string());
+51 |     let _: String = From::from("foo".to_string());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `From::from()`: `"foo".to_string()`
 
 error: identical conversion
-  --> $DIR/identity_conversion.rs:42:13
+  --> $DIR/identity_conversion.rs:52:13
    |
-42 |     let _ = String::from("foo".to_string());
+52 |     let _ = String::from("foo".to_string());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `String::from()`: `"foo".to_string()`
 
 error: identical conversion
-  --> $DIR/identity_conversion.rs:43:13
+  --> $DIR/identity_conversion.rs:53:13
    |
-43 |     let _ = String::from(format!("A: {:04}", 123));
+53 |     let _ = String::from(format!("A: {:04}", 123));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `String::from()`: `format!("A: {:04}", 123)`
 
 error: identical conversion
-  --> $DIR/identity_conversion.rs:44:13
+  --> $DIR/identity_conversion.rs:54:13
    |
-44 |     let _ = "".lines().into_iter();
+54 |     let _ = "".lines().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `"".lines()`
 
 error: identical conversion
-  --> $DIR/identity_conversion.rs:45:13
+  --> $DIR/identity_conversion.rs:55:13
    |
-45 |     let _ = vec![1, 2, 3].into_iter().into_iter();
+55 |     let _ = vec![1, 2, 3].into_iter().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `vec![1, 2, 3].into_iter()`
 
 error: aborting due to 9 previous errors

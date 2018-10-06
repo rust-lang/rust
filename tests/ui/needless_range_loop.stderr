@@ -1,33 +1,33 @@
 error: the loop variable `i` is only used to index `ns`.
- --> $DIR/needless_range_loop.rs:8:14
-  |
-8 |     for i in 3..10 {
-  |              ^^^^^
-  |
-  = note: `-D clippy::needless-range-loop` implied by `-D warnings`
+  --> $DIR/needless_range_loop.rs:18:14
+   |
+18 |     for i in 3..10 {
+   |              ^^^^^
+   |
+   = note: `-D clippy::needless-range-loop` implied by `-D warnings`
 help: consider using an iterator
-  |
-8 |     for <item> in ns.iter().take(10).skip(3) {
-  |         ^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+18 |     for <item> in ns.iter().take(10).skip(3) {
+   |         ^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the loop variable `i` is only used to index `ms`.
-  --> $DIR/needless_range_loop.rs:29:14
+  --> $DIR/needless_range_loop.rs:39:14
    |
-29 |     for i in 0..ms.len() {
+39 |     for i in 0..ms.len() {
    |              ^^^^^^^^^^^
 help: consider using an iterator
    |
-29 |     for <item> in &mut ms {
+39 |     for <item> in &mut ms {
    |         ^^^^^^    ^^^^^^^
 
 error: the loop variable `i` is only used to index `ms`.
-  --> $DIR/needless_range_loop.rs:35:14
+  --> $DIR/needless_range_loop.rs:45:14
    |
-35 |     for i in 0..ms.len() {
+45 |     for i in 0..ms.len() {
    |              ^^^^^^^^^^^
 help: consider using an iterator
    |
-35 |     for <item> in &mut ms {
+45 |     for <item> in &mut ms {
    |         ^^^^^^    ^^^^^^^
 
 error: aborting due to 3 previous errors
