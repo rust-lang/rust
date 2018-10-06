@@ -265,7 +265,7 @@ pub(crate) fn ignored_for_lto(sess: &Session, info: &CrateInfo, cnum: CrateNum) 
     // crates providing these functions don't participate in LTO (e.g.
     // no_builtins or compiler builtins crates).
     !sess.target.target.options.no_builtins &&
-        (info.is_no_builtins.contains(&cnum) || info.compiler_builtins == Some(cnum))
+        (info.compiler_builtins == Some(cnum) || info.is_no_builtins.contains(&cnum))
 }
 
 fn link_binary_output(sess: &Session,
