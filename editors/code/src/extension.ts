@@ -11,10 +11,22 @@ let uris = {
 let highlightingOn = true;
 
 export function activate(context: vscode.ExtensionContext) {
-    let config = vscode.workspace.getConfiguration('ra-lsp');
-    if (config.has('highlightingOn')) {
-        highlightingOn = config.get('highlightingOn') as boolean;
-    }
+    let applyHighlightingOn = () => {
+        let config = vscode.workspace.getConfiguration('ra-lsp');
+        if (config.has('highlightingOn')) {
+            highlightingOn = config.get('highlightingOn') as boolean;
+        };
+
+        if (!highlightingOn) {
+            removeHighlights();
+        }
+    };
+
+    // Apply the highlightingOn config now and whenever the config changes
+    applyHighlightingOn();
+    vscode.workspace.onDidChangeConfiguration(_ => {
+        applyHighlightingOn();
+    });
 
     let textDocumentContentProvider = new TextDocumentContentProvider()
     let dispose = (disposable: vscode.Disposable) => {
@@ -130,7 +142,7 @@ export function activate(context: vscode.ExtensionContext) {
         })
     }, null, context.subscriptions)
     vscode.window.onDidChangeActiveTextEditor(async (editor) => {
-        if (!editor || editor.document.languageId != 'rust') return
+        if (!highlightingOn || !editor || editor.document.languageId != 'rust') return
         let params: lc.TextDocumentIdentifier = {
             uri: editor.document.uri.toString()
         }
@@ -179,7 +191,7 @@ function startServer() {
                 let editor = vscode.window.visibleTextEditors.find(
                     (editor) => editor.document.uri.toString() == params.uri
                 )
-                if (editor == null) return;
+                if (!highlightingOn || !editor) return;
                 setHighlights(
                     editor,
                     params.decorations,
@@ -213,10 +225,11 @@ class TextDocumentContentProvider implements vscode.TextDocumentContentProvider 
     }
 }
 
+let decorations: { [index: string]: vscode.TextEditorDecorationType } = {};
 
-const decorations: { [index: string]: vscode.TextEditorDecorationType } = (() => {
+function initDecorations() {
     const decor = (obj: any) => vscode.window.createTextEditorDecorationType({ color: obj })
-    return {
+    decorations = {
         background: decor("#3F3F3F"),
         error: vscode.window.createTextEditorDecorationType({
             borderColor: "red",
@@ -232,14 +245,26 @@ const decorations: { [index: string]: vscode.TextEditorDecorationType } = (() =>
         attribute: decor("#BFEBBF"),
         literal: decor("#DFAF8F"),
     }
-})()
+}
+
+function removeHighlights() {
+    for (let tag in decorations) {
+        decorations[tag].dispose();
+    }
+
+    decorations = {};
+}
 
 function setHighlights(
     editor: vscode.TextEditor,
     highlights: Array<Decoration>
 ) {
-    if (!highlightingOn) {
-        return;
+    // Initialize decorations if necessary
+    //
+    // Note: decoration objects need to be kept around so we can dispose them
+    // if the user disables syntax highlighting
+    if (Object.keys(decorations).length === 0) {
+        initDecorations();
     }
 
     let byTag: Map<string, vscode.Range[]> = new Map()
