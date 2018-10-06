@@ -37,8 +37,8 @@ fn main() {
 
     fffffffffffffffffffffffffffffffffff(a, {
         SCRIPT_TASK_ROOT.with(|root| {
-                                  *root.borrow_mut() = Some(&script_task);
-                              });
+                            *root.borrow_mut() = Some(&script_task);
+                        });
     });
 
     let suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuum =
@@ -47,9 +47,9 @@ fn main() {
                .fold(0, |acc, x| acc + x);
 
     aaaaaaaaaaaaaaaa.map(|x| {
-                             x += 1;
-                             x
-                         })
+                        x += 1;
+                        x
+                    })
                     .filter(some_mod::some_filter)
 }
 
@@ -83,16 +83,16 @@ fn floaters() {
      .baz();
 
     Foo { x: val }.baz(|| {
-                           force();
-                           multiline();
-                       })
+                      force();
+                      multiline();
+                  })
                   .quux();
 
     Foo { y: i_am_multi_line,
           z: ok }.baz(|| {
-                          force();
-                          multiline();
-                      })
+                     force();
+                     multiline();
+                 })
                  .quux();
 
     a + match x {
@@ -137,9 +137,9 @@ fn issue1434() {
     for _ in 0..100 {
         let prototype_id =
             PrototypeIdData::from_reader::<_, B>(&mut self.file_cursor).chain_err(|| {
-                           format!("could not read prototype ID at offset {:#010x}",
-                                   current_offset)
-                       })?;
+                format!("could not read prototype ID at offset {:#010x}",
+                        current_offset)
+            })?;
     }
 }
 
@@ -147,12 +147,12 @@ fn issue2264() {
     {
         something.function()
                  .map(|| {
-                          if let a_very_very_very_very_very_very_very_very_long_variable =
-                              compute_this_variable()
-                          {
-                              println!("Hello");
-                          }
-                      })
+                     if let a_very_very_very_very_very_very_very_very_long_variable =
+                         compute_this_variable()
+                     {
+                         println!("Hello");
+                     }
+                 })
                  .collect();
     }
 }
