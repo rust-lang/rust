@@ -64,7 +64,7 @@ use std::time::Instant;
 use std::thread;
 use libc::{c_uint, c_void, c_char, size_t};
 
-pub const RELOC_MODEL_ARGS : [(&'static str, llvm::RelocMode); 7] = [
+pub const RELOC_MODEL_ARGS : [(&str, llvm::RelocMode); 7] = [
     ("pic", llvm::RelocMode::PIC),
     ("static", llvm::RelocMode::Static),
     ("default", llvm::RelocMode::Default),
@@ -81,7 +81,7 @@ pub const CODE_GEN_MODEL_ARGS: &[(&str, llvm::CodeModel)] = &[
     ("large", llvm::CodeModel::Large),
 ];
 
-pub const TLS_MODEL_ARGS : [(&'static str, llvm::ThreadLocalMode); 4] = [
+pub const TLS_MODEL_ARGS : [(&str, llvm::ThreadLocalMode); 4] = [
     ("global-dynamic", llvm::ThreadLocalMode::GeneralDynamic),
     ("local-dynamic", llvm::ThreadLocalMode::LocalDynamic),
     ("initial-exec", llvm::ThreadLocalMode::InitialExec),
