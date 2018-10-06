@@ -59,7 +59,8 @@ fn rpaths_to_flags(rpaths: &[String]) -> Vec<String> {
             ret.push(format!("-Wl,-rpath,{}", &(*rpath)));
         }
     }
-    return ret;
+
+    ret
 }
 
 fn get_rpaths(config: &mut RPathConfig, libs: &[PathBuf]) -> Vec<String> {
@@ -92,7 +93,8 @@ fn get_rpaths(config: &mut RPathConfig, libs: &[PathBuf]) -> Vec<String> {
 
     // Remove duplicates
     let rpaths = minimize_rpaths(&rpaths);
-    return rpaths;
+
+    rpaths
 }
 
 fn get_rpaths_relative_to_output(config: &mut RPathConfig,

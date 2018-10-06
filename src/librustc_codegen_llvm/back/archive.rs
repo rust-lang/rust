@@ -85,14 +85,14 @@ impl<'a> ArchiveBuilder<'a> {
         }
 
         let archive = self.src_archive.as_ref().unwrap().as_ref().unwrap();
-        let ret = archive.iter()
-                         .filter_map(|child| child.ok())
-                         .filter(is_relevant_child)
-                         .filter_map(|child| child.name())
-                         .filter(|name| !self.removals.iter().any(|x| x == name))
-                         .map(|name| name.to_string())
-                         .collect();
-        return ret;
+
+        archive.iter()
+               .filter_map(|child| child.ok())
+               .filter(is_relevant_child)
+               .filter_map(|child| child.name())
+               .filter(|name| !self.removals.iter().any(|x| x == name))
+               .map(|name| name.to_owned())
+               .collect()
     }
 
     fn src_archive(&mut self) -> Option<&ArchiveRO> {
@@ -293,7 +293,7 @@ impl<'a> ArchiveBuilder<'a> {
             for member in members {
                 llvm::LLVMRustArchiveMemberFree(member);
             }
-            return ret
+            ret
         }
     }
 }

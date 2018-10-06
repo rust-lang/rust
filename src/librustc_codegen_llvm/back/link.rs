@@ -340,7 +340,8 @@ fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
     sess.target_filesearch(PathKind::Native).for_each_lib_search_path(|path, _| {
         search.push(path.to_path_buf());
     });
-    return search;
+
+    search
 }
 
 fn archive_config<'a>(sess: &'a Session,
