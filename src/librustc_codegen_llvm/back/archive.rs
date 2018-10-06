@@ -185,13 +185,8 @@ impl<'a> ArchiveBuilder<'a> {
     /// Combine the provided files, rlibs, and native libraries into a single
     /// `Archive`.
     pub fn build(&mut self) {
-        let kind = match self.llvm_archive_kind() {
-            Ok(kind) => kind,
-            Err(kind) => {
-                self.config.sess.fatal(&format!("Don't know how to build archive of type: {}",
-                                                kind));
-            }
-        };
+        let kind = self.llvm_archive_kind().unwrap_or_else(|kind|
+            self.config.sess.fatal(&format!("Don't know how to build archive of type: {}", kind)));
 
         if let Err(e) = self.build_with_llvm(kind) {
             self.config.sess.fatal(&format!("failed to build archive: {}", e));

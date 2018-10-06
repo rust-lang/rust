@@ -107,13 +107,10 @@ pub fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> (PathB
 }
 
 pub fn remove(sess: &Session, path: &Path) {
-    match fs::remove_file(path) {
-        Ok(..) => {}
-        Err(e) => {
-            sess.err(&format!("failed to remove {}: {}",
-                             path.display(),
-                             e));
-        }
+    if let Err(e) = fs::remove_file(path) {
+        sess.err(&format!("failed to remove {}: {}",
+                          path.display(),
+                          e));
     }
 }
 
@@ -184,7 +181,7 @@ fn preserve_objects_for_their_debuginfo(sess: &Session) -> bool {
     // the objects as they're losslessly contained inside the archives.
     let output_linked = sess.crate_types.borrow()
         .iter()
-        .any(|x| *x != config::CrateType::Rlib && *x != config::CrateType::Staticlib);
+        .any(|&x| x != config::CrateType::Rlib && x != config::CrateType::Staticlib);
     if !output_linked {
         return false
     }
@@ -289,13 +286,10 @@ fn link_binary_output(sess: &Session,
         // final destination, with a `fs::rename` call. In order for the rename to
         // always succeed, the temporary file needs to be on the same filesystem,
         // which is why we create it inside the output directory specifically.
-        let metadata_tmpdir = match TempFileBuilder::new()
+        let metadata_tmpdir = TempFileBuilder::new()
             .prefix("rmeta")
             .tempdir_in(out_filename.parent().unwrap())
-        {
-            Ok(tmpdir) => tmpdir,
-            Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
-        };
+            .unwrap_or_else(|err| sess.fatal(&format!("couldn't create a temp dir: {}", err)));
         let metadata = emit_metadata(sess, codegen_results, &metadata_tmpdir);
         if let Err(e) = fs::rename(metadata, &out_filename) {
             sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
@@ -303,10 +297,8 @@ fn link_binary_output(sess: &Session,
         out_filenames.push(out_filename);
     }
 
-    let tmpdir = match TempFileBuilder::new().prefix("rustc").tempdir() {
-        Ok(tmpdir) => tmpdir,
-        Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
-    };
+    let tmpdir = TempFileBuilder::new().prefix("rustc").tempdir().unwrap_or_else(|err|
+        sess.fatal(&format!("couldn't create a temp dir: {}", err)));
 
     if outputs.outputs.should_codegen() {
         let out_filename = out_filename(sess, crate_type, outputs, crate_name);
@@ -869,9 +861,8 @@ fn link_natively(sess: &Session,
         sess.opts.debuginfo != DebugInfo::None &&
         !preserve_objects_for_their_debuginfo(sess)
     {
-        match Command::new("dsymutil").arg(out_filename).output() {
-            Ok(..) => {}
-            Err(e) => sess.fatal(&format!("failed to run dsymutil: {}", e)),
+        if let Err(e) = Command::new("dsymutil").arg(out_filename).output() {
+            sess.fatal(&format!("failed to run dsymutil: {}", e))
         }
     }
 

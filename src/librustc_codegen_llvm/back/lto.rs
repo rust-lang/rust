@@ -919,12 +919,6 @@ impl ThinLTOImports {
 }
 
 fn module_name_to_str(c_str: &CStr) -> &str {
-    match c_str.to_str() {
-        Ok(s) => s,
-        Err(e) => {
-            bug!("Encountered non-utf8 LLVM module name `{}`: {}",
-                c_str.to_string_lossy(),
-                e)
-        }
-    }
+    c_str.to_str().unwrap_or_else(|e|
+        bug!("Encountered non-utf8 LLVM module name `{}`: {}", c_str.to_string_lossy(), e))
 }

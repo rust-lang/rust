@@ -1440,15 +1440,12 @@ fn execute_copy_from_cache_work_item(cgcx: &CodegenContext,
                module.name,
                source_file,
                obj_out.display());
-        match link_or_copy(&source_file, &obj_out) {
-            Ok(_) => { }
-            Err(err) => {
-                let diag_handler = cgcx.create_diag_handler();
-                diag_handler.err(&format!("unable to copy {} to {}: {}",
-                                          source_file.display(),
-                                          obj_out.display(),
-                                          err));
-            }
+        if let Err(err) = link_or_copy(&source_file, &obj_out) {
+            let diag_handler = cgcx.create_diag_handler();
+            diag_handler.err(&format!("unable to copy {} to {}: {}",
+                                      source_file.display(),
+                                      obj_out.display(),
+                                      err));
         }
     }
 
