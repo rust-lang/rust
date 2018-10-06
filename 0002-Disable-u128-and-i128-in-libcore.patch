@@ -1,29 +1,30 @@
-From 5a91929290f0ced810185e9f81bbdb4d5cf53804 Mon Sep 17 00:00:00 2001
+From 7bc14b679a5e5a43940fd47a7f3be7f1cc27509b Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Sat, 22 Sep 2018 11:09:38 +0200
+Date: Sat, 6 Oct 2018 13:08:34 +0200
 Subject: [PATCH] Disable u128 and i128 in libcore
 
 ---
- src/libcore/clone.rs         |  4 +-
- src/libcore/cmp.rs           |  6 +--
- src/libcore/default.rs       |  2 -
- src/libcore/fmt/num.rs       |  6 +--
- src/libcore/hash/mod.rs      | 20 --------
- src/libcore/iter/range.rs    |  1 -
- src/libcore/iter/traits.rs   |  2 +-
- src/libcore/lib.rs           |  4 +-
- src/libcore/marker.rs        |  4 +-
- src/libcore/mem.rs           |  2 -
- src/libcore/num/mod.rs       | 99 ++++++++++--------------------------
- src/libcore/num/wrapping.rs  | 14 ++---
- src/libcore/ops/arith.rs     | 22 ++++----
- src/libcore/ops/bit.rs       | 30 ++++-------
- src/libcore/tests/iter.rs    | 15 ------
- src/libcore/tests/num/mod.rs | 18 -------
- 16 files changed, 63 insertions(+), 186 deletions(-)
+ src/libcore/clone.rs         |   4 +-
+ src/libcore/cmp.rs           |   6 +-
+ src/libcore/default.rs       |   2 -
+ src/libcore/fmt/num.rs       |   6 +-
+ src/libcore/hash/mod.rs      |  20 ------
+ src/libcore/iter/range.rs    |   1 -
+ src/libcore/iter/traits.rs   |   2 +-
+ src/libcore/lib.rs           |   2 -
+ src/libcore/marker.rs        |   4 +-
+ src/libcore/mem.rs           |   2 -
+ src/libcore/num/mod.rs       |  99 ++++++++-------------------
+ src/libcore/num/wrapping.rs  |  14 ++--
+ src/libcore/ops/arith.rs     |  22 +++---
+ src/libcore/ops/bit.rs       |  30 +++------
+ src/libcore/tests/iter.rs    |  15 -----
+ src/libcore/tests/num/mod.rs |  18 -----
+ src/libcore/time.rs          | 126 -----------------------------------
+ 17 files changed, 62 insertions(+), 311 deletions(-)
 
 diff --git a/src/libcore/clone.rs b/src/libcore/clone.rs
-index 3b15ba2..de08ce0 100644
+index 46bb580..fcf9fa8 100644
 --- a/src/libcore/clone.rs
 +++ b/src/libcore/clone.rs
 @@ -172,8 +172,8 @@ mod impls {
@@ -38,10 +39,10 @@ index 3b15ba2..de08ce0 100644
          bool char
      }
 diff --git a/src/libcore/cmp.rs b/src/libcore/cmp.rs
-index ef7d83a..e40c5c2 100644
+index edaed31..570217b 100644
 --- a/src/libcore/cmp.rs
 +++ b/src/libcore/cmp.rs
-@@ -883,7 +883,7 @@ mod impls {
+@@ -886,7 +886,7 @@ mod impls {
      }
  
      partial_eq_impl! {
@@ -50,7 +51,7 @@ index ef7d83a..e40c5c2 100644
      }
  
      macro_rules! eq_impl {
-@@ -893,7 +893,7 @@ mod impls {
+@@ -896,7 +896,7 @@ mod impls {
          )*)
      }
  
@@ -59,7 +60,7 @@ index ef7d83a..e40c5c2 100644
  
      macro_rules! partial_ord_impl {
          ($($t:ty)*) => ($(
-@@ -982,7 +982,7 @@ mod impls {
+@@ -985,7 +985,7 @@ mod impls {
          }
      }
  
@@ -128,7 +129,7 @@ index 51391fa..140255e 100644
  impl_Display!(isize, usize: to_u16);
  #[cfg(target_pointer_width = "32")]
 diff --git a/src/libcore/hash/mod.rs b/src/libcore/hash/mod.rs
-index e7907e0..84b700c 100644
+index bbebadd..d6de656 100644
 --- a/src/libcore/hash/mod.rs
 +++ b/src/libcore/hash/mod.rs
 @@ -306,12 +306,6 @@ pub trait Hasher {
@@ -157,7 +158,7 @@ index e7907e0..84b700c 100644
      /// Writes a single `isize` into this hasher.
      #[inline]
      #[stable(feature = "hasher_write", since = "1.3.0")]
-@@ -380,9 +368,6 @@ impl<'a, H: Hasher + ?Sized> Hasher for &'a mut H {
+@@ -380,9 +368,6 @@ impl<H: Hasher + ?Sized> Hasher for &mut H {
      fn write_u64(&mut self, i: u64) {
          (**self).write_u64(i)
      }
@@ -167,7 +168,7 @@ index e7907e0..84b700c 100644
      fn write_usize(&mut self, i: usize) {
          (**self).write_usize(i)
      }
-@@ -398,9 +383,6 @@ impl<'a, H: Hasher + ?Sized> Hasher for &'a mut H {
+@@ -398,9 +383,6 @@ impl<H: Hasher + ?Sized> Hasher for &mut H {
      fn write_i64(&mut self, i: i64) {
          (**self).write_i64(i)
      }
@@ -199,7 +200,7 @@ index 55addd8..6695cfe 100644
  macro_rules! range_exact_iter_impl {
      ($($t:ty)*) => ($(
 diff --git a/src/libcore/iter/traits.rs b/src/libcore/iter/traits.rs
-index 4b2c1aa..ec3991f 100644
+index f95f8e7..549d832 100644
 --- a/src/libcore/iter/traits.rs
 +++ b/src/libcore/iter/traits.rs
 @@ -843,7 +843,7 @@ macro_rules! float_sum_product {
@@ -212,10 +213,10 @@ index 4b2c1aa..ec3991f 100644
  
  /// An iterator adapter that produces output as long as the underlying
 diff --git a/src/libcore/lib.rs b/src/libcore/lib.rs
-index 6a3f169..883ae4b 100644
+index 61181c2..5694583 100644
 --- a/src/libcore/lib.rs
 +++ b/src/libcore/lib.rs
-@@ -151,14 +151,12 @@ mod uint_macros;
+@@ -153,14 +153,12 @@ mod uint_macros;
  #[path = "num/i16.rs"]   pub mod i16;
  #[path = "num/i32.rs"]   pub mod i32;
  #[path = "num/i64.rs"]   pub mod i64;
@@ -230,17 +231,8 @@ index 6a3f169..883ae4b 100644
  
  #[path = "num/f32.rs"]   pub mod f32;
  #[path = "num/f64.rs"]   pub mod f64;
-@@ -208,7 +206,7 @@ pub mod slice;
- pub mod str;
- pub mod hash;
- pub mod fmt;
--pub mod time;
-+//pub mod time;
- 
- pub mod unicode;
- 
 diff --git a/src/libcore/marker.rs b/src/libcore/marker.rs
-index 5572fe1..c8d8144 100644
+index 266c691..39feadb 100644
 --- a/src/libcore/marker.rs
 +++ b/src/libcore/marker.rs
 @@ -672,8 +672,8 @@ mod copy_impls {
@@ -255,7 +247,7 @@ index 5572fe1..c8d8144 100644
          bool char
      }
 diff --git a/src/libcore/mem.rs b/src/libcore/mem.rs
-index 1803ade..f7fb0cb 100644
+index 27ee955..e45a2c9 100644
 --- a/src/libcore/mem.rs
 +++ b/src/libcore/mem.rs
 @@ -162,12 +162,10 @@ pub fn forget<T>(t: T) {
@@ -272,10 +264,10 @@ index 1803ade..f7fb0cb 100644
  /// f64 | 8
  /// char | 4
 diff --git a/src/libcore/num/mod.rs b/src/libcore/num/mod.rs
-index 12da045..f02bf78 100644
+index c6473a2..c513f30 100644
 --- a/src/libcore/num/mod.rs
 +++ b/src/libcore/num/mod.rs
-@@ -105,7 +105,6 @@ nonzero_integers! {
+@@ -112,7 +112,6 @@ nonzero_integers! {
      NonZeroU16(u16);
      NonZeroU32(u32);
      NonZeroU64(u64);
@@ -283,7 +275,7 @@ index 12da045..f02bf78 100644
      NonZeroUsize(usize);
  }
  
-@@ -2285,18 +2284,6 @@ impl i64 {
+@@ -2087,18 +2086,6 @@ impl i64 {
           "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
  }
  
@@ -302,7 +294,7 @@ index 12da045..f02bf78 100644
  #[cfg(target_pointer_width = "16")]
  #[lang = "isize"]
  impl isize {
-@@ -4732,17 +4719,6 @@ impl u64 {
+@@ -4339,17 +4326,6 @@ impl u64 {
          "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
  }
  
@@ -320,7 +312,7 @@ index 12da045..f02bf78 100644
  #[cfg(target_pointer_width = "16")]
  #[lang = "usize"]
  impl usize {
-@@ -4826,7 +4802,7 @@ macro_rules! from_str_radix_int_impl {
+@@ -4433,7 +4409,7 @@ macro_rules! from_str_radix_int_impl {
          }
      )*}
  }
@@ -329,7 +321,7 @@ index 12da045..f02bf78 100644
  
  /// The error type returned when a checked integral type conversion fails.
  #[unstable(feature = "try_from", issue = "33417")]
-@@ -4942,30 +4918,25 @@ macro_rules! rev {
+@@ -4549,30 +4525,25 @@ macro_rules! rev {
  try_from_upper_bounded!(u16, u8);
  try_from_upper_bounded!(u32, u16, u8);
  try_from_upper_bounded!(u64, u32, u16, u8);
@@ -364,7 +356,7 @@ index 12da045..f02bf78 100644
  
  // usize/isize
  try_from_upper_bounded!(usize, isize);
-@@ -4977,21 +4948,21 @@ mod ptr_try_from_impls {
+@@ -4584,21 +4555,21 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8);
@@ -394,7 +386,7 @@ index 12da045..f02bf78 100644
  }
  
  #[cfg(target_pointer_width = "32")]
-@@ -5000,24 +4971,24 @@ mod ptr_try_from_impls {
+@@ -4607,24 +4578,24 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8, u16);
@@ -427,7 +419,7 @@ index 12da045..f02bf78 100644
  }
  
  #[cfg(target_pointer_width = "64")]
-@@ -5026,24 +4997,20 @@ mod ptr_try_from_impls {
+@@ -4633,24 +4604,20 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8, u16, u32);
@@ -456,7 +448,7 @@ index 12da045..f02bf78 100644
  }
  
  #[doc(hidden)]
-@@ -5078,7 +5045,7 @@ macro_rules! doit {
+@@ -4685,7 +4652,7 @@ macro_rules! doit {
          }
      })*)
  }
@@ -465,7 +457,7 @@ index 12da045..f02bf78 100644
  
  fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, ParseIntError> {
      use self::IntErrorKind::*;
-@@ -5246,52 +5213,38 @@ impl_from_bool! { u8, #[stable(feature = "from_bool", since = "1.28.0")] }
+@@ -4853,52 +4820,38 @@ impl_from_bool! { u8, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u16, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u32, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u64, #[stable(feature = "from_bool", since = "1.28.0")] }
@@ -842,7 +834,7 @@ index 3900f36..66b7980 100644
 -shr_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 +shr_assign_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 diff --git a/src/libcore/tests/iter.rs b/src/libcore/tests/iter.rs
-index 72b115f..d542e10 100644
+index 2476c07..2075670 100644
 --- a/src/libcore/tests/iter.rs
 +++ b/src/libcore/tests/iter.rs
 @@ -224,8 +224,6 @@ fn test_iterator_step_by_nth_overflow() {
@@ -943,6 +935,157 @@ index ab96d31..bb5c1d0 100644
  
  test_impl_try_from_always_ok! { test_try_usizeusize, usize, usize }
  test_impl_try_from_always_ok! { test_try_isizeisize, isize, isize }
+diff --git a/src/libcore/time.rs b/src/libcore/time.rs
+index 81ae8ad..0e3dd39 100644
+--- a/src/libcore/time.rs
++++ b/src/libcore/time.rs
+@@ -30,7 +30,6 @@ const NANOS_PER_MILLI: u32 = 1_000_000;
+ const NANOS_PER_MICRO: u32 = 1_000;
+ const MILLIS_PER_SEC: u64 = 1_000;
+ const MICROS_PER_SEC: u64 = 1_000_000;
+-const MAX_NANOS_F64: f64 = ((u64::MAX as u128 + 1)*(NANOS_PER_SEC as u128)) as f64;
+ 
+ /// A `Duration` type to represent a span of time, typically used for system
+ /// timeouts.
+@@ -273,57 +272,6 @@ impl Duration {
+     #[inline]
+     pub const fn subsec_nanos(&self) -> u32 { self.nanos }
+ 
+-    /// Returns the total number of whole milliseconds contained by this `Duration`.
+-    ///
+-    /// # Examples
+-    ///
+-    /// ```
+-    /// # #![feature(duration_as_u128)]
+-    /// use std::time::Duration;
+-    ///
+-    /// let duration = Duration::new(5, 730023852);
+-    /// assert_eq!(duration.as_millis(), 5730);
+-    /// ```
+-    #[unstable(feature = "duration_as_u128", issue = "50202")]
+-    #[inline]
+-    pub fn as_millis(&self) -> u128 {
+-        self.secs as u128 * MILLIS_PER_SEC as u128 + (self.nanos / NANOS_PER_MILLI) as u128
+-    }
+-
+-    /// Returns the total number of whole microseconds contained by this `Duration`.
+-    ///
+-    /// # Examples
+-    ///
+-    /// ```
+-    /// # #![feature(duration_as_u128)]
+-    /// use std::time::Duration;
+-    ///
+-    /// let duration = Duration::new(5, 730023852);
+-    /// assert_eq!(duration.as_micros(), 5730023);
+-    /// ```
+-    #[unstable(feature = "duration_as_u128", issue = "50202")]
+-    #[inline]
+-    pub fn as_micros(&self) -> u128 {
+-        self.secs as u128 * MICROS_PER_SEC as u128 + (self.nanos / NANOS_PER_MICRO) as u128
+-    }
+-
+-    /// Returns the total number of nanoseconds contained by this `Duration`.
+-    ///
+-    /// # Examples
+-    ///
+-    /// ```
+-    /// # #![feature(duration_as_u128)]
+-    /// use std::time::Duration;
+-    ///
+-    /// let duration = Duration::new(5, 730023852);
+-    /// assert_eq!(duration.as_nanos(), 5730023852);
+-    /// ```
+-    #[unstable(feature = "duration_as_u128", issue = "50202")]
+-    #[inline]
+-    pub fn as_nanos(&self) -> u128 {
+-        self.secs as u128 * NANOS_PER_SEC as u128 + self.nanos as u128
+-    }
+-
+     /// Checked `Duration` addition. Computes `self + other`, returning [`None`]
+     /// if overflow occurred.
+     ///
+@@ -482,80 +430,6 @@ impl Duration {
+         (self.secs as f64) + (self.nanos as f64) / (NANOS_PER_SEC as f64)
+     }
+ 
+-    /// Creates a new `Duration` from the specified number of seconds.
+-    ///
+-    /// # Panics
+-    /// This constructor will panic if `secs` is not finite, negative or overflows `Duration`.
+-    ///
+-    /// # Examples
+-    /// ```
+-    /// #![feature(duration_float)]
+-    /// use std::time::Duration;
+-    ///
+-    /// let dur = Duration::from_float_secs(2.7);
+-    /// assert_eq!(dur, Duration::new(2, 700_000_000));
+-    /// ```
+-    #[unstable(feature = "duration_float", issue = "54361")]
+-    #[inline]
+-    pub fn from_float_secs(secs: f64) -> Duration {
+-        let nanos =  secs * (NANOS_PER_SEC as f64);
+-        if !nanos.is_finite() {
+-            panic!("got non-finite value when converting float to duration");
+-        }
+-        if nanos >= MAX_NANOS_F64 {
+-            panic!("overflow when converting float to duration");
+-        }
+-        if nanos < 0.0 {
+-            panic!("underflow when converting float to duration");
+-        }
+-        let nanos =  nanos as u128;
+-        Duration {
+-            secs: (nanos / (NANOS_PER_SEC as u128)) as u64,
+-            nanos: (nanos % (NANOS_PER_SEC as u128)) as u32,
+-        }
+-    }
+-
+-    /// Multiply `Duration` by `f64`.
+-    ///
+-    /// # Panics
+-    /// This method will panic if result is not finite, negative or overflows `Duration`.
+-    ///
+-    /// # Examples
+-    /// ```
+-    /// #![feature(duration_float)]
+-    /// use std::time::Duration;
+-    ///
+-    /// let dur = Duration::new(2, 700_000_000);
+-    /// assert_eq!(dur.mul_f64(3.14), Duration::new(8, 478_000_000));
+-    /// assert_eq!(dur.mul_f64(3.14e5), Duration::new(847_800, 0));
+-    /// ```
+-    #[unstable(feature = "duration_float", issue = "54361")]
+-    #[inline]
+-    pub fn mul_f64(self, rhs: f64) -> Duration {
+-        Duration::from_float_secs(rhs * self.as_float_secs())
+-    }
+-
+-    /// Divide `Duration` by `f64`.
+-    ///
+-    /// # Panics
+-    /// This method will panic if result is not finite, negative or overflows `Duration`.
+-    ///
+-    /// # Examples
+-    /// ```
+-    /// #![feature(duration_float)]
+-    /// use std::time::Duration;
+-    ///
+-    /// let dur = Duration::new(2, 700_000_000);
+-    /// assert_eq!(dur.div_f64(3.14), Duration::new(0, 859_872_611));
+-    /// // note that truncation is used, not rounding
+-    /// assert_eq!(dur.div_f64(3.14e5), Duration::new(0, 8_598));
+-    /// ```
+-    #[unstable(feature = "duration_float", issue = "54361")]
+-    #[inline]
+-    pub fn div_f64(self, rhs: f64) -> Duration {
+-        Duration::from_float_secs(self.as_float_secs() / rhs)
+-    }
+-
+     /// Divide `Duration` by `Duration` and return `f64`.
+     ///
+     /// # Examples
 -- 
 2.17.1 (Apple Git-112)
 
