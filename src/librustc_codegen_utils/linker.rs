@@ -456,9 +456,8 @@ impl<'a> Linker for GccLinker<'a> {
 
     fn finalize(&mut self) -> Command {
         self.hint_dynamic(); // Reset to default before returning the composed command line.
-        let mut cmd = Command::new("");
-        ::std::mem::swap(&mut cmd, &mut self.cmd);
-        cmd
+
+        ::std::mem::replace(&mut self.cmd, Command::new(""))
     }
 
     fn group_start(&mut self) {
@@ -710,9 +709,7 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn finalize(&mut self) -> Command {
-        let mut cmd = Command::new("");
-        ::std::mem::swap(&mut cmd, &mut self.cmd);
-        cmd
+        ::std::mem::replace(&mut self.cmd, Command::new(""))
     }
 
     // MSVC doesn't need group indicators
@@ -880,9 +877,7 @@ impl<'a> Linker for EmLinker<'a> {
     }
 
     fn finalize(&mut self) -> Command {
-        let mut cmd = Command::new("");
-        ::std::mem::swap(&mut cmd, &mut self.cmd);
-        cmd
+        ::std::mem::replace(&mut self.cmd, Command::new(""))
     }
 
     // Appears not necessary on Emscripten
@@ -1080,9 +1075,7 @@ impl<'a> Linker for WasmLd<'a> {
         // indicative of bugs, let's prevent them.
         self.cmd.arg("--fatal-warnings");
 
-        let mut cmd = Command::new("");
-        ::std::mem::swap(&mut cmd, &mut self.cmd);
-        cmd
+        ::std::mem::replace(&mut self.cmd, Command::new(""))
     }
 
     // Not needed for now with LLD
