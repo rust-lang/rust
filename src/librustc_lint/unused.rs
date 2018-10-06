@@ -274,7 +274,7 @@ impl UnusedParens {
                             parser::contains_exterior_struct_lit(&inner);
             if !necessary {
                 let pattern = pprust::expr_to_string(value);
-                Self::remove_outer_parens(cx, value.span, &pattern, msg)
+                Self::remove_outer_parens(cx, value.span, &pattern, msg);
             }
         }
     }
@@ -282,13 +282,10 @@ impl UnusedParens {
     fn check_unused_parens_pat(&self,
                                 cx: &EarlyContext,
                                 value: &ast::Pat,
-                                msg: &str,
-                                struct_lit_needs_parens: bool) {
+                                msg: &str) {
         if let ast::PatKind::Paren(_) = value.node {
-            if !struct_lit_needs_parens {
-                let pattern = pprust::pat_to_string(value);
-                Self::remove_outer_parens(cx, value.span, &pattern, msg)
-            }
+            let pattern = pprust::pat_to_string(value);
+            Self::remove_outer_parens(cx, value.span, &pattern, msg);
         }
     }
 
@@ -355,7 +352,9 @@ impl EarlyLintPass for UnusedParens {
                     // first "argument" is self (which sometimes needs parens)
                     MethodCall(_, ref args) => (&args[1..], "method"),
                     // actual catch-all arm
-                    _ => { return; }
+                    _ => {
+                        return;
+                    }
                 };
                 // Don't lint if this is a nested macro expansion: otherwise, the lint could
                 // trigger in situations that macro authors shouldn't have to care about, e.g.,
@@ -377,15 +376,9 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_pat(&mut self, cx: &EarlyContext, p: &ast::Pat) {
-        use ast::PatKind::*;
-        let (value, msg, struct_lit_needs_parens) = match p.node {
-            Ident(.., Some(ref pat)) => (pat, "optional subpattern", false),
-            Ref(ref pat, _) => (pat, "reference pattern", false),
-            Slice(_, Some(ref pat), _) => (pat, "optional position pattern", false),
-            Paren(_) => (p, "pattern", false),
-            _ => return,
-        };
-        self.check_unused_parens_pat(cx, &value, msg, struct_lit_needs_parens);
+        if let ast::PatKind::Paren(_) = p.node {
+            self.check_unused_parens_pat(cx, &p, "pattern");
+        }
     }
 
     fn check_stmt(&mut self, cx: &EarlyContext, s: &ast::Stmt) {

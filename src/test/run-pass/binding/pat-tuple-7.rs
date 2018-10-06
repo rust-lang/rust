@@ -12,6 +12,6 @@
 
 fn main() {
     match 0 {
-        (pat) => assert_eq!(pat, 0)
+        pat => assert_eq!(pat, 0)
     }
 }

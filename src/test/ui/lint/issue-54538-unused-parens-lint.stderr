@@ -1,0 +1,42 @@
+warning: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:24:9
+   |
+LL |         (_) => {}     //~ WARNING: unnecessary parentheses around pattern
+   |         ^^^ help: remove these parentheses
+   |
+note: lint level defined here
+  --> $DIR/issue-54538-unused-parens-lint.rs:15:9
+   |
+LL | #![warn(unused_parens)]
+   |         ^^^^^^^^^^^^^
+
+warning: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:25:9
+   |
+LL |         (y) => {}     //~ WARNING: unnecessary parentheses around pattern
+   |         ^^^ help: remove these parentheses
+
+warning: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:26:9
+   |
+LL |         (ref r) => {} //~ WARNING: unnecessary parentheses around pattern
+   |         ^^^^^^^ help: remove these parentheses
+
+warning: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:27:21
+   |
+LL |         e @ 1...2 | (e @ (3...4)) => {}
+   |                     ^^^^^^^^^^^^^ help: remove these parentheses
+
+warning: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:27:26
+   |
+LL |         e @ 1...2 | (e @ (3...4)) => {}
+   |                          ^^^^^^^ help: remove these parentheses
+
+warning: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:36:20
+   |
+LL |             field: (ref a @ Some(_)),
+   |                    ^^^^^^^^^^^^^^^^^ help: remove these parentheses
+
