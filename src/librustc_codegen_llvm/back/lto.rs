@@ -225,11 +225,12 @@ fn fat_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
         // and we want to move everything to the same LLVM context. Currently the
         // way we know of to do that is to serialize them to a string and them parse
         // them later. Not great but hey, that's why it's "fat" LTO, right?
-        for module in modules {
+        serialized_modules.extend(modules.into_iter().map(|module| {
             let buffer = ModuleBuffer::new(module.module_llvm.llmod());
             let llmod_id = CString::new(&module.name[..]).unwrap();
-            serialized_modules.push((SerializedModule::Local(buffer), llmod_id));
-        }
+
+            (SerializedModule::Local(buffer), llmod_id)
+        }));
 
         // For all serialized bitcode files we parse them and link them in as we did
         // above, this is all mostly handled in C++. Like above, though, we don't
@@ -349,9 +350,10 @@ fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
             .map(|&(_, ref wp)| (wp.cgu_name.clone(), wp.clone()))
             .collect();
 
-        let mut thin_buffers = Vec::new();
-        let mut module_names = Vec::new();
-        let mut thin_modules = Vec::new();
+        let full_scope_len = modules.len() + serialized_modules.len() + cached_modules.len();
+        let mut thin_buffers = Vec::with_capacity(modules.len());
+        let mut module_names = Vec::with_capacity(full_scope_len);
+        let mut thin_modules = Vec::with_capacity(full_scope_len);
 
         // FIXME: right now, like with fat LTO, we serialize all in-memory
         //        modules before working with them and ThinLTO. We really
@@ -360,7 +362,7 @@ fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
         //        into the global index. It turns out that this loop is by far
         //        the most expensive portion of this small bit of global
         //        analysis!
-        for (i, module) in modules.iter().enumerate() {
+        for (i, module) in modules.into_iter().enumerate() {
             info!("local module: {} - {}", i, module.name);
             let name = CString::new(module.name.clone()).unwrap();
             let buffer = ThinBuffer::new(module.module_llvm.llmod());
@@ -406,7 +408,7 @@ fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
         //        incremental ThinLTO first where we could actually avoid
         //        looking at upstream modules entirely sometimes (the contents,
         //        we must always unconditionally look at the index).
-        let mut serialized = Vec::new();
+        let mut serialized = Vec::with_capacity(serialized_modules.len() + cached_modules.len());
 
         let cached_modules = cached_modules.into_iter().map(|(sm, wp)| {
             (sm, CString::new(wp.cgu_name).unwrap())

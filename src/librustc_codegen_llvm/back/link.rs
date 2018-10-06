@@ -72,12 +72,12 @@ pub(crate) fn link_binary(sess: &Session,
            bug!("invalid output type `{:?}` for target os `{}`",
                 crate_type, sess.opts.target_triple);
         }
-        let mut out_files = link_binary_output(sess,
-                                               codegen_results,
-                                               crate_type,
-                                               outputs,
-                                               crate_name);
-        out_filenames.append(&mut out_files);
+        let out_files = link_binary_output(sess,
+                                           codegen_results,
+                                           crate_type,
+                                           outputs,
+                                           crate_name);
+        out_filenames.extend(out_files);
     }
 
     // Remove the temporary object file and metadata if we aren't saving temps
