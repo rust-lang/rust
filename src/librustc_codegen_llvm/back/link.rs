@@ -1415,7 +1415,6 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
         for f in archive.src_files() {
             if f.ends_with(RLIB_BYTECODE_EXTENSION) || f == METADATA_FILENAME {
                 archive.remove_file(&f);
-                continue
             }
         }
 
