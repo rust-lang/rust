@@ -19,7 +19,7 @@ mod scope;
 mod test_utils;
 
 use ra_syntax::{
-    File, TextUnit, TextRange, SyntaxNodeRef,
+    File, TextUnit, TextRange, SmolStr, SyntaxNodeRef,
     ast::{self, AstNode, NameOwner},
     algo::find_leaf_at_offset,
     SyntaxKind::{self, *},
@@ -164,12 +164,12 @@ pub fn find_node_at_offset<'a, N: AstNode<'a>>(
         .next()
 }
 
-pub fn resolve_local_name<'a>(file: &'a File, offset: TextUnit, name_ref: ast::NameRef) -> Option<ast::Name<'a>> {
+pub fn resolve_local_name(file: &File, offset: TextUnit, name_ref: ast::NameRef) -> Option<(SmolStr, TextRange)> {
     let fn_def = find_node_at_offset::<ast::FnDef>(file.syntax(), offset)?;
     let scopes = scope::FnScopes::new(fn_def);
-
-    // TODO: This doesn't work because of scopes lifetime
-    scope::resolve_local_name(name_ref, &scopes)
+    let scope_entry = scope::resolve_local_name(name_ref, &scopes)?;
+    let name = scope_entry.ast().name()?;
+    Some((scope_entry.name(), name.syntax().range()))
 }
 
 #[cfg(test)]

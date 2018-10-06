@@ -89,7 +89,7 @@ impl ScopeEntry {
             .unwrap()
             .text()
     }
-    fn ast(&self) -> ast::BindPat {
+    pub fn ast(&self) -> ast::BindPat {
         ast::BindPat::cast(self.syntax.borrowed())
             .unwrap()
     }
@@ -241,16 +241,15 @@ struct ScopeData {
     entries: Vec<ScopeEntry>
 }
 
-pub fn resolve_local_name<'a>(name_ref: ast::NameRef, scopes: &'a FnScopes) -> Option<ast::Name<'a>> {
+pub fn resolve_local_name<'a>(name_ref: ast::NameRef, scopes: &'a FnScopes) -> Option<&'a ScopeEntry> {
     use std::collections::HashSet;
 
     let mut shadowed = HashSet::new();
-    let names = scopes.scope_chain(name_ref.syntax())
+    scopes.scope_chain(name_ref.syntax())
         .flat_map(|scope| scopes.entries(scope).iter())
         .filter(|entry| shadowed.insert(entry.name()))
         .filter(|entry| entry.name() == name_ref.text())
-        .nth(0)?;
-    names.ast().name()
+        .nth(0)
 }
 
 #[cfg(test)]
@@ -365,7 +364,7 @@ mod tests {
 
         let scopes = FnScopes::new(fn_def);
 
-        let local_name = resolve_local_name(name_ref, &scopes).unwrap();
+        let local_name = resolve_local_name(name_ref, &scopes).unwrap().ast().name().unwrap();
 
         let expected_name = find_node_at_offset::<ast::Name>(file.syntax(), expected_offset.into()).unwrap();
         assert_eq!(local_name.syntax().range(), expected_name.syntax().range());

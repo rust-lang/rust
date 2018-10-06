@@ -199,11 +199,11 @@ impl AnalysisImpl {
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, offset) {
 
             // First try to resolve the symbol locally
-            if let Some(name) = resolve_local_name(&file, offset, name_ref) {
-                let vec: Vec<(FileId, FileSymbol)>::new();
+            if let Some((name, range)) = resolve_local_name(&file, offset, name_ref) {
+                let mut vec = vec![];
                 vec.push((file_id, FileSymbol {
-                    name: name.text(),
-                    node_range: name.syntax().range(),
+                    name,
+                    node_range: range,
                     kind : NAME
                 }));
 
