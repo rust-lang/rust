@@ -460,6 +460,12 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
             }
             CPlace::Addr(base, extra, layout) => {
                 let (field_ptr, field_layout) = codegen_field(fx, base, layout, field);
+                let extra = if field_layout.is_unsized() {
+                    assert!(extra.is_some());
+                    extra
+                } else {
+                    None
+                };
                 CPlace::Addr(field_ptr, extra, field_layout)
             }
         }

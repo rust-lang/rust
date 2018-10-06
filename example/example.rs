@@ -196,3 +196,13 @@ fn str_wrapper_get(w: &StrWrapper) -> &str {
 fn i16_as_i8(a: i16) -> i8 {
     a as i8
 }
+
+struct Unsized(u8, str);
+
+fn get_sized_field_ref_from_unsized_type(u: &Unsized) -> &u8 {
+    &u.0
+}
+
+fn get_unsized_field_ref_from_unsized_type(u: &Unsized) -> &str {
+    &u.1
+}
