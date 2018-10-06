@@ -589,12 +589,19 @@ fn trans_stmt<'a, 'tcx: 'a>(
                 }
                 Rvalue::Len(place) => {
                     let place = trans_place(fx, place);
-                    let size = match place {
-                        CPlace::Addr(_, size, _) => size.unwrap(),
-                        CPlace::Var(_, _) => unreachable!(),
-                    };
                     let usize_layout = fx.layout_of(fx.tcx.types.usize);
-                    lval.write_cvalue(fx, CValue::ByVal(size, usize_layout));
+                    let len = match place.layout().ty.sty {
+                        ty::Array(_elem_ty, len) => {
+                            let len = crate::constant::force_eval_const(fx, len).unwrap_usize(fx.tcx) as i64;
+                            fx.bcx.ins().iconst(fx.module.pointer_type(), len)
+                        },
+                        ty::Slice(_elem_ty) => match place {
+                            CPlace::Addr(_, size, _) => size.unwrap(),
+                            CPlace::Var(_, _) => unreachable!(),
+                        }
+                        _ => bug!("Rvalue::Len({:?})", place),
+                    };
+                    lval.write_cvalue(fx, CValue::ByVal(len, usize_layout));
                 }
                 Rvalue::NullaryOp(NullOp::Box, content_ty) => {
                     use crate::rustc::middle::lang_items::ExchangeMallocFnLangItem;

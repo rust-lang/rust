@@ -67,7 +67,7 @@ pub fn trans_constant<'a, 'tcx: 'a>(
     trans_const_value(fx, const_)
 }
 
-fn force_eval_const<'a, 'tcx: 'a>(
+pub fn force_eval_const<'a, 'tcx: 'a>(
     fx: &FunctionCx<'a, 'tcx, impl Backend>,
     const_: &'tcx Const<'tcx>,
 ) -> &'tcx Const<'tcx> {

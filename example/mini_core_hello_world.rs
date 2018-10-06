@@ -168,4 +168,6 @@ fn main() {
         Ordering::Less => {},
         _ => assert!(false),
     }
+
+    [NoisyDropInner, NoisyDropInner];
 }
