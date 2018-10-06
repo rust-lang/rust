@@ -96,9 +96,14 @@ pub unsafe extern fn __rust_start_panic(_payload: usize) -> u32 {
 // runtime at all.
 pub mod personalities {
     #[no_mangle]
-    #[cfg(not(all(target_os = "windows",
-                  target_env = "gnu",
-                  target_arch = "x86_64")))]
+    #[cfg(not(any(
+        target_arch = "wasm32",
+        all(
+            target_os = "windows",
+            target_env = "gnu",
+            target_arch = "x86_64",
+        ),
+    )))]
     pub extern fn rust_eh_personality() {}
 
     // On x86_64-pc-windows-gnu we use our own personality function that needs

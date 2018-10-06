@@ -89,6 +89,7 @@ impl LinkerInfo {
                 Box::new(WasmLd {
                     cmd,
                     sess,
+                    info: self
                 }) as Box<dyn Linker>
             }
         }
@@ -926,6 +927,7 @@ fn exported_symbols(tcx: TyCtxt, crate_type: CrateType) -> Vec<String> {
 pub struct WasmLd<'a> {
     cmd: Command,
     sess: &'a Session,
+    info: &'a LinkerInfo,
 }
 
 impl<'a> Linker for WasmLd<'a> {
@@ -1021,7 +1023,10 @@ impl<'a> Linker for WasmLd<'a> {
     fn build_dylib(&mut self, _out_filename: &Path) {
     }
 
-    fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType) {
+    fn export_symbols(&mut self, _tmpdir: &Path, crate_type: CrateType) {
+        for sym in self.info.exports[&crate_type].iter() {
+            self.cmd.arg("--export").arg(&sym);
+        }
     }
 
     fn subsystem(&mut self, _subsystem: &str) {
