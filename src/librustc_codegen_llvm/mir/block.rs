@@ -298,8 +298,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 };
                 let (drop_fn, fn_ty) = match ty.sty {
                     ty::Dynamic(..) => {
-                        let fn_ty = drop_fn.ty(bx.cx.tcx);
-                        let sig = common::ty_fn_sig(bx.cx, fn_ty);
+                        let sig = drop_fn.fn_sig(bx.cx.tcx);
                         let sig = bx.tcx().normalize_erasing_late_bound_regions(
                             ty::ParamEnv::reveal_all(),
                             &sig,

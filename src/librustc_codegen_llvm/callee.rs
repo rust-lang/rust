@@ -47,16 +47,16 @@ pub fn get_fn(
     assert!(!instance.substs.has_escaping_regions());
     assert!(!instance.substs.has_param_types());
 
-    let fn_ty = instance.ty(cx.tcx);
+    let sig = instance.fn_sig(cx.tcx);
     if let Some(&llfn) = cx.instances.borrow().get(&instance) {
         return llfn;
     }
 
     let sym = tcx.symbol_name(instance).as_str();
-    debug!("get_fn({:?}: {:?}) => {}", instance, fn_ty, sym);
+    debug!("get_fn({:?}: {:?}) => {}", instance, sig, sym);
 
     // Create a fn pointer with the substituted signature.
-    let fn_ptr_ty = tcx.mk_fn_ptr(common::ty_fn_sig_vtable(cx, fn_ty, instance.is_vtable_shim()));
+    let fn_ptr_ty = tcx.mk_fn_ptr(sig);
     let llptrty = cx.layout_of(fn_ptr_ty).llvm_type(cx);
 
     let llfn = if let Some(llfn) = declare::get_declared_value(cx, &sym) {
@@ -91,7 +91,7 @@ pub fn get_fn(
             llfn
         }
     } else {
-        let llfn = declare::declare_fn(cx, &sym, common::ty_fn_sig_vtable(cx, fn_ty, instance.is_vtable_shim()));
+        let llfn = declare::declare_fn(cx, &sym, sig);
         assert_eq!(common::val_ty(llfn), llptrty);
         debug!("get_fn: not casting pointer!");
 

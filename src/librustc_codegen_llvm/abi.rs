@@ -11,7 +11,7 @@
 use llvm::{self, AttributePlace};
 use base;
 use builder::{Builder, MemFlags};
-use common::{ty_fn_sig, C_usize};
+use common::C_usize;
 use context::CodegenCx;
 use mir::place::PlaceRef;
 use mir::operand::OperandValue;
@@ -283,8 +283,7 @@ pub trait FnTypeExt<'tcx> {
 
 impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
     fn of_instance(cx: &CodegenCx<'ll, 'tcx>, instance: &ty::Instance<'tcx>) -> Self {
-        let fn_ty = instance.ty(cx.tcx);
-        let sig = ty_fn_sig(cx, fn_ty);
+        let sig = instance.fn_sig(cx.tcx);
         let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
         FnType::new(cx, sig, &[])
     }

@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use hir::Unsafety;
 use hir::def_id::DefId;
-use ty::{self, Ty, TypeFoldable, Substs, TyCtxt};
+use ty::{self, Ty, PolyFnSig, TypeFoldable, Substs, TyCtxt};
 use traits;
 use rustc_target::spec::abi::Abi;
 use util::ppaux;
 
 use std::fmt;
+use std::iter;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct Instance<'tcx> {
@@ -58,6 +60,65 @@ impl<'a, 'tcx> Instance<'tcx> {
             ty::ParamEnv::reveal_all(),
             &ty,
         )
+    }
+
+    fn fn_sig_noadjust(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> PolyFnSig<'tcx> {
+        let ty = self.ty(tcx);
+        match ty.sty {
+            ty::FnDef(..) |
+            // Shims currently have type FnPtr. Not sure this should remain.
+            ty::FnPtr(_) => ty.fn_sig(tcx),
+            ty::Closure(def_id, substs) => {
+                let sig = substs.closure_sig(def_id, tcx);
+
+                let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
+                sig.map_bound(|sig| tcx.mk_fn_sig(
+                    iter::once(*env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
+                    sig.output(),
+                    sig.variadic,
+                    sig.unsafety,
+                    sig.abi
+                ))
+            }
+            ty::Generator(def_id, substs, _) => {
+                let sig = substs.poly_sig(def_id, tcx);
+
+                let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
+                let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
+
+                sig.map_bound(|sig| {
+                    let state_did = tcx.lang_items().gen_state().unwrap();
+                    let state_adt_ref = tcx.adt_def(state_did);
+                    let state_substs = tcx.intern_substs(&[
+                        sig.yield_ty.into(),
+                        sig.return_ty.into(),
+                    ]);
+                    let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
+
+                    tcx.mk_fn_sig(iter::once(env_ty),
+                        ret_ty,
+                        false,
+                        Unsafety::Normal,
+                        Abi::Rust
+                    )
+                })
+            }
+            _ => bug!("unexpected type {:?} in Instance::fn_sig_noadjust", ty)
+        }
+    }
+
+    pub fn fn_sig(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::PolyFnSig<'tcx> {
+        let mut fn_sig = self.fn_sig_noadjust(tcx);
+        if let InstanceDef::VtableShim(..) = self.def {
+            // Modify fn(self, ...) to fn(self: *mut Self, ...)
+            fn_sig = fn_sig.map_bound(|mut fn_sig| {
+                let mut inputs_and_output = fn_sig.inputs_and_output.to_vec();
+                inputs_and_output[0] = tcx.mk_mut_ptr(inputs_and_output[0]);
+                fn_sig.inputs_and_output = tcx.intern_type_list(&inputs_and_output);
+                fn_sig
+            });
+        }
+        fn_sig
     }
 }
 
