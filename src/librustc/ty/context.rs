@@ -36,7 +36,7 @@ use mir::interpret::Allocation;
 use ty::subst::{CanonicalSubsts, Kind, Substs, Subst};
 use ty::ReprOptions;
 use traits;
-use traits::{Clause, Clauses, Goal, Goals};
+use traits::{Clause, Clauses, GoalKind, Goal, Goals};
 use ty::{self, Ty, TypeAndMut};
 use ty::{TyS, TyKind, List};
 use ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorSubsts, Region, Const};
@@ -143,7 +143,8 @@ pub struct CtxtInterners<'tcx> {
     predicates: InternedSet<'tcx, List<Predicate<'tcx>>>,
     const_: InternedSet<'tcx, Const<'tcx>>,
     clauses: InternedSet<'tcx, List<Clause<'tcx>>>,
-    goals: InternedSet<'tcx, List<Goal<'tcx>>>,
+    goal: InternedSet<'tcx, GoalKind<'tcx>>,
+    goal_list: InternedSet<'tcx, List<Goal<'tcx>>>,
 }
 
 impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
@@ -159,7 +160,8 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
             predicates: Default::default(),
             const_: Default::default(),
             clauses: Default::default(),
-            goals: Default::default(),
+            goal: Default::default(),
+            goal_list: Default::default(),
         }
     }
 
@@ -1731,9 +1733,9 @@ impl<'a, 'tcx> Lift<'tcx> for Region<'a> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for &'a Goal<'a> {
-    type Lifted = &'tcx Goal<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<&'tcx Goal<'tcx>> {
+impl<'a, 'tcx> Lift<'tcx> for Goal<'a> {
+    type Lifted = Goal<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Goal<'tcx>> {
         if tcx.interners.arena.in_arena(*self as *const _) {
             return Some(unsafe { mem::transmute(*self) });
         }
@@ -2304,6 +2306,12 @@ impl<'tcx> Borrow<RegionKind> for Interned<'tcx, RegionKind> {
     }
 }
 
+impl<'tcx: 'lcx, 'lcx> Borrow<GoalKind<'lcx>> for Interned<'tcx, GoalKind<'tcx>> {
+    fn borrow<'a>(&'a self) -> &'a GoalKind<'lcx> {
+        &self.0
+    }
+}
+
 impl<'tcx: 'lcx, 'lcx> Borrow<[ExistentialPredicate<'lcx>]>
     for Interned<'tcx, List<ExistentialPredicate<'tcx>>> {
     fn borrow<'a>(&'a self) -> &'a [ExistentialPredicate<'lcx>] {
@@ -2419,7 +2427,8 @@ pub fn keep_local<'tcx, T: ty::TypeFoldable<'tcx>>(x: &T) -> bool {
 
 direct_interners!('tcx,
     region: mk_region(|r: &RegionKind| r.keep_in_local_tcx()) -> RegionKind,
-    const_: mk_const(|c: &Const<'_>| keep_local(&c.ty) || keep_local(&c.val)) -> Const<'tcx>
+    const_: mk_const(|c: &Const<'_>| keep_local(&c.ty) || keep_local(&c.val)) -> Const<'tcx>,
+    goal: mk_goal(|c: &GoalKind<'_>| keep_local(c)) -> GoalKind<'tcx>
 );
 
 macro_rules! slice_interners {
@@ -2438,7 +2447,7 @@ slice_interners!(
     type_list: _intern_type_list(Ty),
     substs: _intern_substs(Kind),
     clauses: _intern_clauses(Clause),
-    goals: _intern_goals(Goal)
+    goal_list: _intern_goals(Goal)
 );
 
 // This isn't a perfect fit: CanonicalVarInfo slices are always
@@ -2816,10 +2825,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn mk_goals<I: InternAs<[Goal<'tcx>], Goals<'tcx>>>(self, iter: I) -> I::Output {
         iter.intern_with(|xs| self.intern_goals(xs))
-    }
-
-    pub fn mk_goal(self, goal: Goal<'tcx>) -> &'tcx Goal<'_> {
-        &self.intern_goals(&[goal])[0]
     }
 
     pub fn lint_hir<S: Into<MultiSpan>>(self,

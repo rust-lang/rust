@@ -16,5 +16,5 @@ rustc = { path = "../librustc" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
-chalk-engine = { version = "0.7.0", default-features=false }
+chalk-engine = { version = "0.8.0", default-features=false }
 smallvec = { version = "0.6.5", features = ["union"] }
