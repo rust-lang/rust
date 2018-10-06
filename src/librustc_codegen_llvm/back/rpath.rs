@@ -42,7 +42,7 @@ pub fn get_rpath_flags(config: &mut RPathConfig) -> Vec<String> {
 
     // Use DT_RUNPATH instead of DT_RPATH if available
     if config.linker_is_gnu {
-        flags.push("-Wl,--enable-new-dtags".to_string());
+        flags.push("-Wl,--enable-new-dtags".to_owned());
     }
 
     flags
@@ -169,7 +169,7 @@ fn get_install_prefix_rpath(config: &mut RPathConfig) -> String {
     let path = (config.get_install_prefix_lib_path)();
     let path = env::current_dir().unwrap().join(&path);
     // FIXME (#9639): This needs to handle non-utf8 paths
-    path.to_str().expect("non-utf8 component in rpath").to_string()
+    path.to_str().expect("non-utf8 component in rpath").to_owned()
 }
 
 fn minimize_rpaths(rpaths: &[String]) -> Vec<String> {

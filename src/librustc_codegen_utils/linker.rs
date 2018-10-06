@@ -860,7 +860,7 @@ impl<'a> Linker for EmLinker<'a> {
             let res = encoder.emit_seq(symbols.len(), |encoder| {
                 for (i, sym) in symbols.iter().enumerate() {
                     encoder.emit_seq_elt(i, |encoder| {
-                        encoder.emit_str(&("_".to_string() + sym))
+                        encoder.emit_str(&("_".to_owned() + sym))
                     })?;
                 }
                 Ok(())

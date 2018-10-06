@@ -172,7 +172,7 @@ impl<'a> ArchiveBuilder<'a> {
         let name = file.file_name().unwrap().to_str().unwrap();
         self.additions.push(Addition::File {
             path: file.to_path_buf(),
-            name_in_archive: name.to_string(),
+            name_in_archive: name.to_owned(),
         });
     }
 
