@@ -106,8 +106,7 @@ pub fn write_output_file(
         file_type: llvm::FileType) -> Result<(), FatalError> {
     unsafe {
         let output_c = path2cstr(output);
-        let result = llvm::LLVMRustWriteOutputFile(
-                target, pm, m, output_c.as_ptr(), file_type);
+        let result = llvm::LLVMRustWriteOutputFile(target, pm, m, output_c.as_ptr(), file_type);
         if result.into_result().is_err() {
             let msg = format!("could not write output to {}", output.display());
             Err(llvm_err(handler, msg))
@@ -590,8 +589,7 @@ unsafe fn optimize(cgcx: &CodegenContext,
 
             for pass in &config.passes {
                 if !addpass(pass) {
-                    diag_handler.warn(&format!("unknown pass `{}`, ignoring",
-                                            pass));
+                    diag_handler.warn(&format!("unknown pass `{}`, ignoring", pass));
                 }
                 if pass == "name-anon-globals" {
                     have_name_anon_globals_pass = true;
@@ -601,8 +599,8 @@ unsafe fn optimize(cgcx: &CodegenContext,
             for pass in &cgcx.plugin_passes {
                 if !addpass(pass) {
                     diag_handler.err(&format!("a plugin asked for LLVM pass \
-                                            `{}` but LLVM does not \
-                                            recognize it", pass));
+                                               `{}` but LLVM does not \
+                                               recognize it", pass));
                 }
                 if pass == "name-anon-globals" {
                     have_name_anon_globals_pass = true;
@@ -613,12 +611,12 @@ unsafe fn optimize(cgcx: &CodegenContext,
                 // As described above, this will probably cause an error in LLVM
                 if config.no_prepopulate_passes {
                     diag_handler.err("The current compilation is going to use thin LTO buffers \
-                                     without running LLVM's NameAnonGlobals pass. \
-                                     This will likely cause errors in LLVM. Consider adding \
-                                     -C passes=name-anon-globals to the compiler command line.");
+                                      without running LLVM's NameAnonGlobals pass. \
+                                      This will likely cause errors in LLVM. Consider adding \
+                                      -C passes=name-anon-globals to the compiler command line.");
                 } else {
                     bug!("We are using thin LTO buffers without running the NameAnonGlobals pass. \
-                         This will likely cause errors in LLVM and should never happen.");
+                          This will likely cause errors in LLVM and should never happen.");
                 }
             }
         }
@@ -704,9 +702,9 @@ unsafe fn codegen(cgcx: &CodegenContext,
         // escape the closure itself, and the manager should only be
         // used once.
         unsafe fn with_codegen<'ll, F, R>(tm: &'ll llvm::TargetMachine,
-                                    llmod: &'ll llvm::Module,
-                                    no_builtins: bool,
-                                    f: F) -> R
+                                          llmod: &'ll llvm::Module,
+                                          no_builtins: bool,
+                                          f: F) -> R
             where F: FnOnce(&'ll mut PassManager<'ll>) -> R,
         {
             let cpm = llvm::LLVMCreatePassManager();
@@ -818,7 +816,7 @@ unsafe fn codegen(cgcx: &CodegenContext,
                 };
                 with_codegen(tm, llmod, config.no_builtins, |cpm| {
                     write_output_file(diag_handler, tm, cpm, llmod, &path,
-                                    llvm::FileType::AssemblyFile)
+                                      llvm::FileType::AssemblyFile)
                 })?;
                 timeline.record("asm");
             }
@@ -826,7 +824,7 @@ unsafe fn codegen(cgcx: &CodegenContext,
             if write_obj {
                 with_codegen(tm, llmod, config.no_builtins, |cpm| {
                     write_output_file(diag_handler, tm, cpm, llmod, &obj_out,
-                                    llvm::FileType::ObjectFile)
+                                      llvm::FileType::ObjectFile)
                 })?;
                 timeline.record("obj");
             } else if asm_to_obj {
@@ -947,11 +945,11 @@ fn need_pre_thin_lto_bitcode_for_incr_comp(sess: &Session) -> bool {
 }
 
 pub fn start_async_codegen(tcx: TyCtxt,
-                               time_graph: Option<TimeGraph>,
-                               metadata: EncodedMetadata,
-                               coordinator_receive: Receiver<Box<dyn Any + Send>>,
-                               total_cgus: usize)
-                               -> OngoingCodegen {
+                           time_graph: Option<TimeGraph>,
+                           metadata: EncodedMetadata,
+                           coordinator_receive: Receiver<Box<dyn Any + Send>>,
+                           total_cgus: usize)
+                           -> OngoingCodegen {
     let sess = tcx.sess;
     let crate_name = tcx.crate_name(LOCAL_CRATE);
     let crate_hash = tcx.crate_hash(LOCAL_CRATE);
@@ -1116,7 +1114,8 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
         }
 
         if let Some((id, product)) =
-                copy_cgu_workproducts_to_incr_comp_cache_dir(sess, &module.name, &files) {
+            copy_cgu_workproducts_to_incr_comp_cache_dir(sess, &module.name, &files)
+        {
             work_products.insert(id, product);
         }
     }
@@ -1584,10 +1583,8 @@ fn start_executing_work(tcx: TyCtxt,
 
         let (name, mut cmd) = get_linker(sess, &linker, flavor);
         cmd.args(&sess.target.target.options.asm_args);
-        Some(Arc::new(AssemblerCommand {
-            name,
-            cmd,
-        }))
+
+        Some(Arc::new(AssemblerCommand { name, cmd }))
     } else {
         None
     };
@@ -2186,9 +2183,9 @@ pub fn run_assembler(cgcx: &CodegenContext, handler: &Handler, assembly: &Path, 
                 handler.struct_err(&format!("linking with `{}` failed: {}",
                                             pname.display(),
                                             prog.status))
-                    .note(&format!("{:?}", &cmd))
-                    .note(str::from_utf8(&note[..]).unwrap())
-                    .emit();
+                       .note(&format!("{:?}", &cmd))
+                       .note(str::from_utf8(&note[..]).unwrap())
+                       .emit();
                 handler.abort_if_errors();
             }
         },
@@ -2450,8 +2447,8 @@ impl OngoingCodegen {
     }
 
     pub(crate) fn submit_pre_codegened_module_to_llvm(&self,
-                                                       tcx: TyCtxt,
-                                                       module: ModuleCodegen) {
+                                                      tcx: TyCtxt,
+                                                      module: ModuleCodegen) {
         self.wait_for_signal_to_codegen_item();
         self.check_for_errors(tcx.sess);
 

@@ -47,8 +47,8 @@ use std::str;
 use syntax::attr;
 
 pub use rustc_codegen_utils::link::{find_crate_name, filename_for_input, default_output_for_target,
-                                  invalid_output_for_target, out_filename, check_file_is_writeable,
-                                  filename_for_metadata};
+                                    invalid_output_for_target, filename_for_metadata,
+                                    out_filename, check_file_is_writeable};
 
 // The third parameter is for env vars, used on windows to set up the
 // path for MSVC to find its DLLs, and gcc to find its bundled
@@ -147,9 +147,7 @@ pub(crate) fn link_binary(sess: &Session,
 
     // Remove the temporary object file and metadata if we aren't saving temps
     if !sess.opts.cg.save_temps {
-        if sess.opts.output_types.should_codegen() &&
-            !preserve_objects_for_their_debuginfo(sess)
-        {
+        if sess.opts.output_types.should_codegen() && !preserve_objects_for_their_debuginfo(sess) {
             for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
                 remove(sess, obj);
             }
@@ -814,8 +812,8 @@ fn link_natively(sess: &Session,
                     .unwrap_or_else(|_| {
                         let mut x = "Non-UTF-8 output: ".to_string();
                         x.extend(s.iter()
-                                 .flat_map(|&b| ascii::escape_default(b))
-                                 .map(|b| char::from_u32(b as u32).unwrap()));
+                                  .flat_map(|&b| ascii::escape_default(b))
+                                  .map(|b| char::from_u32(b as u32).unwrap()));
                         x
                     })
             }
@@ -1012,8 +1010,7 @@ fn exec_linker(sess: &Session, cmd: &mut Command, out_filename: &Path, tmpdir: &
                 // ensure the line is interpreted as one whole argument.
                 for c in self.arg.chars() {
                     match c {
-                        '\\' |
-                        ' ' => write!(f, "\\{}", c)?,
+                        '\\' | ' ' => write!(f, "\\{}", c)?,
                         c => write!(f, "{}", c)?,
                     }
                 }

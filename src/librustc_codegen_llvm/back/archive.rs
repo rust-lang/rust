@@ -83,6 +83,7 @@ impl<'a> ArchiveBuilder<'a> {
         if self.src_archive().is_none() {
             return Vec::new()
         }
+
         let archive = self.src_archive.as_ref().unwrap().as_ref().unwrap();
         let ret = archive.iter()
                          .filter_map(|child| child.ok())

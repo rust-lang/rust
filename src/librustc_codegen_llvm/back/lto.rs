@@ -205,11 +205,11 @@ pub(crate) fn run(cgcx: &CodegenContext,
         Lto::Fat => {
             assert!(cached_modules.is_empty());
             let opt_jobs = fat_lto(cgcx,
-                                  &diag_handler,
-                                  modules,
-                                  upstream_modules,
-                                  &symbol_white_list,
-                                  timeline);
+                                   &diag_handler,
+                                   modules,
+                                   upstream_modules,
+                                   &symbol_white_list,
+                                   timeline);
             opt_jobs.map(|opt_jobs| (opt_jobs, vec![]))
         }
         Lto::Thin |
@@ -310,8 +310,8 @@ fn fat_lto(cgcx: &CodegenContext,
         unsafe {
             let ptr = symbol_white_list.as_ptr();
             llvm::LLVMRustRunRestrictionPass(llmod,
-                                            ptr as *const *const libc::c_char,
-                                            symbol_white_list.len() as libc::size_t);
+                                             ptr as *const *const libc::c_char,
+                                             symbol_white_list.len() as libc::size_t);
             cgcx.save_temp_bitcode(&module, "lto.after-restriction");
         }
 
@@ -617,8 +617,7 @@ fn run_pass_manager(cgcx: &CodegenContext,
             llvm::LLVMRustAddPass(pm, pass.unwrap());
         }
 
-        time_ext(cgcx.time_passes, None, "LTO passes", ||
-             llvm::LLVMRunPassManager(pm, llmod));
+        time_ext(cgcx.time_passes, None, "LTO passes", || llvm::LLVMRunPassManager(pm, llmod));
 
         llvm::LLVMDisposePassManager(pm);
     }

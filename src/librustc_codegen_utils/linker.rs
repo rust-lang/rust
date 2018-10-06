@@ -224,9 +224,9 @@ impl<'a> GccLinker<'a> {
 }
 
 impl<'a> Linker for GccLinker<'a> {
-    fn link_dylib(&mut self, lib: &str) { self.hint_dynamic(); self.cmd.arg(format!("-l{}",lib)); }
+    fn link_dylib(&mut self, lib: &str) { self.hint_dynamic(); self.cmd.arg(format!("-l{}", lib)); }
     fn link_staticlib(&mut self, lib: &str) {
-        self.hint_static(); self.cmd.arg(format!("-l{}",lib));
+        self.hint_static(); self.cmd.arg(format!("-l{}", lib));
     }
     fn link_rlib(&mut self, lib: &Path) { self.hint_static(); self.cmd.arg(lib); }
     fn include_path(&mut self, path: &Path) { self.cmd.arg("-L").arg(path); }
@@ -243,7 +243,7 @@ impl<'a> Linker for GccLinker<'a> {
 
     fn link_rust_dylib(&mut self, lib: &str, _path: &Path) {
         self.hint_dynamic();
-        self.cmd.arg(format!("-l{}",lib));
+        self.cmd.arg(format!("-l{}", lib));
     }
 
     fn link_framework(&mut self, framework: &str) {
@@ -261,7 +261,7 @@ impl<'a> Linker for GccLinker<'a> {
         self.hint_static();
         let target = &self.sess.target.target;
         if !target.options.is_like_osx {
-            self.linker_arg("--whole-archive").cmd.arg(format!("-l{}",lib));
+            self.linker_arg("--whole-archive").cmd.arg(format!("-l{}", lib));
             self.linker_arg("--no-whole-archive");
         } else {
             // -force_load is the macOS equivalent of --whole-archive, but it
@@ -373,8 +373,7 @@ impl<'a> Linker for GccLinker<'a> {
             // purely to support rustbuild right now, we should get a more
             // principled solution at some point to force the compiler to pass
             // the right `-Wl,-install_name` with an `@rpath` in it.
-            if self.sess.opts.cg.rpath ||
-               self.sess.opts.debugging_opts.osx_rpath_install_name {
+            if self.sess.opts.cg.rpath || self.sess.opts.debugging_opts.osx_rpath_install_name {
                 self.linker_arg("-install_name");
                 let mut v = OsString::from("@rpath/");
                 v.push(out_filename.file_name().unwrap());
