@@ -13,7 +13,14 @@ use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::map::definitions::DefPathData;
 use rustc::hir::{self, ImplPolarity};
 use rustc::traits::{
-    Clause, Clauses, DomainGoal, FromEnv, Goal, PolyDomainGoal, ProgramClause, WellFormed,
+    Clause,
+    Clauses,
+    DomainGoal,
+    FromEnv,
+    GoalKind,
+    PolyDomainGoal,
+    ProgramClause,
+    WellFormed,
     WhereClause,
 };
 use rustc::ty::query::Providers;
@@ -249,7 +256,7 @@ fn program_clauses_for_trait<'a, 'tcx>(
     let impl_trait: DomainGoal = trait_pred.lower();
 
     // `FromEnv(Self: Trait<P1..Pn>)`
-    let from_env_goal = impl_trait.into_from_env_goal().into_goal();
+    let from_env_goal = tcx.mk_goal(impl_trait.into_from_env_goal().into_goal());
     let hypotheses = tcx.intern_goals(&[from_env_goal]);
 
     // `Implemented(Self: Trait<P1..Pn>) :- FromEnv(Self: Trait<P1..Pn>)`
@@ -308,7 +315,7 @@ fn program_clauses_for_trait<'a, 'tcx>(
     let wf_clause = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Trait(trait_pred)),
         hypotheses: tcx.mk_goals(
-            wf_conditions.map(|wc| Goal::from_poly_domain_goal(wc, tcx)),
+            wf_conditions.map(|wc| tcx.mk_goal(GoalKind::from_poly_domain_goal(wc, tcx))),
         ),
     };
     let wf_clause = iter::once(Clause::ForAll(ty::Binder::dummy(wf_clause)));
@@ -352,7 +359,7 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
         hypotheses: tcx.mk_goals(
             where_clauses
                 .into_iter()
-                .map(|wc| Goal::from_poly_domain_goal(wc, tcx)),
+                .map(|wc| tcx.mk_goal(GoalKind::from_poly_domain_goal(wc, tcx))),
         ),
     };
     tcx.intern_clauses(&[Clause::ForAll(ty::Binder::dummy(clause))])
@@ -388,7 +395,7 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
             where_clauses
                 .iter()
                 .cloned()
-                .map(|wc| Goal::from_poly_domain_goal(wc, tcx)),
+                .map(|wc| tcx.mk_goal(GoalKind::from_poly_domain_goal(wc, tcx))),
         ),
     };
 
@@ -404,7 +411,7 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
     // ```
 
     // `FromEnv(Ty<...>)`
-    let from_env_goal = DomainGoal::FromEnv(FromEnv::Ty(ty)).into_goal();
+    let from_env_goal = tcx.mk_goal(DomainGoal::FromEnv(FromEnv::Ty(ty)).into_goal());
     let hypotheses = tcx.intern_goals(&[from_env_goal]);
 
     // For each where clause `WC`:
@@ -482,7 +489,7 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
         hypotheses: tcx.mk_goals(
             hypotheses
                 .into_iter()
-                .map(|wc| Goal::from_poly_domain_goal(wc, tcx)),
+                .map(|wc| tcx.mk_goal(GoalKind::from_poly_domain_goal(wc, tcx))),
         ),
     };
     tcx.intern_clauses(&[Clause::ForAll(ty::Binder::dummy(clause))])
