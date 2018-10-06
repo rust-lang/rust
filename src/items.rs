@@ -1816,12 +1816,9 @@ impl Rewrite for ast::FunctionRetTy {
     }
 }
 
-fn is_empty_infer(context: &RewriteContext, ty: &ast::Ty) -> bool {
+fn is_empty_infer(ty: &ast::Ty, pat_span: Span) -> bool {
     match ty.node {
-        ast::TyKind::Infer => {
-            let original = context.snippet(ty.span);
-            original != "_"
-        }
+        ast::TyKind::Infer => ty.span.hi() == pat_span.hi(),
         _ => false,
     }
 }
@@ -1833,7 +1830,7 @@ impl Rewrite for ast::Arg {
                 .pat
                 .rewrite(context, Shape::legacy(shape.width, shape.indent))?;
 
-            if !is_empty_infer(context, &*self.ty) {
+            if !is_empty_infer(&*self.ty, self.pat.span) {
                 if context.config.space_before_colon() {
                     result.push_str(" ");
                 }
