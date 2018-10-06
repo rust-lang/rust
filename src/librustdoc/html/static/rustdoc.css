@@ -97,7 +97,6 @@ h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod):not(.important), h4
 h1.fqn {
 	border-bottom: 1px dashed;
 	margin-top: 0;
-	overflow: auto;
 }
 h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	border-bottom: 1px solid;

@@ -1001,9 +1001,7 @@ impl<'a> Parser<'a> {
             AstFragmentKind::ForeignItems => {
                 let mut items = SmallVec::new();
                 while self.token != token::Eof {
-                    if let Some(item) = self.parse_foreign_item()? {
-                        items.push(item);
-                    }
+                    items.push(self.parse_foreign_item()?);
                 }
                 AstFragment::ForeignItems(items)
             }

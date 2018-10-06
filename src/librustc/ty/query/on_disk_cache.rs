@@ -254,23 +254,19 @@ impl<'sess> OnDiskCache<'sess> {
             })?;
 
             // Encode diagnostics
-            let diagnostics_index = {
-                let mut diagnostics_index = EncodedDiagnosticsIndex::new();
+            let diagnostics_index: EncodedDiagnosticsIndex = self.current_diagnostics.borrow()
+                .iter()
+                .map(|(dep_node_index, diagnostics)|
+            {
+                let pos = AbsoluteBytePos::new(encoder.position());
+                // Let's make sure we get the expected type here:
+                let diagnostics: &EncodedDiagnostics = diagnostics;
+                let dep_node_index = SerializedDepNodeIndex::new(dep_node_index.index());
+                encoder.encode_tagged(dep_node_index, diagnostics)?;
 
-                for (dep_node_index, diagnostics) in self.current_diagnostics
-                                                        .borrow()
-                                                        .iter() {
-                    let pos = AbsoluteBytePos::new(encoder.position());
-                    // Let's make sure we get the expected type here:
-                    let diagnostics: &EncodedDiagnostics = diagnostics;
-                    let dep_node_index =
-                        SerializedDepNodeIndex::new(dep_node_index.index());
-                    encoder.encode_tagged(dep_node_index, diagnostics)?;
-                    diagnostics_index.push((dep_node_index, pos));
-                }
-
-                diagnostics_index
-            };
+                Ok((dep_node_index, pos))
+            })
+            .collect::<Result<_, _>>()?;
 
             let interpret_alloc_index = {
                 let mut interpret_alloc_index = Vec::new();
@@ -282,6 +278,7 @@ impl<'sess> OnDiskCache<'sess> {
                         // otherwise, abort
                         break;
                     }
+                    interpret_alloc_index.reserve(new_n);
                     for idx in n..new_n {
                         let id = encoder.interpret_allocs_inverse[idx];
                         let pos = encoder.position() as u32;
@@ -441,16 +438,15 @@ impl<'sess> OnDiskCache<'sess> {
         tcx.dep_graph.with_ignore(|| {
             let current_cnums = tcx.all_crate_nums(LOCAL_CRATE).iter().map(|&cnum| {
                 let crate_name = tcx.original_crate_name(cnum)
-                                    .as_str()
                                     .to_string();
                 let crate_disambiguator = tcx.crate_disambiguator(cnum);
                 ((crate_name, crate_disambiguator), cnum)
             }).collect::<FxHashMap<_,_>>();
 
             let map_size = prev_cnums.iter()
-                                    .map(|&(cnum, ..)| cnum)
-                                    .max()
-                                    .unwrap_or(0) + 1;
+                                     .map(|&(cnum, ..)| cnum)
+                                     .max()
+                                     .unwrap_or(0) + 1;
             let mut map = IndexVec::new();
             map.resize(map_size as usize, None);
 
@@ -464,7 +460,6 @@ impl<'sess> OnDiskCache<'sess> {
         })
     }
 }
-
 
 //- DECODING -------------------------------------------------------------------
 
@@ -494,7 +489,7 @@ impl<'a, 'tcx, 'x> CacheDecoder<'a, 'tcx, 'x> {
         file_index_to_file.borrow_mut().entry(index).or_insert_with(|| {
             let stable_id = file_index_to_stable_id[&index];
             source_map.source_file_by_stable_id(stable_id)
-                   .expect("Failed to lookup SourceFile in new context.")
+                .expect("Failed to lookup SourceFile in new context.")
         }).clone()
     }
 }
@@ -761,7 +756,7 @@ for CacheDecoder<'a, 'tcx, 'x> {
 
 struct CacheEncoder<'enc, 'a, 'tcx, E>
     where E: 'enc + ty_codec::TyEncoder,
-          'tcx: 'a,
+             'tcx: 'a,
 {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     encoder: &'enc mut E,
@@ -839,9 +834,7 @@ impl<'enc, 'a, 'tcx, E> SpecializedEncoder<Span> for CacheEncoder<'enc, 'a, 'tcx
         let (file_lo, line_lo, col_lo) = match self.source_map
                                                    .byte_pos_to_line_and_col(span_data.lo) {
             Some(pos) => pos,
-            None => {
-                return TAG_INVALID_SPAN.encode(self);
-            }
+            None => return TAG_INVALID_SPAN.encode(self)
         };
 
         if !file_lo.contains(span_data.hi) {

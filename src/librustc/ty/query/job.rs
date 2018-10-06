@@ -123,9 +123,11 @@ impl<'tcx> QueryJob<'tcx> {
         let mut cycle = Vec::new();
 
         while let Some(job) = current_job {
-            cycle.insert(0, job.info.clone());
+            cycle.push(job.info.clone());
 
             if ptr::eq(&*job, self) {
+                cycle.reverse();
+
                 // This is the end of the cycle
                 // The span entry we included was for the usage
                 // of the cycle itself, and not part of the cycle
@@ -324,14 +326,14 @@ fn connected_to_root<'tcx>(
     query: Lrc<QueryJob<'tcx>>,
     visited: &mut FxHashSet<*const QueryJob<'tcx>>
 ) -> bool {
-    // We already visited this or we're deliberately ignoring it
-    if visited.contains(&query.as_ptr()) {
-        return false;
-    }
-
     // This query is connected to the root (it has no query parent), return true
     if query.parent.is_none() {
         return true;
+    }
+
+    // We already visited this or we're deliberately ignoring it
+    if visited.contains(&query.as_ptr()) {
+        return false;
     }
 
     visited.insert(query.as_ptr());
@@ -368,13 +370,11 @@ fn remove_cycle<'tcx>(
         // Reverse the stack so earlier entries require later entries
         stack.reverse();
 
-        // Extract the spans and queries into separate arrays
-        let mut spans: Vec<_> = stack.iter().map(|e| e.0).collect();
-        let queries = stack.into_iter().map(|e| e.1);
+        // The stack is a vector of pairs of spans and queries
+        let (mut spans, queries): (Vec<_>, Vec<_>) = stack.into_iter().unzip();
 
         // Shift the spans so that queries are matched with the span for their waitee
-        let last = spans.pop().unwrap();
-        spans.insert(0, last);
+        spans.rotate_right(1);
 
         // Zip them back together
         let mut stack: Vec<_> = spans.into_iter().zip(queries).collect();
@@ -388,7 +388,7 @@ fn remove_cycle<'tcx>(
 
         // Find the queries in the cycle which are
         // connected to queries outside the cycle
-        let entry_points: Vec<Lrc<QueryJob<'tcx>>> = stack.iter().filter_map(|query| {
+        let entry_points = stack.iter().filter_map(|query| {
             // Mark all the other queries in the cycle as already visited
             let mut visited = FxHashSet::from_iter(stack.iter().filter_map(|q| {
                 if q.1.as_ptr() != query.1.as_ptr() {
@@ -403,21 +403,21 @@ fn remove_cycle<'tcx>(
             } else {
                 None
             }
-        }).collect();
+        });
 
         // Deterministically pick an entry point
         // FIXME: Sort this instead
         let mut hcx = tcx.create_stable_hashing_context();
-        let entry_point = entry_points.iter().min_by_key(|q| {
+        let entry_point = entry_points.min_by_key(|q| {
             let mut stable_hasher = StableHasher::<u64>::new();
             q.info.query.hash_stable(&mut hcx, &mut stable_hasher);
             stable_hasher.finish()
         }).unwrap().as_ptr();
 
-        // Shift the stack until our entry point is first
-        while stack[0].1.as_ptr() != entry_point {
-            let last = stack.pop().unwrap();
-            stack.insert(0, last);
+        // Shift the stack so that our entry point is first
+        let entry_point_pos = stack.iter().position(|(_, query)| query.as_ptr() == entry_point);
+        if let Some(pos) = entry_point_pos {
+            stack.rotate_right(pos);
         }
 
         // Create the cycle error

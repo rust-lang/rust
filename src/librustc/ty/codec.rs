@@ -178,19 +178,19 @@ pub fn decode_predicates<'a, 'tcx, D>(decoder: &mut D)
     Ok(ty::GenericPredicates {
         parent: Decodable::decode(decoder)?,
         predicates: (0..decoder.read_usize()?).map(|_| {
-                // Handle shorthands first, if we have an usize > 0x80.
-                let predicate = if decoder.positioned_at_shorthand() {
-                    let pos = decoder.read_usize()?;
-                    assert!(pos >= SHORTHAND_OFFSET);
-                    let shorthand = pos - SHORTHAND_OFFSET;
+            // Handle shorthands first, if we have an usize > 0x80.
+            let predicate = if decoder.positioned_at_shorthand() {
+                let pos = decoder.read_usize()?;
+                assert!(pos >= SHORTHAND_OFFSET);
+                let shorthand = pos - SHORTHAND_OFFSET;
 
-                    decoder.with_position(shorthand, ty::Predicate::decode)
-                } else {
-                    ty::Predicate::decode(decoder)
-                }?;
-                Ok((predicate, Decodable::decode(decoder)?))
-            })
-            .collect::<Result<Vec<_>, _>>()?,
+                decoder.with_position(shorthand, ty::Predicate::decode)
+            } else {
+                ty::Predicate::decode(decoder)
+            }?;
+            Ok((predicate, Decodable::decode(decoder)?))
+        })
+        .collect::<Result<Vec<_>, _>>()?,
     })
 }
 
@@ -267,7 +267,7 @@ pub fn decode_const<'a, 'tcx, D>(decoder: &mut D)
 
 #[inline]
 pub fn decode_allocation<'a, 'tcx, D>(decoder: &mut D)
-                                 -> Result<&'tcx Allocation, D::Error>
+    -> Result<&'tcx Allocation, D::Error>
     where D: TyDecoder<'a, 'tcx>,
           'tcx: 'a,
 {
