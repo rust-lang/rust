@@ -51,6 +51,7 @@
 // Handle rustfmt skips
 #![feature(custom_attribute)]
 #![cfg_attr(not(stage0), feature(nll))]
+#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 #![allow(unused_attributes)]
 
 use std::io::prelude::*;

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-pass
-
 #![feature(rustc_attrs)]
 #![allow(warnings)]
 
@@ -19,6 +17,7 @@ struct Point {
 
 struct NestedA<'a, 'b> {
     x: &'a NestedB<'b>
+    //~^ ERROR E0491
 }
 
 struct NestedB<'a> {

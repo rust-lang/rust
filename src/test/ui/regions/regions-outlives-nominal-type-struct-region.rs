@@ -13,8 +13,6 @@
 //
 // Rule OutlivesNominalType from RFC 1214.
 
-// compile-pass
-
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
 
@@ -27,4 +25,5 @@ mod variant_struct_region {
     }
 }
 
+#[rustc_error]
 fn main() { }

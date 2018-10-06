@@ -1232,54 +1232,41 @@ let x: i32 = "I am not a number!";
 "##,
 
 E0309: r##"
-The type definition contains some field whose type
-requires an outlives annotation. Outlives annotations
-(e.g., `T: 'a`) are used to guarantee that all the data in T is valid
-for at least the lifetime `'a`. This scenario most commonly
-arises when the type contains an associated type reference
-like `<T as SomeTrait<'a>>::Output`, as shown in this example:
+Types in type definitions have lifetimes associated with them that represent
+how long the data stored within them is guaranteed to be live. This lifetime
+must be as long as the data needs to be alive, and missing the constraint that
+denotes this will cause this error.
 
 ```compile_fail,E0309
-// This won't compile because the applicable impl of
-// `SomeTrait` (below) requires that `T: 'a`, but the struct does
-// not have a matching where-clause.
+// This won't compile because T is not constrained, meaning the data
+// stored in it is not guaranteed to last as long as the reference
 struct Foo<'a, T> {
-    foo: <T as SomeTrait<'a>>::Output,
-}
-
-trait SomeTrait<'a> {
-    type Output;
-}
-
-impl<'a, T> SomeTrait<'a> for T
-where
-    T: 'a,
-{
-    type Output = u32;
+    foo: &'a T
 }
 ```
 
-Here, the where clause `T: 'a` that appears on the impl is not known to be
-satisfied on the struct. To make this example compile, you have to add
-a where-clause like `T: 'a` to the struct definition:
+This will compile, because it has the constraint on the type parameter:
 
 ```
-struct Foo<'a, T>
-where
-    T: 'a,
-{
-    foo: <T as SomeTrait<'a>>::Output
+struct Foo<'a, T: 'a> {
+    foo: &'a T
+}
+```
+
+To see why this is important, consider the case where `T` is itself a reference
+(e.g., `T = &str`). If we don't include the restriction that `T: 'a`, the
+following code would be perfectly legal:
+
+```compile_fail,E0309
+struct Foo<'a, T> {
+    foo: &'a T
 }
 
-trait SomeTrait<'a> {
-    type Output;
-}
-
-impl<'a, T> SomeTrait<'a> for T
-where
-    T: 'a,
-{
-    type Output = u32;
+fn main() {
+    let v = "42".to_string();
+    let f = Foo{foo: &v};
+    drop(v);
+    println!("{}", f.foo); // but we've already dropped v!
 }
 ```
 "##,
@@ -1478,31 +1465,30 @@ A reference has a longer lifetime than the data it references.
 Erroneous code example:
 
 ```compile_fail,E0491
-trait SomeTrait<'a> {
-    type Output;
+// struct containing a reference requires a lifetime parameter,
+// because the data the reference points to must outlive the struct (see E0106)
+struct Struct<'a> {
+    ref_i32: &'a i32,
 }
 
-impl<'a, T> SomeTrait<'a> for T {
-    type Output = &'a T; // compile error E0491
+// However, a nested struct like this, the signature itself does not tell
+// whether 'a outlives 'b or the other way around.
+// So it could be possible that 'b of reference outlives 'a of the data.
+struct Nested<'a, 'b> {
+    ref_struct: &'b Struct<'a>, // compile error E0491
 }
 ```
 
-Here, the problem is that a reference type like `&'a T` is only valid
-if all the data in T outlives the lifetime `'a`. But this impl as written
-is applicable to any lifetime `'a` and any type `T` -- we have no guarantee
-that `T` outlives `'a`. To fix this, you can add a where clause like
-`where T: 'a`.
+To fix this issue, you can specify a bound to the lifetime like below:
 
 ```
-trait SomeTrait<'a> {
-    type Output;
+struct Struct<'a> {
+    ref_i32: &'a i32,
 }
 
-impl<'a, T> SomeTrait<'a> for T
-where
-    T: 'a,
-{
-    type Output = &'a T; // compile error E0491
+// 'a: 'b means 'a outlives 'b
+struct Nested<'a: 'b, 'b> {
+    ref_struct: &'b Struct<'a>,
 }
 ```
 "##,

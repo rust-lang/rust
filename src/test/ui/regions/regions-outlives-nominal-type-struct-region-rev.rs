@@ -13,8 +13,6 @@
 //
 // Rule OutlivesNominalType from RFC 1214.
 
-// compile-pass
-
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
 
@@ -23,8 +21,9 @@ mod rev_variant_struct_region {
         x: fn(&'a i32),
     }
     struct Bar<'a,'b> {
-        f: &'a Foo<'b>
+        f: &'a Foo<'b> //~ ERROR reference has a longer lifetime
     }
 }
 
+#[rustc_error]
 fn main() { }
