@@ -31,3 +31,6 @@ Two of these contributors had nonminor contributions (#2184, #427) requiring a r
 
 First, I (Manishearth) removed the lints they had added. I then documented at a high level what the lints did in #3251, asking for co-maintainers who had not seen the code for the lints to rewrite them. #2814 was rewritten by @phansch, and #427 was rewritten by @oli-obk, who did not recall having previously seen the code they were rewriting.
 
+------
+
+Since this document was written, @JayKickliter and @sanmai-ML added their consent in #3230 ([archive](http://web.archive.org/web/20181006171926/https://github.com/rust-lang-nursery/rust-clippy/issues/3230))
