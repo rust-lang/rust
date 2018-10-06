@@ -1,0 +1,131 @@
+From 40c86527fe92b608a65cc1187901035ebc56b281 Mon Sep 17 00:00:00 2001
+From: bjorn3 <bjorn3@users.noreply.github.com>
+Date: Sat, 6 Oct 2018 13:21:15 +0200
+Subject: [PATCH] Fix libstd building
+
+---
+ src/libstd/lib.rs            |  6 ------
+ src/libstd/net/ip.rs         | 20 --------------------
+ src/libstd/num.rs            |  2 +-
+ src/libstd/primitive_docs.rs | 16 ----------------
+ 4 files changed, 1 insertion(+), 43 deletions(-)
+
+diff --git a/src/libstd/lib.rs b/src/libstd/lib.rs
+index 4768e8b..c89f99a 100644
+--- a/src/libstd/lib.rs
++++ b/src/libstd/lib.rs
+@@ -257,7 +257,6 @@
+ #![feature(const_cstr_unchecked)]
+ #![feature(core_intrinsics)]
+ #![feature(dropck_eyepatch)]
+-#![feature(duration_as_u128)]
+ #![feature(exact_size_is_empty)]
+ #![feature(external_doc)]
+ #![feature(fixed_size_array)]
+@@ -287,7 +286,6 @@
+ #![feature(rustc_attrs)]
+ #![feature(rustc_const_unstable)]
+ #![feature(std_internals)]
+-#![cfg_attr(not(stage0), feature(stdsimd))]
+ #![feature(shrink_to)]
+ #![feature(slice_concat_ext)]
+ #![feature(slice_internals)]
+@@ -410,8 +408,6 @@ pub use core::i16;
+ pub use core::i32;
+ #[stable(feature = "rust1", since = "1.0.0")]
+ pub use core::i64;
+-#[stable(feature = "i128", since = "1.26.0")]
+-pub use core::i128;
+ #[stable(feature = "rust1", since = "1.0.0")]
+ pub use core::usize;
+ #[stable(feature = "rust1", since = "1.0.0")]
+@@ -444,8 +440,6 @@ pub use alloc_crate::string;
+ pub use alloc_crate::vec;
+ #[stable(feature = "rust1", since = "1.0.0")]
+ pub use core::char;
+-#[stable(feature = "i128", since = "1.26.0")]
+-pub use core::u128;
+ #[stable(feature = "core_hint", since = "1.27.0")]
+ pub use core::hint;
+ 
+diff --git a/src/libstd/net/ip.rs b/src/libstd/net/ip.rs
+index d45a66e..b25b862 100644
+--- a/src/libstd/net/ip.rs
++++ b/src/libstd/net/ip.rs
+@@ -1393,26 +1393,6 @@ impl FromInner<c::in6_addr> for Ipv6Addr {
+     }
+ }
+ 
+-#[stable(feature = "i128", since = "1.26.0")]
+-impl From<Ipv6Addr> for u128 {
+-    fn from(ip: Ipv6Addr) -> u128 {
+-        let ip = ip.segments();
+-        ((ip[0] as u128) << 112) + ((ip[1] as u128) << 96) + ((ip[2] as u128) << 80) +
+-            ((ip[3] as u128) << 64) + ((ip[4] as u128) << 48) + ((ip[5] as u128) << 32) +
+-            ((ip[6] as u128) << 16) + (ip[7] as u128)
+-    }
+-}
+-#[stable(feature = "i128", since = "1.26.0")]
+-impl From<u128> for Ipv6Addr {
+-    fn from(ip: u128) -> Ipv6Addr {
+-        Ipv6Addr::new(
+-            (ip >> 112) as u16, (ip >> 96) as u16, (ip >> 80) as u16,
+-            (ip >> 64) as u16, (ip >> 48) as u16, (ip >> 32) as u16,
+-            (ip >> 16) as u16, ip as u16,
+-        )
+-    }
+-}
+-
+ #[stable(feature = "ipv6_from_octets", since = "1.9.0")]
+ impl From<[u8; 16]> for Ipv6Addr {
+     fn from(octets: [u8; 16]) -> Ipv6Addr {
+diff --git a/src/libstd/num.rs b/src/libstd/num.rs
+index 3f90c1f..85aab83 100644
+--- a/src/libstd/num.rs
++++ b/src/libstd/num.rs
+@@ -22,7 +22,7 @@ pub use core::num::{FpCategory, ParseIntError, ParseFloatError, TryFromIntError}
+ pub use core::num::Wrapping;
+ 
+ #[stable(feature = "nonzero", since = "1.28.0")]
+-pub use core::num::{NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU128, NonZeroUsize};
++pub use core::num::{NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroUsize};
+ 
+ #[cfg(test)] use fmt;
+ #[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};
+diff --git a/src/libstd/primitive_docs.rs b/src/libstd/primitive_docs.rs
+index 8d54728..c36893c 100644
+--- a/src/libstd/primitive_docs.rs
++++ b/src/libstd/primitive_docs.rs
+@@ -809,14 +809,6 @@ mod prim_i32 { }
+ #[stable(feature = "rust1", since = "1.0.0")]
+ mod prim_i64 { }
+ 
+-#[doc(primitive = "i128")]
+-//
+-/// The 128-bit signed integer type.
+-///
+-/// *[See also the `std::i128` module](i128/index.html).*
+-#[stable(feature = "i128", since="1.26.0")]
+-mod prim_i128 { }
+-
+ #[doc(primitive = "u8")]
+ //
+ /// The 8-bit unsigned integer type.
+@@ -849,14 +841,6 @@ mod prim_u32 { }
+ #[stable(feature = "rust1", since = "1.0.0")]
+ mod prim_u64 { }
+ 
+-#[doc(primitive = "u128")]
+-//
+-/// The 128-bit unsigned integer type.
+-///
+-/// *[See also the `std::u128` module](u128/index.html).*
+-#[stable(feature = "i128", since="1.26.0")]
+-mod prim_u128 { }
+-
+ #[doc(primitive = "isize")]
+ //
+ /// The pointer-sized signed integer type.
+-- 
+2.17.1 (Apple Git-112)
+

@@ -11,9 +11,8 @@ fi
 
 rm -rf $DST_DIR
 mkdir -p $DST_DIR/src
-for crate in libcore libstd; do
-    cp -r $SRC_DIR/src/$crate $DST_DIR/src/
-done
+cp -r $SRC_DIR/src $DST_DIR/
+
 cd $DST_DIR
 git init
 git add .
