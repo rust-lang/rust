@@ -58,6 +58,34 @@ macro_rules! intrinsic_match {
     };
 }
 
+macro_rules! atomic_binop_return_old {
+    ($fx:expr, $op:ident<$T:ident>($ptr:ident, $src:ident) -> $ret:ident) => {
+        let clif_ty = $fx.cton_type($T).unwrap();
+        let old = $fx.bcx.ins().load(clif_ty, MemFlags::new(), $ptr, 0);
+        let new = $fx.bcx.ins().band(old, $src);
+        $fx.bcx.ins().store(MemFlags::new(), new, $ptr, 0);
+        $ret.write_cvalue($fx, CValue::ByVal(old, $fx.layout_of($T)));
+    };
+}
+
+macro_rules! atomic_minmax {
+    ($fx:expr, $cc:expr, <$T:ident> ($ptr:ident, $src:ident) -> $ret:ident) => {
+        // Read old
+        let clif_ty = $fx.cton_type($T).unwrap();
+        let old = $fx.bcx.ins().load(clif_ty, MemFlags::new(), $ptr, 0);
+
+        // Compare
+        let is_eq = $fx.bcx.ins().icmp(IntCC::SignedGreaterThan, old, $src);
+        let new = $fx.bcx.ins().select(is_eq, old, $src);
+
+        // Write new
+        $fx.bcx.ins().store(MemFlags::new(), new, $ptr, 0);
+
+        let ret_val = CValue::ByVal(old, $ret.layout());
+        $ret.write_cvalue($fx, ret_val);
+    };
+}
+
 pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     def_id: DefId,
@@ -317,6 +345,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let needs_drop = CValue::const_val(fx, fx.tcx.types.bool, needs_drop);
             ret.write_cvalue(fx, needs_drop);
         };
+
         _ if intrinsic.starts_with("atomic_fence"), () {};
         _ if intrinsic.starts_with("atomic_singlethreadfence"), () {};
         _ if intrinsic.starts_with("atomic_load"), (c ptr) {
@@ -329,19 +358,62 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let dest = CPlace::Addr(ptr, None, val.layout());
             dest.write_cvalue(fx, val);
         };
-        _ if intrinsic.starts_with("atomic_xadd"), <T> (v ptr, v amount) {
+        _ if intrinsic.starts_with("atomic_xchg"), <T> (v ptr, c src) {
+            // Read old
             let clif_ty = fx.cton_type(T).unwrap();
             let old = fx.bcx.ins().load(clif_ty, MemFlags::new(), ptr, 0);
-            let new = fx.bcx.ins().iadd(old, amount);
-            fx.bcx.ins().store(MemFlags::new(), new, ptr, 0);
             ret.write_cvalue(fx, CValue::ByVal(old, fx.layout_of(T)));
+
+            // Write new
+            let dest = CPlace::Addr(ptr, None, src.layout());
+            dest.write_cvalue(fx, src);
+        };
+        _ if intrinsic.starts_with("atomic_cxchg"), <T> (v ptr, v test_old, v new) { // both atomic_cxchg_* and atomic_cxchgweak_*
+            // Read old
+            let clif_ty = fx.cton_type(T).unwrap();
+            let old = fx.bcx.ins().load(clif_ty, MemFlags::new(), ptr, 0);
+
+            // Compare
+            let is_eq = fx.bcx.ins().icmp(IntCC::Equal, old, test_old);
+            let new = fx.bcx.ins().select(is_eq, old, new); // Keep old if not equal to test_old
+
+            // Write new
+            fx.bcx.ins().store(MemFlags::new(), new, ptr, 0);
+
+            let ret_val = CValue::ByValPair(old, fx.bcx.ins().bint(types::I8, is_eq), ret.layout());
+            ret.write_cvalue(fx, ret_val);
+        };
+
+        _ if intrinsic.starts_with("atomic_xadd"), <T> (v ptr, v amount) {
+            atomic_binop_return_old! (fx, iadd<T>(ptr, amount) -> ret);
         };
         _ if intrinsic.starts_with("atomic_xsub"), <T> (v ptr, v amount) {
-            let clif_ty = fx.cton_type(T).unwrap();
-            let old = fx.bcx.ins().load(clif_ty, MemFlags::new(), ptr, 0);
-            let new = fx.bcx.ins().isub(old, amount);
-            fx.bcx.ins().store(MemFlags::new(), new, ptr, 0);
-            ret.write_cvalue(fx, CValue::ByVal(old, fx.layout_of(T)));
+            atomic_binop_return_old! (fx, isub<T>(ptr, amount) -> ret);
+        };
+        _ if intrinsic.starts_with("atomic_and"), <T> (v ptr, v src) {
+            atomic_binop_return_old! (fx, band<T>(ptr, src) -> ret);
+        };
+        _ if intrinsic.starts_with("atomic_nand"), <T> (v ptr, v src) {
+            atomic_binop_return_old! (fx, bnand<T>(ptr, src) -> ret);
+        };
+        _ if intrinsic.starts_with("atomic_or"), <T> (v ptr, v src) {
+            atomic_binop_return_old! (fx, bor<T>(ptr, src) -> ret);
+        };
+        _ if intrinsic.starts_with("atomic_xor"), <T> (v ptr, v src) {
+            atomic_binop_return_old! (fx, bxor<T>(ptr, src) -> ret);
+        };
+
+        _ if intrinsic.starts_with("atomic_max"), <T> (v ptr, v src) {
+            atomic_minmax!(fx, IntCC::SignedGreaterThan, <T> (ptr, src) -> ret);
+        };
+        _ if intrinsic.starts_with("atomic_umax"), <T> (v ptr, v src) {
+            atomic_minmax!(fx, IntCC::UnsignedGreaterThan, <T> (ptr, src) -> ret);
+        };
+        _ if intrinsic.starts_with("atomic_min"), <T> (v ptr, v src) {
+            atomic_minmax!(fx, IntCC::SignedLessThan, <T> (ptr, src) -> ret);
+        };
+        _ if intrinsic.starts_with("atomic_umin"), <T> (v ptr, v src) {
+            atomic_minmax!(fx, IntCC::UnsignedLessThan, <T> (ptr, src) -> ret);
         };
     }
 
