@@ -1,16 +1,16 @@
 error: useless lint attribute
- --> $DIR/useless_attribute.rs:5:1
-  |
-5 | #[allow(dead_code)]
-  | ^^^^^^^^^^^^^^^^^^^ help: if you just forgot a `!`, use: `#![allow(dead_code)]`
-  |
-  = note: `-D clippy::useless-attribute` implied by `-D warnings`
+  --> $DIR/useless_attribute.rs:15:1
+   |
+15 | #[allow(dead_code)]
+   | ^^^^^^^^^^^^^^^^^^^ help: if you just forgot a `!`, use: `#![allow(dead_code)]`
+   |
+   = note: `-D clippy::useless-attribute` implied by `-D warnings`
 
 error: useless lint attribute
- --> $DIR/useless_attribute.rs:6:1
-  |
-6 | #[cfg_attr(feature = "cargo-clippy", allow(dead_code))]
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if you just forgot a `!`, use: `#![cfg_attr(feature = "cargo-clippy", allow(dead_code))`
+  --> $DIR/useless_attribute.rs:16:1
+   |
+16 | #[cfg_attr(feature = "cargo-clippy", allow(dead_code))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if you just forgot a `!`, use: `#![cfg_attr(feature = "cargo-clippy", allow(dead_code))`
 
 error: aborting due to 2 previous errors
 

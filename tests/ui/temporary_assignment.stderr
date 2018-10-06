@@ -1,15 +1,15 @@
 error: assignment to temporary
-  --> $DIR/temporary_assignment.rs:29:5
+  --> $DIR/temporary_assignment.rs:39:5
    |
-29 |     Struct { field: 0 }.field = 1;
+39 |     Struct { field: 0 }.field = 1;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::temporary-assignment` implied by `-D warnings`
 
 error: assignment to temporary
-  --> $DIR/temporary_assignment.rs:30:5
+  --> $DIR/temporary_assignment.rs:40:5
    |
-30 |     (0, 0).0 = 1;
+40 |     (0, 0).0 = 1;
    |     ^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

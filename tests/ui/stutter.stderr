@@ -1,33 +1,33 @@
 error: item name starts with its containing module's name
- --> $DIR/stutter.rs:8:5
-  |
-8 |     pub fn foo_bar() {}
-  |     ^^^^^^^^^^^^^^^^^^^
-  |
-  = note: `-D clippy::stutter` implied by `-D warnings`
+  --> $DIR/stutter.rs:18:5
+   |
+18 |     pub fn foo_bar() {}
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::stutter` implied by `-D warnings`
 
 error: item name ends with its containing module's name
- --> $DIR/stutter.rs:9:5
-  |
-9 |     pub fn bar_foo() {}
-  |     ^^^^^^^^^^^^^^^^^^^
-
-error: item name starts with its containing module's name
-  --> $DIR/stutter.rs:10:5
+  --> $DIR/stutter.rs:19:5
    |
-10 |     pub struct FooCake {}
-   |     ^^^^^^^^^^^^^^^^^^^^^
-
-error: item name ends with its containing module's name
-  --> $DIR/stutter.rs:11:5
-   |
-11 |     pub enum CakeFoo {}
+19 |     pub fn bar_foo() {}
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: item name starts with its containing module's name
-  --> $DIR/stutter.rs:12:5
+  --> $DIR/stutter.rs:20:5
    |
-12 |     pub struct Foo7Bar;
+20 |     pub struct FooCake {}
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: item name ends with its containing module's name
+  --> $DIR/stutter.rs:21:5
+   |
+21 |     pub enum CakeFoo {}
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: item name starts with its containing module's name
+  --> $DIR/stutter.rs:22:5
+   |
+22 |     pub struct Foo7Bar;
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors

@@ -1,11 +1,11 @@
 error: in an 'if' condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a 'let'
-  --> $DIR/block_in_if_condition.rs:30:8
+  --> $DIR/block_in_if_condition.rs:40:8
    |
-30 |       if {
+40 |       if {
    |  ________^
-31 | |         let x = 3;
-32 | |         x == 3
-33 | |     } {
+41 | |         let x = 3;
+42 | |         x == 3
+43 | |     } {
    | |_____^
    |
    = note: `-D clippy::block-in-if-condition-stmt` implied by `-D warnings`
@@ -19,9 +19,9 @@ error: in an 'if' condition, avoid complex blocks or closures with blocks; inste
            } ... 
 
 error: omit braces around single expression condition
-  --> $DIR/block_in_if_condition.rs:41:8
+  --> $DIR/block_in_if_condition.rs:51:8
    |
-41 |     if { true } {
+51 |     if { true } {
    |        ^^^^^^^^
    |
    = note: `-D clippy::block-in-if-condition-expr` implied by `-D warnings`
@@ -31,21 +31,21 @@ error: omit braces around single expression condition
            } ... 
 
 error: in an 'if' condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a 'let'
-  --> $DIR/block_in_if_condition.rs:58:49
+  --> $DIR/block_in_if_condition.rs:68:49
    |
-58 |     if v == 3 && sky == "blue" && predicate(|x| { let target = 3; x == target }, v) {
+68 |     if v == 3 && sky == "blue" && predicate(|x| { let target = 3; x == target }, v) {
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: in an 'if' condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a 'let'
-  --> $DIR/block_in_if_condition.rs:61:22
+  --> $DIR/block_in_if_condition.rs:71:22
    |
-61 |     if predicate(|x| { let target = 3; x == target }, v) {
+71 |     if predicate(|x| { let target = 3; x == target }, v) {
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this boolean expression can be simplified
-  --> $DIR/block_in_if_condition.rs:67:8
+  --> $DIR/block_in_if_condition.rs:77:8
    |
-67 |     if true && x == 3 {
+77 |     if true && x == 3 {
    |        ^^^^^^^^^^^^^^ help: try: `x == 3`
    |
    = note: `-D clippy::nonminimal-bool` implied by `-D warnings`

@@ -1,77 +1,77 @@
 error: you should use the `starts_with` method
- --> $DIR/starts_ends_with.rs:9:5
-  |
-9 |     "".chars().next() == Some(' ');
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".starts_with(' ')`
-  |
-  = note: `-D clippy::chars-next-cmp` implied by `-D warnings`
+  --> $DIR/starts_ends_with.rs:19:5
+   |
+19 |     "".chars().next() == Some(' ');
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".starts_with(' ')`
+   |
+   = note: `-D clippy::chars-next-cmp` implied by `-D warnings`
 
 error: you should use the `starts_with` method
-  --> $DIR/starts_ends_with.rs:10:5
+  --> $DIR/starts_ends_with.rs:20:5
    |
-10 |     Some(' ') != "".chars().next();
+20 |     Some(' ') != "".chars().next();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".starts_with(' ')`
 
 error: you should use the `starts_with` method
-  --> $DIR/starts_ends_with.rs:15:8
+  --> $DIR/starts_ends_with.rs:25:8
    |
-15 |     if s.chars().next().unwrap() == 'f' { // s.starts_with('f')
+25 |     if s.chars().next().unwrap() == 'f' { // s.starts_with('f')
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.starts_with('f')`
 
 error: you should use the `ends_with` method
-  --> $DIR/starts_ends_with.rs:18:8
+  --> $DIR/starts_ends_with.rs:28:8
    |
-18 |     if s.chars().next_back().unwrap() == 'o' { // s.ends_with('o')
+28 |     if s.chars().next_back().unwrap() == 'o' { // s.ends_with('o')
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.ends_with('o')`
    |
    = note: `-D clippy::chars-last-cmp` implied by `-D warnings`
 
 error: you should use the `ends_with` method
-  --> $DIR/starts_ends_with.rs:21:8
+  --> $DIR/starts_ends_with.rs:31:8
    |
-21 |     if s.chars().last().unwrap() == 'o' { // s.ends_with('o')
+31 |     if s.chars().last().unwrap() == 'o' { // s.ends_with('o')
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.ends_with('o')`
 
 error: you should use the `starts_with` method
-  --> $DIR/starts_ends_with.rs:24:8
+  --> $DIR/starts_ends_with.rs:34:8
    |
-24 |     if s.chars().next().unwrap() != 'f' { // !s.starts_with('f')
+34 |     if s.chars().next().unwrap() != 'f' { // !s.starts_with('f')
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.starts_with('f')`
 
 error: you should use the `ends_with` method
-  --> $DIR/starts_ends_with.rs:27:8
+  --> $DIR/starts_ends_with.rs:37:8
    |
-27 |     if s.chars().next_back().unwrap() != 'o' { // !s.ends_with('o')
+37 |     if s.chars().next_back().unwrap() != 'o' { // !s.ends_with('o')
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.ends_with('o')`
 
 error: you should use the `ends_with` method
-  --> $DIR/starts_ends_with.rs:30:8
+  --> $DIR/starts_ends_with.rs:40:8
    |
-30 |     if s.chars().last().unwrap() != 'o' { // !s.ends_with('o')
+40 |     if s.chars().last().unwrap() != 'o' { // !s.ends_with('o')
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.ends_with('o')`
 
 error: you should use the `ends_with` method
-  --> $DIR/starts_ends_with.rs:37:5
+  --> $DIR/starts_ends_with.rs:47:5
    |
-37 |     "".chars().last() == Some(' ');
+47 |     "".chars().last() == Some(' ');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".ends_with(' ')`
 
 error: you should use the `ends_with` method
-  --> $DIR/starts_ends_with.rs:38:5
+  --> $DIR/starts_ends_with.rs:48:5
    |
-38 |     Some(' ') != "".chars().last();
+48 |     Some(' ') != "".chars().last();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".ends_with(' ')`
 
 error: you should use the `ends_with` method
-  --> $DIR/starts_ends_with.rs:39:5
+  --> $DIR/starts_ends_with.rs:49:5
    |
-39 |     "".chars().next_back() == Some(' ');
+49 |     "".chars().next_back() == Some(' ');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".ends_with(' ')`
 
 error: you should use the `ends_with` method
-  --> $DIR/starts_ends_with.rs:40:5
+  --> $DIR/starts_ends_with.rs:50:5
    |
-40 |     Some(' ') != "".chars().next_back();
+50 |     Some(' ') != "".chars().next_back();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".ends_with(' ')`
 
 error: aborting due to 12 previous errors

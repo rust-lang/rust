@@ -1,39 +1,39 @@
 error: this creates an owned instance just for comparison
- --> $DIR/cmp_owned.rs:8:14
-  |
-8 |         x != "foo".to_string();
-  |              ^^^^^^^^^^^^^^^^^ help: try: `"foo"`
-  |
-  = note: `-D clippy::cmp-owned` implied by `-D warnings`
+  --> $DIR/cmp_owned.rs:18:14
+   |
+18 |         x != "foo".to_string();
+   |              ^^^^^^^^^^^^^^^^^ help: try: `"foo"`
+   |
+   = note: `-D clippy::cmp-owned` implied by `-D warnings`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:10:9
+  --> $DIR/cmp_owned.rs:20:9
    |
-10 |         "foo".to_string() != x;
+20 |         "foo".to_string() != x;
    |         ^^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:17:10
+  --> $DIR/cmp_owned.rs:27:10
    |
-17 |     x != "foo".to_owned();
+27 |     x != "foo".to_owned();
    |          ^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:19:10
+  --> $DIR/cmp_owned.rs:29:10
    |
-19 |     x != String::from("foo");
+29 |     x != String::from("foo");
    |          ^^^^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:23:5
+  --> $DIR/cmp_owned.rs:33:5
    |
-23 |     Foo.to_owned() == Foo;
+33 |     Foo.to_owned() == Foo;
    |     ^^^^^^^^^^^^^^ help: try: `Foo`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:30:9
+  --> $DIR/cmp_owned.rs:40:9
    |
-30 |         self.to_owned() == *other
+40 |         self.to_owned() == *other
    |         ^^^^^^^^^^^^^^^ try calling implementing the comparison without allocating
 
 error: aborting due to 6 previous errors

@@ -1,47 +1,47 @@
 error: Consider using an AtomicBool instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
- --> $DIR/mutex_atomic.rs:9:5
-  |
-9 |     Mutex::new(true);
-  |     ^^^^^^^^^^^^^^^^
-  |
-  = note: `-D clippy::mutex-atomic` implied by `-D warnings`
+  --> $DIR/mutex_atomic.rs:19:5
+   |
+19 |     Mutex::new(true);
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::mutex-atomic` implied by `-D warnings`
 
 error: Consider using an AtomicUsize instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
-  --> $DIR/mutex_atomic.rs:10:5
+  --> $DIR/mutex_atomic.rs:20:5
    |
-10 |     Mutex::new(5usize);
+20 |     Mutex::new(5usize);
    |     ^^^^^^^^^^^^^^^^^^
 
 error: Consider using an AtomicIsize instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
-  --> $DIR/mutex_atomic.rs:11:5
+  --> $DIR/mutex_atomic.rs:21:5
    |
-11 |     Mutex::new(9isize);
+21 |     Mutex::new(9isize);
    |     ^^^^^^^^^^^^^^^^^^
 
 error: Consider using an AtomicPtr instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
-  --> $DIR/mutex_atomic.rs:13:5
+  --> $DIR/mutex_atomic.rs:23:5
    |
-13 |     Mutex::new(&x as *const u32);
+23 |     Mutex::new(&x as *const u32);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: Consider using an AtomicPtr instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
-  --> $DIR/mutex_atomic.rs:14:5
+  --> $DIR/mutex_atomic.rs:24:5
    |
-14 |     Mutex::new(&mut x as *mut u32);
+24 |     Mutex::new(&mut x as *mut u32);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: Consider using an AtomicUsize instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
-  --> $DIR/mutex_atomic.rs:15:5
+  --> $DIR/mutex_atomic.rs:25:5
    |
-15 |     Mutex::new(0u32);
+25 |     Mutex::new(0u32);
    |     ^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::mutex-integer` implied by `-D warnings`
 
 error: Consider using an AtomicIsize instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
-  --> $DIR/mutex_atomic.rs:16:5
+  --> $DIR/mutex_atomic.rs:26:5
    |
-16 |     Mutex::new(0i32);
+26 |     Mutex::new(0i32);
    |     ^^^^^^^^^^^^^^^^
 
 error: aborting due to 7 previous errors

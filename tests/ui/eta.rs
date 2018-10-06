@@ -1,3 +1,13 @@
+// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+
 #![feature(tool_lints)]
 
 #![allow(unknown_lints, unused, clippy::no_effect, clippy::redundant_closure_call, clippy::many_single_char_names, clippy::needless_pass_by_value, clippy::option_map_unit_fn, clippy::trivially_copy_pass_by_ref)]

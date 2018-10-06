@@ -1,75 +1,75 @@
 error: manual implementation of an assign operation
-  --> $DIR/strings.rs:10:9
+  --> $DIR/strings.rs:20:9
    |
-10 |         x = x + ".";
+20 |         x = x + ".";
    |         ^^^^^^^^^^^ help: replace it with: `x += "."`
    |
    = note: `-D clippy::assign-op-pattern` implied by `-D warnings`
 
 error: you added something to a string. Consider using `String::push_str()` instead
-  --> $DIR/strings.rs:10:13
+  --> $DIR/strings.rs:20:13
    |
-10 |         x = x + ".";
+20 |         x = x + ".";
    |             ^^^^^^^
    |
    = note: `-D clippy::string-add` implied by `-D warnings`
 
 error: you added something to a string. Consider using `String::push_str()` instead
-  --> $DIR/strings.rs:14:13
+  --> $DIR/strings.rs:24:13
    |
-14 |     let z = y + "...";
+24 |     let z = y + "...";
    |             ^^^^^^^^^
 
 error: you assigned the result of adding something to this string. Consider using `String::push_str()` instead
-  --> $DIR/strings.rs:24:9
+  --> $DIR/strings.rs:34:9
    |
-24 |         x = x + ".";
+34 |         x = x + ".";
    |         ^^^^^^^^^^^
    |
    = note: `-D clippy::string-add-assign` implied by `-D warnings`
 
 error: manual implementation of an assign operation
-  --> $DIR/strings.rs:24:9
+  --> $DIR/strings.rs:34:9
    |
-24 |         x = x + ".";
+34 |         x = x + ".";
    |         ^^^^^^^^^^^ help: replace it with: `x += "."`
 
 error: you assigned the result of adding something to this string. Consider using `String::push_str()` instead
-  --> $DIR/strings.rs:38:9
+  --> $DIR/strings.rs:48:9
    |
-38 |         x = x + ".";
+48 |         x = x + ".";
    |         ^^^^^^^^^^^
 
 error: manual implementation of an assign operation
-  --> $DIR/strings.rs:38:9
+  --> $DIR/strings.rs:48:9
    |
-38 |         x = x + ".";
+48 |         x = x + ".";
    |         ^^^^^^^^^^^ help: replace it with: `x += "."`
 
 error: you added something to a string. Consider using `String::push_str()` instead
-  --> $DIR/strings.rs:42:13
+  --> $DIR/strings.rs:52:13
    |
-42 |     let z = y + "...";
+52 |     let z = y + "...";
    |             ^^^^^^^^^
 
 error: calling `as_bytes()` on a string literal
-  --> $DIR/strings.rs:50:14
+  --> $DIR/strings.rs:60:14
    |
-50 |     let bs = "hello there".as_bytes();
+60 |     let bs = "hello there".as_bytes();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using a byte string literal instead: `b"hello there"`
    |
    = note: `-D clippy::string-lit-as-bytes` implied by `-D warnings`
 
 error: calling `as_bytes()` on a string literal
-  --> $DIR/strings.rs:55:18
+  --> $DIR/strings.rs:65:18
    |
-55 |     let strify = stringify!(foobar).as_bytes();
+65 |     let strify = stringify!(foobar).as_bytes();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using a byte string literal instead: `bstringify!(foobar)`
 
 error: manual implementation of an assign operation
-  --> $DIR/strings.rs:65:7
+  --> $DIR/strings.rs:75:7
    |
-65 |     ; x = x + 1;
+75 |     ; x = x + 1;
    |       ^^^^^^^^^ help: replace it with: `x += 1`
 
 error: aborting due to 11 previous errors

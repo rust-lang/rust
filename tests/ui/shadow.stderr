@@ -1,137 +1,137 @@
 error: `x` is shadowed by itself in `&mut x`
-  --> $DIR/shadow.rs:13:5
+  --> $DIR/shadow.rs:23:5
    |
-13 |     let x = &mut x;
+23 |     let x = &mut x;
    |     ^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::shadow-same` implied by `-D warnings`
 note: previous binding is here
-  --> $DIR/shadow.rs:12:13
+  --> $DIR/shadow.rs:22:13
    |
-12 |     let mut x = 1;
+22 |     let mut x = 1;
    |             ^
 
 error: `x` is shadowed by itself in `{ x }`
-  --> $DIR/shadow.rs:14:5
+  --> $DIR/shadow.rs:24:5
    |
-14 |     let x = { x };
+24 |     let x = { x };
    |     ^^^^^^^^^^^^^^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:13:9
+  --> $DIR/shadow.rs:23:9
    |
-13 |     let x = &mut x;
+23 |     let x = &mut x;
    |         ^
 
 error: `x` is shadowed by itself in `(&*x)`
-  --> $DIR/shadow.rs:15:5
+  --> $DIR/shadow.rs:25:5
    |
-15 |     let x = (&*x);
+25 |     let x = (&*x);
    |     ^^^^^^^^^^^^^^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:14:9
+  --> $DIR/shadow.rs:24:9
    |
-14 |     let x = { x };
+24 |     let x = { x };
    |         ^
 
 error: `x` is shadowed by `{ *x + 1 }` which reuses the original value
-  --> $DIR/shadow.rs:16:9
+  --> $DIR/shadow.rs:26:9
    |
-16 |     let x = { *x + 1 };
+26 |     let x = { *x + 1 };
    |         ^
    |
    = note: `-D clippy::shadow-reuse` implied by `-D warnings`
 note: initialization happens here
-  --> $DIR/shadow.rs:16:13
+  --> $DIR/shadow.rs:26:13
    |
-16 |     let x = { *x + 1 };
+26 |     let x = { *x + 1 };
    |             ^^^^^^^^^^
 note: previous binding is here
-  --> $DIR/shadow.rs:15:9
+  --> $DIR/shadow.rs:25:9
    |
-15 |     let x = (&*x);
+25 |     let x = (&*x);
    |         ^
 
 error: `x` is shadowed by `id(x)` which reuses the original value
-  --> $DIR/shadow.rs:17:9
+  --> $DIR/shadow.rs:27:9
    |
-17 |     let x = id(x);
+27 |     let x = id(x);
    |         ^
    |
 note: initialization happens here
-  --> $DIR/shadow.rs:17:13
+  --> $DIR/shadow.rs:27:13
    |
-17 |     let x = id(x);
+27 |     let x = id(x);
    |             ^^^^^
 note: previous binding is here
-  --> $DIR/shadow.rs:16:9
+  --> $DIR/shadow.rs:26:9
    |
-16 |     let x = { *x + 1 };
+26 |     let x = { *x + 1 };
    |         ^
 
 error: `x` is shadowed by `(1, x)` which reuses the original value
-  --> $DIR/shadow.rs:18:9
+  --> $DIR/shadow.rs:28:9
    |
-18 |     let x = (1, x);
+28 |     let x = (1, x);
    |         ^
    |
 note: initialization happens here
-  --> $DIR/shadow.rs:18:13
+  --> $DIR/shadow.rs:28:13
    |
-18 |     let x = (1, x);
+28 |     let x = (1, x);
    |             ^^^^^^
 note: previous binding is here
-  --> $DIR/shadow.rs:17:9
+  --> $DIR/shadow.rs:27:9
    |
-17 |     let x = id(x);
+27 |     let x = id(x);
    |         ^
 
 error: `x` is shadowed by `first(x)` which reuses the original value
-  --> $DIR/shadow.rs:19:9
+  --> $DIR/shadow.rs:29:9
    |
-19 |     let x = first(x);
+29 |     let x = first(x);
    |         ^
    |
 note: initialization happens here
-  --> $DIR/shadow.rs:19:13
+  --> $DIR/shadow.rs:29:13
    |
-19 |     let x = first(x);
+29 |     let x = first(x);
    |             ^^^^^^^^
 note: previous binding is here
-  --> $DIR/shadow.rs:18:9
+  --> $DIR/shadow.rs:28:9
    |
-18 |     let x = (1, x);
+28 |     let x = (1, x);
    |         ^
 
 error: `x` is shadowed by `y`
-  --> $DIR/shadow.rs:21:9
+  --> $DIR/shadow.rs:31:9
    |
-21 |     let x = y;
+31 |     let x = y;
    |         ^
    |
    = note: `-D clippy::shadow-unrelated` implied by `-D warnings`
 note: initialization happens here
-  --> $DIR/shadow.rs:21:13
+  --> $DIR/shadow.rs:31:13
    |
-21 |     let x = y;
+31 |     let x = y;
    |             ^
 note: previous binding is here
-  --> $DIR/shadow.rs:19:9
+  --> $DIR/shadow.rs:29:9
    |
-19 |     let x = first(x);
+29 |     let x = first(x);
    |         ^
 
 error: `x` shadows a previous declaration
-  --> $DIR/shadow.rs:23:5
+  --> $DIR/shadow.rs:33:5
    |
-23 |     let x;
+33 |     let x;
    |     ^^^^^^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:21:9
+  --> $DIR/shadow.rs:31:9
    |
-21 |     let x = y;
+31 |     let x = y;
    |         ^
 
 error: aborting due to 9 previous errors

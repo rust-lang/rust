@@ -1,13 +1,13 @@
 error: this loop could be written as a `for` loop
-  --> $DIR/issue_2356.rs:17:29
+  --> $DIR/issue_2356.rs:27:29
    |
-17 |         while let Some(e) = it.next() {
+27 |         while let Some(e) = it.next() {
    |                             ^^^^^^^^^ help: try: `for e in it { .. }`
    |
 note: lint level defined here
-  --> $DIR/issue_2356.rs:3:9
+  --> $DIR/issue_2356.rs:13:9
    |
-3  | #![deny(clippy::while_let_on_iterator)]
+13 | #![deny(clippy::while_let_on_iterator)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
