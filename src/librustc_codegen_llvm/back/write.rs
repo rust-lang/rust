@@ -90,7 +90,7 @@ pub const TLS_MODEL_ARGS : [(&'static str, llvm::ThreadLocalMode); 4] = [
 
 const PRE_THIN_LTO_BC_EXT: &str = "pre-thin-lto.bc";
 
-pub fn llvm_err(handler: &errors::Handler, msg: String) -> FatalError {
+pub fn llvm_err(handler: &errors::Handler, msg: &str) -> FatalError {
     match llvm::last_error() {
         Some(err) => handler.fatal(&format!("{}: {}", msg, err)),
         None => handler.fatal(&msg),
@@ -109,7 +109,7 @@ pub fn write_output_file(
         let result = llvm::LLVMRustWriteOutputFile(target, pm, m, output_c.as_ptr(), file_type);
         if result.into_result().is_err() {
             let msg = format!("could not write output to {}", output.display());
-            Err(llvm_err(handler, msg))
+            Err(llvm_err(handler, &msg))
         } else {
             Ok(())
         }
@@ -139,7 +139,7 @@ pub fn create_target_machine(
     find_features: bool,
 ) -> &'static mut llvm::TargetMachine {
     target_machine_factory(sess, find_features)().unwrap_or_else(|err| {
-        llvm_err(sess.diagnostic(), err).raise()
+        llvm_err(sess.diagnostic(), &err).raise()
     })
 }
 

@@ -296,7 +296,7 @@ fn fat_lto(cgcx: &CodegenContext,
                 let data = bc_decoded.data();
                 linker.add(&data).map_err(|()| {
                     let msg = format!("failed to load bc of {:?}", name);
-                    write::llvm_err(&diag_handler, msg)
+                    write::llvm_err(&diag_handler, &msg)
                 })
             })?;
             timeline.record(&format!("link {:?}", name));
@@ -490,7 +490,7 @@ fn thin_lto(cgcx: &CodegenContext,
             symbol_white_list.as_ptr(),
             symbol_white_list.len() as u32,
         ).ok_or_else(|| {
-            write::llvm_err(&diag_handler, "failed to prepare thin LTO context".to_string())
+            write::llvm_err(&diag_handler, "failed to prepare thin LTO context")
         })?;
 
         info!("thin LTO data created");
@@ -746,7 +746,7 @@ impl ThinModule {
     {
         let diag_handler = cgcx.create_diag_handler();
         let tm = (cgcx.tm_factory)().map_err(|e| {
-            write::llvm_err(&diag_handler, e)
+            write::llvm_err(&diag_handler, &e)
         })?;
 
         // Right now the implementation we've got only works over serialized
@@ -761,7 +761,7 @@ impl ThinModule {
             self.data().len(),
             self.shared.module_names[self.idx].as_ptr(),
         ).ok_or_else(|| {
-            let msg = "failed to parse bitcode for thin LTO module".to_string();
+            let msg = "failed to parse bitcode for thin LTO module";
             write::llvm_err(&diag_handler, msg)
         })? as *const _;
         let module = ModuleCodegen {
@@ -785,7 +785,7 @@ impl ThinModule {
             let mut cu2 = ptr::null_mut();
             llvm::LLVMRustThinLTOGetDICompileUnit(llmod, &mut cu1, &mut cu2);
             if !cu2.is_null() {
-                let msg = "multiple source DICompileUnits found".to_string();
+                let msg = "multiple source DICompileUnits found";
                 return Err(write::llvm_err(&diag_handler, msg))
             }
 
@@ -806,25 +806,25 @@ impl ThinModule {
             // You can find some more comments about these functions in the LLVM
             // bindings we've got (currently `PassWrapper.cpp`)
             if !llvm::LLVMRustPrepareThinLTORename(self.shared.data.0, llmod) {
-                let msg = "failed to prepare thin LTO module".to_string();
+                let msg = "failed to prepare thin LTO module";
                 return Err(write::llvm_err(&diag_handler, msg))
             }
             cgcx.save_temp_bitcode(&module, "thin-lto-after-rename");
             timeline.record("rename");
             if !llvm::LLVMRustPrepareThinLTOResolveWeak(self.shared.data.0, llmod) {
-                let msg = "failed to prepare thin LTO module".to_string();
+                let msg = "failed to prepare thin LTO module";
                 return Err(write::llvm_err(&diag_handler, msg))
             }
             cgcx.save_temp_bitcode(&module, "thin-lto-after-resolve");
             timeline.record("resolve");
             if !llvm::LLVMRustPrepareThinLTOInternalize(self.shared.data.0, llmod) {
-                let msg = "failed to prepare thin LTO module".to_string();
+                let msg = "failed to prepare thin LTO module";
                 return Err(write::llvm_err(&diag_handler, msg))
             }
             cgcx.save_temp_bitcode(&module, "thin-lto-after-internalize");
             timeline.record("internalize");
             if !llvm::LLVMRustPrepareThinLTOImport(self.shared.data.0, llmod) {
-                let msg = "failed to prepare thin LTO module".to_string();
+                let msg = "failed to prepare thin LTO module";
                 return Err(write::llvm_err(&diag_handler, msg))
             }
             cgcx.save_temp_bitcode(&module, "thin-lto-after-import");
