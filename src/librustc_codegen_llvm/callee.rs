@@ -91,7 +91,7 @@ pub fn get_fn(
             llfn
         }
     } else {
-        let llfn = declare::declare_fn(cx, &sym, fn_ty, instance.is_vtable_shim());
+        let llfn = declare::declare_fn(cx, &sym, common::ty_fn_sig_vtable(cx, fn_ty, instance.is_vtable_shim()));
         assert_eq!(common::val_ty(llfn), llptrty);
         debug!("get_fn: not casting pointer!");
 

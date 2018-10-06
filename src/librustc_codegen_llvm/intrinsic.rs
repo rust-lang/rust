@@ -933,14 +933,14 @@ fn gen_fn<'ll, 'tcx>(
     output: Ty<'tcx>,
     codegen: &mut dyn FnMut(Builder<'_, 'll, 'tcx>),
 ) -> &'ll Value {
-    let rust_fn_ty = cx.tcx.mk_fn_ptr(ty::Binder::bind(cx.tcx.mk_fn_sig(
+    let rust_fn_sig = ty::Binder::bind(cx.tcx.mk_fn_sig(
         inputs.into_iter(),
         output,
         false,
         hir::Unsafety::Unsafe,
         Abi::Rust
-    )));
-    let llfn = declare::define_internal_fn(cx, name, rust_fn_ty);
+    ));
+    let llfn = declare::define_internal_fn(cx, name, rust_fn_sig);
     attributes::from_fn_attrs(cx, llfn, None);
     let bx = Builder::new_block(cx, llfn, "entry-block");
     codegen(bx);

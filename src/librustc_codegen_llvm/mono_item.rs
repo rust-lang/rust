@@ -17,6 +17,7 @@
 use asm;
 use attributes;
 use base;
+use common;
 use consts;
 use context::CodegenCx;
 use declare;
@@ -154,8 +155,9 @@ fn predefine_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             !instance.substs.has_param_types());
 
     let mono_ty = instance.ty(cx.tcx);
+    let mono_sig = common::ty_fn_sig_vtable(cx, mono_ty, instance.is_vtable_shim());
     let attrs = cx.tcx.codegen_fn_attrs(instance.def_id());
-    let lldecl = declare::declare_fn(cx, symbol_name, mono_ty, instance.is_vtable_shim());
+    let lldecl = declare::declare_fn(cx, symbol_name, mono_sig);
     unsafe { llvm::LLVMRustSetLinkage(lldecl, base::linkage_to_llvm(linkage)) };
     base::set_link_section(lldecl, &attrs);
     if linkage == Linkage::LinkOnceODR ||

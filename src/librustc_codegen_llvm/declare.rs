@@ -22,7 +22,7 @@
 
 use llvm;
 use llvm::AttributePlace::Function;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, PolyFnSig};
 use rustc::ty::layout::LayoutOf;
 use rustc::session::config::Sanitizer;
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -30,7 +30,6 @@ use rustc_target::spec::PanicStrategy;
 use abi::{Abi, FnType, FnTypeExt};
 use attributes;
 use context::CodegenCx;
-use common;
 use type_::Type;
 use value::Value;
 
@@ -129,12 +128,9 @@ pub fn declare_cfn(cx: &CodegenCx<'ll, '_>, name: &str, fn_type: &'ll Type) -> &
 pub fn declare_fn(
     cx: &CodegenCx<'ll, 'tcx>,
     name: &str,
-    fn_type: Ty<'tcx>,
-    is_vtable_shim: bool,
+    sig: PolyFnSig<'tcx>,
 ) -> &'ll Value {
-    debug!("declare_rust_fn(name={:?}, fn_type={:?}, is_vtable_shim={:?})",
-           name, fn_type, is_vtable_shim);
-    let sig = common::ty_fn_sig_vtable(cx, fn_type, is_vtable_shim);
+    debug!("declare_rust_fn(name={:?}, sig={:?})", name, sig);
     let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
     debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
 
@@ -186,12 +182,12 @@ pub fn define_private_global(cx: &CodegenCx<'ll, '_>, ty: &'ll Type) -> &'ll Val
 pub fn define_fn(
     cx: &CodegenCx<'ll, 'tcx>,
     name: &str,
-    fn_type: Ty<'tcx>,
+    fn_sig: PolyFnSig<'tcx>,
 ) -> &'ll Value {
     if get_defined_value(cx, name).is_some() {
         cx.sess().fatal(&format!("symbol `{}` already defined", name))
     } else {
-        declare_fn(cx, name, fn_type, false)
+        declare_fn(cx, name, fn_sig)
     }
 }
 
@@ -203,9 +199,9 @@ pub fn define_fn(
 pub fn define_internal_fn(
     cx: &CodegenCx<'ll, 'tcx>,
     name: &str,
-    fn_type: Ty<'tcx>,
+    fn_sig: PolyFnSig<'tcx>,
 ) -> &'ll Value {
-    let llfn = define_fn(cx, name, fn_type);
+    let llfn = define_fn(cx, name, fn_sig);
     unsafe { llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::InternalLinkage) };
     llfn
 }
