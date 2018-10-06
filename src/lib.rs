@@ -331,7 +331,11 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
     let mut caches = Caches::new();
     let mut ccx = ConstantCx::default();
 
-    let mut log = ::std::fs::File::create("target/out/log.txt").unwrap();
+    let mut log = if cfg!(debug_assertions) {
+        Some(::std::fs::File::create(concat!(env!("CARGO_MANIFEST_DIR"), "/target/out/log.txt")).unwrap())
+    } else {
+        None
+    };
 
     let before = ::std::time::Instant::now();
     println!("[codegen mono items] start");
@@ -344,7 +348,9 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
         if let Err(err) = res {
             match err.downcast::<NonFatal>() {
                 Ok(non_fatal) => {
-                    writeln!(log, "{}", &non_fatal.0);
+                    if cfg!(debug_assertions) {
+                        writeln!(log.as_mut().unwrap(), "{}", &non_fatal.0);
+                    }
                     tcx.sess.err(&non_fatal.0)
                 }
                 Err(err) => ::std::panic::resume_unwind(err),

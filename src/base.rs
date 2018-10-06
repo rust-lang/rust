@@ -120,7 +120,7 @@ fn trans_fn<'a, 'tcx: 'a>(
     if cfg!(debug_assertions) {
         ::cranelift::codegen::write::decorate_function(&mut writer, &mut cton, &func, None)
             .unwrap();
-        let clif_file_name = "target/out/clif/".to_string() + &tcx.symbol_name(instance).as_str();
+        let clif_file_name = concat!(env!("CARGO_MANIFEST_DIR"), "/target/out/clif/").to_string() + &tcx.symbol_name(instance).as_str();
         ::std::fs::write(clif_file_name, cton.as_bytes()).unwrap();
     }
 
