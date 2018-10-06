@@ -350,14 +350,6 @@ mod tests {
 
     fn do_check_local_name(code: &str, expected_offset: u32) {
         let (off, code) = extract_offset(code);
-        let code = {
-            let mut buf = String::new();
-            let off = u32::from(off) as usize;
-            buf.push_str(&code[..off]);
-            buf.push_str(&code[off..]);
-            buf
-        };
-
         let file = File::parse(&code);
         let fn_def: ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
         let name_ref: ast::NameRef = find_node_at_offset(file.syntax(), off).unwrap();
