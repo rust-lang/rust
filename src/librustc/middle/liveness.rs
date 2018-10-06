@@ -170,7 +170,7 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_, '_, '_>) -> Strin
         VarDefNode(s) => {
             format!("Var def node [{}]", cm.span_to_string(s))
         }
-        ExitNode => "Exit node".to_string(),
+        ExitNode => "Exit node".to_owned(),
     }
 }
 
@@ -257,7 +257,6 @@ enum VarKind {
 
 struct IrMaps<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-
     num_live_nodes: usize,
     num_vars: usize,
     live_node_map: HirIdMap<LiveNode>,
@@ -330,7 +329,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
             Local(LocalInfo { name, .. }) | Arg(_, name) => {
                 name.to_string()
             },
-            CleanExit => "<clean-exit>".to_string()
+            CleanExit => "<clean-exit>".to_owned()
         }
     }
 
@@ -474,13 +473,15 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
         // construction site.
         let mut call_caps = Vec::new();
         ir.tcx.with_freevars(expr.id, |freevars| {
-            for fv in freevars {
+            call_caps.extend(freevars.iter().filter_map(|fv| {
                 if let Def::Local(rv) = fv.def {
                     let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
                     let var_hid = ir.tcx.hir.node_to_hir_id(rv);
-                    call_caps.push(CaptureInfo { ln: fv_ln, var_hid });
+                    Some(CaptureInfo { ln: fv_ln, var_hid })
+                } else {
+                    None
                 }
-            }
+            }));
         });
         ir.set_captures(expr.id, call_caps);
 
@@ -918,8 +919,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         self.rwu_table.assign_unpacked(idx, rwu);
     }
 
-    // _______________________________________________________________________
-
     fn compute(&mut self, body: &hir::Expr) -> LiveNode {
         // if there is a `break` or `again` at the top level, then it's
         // effectively a return---this only occurs in `for` loops,
@@ -941,10 +940,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let entry_ln = self.propagate_through_expr(body, s.fallthrough_ln);
 
         // hack to skip the loop unless debug! is enabled:
-        debug!("^^ liveness computation results for body {} (entry={:?})",
-               {
+        debug!("^^ liveness computation results for body {} (entry={:?})", {
                    for ln_idx in 0..self.ir.num_live_nodes {
-                       debug!("{:?}", self.ln_str(LiveNode(ln_idx as u32)));
+                        debug!("{:?}", self.ln_str(LiveNode(ln_idx as u32)));
                    }
                    body.id
                },
@@ -1026,241 +1024,232 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         debug!("propagate_through_expr: {}", self.ir.tcx.hir.node_to_pretty_string(expr.id));
 
         match expr.node {
-          // Interesting cases with control flow or which gen/kill
-          hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
-              self.access_path(expr.hir_id, path, succ, ACC_READ | ACC_USE)
-          }
+            // Interesting cases with control flow or which gen/kill
+            hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
+                self.access_path(expr.hir_id, path, succ, ACC_READ | ACC_USE)
+            }
 
-          hir::ExprKind::Field(ref e, _) => {
-              self.propagate_through_expr(&e, succ)
-          }
+            hir::ExprKind::Field(ref e, _) => {
+                self.propagate_through_expr(&e, succ)
+            }
 
-          hir::ExprKind::Closure(.., blk_id, _, _) => {
-              debug!("{} is an ExprKind::Closure", self.ir.tcx.hir.node_to_pretty_string(expr.id));
+            hir::ExprKind::Closure(.., blk_id, _, _) => {
+                debug!("{} is an ExprKind::Closure",
+                       self.ir.tcx.hir.node_to_pretty_string(expr.id));
 
-              // The next-node for a break is the successor of the entire
-              // loop. The next-node for a continue is the top of this loop.
-              let node = self.live_node(expr.hir_id, expr.span);
+                // The next-node for a break is the successor of the entire
+                // loop. The next-node for a continue is the top of this loop.
+                let node = self.live_node(expr.hir_id, expr.span);
 
-              let break_ln = succ;
-              let cont_ln = node;
-              self.break_ln.insert(blk_id.node_id, break_ln);
-              self.cont_ln.insert(blk_id.node_id, cont_ln);
+                let break_ln = succ;
+                let cont_ln = node;
+                self.break_ln.insert(blk_id.node_id, break_ln);
+                self.cont_ln.insert(blk_id.node_id, cont_ln);
 
-              // the construction of a closure itself is not important,
-              // but we have to consider the closed over variables.
-              let caps = match self.ir.capture_info_map.get(&expr.id) {
-                  Some(caps) => caps.clone(),
-                  None => {
-                      span_bug!(expr.span, "no registered caps");
-                  }
-              };
-              caps.iter().rev().fold(succ, |succ, cap| {
-                  self.init_from_succ(cap.ln, succ);
-                  let var = self.variable(cap.var_hid, expr.span);
-                  self.acc(cap.ln, var, ACC_READ | ACC_USE);
-                  cap.ln
-              })
-          }
+                // the construction of a closure itself is not important,
+                // but we have to consider the closed over variables.
+                let caps = self.ir.capture_info_map.get(&expr.id).cloned().unwrap_or_else(||
+                    span_bug!(expr.span, "no registered caps"));
 
-          hir::ExprKind::If(ref cond, ref then, ref els) => {
-            //
-            //     (cond)
-            //       |
-            //       v
-            //     (expr)
-            //     /   \
-            //    |     |
-            //    v     v
-            //  (then)(els)
-            //    |     |
-            //    v     v
-            //   (  succ  )
-            //
-            let else_ln = self.propagate_through_opt_expr(els.as_ref().map(|e| &**e), succ);
-            let then_ln = self.propagate_through_expr(&then, succ);
-            let ln = self.live_node(expr.hir_id, expr.span);
-            self.init_from_succ(ln, else_ln);
-            self.merge_from_succ(ln, then_ln, false);
-            self.propagate_through_expr(&cond, ln)
-          }
+                caps.iter().rev().fold(succ, |succ, cap| {
+                    self.init_from_succ(cap.ln, succ);
+                    let var = self.variable(cap.var_hid, expr.span);
+                    self.acc(cap.ln, var, ACC_READ | ACC_USE);
+                    cap.ln
+                })
+            }
 
-          hir::ExprKind::While(ref cond, ref blk, _) => {
-            self.propagate_through_loop(expr, WhileLoop(&cond), &blk, succ)
-          }
+            hir::ExprKind::If(ref cond, ref then, ref els) => {
+                //
+                //     (cond)
+                //       |
+                //       v
+                //     (expr)
+                //     /   \
+                //    |     |
+                //    v     v
+                //  (then)(els)
+                //    |     |
+                //    v     v
+                //   (  succ  )
+                //
+                let else_ln = self.propagate_through_opt_expr(els.as_ref().map(|e| &**e), succ);
+                let then_ln = self.propagate_through_expr(&then, succ);
+                let ln = self.live_node(expr.hir_id, expr.span);
+                self.init_from_succ(ln, else_ln);
+                self.merge_from_succ(ln, then_ln, false);
+                self.propagate_through_expr(&cond, ln)
+            }
 
-          // Note that labels have been resolved, so we don't need to look
-          // at the label ident
-          hir::ExprKind::Loop(ref blk, _, _) => {
-            self.propagate_through_loop(expr, LoopLoop, &blk, succ)
-          }
+            hir::ExprKind::While(ref cond, ref blk, _) => {
+                self.propagate_through_loop(expr, WhileLoop(&cond), &blk, succ)
+            }
 
-          hir::ExprKind::Match(ref e, ref arms, _) => {
-            //
-            //      (e)
-            //       |
-            //       v
-            //     (expr)
-            //     / | \
-            //    |  |  |
-            //    v  v  v
-            //   (..arms..)
-            //    |  |  |
-            //    v  v  v
-            //   (  succ  )
-            //
-            //
-            let ln = self.live_node(expr.hir_id, expr.span);
-            self.init_empty(ln, succ);
-            let mut first_merge = true;
-            for arm in arms {
-                let body_succ =
-                    self.propagate_through_expr(&arm.body, succ);
-                let guard_succ =
-                    self.propagate_through_opt_expr(
-                        arm.guard.as_ref().map(|g|
-                            match g {
-                                hir::Guard::If(e) => &**e,
-                            }),
-                        body_succ);
-                // only consider the first pattern; any later patterns must have
-                // the same bindings, and we also consider the first pattern to be
-                // the "authoritative" set of ids
-                let arm_succ =
-                    self.define_bindings_in_arm_pats(arm.pats.first().map(|p| &**p),
-                                                     guard_succ);
-                self.merge_from_succ(ln, arm_succ, first_merge);
-                first_merge = false;
-            };
-            self.propagate_through_expr(&e, ln)
-          }
+            // Note that labels have been resolved, so we don't need to look
+            // at the label ident
+            hir::ExprKind::Loop(ref blk, _, _) => {
+                self.propagate_through_loop(expr, LoopLoop, &blk, succ)
+            }
 
-          hir::ExprKind::Ret(ref o_e) => {
-            // ignore succ and subst exit_ln:
-            let exit_ln = self.s.exit_ln;
-            self.propagate_through_opt_expr(o_e.as_ref().map(|e| &**e), exit_ln)
-          }
+            hir::ExprKind::Match(ref e, ref arms, _) => {
+                //
+                //      (e)
+                //       |
+                //       v
+                //     (expr)
+                //     / | \
+                //    |  |  |
+                //    v  v  v
+                //   (..arms..)
+                //    |  |  |
+                //    v  v  v
+                //   (  succ  )
+                //
+                //
+                let ln = self.live_node(expr.hir_id, expr.span);
+                self.init_empty(ln, succ);
+                let mut first_merge = true;
+                for arm in arms {
+                    let body_succ = self.propagate_through_expr(&arm.body, succ);
 
-          hir::ExprKind::Break(label, ref opt_expr) => {
-              // Find which label this break jumps to
-              let target = match label.target_id {
+                    let guard_succ = self.propagate_through_opt_expr(
+                        arm.guard.as_ref().map(|hir::Guard::If(e)| &**e),
+                        body_succ
+                    );
+                    // only consider the first pattern; any later patterns must have
+                    // the same bindings, and we also consider the first pattern to be
+                    // the "authoritative" set of ids
+                    let arm_succ =
+                        self.define_bindings_in_arm_pats(arm.pats.first().map(|p| &**p),
+                                                         guard_succ);
+                    self.merge_from_succ(ln, arm_succ, first_merge);
+                    first_merge = false;
+                };
+                self.propagate_through_expr(&e, ln)
+            }
+
+            hir::ExprKind::Ret(ref o_e) => {
+                // ignore succ and subst exit_ln:
+                let exit_ln = self.s.exit_ln;
+                self.propagate_through_opt_expr(o_e.as_ref().map(|e| &**e), exit_ln)
+            }
+
+            hir::ExprKind::Break(label, ref opt_expr) => {
+                // Find which label this break jumps to
+                let target = match label.target_id {
                     Ok(node_id) => self.break_ln.get(&node_id),
                     Err(err) => span_bug!(expr.span, "loop scope error: {}", err),
-              }.map(|x| *x);
+                }.cloned();
 
-              // Now that we know the label we're going to,
-              // look it up in the break loop nodes table
+                // Now that we know the label we're going to,
+                // look it up in the break loop nodes table
 
-              match target {
-                  Some(b) => self.propagate_through_opt_expr(opt_expr.as_ref().map(|e| &**e), b),
-                  None => span_bug!(expr.span, "break to unknown label")
-              }
-          }
+                match target {
+                    Some(b) => self.propagate_through_opt_expr(opt_expr.as_ref().map(|e| &**e), b),
+                    None => span_bug!(expr.span, "break to unknown label")
+                }
+            }
 
-          hir::ExprKind::Continue(label) => {
-              // Find which label this expr continues to
-              let sc = match label.target_id {
-                    Ok(node_id) => node_id,
-                    Err(err) => span_bug!(expr.span, "loop scope error: {}", err),
-              };
+            hir::ExprKind::Continue(label) => {
+                // Find which label this expr continues to
+                let sc = label.target_id.unwrap_or_else(|err|
+                    span_bug!(expr.span, "loop scope error: {}", err));
 
-              // Now that we know the label we're going to,
-              // look it up in the continue loop nodes table
+                // Now that we know the label we're going to,
+                // look it up in the continue loop nodes table
+                self.cont_ln.get(&sc).cloned().unwrap_or_else(||
+                    span_bug!(expr.span, "continue to unknown label"))
+            }
 
-              match self.cont_ln.get(&sc) {
-                  Some(&b) => b,
-                  None => span_bug!(expr.span, "continue to unknown label")
-              }
-          }
-
-          hir::ExprKind::Assign(ref l, ref r) => {
-            // see comment on places in
-            // propagate_through_place_components()
-            let succ = self.write_place(&l, succ, ACC_WRITE);
-            let succ = self.propagate_through_place_components(&l, succ);
-            self.propagate_through_expr(&r, succ)
-          }
-
-          hir::ExprKind::AssignOp(_, ref l, ref r) => {
-            // an overloaded assign op is like a method call
-            if self.tables.is_method_call(expr) {
-                let succ = self.propagate_through_expr(&l, succ);
-                self.propagate_through_expr(&r, succ)
-            } else {
+            hir::ExprKind::Assign(ref l, ref r) => {
                 // see comment on places in
                 // propagate_through_place_components()
-                let succ = self.write_place(&l, succ, ACC_WRITE|ACC_READ);
-                let succ = self.propagate_through_expr(&r, succ);
-                self.propagate_through_place_components(&l, succ)
+                let succ = self.write_place(&l, succ, ACC_WRITE);
+                let succ = self.propagate_through_place_components(&l, succ);
+                self.propagate_through_expr(&r, succ)
             }
-          }
 
-          // Uninteresting cases: just propagate in rev exec order
+            hir::ExprKind::AssignOp(_, ref l, ref r) => {
+                // an overloaded assign op is like a method call
+                if self.tables.is_method_call(expr) {
+                    let succ = self.propagate_through_expr(&l, succ);
+                    self.propagate_through_expr(&r, succ)
+                } else {
+                    // see comment on places in
+                    // propagate_through_place_components()
+                    let succ = self.write_place(&l, succ, ACC_WRITE|ACC_READ);
+                    let succ = self.propagate_through_expr(&r, succ);
+                    self.propagate_through_place_components(&l, succ)
+                }
+            }
 
-          hir::ExprKind::Array(ref exprs) => {
-            self.propagate_through_exprs(exprs, succ)
-          }
+            // Uninteresting cases: just propagate in rev exec order
 
-          hir::ExprKind::Struct(_, ref fields, ref with_expr) => {
-            let succ = self.propagate_through_opt_expr(with_expr.as_ref().map(|e| &**e), succ);
-            fields.iter().rev().fold(succ, |succ, field| {
-                self.propagate_through_expr(&field.expr, succ)
-            })
-          }
+            hir::ExprKind::Array(ref exprs) => {
+                self.propagate_through_exprs(exprs, succ)
+            }
 
-          hir::ExprKind::Call(ref f, ref args) => {
-            // FIXME(canndrew): This is_never should really be an is_uninhabited
-            let succ = if self.tables.expr_ty(expr).is_never() {
-                self.s.exit_ln
-            } else {
-                succ
-            };
-            let succ = self.propagate_through_exprs(args, succ);
-            self.propagate_through_expr(&f, succ)
-          }
+            hir::ExprKind::Struct(_, ref fields, ref with_expr) => {
+                let succ = self.propagate_through_opt_expr(with_expr.as_ref().map(|e| &**e), succ);
+                fields.iter().rev().fold(succ, |succ, field| {
+                    self.propagate_through_expr(&field.expr, succ)
+                })
+            }
 
-          hir::ExprKind::MethodCall(.., ref args) => {
-            // FIXME(canndrew): This is_never should really be an is_uninhabited
-            let succ = if self.tables.expr_ty(expr).is_never() {
-                self.s.exit_ln
-            } else {
-                succ
-            };
-            self.propagate_through_exprs(args, succ)
-          }
+            hir::ExprKind::Call(ref f, ref args) => {
+                // FIXME(canndrew): This is_never should really be an is_uninhabited
+                let succ = if self.tables.expr_ty(expr).is_never() {
+                    self.s.exit_ln
+                } else {
+                    succ
+                };
+                let succ = self.propagate_through_exprs(args, succ);
+                self.propagate_through_expr(&f, succ)
+            }
 
-          hir::ExprKind::Tup(ref exprs) => {
-            self.propagate_through_exprs(exprs, succ)
-          }
+            hir::ExprKind::MethodCall(.., ref args) => {
+                // FIXME(canndrew): This is_never should really be an is_uninhabited
+                let succ = if self.tables.expr_ty(expr).is_never() {
+                    self.s.exit_ln
+                } else {
+                    succ
+                };
 
-          hir::ExprKind::Binary(op, ref l, ref r) if op.node.is_lazy() => {
-            let r_succ = self.propagate_through_expr(&r, succ);
+                self.propagate_through_exprs(args, succ)
+            }
 
-            let ln = self.live_node(expr.hir_id, expr.span);
-            self.init_from_succ(ln, succ);
-            self.merge_from_succ(ln, r_succ, false);
+            hir::ExprKind::Tup(ref exprs) => {
+                self.propagate_through_exprs(exprs, succ)
+            }
 
-            self.propagate_through_expr(&l, ln)
-          }
+            hir::ExprKind::Binary(op, ref l, ref r) if op.node.is_lazy() => {
+                let r_succ = self.propagate_through_expr(&r, succ);
 
-          hir::ExprKind::Index(ref l, ref r) |
-          hir::ExprKind::Binary(_, ref l, ref r) => {
-            let r_succ = self.propagate_through_expr(&r, succ);
-            self.propagate_through_expr(&l, r_succ)
-          }
+                let ln = self.live_node(expr.hir_id, expr.span);
+                self.init_from_succ(ln, succ);
+                self.merge_from_succ(ln, r_succ, false);
 
-          hir::ExprKind::Box(ref e) |
-          hir::ExprKind::AddrOf(_, ref e) |
-          hir::ExprKind::Cast(ref e, _) |
-          hir::ExprKind::Type(ref e, _) |
-          hir::ExprKind::Unary(_, ref e) |
-          hir::ExprKind::Yield(ref e) |
-          hir::ExprKind::Repeat(ref e, _) => {
-            self.propagate_through_expr(&e, succ)
-          }
+                self.propagate_through_expr(&l, ln)
+            }
 
-          hir::ExprKind::InlineAsm(ref ia, ref outputs, ref inputs) => {
-            let succ = ia.outputs.iter().zip(outputs).rev().fold(succ, |succ, (o, output)| {
+            hir::ExprKind::Index(ref l, ref r) |
+            hir::ExprKind::Binary(_, ref l, ref r) => {
+                let r_succ = self.propagate_through_expr(&r, succ);
+                self.propagate_through_expr(&l, r_succ)
+            }
+
+            hir::ExprKind::Box(ref e) |
+            hir::ExprKind::AddrOf(_, ref e) |
+            hir::ExprKind::Cast(ref e, _) |
+            hir::ExprKind::Type(ref e, _) |
+            hir::ExprKind::Unary(_, ref e) |
+            hir::ExprKind::Yield(ref e) |
+            hir::ExprKind::Repeat(ref e, _) => {
+                self.propagate_through_expr(&e, succ)
+            }
+
+            hir::ExprKind::InlineAsm(ref ia, ref outputs, ref inputs) => {
+                let succ = ia.outputs.iter().zip(outputs).rev().fold(succ, |succ, (o, output)| {
                 // see comment on places
                 // in propagate_through_place_components()
                 if o.is_indirect {
@@ -1269,29 +1258,28 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     let acc = if o.is_rw { ACC_WRITE|ACC_READ } else { ACC_WRITE };
                     let succ = self.write_place(output, succ, acc);
                     self.propagate_through_place_components(output, succ)
-                }
-            });
+                }});
 
-            // Inputs are executed first. Propagate last because of rev order
-            self.propagate_through_exprs(inputs, succ)
-          }
+                // Inputs are executed first. Propagate last because of rev order
+                self.propagate_through_exprs(inputs, succ)
+            }
 
-          hir::ExprKind::Lit(..) | hir::ExprKind::Path(hir::QPath::TypeRelative(..)) => {
-            succ
-          }
+            hir::ExprKind::Lit(..) | hir::ExprKind::Path(hir::QPath::TypeRelative(..)) => {
+                succ
+            }
 
-          // Note that labels have been resolved, so we don't need to look
-          // at the label ident
-          hir::ExprKind::Block(ref blk, _) => {
-            self.propagate_through_block(&blk, succ)
-          }
+            // Note that labels have been resolved, so we don't need to look
+            // at the label ident
+            hir::ExprKind::Block(ref blk, _) => {
+                self.propagate_through_block(&blk, succ)
+            }
         }
     }
 
     fn propagate_through_place_components(&mut self,
-                                           expr: &Expr,
-                                           succ: LiveNode)
-                                           -> LiveNode {
+                                          expr: &Expr,
+                                          succ: LiveNode)
+                                          -> LiveNode {
         // # Places
         //
         // In general, the full flow graph structure for an
@@ -1349,18 +1337,17 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     // see comment on propagate_through_place()
-    fn write_place(&mut self, expr: &Expr, succ: LiveNode, acc: u32)
-                    -> LiveNode {
+    fn write_place(&mut self, expr: &Expr, succ: LiveNode, acc: u32) -> LiveNode {
         match expr.node {
-          hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
-              self.access_path(expr.hir_id, path, succ, acc)
-          }
+            hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
+                self.access_path(expr.hir_id, path, succ, acc)
+            }
 
-          // We do not track other places, so just propagate through
-          // to their subcomponents.  Also, it may happen that
-          // non-places occur here, because those are detected in the
-          // later pass borrowck.
-          _ => succ
+            // We do not track other places, so just propagate through
+            // to their subcomponents.  Also, it may happen that
+            // non-places occur here, because those are detected in the
+            // later pass borrowck.
+            _ => succ
         }
     }
 
@@ -1379,10 +1366,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn access_path(&mut self, hir_id: HirId, path: &hir::Path, succ: LiveNode, acc: u32)
                    -> LiveNode {
         match path.def {
-          Def::Local(nid) => {
-            self.access_var(hir_id, nid, succ, acc, path.span)
-          }
-          _ => succ
+            Def::Local(nid) => {
+              self.access_var(hir_id, nid, succ, acc, path.span)
+            }
+            _ => succ
         }
     }
 
@@ -1392,7 +1379,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                               body: &hir::Block,
                               succ: LiveNode)
                               -> LiveNode {
-
         /*
 
         We model control flow like this:
@@ -1450,8 +1436,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     self.propagate_through_expr(&cond, ln)
                 }
             };
-            assert!(cond_ln == new_cond_ln);
-            assert!(body_ln == self.propagate_through_block(body, cond_ln));
+            assert_eq!(cond_ln, new_cond_ln);
+            assert_eq!(body_ln, self.propagate_through_block(body, cond_ln));
         }
 
         cond_ln
@@ -1505,49 +1491,49 @@ fn check_arm<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, arm: &'tcx hir::Arm) {
 
 fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
     match expr.node {
-      hir::ExprKind::Assign(ref l, _) => {
-        this.check_place(&l);
-
-        intravisit::walk_expr(this, expr);
-      }
-
-      hir::ExprKind::AssignOp(_, ref l, _) => {
-        if !this.tables.is_method_call(expr) {
+        hir::ExprKind::Assign(ref l, _) => {
             this.check_place(&l);
+
+            intravisit::walk_expr(this, expr);
         }
 
-        intravisit::walk_expr(this, expr);
-      }
+        hir::ExprKind::AssignOp(_, ref l, _) => {
+            if !this.tables.is_method_call(expr) {
+                this.check_place(&l);
+            }
 
-      hir::ExprKind::InlineAsm(ref ia, ref outputs, ref inputs) => {
-        for input in inputs {
-          this.visit_expr(input);
+            intravisit::walk_expr(this, expr);
         }
 
-        // Output operands must be places
-        for (o, output) in ia.outputs.iter().zip(outputs) {
-          if !o.is_indirect {
-            this.check_place(output);
-          }
-          this.visit_expr(output);
+        hir::ExprKind::InlineAsm(ref ia, ref outputs, ref inputs) => {
+            for input in inputs {
+                this.visit_expr(input);
+            }
+
+            // Output operands must be places
+            for (o, output) in ia.outputs.iter().zip(outputs) {
+                if !o.is_indirect {
+                    this.check_place(output);
+                }
+                this.visit_expr(output);
+            }
+
+            intravisit::walk_expr(this, expr);
         }
 
-        intravisit::walk_expr(this, expr);
-      }
-
-      // no correctness conditions related to liveness
-      hir::ExprKind::Call(..) | hir::ExprKind::MethodCall(..) | hir::ExprKind::If(..) |
-      hir::ExprKind::Match(..) | hir::ExprKind::While(..) | hir::ExprKind::Loop(..) |
-      hir::ExprKind::Index(..) | hir::ExprKind::Field(..) |
-      hir::ExprKind::Array(..) | hir::ExprKind::Tup(..) | hir::ExprKind::Binary(..) |
-      hir::ExprKind::Cast(..) | hir::ExprKind::Unary(..) | hir::ExprKind::Ret(..) |
-      hir::ExprKind::Break(..) | hir::ExprKind::Continue(..) | hir::ExprKind::Lit(_) |
-      hir::ExprKind::Block(..) | hir::ExprKind::AddrOf(..) |
-      hir::ExprKind::Struct(..) | hir::ExprKind::Repeat(..) |
-      hir::ExprKind::Closure(..) | hir::ExprKind::Path(_) | hir::ExprKind::Yield(..) |
-      hir::ExprKind::Box(..) | hir::ExprKind::Type(..) => {
-        intravisit::walk_expr(this, expr);
-      }
+        // no correctness conditions related to liveness
+        hir::ExprKind::Call(..) | hir::ExprKind::MethodCall(..) | hir::ExprKind::If(..) |
+        hir::ExprKind::Match(..) | hir::ExprKind::While(..) | hir::ExprKind::Loop(..) |
+        hir::ExprKind::Index(..) | hir::ExprKind::Field(..) |
+        hir::ExprKind::Array(..) | hir::ExprKind::Tup(..) | hir::ExprKind::Binary(..) |
+        hir::ExprKind::Cast(..) | hir::ExprKind::Unary(..) | hir::ExprKind::Ret(..) |
+        hir::ExprKind::Break(..) | hir::ExprKind::Continue(..) | hir::ExprKind::Lit(_) |
+        hir::ExprKind::Block(..) | hir::ExprKind::AddrOf(..) |
+        hir::ExprKind::Struct(..) | hir::ExprKind::Repeat(..) |
+        hir::ExprKind::Closure(..) | hir::ExprKind::Path(_) | hir::ExprKind::Yield(..) |
+        hir::ExprKind::Box(..) | hir::ExprKind::Type(..) => {
+            intravisit::walk_expr(this, expr);
+        }
     }
 }
 
@@ -1576,7 +1562,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn should_warn(&self, var: Variable) -> Option<String> {
         let name = self.ir.variable_name(var);
-        if name.is_empty() || name.as_bytes()[0] == ('_' as u8) {
+        if name.is_empty() || name.as_bytes()[0] == b'_' {
             None
         } else {
             Some(name)
@@ -1617,7 +1603,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         if !self.used_on_entry(ln, var) {
             let r = self.should_warn(var);
             if let Some(name) = r {
-
                 // annoying: for parameters in funcs like `fn(x: i32)
                 // {ret}`, there is only one node, so asking about
                 // assigned_on_exit() is not meaningful.
@@ -1627,8 +1612,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     self.assigned_on_exit(ln, var).is_some()
                 };
 
-                let suggest_underscore_msg = format!("consider using `_{}` instead",
-                                                     name);
+                let suggest_underscore_msg = format!("consider using `_{}` instead", name);
 
                 if is_assigned {
                     self.ir.tcx

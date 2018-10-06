@@ -113,13 +113,13 @@ fn verify<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            items.$name().is_none() {
             if lang_items::$item == lang_items::PanicImplLangItem {
                 tcx.sess.err(&format!("`#[panic_handler]` function required, \
-                                        but not found"));
+                                       but not found"));
             } else if lang_items::$item == lang_items::OomLangItem {
                 tcx.sess.err(&format!("`#[alloc_error_handler]` function required, \
-                                        but not found"));
+                                       but not found"));
             } else {
                 tcx.sess.err(&format!("language item required, but not found: `{}`",
-                                        stringify!($name)));
+                                      stringify!($name)));
             }
         }
     )*

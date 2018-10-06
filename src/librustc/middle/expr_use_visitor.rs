@@ -321,7 +321,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                     region::Scope {
                         id: body.value.hir_id.local_id,
                         data: region::ScopeData::Node
-                    }));
+                }));
             let arg_cmt = Rc::new(self.mc.cat_rvalue(
                 arg.hir_id,
                 arg.pat.span,
@@ -402,20 +402,20 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 self.walk_expr(&subexpr)
             }
 
-            hir::ExprKind::Unary(hir::UnDeref, ref base) => {      // *base
+            hir::ExprKind::Unary(hir::UnDeref, ref base) => { // *base
                 self.select_from_expr(&base);
             }
 
-            hir::ExprKind::Field(ref base, _) => {         // base.f
+            hir::ExprKind::Field(ref base, _) => { // base.f
                 self.select_from_expr(&base);
             }
 
-            hir::ExprKind::Index(ref lhs, ref rhs) => {       // lhs[rhs]
+            hir::ExprKind::Index(ref lhs, ref rhs) => { // lhs[rhs]
                 self.select_from_expr(&lhs);
                 self.consume_expr(&rhs);
             }
 
-            hir::ExprKind::Call(ref callee, ref args) => {    // callee(args)
+            hir::ExprKind::Call(ref callee, ref args) => { // callee(args)
                 self.walk_callee(expr, &callee);
                 self.consume_exprs(args);
             }
@@ -801,10 +801,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             self.walk_pat(discr_cmt.clone(), &pat, mode);
         }
 
-        if let Some(ref guard) = arm.guard {
-            match guard {
-                hir::Guard::If(ref e) => self.consume_expr(e),
-            }
+        if let Some(hir::Guard::If(ref e)) = arm.guard {
+            self.consume_expr(e)
         }
 
         self.consume_expr(&arm.body);
@@ -826,12 +824,13 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                                cmt_discr: mc::cmt<'tcx>,
                                pat: &hir::Pat,
                                mode: &mut TrackMatchMode) {
-        debug!("determine_pat_move_mode cmt_discr={:?} pat={:?}", cmt_discr,
-               pat);
+        debug!("determine_pat_move_mode cmt_discr={:?} pat={:?}", cmt_discr, pat);
+
         return_if_err!(self.mc.cat_pattern(cmt_discr, pat, |cmt_pat, pat| {
             if let PatKind::Binding(..) = pat.node {
-                let bm = *self.mc.tables.pat_binding_modes().get(pat.hir_id)
-                                                          .expect("missing binding mode");
+                let bm = *self.mc.tables.pat_binding_modes()
+                                        .get(pat.hir_id)
+                                        .expect("missing binding mode");
                 match bm {
                     ty::BindByReference(..) =>
                         mode.lub(BorrowingMatch),
