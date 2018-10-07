@@ -31,6 +31,10 @@ fn test_function_to_numeric_cast() {
 
     // Casting to usize is OK and should not warn
     let _ = foo as usize;
+
+    // Cast `f` (a `FnDef`) to `fn()` should not warn
+    fn f() {}
+    let _ = f as fn();
 }
 
 fn test_function_var_to_numeric_cast() {
