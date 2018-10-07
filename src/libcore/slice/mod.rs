@@ -804,6 +804,61 @@ impl<T> [T] {
         (&self[..mid], &self[mid..])
     }
 
+    /// Divides one slice into two at an index.
+    ///
+    /// The first will contain all indices from `[0, mid)` (excluding
+    /// the index `mid` itself) and the second will contain all
+    /// indices from `[mid, len)` (excluding the index `len` itself).
+    ///
+    /// Returns `None` if `mid > len`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = [1, 2, 3, 4, 5, 6];
+    ///
+    /// {
+    ///     match v.split_at(0) {
+    ///         Some((left, right)) => {
+    ///             assert!(left == []);
+    ///             assert!(right == [1, 2, 3, 4, 5, 6]);
+    ///         },
+    ///         None => assert!(false),
+    ///     }
+    /// }
+    ///
+    /// {
+    ///     match v.split_at(2) {
+    ///         Some((left, right)) => {
+    ///             assert!(left == [1, 2]);
+    ///             assert!(right == [3, 4, 5, 6]);
+    ///         },
+    ///         None => assert!(false),
+    ///     }
+    /// }
+    ///
+    /// {
+    ///     match v.split_at(6) {
+    ///         Some((left, right)) => {
+    ///             assert!(left == [1, 2, 3, 4, 5, 6]);
+    ///             assert!(right == []);
+    ///         },
+    ///         None => assert!(false),
+    ///     }
+    /// }
+    ///
+    /// {
+    ///     assert!(v.split_at(7).is_none())
+    /// }
+    /// ```
+    #[unstable(feature = "try_split_at", issue = "0")]
+    #[inline]
+    pub fn try_split_at(&self, mid: usize) -> Option<(&[T], &[T])> {
+        if mid > self.len() { None } else {
+            unsafe { Some((self.get_unchecked(..mid), self.get_unchecked(mid..))) }
+        }
+    }
+
     /// Divides one mutable slice into two at an index.
     ///
     /// The first will contain all indices from `[0, mid)` (excluding
@@ -839,6 +894,43 @@ impl<T> [T] {
 
             (from_raw_parts_mut(ptr, mid),
              from_raw_parts_mut(ptr.add(mid), len - mid))
+        }
+    }
+
+    /// Divides one mutable slice into two at an index.
+    ///
+    /// The first will contain all indices from `[0, mid)` (excluding
+    /// the index `mid` itself) and the second will contain all
+    /// indices from `[mid, len)` (excluding the index `len` itself).
+    ///
+    /// Returns `None` if `mid > len`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut v = [1, 0, 3, 0, 5, 6];
+    /// // scoped to restrict the lifetime of the borrows
+    /// {
+    ///     match v.split_at_mut(2) {
+    ///         Some((left, right)) => {
+    ///             assert!(left == [1, 0]);
+    ///             assert!(right == [3, 0, 5, 6]);
+    ///             left[1] = 2;
+    ///             right[1] = 4;
+    ///         },
+    ///         None => assert!(false),
+    /// }
+    /// assert!(v == [1, 2, 3, 4, 5, 6]);
+    /// ```
+    #[unstable(feature = "try_split_at", issue = "0")]
+    #[inline]
+    pub fn try_split_at_mut(&mut self, mid: usize) -> Option<(&mut [T], &mut [T])> {
+        let len = self.len();
+        let ptr = self.as_mut_ptr();
+
+        if mid > self.len() { None } else {
+            unsafe { Some((from_raw_parts_mut(ptr, mid),
+                           from_raw_parts_mut(ptr.add(mid), len - mid))) }
         }
     }
 
