@@ -12,8 +12,6 @@
 #![allow(dead_code)]
 // A quick test of 'unsafe const fn' functionality
 
-#![feature(min_const_fn)]
-
 const unsafe fn dummy(v: u32) -> u32 {
     !v
 }

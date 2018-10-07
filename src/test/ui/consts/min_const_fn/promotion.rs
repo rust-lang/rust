@@ -1,5 +1,3 @@
-#![feature(min_const_fn)]
-
 use std::cell::Cell;
 
 const fn foo1() {}

@@ -40,16 +40,6 @@ use symbol::{keywords, Symbol};
 use std::{env};
 
 macro_rules! set {
-    // The const_fn feature also enables the min_const_fn feature, because `min_const_fn` allows
-    // the declaration `const fn`, but the `const_fn` feature gate enables things inside those
-    // functions that we do not want to expose to the user for now.
-    (const_fn) => {{
-        fn f(features: &mut Features, _: Span) {
-            features.const_fn = true;
-            features.min_const_fn = true;
-        }
-        f as fn(&mut Features, Span)
-    }};
     ($field: ident) => {{
         fn f(features: &mut Features, _: Span) {
             features.$field = true;
@@ -218,9 +208,6 @@ declare_features! (
 
     // Allows the definition of `const fn` functions with some advanced features.
     (active, const_fn, "1.2.0", Some(24111), None),
-
-    // Allows the definition of `const fn` functions.
-    (active, min_const_fn, "1.30.0", Some(53555), None),
 
     // Allows let bindings and destructuring in `const fn` functions and constants.
     (active, const_let, "1.22.1", Some(48821), None),
@@ -690,6 +677,8 @@ declare_features! (
     (accepted, extern_prelude, "1.30.0", Some(44660), None),
     // Parentheses in patterns
     (accepted, pattern_parentheses, "1.31.0", Some(51087), None),
+    // Allows the definition of `const fn` functions.
+    (accepted, min_const_fn, "1.31.0", Some(53555), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1807,9 +1796,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 if header.asyncness.is_async() {
                     gate_feature_post!(&self, async_await, span, "async fn is unstable");
                 }
-                if header.constness.node == ast::Constness::Const {
-                    gate_feature_post!(&self, min_const_fn, span, "const fn is unstable");
-                }
                 // stability of const fn methods are covered in
                 // visit_trait_item and visit_impl_item below; this is
                 // because default methods don't pass through this
@@ -1864,11 +1850,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
 
         match ii.node {
-            ast::ImplItemKind::Method(ref sig, _) => {
-                if sig.header.constness.node == ast::Constness::Const {
-                    gate_feature_post!(&self, min_const_fn, ii.span, "const fn is unstable");
-                }
-            }
+            ast::ImplItemKind::Method(..) => {}
             ast::ImplItemKind::Existential(..) => {
                 gate_feature_post!(
                     &self,

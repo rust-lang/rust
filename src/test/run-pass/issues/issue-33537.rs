@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // run-pass
-#![feature(min_const_fn)]
 
 const fn foo() -> *const i8 {
     b"foo" as *const _ as *const i8

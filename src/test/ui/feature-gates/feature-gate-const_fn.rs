@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test use of const fn without the `const_fn` feature gate.
-// `min_const_fn` is checked in its own file
-#![feature(min_const_fn)]
+// Test use of advanced const fn without the `const_fn` feature gate.
 
 const fn foo() -> usize { 0 } // ok
 

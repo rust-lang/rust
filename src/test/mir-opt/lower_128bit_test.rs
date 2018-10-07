@@ -12,8 +12,6 @@
 
 // compile-flags: -Z lower_128bit_ops=yes -C debug_assertions=no -O
 
-#![feature(min_const_fn)]
-
 static TEST_SIGNED: i128 = const_signed(-222);
 static TEST_UNSIGNED: u128 = const_unsigned(200);
 

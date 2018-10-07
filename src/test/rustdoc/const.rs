@@ -10,8 +10,6 @@
 
 #![crate_type="lib"]
 
-#![feature(min_const_fn)]
-
 pub struct Foo;
 
 impl Foo {

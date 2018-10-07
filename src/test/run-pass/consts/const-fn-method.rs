@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // run-pass
-#![feature(min_const_fn)]
 
 struct Foo { value: u32 }
 

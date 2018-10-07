@@ -10,7 +10,6 @@
 
 // compile-pass
 #![allow(dead_code)]
-#![feature(min_const_fn)]
 
 fn main() {}
 

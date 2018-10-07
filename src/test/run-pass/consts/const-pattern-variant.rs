@@ -10,7 +10,6 @@
 
 // run-pass
 #![allow(unreachable_patterns)]
-#![feature(min_const_fn)]
 
 #[derive(PartialEq, Eq)]
 enum Cake {

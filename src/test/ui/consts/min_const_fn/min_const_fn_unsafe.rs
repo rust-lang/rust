@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(min_const_fn)]
-
 // ok
 const unsafe fn foo4() -> i32 { 42 }
 const unsafe fn foo5<T>() -> *const T { 0 as *const T }

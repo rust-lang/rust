@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(min_const_fn)]
 #![feature(cfg_target_thread_local, thread_local_internals)]
 
 // On platforms *without* `#[thread_local]`, use

@@ -10,8 +10,6 @@
 
 // compile-flags: -Cmetadata=aux
 
-#![feature(min_const_fn)]
-
 pub const fn foo() {}
 pub const unsafe fn bar() {}
 

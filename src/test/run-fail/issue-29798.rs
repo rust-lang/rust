@@ -10,7 +10,6 @@
 
 // error-pattern:index out of bounds: the len is 5 but the index is 5
 
-#![feature(min_const_fn)]
 const fn test(x: usize) -> i32 {
     [42;5][x]
 }

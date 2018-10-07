@@ -107,8 +107,7 @@ pub struct Stability {
     pub level: StabilityLevel,
     pub feature: Symbol,
     pub rustc_depr: Option<RustcDeprecation>,
-    /// `None` means the function is stable but needs to be allowed by the
-    /// `min_const_fn` feature
+    /// `None` means the function is stable but needs to be a stable const fn, too
     /// `Some` contains the feature gate required to be able to use the function
     /// as const fn
     pub const_stability: Option<Symbol>,

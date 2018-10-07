@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // run-pass
-#![feature(min_const_fn)]
 
 const FOO: isize = 10;
 const BAR: isize = 3;
