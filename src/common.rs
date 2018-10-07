@@ -69,6 +69,21 @@ pub fn cton_type_from_ty<'a, 'tcx: 'a>(
     })
 }
 
+pub fn codegen_select(bcx: &mut FunctionBuilder, cond: Value, lhs: Value, rhs: Value) -> Value {
+    let lhs_ty = bcx.func.dfg.value_type(lhs);
+    let rhs_ty = bcx.func.dfg.value_type(rhs);
+    assert_eq!(lhs_ty, rhs_ty);
+    if lhs_ty == types::I8 || lhs_ty == types::I16 {
+        // FIXME workaround for missing enocding for select.i8
+        let lhs = bcx.ins().uextend(types::I32, lhs);
+        let rhs = bcx.ins().uextend(types::I32, rhs);
+        let res = bcx.ins().select(cond, lhs, rhs);
+        bcx.ins().ireduce(lhs_ty, res)
+    } else {
+        bcx.ins().select(cond, lhs, rhs)
+    }
+}
+
 fn codegen_field<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     base: Value,

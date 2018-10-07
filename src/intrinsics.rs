@@ -76,7 +76,7 @@ macro_rules! atomic_minmax {
 
         // Compare
         let is_eq = $fx.bcx.ins().icmp(IntCC::SignedGreaterThan, old, $src);
-        let new = $fx.bcx.ins().select(is_eq, old, $src);
+        let new = crate::common::codegen_select(&mut $fx.bcx, is_eq, old, $src);
 
         // Write new
         $fx.bcx.ins().store(MemFlags::new(), new, $ptr, 0);
@@ -378,7 +378,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
 
             // Compare
             let is_eq = fx.bcx.ins().icmp(IntCC::Equal, old, test_old);
-            let new = fx.bcx.ins().select(is_eq, old, new); // Keep old if not equal to test_old
+            let new = crate::common::codegen_select(&mut fx.bcx, is_eq, old, new); // Keep old if not equal to test_old
 
             // Write new
             fx.bcx.ins().store(MemFlags::new(), new, ptr, 0);
