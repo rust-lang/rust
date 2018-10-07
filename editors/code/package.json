@@ -111,7 +111,7 @@
         ],
         "configuration": {
             "type": "object",
-            "title": "Rust Analyzer configuration",
+            "title": "Rust Analyzer",
             "properties": {
                 "ra-lsp.highlightingOn": {
                     "type": "boolean",
