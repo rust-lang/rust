@@ -1088,6 +1088,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
 }
 
 fn lint_fn_to_numeric_cast(cx: &LateContext<'_, '_>, expr: &Expr, cast_expr: &Expr, cast_from: Ty<'_>, cast_to: Ty<'_>) {
+    // We only want to check casts to `ty::Uint` or `ty::Int`
+    match cast_to.sty {
+        ty::Uint(_) | ty::Int(..) => { /* continue on */ },
+        _ => return
+    }
     match cast_from.sty {
         ty::FnDef(..) | ty::FnPtr(_) => {
             let from_snippet = snippet(cx, cast_expr.span, "x");
