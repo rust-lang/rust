@@ -17,7 +17,7 @@
     repr_simd,
     simd_ffi,
     asm,
-    proc_macro_gen,
+    proc_macro_hygiene,
     integer_atomics,
     stmt_expr_attributes,
     core_intrinsics,
