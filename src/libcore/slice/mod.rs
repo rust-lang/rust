@@ -855,7 +855,7 @@ impl<T> [T] {
     #[inline]
     pub fn try_split_at(&self, mid: usize) -> Option<(&[T], &[T])> {
         if mid > self.len() { None } else {
-            unsafe { Some((self.get_unchecked(..mid), self.get_unchecked(mid..))) }
+            Some(unsafe { (self.get_unchecked(..mid), self.get_unchecked(mid..)) })
         }
     }
 
@@ -929,8 +929,8 @@ impl<T> [T] {
         let ptr = self.as_mut_ptr();
 
         if mid > self.len() { None } else {
-            unsafe { Some((from_raw_parts_mut(ptr, mid),
-                           from_raw_parts_mut(ptr.add(mid), len - mid))) }
+            Some(unsafe { (from_raw_parts_mut(ptr, mid),
+                           from_raw_parts_mut(ptr.add(mid), len - mid)) })
         }
     }
 
