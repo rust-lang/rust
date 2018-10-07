@@ -728,6 +728,7 @@ macro_rules! make_mir_visitor {
                     ref $($mutability)* visibility_scope,
                     internal: _,
                     is_user_variable: _,
+                    is_block_tail: _,
                 } = *local_decl;
 
                 self.visit_ty(ty, TyContext::LocalDecl {

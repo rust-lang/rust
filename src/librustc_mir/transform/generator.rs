@@ -308,6 +308,7 @@ fn replace_result_variable<'tcx>(
         source_info,
         visibility_scope: source_info.scope,
         internal: false,
+        is_block_tail: None,
         is_user_variable: None,
     };
     let new_ret_local = Local::new(mir.local_decls.len());
@@ -662,6 +663,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
         source_info,
         visibility_scope: source_info.scope,
         internal: false,
+        is_block_tail: None,
         is_user_variable: None,
     };
 
@@ -679,6 +681,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
         source_info,
         visibility_scope: source_info.scope,
         internal: false,
+        is_block_tail: None,
         is_user_variable: None,
     };
 

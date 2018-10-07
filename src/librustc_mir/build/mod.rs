@@ -281,6 +281,57 @@ fn liberated_closure_env_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     tcx.liberate_late_bound_regions(closure_def_id, &closure_env_ty)
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum BlockFrame {
+    /// Evaluation is currently within a statement.
+    ///
+    /// Examples include:
+    ///  1. `EXPR;`
+    ///  2. `let _ = EXPR;`
+    ///  3. `let x = EXPR;`
+    Statement {
+        /// If true, then statement discards result from evaluating
+        /// the expression (such as examples 1 and 2 above).
+        ignores_expr_result: bool
+    },
+
+    /// Evaluation is currently within the tail expression of a block.
+    ///
+    /// Example: `{ STMT_1; STMT_2; EXPR }`
+    TailExpr {
+        /// If true, then the surrounding context of the block ignores
+        /// the result of evaluating the block's tail expression.
+        ///
+        /// Example: `let _ = { STMT_1; EXPR };`
+        tail_result_is_ignored: bool
+    },
+
+    /// Generic mark meaning that the block occurred as a subexpression
+    /// where the result might be used.
+    ///
+    /// Examples: `foo(EXPR)`, `match EXPR { ... }`
+    SubExpr,
+}
+
+impl BlockFrame {
+    fn is_tail_expr(&self) -> bool {
+        match *self {
+            BlockFrame::TailExpr { .. } => true,
+
+            BlockFrame::Statement { .. } |
+            BlockFrame::SubExpr => false,
+        }
+    }
+    fn is_statement(&self) -> bool {
+        match *self {
+            BlockFrame::Statement { .. } => true,
+
+            BlockFrame::TailExpr { .. } |
+            BlockFrame::SubExpr => false,
+        }
+    }
+ }
+
 struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     hir: Cx<'a, 'gcx, 'tcx>,
     cfg: CFG<'tcx>,
@@ -291,6 +342,20 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// the current set of scopes, updated as we traverse;
     /// see the `scope` module for more details
     scopes: Vec<scope::Scope<'tcx>>,
+
+    /// the block-context: each time we build the code within an hair::Block,
+    /// we push a frame here tracking whether we are building a statement or
+    /// if we are pushing the tail expression of the block. This is used to
+    /// embed information in generated temps about whether they were created
+    /// for a block tail expression or not.
+    ///
+    /// It would be great if we could fold this into `self.scopes`
+    /// somehow; but right now I think that is very tightly tied to
+    /// the code generation in ways that we cannot (or should not)
+    /// start just throwing new entries onto that vector in order to
+    /// distinguish the context of EXPR1 from the context of EXPR2 in
+    /// `{ STMTS; EXPR1 } + EXPR2`
+    block_context: Vec<BlockFrame>,
 
     /// The current unsafe block in scope, even if it is hidden by
     /// a PushUnsafeBlock
@@ -695,6 +760,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             fn_span: span,
             arg_count,
             scopes: vec![],
+            block_context: vec![],
             source_scopes: IndexVec::new(),
             source_scope: OUTERMOST_SOURCE_SCOPE,
             source_scope_local_data: IndexVec::new(),
@@ -781,6 +847,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 name,
                 internal: false,
                 is_user_variable: None,
+                is_block_tail: None,
             });
         }
 

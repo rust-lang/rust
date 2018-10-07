@@ -638,6 +638,26 @@ mod binding_form_impl {
     }
 }
 
+/// `BlockTailInfo` is attached to the `LocalDecl` for temporaries
+/// created during evaluation of expressions in a block tail
+/// expression; that is, a block like `{ STMT_1; STMT_2; EXPR }`.
+///
+/// It is used to improve diagnostics when such temporaries are
+/// involved in borrow_check errors, e.g. explanations of where the
+/// temporaries come from, when their destructors are run, and/or how
+/// one might revise the code to satisfy the borrow checker's rules.
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+pub struct BlockTailInfo {
+    /// If `true`, then the value resulting from evaluating this tail
+    /// expression is ignored by the block's expression context.
+    ///
+    /// Examples include `{ ...; tail };` and `let _ = { ...; tail };`
+    /// but not e.g. `let _x = { ...; tail };`
+    pub tail_result_is_ignored: bool,
+}
+
+impl_stable_hash_for!(struct BlockTailInfo { tail_result_is_ignored });
+
 /// A MIR local.
 ///
 /// This can be a binding declared by the user, a temporary inserted by the compiler, a function
@@ -676,6 +696,12 @@ pub struct LocalDecl<'tcx> {
     /// therefore don't affect the OIBIT or outlives properties of the
     /// generator.
     pub internal: bool,
+
+    /// If this local is a temporary and `is_block_tail` is `Some`,
+    /// then it is a temporary created for evaluation of some
+    /// subexpression of some block's tail expression (with no
+    /// intervening statement context).
+    pub is_block_tail: Option<BlockTailInfo>,
 
     /// Type of this local.
     pub ty: Ty<'tcx>,
@@ -825,10 +851,19 @@ impl<'tcx> LocalDecl<'tcx> {
         Self::new_local(ty, Mutability::Mut, false, span)
     }
 
-    /// Create a new immutable `LocalDecl` for a temporary.
+    /// Converts `self` into same `LocalDecl` except tagged as immutable.
     #[inline]
-    pub fn new_immutable_temp(ty: Ty<'tcx>, span: Span) -> Self {
-        Self::new_local(ty, Mutability::Not, false, span)
+    pub fn immutable(mut self) -> Self {
+        self.mutability = Mutability::Not;
+        self
+    }
+
+    /// Converts `self` into same `LocalDecl` except tagged as internal temporary.
+    #[inline]
+    pub fn block_tail(mut self, info: BlockTailInfo) -> Self {
+        assert!(self.is_block_tail.is_none());
+        self.is_block_tail = Some(info);
+        self
     }
 
     /// Create a new `LocalDecl` for a internal temporary.
@@ -856,6 +891,7 @@ impl<'tcx> LocalDecl<'tcx> {
             visibility_scope: OUTERMOST_SOURCE_SCOPE,
             internal,
             is_user_variable: None,
+            is_block_tail: None,
         }
     }
 
@@ -874,6 +910,7 @@ impl<'tcx> LocalDecl<'tcx> {
             },
             visibility_scope: OUTERMOST_SOURCE_SCOPE,
             internal: false,
+            is_block_tail: None,
             name: None, // FIXME maybe we do want some name here?
             is_user_variable: None,
         }
@@ -2668,6 +2705,7 @@ pub enum ClosureOutlivesSubject<'tcx> {
  */
 
 CloneTypeFoldableAndLiftImpls! {
+    BlockTailInfo,
     Mutability,
     SourceInfo,
     UpvarDecl,
@@ -2711,6 +2749,7 @@ BraceStructTypeFoldableImpl! {
         user_ty,
         name,
         source_info,
+        is_block_tail,
         visibility_scope,
     }
 }

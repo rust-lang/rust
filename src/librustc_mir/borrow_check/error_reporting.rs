@@ -262,7 +262,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         move_spans.var_span_label(&mut err, "move occurs due to use in closure");
 
         self.explain_why_borrow_contains_point(context, borrow, None)
-            .emit(self.infcx.tcx, &mut err, String::new());
+            .add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "");
         err.buffer(&mut self.errors_buffer);
     }
 
@@ -299,7 +299,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         });
 
         self.explain_why_borrow_contains_point(context, borrow, None)
-            .emit(self.infcx.tcx, &mut err, String::new());
+            .add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "");
         err.buffer(&mut self.errors_buffer);
     }
 
@@ -483,7 +483,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
 
         self.explain_why_borrow_contains_point(context, issued_borrow, None)
-            .emit(self.infcx.tcx, &mut err, first_borrow_desc.to_string());
+            .add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, first_borrow_desc);
 
         err.buffer(&mut self.errors_buffer);
     }
@@ -638,7 +638,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             if let BorrowExplanation::MustBeValidFor(..) = explanation {
             } else {
-                explanation.emit(self.infcx.tcx, &mut err, String::new());
+                explanation.add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "");
             }
         } else {
             err.span_label(borrow_span, "borrowed value does not live long enough");
@@ -649,7 +649,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             borrow_spans.args_span_label(&mut err, "value captured here");
 
-            explanation.emit(self.infcx.tcx, &mut err, String::new());
+            explanation.add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "");
         }
 
         err
@@ -709,7 +709,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             _ => {}
         }
 
-        explanation.emit(self.infcx.tcx, &mut err, String::new());
+        explanation.add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "");
 
         err.buffer(&mut self.errors_buffer);
     }
@@ -770,13 +770,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         match explanation {
             BorrowExplanation::UsedLater(..)
             | BorrowExplanation::UsedLaterInLoop(..)
-            | BorrowExplanation::UsedLaterWhenDropped(..) => {
+            | BorrowExplanation::UsedLaterWhenDropped { .. } => {
                 // Only give this note and suggestion if it could be relevant.
                 err.note("consider using a `let` binding to create a longer lived value");
             }
             _ => {}
         }
-        explanation.emit(self.infcx.tcx, &mut err, String::new());
+        explanation.add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "");
 
         borrow_spans.args_span_label(&mut err, "value captured here");
 
@@ -913,7 +913,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         loan_spans.var_span_label(&mut err, "borrow occurs due to use in closure");
 
         self.explain_why_borrow_contains_point(context, loan, None)
-            .emit(self.infcx.tcx, &mut err, String::new());
+            .add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "");
 
         err.buffer(&mut self.errors_buffer);
     }
