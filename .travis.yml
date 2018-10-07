@@ -35,20 +35,12 @@ matrix:
     - env: INTEGRATION=stdsimd
     - env: INTEGRATION=tempdir
   allow_failures:
-    # Needs `edition = "2018"` in rustfmt.toml
-    - env: INTEGRATION=chalk
-    # Fails tests, don't know why
-    - env: INTEGRATION=crater
     # Doesn't build
     - env: INTEGRATION=futures-rs
     # Doesn't build - seems to be because of an option
     - env: INTEGRATION=packed_simd
-    # Weird bug I can't reproduce: #2969
-    - env: INTEGRATION=rand
     # Test failure
     - env: INTEGRATION=rust-clippy
-    # Build failure
-    - env: INTEGRATION=rust-semverver
 
 script:
   - |
