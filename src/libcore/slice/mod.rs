@@ -854,9 +854,7 @@ impl<T> [T] {
     #[unstable(feature = "try_split_at", issue = "54886")]
     #[inline]
     pub fn try_split_at(&self, mid: usize) -> Option<(&[T], &[T])> {
-        if mid > self.len() { None } else {
-            Some(unsafe { (self.get_unchecked(..mid), self.get_unchecked(mid..)) })
-        }
+        if mid > self.len() { None } else { Some(self.split_at(mid)) }
     }
 
     /// Divides one mutable slice into two at an index.
@@ -925,13 +923,7 @@ impl<T> [T] {
     #[unstable(feature = "try_split_at", issue = "54886")]
     #[inline]
     pub fn try_split_at_mut(&mut self, mid: usize) -> Option<(&mut [T], &mut [T])> {
-        let len = self.len();
-        let ptr = self.as_mut_ptr();
-
-        if mid > self.len() { None } else {
-            Some(unsafe { (from_raw_parts_mut(ptr, mid),
-                           from_raw_parts_mut(ptr.add(mid), len - mid)) })
-        }
+        if mid > self.len() { None } else { Some(self.split_at_mut(mid)) }
     }
 
     /// Returns an iterator over subslices separated by elements that match
