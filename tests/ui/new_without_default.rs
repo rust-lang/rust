@@ -101,4 +101,10 @@ pub trait TraitWithNew: Sized {
     }
 }
 
+pub struct IgnoreUnsafeNew;
+
+impl IgnoreUnsafeNew {
+    pub unsafe fn new() -> Self { IgnoreUnsafeNew }
+}
+
 fn main() {}

@@ -116,6 +116,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                             // can't be implemented by default
                             return;
                         }
+                        if sig.header.unsafety == hir::Unsafety::Unsafe {
+                            // can't be implemented for unsafe new
+                            return;
+                        }
                         if impl_item.generics.params.iter().any(|gen| match gen.kind {
                             hir::GenericParamKind::Type { .. } => true,
                             _ => false
