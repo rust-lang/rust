@@ -407,7 +407,7 @@ pub fn make_test(s: &str,
     let (already_has_main, already_has_extern_crate) = crate::syntax::with_globals(|| {
         use crate::syntax::{ast, parse::{self, ParseSess}, source_map::FilePathMapping};
         use crate::syntax_pos::FileName;
-        
+
         let filename = FileName::Anon;
         let source = s.to_owned();
         let sess = ParseSess::new(FilePathMapping::empty());
@@ -424,11 +424,11 @@ pub fn make_test(s: &str,
                         found_main = true;
                     }
                 }
-            } 
-            
-            if !found_extern_crate { 
+            }
+
+            if !found_extern_crate {
                 if let ast::ItemKind::ExternCrate(original) = item.node {
-                    // This code will never be reached if `cratename` is none ecause
+                    // This code will never be reached if `cratename` is none because
                     // `found_extern_crate` is initialized to `true` if it is none.
                     let cratename = cratename.unwrap();
 
@@ -1051,7 +1051,7 @@ assert_eq!(2+2, 4);
     #[test]
     fn make_test_issues_21299_33731() {
         let opts = TestOptions::default();
-        
+
         let input =
 "// fn main
 assert_eq!(2+2, 4);";
