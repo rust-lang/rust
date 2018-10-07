@@ -100,36 +100,20 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
     loop {
         // All the input starting at cur_start fits on the current line
         if graphemes.len() - cur_start <= cur_max_chars {
-            // trim trailing whitespaces
-            let graphemes_minus_ws = if !fmt.trim_end {
-                &graphemes[cur_start..]
-            } else {
-                match graphemes[cur_start..]
-                    .iter()
-                    .rposition(|grapheme| !is_whitespace(grapheme))
-                {
-                    Some(index) => &graphemes[cur_start..=cur_start + index],
-                    None => &graphemes[cur_start..],
-                }
-            };
-            if is_bareline_ok {
-                // new lines don't need to start with line_start
-                result.push_str(&graphemes_minus_ws.join(""));
-            } else {
-                // new lines need to be indented and prefixed with line_start
-                for grapheme in graphemes_minus_ws {
-                    if is_line_feed(grapheme) {
-                        // take care of blank lines
-                        if fmt.trim_end && result.ends_with(' ') {
-                            result = result.trim_right().to_string();
-                        }
-                        result.push_str(&indent_with_newline);
+            for (i, grapheme) in graphemes[cur_start..].iter().enumerate() {
+                if is_line_feed(grapheme) {
+                    // take care of blank lines
+                    result = trim_right_but_line_feed(fmt.trim_end, result);
+                    result.push_str("\n");
+                    if !is_bareline_ok && cur_start + i + 1 < graphemes.len() {
+                        result.push_str(&indent_without_newline);
                         result.push_str(fmt.line_start);
-                    } else {
-                        result.push_str(grapheme);
                     }
+                } else {
+                    result.push_str(grapheme);
                 }
             }
+            result = trim_right_but_line_feed(fmt.trim_end, result);
             break;
         }
 
@@ -169,6 +153,18 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
     wrap_str(result, fmt.config.max_width(), fmt.shape)
 }
 
+/// Trims whitespaces to the right except for the line feed character.
+fn trim_right_but_line_feed(trim_end: bool, result: String) -> String {
+    let whitespace_except_line_feed = |c: char| c.is_whitespace() && c != '\n';
+    if trim_end && result.ends_with(whitespace_except_line_feed) {
+        result
+            .trim_right_matches(whitespace_except_line_feed)
+            .to_string()
+    } else {
+        result
+    }
+}
+
 /// Result of breaking a string so it fits in a line and the state it ended in.
 /// The state informs about what to do with the snippet and how to continue the breaking process.
 #[derive(Debug, PartialEq)]
@@ -198,17 +194,22 @@ fn break_string(max_chars: usize, trim_end: bool, input: &[&str]) -> SnippetStat
     let break_at = |index /* grapheme at index is included */| {
         // Take in any whitespaces to the left/right of `input[index]` while
         // preserving line feeds
+        let not_whitespace_except_line_feed = |g| is_line_feed(g) || !is_whitespace(g);
         let index_minus_ws = input[0..=index]
             .iter()
-            .rposition(|grapheme| !is_whitespace(grapheme))
+            .rposition(|grapheme| not_whitespace_except_line_feed(grapheme))
             .unwrap_or(index);
         // Take into account newlines occuring in input[0..=index], i.e., the possible next new
         // line. If there is one, then text after it could be rewritten in a way that the available
         // space is fully used.
         for (i, grapheme) in input[0..=index].iter().enumerate() {
             if is_line_feed(grapheme) {
-                if i < index_minus_ws || !trim_end {
-                    return SnippetState::EndWithLineFeed(input[0..=i].join("").to_string(), i + 1);
+                if i <= index_minus_ws {
+                    let mut line = input[0..i].join("");
+                    if trim_end {
+                        line = line.trim_right().to_string();
+                    }
+                    return SnippetState::EndWithLineFeed(format!("{}\n", line), i + 1);
                 }
                 break;
             }
@@ -221,7 +222,7 @@ fn break_string(max_chars: usize, trim_end: bool, input: &[&str]) -> SnippetStat
                     input[0..=index + 1 + i].join("").to_string(),
                     index + 2 + i,
                 );
-            } else if !is_whitespace(grapheme) {
+            } else if not_whitespace_except_line_feed(grapheme) {
                 index_plus_ws = index + i;
                 break;
             }
@@ -522,6 +523,40 @@ mod test {
     // porttitor"#
                     .to_string()
             )
+        );
+    }
+
+    #[test]
+    fn retain_blank_lines() {
+        let config: Config = Default::default();
+        let fmt = StringFormat {
+            opener: "",
+            closer: "",
+            line_start: "// ",
+            line_end: "",
+            shape: Shape::legacy(20, Indent::from_width(&config, 4)),
+            trim_end: true,
+            config: &config,
+        };
+
+        let comment = "Aenean\n\nmetus. Vestibulum ac lacus.\n\n";
+        assert_eq!(
+            rewrite_string(comment, &fmt),
+            Some(
+                "Aenean\n    //\n    // metus. Vestibulum ac\n    // lacus.\n    //\n".to_string()
+            )
+        );
+
+        let comment = "Aenean\n\nmetus. Vestibulum ac lacus.\n";
+        assert_eq!(
+            rewrite_string(comment, &fmt),
+            Some("Aenean\n    //\n    // metus. Vestibulum ac\n    // lacus.\n".to_string())
+        );
+
+        let comment = "Aenean\n        \nmetus. Vestibulum ac lacus.";
+        assert_eq!(
+            rewrite_string(comment, &fmt),
+            Some("Aenean\n    //\n    // metus. Vestibulum ac\n    // lacus.".to_string())
         );
     }
 }
