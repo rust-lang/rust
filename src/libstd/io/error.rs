@@ -212,6 +212,19 @@ impl ErrorKind {
 /// the heap (for normal construction via Error::new) is too costly.
 #[stable(feature = "io_error_from_errorkind", since = "1.14.0")]
 impl From<ErrorKind> for Error {
+    /// Converts an [`ErrorKind`] into an [`Error`].
+    ///
+    /// This conversion allocates a new error with a simple representation of error kind.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::{Error, ErrorKind};
+    ///
+    /// let not_found = ErrorKind::NotFound;
+    /// let error = Error::from(not_found);
+    /// assert_eq!("entity not found", format!("{}", error));
+    /// ```
     #[inline]
     fn from(kind: ErrorKind) -> Error {
         Error {
