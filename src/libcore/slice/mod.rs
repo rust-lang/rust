@@ -818,7 +818,7 @@ impl<T> [T] {
     /// let v = [1, 2, 3, 4, 5, 6];
     ///
     /// {
-    ///     match v.split_at(0) {
+    ///     match v.try_split_at(0) {
     ///         Some((left, right)) => {
     ///             assert!(left == []);
     ///             assert!(right == [1, 2, 3, 4, 5, 6]);
@@ -828,7 +828,7 @@ impl<T> [T] {
     /// }
     ///
     /// {
-    ///     match v.split_at(2) {
+    ///     match v.try_split_at(2) {
     ///         Some((left, right)) => {
     ///             assert!(left == [1, 2]);
     ///             assert!(right == [3, 4, 5, 6]);
@@ -838,7 +838,7 @@ impl<T> [T] {
     /// }
     ///
     /// {
-    ///     match v.split_at(6) {
+    ///     match v.try_split_at(6) {
     ///         Some((left, right)) => {
     ///             assert!(left == [1, 2, 3, 4, 5, 6]);
     ///             assert!(right == []);
@@ -873,7 +873,7 @@ impl<T> [T] {
     /// let mut v = [1, 0, 3, 0, 5, 6];
     /// // scoped to restrict the lifetime of the borrows
     /// {
-    ///     let (left, right) = v.split_at_mut(2);
+    ///     let (left, right) = v.try_split_at_mut(2);
     ///     assert!(left == [1, 0]);
     ///     assert!(right == [3, 0, 5, 6]);
     ///     left[1] = 2;
