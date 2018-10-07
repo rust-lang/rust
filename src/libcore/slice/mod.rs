@@ -851,7 +851,7 @@ impl<T> [T] {
     ///     assert!(v.split_at(7).is_none())
     /// }
     /// ```
-    #[unstable(feature = "try_split_at", issue = "0")]
+    #[unstable(feature = "try_split_at", issue = "54886")]
     #[inline]
     pub fn try_split_at(&self, mid: usize) -> Option<(&[T], &[T])> {
         if mid > self.len() { None } else {
@@ -922,7 +922,7 @@ impl<T> [T] {
     /// }
     /// assert!(v == [1, 2, 3, 4, 5, 6]);
     /// ```
-    #[unstable(feature = "try_split_at", issue = "0")]
+    #[unstable(feature = "try_split_at", issue = "54886")]
     #[inline]
     pub fn try_split_at_mut(&mut self, mid: usize) -> Option<(&mut [T], &mut [T])> {
         let len = self.len();
