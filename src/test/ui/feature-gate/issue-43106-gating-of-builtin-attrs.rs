@@ -648,7 +648,7 @@ mod deprecated {
 mod must_use {
     mod inner { #![must_use="1400"] }
 
-    #[must_use = "1400"] fn f() { }
+    #[must_use = "1400"] fn f() -> usize { 1 }
 
     #[must_use = "1400"] struct S;
 

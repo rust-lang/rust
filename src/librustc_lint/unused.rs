@@ -252,6 +252,46 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
             debug!("Attr was used: {:?}", attr);
         }
     }
+
+    fn check_fn(&mut self,
+                cx: &LateContext<'_, 'tcx>,
+                fk: hir::intravisit::FnKind<'tcx>,
+                decl: &hir::FnDecl,
+                _: &hir::Body,
+                _: Span,
+                _: ast::NodeId) {
+        if let Some(attr) = fk.attrs().iter().find(|attr| attr.check_name("must_use")) {
+            // `#[must_use]` in particular is useless/unused on functions that
+            // return `()` or "return" `!`-likes (Issue #54828)
+            let (useless_must_use, ty_repr) = match &decl.output {
+                hir::FunctionRetTy::DefaultReturn(_) => (true, "()".to_owned()),
+                hir::FunctionRetTy::Return(ty) => {
+                    // The reason we're not sharing code from the UnusedResults
+                    // pass is because here these are `hir::Ty`s, not `ty::Ty`s
+                    let useless = match &ty.node {
+                        hir::TyKind::Tup(tys) => tys.is_empty(),
+                        hir::TyKind::Never => true,
+                        _ => false
+                    };
+                    let repr = hir::print::to_string(hir::print::NO_ANN, |s| s.print_type(&ty));
+                    (useless, repr)
+                }
+            };
+            if useless_must_use {
+                let mut err = cx.struct_span_lint(
+                    UNUSED_ATTRIBUTES, attr.span, "unused attribute"
+                );
+                err.span_label(
+                    decl.output.span(),
+                    format!("the return type `{}` can be discarded", ty_repr)
+                );
+                err.span_suggestion_short_with_applicability(
+                    attr.span, "remove it", String::new(), Applicability::MaybeIncorrect
+                );
+                err.emit();
+            }
+        }
+    }
 }
 
 declare_lint! {
