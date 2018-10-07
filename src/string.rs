@@ -118,7 +118,12 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
         }
 
         // The input starting at cur_start needs to be broken
-        match break_string(cur_max_chars, fmt.trim_end, &graphemes[cur_start..]) {
+        match break_string(
+            cur_max_chars,
+            fmt.trim_end,
+            fmt.line_end,
+            &graphemes[cur_start..],
+        ) {
             SnippetState::LineEnd(line, len) => {
                 result.push_str(&line);
                 result.push_str(fmt.line_end);
@@ -190,7 +195,7 @@ enum SnippetState {
 
 /// Break the input string at a boundary character around the offset `max_chars`. A boundary
 /// character is either a punctuation or a whitespace.
-fn break_string(max_chars: usize, trim_end: bool, input: &[&str]) -> SnippetState {
+fn break_string(max_chars: usize, trim_end: bool, line_end: &str, input: &[&str]) -> SnippetState {
     let break_at = |index /* grapheme at index is included */| {
         // Take in any whitespaces to the left/right of `input[index]` while
         // preserving line feeds
@@ -242,6 +247,17 @@ fn break_string(max_chars: usize, trim_end: bool, input: &[&str]) -> SnippetStat
     };
 
     // Find the position in input for breaking the string
+    if line_end.is_empty()
+        && trim_end
+        && !is_whitespace(input[max_chars - 1])
+        && is_whitespace(input[max_chars])
+    {
+        // At a breaking point already
+        // The line won't invalidate the rewriting because:
+        // - no extra space needed for the line_end character
+        // - extra whitespaces to the right can be trimmed
+        return break_at(max_chars - 1);
+    }
     match input[0..max_chars]
         .iter()
         .rposition(|grapheme| is_whitespace(grapheme))
@@ -304,11 +320,11 @@ mod test {
         let string = "Placerat felis. Mauris porta ante sagittis purus.";
         let graphemes = UnicodeSegmentation::graphemes(&*string, false).collect::<Vec<&str>>();
         assert_eq!(
-            break_string(20, false, &graphemes[..]),
+            break_string(20, false, "", &graphemes[..]),
             SnippetState::LineEnd("Placerat felis. ".to_string(), 16)
         );
         assert_eq!(
-            break_string(20, true, &graphemes[..]),
+            break_string(20, true, "", &graphemes[..]),
             SnippetState::LineEnd("Placerat felis.".to_string(), 16)
         );
     }
@@ -318,7 +334,7 @@ mod test {
         let string = "Placerat_felis._Mauris_porta_ante_sagittis_purus.";
         let graphemes = UnicodeSegmentation::graphemes(&*string, false).collect::<Vec<&str>>();
         assert_eq!(
-            break_string(20, false, &graphemes[..]),
+            break_string(20, false, "", &graphemes[..]),
             SnippetState::LineEnd("Placerat_felis.".to_string(), 15)
         );
     }
@@ -328,11 +344,11 @@ mod test {
         let string = "Venenatis_tellus_vel_tellus. Aliquam aliquam dolor at justo.";
         let graphemes = UnicodeSegmentation::graphemes(&*string, false).collect::<Vec<&str>>();
         assert_eq!(
-            break_string(20, false, &graphemes[..]),
+            break_string(20, false, "", &graphemes[..]),
             SnippetState::LineEnd("Venenatis_tellus_vel_tellus. ".to_string(), 29)
         );
         assert_eq!(
-            break_string(20, true, &graphemes[..]),
+            break_string(20, true, "", &graphemes[..]),
             SnippetState::LineEnd("Venenatis_tellus_vel_tellus.".to_string(), 29)
         );
     }
@@ -342,7 +358,7 @@ mod test {
         let string = "Venenatis_tellus_vel_tellus";
         let graphemes = UnicodeSegmentation::graphemes(&*string, false).collect::<Vec<&str>>();
         assert_eq!(
-            break_string(20, false, &graphemes[..]),
+            break_string(20, false, "", &graphemes[..]),
             SnippetState::EndOfInput("Venenatis_tellus_vel_tellus".to_string())
         );
     }
@@ -352,21 +368,21 @@ mod test {
         let string = "Neque in sem.      \n      Pellentesque tellus augue.";
         let graphemes = UnicodeSegmentation::graphemes(&*string, false).collect::<Vec<&str>>();
         assert_eq!(
-            break_string(15, false, &graphemes[..]),
+            break_string(15, false, "", &graphemes[..]),
             SnippetState::EndWithLineFeed("Neque in sem.      \n".to_string(), 20)
         );
         assert_eq!(
-            break_string(25, false, &graphemes[..]),
+            break_string(25, false, "", &graphemes[..]),
             SnippetState::EndWithLineFeed("Neque in sem.      \n".to_string(), 20)
         );
-        // if `StringFormat::line_end` is true, then the line feed does not matter anymore
+
         assert_eq!(
-            break_string(15, true, &graphemes[..]),
-            SnippetState::LineEnd("Neque in sem.".to_string(), 26)
+            break_string(15, true, "", &graphemes[..]),
+            SnippetState::LineEnd("Neque in sem.".to_string(), 19)
         );
         assert_eq!(
-            break_string(25, true, &graphemes[..]),
-            SnippetState::LineEnd("Neque in sem.".to_string(), 26)
+            break_string(25, true, "", &graphemes[..]),
+            SnippetState::EndWithLineFeed("Neque in sem.\n".to_string(), 20)
         );
     }
 
@@ -375,11 +391,11 @@ mod test {
         let string = "Neque in sem.            Pellentesque tellus augue.";
         let graphemes = UnicodeSegmentation::graphemes(&*string, false).collect::<Vec<&str>>();
         assert_eq!(
-            break_string(20, false, &graphemes[..]),
+            break_string(20, false, "", &graphemes[..]),
             SnippetState::LineEnd("Neque in sem.            ".to_string(), 25)
         );
         assert_eq!(
-            break_string(20, true, &graphemes[..]),
+            break_string(20, true, "", &graphemes[..]),
             SnippetState::LineEnd("Neque in sem.".to_string(), 25)
         );
     }
@@ -390,11 +406,11 @@ mod test {
 
         let graphemes = UnicodeSegmentation::graphemes(&*string, false).collect::<Vec<&str>>();
         assert_eq!(
-            break_string(25, false, &graphemes[..]),
+            break_string(25, false, "", &graphemes[..]),
             SnippetState::EndWithLineFeed("Nulla\n".to_string(), 6)
         );
         assert_eq!(
-            break_string(25, true, &graphemes[..]),
+            break_string(25, true, "", &graphemes[..]),
             SnippetState::EndWithLineFeed("Nulla\n".to_string(), 6)
         );
 
@@ -557,6 +573,41 @@ mod test {
         assert_eq!(
             rewrite_string(comment, &fmt),
             Some("Aenean\n    //\n    // metus. Vestibulum ac\n    // lacus.".to_string())
+        );
+    }
+
+    #[test]
+    fn boundary_on_edge() {
+        let config: Config = Default::default();
+        let mut fmt = StringFormat {
+            opener: "",
+            closer: "",
+            line_start: "// ",
+            line_end: "",
+            shape: Shape::legacy(13, Indent::from_width(&config, 4)),
+            trim_end: true,
+            config: &config,
+        };
+
+        let comment = "Aenean metus. Vestibulum ac lacus.";
+        assert_eq!(
+            rewrite_string(comment, &fmt),
+            Some("Aenean metus.\n    // Vestibulum ac\n    // lacus.".to_string())
+        );
+
+        fmt.trim_end = false;
+        let comment = "Vestibulum ac lacus.";
+        assert_eq!(
+            rewrite_string(comment, &fmt),
+            Some("Vestibulum \n    // ac lacus.".to_string())
+        );
+
+        fmt.trim_end = true;
+        fmt.line_end = "\\";
+        let comment = "Vestibulum ac lacus.";
+        assert_eq!(
+            rewrite_string(comment, &fmt),
+            Some("Vestibulum\\\n    // ac lacus.".to_string())
         );
     }
 }
