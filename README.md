@@ -149,5 +149,10 @@ If you do not want to include your lint levels in your code, you can globally en
 
 ## License
 
-Licensed under [MPL](https://www.mozilla.org/MPL/2.0/).
-If you're having issues with the license, let me know and I'll try to change it to something more permissive.
+Copyright 2014-2018 The Rust Project Developers
+
+Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+<LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+option. All files in the project carrying such notice may not be
+copied, modified, or distributed except according to those terms.
