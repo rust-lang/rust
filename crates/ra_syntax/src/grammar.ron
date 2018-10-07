@@ -1,3 +1,5 @@
+// Stores definitions which must be used in multiple places
+// See `cargo gen-kinds` (defined in crates/tools/src/main.rs)
 Grammar(
     single_byte_tokens: [
         [";", "SEMI"],
@@ -23,8 +25,9 @@ Grammar(
         ["^", "CARET"],
         ["%", "PERCENT"],
     ],
+    // TODO: Confirm surmision: the tokens which cannot be recorded in a single UTF-8 byte
     multi_byte_tokens: [
-        [".", "DOT"],
+        [".", "DOT"], // Note: DOT is here because <TODO: REASON>
         ["..", "DOTDOT"],
         ["...", "DOTDOTDOT"],
         ["..=", "DOTDOTEQ"],
