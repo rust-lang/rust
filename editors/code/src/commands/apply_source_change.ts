@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as lc from 'vscode-languageclient'
+import * as lc from 'vscode-languageclient';
 
 import { Server } from '../server';
 
@@ -11,48 +11,48 @@ interface FileSystemEdit {
 }
 
 export interface SourceChange {
-    label: string,
-    sourceFileEdits: lc.TextDocumentEdit[],
-    fileSystemEdits: FileSystemEdit[],
-    cursorPosition?: lc.TextDocumentPositionParams,
+    label: string;
+    sourceFileEdits: lc.TextDocumentEdit[];
+    fileSystemEdits: FileSystemEdit[];
+    cursorPosition?: lc.TextDocumentPositionParams;
 }
 
 export async function handle(change: SourceChange) {
-    console.log(`applySOurceChange ${JSON.stringify(change)}`)
-    let wsEdit = new vscode.WorkspaceEdit()
-    for (let sourceEdit of change.sourceFileEdits) {
-        let uri = Server.client.protocol2CodeConverter.asUri(sourceEdit.textDocument.uri)
-        let edits = Server.client.protocol2CodeConverter.asTextEdits(sourceEdit.edits)
-        wsEdit.set(uri, edits)
+    console.log(`applySOurceChange ${JSON.stringify(change)}`);
+    const wsEdit = new vscode.WorkspaceEdit();
+    for (const sourceEdit of change.sourceFileEdits) {
+        const uri = Server.client.protocol2CodeConverter.asUri(sourceEdit.textDocument.uri);
+        const edits = Server.client.protocol2CodeConverter.asTextEdits(sourceEdit.edits);
+        wsEdit.set(uri, edits);
     }
     let created;
     let moved;
-    for (let fsEdit of change.fileSystemEdits) {
-        if (fsEdit.type == "createFile") {
-            let uri = vscode.Uri.parse(fsEdit.uri!)
-            wsEdit.createFile(uri)
-            created = uri
-        } else if (fsEdit.type == "moveFile") {
-            let src = vscode.Uri.parse(fsEdit.src!)
-            let dst = vscode.Uri.parse(fsEdit.dst!)
-            wsEdit.renameFile(src, dst)
-            moved = dst
+    for (const fsEdit of change.fileSystemEdits) {
+        if (fsEdit.type == 'createFile') {
+            const uri = vscode.Uri.parse(fsEdit.uri!);
+            wsEdit.createFile(uri);
+            created = uri;
+        } else if (fsEdit.type == 'moveFile') {
+            const src = vscode.Uri.parse(fsEdit.src!);
+            const dst = vscode.Uri.parse(fsEdit.dst!);
+            wsEdit.renameFile(src, dst);
+            moved = dst;
         } else {
-            console.error(`unknown op: ${JSON.stringify(fsEdit)}`)
+            console.error(`unknown op: ${JSON.stringify(fsEdit)}`);
         }
     }
-    let toOpen = created || moved
-    let toReveal = change.cursorPosition
-    await vscode.workspace.applyEdit(wsEdit)
+    const toOpen = created || moved;
+    const toReveal = change.cursorPosition;
+    await vscode.workspace.applyEdit(wsEdit);
     if (toOpen) {
-        let doc = await vscode.workspace.openTextDocument(toOpen)
-        await vscode.window.showTextDocument(doc)
+        const doc = await vscode.workspace.openTextDocument(toOpen);
+        await vscode.window.showTextDocument(doc);
     } else if (toReveal) {
-        let uri = Server.client.protocol2CodeConverter.asUri(toReveal.textDocument.uri)
-        let position = Server.client.protocol2CodeConverter.asPosition(toReveal.position)
-        let editor = vscode.window.activeTextEditor;
-        if (!editor || editor.document.uri.toString() != uri.toString()) return
-        if (!editor.selection.isEmpty) return
-        editor!.selection = new vscode.Selection(position, position)
+        const uri = Server.client.protocol2CodeConverter.asUri(toReveal.textDocument.uri);
+        const position = Server.client.protocol2CodeConverter.asPosition(toReveal.position);
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || editor.document.uri.toString() != uri.toString()) { return; }
+        if (!editor.selection.isEmpty) { return; }
+        editor!.selection = new vscode.Selection(position, position);
     }
 }

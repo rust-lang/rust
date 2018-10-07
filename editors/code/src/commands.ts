@@ -13,5 +13,5 @@ export {
     matchingBrace,
     parentModule,
     runnables,
-    syntaxTree
-}
+    syntaxTree,
+};

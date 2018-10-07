@@ -1,45 +1,25 @@
 import * as vscode from 'vscode';
-import * as lc from 'vscode-languageclient'
+import * as lc from 'vscode-languageclient';
 
-import { Highlighter, Decoration } from './highlighting';
-
-export class Config {
-    highlightingOn = true;
-
-    constructor() {
-        vscode.workspace.onDidChangeConfiguration(_ => this.userConfigChanged());
-        this.userConfigChanged();
-    }
-
-    userConfigChanged() {
-        let config = vscode.workspace.getConfiguration('ra-lsp');
-        if (config.has('highlightingOn')) {
-            this.highlightingOn = config.get('highlightingOn') as boolean;
-        };
-
-        if (!this.highlightingOn) {
-            Server.highlighter.removeHighlights();
-        }
-    }
-}
+import { Config } from './config';
+import { Decoration, Highlighter } from './highlighting';
 
 export class Server {
-    static highlighter = new Highlighter();
-    static config = new Config();
-    static client: lc.LanguageClient;
+    public static highlighter = new Highlighter();
+    public static config = new Config();
+    public static client: lc.LanguageClient;
 
-
-    static start() {
-        let run: lc.Executable = {
-            command: "ra_lsp_server",
-            options: { cwd: "." }
-        }
-        let serverOptions: lc.ServerOptions = {
+    public static start() {
+        const run: lc.Executable = {
+            command: 'ra_lsp_server',
+            options: { cwd: '.' },
+        };
+        const serverOptions: lc.ServerOptions = {
             run,
-            debug: run
+            debug: run,
         };
 
-        let clientOptions: lc.LanguageClientOptions = {
+        const clientOptions: lc.LanguageClientOptions = {
             documentSelector: [{ scheme: 'file', language: 'rust' }],
         };
 
@@ -51,24 +31,24 @@ export class Server {
         );
         Server.client.onReady().then(() => {
             Server.client.onNotification(
-                "m/publishDecorations",
+                'm/publishDecorations',
                 (params: PublishDecorationsParams) => {
-                    let editor = vscode.window.visibleTextEditors.find(
-                        (editor) => editor.document.uri.toString() == params.uri
-                    )
-                    if (!Server.config.highlightingOn || !editor) return;
+                    const targetEditor = vscode.window.visibleTextEditors.find(
+                        (editor) => editor.document.uri.toString() == params.uri,
+                    );
+                    if (!Server.config.highlightingOn || !targetEditor) { return; }
                     Server.highlighter.setHighlights(
-                        editor,
+                        targetEditor,
                         params.decorations,
-                    )
-                }
-            )
-        })
+                    );
+                },
+            );
+        });
         Server.client.start();
     }
 }
 
 interface PublishDecorationsParams {
-    uri: string,
-    decorations: Decoration[],
+    uri: string;
+    decorations: Decoration[];
 }

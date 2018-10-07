@@ -4,16 +4,16 @@ import { syntaxTreeUri, TextDocumentContentProvider } from '../commands/syntaxTr
 
 export function createHandler(textDocumentContentProvider: TextDocumentContentProvider) {
     return (event: vscode.TextDocumentChangeEvent) => {
-        let doc = event.document
-        if (doc.languageId != "rust") return
+        const doc = event.document;
+        if (doc.languageId != 'rust') { return; }
         afterLs(() => {
             textDocumentContentProvider.eventEmitter.fire(syntaxTreeUri);
-        })
-    }
+        });
+    };
 }
 
 // We need to order this after LS updates, but there's no API for that.
 // Hence, good old setTimeout.
 function afterLs(f: () => any) {
-    setTimeout(f, 10)
+    setTimeout(f, 10);
 }
