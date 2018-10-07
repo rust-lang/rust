@@ -376,8 +376,12 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_pat(&mut self, cx: &EarlyContext, p: &ast::Pat) {
-        if let ast::PatKind::Paren(_) = p.node {
-            self.check_unused_parens_pat(cx, &p, "pattern");
+        use ast::PatKind::{Paren, Range};
+        if let Paren(ref pat) = p.node {
+            match pat.node {
+                Range(..) => {}
+                _ => self.check_unused_parens_pat(cx, &p, "pattern")
+            }
         }
     }
 
