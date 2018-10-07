@@ -1,11 +1,13 @@
 use std::{
+    collections::{HashMap, HashSet},
     sync::Arc,
     panic,
 };
+use parking_lot::RwLock;
 
 use once_cell::sync::OnceCell;
 use rayon::prelude::*;
-use rustc_hash::FxHashMap;
+use salsa::Database;
 use ra_editor::LineIndex;
 use ra_syntax::File;
 
@@ -14,7 +16,7 @@ use crate::{
     imp::FileResolverImp,
     symbol_index::SymbolIndex,
     descriptors::{ModuleDescriptor, ModuleTreeDescriptor},
-    db::Db,
+    db::{self, FilesDatabase, SyntaxDatabase}
 };
 
 pub(crate) trait SourceRoot {
@@ -25,9 +27,9 @@ pub(crate) trait SourceRoot {
     fn symbols(&self, acc: &mut Vec<Arc<SymbolIndex>>);
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub(crate) struct WritableSourceRoot {
-    db: Db,
+    db: Arc<RwLock<db::RootDatabase>>,
 }
 
 impl WritableSourceRoot {
@@ -36,51 +38,61 @@ impl WritableSourceRoot {
         changes: &mut dyn Iterator<Item=(FileId, Option<String>)>,
         file_resolver: Option<FileResolverImp>,
     ) -> WritableSourceRoot {
-        let resolver_changed = file_resolver.is_some();
-        let mut changed_files = Vec::new();
-        let mut new_state = self.db.state().clone();
-
+        let db = self.db.write();
+        let mut changed = HashSet::new();
+        let mut removed = HashSet::new();
         for (file_id, text) in changes {
-            changed_files.push(file_id);
             match text {
-                Some(text) => {
-                    new_state.file_map.insert(file_id, Arc::new(text));
-                },
                 None => {
-                    new_state.file_map.remove(&file_id);
+                    removed.insert(file_id);
+                }
+                Some(text) => {
+                    db.query(db::FileTextQuery)
+                        .set(file_id, Arc::new(text));
+                    changed.insert(file_id);
                 }
             }
         }
-        if let Some(file_resolver) = file_resolver {
-            new_state.file_resolver = file_resolver
+        if let Some(resolver) = file_resolver {
+            let mut files: HashSet<FileId> = db.file_set(())
+                .files
+                .clone();
+            for file_id in removed {
+                files.remove(&file_id);
+            }
+            files.extend(changed);
+            db.query(db::FileSetQuery)
+                .set((), Arc::new(db::FileSet { files, resolver }))
         }
-        WritableSourceRoot {
-            db: self.db.with_changes(new_state, &changed_files, resolver_changed)
-        }
+        // TODO: reconcile sasla's API with our needs
+        // https://github.com/salsa-rs/salsa/issues/12
+        self.clone()
     }
 }
 
 impl SourceRoot for WritableSourceRoot {
     fn module_tree(&self) -> Arc<ModuleTreeDescriptor> {
-        self.db.make_query(crate::module_map::module_tree)
+        unimplemented!()
+        //self.db.make_query(::module_map::module_tree)
     }
 
     fn contains(&self, file_id: FileId) -> bool {
-        self.db.state().file_map.contains_key(&file_id)
+        self.db.read().file_set(()).files.contains(&file_id)
     }
     fn lines(&self, file_id: FileId) -> Arc<LineIndex> {
-        self.db.make_query(|ctx| crate::queries::file_lines(ctx, file_id))
+        self.db.read().file_lines(file_id)
     }
     fn syntax(&self, file_id: FileId) -> File {
-        self.db.make_query(|ctx| crate::queries::file_syntax(ctx, file_id))
+        self.db.read().file_syntax(file_id)
     }
     fn symbols<'a>(&'a self, acc: &mut Vec<Arc<SymbolIndex>>) {
-        self.db.make_query(|ctx| {
-            let file_set = crate::queries::file_set(ctx);
-            let syms = file_set.0.iter()
-                .map(|file_id| crate::queries::file_symbols(ctx, *file_id));
-            acc.extend(syms);
-        });
+        let db = self.db.read();
+        let symbols =  db.file_set(());
+        let symbols = symbols
+            .files
+            .iter()
+            .map(|&file_id| db.file_symbols(file_id));
+        acc.extend(symbols);
     }
 }
 

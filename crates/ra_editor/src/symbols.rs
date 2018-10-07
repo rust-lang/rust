@@ -17,7 +17,7 @@ pub struct StructureNode {
     pub kind: SyntaxKind,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FileSymbol {
     pub name: SmolStr,
     pub node_range: TextRange,
