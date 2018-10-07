@@ -706,8 +706,11 @@ declare_clippy_lint! {
 
 
 /// **What it does:** Checks for `filter_map` calls which could be replaced by `filter` or `map`.
+/// More specifically it checks if the closure provided is only performing one of the
+/// filter or map operations and suggests the appropriate option.
 ///
-/// **Why is this bad?** Complexity
+/// **Why is this bad?** Complexity. The intent is also clearer if only a single
+/// operation is being performed.
 ///
 /// **Known problems:** None
 ///
@@ -715,9 +718,17 @@ declare_clippy_lint! {
 /// ```rust
 /// let _ = (0..3).filter_map(|x| if x > 2 { Some(x) } else { None });
 /// ```
-/// This could be written as:
+/// As there is no transformation of the argument this could be written as:
 /// ```rust
 /// let _ = (0..3).filter(|&x| x > 2);
+/// ```
+///
+/// ```rust
+/// let _ = (0..4).filter_map(i32::checked_abs);
+/// ```
+/// As there is no conditional check on the argument this could be written as:
+/// ```rust
+/// let _ = (0..4).map(i32::checked_abs);
 /// ```
 declare_clippy_lint! {
     pub UNNECESSARY_FILTER_MAP,
