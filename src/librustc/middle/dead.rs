@@ -18,6 +18,7 @@ use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::itemlikevisit::ItemLikeVisitor;
 
 use hir::def::Def;
+use hir::CodegenFnAttrFlags;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use lint;
 use middle::privacy;
@@ -302,14 +303,18 @@ fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt<'_, '_, '_>,
         return true;
     }
 
-    // #[used] also keeps the item alive forcefully,
-    // e.g. for placing it in a specific section.
-    if attr::contains_name(attrs, "used") {
+    // Don't lint about global allocators
+    if attr::contains_name(attrs, "global_allocator") {
         return true;
     }
 
-    // Don't lint about global allocators
-    if attr::contains_name(attrs, "global_allocator") {
+    let def_id = tcx.hir.local_def_id(id);
+    let cg_attrs = tcx.codegen_fn_attrs(def_id);
+
+    // #[used], #[no_mangle], #[export_name], etc also keeps the item alive
+    // forcefully, e.g. for placing it in a specific section.
+    if cg_attrs.contains_extern_indicator() ||
+        cg_attrs.flags.contains(CodegenFnAttrFlags::USED) {
         return true;
     }
 

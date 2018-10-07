@@ -515,11 +515,11 @@ pub fn update_count_then_panic(msg: Box<dyn Any + Send>) -> ! {
     rust_panic(&mut RewrapBox(msg))
 }
 
-/// A private no-mangle function on which to slap yer breakpoints.
+/// An unmangled function (through `rustc_std_internal_symbol`) on which to slap
+/// yer breakpoints.
 #[inline(never)]
-#[no_mangle]
-#[allow(private_no_mangle_fns)] // yes we get it, but we like breakpoints
-pub fn rust_panic(mut msg: &mut dyn BoxMeUp) -> ! {
+#[cfg_attr(not(test), rustc_std_internal_symbol)]
+fn rust_panic(mut msg: &mut dyn BoxMeUp) -> ! {
     let code = unsafe {
         let obj = &mut msg as *mut &mut dyn BoxMeUp;
         __rust_start_panic(obj as usize)

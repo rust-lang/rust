@@ -2467,9 +2467,22 @@ impl CodegenFnAttrs {
         }
     }
 
-    /// True if `#[no_mangle]` or `#[export_name(...)]` is present.
+    /// True if it looks like this symbol needs to be exported, for example:
+    ///
+    /// * `#[no_mangle]` is present
+    /// * `#[export_name(...)]` is present
+    /// * `#[linkage]` is present
     pub fn contains_extern_indicator(&self) -> bool {
-        self.flags.contains(CodegenFnAttrFlags::NO_MANGLE) || self.export_name.is_some()
+        self.flags.contains(CodegenFnAttrFlags::NO_MANGLE) ||
+            self.export_name.is_some() ||
+            match self.linkage {
+                // these are private, make sure we don't try to consider
+                // them external
+                None |
+                Some(Linkage::Internal) |
+                Some(Linkage::Private) => false,
+                Some(_) => true,
+            }
     }
 }
 

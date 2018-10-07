@@ -352,7 +352,7 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
         // which are currently akin to allocator symbols.
         let def_id = self.tcx.hir.local_def_id(item.id);
         let codegen_attrs = self.tcx.codegen_fn_attrs(def_id);
-        if codegen_attrs.linkage.is_some() ||
+        if codegen_attrs.contains_extern_indicator() ||
             codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
             self.worklist.push(item.id);
         }

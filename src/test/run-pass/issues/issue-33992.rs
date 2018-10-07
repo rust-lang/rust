@@ -11,6 +11,7 @@
 // run-pass
 // ignore-windows
 // ignore-macos
+// ignore-wasm32-bare common linkage not implemented right now
 
 #![feature(linkage)]
 

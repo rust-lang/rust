@@ -11,7 +11,7 @@
 // compile-flags:-F private_no_mangle_fns -F no_mangle_const_items -F private_no_mangle_statics
 
 #[no_mangle]
-fn foo() { //~ ERROR function is marked #[no_mangle], but not exported
+fn foo() {
 }
 
 #[allow(dead_code)]
@@ -30,7 +30,7 @@ pub static BAR: u64 = 1;
 
 #[allow(dead_code)]
 #[no_mangle]
-static PRIVATE_BAR: u64 = 1; //~ ERROR static is marked #[no_mangle], but not exported
+static PRIVATE_BAR: u64 = 1;
 
 
 fn main() {

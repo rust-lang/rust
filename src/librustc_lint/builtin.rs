@@ -1164,18 +1164,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PluginAsLibrary {
 }
 
 declare_lint! {
-    PRIVATE_NO_MANGLE_FNS,
-    Warn,
-    "functions marked #[no_mangle] should be exported"
-}
-
-declare_lint! {
-    PRIVATE_NO_MANGLE_STATICS,
-    Warn,
-    "statics marked #[no_mangle] should be exported"
-}
-
-declare_lint! {
     NO_MANGLE_CONST_ITEMS,
     Deny,
     "const items will not have their symbols exported"
@@ -1192,52 +1180,16 @@ pub struct InvalidNoMangleItems;
 
 impl LintPass for InvalidNoMangleItems {
     fn get_lints(&self) -> LintArray {
-        lint_array!(PRIVATE_NO_MANGLE_FNS,
-                    PRIVATE_NO_MANGLE_STATICS,
-                    NO_MANGLE_CONST_ITEMS,
+        lint_array!(NO_MANGLE_CONST_ITEMS,
                     NO_MANGLE_GENERIC_ITEMS)
     }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
-        let suggest_export = |vis: &hir::Visibility, err: &mut DiagnosticBuilder| {
-            let suggestion = match vis.node {
-                hir::VisibilityKind::Inherited => {
-                    // inherited visibility is empty span at item start; need an extra space
-                    Some("pub ".to_owned())
-                },
-                hir::VisibilityKind::Restricted { .. } |
-                hir::VisibilityKind::Crate(_) => {
-                    Some("pub".to_owned())
-                },
-                hir::VisibilityKind::Public => {
-                    err.help("try exporting the item with a `pub use` statement");
-                    None
-                }
-            };
-            if let Some(replacement) = suggestion {
-                err.span_suggestion_with_applicability(
-                    vis.span,
-                    "try making it public",
-                    replacement,
-                    Applicability::MachineApplicable
-                );
-            }
-        };
-
         match it.node {
             hir::ItemKind::Fn(.., ref generics, _) => {
                 if let Some(no_mangle_attr) = attr::find_by_name(&it.attrs, "no_mangle") {
-                    if attr::contains_name(&it.attrs, "linkage") {
-                        return;
-                    }
-                    if !cx.access_levels.is_reachable(it.id) {
-                        let msg = "function is marked #[no_mangle], but not exported";
-                        let mut err = cx.struct_span_lint(PRIVATE_NO_MANGLE_FNS, it.span, msg);
-                        suggest_export(&it.vis, &mut err);
-                        err.emit();
-                    }
                     for param in &generics.params {
                         match param.kind {
                             GenericParamKind::Lifetime { .. } => {}
@@ -1260,15 +1212,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                         }
                     }
                 }
-            }
-            hir::ItemKind::Static(..) => {
-                if attr::contains_name(&it.attrs, "no_mangle") &&
-                    !cx.access_levels.is_reachable(it.id) {
-                        let msg = "static is marked #[no_mangle], but not exported";
-                        let mut err = cx.struct_span_lint(PRIVATE_NO_MANGLE_STATICS, it.span, msg);
-                        suggest_export(&it.vis, &mut err);
-                        err.emit();
-                    }
             }
             hir::ItemKind::Const(..) => {
                 if attr::contains_name(&it.attrs, "no_mangle") {
@@ -1785,8 +1728,6 @@ impl LintPass for SoftLints {
             UNUSED_DOC_COMMENTS,
             UNCONDITIONAL_RECURSION,
             PLUGIN_AS_LIBRARY,
-            PRIVATE_NO_MANGLE_FNS,
-            PRIVATE_NO_MANGLE_STATICS,
             NO_MANGLE_CONST_ITEMS,
             NO_MANGLE_GENERIC_ITEMS,
             MUTABLE_TRANSMUTES,

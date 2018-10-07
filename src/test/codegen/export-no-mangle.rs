@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,24 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -C lto -C panic=abort -O
-// no-prefer-dynamic
+#![crate_type = "lib"]
 
-fn main() {
-    foo();
-}
+mod private {
+    // CHECK: @FOO =
+    #[no_mangle]
+    pub static FOO: u32 = 3;
 
-#[no_mangle]
-#[inline(never)]
-fn foo() {
-    let _a = Box::new(3);
-    bar();
-// CHECK-LABEL: define void @foo
-// CHECK: call void @bar
-}
+    // CHECK: @BAR =
+    #[export_name = "BAR"]
+    static BAR: u32 = 3;
 
-#[inline(never)]
-#[no_mangle]
-fn bar() {
-    println!("hello!");
+    // CHECK: void @foo()
+    #[no_mangle]
+    pub extern fn foo() {}
+
+    // CHECK: void @bar()
+    #[export_name = "bar"]
+    extern fn bar() {}
 }
