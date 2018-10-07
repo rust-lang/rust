@@ -398,7 +398,13 @@ fn create_and_seed_worklist<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       krate: &hir::Crate)
                                       -> Vec<ast::NodeId>
 {
-    let worklist = access_levels.map.iter().map(|(&id, _)| id).chain(
+    let worklist = access_levels.map.iter().filter_map(|(&id, level)| {
+        if level >= &privacy::AccessLevel::Reachable {
+            Some(id)
+        } else {
+            None
+        }
+    }).chain(
         // Seed entry point
         tcx.sess.entry_fn.borrow().map(|(id, _, _)| id)
     ).collect::<Vec<_>>();

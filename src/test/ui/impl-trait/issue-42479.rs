@@ -8,11 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// run-pass
-// #39665
+// compile-pass
 
-fn batches(n: &u32) -> impl Iterator<Item=&u32> {
-    std::iter::once(n)
+use std::iter::once;
+
+struct Foo {
+    x: i32,
 }
 
-fn main() {}
+impl Foo {
+    fn inside(&self) -> impl Iterator<Item = &i32> {
+        once(&self.x)
+    }
+}
+
+fn main() {
+    println!("hi");
+}

@@ -109,6 +109,10 @@ fn bar() { //~ ERROR: function is never used
     foo();
 }
 
+fn baz() -> impl Copy { //~ ERROR: function is never used
+    "I'm unused, too"
+}
+
 // Code with #[allow(dead_code)] should be marked live (and thus anything it
 // calls is marked live)
 #[allow(dead_code)]
