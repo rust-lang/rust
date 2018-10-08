@@ -153,7 +153,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             (Scalar::Bits { bits, size }, Scalar::Ptr(ptr)) => {
                 assert_eq!(size as u64, self.pointer_size().bytes());
                 let bits = bits as u64;
-                let (alloc_size, alloc_align) = self.memory.get_size_and_align(ptr.alloc_id)?;
+                let (alloc_size, alloc_align) = self.memory.get_size_and_align(ptr.alloc_id);
 
                 // Case I: Comparing with NULL
                 if bits == 0 {
