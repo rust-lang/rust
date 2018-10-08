@@ -50,7 +50,6 @@ use self::region_constraints::{RegionConstraintCollector, RegionSnapshot};
 use self::type_variable::TypeVariableOrigin;
 use self::unify_key::ToType;
 
-pub mod opaque_types;
 pub mod at;
 pub mod canonical;
 mod combine;
@@ -63,6 +62,7 @@ mod higher_ranked;
 pub mod lattice;
 mod lexical_region_resolve;
 mod lub;
+pub mod opaque_types;
 pub mod outlives;
 pub mod region_constraints;
 pub mod resolve;
@@ -87,7 +87,7 @@ pub type FixupResult<T> = Result<T, FixupError>; // "fixup result"
 /// NLL borrow checker will also do -- it might be set to true.
 #[derive(Copy, Clone, Default, Debug)]
 pub struct SuppressRegionErrors {
-    suppressed: bool
+    suppressed: bool,
 }
 
 impl SuppressRegionErrors {
@@ -101,15 +101,11 @@ impl SuppressRegionErrors {
     pub fn when_nll_is_enabled(tcx: TyCtxt<'_, '_, '_>) -> Self {
         match tcx.borrowck_mode() {
             // If we're on AST or Migrate mode, report AST region errors
-            BorrowckMode::Ast | BorrowckMode::Migrate => SuppressRegionErrors {
-                suppressed: false
-            },
+            BorrowckMode::Ast | BorrowckMode::Migrate => SuppressRegionErrors { suppressed: false },
 
             // If we're on MIR or Compare mode, don't report AST region errors as they should
             // be reported by NLL
-            BorrowckMode::Compare | BorrowckMode::Mir => SuppressRegionErrors {
-                suppressed: true
-            },
+            BorrowckMode::Compare | BorrowckMode::Mir => SuppressRegionErrors { suppressed: true },
         }
     }
 }
@@ -512,13 +508,13 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         self.enter(|infcx| {
-            let (value, subst) = infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
+            let (value, subst) =
+                infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
             f(infcx, value, subst)
         })
     }
 
-    pub fn enter<R>(&'tcx mut self, f: impl for<'b> FnOnce(InferCtxt<'b, 'gcx, 'tcx>) -> R) -> R
-    {
+    pub fn enter<R>(&'tcx mut self, f: impl for<'b> FnOnce(InferCtxt<'b, 'gcx, 'tcx>) -> R) -> R {
         let InferCtxtBuilder {
             global_tcx,
             ref arena,
