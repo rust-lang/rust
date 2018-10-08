@@ -18,6 +18,8 @@ pub(crate) use self::check_match::check_match;
 
 use const_eval::{const_field, const_variant_index};
 
+use hair::util::UserAnnotatedTyHelpers;
+
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
 use rustc::ty::{self, CanonicalTy, TyCtxt, AdtDef, Ty, Region};
@@ -529,8 +531,9 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                        field: Field::new(i),
                                        pattern: self.lower_pattern(field),
                                    })
-                                   .collect();
-                self.lower_variant_or_leaf(def, pat.span, ty, subpatterns)
+                    .collect();
+
+                self.lower_variant_or_leaf(def, pat.hir_id, pat.span, ty, subpatterns)
             }
 
             PatKind::Struct(ref qpath, ref fields, _) => {
@@ -546,7 +549,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                           })
                           .collect();
 
-                self.lower_variant_or_leaf(def, pat.span, ty, subpatterns)
+                self.lower_variant_or_leaf(def, pat.hir_id, pat.span, ty, subpatterns)
             }
         };
 
@@ -637,12 +640,12 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     fn lower_variant_or_leaf(
         &mut self,
         def: Def,
+        hir_id: hir::HirId,
         span: Span,
         ty: Ty<'tcx>,
-        subpatterns: Vec<FieldPattern<'tcx>>)
-        -> PatternKind<'tcx>
-    {
-        match def {
+        subpatterns: Vec<FieldPattern<'tcx>>,
+    ) -> PatternKind<'tcx> {
+        let mut kind = match def {
             Def::Variant(variant_id) | Def::VariantCtor(variant_id, ..) => {
                 let enum_id = self.tcx.parent_def_id(variant_id).unwrap();
                 let adt_def = self.tcx.adt_def(enum_id);
@@ -675,7 +678,24 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 self.errors.push(PatternError::NonConstPath(span));
                 PatternKind::Wild
             }
+        };
+
+        if let Some(user_ty) = self.user_substs_applied_to_ty_of_hir_id(hir_id) {
+            let subpattern = Pattern {
+                span,
+                ty,
+                kind: Box::new(kind),
+            };
+
+            debug!("pattern user_ty = {:?} for pattern at {:?}", user_ty, span);
+
+            kind = PatternKind::AscribeUserType {
+                subpattern,
+                user_ty,
+            };
         }
+
+        kind
     }
 
     /// Takes a HIR Path. If the path is a constant, evaluates it and feeds
@@ -729,7 +749,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     },
                 }
             }
-            _ => self.lower_variant_or_leaf(def, span, ty, vec![]),
+            _ => self.lower_variant_or_leaf(def, id, span, ty, vec![]),
         };
 
         Pattern {
@@ -893,6 +913,17 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         }
     }
 }
+
+impl UserAnnotatedTyHelpers<'tcx, 'tcx> for PatternContext<'_, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'_, 'tcx, 'tcx> {
+        self.tcx
+    }
+
+    fn tables(&self) -> &ty::TypeckTables<'tcx> {
+        self.tables
+    }
+}
+
 
 pub trait PatternFoldable<'tcx> : Sized {
     fn fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {

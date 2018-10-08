@@ -1307,6 +1307,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     ) {
         for ascription in ascriptions {
             let source_info = self.source_info(ascription.span);
+
+            debug!(
+                "adding user ascription at span {:?} of place {:?} and {:?}",
+                source_info.span,
+                ascription.source,
+                ascription.user_ty,
+            );
+
             self.cfg.push(
                 block,
                 Statement {

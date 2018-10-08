@@ -2164,6 +2164,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// occurred**, so that annotations like `Vec<_>` are preserved
     /// properly.
     pub fn write_user_substs_from_substs(&self, hir_id: hir::HirId, substs: &'tcx Substs<'tcx>) {
+        debug!(
+            "write_user_substs_from_substs({:?}, {:?}) in fcx {}",
+            hir_id,
+            substs,
+            self.tag(),
+        );
+
         if !substs.is_noop() {
             let user_substs = self.infcx.canonicalize_response(&substs);
             debug!("instantiate_value_path: user_substs = {:?}", user_substs);
