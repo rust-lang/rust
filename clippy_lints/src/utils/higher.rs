@@ -46,6 +46,14 @@ pub struct Range<'a> {
 
 /// Higher a `hir` range to something similar to `ast::ExprKind::Range`.
 pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> Option<Range<'b>> {
+    /// Find the field named `name` in the field. Always return `Some` for
+    /// convenience.
+    fn get_field<'a>(name: &str, fields: &'a [hir::Field]) -> Option<&'a hir::Expr> {
+        let expr = &fields.iter().find(|field| field.ident.name == name)?.expr;
+
+        Some(expr)
+    }
+
 
     let def_path = match cx.tables.expr_ty(expr).sty {
         ty::Adt(def, _) => cx.tcx.def_path(def.did),
@@ -73,14 +81,6 @@ pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> O
     ];
     if !range_types.contains(&&*type_name.as_str()) {
         return None;
-    }
-
-    /// Find the field named `name` in the field. Always return `Some` for
-    /// convenience.
-    fn get_field<'a>(name: &str, fields: &'a [hir::Field]) -> Option<&'a hir::Expr> {
-        let expr = &fields.iter().find(|field| field.ident.name == name)?.expr;
-
-        Some(expr)
     }
 
     // The range syntax is expanded to literal paths starting with `core` or `std`
