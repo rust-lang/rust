@@ -149,8 +149,8 @@ Therefore you should use `tests/ui/update-all-references.sh` (after running
 
 Manually testing against an example file is useful if you have added some
 `println!`s and test suite output becomes unreadable.  To try Clippy with your
-local modifications, run `cargo run --bin clippy-driver -- -L ./target/debug input.rs` from the
-working copy root.
+local modifications, run `env CLIPPY_TESTS=true cargo run --bin clippy-driver -- -L ./target/debug input.rs`
+from the working copy root.
 
 ### How Clippy works
 
