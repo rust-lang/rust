@@ -148,8 +148,8 @@ crate enum RegionElement {
     /// a lifetime parameter).
     RootUniversalRegion(RegionVid),
 
-    /// A superuniverse from a superuniverse (e.g., instantiated from a
-    /// `for<'a> fn(&'a u32)` type).
+    /// A placeholder (e.g., instantiated from a `for<'a> fn(&'a u32)`
+    /// type).
     PlaceholderRegion(ty::Placeholder),
 }
 

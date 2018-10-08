@@ -1457,10 +1457,10 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 /// "Universes" are used during type- and trait-checking in the
 /// presence of `for<..>` binders to control what sets of names are
 /// visible. Universes are arranged into a tree: the root universe
-/// contains names that are always visible. But when you enter into
-/// some superuniverse, then it may add names that are only visible
-/// within that subtree (but it can still name the names of its
-/// ancestor universes).
+/// contains names that are always visible. Each child then adds a new
+/// set of names that are visible, in addition to those of its parent.
+/// We say that the child universe "extends" the parent universe with
+/// new names.
 ///
 /// To make this more concrete, consider this program:
 ///
@@ -1472,11 +1472,11 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 /// ```
 ///
 /// The struct name `Foo` is in the root universe U0. But the type
-/// parameter `T`, introduced on `bar`, is in a superuniverse U1 --
-/// i.e., within `bar`, we can name both `T` and `Foo`, but outside of
-/// `bar`, we cannot name `T`. Then, within the type of `y`, the
-/// region `'a` is in a superuniverse U2 of U1, because we can name it
-/// inside the fn type but not outside.
+/// parameter `T`, introduced on `bar`, is in an extended universe U1
+/// -- i.e., within `bar`, we can name both `T` and `Foo`, but outside
+/// of `bar`, we cannot name `T`. Then, within the type of `y`, the
+/// region `'a` is in a universe U2 that extends U1, because we can
+/// name it inside the fn type but not outside.
 ///
 /// Universes are used to do type- and trait-checking around these
 /// "forall" binders (also called **universal quantification**). The
@@ -1500,24 +1500,28 @@ impl_stable_hash_for!(struct UniverseIndex { private });
 impl UniverseIndex {
     pub const ROOT: UniverseIndex = UniverseIndex::from_u32_const(0);
 
-    /// A "superuniverse" corresponds to being inside a `forall` quantifier.
-    /// So, for example, suppose we have this type in universe `U`:
+    /// Returns the "next" universe index in order -- this new index
+    /// is considered to extend all previous universes. This
+    /// corresponds to entering a `forall` quantifier.  So, for
+    /// example, suppose we have this type in universe `U`:
     ///
     /// ```
     /// for<'a> fn(&'a u32)
     /// ```
     ///
     /// Once we "enter" into this `for<'a>` quantifier, we are in a
-    /// superuniverse of `U` -- in this new universe, we can name the
-    /// region `'a`, but that region was not nameable from `U` because
-    /// it was not in scope there.
-    pub fn superuniverse(self) -> UniverseIndex {
+    /// new universe that extends `U` -- in this new universe, we can
+    /// name the region `'a`, but that region was not nameable from
+    /// `U` because it was not in scope there.
+    pub fn next_universe(self) -> UniverseIndex {
         UniverseIndex::from_u32(self.private.checked_add(1).unwrap())
     }
 
-    /// True if the names in this universe are a subset of the names in `other`.
-    pub fn is_subset_of(self, other: UniverseIndex) -> bool {
-        self.private <= other.private
+    /// True if `self` can name a name from `other` -- in other words,
+    /// if the set of names in `self` is a superset of those in
+    /// `other`.
+    pub fn can_name(self, other: UniverseIndex) -> bool {
+        self.private >= other.private
     }
 }
 
