@@ -207,7 +207,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                             bug!("Unexpected unsized type tail: {:?}", tail),
                     }
                 }
-                // for safe ptrs, recursively check
+                // for safe ptrs, also check the ptr values itself
                 if !ty.is_unsafe_ptr() {
                     // Make sure this is non-NULL and aligned
                     let (size, align) = self.size_and_align_of(place.extra, place.layout)?;
@@ -556,9 +556,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         match layout.ty.sty {
             // generators and closures.
             ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
-                let node_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
-                let freevar = self.tcx.with_freevars(node_id, |fv| fv[field]);
-                PathElem::ClosureVar(self.tcx.hir.name(freevar.var_id()))
+                if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
+                    let freevar = self.tcx.with_freevars(node_id, |fv| fv[field]);
+                    PathElem::ClosureVar(self.tcx.hir.name(freevar.var_id()))
+                } else {
+                    // The closure is not local, so we cannot get the name
+                    PathElem::ClosureVar(Symbol::intern(&field.to_string()))
+                }
             }
 
             // tuples
