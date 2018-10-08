@@ -972,7 +972,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
     let output = tcx.types.i32;
     let rust_try = gen_fn(cx, "__rust_try", vec![fn_ty, i8p, i8p], output, codegen);
     cx.rust_try_fn.set(Some(rust_try));
-    return rust_try
+    rust_try
 }
 
 fn span_invalid_monomorphization_error(a: &Session, b: Span, c: &str) {

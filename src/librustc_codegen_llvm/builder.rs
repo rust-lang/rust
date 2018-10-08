@@ -1194,7 +1194,7 @@ impl Builder<'a, 'll, 'tcx> {
             })
             .collect();
 
-        return Cow::Owned(casted_args);
+        Cow::Owned(casted_args)
     }
 
     pub fn lifetime_start(&self, ptr: &'ll Value, size: Size) {
