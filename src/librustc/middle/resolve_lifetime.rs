@@ -1398,6 +1398,30 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         self.xcrate_object_lifetime_defaults = this.xcrate_object_lifetime_defaults;
     }
 
+    /// helper method to determine the span to remove when suggesting the
+    /// deletion of a lifetime
+    fn lifetime_deletion_span(&self, name: ast::Ident, generics: &hir::Generics) -> Option<Span> {
+        if generics.params.len() == 1 {
+            // if sole lifetime, remove the `<>` brackets
+            Some(generics.span)
+        } else {
+            generics.params.iter().enumerate()
+                .find_map(|(i, param)| {
+                    if param.name.ident() == name {
+                        // We also want to delete a leading or trailing comma
+                        // as appropriate
+                        if i >= generics.params.len() - 1 {
+                            Some(generics.params[i-1].span.shrink_to_hi().to(param.span))
+                        } else {
+                            Some(param.span.to(generics.params[i+1].span.shrink_to_lo()))
+                        }
+                    } else {
+                        None
+                    }
+                })
+        }
+    }
+
     fn check_uses_for_lifetimes_defined_by_scope(&mut self) {
         let defined_by = match self.scope {
             Scope::Binder { lifetimes, .. } => lifetimes,
@@ -1475,50 +1499,15 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             &format!("lifetime parameter `{}` never used", name)
                         );
                         if let Some(parent_def_id) = self.tcx.parent(def_id) {
-                            if let Some(node_id) = self.tcx.hir.as_local_node_id(parent_def_id) {
-                                if let Some(Node::Item(hir_item)) = self.tcx.hir.find(node_id) {
-                                    match hir_item.node {
-                                        hir::ItemKind::Fn(_, _, ref generics, _) |
-                                        hir::ItemKind::Impl(_, _, _, ref generics, _, _, _) => {
-                                            let unused_lt_span = if generics.params.len() == 1 {
-                                                // if sole lifetime, remove the `<>` brackets
-                                                Some(generics.span)
-                                            } else {
-                                                generics.params.iter().enumerate()
-                                                    .find_map(|(i, param)| {
-                                                        if param.name.ident() == name {
-                                                            // We also want to delete a leading or
-                                                            // trailing comma as appropriate
-                                                            if i >= generics.params.len() - 1 {
-                                                                Some(
-                                                                    generics.params[i-1]
-                                                                        .span.shrink_to_hi()
-                                                                        .to(param.span)
-                                                                )
-                                                            } else {
-                                                                Some(
-                                                                    param.span.to(
-                                                                        generics.params[i+1]
-                                                                            .span.shrink_to_lo()
-                                                                    )
-                                                                )
-                                                            }
-                                                        } else {
-                                                            None
-                                                        }
-                                                    })
-                                            };
-                                            if let Some(span) = unused_lt_span {
-                                                err.span_suggestion_with_applicability(
-                                                    span,
-                                                    "remove it",
-                                                    String::new(),
-                                                    Applicability::MachineApplicable
-                                                );
-                                            }
-                                        },
-                                        _ => {}
-                                    }
+                            if let Some(generics) = self.tcx.hir.get_generics(parent_def_id) {
+                                let unused_lt_span = self.lifetime_deletion_span(name, generics);
+                                if let Some(span) = unused_lt_span {
+                                    err.span_suggestion_with_applicability(
+                                        span,
+                                        "remove it",
+                                        String::new(),
+                                        Applicability::MachineApplicable
+                                    );
                                 }
                             }
                         }
