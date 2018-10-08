@@ -1978,6 +1978,16 @@ impl<'tcx> Place<'tcx> {
             _ => None,
         }
     }
+
+    /// Returns the local variable at the "base" of this place, if any. e.g., for a place like
+    /// a.b.c, returns Some(a). For a place based in a static or constant, returns None.
+    pub fn base_local(&self) -> Option<Local> {
+        match self {
+            Place::Projection(box Projection { base, .. }) => base.base_local(),
+            Place::Local(local) => Some(*local),
+            Place::Static(..) | Place::Promoted(..) => None,
+        }
+    }
 }
 
 impl<'tcx> Debug for Place<'tcx> {

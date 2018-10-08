@@ -2344,4 +2344,5 @@ register_diagnostics! {
     E0594, // cannot assign to {}
     E0598, // lifetime of {} is too short to guarantee its contents can be...
     E0625, // thread-local statics cannot be accessed at compile-time
+    E0718,
 }

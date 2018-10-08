@@ -4,12 +4,25 @@ error[E0381]: use of possibly uninitialized variable: `*w`
 LL |     w[5] = 0; //[ast]~ ERROR use of possibly uninitialized variable: `*w` [E0381]
    |     ^^^^ use of possibly uninitialized `*w`
 
+error[E0718]: cannot assign to `w[..]` when `w` is not initialized
+  --> $DIR/borrowck-use-in-index-lvalue.rs:16:5
+   |
+LL |     w[5] = 0; //[ast]~ ERROR use of possibly uninitialized variable: `*w` [E0381]
+   |     ^^^^^^^^ will also have to be declared `mut`
+
 error[E0381]: use of possibly uninitialized variable: `*w`
   --> $DIR/borrowck-use-in-index-lvalue.rs:20:5
    |
 LL |     w[5] = 0; //[ast]~ ERROR use of possibly uninitialized variable: `*w` [E0381]
    |     ^^^^ use of possibly uninitialized `*w`
 
-error: aborting due to 2 previous errors
+error[E0718]: cannot assign to `w[..]` when `w` is not initialized
+  --> $DIR/borrowck-use-in-index-lvalue.rs:20:5
+   |
+LL |     w[5] = 0; //[ast]~ ERROR use of possibly uninitialized variable: `*w` [E0381]
+   |     ^^^^^^^^
 
-For more information about this error, try `rustc --explain E0381`.
+error: aborting due to 4 previous errors
+
+Some errors occurred: E0381, E0718.
+For more information about an error, try `rustc --explain E0381`.

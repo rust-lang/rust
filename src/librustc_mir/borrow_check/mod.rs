@@ -1096,20 +1096,63 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
         }
 
-        // Special case: you can assign a immutable local variable
-        // (e.g., `x = ...`) so long as it has never been initialized
-        // before (at this point in the flow).
-        if let &Place::Local(local) = place_span.0 {
-            if let Mutability::Not = self.mir.local_decls[local].mutability {
-                // check for reassignments to immutable local variables
-                self.check_if_reassignment_to_immutable_state(
-                    context,
-                    local,
-                    place_span,
-                    flow_state,
-                );
-                return;
+        match place_span.0 {
+            // Special case: you can assign a immutable local variable
+            // (e.g., `x = ...`) so long as it has never been initialized
+            // before (at this point in the flow).
+            &Place::Local(local) =>  {
+                if let Mutability::Not = self.mir.local_decls[local].mutability {
+                    // check for reassignments to immutable local variables
+                    self.check_if_reassignment_to_immutable_state(
+                        context,
+                        local,
+                        place_span,
+                        flow_state,
+                        );
+                    return;
+                }
             }
+
+            // FIXME(#21232). For now, error if assigning to a projection from an uninitialized
+            // local variable -- so e.g. doing a.b = 22 when a is not yet initialized is simply an
+            // error. In the future, we could sometimes support this.
+            place @ &Place::Projection(_) => {
+                if let Some(local) = place.base_local() {
+                    let mpi = self.move_data.rev_lookup.find_local(local);
+                    if flow_state.uninits.contains(mpi) {
+                        let name = self.mir.local_decls[local].name.unwrap();
+                        let msg = match self.describe_place(place) {
+                            Some(desc) => format!(
+                                "cannot assign to `{}` when `{}` is not initialized",
+                                desc,
+                                name,
+                            ),
+
+                            None => format!(
+                                "use of uninitialized variable `{}",
+                                name,
+                            ),
+                        };
+
+                        let mut diag =
+                            struct_span_err!(self.infcx.tcx.sess, place_span.1, E0718, "{}", msg);
+
+                        if let Mutability::Mut = self.mir.local_decls[local].mutability {
+                            // Pre-emptively insert local into the used_mut set to avoid any
+                            // warnings related to whether the mut declaration is used.
+                            self.used_mut.insert(local);
+                        } else {
+                            diag.span_label(place_span.1, "will also have to be declared `mut`");
+                        }
+
+                        diag.buffer(&mut self.errors_buffer);
+
+                        return;
+                    }
+                }
+            }
+
+            _ => {}
         }
 
         // Otherwise, use the normal access permission rules.
