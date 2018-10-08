@@ -148,9 +148,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         ref_tracking: Option<&mut RefTracking<'tcx>>,
         const_mode: bool,
     ) -> EvalResult<'tcx> {
-        trace!("validate scalar by type: {:#?}, {:#?}, {}",
-            *value, value.layout.size, value.layout.ty);
-
         // Go over all the primitive types
         let ty = value.layout.ty;
         match ty.sty {
@@ -225,7 +222,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         }
                     }
                     // non-ZST also have to be dereferencable
-                    if !place.layout.is_zst() {
+                    if size != Size::ZERO {
                         let ptr = try_validation!(place.ptr.to_ptr(),
                             "integer pointer in non-ZST reference", path);
                         if const_mode {
@@ -280,7 +277,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         path: &Vec<PathElem>,
         layout: &layout::Scalar,
     ) -> EvalResult<'tcx> {
-        trace!("validate scalar by layout: {:#?}, {:#?}, {:#?}", value, size, layout);
         let (lo, hi) = layout.valid_range.clone().into_inner();
         let max_hi = u128::max_value() >> (128 - size.bits()); // as big as the size fits
         assert!(hi <= max_hi);
@@ -372,7 +368,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         mut ref_tracking: Option<&mut RefTracking<'tcx>>,
         const_mode: bool,
     ) -> EvalResult<'tcx> {
-        trace!("validate_operand: {:?}, {:#?}", *dest, dest.layout);
+        trace!("validate_operand: {:?}, {:?}", *dest, dest.layout.ty);
 
         // If this is a multi-variant layout, we have find the right one and proceed with that.
         // (No good reasoning to make this recursion, but it is equivalent to that.)
