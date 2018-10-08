@@ -34,6 +34,6 @@ impl fmt::Debug for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(&llvm::build_string(|s| unsafe {
             llvm::LLVMRustWriteValueToString(self, s);
-        }).expect("nun-UTF8 value description from LLVM"))
+        }).expect("non-UTF8 value description from LLVM"))
     }
 }

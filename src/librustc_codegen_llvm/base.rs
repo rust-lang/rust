@@ -363,8 +363,8 @@ fn cast_shift_rhs<'ll, F, G>(op: hir::BinOpKind,
         if lhs_sz < rhs_sz {
             trunc(rhs, lhs_llty)
         } else if lhs_sz > rhs_sz {
-            // FIXME (#1877: If shifting by negative
-            // values becomes not undefined then this is wrong.
+            // FIXME (#1877: If in the future shifting by negative
+            // values is no longer undefined then this is wrong.
             zext(rhs, lhs_llty)
         } else {
             rhs

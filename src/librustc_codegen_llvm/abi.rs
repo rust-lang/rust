@@ -336,7 +336,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             RustIntrinsic | PlatformIntrinsic |
             Rust | RustCall => Conv::C,
 
-            // It's the ABI's job to select this, not us.
+            // It's the ABI's job to select this, not ours.
             System => bug!("system abi should be selected elsewhere"),
 
             Stdcall => Conv::X86Stdcall,
