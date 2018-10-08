@@ -24,7 +24,7 @@ warning: use of deprecated item 'MustUseDeprecated'
 LL |         MustUseDeprecated {} //~ warning: use of deprecated item
    |         ^^^^^^^^^^^^^^^^^
 
-warning: unused `MustUseDeprecated` which must be used
+warning: unused `MustUseDeprecated` that must be used
   --> $DIR/cfg-attr-multi-true.rs:20:5
    |
 LL |     MustUseDeprecated::new(); //~ warning: use of deprecated item
