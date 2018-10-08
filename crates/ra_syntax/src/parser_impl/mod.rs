@@ -4,45 +4,44 @@ mod input;
 use std::cell::Cell;
 
 use {
+    TextUnit, SmolStr,
     lexer::Token,
     parser_api::Parser,
     parser_impl::{
-        event::{process, Event},
+        event::{EventProcessor, Event},
         input::{InputPosition, ParserInput},
     },
-    TextUnit,
 };
 
 use SyntaxKind::{self, EOF, TOMBSTONE};
 
-pub(crate) trait Sink<'a> {
+pub(crate) trait Sink {
     type Tree;
 
-    fn new(text: &'a str) -> Self;
-
-    fn leaf(&mut self, kind: SyntaxKind, len: TextUnit);
+    fn leaf(&mut self, kind: SyntaxKind, text: SmolStr);
     fn start_internal(&mut self, kind: SyntaxKind);
     fn finish_internal(&mut self);
-    fn error(&mut self, err: String);
+    fn error(&mut self, message: String, offset: TextUnit);
     fn finish(self) -> Self::Tree;
 }
 
 /// Parse a sequence of tokens into the representative node tree
-pub(crate) fn parse_with<'a, S: Sink<'a>>(
-    text: &'a str,
+pub(crate) fn parse_with<S: Sink>(
+    sink: S,
+    text: &str,
     tokens: &[Token],
     parser: fn(&mut Parser),
 ) -> S::Tree {
-    let events = {
+    let mut events = {
         let input = input::ParserInput::new(text, tokens);
         let parser_impl = ParserImpl::new(&input);
         let mut parser_api = Parser(parser_impl);
         parser(&mut parser_api);
         parser_api.0.into_events()
     };
-    let mut sink = S::new(text);
-    process(&mut sink, tokens, events);
-    sink.finish()
+    EventProcessor::new(sink, text, tokens, &mut events)
+        .process()
+        .finish()
 }
 
 /// Implementation details of `Parser`, extracted

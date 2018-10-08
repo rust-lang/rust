@@ -1,33 +1,29 @@
 use rowan::GreenNodeBuilder;
 use {
+    TextUnit, SmolStr,
     parser_impl::Sink,
     yellow::{GreenNode, SyntaxError, RaTypes},
-    SyntaxKind, TextRange, TextUnit,
+    SyntaxKind,
 };
 
-pub(crate) struct GreenBuilder<'a> {
-    text: &'a str,
-    pos: TextUnit,
+pub(crate) struct GreenBuilder {
     errors: Vec<SyntaxError>,
     inner: GreenNodeBuilder<RaTypes>,
 }
 
-impl<'a> Sink<'a> for GreenBuilder<'a> {
-    type Tree = (GreenNode, Vec<SyntaxError>);
-
-    fn new(text: &'a str) -> Self {
+impl GreenBuilder {
+    pub(crate) fn new() -> GreenBuilder {
         GreenBuilder {
-            text,
-            pos: 0.into(),
             errors: Vec::new(),
             inner: GreenNodeBuilder::new(),
         }
     }
+}
 
-    fn leaf(&mut self, kind: SyntaxKind, len: TextUnit) {
-        let range = TextRange::offset_len(self.pos, len);
-        self.pos += len;
-        let text = self.text[range].into();
+impl Sink for GreenBuilder {
+    type Tree = (GreenNode, Vec<SyntaxError>);
+
+    fn leaf(&mut self, kind: SyntaxKind, text: SmolStr) {
         self.inner.leaf(kind, text);
     }
 
@@ -39,11 +35,9 @@ impl<'a> Sink<'a> for GreenBuilder<'a> {
         self.inner.finish_internal();
     }
 
-    fn error(&mut self, message: String) {
-        self.errors.push(SyntaxError {
-            msg: message,
-            offset: self.pos,
-        })
+    fn error(&mut self, message: String, offset: TextUnit) {
+        let error = SyntaxError { msg: message, offset };
+        self.errors.push(error)
     }
 
     fn finish(self) -> (GreenNode, Vec<SyntaxError>) {

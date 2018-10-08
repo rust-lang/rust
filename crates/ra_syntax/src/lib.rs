@@ -74,7 +74,8 @@ impl File {
     }
     pub fn parse(text: &str) -> File {
         let tokens = tokenize(&text);
-        let (green, errors) = parser_impl::parse_with::<yellow::GreenBuilder>(
+        let (green, errors) = parser_impl::parse_with(
+            yellow::GreenBuilder::new(),
             text, &tokens, grammar::root,
         );
         File::new(green, errors)

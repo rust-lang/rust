@@ -9,6 +9,7 @@
 //! this stream to a real tree.
 use std::mem;
 use {
+    TextUnit, TextRange, SmolStr,
     lexer::Token,
     parser_impl::Sink,
     SyntaxKind::{self, TOMBSTONE},
@@ -78,77 +79,104 @@ pub(crate) enum Event {
     },
 }
 
+pub(super) struct EventProcessor<'a, S: Sink> {
+    sink: S,
+    text_pos: TextUnit,
+    text: &'a str,
+    token_pos: usize,
+    tokens: &'a [Token],
+    events: &'a mut [Event],
+}
 
-pub(super) fn process<'a, S: Sink<'a>>(builder: &mut S, tokens: &[Token], mut events: Vec<Event>) {
-    fn tombstone() -> Event {
-        Event::Start { kind: TOMBSTONE, forward_parent: None }
+impl<'a, S: Sink> EventProcessor<'a, S> {
+    pub(super) fn new(sink: S, text: &'a str, tokens: &'a[Token], events: &'a mut [Event]) -> EventProcessor<'a, S> {
+        EventProcessor {
+            sink,
+            text_pos: 0.into(),
+            text,
+            token_pos: 0,
+            tokens,
+            events
+        }
     }
-    let eat_ws = |idx: &mut usize, builder: &mut S| {
-        while let Some(token) = tokens.get(*idx) {
+
+    pub(super) fn process(mut self) -> S {
+        fn tombstone() -> Event {
+            Event::Start { kind: TOMBSTONE, forward_parent: None }
+        }
+        let mut depth = 0;
+        let mut forward_parents = Vec::new();
+
+        for i in 0..self.events.len() {
+            match mem::replace(&mut self.events[i], tombstone()) {
+                Event::Start {
+                    kind: TOMBSTONE, ..
+                } => (),
+
+                Event::Start { kind, forward_parent } => {
+                    forward_parents.push(kind);
+                    let mut idx = i;
+                    let mut fp = forward_parent;
+                    while let Some(fwd) = fp {
+                        idx += fwd as usize;
+                        fp = match mem::replace(&mut self.events[idx], tombstone()) {
+                            Event::Start {
+                                kind,
+                                forward_parent,
+                            } => {
+                                forward_parents.push(kind);
+                                forward_parent
+                            },
+                            _ => unreachable!(),
+                        };
+                    }
+                    for kind in forward_parents.drain(..).rev() {
+                        if depth > 0 {
+                            self.eat_ws();
+                        }
+                        depth += 1;
+                        self.sink.start_internal(kind);
+                    }
+                }
+                Event::Finish => {
+                    depth -= 1;
+                    if depth == 0 {
+                        self.eat_ws();
+                    }
+
+                    self.sink.finish_internal();
+                }
+                Event::Token {
+                    kind,
+                    mut n_raw_tokens,
+                } => {
+                    self.eat_ws();
+                    let mut len = 0.into();
+                    for _ in 0..n_raw_tokens {
+                        len += self.tokens[self.token_pos].len;
+                    }
+                    self.leaf(kind, len, n_raw_tokens as usize);
+                }
+                Event::Error { msg } => self.sink.error(msg, self.text_pos),
+            }
+        }
+        self.sink
+    }
+
+    fn eat_ws(&mut self) {
+        while let Some(&token) = self.tokens.get(self.token_pos) {
             if !token.kind.is_trivia() {
                 break;
             }
-            builder.leaf(token.kind, token.len);
-            *idx += 1
+            self.leaf(token.kind, token.len, 1);
         }
-    };
+    }
 
-    let events: &mut [Event] = &mut events;
-    let mut depth = 0;
-    let mut forward_parents = Vec::new();
-    let mut next_tok_idx = 0;
-    for i in 0..events.len() {
-        match mem::replace(&mut events[i], tombstone()) {
-            Event::Start {
-                kind: TOMBSTONE, ..
-            } => (),
-
-            Event::Start { kind, forward_parent } => {
-                forward_parents.push(kind);
-                let mut idx = i;
-                let mut fp = forward_parent;
-                while let Some(fwd) = fp {
-                    idx += fwd as usize;
-                    fp = match mem::replace(&mut events[idx], tombstone()) {
-                        Event::Start {
-                            kind,
-                            forward_parent,
-                        } => {
-                            forward_parents.push(kind);
-                            forward_parent
-                        },
-                        _ => unreachable!(),
-                    };
-                }
-                for kind in forward_parents.drain(..).rev() {
-                    if depth > 0 {
-                        eat_ws(&mut next_tok_idx, builder);
-                    }
-                    depth += 1;
-                    builder.start_internal(kind);
-                }
-            }
-            Event::Finish => {
-                depth -= 1;
-                if depth == 0 {
-                    eat_ws(&mut next_tok_idx, builder);
-                }
-
-                builder.finish_internal();
-            }
-            Event::Token {
-                kind,
-                mut n_raw_tokens,
-            } => {
-                eat_ws(&mut next_tok_idx, builder);
-                let mut len = 0.into();
-                for _ in 0..n_raw_tokens {
-                    len += tokens[next_tok_idx].len;
-                    next_tok_idx += 1;
-                }
-                builder.leaf(kind, len);
-            }
-            Event::Error { msg } => builder.error(msg),
-        }
+    fn leaf(&mut self, kind: SyntaxKind, len: TextUnit, n_tokens: usize) {
+        let range = TextRange::offset_len(self.text_pos, len);
+        let text: SmolStr = self.text[range].into();
+        self.text_pos += len;
+        self.token_pos += n_tokens;
+        self.sink.leaf(kind, text);
     }
 }
