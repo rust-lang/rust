@@ -246,6 +246,7 @@ impl EarlyLintPass for Pass {
 }
 
 fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -> (Option<String>, Option<Expr>) {
+    use crate::fmt_macros::*;
     let tts = TokenStream::from(tts.clone());
     let mut parser = parser::Parser::new(&cx.sess.parse_sess, tts, None, false, false);
     let mut expr: Option<Expr> = None;
@@ -264,7 +265,6 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
         Ok(token) => token.0.to_string(),
         Err(_) => return (None, expr),
     };
-    use crate::fmt_macros::*;
     let tmp = fmtstr.clone();
     let mut args = vec![];
     let mut fmt_parser = Parser::new(&tmp, None);
