@@ -552,3 +552,15 @@ fn issue_3040() {
         }
     }
 }
+
+// #3030
+fn issue_3030() {
+    match input.trim().parse::<f64>() {
+        Ok(val)
+            if !(
+                // A valid number is the same as what rust considers to be valid,
+                // except for +1., NaN, and Infinity.
+                val.is_infinite() || val.is_nan() || input.ends_with(".") || input.starts_with("+")
+            ) => {}
+    }
+}
