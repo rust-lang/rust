@@ -79,7 +79,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         lint(cx, e.span, args[0].span, name, closure_expr);
                     },
                     hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, name, None) => match closure_expr.node {
-                        hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner) => lint(cx, e.span, args[0].span, name, inner),
+                        hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner) if !cx.tables.expr_ty(inner).is_box() => lint(cx, e.span, args[0].span, name, inner),
                         hir::ExprKind::MethodCall(ref method, _, ref obj) => if method.ident.as_str() == "clone" && match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) {
                             lint(cx, e.span, args[0].span, name, &obj[0]);
                         }
