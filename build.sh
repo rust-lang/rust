@@ -53,7 +53,8 @@ else
     cargo build
 fi
 
-RUSTC="rustc -Zcodegen-backend=$(pwd)/target/$channel/librustc_codegen_cranelift.$dylib_ext -Cpanic=abort -L crate=target/out --out-dir target/out"
+export RUSTFLAGS='-Zalways-encode-mir -Cpanic=abort -Zcodegen-backend='$(pwd)'/target/'$channel'/librustc_codegen_cranelift.'$dylib_ext
+RUSTC="rustc $RUSTFLAGS -L crate=target/out --out-dir target/out"
 
 rm -r target/out || true
 mkdir -p target/out/clif
@@ -71,5 +72,13 @@ build_example_bin mini_core_hello_world example/mini_core_hello_world.rs
 
 echo "[BUILD] core"
 time $RUSTC target/libcore/src/libcore/lib.rs --crate-type lib --crate-name core -Cincremental=target/incremental_core
+
+pushd xargo
+rm -r ~/.xargo/HOST
+export XARGO_RUST_SRC=$(pwd)'/../target/libcore/src'
+time xargo build --color always
+rm -r target/
+popd
+
 cat target/out/log.txt | sort | uniq -c
 #extract_data libcore.rlib core.o
