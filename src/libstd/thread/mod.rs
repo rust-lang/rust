@@ -576,7 +576,7 @@ pub fn current() -> Thread {
 /// Thus the pattern of `yield`ing after a failed poll is rather common when
 /// implementing low-level shared resources or synchronization primitives.
 ///
-/// However programmers will usually prefer to use, [`channel`]s, [`Condvar`]s,
+/// However programmers will usually prefer to use [`channel`]s, [`Condvar`]s,
 /// [`Mutex`]es or [`join`] for their synchronization routines, as they avoid
 /// thinking about thread scheduling.
 ///
