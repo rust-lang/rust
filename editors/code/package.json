@@ -17,17 +17,26 @@
         "vscode:prepublish": "npm run compile",
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
-        "postinstall": "node ./node_modules/vscode/bin/install"
+        "postinstall": "node ./node_modules/vscode/bin/install",
+        "lint": "tslint --project .",
+        "prettier": "prettier **/*.{json,ts}",
+        "travis": "npm run compile && npm run lint && npm run prettier --list-different"
+    },
+    "prettier": {
+        "tabWidth": 4
     },
     "dependencies": {
         "vscode-languageclient": "^4.4.0"
     },
     "devDependencies": {
+        "@types/mocha": "^2.2.42",
+        "@types/node": "^8.10.34",
+        "prettier": "^1.14.3",
+        "tslint": "^5.11.0",
+        "tslint-config-prettier": "^1.15.0",
         "typescript": "^2.6.1",
-        "vscode": "^1.1.21",
-        "vsce": "^1.42.0",
-        "@types/node": "^8.10.25",
-        "@types/mocha": "^2.2.42"
+        "vsce": "^1.51.1",
+        "vscode": "^1.1.21"
     },
     "activationEvents": [
         "onLanguage:rust"

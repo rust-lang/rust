@@ -1,19 +1,24 @@
-language: rust
-
 matrix:
   include:
-    - rust: stable
+    - language: rust
+      rust: stable
       script:
         - cargo gen-kinds --verify
         - cargo gen-tests --verify
         - cargo test
-    # - rust: nightly
+    # - language: rust
+    #   rust: nightly
     #   before_script:
     #     - rustup component add clippy-preview
     #     - rustup component add rustfmt-preview
     #   script:
     #     - cargo fmt --all -- --check || true
     #     - cargo clippy
+    - language: node_js
+      node_js: node
+      before_script: false
+      script:
+        - cd editors/code && npm ci && npm run travis; cd ../..
 
   allow_failures:
     - rust nightly
