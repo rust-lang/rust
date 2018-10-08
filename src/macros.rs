@@ -64,6 +64,15 @@ pub enum MacroArg {
     Item(ptr::P<ast::Item>),
 }
 
+impl MacroArg {
+    fn is_item(&self) -> bool {
+        match self {
+            MacroArg::Item(..) => true,
+            _ => false,
+        }
+    }
+}
+
 impl Rewrite for ast::Item {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         let mut visitor = ::visitor::FmtVisitor::from_context(context);
@@ -260,6 +269,7 @@ pub fn rewrite_macro_inner(
                     }
                     return return_original_snippet_with_failure_marked(context, mac.span);
                 }
+                _ if arg_vec.last().map_or(false, MacroArg::is_item) => continue,
                 _ => return return_original_snippet_with_failure_marked(context, mac.span),
             }
 
@@ -272,13 +282,7 @@ pub fn rewrite_macro_inner(
         }
     }
 
-    if !arg_vec.is_empty() && arg_vec.iter().all(|arg| {
-        if let MacroArg::Item(..) = arg {
-            true
-        } else {
-            false
-        }
-    }) {
+    if !arg_vec.is_empty() && arg_vec.iter().all(MacroArg::is_item) {
         return rewrite_macro_with_items(
             context,
             &arg_vec,
