@@ -67,4 +67,7 @@ fn main() {
 
     // Inferred type
     let good_inferred: f32 = 1f32 * 1_000_000_000.;
+
+    // issue #2840
+    let num = 0.000_000_000_01e-10f64;
 }

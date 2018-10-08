@@ -136,10 +136,10 @@ fn max_digits(fty: FloatTy) -> u32 {
 
 /// Counts the digits excluding leading zeros
 fn count_digits(s: &str) -> usize {
-    // Note that s does not contain the f32/64 suffix
+    // Note that s does not contain the f32/64 suffix, and underscores have been stripped
     s.chars()
-        .filter(|c| *c != '-' || *c != '.')
-        .take_while(|c| *c != 'e' || *c != 'E')
+        .filter(|c| *c != '-' && *c != '.')
+        .take_while(|c| *c != 'e' && *c != 'E')
         .fold(0, |count, c| {
             // leading zeros
             if c == '0' && count == 0 {
