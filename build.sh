@@ -74,7 +74,7 @@ echo "[BUILD] core"
 time $RUSTC target/libcore/src/libcore/lib.rs --crate-type lib --crate-name core -Cincremental=target/incremental_core
 
 pushd xargo
-rm -r ~/.xargo/HOST
+rm -r ~/.xargo/HOST || true
 export XARGO_RUST_SRC=$(pwd)'/../target/libcore/src'
 time xargo build --color always
 rm -r target/

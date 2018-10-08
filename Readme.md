@@ -8,6 +8,7 @@
 $ git clone https://github.com/bjorn3/rustc_codegen_cranelift.git
 $ cd rustc_codegen_cranelift
 $ rustup override set nightly
+$ cargo install xargo
 $ git submodule update --init
 $ cargo build
 ```

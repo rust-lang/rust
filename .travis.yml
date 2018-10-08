@@ -7,6 +7,7 @@ rust:
 
 script:
   - rustup component add rust-src
+  - cargo install xargo || echo "Skipping xargo install"
   - ./prepare_libcore.sh
   - ./build.sh
 
