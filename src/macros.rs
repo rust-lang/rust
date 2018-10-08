@@ -44,6 +44,7 @@ use shape::{Indent, Shape};
 use source_map::SpanUtils;
 use spanned::Spanned;
 use utils::{format_visibility, mk_sp, rewrite_ident, wrap_str};
+use visitor::FmtVisitor;
 
 const FORCED_BRACKET_MACROS: &[&str] = &["vec!"];
 
@@ -269,6 +270,24 @@ pub fn rewrite_macro_inner(
                 break;
             }
         }
+    }
+
+    if !arg_vec.is_empty() && arg_vec.iter().all(|arg| {
+        if let MacroArg::Item(..) = arg {
+            true
+        } else {
+            false
+        }
+    }) {
+        return rewrite_macro_with_items(
+            context,
+            &arg_vec,
+            &macro_name,
+            shape,
+            style,
+            position,
+            mac.span,
+        );
     }
 
     match style {
@@ -1427,4 +1446,46 @@ fn format_lazy_static(context: &RewriteContext, shape: Shape, ts: &TokenStream) 
     result.push('}');
 
     Some(result)
+}
+
+fn rewrite_macro_with_items(
+    context: &RewriteContext,
+    items: &[MacroArg],
+    macro_name: &str,
+    shape: Shape,
+    style: DelimToken,
+    position: MacroPosition,
+    span: Span,
+) -> Option<String> {
+    let (opener, closer) = match style {
+        DelimToken::Paren => ("(", ")"),
+        DelimToken::Bracket => ("[", "]"),
+        DelimToken::Brace => (" {", "}"),
+        _ => return None,
+    };
+    let trailing_semicolon = match style {
+        DelimToken::Paren | DelimToken::Bracket if position == MacroPosition::Item => ";",
+        _ => "",
+    };
+
+    let mut visitor = FmtVisitor::from_context(context);
+    visitor.block_indent = shape.indent.block_indent(context.config);
+    visitor.last_pos = context.snippet_provider.span_after(span, opener.trim());
+    for item in items {
+        let item = match item {
+            MacroArg::Item(item) => item,
+            _ => return None,
+        };
+        visitor.visit_item(&item);
+    }
+
+    let mut result = String::with_capacity(256);
+    result.push_str(&macro_name);
+    result.push_str(opener);
+    result.push_str(&visitor.block_indent.to_string_with_newline(context.config));
+    result.push_str(visitor.buffer.trim());
+    result.push_str(&shape.indent.to_string_with_newline(context.config));
+    result.push_str(closer);
+    result.push_str(trailing_semicolon);
+    return Some(result);
 }
