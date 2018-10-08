@@ -1,4 +1,4 @@
-error: explicit lifetimes given in parameter types where they could be elided
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
   --> $DIR/lifetimes.rs:17:1
    |
 17 | fn distinct_lifetimes<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: u8) { }
@@ -6,37 +6,37 @@ error: explicit lifetimes given in parameter types where they could be elided
    |
    = note: `-D clippy::needless-lifetimes` implied by `-D warnings`
 
-error: explicit lifetimes given in parameter types where they could be elided
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
   --> $DIR/lifetimes.rs:19:1
    |
 19 | fn distinct_and_static<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: &'static u8) { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: explicit lifetimes given in parameter types where they could be elided
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
   --> $DIR/lifetimes.rs:27:1
    |
 27 | fn in_and_out<'a>(x: &'a u8, _y: u8) -> &'a u8 { x }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: explicit lifetimes given in parameter types where they could be elided
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
   --> $DIR/lifetimes.rs:39:1
    |
 39 | fn deep_reference_3<'a>(x: &'a u8, _y: u8) -> Result<&'a u8, ()> { Ok(x) }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: explicit lifetimes given in parameter types where they could be elided
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
   --> $DIR/lifetimes.rs:42:1
    |
 42 | fn where_clause_without_lt<'a, T>(x: &'a u8, _y: u8) -> Result<&'a u8, ()> where T: Copy { Ok(x) }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: explicit lifetimes given in parameter types where they could be elided
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
   --> $DIR/lifetimes.rs:48:1
    |
 48 | fn lifetime_param_2<'a, 'b>(_x: Ref<'a>, _y: &'b u8) { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: explicit lifetimes given in parameter types where they could be elided
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
   --> $DIR/lifetimes.rs:62:1
    |
 62 | / fn fn_bound_2<'a, F, I>(_m: Lt<'a, I>, _f: F) -> Lt<'a, I>
@@ -44,47 +44,53 @@ error: explicit lifetimes given in parameter types where they could be elided
 64 | | { unreachable!() }
    | |__________________^
 
-error: explicit lifetimes given in parameter types where they could be elided
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
   --> $DIR/lifetimes.rs:87:5
    |
 87 |     fn self_and_out<'s>(&'s self) -> &'s u8 { &self.x }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: explicit lifetimes given in parameter types where they could be elided
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
   --> $DIR/lifetimes.rs:91:5
    |
 91 |     fn distinct_self_and_in<'s, 't>(&'s self, _x: &'t u8) { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: explicit lifetimes given in parameter types where they could be elided
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
    --> $DIR/lifetimes.rs:107:1
     |
 107 | fn struct_with_lt<'a>(_foo: Foo<'a>) -> &'a str { unimplemented!() }
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: explicit lifetimes given in parameter types where they could be elided
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
    --> $DIR/lifetimes.rs:127:1
     |
 127 | fn trait_obj_elided2<'a>(_arg: &'a Drop) -> &'a str { unimplemented!() }
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: explicit lifetimes given in parameter types where they could be elided
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
    --> $DIR/lifetimes.rs:131:1
     |
 131 | fn alias_with_lt<'a>(_foo: FooAlias<'a>) -> &'a str { unimplemented!() }
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: explicit lifetimes given in parameter types where they could be elided
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
    --> $DIR/lifetimes.rs:142:1
     |
 142 | fn named_input_elided_output<'a>(_arg: &'a str) -> &str { unimplemented!() }
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: explicit lifetimes given in parameter types where they could be elided
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
    --> $DIR/lifetimes.rs:146:1
     |
 146 | fn trait_bound_ok<'a, T: WithLifetime<'static>>(_: &'a u8, _: T) { unimplemented!() }
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 14 previous errors
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+   --> $DIR/lifetimes.rs:176:1
+    |
+176 | fn out_return_type_lts<'a>(e: &'a str) -> Cow<'a> { unimplemented!() }
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 15 previous errors
 

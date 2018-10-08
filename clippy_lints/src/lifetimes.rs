@@ -152,7 +152,7 @@ fn check_fn_inner<'a, 'tcx>(
             cx,
             NEEDLESS_LIFETIMES,
             span,
-            "explicit lifetimes given in parameter types where they could be elided",
+            "explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)",
         );
     }
     report_extra_lifetimes(cx, decl, generics);
