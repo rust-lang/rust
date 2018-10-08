@@ -243,18 +243,35 @@
 # =============================================================================
 [rust]
 
-# Indicates that the build should be optimized for debugging Rust. Note that
-# this is typically not what you want as it takes an incredibly large amount of
-# time to have a debug-mode rustc compile any code (notably libstd). If this
-# value is set to `true` it will affect a number of configuration options below
-# as well, if unconfigured.
-#debug = false
-
-# Whether or not to optimize the compiler and standard library
+# Whether or not to optimize the compiler and standard library.
+#
 # Note: the slowness of the non optimized compiler compiling itself usually
 #       outweighs the time gains in not doing optimizations, therefore a
-#       full bootstrap takes much more time with optimize set to false.
+#       full bootstrap takes much more time with `optimize` set to false.
 #optimize = true
+
+# Indicates that the build should be configured for debugging Rust. A
+# `debug`-enabled compiler and standard library will be somewhat
+# slower (due to e.g. checking of debug assertions) but should remain
+# usable.
+#
+# Note: If this value is set to `true`, it will affect a number of
+#       configuration options below as well, if they have been left
+#       unconfigured in this file.
+#
+# Note: changes to the `debug` setting do *not* affect `optimize`
+#       above. In theory, a "maximally debuggable" environment would
+#       set `optimize` to `false` above to assist the introspection
+#       facilities of debuggers like lldb and gdb. To recreate such an
+#       environment, explicitly set `optimize` to `false` and `debug`
+#       to `true`. In practice, everyone leaves `optimize` set to
+#       `true`, because an unoptimized rustc with debugging
+#       enabled becomes *unusably slow* (e.g. rust-lang/rust#24840
+#       reported a 25x slowdown) and bootstrapping the supposed
+#       "maximally debuggable" environment (notably libstd) takes
+#       hours to build.
+#
+#debug = false
 
 # Number of codegen units to use for each compiler invocation. A value of 0
 # means "the number of cores on this machine", and 1+ is passed through to the
