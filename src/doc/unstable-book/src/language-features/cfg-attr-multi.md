@@ -1,9 +1,9 @@
 # `cfg_attr_multi`
 
-The tracking issue for this feature is: [#555666]
+The tracking issue for this feature is: [#54881]
 The RFC for this feature is: [#2539]
 
-[#555666]: https://github.com/rust-lang/rust/issues/555666
+[#54881]: https://github.com/rust-lang/rust/issues/54881
 [#2539]: https://github.com/rust-lang/rfcs/pull/2539
 
 ------------------------

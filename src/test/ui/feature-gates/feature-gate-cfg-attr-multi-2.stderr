@@ -1,4 +1,4 @@
-error[E0658]: cfg_attr with zero or more than one attributes is experimental (see issue #555666)
+error[E0658]: cfg_attr with zero or more than one attributes is experimental (see issue #54881)
   --> $DIR/feature-gate-cfg-attr-multi-2.rs:1:1
    |
 LL | #![cfg_attr(all(),)]

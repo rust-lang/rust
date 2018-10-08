@@ -517,7 +517,7 @@ declare_features! (
     (active, impl_trait_in_bindings, "1.30.0", Some(34511), None),
 
     // #[cfg_attr(predicate, multiple, attributes, here)]
-    (active, cfg_attr_multi, "1.31.0", Some(555666), None),
+    (active, cfg_attr_multi, "1.31.0", Some(54881), None),
 );
 
 declare_features! (
