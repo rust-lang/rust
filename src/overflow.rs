@@ -18,6 +18,7 @@ use syntax::{ast, ptr};
 use closures;
 use expr::{
     can_be_overflowed_expr, is_every_expr_simple, is_method_call, is_nested_call, is_simple_expr,
+    rewrite_cond,
 };
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
 use macros::MacroArg;
@@ -401,6 +402,16 @@ impl<'a> Context<'a> {
                             None
                         } else {
                             closures::rewrite_last_closure(self.context, expr, shape)
+                        }
+                    }
+                    ast::ExprKind::Match(..) => {
+                        let multi_line = rewrite_cond(self.context, expr, shape)
+                            .map_or(false, |cond| cond.contains('\n'));
+
+                        if multi_line {
+                            None
+                        } else {
+                            expr.rewrite(self.context, shape)
                         }
                     }
                     _ => expr.rewrite(self.context, shape),
