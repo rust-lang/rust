@@ -878,7 +878,7 @@ impl<T> Option<T> {
     /// assert_eq!(old, None);
     /// ```
     #[inline]
-    #[stable(feature = "option_replace", since = "1.30.0")]
+    #[stable(feature = "option_replace", since = "1.31.0")]
     pub fn replace(&mut self, value: T) -> Option<T> {
         mem::replace(self, Some(value))
     }
