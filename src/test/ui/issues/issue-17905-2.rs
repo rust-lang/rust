@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// run-pass
-
 #[derive(Debug)]
 struct Pair<T, V> (T, V);
 
@@ -17,7 +15,7 @@ impl Pair<
     &str,
     isize
 > {
-    fn say(&self) {
+    fn say(self: &Pair<&str, isize>) {
         println!("{:?}", self);
     }
 }
