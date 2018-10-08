@@ -154,6 +154,22 @@ impl S {
     }
 
     #[test]
+    fn test_extend_selection_doc_comments() {
+        do_check(
+            r#"
+struct A;
+
+/// bla
+/// bla
+struct B {
+    <|>
+}
+            "#,
+            &["\n    \n", "{\n    \n}", "/// bla\n/// bla\nstruct B {\n    \n}"]
+        )
+    }
+
+    #[test]
     fn test_extend_selection_comments() {
         do_check(
             r#"

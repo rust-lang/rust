@@ -12,7 +12,7 @@ use {
     TextUnit, TextRange, SmolStr,
     lexer::Token,
     parser_impl::Sink,
-    SyntaxKind::{self, TOMBSTONE},
+    SyntaxKind::{self, *},
 };
 
 
@@ -104,7 +104,6 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
         fn tombstone() -> Event {
             Event::Start { kind: TOMBSTONE, forward_parent: None }
         }
-        let mut depth = 0;
         let mut forward_parents = Vec::new();
 
         for i in 0..self.events.len() {
@@ -131,25 +130,14 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
                         };
                     }
                     for kind in forward_parents.drain(..).rev() {
-                        if depth > 0 {
-                            self.eat_ws();
-                        }
-                        depth += 1;
-                        self.sink.start_internal(kind);
+                        self.start(kind);
                     }
                 }
                 Event::Finish => {
-                    depth -= 1;
-                    if depth == 0 {
-                        self.eat_ws();
-                    }
-
-                    self.sink.finish_internal();
-                }
-                Event::Token {
-                    kind,
-                    n_raw_tokens,
-                } => {
+                    let last = i == self.events.len() - 1;
+                    self.finish(last);
+                },
+                Event::Token { kind, n_raw_tokens } => {
                     self.eat_ws();
                     let n_raw_tokens = n_raw_tokens as usize;
                     let len = self.tokens[self.token_pos..self.token_pos + n_raw_tokens]
@@ -164,11 +152,56 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
         self.sink
     }
 
+    fn start(&mut self, kind: SyntaxKind) {
+        if kind == ROOT {
+            self.sink.start_internal(kind);
+            return;
+        }
+        let n_trivias = self.tokens[self.token_pos..]
+            .iter()
+            .take_while(|it| it.kind.is_trivia())
+            .count();
+        let leading_trivias = &self.tokens[self.token_pos..self.token_pos + n_trivias];
+        let mut trivia_end = self.text_pos + leading_trivias
+            .iter()
+            .map(|it| it.len)
+            .sum::<TextUnit>();
+
+        let n_attached_trivias = {
+            let leading_trivias = leading_trivias.iter().rev()
+                .map(|it| {
+                    let next_end = trivia_end - it.len;
+                    let range = TextRange::from_to(next_end, trivia_end);
+                    trivia_end = next_end;
+                    (it.kind, &self.text[range])
+                });
+            n_attached_trivias(kind, leading_trivias)
+        };
+        self.eat_n_trivias(n_trivias - n_attached_trivias);
+        self.sink.start_internal(kind);
+        self.eat_n_trivias(n_attached_trivias);
+    }
+
+    fn finish(&mut self, last: bool) {
+        if last {
+            self.eat_ws()
+        }
+        self.sink.finish_internal();
+    }
+
     fn eat_ws(&mut self) {
         while let Some(&token) = self.tokens.get(self.token_pos) {
             if !token.kind.is_trivia() {
                 break;
             }
+            self.leaf(token.kind, token.len, 1);
+        }
+    }
+
+    fn eat_n_trivias(&mut self, n: usize) {
+        for _ in 0..n {
+            let token = self.tokens[self.token_pos];
+            assert!(token.kind.is_trivia());
             self.leaf(token.kind, token.len, 1);
         }
     }
@@ -180,4 +213,28 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
         self.token_pos += n_tokens;
         self.sink.leaf(kind, text);
     }
+}
+
+fn n_attached_trivias<'a>(kind: SyntaxKind, trivias: impl Iterator<Item=(SyntaxKind, &'a str)>) -> usize {
+    match kind {
+        STRUCT_DEF | ENUM_DEF | FN_DEF | TRAIT_DEF | MODULE => {
+            let mut res = 0;
+            for (i, (kind, text)) in trivias.enumerate() {
+                match kind {
+                    WHITESPACE => {
+                        if text.contains("\n\n") {
+                            break;
+                        }
+                    }
+                    COMMENT => {
+                        res = i + 1;
+                    }
+                    _ => (),
+                }
+            }
+            res
+        }
+        _ => 0,
+    }
+
 }
