@@ -55,7 +55,6 @@ use rustc_data_structures::graph::implementation::{
 use rustc::hir;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::ich::{ATTR_IF_THIS_CHANGED, ATTR_THEN_THIS_WOULD_NEED};
-use graphviz::IntoCow;
 use std::env;
 use std::fs::{self, File};
 use std::io::Write;
@@ -274,10 +273,10 @@ impl<'a, 'tcx, 'q> dot::GraphWalk<'a> for GraphvizDepGraph<'q> {
     type Edge = (&'q DepNode, &'q DepNode);
     fn nodes(&self) -> dot::Nodes<&'q DepNode> {
         let nodes: Vec<_> = self.0.iter().cloned().collect();
-        nodes.into_cow()
+        nodes.into()
     }
     fn edges(&self) -> dot::Edges<(&'q DepNode, &'q DepNode)> {
-        self.1[..].into_cow()
+        self.1[..].into()
     }
     fn source(&self, edge: &(&'q DepNode, &'q DepNode)) -> &'q DepNode {
         edge.0

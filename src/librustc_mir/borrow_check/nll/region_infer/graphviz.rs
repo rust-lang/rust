@@ -14,7 +14,7 @@
 
 use super::*;
 use borrow_check::nll::constraints::OutlivesConstraint;
-use dot::{self, IntoCow};
+use dot;
 use std::borrow::Cow;
 use std::io::{self, Write};
 
@@ -49,7 +49,7 @@ impl<'a, 'this, 'tcx> dot::Labeller<'this> for RawConstraints<'a, 'tcx> {
     type Edge = OutlivesConstraint;
 
     fn graph_id(&'this self) -> dot::Id<'this> {
-        dot::Id::new("RegionInferenceContext".to_string()).unwrap()
+        dot::Id::new("RegionInferenceContext").unwrap()
     }
     fn node_id(&'this self, n: &RegionVid) -> dot::Id<'this> {
         dot::Id::new(format!("r{}", n.index())).unwrap()
@@ -58,10 +58,10 @@ impl<'a, 'this, 'tcx> dot::Labeller<'this> for RawConstraints<'a, 'tcx> {
         Some(dot::LabelText::LabelStr(Cow::Borrowed("box")))
     }
     fn node_label(&'this self, n: &RegionVid) -> dot::LabelText<'this> {
-        dot::LabelText::LabelStr(format!("{:?}", n).into_cow())
+        dot::LabelText::LabelStr(format!("{:?}", n).into())
     }
     fn edge_label(&'this self, e: &OutlivesConstraint) -> dot::LabelText<'this> {
-        dot::LabelText::LabelStr(format!("{:?}", e.locations).into_cow())
+        dot::LabelText::LabelStr(format!("{:?}", e.locations).into())
     }
 }
 
@@ -71,10 +71,10 @@ impl<'a, 'this, 'tcx> dot::GraphWalk<'this> for RawConstraints<'a, 'tcx> {
 
     fn nodes(&'this self) -> dot::Nodes<'this, RegionVid> {
         let vids: Vec<RegionVid> = self.regioncx.definitions.indices().collect();
-        vids.into_cow()
+        vids.into()
     }
     fn edges(&'this self) -> dot::Edges<'this, OutlivesConstraint> {
-        (&self.regioncx.constraints.raw[..]).into_cow()
+        (&self.regioncx.constraints.raw[..]).into()
     }
 
     // Render `a: b` as `a -> b`, indicating the flow
@@ -109,7 +109,7 @@ impl<'a, 'this, 'tcx> dot::Labeller<'this> for SccConstraints<'a, 'tcx> {
     }
     fn node_label(&'this self, n: &ConstraintSccIndex) -> dot::LabelText<'this> {
         let nodes = &self.nodes_per_scc[*n];
-        dot::LabelText::LabelStr(format!("{:?} = {:?}", n, nodes).into_cow())
+        dot::LabelText::LabelStr(format!("{:?} = {:?}", n, nodes).into())
     }
 }
 
@@ -119,7 +119,7 @@ impl<'a, 'this, 'tcx> dot::GraphWalk<'this> for SccConstraints<'a, 'tcx> {
 
     fn nodes(&'this self) -> dot::Nodes<'this, ConstraintSccIndex> {
         let vids: Vec<ConstraintSccIndex> = self.regioncx.constraint_sccs.all_sccs().collect();
-        vids.into_cow()
+        vids.into()
     }
     fn edges(&'this self) -> dot::Edges<'this, (ConstraintSccIndex, ConstraintSccIndex)> {
         let edges: Vec<_> = self.regioncx
@@ -134,7 +134,7 @@ impl<'a, 'this, 'tcx> dot::GraphWalk<'this> for SccConstraints<'a, 'tcx> {
             })
             .collect();
 
-        edges.into_cow()
+        edges.into()
     }
 
     // Render `a: b` as `a -> b`, indicating the flow
