@@ -1102,18 +1102,6 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
         arg: &hir::Expr,
         span: Span,
     ) {
-        if name != "expect" {
-            return;
-        }
-
-        let self_type = cx.tables.expr_ty(self_expr);
-        let known_types = &[&paths::OPTION, &paths::RESULT];
-
-        // if not a known type, return early
-        if known_types.iter().all(|&k| !match_type(cx, self_type, k)) {
-            return;
-        }
-
         fn is_call(node: &hir::ExprKind) -> bool {
             match node {
                 hir::ExprKind::AddrOf(_, expr) => {
@@ -1126,6 +1114,18 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
                 | hir::ExprKind::Match(..) => true,
                 _ => false,
             }
+        }
+
+        if name != "expect" {
+            return;
+        }
+
+        let self_type = cx.tables.expr_ty(self_expr);
+        let known_types = &[&paths::OPTION, &paths::RESULT];
+
+        // if not a known type, return early
+        if known_types.iter().all(|&k| !match_type(cx, self_type, k)) {
+            return;
         }
 
         if !is_call(&arg.node) {
@@ -1359,14 +1359,6 @@ fn lint_iter_cloned_collect(cx: &LateContext<'_, '_>, expr: &hir::Expr, iter_arg
 }
 
 fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: &[hir::Expr]) {
-    // Check that this is a call to Iterator::fold rather than just some function called fold
-    if !match_trait_method(cx, expr, &paths::ITERATOR) {
-        return;
-    }
-
-    assert!(fold_args.len() == 3,
-        "Expected fold_args to have three entries - the receiver, the initial value and the closure");
-
     fn check_fold_with_op(
         cx: &LateContext<'_, '_>,
         fold_args: &[hir::Expr],
@@ -1422,6 +1414,14 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: 
             }
         }
     }
+
+    // Check that this is a call to Iterator::fold rather than just some function called fold
+    if !match_trait_method(cx, expr, &paths::ITERATOR) {
+        return;
+    }
+
+    assert!(fold_args.len() == 3,
+        "Expected fold_args to have three entries - the receiver, the initial value and the closure");
 
     // Check if the first argument to .fold is a suitable literal
     match fold_args[1].node {

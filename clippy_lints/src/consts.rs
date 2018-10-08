@@ -275,6 +275,8 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
 
     /// lookup a possibly constant expression from a ExprKind::Path
     fn fetch_path(&mut self, qpath: &QPath, id: HirId) -> Option<Constant> {
+        use crate::rustc::mir::interpret::GlobalId;
+
         let def = self.tables.qpath_def(qpath, id);
         match def {
             Def::Const(def_id) | Def::AssociatedConst(def_id) => {
@@ -289,7 +291,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                     instance,
                     promoted: None,
                 };
-                use crate::rustc::mir::interpret::GlobalId;
+                
                 let result = self.tcx.const_eval(self.param_env.and(gid)).ok()?;
                 let ret = miri_to_const(self.tcx, result);
                 if ret.is_some() {
