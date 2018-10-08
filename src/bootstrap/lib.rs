@@ -926,25 +926,6 @@ impl Build {
             (self.hosts.iter().any(|h| *h == target) || target == self.build)
     }
 
-    /// Returns the directory that OpenSSL artifacts are compiled into if
-    /// configured to do so.
-    fn openssl_dir(&self, target: Interned<String>) -> Option<PathBuf> {
-        // OpenSSL not used on Windows
-        if target.contains("windows") {
-            None
-        } else if self.config.openssl_static {
-            Some(self.out.join(&*target).join("openssl"))
-        } else {
-            None
-        }
-    }
-
-    /// Returns the directory that OpenSSL artifacts are installed into if
-    /// configured as such.
-    fn openssl_install_dir(&self, target: Interned<String>) -> Option<PathBuf> {
-        self.openssl_dir(target).map(|p| p.join("install"))
-    }
-
     /// Given `num` in the form "a.b.c" return a "release string" which
     /// describes the release version number.
     ///

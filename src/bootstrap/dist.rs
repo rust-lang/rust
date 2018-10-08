@@ -31,7 +31,6 @@ use channel;
 use util::{libdir, is_dylib, exe};
 use builder::{Builder, RunConfig, ShouldRun, Step};
 use compile;
-use native;
 use tool::{self, Tool};
 use cache::{INTERNER, Interned};
 use time;
@@ -990,12 +989,6 @@ impl Step for PlainSourceTarball {
                    .arg("--debug")
                    .arg("--vers").arg(CARGO_VENDOR_VERSION)
                    .arg("cargo-vendor");
-                if let Some(dir) = builder.openssl_install_dir(builder.config.build) {
-                    builder.ensure(native::Openssl {
-                        target: builder.config.build,
-                    });
-                    cmd.env("OPENSSL_DIR", dir);
-                }
                 builder.run(&mut cmd);
             }
 

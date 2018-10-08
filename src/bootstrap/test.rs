@@ -228,7 +228,8 @@ impl Step for Cargo {
                                                  self.host,
                                                  "test",
                                                  "src/tools/cargo",
-                                                 SourceType::Submodule);
+                                                 SourceType::Submodule,
+                                                 &[]);
 
         if !builder.fail_fast {
             cargo.arg("--no-fail-fast");
@@ -290,7 +291,8 @@ impl Step for Rls {
                                                  host,
                                                  "test",
                                                  "src/tools/rls",
-                                                 SourceType::Submodule);
+                                                 SourceType::Submodule,
+                                                 &[]);
 
         // Copy `src/tools/rls/test_data` to a writable drive.
         let test_workspace_path = builder.out.join("rls-test-data");
@@ -352,7 +354,8 @@ impl Step for Rustfmt {
                                                  host,
                                                  "test",
                                                  "src/tools/rustfmt",
-                                                 SourceType::Submodule);
+                                                 SourceType::Submodule,
+                                                 &[]);
 
         let dir = testdir(builder, compiler.host);
         t!(fs::create_dir_all(&dir));
@@ -407,7 +410,8 @@ impl Step for Miri {
                                                  host,
                                                  "test",
                                                  "src/tools/miri",
-                                                 SourceType::Submodule);
+                                                 SourceType::Submodule,
+                                                 &[]);
 
             // miri tests need to know about the stage sysroot
             cargo.env("MIRI_SYSROOT", builder.sysroot(compiler));
@@ -466,7 +470,8 @@ impl Step for Clippy {
                                                  host,
                                                  "test",
                                                  "src/tools/clippy",
-                                                 SourceType::Submodule);
+                                                 SourceType::Submodule,
+                                                 &[]);
 
             // clippy tests need to know about the stage sysroot
             cargo.env("SYSROOT", builder.sysroot(compiler));
@@ -1777,7 +1782,8 @@ impl Step for CrateRustdoc {
                                                  target,
                                                  test_kind.subcommand(),
                                                  "src/tools/rustdoc",
-                                                 SourceType::InTree);
+                                                 SourceType::InTree,
+                                                 &[]);
         if test_kind.subcommand() == "test" && !builder.fail_fast {
             cargo.arg("--no-fail-fast");
         }

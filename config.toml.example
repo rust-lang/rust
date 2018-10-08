@@ -182,10 +182,9 @@
 # Build the profiler runtime
 #profiler = false
 
-# Indicates whether the OpenSSL linked into Cargo will be statically linked or
-# not. If static linkage is specified then the build system will download a
-# known-good version of OpenSSL, compile it, and link it to Cargo.
-#openssl-static = false
+# Indicates whether the native libraries linked into Cargo will be statically
+# linked or not.
+#cargo-native-static = false
 
 # Run the build with low priority, by setting the process group's "nice" value
 # to +10 on Unix platforms, and by using a "low priority" job object on Windows.
