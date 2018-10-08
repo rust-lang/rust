@@ -336,16 +336,13 @@ pub fn langcall(tcx: TyCtxt,
                 msg: &str,
                 li: LangItem)
                 -> DefId {
-    match tcx.lang_items().require(li) {
-        Ok(id) => id,
-        Err(s) => {
-            let msg = format!("{} {}", msg, s);
-            match span {
-                Some(span) => tcx.sess.span_fatal(span, &msg[..]),
-                None => tcx.sess.fatal(&msg[..]),
-            }
+    tcx.lang_items().require(li).unwrap_or_else(|s| {
+        let msg = format!("{} {}", msg, s);
+        match span {
+            Some(span) => tcx.sess.span_fatal(span, &msg[..]),
+            None => tcx.sess.fatal(&msg[..]),
         }
-    }
+    })
 }
 
 // To avoid UB from LLVM, these two functions mask RHS with an

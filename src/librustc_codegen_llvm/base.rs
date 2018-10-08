@@ -495,10 +495,8 @@ pub fn codegen_instance<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, instance: Instance<'
     let sig = common::ty_fn_sig(cx, fn_ty);
     let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
 
-    let lldecl = match cx.instances.borrow().get(&instance) {
-        Some(&val) => val,
-        None => bug!("Instance `{:?}` not already declared", instance)
-    };
+    let lldecl = cx.instances.borrow().get(&instance).cloned().unwrap_or_else(||
+        bug!("Instance `{:?}` not already declared", instance));
 
     cx.stats.borrow_mut().n_closures += 1;
 
@@ -836,12 +834,7 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         .iter()
         .any(|(_, list)| {
             use rustc::middle::dependency_format::Linkage;
-            list.iter().any(|linkage| {
-                match linkage {
-                    Linkage::Dynamic => true,
-                    _ => false,
-                }
-            })
+            list.iter().any(|&linkage| linkage == Linkage::Dynamic)
         });
     let allocator_module = if any_dynamic_crate {
         None

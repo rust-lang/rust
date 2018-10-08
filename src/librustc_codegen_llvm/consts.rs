@@ -249,14 +249,13 @@ fn check_and_apply_linkage(
         // extern "C" fn() from being non-null, so we can't just declare a
         // static and call it a day. Some linkages (like weak) will make it such
         // that the static actually has a null value.
-        let llty2 = match ty.sty {
-            ty::RawPtr(ref mt) => cx.layout_of(mt.ty).llvm_type(cx),
-            _ => {
-                if span.is_some() {
-                    cx.sess().span_fatal(span.unwrap(), "must have type `*const T` or `*mut T`")
-                } else {
-                    bug!("must have type `*const T` or `*mut T`")
-                }
+        let llty2 = if let ty::RawPtr(ref mt) = ty.sty {
+            cx.layout_of(mt.ty).llvm_type(cx)
+        } else {
+            if let Some(span) = span {
+                cx.sess().span_fatal(span, "must have type `*const T` or `*mut T`")
+            } else {
+                bug!("must have type `*const T` or `*mut T`")
             }
         };
         unsafe {
@@ -273,9 +272,9 @@ fn check_and_apply_linkage(
             let mut real_name = "_rust_extern_with_linkage_".to_string();
             real_name.push_str(&sym);
             let g2 = declare::define_global(cx, &real_name, llty).unwrap_or_else(||{
-                if span.is_some() {
+                if let Some(span) = span {
                     cx.sess().span_fatal(
-                        span.unwrap(),
+                        span,
                         &format!("symbol `{}` is already defined", &sym)
                     )
                 } else {

@@ -695,14 +695,13 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             // If the value is a boolean, the range is 0..2 and that ultimately
             // become 0..0 when the type becomes i1, which would be rejected
             // by the LLVM verifier.
-            match scalar.value {
-                layout::Int(..) if !scalar.is_bool() => {
+            if let layout::Int(..) = scalar.value {
+                if !scalar.is_bool() {
                     let range = scalar.valid_range_exclusive(bx.cx);
                     if range.start != range.end {
                         bx.range_metadata(callsite, range);
                     }
                 }
-                _ => {}
             }
         }
         for arg in &self.args {

@@ -318,10 +318,8 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         if let Some(v) = self.intrinsics.borrow().get(key).cloned() {
             return v;
         }
-        match declare_intrinsic(self, key) {
-            Some(v) => return v,
-            None => bug!("unknown intrinsic '{}'", key)
-        }
+
+        declare_intrinsic(self, key).unwrap_or_else(|| bug!("unknown intrinsic '{}'", key))
     }
 
     /// Generate a new symbol name with the given prefix. This symbol name must
@@ -465,9 +463,10 @@ impl LayoutOf for &'a CodegenCx<'ll, 'tcx> {
 
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
         self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty))
-            .unwrap_or_else(|e| match e {
-                LayoutError::SizeOverflow(_) => self.sess().fatal(&e.to_string()),
-                _ => bug!("failed to get layout for `{}`: {}", ty, e)
+            .unwrap_or_else(|e| if let LayoutError::SizeOverflow(_) = e {
+                self.sess().fatal(&e.to_string())
+            } else {
+                bug!("failed to get layout for `{}`: {}", ty, e)
             })
     }
 }
