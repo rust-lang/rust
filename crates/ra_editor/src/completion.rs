@@ -39,6 +39,12 @@ pub fn scope_completion(file: &File, offset: TextUnit) -> Option<Vec<CompletionI
         if is_node::<ast::Param>(name_ref.syntax()) {
             param_completions(name_ref.syntax(), &mut res);
         }
+        let name_range = name_ref.syntax().range();
+        let top_node = name_ref.syntax().ancestors().take_while(|it| it.range() == name_range).last().unwrap();
+        match top_node.parent().map(|it| it.kind()) {
+            Some(ROOT) | Some(ITEM_LIST) => complete_mod_item_snippets(&mut res),
+            _ => (),
+        }
     }
     if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), offset) {
         if is_node::<ast::Param>(name.syntax()) {
@@ -212,6 +218,15 @@ fn complete_expr_snippets(acc: &mut Vec<CompletionItem>) {
             label: "ppd".to_string(),
             lookup: None,
             snippet: Some("eprintln!(\"$0 = {:#?}\", $0);".to_string()),
+        }
+    );
+}
+
+fn complete_mod_item_snippets(acc: &mut Vec<CompletionItem>) {
+    acc.push(CompletionItem {
+            label: "tfn".to_string(),
+            lookup: None,
+            snippet: Some("#[test]\nfn $1() {\n    $0\n}".to_string()),
         }
     );
 }
@@ -505,5 +520,22 @@ mod tests {
         ", r#"[CompletionItem { label: "self", lookup: None, snippet: None },
                CompletionItem { label: "SourceRoot", lookup: None, snippet: None },
                CompletionItem { label: "file_id: FileId", lookup: Some("file_id"), snippet: None }]"#);
+    }
+
+    #[test]
+    fn test_tfn_snippet() {
+        // check_snippet_completion(r"
+        //     <|>
+        //     ",
+        //     r##"[CompletionItem { label: "tfn", lookup: None, snippet: Some("#[test]\nfn $1() {\n    $0\n}") }]"##,
+        // );
+        check_snippet_completion(r"
+            #[cfg(test)]
+            mod tests {
+                <|>
+            }
+            ",
+            r##"[CompletionItem { label: "tfn", lookup: None, snippet: Some("#[test]\nfn $1() {\n    $0\n}") }]"##,
+        );
     }
 }
