@@ -11,7 +11,7 @@ interface JoinLinesParams {
 
 export async function handle() {
     const editor = vscode.window.activeTextEditor;
-    if (editor == null || editor.document.languageId != 'rust') { return; }
+    if (editor == null || editor.document.languageId !== 'rust') { return; }
     const request: JoinLinesParams = {
         range: Server.client.code2ProtocolConverter.asRange(editor.selection),
         textDocument: { uri: editor.document.uri.toString() },

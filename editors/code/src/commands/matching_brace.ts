@@ -10,7 +10,7 @@ interface FindMatchingBraceParams {
 
 export async function handle() {
     const editor = vscode.window.activeTextEditor;
-    if (editor == null || editor.document.languageId != 'rust') { return; }
+    if (editor == null || editor.document.languageId !== 'rust') { return; }
     const request: FindMatchingBraceParams = {
         textDocument: { uri: editor.document.uri.toString() },
         offsets: editor.selections.map((s) => {

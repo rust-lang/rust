@@ -5,7 +5,7 @@ import { Server } from '../server';
 
 export async function handle() {
     const editor = vscode.window.activeTextEditor;
-    if (editor == null || editor.document.languageId != 'rust') { return; }
+    if (editor == null || editor.document.languageId !== 'rust') { return; }
     const request: TextDocumentIdentifier = {
         uri: editor.document.uri.toString(),
     };

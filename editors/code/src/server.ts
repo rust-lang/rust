@@ -34,7 +34,7 @@ export class Server {
                 'm/publishDecorations',
                 (params: PublishDecorationsParams) => {
                     const targetEditor = vscode.window.visibleTextEditors.find(
-                        (editor) => editor.document.uri.toString() == params.uri,
+                        (editor) => editor.document.uri.toString() === params.uri,
                     );
                     if (!Server.config.highlightingOn || !targetEditor) { return; }
                     Server.highlighter.setHighlights(

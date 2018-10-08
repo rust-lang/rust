@@ -59,7 +59,7 @@ function createTask(spec: Runnable): vscode.Task {
 let prevRunnable: RunnableQuickPick | undefined;
 export async function handle() {
     const editor = vscode.window.activeTextEditor;
-    if (editor == null || editor.document.languageId != 'rust') { return; }
+    if (editor == null || editor.document.languageId !== 'rust') { return; }
     const textDocument: lc.TextDocumentIdentifier = {
         uri: editor.document.uri.toString(),
     };
@@ -73,7 +73,7 @@ export async function handle() {
         items.push(prevRunnable);
     }
     for (const r of runnables) {
-        if (prevRunnable && JSON.stringify(prevRunnable.runnable) == JSON.stringify(r)) {
+        if (prevRunnable && JSON.stringify(prevRunnable.runnable) === JSON.stringify(r)) {
             continue;
         }
         items.push(new RunnableQuickPick(r));

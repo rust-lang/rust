@@ -5,7 +5,7 @@ import { Decoration } from '../highlighting';
 import { Server } from '../server';
 
 export async function handle(editor: TextEditor | undefined) {
-    if (!Server.config.highlightingOn || !editor || editor.document.languageId != 'rust') { return; }
+    if (!Server.config.highlightingOn || !editor || editor.document.languageId !== 'rust') { return; }
     const params: TextDocumentIdentifier = {
         uri: editor.document.uri.toString(),
     };

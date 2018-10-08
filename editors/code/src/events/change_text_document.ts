@@ -5,7 +5,7 @@ import { syntaxTreeUri, TextDocumentContentProvider } from '../commands/syntaxTr
 export function createHandler(textDocumentContentProvider: TextDocumentContentProvider) {
     return (event: vscode.TextDocumentChangeEvent) => {
         const doc = event.document;
-        if (doc.languageId != 'rust') { return; }
+        if (doc.languageId !== 'rust') { return; }
         afterLs(() => {
             textDocumentContentProvider.eventEmitter.fire(syntaxTreeUri);
         });

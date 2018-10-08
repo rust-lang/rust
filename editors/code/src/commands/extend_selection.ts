@@ -14,7 +14,7 @@ interface ExtendSelectionResult {
 
 export async function handle() {
     const editor = vscode.window.activeTextEditor;
-    if (editor == null || editor.document.languageId != 'rust') { return; }
+    if (editor == null || editor.document.languageId !== 'rust') { return; }
     const request: ExtendSelectionParams = {
         selections: editor.selections.map((s) => {
             return Server.client.code2ProtocolConverter.asRange(s);
