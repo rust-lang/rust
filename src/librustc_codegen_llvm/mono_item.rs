@@ -108,8 +108,8 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
         match *self.as_mono_item() {
             MonoItem::Fn(instance) => {
                 format!("Fn({:?}, {})",
-                         instance.def,
-                         instance.substs.as_ptr() as usize)
+                        instance.def,
+                        instance.substs.as_ptr() as usize)
             }
             MonoItem::Static(id) => {
                 format!("Static({:?})", id)

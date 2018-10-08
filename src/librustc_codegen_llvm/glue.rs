@@ -97,8 +97,8 @@ pub fn size_and_align_of_dst(bx: &Builder<'_, 'll, 'tcx>, t: Ty<'tcx>, info: Opt
                     C_usize(cx, std::cmp::max(sized_align, unsized_align) as u64)
                 }
                 _ => bx.select(bx.icmp(llvm::IntUGT, sized_align, unsized_align),
-                                sized_align,
-                                unsized_align)
+                               sized_align,
+                               unsized_align)
             };
 
             // Issue #27023: must add any necessary padding to `size`

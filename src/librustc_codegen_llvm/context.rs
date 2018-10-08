@@ -59,8 +59,8 @@ pub struct CodegenCx<'a, 'tcx: 'a> {
     /// Cache instances of monomorphic and polymorphic items
     pub instances: RefCell<FxHashMap<Instance<'tcx>, &'a Value>>,
     /// Cache generated vtables
-    pub vtables: RefCell<FxHashMap<(Ty<'tcx>,
-                                Option<ty::PolyExistentialTraitRef<'tcx>>), &'a Value>>,
+    pub vtables: RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>),
+                                   &'a Value>>,
     /// Cache of constant strings,
     pub const_cstr_cache: RefCell<FxHashMap<LocalInternedString, &'a Value>>,
 
@@ -213,9 +213,9 @@ pub unsafe fn create_module(
 
 impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
     crate fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               codegen_unit: Arc<CodegenUnit<'tcx>>,
-               llvm_module: &'a ::ModuleLlvm)
-               -> CodegenCx<'a, 'tcx> {
+                 codegen_unit: Arc<CodegenUnit<'tcx>>,
+                 llvm_module: &'a ::ModuleLlvm)
+                 -> CodegenCx<'a, 'tcx> {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
         // attributes in LLVM IR as well as native dependencies (in C these
@@ -270,8 +270,8 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
         let dbg_cx = if tcx.sess.opts.debuginfo != DebugInfo::None {
             let dctx = debuginfo::CrateDebugContext::new(llmod);
             debuginfo::metadata::compile_unit_metadata(tcx,
-                                                        &codegen_unit.name().as_str(),
-                                                        &dctx);
+                                                       &codegen_unit.name().as_str(),
+                                                       &dctx);
             Some(dctx)
         } else {
             None

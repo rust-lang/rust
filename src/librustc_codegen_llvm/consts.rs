@@ -124,7 +124,7 @@ pub fn get_static(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll Value {
     assert!(!defined_in_current_codegen_unit,
             "consts::get_static() should always hit the cache for \
              statics defined in the same CGU, but did not for `{:?}`",
-             def_id);
+            def_id);
 
     let ty = instance.ty(cx.tcx);
     let sym = cx.tcx.symbol_name(instance).as_str();

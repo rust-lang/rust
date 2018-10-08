@@ -115,8 +115,8 @@ pub fn codegen_intrinsic_call(
     let llval = match name {
         _ if simple.is_some() => {
             bx.call(simple.unwrap(),
-                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                     None)
+                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                    None)
         }
         "unreachable" => {
             return;
@@ -373,7 +373,6 @@ pub fn codegen_intrinsic_call(
                     return;
                 }
             }
-
         },
         "fadd_fast" | "fsub_fast" | "fmul_fast" | "fdiv_fast" | "frem_fast" => {
             let sty = &arg_tys[0].sty;
@@ -822,8 +821,7 @@ fn codegen_msvc_try(
         let i64p = Type::i64(cx).ptr_to();
         let ptr_align = bx.tcx().data_layout.pointer_align;
         let slot = bx.alloca(i64p, "slot", ptr_align);
-        bx.invoke(func, &[data], normal.llbb(), catchswitch.llbb(),
-            None);
+        bx.invoke(func, &[data], normal.llbb(), catchswitch.llbb(), None);
 
         normal.ret(C_i32(cx, 0));
 
@@ -911,8 +909,7 @@ fn codegen_gnu_try(
         // being thrown.  The second value is a "selector" indicating which of
         // the landing pad clauses the exception's type had been matched to.
         // rust_try ignores the selector.
-        let lpad_ty = Type::struct_(cx, &[Type::i8p(cx), Type::i32(cx)],
-                                    false);
+        let lpad_ty = Type::struct_(cx, &[Type::i8p(cx), Type::i32(cx)], false);
         let vals = catch.landing_pad(lpad_ty, bx.cx.eh_personality(), 1);
         catch.add_clause(vals, C_null(Type::i8p(cx)));
         let ptr = catch.extract_value(vals, 0);
@@ -1000,11 +997,11 @@ fn generic_simd_intrinsic(
         ($msg: tt, $($fmt: tt)*) => {
             span_invalid_monomorphization_error(
                 bx.sess(), span,
-                &format!(concat!("invalid monomorphization of `{}` intrinsic: ",
-                                 $msg),
+                &format!(concat!("invalid monomorphization of `{}` intrinsic: ", $msg),
                          name, $($fmt)*));
         }
     }
+
     macro_rules! return_error {
         ($($fmt: tt)*) => {
             {
@@ -1021,13 +1018,12 @@ fn generic_simd_intrinsic(
             }
         };
     }
+
     macro_rules! require_simd {
         ($ty: expr, $position: expr) => {
             require!($ty.is_simd(), "expected SIMD {} type, found non-SIMD `{}`", $position, $ty)
         }
     }
-
-
 
     let tcx = bx.tcx();
     let sig = tcx.normalize_erasing_late_bound_regions(
@@ -1121,8 +1117,8 @@ fn generic_simd_intrinsic(
         };
 
         return Ok(bx.shuffle_vector(args[0].immediate(),
-                                     args[1].immediate(),
-                                     C_vector(&indices)))
+                                    args[1].immediate(),
+                                    C_vector(&indices)))
     }
 
     if name == "simd_insert" {
@@ -1130,8 +1126,8 @@ fn generic_simd_intrinsic(
                  "expected inserted type `{}` (element of input `{}`), found `{}`",
                  in_elem, in_ty, arg_tys[2]);
         return Ok(bx.insert_element(args[0].immediate(),
-                                     args[2].immediate(),
-                                     args[1].immediate()))
+                                    args[2].immediate(),
+                                    args[1].immediate()))
     }
     if name == "simd_extract" {
         require!(ret_ty == in_elem,
@@ -1150,9 +1146,7 @@ fn generic_simd_intrinsic(
         );
         match m_elem_ty.sty {
             ty::Int(_) => {},
-            _ => {
-                return_error!("mask element type is `{}`, expected `i_`", m_elem_ty);
-            }
+            _ => return_error!("mask element type is `{}`, expected `i_`", m_elem_ty)
         }
         // truncate the mask to a vector of i1s
         let i1 = Type::i1(bx.cx);
@@ -1177,8 +1171,7 @@ fn generic_simd_intrinsic(
             ($msg: tt, $($fmt: tt)*) => {
                 span_invalid_monomorphization_error(
                     bx.sess(), span,
-                    &format!(concat!("invalid monomorphization of `{}` intrinsic: ",
-                                     $msg),
+                    &format!(concat!("invalid monomorphization of `{}` intrinsic: ", $msg),
                              name, $($fmt)*));
             }
         }
@@ -1312,7 +1305,7 @@ fn generic_simd_intrinsic(
     }
 
 
-    if name == "simd_gather"  {
+    if name == "simd_gather" {
         // simd_gather(values: <N x T>, pointers: <N x *_ T>,
         //             mask: <N x i{M}>) -> <N x T>
         // * N: number of elements in the input vectors
@@ -1360,7 +1353,7 @@ fn generic_simd_intrinsic(
         // to the element type of the first argument
         let (pointer_count, underlying_ty) = match arg_tys[1].simd_type(tcx).sty {
             ty::RawPtr(p) if p.ty == in_elem => (ptr_count(arg_tys[1].simd_type(tcx)),
-                                                   non_ptr(arg_tys[1].simd_type(tcx))),
+                                                 non_ptr(arg_tys[1].simd_type(tcx))),
             _ => {
                 require!(false, "expected element type `{}` of second argument `{}` \
                                  to be a pointer to the element type `{}` of the first \
@@ -1414,7 +1407,7 @@ fn generic_simd_intrinsic(
         return Ok(v);
     }
 
-    if name == "simd_scatter"  {
+    if name == "simd_scatter" {
         // simd_scatter(values: <N x T>, pointers: <N x *mut T>,
         //             mask: <N x i{M}>) -> ()
         // * N: number of elements in the input vectors
@@ -1570,7 +1563,6 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                                     )
                                 }
                             }
-
                         };
                         Ok(bx.$float_reduce(acc, args[0].immediate()))
                     }
@@ -1750,9 +1742,9 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                     _ => {},
                 }
                 require!(false,
-                            "unsupported operation on `{}` with element `{}`",
-                            in_ty,
-                            in_elem)
+                         "unsupported operation on `{}` with element `{}`",
+                         in_ty,
+                         in_elem)
             })*
         }
     }

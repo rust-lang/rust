@@ -306,7 +306,7 @@ impl ModuleCodegen {
         };
         let bytecode_compressed = if emit_bc_compressed {
             Some(outputs.temp_path(OutputType::Bitcode, Some(&self.name))
-                    .with_extension(RLIB_BYTECODE_EXTENSION))
+                        .with_extension(RLIB_BYTECODE_EXTENSION))
         } else {
             None
         };

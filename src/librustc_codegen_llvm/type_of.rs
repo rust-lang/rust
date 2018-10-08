@@ -132,7 +132,7 @@ fn struct_llfields<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
         debug!("struct_llfields: {}: {:?} offset: {:?} target_offset: {:?} \
                 effective_field_align: {}",
-            i, field, offset, target_offset, effective_field_align.abi());
+               i, field, offset, target_offset, effective_field_align.abi());
         assert!(target_offset >= offset);
         let padding = target_offset - offset;
         let padding_align = prev_effective_align.min(effective_field_align);

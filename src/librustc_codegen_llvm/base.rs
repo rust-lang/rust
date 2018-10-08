@@ -213,8 +213,8 @@ pub fn unsized_info(
                             vtable_ptr.llvm_type(cx))
         }
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}",
-                                     source,
-                                     target),
+                  source,
+                  target),
     }
 }
 
@@ -340,11 +340,11 @@ pub fn cast_shift_expr_rhs(
 }
 
 fn cast_shift_rhs<'ll, F, G>(op: hir::BinOpKind,
-                        lhs: &'ll Value,
-                        rhs: &'ll Value,
-                        trunc: F,
-                        zext: G)
-                        -> &'ll Value
+                             lhs: &'ll Value,
+                             rhs: &'ll Value,
+                             trunc: F,
+                             zext: G)
+                             -> &'ll Value
     where F: FnOnce(&'ll Value, &'ll Type) -> &'ll Value,
           G: FnOnce(&'ll Value, &'ll Type) -> &'ll Value
 {
@@ -566,8 +566,8 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
         if declare::get_defined_value(cx, "main").is_some() {
             // FIXME: We should be smart and show a better diagnostic here.
             cx.sess().struct_span_err(sp, "entry symbol `main` defined multiple times")
-                      .help("did you use #[no_mangle] on `fn main`? Use #[start] instead")
-                      .emit();
+                     .help("did you use #[no_mangle] on `fn main`? Use #[start] instead")
+                     .emit();
             cx.sess().abort_if_errors();
             bug!();
         }
@@ -736,9 +736,9 @@ fn determine_cgu_reuse<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             rx: mpsc::Receiver<Box<dyn Any + Send>>)
-                             -> OngoingCodegen {
-
+                               rx: mpsc::Receiver<Box<dyn Any + Send>>)
+                               -> OngoingCodegen
+{
     check_for_rustc_errors_attr(tcx);
 
     if let Some(true) = tcx.sess.opts.debugging_opts.thinlto {
@@ -803,8 +803,7 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Run the monomorphization collector and partition the collected items into
     // codegen units.
-    let codegen_units =
-        tcx.collect_and_partition_mono_items(LOCAL_CRATE).1;
+    let codegen_units = tcx.collect_and_partition_mono_items(LOCAL_CRATE).1;
     let codegen_units = (*codegen_units).clone();
 
     // Force all codegen_unit queries so they are already either red or green
@@ -988,7 +987,7 @@ fn collect_and_partition_mono_items<'a, 'tcx>(
                 if mode_string != "lazy" {
                     let message = format!("Unknown codegen-item collection mode '{}'. \
                                            Falling back to 'lazy' mode.",
-                                           mode_string);
+                                          mode_string);
                     tcx.sess.warn(&message);
                 }
 
