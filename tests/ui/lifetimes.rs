@@ -170,5 +170,11 @@ fn test<'a>(x: &'a [u8]) -> u8 {
     *y
 }
 
+// #3284 - Give a hint regarding lifetime in return type
+
+struct Cow<'a> { x: &'a str, }
+fn out_return_type_lts<'a>(e: &'a str) -> Cow<'a> { unimplemented!() }
+
+
 fn main() {
 }
