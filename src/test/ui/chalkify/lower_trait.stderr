@@ -1,14 +1,23 @@
 error: program clause dump
-  --> $DIR/lower_trait.rs:13:1
+  --> $DIR/lower_trait.rs:15:1
    |
 LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: FromEnv(S: std::marker::Sized) :- FromEnv(Self: Foo<S, T, U>).
-   = note: FromEnv(T: std::marker::Sized) :- FromEnv(Self: Foo<S, T, U>).
-   = note: FromEnv(U: std::marker::Sized) :- FromEnv(Self: Foo<S, T, U>).
-   = note: Implemented(Self: Foo<S, T, U>) :- FromEnv(Self: Foo<S, T, U>).
-   = note: WellFormed(Self: Foo<S, T, U>) :- Implemented(Self: Foo<S, T, U>), WellFormed(S: std::marker::Sized), WellFormed(T: std::marker::Sized), WellFormed(U: std::marker::Sized).
+   = note: FromEnv(<Self as Foo<S, T>>::Assoc: Bar) :- FromEnv(Self: Foo<S, T>).
+   = note: FromEnv(S: std::marker::Sized) :- FromEnv(Self: Foo<S, T>).
+   = note: Implemented(Self: Foo<S, T>) :- FromEnv(Self: Foo<S, T>).
+   = note: WellFormed(Self: Foo<S, T>) :- Implemented(Self: Foo<S, T>), WellFormed(S: std::marker::Sized), WellFormed(<Self as Foo<S, T>>::Assoc: Bar).
 
-error: aborting due to previous error
+error: program clause dump
+  --> $DIR/lower_trait.rs:17:5
+   |
+LL |     #[rustc_dump_program_clauses] //~ ERROR program clause dump
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: FromEnv(Self: Foo<S, T>) :- FromEnv(Unnormalized(<Self as Foo<S, T>>::Assoc)).
+   = note: ProjectionEq(<Self as Foo<S, T>>::Assoc == Unnormalized(<Self as Foo<S, T>>::Assoc)).
+   = note: WellFormed(Unnormalized(<Self as Foo<S, T>>::Assoc)) :- Implemented(Self: Foo<S, T>).
+
+error: aborting due to 2 previous errors
 

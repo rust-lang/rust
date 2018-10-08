@@ -10,11 +10,12 @@
 
 #![feature(rustc_attrs)]
 
+trait Bar { }
+
 #[rustc_dump_program_clauses] //~ ERROR program clause dump
-trait Foo<S, T, U> {
-    fn s(_: S) -> S;
-    fn t(_: T) -> T;
-    fn u(_: U) -> U;
+trait Foo<S, T: ?Sized> {
+    #[rustc_dump_program_clauses] //~ ERROR program clause dump
+    type Assoc: Bar + ?Sized;
 }
 
 fn main() {
