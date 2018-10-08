@@ -152,7 +152,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             *value, value.layout.size, value.layout.ty);
 
         // Go over all the primitive types
-        match value.layout.ty.sty {
+        let ty = value.layout.ty;
+        match ty.sty {
             ty::Bool => {
                 let value = value.to_scalar_or_undef();
                 try_validation!(value.to_bool(),
@@ -175,7 +176,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     // undef. We should fix that, but let's start low.
                 }
             }
-            ty::RawPtr(..) | ty::Ref(..) => {
+            _ if ty.is_box() || ty.is_region_ptr() || ty.is_unsafe_ptr() => {
                 // Handle fat pointers. We also check fat raw pointers,
                 // their metadata must be valid!
                 // This also checks that the ptr itself is initialized, which
@@ -184,7 +185,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     "undefined data in pointer", path);
                 // Check metadata early, for better diagnostics
                 if place.layout.is_unsized() {
-                    match self.tcx.struct_tail(place.layout.ty).sty {
+                    let tail = self.tcx.struct_tail(place.layout.ty);
+                    match tail.sty {
                         ty::Dynamic(..) => {
                             let vtable = try_validation!(place.extra.unwrap().to_ptr(),
                                 "non-pointer vtable in fat pointer", path);
@@ -202,13 +204,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                             // Unsized, but not fat.
                         }
                         _ =>
-                            bug!("Unexpected unsized type tail: {:?}",
-                                self.tcx.struct_tail(place.layout.ty)
-                            ),
+                            bug!("Unexpected unsized type tail: {:?}", tail),
                     }
                 }
                 // for safe ptrs, recursively check
-                if let ty::Ref(..) = value.layout.ty.sty {
+                if !ty.is_unsafe_ptr() {
                     // Make sure this is non-NULL and aligned
                     let (size, align) = self.size_and_align_of(place.extra, place.layout)?;
                     match self.memory.check_align(place.ptr, align) {
