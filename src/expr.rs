@@ -1326,8 +1326,7 @@ pub fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_l
             context.config.combine_control_expr() && context.use_block_indent() && args_len == 1
         }
         ast::ExprKind::Block(..) | ast::ExprKind::Closure(..) => {
-            context.use_block_indent()
-                || context.config.indent_style() == IndentStyle::Visual && args_len > 1
+            context.use_block_indent() || context.config.indent_style() == IndentStyle::Visual
         }
         ast::ExprKind::Array(..)
         | ast::ExprKind::Call(..)

@@ -576,7 +576,15 @@ impl<'a> ChainFormatterShared<'a> {
         if all_in_one_line || extendable {
             // First we try to 'overflow' the last child and see if it looks better than using
             // vertical layout.
-            if let Some(one_line_shape) = last_shape.offset_left(almost_total) {
+            let one_line_shape = if context.use_block_indent() {
+                last_shape.offset_left(almost_total)
+            } else {
+                last_shape
+                    .visual_indent(almost_total)
+                    .sub_width(almost_total)
+            };
+
+            if let Some(one_line_shape) = one_line_shape {
                 if let Some(rw) = last.rewrite(context, one_line_shape) {
                     // We allow overflowing here only if both of the following conditions match:
                     // 1. The entire chain fits in a single line except the last child.
