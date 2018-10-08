@@ -148,14 +148,15 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
                 }
                 Event::Token {
                     kind,
-                    mut n_raw_tokens,
+                    n_raw_tokens,
                 } => {
                     self.eat_ws();
-                    let mut len = 0.into();
-                    for _ in 0..n_raw_tokens {
-                        len += self.tokens[self.token_pos].len;
-                    }
-                    self.leaf(kind, len, n_raw_tokens as usize);
+                    let n_raw_tokens = n_raw_tokens as usize;
+                    let len = self.tokens[self.token_pos..self.token_pos + n_raw_tokens]
+                        .iter()
+                        .map(|it| it.len)
+                        .sum::<TextUnit>();
+                    self.leaf(kind, len, n_raw_tokens);
                 }
                 Event::Error { msg } => self.sink.error(msg, self.text_pos),
             }
