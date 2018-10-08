@@ -283,13 +283,6 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
     let lint = if is_write { WRITE_LITERAL } else { PRINT_LITERAL };
     let mut idx = 0;
     loop {
-        if !parser.eat(&token::Comma) {
-            return (Some(fmtstr), expr);
-        }
-        let token_expr = match parser.parse_expr().map_err(|mut err| err.cancel()) {
-            Ok(expr) => expr,
-            Err(_) => return (Some(fmtstr), None),
-        };
         const SIMPLE: FormatSpec<'_> = FormatSpec {
             fill: None,
             align: AlignUnknown,
@@ -297,6 +290,13 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
             precision: CountImplied,
             width: CountImplied,
             ty: "",
+        };
+        if !parser.eat(&token::Comma) {
+            return (Some(fmtstr), expr);
+        }
+        let token_expr = match parser.parse_expr().map_err(|mut err| err.cancel()) {
+            Ok(expr) => expr,
+            Err(_) => return (Some(fmtstr), None),
         };
         match &token_expr.node {
             ExprKind::Lit(_) => {
