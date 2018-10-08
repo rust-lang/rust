@@ -9,7 +9,8 @@ use ra_syntax::File;
 use ra_editor::{LineIndex};
 use crate::{
     symbol_index::SymbolIndex,
-    FileId, FileResolverImp
+    module_map::{ModulesDatabase, ModuleTreeQuery, ModuleDescriptorQuery},
+    FileId, FileResolverImp,
 };
 
 #[derive(Default)]
@@ -39,6 +40,10 @@ salsa::database_storage! {
             fn file_syntax() for FileSyntaxQuery;
             fn file_lines() for FileLinesQuery;
             fn file_symbols() for FileSymbolsQuery;
+        }
+        impl ModulesDatabase {
+            fn module_tree() for ModuleTreeQuery;
+            fn module_descriptor() for ModuleDescriptorQuery;
         }
     }
 }

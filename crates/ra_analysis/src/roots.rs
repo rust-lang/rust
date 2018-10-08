@@ -16,7 +16,8 @@ use crate::{
     imp::FileResolverImp,
     symbol_index::SymbolIndex,
     descriptors::{ModuleDescriptor, ModuleTreeDescriptor},
-    db::{self, FilesDatabase, SyntaxDatabase}
+    db::{self, FilesDatabase, SyntaxDatabase},
+    module_map::ModulesDatabase,
 };
 
 pub(crate) trait SourceRoot {
@@ -53,17 +54,17 @@ impl WritableSourceRoot {
                 }
             }
         }
-        if let Some(resolver) = file_resolver {
-            let mut files: HashSet<FileId> = db.file_set(())
-                .files
-                .clone();
-            for file_id in removed {
-                files.remove(&file_id);
-            }
-            files.extend(changed);
-            db.query(db::FileSetQuery)
-                .set((), Arc::new(db::FileSet { files, resolver }))
+        let file_set = db.file_set(());
+        let mut files: HashSet<FileId> = file_set
+            .files
+            .clone();
+        for file_id in removed {
+            files.remove(&file_id);
         }
+        files.extend(changed);
+        let resolver = file_resolver.unwrap_or_else(|| file_set.resolver.clone());
+        db.query(db::FileSetQuery)
+            .set((), Arc::new(db::FileSet { files, resolver }));
         // TODO: reconcile sasla's API with our needs
         // https://github.com/salsa-rs/salsa/issues/12
         self.clone()
@@ -72,12 +73,13 @@ impl WritableSourceRoot {
 
 impl SourceRoot for WritableSourceRoot {
     fn module_tree(&self) -> Arc<ModuleTreeDescriptor> {
-        unimplemented!()
-        //self.db.make_query(::module_map::module_tree)
+        self.db.read().module_tree(())
     }
-
     fn contains(&self, file_id: FileId) -> bool {
-        self.db.read().file_set(()).files.contains(&file_id)
+        let db = self.db.read();
+        let files = &db.file_set(()).files;
+        eprintln!("files = {:?}", files);
+        files.contains(&file_id)
     }
     fn lines(&self, file_id: FileId) -> Arc<LineIndex> {
         self.db.read().file_lines(file_id)

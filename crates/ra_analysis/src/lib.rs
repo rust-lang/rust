@@ -14,7 +14,7 @@ extern crate salsa;
 extern crate rustc_hash;
 
 mod symbol_index;
-// mod module_map;
+mod module_map;
 mod imp;
 mod job;
 mod roots;
