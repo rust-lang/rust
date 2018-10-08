@@ -2093,6 +2093,7 @@
         return wrapper;
     }
 
+    var hideItemDeclarations = getCurrentValue('rustdoc-item-declarations') === "false";
     onEach(document.getElementsByClassName('docblock'), function(e) {
         if (hasClass(e, 'autohide')) {
             var wrap = e.previousElementSibling;
@@ -2116,16 +2117,14 @@
             }
         }
         if (e.parentNode.id === "main") {
-            var otherMessage;
+            var otherMessage = '';
             var fontSize;
             var extraClass;
-            var show = true;
 
             if (hasClass(e, "type-decl")) {
                 fontSize = "20px";
                 otherMessage = '&nbsp;Show&nbsp;declaration';
-                show = getCurrentValue('rustdoc-item-declarations') === "false";
-                if (!show) {
+                if (hideItemDeclarations === false) {
                     extraClass = 'collapsed';
                 }
             } else if (hasClass(e, "non-exhaustive")) {
@@ -2142,8 +2141,12 @@
                 extraClass = "marg-left";
             }
 
-            e.parentNode.insertBefore(createToggle(otherMessage, fontSize, extraClass, show), e);
-            if (otherMessage && show) {
+            e.parentNode.insertBefore(createToggle(otherMessage,
+                                                   fontSize,
+                                                   extraClass,
+                                                   hideItemDeclarations),
+                                      e);
+            if (otherMessage.length > 0 && hideItemDeclarations === true) {
                 collapseDocs(e.previousSibling.childNodes[0], "toggle");
             }
         }
@@ -2186,13 +2189,33 @@
         });
     }
 
+    // To avoid checking on "rustdoc-item-attributes" value on every loop...
+    var itemAttributesFunc = function() {};
+    if (getCurrentValue("rustdoc-item-attributes") !== "false") {
+        itemAttributesFunc = function(x) {
+            collapseDocs(x.previousSibling.childNodes[0], "toggle");
+        };
+    }
     onEach(document.getElementById('main').getElementsByClassName('attributes'), function(i_e) {
         i_e.parentNode.insertBefore(createToggleWrapper(toggle.cloneNode(true)), i_e);
-        if (getCurrentValue("rustdoc-item-attributes") !== "false") {
-            collapseDocs(i_e.previousSibling.childNodes[0], "toggle");
-        }
+        itemAttributesFunc(i_e);
     });
 
+    // To avoid checking on "rustdoc-line-numbers" value on every loop...
+    var lineNumbersFunc = function() {};
+    if (getCurrentValue("rustdoc-line-numbers") === "true") {
+        lineNumbersFunc = function(x) {
+            var count = x.textContent.split('\n').length;
+            var elems = [];
+            for (var i = 0; i < count; ++i) {
+                elems.push(i + 1);
+            }
+            var node = document.createElement('pre');
+            addClass(node, 'line-number');
+            node.innerHTML = elems.join('\n');
+            x.parentNode.insertBefore(node, x);
+        };
+    }
     onEach(document.getElementsByClassName('rust-example-rendered'), function(e) {
         if (hasClass(e, 'compile_fail')) {
             e.addEventListener("mouseover", function(event) {
@@ -2209,6 +2232,7 @@
                 e.previousElementSibling.childNodes[0].style.color = '';
             });
         }
+        lineNumbersFunc(e);
     });
 
     function showModal(content) {
