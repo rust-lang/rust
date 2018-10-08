@@ -12,7 +12,7 @@ use config::config_type::ConfigType;
 use config::lists::*;
 use config::{Config, FileName};
 
-use isatty::stdout_isatty;
+use atty;
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -297,7 +297,7 @@ impl Color {
         match self {
             Color::Always => true,
             Color::Never => false,
-            Color::Auto => stdout_isatty(),
+            Color::Auto => atty::is(atty::Stream::Stdout),
         }
     }
 }

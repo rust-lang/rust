@@ -32,7 +32,7 @@ cargo-fmt = []
 rustfmt-format-diff = []
 
 [dependencies]
-isatty = "0.1"
+atty = "0.2"
 itertools = "0.7"
 toml = "0.4"
 serde = "1.0"
