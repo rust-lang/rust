@@ -529,3 +529,15 @@ fn issue_2802() {
         })
         * some_value
 }
+
+fn issue_3003() {
+    let mut path: PathBuf = [
+        env!("CARGO_MANIFEST_DIR"),
+        "tests",
+        "support",
+        "dejavu-fonts-ttf-2.37",
+        "ttf",
+    ]
+    .iter()
+    .collect();
+}

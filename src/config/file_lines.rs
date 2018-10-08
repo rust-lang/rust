@@ -403,9 +403,9 @@ mod test {
                 vec![Range::new(1, 7)],
             ),
         ]
-            .iter()
-            .cloned()
-            .collect();
+        .iter()
+        .cloned()
+        .collect();
 
         let file_lines = FileLines::from_ranges(ranges);
         let mut spans = file_lines.to_json_spans();
