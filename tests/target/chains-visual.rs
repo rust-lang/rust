@@ -55,11 +55,11 @@ fn main() {
 
 fn floaters() {
     let z = Foo { field1: val1,
-                  field2: val2, };
+                  field2: val2 };
 
     let x = Foo { field1: val1,
-                  field2: val2, }.method_call()
-                                 .method_call();
+                  field2: val2 }.method_call()
+                                .method_call();
 
     let y = if cond { val1 } else { val2 }.method_call();
 
@@ -89,11 +89,11 @@ fn floaters() {
                   .quux();
 
     Foo { y: i_am_multi_line,
-          z: ok, }.baz(|| {
-                           force();
-                           multiline();
-                       })
-                  .quux();
+          z: ok }.baz(|| {
+                          force();
+                          multiline();
+                      })
+                 .quux();
 
     a + match x {
             true => "yay!",

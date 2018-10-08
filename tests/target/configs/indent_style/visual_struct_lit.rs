@@ -3,5 +3,5 @@
 
 fn main() {
     let lorem = Lorem { ipsum: dolor,
-                        sit: amet, };
+                        sit: amet };
 }
