@@ -1122,7 +1122,15 @@ impl CrateInfo {
             info.load_wasm_imports(tcx, LOCAL_CRATE);
         }
 
-        for &cnum in tcx.crates().iter() {
+        let crates = tcx.crates();
+
+        let n_crates = crates.len();
+        info.native_libraries.reserve(n_crates);
+        info.crate_name.reserve(n_crates);
+        info.used_crate_source.reserve(n_crates);
+        info.missing_lang_items.reserve(n_crates);
+
+        for &cnum in crates.iter() {
             info.native_libraries.insert(cnum, tcx.native_libraries(cnum));
             info.crate_name.insert(cnum, tcx.crate_name(cnum).to_string());
             info.used_crate_source.insert(cnum, tcx.used_crate_source(cnum));
@@ -1164,11 +1172,12 @@ impl CrateInfo {
     }
 
     fn load_wasm_imports(&mut self, tcx: TyCtxt, cnum: CrateNum) {
-        for (&id, module) in tcx.wasm_import_module_map(cnum).iter() {
+        self.wasm_imports.extend(tcx.wasm_import_module_map(cnum).iter().map(|(&id, module)| {
             let instance = Instance::mono(tcx, id);
             let import_name = tcx.symbol_name(instance);
-            self.wasm_imports.insert(import_name.to_string(), module.clone());
-        }
+
+            (import_name.to_string(), module.clone())
+        }));
     }
 }
 

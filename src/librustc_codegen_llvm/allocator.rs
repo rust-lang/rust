@@ -33,7 +33,7 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind
     let void = llvm::LLVMVoidTypeInContext(llcx);
 
     for method in ALLOCATOR_METHODS {
-        let mut args = Vec::new();
+        let mut args = Vec::with_capacity(method.inputs.len());
         for ty in method.inputs.iter() {
             match *ty {
                 AllocatorTy::Layout => {
