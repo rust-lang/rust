@@ -1,6 +1,4 @@
 // error-pattern: `#[panic_handler]` function required, but not found
-// error-pattern: language item required, but not found: `eh_personality`
-
 
 // Regression test for #54505 - range borrowing suggestion had
 // incorrect syntax (missing parentheses).
@@ -9,8 +7,13 @@
 // (so all Ranges resolve to core::ops::Range...)
 
 #![no_std]
+#![feature(lang_items)]
 
 use core::ops::RangeBounds;
+
+#[cfg(not(target_arch = "wasm32"))]
+#[lang = "eh_personality"]
+extern fn eh_personality() {}
 
 
 // take a reference to any built-in range
