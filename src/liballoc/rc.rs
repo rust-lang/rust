@@ -665,15 +665,17 @@ impl Rc<dyn Any> {
 impl<T: ?Sized> Rc<T> {
     // Allocates an `RcBox<T>` with sufficient space for an unsized value
     unsafe fn allocate_for_ptr(ptr: *const T) -> *mut RcBox<T> {
-        // Create a fake RcBox to find allocation size and alignment
-        let fake_ptr = ptr as *mut RcBox<T>;
-
-        let layout = Layout::for_value(&*fake_ptr);
+        // Calculate layout using the given value.
+        // Previously, layout was calculated on the expression
+        // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
+        // reference (see #54908).
+        let (layout, _) = Layout::new::<RcBox<()>>()
+            .extend(Layout::for_value(&*ptr)).unwrap();
 
         let mem = Global.alloc(layout)
             .unwrap_or_else(|_| handle_alloc_error(layout));
 
-        // Initialize the real RcBox
+        // Initialize the RcBox
         let inner = set_data_ptr(ptr as *mut T, mem.as_ptr() as *mut u8) as *mut RcBox<T>;
 
         ptr::write(&mut (*inner).strong, Cell::new(1));
