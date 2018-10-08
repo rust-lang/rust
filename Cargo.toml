@@ -32,7 +32,7 @@ cargo-fmt = []
 rustfmt-format-diff = []
 
 [dependencies]
-isatty = "0.1"
+atty = "0.2"
 itertools = "0.7"
 toml = "0.4"
 serde = "1.0"
@@ -47,9 +47,9 @@ env_logger = "0.5"
 getopts = "0.2"
 derive-new = "0.5"
 cargo_metadata = "0.6"
-rustc-ap-rustc_target = "268.0.0"
-rustc-ap-syntax = "268.0.0"
-rustc-ap-syntax_pos = "268.0.0"
+rustc-ap-rustc_target = "270.0.0"
+rustc-ap-syntax = "270.0.0"
+rustc-ap-syntax_pos = "270.0.0"
 failure = "0.1.1"
 
 [dev-dependencies]
