@@ -10,16 +10,23 @@ interface FindMatchingBraceParams {
 
 export async function handle() {
     const editor = vscode.window.activeTextEditor;
-    if (editor == null || editor.document.languageId !== 'rust') { return; }
+    if (editor == null || editor.document.languageId !== 'rust') {
+        return;
+    }
     const request: FindMatchingBraceParams = {
         textDocument: { uri: editor.document.uri.toString() },
-        offsets: editor.selections.map((s) => {
+        offsets: editor.selections.map(s => {
             return Server.client.code2ProtocolConverter.asPosition(s.active);
-        }),
+        })
     };
-    const response = await Server.client.sendRequest<Position[]>('m/findMatchingBrace', request);
+    const response = await Server.client.sendRequest<Position[]>(
+        'm/findMatchingBrace',
+        request
+    );
     editor.selections = editor.selections.map((sel, idx) => {
-        const active = Server.client.protocol2CodeConverter.asPosition(response[idx]);
+        const active = Server.client.protocol2CodeConverter.asPosition(
+            response[idx]
+        );
         const anchor = sel.isEmpty ? active : sel.anchor;
         return new vscode.Selection(anchor, active);
     });

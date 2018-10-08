@@ -5,10 +5,19 @@ import { Decoration } from '../highlighting';
 import { Server } from '../server';
 
 export async function handle(editor: TextEditor | undefined) {
-    if (!Server.config.highlightingOn || !editor || editor.document.languageId !== 'rust') { return; }
+    if (
+        !Server.config.highlightingOn ||
+        !editor ||
+        editor.document.languageId !== 'rust'
+    ) {
+        return;
+    }
     const params: TextDocumentIdentifier = {
-        uri: editor.document.uri.toString(),
+        uri: editor.document.uri.toString()
     };
-    const decorations = await Server.client.sendRequest<Decoration[]>('m/decorationsRequest', params);
+    const decorations = await Server.client.sendRequest<Decoration[]>(
+        'm/decorationsRequest',
+        params
+    );
     Server.highlighter.setHighlights(editor, decorations);
 }

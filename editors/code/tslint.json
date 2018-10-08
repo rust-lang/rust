@@ -1,9 +1,9 @@
 {
-  "defaultSeverity": "error",
-  "extends": ["tslint:recommended", "tslint-config-prettier"],
-  "rules": {
-    "quotemark": [true, "single"],
-    "interface-name": false,
-    "object-literal-sort-keys": false
-  }
+    "defaultSeverity": "error",
+    "extends": ["tslint:recommended", "tslint-config-prettier"],
+    "rules": {
+        "quotemark": [true, "single"],
+        "interface-name": false,
+        "object-literal-sort-keys": false
+    }
 }

@@ -20,8 +20,12 @@ export interface SourceChange {
 export async function handle(change: SourceChange) {
     const wsEdit = new vscode.WorkspaceEdit();
     for (const sourceEdit of change.sourceFileEdits) {
-        const uri = Server.client.protocol2CodeConverter.asUri(sourceEdit.textDocument.uri);
-        const edits = Server.client.protocol2CodeConverter.asTextEdits(sourceEdit.edits);
+        const uri = Server.client.protocol2CodeConverter.asUri(
+            sourceEdit.textDocument.uri
+        );
+        const edits = Server.client.protocol2CodeConverter.asTextEdits(
+            sourceEdit.edits
+        );
         wsEdit.set(uri, edits);
     }
     let created;
@@ -48,11 +52,19 @@ export async function handle(change: SourceChange) {
         const doc = await vscode.workspace.openTextDocument(toOpen);
         await vscode.window.showTextDocument(doc);
     } else if (toReveal) {
-        const uri = Server.client.protocol2CodeConverter.asUri(toReveal.textDocument.uri);
-        const position = Server.client.protocol2CodeConverter.asPosition(toReveal.position);
+        const uri = Server.client.protocol2CodeConverter.asUri(
+            toReveal.textDocument.uri
+        );
+        const position = Server.client.protocol2CodeConverter.asPosition(
+            toReveal.position
+        );
         const editor = vscode.window.activeTextEditor;
-        if (!editor || editor.document.uri.toString() !== uri.toString()) { return; }
-        if (!editor.selection.isEmpty) { return; }
+        if (!editor || editor.document.uri.toString() !== uri.toString()) {
+            return;
+        }
+        if (!editor.selection.isEmpty) {
+            return;
+        }
         editor!.selection = new vscode.Selection(position, position);
     }
 }

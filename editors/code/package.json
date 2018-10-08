@@ -23,7 +23,8 @@
         "travis": "npm run compile && npm run lint && npm run prettier --list-different"
     },
     "prettier": {
-        "tabWidth": 4
+        "tabWidth": 4,
+        "singleQuote": true
     },
     "dependencies": {
         "vscode-languageclient": "^4.4.0"
