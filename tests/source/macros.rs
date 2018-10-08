@@ -426,3 +426,29 @@ named!(
 
 // #2857
 convert_args!(vec!(1, 2, 3));
+
+// #3031
+thread_local!(
+/// TLV Holds a set of JSTraceables that need to be rooted
+    static ROOTED_TRACEABLES: RefCell<RootedTraceableSet> =
+        RefCell::new(RootedTraceableSet::new()) ;
+) ;
+
+thread_local![
+    /// TLV Holds a set of JSTraceables that need to be rooted
+    static ROOTED_TRACEABLES: RefCell<RootedTraceableSet> =
+        RefCell::new(RootedTraceableSet::new()) ;
+
+    /// TLV Holds a set of JSTraceables that need to be rooted
+    static ROOTED_TRACEABLES: RefCell<RootedTraceableSet> =
+        RefCell::new(RootedTraceableSet::new(0)) ;
+
+    /// TLV Holds a set of JSTraceables that need to be rooted
+    static ROOTED_TRACEABLES: RefCell<RootedTraceableSet> =
+        RefCell::new(RootedTraceableSet::new(), xxx, yyy) ;
+
+    /// TLV Holds a set of JSTraceables that need to be rooted
+static ROOTED_TRACEABLES: RefCell<RootedTraceableSet> =
+        RefCell::new(RootedTraceableSet::new(1234)) ;
+
+] ;

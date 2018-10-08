@@ -11,7 +11,9 @@
 // Format items that appear as arguments of macro call.
 //! ```rust
 //! let x = 3;
-//! some_macro!(pub fn foo() {
-//!     println!("Don't unindent me!");
-//! });
+//! some_macro!(
+//!     pub fn foo() {
+//!         println!("Don't unindent me!");
+//!     }
+//! );
 //! ```
