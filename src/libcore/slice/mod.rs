@@ -1175,9 +1175,10 @@ impl<T> [T] {
 
     /// Binary searches this sorted slice for a given element.
     ///
-    /// If the value is found then `Ok` is returned, containing the
-    /// index of the matching element; if the value is not found then
-    /// `Err` is returned, containing the index where a matching
+    /// If the value is found then [`Result::Ok`] is returned, containing the
+    /// index of the matching element. If there are multiple matches, then any
+    /// one of the matches could be returned. If the value is not found then
+    /// [`Result::Err`] is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
     ///
     /// # Examples
@@ -1209,9 +1210,10 @@ impl<T> [T] {
     /// order code that indicates whether its argument is `Less`,
     /// `Equal` or `Greater` the desired target.
     ///
-    /// If a matching value is found then returns `Ok`, containing
-    /// the index for the matched element; if no match is found then
-    /// `Err` is returned, containing the index where a matching
+    /// If the value is found then [`Result::Ok`] is returned, containing the
+    /// index of the matching element. If there are multiple matches, then any
+    /// one of the matches could be returned. If the value is not found then
+    /// [`Result::Err`] is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
     ///
     /// # Examples
@@ -1265,10 +1267,11 @@ impl<T> [T] {
     /// Assumes that the slice is sorted by the key, for instance with
     /// [`sort_by_key`] using the same key extraction function.
     ///
-    /// If a matching value is found then returns `Ok`, containing the
-    /// index for the matched element; if no match is found then `Err`
-    /// is returned, containing the index where a matching element could
-    /// be inserted while maintaining sorted order.
+    /// If the value is found then [`Result::Ok`] is returned, containing the
+    /// index of the matching element. If there are multiple matches, then any
+    /// one of the matches could be returned. If the value is not found then
+    /// [`Result::Err`] is returned, containing the index where a matching
+    /// element could be inserted while maintaining sorted order.
     ///
     /// [`sort_by_key`]: #method.sort_by_key
     ///
