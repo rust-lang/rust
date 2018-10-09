@@ -27,7 +27,7 @@ enum AttrError {
     UnsupportedLiteral
 }
 
-fn handle_errors(diag: &Handler, span: Span, error: AttrError) {
+fn handle_errors(diag: &Handler, span: Span, error: AttrError, is_bytestr: bool) {
     match error {
         AttrError::MultipleItem(item) => span_err!(diag, span, E0538,
                                                    "multiple '{}' items", item),
@@ -44,7 +44,25 @@ fn handle_errors(diag: &Handler, span: Span, error: AttrError) {
         AttrError::MissingFeature => span_err!(diag, span, E0546, "missing 'feature'"),
         AttrError::MultipleStabilityLevels => span_err!(diag, span, E0544,
                                                         "multiple stability levels"),
-        AttrError::UnsupportedLiteral => span_err!(diag, span, E0565, "unsupported literal"),
+        AttrError::UnsupportedLiteral => {
+            let mut err = struct_span_err!(
+                diag,
+                span,
+                E0565,
+                "unsupported literal",
+            );
+            if is_bytestr {
+                if let Ok(lint_str) = sess.source_map.span_to_snippet(span) {
+                    err.span_suggestion_with_applicability(
+                        span,
+                        "consider removing the prefix",
+                        format!("{}", lint_str[1..]),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+            err.emit();
+        }
     }
 }
 
@@ -202,7 +220,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
             let meta = meta.as_ref().unwrap();
             let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                 if item.is_some() {
-                    handle_errors(diagnostic, meta.span, AttrError::MultipleItem(meta.name()));
+                    handle_errors(diagnostic, meta.span, AttrError::MultipleItem(meta.name()), false);
                     return false
                 }
                 if let Some(v) = meta.value_str() {
@@ -231,12 +249,14 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                     handle_errors(
                                         diagnostic,
                                         mi.span,
-                                        AttrError::UnknownMetaItem(mi.name(), expected));
+                                        AttrError::UnknownMetaItem(mi.name(), expected),
+                                        false
+                                    );
                                     continue 'outer
                                 }
                             }
                         } else {
-                            handle_errors(diagnostic, meta.span, AttrError::UnsupportedLiteral);
+                            handle_errors(diagnostic, meta.span, AttrError::UnsupportedLiteral, false);
                             continue 'outer
                         }
                     }
@@ -261,7 +281,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                             })
                         }
                         (None, _) => {
-                            handle_errors(diagnostic, attr.span(), AttrError::MissingSince);
+                            handle_errors(diagnostic, attr.span(), AttrError::MissingSince, false);
                             continue
                         }
                         _ => {
@@ -287,7 +307,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                 }
                 "unstable" => {
                     if stab.is_some() {
-                        handle_errors(diagnostic, attr.span(), AttrError::MultipleStabilityLevels);
+                        handle_errors(diagnostic, attr.span(), AttrError::MultipleStabilityLevels, false);
                         break
                     }
 
@@ -308,12 +328,13 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                             mi.name(),
                                             &["feature", "reason", "issue"]
                                         ),
+                                        false,
                                     );
                                     continue 'outer
                                 }
                             }
                         } else {
-                            handle_errors(diagnostic, meta.span, AttrError::UnsupportedLiteral);
+                            handle_errors(diagnostic, meta.span, AttrError::UnsupportedLiteral, false);
                             continue 'outer
                         }
                     }
@@ -340,7 +361,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                             })
                         }
                         (None, _, _) => {
-                            handle_errors(diagnostic, attr.span(), AttrError::MissingFeature);
+                            handle_errors(diagnostic, attr.span(), AttrError::MissingFeature, false);
                             continue
                         }
                         _ => {
@@ -351,29 +372,37 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                 }
                 "stable" => {
                     if stab.is_some() {
-                        handle_errors(diagnostic, attr.span(), AttrError::MultipleStabilityLevels);
+                        handle_errors(diagnostic, attr.span(), AttrError::MultipleStabilityLevels, false);
                         break
                     }
 
                     let mut feature = None;
                     let mut since = None;
                     for meta in metas {
-                        if let NestedMetaItemKind::MetaItem(ref mi) = meta.node {
-                            match &*mi.name().as_str() {
-                                "feature" => if !get(mi, &mut feature) { continue 'outer },
-                                "since" => if !get(mi, &mut since) { continue 'outer },
-                                _ => {
-                                    handle_errors(
-                                        diagnostic,
-                                        meta.span,
-                                        AttrError::UnknownMetaItem(mi.name(), &["since", "note"]),
-                                    );
-                                    continue 'outer
+                        match &meta.node {
+                            NestedMetaItemKind::MetaItem(mi) => {
+                                match &*mi.name().as_str() {
+                                    "feature" => if !get(mi, &mut feature) { continue 'outer },
+                                    "since" => if !get(mi, &mut since) { continue 'outer },
+                                    _ => {
+                                        handle_errors(
+                                            diagnostic,
+                                            meta.span,
+                                            AttrError::UnknownMetaItem(mi.name(), &["since", "note"]),
+                                            false,
+                                        );
+                                        continue 'outer
+                                    }
                                 }
+                            NestedMetaItemKind::Literal(lit) => {
+                                handle_errors(
+                                    diagnostic,
+                                    meta.span,
+                                    AttrError::UnsupportedLiteral,
+                                    lit.node.is_bytestr()
+                                );
+                                continue 'outer
                             }
-                        } else {
-                            handle_errors(diagnostic, meta.span, AttrError::UnsupportedLiteral);
-                            continue 'outer
                         }
                     }
 
@@ -390,11 +419,11 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                             })
                         }
                         (None, _) => {
-                            handle_errors(diagnostic, attr.span(), AttrError::MissingFeature);
+                            handle_errors(diagnostic, attr.span(), AttrError::MissingFeature, false);
                             continue
                         }
                         _ => {
-                            handle_errors(diagnostic, attr.span(), AttrError::MissingSince);
+                            handle_errors(diagnostic, attr.span(), AttrError::MissingSince, false);
                             continue
                         }
                     }
@@ -461,8 +490,13 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
             MetaItemKind::List(..) => {
                 error(cfg.span, "unexpected parentheses after `cfg` predicate key")
             }
-            MetaItemKind::NameValue(lit) if !lit.node.is_str() => {
-                error(lit.span, "literal in `cfg` predicate value must be a string")
+            MetaItemKind::NameValue(lit) => if !lit.node.is_str() {
+                handle_errors(
+                    &sess.span_diagnostic,
+                    lit.span, AttrError::UnsupportedLiteral,
+                    lit.node.is_bytestr(),
+                );
+                true
             }
             MetaItemKind::NameValue(..) | MetaItemKind::Word => {
                 sess.config.contains(&(cfg.name(), cfg.value_str()))
@@ -481,7 +515,7 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
         ast::MetaItemKind::List(ref mis) => {
             for mi in mis.iter() {
                 if !mi.is_meta_item() {
-                    handle_errors(&sess.span_diagnostic, mi.span, AttrError::UnsupportedLiteral);
+                    handle_errors(&sess.span_diagnostic, mi.span, AttrError::UnsupportedLiteral, false);
                     return false;
                 }
             }
@@ -551,7 +585,7 @@ fn find_deprecation_generic<'a, I>(diagnostic: &Handler,
         depr = if let Some(metas) = attr.meta_item_list() {
             let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                 if item.is_some() {
-                    handle_errors(diagnostic, meta.span, AttrError::MultipleItem(meta.name()));
+                    handle_errors(diagnostic, meta.span, AttrError::MultipleItem(meta.name()), false);
                     return false
                 }
                 if let Some(v) = meta.value_str() {
@@ -566,22 +600,27 @@ fn find_deprecation_generic<'a, I>(diagnostic: &Handler,
             let mut since = None;
             let mut note = None;
             for meta in metas {
-                if let NestedMetaItemKind::MetaItem(ref mi) = meta.node {
-                    match &*mi.name().as_str() {
-                        "since" => if !get(mi, &mut since) { continue 'outer },
-                        "note" => if !get(mi, &mut note) { continue 'outer },
-                        _ => {
-                            handle_errors(
-                                diagnostic,
-                                meta.span,
-                                AttrError::UnknownMetaItem(mi.name(), &["since", "note"]),
-                            );
-                            continue 'outer
+                match &meta.node {
+                    NestedMetaItemKind::MetaItem(mi) => {
+                        match &*mi.name().as_str() {
+                            "since" => if !get(mi, &mut since) { continue 'outer },
+                            "note" => if !get(mi, &mut note) { continue 'outer },
+                            _ => {
+                                handle_errors(
+                                    diagnostic,
+                                    meta.span,
+                                    AttrError::UnknownMetaItem(mi.name(), &["since", "note"]),
+                                    false,
+                                );
+                                continue 'outer
+                            }
                         }
                     }
-                } else {
-                    handle_errors(diagnostic, meta.span, AttrError::UnsupportedLiteral);
-                    continue 'outer
+                    NestedMetaItemKind::Literal(lit) => {
+                        let is_bytestr = lit.node.is_bytestr();
+                        handle_errors(diagnostic, meta.span, AttrError::UnsupportedLiteral, is_bytestr);
+                        continue 'outer
+                    }
                 }
             }
 
@@ -638,7 +677,7 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
             mark_used(attr);
             for item in items {
                 if !item.is_meta_item() {
-                    handle_errors(diagnostic, item.span, AttrError::UnsupportedLiteral);
+                    handle_errors(diagnostic, item.span, AttrError::UnsupportedLiteral, false);
                     continue
                 }
 
