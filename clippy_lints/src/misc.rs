@@ -334,11 +334,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     |db| {
                         let sugg = if binop.node == BinOpKind::Or { !sugg } else { sugg };
                         db.span_suggestion_with_applicability(
-                            s.span, 
+                            s.span,
                             "replace it with",
                             format!(
                                 "if {} {{ {}; }}",
-                                sugg, 
+                                sugg,
                                 &snippet(cx, b.span, ".."),
                             ),
                             Applicability::MachineApplicable, // snippet
@@ -520,16 +520,17 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
         None => return,
     };
 
-    // *arg impls PartialEq<other>
-    if !arg_ty
+    let deref_arg_impl_partial_eq_other = arg_ty
         .builtin_deref(true)
-        .map_or(false, |tam| implements_trait(cx, tam.ty, partial_eq_trait_id, &[other_ty.into()]))
-        // arg impls PartialEq<*other>
-        && !other_ty
+        .map_or(false, |tam| implements_trait(cx, tam.ty, partial_eq_trait_id, &[other_ty.into()]));
+    let arg_impl_partial_eq_deref_other = other_ty
         .builtin_deref(true)
-        .map_or(false, |tam| implements_trait(cx, arg_ty, partial_eq_trait_id, &[tam.ty.into()]))
-        // arg impls PartialEq<other>
-        && !implements_trait(cx, arg_ty, partial_eq_trait_id, &[other_ty.into()])
+        .map_or(false, |tam| implements_trait(cx, arg_ty, partial_eq_trait_id, &[tam.ty.into()]));
+    let arg_impl_partial_eq_other = implements_trait(cx, arg_ty, partial_eq_trait_id, &[other_ty.into()]);
+
+    if !deref_arg_impl_partial_eq_other
+        && !arg_impl_partial_eq_deref_other
+        && !arg_impl_partial_eq_other
     {
         return;
     }
@@ -559,10 +560,11 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
                     }
                 }
             }
+            let try_hint = if deref_arg_impl_partial_eq_other { format!("*{}", snip) } else { snip.to_string() };
             db.span_suggestion_with_applicability(
-                expr.span, 
+                expr.span,
                 "try",
-                snip.to_string(),
+                try_hint,
                 Applicability::MachineApplicable, // snippet
             );
         },

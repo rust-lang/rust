@@ -31,6 +31,10 @@ fn main() {
     42.to_string() == "42";
 
     Foo.to_owned() == Foo;
+
+    "abc".chars().filter(|c| c.to_owned() != 'X');
+
+    "abc".chars().filter(|c| *c != 'X');
 }
 
 struct Foo;

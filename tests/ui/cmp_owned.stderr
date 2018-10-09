@@ -31,10 +31,16 @@ error: this creates an owned instance just for comparison
    |     ^^^^^^^^^^^^^^ help: try: `Foo`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:40:9
+  --> $DIR/cmp_owned.rs:35:30
    |
-40 |         self.to_owned() == *other
+35 |     "abc".chars().filter(|c| c.to_owned() != 'X');
+   |                              ^^^^^^^^^^^^ help: try: `*c`
+
+error: this creates an owned instance just for comparison
+  --> $DIR/cmp_owned.rs:44:9
+   |
+44 |         self.to_owned() == *other
    |         ^^^^^^^^^^^^^^^ try calling implementing the comparison without allocating
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
