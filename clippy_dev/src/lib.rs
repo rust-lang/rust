@@ -14,6 +14,7 @@
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
+use walkdir::WalkDir;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
@@ -70,7 +71,7 @@ pub fn gather_all() -> impl Iterator<Item=Lint> {
     lint_files().flat_map(|f| gather_from_file(&f))
 }
 
-fn gather_from_file(dir_entry: &fs::DirEntry) -> impl Iterator<Item=Lint> {
+fn gather_from_file(dir_entry: &walkdir::DirEntry) -> impl Iterator<Item=Lint> {
     let mut file = fs::File::open(dir_entry.path()).unwrap();
     let mut content = String::new();
     file.read_to_string(&mut content).unwrap();
@@ -89,9 +90,9 @@ fn parse_contents(content: &str, filename: &str) -> impl Iterator<Item=Lint> {
 }
 
 /// Collects all .rs files in the `clippy_lints/src` directory
-fn lint_files() -> impl Iterator<Item=fs::DirEntry> {
-    fs::read_dir("../clippy_lints/src")
-        .unwrap()
+fn lint_files() -> impl Iterator<Item=walkdir::DirEntry> {
+    WalkDir::new("../clippy_lints/src")
+        .into_iter()
         .filter_map(|f| f.ok())
         .filter(|f| f.path().extension() == Some(OsStr::new("rs")))
 }
