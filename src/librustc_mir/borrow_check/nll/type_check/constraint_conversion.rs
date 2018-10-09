@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow_check::nll::constraints::{ConstraintCategory, ConstraintSet, OutlivesConstraint};
+use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
 use borrow_check::nll::region_infer::TypeTest;
 use borrow_check::nll::type_check::Locations;
 use borrow_check::nll::universal_regions::UniversalRegions;
@@ -17,6 +17,7 @@ use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
 use rustc::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc::infer::{self, SubregionOrigin};
+use rustc::mir::ConstraintCategory;
 use rustc::ty::subst::UnpackedKind;
 use rustc::ty::{self, TyCtxt};
 use syntax_pos::DUMMY_SP;

@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow_check::nll::constraints::{ConstraintCategory, OutlivesConstraint};
+use borrow_check::nll::constraints::OutlivesConstraint;
 use borrow_check::nll::type_check::{BorrowCheckContext, Locations};
 use rustc::infer::canonical::{Canonical, CanonicalVarInfos};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
+use rustc::mir::ConstraintCategory;
 use rustc::traits::query::Fallible;
 use rustc::ty::fold::{TypeFoldable, TypeVisitor};
 use rustc::ty::relate::{self, Relate, RelateResult, TypeRelation};

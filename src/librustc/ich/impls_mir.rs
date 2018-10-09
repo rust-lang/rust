@@ -551,7 +551,23 @@ impl_stable_hash_for!(struct mir::ClosureRegionRequirements<'tcx> {
 impl_stable_hash_for!(struct mir::ClosureOutlivesRequirement<'tcx> {
     subject,
     outlived_free_region,
-    blame_span
+    blame_span,
+    category
+});
+
+impl_stable_hash_for!(enum mir::ConstraintCategory {
+    Return,
+    TypeAnnotation,
+    Cast,
+    ClosureBounds,
+    CallArgument,
+    CopyBound,
+    SizedBound,
+    Assignment,
+    OpaqueType,
+    Boring,
+    BoringNoLocation,
+    Internal,
 });
 
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::ClosureOutlivesSubject<'gcx> {

@@ -19,15 +19,17 @@ use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::region_constraints::{GenericKind, VarInfos, VerifyBound};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin, RegionVariableOrigin};
 use rustc::mir::{
-    ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements, Local, Location,
-    Mir,
+    ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements,
+    ConstraintCategory, Local, Location, Mir,
 };
 use rustc::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common;
 use rustc_data_structures::bit_set::BitSet;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_errors::{Diagnostic, DiagnosticBuilder};
+use syntax_pos::Span;
 
 use std::rc::Rc;
 
@@ -60,9 +62,15 @@ pub struct RegionInferenceContext<'tcx> {
     /// the SCC (see `constraint_sccs`) and for error reporting.
     constraint_graph: Rc<NormalConstraintGraph>,
 
-    /// The SCC computed from `constraints` and the constraint graph. Used to compute the values
-    /// of each region.
+    /// The SCC computed from `constraints` and the constraint graph. Used to
+    /// compute the values of each region.
     constraint_sccs: Rc<Sccs<RegionVid, ConstraintSccIndex>>,
+
+    /// Map closure bounds to a `Span` that should be used for error reporting.
+    closure_bounds_mapping: FxHashMap<
+        Location,
+        FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>,
+    >,
 
     /// Contains the minimum universe of any variable within the same
     /// SCC. We will ensure that no SCC contains values that are not
@@ -187,6 +195,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
         _mir: &Mir<'tcx>,
         outlives_constraints: ConstraintSet,
+        closure_bounds_mapping: FxHashMap<
+            Location,
+            FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>,
+        >,
         type_tests: Vec<TypeTest<'tcx>>,
         liveness_constraints: LivenessValues<RegionVid>,
         elements: &Rc<RegionValueElements>,
@@ -220,6 +232,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             constraints,
             constraint_graph,
             constraint_sccs,
+            closure_bounds_mapping,
             scc_universes,
             scc_representatives,
             scc_values,
@@ -727,6 +740,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 subject,
                 outlived_free_region: non_local_ub,
                 blame_span: locations.span(mir),
+                category: ConstraintCategory::Boring,
             };
             debug!("try_promote_type_test: pushing {:#?}", requirement);
             propagated_outlives_requirements.push(requirement);
@@ -1125,7 +1139,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 longer_fr, shorter_fr,
             );
 
-            let blame_span = self.find_outlives_blame_span(mir, longer_fr, shorter_fr);
+            let blame_span_category = self.find_outlives_blame_span(mir, longer_fr, shorter_fr);
 
             if let Some(propagated_outlives_requirements) = propagated_outlives_requirements {
                 // Shrink `fr` until we find a non-local region (if we do).
@@ -1150,7 +1164,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     propagated_outlives_requirements.push(ClosureOutlivesRequirement {
                         subject: ClosureOutlivesSubject::Region(fr_minus),
                         outlived_free_region: shorter_fr_plus,
-                        blame_span: blame_span,
+                        blame_span: blame_span_category.1,
+                        category: blame_span_category.0,
                     });
                     return;
                 }
@@ -1213,7 +1228,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         };
 
         // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
-        let span = self.find_outlives_blame_span(mir, longer_fr, error_region);
+        let (_, span) = self.find_outlives_blame_span(mir, longer_fr, error_region);
 
         // Obviously, this error message is far from satisfactory.
         // At present, though, it only appears in unit tests --

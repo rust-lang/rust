@@ -13,7 +13,7 @@
 
 use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::LocationTable;
-use borrow_check::nll::constraints::{ConstraintCategory, ConstraintSet, OutlivesConstraint};
+use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
 use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::values::LivenessValues;
 use borrow_check::nll::region_infer::values::PlaceholderIndices;
@@ -42,7 +42,7 @@ use rustc::traits::query::type_op::custom::CustomTypeOp;
 use rustc::traits::query::{Fallible, NoSolution};
 use rustc::traits::{ObligationCause, PredicateObligations};
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::Subst;
+use rustc::ty::subst::{Subst, UnpackedKind};
 use rustc::ty::{self, CanonicalTy, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind};
 use std::rc::Rc;
 use std::{fmt, iter};
@@ -50,7 +50,7 @@ use syntax_pos::{Span, DUMMY_SP};
 use transform::{MirPass, MirSource};
 
 use either::Either;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
@@ -128,6 +128,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     let mut constraints = MirTypeckRegionConstraints {
         liveness_constraints: LivenessValues::new(elements),
         outlives_constraints: ConstraintSet::default(),
+        closure_bounds_mapping: FxHashMap(),
         type_tests: Vec::default(),
     };
     let mut placeholder_indices = PlaceholderIndices::default();
@@ -752,6 +753,11 @@ crate struct MirTypeckRegionConstraints<'tcx> {
 
     crate outlives_constraints: ConstraintSet,
 
+    crate closure_bounds_mapping: FxHashMap<
+        Location,
+        FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>,
+    >,
+
     crate type_tests: Vec<TypeTest<'tcx>>,
 }
 
@@ -860,7 +866,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         &mut self,
         locations: Locations,
         category: ConstraintCategory,
-        op: impl type_op::TypeOp<'gcx, 'tcx, Output = R>,
+        op: impl type_op::TypeOp<'gcx, 'tcx, Output=R>,
     ) -> Fallible<R> {
         let (r, opt_data) = op.fully_perform(self.infcx)?;
 
@@ -1103,9 +1109,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 let place_ty = place.ty(mir, tcx).to_ty(tcx);
                 let rv_ty = rv.ty(mir, tcx);
                 if let Err(terr) =
-                    self.sub_types_or_anon(rv_ty, place_ty, location.to_locations(), category)
-                {
-                    span_mirbug!(
+                self.sub_types_or_anon(rv_ty, place_ty, location.to_locations(), category)
+                    {
+                        span_mirbug!(
                         self,
                         stmt,
                         "bad assignment ({:?} = {:?}): {:?}",
@@ -1113,7 +1119,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         rv_ty,
                         terr
                     );
-                }
+                    }
 
                 if let Some(user_ty) = self.rvalue_user_ty(rv) {
                     if let Err(terr) = self.relate_type_and_user_type(
@@ -1233,9 +1239,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
                 let locations = term_location.to_locations();
                 if let Err(terr) =
-                    self.sub_types(rv_ty, place_ty, locations, ConstraintCategory::Assignment)
-                {
-                    span_mirbug!(
+                self.sub_types(rv_ty, place_ty, locations, ConstraintCategory::Assignment)
+                    {
+                        span_mirbug!(
                         self,
                         term,
                         "bad DropAndReplace ({:?} = {:?}): {:?}",
@@ -1243,7 +1249,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         rv_ty,
                         terr
                     );
-                }
+                    }
             }
             TerminatorKind::SwitchInt {
                 ref discr,
@@ -1387,9 +1393,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 let locations = term_location.to_locations();
 
                 if let Err(terr) =
-                    self.sub_types_or_anon(sig.output(), dest_ty, locations, category)
-                {
-                    span_mirbug!(
+                self.sub_types_or_anon(sig.output(), dest_ty, locations, category)
+                    {
+                        span_mirbug!(
                         self,
                         term,
                         "call dest mismatch ({:?} <- {:?}): {:?}",
@@ -1397,7 +1403,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         sig.output(),
                         terr
                     );
-                }
+                    }
 
                 // When `#![feature(unsized_locals)]` is not enabled,
                 // this check is done at `check_local`.
@@ -2038,7 +2044,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             aggregate_kind, location
         );
 
-        let instantiated_predicates = match aggregate_kind {
+        let instantiated_predicates = match aggregate_kind  {
             AggregateKind::Adt(def, _, substs, _, _) => {
                 tcx.predicates_of(def.did).instantiate(tcx, substs)
             }
@@ -2064,24 +2070,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             // these extra requirements are basically like where
             // clauses on the struct.
             AggregateKind::Closure(def_id, substs) => {
-                if let Some(closure_region_requirements) =
-                    tcx.mir_borrowck(*def_id).closure_requirements
-                {
-                    let closure_constraints = closure_region_requirements.apply_requirements(
-                        self.infcx.tcx,
-                        location,
-                        *def_id,
-                        *substs,
-                    );
-
-                    self.push_region_constraints(
-                        location.to_locations(),
-                        ConstraintCategory::ClosureBounds,
-                        &closure_constraints,
-                    );
-                }
-
-                tcx.predicates_of(*def_id).instantiate(tcx, substs.substs)
+                self.prove_closure_bounds(tcx, *def_id, *substs, location)
             }
 
             AggregateKind::Generator(def_id, substs, _) => {
@@ -2095,6 +2084,72 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             instantiated_predicates,
             location.to_locations(),
         );
+    }
+
+    fn prove_closure_bounds(
+        &mut self,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        def_id: DefId,
+        substs: ty::ClosureSubsts<'tcx>,
+        location: Location,
+    ) -> ty::InstantiatedPredicates<'tcx> {
+        if let Some(closure_region_requirements) =
+            tcx.mir_borrowck(def_id).closure_requirements
+        {
+            let closure_constraints = closure_region_requirements.apply_requirements(
+                tcx,
+                location,
+                def_id,
+                substs,
+            );
+
+            if let Some(ref mut borrowck_context) = self.borrowck_context {
+                let bounds_mapping = closure_constraints
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(idx, constraint)| {
+                        let ty::OutlivesPredicate(k1, r2) =
+                            constraint.no_late_bound_regions().unwrap_or_else(|| {
+                                bug!(
+                                    "query_constraint {:?} contained bound regions",
+                                    constraint,
+                                );
+                            });
+
+                        match k1.unpack() {
+                            UnpackedKind::Lifetime(r1) => {
+                                // constraint is r1: r2
+                                let r1_vid = borrowck_context.universal_regions.to_region_vid(r1);
+                                let r2_vid = borrowck_context.universal_regions.to_region_vid(r2);
+                                let outlives_requirements = &closure_region_requirements
+                                    .outlives_requirements[idx];
+                                Some((
+                                    (r1_vid, r2_vid),
+                                    (
+                                        outlives_requirements.category,
+                                        outlives_requirements.blame_span,
+                                    ),
+                                ))
+                            }
+                            UnpackedKind::Type(_) => None,
+                        }
+                    })
+                    .collect();
+
+                let existing = borrowck_context.constraints
+                    .closure_bounds_mapping
+                    .insert(location, bounds_mapping);
+                assert!(existing.is_none(), "Multiple closures at the same location.");
+            }
+
+            self.push_region_constraints(
+                location.to_locations(),
+                ConstraintCategory::ClosureBounds,
+                &closure_constraints,
+            );
+        }
+
+        tcx.predicates_of(def_id).instantiate(tcx, substs.substs)
     }
 
     fn prove_trait_ref(

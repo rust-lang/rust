@@ -36,18 +36,13 @@ LL | }
    = note: borrowed value must be valid for the static lifetime...
 
 error: unsatisfied lifetime constraints
-  --> $DIR/regions-nested-fns.rs:23:68
+  --> $DIR/regions-nested-fns.rs:24:27
    |
-LL |   fn nested<'x>(x: &'x isize) {
-   |             -- lifetime `'x` defined here
+LL | fn nested<'x>(x: &'x isize) {
+   |           -- lifetime `'x` defined here
 ...
-LL |       ignore::< Box<for<'z> FnMut(&'z isize) -> &'z isize>>(Box::new(|z| {
-   |  ____________________________________________________________________^
-LL | |         if false { return x; } //~ ERROR E0312
-LL | |         if false { return ay; }
-LL | |         return z;
-LL | |     }));
-   | |_____^ closure body requires that `'x` must outlive `'static`
+LL |         if false { return x; } //~ ERROR E0312
+   |                           ^ returning this value requires that `'x` must outlive `'static`
 
 error: aborting due to 4 previous errors
 

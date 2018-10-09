@@ -138,6 +138,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     let MirTypeckRegionConstraints {
         mut liveness_constraints,
         outlives_constraints,
+        closure_bounds_mapping,
         type_tests,
     } = constraints;
 
@@ -157,6 +158,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
         universal_region_relations,
         mir,
         outlives_constraints,
+        closure_bounds_mapping,
         type_tests,
         liveness_constraints,
         elements,
