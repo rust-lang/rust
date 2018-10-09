@@ -17,7 +17,7 @@ use rustc_target::spec::abi::Abi;
 
 use rustc::mir::interpret::{EvalResult, PointerArithmetic, EvalErrorKind, Scalar};
 use super::{
-    EvalContext, Machine, Value, OpTy, Place, PlaceTy, Operand, StackPopCleanup
+    EvalContext, Machine, Value, OpTy, PlaceTy, MPlaceTy, Operand, StackPopCleanup
 };
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
@@ -39,7 +39,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         use rustc::mir::TerminatorKind::*;
         match terminator.kind {
             Return => {
-                self.dump_place(self.frame().return_place);
+                self.frame().return_place.map(|r| self.dump_place(*r));
                 self.pop_stack_frame()?
             }
 
@@ -286,15 +286,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     None => return Ok(()),
                 };
 
-                let return_place = match dest {
-                    Some(place) => *place,
-                    None => Place::null(&self), // any access will error. good!
-                };
                 self.push_stack_frame(
                     instance,
                     span,
                     mir,
-                    return_place,
+                    dest,
                     StackPopCleanup::Goto(ret),
                 )?;
 
@@ -375,17 +371,19 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         return err!(FunctionArgCountMismatch);
                     }
                     // Don't forget to check the return type!
-                    let callee_ret = self.eval_place(&mir::Place::Local(mir::RETURN_PLACE))?;
                     if let Some(caller_ret) = dest {
+                        let callee_ret = self.eval_place(&mir::Place::Local(mir::RETURN_PLACE))?;
                         if !Self::check_argument_compat(caller_ret.layout, callee_ret.layout) {
                             return err!(FunctionRetMismatch(
                                 caller_ret.layout.ty, callee_ret.layout.ty
                             ));
                         }
                     } else {
-                        if !callee_ret.layout.abi.is_uninhabited() {
+                        let callee_layout =
+                            self.layout_of_local(self.cur_frame(), mir::RETURN_PLACE)?;
+                        if !callee_layout.abi.is_uninhabited() {
                             return err!(FunctionRetMismatch(
-                                self.tcx.types.never, callee_ret.layout.ty
+                                self.tcx.types.never, callee_layout.ty
                             ));
                         }
                     }
@@ -453,14 +451,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         };
 
         let ty = self.tcx.mk_unit(); // return type is ()
-        let dest = PlaceTy::null(&self, self.layout_of(ty)?);
+        let dest = MPlaceTy::dangling(self.layout_of(ty)?, &self);
 
         self.eval_fn_call(
             instance,
             span,
             Abi::Rust,
             &[arg],
-            Some(dest),
+            Some(dest.into()),
             Some(target),
         )
     }

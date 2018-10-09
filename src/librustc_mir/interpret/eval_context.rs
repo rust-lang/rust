@@ -31,7 +31,7 @@ use rustc::mir::interpret::{
 use syntax::source_map::{self, Span};
 
 use super::{
-    Value, Operand, MemPlace, MPlaceTy, Place, ScalarMaybeUndef,
+    Value, Operand, MemPlace, MPlaceTy, Place, PlaceTy, ScalarMaybeUndef,
     Memory, Machine
 };
 
@@ -73,8 +73,9 @@ pub struct Frame<'mir, 'tcx: 'mir, Tag=()> {
     /// Work to perform when returning from this function
     pub return_to_block: StackPopCleanup,
 
-    /// The location where the result of the current stack frame should be written to.
-    pub return_place: Place<Tag>,
+    /// The location where the result of the current stack frame should be written to,
+    /// and its layout in the caller.
+    pub return_place: Option<PlaceTy<'tcx, Tag>>,
 
     /// The list of locals for this stack frame, stored in order as
     /// `[return_ptr, arguments..., variables..., temporaries...]`.
@@ -97,7 +98,8 @@ pub struct Frame<'mir, 'tcx: 'mir, Tag=()> {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum StackPopCleanup {
     /// Jump to the next block in the caller, or cause UB if None (that's a function
-    /// that may never return).
+    /// that may never return). Also store layout of return place so
+    /// we can validate it at that layout.
     Goto(Option<mir::BasicBlock>),
     /// Just do nohing: Used by Main and for the box_alloc hook in miri.
     /// `cleanup` says whether locals are deallocated.  Static computation
@@ -424,7 +426,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         instance: ty::Instance<'tcx>,
         span: source_map::Span,
         mir: &'mir mir::Mir<'tcx>,
-        return_place: Place<M::PointerTag>,
+        return_place: Option<PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,
     ) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation += 1;
@@ -509,14 +511,37 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             }
             StackPopCleanup::None { cleanup } => {
                 if !cleanup {
-                    // Leak the locals
+                    // Leak the locals. Also skip validation, this is only used by
+                    // static/const computation which does its own (stronger) final
+                    // validation.
                     return Ok(());
                 }
             }
         }
-        // deallocate all locals that are backed by an allocation
+        // Deallocate all locals that are backed by an allocation.
         for local in frame.locals {
             self.deallocate_local(local)?;
+        }
+        // Validate the return value.
+        if let Some(return_place) = frame.return_place {
+            if M::ENFORCE_VALIDITY {
+                // Data got changed, better make sure it matches the type!
+                // It is still possible that the return place held invalid data while
+                // the function is running, but that's okay because nobody could have
+                // accessed that same data from the "outside" to observe any broken
+                // invariant -- that is, unless a function somehow has a ptr to
+                // its return place... but the way MIR is currently generated, the
+                // return place is always a local and then this cannot happen.
+                self.validate_operand(
+                    self.place_to_op(return_place)?,
+                    &mut vec![],
+                    None,
+                    /*const_mode*/false,
+                )?;
+            }
+        } else {
+            // Uh, that shouln't happen... the function did not intend to return
+            return err!(Unreachable);
         }
 
         Ok(())

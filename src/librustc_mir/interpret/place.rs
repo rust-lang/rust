@@ -256,12 +256,6 @@ impl<'tcx, Tag: ::std::fmt::Debug> Place<Tag> {
 }
 
 impl<'tcx, Tag: ::std::fmt::Debug> PlaceTy<'tcx, Tag> {
-    /// Produces a Place that will error if attempted to be read from or written to
-    #[inline]
-    pub fn null(cx: impl HasDataLayout, layout: TyLayout<'tcx>) -> Self {
-        PlaceTy { place: Place::from_scalar_ptr(Scalar::ptr_null(cx), layout.align), layout }
-    }
-
     #[inline]
     pub fn to_mem_place(self) -> MPlaceTy<'tcx, Tag> {
         MPlaceTy { mplace: self.place.to_mem_place(), layout: self.layout }
@@ -565,9 +559,15 @@ where
     ) -> EvalResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
         use rustc::mir::Place::*;
         let place = match *mir_place {
-            Local(mir::RETURN_PLACE) => PlaceTy {
-                place: self.frame().return_place,
-                layout: self.layout_of_local(self.cur_frame(), mir::RETURN_PLACE)?,
+            Local(mir::RETURN_PLACE) => match self.frame().return_place {
+                Some(return_place) =>
+                    // We use our layout to verify our assumption; caller will validate
+                    // their layout on return.
+                    PlaceTy {
+                        place: *return_place,
+                        layout: self.layout_of_local(self.cur_frame(), mir::RETURN_PLACE)?,
+                    },
+                None => return err!(InvalidNullPointerUsage),
             },
             Local(local) => PlaceTy {
                 place: Place::Local {

@@ -33,7 +33,7 @@ use rustc::mir::interpret::{
     Scalar, Allocation, AllocId, ConstValue,
 };
 use interpret::{self,
-    Place, PlaceTy, MemPlace, OpTy, Operand, Value,
+    PlaceTy, MemPlace, OpTy, Operand, Value,
     EvalContext, StackPopCleanup, MemoryKind,
     snapshot,
 };
@@ -55,13 +55,14 @@ pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
     let param_env = tcx.param_env(instance.def_id());
     let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new(), ());
     // insert a stack frame so any queries have the correct substs
+    // cannot use `push_stack_frame`; if we do `const_prop` explodes
     ecx.stack.push(interpret::Frame {
         block: mir::START_BLOCK,
         locals: IndexVec::new(),
         instance,
         span,
         mir,
-        return_place: Place::null(tcx),
+        return_place: None,
         return_to_block: StackPopCleanup::Goto(None), // never pop
         stmt: 0,
     });
@@ -82,7 +83,7 @@ pub fn mk_eval_cx<'a, 'tcx>(
         instance,
         mir.span,
         mir,
-        Place::null(tcx),
+        None,
         StackPopCleanup::Goto(None), // never pop
     )?;
     Ok(ecx)
@@ -187,7 +188,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
         cid.instance,
         mir.span,
         mir,
-        Place::Ptr(*ret),
+        Some(ret.into()),
         StackPopCleanup::None { cleanup: false },
     )?;
 
