@@ -188,6 +188,7 @@
 /// * [`powerpc`]
 /// * [`powerpc64`]
 /// * [`nvptx`]
+/// * [`wasm32`]
 ///
 /// [`x86`]: x86/index.html
 /// [`x86_64`]: x86_64/index.html
@@ -198,6 +199,7 @@
 /// [`powerpc`]: powerpc/index.html
 /// [`powerpc64`]: powerpc64/index.html
 /// [`nvptx`]: nvptx/index.html
+/// [`wasm32`]: wasm32/index.html
 ///
 /// # Examples
 ///
@@ -362,10 +364,6 @@ pub mod arch {
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub use coresimd::arch::aarch64;
 
-    #[cfg(target_arch = "wasm32")]
-    #[unstable(feature = "stdsimd", issue = "27731")]
-    pub use coresimd::arch::wasm32;
-
     #[cfg(all(not(dox), target_arch = "mips"))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub use coresimd::arch::mips;
@@ -385,6 +383,10 @@ pub mod arch {
     #[cfg(all(not(dox), any(target_arch = "nvptx", target_arch = "nvptx64")))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub use coresimd::arch::nvptx;
+
+    #[cfg(all(not(dox), target_arch = "wasm32"))]
+    #[unstable(feature = "stdsimd", issue = "27731")]
+    pub use coresimd::arch::wasm32;
 
     #[doc(hidden)] // unstable implementation detail
     #[unstable(feature = "stdsimd", issue = "27731")]
@@ -497,4 +499,16 @@ pub mod arch {
     #[doc(cfg(any(target_arch = "nvptx", target_arch = "nvptx64")))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod nvptx {}
+
+    /// Platform-specific intrinsics for the `wasm32` platform.
+    ///
+    /// The documentation with the full listing of `wasm32` intrinsics is
+    /// available in [libcore], but the module is re-exported here in std
+    /// as well.
+    ///
+    /// [libcore]: ../../../core/arch/wasm32/index.html
+    #[cfg(dox)]
+    #[doc(cfg(target_arch = "wasm32"))]
+    #[unstable(feature = "stdsimd", issue = "27731")]
+    pub mod wasm32 {}
 }
