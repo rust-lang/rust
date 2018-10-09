@@ -13,6 +13,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use hair::cx::Cx;
 use hair::cx::block;
 use hair::cx::to_ref::ToRef;
+use hair::util::UserAnnotatedTyHelpers;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::mir::interpret::GlobalId;
 use rustc::ty::{self, AdtKind, Ty};
@@ -475,7 +476,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                 adt_def: adt,
                                 variant_index: 0,
                                 substs,
-                                user_ty: user_annotated_ty_for_adt(cx, expr.hir_id, adt),
+                                user_ty: cx.user_substs_applied_to_adt(expr.hir_id, adt),
                                 fields: field_refs(cx, fields),
                                 base: base.as_ref().map(|base| {
                                     FruInfo {
@@ -501,7 +502,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                         adt_def: adt,
                                         variant_index: index,
                                         substs,
-                                        user_ty: user_annotated_ty_for_adt(cx, expr.hir_id, adt),
+                                        user_ty: cx.user_substs_applied_to_adt(expr.hir_id, adt),
                                         fields: field_refs(cx, fields),
                                         base: None,
                                     }
@@ -787,46 +788,15 @@ fn user_annotated_ty_for_def(
         // user.
         Def::StructCtor(_def_id, CtorKind::Const) |
         Def::VariantCtor(_def_id, CtorKind::Const) =>
-            match &cx.tables().node_id_to_type(hir_id).sty {
-                ty::Adt(adt_def, _) => user_annotated_ty_for_adt(cx, hir_id, adt_def),
-                sty => bug!("unexpected sty: {:?}", sty),
-            },
+            cx.user_substs_applied_to_ty_of_hir_id(hir_id),
 
         // `Self` is used in expression as a tuple struct constructor or an unit struct constructor
-        Def::SelfCtor(_) => {
-            let sty = &cx.tables().node_id_to_type(hir_id).sty;
-            match sty {
-                ty::FnDef(ref def_id, _) => {
-                    Some(cx.tables().user_substs(hir_id)?.unchecked_map(|user_substs| {
-                        // Here, we just pair a `DefId` with the
-                        // `user_substs`, so no new types etc are introduced.
-                        cx.tcx().mk_fn_def(*def_id, user_substs)
-                    }))
-                }
-                ty::Adt(ref adt_def, _) => {
-                    user_annotated_ty_for_adt(cx, hir_id, adt_def)
-                }
-                _ => {
-                    bug!("unexpected sty: {:?}", sty)
-                }
-            }
-        }
+        Def::SelfCtor(_) =>
+            cx.user_substs_applied_to_ty_of_hir_id(hir_id),
+
         _ =>
             bug!("user_annotated_ty_for_def: unexpected def {:?} at {:?}", def, hir_id)
     }
-}
-
-fn user_annotated_ty_for_adt(
-    cx: &mut Cx<'a, 'gcx, 'tcx>,
-    hir_id: hir::HirId,
-    adt_def: &'tcx AdtDef,
-) -> Option<CanonicalTy<'tcx>> {
-    let user_substs = cx.tables().user_substs(hir_id)?;
-    Some(user_substs.unchecked_map(|user_substs| {
-        // Here, we just pair an `AdtDef` with the
-        // `user_substs`, so no new types etc are introduced.
-        cx.tcx().mk_adt(adt_def, user_substs)
-    }))
 }
 
 fn method_callee<'a, 'gcx, 'tcx>(
@@ -943,7 +913,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         adt_def,
                         variant_index: adt_def.variant_index_with_id(def_id),
                         substs,
-                        user_ty: user_annotated_ty_for_adt(cx, expr.hir_id, adt_def),
+                        user_ty: cx.user_substs_applied_to_adt(expr.hir_id, adt_def),
                         fields: vec![],
                         base: None,
                     }

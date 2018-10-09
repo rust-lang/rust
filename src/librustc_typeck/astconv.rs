@@ -402,21 +402,44 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
     }
 
     /// Creates the relevant generic argument substitutions
-    /// corresponding to a set of generic parameters.
-    pub fn create_substs_for_generic_args<'a, 'b, A, P, I>(
+    /// corresponding to a set of generic parameters. This is a
+    /// rather complex little function. Let me try to explain the
+    /// role of each of its parameters:
+    ///
+    /// To start, we are given the `def_id` of the thing we are
+    /// creating the substitutions for, and a partial set of
+    /// substitutions `parent_substs`. In general, the substitutions
+    /// for an item begin with substitutions for all the "parents" of
+    /// that item -- so e.g. for a method it might include the
+    /// parameters from the impl.
+    ///
+    /// Therefore, the method begins by walking down these parents,
+    /// starting with the outermost parent and proceed inwards until
+    /// it reaches `def_id`. For each parent P, it will check `parent_substs`
+    /// first to see if the parent's substitutions are listed in there. If so,
+    /// we can append those and move on. Otherwise, it invokes the
+    /// three callback functions:
+    ///
+    /// - `args_for_def_id`: given the def-id P, supplies back the
+    ///   generic arguments that were given to that parent from within
+    ///   the path; so e.g. if you have `<T as Foo>::Bar`, the def-id
+    ///   might refer to the trait `Foo`, and the arguments might be
+    ///   `[T]`. The boolean value indicates whether to infer values
+    ///   for arguments whose values were not explicitly provided.
+    /// - `provided_kind`: given the generic parameter and the value from `args_for_def_id`,
+    ///   instantiate a `Kind`
+    /// - `inferred_kind`: if no parameter was provided, and inference is enabled, then
+    ///   creates a suitable inference variable.
+    pub fn create_substs_for_generic_args<'a, 'b>(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         def_id: DefId,
         parent_substs: &[Kind<'tcx>],
         has_self: bool,
         self_ty: Option<Ty<'tcx>>,
-        args_for_def_id: A,
-        provided_kind: P,
-        inferred_kind: I,
-    ) -> &'tcx Substs<'tcx> where
-        A: Fn(DefId) -> (Option<&'b GenericArgs>, bool),
-        P: Fn(&GenericParamDef, &GenericArg) -> Kind<'tcx>,
-        I: Fn(Option<&[Kind<'tcx>]>, &GenericParamDef, bool) -> Kind<'tcx>
-    {
+        args_for_def_id: impl Fn(DefId) -> (Option<&'b GenericArgs>, bool),
+        provided_kind: impl Fn(&GenericParamDef, &GenericArg) -> Kind<'tcx>,
+        inferred_kind: impl Fn(Option<&[Kind<'tcx>]>, &GenericParamDef, bool) -> Kind<'tcx>,
+    ) -> &'tcx Substs<'tcx> {
         // Collect the segments of the path: we need to substitute arguments
         // for parameters throughout the entire path (wherever there are
         // generic parameters).

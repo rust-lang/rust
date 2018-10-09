@@ -2164,6 +2164,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// occurred**, so that annotations like `Vec<_>` are preserved
     /// properly.
     pub fn write_user_substs_from_substs(&self, hir_id: hir::HirId, substs: &'tcx Substs<'tcx>) {
+        debug!(
+            "write_user_substs_from_substs({:?}, {:?}) in fcx {}",
+            hir_id,
+            substs,
+            self.tag(),
+        );
+
         if !substs.is_noop() {
             let user_substs = self.infcx.canonicalize_response(&substs);
             debug!("instantiate_value_path: user_substs = {:?}", user_substs);
@@ -3752,6 +3759,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         expected: Expectation<'tcx>,
         needs: Needs
     ) -> Ty<'tcx> {
+        debug!(
+            "check_expr_kind(expr={:?}, expected={:?}, needs={:?})",
+            expr,
+            expected,
+            needs,
+        );
+
         let tcx = self.tcx;
         let id = expr.id;
         match expr.node {
@@ -4981,10 +4995,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   span: Span,
                                   node_id: ast::NodeId)
                                   -> (Ty<'tcx>, Def) {
-        debug!("instantiate_value_path(path={:?}, def={:?}, node_id={})",
-               segments,
-               def,
-               node_id);
+        debug!(
+            "instantiate_value_path(segments={:?}, self_ty={:?}, def={:?}, node_id={})",
+            segments,
+            self_ty,
+            def,
+            node_id,
+        );
 
         let path_segs = self.def_ids_for_path_segments(segments, def);
 
@@ -5194,6 +5211,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let hir_id = self.tcx.hir.node_to_hir_id(node_id);
         self.write_substs(hir_id, substs);
 
+        debug!(
+            "instantiate_value_path: id={:?} substs={:?}",
+            node_id,
+            substs,
+        );
         self.write_user_substs_from_substs(hir_id, substs);
 
         (ty_substituted, new_def)

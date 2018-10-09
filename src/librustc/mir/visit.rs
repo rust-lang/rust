@@ -214,7 +214,7 @@ macro_rules! make_mir_visitor {
                 self.super_ty(ty);
             }
 
-            fn visit_canonical_ty(&mut self, ty: & $($mutability)* CanonicalTy<'tcx>) {
+            fn visit_user_ty(&mut self, ty: & $($mutability)* CanonicalTy<'tcx>) {
                 self.super_canonical_ty(ty);
             }
 
@@ -640,7 +640,7 @@ macro_rules! make_mir_visitor {
                                      c_ty: & $($mutability)* CanonicalTy<'tcx>,
                                      location: Location) {
                 self.visit_place(place, PlaceContext::Validate, location);
-                self.visit_canonical_ty(c_ty);
+                self.visit_user_ty(c_ty);
             }
 
             fn super_place(&mut self,
@@ -736,7 +736,7 @@ macro_rules! make_mir_visitor {
                     source_info: *source_info,
                 });
                 if let Some(user_ty) = user_ty {
-                    self.visit_canonical_ty(user_ty);
+                    self.visit_user_ty(user_ty);
                 }
                 self.visit_source_info(source_info);
                 self.visit_source_scope(visibility_scope);
