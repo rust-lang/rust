@@ -462,6 +462,9 @@ declare_features! (
 
     (active, abi_amdgpu_kernel, "1.29.0", Some(51575), None),
 
+    // Perma-unstable; added for testing E0705
+    (active, test_2018_feature, "1.31.0", Some(0), Some(Edition::Edition2018)),
+
     // Support for arbitrary delimited token streams in non-macro attributes
     (active, unrestricted_attribute_tokens, "1.30.0", Some(44690), None),
 
