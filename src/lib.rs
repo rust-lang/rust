@@ -67,7 +67,6 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
                 .to_owned(),
         ));
     }
-    let ptr_size = ecx.memory.pointer_size();
 
     if let Some(start_id) = start_wrapper {
         let main_ret_ty = ecx.tcx.fn_sig(main_id).output();
@@ -89,16 +88,15 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         }
 
         // Return value (in static memory so that it does not count as leak)
-        let size = ecx.tcx.data_layout.pointer_size;
-        let align = ecx.tcx.data_layout.pointer_align;
-        let ret_ptr = ecx.memory_mut().allocate(size, align, MiriMemoryKind::MutStatic.into())?;
+        let ret = ecx.layout_of(start_mir.return_ty())?;
+        let ret_ptr = ecx.allocate(ret, MiriMemoryKind::MutStatic.into())?;
 
         // Push our stack frame
         ecx.push_stack_frame(
             start_instance,
             start_mir.span,
             start_mir,
-            Place::from_ptr(ret_ptr, align),
+            Some(ret_ptr.into()),
             StackPopCleanup::None { cleanup: true },
         )?;
 
@@ -126,11 +124,12 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
 
         assert!(args.next().is_none(), "start lang item has more arguments than expected");
     } else {
+        let ret_place = MPlaceTy::dangling(ecx.layout_of(tcx.mk_unit())?, &ecx).into();
         ecx.push_stack_frame(
             main_instance,
             main_mir.span,
             main_mir,
-            Place::from_scalar_ptr(Scalar::from_int(1, ptr_size).into(), ty::layout::Align::from_bytes(1, 1).unwrap()),
+            Some(ret_place),
             StackPopCleanup::None { cleanup: true },
         )?;
 
@@ -286,7 +285,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
             malloc,
             malloc_mir.span,
             malloc_mir,
-            *dest,
+            Some(dest),
             // Don't do anything when we are done.  The statement() function will increment
             // the old stack frame's stmt counter to the next statement, which means that when
             // exchange_malloc returns, we go on evaluating exactly where we want to be.

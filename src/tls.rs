@@ -1,9 +1,12 @@
 use std::collections::BTreeMap;
 
+use rustc_target::abi::LayoutOf;
 use rustc::{ty, ty::layout::HasDataLayout, mir};
 
-use super::{EvalResult, EvalErrorKind, Scalar, Evaluator,
-            Place, StackPopCleanup, EvalContext};
+use super::{
+    EvalResult, EvalErrorKind, StackPopCleanup, EvalContext, Evaluator,
+    MPlaceTy, Scalar,
+};
 
 pub type TlsKey = u128;
 
@@ -139,12 +142,12 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             // TODO: Potentially, this has to support all the other possible instances?
             // See eval_fn_call in interpret/terminator/mod.rs
             let mir = self.load_mir(instance.def)?;
-            let ret = Place::null(&self);
+            let ret_place = MPlaceTy::dangling(self.layout_of(self.tcx.mk_unit())?, &self).into();
             self.push_stack_frame(
                 instance,
                 mir.span,
                 mir,
-                ret,
+                Some(ret_place),
                 StackPopCleanup::None { cleanup: true },
             )?;
             let arg_local = self.frame().mir.args_iter().next().ok_or_else(
