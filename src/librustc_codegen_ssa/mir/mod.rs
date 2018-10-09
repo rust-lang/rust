@@ -36,7 +36,9 @@ use rustc::mir::traversal;
 use self::operand::{OperandRef, OperandValue};
 
 /// Master context for codegenning from MIR.
-pub struct FunctionCx<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a +  CodegenMethods<'ll, 'tcx>> {
+pub struct FunctionCx<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a +  CodegenMethods<'a, 'll, 'tcx>>
+    where &'a Cx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     instance: Instance<'tcx>,
 
     mir: &'a mir::Mir<'tcx>,
@@ -100,8 +102,9 @@ pub struct FunctionCx<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a +  CodegenMethods<
     param_substs: &'tcx Substs<'tcx>,
 }
 
-impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
+impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'a, 'll, 'tcx>>
     FunctionCx<'a, 'f, 'll, 'tcx, Cx>
+    where &'a Cx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TypeFoldable<'tcx>
@@ -114,14 +117,17 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
     }
 }
 
-impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
+impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'a, 'll, 'tcx>>
     FunctionCx<'a, 'f, 'll, 'tcx, Cx>
+    where &'a Cx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
     pub fn set_debug_loc<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         &mut self,
         bx: &mut Bx,
         source_info: mir::SourceInfo
-    ) where Bx::CodegenCx : DebugInfoMethods<'ll, 'tcx, DIScope = Cx::DIScope> {
+    ) where Bx::CodegenCx : DebugInfoMethods<'ll, 'tcx, DIScope = Cx::DIScope>,
+      &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+    {
         let (scope, span) = self.debug_loc(source_info);
         bx.set_source_location(&self.debug_context, scope, span);
     }
@@ -193,11 +199,13 @@ enum LocalRef<'tcx, V> {
     Operand(Option<OperandRef<'tcx, V>>),
 }
 
-impl<'ll, 'tcx: 'll, V : 'll + CodegenObject> LocalRef<'tcx, V> {
-    fn new_operand<Cx: CodegenMethods<'ll, 'tcx>>(
-        cx: &Cx,
+impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> LocalRef<'tcx, V> {
+    fn new_operand<Cx: 'a + CodegenMethods<'a, 'll, 'tcx>>(
+        cx: &'a Cx,
         layout: TyLayout<'tcx>
-    ) -> LocalRef<'tcx, V> where Cx: Backend<'ll, Value=V> {
+    ) -> LocalRef<'tcx, V> where Cx: Backend<'ll, Value=V>,
+        &'a Cx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+    {
         if layout.is_zst() {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
@@ -317,7 +325,11 @@ pub fn codegen_mir<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
                     debug!("alloc: {:?} -> place", local);
                     if layout.is_unsized() {
                         let indirect_place =
-                            PlaceRef::alloca_unsized_indirect(&mut bx, layout, &format!("{:?}", local));
+                            PlaceRef::alloca_unsized_indirect(
+                                &mut bx,
+                                layout,
+                                &format!("{:?}", local)
+                            );
                         LocalRef::UnsizedPlace(indirect_place)
                     } else {
                         LocalRef::Place(PlaceRef::alloca(&mut bx, layout, &format!("{:?}", local)))
@@ -376,6 +388,7 @@ fn create_funclets<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     block_bxs: &IndexVec<mir::BasicBlock, <Bx::CodegenCx as Backend<'ll>>::BasicBlock>)
     -> (IndexVec<mir::BasicBlock, Option<<Bx::CodegenCx as Backend<'ll>>::BasicBlock>>,
         IndexVec<mir::BasicBlock, Option<Funclet<'ll, <Bx::CodegenCx as Backend<'ll>>::Value>>>)
+    where &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
     block_bxs.iter_enumerated().zip(cleanup_kinds).map(|((bb, &llbb), cleanup_kind)| {
         match *cleanup_kind {

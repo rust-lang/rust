@@ -65,10 +65,12 @@ impl<V : CodegenObject> fmt::Debug for OperandRef<'tcx, V> {
 }
 
 impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandRef<'tcx, V> {
-    pub fn new_zst<Cx: CodegenMethods<'ll, 'tcx>>(
-        cx: &Cx,
+    pub fn new_zst<Cx: 'a + CodegenMethods<'a, 'll, 'tcx>>(
+        cx: &'a Cx,
         layout: TyLayout<'tcx>
-    ) -> OperandRef<'tcx, V> where Cx : Backend<'ll, Value = V> {
+    ) -> OperandRef<'tcx, V> where Cx : Backend<'ll, Value = V>,
+        &'a Cx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+    {
         assert!(layout.is_zst());
         OperandRef {
             val: OperandValue::Immediate(cx.const_undef(cx.immediate_backend_type(&layout))),
@@ -143,7 +145,7 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandRef<'tcx, V> {
         }
     }
 
-    pub fn deref<Cx: 'a + CodegenMethods<'ll, 'tcx>>(
+    pub fn deref<Cx: 'a + CodegenMethods<'a, 'll, 'tcx>>(
         self,
         cx: &'a Cx
     ) -> PlaceRef<'tcx, V> where
@@ -171,7 +173,9 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandRef<'tcx, V> {
     pub fn immediate_or_packed_pair<Bx: BuilderMethods<'a, 'll, 'tcx>>(
         self,
         bx: &mut Bx
-    ) -> V where Bx::CodegenCx : Backend<'ll, Value=V> {
+    ) -> V where Bx::CodegenCx : Backend<'ll, Value=V>,
+        &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+    {
         if let OperandValue::Pair(a, b) = self.val {
             let llty = bx.cx().backend_type(&self.layout);
             debug!("Operand::immediate_or_packed_pair: packing {:?} into {:?}",
@@ -194,7 +198,8 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandRef<'tcx, V> {
         llval: <Bx::CodegenCx as Backend<'ll>>::Value,
         layout: TyLayout<'tcx>
     ) -> OperandRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>
-        where Bx::CodegenCx : Backend<'ll, Value=V>
+        where Bx::CodegenCx : Backend<'ll, Value=V>,
+        &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
     {
         let val = if let layout::Abi::ScalarPair(ref a, ref b) = layout.abi {
             debug!("Operand::from_immediate_or_packed_pair: unpacking {:?} @ {:?}",
@@ -281,7 +286,9 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandValue<V> {
         self,
         bx: &mut Bx,
         dest: PlaceRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>
-    ) where Bx::CodegenCx : Backend<'ll, Value = V> {
+    ) where Bx::CodegenCx : Backend<'ll, Value = V>,
+        &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+    {
         self.store_with_flags(bx, dest, MemFlags::empty());
     }
 
@@ -289,7 +296,9 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandValue<V> {
         self,
         bx: &mut Bx,
         dest: PlaceRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>
-    ) where Bx::CodegenCx : Backend<'ll, Value = V> {
+    ) where Bx::CodegenCx : Backend<'ll, Value = V>,
+        &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+    {
         self.store_with_flags(bx, dest, MemFlags::VOLATILE);
     }
 
@@ -297,7 +306,9 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandValue<V> {
         self,
         bx: &mut Bx,
         dest: PlaceRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>
-    ) where Bx::CodegenCx : Backend<'ll, Value = V> {
+    ) where Bx::CodegenCx : Backend<'ll, Value = V>,
+        &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+    {
         self.store_with_flags(bx, dest, MemFlags::VOLATILE | MemFlags::UNALIGNED);
     }
 
@@ -305,7 +316,9 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandValue<V> {
         self,
         bx: &mut Bx,
         dest: PlaceRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>
-    ) where Bx::CodegenCx : Backend<'ll, Value = V> {
+    ) where Bx::CodegenCx : Backend<'ll, Value = V>,
+        &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+    {
         self.store_with_flags(bx, dest, MemFlags::NONTEMPORAL);
     }
 
@@ -314,7 +327,9 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandValue<V> {
         bx: &mut Bx,
         dest: PlaceRef<'tcx, <Bx::CodegenCx as Backend<'ll>>::Value>,
         flags: MemFlags,
-    ) where Bx::CodegenCx : Backend<'ll, Value = V> {
+    ) where Bx::CodegenCx : Backend<'ll, Value = V>,
+        &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+    {
         debug!("OperandRef::store: operand={:?}, dest={:?}", self, dest);
         // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
         // value is through `undef`, and store itself is useless.
@@ -379,8 +394,9 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> OperandValue<V> {
     }
 }
 
-impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
+impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'a, 'll, 'tcx>>
     FunctionCx<'a, 'f, 'll, 'tcx, Cx>
+    where &'a Cx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
     fn maybe_codegen_consume_direct<Bx: BuilderMethods<'a, 'll, 'tcx, CodegenCx=Cx>>(
         &mut self,

@@ -10,6 +10,7 @@
 
 use rustc_target::abi::call::FnType;
 use rustc::ty::{FnSig, Ty, Instance};
+use rustc::ty::layout::{LayoutOf, TyLayout, HasTyCtxt};
 use super::Backend;
 use super::builder::HasCodegen;
 
@@ -23,7 +24,10 @@ pub trait AbiMethods<'tcx> {
     fn fn_type_of_instance(&self, instance: &Instance<'tcx>) -> FnType<'tcx, Ty<'tcx>>;
 }
 
-pub trait AbiBuilderMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx>  {
+pub trait AbiBuilderMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx>
+    where &'a Self::CodegenCx :
+        LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     fn apply_attrs_callsite(
         &mut self,
         ty: &FnType<'tcx, Ty<'tcx>>,

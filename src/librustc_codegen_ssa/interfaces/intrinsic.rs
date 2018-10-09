@@ -12,11 +12,14 @@ use super::Backend;
 use super::builder::HasCodegen;
 use mir::operand::OperandRef;
 use rustc::ty::Ty;
+use rustc::ty::layout::{LayoutOf, HasTyCtxt, TyLayout};
 use rustc_target::abi::call::FnType;
 use syntax_pos::Span;
 
-pub trait IntrinsicCallMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> {
-
+pub trait IntrinsicCallMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx>
+    where &'a Self::CodegenCx :
+        LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     /// Remember to add all intrinsics here, in librustc_typeck/check/mod.rs,
     /// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
     /// add them to librustc_codegen_llvm/context.rs

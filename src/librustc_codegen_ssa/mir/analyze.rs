@@ -22,7 +22,7 @@ use rustc::ty::layout::{LayoutOf, HasTyCtxt, TyLayout};
 use super::FunctionCx;
 use interfaces::*;
 
-pub fn non_ssa_locals<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>(
+pub fn non_ssa_locals<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'a, 'll, 'tcx>>(
     fx: &FunctionCx<'a, 'f, 'll, 'tcx, Cx>
 ) -> BitSet<mir::Local>
     where &'a Cx : LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
@@ -57,8 +57,10 @@ pub fn non_ssa_locals<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'
 
 struct LocalAnalyzer<
     'mir, 'a: 'mir, 'f: 'mir, 'll: 'a + 'f, 'tcx: 'll,
-    Cx: 'a + CodegenMethods<'ll, 'tcx>
-    > {
+    Cx: 'a + CodegenMethods<'a, 'll, 'tcx>
+    >
+    where &'a Cx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     fx: &'mir FunctionCx<'a, 'f, 'll, 'tcx, Cx>,
     dominators: Dominators<mir::BasicBlock>,
     non_ssa_locals: BitSet<mir::Local>,
@@ -67,7 +69,7 @@ struct LocalAnalyzer<
     first_assignment: IndexVec<mir::Local, Location>
 }
 
-impl<Cx: 'a + CodegenMethods<'ll, 'tcx>> LocalAnalyzer<'mir, 'a, 'f, 'll, 'tcx, Cx>
+impl<Cx: 'a + CodegenMethods<'a, 'll, 'tcx>> LocalAnalyzer<'mir, 'a, 'f, 'll, 'tcx, Cx>
     where &'a Cx : LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
     fn new(fx: &'mir FunctionCx<'a, 'f, 'll, 'tcx, Cx>) -> Self {
@@ -111,7 +113,7 @@ impl<Cx: 'a + CodegenMethods<'ll, 'tcx>> LocalAnalyzer<'mir, 'a, 'f, 'll, 'tcx, 
     }
 }
 
-impl<'mir, 'a: 'mir, 'f: 'mir, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
+impl<'mir, 'a: 'mir, 'f: 'mir, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'a, 'll, 'tcx>>
     Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'f, 'll, 'tcx, Cx> where
     &'a Cx : LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use rustc::ty::{Ty, FnSig};
+use rustc::ty::layout::{LayoutOf, TyLayout, HasTyCtxt};
 use super::Backend;
 use super::builder::HasCodegen;
 use rustc::mir;
@@ -57,7 +58,10 @@ pub trait DebugInfoMethods<'ll, 'tcx: 'll> : Backend<'ll> {
     fn debuginfo_upvar_decls_ops_sequence(&self, byte_offset_of_var_in_env: u64) -> [i64; 4];
 }
 
-pub trait DebugInfoBuilderMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> {
+pub trait DebugInfoBuilderMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx>
+    where &'a Self::CodegenCx :
+        LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     fn declare_local(
         &mut self,
         dbg_context: &FunctionDebugContext<

@@ -11,8 +11,8 @@
 use common::{IntPredicate, RealPredicate, AtomicOrdering,
     SynchronizationScope, AtomicRmwBinOp, OperandBundleDef};
 use libc::c_char;
-use rustc::ty::TyCtxt;
-use rustc::ty::layout::{Align, Size};
+use rustc::ty::{Ty, TyCtxt};
+use rustc::ty::layout::{Align, Size, TyLayout, HasTyCtxt, LayoutOf};
 use MemFlags;
 use super::Backend;
 use super::CodegenMethods;
@@ -28,14 +28,19 @@ use std::borrow::Cow;
 use std::ops::Range;
 use syntax::ast::AsmDialect;
 
-pub trait HasCodegen<'a, 'll: 'a, 'tcx :'ll> {
-    type CodegenCx : 'a + CodegenMethods<'ll, 'tcx>;
+pub trait HasCodegen<'a, 'll: 'a, 'tcx :'ll>
+    where &'a Self::CodegenCx :
+        LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
+    type CodegenCx : 'a + CodegenMethods<'a, 'll, 'tcx>;
 }
 
 pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> +
     DebugInfoBuilderMethods<'a, 'll, 'tcx> + ArgTypeMethods<'a, 'll, 'tcx> +
     AbiBuilderMethods<'a, 'll, 'tcx> + IntrinsicCallMethods<'a, 'll, 'tcx> +
     AsmBuilderMethods<'a, 'll, 'tcx>
+    where &'a Self::CodegenCx :
+        LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
     fn new_block<'b>(
         cx: &'a Self::CodegenCx,
@@ -252,7 +257,11 @@ pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> +
         &PlaceRef<'tcx,<Self::CodegenCx as Backend<'ll>>::Value>
     ) -> OperandRef<'tcx, <Self::CodegenCx as Backend<'ll>>::Value>;
 
-    fn range_metadata(&mut self, load: <Self::CodegenCx as Backend<'ll>>::Value, range: Range<u128>);
+    fn range_metadata(
+        &mut self,
+        load: <Self::CodegenCx as Backend<'ll>>::Value,
+        range: Range<u128>
+    );
     fn nonnull_metadata(&mut self, load: <Self::CodegenCx as Backend<'ll>>::Value);
 
     fn store(

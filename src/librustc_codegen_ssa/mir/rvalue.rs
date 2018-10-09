@@ -27,7 +27,7 @@ use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
 
-impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
+impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'a, 'll, 'tcx>>
     FunctionCx<'a, 'f, 'll, 'tcx, Cx> where
     &'a Cx: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
@@ -333,7 +333,10 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
                                     // We want `table[e as usize]` to not
                                     // have bound checks, and this is the most
                                     // convenient place to put the `assume`.
-                                    let ll_t_in_const = bx.cx().const_uint_big(ll_t_in, *scalar.valid_range.end());
+                                    let ll_t_in_const = bx.cx().const_uint_big(
+                                        ll_t_in,
+                                        *scalar.valid_range.end()
+                                    );
                                     let cmp = bx.icmp(
                                         IntPredicate::IntULE,
                                         llval,
@@ -721,7 +724,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
     }
 }
 
-impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
+impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'a, 'll, 'tcx>>
     FunctionCx<'a, 'f, 'll, 'tcx, Cx> where
     &'a Cx : LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
@@ -758,7 +761,9 @@ fn get_overflow_intrinsic<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 't
     oop: OverflowOp,
     bx: &mut Bx,
     ty: Ty
-) -> <Bx::CodegenCx as Backend<'ll>>::Value {
+) -> <Bx::CodegenCx as Backend<'ll>>::Value
+    where &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     use syntax::ast::IntTy::*;
     use syntax::ast::UintTy::*;
     use rustc::ty::{Int, Uint};
@@ -829,7 +834,9 @@ fn cast_int_to_float<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     x: <Bx::CodegenCx as Backend<'ll>>::Value,
     int_ty: <Bx::CodegenCx as Backend<'ll>>::Type,
     float_ty: <Bx::CodegenCx as Backend<'ll>>::Type
-) -> <Bx::CodegenCx as Backend<'ll>>::Value {
+) -> <Bx::CodegenCx as Backend<'ll>>::Value
+    where &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     // Most integer types, even i128, fit into [-f32::MAX, f32::MAX] after rounding.
     // It's only u128 -> f32 that can cause overflows (i.e., should yield infinity).
     // LLVM's uitofp produces undef in those cases, so we manually check for that case.
@@ -864,7 +871,9 @@ fn cast_float_to_int<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     x: <Bx::CodegenCx as Backend<'ll>>::Value,
     float_ty: <Bx::CodegenCx as Backend<'ll>>::Type,
     int_ty: <Bx::CodegenCx as Backend<'ll>>::Type
-) -> <Bx::CodegenCx as Backend<'ll>>::Value {
+) -> <Bx::CodegenCx as Backend<'ll>>::Value
+    where &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     let fptosui_result = if signed {
         bx.fptosi(x, int_ty)
     } else {

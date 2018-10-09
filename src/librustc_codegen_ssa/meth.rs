@@ -34,7 +34,10 @@ impl<'a, 'tcx> VirtualIndex {
         bx: &mut Bx,
         llvtable: <Bx::CodegenCx as Backend<'ll>>::Value,
         fn_ty: &FnType<'tcx, Ty<'tcx>>
-    ) -> <Bx::CodegenCx as Backend<'ll>>::Value {
+    ) -> <Bx::CodegenCx as Backend<'ll>>::Value
+        where &'a Bx::CodegenCx :
+            LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+    {
         // Load the data pointer from the object.
         debug!("get_fn({:?}, {:?})", llvtable, self);
 
@@ -55,7 +58,10 @@ impl<'a, 'tcx> VirtualIndex {
         self,
         bx: &mut Bx,
         llvtable: <Bx::CodegenCx as Backend<'ll>>::Value
-    ) -> <Bx::CodegenCx as Backend<'ll>>::Value {
+    ) -> <Bx::CodegenCx as Backend<'ll>>::Value
+        where &'a Bx::CodegenCx :
+            LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+    {
         // Load the data pointer from the object.
         debug!("get_int({:?}, {:?})", llvtable, self);
 
@@ -77,7 +83,7 @@ impl<'a, 'tcx> VirtualIndex {
 /// The `trait_ref` encodes the erased self type. Hence if we are
 /// making an object `Foo<Trait>` from a value of type `Foo<T>`, then
 /// `trait_ref` would map `T:Trait`.
-pub fn get_vtable<'a, 'll: 'a, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>(
+pub fn get_vtable<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'a, 'll, 'tcx>>(
     cx: &'a Cx,
     ty: Ty<'tcx>,
     trait_ref: ty::PolyExistentialTraitRef<'tcx>,

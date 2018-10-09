@@ -72,14 +72,18 @@ use mir::operand::OperandValue;
 use std::marker::PhantomData;
 
 
-pub struct StatRecorder<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> {
+pub struct StatRecorder<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'a, 'll, 'tcx>>
+    where &'a Cx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     cx: &'a Cx,
     name: Option<String>,
     istart: usize,
     phantom: PhantomData<(&'ll (), &'tcx ())>
 }
 
-impl<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> StatRecorder<'a, 'll, 'tcx, Cx> {
+impl<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'a, 'll, 'tcx>> StatRecorder<'a, 'll, 'tcx, Cx>
+    where &'a Cx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     pub fn new(cx: &'a Cx, name: String) -> Self {
         let istart = cx.stats().borrow().n_llvm_insns;
         StatRecorder {
@@ -91,8 +95,9 @@ impl<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> StatRecorder<'a
     }
 }
 
-impl<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>> Drop for
+impl<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'a, 'll, 'tcx>> Drop for
     StatRecorder<'a, 'll, 'tcx, Cx>
+    where &'a Cx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
     fn drop(&mut self) {
         if self.cx.sess().codegen_stats() {
@@ -147,7 +152,9 @@ pub fn compare_simd_types<'a, 'll:'a, 'tcx:'ll, Bx : BuilderMethods<'a, 'll, 'tc
     t: Ty<'tcx>,
     ret_ty: <Bx::CodegenCx as Backend<'ll>>::Type,
     op: hir::BinOpKind
-) -> <Bx::CodegenCx as Backend<'ll>>::Value {
+) -> <Bx::CodegenCx as Backend<'ll>>::Value
+    where &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     let signed = match t.sty {
         ty::Float(_) => {
             let cmp = bin_op_to_fcmp_predicate(op);
@@ -174,7 +181,7 @@ pub fn compare_simd_types<'a, 'll:'a, 'tcx:'ll, Bx : BuilderMethods<'a, 'll, 'tc
 /// The `old_info` argument is a bit funny. It is intended for use
 /// in an upcast, where the new vtable for an object will be derived
 /// from the old one.
-pub fn unsized_info<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>(
+pub fn unsized_info<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'a, 'll, 'tcx>>(
     cx: &'a Cx,
     source: Ty<'tcx>,
     target: Ty<'tcx>,
@@ -326,7 +333,9 @@ pub fn cast_shift_expr_rhs<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll, 
     op: hir::BinOpKind,
     lhs: <Bx::CodegenCx as Backend<'ll>>::Value,
     rhs: <Bx::CodegenCx as Backend<'ll>>::Value
-) -> <Bx::CodegenCx as Backend<'ll>>::Value {
+) -> <Bx::CodegenCx as Backend<'ll>>::Value
+    where &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     cast_shift_rhs(bx, op, lhs, rhs)
 }
 
@@ -335,7 +344,9 @@ fn cast_shift_rhs<'a, 'll :'a, 'tcx : 'll, Bx : BuilderMethods<'a, 'll, 'tcx>>(
     op: hir::BinOpKind,
     lhs: <Bx::CodegenCx as Backend<'ll>>::Value,
     rhs: <Bx::CodegenCx as Backend<'ll>>::Value,
-) -> <Bx::CodegenCx as Backend<'ll>>::Value {
+) -> <Bx::CodegenCx as Backend<'ll>>::Value
+    where &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     // Shifts may have any size int on the rhs
     if op.is_shift() {
         let mut rhs_llty = bx.cx().val_ty(rhs);
@@ -374,7 +385,9 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
 pub fn call_assume<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll ,'tcx>>(
     bx: &mut Bx,
     val: <Bx::CodegenCx as Backend<'ll>>::Value
-) {
+)
+    where &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     let assume_intrinsic = bx.cx().get_intrinsic("llvm.assume");
     bx.call(assume_intrinsic, &[val], None);
 }
@@ -382,7 +395,9 @@ pub fn call_assume<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll ,'tcx>>(
 pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll ,'tcx>>(
     bx: &mut Bx,
     val: <Bx::CodegenCx as Backend<'ll>>::Value
-) -> <Bx::CodegenCx as Backend<'ll>>::Value {
+) -> <Bx::CodegenCx as Backend<'ll>>::Value
+    where &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     if bx.cx().val_ty(val) == bx.cx().type_i1() {
         bx.zext(val, bx.cx().type_i8())
     } else {
@@ -394,7 +409,9 @@ pub fn to_immediate<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll, 'tcx>>(
     bx: &mut Bx,
     val: <Bx::CodegenCx as Backend<'ll>>::Value,
     layout: layout::TyLayout,
-) -> <Bx::CodegenCx as Backend<'ll>>::Value {
+) -> <Bx::CodegenCx as Backend<'ll>>::Value
+    where &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     if let layout::Abi::Scalar(ref scalar) = layout.abi {
         return to_immediate_scalar(bx, val, scalar);
     }
@@ -405,7 +422,9 @@ pub fn to_immediate_scalar<'a, 'll :'a, 'tcx :'ll, Bx : BuilderMethods<'a, 'll, 
     bx: &mut Bx,
     val: <Bx::CodegenCx as Backend<'ll>>::Value,
     scalar: &layout::Scalar,
-) -> <Bx::CodegenCx as Backend<'ll>>::Value {
+) -> <Bx::CodegenCx as Backend<'ll>>::Value
+    where &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     if scalar.is_bool() {
         return bx.trunc(val, bx.cx().type_i1());
     }
@@ -419,7 +438,9 @@ pub fn memcpy_ty<'a, 'll: 'a, 'tcx: 'll, Bx : BuilderMethods<'a, 'll, 'tcx>>(
     layout: TyLayout<'tcx>,
     align: Align,
     flags: MemFlags,
-) {
+)
+    where &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     let size = layout.size.bytes();
     if size == 0 {
         return;
@@ -467,7 +488,9 @@ pub fn codegen_instance<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx
 /// users main function.
 pub fn maybe_create_entry_wrapper<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     cx: &'a Bx::CodegenCx
-) {
+)
+    where &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     let (main_def_id, span) = match *cx.sess().entry_fn.borrow() {
         Some((id, span, _)) => {
             (cx.tcx().hir.local_def_id(id), span)
@@ -498,7 +521,10 @@ pub fn maybe_create_entry_wrapper<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a,
         rust_main: <Bx::CodegenCx as Backend<'ll>>::Value,
         rust_main_def_id: DefId,
         use_start_lang_item: bool,
-    ) {
+    )
+        where &'a Bx::CodegenCx :
+            LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+    {
         let llfty =
             cx.type_func(&[cx.type_int(), cx.type_ptr_to(cx.type_i8p())], cx.type_int());
 
@@ -551,7 +577,7 @@ pub fn maybe_create_entry_wrapper<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a,
         };
 
         let result = bx.call(start_fn, &args, None);
-        let cast = bx.intcast(result, cx.type_int(), true); 
+        let cast = bx.intcast(result, cx.type_int(), true);
         bx.ret(cast);
     }
 }

@@ -31,7 +31,7 @@ use super::place::PlaceRef;
 use super::operand::OperandRef;
 use super::operand::OperandValue::{Pair, Ref, Immediate};
 
-impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
+impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'a, 'll, 'tcx>>
     FunctionCx<'a, 'f, 'll, 'tcx, Cx>
     where &'a Cx: LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {
@@ -242,7 +242,10 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
                     }
 
                     PassMode::Direct(_) | PassMode::Pair(..) => {
-                        let op = self.codegen_consume(&mut bx, &mir::Place::Local(mir::RETURN_PLACE));
+                        let op = self.codegen_consume(
+                            &mut bx,
+                            &mir::Place::Local(mir::RETURN_PLACE)
+                        );
                         if let Ref(llval, _, align) = op.val {
                             bx.load(llval, align)
                         } else {
@@ -264,7 +267,11 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: CodegenMethods<'ll, 'tcx>>
                         };
                         let llslot = match op.val {
                             Immediate(_) | Pair(..) => {
-                                let scratch = PlaceRef::alloca(&mut bx, self.fn_ty.ret.layout, "ret");
+                                let scratch = PlaceRef::alloca(
+                                    &mut bx,
+                                    self.fn_ty.ret.layout,
+                                    "ret"
+                                );
                                 op.val.store(&mut bx, scratch);
                                 scratch.llval
                             }

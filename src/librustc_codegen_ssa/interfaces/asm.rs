@@ -9,11 +9,16 @@
 // except according to those terms.
 
 use rustc::hir::{InlineAsm, GlobalAsm};
+use rustc::ty::Ty;
+use rustc::ty::layout::{TyLayout, LayoutOf, HasTyCtxt};
 use mir::place::PlaceRef;
 use super::Backend;
 use super::builder::HasCodegen;
 
-pub trait AsmBuilderMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx>{
+pub trait AsmBuilderMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx>
+    where &'a Self::CodegenCx :
+        LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     // Take an inline assembly expression and splat it out via LLVM
     fn codegen_inline_asm(
         &mut self,

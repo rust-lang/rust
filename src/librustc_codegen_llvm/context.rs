@@ -470,7 +470,7 @@ impl MiscMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
     }
 }
 
-impl<'ll, 'tcx: 'll> CodegenMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {}
+impl<'a, 'll: 'a, 'tcx: 'll> CodegenMethods<'a, 'll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {}
 
 impl IntrinsicDeclarationMethods<'b> for CodegenCx<'b, 'tcx, &'b Value> {
     fn get_intrinsic(&self, key: &str) -> &'b Value {

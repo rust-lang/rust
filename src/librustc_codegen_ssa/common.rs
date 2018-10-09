@@ -13,6 +13,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use syntax_pos::{DUMMY_SP, Span};
 
 use rustc::hir::def_id::DefId;
+use rustc::ty::layout::{LayoutOf, TyLayout, HasTyCtxt};
 use rustc::middle::lang_items::LangItem;
 use base;
 use interfaces::*;
@@ -211,7 +212,9 @@ pub fn build_unchecked_lshift<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll
     bx: &mut Bx,
     lhs: <Bx::CodegenCx as Backend<'ll>>::Value,
     rhs: <Bx::CodegenCx as Backend<'ll>>::Value
-) -> <Bx::CodegenCx as Backend<'ll>>::Value {
+) -> <Bx::CodegenCx as Backend<'ll>>::Value
+    where &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     let rhs = base::cast_shift_expr_rhs(bx, hir::BinOpKind::Shl, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
     let rhs = shift_mask_rhs(bx, rhs);
@@ -223,7 +226,9 @@ pub fn build_unchecked_rshift<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll
     lhs_t: Ty<'tcx>,
     lhs: <Bx::CodegenCx as Backend<'ll>>::Value,
     rhs: <Bx::CodegenCx as Backend<'ll>>::Value
-) -> <Bx::CodegenCx as Backend<'ll>>::Value {
+) -> <Bx::CodegenCx as Backend<'ll>>::Value
+    where &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     let rhs = base::cast_shift_expr_rhs(bx, hir::BinOpKind::Shr, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
     let rhs = shift_mask_rhs(bx, rhs);
@@ -238,7 +243,9 @@ pub fn build_unchecked_rshift<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll
 fn shift_mask_rhs<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>(
     bx: &mut Bx,
     rhs: <Bx::CodegenCx as Backend<'ll>>::Value
-) -> <Bx::CodegenCx as Backend<'ll>>::Value {
+) -> <Bx::CodegenCx as Backend<'ll>>::Value
+    where &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     let rhs_llty = bx.cx().val_ty(rhs);
     let shift_val = shift_mask_val(bx, rhs_llty, rhs_llty, false);
     bx.and(rhs, shift_val)
@@ -249,7 +256,9 @@ pub fn shift_mask_val<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>
     llty: <Bx::CodegenCx as Backend<'ll>>::Type,
     mask_llty: <Bx::CodegenCx as Backend<'ll>>::Type,
     invert: bool
-) -> <Bx::CodegenCx as Backend<'ll>>::Value {
+) -> <Bx::CodegenCx as Backend<'ll>>::Value
+    where &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     let kind = bx.cx().type_kind(llty);
     match kind {
         TypeKind::Integer => {
@@ -274,10 +283,12 @@ pub fn shift_mask_val<'a, 'll: 'a, 'tcx: 'll, Bx: BuilderMethods<'a, 'll, 'tcx>>
     }
 }
 
-pub fn ty_fn_sig<'ll, 'tcx:'ll, Cx: CodegenMethods<'ll, 'tcx>>(
-    cx: &Cx,
+pub fn ty_fn_sig<'a, 'll: 'a, 'tcx:'ll, Cx: 'a + CodegenMethods<'a, 'll, 'tcx>>(
+    cx: &'a Cx,
     ty: Ty<'tcx>
-) -> ty::PolyFnSig<'tcx> {
+) -> ty::PolyFnSig<'tcx>
+    where &'a Cx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     match ty.sty {
         ty::FnDef(..) |
         // Shims currently have type FnPtr. Not sure this should remain.

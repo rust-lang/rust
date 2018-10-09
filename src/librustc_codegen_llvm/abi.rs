@@ -325,7 +325,11 @@ pub trait FnTypeExt<'tcx> {
     fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx, &'ll Value>) -> &'ll Type;
     fn llvm_cconv(&self) -> llvm::CallConv;
     fn apply_attrs_llfn(&self, llfn: &'ll Value);
-    fn apply_attrs_callsite(&self, bx: &mut Builder<'a, 'll, 'tcx, &'ll Value>, callsite: &'ll Value);
+    fn apply_attrs_callsite(
+        &self,
+        bx: &mut Builder<'a, 'll, 'tcx, &'ll Value>,
+        callsite: &'ll Value
+    );
 }
 
 impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
@@ -728,7 +732,11 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         }
     }
 
-    fn apply_attrs_callsite(&self, bx: &mut Builder<'a, 'll, 'tcx, &'ll Value>, callsite: &'ll Value) {
+    fn apply_attrs_callsite(
+        &self,
+        bx: &mut Builder<'a, 'll, 'tcx, &'ll Value>,
+        callsite: &'ll Value
+    ) {
         let mut i = 0;
         let mut apply = |attrs: &ArgAttributes| {
             attrs.apply_callsite(llvm::AttributePlace::Argument(i), callsite);

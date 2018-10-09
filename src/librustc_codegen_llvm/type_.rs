@@ -18,16 +18,12 @@ use context::CodegenCx;
 use value::Value;
 use rustc_codegen_ssa::interfaces::*;
 
-
-use syntax::ast;
-use rustc::ty::layout::{self, Align, Size};
 use rustc::util::nodemap::FxHashMap;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{Ty, TyCtxt};
 use rustc::ty::layout::TyLayout;
 use rustc_target::abi::call::{CastTarget, FnType, Reg};
 use rustc_data_structures::small_c_str::SmallCStr;
 use common;
-use rustc_codegen_ssa;
 use rustc_codegen_ssa::common::TypeKind;
 use type_of::LayoutLlvmExt;
 use abi::{LlvmType, FnTypeExt};
@@ -109,6 +105,10 @@ impl BaseTypeMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
         unsafe {
             llvm::LLVMIntTypeInContext(&self.llcx, num_bits as c_uint)
         }
+    }
+
+    fn type_isize(&self) -> &'ll Type {
+        self.isize_ty
     }
 
     fn type_f32(&self) -> &'ll Type {
@@ -279,126 +279,8 @@ impl Type {
     }
 }
 
-impl DerivedTypeMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
-
-    fn type_bool(&self) -> &'ll Type {
-        &self.type_i8()
-    }
-
-    fn type_char(&self) -> &'ll Type {
-        &self.type_i32()
-    }
-
-    fn type_i8p(&self) -> &'ll Type {
-        &self.type_ptr_to(&self.type_i8())
-    }
-
-    fn type_isize(&self) -> &'ll Type {
-        &self.isize_ty
-    }
-
-    fn type_int(&self) -> &'ll Type {
-        match &self.sess().target.target.target_c_int_width[..] {
-            "16" => &self.type_i16(),
-            "32" => &self.type_i32(),
-            "64" => &self.type_i64(),
-            width => bug!("Unsupported target_c_int_width: {}", width),
-        }
-    }
-
-    fn type_int_from_ty(
-        &self,
-        t: ast::IntTy
-    ) -> &'ll Type {
-        match t {
-            ast::IntTy::Isize => &self.isize_ty,
-            ast::IntTy::I8 => &self.type_i8(),
-            ast::IntTy::I16 => &self.type_i16(),
-            ast::IntTy::I32 => &self.type_i32(),
-            ast::IntTy::I64 => &self.type_i64(),
-            ast::IntTy::I128 => &self.type_i128(),
-        }
-    }
-
-    fn type_uint_from_ty(
-        &self,
-        t: ast::UintTy
-    ) -> &'ll Type {
-        match t {
-            ast::UintTy::Usize => &self.isize_ty,
-            ast::UintTy::U8 => &self.type_i8(),
-            ast::UintTy::U16 => &self.type_i16(),
-            ast::UintTy::U32 => &self.type_i32(),
-            ast::UintTy::U64 => &self.type_i64(),
-            ast::UintTy::U128 => &self.type_i128(),
-        }
-    }
-
-    fn type_float_from_ty(
-        &self,
-        t: ast::FloatTy
-    ) -> &'ll Type {
-        match t {
-            ast::FloatTy::F32 => &self.type_f32(),
-            ast::FloatTy::F64 => &self.type_f64(),
-        }
-    }
-
-    fn type_from_integer(&self, i: layout::Integer) -> &'ll Type {
-        use rustc::ty::layout::Integer::*;
-        match i {
-            I8 => &self.type_i8(),
-            I16 => &self.type_i16(),
-            I32 => &self.type_i32(),
-            I64 => &self.type_i64(),
-            I128 => &self.type_i128(),
-        }
-    }
-
-    fn type_pointee_for_abi_align(&self, align: Align) -> &'ll Type {
-        // FIXME(eddyb) We could find a better approximation if ity.align < align.
-        let ity = layout::Integer::approximate_abi_align(self, align);
-        &self.type_from_integer(ity)
-    }
-
-    fn type_padding_filler(
-        &self,
-        size: Size,
-        align: Align
-    ) -> &'ll Type {
-        let unit = layout::Integer::approximate_abi_align(self, align);
-        let size = size.bytes();
-        let unit_size = unit.size().bytes();
-        assert_eq!(size % unit_size, 0);
-        &self.type_array(&self.type_from_integer(unit), size / unit_size)
-    }
-
-    fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
-        rustc_codegen_ssa::common::type_needs_drop(*self.tcx(), ty)
-    }
-
-    fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        rustc_codegen_ssa::common::type_is_sized(*self.tcx(), ty)
-    }
-
-    fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        rustc_codegen_ssa::common::type_is_freeze(*self.tcx(), ty)
-    }
-
-    fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
-        use syntax_pos::DUMMY_SP;
-        if ty.is_sized(self.tcx().at(DUMMY_SP), ty::ParamEnv::reveal_all()) {
-            return false;
-        }
-
-        let tail = self.tcx().struct_tail(ty);
-        match tail.sty {
-            ty::Foreign(..) => false,
-            ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
-            _ => bug!("unexpected unsized tail: {:?}", tail.sty),
-        }
-    }
-}
+impl<'a, 'll: 'a, 'tcx: 'll> DerivedTypeMethods<'a, 'll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value>
+    {}
 
 impl LayoutTypeMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
     fn backend_type(&self, ty: &TyLayout<'tcx>) -> &'ll Type {
@@ -435,4 +317,4 @@ impl LayoutTypeMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
     }
 }
 
-impl TypeMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {}
+impl<'a, 'll: 'a, 'tcx: 'll> TypeMethods<'a, 'll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {}

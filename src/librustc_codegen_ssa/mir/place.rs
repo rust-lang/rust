@@ -54,7 +54,9 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         layout: TyLayout<'tcx>,
         name: &str
-    ) -> PlaceRef<'tcx, V> where Bx::CodegenCx : Backend<'ll, Value=V> {
+    ) -> PlaceRef<'tcx, V> where Bx::CodegenCx : Backend<'ll, Value=V>,
+        &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+    {
         debug!("alloca({:?}: {:?})", name, layout);
         assert!(!layout.is_unsized(), "tried to statically allocate unsized place");
         let tmp = bx.alloca(bx.cx().backend_type(&layout), name, layout.align);
@@ -77,10 +79,12 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
         Self::alloca(bx, ptr_layout, name)
     }
 
-    pub fn len<Cx: CodegenMethods<'ll, 'tcx>>(
+    pub fn len<Cx: 'a + CodegenMethods<'a, 'll, 'tcx>>(
         &self,
         cx: &Cx
-    ) -> V where Cx : Backend<'ll, Value=V> {
+    ) -> V where Cx : Backend<'ll, Value=V>,
+        &'a Cx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+    {
         if let layout::FieldPlacement::Array { count, .. } = self.layout.fields {
             if self.layout.is_unsized() {
                 assert_eq!(count, 0);
@@ -386,19 +390,21 @@ impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
 
 impl<'a, 'll: 'a, 'tcx: 'll, V : 'll + CodegenObject> PlaceRef<'tcx, V> {
     pub fn storage_live<Bx: BuilderMethods<'a, 'll, 'tcx>>(&self, bx: &mut Bx)
-        where Bx::CodegenCx : Backend<'ll, Value = V>
+        where Bx::CodegenCx : Backend<'ll, Value = V>,
+        &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
     {
         bx.lifetime_start(self.llval, self.layout.size);
     }
 
     pub fn storage_dead<Bx: BuilderMethods<'a, 'll, 'tcx>>(&self, bx: &mut Bx)
-        where Bx::CodegenCx : Backend<'ll, Value = V>
+        where Bx::CodegenCx : Backend<'ll, Value = V>,
+        &'a Bx::CodegenCx : LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
     {
         bx.lifetime_end(self.llval, self.layout.size);
     }
 }
 
-impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'ll, 'tcx>>
+impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'a, 'll, 'tcx>>
     FunctionCx<'a, 'f, 'll, 'tcx, Cx> where
     &'a Cx: LayoutOf<Ty=Ty<'tcx>, TyLayout=TyLayout<'tcx>> + HasTyCtxt<'tcx>
 {

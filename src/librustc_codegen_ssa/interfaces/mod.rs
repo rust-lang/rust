@@ -37,6 +37,9 @@ mod debuginfo;
 mod abi;
 mod asm;
 
+use rustc::ty::Ty;
+use rustc::ty::layout::{LayoutOf, HasTyCtxt, TyLayout};
+
 pub use self::backend::{Backend, ExtraBackendMethods};
 pub use self::misc::MiscMethods;
 pub use self::statics::StaticMethods;
@@ -53,8 +56,10 @@ pub use self::asm::{AsmMethods, AsmBuilderMethods};
 
 pub trait CodegenObject : Copy + PartialEq + fmt::Debug {}
 
-pub trait CodegenMethods<'ll, 'tcx: 'll> :
-    Backend<'ll> + TypeMethods<'ll, 'tcx> + MiscMethods<'ll, 'tcx> + ConstMethods<'ll, 'tcx> +
+pub trait CodegenMethods<'a, 'll: 'a, 'tcx: 'll> :
+    Backend<'ll> + TypeMethods<'a, 'll, 'tcx> + MiscMethods<'ll, 'tcx> + ConstMethods<'ll, 'tcx> +
     StaticMethods<'ll> + DebugInfoMethods<'ll, 'tcx> + AbiMethods<'tcx> +
     IntrinsicDeclarationMethods<'ll> + DeclareMethods<'ll, 'tcx> + AsmMethods +
-    PreDefineMethods<'ll, 'tcx> {}
+    PreDefineMethods<'ll, 'tcx>
+    where &'a Self : 'a + LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{}

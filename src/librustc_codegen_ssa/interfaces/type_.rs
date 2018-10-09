@@ -10,13 +10,14 @@
 
 use super::Backend;
 use super::builder::HasCodegen;
-use common::TypeKind;
+use super::misc::MiscMethods;
+use common::{self, TypeKind};
 use syntax::ast;
 use rustc::ty::layout::{self, Align, Size};
 use std::cell::RefCell;
 use rustc::util::nodemap::FxHashMap;
-use rustc::ty::{Ty, TyCtxt};
-use rustc::ty::layout::TyLayout;
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::layout::{TyLayout, LayoutOf, HasTyCtxt};
 use rustc_target::abi::call::{ArgType, CastTarget, FnType, Reg};
 use mir::place::PlaceRef;
 
@@ -33,6 +34,7 @@ pub trait BaseTypeMethods<'ll, 'tcx: 'll> : Backend<'ll> {
 
     // Creates an integer type with the given number of bits, e.g. i24
     fn type_ix(&self, num_bits: u64) -> Self::Type;
+    fn type_isize(&self) -> Self::Type;
 
     fn type_f32(&self) -> Self::Type;
     fn type_f64(&self) -> Self::Type;
@@ -63,42 +65,124 @@ pub trait BaseTypeMethods<'ll, 'tcx: 'll> : Backend<'ll> {
     fn tcx(&self) -> &TyCtxt<'ll, 'tcx, 'tcx>;
 }
 
-pub trait DerivedTypeMethods<'ll, 'tcx: 'll> : Backend<'ll> {
-    fn type_bool(&self) -> Self::Type;
-    fn type_char(&self) -> Self::Type;
-    fn type_i8p(&self) -> Self::Type;
-    fn type_isize(&self) -> Self::Type;
-    fn type_int(&self) -> Self::Type;
+pub trait DerivedTypeMethods<'a, 'll: 'a, 'tcx: 'll> :
+    Backend<'ll> + BaseTypeMethods<'ll, 'tcx> + MiscMethods<'ll, 'tcx>
+    where &'a Self : 'a + LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
+
+    fn type_bool(&self) -> Self::Type {
+        self.type_i8()
+    }
+
+    fn type_char(&self) -> Self::Type {
+        self.type_i32()
+    }
+
+    fn type_i8p(&self) -> Self::Type {
+        self.type_ptr_to(self.type_i8())
+    }
+
+    fn type_int(&self) -> Self::Type {
+        match &self.sess().target.target.target_c_int_width[..] {
+            "16" => self.type_i16(),
+            "32" => self.type_i32(),
+            "64" => self.type_i64(),
+            width => bug!("Unsupported target_c_int_width: {}", width),
+        }
+    }
+
     fn type_int_from_ty(
         &self,
         t: ast::IntTy
-    ) -> Self::Type;
+    ) -> Self::Type {
+        match t {
+            ast::IntTy::Isize => self.type_isize(),
+            ast::IntTy::I8 => self.type_i8(),
+            ast::IntTy::I16 => self.type_i16(),
+            ast::IntTy::I32 => self.type_i32(),
+            ast::IntTy::I64 => self.type_i64(),
+            ast::IntTy::I128 => self.type_i128(),
+        }
+    }
+
     fn type_uint_from_ty(
         &self,
         t: ast::UintTy
-    ) -> Self::Type;
+    ) -> Self::Type {
+        match t {
+            ast::UintTy::Usize => self.type_isize(),
+            ast::UintTy::U8 => self.type_i8(),
+            ast::UintTy::U16 => self.type_i16(),
+            ast::UintTy::U32 => self.type_i32(),
+            ast::UintTy::U64 => self.type_i64(),
+            ast::UintTy::U128 => self.type_i128(),
+        }
+    }
+
     fn type_float_from_ty(
         &self,
         t: ast::FloatTy
-    ) -> Self::Type;
-    fn type_from_integer(&self, i: layout::Integer) -> Self::Type;
+    ) -> Self::Type {
+        match t {
+            ast::FloatTy::F32 => self.type_f32(),
+            ast::FloatTy::F64 => self.type_f64(),
+        }
+    }
 
-    /// Return a LLVM type that has at most the required alignment,
-    /// as a conservative approximation for unknown pointee types.
-    fn type_pointee_for_abi_align(&self, align: Align) -> Self::Type;
+    fn type_from_integer(&self, i: layout::Integer) -> Self::Type {
+        use rustc::ty::layout::Integer::*;
+        match i {
+            I8 => self.type_i8(),
+            I16 => self.type_i16(),
+            I32 => self.type_i32(),
+            I64 => self.type_i64(),
+            I128 => self.type_i128(),
+        }
+    }
 
-    /// Return a LLVM type that has at most the required alignment,
-    /// and exactly the required size, as a best-effort padding array.
+    fn type_pointee_for_abi_align(&'a self, align: Align) -> Self::Type {
+        // FIXME(eddyb) We could find a better approximation if ity.align < align.
+        let ity = layout::Integer::approximate_abi_align(self, align);
+        self.type_from_integer(ity)
+    }
+
     fn type_padding_filler(
-        &self,
+        &'a self,
         size: Size,
         align: Align
-    ) -> Self::Type;
+    ) -> Self::Type {
+        let unit = layout::Integer::approximate_abi_align(self, align);
+        let size = size.bytes();
+        let unit_size = unit.size().bytes();
+        assert_eq!(size % unit_size, 0);
+        self.type_array(self.type_from_integer(unit), size / unit_size)
+    }
 
-    fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool;
-    fn type_is_sized(&self, ty: Ty<'tcx>) -> bool;
-    fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool;
-    fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool;
+    fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
+        common::type_needs_drop(*self.tcx(), ty)
+    }
+
+    fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
+        common::type_is_sized(*self.tcx(), ty)
+    }
+
+    fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
+        common::type_is_freeze(*self.tcx(), ty)
+    }
+
+    fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
+        use syntax_pos::DUMMY_SP;
+        if ty.is_sized(self.tcx().at(DUMMY_SP), ty::ParamEnv::reveal_all()) {
+            return false;
+        }
+
+        let tail = self.tcx().struct_tail(ty);
+        match tail.sty {
+            ty::Foreign(..) => false,
+            ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
+            _ => bug!("unexpected unsized tail: {:?}", tail.sty),
+        }
+    }
 }
 
 pub trait LayoutTypeMethods<'ll, 'tcx> : Backend<'ll> {
@@ -118,7 +202,10 @@ pub trait LayoutTypeMethods<'ll, 'tcx> : Backend<'ll> {
     ) -> Self::Type;
 }
 
-pub trait ArgTypeMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> {
+pub trait ArgTypeMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx>
+    where &'a Self::CodegenCx :
+        LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{
     fn store_fn_arg(
         &mut self,
         ty: &ArgType<'tcx, Ty<'tcx>>,
@@ -133,5 +220,7 @@ pub trait ArgTypeMethods<'a, 'll: 'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> {
     fn memory_ty(&self, ty: &ArgType<'tcx, Ty<'tcx>>) -> <Self::CodegenCx as Backend<'ll>>::Type;
 }
 
-pub trait TypeMethods<'ll, 'tcx: 'll> :
-    BaseTypeMethods<'ll, 'tcx> + DerivedTypeMethods<'ll, 'tcx> + LayoutTypeMethods<'ll, 'tcx> {}
+pub trait TypeMethods<'a, 'll: 'a, 'tcx: 'll> :
+    BaseTypeMethods<'ll, 'tcx> + DerivedTypeMethods<'a, 'll, 'tcx> + LayoutTypeMethods<'ll, 'tcx>
+    where &'a Self : 'a + LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>> + HasTyCtxt<'tcx>
+{}
