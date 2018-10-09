@@ -215,7 +215,7 @@ fn visit_implementation_of_dispatch_from_dyn<'a, 'tcx>(
                             &format!(
                                 "the trait `DispatchFromDyn` may only be implemented \
                                 for a coercion between structures with the same \
-                                definition; expected {}, found {}",
+                                definition; expected `{}`, found `{}`",
                                 source_path, target_path,
                             )
                         ).emit();
@@ -271,7 +271,7 @@ fn visit_implementation_of_dispatch_from_dyn<'a, 'tcx>(
                                 "currently, {} fields need coercions: {}",
                                 coerced_fields.len(),
                                 coerced_fields.iter().map(|field| {
-                                    format!("{} ({} to {})",
+                                    format!("`{}` (`{}` to `{}`)",
                                         field.ident,
                                         field.ty(tcx, substs_a),
                                         field.ty(tcx, substs_b),
@@ -398,7 +398,7 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
                               E0377,
                               "the trait `CoerceUnsized` may only be implemented \
                                for a coercion between structures with the same \
-                               definition; expected {}, found {}",
+                               definition; expected `{}`, found `{}`",
                               source_path,
                               target_path);
                     return err_info;
@@ -503,7 +503,7 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
                                       diff_fields.len(),
                                       diff_fields.iter()
                                           .map(|&(i, a, b)| {
-                                              format!("{} ({} to {})", fields[i].ident, a, b)
+                                              format!("`{}` (`{}` to `{}`)", fields[i].ident, a, b)
                                           })
                                           .collect::<Vec<_>>()
                                           .join(", ")));

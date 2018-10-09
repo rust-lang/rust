@@ -19,7 +19,7 @@ LL | | {} //~^^^ ERROR [E0378]
    | |__^
    |
    = note: the trait `DispatchFromDyn` may only be implemented for a coercion between structures with a single field being coerced
-   = note: currently, 2 fields need coercions: ptr1 (*const T to *const U), ptr2 (*const T to *const U)
+   = note: currently, 2 fields need coercions: `ptr1` (`*const T` to `*const U`), `ptr2` (`*const T` to `*const U`)
 
 error[E0378]: the trait `DispatchFromDyn` may only be implemented for a coercion between structures with a single field being coerced, none found
   --> $DIR/invalid_dispatch_from_dyn_impls.rs:41:1
