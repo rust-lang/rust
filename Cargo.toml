@@ -32,7 +32,7 @@ env_logger = "0.5"
 log = "0.4"
 
 [build-dependencies]
-vergen = "2"
+vergen = "3"
 
 [features]
 cargo_miri = ["cargo_metadata"]
