@@ -163,10 +163,10 @@ impl TypeMap<'ll, 'tcx> {
     fn get_unique_type_id_of_type<'a>(&mut self, cx: &CodegenCx<'a, 'tcx>,
                                       type_: Ty<'tcx>) -> UniqueTypeId {
         // Let's see if we already have something in the cache
-        match self.type_to_unique_id.get(&type_).cloned() {
-            Some(unique_type_id) => return unique_type_id,
-            None => { /* generate one */}
-        };
+        if let Some(unique_type_id) = self.type_to_unique_id.get(&type_).cloned() {
+            return unique_type_id
+        }
+        // if not, generate one
 
         // The hasher we are using to generate the UniqueTypeId. We want
         // something that provides more than the 64 bits of the DefaultHasher.
@@ -286,11 +286,11 @@ impl RecursiveTypeDescription<'ll, 'tcx> {
 // unique id can be found in the type map
 macro_rules! return_if_metadata_created_in_meantime {
     ($cx: expr, $unique_type_id: expr) => (
-        match debug_context($cx).type_map
-                                .borrow()
-                                .find_metadata_for_unique_id($unique_type_id) {
-            Some(metadata) => return MetadataCreationResult::new(metadata, true),
-            None => { /* proceed normally */ }
+        if let Some(metadata) = debug_context($cx).type_map
+            .borrow()
+            .find_metadata_for_unique_id($unique_type_id)
+        {
+            return MetadataCreationResult::new(metadata, true)
         }
     )
 }
@@ -548,12 +548,12 @@ pub fn type_metadata(
             _ => {
                 let pointee_metadata = type_metadata(cx, ty, usage_site_span);
 
-                match debug_context(cx).type_map
-                                        .borrow()
-                                        .find_metadata_for_unique_id(unique_type_id) {
-                    Some(metadata) => return Err(metadata),
-                    None => { /* proceed normally */ }
-                };
+                if let Some(metadata) = debug_context(cx).type_map
+                    .borrow()
+                    .find_metadata_for_unique_id(unique_type_id)
+                {
+                    return Err(metadata)
+                }
 
                 Ok(MetadataCreationResult::new(pointer_type_metadata(cx, t, pointee_metadata),
                    false))
@@ -608,12 +608,12 @@ pub fn type_metadata(
                                                        unique_type_id,
                                                        t.fn_sig(cx.tcx),
                                                        usage_site_span).metadata;
-            match debug_context(cx).type_map
-                                   .borrow()
-                                   .find_metadata_for_unique_id(unique_type_id) {
-                Some(metadata) => return metadata,
-                None => { /* proceed normally */ }
-            };
+            if let Some(metadata) = debug_context(cx).type_map
+               .borrow()
+               .find_metadata_for_unique_id(unique_type_id)
+            {
+                return metadata
+            }
 
             // This is actually a function pointer, so wrap it in pointer DI
             MetadataCreationResult::new(pointer_type_metadata(cx, t, fn_metadata), false)
@@ -1476,9 +1476,8 @@ fn prepare_enum_metadata(
         }
     };
 
-    match (&layout.abi, discriminant_type_metadata) {
-        (&layout::Abi::Scalar(_), Some(discr)) => return FinalMetadata(discr),
-        _ => {}
+    if let (&layout::Abi::Scalar(_), Some(discr)) = (&layout.abi, discriminant_type_metadata) {
+        return FinalMetadata(discr)
     }
 
     let (enum_type_size, enum_type_align) = layout.size_and_align();
