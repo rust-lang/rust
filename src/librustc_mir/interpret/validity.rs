@@ -208,7 +208,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 // for safe ptrs, also check the ptr values itself
                 if !ty.is_unsafe_ptr() {
                     // Make sure this is non-NULL and aligned
-                    let (size, align) = self.size_and_align_of(place.meta, place.layout)?;
+                    let (size, align) = self.size_and_align_of(place.meta, place.layout)?
+                        // for the purpose of validity, consider foreign types to have
+                        // alignment 1 and size 0.
+                        .unwrap_or_else(|| (Size::ZERO, Align::from_bytes(1, 1).unwrap()));
                     match self.memory.check_align(place.ptr, align) {
                         Ok(_) => {},
                         Err(err) => match err.kind {

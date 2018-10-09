@@ -319,9 +319,9 @@ where
         // Offset may need adjustment for unsized fields
         let (meta, offset) = if field_layout.is_unsized() {
             // re-use parent metadata to determine dynamic field layout
-            let (_, align) = self.size_and_align_of(base.meta, field_layout)?;
+            let (_, align) = self.size_and_align_of(base.meta, field_layout)?
+                .expect("Fields cannot be extern types");
             (base.meta, offset.abi_align(align))
-
         } else {
             // base.meta could be present; we might be accessing a sized field of an unsized
             // struct.

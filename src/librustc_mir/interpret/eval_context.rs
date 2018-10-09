@@ -332,22 +332,16 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     }
 
     /// Return the actual dynamic size and alignment of the place at the given type.
-    /// Only the `meta` part of the place matters.
+    /// Only the "meta" (metadata) part of the place matters.
+    /// This can fail to provide an answer for extern types.
     pub(super) fn size_and_align_of(
         &self,
         metadata: Option<Scalar<M::PointerTag>>,
         layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, (Size, Align)> {
-        let metadata = match metadata {
-            None => {
-                assert!(!layout.is_unsized());
-                return Ok(layout.size_and_align())
-            }
-            Some(metadata) => {
-                assert!(layout.is_unsized());
-                metadata
-            }
-        };
+    ) -> EvalResult<'tcx, Option<(Size, Align)>> {
+        if !layout.is_unsized() {
+            return Ok(Some(layout.size_and_align()));
+        }
         match layout.ty.sty {
             ty::Adt(..) | ty::Tuple(..) => {
                 // First get the size of all statically known fields.
@@ -367,9 +361,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                 );
 
                 // Recurse to get the size of the dynamically sized field (must be
-                // the last field).
+                // the last field).  Can't have foreign types here, how would we
+                // adjust alignment and size for them?
                 let field = layout.field(self, layout.fields.count() - 1)?;
-                let (unsized_size, unsized_align) = self.size_and_align_of(Some(metadata), field)?;
+                let (unsized_size, unsized_align) = self.size_and_align_of(metadata, field)?
+                    .expect("Fields cannot be extern types");
 
                 // FIXME (#26403, #27023): We should be adding padding
                 // to `sized_size` (to accommodate the `unsized_align`
@@ -396,18 +392,22 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                 //
                 //   `(size + (align-1)) & -align`
 
-                Ok((size.abi_align(align), align))
+                Ok(Some((size.abi_align(align), align)))
             }
             ty::Dynamic(..) => {
-                let vtable = metadata.to_ptr()?;
+                let vtable = metadata.expect("dyn trait fat ptr must have vtable").to_ptr()?;
                 // the second entry in the vtable is the dynamic size of the object.
-                self.read_size_and_align_from_vtable(vtable)
+                Ok(Some(self.read_size_and_align_from_vtable(vtable)?))
             }
 
             ty::Slice(_) | ty::Str => {
-                let len = metadata.to_usize(self)?;
+                let len = metadata.expect("slice fat ptr must have vtable").to_usize(self)?;
                 let (elem_size, align) = layout.field(self, 0)?.size_and_align();
-                Ok((elem_size * len, align))
+                Ok(Some((elem_size * len, align)))
+            }
+
+            ty::Foreign(_) => {
+                Ok(None)
             }
 
             _ => bug!("size_and_align_of::<{:?}> not supported", layout.ty),
@@ -417,7 +417,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     pub fn size_and_align_of_mplace(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>
-    ) -> EvalResult<'tcx, (Size, Align)> {
+    ) -> EvalResult<'tcx, Option<(Size, Align)>> {
         self.size_and_align_of(mplace.meta, mplace.layout)
     }
 
