@@ -759,7 +759,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     }
 }
 
-fn user_annotated_ty_for_def(
+fn user_substs_applied_to_def(
     cx: &mut Cx<'a, 'gcx, 'tcx>,
     hir_id: hir::HirId,
     def: &Def,
@@ -795,7 +795,7 @@ fn user_annotated_ty_for_def(
             cx.user_substs_applied_to_ty_of_hir_id(hir_id),
 
         _ =>
-            bug!("user_annotated_ty_for_def: unexpected def {:?} at {:?}", def, hir_id)
+            bug!("user_substs_applied_to_def: unexpected def {:?} at {:?}", def, hir_id)
     }
 }
 
@@ -815,7 +815,7 @@ fn method_callee<'a, 'gcx, 'tcx>(
                 .unwrap_or_else(|| {
                     span_bug!(expr.span, "no type-dependent def for method callee")
                 });
-            let user_ty = user_annotated_ty_for_def(cx, expr.hir_id, def);
+            let user_ty = user_substs_applied_to_def(cx, expr.hir_id, def);
             (def.def_id(), cx.tables().node_substs(expr.hir_id), user_ty)
         }
     };
@@ -882,7 +882,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         Def::StructCtor(_, CtorKind::Fn) |
         Def::VariantCtor(_, CtorKind::Fn) |
         Def::SelfCtor(..) => {
-            let user_ty = user_annotated_ty_for_def(cx, expr.hir_id, &def);
+            let user_ty = user_substs_applied_to_def(cx, expr.hir_id, &def);
             ExprKind::Literal {
                 literal: ty::Const::zero_sized(
                     cx.tcx,
