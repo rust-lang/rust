@@ -158,7 +158,7 @@ pub struct EvalError<'tcx> {
 impl<'tcx> EvalError<'tcx> {
     pub fn print_backtrace(&mut self) {
         if let Some(ref mut backtrace) = self.backtrace {
-            error!("{}", print_backtrace(&mut *backtrace));
+            eprintln!("{}", print_backtrace(&mut *backtrace));
         }
     }
 }
@@ -206,7 +206,7 @@ impl<'tcx> From<EvalErrorKind<'tcx, u64>> for EvalError<'tcx> {
 
                 if val == "immediate" {
                     // Print it now
-                    error!("{}", print_backtrace(&mut backtrace));
+                    eprintln!("{}", print_backtrace(&mut backtrace));
                     None
                 } else {
                     Some(Box::new(backtrace))
