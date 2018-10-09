@@ -230,6 +230,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
         }
     }
 
+    #[allow(clippy::cast_possible_wrap)]
     fn constant_not(&self, o: &Constant, ty: ty::Ty<'_>) -> Option<Constant> {
         use self::Constant::*;
         match *o {
@@ -343,10 +344,10 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                             BinOpKind::Div if r != 0 => l.checked_div(r).map(zext),
                             BinOpKind::Rem if r != 0 => l.checked_rem(r).map(zext),
                             BinOpKind::Shr => l.checked_shr(
-                                    (r as u128).try_into().expect("shift too large")
+                                    r.try_into().expect("invalid shift")
                                 ).map(zext),
                             BinOpKind::Shl => l.checked_shl(
-                                    (r as u128).try_into().expect("shift too large")
+                                    r.try_into().expect("invalid shift")
                                 ).map(zext),
                             BinOpKind::BitXor => Some(zext(l ^ r)),
                             BinOpKind::BitOr => Some(zext(l | r)),
