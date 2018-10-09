@@ -375,18 +375,19 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         return err!(FunctionArgCountMismatch);
                     }
                     // Don't forget to check the return type!
+                    let callee_ret = self.eval_place(&mir::Place::Local(mir::RETURN_PLACE))?;
                     if let Some(caller_ret) = dest {
-                        let callee_ret = self.eval_place(&mir::Place::Local(mir::RETURN_PLACE))?;
                         if !Self::check_argument_compat(caller_ret.layout, callee_ret.layout) {
                             return err!(FunctionRetMismatch(
                                 caller_ret.layout.ty, callee_ret.layout.ty
                             ));
                         }
                     } else {
-                        // FIXME: The caller thinks this function cannot return. How do
-                        // we verify that the callee agrees?
-                        // On the plus side, the the callee ever writes to its return place,
-                        // that will be detected as UB (because we set that to NULL above).
+                        if !callee_ret.layout.abi.is_uninhabited() {
+                            return err!(FunctionRetMismatch(
+                                self.tcx.types.never, callee_ret.layout.ty
+                            ));
+                        }
                     }
                     Ok(())
                 })();
