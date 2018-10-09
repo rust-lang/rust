@@ -77,6 +77,20 @@ pub fn handle_join_lines(
         .try_conv_with(&world)
 }
 
+pub fn handle_on_enter(
+    world: ServerWorld,
+    params: req::TextDocumentPositionParams,
+    _token: JobToken,
+) -> Result<Option<req::SourceChange>> {
+    let file_id = params.text_document.try_conv_with(&world)?;
+    let line_index = world.analysis().file_line_index(file_id);
+    let offset = params.position.conv_with(&line_index);
+    match world.analysis().on_enter(file_id, offset) {
+        None => Ok(None),
+        Some(edit) => Ok(Some(edit.try_conv_with(&world)?))
+    }
+}
+
 pub fn handle_on_type_formatting(
     world: ServerWorld,
     params: req::DocumentOnTypeFormattingParams,

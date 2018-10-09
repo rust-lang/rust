@@ -4,7 +4,7 @@ use ra_syntax::{
     TextUnit, TextRange, SyntaxNodeRef, File, AstNode, SyntaxKind,
     ast,
     algo::{
-        find_covering_node,
+        find_covering_node, find_leaf_at_offset, LeafAtOffset,
     },
     text_utils::{intersect, contains_offset_nonstrict},
     SyntaxKind::*,
@@ -54,6 +54,58 @@ pub fn join_lines(file: &File, range: TextRange) -> LocalEdit {
         edit: edit.finish(),
         cursor_position: None,
     }
+}
+
+pub fn on_enter(file: &File, offset: TextUnit) -> Option<LocalEdit> {
+    let comment = find_leaf_at_offset(file.syntax(), offset).left_biased().filter(|it| it.kind() == COMMENT)?;
+    let prefix = comment_preffix(comment)?;
+    if offset < comment.range().start() + TextUnit::of_str(prefix) {
+        return None;
+    }
+
+    let indent = node_indent(file, comment)?;
+    let inserted = format!("\n{}{}", indent, prefix);
+    let cursor_position = offset + TextUnit::of_str(&inserted);
+    let mut edit = EditBuilder::new();
+    edit.insert(offset, inserted);
+    Some(LocalEdit {
+        edit: edit.finish(),
+        cursor_position: Some(cursor_position),
+    })
+}
+
+fn comment_preffix(comment: SyntaxNodeRef) -> Option<&'static str> {
+    let text = comment.leaf_text().unwrap();
+    let res = if text.starts_with("///") {
+        "/// "
+    } else if text.starts_with("//!") {
+        "//! "
+    } else if text.starts_with("//") {
+        "// "
+    } else {
+        return None;
+    };
+    Some(res)
+}
+
+fn node_indent<'a>(file: &'a File, node: SyntaxNodeRef) -> Option<&'a str> {
+    let ws = match find_leaf_at_offset(file.syntax(), node.range().start()) {
+        LeafAtOffset::Between(l, r) => {
+            assert!(r == node);
+            l
+        }
+        LeafAtOffset::Single(n) => {
+            assert!(n == node);
+            return Some("")
+        }
+        LeafAtOffset::None => unreachable!(),
+    };
+    if ws.kind() != WHITESPACE {
+        return None;
+    }
+    let text = ws.leaf_text().unwrap();
+    let pos = text.as_str().rfind('\n').map(|it| it + 1).unwrap_or(0);
+    Some(&text[pos..])
 }
 
 pub fn on_eq_typed(file: &File, offset: TextUnit) -> Option<LocalEdit> {
@@ -187,7 +239,7 @@ fn compute_ws(left: SyntaxNodeRef, right: SyntaxNodeRef) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use test_utils::{check_action, extract_range, extract_offset};
+    use test_utils::{check_action, extract_range, extract_offset, add_cursor};
 
     fn check_join_lines(before: &str, after: &str) {
         check_action(before, after, |file, offset| {
@@ -343,5 +395,50 @@ fn foo() {
         //     let bar = 1;
         // }
         // ");
+    }
+
+    #[test]
+    fn test_on_enter() {
+        fn apply_on_enter(before: &str) -> Option<String> {
+            let (offset, before) = extract_offset(before);
+            let file = File::parse(&before);
+            let result = on_enter(&file, offset)?;
+            let actual = result.edit.apply(&before);
+            let actual = add_cursor(&actual, result.cursor_position.unwrap());
+            Some(actual)
+        }
+
+        fn do_check(before: &str, after: &str) {
+            let actual = apply_on_enter(before).unwrap();
+            assert_eq_text!(after, &actual);
+        }
+
+        fn do_check_noop(text: &str) {
+            assert!(apply_on_enter(text).is_none())
+        }
+
+        do_check(r"
+/// Some docs<|>
+fn foo() {
+}
+", r"
+/// Some docs
+/// <|>
+fn foo() {
+}
+");
+        do_check(r"
+impl S {
+    /// Some<|> docs.
+    fn foo() {}
+}
+", r"
+impl S {
+    /// Some
+    /// <|> docs.
+    fn foo() {}
+}
+");
+        do_check_noop(r"<|>//! docz");
     }
 }

@@ -16,7 +16,7 @@ It's better to remove existing Rust plugins to avoid interference.
 
 * syntax highlighting (LSP does not have API for it, so impl is hacky
   and sometimes fall-backs to the horrible built-in highlighting)
-  
+
 * **Go to symbol in workspace** (`ctrl+t`)
   - `#Foo` searches for `Foo` type in the current workspace
   - `#foo#` searches for `foo` function in the current workspace
@@ -44,9 +44,24 @@ It's better to remove existing Rust plugins to avoid interference.
     outside of the test function, this re-runs the last test. Do bind
     this to a shortcut!
 
+* Typing assists
+  - typing `let =` tries to smartly add `;` if `=` is followed by an existing expression.
+  - Enter inside comments continues comment (`<|>` signifies cursor position):
+
+```
+/// Docs<|>
+fn foo() {}
+```
+
+```
+/// Docs
+/// <|>
+fn foo() {}
+```
+
 * code actions (use `ctrl+.` to activate).
 
-`<|>` signifies cursor position
+
 
 - Flip `,`
 
