@@ -1,0 +1,147 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-54505-no-literals.rs:16:16
+   |
+LL |     take_range(std::ops::Range { start: 0, end: 1 });
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                expected reference, found struct `std::ops::Range`
+   |                help: consider borrowing here: `&std::ops::Range { start: 0, end: 1 }`
+   |
+   = note: expected type `&_`
+              found type `std::ops::Range<{integer}>`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-54505-no-literals.rs:21:16
+   |
+LL |     take_range(::std::ops::Range { start: 0, end: 1 });
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                expected reference, found struct `std::ops::Range`
+   |                help: consider borrowing here: `&::std::ops::Range { start: 0, end: 1 }`
+   |
+   = note: expected type `&_`
+              found type `std::ops::Range<{integer}>`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-54505-no-literals.rs:26:16
+   |
+LL |     take_range(std::ops::RangeFrom { start: 1 });
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                expected reference, found struct `std::ops::RangeFrom`
+   |                help: consider borrowing here: `&std::ops::RangeFrom { start: 1 }`
+   |
+   = note: expected type `&_`
+              found type `std::ops::RangeFrom<{integer}>`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-54505-no-literals.rs:31:16
+   |
+LL |     take_range(::std::ops::RangeFrom { start: 1 });
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                expected reference, found struct `std::ops::RangeFrom`
+   |                help: consider borrowing here: `&::std::ops::RangeFrom { start: 1 }`
+   |
+   = note: expected type `&_`
+              found type `std::ops::RangeFrom<{integer}>`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-54505-no-literals.rs:36:16
+   |
+LL |     take_range(std::ops::RangeFull {});
+   |                ^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                expected reference, found struct `std::ops::RangeFull`
+   |                help: consider borrowing here: `&std::ops::RangeFull {}`
+   |
+   = note: expected type `&_`
+              found type `std::ops::RangeFull`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-54505-no-literals.rs:41:16
+   |
+LL |     take_range(::std::ops::RangeFull {});
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                expected reference, found struct `std::ops::RangeFull`
+   |                help: consider borrowing here: `&::std::ops::RangeFull {}`
+   |
+   = note: expected type `&_`
+              found type `std::ops::RangeFull`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-54505-no-literals.rs:46:16
+   |
+LL |     take_range(std::ops::RangeInclusive::new(0, 1));
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                expected reference, found struct `std::ops::RangeInclusive`
+   |                help: consider borrowing here: `&std::ops::RangeInclusive::new(0, 1)`
+   |
+   = note: expected type `&_`
+              found type `std::ops::RangeInclusive<{integer}>`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-54505-no-literals.rs:51:16
+   |
+LL |     take_range(::std::ops::RangeInclusive::new(0, 1));
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                expected reference, found struct `std::ops::RangeInclusive`
+   |                help: consider borrowing here: `&::std::ops::RangeInclusive::new(0, 1)`
+   |
+   = note: expected type `&_`
+              found type `std::ops::RangeInclusive<{integer}>`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-54505-no-literals.rs:56:16
+   |
+LL |     take_range(std::ops::RangeTo { end: 5 });
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                expected reference, found struct `std::ops::RangeTo`
+   |                help: consider borrowing here: `&std::ops::RangeTo { end: 5 }`
+   |
+   = note: expected type `&_`
+              found type `std::ops::RangeTo<{integer}>`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-54505-no-literals.rs:61:16
+   |
+LL |     take_range(::std::ops::RangeTo { end: 5 });
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                expected reference, found struct `std::ops::RangeTo`
+   |                help: consider borrowing here: `&::std::ops::RangeTo { end: 5 }`
+   |
+   = note: expected type `&_`
+              found type `std::ops::RangeTo<{integer}>`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-54505-no-literals.rs:66:16
+   |
+LL |     take_range(std::ops::RangeToInclusive { end: 5 });
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                expected reference, found struct `std::ops::RangeToInclusive`
+   |                help: consider borrowing here: `&std::ops::RangeToInclusive { end: 5 }`
+   |
+   = note: expected type `&_`
+              found type `std::ops::RangeToInclusive<{integer}>`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-54505-no-literals.rs:71:16
+   |
+LL |     take_range(::std::ops::RangeToInclusive { end: 5 });
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                expected reference, found struct `std::ops::RangeToInclusive`
+   |                help: consider borrowing here: `&::std::ops::RangeToInclusive { end: 5 }`
+   |
+   = note: expected type `&_`
+              found type `std::ops::RangeToInclusive<{integer}>`
+
+error: aborting due to 12 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
