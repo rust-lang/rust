@@ -523,7 +523,9 @@ impl BorrowKind {
     pub fn allows_two_phase_borrow(&self) -> bool {
         match *self {
             BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => false,
-            BorrowKind::Mut { allow_two_phase_borrow } => allow_two_phase_borrow,
+            BorrowKind::Mut {
+                allow_two_phase_borrow,
+            } => allow_two_phase_borrow,
         }
     }
 }
@@ -596,7 +598,7 @@ pub enum ImplicitSelfKind {
     MutRef,
     /// Represents when a function does not have a self argument or
     /// when a function has a `self: X` argument.
-    None
+    None,
 }
 
 CloneTypeFoldableAndLiftImpls! { BindingForm<'tcx>, }
@@ -820,8 +822,7 @@ impl<'tcx> LocalDecl<'tcx> {
                 pat_span: _,
             }))) => true,
 
-            Some(ClearCrossCrate::Set(BindingForm::ImplicitSelf(ImplicitSelfKind::Imm)))
-                => true,
+            Some(ClearCrossCrate::Set(BindingForm::ImplicitSelf(ImplicitSelfKind::Imm))) => true,
 
             _ => false,
         }
@@ -873,12 +874,7 @@ impl<'tcx> LocalDecl<'tcx> {
     }
 
     #[inline]
-    fn new_local(
-        ty: Ty<'tcx>,
-        mutability: Mutability,
-        internal: bool,
-        span: Span,
-    ) -> Self {
+    fn new_local(ty: Ty<'tcx>, mutability: Mutability, internal: bool, span: Span) -> Self {
         LocalDecl {
             mutability,
             ty,
@@ -1603,13 +1599,15 @@ impl<'tcx> TerminatorKind<'tcx> {
                                 Scalar::Bits {
                                     bits: u,
                                     size: size.bytes() as u8,
-                                }.into(),
+                                }
+                                .into(),
                             ),
                             ty: switch_ty,
                         };
                         fmt_const_val(&mut s, &c).unwrap();
                         s.into()
-                    }).chain(iter::once("otherwise".into()))
+                    })
+                    .chain(iter::once("otherwise".into()))
                     .collect()
             }
             Call {
@@ -1843,9 +1841,11 @@ impl<'tcx> Debug for Statement<'tcx> {
                 ref outputs,
                 ref inputs,
             } => write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs),
-            AscribeUserType(ref place, ref variance, ref c_ty) => {
-                write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
-            }
+            AscribeUserType(ref place, ref variance, ref c_ty) => write!(
+                fmt,
+                "AscribeUserType({:?}, {:?}, {:?})",
+                place, variance, c_ty
+            ),
             Nop => write!(fmt, "nop"),
         }
     }
@@ -1970,8 +1970,8 @@ impl<'tcx> Place<'tcx> {
     /// Find the innermost `Local` from this `Place`.
     pub fn local(&self) -> Option<Local> {
         match self {
-            Place::Local(local) |
-            Place::Projection(box Projection {
+            Place::Local(local)
+            | Place::Projection(box Projection {
                 base: Place::Local(local),
                 elem: ProjectionElem::Deref,
             }) => Some(*local),
@@ -2701,7 +2701,9 @@ pub struct ClosureOutlivesRequirement<'tcx> {
 /// order of the category, thereby influencing diagnostic output.
 ///
 /// See also [rustc_mir::borrow_check::nll::constraints]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(
+    Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable,
+)]
 pub enum ConstraintCategory {
     Return,
     TypeAnnotation,
