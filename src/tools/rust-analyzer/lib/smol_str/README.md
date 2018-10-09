@@ -5,7 +5,7 @@
 [![API reference](https://docs.rs/smol_str/badge.svg)](https://docs.rs/smol_str/)
 
 
-A `SmolStr` is a string type that has the following properties
+A `SmolStr` is a string type that has the following properties:
 
   * `size_of::<SmolStr>() == size_of::<String>()`
   * Strings up to 22 bytes long do not use heap allocations
@@ -15,6 +15,6 @@ A `SmolStr` is a string type that has the following properties
 
 Unlike `String`, however, `SmolStr` is immutable. The primary use-case for
 `SmolStr` is a good enough default storage for tokens of typical programming
-languages. A specialized interner might be a better solution for some use-cases.
+languages. A specialized interner might be a better solution for some use cases.
 
-Intenrally, `SmolStr` is roughly an `enum { Heap<Arc<str>>, Inline([u8; 22]) }`.
+Internally, `SmolStr` is roughly an `enum { Heap(Arc<str>), Inline([u8; 22]) }`.
