@@ -43,17 +43,17 @@ pub(crate) fn extend(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange>
 }
 
 fn extend_single_word_in_comment(leaf: SyntaxNodeRef, offset: TextUnit) -> Option<TextRange> {
-    let text : &str = leaf.leaf_text()?;
+    let text: &str = leaf.leaf_text()?;
     let cursor_position: u32 = (offset - leaf.range().start()).into();
 
     let (before, after) = text.split_at(cursor_position as usize);
     let start_idx = before.rfind(char::is_whitespace)? as u32;
     let end_idx = after.find(char::is_whitespace)? as u32;
 
-    let from : TextUnit = (start_idx + 1).into();
-    let to : TextUnit = (cursor_position + end_idx).into();
+    let from: TextUnit = (start_idx + 1).into();
+    let to: TextUnit = (cursor_position + end_idx).into();
 
-    Some(TextRange::from_to(from, to))
+    Some(TextRange::from_to(from, to) + leaf.range().start())
 }
 
 fn extend_ws(root: SyntaxNodeRef, ws: SyntaxNodeRef, offset: TextUnit) -> TextRange {
@@ -218,6 +218,15 @@ fn main() { foo+<|>bar;}
         do_check(
             r#"// foo bar b<|>az quxx"#,
             &["baz", "// foo bar baz quxx"]
+        );
+        do_check(r#"
+impl S {
+    fn foo() {
+        // hel<|>lo world
+    }
+}
+        "#,
+            &["hello", "// hello world"]
         );
     }
 }
