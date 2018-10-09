@@ -371,7 +371,7 @@ pub fn create_function_debug_context(
             }
         }
 
-        return create_DIArray(DIB(cx), &signature[..]);
+        create_DIArray(DIB(cx), &signature[..])
     }
 
     fn get_template_parameters(
@@ -428,7 +428,7 @@ pub fn create_function_debug_context(
             vec![]
         };
 
-        return create_DIArray(DIB(cx), &template_params[..]);
+        create_DIArray(DIB(cx), &template_params[..])
     }
 
     fn get_parameter_names(cx: &CodegenCx,

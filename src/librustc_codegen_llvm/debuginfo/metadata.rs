@@ -1551,7 +1551,7 @@ fn composite_type_metadata(
                                   composite_type_metadata,
                                   member_descriptions);
 
-    return composite_type_metadata;
+    composite_type_metadata
 }
 
 fn set_members_of_composite_type(cx: &CodegenCx<'ll, '_>,
@@ -1639,7 +1639,7 @@ fn create_struct_stub(
             unique_type_id.as_ptr())
     };
 
-    return metadata_stub;
+    metadata_stub
 }
 
 fn create_union_stub(
@@ -1675,7 +1675,7 @@ fn create_union_stub(
             unique_type_id.as_ptr())
     };
 
-    return metadata_stub;
+    metadata_stub
 }
 
 /// Creates debug information for the given global variable.
