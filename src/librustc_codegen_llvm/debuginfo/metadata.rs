@@ -582,12 +582,12 @@ pub fn type_metadata(
         }
         ty::Dynamic(..) => {
             MetadataCreationResult::new(
-                        trait_pointer_metadata(cx, t, None, unique_type_id),
-            false)
+                trait_pointer_metadata(cx, t, None, unique_type_id),
+                false)
         }
         ty::Foreign(..) => {
             MetadataCreationResult::new(
-                        foreign_type_metadata(cx, t, unique_type_id),
+            foreign_type_metadata(cx, t, unique_type_id),
             false)
         }
         ty::RawPtr(ty::TypeAndMut{ty, ..}) |
@@ -646,16 +646,16 @@ pub fn type_metadata(
             }
             AdtKind::Union => {
                 prepare_union_metadata(cx,
-                                    t,
-                                    unique_type_id,
-                                    usage_site_span).finalize(cx)
+                                       t,
+                                       unique_type_id,
+                                       usage_site_span).finalize(cx)
             }
             AdtKind::Enum => {
                 prepare_enum_metadata(cx,
-                                    t,
-                                    def.did,
-                                    unique_type_id,
-                                    usage_site_span).finalize(cx)
+                                      t,
+                                      def.did,
+                                      unique_type_id,
+                                      usage_site_span).finalize(cx)
             }
         },
         ty::Tuple(ref elements) => {
@@ -943,7 +943,7 @@ enum MemberDescriptionFactory<'ll, 'tcx> {
 
 impl MemberDescriptionFactory<'ll, 'tcx> {
     fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>)
-                                      -> Vec<MemberDescription<'ll>> {
+                                  -> Vec<MemberDescription<'ll>> {
         match *self {
             StructMDF(ref this) => {
                 this.create_member_descriptions(cx)
@@ -977,7 +977,7 @@ struct StructMemberDescriptionFactory<'tcx> {
 
 impl<'tcx> StructMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>)
-                                      -> Vec<MemberDescription<'ll>> {
+                                  -> Vec<MemberDescription<'ll>> {
         let layout = cx.layout_of(self.ty);
         self.variant.fields.iter().enumerate().map(|(i, f)| {
             let name = if self.variant.ctor_kind == CtorKind::Fn {
@@ -1047,7 +1047,7 @@ struct TupleMemberDescriptionFactory<'tcx> {
 
 impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>)
-                                      -> Vec<MemberDescription<'ll>> {
+                                  -> Vec<MemberDescription<'ll>> {
         let layout = cx.layout_of(self.ty);
         self.component_types.iter().enumerate().map(|(i, &component_type)| {
             let (size, align) = cx.size_and_align_of(component_type);
@@ -1101,7 +1101,7 @@ struct UnionMemberDescriptionFactory<'tcx> {
 
 impl<'tcx> UnionMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>)
-                                      -> Vec<MemberDescription<'ll>> {
+                                  -> Vec<MemberDescription<'ll>> {
         self.variant.fields.iter().enumerate().map(|(i, f)| {
             let field = self.layout.field(cx, i);
             let (size, align) = field.size_and_align();
@@ -1170,7 +1170,7 @@ struct EnumMemberDescriptionFactory<'ll, 'tcx> {
 
 impl EnumMemberDescriptionFactory<'ll, 'tcx> {
     fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>)
-                                      -> Vec<MemberDescription<'ll>> {
+                                  -> Vec<MemberDescription<'ll>> {
         let adt = &self.enum_type.ty_adt_def().unwrap();
         match self.layout.variants {
             layout::Variants::Single { .. } if adt.variants.is_empty() => vec![],

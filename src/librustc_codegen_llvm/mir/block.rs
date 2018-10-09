@@ -49,9 +49,9 @@ impl FunctionCx<'a, 'll, 'tcx> {
     }
 
     fn codegen_terminator(&mut self,
-                        mut bx: Builder<'a, 'll, 'tcx>,
-                        bb: mir::BasicBlock,
-                        terminator: &mir::Terminator<'tcx>)
+                          mut bx: Builder<'a, 'll, 'tcx>,
+                          bb: mir::BasicBlock,
+                          terminator: &mir::Terminator<'tcx>)
     {
         debug!("codegen_terminator: {:?}", terminator);
 
@@ -125,10 +125,10 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     this.unreachable_block()
                 };
                 let invokeret = bx.invoke(fn_ptr,
-                                           &llargs,
-                                           ret_bx,
-                                           llblock(this, cleanup),
-                                           cleanup_bundle);
+                                          &llargs,
+                                          ret_bx,
+                                          llblock(this, cleanup),
+                                          cleanup_bundle);
                 fn_ty.apply_attrs_callsite(&bx, invokeret);
 
                 if let Some((ret_dest, target)) = destination {
@@ -213,7 +213,8 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 } else {
                     let (otherwise, targets) = targets.split_last().unwrap();
                     let switch = bx.switch(discr.immediate(),
-                                            llblock(self, *otherwise), values.len());
+                                           llblock(self, *otherwise),
+                                           values.len());
                     let switch_llty = bx.cx.layout_of(switch_ty).immediate_llvm_type(bx.cx);
                     for (&value, target) in values.iter().zip(targets) {
                         let llval = C_uint_big(switch_llty, value);
@@ -387,8 +388,8 @@ impl FunctionCx<'a, 'll, 'tcx> {
                         let msg_str = Symbol::intern(str).as_str();
                         let msg_str = C_str_slice(bx.cx, msg_str);
                         let msg_file_line_col = C_struct(bx.cx,
-                                                     &[msg_str, filename, line, col],
-                                                     false);
+                                                         &[msg_str, filename, line, col],
+                                                         false);
                         let msg_file_line_col = consts::addr_of(bx.cx,
                                                                 msg_file_line_col,
                                                                 align,
@@ -509,8 +510,8 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     let msg_str = Symbol::intern(&str).as_str();
                     let msg_str = C_str_slice(bx.cx, msg_str);
                     let msg_file_line_col = C_struct(bx.cx,
-                                                    &[msg_str, filename, line, col],
-                                                    false);
+                                                     &[msg_str, filename, line, col],
+                                                     false);
                     let msg_file_line_col = consts::addr_of(bx.cx,
                                                             msg_file_line_col,
                                                             align,
@@ -619,7 +620,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
 
                     let callee_ty = instance.as_ref().unwrap().ty(bx.cx.tcx);
                     codegen_intrinsic_call(&bx, callee_ty, &fn_ty, &args, dest,
-                                         terminator.source_info.span);
+                                           terminator.source_info.span);
 
                     if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
                         self.store_return(&bx, ret_dest, &fn_ty.ret, dst.llval);
@@ -756,7 +757,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
             // Have to load the argument, maybe while casting it.
             if let PassMode::Cast(ty) = arg.mode {
                 llval = bx.load(bx.pointercast(llval, ty.llvm_type(bx.cx).ptr_to()),
-                                 align.min(arg.layout.align));
+                                align.min(arg.layout.align));
             } else {
                 // We can't use `PlaceRef::load` here because the argument
                 // may have a type we don't treat as immediate, but the ABI
@@ -778,10 +779,10 @@ impl FunctionCx<'a, 'll, 'tcx> {
     }
 
     fn codegen_arguments_untupled(&mut self,
-                                bx: &Builder<'a, 'll, 'tcx>,
-                                operand: &mir::Operand<'tcx>,
-                                llargs: &mut Vec<&'ll Value>,
-                                args: &[ArgType<'tcx, Ty<'tcx>>]) {
+                                  bx: &Builder<'a, 'll, 'tcx>,
+                                  operand: &mir::Operand<'tcx>,
+                                  llargs: &mut Vec<&'ll Value>,
+                                  args: &[ArgType<'tcx, Ty<'tcx>>]) {
         let tuple = self.codegen_operand(bx, operand);
 
         // Handle both by-ref and immediate tuples.
@@ -933,8 +934,8 @@ impl FunctionCx<'a, 'll, 'tcx> {
     }
 
     fn codegen_transmute(&mut self, bx: &Builder<'a, 'll, 'tcx>,
-                       src: &mir::Operand<'tcx>,
-                       dst: &mir::Place<'tcx>) {
+                         src: &mir::Operand<'tcx>,
+                         dst: &mir::Place<'tcx>) {
         if let mir::Place::Local(index) = *dst {
             match self.locals[index] {
                 LocalRef::Place(place) => self.codegen_transmute_into(bx, src, place),
@@ -961,8 +962,8 @@ impl FunctionCx<'a, 'll, 'tcx> {
     }
 
     fn codegen_transmute_into(&mut self, bx: &Builder<'a, 'll, 'tcx>,
-                            src: &mir::Operand<'tcx>,
-                            dst: PlaceRef<'ll, 'tcx>) {
+                              src: &mir::Operand<'tcx>,
+                              dst: PlaceRef<'ll, 'tcx>) {
         let src = self.codegen_operand(bx, src);
         let llty = src.layout.llvm_type(bx.cx);
         let cast_ptr = bx.pointercast(dst.llval, llty.ptr_to());
