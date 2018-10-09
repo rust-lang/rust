@@ -18,6 +18,7 @@
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
         "postinstall": "node ./node_modules/vscode/bin/install",
+        "fix": "prettier **/*.{json,ts} --write && tslint --project . --fix",
         "lint": "tslint --project .",
         "prettier": "prettier **/*.{json,ts}",
         "travis": "npm run compile && npm run lint && npm run prettier --list-different"

@@ -16,21 +16,26 @@ export function activate(context: vscode.ExtensionContext) {
         disposeOnDeactivation(vscode.commands.registerCommand(name, f));
     }
     function overrideCommand(
-
         name: string,
-        f: (...args: any[]) => Promise<boolean>,
+        f: (...args: any[]) => Promise<boolean>
     ) {
         const defaultCmd = `default:${name}`;
-        const original = async (...args: any[]) => await vscode.commands.executeCommand(defaultCmd, ...args);
+        const original = async (...args: any[]) =>
+            await vscode.commands.executeCommand(defaultCmd, ...args);
+
         registerCommand(name, async (...args: any[]) => {
             const editor = vscode.window.activeTextEditor;
-            if (!editor || !editor.document || editor.document.languageId !== 'rust') {
+            if (
+                !editor ||
+                !editor.document ||
+                editor.document.languageId !== 'rust'
+            ) {
                 return await original(...args);
             }
-            if (!await f(...args)) {
+            if (!(await f(...args))) {
                 return await original(...args);
             }
-        })
+        });
     }
 
     // Commands are requests from vscode to the language server
@@ -44,12 +49,12 @@ export function activate(context: vscode.ExtensionContext) {
         'ra-lsp.applySourceChange',
         commands.applySourceChange.handle
     );
-    overrideCommand('type', commands.on_enter.handle)
+    overrideCommand('type', commands.onEnter.handle);
 
     // Notifications are events triggered by the language server
     const allNotifications: Iterable<
         [string, lc.GenericNotificationHandler]
-        > = [['m/publishDecorations', notifications.publishDecorations.handle]];
+    > = [['m/publishDecorations', notifications.publishDecorations.handle]];
 
     // The events below are plain old javascript events, triggered and handled by vscode
     vscode.window.onDidChangeActiveTextEditor(
