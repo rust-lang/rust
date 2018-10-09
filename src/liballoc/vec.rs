@@ -121,12 +121,16 @@ use raw_vec::RawVec;
 /// ```
 ///
 /// It can also initialize each element of a `Vec<T>` with a given value.
-/// Initializing a `Vec<T>` in this manner is the most efficient and safest way to allocate a
-/// vector of zeros as previously zeroed memory is requested from the operating system:
+/// This may be more efficient than performing allocation and initialization
+/// in separate steps, especially when initializing a vector of zeros:
 ///
 /// ```
 /// let vec = vec![0; 5];
 /// assert_eq!(vec, [0, 0, 0, 0, 0]);
+///
+/// // The following is equivalent, but potentially slower:
+/// let mut vec1 = Vec::with_capacity(5);
+/// vec1.resize(5, 0);
 /// ```
 ///
 /// Use a `Vec<T>` as an efficient stack:
