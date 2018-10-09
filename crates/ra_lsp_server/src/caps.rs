@@ -7,6 +7,7 @@ use languageserver_types::{
     TextDocumentSyncKind,
     ExecuteCommandOptions,
     CompletionOptions,
+    SignatureHelpOptions,
     DocumentOnTypeFormattingOptions,
 };
 
@@ -26,7 +27,9 @@ pub fn server_capabilities() -> ServerCapabilities {
             resolve_provider: None,
             trigger_characters: None,
         }),
-        signature_help_provider: None,
+        signature_help_provider: Some(SignatureHelpOptions {
+            trigger_characters: Some(vec!["(".to_string(), ",".to_string()])
+        }),
         definition_provider: Some(true),
         type_definition_provider: None,
         implementation_provider: None,

@@ -12,18 +12,17 @@ use relative_path::RelativePath;
 use rustc_hash::FxHashSet;
 use ra_editor::{self, FileSymbol, LineIndex, find_node_at_offset, LocalEdit, resolve_local_name};
 use ra_syntax::{
-    TextUnit, TextRange, SmolStr, File, AstNode,
+    TextUnit, TextRange, SmolStr, File, AstNode, SyntaxNodeRef,
     SyntaxKind::*,
-    ast::{self, NameOwner},
+    ast::{self, NameOwner, ArgListOwner, Expr},
 };
 
 use {
     FileId, FileResolver, Query, Diagnostic, SourceChange, SourceFileEdit, Position, FileSystemEdit,
     JobToken, CrateGraph, CrateId,
     roots::{SourceRoot, ReadonlySourceRoot, WritableSourceRoot},
-    descriptors::{ModuleTreeDescriptor, Problem},
+    descriptors::{FnDescriptor, ModuleTreeDescriptor, Problem},
 };
-
 
 #[derive(Clone, Debug)]
 pub(crate) struct FileResolverImp {
@@ -306,6 +305,70 @@ impl AnalysisImpl {
             .collect()
     }
 
+    pub fn resolve_callable(&self, file_id: FileId, offset: TextUnit, token: &JobToken)
+        -> Option<(FnDescriptor, Option<usize>)> {
+
+        let root = self.root(file_id);
+        let file = root.syntax(file_id);
+        let syntax = file.syntax();
+
+        // Find the calling expression and it's NameRef
+        let calling_node = FnCallNode::with_node(syntax, offset)?;
+        let name_ref = calling_node.name_ref()?;
+
+        // Resolve the function's NameRef (NOTE: this isn't entirely accurate).
+        let file_symbols = self.index_resolve(name_ref, token);
+        for (_, fs) in file_symbols {
+            if fs.kind == FN_DEF {
+                if let Some(fn_def) = find_node_at_offset(syntax, fs.node_range.start()) {
+                    let descriptor = FnDescriptor::new(fn_def);
+
+                    // If we have a calling expression let's find which argument we are on
+                    let mut current_parameter = None;
+
+                    let num_params = descriptor.params.len();
+                    let has_self = fn_def.param_list()
+                        .and_then(|l| l.self_param())
+                        .is_some();
+
+
+                    if num_params == 1 {
+                        if !has_self {
+                            current_parameter = Some(1);
+                        }
+                    }
+                    else if num_params > 1 {
+                        // Count how many parameters into the call we are.
+                        // TODO: This is best effort for now and should be fixed at some point.
+                        // It may be better to see where we are in the arg_list and then check
+                        // where offset is in that list (or beyond).
+                        // Revisit this after we get documentation comments in.
+                        if let Some(ref arg_list) = calling_node.arg_list() {
+                            let start = arg_list.syntax().range().start();
+
+                            let range_search = TextRange::from_to(start, offset);
+                            let mut commas : usize = arg_list.syntax().text()
+                                .slice(range_search).to_string()
+                                .matches(",")
+                                .count();
+
+                            // If we have a method call eat the first param since it's just self.
+                            if has_self {
+                                commas = commas + 1;
+                            }
+
+                            current_parameter = Some(commas);
+                        }
+                    }
+
+                    return Some((descriptor, current_parameter));
+                }
+            }
+        }
+
+        None
+    }
+
     fn index_resolve(&self, name_ref: ast::NameRef, token: &JobToken) -> Vec<(FileId, FileSymbol)> {
         let name = name_ref.text();
         let mut query = Query::new(name.to_string());
@@ -353,5 +416,48 @@ impl CrateGraph {
             .iter()
             .find(|(_crate_id, &root_id)| root_id == file_id)?;
         Some(crate_id)
+    }
+}
+
+enum FnCallNode<'a> {
+    CallExpr(ast::CallExpr<'a>),
+    MethodCallExpr(ast::MethodCallExpr<'a>)
+}
+
+impl<'a> FnCallNode<'a> {
+    pub fn with_node(syntax: SyntaxNodeRef, offset: TextUnit) -> Option<FnCallNode> {
+        if let Some(expr) = find_node_at_offset::<ast::CallExpr>(syntax, offset) {
+            return Some(FnCallNode::CallExpr(expr));
+        }
+        if let Some(expr) = find_node_at_offset::<ast::MethodCallExpr>(syntax, offset) {
+            return Some(FnCallNode::MethodCallExpr(expr));
+        }
+        None
+    }
+
+    pub fn name_ref(&self) -> Option<ast::NameRef> {
+        match *self {
+            FnCallNode::CallExpr(call_expr) => {
+                Some(match call_expr.expr()? {
+                    Expr::PathExpr(path_expr) => {
+                        path_expr.path()?.segment()?.name_ref()?
+                    },
+                    _ => return None
+                })
+            },
+
+            FnCallNode::MethodCallExpr(call_expr) => {
+                call_expr.syntax().children()
+                    .filter_map(ast::NameRef::cast)
+                    .nth(0)
+            }
+        }
+    }
+
+    pub fn arg_list(&self) -> Option<ast::ArgList> {
+        match *self {
+            FnCallNode::CallExpr(expr) => expr.arg_list(),
+            FnCallNode::MethodCallExpr(expr) => expr.arg_list()
+        }
     }
 }

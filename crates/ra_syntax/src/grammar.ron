@@ -342,7 +342,7 @@ Grammar(
         "TupleExpr": (),
         "ArrayExpr": (),
         "ParenExpr": (),
-        "PathExpr": (),
+        "PathExpr": (options: ["Path"]),
         "LambdaExpr": (
             options: [
                 "ParamList",

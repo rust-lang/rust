@@ -38,6 +38,7 @@ pub use ra_editor::{
     Fold, FoldKind
 };
 pub use job::{JobToken, JobHandle};
+pub use descriptors::FnDescriptor;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FileId(pub u32);
@@ -235,6 +236,11 @@ impl Analysis {
     pub fn folding_ranges(&self, file_id: FileId) -> Vec<Fold> {
         let file = self.imp.file_syntax(file_id);
         ra_editor::folding_ranges(&file)
+    }
+
+    pub fn resolve_callable(&self, file_id: FileId, offset: TextUnit, token: &JobToken)
+        -> Option<(FnDescriptor, Option<usize>)> {
+        self.imp.resolve_callable(file_id, offset, token)
     }
 }
 

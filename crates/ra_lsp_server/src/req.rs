@@ -14,6 +14,7 @@ pub use languageserver_types::{
     CompletionParams, CompletionResponse,
     DocumentOnTypeFormattingParams,
     TextDocumentEdit,
+    SignatureHelp, Hover
 };
 
 pub enum SyntaxTree {}
