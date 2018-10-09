@@ -1,18 +1,20 @@
 use std::{fmt, hash, ops::Deref, sync::Arc};
 
-/// A `SmolStr` is a string type that has the following properties
+/// A `SmolStr` is a string type that has the following properties:
 ///
-///  * `size_of::<SmolStr>() == size_of::<String>()`
-///  * Strings up to 22 bytes long do not use heap allocations
-///  * Runs of `\n` and space symbols (typical whitespace pattern of indentation
-///    in programming laguages) do not use heap allocations
-///  * `Clone` is `O(1)`
+/// * `size_of::<SmolStr>() == size_of::<String>()`
+/// * `Clone` is `O(1)`
+/// * Strings are stack-allocated if they are:
+///     * Up to 22 bytes long
+///     * Longer than 22 bytes, but substrings of `WS` (see below). Such strings consist
+///     solely of consecutive newlines, followed by consecutive spaces
+/// * If a string does not satisfy the aforementioned conditions, it is heap-allocated
 ///
-/// Unlike `String`, however, `SmolStr` is immutable. The primary use-case for
+/// Unlike `String`, however, `SmolStr` is immutable. The primary use case for
 /// `SmolStr` is a good enough default storage for tokens of typical programming
-/// languages. A specialized interner might be a better solution for some use-cases.
-///
-/// Intenrally, `SmolStr` is roughly an `enum { Heap<Arc<str>>, Inline([u8; 22]) }`.
+/// languages. Strings consisting of a series of newlines, followed by a series of
+/// whitespace are a typical pattern in computer programms because of indentation.
+/// Note that a specialized interner might be a better solution for some use cases.
 #[derive(Clone)]
 pub struct SmolStr(Repr);
 
@@ -128,7 +130,6 @@ impl<T> From<T> for SmolStr
 }
 
 const INLINE_CAP: usize = 22;
-const WS_TAG: u8 = (INLINE_CAP + 1) as u8;
 const N_NEWLINES: usize = 32;
 const N_SPACES: usize = 128;
 const WS: &str =
@@ -138,6 +139,7 @@ const WS: &str =
 enum Repr {
     Heap(Arc<str>),
     Inline { len: u8, buf: [u8; INLINE_CAP] },
+    Substring { newlines: usize, spaces: usize },
 }
 
 impl Repr {
@@ -160,10 +162,7 @@ impl Repr {
             let newlines = text.bytes().take_while(|&b| b == b'\n').count();
             let spaces = text[newlines..].bytes().take_while(|&b| b == b' ').count();
             if newlines + spaces == len && newlines <= N_NEWLINES && spaces <= N_SPACES {
-                let mut buf = [0; INLINE_CAP];
-                buf[0] = newlines as u8;
-                buf[1] = spaces as u8;
-                return Repr::Inline { len: WS_TAG, buf };
+                return Repr::Substring { newlines, spaces };
             }
         }
 
@@ -173,14 +172,8 @@ impl Repr {
     fn len(&self) -> usize {
         match self {
             Repr::Heap(data) => data.len(),
-            Repr::Inline { len, buf } => {
-                if *len == WS_TAG {
-                    let newlines = buf[0] as usize;
-                    let spaces = buf[1] as usize;
-                    return newlines + spaces;
-                }
-                *len as usize
-            }
+            Repr::Inline { len, .. } => *len as usize,
+            Repr::Substring { newlines, spaces } => *newlines + *spaces
         }
     }
 
@@ -188,16 +181,15 @@ impl Repr {
         match self {
             Repr::Heap(data) => &*data,
             Repr::Inline { len, buf } => {
-                if *len == WS_TAG {
-                    let newlines = buf[0] as usize;
-                    let spaces = buf[1] as usize;
-                    assert!(newlines <= N_NEWLINES && spaces <= N_SPACES);
-                    return &WS[N_NEWLINES - newlines..N_NEWLINES + spaces];
-                }
-
                 let len = *len as usize;
                 let buf = &buf[..len];
                 unsafe { ::std::str::from_utf8_unchecked(buf) }
+            }
+            Repr::Substring { newlines, spaces } => {
+                let newlines = *newlines;
+                let spaces = *spaces;
+                assert!(newlines <= N_NEWLINES && spaces <= N_SPACES);
+                &WS[N_NEWLINES - newlines..N_NEWLINES + spaces]
             }
         }
     }
