@@ -145,8 +145,8 @@ pub enum Bencoding<'i> {
     Int(i64),
     List(Vec<Bencoding<'i>>),
     /// A bencoded dict value. The first element the slice of bytes in the
-    /// source that the dict is composed of. The second is the dict,
-    /// decoded into an ordered map.
+    /// source that the dict is composed of. The second is the dict, decoded
+    /// into an ordered map.
     // TODO make Dict "structlike" AKA name the two values.
     Dict(&'i [u8], BTreeMap<&'i [u8], Bencoding<'i>>),
 }
