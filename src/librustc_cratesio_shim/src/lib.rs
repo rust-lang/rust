@@ -12,6 +12,7 @@
 #![allow(unused_extern_crates)]
 
 #![cfg_attr(not(stage0), feature(nll))]
+#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 
 extern crate bitflags;
 extern crate log;

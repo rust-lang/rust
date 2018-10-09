@@ -10,29 +10,31 @@
 
 // Various examples of structs whose fields are not well-formed.
 
+// revisions:lexical nll
+
 #![allow(dead_code)]
+#![cfg_attr(nll, feature(nll))]
 
-trait Trait<'a, T> {
-    type Out;
-}
-trait Trait1<'a, 'b, T> {
-    type Out;
-}
-
-impl<'a, T> Trait<'a, T> for usize {
-    type Out = &'a T;
+struct Ref<'a, T> {
+    field: &'a T
+        //[lexical]~^ ERROR the parameter type `T` may not live long enough
+        //[nll]~^^ ERROR the parameter type `T` may not live long enough
 }
 
 struct RefOk<'a, T:'a> {
     field: &'a T
 }
 
-impl<'a, T> Trait<'a, T> for u32 {
-    type Out = RefOk<'a, T>;
+struct RefIndirect<'a, T> {
+    field: RefOk<'a, T>
+        //[lexical]~^ ERROR the parameter type `T` may not live long enough
+        //[nll]~^^ ERROR the parameter type `T` may not live long enough
 }
 
-impl<'a, 'b, T> Trait1<'a, 'b, T> for u32 {
-    type Out = &'a &'b T;
+struct DoubleRef<'a, 'b, T> {
+    field: &'a &'b T
+        //[lexical]~^ ERROR reference has a longer lifetime than the data it references
+        //[nll]~^^ ERROR reference has a longer lifetime than the data it references
 }
 
 fn main() { }

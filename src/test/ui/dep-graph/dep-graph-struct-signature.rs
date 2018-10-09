@@ -88,6 +88,7 @@ mod invalid_signatures {
     }
 
     #[rustc_then_this_would_need(FnSignature)] //~ ERROR no path
+    #[rustc_then_this_would_need(TypeckTables)] //~ ERROR no path
     fn b(x: WontChange) { }
 
     #[rustc_then_this_would_need(FnSignature)] //~ ERROR no path from `WillChange`

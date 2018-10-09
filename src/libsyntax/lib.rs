@@ -22,6 +22,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(macro_at_most_once_rep)]
 #![cfg_attr(not(stage0), feature(nll))]
+#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 #![feature(rustc_attrs)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]

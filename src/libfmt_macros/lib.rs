@@ -21,6 +21,7 @@
        test(attr(deny(warnings))))]
 
 #![cfg_attr(not(stage0), feature(nll))]
+#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 
 pub use self::Piece::*;
 pub use self::Position::*;

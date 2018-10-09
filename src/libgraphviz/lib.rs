@@ -289,6 +289,7 @@
        test(attr(allow(unused_variables), deny(warnings))))]
 
 #![cfg_attr(not(stage0), feature(nll))]
+#![cfg_attr(not(stage0), feature(infer_outlives_requirements))]
 #![feature(str_escape)]
 
 use self::LabelText::*;

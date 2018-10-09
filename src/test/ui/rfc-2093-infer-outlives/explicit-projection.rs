@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(rustc_attrs)]
+#![feature(infer_outlives_requirements)]
 
 trait Trait<'x, T> where T: 'x {
     type Type;

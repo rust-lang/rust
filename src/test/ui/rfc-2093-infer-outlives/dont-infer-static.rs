@@ -10,6 +10,8 @@
 
 // ignore-tidy-linelength
 
+#![feature(infer_outlives_requirements)]
+
 /*
  * We don't infer `T: 'static` outlives relationships by default.
  * Instead an additional feature gate `infer_static_outlives_requirements`
@@ -17,7 +19,7 @@
  */
 
 struct Foo<U> {
-    bar: Bar<U> //~ ERROR 20:5: 20:16: the parameter type `U` may not live long enough [E0310]
+    bar: Bar<U> //~ ERROR 22:5: 22:16: the parameter type `U` may not live long enough [E0310]
 }
 struct Bar<T: 'static> {
     x: T,
