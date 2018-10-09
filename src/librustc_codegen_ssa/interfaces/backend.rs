@@ -35,7 +35,7 @@ pub trait BackendTypes {
 }
 
 pub trait Backend<'tcx>:
-    BackendTypes + HasTyCtxt<'tcx> + LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
+    Sized + BackendTypes + HasTyCtxt<'tcx> + LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
 {
 }
 
