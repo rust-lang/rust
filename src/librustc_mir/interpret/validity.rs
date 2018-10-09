@@ -218,7 +218,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                                 return validation_failure!("unaligned reference", path),
                             _ =>
                                 return validation_failure!(
-                                    "dangling (deallocated) reference", path
+                                    "dangling (out-of-bounds) reference (might be NULL at \
+                                     run-time)",
+                                    path
                                 ),
                         }
                     }

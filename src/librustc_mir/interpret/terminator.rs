@@ -222,7 +222,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         if !Self::check_argument_compat(caller_arg.layout, callee_arg.layout) {
             return err!(FunctionArgMismatch(caller_arg.layout.ty, callee_arg.layout.ty));
         }
-        self.copy_op(caller_arg, callee_arg)
+        // We allow some transmutes here
+        self.copy_op_transmute(caller_arg, callee_arg)
     }
 
     /// Call this function -- pushing the stack frame and initializing the arguments.

@@ -322,7 +322,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 // For now, upcasts are limited to changes in marker
                 // traits, and hence never actually require an actual
                 // change to the vtable.
-                self.copy_op(src, dest)
+                let val = self.read_value(src)?;
+                self.write_value(*val, dest)
             }
             (_, &ty::Dynamic(ref data, _)) => {
                 // Initial cast from sized to dyn trait
