@@ -596,7 +596,17 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
                     *item = Some(v);
                     true
                 } else {
-                    span_err!(diagnostic, meta.span, E0551, "incorrect meta item");
+                    if let Some(lit) = meta.name_value_literal() {
+                        handle_errors(
+                            sess,
+                            lit.span,
+                            AttrError::UnsupportedLiteral,
+                            lit.node.is_bytestr(),
+                        );
+                    } else {
+                        span_err!(diagnostic, meta.span, E0551, "incorrect meta item");
+                    }
+
                     false
                 }
             };
@@ -622,7 +632,7 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
                     }
                     NestedMetaItemKind::Literal(lit) => {
                         let is_bytestr = lit.node.is_bytestr();
-                        handle_errors(sess, meta.span, AttrError::UnsupportedLiteral, is_bytestr);
+                        handle_errors(sess, lit.span, AttrError::UnsupportedLiteral, is_bytestr);
                         continue 'outer
                     }
                 }
@@ -682,7 +692,12 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
             mark_used(attr);
             for item in items {
                 if !item.is_meta_item() {
-                    handle_errors(sess, item.span, AttrError::UnsupportedLiteral, false);
+                    let (span, is_bytestr) = if let Some(lit) = item.literal() {
+                        (lit.span, lit.node.is_bytestr())
+                    } else {
+                        (item.span, false)
+                    };
+                    handle_errors(sess, span, AttrError::UnsupportedLiteral, is_bytestr);
                     continue
                 }
 
