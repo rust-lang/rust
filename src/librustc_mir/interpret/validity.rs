@@ -559,12 +559,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             // generators and closures.
             ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
                 if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
-                    let freevar = self.tcx.with_freevars(node_id, |fv| fv[field]);
-                    PathElem::ClosureVar(self.tcx.hir.name(freevar.var_id()))
-                } else {
-                    // The closure is not local, so we cannot get the name
-                    PathElem::ClosureVar(Symbol::intern(&field.to_string()))
+                    if let Some(freevar) = self.tcx.with_freevars(
+                        node_id,
+                        |fv| fv.get(field).map(|field| *field))
+                    {
+                        return PathElem::ClosureVar(self.tcx.hir.name(freevar.var_id()));
+                    }
                 }
+                // The closure is not local, or the freevars don't match up (seen for a generator!),
+                // so we cannot get the name.
+                PathElem::ClosureVar(Symbol::intern(&field.to_string()))
             }
 
             // tuples
