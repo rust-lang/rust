@@ -238,7 +238,10 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "init" => {
                 // Check fast path: we don't want to force an allocation in case the destination is a simple value,
                 // but we also do not want to create a new allocation with 0s and then copy that over.
-                if !dest.layout.is_zst() { // notzhing to do for ZST
+                // FIXME: We do not properly validate in case of ZSTs and when doing it in memory!
+                // However, this only affects direct calls of the intrinsic; calls to the stable
+                // functions wrapping them do get their validation.
+                if !dest.layout.is_zst() { // nothing to do for ZST
                     match dest.layout.abi {
                         layout::Abi::Scalar(ref s) => {
                             let x = Scalar::from_int(0, s.value.size(&self));
@@ -338,7 +341,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
 
             "size_of_val" => {
                 let mplace = self.ref_to_mplace(self.read_value(args[0])?)?;
-                let (size, _) = self.size_and_align_of_mplace(mplace)?;
+                let (size, _) = self.size_and_align_of_mplace(mplace)?
+                    .expect("size_of_val called on extern type");
                 let ptr_size = self.pointer_size();
                 self.write_scalar(
                     Scalar::from_uint(size.bytes() as u128, ptr_size),
@@ -349,7 +353,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "min_align_of_val" |
             "align_of_val" => {
                 let mplace = self.ref_to_mplace(self.read_value(args[0])?)?;
-                let (_, align) = self.size_and_align_of_mplace(mplace)?;
+                let (_, align) = self.size_and_align_of_mplace(mplace)?
+                    .expect("size_of_val called on extern type");
                 let ptr_size = self.pointer_size();
                 self.write_scalar(
                     Scalar::from_uint(align.abi(), ptr_size),
@@ -397,6 +402,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "uninit" => {
                 // Check fast path: we don't want to force an allocation in case the destination is a simple value,
                 // but we also do not want to create a new allocation with 0s and then copy that over.
+                // FIXME: We do not properly validate in case of ZSTs and when doing it in memory!
+                // However, this only affects direct calls of the intrinsic; calls to the stable
+                // functions wrapping them do get their validation.
                 if !dest.layout.is_zst() { // nothing to do for ZST
                     match dest.layout.abi {
                         layout::Abi::Scalar(..) => {
