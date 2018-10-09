@@ -1,7 +1,7 @@
 # Rust Analyzer
 
-[![Build Status](https://travis-ci.org/matklad/rust-analyzer.svg?branch=master)](https://travis-ci.org/matklad/rust-analyzer)
-[![Build status](https://ci.appveyor.com/api/projects/status/j56x1hbje8rdg6xk/branch/master?svg=true)](https://ci.appveyor.com/project/matklad/rust-analyzer/branch/master)
+[![Build Status](https://travis-ci.org/rust-analyzer/rust-analyzer.svg?branch=master)](https://travis-ci.org/rust-analyzer/rust-analyzer)
+[![Build status](https://ci.appveyor.com/api/projects/status/j56x1hbje8rdg6xk/branch/master?svg=true)](https://ci.appveyor.com/project/rust-analyzer/rust-analyzer/branch/master)
 
 
 Rust Analyzer is an **experimental** modular compiler frontend for the
