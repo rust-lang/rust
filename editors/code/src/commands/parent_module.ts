@@ -5,13 +5,20 @@ import { Server } from '../server';
 
 export async function handle() {
     const editor = vscode.window.activeTextEditor;
-    if (editor == null || editor.document.languageId !== 'rust') { return; }
+    if (editor == null || editor.document.languageId !== 'rust') {
+        return;
+    }
     const request: TextDocumentIdentifier = {
-        uri: editor.document.uri.toString(),
+        uri: editor.document.uri.toString()
     };
-    const response = await Server.client.sendRequest<Location[]>('m/parentModule', request);
+    const response = await Server.client.sendRequest<Location[]>(
+        'm/parentModule',
+        request
+    );
     const loc = response[0];
-    if (loc == null) { return; }
+    if (loc == null) {
+        return;
+    }
     const uri = Server.client.protocol2CodeConverter.asUri(loc.uri);
     const range = Server.client.protocol2CodeConverter.asRange(loc.range);
 

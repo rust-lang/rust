@@ -6,7 +6,9 @@ export class Config {
     public highlightingOn = true;
 
     constructor() {
-        vscode.workspace.onDidChangeConfiguration((_) => this.userConfigChanged());
+        vscode.workspace.onDidChangeConfiguration(_ =>
+            this.userConfigChanged()
+        );
         this.userConfigChanged();
     }
 

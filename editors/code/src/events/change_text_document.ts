@@ -1,11 +1,18 @@
 import * as vscode from 'vscode';
 
-import { syntaxTreeUri, TextDocumentContentProvider } from '../commands/syntaxTree';
+import {
+    syntaxTreeUri,
+    TextDocumentContentProvider
+} from '../commands/syntaxTree';
 
-export function createHandler(textDocumentContentProvider: TextDocumentContentProvider) {
+export function createHandler(
+    textDocumentContentProvider: TextDocumentContentProvider
+) {
     return (event: vscode.TextDocumentChangeEvent) => {
         const doc = event.document;
-        if (doc.languageId !== 'rust') { return; }
+        if (doc.languageId !== 'rust') {
+            return;
+        }
         afterLs(() => {
             textDocumentContentProvider.eventEmitter.fire(syntaxTreeUri);
         });

@@ -41,39 +41,56 @@ function createTask(spec: Runnable): vscode.Task {
         label: 'cargo',
         command: spec.bin,
         args: spec.args,
-        env: spec.env,
+        env: spec.env
     };
 
     const execCmd = `${definition.command} ${definition.args.join(' ')}`;
     const execOption: vscode.ShellExecutionOptions = {
         cwd: '.',
-        env: definition.env,
+        env: definition.env
     };
     const exec = new vscode.ShellExecution(`clear; ${execCmd}`, execOption);
 
     const f = vscode.workspace.workspaceFolders![0];
-    const t = new vscode.Task(definition, f, definition.label, TASK_SOURCE, exec, ['$rustc']);
+    const t = new vscode.Task(
+        definition,
+        f,
+        definition.label,
+        TASK_SOURCE,
+        exec,
+        ['$rustc']
+    );
     return t;
 }
 
 let prevRunnable: RunnableQuickPick | undefined;
 export async function handle() {
     const editor = vscode.window.activeTextEditor;
-    if (editor == null || editor.document.languageId !== 'rust') { return; }
+    if (editor == null || editor.document.languageId !== 'rust') {
+        return;
+    }
     const textDocument: lc.TextDocumentIdentifier = {
-        uri: editor.document.uri.toString(),
+        uri: editor.document.uri.toString()
     };
     const params: RunnablesParams = {
         textDocument,
-        position: Server.client.code2ProtocolConverter.asPosition(editor.selection.active),
+        position: Server.client.code2ProtocolConverter.asPosition(
+            editor.selection.active
+        )
     };
-    const runnables = await Server.client.sendRequest<Runnable[]>('m/runnables', params);
+    const runnables = await Server.client.sendRequest<Runnable[]>(
+        'm/runnables',
+        params
+    );
     const items: RunnableQuickPick[] = [];
     if (prevRunnable) {
         items.push(prevRunnable);
     }
     for (const r of runnables) {
-        if (prevRunnable && JSON.stringify(prevRunnable.runnable) === JSON.stringify(r)) {
+        if (
+            prevRunnable &&
+            JSON.stringify(prevRunnable.runnable) === JSON.stringify(r)
+        ) {
             continue;
         }
         items.push(new RunnableQuickPick(r));

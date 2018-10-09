@@ -23,26 +23,34 @@ export function activate(context: vscode.ExtensionContext) {
     registerCommand('ra-lsp.joinLines', commands.joinLines.handle);
     registerCommand('ra-lsp.parentModule', commands.parentModule.handle);
     registerCommand('ra-lsp.run', commands.runnables.handle);
-    registerCommand('ra-lsp.applySourceChange', commands.applySourceChange.handle);
+    registerCommand(
+        'ra-lsp.applySourceChange',
+        commands.applySourceChange.handle
+    );
 
     // Notifications are events triggered by the language server
-    const allNotifications: Iterable<[string, lc.GenericNotificationHandler]> = [
-        ['m/publishDecorations', notifications.publishDecorations.handle],
-    ];
+    const allNotifications: Iterable<
+        [string, lc.GenericNotificationHandler]
+    > = [['m/publishDecorations', notifications.publishDecorations.handle]];
 
     // The events below are plain old javascript events, triggered and handled by vscode
-    vscode.window.onDidChangeActiveTextEditor(events.changeActiveTextEditor.handle);
+    vscode.window.onDidChangeActiveTextEditor(
+        events.changeActiveTextEditor.handle
+    );
 
     const textDocumentContentProvider = new TextDocumentContentProvider();
-    disposeOnDeactivation(vscode.workspace.registerTextDocumentContentProvider(
-        'ra-lsp',
-        textDocumentContentProvider,
-    ));
+    disposeOnDeactivation(
+        vscode.workspace.registerTextDocumentContentProvider(
+            'ra-lsp',
+            textDocumentContentProvider
+        )
+    );
 
     vscode.workspace.onDidChangeTextDocument(
         events.changeTextDocument.createHandler(textDocumentContentProvider),
         null,
-        context.subscriptions);
+        context.subscriptions
+    );
 
     // Start the language server, finally!
     Server.start(allNotifications);

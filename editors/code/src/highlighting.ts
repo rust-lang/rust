@@ -9,15 +9,24 @@ export interface Decoration {
 }
 
 export class Highlighter {
-    private static initDecorations(): Map<string, vscode.TextEditorDecorationType> {
-        const decor = (color: string) => vscode.window.createTextEditorDecorationType({ color });
+    private static initDecorations(): Map<
+        string,
+        vscode.TextEditorDecorationType
+    > {
+        const decor = (color: string) =>
+            vscode.window.createTextEditorDecorationType({ color });
 
-        const decorations: Iterable<[string, vscode.TextEditorDecorationType]> = [
+        const decorations: Iterable<
+            [string, vscode.TextEditorDecorationType]
+        > = [
             ['background', decor('#3F3F3F')],
-            ['error', vscode.window.createTextEditorDecorationType({
-                borderColor: 'red',
-                borderStyle: 'none none dashed none',
-            })],
+            [
+                'error',
+                vscode.window.createTextEditorDecorationType({
+                    borderColor: 'red',
+                    borderStyle: 'none none dashed none'
+                })
+            ],
             ['comment', decor('#7F9F7F')],
             ['string', decor('#CC9393')],
             ['keyword', decor('#F0DFAF')],
@@ -26,13 +35,16 @@ export class Highlighter {
             ['builtin', decor('#DD6718')],
             ['text', decor('#DCDCCC')],
             ['attribute', decor('#BFEBBF')],
-            ['literal', decor('#DFAF8F')],
+            ['literal', decor('#DFAF8F')]
         ];
 
         return new Map<string, vscode.TextEditorDecorationType>(decorations);
     }
 
-    private decorations: (Map<string, vscode.TextEditorDecorationType> | null) = null;
+    private decorations: Map<
+        string,
+        vscode.TextEditorDecorationType
+    > | null = null;
 
     public removeHighlights() {
         if (this.decorations == null) {
@@ -47,10 +59,7 @@ export class Highlighter {
         this.decorations = null;
     }
 
-    public setHighlights(
-        editor: vscode.TextEditor,
-        highlights: Decoration[],
-    ) {
+    public setHighlights(editor: vscode.TextEditor, highlights: Decoration[]) {
         // Initialize decorations if necessary
         //
         // Note: decoration objects need to be kept around so we can dispose them
@@ -68,13 +77,15 @@ export class Highlighter {
             if (!byTag.get(d.tag)) {
                 continue;
             }
-            byTag.get(d.tag)!.push(
-                Server.client.protocol2CodeConverter.asRange(d.range),
-            );
+            byTag
+                .get(d.tag)!
+                .push(Server.client.protocol2CodeConverter.asRange(d.range));
         }
 
         for (const tag of byTag.keys()) {
-            const dec = this.decorations.get(tag) as vscode.TextEditorDecorationType;
+            const dec = this.decorations.get(
+                tag
+            ) as vscode.TextEditorDecorationType;
             const ranges = byTag.get(tag)!;
             editor.setDecorations(dec, ranges);
         }

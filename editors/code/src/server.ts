@@ -8,24 +8,26 @@ export class Server {
     public static config = new Config();
     public static client: lc.LanguageClient;
 
-    public static start(notificationHandlers: Iterable<[string, lc.GenericNotificationHandler]>) {
+    public static start(
+        notificationHandlers: Iterable<[string, lc.GenericNotificationHandler]>
+    ) {
         const run: lc.Executable = {
             command: 'ra_lsp_server',
-            options: { cwd: '.' },
+            options: { cwd: '.' }
         };
         const serverOptions: lc.ServerOptions = {
             run,
-            debug: run,
+            debug: run
         };
         const clientOptions: lc.LanguageClientOptions = {
-            documentSelector: [{ scheme: 'file', language: 'rust' }],
+            documentSelector: [{ scheme: 'file', language: 'rust' }]
         };
 
         Server.client = new lc.LanguageClient(
             'ra-lsp',
             'rust-analyzer languge server',
             serverOptions,
-            clientOptions,
+            clientOptions
         );
         Server.client.onReady().then(() => {
             for (const [type, handler] of notificationHandlers) {
