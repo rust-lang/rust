@@ -352,7 +352,7 @@ fn vec_slice_metadata(
 
     let member_descriptions = vec![
         MemberDescription {
-            name: "data_ptr".to_string(),
+            name: "data_ptr".to_owned(),
             type_metadata: data_ptr_metadata,
             offset: Size::ZERO,
             size: pointer_size,
@@ -360,7 +360,7 @@ fn vec_slice_metadata(
             flags: DIFlags::FlagZero,
         },
         MemberDescription {
-            name: "length".to_string(),
+            name: "length".to_owned(),
             type_metadata: type_metadata(cx, cx.tcx.types.usize, span),
             offset: pointer_size,
             size: usize_size,
@@ -463,7 +463,7 @@ fn trait_pointer_metadata(
     let vtable_field = layout.field(cx, 1);
     let member_descriptions = vec![
         MemberDescription {
-            name: "pointer".to_string(),
+            name: "pointer".to_owned(),
             type_metadata: type_metadata(cx,
                 cx.tcx.mk_mut_ptr(cx.tcx.types.u8),
                 syntax_pos::DUMMY_SP),
@@ -473,7 +473,7 @@ fn trait_pointer_metadata(
             flags: DIFlags::FlagArtificial,
         },
         MemberDescription {
-            name: "vtable".to_string(),
+            name: "vtable".to_owned(),
             type_metadata: type_metadata(cx, vtable_field.ty, syntax_pos::DUMMY_SP),
             offset: layout.fields.offset(1),
             size: vtable_field.size,
@@ -1362,7 +1362,7 @@ fn describe_enum_variant(
             // We have the layout of an enum variant, we need the layout of the outer enum
             let enum_layout = cx.layout_of(layout.ty);
             (Some(enum_layout.fields.offset(0)),
-             Some(("RUST$ENUM$DISR".to_string(), enum_layout.field(cx, 0).ty)))
+             Some(("RUST$ENUM$DISR".to_owned(), enum_layout.field(cx, 0).ty)))
         }
         _ => (None, None),
     };
