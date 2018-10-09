@@ -27,7 +27,8 @@ enum AttrError {
     UnsupportedLiteral
 }
 
-fn handle_errors(diag: &Handler, span: Span, error: AttrError, is_bytestr: bool) {
+fn handle_errors(sess: &ParseSess, span: Span, error: AttrError, is_bytestr: bool) {
+    let diag = &sess.span_diagnostic;
     match error {
         AttrError::MultipleItem(item) => span_err!(diag, span, E0538,
                                                    "multiple '{}' items", item),
@@ -52,11 +53,11 @@ fn handle_errors(diag: &Handler, span: Span, error: AttrError, is_bytestr: bool)
                 "unsupported literal",
             );
             if is_bytestr {
-                if let Ok(lint_str) = sess.source_map.span_to_snippet(span) {
+                if let Ok(lint_str) = sess.source_map().span_to_snippet(span) {
                     err.span_suggestion_with_applicability(
                         span,
                         "consider removing the prefix",
-                        format!("{}", lint_str[1..]),
+                        format!("{}", &lint_str[1..]),
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -179,12 +180,12 @@ pub fn contains_feature_attr(attrs: &[Attribute], feature_name: &str) -> bool {
 }
 
 /// Find the first stability attribute. `None` if none exists.
-pub fn find_stability(diagnostic: &Handler, attrs: &[Attribute],
+pub fn find_stability(sess: &ParseSess, attrs: &[Attribute],
                       item_sp: Span) -> Option<Stability> {
-    find_stability_generic(diagnostic, attrs.iter(), item_sp)
+    find_stability_generic(sess, attrs.iter(), item_sp)
 }
 
-fn find_stability_generic<'a, I>(diagnostic: &Handler,
+fn find_stability_generic<'a, I>(sess: &ParseSess,
                                  attrs_iter: I,
                                  item_sp: Span)
                                  -> Option<Stability>
@@ -196,6 +197,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
     let mut rustc_depr: Option<RustcDeprecation> = None;
     let mut rustc_const_unstable: Option<Symbol> = None;
     let mut promotable = false;
+    let diagnostic = &sess.span_diagnostic;
 
     'outer: for attr in attrs_iter {
         if ![
@@ -220,7 +222,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
             let meta = meta.as_ref().unwrap();
             let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                 if item.is_some() {
-                    handle_errors(diagnostic, meta.span, AttrError::MultipleItem(meta.name()), false);
+                    handle_errors(sess, meta.span, AttrError::MultipleItem(meta.name()), false);
                     return false
                 }
                 if let Some(v) = meta.value_str() {
@@ -247,16 +249,16 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                 _ => {
                                     let expected = &[ $( stringify!($name) ),+ ];
                                     handle_errors(
-                                        diagnostic,
+                                        sess,
                                         mi.span,
                                         AttrError::UnknownMetaItem(mi.name(), expected),
-                                        false
+                                        false,
                                     );
                                     continue 'outer
                                 }
                             }
                         } else {
-                            handle_errors(diagnostic, meta.span, AttrError::UnsupportedLiteral, false);
+                            handle_errors(sess, meta.span, AttrError::UnsupportedLiteral, false);
                             continue 'outer
                         }
                     }
@@ -281,7 +283,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                             })
                         }
                         (None, _) => {
-                            handle_errors(diagnostic, attr.span(), AttrError::MissingSince, false);
+                            handle_errors(sess, attr.span(), AttrError::MissingSince, false);
                             continue
                         }
                         _ => {
@@ -307,7 +309,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                 }
                 "unstable" => {
                     if stab.is_some() {
-                        handle_errors(diagnostic, attr.span(), AttrError::MultipleStabilityLevels, false);
+                        handle_errors(sess, attr.span(), AttrError::MultipleStabilityLevels, false);
                         break
                     }
 
@@ -322,7 +324,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                 "issue" => if !get(mi, &mut issue) { continue 'outer },
                                 _ => {
                                     handle_errors(
-                                        diagnostic,
+                                        sess,
                                         meta.span,
                                         AttrError::UnknownMetaItem(
                                             mi.name(),
@@ -334,7 +336,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                 }
                             }
                         } else {
-                            handle_errors(diagnostic, meta.span, AttrError::UnsupportedLiteral, false);
+                            handle_errors(sess, meta.span, AttrError::UnsupportedLiteral, false);
                             continue 'outer
                         }
                     }
@@ -361,7 +363,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                             })
                         }
                         (None, _, _) => {
-                            handle_errors(diagnostic, attr.span(), AttrError::MissingFeature, false);
+                            handle_errors(sess, attr.span(), AttrError::MissingFeature, false);
                             continue
                         }
                         _ => {
@@ -372,7 +374,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                 }
                 "stable" => {
                     if stab.is_some() {
-                        handle_errors(diagnostic, attr.span(), AttrError::MultipleStabilityLevels, false);
+                        handle_errors(sess, attr.span(), AttrError::MultipleStabilityLevels, false);
                         break
                     }
 
@@ -386,7 +388,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                     "since" => if !get(mi, &mut since) { continue 'outer },
                                     _ => {
                                         handle_errors(
-                                            diagnostic,
+                                            sess,
                                             meta.span,
                                             AttrError::UnknownMetaItem(mi.name(), &["since", "note"]),
                                             false,
@@ -394,9 +396,10 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                         continue 'outer
                                     }
                                 }
+                            },
                             NestedMetaItemKind::Literal(lit) => {
                                 handle_errors(
-                                    diagnostic,
+                                    sess,
                                     meta.span,
                                     AttrError::UnsupportedLiteral,
                                     lit.node.is_bytestr()
@@ -419,11 +422,11 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                             })
                         }
                         (None, _) => {
-                            handle_errors(diagnostic, attr.span(), AttrError::MissingFeature, false);
+                            handle_errors(sess, attr.span(), AttrError::MissingFeature, false);
                             continue
                         }
                         _ => {
-                            handle_errors(diagnostic, attr.span(), AttrError::MissingSince, false);
+                            handle_errors(sess, attr.span(), AttrError::MissingSince, false);
                             continue
                         }
                     }
@@ -490,9 +493,9 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
             MetaItemKind::List(..) => {
                 error(cfg.span, "unexpected parentheses after `cfg` predicate key")
             }
-            MetaItemKind::NameValue(lit) => if !lit.node.is_str() {
+            MetaItemKind::NameValue(lit) if !lit.node.is_str() => {
                 handle_errors(
-                    &sess.span_diagnostic,
+                    sess,
                     lit.span, AttrError::UnsupportedLiteral,
                     lit.node.is_bytestr(),
                 );
@@ -515,7 +518,7 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
         ast::MetaItemKind::List(ref mis) => {
             for mi in mis.iter() {
                 if !mi.is_meta_item() {
-                    handle_errors(&sess.span_diagnostic, mi.span, AttrError::UnsupportedLiteral, false);
+                    handle_errors(sess, mi.span, AttrError::UnsupportedLiteral, false);
                     return false;
                 }
             }
@@ -557,18 +560,19 @@ pub struct Deprecation {
 }
 
 /// Find the deprecation attribute. `None` if none exists.
-pub fn find_deprecation(diagnostic: &Handler, attrs: &[Attribute],
+pub fn find_deprecation(sess: &ParseSess, attrs: &[Attribute],
                         item_sp: Span) -> Option<Deprecation> {
-    find_deprecation_generic(diagnostic, attrs.iter(), item_sp)
+    find_deprecation_generic(sess, attrs.iter(), item_sp)
 }
 
-fn find_deprecation_generic<'a, I>(diagnostic: &Handler,
+fn find_deprecation_generic<'a, I>(sess: &ParseSess,
                                    attrs_iter: I,
                                    item_sp: Span)
                                    -> Option<Deprecation>
     where I: Iterator<Item = &'a Attribute>
 {
     let mut depr: Option<Deprecation> = None;
+    let diagnostic = &sess.span_diagnostic;
 
     'outer: for attr in attrs_iter {
         if attr.path != "deprecated" {
@@ -585,7 +589,7 @@ fn find_deprecation_generic<'a, I>(diagnostic: &Handler,
         depr = if let Some(metas) = attr.meta_item_list() {
             let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                 if item.is_some() {
-                    handle_errors(diagnostic, meta.span, AttrError::MultipleItem(meta.name()), false);
+                    handle_errors(sess, meta.span, AttrError::MultipleItem(meta.name()), false);
                     return false
                 }
                 if let Some(v) = meta.value_str() {
@@ -607,7 +611,7 @@ fn find_deprecation_generic<'a, I>(diagnostic: &Handler,
                             "note" => if !get(mi, &mut note) { continue 'outer },
                             _ => {
                                 handle_errors(
-                                    diagnostic,
+                                    sess,
                                     meta.span,
                                     AttrError::UnknownMetaItem(mi.name(), &["since", "note"]),
                                     false,
@@ -618,7 +622,7 @@ fn find_deprecation_generic<'a, I>(diagnostic: &Handler,
                     }
                     NestedMetaItemKind::Literal(lit) => {
                         let is_bytestr = lit.node.is_bytestr();
-                        handle_errors(diagnostic, meta.span, AttrError::UnsupportedLiteral, is_bytestr);
+                        handle_errors(sess, meta.span, AttrError::UnsupportedLiteral, is_bytestr);
                         continue 'outer
                     }
                 }
@@ -668,16 +672,17 @@ impl IntType {
 /// the same discriminant size that the corresponding C enum would or C
 /// structure layout, `packed` to remove padding, and `transparent` to elegate representation
 /// concerns to the only non-ZST field.
-pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> {
+pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
     use self::ReprAttr::*;
 
     let mut acc = Vec::new();
+    let diagnostic = &sess.span_diagnostic;
     if attr.path == "repr" {
         if let Some(items) = attr.meta_item_list() {
             mark_used(attr);
             for item in items {
                 if !item.is_meta_item() {
-                    handle_errors(diagnostic, item.span, AttrError::UnsupportedLiteral, false);
+                    handle_errors(sess, item.span, AttrError::UnsupportedLiteral, false);
                     continue
                 }
 

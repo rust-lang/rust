@@ -202,8 +202,8 @@ use syntax::source_map::{self, respan};
 use syntax::util::move_map::MoveMap;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
+use syntax::parse::ParseSess;
 use syntax_pos::{DUMMY_SP, Span};
-use errors::Handler;
 
 use self::ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
 
@@ -412,7 +412,7 @@ impl<'a> TraitDef<'a> {
         match *item {
             Annotatable::Item(ref item) => {
                 let is_packed = item.attrs.iter().any(|attr| {
-                    for r in attr::find_repr_attrs(&cx.parse_sess.span_diagnostic, attr) {
+                    for r in attr::find_repr_attrs(&cx.parse_sess, attr) {
                         if let attr::ReprPacked(_) = r {
                             return true;
                         }
@@ -811,10 +811,10 @@ impl<'a> TraitDef<'a> {
     }
 }
 
-fn find_repr_type_name(diagnostic: &Handler, type_attrs: &[ast::Attribute]) -> &'static str {
+fn find_repr_type_name(sess: &ParseSess, type_attrs: &[ast::Attribute]) -> &'static str {
     let mut repr_type_name = "isize";
     for a in type_attrs {
-        for r in &attr::find_repr_attrs(diagnostic, a) {
+        for r in &attr::find_repr_attrs(sess, a) {
             repr_type_name = match *r {
                 attr::ReprPacked(_) | attr::ReprSimd | attr::ReprAlign(_) | attr::ReprTransparent =>
                     continue,
@@ -1390,7 +1390,7 @@ impl<'a> MethodDef<'a> {
             // discriminant_test = __self0_vi == __self1_vi && __self0_vi == __self2_vi && ...
             let mut discriminant_test = cx.expr_bool(sp, true);
 
-            let target_type_name = find_repr_type_name(&cx.parse_sess.span_diagnostic, type_attrs);
+            let target_type_name = find_repr_type_name(&cx.parse_sess, type_attrs);
 
             let mut first_ident = None;
             for (&ident, self_arg) in vi_idents.iter().zip(&self_args) {

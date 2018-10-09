@@ -1713,7 +1713,7 @@ fn check_packed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: DefId) 
     let repr = tcx.adt_def(def_id).repr;
     if repr.packed() {
         for attr in tcx.get_attrs(def_id).iter() {
-            for r in attr::find_repr_attrs(tcx.sess.diagnostic(), attr) {
+            for r in attr::find_repr_attrs(&tcx.sess.parse_sess, attr) {
                 if let attr::ReprPacked(pack) = r {
                     if pack != repr.pack {
                         struct_span_err!(tcx.sess, sp, E0634,
