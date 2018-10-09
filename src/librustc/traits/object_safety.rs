@@ -64,8 +64,8 @@ impl ObjectSafetyViolation {
                 format!("method `{}` references the `Self` type in where clauses", name).into(),
             ObjectSafetyViolation::Method(name, MethodViolationCode::Generic) =>
                 format!("method `{}` has generic type parameters", name).into(),
-            ObjectSafetyViolation::Method(name, MethodViolationCode::UncoercibleReceiver) =>
-                format!("method `{}` has an uncoercible receiver type", name).into(),
+            ObjectSafetyViolation::Method(name, MethodViolationCode::UndispatchableReceiver) =>
+                format!("method `{}`'s receiver cannot be dispatched on", name).into(),
             ObjectSafetyViolation::AssociatedConst(name) =>
                 format!("the trait cannot contain associated consts like `{}`", name).into(),
         }
@@ -87,8 +87,8 @@ pub enum MethodViolationCode {
     /// e.g., `fn foo<A>()`
     Generic,
 
-    /// the self argument can't be coerced from Self=dyn Trait to Self=T where T: Trait
-    UncoercibleReceiver,
+    /// the method's receiver (`self` argument) can't be dispatched on
+    UndispatchableReceiver,
 }
 
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
@@ -325,7 +325,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         // `Receiver: Unsize<Receiver[Self => dyn Trait]>`
         if receiver_ty != self.mk_self_type() {
             if !self.receiver_is_dispatchable(method, receiver_ty) {
-                return Some(MethodViolationCode::UncoercibleReceiver);
+                return Some(MethodViolationCode::UndispatchableReceiver);
             }
         }
 

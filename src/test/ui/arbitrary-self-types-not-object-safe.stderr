@@ -4,7 +4,7 @@ error[E0038]: the trait `Foo` cannot be made into an object
 LL |     let x = Rc::new(5usize) as Rc<Foo>;
    |                                ^^^^^^^ the trait `Foo` cannot be made into an object
    |
-   = note: method `foo` has an uncoercible receiver type
+   = note: method `foo`'s receiver cannot be dispatched on
 
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/arbitrary-self-types-not-object-safe.rs:40:13
@@ -12,7 +12,7 @@ error[E0038]: the trait `Foo` cannot be made into an object
 LL |     let x = Rc::new(5usize) as Rc<Foo>;
    |             ^^^^^^^^^^^^^^^ the trait `Foo` cannot be made into an object
    |
-   = note: method `foo` has an uncoercible receiver type
+   = note: method `foo`'s receiver cannot be dispatched on
    = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::rc::Rc<dyn Foo>>` for `std::rc::Rc<usize>`
 
 error: aborting due to 2 previous errors
