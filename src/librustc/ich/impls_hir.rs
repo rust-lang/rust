@@ -983,7 +983,8 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::BodyId {
 impl_stable_hash_for!(struct hir::InlineAsmOutput {
     constraint,
     is_rw,
-    is_indirect
+    is_indirect,
+    span
 });
 
 impl_stable_hash_for!(struct hir::GlobalAsm {
