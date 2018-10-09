@@ -158,6 +158,31 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
     wrap_str(result, fmt.config.max_width(), fmt.shape)
 }
 
+/// Returns the index to the end of the url if the given string includes an
+/// URL or alike. Otherwise, returns None;
+fn detect_url(s: &[&str], index: usize) -> Option<usize> {
+    let start = match s[..=index].iter().rposition(|g| is_whitespace(g)) {
+        Some(pos) => pos + 1,
+        None => 0,
+    };
+    if s.len() < start + 8 {
+        return None;
+    }
+    let prefix = s[start..start + 8].join("");
+    if prefix.starts_with("https://")
+        || prefix.starts_with("http://")
+        || prefix.starts_with("ftp://")
+        || prefix.starts_with("file://")
+    {
+        match s[index..].iter().position(|g| is_whitespace(g)) {
+            Some(pos) => Some(index + pos - 1),
+            None => Some(s.len() - 1),
+        }
+    } else {
+        None
+    }
+}
+
 /// Trims whitespaces to the right except for the line feed character.
 fn trim_right_but_line_feed(trim_end: bool, result: String) -> String {
     let whitespace_except_line_feed = |c: char| c.is_whitespace() && c != '\n';
@@ -193,13 +218,16 @@ enum SnippetState {
     EndWithLineFeed(String, usize),
 }
 
+fn not_whitespace_except_line_feed(g: &str) -> bool {
+    is_line_feed(g) || !is_whitespace(g)
+}
+
 /// Break the input string at a boundary character around the offset `max_chars`. A boundary
 /// character is either a punctuation or a whitespace.
 fn break_string(max_chars: usize, trim_end: bool, line_end: &str, input: &[&str]) -> SnippetState {
     let break_at = |index /* grapheme at index is included */| {
         // Take in any whitespaces to the left/right of `input[index]` while
         // preserving line feeds
-        let not_whitespace_except_line_feed = |g| is_line_feed(g) || !is_whitespace(g);
         let index_minus_ws = input[0..=index]
             .iter()
             .rposition(|grapheme| not_whitespace_except_line_feed(grapheme))
@@ -258,6 +286,24 @@ fn break_string(max_chars: usize, trim_end: bool, line_end: &str, input: &[&str]
         // - extra whitespaces to the right can be trimmed
         return break_at(max_chars - 1);
     }
+    if let Some(url_index_end) = detect_url(input, max_chars) {
+        let index_plus_ws = url_index_end + input[url_index_end..]
+            .iter()
+            .skip(1)
+            .position(|grapheme| not_whitespace_except_line_feed(grapheme))
+            .unwrap_or(0);
+        return if trim_end {
+            SnippetState::LineEnd(
+                input[..=url_index_end].join("").to_string(),
+                index_plus_ws + 1,
+            )
+        } else {
+            return SnippetState::LineEnd(
+                input[..=index_plus_ws].join("").to_string(),
+                index_plus_ws + 1,
+            );
+        };
+    }
     match input[0..max_chars]
         .iter()
         .rposition(|grapheme| is_whitespace(grapheme))
@@ -303,7 +349,7 @@ fn is_punctuation(grapheme: &str) -> bool {
 
 #[cfg(test)]
 mod test {
-    use super::{break_string, rewrite_string, SnippetState, StringFormat};
+    use super::{break_string, detect_url, rewrite_string, SnippetState, StringFormat};
     use config::Config;
     use shape::{Indent, Shape};
     use unicode_segmentation::UnicodeSegmentation;
@@ -609,5 +655,32 @@ mod test {
             rewrite_string(comment, &fmt),
             Some("Vestibulum\\\n    // ac lacus.".to_string())
         );
+    }
+
+    #[test]
+    fn detect_urls() {
+        let string = "aaa http://example.org something";
+        let graphemes = UnicodeSegmentation::graphemes(&*string, false).collect::<Vec<&str>>();
+        assert_eq!(detect_url(&graphemes, 8), Some(21));
+
+        let string = "https://example.org something";
+        let graphemes = UnicodeSegmentation::graphemes(&*string, false).collect::<Vec<&str>>();
+        assert_eq!(detect_url(&graphemes, 0), Some(18));
+
+        let string = "aaa ftp://example.org something";
+        let graphemes = UnicodeSegmentation::graphemes(&*string, false).collect::<Vec<&str>>();
+        assert_eq!(detect_url(&graphemes, 8), Some(20));
+
+        let string = "aaa file://example.org something";
+        let graphemes = UnicodeSegmentation::graphemes(&*string, false).collect::<Vec<&str>>();
+        assert_eq!(detect_url(&graphemes, 8), Some(21));
+
+        let string = "aaa http not an url";
+        let graphemes = UnicodeSegmentation::graphemes(&*string, false).collect::<Vec<&str>>();
+        assert_eq!(detect_url(&graphemes, 6), None);
+
+        let string = "aaa file://example.org";
+        let graphemes = UnicodeSegmentation::graphemes(&*string, false).collect::<Vec<&str>>();
+        assert_eq!(detect_url(&graphemes, 8), Some(21));
     }
 }
