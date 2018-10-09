@@ -203,6 +203,7 @@ impl Borrow<str> for String {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ToOwned for str {
     type Owned = String;
+    #[inline]
     fn to_owned(&self) -> String {
         unsafe { String::from_utf8_unchecked(self.as_bytes().to_owned()) }
     }
