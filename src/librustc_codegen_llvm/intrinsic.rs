@@ -292,16 +292,24 @@ pub fn codegen_intrinsic_call(
                         "ctlz" | "cttz" => {
                             let y = C_bool(bx.cx, false);
                             let llfn = cx.get_intrinsic(&format!("llvm.{}.i{}", name, width));
-                            bx.call(llfn, &[args[0].immediate(), y], None)
+                            let v = bx.call(llfn, &[args[0].immediate(), y], None);
+                            bx.range_metadata(v, 0..width as u128 + 1);
+                            v
                         }
                         "ctlz_nonzero" | "cttz_nonzero" => {
                             let y = C_bool(bx.cx, true);
                             let llvm_name = &format!("llvm.{}.i{}", &name[..4], width);
                             let llfn = cx.get_intrinsic(llvm_name);
-                            bx.call(llfn, &[args[0].immediate(), y], None)
+                            let v = bx.call(llfn, &[args[0].immediate(), y], None);
+                            bx.range_metadata(v, 0..width as u128 + 1);
+                            v
                         }
-                        "ctpop" => bx.call(cx.get_intrinsic(&format!("llvm.ctpop.i{}", width)),
-                                        &[args[0].immediate()], None),
+                        "ctpop" => {
+                            let v = bx.call(cx.get_intrinsic(&format!("llvm.ctpop.i{}", width)),
+                                            &[args[0].immediate()], None);
+                            bx.range_metadata(v, 0..width as u128 + 1);
+                            v
+                        }
                         "bswap" => {
                             if width == 8 {
                                 args[0].immediate() // byte swap a u8/i8 is just a no-op
