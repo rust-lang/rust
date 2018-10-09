@@ -35,14 +35,14 @@ fn main_inner() -> Result<()> {
     let cwd = ::std::env::current_dir()?;
     run_server(
         ra_lsp_server::server_capabilities(),
+        receiver,
+        sender,
         |params, r, s| {
             let root = params.root_uri
                 .and_then(|it| it.to_file_path().ok())
                 .unwrap_or(cwd);
             ra_lsp_server::main_loop(false, root, r, s)
         },
-        receiver,
-        sender,
     )?;
     info!("shutting down IO...");
     threads.join()?;

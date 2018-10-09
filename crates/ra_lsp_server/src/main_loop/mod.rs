@@ -35,8 +35,8 @@ enum Task {
 pub fn main_loop(
     internal_mode: bool,
     root: PathBuf,
-    msg_receriver: &mut Receiver<RawMessage>,
-    msg_sender: &mut Sender<RawMessage>,
+    msg_receriver: &Receiver<RawMessage>,
+    msg_sender: &Sender<RawMessage>,
 ) -> Result<()> {
     let pool = rayon::ThreadPoolBuilder::new()
         .num_threads(4)
@@ -88,8 +88,8 @@ fn main_loop_inner(
     internal_mode: bool,
     ws_root: PathBuf,
     pool: &ThreadPool,
-    msg_sender: &mut Sender<RawMessage>,
-    msg_receiver: &mut Receiver<RawMessage>,
+    msg_sender: &Sender<RawMessage>,
+    msg_receiver: &Receiver<RawMessage>,
     task_sender: Sender<Task>,
     task_receiver: Receiver<Task>,
     fs_worker: Worker<PathBuf, (PathBuf, Vec<FileEvent>)>,
@@ -212,7 +212,7 @@ fn main_loop_inner(
 
 fn on_task(
     task: Task,
-    msg_sender: &mut Sender<RawMessage>,
+    msg_sender: &Sender<RawMessage>,
     pending_requests: &mut HashMap<u64, JobHandle>,
 ) {
     match task {
@@ -266,7 +266,7 @@ fn on_request(
 }
 
 fn on_notification(
-    msg_sender: &mut Sender<RawMessage>,
+    msg_sender: &Sender<RawMessage>,
     state: &mut ServerWorldState,
     pending_requests: &mut HashMap<u64, JobHandle>,
     subs: &mut Subscriptions,
