@@ -792,13 +792,9 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     where
         F: Fn(&RewriteContext) -> Option<String>,
     {
-        let result;
-        let macro_rewrite_failure = {
-            let context = self.get_context();
-            result = f(&context);
-            unsafe { *context.macro_rewrite_failure.as_ptr() }
-        };
-        self.macro_rewrite_failure |= macro_rewrite_failure;
+        let context = self.get_context();
+        let result = f(&context);
+        self.macro_rewrite_failure |= *context.macro_rewrite_failure.borrow();
         result
     }
 
