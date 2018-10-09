@@ -51,16 +51,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         &mut self,
         context: Context,
         desired_action: InitializationRequiringAction,
-        (place, span): (&Place<'tcx>, Span),
+        (moved_place, used_place, span): (&Place<'tcx>, &Place<'tcx>, Span),
         mpi: MovePathIndex,
     ) {
         debug!(
-            "report_use_of_moved_or_uninitialized: context={:?} desired_action={:?} place={:?} \
-             span={:?} mpi={:?}",
-            context, desired_action, place, span, mpi
+            "report_use_of_moved_or_uninitialized: context={:?} desired_action={:?} \
+             moved_place={:?} used_place={:?} span={:?} mpi={:?}",
+            context, desired_action, moved_place, used_place, span, mpi
         );
 
-        let use_spans = self.move_spans(place, context.loc)
+        let use_spans = self.move_spans(moved_place, context.loc)
             .or_else(|| self.borrow_spans(span, context.loc));
         let span = use_spans.args_or_use();
 
@@ -75,7 +75,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             .collect();
 
         if move_out_indices.is_empty() {
-            let root_place = self.prefixes(&place, PrefixSet::All).last().unwrap();
+            let root_place = self.prefixes(&used_place, PrefixSet::All).last().unwrap();
 
             if self.uninitialized_error_reported
                 .contains(&root_place.clone())
@@ -89,14 +89,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             self.uninitialized_error_reported.insert(root_place.clone());
 
-            let item_msg = match self.describe_place_with_options(place, IncludingDowncast(true)) {
+            let item_msg = match self.describe_place_with_options(used_place,
+                                                                  IncludingDowncast(true)) {
                 Some(name) => format!("`{}`", name),
                 None => "value".to_owned(),
             };
             let mut err = self.infcx.tcx.cannot_act_on_uninitialized_variable(
                 span,
                 desired_action.as_noun(),
-                &self.describe_place_with_options(place, IncludingDowncast(true))
+                &self.describe_place_with_options(moved_place, IncludingDowncast(true))
                     .unwrap_or("_".to_owned()),
                 Origin::Mir,
             );
@@ -111,7 +112,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         } else {
             if let Some((reported_place, _)) = self.move_error_reported.get(&move_out_indices) {
                 if self.prefixes(&reported_place, PrefixSet::All)
-                    .any(|p| p == place)
+                    .any(|p| p == used_place)
                 {
                     debug!(
                         "report_use_of_moved_or_uninitialized place: error suppressed \
@@ -128,7 +129,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 span,
                 desired_action.as_noun(),
                 msg,
-                self.describe_place_with_options(&place, IncludingDowncast(true)),
+                self.describe_place_with_options(&moved_place, IncludingDowncast(true)),
                 Origin::Mir,
             );
 
@@ -181,7 +182,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 );
             }
 
-            if let Some(ty) = self.retrieve_type_for_place(place) {
+            if let Some(ty) = self.retrieve_type_for_place(used_place) {
                 let needs_note = match ty.sty {
                     ty::Closure(id, _) => {
                         let tables = self.infcx.tcx.typeck_tables_of(id);
@@ -219,7 +220,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
 
             if let Some((_, mut old_err)) = self.move_error_reported
-                .insert(move_out_indices, (place.clone(), err))
+                .insert(move_out_indices, (used_place.clone(), err))
             {
                 // Cancel the old error so it doesn't ICE.
                 old_err.cancel();

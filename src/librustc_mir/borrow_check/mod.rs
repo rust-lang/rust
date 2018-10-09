@@ -853,6 +853,7 @@ enum InitializationRequiringAction {
     MatchOn,
     Use,
     Assignment,
+    PartialAssignment,
 }
 
 struct RootPlace<'d, 'tcx: 'd> {
@@ -868,6 +869,7 @@ impl InitializationRequiringAction {
             InitializationRequiringAction::MatchOn => "use", // no good noun
             InitializationRequiringAction::Use => "use",
             InitializationRequiringAction::Assignment => "assign",
+            InitializationRequiringAction::PartialAssignment => "assign to part",
         }
     }
 
@@ -878,6 +880,7 @@ impl InitializationRequiringAction {
             InitializationRequiringAction::MatchOn => "matched on",
             InitializationRequiringAction::Use => "used",
             InitializationRequiringAction::Assignment => "assigned",
+            InitializationRequiringAction::PartialAssignment => "partially assigned",
         }
     }
 }
@@ -1498,12 +1501,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         debug!("check_if_full_path_is_moved place: {:?}", place_span.0);
         match self.move_path_closest_to(place_span.0) {
-            Ok(mpi) => {
+            Ok((prefix, mpi)) => {
                 if maybe_uninits.contains(mpi) {
                     self.report_use_of_moved_or_uninitialized(
                         context,
                         desired_action,
-                        place_span,
+                        (prefix, place_span.0, place_span.1),
                         mpi,
                     );
                     return; // don't bother finding other problems.
@@ -1561,7 +1564,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 self.report_use_of_moved_or_uninitialized(
                     context,
                     desired_action,
-                    place_span,
+                    (place_span.0, place_span.0, place_span.1),
                     child_mpi,
                 );
                 return; // don't bother finding other problems.
@@ -1579,14 +1582,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// An Err result includes a tag indicated why the search failed.
     /// Currently this can only occur if the place is built off of a
     /// static variable, as we do not track those in the MoveData.
-    fn move_path_closest_to(
+    fn move_path_closest_to<'a>(
         &mut self,
-        place: &Place<'tcx>,
-    ) -> Result<MovePathIndex, NoMovePathFound> {
+        place: &'a Place<'tcx>,
+    ) -> Result<(&'a Place<'tcx>, MovePathIndex), NoMovePathFound> where 'cx: 'a {
         let mut last_prefix = place;
         for prefix in self.prefixes(place, PrefixSet::All) {
             if let Some(mpi) = self.move_path_for_place(prefix) {
-                return Ok(mpi);
+                return Ok((prefix, mpi));
             }
             last_prefix = prefix;
         }
@@ -1667,6 +1670,26 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     // recur further)
                                     break;
                                 }
+
+
+                                // Once `let s; s.x = V; read(s.x);`,
+                                // is allowed, remove this match arm.
+                                ty::Adt(..) | ty::Tuple(..) => {
+                                    check_parent_of_field(self, context, base, span, flow_state);
+
+                                    if let Some(local) = place.base_local() {
+                                        // rust-lang/rust#21232,
+                                        // #54499, #54986: during
+                                        // period where we reject
+                                        // partial initialization, do
+                                        // not complain about
+                                        // unnecessary `mut` on an
+                                        // attempt to do a partial
+                                        // initialization.
+                                        self.used_mut.insert(local);
+                                    }
+                                }
+
                                 _ => {}
                             }
                         }
@@ -1677,8 +1700,73 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 }
             }
         }
-    }
 
+        fn check_parent_of_field<'cx, 'gcx, 'tcx>(this: &mut MirBorrowckCtxt<'cx, 'gcx, 'tcx>,
+                                                  context: Context,
+                                                  base: &Place<'tcx>,
+                                                  span: Span,
+                                                  flow_state: &Flows<'cx, 'gcx, 'tcx>)
+        {
+            // rust-lang/rust#21232: Until Rust allows reads from the
+            // initialized parts of partially initialized structs, we
+            // will, starting with the 2018 edition, reject attempts
+            // to write to structs that are not fully initialized.
+            //
+            // In other words, *until* we allow this:
+            //
+            // 1. `let mut s; s.x = Val; read(s.x);`
+            //
+            // we will for now disallow this:
+            //
+            // 2. `let mut s; s.x = Val;`
+            //
+            // and also this:
+            //
+            // 3. `let mut s = ...; drop(s); s.x=Val;`
+            //
+            // This does not use check_if_path_or_subpath_is_moved,
+            // because we want to *allow* reinitializations of fields:
+            // e.g. want to allow
+            //
+            // `let mut s = ...; drop(s.x); s.x=Val;`
+            //
+            // This does not use check_if_full_path_is_moved on
+            // `base`, because that would report an error about the
+            // `base` as a whole, but in this scenario we *really*
+            // want to report an error about the actual thing that was
+            // moved, which may be some prefix of `base`.
+
+            // Shallow so that we'll stop at any dereference; we'll
+            // report errors about issues with such bases elsewhere.
+            let maybe_uninits = &flow_state.uninits;
+
+            // Find the shortest uninitialized prefix you can reach
+            // without going over a Deref.
+            let mut shortest_uninit_seen = None;
+            for prefix in this.prefixes(base, PrefixSet::Shallow) {
+                let mpi = match this.move_path_for_place(prefix) {
+                    Some(mpi) => mpi, None => continue,
+                };
+
+                if maybe_uninits.contains(mpi) {
+                    debug!("check_parent_of_field updating shortest_uninit_seen from {:?} to {:?}",
+                           shortest_uninit_seen, Some((prefix, mpi)));
+                    shortest_uninit_seen = Some((prefix, mpi));
+                } else {
+                    debug!("check_parent_of_field {:?} is definitely initialized", (prefix, mpi));
+                }
+            }
+
+            if let Some((prefix, mpi)) = shortest_uninit_seen {
+                this.report_use_of_moved_or_uninitialized(
+                    context,
+                    InitializationRequiringAction::PartialAssignment,
+                    (prefix, base, span),
+                    mpi,
+                );
+            }
+        }
+    }
 
     /// Check the permissions for the given place and read or write kind
     ///
