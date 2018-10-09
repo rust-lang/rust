@@ -390,7 +390,9 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                                         handle_errors(
                                             sess,
                                             meta.span,
-                                            AttrError::UnknownMetaItem(mi.name(), &["since", "note"]),
+                                            AttrError::UnknownMetaItem(
+                                                mi.name(), &["since", "note"],
+                                            ),
                                             false,
                                         );
                                         continue 'outer

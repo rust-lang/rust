@@ -19,14 +19,17 @@ struct S6;
 #[cfg(a())] //~ ERROR invalid predicate `a`
 struct S7;
 
-#[cfg(a = 10)] //~ ERROR literal in `cfg` predicate value must be a string
+#[cfg(a = 10)] //~ ERROR unsupported literal
 struct S8;
 
-macro_rules! generate_s9 {
+#[deprecated(since = b"1.30", note = "hi")] //~ ERROR E0565
+struct S9;
+
+macro_rules! generate_s10 {
     ($expr: expr) => {
         #[cfg(feature = $expr)] //~ ERROR `cfg` is not a well-formed meta-item
-        struct S9;
+        struct S10;
     }
 }
 
-generate_s9!(concat!("nonexistent"));
+generate_s10!(concat!("nonexistent"));

@@ -40,10 +40,10 @@ error[E0537]: invalid predicate `a`
 LL | #[cfg(a())] //~ ERROR invalid predicate `a`
    |       ^^^
 
-error: literal in `cfg` predicate value must be a string
+error[E0565]: unsupported literal
   --> $DIR/cfg-attr-syntax-validation.rs:22:11
    |
-LL | #[cfg(a = 10)] //~ ERROR literal in `cfg` predicate value must be a string
+LL | #[cfg(a = 10)] //~ ERROR unsupported literal
    |           ^^
 
 error: `cfg` is not a well-formed meta-item
@@ -57,4 +57,5 @@ LL | generate_s9!(concat!("nonexistent"));
 
 error: aborting due to 9 previous errors
 
-For more information about this error, try `rustc --explain E0537`.
+Some errors occurred: E0537, E0565.
+For more information about an error, try `rustc --explain E0537`.
