@@ -61,104 +61,30 @@ fold:
 * to quickly bootstrap usable and useful language server: solution
   that covers 80% of Rust code will be useful for IDEs, and will be
   vastly simpler than 100% solution.
-  
+
 * to understand how the consumer-side of compiler API should look like
   (especially it's on-demand aspects). If you have
   `get_expression_type` function, you can write a ton of purely-IDE
   features on top of it, even if the function is only partially
   correct. Plugin in the precise function afterwards should just make
   IDE features more reliable.
-  
+
 The long term plan is to merge with the mainline rustc compiler,
 probably around the HIR boundary? That is, use rust analyzer for
 parsing, macro expansion and related bits of name resolution, but
 leave the rest (including type inference and trait selection) to the
 existing rustc.
 
-## Code Walk-Through
-
-### `crates/ra_syntax`
-
-Rust syntax tree structure and parser. See
-[RFC](https://github.com/rust-lang/rfcs/pull/2256) for some design
-notes.
-
-- `yellow`, red/green syntax tree, heavily inspired [by this](https://github.com/apple/swift/tree/ab68f0d4cbf99cdfa672f8ffe18e433fddc8b371/lib/Syntax)
-- `grammar`, the actual parser
-- `parser_api/parser_impl` bridges the tree-agnostic parser from `grammar` with `yellow` trees
-- `grammar.ron` RON description of the grammar, which is used to
-  generate `syntax_kinds` and `ast` modules.
-- `algo`: generic tree algorithms, including `walk` for O(1) stack
-  space tree traversal (this is cool) and `visit` for type-driven
-  visiting the nodes (this is double plus cool, if you understand how
-  `Visitor` works, you understand rust-analyzer).
-
-
-### `crates/ra_editor`
-
-All IDE features which can be implemented if you only have access to a
-single file. `ra_editor` could be used to enhance editing of Rust code
-without the need to fiddle with build-systems, file
-synchronization and such.
-
-In a sense, `ra_editor` is just a bunch of pure functions which take a
-syntax tree as an input.
-
-### `crates/salsa`
-
-An implementation of red-green incremental compilation algorithm from
-rust compiler. It makes all rust-analyzer features on-demand.
-
-
-### `crates/ra_analysis`
-
-A stateful library for analyzing many Rust files as they change.
-`AnalysisHost` is a mutable entity (clojure's atom) which holds
-current state, incorporates changes and handles out `Analysis` --- an
-immutable consistent snapshot of world state at a point in time, which
-actually powers analysis.
-
-
-### `crates/ra_lsp_server`
-
-An LSP implementation which uses `ra_analysis` for managing state and
-`ra_editor` for actually doing useful stuff.
-
-
-### `crates/cli`
-
-A CLI interface to libsyntax
-
-### `crate/tools`
-
-Code-gen tasks, used to develop rust-analyzer:
-
-- `cargo gen-kinds` -- generate `ast` and `syntax_kinds`
-- `cargo gen-tests` -- collect inline tests from grammar
-- `cargo install-code` -- build and install VS Code extension and server
-
-### `editors/code`
-
-VS Code plugin
-
-
-## Performance
-
-Non-incremental, but seems pretty fast:
-
-```
-$ cargo build --release --package ra_cli
-$ wc -l ~/projects/rust/src/libsyntax/parse/parser.rs
-7546 /home/matklad/projects/rust/src/libsyntax/parse/parser.rs
-$ ./target/release/ra_cli parse < ~/projects/rust/src/libsyntax/parse/parser.rs --no-dump  > /dev/null
-parsing: 21.067065ms
-```
-
 ## Getting in touch
 
 @matklad can be found at Rust
 [discord](https://discordapp.com/invite/rust-lang), in
 #ides-and-editors.
+
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) and [ARCHITECTURE.md](./ARCHITECTURE.md)
 
 
 ## License
