@@ -310,12 +310,12 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         self.super_local_decl(local, local_decl);
         self.sanitize_type(local_decl, local_decl.ty);
 
-        if let Some(user_ty) = local_decl.user_ty {
+        if let Some((user_ty, span)) = local_decl.user_ty {
             if let Err(terr) = self.cx.relate_type_and_user_type(
                 local_decl.ty,
                 ty::Variance::Invariant,
                 user_ty,
-                Locations::All(local_decl.source_info.span),
+                Locations::All(span),
                 ConstraintCategory::TypeAnnotation,
             ) {
                 span_mirbug!(

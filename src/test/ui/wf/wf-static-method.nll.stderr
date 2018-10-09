@@ -10,6 +10,17 @@ LL |         u //~ ERROR E0312
    |         ^ returning this value requires that `'b` must outlive `'a`
 
 error: unsatisfied lifetime constraints
+  --> $DIR/wf-static-method.rs:36:18
+   |
+LL | impl<'a, 'b> Foo<'a, 'b, ()> for IndirectEvil<'a, 'b> {
+   |      --  -- lifetime `'b` defined here
+   |      |
+   |      lifetime `'a` defined here
+...
+LL |         let me = Self::make_me(); //~ ERROR lifetime bound not satisfied
+   |                  ^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+
+error: unsatisfied lifetime constraints
   --> $DIR/wf-static-method.rs:43:9
    |
 LL | impl<'a, 'b> Evil<'a, 'b> {
@@ -20,5 +31,25 @@ LL |     fn inherent_evil(u: &'b u32) -> &'a u32 {
 LL |         u //~ ERROR E0312
    |         ^ returning this value requires that `'b` must outlive `'a`
 
-error: aborting due to 2 previous errors
+error: unsatisfied lifetime constraints
+  --> $DIR/wf-static-method.rs:51:5
+   |
+LL | fn evil<'a, 'b>(b: &'b u32) -> &'a u32 {
+   |         --  -- lifetime `'b` defined here
+   |         |
+   |         lifetime `'a` defined here
+LL |     <()>::static_evil(b) //~ ERROR cannot infer an appropriate lifetime
+   |     ^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'b` must outlive `'a`
+
+error: unsatisfied lifetime constraints
+  --> $DIR/wf-static-method.rs:55:5
+   |
+LL | fn indirect_evil<'a, 'b>(b: &'b u32) -> &'a u32 {
+   |                  --  -- lifetime `'b` defined here
+   |                  |
+   |                  lifetime `'a` defined here
+LL |     <IndirectEvil>::static_evil(b)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'b` must outlive `'a`
+
+error: aborting due to 5 previous errors
 

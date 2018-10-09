@@ -710,7 +710,7 @@ pub struct LocalDecl<'tcx> {
     /// e.g. via `let x: T`, then we carry that type here. The MIR
     /// borrow checker needs this information since it can affect
     /// region inference.
-    pub user_ty: Option<CanonicalTy<'tcx>>,
+    pub user_ty: Option<(CanonicalTy<'tcx>, Span)>,
 
     /// Name of the local, used in debuginfo and pretty-printing.
     ///

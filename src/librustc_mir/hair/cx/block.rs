@@ -92,6 +92,7 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                     span: pattern.span,
                                     kind: Box::new(PatternKind::AscribeUserType {
                                         user_ty: *user_ty,
+                                        user_ty_span: ty.span,
                                         subpattern: pattern
                                     })
                                 };

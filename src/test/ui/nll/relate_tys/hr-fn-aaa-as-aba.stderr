@@ -5,10 +5,10 @@ LL |     let a: for<'a, 'b> fn(&'a u32, &'b u32) -> &'a u32 = make_it();
    |                                                          ^^^^^^^^^
 
 error: higher-ranked subtype error
-  --> $DIR/hr-fn-aaa-as-aba.rs:32:9
+  --> $DIR/hr-fn-aaa-as-aba.rs:32:12
    |
 LL |     let _: for<'a, 'b> fn(&'a u32, &'b u32) -> &'a u32 = make_it();
-   |         ^
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

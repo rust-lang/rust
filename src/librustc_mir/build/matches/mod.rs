@@ -292,30 +292,32 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     ..
                 },
                 user_ty: ascription_user_ty,
+                user_ty_span,
             } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard);
                 unpack!(block = self.into(&place, block, initializer));
 
-                let source_info = self.source_info(irrefutable_pat.span);
+                // Inject a fake read, see comments on `FakeReadCause::ForLet`.
+                let pattern_source_info = self.source_info(irrefutable_pat.span);
                 self.cfg.push(
                     block,
                     Statement {
-                        source_info,
+                        source_info: pattern_source_info,
+                        kind: StatementKind::FakeRead(FakeReadCause::ForLet, place.clone()),
+                    },
+                );
+
+                let ty_source_info = self.source_info(user_ty_span);
+                self.cfg.push(
+                    block,
+                    Statement {
+                        source_info: ty_source_info,
                         kind: StatementKind::AscribeUserType(
                             place.clone(),
                             ty::Variance::Invariant,
                             ascription_user_ty,
                         ),
-                    },
-                );
-
-                // Inject a fake read, see comments on `FakeReadCause::ForLet`.
-                self.cfg.push(
-                    block,
-                    Statement {
-                        source_info,
-                        kind: StatementKind::FakeRead(FakeReadCause::ForLet, place.clone()),
                     },
                 );
 
@@ -489,7 +491,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn visit_bindings(
         &mut self,
         pattern: &Pattern<'tcx>,
-        mut pattern_user_ty: Option<CanonicalTy<'tcx>>,
+        mut pattern_user_ty: Option<(CanonicalTy<'tcx>, Span)>,
         f: &mut impl FnMut(
             &mut Self,
             Mutability,
@@ -498,7 +500,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             NodeId,
             Span,
             Ty<'tcx>,
-            Option<CanonicalTy<'tcx>>,
+            Option<(CanonicalTy<'tcx>, Span)>,
         ),
     ) {
         match *pattern.kind {
@@ -549,16 +551,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // FIXME(#47184): extract or handle `pattern_user_ty` somehow
                 self.visit_bindings(subpattern, None, f);
             }
-            PatternKind::AscribeUserType { ref subpattern, user_ty } => {
+            PatternKind::AscribeUserType { ref subpattern, user_ty, user_ty_span } => {
                 // This corresponds to something like
                 //
                 // ```
-                // let (p1: T1): T2 = ...;
+                // let A::<'a>(_): A<'static> = ...;
                 // ```
                 //
-                // Not presently possible, though maybe someday.
-                assert!(pattern_user_ty.is_none());
-                self.visit_bindings(subpattern, Some(user_ty), f)
+                // FIXME(#47184): handle `pattern_user_ty` somehow
+                self.visit_bindings(subpattern, Some((user_ty, user_ty_span)), f)
             }
             PatternKind::Leaf { ref subpatterns }
             | PatternKind::Variant {
@@ -1469,7 +1470,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         num_patterns: usize,
         var_id: NodeId,
         var_ty: Ty<'tcx>,
-        user_var_ty: Option<CanonicalTy<'tcx>>,
+        user_var_ty: Option<(CanonicalTy<'tcx>, Span)>,
         has_guard: ArmHasGuard,
         opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
         pat_span: Span,

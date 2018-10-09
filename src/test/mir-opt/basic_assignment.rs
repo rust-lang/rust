@@ -55,8 +55,8 @@ fn main() {
 //        StorageDead(_3);
 //        StorageLive(_4);
 //        _4 = std::option::Option<std::boxed::Box<u32>>::None;
-//        AscribeUserType(_4, o, Canonical { variables: [], value: std::option::Option<std::boxed::Box<u32>> });
 //        FakeRead(ForLet, _4);
+//        AscribeUserType(_4, o, Canonical { variables: [], value: std::option::Option<std::boxed::Box<u32>> });
 //        StorageLive(_5);
 //        StorageLive(_6);
 //        _6 = move _4;
