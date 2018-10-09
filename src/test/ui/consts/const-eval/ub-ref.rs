@@ -12,7 +12,16 @@
 
 use std::mem;
 
-static FOO: bool = unsafe { mem::transmute(3u8) };
-//~^ ERROR this static likely exhibits undefined behavior
+const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
+//~^ ERROR this constant likely exhibits undefined behavior
+
+const NULL: &u16 = unsafe { mem::transmute(0usize) };
+//~^ ERROR this constant likely exhibits undefined behavior
+
+const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
+//~^ ERROR this constant likely exhibits undefined behavior
+
+const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
+//~^ ERROR this constant likely exhibits undefined behavior
 
 fn main() {}

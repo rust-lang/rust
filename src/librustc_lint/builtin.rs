@@ -1558,15 +1558,13 @@ fn validate_const<'a, 'tcx>(
     let ecx = ::rustc_mir::const_eval::mk_eval_cx(tcx, gid.instance, param_env).unwrap();
     let result = (|| {
         let op = ecx.const_to_op(constant)?;
-        let mut todo = vec![(op, Vec::new())];
-        let mut seen = FxHashSet();
-        seen.insert(op);
-        while let Some((op, mut path)) = todo.pop() {
+        let mut ref_tracking = ::rustc_mir::interpret::RefTracking::new(op);
+        while let Some((op, mut path)) = ref_tracking.todo.pop() {
             ecx.validate_operand(
                 op,
                 &mut path,
-                &mut seen,
-                &mut todo,
+                Some(&mut ref_tracking),
+                /* const_mode */ true,
             )?;
         }
         Ok(())

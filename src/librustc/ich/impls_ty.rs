@@ -560,6 +560,10 @@ for ::mir::interpret::EvalErrorKind<'gcx, O> {
                 a.hash_stable(hcx, hasher);
                 b.hash_stable(hcx, hasher)
             },
+            FunctionRetMismatch(a, b) => {
+                a.hash_stable(hcx, hasher);
+                b.hash_stable(hcx, hasher)
+            },
             NoMirFor(ref s) => s.hash_stable(hcx, hasher),
             UnterminatedCString(ptr) => ptr.hash_stable(hcx, hasher),
             PointerOutOfBounds {

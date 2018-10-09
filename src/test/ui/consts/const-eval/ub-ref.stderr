@@ -1,0 +1,35 @@
+error[E0080]: this constant likely exhibits undefined behavior
+  --> $DIR/ub-ref.rs:15:1
+   |
+LL | const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered unaligned reference
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error[E0080]: this constant likely exhibits undefined behavior
+  --> $DIR/ub-ref.rs:18:1
+   |
+LL | const NULL: &u16 = unsafe { mem::transmute(0usize) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0, but expected something greater or equal to 1
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error[E0080]: this constant likely exhibits undefined behavior
+  --> $DIR/ub-ref.rs:21:1
+   |
+LL | const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected initialized plain bits
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error[E0080]: this constant likely exhibits undefined behavior
+  --> $DIR/ub-ref.rs:24:1
+   |
+LL | const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered integer pointer in non-ZST reference
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

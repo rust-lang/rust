@@ -19,7 +19,7 @@
 use std::collections::VecDeque;
 use std::ptr;
 
-use rustc::ty::{self, Instance, query::TyCtxtAt};
+use rustc::ty::{self, Instance, ParamEnv, query::TyCtxtAt};
 use rustc::ty::layout::{self, Align, TargetDataLayout, Size, HasDataLayout};
 use rustc::mir::interpret::{Pointer, AllocId, Allocation, ConstValue, GlobalId,
                             EvalResult, Scalar, EvalErrorKind, AllocType, PointerArithmetic,
@@ -235,7 +235,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         // Check non-NULL/Undef, extract offset
         let (offset, alloc_align) = match ptr {
             Scalar::Ptr(ptr) => {
-                let (size, align) = self.get_size_and_align(ptr.alloc_id)?;
+                let (size, align) = self.get_size_and_align(ptr.alloc_id);
                 // check this is not NULL -- which we can ensure only if this is in-bounds
                 // of some (potentially dead) allocation.
                 if ptr.offset > size {
@@ -284,7 +284,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     /// If you want to check bounds before doing a memory access, be sure to
     /// check the pointer one past the end of your access, then everything will
     /// work out exactly.
-    pub fn check_bounds(&self, ptr: Pointer, access: bool) -> EvalResult<'tcx> {
+    pub fn check_bounds_ptr(&self, ptr: Pointer, access: bool) -> EvalResult<'tcx> {
         let alloc = self.get(ptr.alloc_id)?;
         let allocation_size = alloc.bytes.len() as u64;
         if ptr.offset.bytes() > allocation_size {
@@ -295,6 +295,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             });
         }
         Ok(())
+    }
+
+    /// Check if the memory range beginning at `ptr` and of size `Size` is "in-bounds".
+    #[inline(always)]
+    pub fn check_bounds(&self, ptr: Pointer, size: Size, access: bool) -> EvalResult<'tcx> {
+        // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
+        self.check_bounds_ptr(ptr.offset(size, &*self)?, access)
     }
 }
 
@@ -352,19 +359,28 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
     }
 
-    pub fn get_size_and_align(&self, id: AllocId) -> EvalResult<'tcx, (Size, Align)> {
-        Ok(match self.get(id) {
-            Ok(alloc) => (Size::from_bytes(alloc.bytes.len() as u64), alloc.align),
-            Err(err) => match err.kind {
-                EvalErrorKind::DanglingPointerDeref =>
-                    // This should be in the dead allocation map
-                    *self.dead_alloc_map.get(&id).expect(
-                        "allocation missing in dead_alloc_map"
-                    ),
-                // E.g. a function ptr allocation
-                _ => return Err(err)
+    pub fn get_size_and_align(&self, id: AllocId) -> (Size, Align) {
+        if let Ok(alloc) = self.get(id) {
+            return (Size::from_bytes(alloc.bytes.len() as u64), alloc.align);
+        }
+        // Could also be a fn ptr or extern static
+        match self.tcx.alloc_map.lock().get(id) {
+            Some(AllocType::Function(..)) => (Size::ZERO, Align::from_bytes(1, 1).unwrap()),
+            Some(AllocType::Static(did)) => {
+                // The only way `get` couldnÄt have worked here is if this is an extern static
+                assert!(self.tcx.is_foreign_item(did));
+                // Use size and align of the type
+                let ty = self.tcx.type_of(did);
+                let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
+                (layout.size, layout.align)
             }
-        })
+            _ => {
+                // Must be a deallocated pointer
+                *self.dead_alloc_map.get(&id).expect(
+                    "allocation missing in dead_alloc_map"
+                )
+            }
+        }
     }
 
     pub fn get_mut(
@@ -524,8 +540,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, &[u8]> {
         assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
         self.check_align(ptr.into(), align)?;
-        // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
-        self.check_bounds(ptr.offset(size, &*self)?, true)?;
+        self.check_bounds(ptr, size, true)?;
 
         if check_defined_and_ptr {
             self.check_defined(ptr, size)?;
@@ -569,8 +584,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, &mut [u8]> {
         assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
         self.check_align(ptr.into(), align)?;
-        // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
-        self.check_bounds(ptr.offset(size, &self)?, true)?;
+        self.check_bounds(ptr, size, true)?;
 
         self.mark_definedness(ptr, size, true)?;
         self.clear_relocations(ptr, size)?;

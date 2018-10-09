@@ -131,6 +131,18 @@ impl MemPlace {
 }
 
 impl<'tcx> MPlaceTy<'tcx> {
+    /// Produces a MemPlace that works for ZST but nothing else
+    #[inline]
+    pub fn dangling(layout: TyLayout<'tcx>, cx: impl HasDataLayout) -> Self {
+        MPlaceTy {
+            mplace: MemPlace::from_scalar_ptr(
+                Scalar::from_uint(layout.align.abi(), cx.pointer_size()),
+                layout.align
+            ),
+            layout
+        }
+    }
+
     #[inline]
     fn from_aligned_ptr(ptr: Pointer, layout: TyLayout<'tcx>) -> Self {
         MPlaceTy { mplace: MemPlace::from_ptr(ptr, layout.align), layout }
@@ -555,6 +567,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         dest: PlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
         trace!("write_value: {:?} <- {:?}", *dest, src_val);
+        // Check that the value actually is okay for that type
+        if M::ENFORCE_VALIDITY {
+            // Something changed somewhere, better make sure it matches the type!
+            let op = OpTy { op: Operand::Immediate(src_val), layout: dest.layout };
+            self.validate_operand(op, &mut vec![], None, /*const_mode*/false)?;
+        }
+
         // See if we can avoid an allocation. This is the counterpart to `try_read_value`,
         // but not factored as a separate function.
         let mplace = match dest.place {
@@ -576,7 +595,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         self.write_value_to_mplace(src_val, dest)
     }
 
-    /// Write a value to memory
+    /// Write a value to memory. This does NOT do validation, so you better had already
+    /// done that before calling this!
     fn write_value_to_mplace(
         &mut self,
         value: Value,
@@ -640,12 +660,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         };
         // Slow path, this does not fit into an immediate. Just memcpy.
         trace!("copy_op: {:?} <- {:?}", *dest, *src);
-        let (dest_ptr, dest_align) = self.force_allocation(dest)?.to_scalar_ptr_align();
+        let dest = self.force_allocation(dest)?;
+        let (dest_ptr, dest_align) = dest.to_scalar_ptr_align();
         self.memory.copy(
             src_ptr, src_align,
             dest_ptr, dest_align,
             src.layout.size, false
-        )
+        )?;
+        if M::ENFORCE_VALIDITY {
+            // Something changed somewhere, better make sure it matches the type!
+            self.validate_operand(dest.into(), &mut vec![], None, /*const_mode*/false)?;
+        }
+        Ok(())
     }
 
     /// Make sure that a place is in memory, and return where it is.
@@ -668,6 +694,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         // that has different alignment than the outer field.
                         let local_layout = self.layout_of_local(frame, local)?;
                         let ptr = self.allocate(local_layout, MemoryKind::Stack)?;
+                        // We don't have to validate as we can assume the local
+                        // was already valid for its type.
                         self.write_value_to_mplace(value, ptr)?;
                         let mplace = ptr.mplace;
                         // Update the local
