@@ -135,7 +135,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
 
         if let Some(must_use_op) = must_use_op {
             cx.span_lint(UNUSED_MUST_USE, expr.span,
-                         &format!("unused {} which must be used", must_use_op));
+                         &format!("unused {} that must be used", must_use_op));
             op_warned = true;
         }
 
@@ -146,7 +146,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         fn check_must_use(cx: &LateContext, def_id: DefId, sp: Span, describe_path: &str) -> bool {
             for attr in cx.tcx.get_attrs(def_id).iter() {
                 if attr.check_name("must_use") {
-                    let msg = format!("unused {}`{}` which must be used",
+                    let msg = format!("unused {}`{}` that must be used",
                                           describe_path, cx.tcx.item_path_str(def_id));
                     let mut err = cx.struct_span_lint(UNUSED_MUST_USE, sp, &msg);
                     // check for #[must_use = "..."]
@@ -233,7 +233,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
                 .find(|&&(builtin, ty, _)| name == builtin && ty == AttributeType::CrateLevel)
                 .is_some();
 
-            // Has a plugin registered this attribute as one which must be used at
+            // Has a plugin registered this attribute as one that must be used at
             // the crate level?
             let plugin_crate = plugin_attributes.iter()
                 .find(|&&(ref x, t)| name == &**x && AttributeType::CrateLevel == t)
