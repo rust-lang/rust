@@ -18,7 +18,7 @@ matrix:
       node_js: node
       before_script: false
       script:
-        - cd editors/code && npm ci && npm run travis; cd ../..
+        - cd editors/code && npm ci && npm run travis
 
   allow_failures:
     - rust nightly
