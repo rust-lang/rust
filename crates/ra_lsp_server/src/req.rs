@@ -119,6 +119,14 @@ pub struct JoinLinesParams {
     pub range: Range,
 }
 
+pub enum OnEnter {}
+
+impl Request for OnEnter {
+    type Params = TextDocumentPositionParams;
+    type Result = Option<SourceChange>;
+    const METHOD: &'static str = "m/onEnter";
+}
+
 pub enum Runnables {}
 
 impl Request for Runnables {

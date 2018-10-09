@@ -35,7 +35,7 @@ pub use self::{
         flip_comma, add_derive, add_impl,
         introduce_variable,
     },
-    typing::{join_lines, on_eq_typed},
+    typing::{join_lines, on_eq_typed, on_enter},
     completion::{scope_completion, CompletionItem},
     folding_ranges::{Fold, FoldKind, folding_ranges}
 };

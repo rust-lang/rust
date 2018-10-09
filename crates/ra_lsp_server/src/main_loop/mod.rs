@@ -244,6 +244,7 @@ fn on_request(
         .on::<req::ExtendSelection>(handlers::handle_extend_selection)?
         .on::<req::FindMatchingBrace>(handlers::handle_find_matching_brace)?
         .on::<req::JoinLines>(handlers::handle_join_lines)?
+        .on::<req::OnEnter>(handlers::handle_on_enter)?
         .on::<req::OnTypeFormatting>(handlers::handle_on_type_formatting)?
         .on::<req::DocumentSymbolRequest>(handlers::handle_document_symbol)?
         .on::<req::WorkspaceSymbol>(handlers::handle_workspace_symbol)?

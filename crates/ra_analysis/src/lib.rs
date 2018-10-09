@@ -184,6 +184,12 @@ impl Analysis {
         let file = self.imp.file_syntax(file_id);
         SourceChange::from_local_edit(file_id, "join lines", ra_editor::join_lines(&file, range))
     }
+    pub fn on_enter(&self, file_id: FileId, offset: TextUnit) -> Option<SourceChange> {
+        let file = self.imp.file_syntax(file_id);
+        let edit = ra_editor::on_enter(&file, offset)?;
+        let res = SourceChange::from_local_edit(file_id, "on enter", edit);
+        Some(res)
+    }
     pub fn on_eq_typed(&self, file_id: FileId, offset: TextUnit) -> Option<SourceChange> {
         let file = self.imp.file_syntax(file_id);
         Some(SourceChange::from_local_edit(file_id, "add semicolon", ra_editor::on_eq_typed(&file, offset)?))
