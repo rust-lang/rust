@@ -58,5 +58,11 @@ error: function is never used: `bar`
 LL | fn bar() { //~ ERROR: function is never used
    | ^^^^^^^^
 
-error: aborting due to 9 previous errors
+error: function is never used: `baz`
+  --> $DIR/lint-dead-code-1.rs:112:1
+   |
+LL | fn baz() -> impl Copy { //~ ERROR: function is never used
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 10 previous errors
 

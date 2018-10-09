@@ -1,0 +1,8 @@
+warning: function is never used: `foo`
+  --> $DIR/existential-minimal.rs:15:1
+   |
+LL | fn foo() -> impl std::fmt::Debug { "cake" }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: #[warn(dead_code)] on by default
+
