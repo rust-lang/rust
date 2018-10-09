@@ -15,6 +15,10 @@ use core::ops::RangeBounds;
 #[lang = "eh_personality"]
 extern fn eh_personality() {}
 
+#[cfg(target_os = "windows")]
+#[lang = "eh_unwind_resume"]
+extern fn eh_unwind_resume() {}
+
 
 // take a reference to any built-in range
 fn take_range(_r: &impl RangeBounds<i8>) {}
