@@ -1,0 +1,33 @@
+error[E0669]: invalid value for constraint in inline assembly
+  --> $DIR/inline-asm-bad-operand.rs:28:9
+   |
+LL |         asm!("" :: "r"("")); //~ ERROR E0669
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error[E0669]: invalid value for constraint in inline assembly
+  --> $DIR/inline-asm-bad-operand.rs:33:9
+   |
+LL |         asm!("ret" : : "{rdi}"(target)); //~ ERROR E0669
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0669]: invalid value for constraint in inline assembly
+  --> $DIR/inline-asm-bad-operand.rs:40:14
+   |
+LL |     unsafe { asm!("" :: "i"(hello)) }; //~ ERROR E0669
+   |              ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0669]: invalid value for constraint in inline assembly
+  --> $DIR/inline-asm-bad-operand.rs:48:9
+   |
+LL |         asm!("movups $1, %xmm0"::"m"(arr)); //~ ERROR E0669
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0669]: invalid value for constraint in inline assembly
+  --> $DIR/inline-asm-bad-operand.rs:55:9
+   |
+LL |         asm!("mov sp, $0"::"r"(addr)); //~ ERROR E0669
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0669`.
