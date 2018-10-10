@@ -27,8 +27,8 @@ use syntax_pos::symbol::InternedString;
 
 #[derive(Debug)]
 crate struct RegionName {
-    name: InternedString,
-    source: RegionNameSource,
+    crate name: InternedString,
+    crate source: RegionNameSource,
 }
 
 #[derive(Debug)]

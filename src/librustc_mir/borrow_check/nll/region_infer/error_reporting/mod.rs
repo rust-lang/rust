@@ -10,7 +10,9 @@
 
 use borrow_check::nll::constraints::{OutlivesConstraint};
 use borrow_check::nll::region_infer::RegionInferenceContext;
+use borrow_check::nll::region_infer::error_reporting::region_name::RegionNameSource;
 use borrow_check::nll::type_check::Locations;
+use borrow_check::nll::universal_regions::DefiningTy;
 use rustc::hir::def_id::DefId;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc::infer::InferCtxt;
@@ -263,6 +265,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("report_error: fr_is_local={:?} outlived_fr_is_local={:?} category={:?}",
                fr_is_local, outlived_fr_is_local, category);
         match (category, fr_is_local, outlived_fr_is_local) {
+            (ConstraintCategory::Return, true, false) if self.is_closure_fn_mut(infcx, fr) =>
+                self.report_fnmut_error(mir, infcx, mir_def_id, fr, outlived_fr, span,
+                                        errors_buffer),
             (ConstraintCategory::Assignment, true, false) |
             (ConstraintCategory::CallArgument, true, false) =>
                 self.report_escaping_data_error(mir, infcx, mir_def_id, fr, outlived_fr,
@@ -274,6 +279,85 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         };
     }
 
+    /// Report a specialized error when `FnMut` closures return a reference to a captured variable.
+    /// This function expects `fr` to be local and `outlived_fr` to not be local.
+    ///
+    /// ```text
+    /// error: captured variable cannot escape `FnMut` closure body
+    ///   --> $DIR/issue-53040.rs:15:8
+    ///    |
+    /// LL |     || &mut v;
+    ///    |     -- ^^^^^^ creates a reference to a captured variable which escapes the closure body
+    ///    |     |
+    ///    |     inferred to be a `FnMut` closure
+    ///    |
+    ///    = note: `FnMut` closures only have access to their captured variables while they are
+    ///            executing...
+    ///    = note: ...therefore, returned references to captured variables will escape the closure
+    /// ```
+    fn report_fnmut_error(
+        &self,
+        mir: &Mir<'tcx>,
+        infcx: &InferCtxt<'_, '_, 'tcx>,
+        mir_def_id: DefId,
+        _fr: RegionVid,
+        outlived_fr: RegionVid,
+        span: Span,
+        errors_buffer: &mut Vec<Diagnostic>,
+    ) {
+        let mut diag = infcx.tcx.sess.struct_span_err(
+            span,
+            "captured variable cannot escape `FnMut` closure body",
+        );
+
+        // We should check if the return type of this closure is in fact a closure - in that
+        // case, we can special case the error further.
+        let return_type_is_closure = self.universal_regions.unnormalized_output_ty.is_closure();
+        let message = if return_type_is_closure {
+            "returns a closure that contains a reference to a captured variable, which then \
+             escapes the closure body"
+        } else {
+            "returns a reference to a captured variable which escapes the closure body"
+        };
+
+        diag.span_label(
+            span,
+            message,
+        );
+
+        match self.give_region_a_name(infcx, mir, mir_def_id, outlived_fr, &mut 1).source {
+            RegionNameSource::NamedEarlyBoundRegion(fr_span) |
+            RegionNameSource::NamedFreeRegion(fr_span) |
+            RegionNameSource::SynthesizedFreeEnvRegion(fr_span, _) |
+            RegionNameSource::CannotMatchHirTy(fr_span, _) |
+            RegionNameSource::MatchedHirTy(fr_span) |
+            RegionNameSource::MatchedAdtAndSegment(fr_span) |
+            RegionNameSource::AnonRegionFromUpvar(fr_span, _) |
+            RegionNameSource::AnonRegionFromOutput(fr_span, _, _) => {
+                diag.span_label(fr_span, "inferred to be a `FnMut` closure");
+            },
+            _ => {},
+        }
+
+        diag.note("`FnMut` closures only have access to their captured variables while they are \
+                   executing...");
+        diag.note("...therefore, they cannot allow references to captured variables to escape");
+
+        diag.buffer(errors_buffer);
+    }
+
+    /// Reports a error specifically for when data is escaping a closure.
+    ///
+    /// ```text
+    /// error: borrowed data escapes outside of function
+    ///   --> $DIR/lifetime-bound-will-change-warning.rs:44:5
+    ///    |
+    /// LL | fn test2<'a>(x: &'a Box<Fn()+'a>) {
+    ///    |              - `x` is a reference that is only valid in the function body
+    /// LL |     // but ref_obj will not, so warn.
+    /// LL |     ref_obj(x)
+    ///    |     ^^^^^^^^^^ `x` escapes the function body here
+    /// ```
     fn report_escaping_data_error(
         &self,
         mir: &Mir<'tcx>,
@@ -305,31 +389,46 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             span, &format!("borrowed data escapes outside of {}", escapes_from),
         );
 
-        if let Some((outlived_fr_name, outlived_fr_span)) = outlived_fr_name_and_span {
-            if let Some(name) = outlived_fr_name {
-                diag.span_label(
-                    outlived_fr_span,
-                    format!("`{}` is declared here, outside of the {} body", name, escapes_from),
-                );
-            }
+        if let Some((Some(outlived_fr_name), outlived_fr_span)) = outlived_fr_name_and_span {
+            diag.span_label(
+                outlived_fr_span,
+                format!(
+                    "`{}` is declared here, outside of the {} body",
+                    outlived_fr_name, escapes_from
+                ),
+            );
         }
 
-        if let Some((fr_name, fr_span)) = fr_name_and_span {
-            if let Some(name) = fr_name {
-                diag.span_label(
-                    fr_span,
-                    format!("`{}` is a reference that is only valid in the {} body",
-                            name, escapes_from),
-                );
+        if let Some((Some(fr_name), fr_span)) = fr_name_and_span {
+            diag.span_label(
+                fr_span,
+                format!(
+                    "`{}` is a reference that is only valid in the {} body",
+                    fr_name, escapes_from
+                ),
+            );
 
-                diag.span_label(span, format!("`{}` escapes the {} body here",
-                                               name, escapes_from));
-            }
+            diag.span_label(span, format!("`{}` escapes the {} body here", fr_name, escapes_from));
         }
 
         diag.buffer(errors_buffer);
     }
 
+    /// Reports a region inference error for the general case with named/synthesized lifetimes to
+    /// explain what is happening.
+    ///
+    /// ```text
+    /// error: unsatisfied lifetime constraints
+    ///   --> $DIR/regions-creating-enums3.rs:17:5
+    ///    |
+    /// LL | fn mk_add_bad1<'a,'b>(x: &'a ast<'a>, y: &'b ast<'b>) -> ast<'a> {
+    ///    |                -- -- lifetime `'b` defined here
+    ///    |                |
+    ///    |                lifetime `'a` defined here
+    /// LL |     ast::add(x, y)
+    ///    |     ^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it
+    ///    |                    is returning data with lifetime `'b`
+    /// ```
     fn report_general_error(
         &self,
         mir: &Mir<'tcx>,
@@ -380,6 +479,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         diag.buffer(errors_buffer);
     }
 
+    /// Adds a suggestion to errors where a `impl Trait` is returned.
+    ///
+    /// ```text
+    /// help: to allow this impl Trait to capture borrowed data with lifetime `'1`, add `'_` as
+    ///       a constraint
+    ///    |
+    /// LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> + 'a {
+    ///    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    /// ```
     fn add_static_impl_trait_suggestion(
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
@@ -499,5 +607,23 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .closure_bounds_mapping[&loc]
             .get(&(constraint.sup, constraint.sub));
         *opt_span_category.unwrap_or(&(constraint.category, mir.source_info(loc).span))
+    }
+
+    /// Returns `true` if a closure is inferred to be an `FnMut` closure.
+    crate fn is_closure_fn_mut(
+        &self,
+        infcx: &InferCtxt<'_, '_, 'tcx>,
+        fr: RegionVid,
+    ) -> bool {
+        if let Some(ty::ReFree(free_region)) = self.to_error_region(fr) {
+            if let ty::BoundRegion::BrEnv = free_region.bound_region {
+                if let DefiningTy::Closure(def_id, substs) = self.universal_regions.defining_ty {
+                    let closure_kind_ty = substs.closure_kind_ty(def_id, infcx.tcx);
+                    return Some(ty::ClosureKind::FnMut) == closure_kind_ty.to_opt_closure_kind();
+                }
+            }
+        }
+
+        false
     }
 }

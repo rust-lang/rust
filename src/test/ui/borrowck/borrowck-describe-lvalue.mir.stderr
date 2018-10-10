@@ -20,24 +20,22 @@ LL |                    //[mir]~^ ERROR cannot borrow `x` as mutable more than o
 LL |                    *y = 1;
    |                    ------ first borrow later used here
 
-error: unsatisfied lifetime constraints
+error: captured variable cannot escape `FnMut` closure body
   --> $DIR/borrowck-describe-lvalue.rs:305:16
    |
 LL |              || {
-   |              --
-   |              ||
-   |              |return type of closure is [closure@$DIR/borrowck-describe-lvalue.rs:305:16: 311:18 x:&'2 mut i32]
-   |              lifetime `'1` represents this closure's body
-LL | /                || { //[mir]~ ERROR unsatisfied lifetime constraints
+   |               - inferred to be a `FnMut` closure
+LL | /                || { //[mir]~ ERROR captured variable cannot escape `FnMut` closure body
 LL | |                    let y = &mut x;
 LL | |                    &mut x; //[ast]~ ERROR cannot borrow `**x` as mutable more than once at a time
 LL | |                    //[mir]~^ ERROR cannot borrow `x` as mutable more than once at a time
 LL | |                    *y = 1;
 LL | |                    drop(y);
 LL | |                 }
-   | |_________________^ returning this value requires that `'1` must outlive `'2`
+   | |_________________^ returns a closure that contains a reference to a captured variable, which then escapes the closure body
    |
-   = note: closure implements `FnMut`, so references to captured variables can't escape the closure
+   = note: `FnMut` closures only have access to their captured variables while they are executing...
+   = note: ...therefore, they cannot allow references to captured variables to escape
 
 error[E0503]: cannot use `f.x` because it was mutably borrowed
   --> $DIR/borrowck-describe-lvalue.rs:53:9
