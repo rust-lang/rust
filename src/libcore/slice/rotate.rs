@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use cmp;
-use mem;
+use mem::{self, MaybeUninit};
 use ptr;
 
 /// Rotation is much faster if it has access to a little bit of memory. This
@@ -26,12 +26,6 @@ union RawArray<T> {
 }
 
 impl<T> RawArray<T> {
-    fn new() -> Self {
-        unsafe { mem::uninitialized() }
-    }
-    fn ptr(&self) -> *mut T {
-        unsafe { &self.typed as *const T as *mut T }
-    }
     fn cap() -> usize {
         if mem::size_of::<T>() == 0 {
             usize::max_value()
@@ -88,8 +82,8 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mid: *mut T, mut right: usize) {
         }
     }
 
-    let rawarray = RawArray::new();
-    let buf = rawarray.ptr();
+    let mut rawarray = MaybeUninit::<RawArray<T>>::uninitialized();
+    let buf = &mut (*rawarray.as_mut_ptr()).typed as *mut [T; 2] as *mut T;
 
     let dim = mid.sub(left).add(right);
     if left <= right {
