@@ -3953,6 +3953,7 @@ impl<'a> LoweringContext<'a> {
                             constraint: out.constraint.clone(),
                             is_rw: out.is_rw,
                             is_indirect: out.is_indirect,
+                            span: out.expr.span,
                         })
                         .collect(),
                     asm: asm.asm.clone(),

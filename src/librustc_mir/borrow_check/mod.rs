@@ -544,7 +544,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                         // be encoeded through MIR place derefs instead.
                         self.access_place(
                             context,
-                            (output, span),
+                            (output, o.span),
                             (Deep, Read(ReadKind::Copy)),
                             LocalMutationIsAllowed::No,
                             flow_state,
@@ -552,13 +552,13 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                         self.check_if_path_or_subpath_is_moved(
                             context,
                             InitializationRequiringAction::Use,
-                            (output, span),
+                            (output, o.span),
                             flow_state,
                         );
                     } else {
                         self.mutate_place(
                             context,
-                            (output, span),
+                            (output, o.span),
                             if o.is_rw { Deep } else { Shallow(None) },
                             if o.is_rw { WriteAndRead } else { JustWrite },
                             flow_state,

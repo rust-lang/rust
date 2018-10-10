@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(tool_lints)]
+
 #![feature(rust_2018_preview)]
 #![deny(unknown_lints)]
 
