@@ -816,6 +816,7 @@ All notable changes to this project will be documented in this file.
 [`redundant_closure_call`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_closure_call
 [`redundant_field_names`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_field_names
 [`redundant_pattern`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_pattern
+[`redundant_pattern_matching`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_pattern_matching
 [`ref_in_deref`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#ref_in_deref
 [`regex_macro`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#regex_macro
 [`replace_consts`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#replace_consts

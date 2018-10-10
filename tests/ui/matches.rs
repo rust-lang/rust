@@ -13,7 +13,7 @@
 
 
 #![warn(clippy::all)]
-#![allow(unused, clippy::if_let_redundant_pattern_matching)]
+#![allow(unused, clippy::redundant_pattern_matching)]
 #![warn(clippy::single_match_else, clippy::match_same_arms)]
 
 enum ExprNode {

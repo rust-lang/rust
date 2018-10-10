@@ -12,7 +12,7 @@
 
 
 #![warn(clippy::all)]
-#![warn(clippy::if_let_redundant_pattern_matching)]
+#![warn(clippy::redundant_pattern_matching)]
 
 
 fn main() {

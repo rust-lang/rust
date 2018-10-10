@@ -16,7 +16,7 @@ macro_rules! declare_deprecated_lint {
 
 /// **What it does:** Nothing. This lint has been deprecated.
 ///
-/// **Deprecation reason:** This used to check for `assert!(a == b)` and recommend 
+/// **Deprecation reason:** This used to check for `assert!(a == b)` and recommend
 /// replacement with `assert_eq!(a, b)`, but this is no longer needed after RFC 2011.
 declare_deprecated_lint! {
     pub SHOULD_ASSERT_EQ,
@@ -101,4 +101,14 @@ declare_deprecated_lint! {
 declare_deprecated_lint! {
     pub ASSIGN_OPS,
     "using compound assignment operators (e.g. `+=`) is harmless"
+}
+
+/// **What it does:** Nothing. This lint has been deprecated.
+///
+/// **Deprecation reason:** The original rule will only lint for `if let`. After
+/// making it support to lint `match`, naming as `if let` is not suitable for it.
+/// So, this lint is deprecated.
+declare_deprecated_lint! {
+    pub IF_LET_REDUNDANT_PATTERN_MATCHING,
+    "this lint has been changed to redundant_pattern_matching"
 }

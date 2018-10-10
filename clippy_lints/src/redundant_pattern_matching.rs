@@ -31,6 +31,10 @@ use crate::rustc_errors::Applicability;
 /// if let Err(_) = Err::<i32, i32>(42) {}
 /// if let None = None::<()> {}
 /// if let Some(_) = Some(42) {}
+/// match Ok::<i32, i32>(42) {
+///     Ok(_) => true,
+///     Err(_) => false,
+/// };
 /// ```
 ///
 /// The more idiomatic use would be:
@@ -40,10 +44,11 @@ use crate::rustc_errors::Applicability;
 /// if Err::<i32, i32>(42).is_err() {}
 /// if None::<()>.is_none() {}
 /// if Some(42).is_some() {}
+/// Ok::<i32, i32>(42).is_ok();
 /// ```
 ///
 declare_clippy_lint! {
-    pub IF_LET_REDUNDANT_PATTERN_MATCHING,
+    pub REDUNDANT_PATTERN_MATCHING,
     style,
     "use the proper utility function avoiding an `if let`"
 }
@@ -53,7 +58,7 @@ pub struct Pass;
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(IF_LET_REDUNDANT_PATTERN_MATCHING)
+        lint_array!(REDUNDANT_PATTERN_MATCHING)
     }
 }
 
@@ -101,7 +106,7 @@ fn find_sugg_for_if_let<'a, 'tcx>(
 
         span_lint_and_then(
             cx,
-            IF_LET_REDUNDANT_PATTERN_MATCHING,
+            REDUNDANT_PATTERN_MATCHING,
             arms[0].pats[0].span,
             &format!("redundant pattern matching, consider using `{}`", good_method),
             |db| {
@@ -174,7 +179,7 @@ fn find_sugg_for_match<'a, 'tcx>(
         if let Some(good_method) = found_good_method {
             span_lint_and_then(
                 cx,
-                IF_LET_REDUNDANT_PATTERN_MATCHING,
+                REDUNDANT_PATTERN_MATCHING,
                 expr.span,
                 &format!("redundant pattern matching, consider using `{}`", good_method),
                 |db| {
