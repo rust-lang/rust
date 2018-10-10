@@ -295,13 +295,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     let substs = cx.tables().node_substs(fun.hir_id);
 
                     let user_ty = cx.tables().user_substs(fun.hir_id)
-                        .map(|user_substs| {
-                            UserTypeAnnotation::Ty(user_substs.unchecked_map(|user_substs| {
-                                // Here, we just pair an `AdtDef` with the
-                                // `user_substs`, so no new types etc are introduced.
-                                cx.tcx().mk_adt(adt_def, user_substs)
-                            }))
-                        });
+                        .map(|user_substs| UserTypeAnnotation::AdtDef(adt_def, user_substs));
 
                     let field_refs = args.iter()
                         .enumerate()
@@ -774,14 +768,7 @@ fn user_substs_applied_to_def(
         Def::Method(_) |
         Def::StructCtor(_, CtorKind::Fn) |
         Def::VariantCtor(_, CtorKind::Fn) =>
-            Some(
-                UserTypeAnnotation::Ty(cx.tables().user_substs(hir_id)?.unchecked_map(|user_substs| {
-                        // Here, we just pair a `DefId` with the
-                        // `user_substs`, so no new types etc are introduced.
-                        cx.tcx().mk_fn_def(def.def_id(), user_substs)
-                    }),
-                )
-            ),
+            Some(UserTypeAnnotation::FnDef(def.def_id(), cx.tables().user_substs(hir_id)?)),
 
         Def::Const(_def_id) |
         Def::AssociatedConst(_def_id) =>

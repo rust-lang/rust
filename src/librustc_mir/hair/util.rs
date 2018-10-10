@@ -23,13 +23,7 @@ crate trait UserAnnotatedTyHelpers<'gcx: 'tcx, 'tcx> {
         adt_def: &'tcx AdtDef,
     ) -> Option<UserTypeAnnotation<'tcx>> {
         let user_substs = self.tables().user_substs(hir_id)?;
-        Some(UserTypeAnnotation::Ty(user_substs.unchecked_map(
-            |user_substs| {
-                // Here, we just pair an `AdtDef` with the
-                // `user_substs`, so no new types etc are introduced.
-                self.tcx().mk_adt(adt_def, user_substs)
-            },
-        )))
+        Some(UserTypeAnnotation::AdtDef(adt_def, user_substs))
     }
 
     /// Looks up the type associated with this hir-id and applies the
@@ -41,21 +35,8 @@ crate trait UserAnnotatedTyHelpers<'gcx: 'tcx, 'tcx> {
     ) -> Option<UserTypeAnnotation<'tcx>> {
         let user_substs = self.tables().user_substs(hir_id)?;
         match &self.tables().node_id_to_type(hir_id).sty {
-            ty::Adt(adt_def, _) => Some(UserTypeAnnotation::Ty(user_substs.unchecked_map(
-                |user_substs| {
-                    // Ok to call `unchecked_map` because we just pair an
-                    // `AdtDef` with the `user_substs`, so no new types
-                    // etc are introduced.
-                    self.tcx().mk_adt(adt_def, user_substs)
-                },
-            ))),
-            ty::FnDef(def_id, _) => Some(UserTypeAnnotation::Ty(user_substs.unchecked_map(
-                |user_substs| {
-                    // Here, we just pair a `DefId` with the
-                    // `user_substs`, so no new types etc are introduced.
-                    self.tcx().mk_fn_def(*def_id, user_substs)
-                },
-            ))),
+            ty::Adt(adt_def, _) => Some(UserTypeAnnotation::AdtDef(adt_def, user_substs)),
+            ty::FnDef(def_id, _) => Some(UserTypeAnnotation::FnDef(*def_id, user_substs)),
             sty => bug!(
                 "sty: {:?} should not have user-substs {:?} recorded ",
                 sty,

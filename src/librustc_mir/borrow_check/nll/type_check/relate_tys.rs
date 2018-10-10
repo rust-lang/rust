@@ -71,9 +71,21 @@ pub(super) fn relate_type_and_user_type<'tcx>(
         a, v, user_ty, locations
     );
 
-    let (b, _values) = match user_ty {
+    let b = match user_ty {
         UserTypeAnnotation::Ty(canonical_ty) => {
-            infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_ty)
+            let (ty, _) =
+                infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_ty);
+            ty
+        }
+        UserTypeAnnotation::FnDef(def_id, canonical_substs) => {
+            let (substs, _) =
+                infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_substs);
+            infcx.tcx.mk_fn_def(def_id, substs)
+        }
+        UserTypeAnnotation::AdtDef(adt_def, canonical_substs) => {
+            let (substs, _) =
+                infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_substs);
+            infcx.tcx.mk_adt(adt_def, substs)
         }
     };
 
