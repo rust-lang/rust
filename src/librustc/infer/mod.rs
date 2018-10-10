@@ -1231,65 +1231,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.inlined_shallow_resolve(typ)
     }
 
-    /// A hacky sort of method used by the NLL type-relating code:
-    ///
-    /// - `var` must be some unbound type variable.
-    /// - `value` must be a suitable type to use as its value.
-    ///
-    /// `var` will then be equated with `value`. Note that this
-    /// sidesteps a number of important checks, such as the "occurs
-    /// check" that prevents cyclic types, so it is important not to
-    /// use this method during regular type-check.
-    fn force_instantiate_unchecked(&self, var: Ty<'tcx>, value: Ty<'tcx>) {
-        match (&var.sty, &value.sty) {
-            (&ty::Infer(ty::TyVar(vid)), _) => {
-                let mut type_variables = self.type_variables.borrow_mut();
-
-                // In NLL, we don't have type inference variables
-                // floating around, so we can do this rather imprecise
-                // variant of the occurs-check.
-                assert!(!value.has_infer_types());
-
-                type_variables.instantiate(vid, value);
-            }
-
-            (&ty::Infer(ty::IntVar(vid)), &ty::Int(value)) => {
-                let mut int_unification_table = self.int_unification_table.borrow_mut();
-                int_unification_table
-                    .unify_var_value(vid, Some(ty::IntVarValue::IntType(value)))
-                    .unwrap_or_else(|_| {
-                        bug!("failed to unify int var `{:?}` with `{:?}`", vid, value);
-                    });
-            }
-
-            (&ty::Infer(ty::IntVar(vid)), &ty::Uint(value)) => {
-                let mut int_unification_table = self.int_unification_table.borrow_mut();
-                int_unification_table
-                    .unify_var_value(vid, Some(ty::IntVarValue::UintType(value)))
-                    .unwrap_or_else(|_| {
-                        bug!("failed to unify int var `{:?}` with `{:?}`", vid, value);
-                    });
-            }
-
-            (&ty::Infer(ty::FloatVar(vid)), &ty::Float(value)) => {
-                let mut float_unification_table = self.float_unification_table.borrow_mut();
-                float_unification_table
-                    .unify_var_value(vid, Some(ty::FloatVarValue(value)))
-                    .unwrap_or_else(|_| {
-                        bug!("failed to unify float var `{:?}` with `{:?}`", vid, value)
-                    });
-            }
-
-            _ => {
-                bug!(
-                    "force_instantiate_unchecked invoked with bad combination: var={:?} value={:?}",
-                    var,
-                    value,
-                );
-            }
-        }
-    }
-
     pub fn resolve_type_vars_if_possible<T>(&self, value: &T) -> T
     where
         T: TypeFoldable<'tcx>,
