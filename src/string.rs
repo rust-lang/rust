@@ -242,9 +242,9 @@ fn break_string(max_chars: usize, trim_end: bool, line_end: &str, input: &[&str]
         for (i, grapheme) in input[0..=index].iter().enumerate() {
             if is_line_feed(grapheme) {
                 if i <= index_minus_ws {
-                    let mut line = input[0..i].join("");
+                    let mut line = &input[0..i].join("")[..];
                     if trim_end {
-                        line = line.trim_right().to_string();
+                        line = line.trim_right();
                     }
                     return SnippetState::EndWithLineFeed(format!("{}\n", line), i + 1);
                 }
