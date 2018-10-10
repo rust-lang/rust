@@ -2,9 +2,9 @@ use borrow_check::borrow_set::{BorrowSet, BorrowData};
 use borrow_check::place_ext::PlaceExt;
 
 use rustc::mir::{self, Location, Place, Mir};
+use rustc::mir::PlaceBase;
 use rustc::ty::TyCtxt;
 use rustc::ty::RegionVid;
-use rustc::mir::PlaceBase;
 
 use rustc_data_structures::bit_set::{BitSet, BitSetOperator};
 use rustc_data_structures::fx::FxHashMap;
