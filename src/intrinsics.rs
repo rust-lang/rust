@@ -307,7 +307,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let uninit_val = uninit_place.to_cvalue(fx);
             ret.write_cvalue(fx, uninit_val);
         };
-        write_bytes, <T> (v dst, v val, v count) {
+        write_bytes, (v dst, v val, v count) {
             fx.bcx.call_memset(fx.isa, dst, val, count);
         };
         uninit, <T> () {

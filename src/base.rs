@@ -572,7 +572,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                 Rvalue::Cast(CastKind::ClosureFnPointer, operand, ty) => {
                     unimplemented!("rval closure_fn_ptr {:?} {:?}", operand, ty)
                 }
-                Rvalue::Cast(CastKind::Unsize, operand, ty) => {
+                Rvalue::Cast(CastKind::Unsize, operand, _ty) => {
                     let operand = trans_operand(fx, operand);
                     operand.unsize_value(fx, lval);
                 }
@@ -885,13 +885,6 @@ pub fn trans_checked_int_binop<'a, 'tcx: 'a>(
             "checked int binop requires lhs and rhs of same type"
         );
     }
-    let res_ty = match out_ty.sty {
-        ty::Tuple(tys) => tys[0],
-        _ => bug!(
-            "Checked int binop requires tuple as output, but got {:?}",
-            out_ty
-        ),
-    };
 
     let lhs = in_lhs.load_value(fx);
     let rhs = in_rhs.load_value(fx);
