@@ -210,8 +210,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     // Make sure this is non-NULL and aligned
                     let (size, align) = self.size_and_align_of(place.meta, place.layout)?
                         // for the purpose of validity, consider foreign types to have
-                        // alignment 1 and size 0.
-                        .unwrap_or_else(|| (Size::ZERO, Align::from_bytes(1, 1).unwrap()));
+                        // alignment and size determined by the layout (size will be 0,
+                        // alignment should take attributes into account).
+                        .unwrap_or_else(|| place.layout.size_and_align());
                     match self.memory.check_align(place.ptr, align) {
                         Ok(_) => {},
                         Err(err) => match err.kind {
