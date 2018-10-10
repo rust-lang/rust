@@ -389,8 +389,8 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     while i + block_size <= len {
         // Create some uninitialized memory as scratch space
         // Declaring `t` here avoids aligning the stack when this loop is unused
-        let mut t: Block = mem::uninitialized();
-        let t = &mut t as *mut _ as *mut u8;
+        let mut t = mem::MaybeUninit::<Block>::uninitialized();
+        let t = t.as_mut_ptr() as *mut u8;
         let x = x.add(i);
         let y = y.add(i);
 
@@ -404,10 +404,10 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 
     if i < len {
         // Swap any remaining bytes
-        let mut t: UnalignedBlock = mem::uninitialized();
+        let mut t = mem::MaybeUninit::<UnalignedBlock>::uninitialized();
         let rem = len - i;
 
-        let t = &mut t as *mut _ as *mut u8;
+        let t = t.as_mut_ptr() as *mut u8;
         let x = x.add(i);
         let y = y.add(i);
 
