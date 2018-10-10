@@ -20,7 +20,7 @@ use build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use hair::*;
 use rustc::hir;
 use rustc::mir::*;
-use rustc::ty::{self, CanonicalTy, Ty};
+use rustc::ty::{self, Ty};
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::{Name, NodeId};
@@ -491,7 +491,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn visit_bindings(
         &mut self,
         pattern: &Pattern<'tcx>,
-        mut pattern_user_ty: Option<(CanonicalTy<'tcx>, Span)>,
+        mut pattern_user_ty: Option<(UserTypeAnnotation<'tcx>, Span)>,
         f: &mut impl FnMut(
             &mut Self,
             Mutability,
@@ -500,7 +500,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             NodeId,
             Span,
             Ty<'tcx>,
-            Option<(CanonicalTy<'tcx>, Span)>,
+            Option<(UserTypeAnnotation<'tcx>, Span)>,
         ),
     ) {
         match *pattern.kind {
@@ -626,7 +626,7 @@ struct Binding<'tcx> {
 struct Ascription<'tcx> {
     span: Span,
     source: Place<'tcx>,
-    user_ty: CanonicalTy<'tcx>,
+    user_ty: UserTypeAnnotation<'tcx>,
 }
 
 #[derive(Clone, Debug)]
@@ -1470,7 +1470,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         num_patterns: usize,
         var_id: NodeId,
         var_ty: Ty<'tcx>,
-        user_var_ty: Option<(CanonicalTy<'tcx>, Span)>,
+        user_var_ty: Option<(UserTypeAnnotation<'tcx>, Span)>,
         has_guard: ArmHasGuard,
         opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
         pat_span: Span,

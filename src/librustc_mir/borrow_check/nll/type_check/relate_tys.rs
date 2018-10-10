@@ -10,12 +10,12 @@
 
 use borrow_check::nll::constraints::OutlivesConstraint;
 use borrow_check::nll::type_check::{BorrowCheckContext, Locations};
-use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::infer::nll_relate::{TypeRelating, TypeRelatingDelegate};
-use rustc::mir::ConstraintCategory;
+use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
+use rustc::mir::{ConstraintCategory, UserTypeAnnotation};
 use rustc::traits::query::Fallible;
 use rustc::ty::relate::TypeRelation;
-use rustc::ty::{self, CanonicalTy, Ty};
+use rustc::ty::{self, Ty};
 use syntax_pos::DUMMY_SP;
 
 /// Adds sufficient constraints to ensure that `a <: b`.
@@ -61,20 +61,21 @@ pub(super) fn relate_type_and_user_type<'tcx>(
     infcx: &InferCtxt<'_, '_, 'tcx>,
     a: Ty<'tcx>,
     v: ty::Variance,
-    canonical_b: CanonicalTy<'tcx>,
+    user_ty: UserTypeAnnotation<'tcx>,
     locations: Locations,
     category: ConstraintCategory,
     borrowck_context: Option<&mut BorrowCheckContext<'_, 'tcx>>,
 ) -> Fallible<Ty<'tcx>> {
     debug!(
         "relate_type_and_user_type(a={:?}, v={:?}, b={:?}, locations={:?})",
-        a, v, canonical_b, locations
+        a, v, user_ty, locations
     );
 
-    let (b, _values) = infcx.instantiate_canonical_with_fresh_inference_vars(
-        DUMMY_SP,
-        &canonical_b,
-    );
+    let (b, _values) = match user_ty {
+        UserTypeAnnotation::Ty(canonical_ty) => {
+            infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_ty)
+        }
+    };
 
     // The `TypeRelating` code assumes that the "canonical variables"
     // appear in the "a" side, so flip `Contravariant` ambient

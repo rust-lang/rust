@@ -43,7 +43,7 @@ use rustc::traits::query::{Fallible, NoSolution};
 use rustc::traits::{ObligationCause, PredicateObligations};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, UnpackedKind};
-use rustc::ty::{self, CanonicalTy, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind};
+use rustc::ty::{self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind};
 use std::rc::Rc;
 use std::{fmt, iter};
 use syntax_pos::{Span, DUMMY_SP};
@@ -966,7 +966,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         &mut self,
         a: Ty<'tcx>,
         v: ty::Variance,
-        b: CanonicalTy<'tcx>,
+        b: UserTypeAnnotation<'tcx>,
         locations: Locations,
         category: ConstraintCategory,
     ) -> Fallible<()> {
@@ -1837,7 +1837,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     /// If this rvalue supports a user-given type annotation, then
     /// extract and return it. This represents the final type of the
     /// rvalue and will be unified with the inferred type.
-    fn rvalue_user_ty(&self, rvalue: &Rvalue<'tcx>) -> Option<CanonicalTy<'tcx>> {
+    fn rvalue_user_ty(&self, rvalue: &Rvalue<'tcx>) -> Option<UserTypeAnnotation<'tcx>> {
         match rvalue {
             Rvalue::Use(_)
             | Rvalue::Repeat(..)

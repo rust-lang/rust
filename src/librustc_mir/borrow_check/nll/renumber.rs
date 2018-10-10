@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, CanonicalTy, ClosureSubsts, GeneratorSubsts, Ty, TypeFoldable};
-use rustc::mir::{BasicBlock, Location, Mir, Statement, StatementKind};
+use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, Ty, TypeFoldable};
+use rustc::mir::{BasicBlock, Location, Mir, Statement, StatementKind, UserTypeAnnotation};
 use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 
@@ -65,12 +65,12 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
         debug!("visit_ty: ty={:?}", ty);
     }
 
-    fn visit_user_ty(&mut self, _ty: &mut CanonicalTy<'tcx>) {
-        // `user_ty` annotations represent the types that the user
+    fn visit_user_type_annotation(&mut self, _ty: &mut UserTypeAnnotation<'tcx>) {
+        // User type annotations represent the types that the user
         // wrote in the progarm. We don't want to erase the regions
         // from these types: rather, we want to add them as
         // constraints at type-check time.
-        debug!("visit_user_ty: skipping renumber");
+        debug!("visit_user_type_annotation: skipping renumber");
     }
 
     fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>, location: Location) {

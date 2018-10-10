@@ -296,11 +296,11 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
                     let user_ty = cx.tables().user_substs(fun.hir_id)
                         .map(|user_substs| {
-                            user_substs.unchecked_map(|user_substs| {
+                            UserTypeAnnotation::Ty(user_substs.unchecked_map(|user_substs| {
                                 // Here, we just pair an `AdtDef` with the
                                 // `user_substs`, so no new types etc are introduced.
                                 cx.tcx().mk_adt(adt_def, user_substs)
-                            })
+                            }))
                         });
 
                     let field_refs = args.iter()
@@ -725,9 +725,11 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
         hir::ExprKind::Type(ref source, ref ty) => {
             let user_provided_tys = cx.tables.user_provided_tys();
-            let user_ty = *user_provided_tys
-                .get(ty.hir_id)
-                .expect(&format!("{:?} not found in user_provided_tys, source: {:?}", ty, source));
+            let user_ty = UserTypeAnnotation::Ty(
+                *user_provided_tys
+                    .get(ty.hir_id)
+                    .expect(&format!("{:?} not found in user_provided_tys, source: {:?}", ty, source))
+            );
             if source.is_place_expr() {
                 ExprKind::PlaceTypeAscription {
                     source: source.to_ref(),
@@ -763,7 +765,7 @@ fn user_substs_applied_to_def(
     cx: &mut Cx<'a, 'gcx, 'tcx>,
     hir_id: hir::HirId,
     def: &Def,
-) -> Option<CanonicalTy<'tcx>> {
+) -> Option<UserTypeAnnotation<'tcx>> {
     match def {
         // A reference to something callable -- e.g., a fn, method, or
         // a tuple-struct or tuple-variant. This has the type of a
@@ -772,11 +774,14 @@ fn user_substs_applied_to_def(
         Def::Method(_) |
         Def::StructCtor(_, CtorKind::Fn) |
         Def::VariantCtor(_, CtorKind::Fn) =>
-            Some(cx.tables().user_substs(hir_id)?.unchecked_map(|user_substs| {
-                // Here, we just pair a `DefId` with the
-                // `user_substs`, so no new types etc are introduced.
-                cx.tcx().mk_fn_def(def.def_id(), user_substs)
-            })),
+            Some(
+                UserTypeAnnotation::Ty(cx.tables().user_substs(hir_id)?.unchecked_map(|user_substs| {
+                        // Here, we just pair a `DefId` with the
+                        // `user_substs`, so no new types etc are introduced.
+                        cx.tcx().mk_fn_def(def.def_id(), user_substs)
+                    }),
+                )
+            ),
 
         Def::Const(_def_id) |
         Def::AssociatedConst(_def_id) =>

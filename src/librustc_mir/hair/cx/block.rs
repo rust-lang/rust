@@ -86,12 +86,12 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         let mut pattern = cx.pattern_from_hir(&local.pat);
 
                         if let Some(ty) = &local.ty {
-                            if let Some(user_ty) = cx.tables.user_provided_tys().get(ty.hir_id) {
+                            if let Some(&user_ty) = cx.tables.user_provided_tys().get(ty.hir_id) {
                                 pattern = Pattern {
                                     ty: pattern.ty,
                                     span: pattern.span,
                                     kind: Box::new(PatternKind::AscribeUserType {
-                                        user_ty: *user_ty,
+                                        user_ty: UserTypeAnnotation::Ty(user_ty),
                                         user_ty_span: ty.span,
                                         subpattern: pattern
                                     })
