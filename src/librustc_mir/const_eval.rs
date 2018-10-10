@@ -12,6 +12,9 @@
 
 use std::fmt;
 use std::error::Error;
+use std::borrow::{Borrow, Cow};
+use std::hash::Hash;
+use std::collections::hash_map::Entry;
 
 use rustc::hir::{self, def_id::DefId};
 use rustc::mir::interpret::ConstEvalErr;
@@ -20,13 +23,14 @@ use rustc::ty::{self, TyCtxt, Instance, query::TyCtxtAt};
 use rustc::ty::layout::{self, LayoutOf, TyLayout};
 use rustc::ty::subst::Subst;
 use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::fx::FxHashMap;
 
 use syntax::ast::Mutability;
 use syntax::source_map::{Span, DUMMY_SP};
 
 use rustc::mir::interpret::{
     EvalResult, EvalError, EvalErrorKind, GlobalId,
-    Scalar, Allocation, ConstValue,
+    Scalar, Allocation, AllocId, ConstValue,
 };
 use interpret::{self,
     Place, PlaceTy, MemPlace, OpTy, Operand, Value,
@@ -118,9 +122,9 @@ pub fn op_to_const<'tcx>(
         }
     };
     let val = match normalized_op {
-        Err(MemPlace { ptr, align, extra }) => {
+        Err(MemPlace { ptr, align, meta }) => {
             // extract alloc-offset pair
-            assert!(extra.is_none());
+            assert!(meta.is_none());
             let ptr = ptr.to_ptr()?;
             let alloc = ecx.memory.get(ptr.alloc_id)?;
             assert!(alloc.align.abi() >= align.abi());
@@ -264,6 +268,67 @@ impl<'a, 'mir, 'tcx> CompileTimeInterpreter<'a, 'mir, 'tcx> {
     }
 }
 
+impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxHashMap<K, V> {
+    #[inline(always)]
+    fn contains_key<Q: ?Sized + Hash + Eq>(&mut self, k: &Q) -> bool
+        where K: Borrow<Q>
+    {
+        FxHashMap::contains_key(self, k)
+    }
+
+    #[inline(always)]
+    fn insert(&mut self, k: K, v: V) -> Option<V>
+    {
+        FxHashMap::insert(self, k, v)
+    }
+
+    #[inline(always)]
+    fn remove<Q: ?Sized + Hash + Eq>(&mut self, k: &Q) -> Option<V>
+        where K: Borrow<Q>
+    {
+        FxHashMap::remove(self, k)
+    }
+
+    #[inline(always)]
+    fn filter_map_collect<T>(&self, mut f: impl FnMut(&K, &V) -> Option<T>) -> Vec<T> {
+        self.iter()
+            .filter_map(move |(k, v)| f(k, &*v))
+            .collect()
+    }
+
+    #[inline(always)]
+    fn get_or<E>(
+        &self,
+        k: K,
+        vacant: impl FnOnce() -> Result<V, E>
+    ) -> Result<&V, E>
+    {
+        match self.get(&k) {
+            Some(v) => Ok(v),
+            None => {
+                vacant()?;
+                bug!("The CTFE machine shouldn't ever need to extend the alloc_map when reading")
+            }
+        }
+    }
+
+    #[inline(always)]
+    fn get_mut_or<E>(
+        &mut self,
+        k: K,
+        vacant: impl FnOnce() -> Result<V, E>
+    ) -> Result<&mut V, E>
+    {
+        match self.entry(k) {
+            Entry::Occupied(e) => Ok(e.into_mut()),
+            Entry::Vacant(e) => {
+                let v = vacant()?;
+                Ok(e.insert(v))
+            }
+        }
+    }
+}
+
 type CompileTimeEvalContext<'a, 'mir, 'tcx> =
     EvalContext<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>;
 
@@ -272,8 +337,11 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
 {
     type MemoryData = ();
     type MemoryKinds = !;
+    type PointerTag = ();
 
-    const MUT_STATIC_KIND: Option<!> = None; // no mutating of statics allowed
+    type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation<()>)>;
+
+    const STATIC_KIND: Option<!> = None; // no copying of statics allowed
     const ENFORCE_VALIDITY: bool = false; // for now, we don't
 
     fn find_fn(
@@ -339,8 +407,16 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     fn find_foreign_static(
         _tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         _def_id: DefId,
-    ) -> EvalResult<'tcx, &'tcx Allocation> {
+    ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
         err!(ReadForeignStatic)
+    }
+
+    #[inline(always)]
+    fn static_with_default_tag(
+        alloc: &'_ Allocation
+    ) -> Cow<'_, Allocation<Self::PointerTag>> {
+        // We do not use a tag so we can just cheaply forward the reference
+        Cow::Borrowed(alloc)
     }
 
     fn box_alloc(

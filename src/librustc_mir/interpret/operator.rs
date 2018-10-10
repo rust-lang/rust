@@ -24,9 +24,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     pub fn binop_with_overflow(
         &mut self,
         op: mir::BinOp,
-        left: ValTy<'tcx>,
-        right: ValTy<'tcx>,
-        dest: PlaceTy<'tcx>,
+        left: ValTy<'tcx, M::PointerTag>,
+        right: ValTy<'tcx, M::PointerTag>,
+        dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
         let (val, overflowed) = self.binary_op_val(op, left, right)?;
         let val = Value::ScalarPair(val.into(), Scalar::from_bool(overflowed).into());
@@ -38,9 +38,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     pub fn binop_ignore_overflow(
         &mut self,
         op: mir::BinOp,
-        left: ValTy<'tcx>,
-        right: ValTy<'tcx>,
-        dest: PlaceTy<'tcx>,
+        left: ValTy<'tcx, M::PointerTag>,
+        right: ValTy<'tcx, M::PointerTag>,
+        dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
         let (val, _overflowed) = self.binary_op_val(op, left, right)?;
         self.write_scalar(val, dest)
@@ -53,7 +53,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         bin_op: mir::BinOp,
         l: char,
         r: char,
-    ) -> EvalResult<'tcx, (Scalar, bool)> {
+    ) -> EvalResult<'tcx, (Scalar<M::PointerTag>, bool)> {
         use rustc::mir::BinOp::*;
 
         let res = match bin_op {
@@ -73,7 +73,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         bin_op: mir::BinOp,
         l: bool,
         r: bool,
-    ) -> EvalResult<'tcx, (Scalar, bool)> {
+    ) -> EvalResult<'tcx, (Scalar<M::PointerTag>, bool)> {
         use rustc::mir::BinOp::*;
 
         let res = match bin_op {
@@ -98,7 +98,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         // passing in raw bits
         l: u128,
         r: u128,
-    ) -> EvalResult<'tcx, (Scalar, bool)> {
+    ) -> EvalResult<'tcx, (Scalar<M::PointerTag>, bool)> {
         use rustc::mir::BinOp::*;
 
         macro_rules! float_math {
@@ -138,7 +138,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         left_layout: TyLayout<'tcx>,
         r: u128,
         right_layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, (Scalar, bool)> {
+    ) -> EvalResult<'tcx, (Scalar<M::PointerTag>, bool)> {
         use rustc::mir::BinOp::*;
 
         // Shift ops can have an RHS with a different numeric type.
@@ -288,9 +288,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     pub fn binary_op_val(
         &self,
         bin_op: mir::BinOp,
-        left: ValTy<'tcx>,
-        right: ValTy<'tcx>,
-    ) -> EvalResult<'tcx, (Scalar, bool)> {
+        left: ValTy<'tcx, M::PointerTag>,
+        right: ValTy<'tcx, M::PointerTag>,
+    ) -> EvalResult<'tcx, (Scalar<M::PointerTag>, bool)> {
         self.binary_op(
             bin_op,
             left.to_scalar()?, left.layout,
@@ -302,11 +302,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     pub fn binary_op(
         &self,
         bin_op: mir::BinOp,
-        left: Scalar,
+        left: Scalar<M::PointerTag>,
         left_layout: TyLayout<'tcx>,
-        right: Scalar,
+        right: Scalar<M::PointerTag>,
         right_layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, (Scalar, bool)> {
+    ) -> EvalResult<'tcx, (Scalar<M::PointerTag>, bool)> {
         trace!("Running binary op {:?}: {:?} ({:?}), {:?} ({:?})",
             bin_op, left, left_layout.ty, right, right_layout.ty);
 
@@ -352,9 +352,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     pub fn unary_op(
         &self,
         un_op: mir::UnOp,
-        val: Scalar,
+        val: Scalar<M::PointerTag>,
         layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, Scalar> {
+    ) -> EvalResult<'tcx, Scalar<M::PointerTag>> {
         use rustc::mir::UnOp::*;
         use rustc_apfloat::ieee::{Single, Double};
         use rustc_apfloat::Float;

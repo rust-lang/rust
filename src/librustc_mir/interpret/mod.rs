@@ -32,7 +32,7 @@ pub use self::place::{Place, PlaceTy, MemPlace, MPlaceTy};
 
 pub use self::memory::{Memory, MemoryKind};
 
-pub use self::machine::Machine;
+pub use self::machine::{Machine, AllocMap};
 
 pub use self::operand::{ScalarMaybeUndef, Value, ValTy, Operand, OpTy};
 

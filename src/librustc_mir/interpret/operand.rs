@@ -25,21 +25,42 @@ use rustc::mir::interpret::{
 use super::{EvalContext, Machine, MemPlace, MPlaceTy, MemoryKind};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
-pub enum ScalarMaybeUndef<Id=AllocId> {
-    Scalar(Scalar<Id>),
+pub enum ScalarMaybeUndef<Tag=(), Id=AllocId> {
+    Scalar(Scalar<Tag, Id>),
     Undef,
 }
 
-impl From<Scalar> for ScalarMaybeUndef {
+impl<Tag> From<Scalar<Tag>> for ScalarMaybeUndef<Tag> {
     #[inline(always)]
-    fn from(s: Scalar) -> Self {
+    fn from(s: Scalar<Tag>) -> Self {
         ScalarMaybeUndef::Scalar(s)
     }
 }
 
-impl<'tcx> ScalarMaybeUndef {
+impl<'tcx> ScalarMaybeUndef<()> {
     #[inline]
-    pub fn not_undef(self) -> EvalResult<'static, Scalar> {
+    pub fn with_default_tag<Tag>(self) -> ScalarMaybeUndef<Tag>
+        where Tag: Default
+    {
+        match self {
+            ScalarMaybeUndef::Scalar(s) => ScalarMaybeUndef::Scalar(s.with_default_tag()),
+            ScalarMaybeUndef::Undef => ScalarMaybeUndef::Undef,
+        }
+    }
+}
+
+impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
+    #[inline]
+    pub fn erase_tag(self) -> ScalarMaybeUndef
+    {
+        match self {
+            ScalarMaybeUndef::Scalar(s) => ScalarMaybeUndef::Scalar(s.erase_tag()),
+            ScalarMaybeUndef::Undef => ScalarMaybeUndef::Undef,
+        }
+    }
+
+    #[inline]
+    pub fn not_undef(self) -> EvalResult<'static, Scalar<Tag>> {
         match self {
             ScalarMaybeUndef::Scalar(scalar) => Ok(scalar),
             ScalarMaybeUndef::Undef => err!(ReadUndefBytes(Size::from_bytes(0))),
@@ -47,7 +68,7 @@ impl<'tcx> ScalarMaybeUndef {
     }
 
     #[inline(always)]
-    pub fn to_ptr(self) -> EvalResult<'tcx, Pointer> {
+    pub fn to_ptr(self) -> EvalResult<'tcx, Pointer<Tag>> {
         self.not_undef()?.to_ptr()
     }
 
@@ -126,26 +147,49 @@ impl<'tcx> ScalarMaybeUndef {
 /// In particular, thanks to `ScalarPair`, arithmetic operations and casts can be entirely
 /// defined on `Value`, and do not have to work with a `Place`.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum Value<Id=AllocId> {
-    Scalar(ScalarMaybeUndef<Id>),
-    ScalarPair(ScalarMaybeUndef<Id>, ScalarMaybeUndef<Id>),
+pub enum Value<Tag=(), Id=AllocId> {
+    Scalar(ScalarMaybeUndef<Tag, Id>),
+    ScalarPair(ScalarMaybeUndef<Tag, Id>, ScalarMaybeUndef<Tag, Id>),
 }
 
-impl<'tcx> Value {
+impl Value {
+    #[inline]
+    pub fn with_default_tag<Tag>(self) -> Value<Tag>
+        where Tag: Default
+    {
+        match self {
+            Value::Scalar(x) => Value::Scalar(x.with_default_tag()),
+            Value::ScalarPair(x, y) =>
+                Value::ScalarPair(x.with_default_tag(), y.with_default_tag()),
+        }
+    }
+}
+
+impl<'tcx, Tag> Value<Tag> {
+    #[inline]
+    pub fn erase_tag(self) -> Value
+    {
+        match self {
+            Value::Scalar(x) => Value::Scalar(x.erase_tag()),
+            Value::ScalarPair(x, y) =>
+                Value::ScalarPair(x.erase_tag(), y.erase_tag()),
+        }
+    }
+
     pub fn new_slice(
-        val: Scalar,
+        val: Scalar<Tag>,
         len: u64,
         cx: impl HasDataLayout
     ) -> Self {
         Value::ScalarPair(val.into(), Scalar::from_uint(len, cx.data_layout().pointer_size).into())
     }
 
-    pub fn new_dyn_trait(val: Scalar, vtable: Pointer) -> Self {
+    pub fn new_dyn_trait(val: Scalar<Tag>, vtable: Pointer<Tag>) -> Self {
         Value::ScalarPair(val.into(), Scalar::Ptr(vtable).into())
     }
 
     #[inline]
-    pub fn to_scalar_or_undef(self) -> ScalarMaybeUndef {
+    pub fn to_scalar_or_undef(self) -> ScalarMaybeUndef<Tag> {
         match self {
             Value::Scalar(val) => val,
             Value::ScalarPair(..) => bug!("Got a fat pointer where a scalar was expected"),
@@ -153,12 +197,12 @@ impl<'tcx> Value {
     }
 
     #[inline]
-    pub fn to_scalar(self) -> EvalResult<'tcx, Scalar> {
+    pub fn to_scalar(self) -> EvalResult<'tcx, Scalar<Tag>> {
         self.to_scalar_or_undef().not_undef()
     }
 
     #[inline]
-    pub fn to_scalar_pair(self) -> EvalResult<'tcx, (Scalar, Scalar)> {
+    pub fn to_scalar_pair(self) -> EvalResult<'tcx, (Scalar<Tag>, Scalar<Tag>)> {
         match self {
             Value::Scalar(..) => bug!("Got a thin pointer where a scalar pair was expected"),
             Value::ScalarPair(a, b) => Ok((a.not_undef()?, b.not_undef()?))
@@ -168,7 +212,7 @@ impl<'tcx> Value {
     /// Convert the value into a pointer (or a pointer-sized integer).
     /// Throws away the second half of a ScalarPair!
     #[inline]
-    pub fn to_scalar_ptr(self) -> EvalResult<'tcx, Scalar> {
+    pub fn to_scalar_ptr(self) -> EvalResult<'tcx, Scalar<Tag>> {
         match self {
             Value::Scalar(ptr) |
             Value::ScalarPair(ptr, _) => ptr.not_undef(),
@@ -179,15 +223,15 @@ impl<'tcx> Value {
 // ScalarPair needs a type to interpret, so we often have a value and a type together
 // as input for binary and cast operations.
 #[derive(Copy, Clone, Debug)]
-pub struct ValTy<'tcx> {
-    value: Value,
+pub struct ValTy<'tcx, Tag=()> {
+    value: Value<Tag>,
     pub layout: TyLayout<'tcx>,
 }
 
-impl<'tcx> ::std::ops::Deref for ValTy<'tcx> {
-    type Target = Value;
+impl<'tcx, Tag> ::std::ops::Deref for ValTy<'tcx, Tag> {
+    type Target = Value<Tag>;
     #[inline(always)]
-    fn deref(&self) -> &Value {
+    fn deref(&self) -> &Value<Tag> {
         &self.value
     }
 }
@@ -196,14 +240,37 @@ impl<'tcx> ::std::ops::Deref for ValTy<'tcx> {
 /// or still in memory.  The latter is an optimization, to delay reading that chunk of
 /// memory and to avoid having to store arbitrary-sized data here.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum Operand<Id=AllocId> {
-    Immediate(Value<Id>),
-    Indirect(MemPlace<Id>),
+pub enum Operand<Tag=(), Id=AllocId> {
+    Immediate(Value<Tag, Id>),
+    Indirect(MemPlace<Tag, Id>),
 }
 
 impl Operand {
     #[inline]
-    pub fn to_mem_place(self) -> MemPlace {
+    pub fn with_default_tag<Tag>(self) -> Operand<Tag>
+        where Tag: Default
+    {
+        match self {
+            Operand::Immediate(x) => Operand::Immediate(x.with_default_tag()),
+            Operand::Indirect(x) => Operand::Indirect(x.with_default_tag()),
+        }
+    }
+}
+
+impl<Tag> Operand<Tag> {
+    #[inline]
+    pub fn erase_tag(self) -> Operand
+    {
+        match self {
+            Operand::Immediate(x) => Operand::Immediate(x.erase_tag()),
+            Operand::Indirect(x) => Operand::Indirect(x.erase_tag()),
+        }
+    }
+
+    #[inline]
+    pub fn to_mem_place(self) -> MemPlace<Tag>
+        where Tag: ::std::fmt::Debug
+    {
         match self {
             Operand::Indirect(mplace) => mplace,
             _ => bug!("to_mem_place: expected Operand::Indirect, got {:?}", self),
@@ -212,7 +279,9 @@ impl Operand {
     }
 
     #[inline]
-    pub fn to_immediate(self) -> Value {
+    pub fn to_immediate(self) -> Value<Tag>
+        where Tag: ::std::fmt::Debug
+    {
         match self {
             Operand::Immediate(val) => val,
             _ => bug!("to_immediate: expected Operand::Immediate, got {:?}", self),
@@ -222,22 +291,22 @@ impl Operand {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct OpTy<'tcx> {
-    crate op: Operand, // ideally we'd make this private, but const_prop needs this
+pub struct OpTy<'tcx, Tag=()> {
+    crate op: Operand<Tag>, // ideally we'd make this private, but const_prop needs this
     pub layout: TyLayout<'tcx>,
 }
 
-impl<'tcx> ::std::ops::Deref for OpTy<'tcx> {
-    type Target = Operand;
+impl<'tcx, Tag> ::std::ops::Deref for OpTy<'tcx, Tag> {
+    type Target = Operand<Tag>;
     #[inline(always)]
-    fn deref(&self) -> &Operand {
+    fn deref(&self) -> &Operand<Tag> {
         &self.op
     }
 }
 
-impl<'tcx> From<MPlaceTy<'tcx>> for OpTy<'tcx> {
+impl<'tcx, Tag: Copy> From<MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     #[inline(always)]
-    fn from(mplace: MPlaceTy<'tcx>) -> Self {
+    fn from(mplace: MPlaceTy<'tcx, Tag>) -> Self {
         OpTy {
             op: Operand::Indirect(*mplace),
             layout: mplace.layout
@@ -245,9 +314,9 @@ impl<'tcx> From<MPlaceTy<'tcx>> for OpTy<'tcx> {
     }
 }
 
-impl<'tcx> From<ValTy<'tcx>> for OpTy<'tcx> {
+impl<'tcx, Tag> From<ValTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     #[inline(always)]
-    fn from(val: ValTy<'tcx>) -> Self {
+    fn from(val: ValTy<'tcx, Tag>) -> Self {
         OpTy {
             op: Operand::Immediate(val.value),
             layout: val.layout
@@ -256,18 +325,36 @@ impl<'tcx> From<ValTy<'tcx>> for OpTy<'tcx> {
 }
 
 // Validation needs to hash OpTy, but we cannot hash Layout -- so we just hash the type
-impl<'tcx> Hash for OpTy<'tcx> {
+impl<'tcx, Tag> Hash for OpTy<'tcx, Tag>
+    where Tag: Hash
+{
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.op.hash(state);
         self.layout.ty.hash(state);
     }
 }
-impl<'tcx> PartialEq for OpTy<'tcx> {
+impl<'tcx, Tag> PartialEq for OpTy<'tcx, Tag>
+    where Tag: PartialEq
+{
     fn eq(&self, other: &Self) -> bool {
         self.op == other.op && self.layout.ty == other.layout.ty
     }
 }
-impl<'tcx> Eq for OpTy<'tcx> {}
+impl<'tcx, Tag> Eq for OpTy<'tcx, Tag>
+    where Tag: Eq
+{}
+
+impl<'tcx, Tag> OpTy<'tcx, Tag>
+{
+    #[inline]
+    pub fn erase_tag(self) -> OpTy<'tcx>
+    {
+        OpTy {
+            op: self.op.erase_tag(),
+            layout: self.layout,
+        }
+    }
+}
 
 // Use the existing layout if given (but sanity check in debug mode),
 // or compute the layout.
@@ -295,8 +382,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     /// Return None if the layout does not permit loading this as a value.
     pub(super) fn try_read_value_from_mplace(
         &self,
-        mplace: MPlaceTy<'tcx>,
-    ) -> EvalResult<'tcx, Option<Value>> {
+        mplace: MPlaceTy<'tcx, M::PointerTag>,
+    ) -> EvalResult<'tcx, Option<Value<M::PointerTag>>> {
         if mplace.layout.is_unsized() {
             // Dont touch unsized
             return Ok(None);
@@ -339,8 +426,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     /// in a `Value`, not on which data is stored there currently.
     pub(crate) fn try_read_value(
         &self,
-        src: OpTy<'tcx>,
-    ) -> EvalResult<'tcx, Result<Value, MemPlace>> {
+        src: OpTy<'tcx, M::PointerTag>,
+    ) -> EvalResult<'tcx, Result<Value<M::PointerTag>, MemPlace<M::PointerTag>>> {
         Ok(match src.try_as_mplace() {
             Ok(mplace) => {
                 if let Some(val) = self.try_read_value_from_mplace(mplace)? {
@@ -355,7 +442,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
     /// Read a value from a place, asserting that that is possible with the given layout.
     #[inline(always)]
-    pub fn read_value(&self, op: OpTy<'tcx>) -> EvalResult<'tcx, ValTy<'tcx>> {
+    pub fn read_value(
+        &self,
+        op: OpTy<'tcx, M::PointerTag>
+    ) -> EvalResult<'tcx, ValTy<'tcx, M::PointerTag>> {
         if let Ok(value) = self.try_read_value(op)? {
             Ok(ValTy { value, layout: op.layout })
         } else {
@@ -364,7 +454,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     }
 
     /// Read a scalar from a place
-    pub fn read_scalar(&self, op: OpTy<'tcx>) -> EvalResult<'tcx, ScalarMaybeUndef> {
+    pub fn read_scalar(
+        &self,
+        op: OpTy<'tcx, M::PointerTag>
+    ) -> EvalResult<'tcx, ScalarMaybeUndef<M::PointerTag>> {
         match *self.read_value(op)? {
             Value::ScalarPair(..) => bug!("got ScalarPair for type: {:?}", op.layout.ty),
             Value::Scalar(val) => Ok(val),
@@ -374,7 +467,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     // Turn the MPlace into a string (must already be dereferenced!)
     pub fn read_str(
         &self,
-        mplace: MPlaceTy<'tcx>,
+        mplace: MPlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, &str> {
         let len = mplace.len(self)?;
         let bytes = self.memory.read_bytes(mplace.ptr, Size::from_bytes(len as u64))?;
@@ -383,7 +476,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         Ok(str)
     }
 
-    pub fn uninit_operand(&mut self, layout: TyLayout<'tcx>) -> EvalResult<'tcx, Operand> {
+    pub fn uninit_operand(
+        &mut self,
+        layout: TyLayout<'tcx>
+    ) -> EvalResult<'tcx, Operand<M::PointerTag>> {
         // This decides which types we will use the Immediate optimization for, and hence should
         // match what `try_read_value` and `eval_place_to_op` support.
         if layout.is_zst() {
@@ -410,9 +506,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     /// Projection functions
     pub fn operand_field(
         &self,
-        op: OpTy<'tcx>,
+        op: OpTy<'tcx, M::PointerTag>,
         field: u64,
-    ) -> EvalResult<'tcx, OpTy<'tcx>> {
+    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let base = match op.try_as_mplace() {
             Ok(mplace) => {
                 // The easy case
@@ -445,9 +541,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
     pub fn operand_downcast(
         &self,
-        op: OpTy<'tcx>,
+        op: OpTy<'tcx, M::PointerTag>,
         variant: usize,
-    ) -> EvalResult<'tcx, OpTy<'tcx>> {
+    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         // Downcasts only change the layout
         Ok(match op.try_as_mplace() {
             Ok(mplace) => {
@@ -464,8 +560,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     // will always be a MemPlace.
     pub(super) fn deref_operand(
         &self,
-        src: OpTy<'tcx>,
-    ) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
+        src: OpTy<'tcx, M::PointerTag>,
+    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let val = self.read_value(src)?;
         trace!("deref to {} on {:?}", val.layout.ty, *val);
         Ok(self.ref_to_mplace(val)?)
@@ -473,9 +569,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
     pub fn operand_projection(
         &self,
-        base: OpTy<'tcx>,
+        base: OpTy<'tcx, M::PointerTag>,
         proj_elem: &mir::PlaceElem<'tcx>,
-    ) -> EvalResult<'tcx, OpTy<'tcx>> {
+    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         use rustc::mir::ProjectionElem::*;
         Ok(match *proj_elem {
             Field(field, _) => self.operand_field(base, field.index() as u64)?,
@@ -503,7 +599,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         &self,
         mir_place: &mir::Place<'tcx>,
         layout: Option<TyLayout<'tcx>>,
-    ) -> EvalResult<'tcx, OpTy<'tcx>> {
+    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         use rustc::mir::Place::*;
         let op = match *mir_place {
             Local(mir::RETURN_PLACE) => return err!(ReadFromReturnPointer),
@@ -533,7 +629,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         &self,
         mir_op: &mir::Operand<'tcx>,
         layout: Option<TyLayout<'tcx>>,
-    ) -> EvalResult<'tcx, OpTy<'tcx>> {
+    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         use rustc::mir::Operand::*;
         let op = match *mir_op {
             // FIXME: do some more logic on `move` to invalidate the old location
@@ -558,7 +654,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     pub(super) fn eval_operands(
         &self,
         ops: &[mir::Operand<'tcx>],
-    ) -> EvalResult<'tcx, Vec<OpTy<'tcx>>> {
+    ) -> EvalResult<'tcx, Vec<OpTy<'tcx, M::PointerTag>>> {
         ops.into_iter()
             .map(|op| self.eval_operand(op, None))
             .collect()
@@ -568,7 +664,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     pub(super) fn const_value_to_op(
         &self,
         val: ConstValue<'tcx>,
-    ) -> EvalResult<'tcx, Operand> {
+    ) -> EvalResult<'tcx, Operand<M::PointerTag>> {
         trace!("const_value_to_op: {:?}", val);
         match val {
             ConstValue::Unevaluated(def_id, substs) => {
@@ -581,23 +677,28 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             ConstValue::ByRef(id, alloc, offset) => {
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen -- and for `static mut`, we copy on demand anyway.
-                Ok(Operand::Indirect(MemPlace::from_ptr(Pointer::new(id, offset), alloc.align)))
+                Ok(Operand::Indirect(
+                    MemPlace::from_ptr(Pointer::new(id, offset), alloc.align)
+                ).with_default_tag())
             },
             ConstValue::ScalarPair(a, b) =>
-                Ok(Operand::Immediate(Value::ScalarPair(a.into(), b.into()))),
+                Ok(Operand::Immediate(Value::ScalarPair(a.into(), b.into())).with_default_tag()),
             ConstValue::Scalar(x) =>
-                Ok(Operand::Immediate(Value::Scalar(x.into()))),
+                Ok(Operand::Immediate(Value::Scalar(x.into())).with_default_tag()),
         }
     }
     pub fn const_to_op(
         &self,
         cnst: &ty::Const<'tcx>,
-    ) -> EvalResult<'tcx, OpTy<'tcx>> {
+    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let op = self.const_value_to_op(cnst.val)?;
         Ok(OpTy { op, layout: self.layout_of(cnst.ty)? })
     }
 
-    pub(super) fn global_to_op(&self, gid: GlobalId<'tcx>) -> EvalResult<'tcx, Operand> {
+    pub(super) fn global_to_op(
+        &self,
+        gid: GlobalId<'tcx>
+    ) -> EvalResult<'tcx, Operand<M::PointerTag>> {
         let cv = self.const_eval(gid)?;
         self.const_value_to_op(cv.val)
     }
@@ -605,7 +706,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     /// Read discriminant, return the runtime value as well as the variant index.
     pub fn read_discriminant(
         &self,
-        rval: OpTy<'tcx>,
+        rval: OpTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, (u128, usize)> {
         trace!("read_discriminant_value {:#?}", rval.layout);
         if rval.layout.abi.is_uninhabited() {

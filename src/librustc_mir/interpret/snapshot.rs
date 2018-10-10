@@ -99,6 +99,8 @@ macro_rules! __impl_snapshot_field {
     ($field:ident, $ctx:expr, $delegate:expr) => ($delegate);
 }
 
+// This assumes the type has two type parameters, first for the tag (set to `()`),
+// then for the id
 macro_rules! impl_snapshot_for {
     // FIXME(mark-i-m): Some of these should be `?` rather than `*`.
     (enum $enum_name:ident {
@@ -108,7 +110,7 @@ macro_rules! impl_snapshot_for {
         impl<'a, Ctx> self::Snapshot<'a, Ctx> for $enum_name
             where Ctx: self::SnapshotContext<'a>,
         {
-            type Item = $enum_name<AllocIdSnapshot<'a>>;
+            type Item = $enum_name<(), AllocIdSnapshot<'a>>;
 
             #[inline]
             fn snapshot(&self, __ctx: &'a Ctx) -> Self::Item {
@@ -129,7 +131,7 @@ macro_rules! impl_snapshot_for {
         impl<'a, Ctx> self::Snapshot<'a, Ctx> for $struct_name
             where Ctx: self::SnapshotContext<'a>,
         {
-            type Item = $struct_name<AllocIdSnapshot<'a>>;
+            type Item = $struct_name<(), AllocIdSnapshot<'a>>;
 
             #[inline]
             fn snapshot(&self, __ctx: &'a Ctx) -> Self::Item {
@@ -175,12 +177,13 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for AllocId
 impl_snapshot_for!(struct Pointer {
     alloc_id,
     offset -> *offset, // just copy offset verbatim
+    tag -> *tag, // just copy tag
 });
 
 impl<'a, Ctx> Snapshot<'a, Ctx> for Scalar
     where Ctx: SnapshotContext<'a>,
 {
-    type Item = Scalar<AllocIdSnapshot<'a>>;
+    type Item = Scalar<(), AllocIdSnapshot<'a>>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
         match self {
@@ -206,11 +209,11 @@ impl_snapshot_for!(enum ScalarMaybeUndef {
 impl_stable_hash_for!(struct ::interpret::MemPlace {
     ptr,
     align,
-    extra,
+    meta,
 });
 impl_snapshot_for!(struct MemPlace {
     ptr,
-    extra,
+    meta,
     align -> *align, // just copy alignment verbatim
 });
 
@@ -234,7 +237,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Place {
 impl<'a, Ctx> Snapshot<'a, Ctx> for Place
     where Ctx: SnapshotContext<'a>,
 {
-    type Item = Place<AllocIdSnapshot<'a>>;
+    type Item = Place<(), AllocIdSnapshot<'a>>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
         match self {
@@ -278,11 +281,11 @@ impl_snapshot_for!(enum LocalValue {
 impl<'a, Ctx> Snapshot<'a, Ctx> for Relocations
     where Ctx: SnapshotContext<'a>,
 {
-    type Item = Relocations<AllocIdSnapshot<'a>>;
+    type Item = Relocations<(), AllocIdSnapshot<'a>>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
         Relocations::from_presorted(self.iter()
-            .map(|(size, id)| (*size, id.snapshot(ctx)))
+            .map(|(size, ((), id))| (*size, ((), id.snapshot(ctx))))
             .collect())
     }
 }
@@ -290,7 +293,7 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for Relocations
 #[derive(Eq, PartialEq)]
 struct AllocationSnapshot<'a> {
     bytes: &'a [u8],
-    relocations: Relocations<AllocIdSnapshot<'a>>,
+    relocations: Relocations<(), AllocIdSnapshot<'a>>,
     undef_mask: &'a UndefMask,
     align: &'a Align,
     mutability: &'a Mutability,
@@ -334,8 +337,8 @@ struct FrameSnapshot<'a, 'tcx: 'a> {
     instance: &'a ty::Instance<'tcx>,
     span: &'a Span,
     return_to_block: &'a StackPopCleanup,
-    return_place: Place<AllocIdSnapshot<'a>>,
-    locals: IndexVec<mir::Local, LocalValue<AllocIdSnapshot<'a>>>,
+    return_place: Place<(), AllocIdSnapshot<'a>>,
+    locals: IndexVec<mir::Local, LocalValue<(), AllocIdSnapshot<'a>>>,
     block: &'a mir::BasicBlock,
     stmt: usize,
 }

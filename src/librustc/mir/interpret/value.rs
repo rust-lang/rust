@@ -79,7 +79,47 @@ impl<'tcx> ConstValue<'tcx> {
     }
 }
 
-impl<'tcx> Scalar {
+/// A `Scalar` represents an immediate, primitive value existing outside of a
+/// `memory::Allocation`. It is in many ways like a small chunk of a `Allocation`, up to 8 bytes in
+/// size. Like a range of bytes in an `Allocation`, a `Scalar` can either represent the raw bytes
+/// of a simple value or a pointer into another `Allocation`
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
+pub enum Scalar<Tag=(), Id=AllocId> {
+    /// The raw bytes of a simple value.
+    Bits {
+        /// The first `size` bytes are the value.
+        /// Do not try to read less or more bytes that that. The remaining bytes must be 0.
+        size: u8,
+        bits: u128,
+    },
+
+    /// A pointer into an `Allocation`. An `Allocation` in the `memory` module has a list of
+    /// relocations, but a `Scalar` is only large enough to contain one, so we just represent the
+    /// relocation and its associated offset together as a `Pointer` here.
+    Ptr(Pointer<Tag, Id>),
+}
+
+impl<'tcx> Scalar<()> {
+    #[inline]
+    pub fn with_default_tag<Tag>(self) -> Scalar<Tag>
+        where Tag: Default
+    {
+        match self {
+            Scalar::Ptr(ptr) => Scalar::Ptr(ptr.with_default_tag()),
+            Scalar::Bits { bits, size } => Scalar::Bits { bits, size },
+        }
+    }
+}
+
+impl<'tcx, Tag> Scalar<Tag> {
+    #[inline]
+    pub fn erase_tag(self) -> Scalar {
+        match self {
+            Scalar::Ptr(ptr) => Scalar::Ptr(ptr.erase_tag()),
+            Scalar::Bits { bits, size } => Scalar::Bits { bits, size },
+        }
+    }
+
     #[inline]
     pub fn ptr_null(cx: impl HasDataLayout) -> Self {
         Scalar::Bits {
@@ -208,7 +248,7 @@ impl<'tcx> Scalar {
     }
 
     #[inline]
-    pub fn to_ptr(self) -> EvalResult<'tcx, Pointer> {
+    pub fn to_ptr(self) -> EvalResult<'tcx, Pointer<Tag>> {
         match self {
             Scalar::Bits { bits: 0, .. } => err!(InvalidNullPointerUsage),
             Scalar::Bits { .. } => err!(ReadBytesAsPointer),
@@ -317,29 +357,9 @@ impl<'tcx> Scalar {
     }
 }
 
-impl From<Pointer> for Scalar {
+impl<Tag> From<Pointer<Tag>> for Scalar<Tag> {
     #[inline(always)]
-    fn from(ptr: Pointer) -> Self {
+    fn from(ptr: Pointer<Tag>) -> Self {
         Scalar::Ptr(ptr)
     }
-}
-
-/// A `Scalar` represents an immediate, primitive value existing outside of a
-/// `memory::Allocation`. It is in many ways like a small chunk of a `Allocation`, up to 8 bytes in
-/// size. Like a range of bytes in an `Allocation`, a `Scalar` can either represent the raw bytes
-/// of a simple value or a pointer into another `Allocation`
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
-pub enum Scalar<Id=AllocId> {
-    /// The raw bytes of a simple value.
-    Bits {
-        /// The first `size` bytes are the value.
-        /// Do not try to read less or more bytes that that. The remaining bytes must be 0.
-        size: u8,
-        bits: u128,
-    },
-
-    /// A pointer into an `Allocation`. An `Allocation` in the `memory` module has a list of
-    /// relocations, but a `Scalar` is only large enough to contain one, so we just represent the
-    /// relocation and its associated offset together as a `Pointer` here.
-    Ptr(Pointer<Id>),
 }

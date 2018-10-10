@@ -49,12 +49,12 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
     pub memory: Memory<'a, 'mir, 'tcx, M>,
 
     /// The virtual call stack.
-    pub(crate) stack: Vec<Frame<'mir, 'tcx>>,
+    pub(crate) stack: Vec<Frame<'mir, 'tcx, M::PointerTag>>,
 }
 
 /// A stack frame.
 #[derive(Clone)]
-pub struct Frame<'mir, 'tcx: 'mir> {
+pub struct Frame<'mir, 'tcx: 'mir, Tag=()> {
     ////////////////////////////////////////////////////////////////////////////////
     // Function and callsite information
     ////////////////////////////////////////////////////////////////////////////////
@@ -74,14 +74,14 @@ pub struct Frame<'mir, 'tcx: 'mir> {
     pub return_to_block: StackPopCleanup,
 
     /// The location where the result of the current stack frame should be written to.
-    pub return_place: Place,
+    pub return_place: Place<Tag>,
 
     /// The list of locals for this stack frame, stored in order as
     /// `[return_ptr, arguments..., variables..., temporaries...]`.
     /// The locals are stored as `Option<Value>`s.
     /// `None` represents a local that is currently dead, while a live local
     /// can either directly contain `Scalar` or refer to some part of an `Allocation`.
-    pub locals: IndexVec<mir::Local, LocalValue<AllocId>>,
+    pub locals: IndexVec<mir::Local, LocalValue<Tag>>,
 
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
@@ -108,24 +108,24 @@ pub enum StackPopCleanup {
 
 // State of a local variable
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub enum LocalValue<Id=AllocId> {
+pub enum LocalValue<Tag=(), Id=AllocId> {
     Dead,
     // Mostly for convenience, we re-use the `Operand` type here.
     // This is an optimization over just always having a pointer here;
     // we can thus avoid doing an allocation when the local just stores
     // immediate values *and* never has its address taken.
-    Live(Operand<Id>),
+    Live(Operand<Tag, Id>),
 }
 
-impl<'tcx> LocalValue {
-    pub fn access(&self) -> EvalResult<'tcx, &Operand> {
+impl<'tcx, Tag> LocalValue<Tag> {
+    pub fn access(&self) -> EvalResult<'tcx, &Operand<Tag>> {
         match self {
             LocalValue::Dead => err!(DeadLocal),
             LocalValue::Live(ref val) => Ok(val),
         }
     }
 
-    pub fn access_mut(&mut self) -> EvalResult<'tcx, &mut Operand> {
+    pub fn access_mut(&mut self) -> EvalResult<'tcx, &mut Operand<Tag>> {
         match self {
             LocalValue::Dead => err!(DeadLocal),
             LocalValue::Live(ref mut val) => Ok(val),
@@ -218,7 +218,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         &mut self.memory
     }
 
-    pub fn stack(&self) -> &[Frame<'mir, 'tcx>] {
+    pub fn stack(&self) -> &[Frame<'mir, 'tcx, M::PointerTag>] {
         &self.stack
     }
 
@@ -230,7 +230,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
 
     /// Mark a storage as live, killing the previous content and returning it.
     /// Remember to deallocate that!
-    pub fn storage_live(&mut self, local: mir::Local) -> EvalResult<'tcx, LocalValue> {
+    pub fn storage_live(
+        &mut self,
+        local: mir::Local
+    ) -> EvalResult<'tcx, LocalValue<M::PointerTag>> {
         assert!(local != mir::RETURN_PLACE, "Cannot make return place live");
         trace!("{:?} is now live", local);
 
@@ -242,14 +245,14 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
 
     /// Returns the old value of the local.
     /// Remember to deallocate that!
-    pub fn storage_dead(&mut self, local: mir::Local) -> LocalValue {
+    pub fn storage_dead(&mut self, local: mir::Local) -> LocalValue<M::PointerTag> {
         assert!(local != mir::RETURN_PLACE, "Cannot make return place dead");
         trace!("{:?} is now dead", local);
 
         mem::replace(&mut self.frame_mut().locals[local], LocalValue::Dead)
     }
 
-    pub fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
+    pub fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value<M::PointerTag>> {
         let ptr = self.memory.allocate_static_bytes(s.as_bytes());
         Ok(Value::new_slice(Scalar::Ptr(ptr), s.len() as u64, self.tcx.tcx))
     }
@@ -327,10 +330,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     }
 
     /// Return the actual dynamic size and alignment of the place at the given type.
-    /// Only the "extra" (metadata) part of the place matters.
+    /// Only the `meta` part of the place matters.
     pub(super) fn size_and_align_of(
         &self,
-        metadata: Option<Scalar>,
+        metadata: Option<Scalar<M::PointerTag>>,
         layout: TyLayout<'tcx>,
     ) -> EvalResult<'tcx, (Size, Align)> {
         let metadata = match metadata {
@@ -411,9 +414,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     #[inline]
     pub fn size_and_align_of_mplace(
         &self,
-        mplace: MPlaceTy<'tcx>
+        mplace: MPlaceTy<'tcx, M::PointerTag>
     ) -> EvalResult<'tcx, (Size, Align)> {
-        self.size_and_align_of(mplace.extra, mplace.layout)
+        self.size_and_align_of(mplace.meta, mplace.layout)
     }
 
     pub fn push_stack_frame(
@@ -421,7 +424,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         instance: ty::Instance<'tcx>,
         span: source_map::Span,
         mir: &'mir mir::Mir<'tcx>,
-        return_place: Place,
+        return_place: Place<M::PointerTag>,
         return_to_block: StackPopCleanup,
     ) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation += 1;
@@ -519,7 +522,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         Ok(())
     }
 
-    pub(super) fn deallocate_local(&mut self, local: LocalValue) -> EvalResult<'tcx> {
+    pub(super) fn deallocate_local(
+        &mut self,
+        local: LocalValue<M::PointerTag>,
+    ) -> EvalResult<'tcx> {
         // FIXME: should we tell the user that there was a local which was never written to?
         if let LocalValue::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
             trace!("deallocating local");
@@ -541,12 +547,12 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     }
 
     #[inline(always)]
-    pub fn frame(&self) -> &Frame<'mir, 'tcx> {
+    pub fn frame(&self) -> &Frame<'mir, 'tcx, M::PointerTag> {
         self.stack.last().expect("no call frames exist")
     }
 
     #[inline(always)]
-    pub fn frame_mut(&mut self) -> &mut Frame<'mir, 'tcx> {
+    pub fn frame_mut(&mut self) -> &mut Frame<'mir, 'tcx, M::PointerTag> {
         self.stack.last_mut().expect("no call frames exist")
     }
 
@@ -562,7 +568,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         }
     }
 
-    pub fn dump_place(&self, place: Place) {
+    pub fn dump_place(&self, place: Place<M::PointerTag>) {
         // Debug output
         if !log_enabled!(::log::Level::Trace) {
             return;
