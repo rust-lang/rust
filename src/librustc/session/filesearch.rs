@@ -178,15 +178,6 @@ fn find_libdir(sysroot: &Path) -> Cow<'static, str> {
     // If --libdir is set during configuration to the value other than
     // "lib" (i.e. non-default), this value is used (see issue #16552).
 
-    match option_env!("CFG_LIBDIR_RELATIVE") {
-        Some(libdir) if libdir != "lib" => return libdir.into(),
-        _ => if sysroot.join(PRIMARY_LIB_DIR).join(RUST_LIB_DIR).exists() {
-            return PRIMARY_LIB_DIR.into();
-        } else {
-            return SECONDARY_LIB_DIR.into();
-        }
-    }
-
     #[cfg(target_pointer_width = "64")]
     const PRIMARY_LIB_DIR: &'static str = "lib64";
 
@@ -194,6 +185,15 @@ fn find_libdir(sysroot: &Path) -> Cow<'static, str> {
     const PRIMARY_LIB_DIR: &'static str = "lib32";
 
     const SECONDARY_LIB_DIR: &'static str = "lib";
+
+    match option_env!("CFG_LIBDIR_RELATIVE") {
+        Some(libdir) if libdir != "lib" => libdir.into(),
+        _ => if sysroot.join(PRIMARY_LIB_DIR).join(RUST_LIB_DIR).exists() {
+            PRIMARY_LIB_DIR.into()
+        } else {
+            SECONDARY_LIB_DIR.into()
+        }
+    }
 }
 
 // The name of rustc's own place to organize libraries.
