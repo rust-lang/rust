@@ -1370,7 +1370,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::Goal<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        use traits::Goal::*;
+        use traits::GoalKind::*;
 
         mem::discriminant(self).hash_stable(hcx, hasher);
         match self {

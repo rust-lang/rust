@@ -318,31 +318,33 @@ pub enum QuantifierKind {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub enum Goal<'tcx> {
-    Implies(Clauses<'tcx>, &'tcx Goal<'tcx>),
-    And(&'tcx Goal<'tcx>, &'tcx Goal<'tcx>),
-    Not(&'tcx Goal<'tcx>),
+pub enum GoalKind<'tcx> {
+    Implies(Clauses<'tcx>, Goal<'tcx>),
+    And(Goal<'tcx>, Goal<'tcx>),
+    Not(Goal<'tcx>),
     DomainGoal(DomainGoal<'tcx>),
-    Quantified(QuantifierKind, ty::Binder<&'tcx Goal<'tcx>>),
+    Quantified(QuantifierKind, ty::Binder<Goal<'tcx>>),
     CannotProve,
 }
+
+pub type Goal<'tcx> = &'tcx GoalKind<'tcx>;
 
 pub type Goals<'tcx> = &'tcx List<Goal<'tcx>>;
 
 impl<'tcx> DomainGoal<'tcx> {
-    pub fn into_goal(self) -> Goal<'tcx> {
-        Goal::DomainGoal(self)
+    pub fn into_goal(self) -> GoalKind<'tcx> {
+        GoalKind::DomainGoal(self)
     }
 }
 
-impl<'tcx> Goal<'tcx> {
+impl<'tcx> GoalKind<'tcx> {
     pub fn from_poly_domain_goal<'a>(
         domain_goal: PolyDomainGoal<'tcx>,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    ) -> Goal<'tcx> {
+    ) -> GoalKind<'tcx> {
         match domain_goal.no_late_bound_regions() {
             Some(p) => p.into_goal(),
-            None => Goal::Quantified(
+            None => GoalKind::Quantified(
                 QuantifierKind::Universal,
                 domain_goal.map_bound(|p| tcx.mk_goal(p.into_goal()))
             ),

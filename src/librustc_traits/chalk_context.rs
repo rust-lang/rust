@@ -19,6 +19,7 @@ use rustc::traits::{
     ExClauseFold,
     ExClauseLift,
     Goal,
+    GoalKind,
     ProgramClause,
     QuantifierKind
 };
@@ -92,7 +93,7 @@ impl context::Context for ChalkArenas<'tcx> {
 
     type DomainGoal = DomainGoal<'tcx>;
 
-    type BindersGoal = ty::Binder<&'tcx Goal<'tcx>>;
+    type BindersGoal = ty::Binder<Goal<'tcx>>;
 
     type Parameter = Kind<'tcx>;
 
@@ -101,14 +102,6 @@ impl context::Context for ChalkArenas<'tcx> {
     type ProgramClauses = Vec<ProgramClause<'tcx>>;
 
     type UnificationResult = InferOk<'tcx, ()>;
-
-    fn into_goal(domain_goal: DomainGoal<'tcx>) -> Goal<'tcx> {
-        Goal::DomainGoal(domain_goal)
-    }
-
-    fn cannot_prove() -> Goal<'tcx> {
-        Goal::CannotProve
-    }
 
     fn goal_in_environment(
         env: &ty::ParamEnv<'tcx>,
@@ -251,15 +244,23 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
 impl context::InferenceTable<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
     for ChalkInferenceContext<'cx, 'gcx, 'tcx>
 {
+    fn into_goal(&self, domain_goal: DomainGoal<'tcx>) -> Goal<'tcx> {
+        self.infcx.tcx.mk_goal(GoalKind::DomainGoal(domain_goal))
+    }
+
+    fn cannot_prove(&self) -> Goal<'tcx> {
+        self.infcx.tcx.mk_goal(GoalKind::CannotProve)
+    }
+
     fn into_hh_goal(&mut self, goal: Goal<'tcx>) -> ChalkHhGoal<'tcx> {
-        match goal {
-            Goal::Implies(..) => panic!("FIXME rust-lang-nursery/chalk#94"),
-            Goal::And(left, right) => HhGoal::And(*left, *right),
-            Goal::Not(subgoal) => HhGoal::Not(*subgoal),
-            Goal::DomainGoal(d) => HhGoal::DomainGoal(d),
-            Goal::Quantified(QuantifierKind::Universal, binder) => HhGoal::ForAll(binder),
-            Goal::Quantified(QuantifierKind::Existential, binder) => HhGoal::Exists(binder),
-            Goal::CannotProve => HhGoal::CannotProve,
+        match *goal {
+            GoalKind::Implies(..) => panic!("FIXME rust-lang-nursery/chalk#94"),
+            GoalKind::And(left, right) => HhGoal::And(left, right),
+            GoalKind::Not(subgoal) => HhGoal::Not(subgoal),
+            GoalKind::DomainGoal(d) => HhGoal::DomainGoal(d),
+            GoalKind::Quantified(QuantifierKind::Universal, binder) => HhGoal::ForAll(binder),
+            GoalKind::Quantified(QuantifierKind::Existential, binder) => HhGoal::Exists(binder),
+            GoalKind::CannotProve => HhGoal::CannotProve,
         }
     }
 
@@ -363,21 +364,21 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
 
     fn instantiate_binders_universally(
         &mut self,
-        _arg: &ty::Binder<&'tcx Goal<'tcx>>,
+        _arg: &ty::Binder<Goal<'tcx>>,
     ) -> Goal<'tcx> {
         panic!("FIXME -- universal instantiation needs sgrif's branch")
     }
 
     fn instantiate_binders_existentially(
         &mut self,
-        arg: &ty::Binder<&'tcx Goal<'tcx>>,
+        arg: &ty::Binder<Goal<'tcx>>,
     ) -> Goal<'tcx> {
         let (value, _map) = self.infcx.replace_late_bound_regions_with_fresh_var(
             DUMMY_SP,
             LateBoundRegionConversionTime::HigherRankedType,
             arg,
         );
-        *value
+        value
     }
 
     fn debug_ex_clause(&mut self, value: &'v ChalkExClause<'tcx>) -> Box<dyn Debug + 'v> {
