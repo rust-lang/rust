@@ -233,6 +233,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     type MemoryKinds = MiriMemoryKind;
 
     const MUT_STATIC_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::MutStatic);
+    const ENFORCE_VALIDITY: bool = false; // this is still WIP
 
     /// Returns Ok() when the function was handled, fail otherwise
     fn find_fn(
