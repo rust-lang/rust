@@ -2157,7 +2157,7 @@ pub fn build_session_options_and_crate_config(
             let mut name_parts = name.splitn(2, ':');
             let name = name_parts.next().unwrap();
             let new_name = name_parts.next();
-            (name.to_string(), new_name.map(|n| n.to_string()), kind)
+            (name.to_owned(), new_name.map(|n| n.to_owned()), kind)
         })
         .collect();
 
@@ -2223,7 +2223,7 @@ pub fn build_session_options_and_crate_config(
         };
 
         externs
-            .entry(name.to_string())
+            .entry(name.to_owned())
             .or_default()
             .insert(location);
     }
