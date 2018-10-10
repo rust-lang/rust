@@ -160,7 +160,7 @@ pub fn get_or_default_sysroot() -> PathBuf {
     match env::current_exe() {
         Ok(exe) => {
             match canonicalize(Some(exe)) {
-                Some(mut p) => { p.pop(); p.pop(); return p; },
+                Some(mut p) => { p.pop(); p.pop(); p },
                 None => bug!("can't determine value for sysroot")
             }
         }

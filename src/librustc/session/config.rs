@@ -1453,7 +1453,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     if sess.opts.crate_types.contains(&CrateType::ProcMacro) {
         ret.insert((Symbol::intern("proc_macro"), None));
     }
-    return ret;
+    ret
 }
 
 pub fn build_configuration(sess: &Session, mut user_cfg: ast::CrateConfig) -> ast::CrateConfig {
@@ -1469,15 +1469,12 @@ pub fn build_configuration(sess: &Session, mut user_cfg: ast::CrateConfig) -> as
 }
 
 pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
-    let target = match Target::search(&opts.target_triple) {
-        Ok(t) => t,
-        Err(e) => {
-            sp.struct_fatal(&format!("Error loading target specification: {}", e))
-                .help("Use `--print target-list` for a list of built-in targets")
-                .emit();
-            FatalError.raise();
-        }
-    };
+    let target = Target::search(&opts.target_triple).unwrap_or_else(|e| {
+        sp.struct_fatal(&format!("Error loading target specification: {}", e))
+          .help("Use `--print target-list` for a list of built-in targets")
+          .emit();
+        FatalError.raise();
+    });
 
     let (isize_ty, usize_ty) = match &target.target_pointer_width[..] {
         "16" => (ast::IntTy::I16, ast::UintTy::U16),
@@ -1842,9 +1839,8 @@ pub fn build_session_options_and_crate_config(
     };
 
     let edition = match matches.opt_str("edition") {
-        Some(arg) => match Edition::from_str(&arg){
-            Ok(edition) => edition,
-            Err(_) => early_error(
+        Some(arg) => Edition::from_str(&arg).unwrap_or_else(|_|
+            early_error(
                 ErrorOutputType::default(),
                 &format!(
                     "argument for --edition must be one of: \
@@ -1853,7 +1849,7 @@ pub fn build_session_options_and_crate_config(
                     arg
                 ),
             ),
-        }
+        ),
         None => DEFAULT_EDITION,
     };
 
@@ -1922,9 +1918,8 @@ pub fn build_session_options_and_crate_config(
             for output_type in list.split(',') {
                 let mut parts = output_type.splitn(2, '=');
                 let shorthand = parts.next().unwrap();
-                let output_type = match OutputType::from_shorthand(shorthand) {
-                    Some(output_type) => output_type,
-                    None => early_error(
+                let output_type = OutputType::from_shorthand(shorthand).unwrap_or_else(||
+                    early_error(
                         error_format,
                         &format!(
                             "unknown emission type: `{}` - expected one of: {}",
@@ -1932,7 +1927,7 @@ pub fn build_session_options_and_crate_config(
                             OutputType::shorthands_display(),
                         ),
                     ),
-                };
+                );
                 let path = parts.next().map(PathBuf::from);
                 output_types.insert(output_type, path);
             }
@@ -2060,12 +2055,8 @@ pub fn build_session_options_and_crate_config(
     let target_triple = if let Some(target) = matches.opt_str("target") {
         if target.ends_with(".json") {
             let path = Path::new(&target);
-            match TargetTriple::from_path(&path) {
-                Ok(triple) => triple,
-                Err(_) => {
-                    early_error(error_format, &format!("target file {:?} does not exist", path))
-                }
-            }
+            TargetTriple::from_path(&path).unwrap_or_else(|_|
+                early_error(error_format, &format!("target file {:?} does not exist", path)))
         } else {
             TargetTriple::TargetTriple(target)
         }
@@ -2220,10 +2211,8 @@ pub fn build_session_options_and_crate_config(
     let mut externs: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
     for arg in &matches.opt_strs("extern") {
         let mut parts = arg.splitn(2, '=');
-        let name = match parts.next() {
-            Some(s) => s,
-            None => early_error(error_format, "--extern value must not be empty"),
-        };
+        let name = parts.next().unwrap_or_else(||
+            early_error(error_format, "--extern value must not be empty"));
         let location = parts.next().map(|s| s.to_string());
         if location.is_none() && !is_unstable_enabled {
             early_error(
