@@ -18,7 +18,7 @@ use crate::syntax::ast::{LitKind, NodeId, StrStyle};
 use crate::syntax::source_map::{BytePos, Span};
 use crate::utils::{is_expn_of, match_def_path, match_type, opt_def_id, paths, span_help_and_lint, span_lint};
 use crate::consts::{constant, Constant};
-use std::convert::TryInto;
+use std::convert::TryFrom;
 
 /// **What it does:** Checks [regex](https://crates.io/crates/regex) creation
 /// (with `Regex::new`,`RegexBuilder::new` or `RegexSet::new`) for correct
@@ -142,24 +142,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
+#[allow(clippy::cast_possible_truncation)] // truncation very unlikely here
 fn str_span(base: Span, c: regex_syntax::ast::Span, offset: u16) -> Span {
     let offset = u32::from(offset);
-    let end = base.lo() + BytePos(
-        c.end
-            .offset
-            .try_into()
-            .ok()
-            .and_then(|o: u32| o.checked_add(offset))
-            .expect("offset too large"),
-    );
-    let start = base.lo() + BytePos(
-        c.start
-            .offset
-            .try_into()
-            .ok()
-            .and_then(|o: u32| o.checked_add(offset))
-            .expect("offset too large"),
-    );
+    let end = base.lo() + BytePos(u32::try_from(c.end.offset).expect("offset too large") + offset);
+    let start = base.lo() + BytePos(u32::try_from(c.start.offset).expect("offset too large") + offset);
     assert!(start <= end);
     Span::new(start, end, base.ctxt())
 }
