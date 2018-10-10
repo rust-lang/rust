@@ -37,10 +37,16 @@ error: this creates an owned instance just for comparison
    |                              ^^^^^^^^^^^^ help: try: `*c`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:44:9
+  --> $DIR/cmp_owned.rs:42:5
    |
-44 |         self.to_owned() == *other
-   |         ^^^^^^^^^^^^^^^ try calling implementing the comparison without allocating
+42 |     y.to_owned() == *x;
+   |     ^^^^^^^^^^^^^^^^^^ help: try: `y == x`
 
-error: aborting due to 7 previous errors
+error: this creates an owned instance just for comparison
+  --> $DIR/cmp_owned.rs:49:9
+   |
+49 |         self.to_owned() == *other
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating
+
+error: aborting due to 8 previous errors
 

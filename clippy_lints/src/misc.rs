@@ -535,10 +535,29 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
         return;
     }
 
+    let other_gets_derefed = match other.node {
+        ExprKind::Unary(UnDeref, _) => true,
+        _ => false,
+    };
+
+    let (lint_span, try_hint) = if deref_arg_impl_partial_eq_other {
+        // suggest deref on the left
+        (expr.span, format!("*{}", snip))
+    } else if other_gets_derefed {
+        // suggest dropping the to_owned on the left and the deref on the right
+        let other_snippet = snippet(cx, other.span, "..").into_owned();
+        let other_without_deref = other_snippet.trim_left_matches("*");
+
+        (expr.span.to(other.span), format!("{} == {}", snip.to_string(), other_without_deref))
+    } else {
+        // suggest dropping the to_owned on the left
+        (expr.span, snip.to_string())
+    };
+
     span_lint_and_then(
         cx,
         CMP_OWNED,
-        expr.span,
+        lint_span,
         "this creates an owned instance just for comparison",
         |db| {
             // this is as good as our recursion check can get, we can't prove that the
@@ -554,15 +573,14 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
                             // we are implementing PartialEq, don't suggest not doing `to_owned`, otherwise
                             // we go into
                             // recursion
-                            db.span_label(expr.span, "try calling implementing the comparison without allocating");
+                            db.span_label(lint_span, "try implementing the comparison without allocating");
                             return;
                         }
                     }
                 }
             }
-            let try_hint = if deref_arg_impl_partial_eq_other { format!("*{}", snip) } else { snip.to_string() };
             db.span_suggestion_with_applicability(
-                expr.span,
+                lint_span,
                 "try",
                 try_hint,
                 Applicability::MachineApplicable, // snippet
