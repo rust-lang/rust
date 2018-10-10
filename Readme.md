@@ -1,6 +1,6 @@
 # Work in progress cranelift codegen backend for rust
 
-> ⚠⚠⚠ This doesn't do anything useful yet ⚠⚠⚠
+> ⚠⚠⚠ This doesn't do much useful yet ⚠⚠⚠
 
 ## Building
 
@@ -37,8 +37,3 @@ $ ./build.sh
 
 * Inline assembly
 * Custom sections
-
-## Known errors
-
-* cranelift-module api seems to be used wrong, thus causing panic for some consts
-* cranelift-codegen doesn't have encodings for some instructions for types smaller than I32
