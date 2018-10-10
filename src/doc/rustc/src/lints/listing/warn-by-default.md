@@ -279,7 +279,7 @@ warning: functions generic over types must be mangled
 1 |   #[no_mangle]
   |   ------------ help: remove this attribute
 2 | / fn foo<T>(t: T) {
-3 | |     
+3 | |
 4 | | }
   | |_^
   |
@@ -513,7 +513,7 @@ This will produce:
 warning: borrow of packed field requires unsafe function or block (error E0133)
   --> src/main.rs:11:13
    |
-11 |     let y = &x.data.0; 
+11 |     let y = &x.data.0;
    |             ^^^^^^^^^
    |
    = note: #[warn(safe_packed_borrows)] on by default
@@ -874,7 +874,7 @@ fn main() {
 This will produce:
 
 ```text
-warning: unused `std::result::Result` which must be used
+warning: unused `std::result::Result` that must be used
  --> src/main.rs:6:5
   |
 6 |     returns_result();

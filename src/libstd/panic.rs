@@ -79,7 +79,7 @@ pub use core::panic::{PanicInfo, Location};
 ///
 /// Simply put, a type `T` implements `UnwindSafe` if it cannot easily allow
 /// witnessing a broken invariant through the use of `catch_unwind` (catching a
-/// panic). This trait is a marker trait, so it is automatically implemented for
+/// panic). This trait is an auto trait, so it is automatically implemented for
 /// many types, and it is also structurally composed (e.g. a struct is unwind
 /// safe if all of its components are unwind safe).
 ///

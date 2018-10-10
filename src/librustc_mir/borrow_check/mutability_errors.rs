@@ -218,6 +218,38 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         debug!("report_mutability_error: act={:?}, acted_on={:?}", act, acted_on);
 
         match the_place_err {
+            // Suggest making an existing shared borrow in a struct definition a mutable borrow.
+            //
+            // This is applicable when we have a deref of a field access to a deref of a local -
+            // something like `*((*_1).0`. The local that we get will be a reference to the
+            // struct we've got a field access of (it must be a reference since there's a deref
+            // after the field access).
+            Place::Projection(box Projection {
+                base: Place::Projection(box Projection {
+                    base: Place::Projection(box Projection {
+                        base,
+                        elem: ProjectionElem::Deref,
+                    }),
+                    elem: ProjectionElem::Field(field, _),
+                }),
+                elem: ProjectionElem::Deref,
+            }) => {
+                err.span_label(span, format!("cannot {ACT}", ACT = act));
+
+                if let Some((span, message)) = annotate_struct_field(
+                    self.infcx.tcx,
+                    base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx),
+                    field,
+                ) {
+                    err.span_suggestion_with_applicability(
+                        span,
+                        "consider changing this to be mutable",
+                        message,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            },
+
             // Suggest removing a `&mut` from the use of a mutable reference.
             Place::Local(local)
                 if {
@@ -591,4 +623,55 @@ fn suggest_ampmut<'cx, 'gcx, 'tcx>(
 
 fn is_closure_or_generator(ty: ty::Ty) -> bool {
     ty.is_closure() || ty.is_generator()
+}
+
+/// Add a suggestion to a struct definition given a field access to a local.
+/// This function expects the local to be a reference to a struct in order to produce a suggestion.
+///
+/// ```text
+/// LL |     s: &'a String
+///    |        ---------- use `&'a mut String` here to make mutable
+/// ```
+fn annotate_struct_field(
+    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+    ty: ty::Ty<'tcx>,
+    field: &mir::Field,
+) -> Option<(Span, String)> {
+    // Expect our local to be a reference to a struct of some kind.
+    if let ty::TyKind::Ref(_, ty, _) = ty.sty {
+        if let ty::TyKind::Adt(def, _) = ty.sty {
+            let field = def.all_fields().nth(field.index())?;
+            // Use the HIR types to construct the diagnostic message.
+            let node_id = tcx.hir.as_local_node_id(field.did)?;
+            let node = tcx.hir.find(node_id)?;
+            // Now we're dealing with the actual struct that we're going to suggest a change to,
+            // we can expect a field that is an immutable reference to a type.
+            if let hir::Node::Field(field) = node {
+                if let hir::TyKind::Rptr(lifetime, hir::MutTy {
+                    mutbl: hir::Mutability::MutImmutable,
+                    ref ty
+                }) = field.ty.node {
+                    // Get the snippets in two parts - the named lifetime (if there is one) and
+                    // type being referenced, that way we can reconstruct the snippet without loss
+                    // of detail.
+                    let type_snippet = tcx.sess.source_map().span_to_snippet(ty.span).ok()?;
+                    let lifetime_snippet = if !lifetime.is_elided() {
+                        format!("{} ", tcx.sess.source_map().span_to_snippet(lifetime.span).ok()?)
+                    } else {
+                        String::new()
+                    };
+
+                    return Some((
+                        field.ty.span,
+                        format!(
+                            "&{}mut {}",
+                            lifetime_snippet, &*type_snippet,
+                        ),
+                    ));
+                }
+            }
+        }
+    }
+
+    None
 }
