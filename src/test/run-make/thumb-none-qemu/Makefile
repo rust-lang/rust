@@ -13,12 +13,6 @@ LD_LIBRARY_PATH := $(HOST_RPATH_DIR)
 export WORK_DIR := $(TMPDIR)
 export HERE := $(shell pwd)
 
-
-# hint: we could set variables per $(TARGET) basis in order to support other targets.
-export CRATE := cortex-m-rt
-export CRATE_URL := https://github.com/rust-embedded/cortex-m-rt
-export CRATE_SHA1 := 62972c8a89ff54b76f9ef0d600c1fcf7a233aabd
-
 all:
 	bash script.sh
 else
