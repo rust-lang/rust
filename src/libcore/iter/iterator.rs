@@ -33,7 +33,8 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item=()>) {}
     on(
         _Self="[std::ops::Range<Idx>; 1]",
         label="if you meant to iterate between two values, remove the square brackets",
-        note="`[start..end]` is an array of one `Range`, you might have meant to have a `Range`: `start..end`"
+        note="`[start..end]` is an array of one `Range`, you might have meant to have a `Range`: \
+              `start..end`"
     ),
     on(
         _Self="&str",
@@ -50,7 +51,8 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item=()>) {}
     ),
     on(
         _Self="{integral}",
-        note="if you want to iterate between `0` until a value `end`, use the range syntax: `0..end`"
+        note="if you want to iterate between `0` until a value `end`, use the range syntax: \
+              `0..end`"
     ),
     label="`{Self}` is not an iterator",
     message="`{Self}` is not an iterator"
