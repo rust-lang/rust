@@ -11,7 +11,8 @@
 use arch::wasm32::atomic;
 use cell::UnsafeCell;
 use mem;
-use sync::atomic::{AtomicUsize, AtomicU64, Ordering::SeqCst};
+use sync::atomic::{AtomicUsize, AtomicU32, Ordering::SeqCst};
+use sys::thread;
 
 pub struct Mutex {
     locked: AtomicUsize,
@@ -70,7 +71,7 @@ impl Mutex {
 }
 
 pub struct ReentrantMutex {
-    owner: AtomicU64,
+    owner: AtomicU32,
     recursions: UnsafeCell<u32>,
 }
 
@@ -91,7 +92,7 @@ unsafe impl Sync for ReentrantMutex {}
 impl ReentrantMutex {
     pub unsafe fn uninitialized() -> ReentrantMutex {
         ReentrantMutex {
-            owner: AtomicU64::new(0),
+            owner: AtomicU32::new(0),
             recursions: UnsafeCell::new(0),
         }
     }
@@ -101,20 +102,20 @@ impl ReentrantMutex {
     }
 
     pub unsafe fn lock(&self) {
-        let me = thread_id();
+        let me = thread::my_id();
         while let Err(owner) = self._try_lock(me) {
-            let val = atomic::wait_i64(self.ptr(), owner as i64, -1);
+            let val = atomic::wait_i32(self.ptr(), owner as i32, -1);
             debug_assert!(val == 0 || val == 1);
         }
     }
 
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
-        self._try_lock(thread_id()).is_ok()
+        self._try_lock(thread::my_id()).is_ok()
     }
 
     #[inline]
-    unsafe fn _try_lock(&self, id: u64) -> Result<(), u64> {
+    unsafe fn _try_lock(&self, id: u32) -> Result<(), u32> {
         let id = id.checked_add(1).unwrap(); // make sure `id` isn't 0
         match self.owner.compare_exchange(0, id, SeqCst, SeqCst) {
             // we transitioned from unlocked to locked
@@ -153,11 +154,7 @@ impl ReentrantMutex {
     }
 
     #[inline]
-    fn ptr(&self) -> *mut i64 {
-        &self.owner as *const AtomicU64 as *mut i64
+    fn ptr(&self) -> *mut i32 {
+        &self.owner as *const AtomicU32 as *mut i32
     }
-}
-
-fn thread_id() -> u64 {
-    panic!("thread ids not implemented on wasm with atomics yet")
 }

@@ -48,4 +48,13 @@ jemalloc = ["alloc_jemalloc"]
 force_alloc_system = []
 panic-unwind = ["panic_unwind"]
 profiler = ["profiler_builtins"]
+
+# An off-by-default feature which enables a linux-syscall-like ABI for libstd to
+# interoperate with the host environment. Currently not well documented and
+# requires rebuilding the standard library to use it.
 wasm_syscall = []
+
+# An off-by-default features to enable libstd to assume that wasm-bindgen is in
+# the environment for hooking up some thread-related information like the
+# current thread id and accessing/getting the current thread's TCB
+wasm-bindgen-threads = []
