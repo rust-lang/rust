@@ -254,7 +254,7 @@ pub trait BuilderMethods<'a, 'll :'a, 'tcx: 'll> : HasCodegen<'a, 'll, 'tcx> +
     ) -> <Self::CodegenCx as Backend<'ll>>::Value;
     fn load_ref(
         &mut self,
-        &PlaceRef<'tcx,<Self::CodegenCx as Backend<'ll>>::Value>
+        ptr: &PlaceRef<'tcx,<Self::CodegenCx as Backend<'ll>>::Value>
     ) -> OperandRef<'tcx, <Self::CodegenCx as Backend<'ll>>::Value>;
 
     fn range_metadata(
