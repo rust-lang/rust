@@ -281,14 +281,6 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
         pointee_ty: Ty<'tcx>,
         offset: i64,
     ) -> EvalResult<'tcx, Scalar> {
-        if ptr.is_null() {
-            // NULL pointers must only be offset by 0
-            return if offset == 0 {
-                Ok(ptr)
-            } else {
-                err!(InvalidNullPointerUsage)
-            };
-        }
         // FIXME: assuming here that type size is < i64::max_value()
         let pointee_size = self.layout_of(pointee_ty)?.size.bytes() as i64;
         let offset = offset.checked_mul(pointee_size).ok_or_else(|| EvalErrorKind::Overflow(mir::BinOp::Mul))?;
@@ -301,9 +293,13 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             self.memory.check_bounds_ptr(ptr, false)?;
             Ok(Scalar::Ptr(ptr))
         } else {
-            // An integer pointer. They can move around freely, as long as they do not overflow
-            // (which ptr_signed_offset checks).
-            ptr.ptr_signed_offset(offset, self)
+            // An integer pointer. They can only be offset by 0, and we pretend there
+            // is a little zero-sized allocation here.
+            if offset == 0 {
+                Ok(ptr)
+            } else {
+                err!(InvalidPointerMath)
+            }
         }
     }
 }
