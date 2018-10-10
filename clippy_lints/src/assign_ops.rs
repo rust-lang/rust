@@ -215,7 +215,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                             lint(assignee, r);
                         }
                         // a = b commutative_op a
-                        if SpanlessEq::new(cx).ignore_fn().eq_expr(assignee, r) {
+                        // Limited to primitive type as these ops are know to be commutative
+                        if SpanlessEq::new(cx).ignore_fn().eq_expr(assignee, r)
+                                && cx.tables.expr_ty(assignee).is_primitive_ty() {
                             match op.node {
                                 hir::BinOpKind::Add
                                 | hir::BinOpKind::Mul
