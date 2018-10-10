@@ -40,6 +40,11 @@ fn main() {
     let y = &Baz;
 
     y.to_owned() == *x;
+
+    let x = &&Baz;
+    let y = &Baz;
+
+    y.to_owned() == **x;
 }
 
 struct Foo;
