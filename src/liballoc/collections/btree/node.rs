@@ -58,9 +58,6 @@ pub const CAPACITY: usize = 2 * B - 1;
 /// these should always be put behind pointers, and specifically behind `BoxedNode` in the owned
 /// case.
 ///
-/// See also rust-lang/rfcs#197, which would make this structure significantly more safe by
-/// avoiding accidentally dropping unused and uninitialized keys and values.
-///
 /// We put the metadata first so that its position is the same for every `K` and `V`, in order
 /// to statically allocate a single dummy node to avoid allocations. This struct is `repr(C)` to
 /// prevent them from being reordered.
