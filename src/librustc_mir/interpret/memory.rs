@@ -313,7 +313,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     /// Check if the memory range beginning at `ptr` and of size `Size` is "in-bounds".
     #[inline(always)]
-    pub fn check_bounds(&self, ptr: Pointer<M::PointerTag>, size: Size, access: bool) -> EvalResult<'tcx> {
+    pub fn check_bounds(
+        &self,
+        ptr: Pointer<M::PointerTag>,
+        size: Size,
+        access: bool
+    ) -> EvalResult<'tcx> {
         // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         self.check_bounds_ptr(ptr.offset(size, &*self)?, access)
     }
