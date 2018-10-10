@@ -10,16 +10,15 @@
 
 use borrow_check::nll::constraints::OutlivesConstraint;
 use borrow_check::nll::type_check::{BorrowCheckContext, Locations};
-use rustc::infer::canonical::{Canonical, CanonicalVarInfos, CanonicalVarValues};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::mir::ConstraintCategory;
 use rustc::traits::query::Fallible;
 use rustc::ty::fold::{TypeFoldable, TypeVisitor};
 use rustc::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc::ty::subst::Kind;
-use rustc::ty::{self, CanonicalTy, CanonicalVar, Ty, TyCtxt};
+use rustc::ty::{self, CanonicalTy, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::IndexVec;
+use syntax::source_map::DUMMY_SP;
 
 /// Adds sufficient constraints to ensure that `a <: b`.
 pub(super) fn sub_types<'tcx>(
@@ -35,7 +34,6 @@ pub(super) fn sub_types<'tcx>(
         infcx,
         NllTypeRelatingDelegate::new(infcx, borrowck_context, locations, category),
         ty::Variance::Covariant,
-        ty::List::empty(),
     ).relate(&a, &b)?;
     Ok(())
 }
@@ -54,7 +52,6 @@ pub(super) fn eq_types<'tcx>(
         infcx,
         NllTypeRelatingDelegate::new(infcx, borrowck_context, locations, category),
         ty::Variance::Invariant,
-        ty::List::empty(),
     ).relate(&a, &b)?;
     Ok(())
 }
@@ -66,19 +63,20 @@ pub(super) fn relate_type_and_user_type<'tcx>(
     infcx: &InferCtxt<'_, '_, 'tcx>,
     a: Ty<'tcx>,
     v: ty::Variance,
-    b: CanonicalTy<'tcx>,
+    canonical_b: CanonicalTy<'tcx>,
     locations: Locations,
     category: ConstraintCategory,
     borrowck_context: Option<&mut BorrowCheckContext<'_, 'tcx>>,
 ) -> Fallible<Ty<'tcx>> {
     debug!(
-        "sub_type_and_user_type(a={:?}, b={:?}, locations={:?})",
-        a, b, locations
+        "relate_type_and_user_type(a={:?}, v={:?}, b={:?}, locations={:?})",
+        a, v, canonical_b, locations
     );
-    let Canonical {
-        variables: b_variables,
-        value: b_value,
-    } = b;
+
+    let (b, _values) = infcx.instantiate_canonical_with_fresh_inference_vars(
+        DUMMY_SP,
+        &canonical_b,
+    );
 
     // The `TypeRelating` code assumes that the "canonical variables"
     // appear in the "a" side, so flip `Contravariant` ambient
@@ -89,20 +87,10 @@ pub(super) fn relate_type_and_user_type<'tcx>(
         infcx,
         NllTypeRelatingDelegate::new(infcx, borrowck_context, locations, category),
         v1,
-        b_variables,
     );
-    type_relating.relate(&b_value, &a)?;
+    type_relating.relate(&b, &a)?;
 
-    Ok(b.substitute(
-        infcx.tcx,
-        &CanonicalVarValues {
-            var_values: type_relating
-                .canonical_var_values
-                .into_iter()
-                .map(|x| x.expect("unsubstituted canonical variable"))
-                .collect(),
-        },
-    ))
+    Ok(b)
 }
 
 struct TypeRelating<'me, 'gcx: 'tcx, 'tcx: 'me, D>
@@ -136,19 +124,6 @@ where
 
     /// Same as `a_scopes`, but for the `b` type.
     b_scopes: Vec<BoundRegionScope<'tcx>>,
-
-    /// As we execute, the type on the LHS *may* come from a canonical
-    /// source. In that case, we will sometimes find a constraint like
-    /// `?0 = B`, where `B` is a type from the RHS. The first time we
-    /// find that, we simply record `B` (and the list of scopes that
-    /// tells us how to *interpret* `B`). The next time we encounter
-    /// `?0`, then, we can read this value out and use it.
-    ///
-    /// One problem: these variables may be in some other universe,
-    /// how can we enforce that? I guess I could add some kind of
-    /// "minimum universe constraint" that we can feed to the NLL checker.
-    /// --> also, we know this doesn't happen
-    canonical_var_values: IndexVec<CanonicalVar, Option<Kind<'tcx>>>,
 }
 
 trait TypeRelatingDelegate<'tcx> {
@@ -279,14 +254,11 @@ where
         infcx: &'me InferCtxt<'me, 'gcx, 'tcx>,
         delegate: D,
         ambient_variance: ty::Variance,
-        canonical_var_infos: CanonicalVarInfos<'tcx>,
     ) -> Self {
-        let canonical_var_values = IndexVec::from_elem_n(None, canonical_var_infos.len());
         Self {
             infcx,
             delegate,
             ambient_variance,
-            canonical_var_values,
             a_scopes: vec![],
             b_scopes: vec![],
         }
@@ -400,19 +372,13 @@ where
     /// equated, then equate it again.
     fn relate_var(
         &mut self,
-        var: CanonicalVar,
-        b_kind: Kind<'tcx>,
-    ) -> RelateResult<'tcx, Kind<'tcx>> {
-        debug!("equate_var(var={:?}, b_kind={:?})", var, b_kind);
+        var_ty: Ty<'tcx>,
+        value_ty: Ty<'tcx>,
+    ) -> RelateResult<'tcx, Ty<'tcx>> {
+        debug!("equate_var(var_ty={:?}, value_ty={:?})", var_ty, value_ty);
 
-        let generalized_kind = match self.canonical_var_values[var] {
-            Some(v) => v,
-            None => {
-                let generalized_kind = self.generalize_value(b_kind);
-                self.canonical_var_values[var] = Some(generalized_kind);
-                generalized_kind
-            }
-        };
+        let generalized_ty = self.generalize_value(value_ty);
+        self.infcx.force_instantiate_unchecked(var_ty, generalized_ty);
 
         // The generalized values we extract from `canonical_var_values` have
         // been fully instantiated and hence the set of scopes we have
@@ -421,16 +387,16 @@ where
         let old_a_scopes = ::std::mem::replace(&mut self.a_scopes, vec![]);
 
         // Relate the generalized kind to the original one.
-        let result = self.relate(&generalized_kind, &b_kind);
+        let result = self.relate(&generalized_ty, &value_ty);
 
         // Restore the old scopes now.
         self.a_scopes = old_a_scopes;
 
         debug!("equate_var: complete, result = {:?}", result);
-        return result;
+        result
     }
 
-    fn generalize_value(&mut self, kind: Kind<'tcx>) -> Kind<'tcx> {
+    fn generalize_value<T: Relate<'tcx>>(&mut self, value: T) -> T {
         TypeGeneralizer {
             tcx: self.infcx.tcx,
             delegate: &mut self.delegate,
@@ -440,7 +406,7 @@ where
             // These always correspond to an `_` or `'_` written by
             // user, and those are always in the root universe.
             universe: ty::UniverseIndex::ROOT,
-        }.relate(&kind, &kind)
+        }.relate(&value, &value)
             .unwrap()
     }
 }
@@ -490,18 +456,22 @@ where
     }
 
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-        // Watch out for the case that we are matching a `?T` against the
-        // right-hand side.
-        if let ty::Infer(ty::CanonicalTy(var)) = a.sty {
-            self.relate_var(var, b.into())?;
-            Ok(a)
-        } else {
-            debug!(
-                "tys(a={:?}, b={:?}, variance={:?})",
-                a, b, self.ambient_variance
-            );
+        let a = self.infcx.shallow_resolve(a);
+        match a.sty {
+            ty::Infer(ty::TyVar(_)) |
+            ty::Infer(ty::IntVar(_)) |
+            ty::Infer(ty::FloatVar(_)) => {
+                self.relate_var(a.into(), b.into())
+            }
 
-            relate::super_relate_tys(self, a, b)
+            _ => {
+                debug!(
+                    "tys(a={:?}, b={:?}, variance={:?})",
+                    a, b, self.ambient_variance
+                );
+
+                relate::super_relate_tys(self, a, b)
+            }
         }
     }
 
@@ -510,11 +480,6 @@ where
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-        if let ty::ReCanonical(var) = a {
-            self.relate_var(*var, b.into())?;
-            return Ok(a);
-        }
-
         debug!(
             "regions(a={:?}, b={:?}, variance={:?})",
             a, b, self.ambient_variance
