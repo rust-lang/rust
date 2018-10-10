@@ -70,6 +70,7 @@ use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use std::fmt;
 use std::hash::Hash;
 use syntax_pos::symbol::InternedString;
+use traits;
 use traits::query::{
     CanonicalProjectionGoal, CanonicalTyGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal,
     CanonicalPredicateGoal, CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpNormalizeGoal,
@@ -550,6 +551,7 @@ define_dep_nodes!( <'tcx>
     [anon] TraitSelect,
 
     [] ParamEnv(DefId),
+    [] Environment(DefId),
     [] DescribeDef(DefId),
 
     // FIXME(mw): DefSpans are not really inputs since they are derived from
@@ -669,7 +671,7 @@ define_dep_nodes!( <'tcx>
     [input] Features,
 
     [] ProgramClausesFor(DefId),
-    [] ProgramClausesForEnv(ParamEnv<'tcx>),
+    [] ProgramClausesForEnv(traits::Environment<'tcx>),
     [] WasmImportModuleMap(CrateNum),
     [] ForeignModules(CrateNum),
 

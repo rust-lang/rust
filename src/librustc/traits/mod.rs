@@ -278,6 +278,8 @@ pub type TraitObligations<'tcx> = Vec<TraitObligation<'tcx>>;
 /// * `DomainGoal`
 /// * `Goal`
 /// * `Clause`
+/// * `Environment`
+/// * `InEnvironment`
 /// are used for representing the trait system in the form of
 /// logic programming clauses. They are part of the interface
 /// for the chalk SLG solver.
@@ -376,6 +378,33 @@ pub struct ProgramClause<'tcx> {
 
     /// ...if we can prove these hypotheses (there may be no hypotheses at all):
     pub hypotheses: Goals<'tcx>,
+}
+
+/// A set of clauses that we assume to be true.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct Environment<'tcx> {
+    pub clauses: Clauses<'tcx>,
+}
+
+impl Environment<'tcx> {
+    pub fn with<G>(self, goal: G) -> InEnvironment<'tcx, G> {
+        InEnvironment {
+            environment: self,
+            goal,
+        }
+    }
+}
+
+/// Something (usually a goal), along with an environment.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct InEnvironment<'tcx, G> {
+    pub environment: Environment<'tcx>,
+    pub goal: G,
+}
+
+/// Compute the environment of the given item.
+fn environment<'a, 'tcx>(_tcx: TyCtxt<'a, 'tcx, 'tcx>, _def_id: DefId) -> Environment<'tcx> {
+    panic!()
 }
 
 pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;
@@ -1080,6 +1109,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         codegen_fulfill_obligation: codegen::codegen_fulfill_obligation,
         vtable_methods,
         substitute_normalize_and_test_predicates,
+        environment,
         ..*providers
     };
 }

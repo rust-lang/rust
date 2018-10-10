@@ -658,7 +658,43 @@ EnumTypeFoldableImpl! {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<traits::Clause<'tcx>> {
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for traits::Environment<'tcx> { clauses }
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx, G> TypeFoldable<'tcx> for traits::InEnvironment<'tcx, G> {
+        environment,
+        goal
+    } where G: TypeFoldable<'tcx>
+}
+
+impl<'a, 'tcx> Lift<'tcx> for traits::Environment<'a> {
+    type Lifted = traits::Environment<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&self.clauses).map(|clauses| {
+            traits::Environment {
+                clauses,
+            }
+        })
+    }
+}
+
+impl<'a, 'tcx, G: Lift<'tcx>> Lift<'tcx> for traits::InEnvironment<'a, G> {
+    type Lifted = traits::InEnvironment<'tcx, G::Lifted>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&self.environment).and_then(|environment| {
+            tcx.lift(&self.goal).map(|goal| {
+                traits::InEnvironment {
+                    environment,
+                    goal,
+                }
+            })
+        })
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for traits::Clauses<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         let v = self.iter()
             .map(|t| t.fold_with(folder))

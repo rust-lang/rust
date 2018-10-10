@@ -12,6 +12,7 @@ use dep_graph::SerializedDepNodeIndex;
 use dep_graph::DepNode;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use mir::interpret::GlobalId;
+use traits;
 use traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal, CanonicalTypeOpEqGoal,
     CanonicalTypeOpNormalizeGoal, CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal,
@@ -826,8 +827,14 @@ impl<'tcx> QueryDescription<'tcx> for queries::program_clauses_for<'tcx> {
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::program_clauses_for_env<'tcx> {
-    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: ty::ParamEnv<'tcx>) -> Cow<'static, str> {
-        "generating chalk-style clauses for param env".into()
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: traits::Environment<'tcx>) -> Cow<'static, str> {
+        "generating chalk-style clauses for environment".into()
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::environment<'tcx> {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: DefId) -> Cow<'static, str> {
+        "return a chalk-style environment".into()
     }
 }
 

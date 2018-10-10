@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+mod environment;
+
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::map::definitions::DefPathData;
@@ -25,8 +27,6 @@ use rustc::traits::{
 };
 use rustc::ty::query::Providers;
 use rustc::ty::{self, List, TyCtxt};
-use rustc_data_structures::fx::FxHashSet;
-use std::mem;
 use syntax::ast;
 
 use std::iter;
@@ -34,7 +34,7 @@ use std::iter;
 crate fn provide(p: &mut Providers) {
     *p = Providers {
         program_clauses_for,
-        program_clauses_for_env,
+        program_clauses_for_env: environment::program_clauses_for_env,
         ..*p
     };
 }
@@ -170,66 +170,6 @@ crate fn program_clauses_for<'a, 'tcx>(
         DefPathData::AssocTypeInTrait(..) => program_clauses_for_associated_type_def(tcx, def_id),
         DefPathData::TypeNs(..) => program_clauses_for_type_def(tcx, def_id),
         _ => List::empty(),
-    }
-}
-
-crate fn program_clauses_for_env<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-) -> Clauses<'tcx> {
-    debug!("program_clauses_for_env(param_env={:?})", param_env);
-
-    let mut last_round = FxHashSet();
-    last_round.extend(
-        param_env
-            .caller_bounds
-            .iter()
-            .flat_map(|&p| predicate_def_id(p)),
-    );
-
-    let mut closure = last_round.clone();
-    let mut next_round = FxHashSet();
-    while !last_round.is_empty() {
-        next_round.extend(
-            last_round
-                .drain()
-                .flat_map(|def_id| {
-                    tcx.predicates_of(def_id)
-                        .instantiate_identity(tcx)
-                        .predicates
-                })
-                .flat_map(|p| predicate_def_id(p))
-                .filter(|&def_id| closure.insert(def_id)),
-        );
-        mem::swap(&mut next_round, &mut last_round);
-    }
-
-    debug!("program_clauses_for_env: closure = {:#?}", closure);
-
-    return tcx.mk_clauses(
-        closure
-            .into_iter()
-            .flat_map(|def_id| tcx.program_clauses_for(def_id).iter().cloned()),
-    );
-
-    /// Given that `predicate` is in the environment, returns the
-    /// def-id of something (e.g., a trait, associated item, etc)
-    /// whose predicates can also be assumed to be true. We will
-    /// compute the transitive closure of such things.
-    fn predicate_def_id<'tcx>(predicate: ty::Predicate<'tcx>) -> Option<DefId> {
-        match predicate {
-            ty::Predicate::Trait(predicate) => Some(predicate.def_id()),
-
-            ty::Predicate::Projection(projection) => Some(projection.item_def_id()),
-
-            ty::Predicate::WellFormed(..)
-            | ty::Predicate::RegionOutlives(..)
-            | ty::Predicate::TypeOutlives(..)
-            | ty::Predicate::ObjectSafe(..)
-            | ty::Predicate::ClosureKind(..)
-            | ty::Predicate::Subtype(..)
-            | ty::Predicate::ConstEvaluatable(..) => None,
-        }
     }
 }
 
@@ -595,8 +535,8 @@ impl<'a, 'tcx> ClauseDumper<'a, 'tcx> {
             }
 
             if attr.check_name("rustc_dump_env_program_clauses") {
-                let param_env = self.tcx.param_env(def_id);
-                clauses = Some(self.tcx.program_clauses_for_env(param_env));
+                let environment = self.tcx.environment(def_id);
+                clauses = Some(self.tcx.program_clauses_for_env(environment));
             }
 
             if let Some(clauses) = clauses {
