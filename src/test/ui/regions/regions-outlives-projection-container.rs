@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-compare-mode-nll
-
 // Test that we are imposing the requirement that every associated
 // type of a bound that appears in the where clause on a struct must
 // outlive the location in which the type appears. Issue #22246.
@@ -47,7 +45,10 @@ fn with_assoc<'a,'b>() {
     // outlive 'a. In this case, that means TheType<'b>::TheAssocType,
     // which is &'b (), must outlive 'a.
 
-    let _: &'a WithAssoc<TheType<'b>> = loop { }; //~ ERROR reference has a longer lifetime
+    // FIXME (#54943) NLL doesn't enforce WF condition in unreachable code if
+    // `_x` is changed to `_`
+    let _x: &'a WithAssoc<TheType<'b>> = loop { };
+    //~^ ERROR reference has a longer lifetime
 }
 
 fn with_assoc1<'a,'b>() where 'b : 'a {
@@ -57,14 +58,15 @@ fn with_assoc1<'a,'b>() where 'b : 'a {
     // which is &'b (), must outlive 'a, so 'b : 'a must hold, and
     // that is in the where clauses, so we're fine.
 
-    let _: &'a WithAssoc<TheType<'b>> = loop { };
+    let _x: &'a WithAssoc<TheType<'b>> = loop { };
 }
 
 fn without_assoc<'a,'b>() {
     // Here there are no associated types but there is a requirement
     // that `'b:'a` holds because the `'b` appears in `TheType<'b>`.
 
-    let _: &'a WithoutAssoc<TheType<'b>> = loop { }; //~ ERROR reference has a longer lifetime
+    let _x: &'a WithoutAssoc<TheType<'b>> = loop { };
+    //~^ ERROR reference has a longer lifetime
 }
 
 fn call_with_assoc<'a,'b>() {

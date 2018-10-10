@@ -970,7 +970,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         locations: Locations,
         category: ConstraintCategory,
     ) -> Fallible<()> {
-        relate_tys::relate_type_and_user_type(
+        let ty = relate_tys::relate_type_and_user_type(
             self.infcx,
             a,
             v,
@@ -978,7 +978,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             locations,
             category,
             self.borrowck_context.as_mut().map(|x| &mut **x),
-        )
+        )?;
+        self.prove_predicate(
+            ty::Predicate::WellFormed(ty),
+            locations,
+            category,
+        );
+        Ok(())
     }
 
     fn eq_opaque_type_and_type(

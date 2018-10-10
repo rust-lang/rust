@@ -13,6 +13,22 @@ note: borrowed value must be valid for the lifetime 'a as defined on the functio
 LL | fn call1<'a>(x: &'a usize) {
    |          ^^
 
-error: aborting due to previous error
+error[E0597]: `y` does not live long enough
+  --> $DIR/regions-free-region-ordering-caller1.rs:19:27
+   |
+LL |     let z: &'a & usize = &(&y);
+   |                           ^^^^ borrowed value does not live long enough
+...
+LL | }
+   | - `y` dropped here while still borrowed
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 15:10...
+  --> $DIR/regions-free-region-ordering-caller1.rs:15:10
+   |
+LL | fn call1<'a>(x: &'a usize) {
+   |          ^^
 
-For more information about this error, try `rustc --explain E0716`.
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0597, E0716.
+For more information about an error, try `rustc --explain E0597`.

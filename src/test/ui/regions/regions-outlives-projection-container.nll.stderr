@@ -1,0 +1,46 @@
+error: unsatisfied lifetime constraints
+  --> $DIR/regions-outlives-projection-container.rs:50:13
+   |
+LL | fn with_assoc<'a,'b>() {
+   |               -- -- lifetime `'b` defined here
+   |               |
+   |               lifetime `'a` defined here
+...
+LL |     let _x: &'a WithAssoc<TheType<'b>> = loop { };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'b` must outlive `'a`
+
+error: unsatisfied lifetime constraints
+  --> $DIR/regions-outlives-projection-container.rs:68:13
+   |
+LL | fn without_assoc<'a,'b>() {
+   |                  -- -- lifetime `'b` defined here
+   |                  |
+   |                  lifetime `'a` defined here
+...
+LL |     let _x: &'a WithoutAssoc<TheType<'b>> = loop { };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'b` must outlive `'a`
+
+error: unsatisfied lifetime constraints
+  --> $DIR/regions-outlives-projection-container.rs:77:5
+   |
+LL | fn call_with_assoc<'a,'b>() {
+   |                    -- -- lifetime `'b` defined here
+   |                    |
+   |                    lifetime `'a` defined here
+...
+LL |     call::<&'a WithAssoc<TheType<'b>>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+
+error: unsatisfied lifetime constraints
+  --> $DIR/regions-outlives-projection-container.rs:84:5
+   |
+LL | fn call_without_assoc<'a,'b>() {
+   |                       -- -- lifetime `'b` defined here
+   |                       |
+   |                       lifetime `'a` defined here
+...
+LL |     call::<&'a WithoutAssoc<TheType<'b>>>(); //~ ERROR reference has a longer lifetime
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+
+error: aborting due to 4 previous errors
+
