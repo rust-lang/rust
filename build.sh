@@ -77,7 +77,6 @@ pushd xargo
 rm -r ~/.xargo/HOST || true
 export XARGO_RUST_SRC=$(pwd)'/../target/libcore/src'
 time SHOULD_CODEGEN=1 xargo build --color always
-rm -r target/
 popd
 
 cat target/out/log.txt | sort | uniq -c
