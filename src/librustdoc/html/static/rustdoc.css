@@ -908,10 +908,9 @@ span.since {
 		padding-top: 0px;
 	}
 
-	.sidebar {
+	body > .sidebar {
 		height: 45px;
 		min-height: 40px;
-		width: calc(100% + 30px);
 		margin: 0;
 		margin-left: -15px;
 		padding: 0 15px;
@@ -1013,6 +1012,10 @@ span.since {
 	.anchor {
 		display: none !important;
 	}
+
+	h1.fqn {
+		overflow: initial;
+	}
 }
 
 @media print {
@@ -1112,6 +1115,18 @@ h4 > .important-traits {
 	top: 2px;
 }
 
+#all-types {
+	text-align: center;
+	border: 1px solid;
+	margin: 0 10px;
+	margin-bottom: 10px;
+	display: block;
+	border-radius: 7px;
+}
+#all-types > p {
+	margin: 5px 0;
+}
+
 @media (max-width: 700px) {
 	h4 > .important-traits {
 		position: absolute;
@@ -1134,6 +1149,9 @@ h4 > .important-traits {
 		margin-left: 0;
 		background-color: rgba(0,0,0,0);
 		height: 100%;
+	}
+	.sidebar {
+		width: calc(100% + 30px);
 	}
 
 	.show-it {
@@ -1179,6 +1197,10 @@ h4 > .important-traits {
 
 	.impl > .collapse-toggle {
 		left: -10px;
+	}
+
+	#all-types {
+		margin: 10px;
 	}
 }
 
@@ -1382,17 +1404,6 @@ kbd {
 }
 #main > ul > li {
 	list-style: none;
-}
-#all-types {
-	text-align: center;
-	border: 1px solid;
-	margin: 0 10px;
-	margin-bottom: 10px;
-	display: block;
-	border-radius: 7px;
-}
-#all-types > p {
-	margin: 5px 0;
 }
 
 .non-exhaustive {
