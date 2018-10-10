@@ -703,8 +703,8 @@ impl Session {
         match self.opts.maybe_sysroot {
             Some(ref sysroot) => sysroot,
             None => self.default_sysroot
-                .as_ref()
-                .expect("missing sysroot and default_sysroot in Session"),
+                        .as_ref()
+                        .expect("missing sysroot and default_sysroot in Session"),
         }
     }
     pub fn target_filesearch(&self, kind: PathKind) -> filesearch::FileSearch<'_> {

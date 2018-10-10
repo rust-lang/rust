@@ -736,19 +736,19 @@ macro_rules! options {
                     match (value, opt_type_desc) {
                         (Some(..), None) => {
                             early_error(error_format, &format!("{} option `{}` takes no \
-                                                              value", $outputname, key))
+                                                                value", $outputname, key))
                         }
                         (None, Some(type_desc)) => {
                             early_error(error_format, &format!("{0} option `{1}` requires \
-                                                              {2} ({3} {1}=<value>)",
-                                                             $outputname, key,
-                                                             type_desc, $prefix))
+                                                                {2} ({3} {1}=<value>)",
+                                                               $outputname, key,
+                                                               type_desc, $prefix))
                         }
                         (Some(value), Some(type_desc)) => {
                             early_error(error_format, &format!("incorrect value `{}` for {} \
-                                                              option `{}` - {} was expected",
-                                                             value, $outputname,
-                                                             key, type_desc))
+                                                                option `{}` - {} was expected",
+                                                               value, $outputname,
+                                                               key, type_desc))
                         }
                         (None, None) => bug!()
                     }
@@ -758,14 +758,13 @@ macro_rules! options {
             }
             if !found {
                 early_error(error_format, &format!("unknown {} option: `{}`",
-                                                 $outputname, key));
+                                                   $outputname, key));
             }
         }
         return op;
     }
 
     impl<'a> dep_tracking::DepTrackingHash for $struct_name {
-
         fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType) {
             let mut sub_hashes = BTreeMap::new();
             $({
@@ -782,7 +781,7 @@ macro_rules! options {
 
     pub type $setter_name = fn(&mut $struct_name, v: Option<&str>) -> bool;
     pub const $stat: &'static [(&'static str, $setter_name,
-                                     Option<&'static str>, &'static str)] =
+                                Option<&'static str>, &'static str)] =
         &[ $( (stringify!($opt), $mod_set::$opt, $mod_desc::$parse, $desc) ),* ];
 
     #[allow(non_upper_case_globals, dead_code)]
@@ -1062,8 +1061,8 @@ macro_rules! options {
 ) }
 
 options! {CodegenOptions, CodegenSetter, basic_codegen_options,
-         build_codegen_options, "C", "codegen",
-         CG_OPTIONS, cg_type_desc, cgsetters,
+          build_codegen_options, "C", "codegen",
+          CG_OPTIONS, cg_type_desc, cgsetters,
     ar: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "this option is deprecated and does nothing"),
     linker: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
@@ -1107,13 +1106,13 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
     no_redzone: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "disable the use of the redzone"),
     relocation_model: Option<String> = (None, parse_opt_string, [TRACKED],
-         "choose the relocation model to use (rustc --print relocation-models for details)"),
+        "choose the relocation model to use (rustc --print relocation-models for details)"),
     code_model: Option<String> = (None, parse_opt_string, [TRACKED],
-         "choose the code model to use (rustc --print code-models for details)"),
+        "choose the code model to use (rustc --print code-models for details)"),
     metadata: Vec<String> = (Vec::new(), parse_list, [TRACKED],
-         "metadata to mangle symbol names with"),
+        "metadata to mangle symbol names with"),
     extra_filename: String = (String::new(), parse_string, [UNTRACKED],
-         "extra data to put in each output filename"),
+        "extra data to put in each output filename"),
     codegen_units: Option<usize> = (None, parse_opt_uint, [UNTRACKED],
         "divide crate into N units to optimize in parallel"),
     remark: Passes = (Passes::Some(Vec::new()), parse_passes, [UNTRACKED],
@@ -1134,14 +1133,14 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
     panic: Option<PanicStrategy> = (None, parse_panic_strategy,
         [TRACKED], "panic strategy to compile crate with"),
     incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
-          "enable incremental compilation"),
+        "enable incremental compilation"),
     default_linker_libraries: Option<bool> = (None, parse_opt_bool, [UNTRACKED],
-          "allow the linker to link its default libraries"),
+        "allow the linker to link its default libraries"),
 }
 
 options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
-         build_debugging_options, "Z", "debugging",
-         DB_OPTIONS, db_type_desc, dbsetters,
+          build_debugging_options, "Z", "debugging",
+          DB_OPTIONS, db_type_desc, dbsetters,
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
     verbose: bool = (false, parse_bool, [UNTRACKED],
@@ -1211,26 +1210,26 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     flowgraph_print_all: bool = (false, parse_bool, [UNTRACKED],
         "include all dataflow analysis data in -Z unpretty flowgraph output"),
     print_region_graph: bool = (false, parse_bool, [UNTRACKED],
-         "prints region inference graph. \
-          Use with RUST_REGION_GRAPH=help for more info"),
+        "prints region inference graph. \
+         Use with RUST_REGION_GRAPH=help for more info"),
     parse_only: bool = (false, parse_bool, [UNTRACKED],
-          "parse only; do not compile, assemble, or link"),
+        "parse only; do not compile, assemble, or link"),
     no_codegen: bool = (false, parse_bool, [TRACKED],
-          "run all passes except codegen; no output"),
+        "run all passes except codegen; no output"),
     treat_err_as_bug: bool = (false, parse_bool, [TRACKED],
-          "treat all errors that occur as bugs"),
+        "treat all errors that occur as bugs"),
     report_delayed_bugs: bool = (false, parse_bool, [TRACKED],
-          "immediately print bugs registered with `delay_span_bug`"),
+        "immediately print bugs registered with `delay_span_bug`"),
     external_macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
-          "show macro backtraces even for non-local macros"),
+        "show macro backtraces even for non-local macros"),
     teach: bool = (false, parse_bool, [TRACKED],
-          "show extended diagnostic help"),
+        "show extended diagnostic help"),
     continue_parse_after_error: bool = (false, parse_bool, [TRACKED],
-          "attempt to recover from parse errors (experimental)"),
+        "attempt to recover from parse errors (experimental)"),
     incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
-          "enable incremental compilation (experimental)"),
+        "enable incremental compilation (experimental)"),
     incremental_queries: bool = (true, parse_bool, [UNTRACKED],
-          "enable incremental compilation support for queries (experimental)"),
+        "enable incremental compilation support for queries (experimental)"),
     incremental_info: bool = (false, parse_bool, [UNTRACKED],
         "print high-level information about incremental reuse (or the lack thereof)"),
     incremental_dump_hash: bool = (false, parse_bool, [UNTRACKED],
@@ -1240,64 +1239,64 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     incremental_ignore_spans: bool = (false, parse_bool, [UNTRACKED],
         "ignore spans during ICH computation -- used for testing"),
     dump_dep_graph: bool = (false, parse_bool, [UNTRACKED],
-          "dump the dependency graph to $RUST_DEP_GRAPH (default: /tmp/dep_graph.gv)"),
+        "dump the dependency graph to $RUST_DEP_GRAPH (default: /tmp/dep_graph.gv)"),
     query_dep_graph: bool = (false, parse_bool, [UNTRACKED],
-          "enable queries of the dependency graph for regression testing"),
+        "enable queries of the dependency graph for regression testing"),
     profile_queries: bool = (false, parse_bool, [UNTRACKED],
-          "trace and profile the queries of the incremental compilation framework"),
+        "trace and profile the queries of the incremental compilation framework"),
     profile_queries_and_keys: bool = (false, parse_bool, [UNTRACKED],
-          "trace and profile the queries and keys of the incremental compilation framework"),
+        "trace and profile the queries and keys of the incremental compilation framework"),
     no_analysis: bool = (false, parse_bool, [UNTRACKED],
-          "parse and expand the source, but run no analysis"),
+        "parse and expand the source, but run no analysis"),
     extra_plugins: Vec<String> = (Vec::new(), parse_list, [TRACKED],
         "load extra plugins"),
     unstable_options: bool = (false, parse_bool, [UNTRACKED],
-          "adds unstable command line options to rustc interface"),
+        "adds unstable command line options to rustc interface"),
     force_overflow_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
-          "force overflow checks on or off"),
+        "force overflow checks on or off"),
     trace_macros: bool = (false, parse_bool, [UNTRACKED],
-          "for every macro invocation, print its name and arguments"),
+        "for every macro invocation, print its name and arguments"),
     debug_macros: bool = (false, parse_bool, [TRACKED],
-          "emit line numbers debug info inside macros"),
+        "emit line numbers debug info inside macros"),
     keep_hygiene_data: bool = (false, parse_bool, [UNTRACKED],
-          "don't clear the hygiene data after analysis"),
+        "don't clear the hygiene data after analysis"),
     keep_ast: bool = (false, parse_bool, [UNTRACKED],
-          "keep the AST after lowering it to HIR"),
+        "keep the AST after lowering it to HIR"),
     show_span: Option<String> = (None, parse_opt_string, [TRACKED],
-          "show spans for compiler debugging (expr|pat|ty)"),
+        "show spans for compiler debugging (expr|pat|ty)"),
     print_type_sizes: bool = (false, parse_bool, [UNTRACKED],
-          "print layout information for each type encountered"),
+        "print layout information for each type encountered"),
     print_mono_items: Option<String> = (None, parse_opt_string, [UNTRACKED],
-          "print the result of the monomorphization collection pass"),
+        "print the result of the monomorphization collection pass"),
     mir_opt_level: usize = (1, parse_uint, [TRACKED],
-          "set the MIR optimization level (0-3, default: 1)"),
+        "set the MIR optimization level (0-3, default: 1)"),
     mutable_noalias: Option<bool> = (None, parse_opt_bool, [TRACKED],
-          "emit noalias metadata for mutable references (default: yes on LLVM >= 6)"),
+        "emit noalias metadata for mutable references (default: yes on LLVM >= 6)"),
     arg_align_attributes: bool = (false, parse_bool, [TRACKED],
-          "emit align metadata for reference arguments"),
+        "emit align metadata for reference arguments"),
     dump_mir: Option<String> = (None, parse_opt_string, [UNTRACKED],
-          "dump MIR state at various points in transforms"),
+        "dump MIR state at various points in transforms"),
     dump_mir_dir: String = (String::from("mir_dump"), parse_string, [UNTRACKED],
-          "the directory the MIR is dumped into"),
+        "the directory the MIR is dumped into"),
     dump_mir_graphviz: bool = (false, parse_bool, [UNTRACKED],
-          "in addition to `.mir` files, create graphviz `.dot` files"),
+        "in addition to `.mir` files, create graphviz `.dot` files"),
     dump_mir_exclude_pass_number: bool = (false, parse_bool, [UNTRACKED],
-          "if set, exclude the pass number when dumping MIR (used in tests)"),
+        "if set, exclude the pass number when dumping MIR (used in tests)"),
     mir_emit_validate: usize = (0, parse_uint, [TRACKED],
-          "emit Validate MIR statements, interpreted e.g. by miri (0: do not emit; 1: if function \
-           contains unsafe block, only validate arguments; 2: always emit full validation)"),
+        "emit Validate MIR statements, interpreted e.g. by miri (0: do not emit; 1: if function \
+         contains unsafe block, only validate arguments; 2: always emit full validation)"),
     perf_stats: bool = (false, parse_bool, [UNTRACKED],
-          "print some performance-related statistics"),
+        "print some performance-related statistics"),
     hir_stats: bool = (false, parse_bool, [UNTRACKED],
-          "print some statistics about AST and HIR"),
+        "print some statistics about AST and HIR"),
     mir_stats: bool = (false, parse_bool, [UNTRACKED],
-          "print some statistics about MIR"),
+        "print some statistics about MIR"),
     always_encode_mir: bool = (false, parse_bool, [TRACKED],
-          "encode MIR of all functions into the crate metadata"),
+        "encode MIR of all functions into the crate metadata"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
-          "pass `-install_name @rpath/...` to the macOS linker"),
+        "pass `-install_name @rpath/...` to the macOS linker"),
     sanitizer: Option<Sanitizer> = (None, parse_sanitizer, [TRACKED],
-                                   "Use a sanitizer"),
+                                    "Use a sanitizer"),
     linker_flavor: Option<LinkerFlavor> = (None, parse_linker_flavor, [UNTRACKED],
                                            "Linker flavor"),
     fuel: Option<(String, u64)> = (None, parse_optimization_fuel, [TRACKED],
@@ -1313,13 +1312,11 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     profile: bool = (false, parse_bool, [TRACKED],
                      "insert profiling code"),
     pgo_gen: Option<String> = (None, parse_opt_string, [TRACKED],
-        "Generate PGO profile data, to a given file, or to the default \
-         location if it's empty."),
+        "Generate PGO profile data, to a given file, or to the default location if it's empty."),
     pgo_use: String = (String::new(), parse_string, [TRACKED],
         "Use PGO profile data from the given profile file."),
-    disable_instrumentation_preinliner: bool =
-        (false, parse_bool, [TRACKED], "Disable the instrumentation pre-inliner, \
-        useful for profiling / PGO."),
+    disable_instrumentation_preinliner: bool = (false, parse_bool, [TRACKED],
+        "Disable the instrumentation pre-inliner, useful for profiling / PGO."),
     relro_level: Option<RelroLevel> = (None, parse_relro_level, [TRACKED],
         "choose which RELRO level to use"),
     nll_subminimal_causes: bool = (false, parse_bool, [UNTRACKED],
@@ -1341,7 +1338,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     inline_in_all_cgus: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "control whether #[inline] functions are in all cgus"),
     tls_model: Option<String> = (None, parse_opt_string, [TRACKED],
-         "choose the TLS model to use (rustc --print tls-models for details)"),
+        "choose the TLS model to use (rustc --print tls-models for details)"),
     saturating_float_casts: bool = (false, parse_bool, [TRACKED],
         "make float->int casts UB-free: numbers outside the integer type's range are clipped to \
          the max/min integer respectively, and NaN is mapped to 0"),
@@ -1362,31 +1359,31 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         `hir` (the HIR), `hir,identified`, or
         `hir,typed` (HIR with types for each node)."),
     run_dsymutil: Option<bool> = (None, parse_opt_bool, [TRACKED],
-          "run `dsymutil` and delete intermediate object files"),
+        "run `dsymutil` and delete intermediate object files"),
     ui_testing: bool = (false, parse_bool, [UNTRACKED],
-          "format compiler diagnostics in a way that's better suitable for UI testing"),
+        "format compiler diagnostics in a way that's better suitable for UI testing"),
     embed_bitcode: bool = (false, parse_bool, [TRACKED],
-          "embed LLVM bitcode in object files"),
+        "embed LLVM bitcode in object files"),
     strip_debuginfo_if_disabled: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "tell the linker to strip debuginfo when building without debuginfo enabled."),
     share_generics: Option<bool> = (None, parse_opt_bool, [TRACKED],
-          "make the current crate share its generic instantiations"),
+        "make the current crate share its generic instantiations"),
     chalk: bool = (false, parse_bool, [TRACKED],
-          "enable the experimental Chalk-based trait solving engine"),
+        "enable the experimental Chalk-based trait solving engine"),
     cross_lang_lto: CrossLangLto = (CrossLangLto::Disabled, parse_cross_lang_lto, [TRACKED],
-          "generate build artifacts that are compatible with linker-based LTO."),
+        "generate build artifacts that are compatible with linker-based LTO."),
     no_parallel_llvm: bool = (false, parse_bool, [UNTRACKED],
-          "don't run LLVM in parallel (while keeping codegen-units and ThinLTO)"),
+        "don't run LLVM in parallel (while keeping codegen-units and ThinLTO)"),
     no_leak_check: bool = (false, parse_bool, [UNTRACKED],
         "disables the 'leak check' for subtyping; unsound, but useful for tests"),
     crate_attr: Vec<String> = (Vec::new(), parse_string_push, [TRACKED],
         "inject the given attribute in the crate"),
     self_profile: bool = (false, parse_bool, [UNTRACKED],
-          "run the self profiler"),
+        "run the self profiler"),
     profile_json: bool = (false, parse_bool, [UNTRACKED],
-          "output a json file with profiler results"),
+        "output a json file with profiler results"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
-          "emits a section containing stack size metadata"),
+        "emits a section containing stack size metadata"),
     plt: Option<bool> = (None, parse_opt_bool, [TRACKED],
           "whether to use the PLT when calling into shared libraries;
           only has effect for PIC code on systems with ELF binaries
@@ -1502,7 +1499,6 @@ pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum OptionStability {
     Stable,
-
     Unstable,
 }
 
@@ -1851,7 +1847,7 @@ pub fn build_session_options_and_crate_config(
                 ErrorOutputType::default(),
                 &format!(
                     "argument for --edition must be one of: \
-                    {}. (instead was `{}`)",
+                     {}. (instead was `{}`)",
                     EDITION_NAME_LIST,
                     arg
                 ),
@@ -1865,7 +1861,7 @@ pub fn build_session_options_and_crate_config(
                 ErrorOutputType::default(),
                 &format!(
                     "Edition {} is unstable and only \
-                    available for nightly builds of rustc.",
+                     available for nightly builds of rustc.",
                     edition,
                 )
         )
@@ -2308,9 +2304,7 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
                 "cdylib" => CrateType::Cdylib,
                 "bin" => CrateType::Executable,
                 "proc-macro" => CrateType::ProcMacro,
-                _ => {
-                    return Err(format!("unknown crate type: `{}`", part));
-                }
+                _ => return Err(format!("unknown crate type: `{}`", part))
             };
             if !crate_types.contains(&new_part) {
                 crate_types.push(new_part)

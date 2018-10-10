@@ -175,7 +175,7 @@ fn find_libdir(sysroot: &Path) -> Cow<'static, str> {
     // to lib64/lib32. This would be more foolproof by basing the sysroot off
     // of the directory where librustc is located, rather than where the rustc
     // binary is.
-    //If --libdir is set during configuration to the value other than
+    // If --libdir is set during configuration to the value other than
     // "lib" (i.e. non-default), this value is used (see issue #16552).
 
     match option_env!("CFG_LIBDIR_RELATIVE") {
