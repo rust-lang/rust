@@ -4,6 +4,7 @@ use borrow_check::place_ext::PlaceExt;
 use rustc::mir::{self, Location, Place, Mir};
 use rustc::ty::TyCtxt;
 use rustc::ty::RegionVid;
+use rustc::mir::PlaceBase;
 
 use rustc_data_structures::bit_set::{BitSet, BitSetOperator};
 use rustc_data_structures::fx::FxHashMap;
@@ -188,8 +189,9 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
         place: &Place<'tcx>
     ) {
         debug!("kill_borrows_on_place: place={:?}", place);
-        // Handle the `Place::Local(..)` case first and exit early.
-        if let Place::Local(local) = place {
+        // Handle the `PlaceBase::Local(..)` case first and exit early.
+        let neo_place = self.tcx.as_new_place(place);
+        if let Some(PlaceBase::Local(local)) = neo_place.as_place_base() {
             if let Some(borrow_indices) = self.borrow_set.local_map.get(&local) {
                 debug!("kill_borrows_on_place: borrow_indices={:?}", borrow_indices);
                 sets.kill_all(borrow_indices);
@@ -260,13 +262,13 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'gcx, 'tcx> {
         });
 
         debug!("Borrows::statement_effect: stmt={:?}", stmt);
-        match stmt.kind {
-            mir::StatementKind::Assign(ref lhs, ref rhs) => {
+        match &stmt.kind {
+            mir::StatementKind::Assign(lhs, rhs) => {
                 // Make sure there are no remaining borrows for variables
                 // that are assigned over.
                 self.kill_borrows_on_place(sets, lhs);
 
-                if let mir::Rvalue::Ref(_, _, ref place) = **rhs {
+                if let box mir::Rvalue::Ref(_, _, place) = rhs {
                     if place.ignore_borrow(
                         self.tcx,
                         self.mir,
@@ -285,7 +287,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'gcx, 'tcx> {
             mir::StatementKind::StorageDead(local) => {
                 // Make sure there are no remaining borrows for locals that
                 // are gone out of scope.
-                self.kill_borrows_on_place(sets, &Place::Local(local));
+                self.kill_borrows_on_place(sets, &Place::Local(*local));
             }
 
             mir::StatementKind::InlineAsm { ref outputs, ref asm, .. } => {
