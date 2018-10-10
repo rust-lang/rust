@@ -31,10 +31,29 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item=()>) {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     on(
+        _Self="[std::ops::Range<Idx>; 1]",
+        label="if you meant to iterate between two values, remove the square brackets",
+        note="`[start..end]` is an array of one `Range`, you might have meant to have a `Range`: `start..end`"
+    ),
+    on(
         _Self="&str",
         label="`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"
     ),
-    label="`{Self}` is not an iterator; maybe try calling `.iter()` or a similar method"
+    on(
+        _Self="std::string::String",
+        label="`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"
+    ),
+    on(
+        _Self="[]",
+        label="borrow the array with `&` or call `.iter()` on it to iterate over it",
+        note="arrays are not an iterators, but slices like the following are: `&[1, 2, 3]`"
+    ),
+    on(
+        _Self="{integral}",
+        note="if you want to iterate between `0` until a value `end`, use the range syntax: `0..end`"
+    ),
+    label="`{Self}` is not an iterator",
+    message="`{Self}` is not an iterator"
 )]
 #[doc(spotlight)]
 pub trait Iterator {

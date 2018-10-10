@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `MyStruct: std::iter::Iterator` is not satisfied
+error[E0277]: `MyStruct` is not an iterator
   --> $DIR/for-loop-bogosity.rs:27:14
    |
-LL |     for x in bogus { //~ ERROR `MyStruct: std::iter::Iterator` is not satisfied
-   |              ^^^^^ `MyStruct` is not an iterator; maybe try calling `.iter()` or a similar method
+LL |     for x in bogus {
+   |              ^^^^^ `MyStruct` is not an iterator
    |
    = help: the trait `std::iter::Iterator` is not implemented for `MyStruct`
    = note: required by `std::iter::IntoIterator::into_iter`

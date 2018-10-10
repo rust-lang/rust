@@ -15,7 +15,7 @@ fn main() {
         & &v
         .iter()
         .enumerate() {
-        //~^^^^ ERROR the trait bound
+        //~^^^^ ERROR `&&&&&std::iter::Enumerate<std::slice::Iter<'_, {integer}>>` is not an
         println!("{}", i);
     }
 }

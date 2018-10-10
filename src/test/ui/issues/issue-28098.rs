@@ -10,13 +10,13 @@
 
 fn main() {
     let _ = Iterator::next(&mut ());
-    //~^ ERROR `(): std::iter::Iterator` is not satisfied
+    //~^ ERROR `()` is not an iterator
 
     for _ in false {}
-    //~^ ERROR `bool: std::iter::Iterator` is not satisfied
+    //~^ ERROR `bool` is not an iterator
 
     let _ = Iterator::next(&mut ());
-    //~^ ERROR `(): std::iter::Iterator` is not satisfied
+    //~^ ERROR `()` is not an iterator
 
     other()
 }
@@ -25,11 +25,11 @@ pub fn other() {
     // check errors are still reported globally
 
     let _ = Iterator::next(&mut ());
-    //~^ ERROR `(): std::iter::Iterator` is not satisfied
+    //~^ ERROR `()` is not an iterator
 
     let _ = Iterator::next(&mut ());
-    //~^ ERROR `(): std::iter::Iterator` is not satisfied
+    //~^ ERROR `()` is not an iterator
 
     for _ in false {}
-    //~^ ERROR `bool: std::iter::Iterator` is not satisfied
+    //~^ ERROR `bool` is not an iterator
 }

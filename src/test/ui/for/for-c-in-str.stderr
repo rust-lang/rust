@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `&str: std::iter::Iterator` is not satisfied
+error[E0277]: `&str` is not an iterator
   --> $DIR/for-c-in-str.rs:14:14
    |
 LL |     for c in "asdf" {
