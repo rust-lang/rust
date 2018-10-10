@@ -11,8 +11,8 @@
 // aux-build:lint_tool_test.rs
 // ignore-stage1
 // compile-flags: --cfg foo
+
 #![feature(plugin)]
-#![feature(tool_lints)]
 #![plugin(lint_tool_test)]
 #![allow(dead_code)]
 #![cfg_attr(foo, warn(test_lint))]
