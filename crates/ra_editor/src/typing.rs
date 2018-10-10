@@ -30,6 +30,7 @@ pub fn join_lines(file: &File, range: TextRange) -> LocalEdit {
     } else {
         range
     };
+
     let node = find_covering_node(file.syntax(), range);
     let mut edit = EditBuilder::new();
     for node in node.descendants() {
@@ -140,30 +141,71 @@ fn remove_newline(
     offset: TextUnit,
 ) {
     if node.kind() == WHITESPACE && node_text.bytes().filter(|&b| b == b'\n').count() == 1 {
+        // Special case that turns something like:
+        //
+        // ```
+        // my_function({<|>
+        //    <some-expr>
+        // })
+        // ```
+        //
+        // into `my_function(<some-expr>)`
         if join_single_expr_block(edit, node).is_some() {
             return
         }
-        match (node.prev_sibling(), node.next_sibling()) {
-            (Some(prev), Some(next)) => {
-                let range = TextRange::from_to(prev.range().start(), node.range().end());
-                if is_trailing_comma(prev.kind(), next.kind()) {
-                    edit.delete(range);
-                } else if no_space_required(prev.kind(), next.kind()) {
-                    edit.delete(node.range());
-                } else if prev.kind() == COMMA && next.kind() == R_CURLY {
-                    edit.replace(range, " ".to_string());
+
+        if let (Some(prev), Some(next)) = (node.prev_sibling(), node.next_sibling()) {
+            let range = TextRange::from_to(prev.range().start(), node.range().end());
+            if is_trailing_comma(prev.kind(), next.kind()) {
+                // Removes: trailing comma, newline (incl. surrounding whitespace)
+                edit.delete(range);
+            } else if no_space_required(prev.kind(), next.kind()) {
+                // Removes: newline (incl. surrounding whitespace)
+                edit.delete(node.range());
+            } else if prev.kind() == COMMA && next.kind() == R_CURLY {
+                // Removes: comma, newline (incl. surrounding whitespace)
+                // Adds: a single whitespace
+                edit.replace(range, " ".to_string());
+            } else if prev.kind() == COMMENT && next.kind() == COMMENT {
+                // Removes: newline (incl. surrounding whitespace), start of the next comment
+
+                // FIXME: I guess it is safe to unwrap here? A comment always has text, right?
+                let comment_text = next.leaf_text().unwrap().as_str();
+                let comment_start_length = comment_start_length(comment_text);
+
+                if let Some(newline_pos) = comment_text.find('\n') {
+                    // Special case for multi-line c-like comments: join the comment content but
+                    // keep the leading `/*`
+
+                    let newline_offset = next.range().start()
+                                        + TextUnit::from(newline_pos as u32)
+                                        + TextUnit::of_char('\n');
+
+                    edit.insert(newline_offset, "/*".to_string());
+                    edit.delete(TextRange::from_to(
+                        node.range().start(),
+                        next.range().start() + comment_start_length
+                    ));
                 } else {
-                    edit.replace(
-                        node.range(),
-                        compute_ws(prev, next).to_string(),
-                    );
+                    // Single-line comments
+                    edit.delete(TextRange::from_to(
+                        node.range().start(),
+                        next.range().start() + comment_start_length
+                    ));
                 }
-                return;
+            } else {
+                // Remove newline but add a computed amount of whitespace characters
+                edit.replace(
+                    node.range(),
+                    compute_ws(prev, next).to_string(),
+                );
             }
-            _ => (),
+
+            return;
         }
     }
 
+    // FIXME: do we ever reach this point? What does it mean to be here? I think we should document it
     let suff = &node_text[TextRange::from_to(
         offset - node.range().start() + TextUnit::of_char('\n'),
         TextUnit::of_str(node_text),
@@ -174,6 +216,13 @@ fn remove_newline(
         TextRange::offset_len(offset, ((spaces + 1) as u32).into()),
         " ".to_string(),
     );
+}
+
+// Return the start length of the comment (e.g. 2 for `//` and 3 for `//!`)
+fn comment_start_length(_text: &str) -> TextUnit {
+    // TODO: use the parser here instead of reimplementing comment parsing?
+    // Otherwise, reimplement comment parsing :)
+    return TextUnit::from(2);
 }
 
 fn is_trailing_comma(left: SyntaxKind, right: SyntaxKind) -> bool {
