@@ -8,17 +8,6 @@ fn main() {
     // Don't rebuild miri even if nothing changed
     println!("cargo:rerun-if-changed=build.rs");
     // vergen
-    vergen().expect("Unable to generate vergen constants!");
-}
-
-fn vergen() -> vergen::Result<()> {
-    use vergen::{ConstantsFlags, Vergen};
-
-    let vergen = Vergen::new(ConstantsFlags::all())?;
-
-    for (k, v) in vergen.build_info() {
-        println!("cargo:rustc-env={}={}", k.name(), v);
-    }
-
-    Ok(())
+    vergen::generate_cargo_keys(vergen::ConstantsFlags::all())
+        .expect("Unable to generate vergen keys!");
 }
