@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
+
 // ignore-windows
 // ignore-gdb // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
 // min-lldb-version: 310
@@ -80,22 +82,28 @@
 // lldb-command:run
 
 // lldb-command:print empty
-// lldb-check:[...]$0 = &[]
+// lldbg-check:[...]$0 = &[]
+// lldbr-check:(&[i64]) empty = &[]
 
 // lldb-command:print singleton
-// lldb-check:[...]$1 = &[1]
+// lldbg-check:[...]$1 = &[1]
+// lldbr-check:(&[i64]) singleton = &[1]
 
 // lldb-command:print multiple
-// lldb-check:[...]$2 = &[2, 3, 4, 5]
+// lldbg-check:[...]$2 = &[2, 3, 4, 5]
+// lldbr-check:(&[i64]) multiple = &[2, 3, 4, 5]
 
 // lldb-command:print slice_of_slice
-// lldb-check:[...]$3 = &[3, 4]
+// lldbg-check:[...]$3 = &[3, 4]
+// lldbr-check:(&[i64]) slice_of_slice = &[3, 4]
 
 // lldb-command:print padded_tuple
-// lldb-check:[...]$4 = &[(6, 7), (8, 9)]
+// lldbg-check:[...]$4 = &[(6, 7), (8, 9)]
+// lldbr-check:(&[(i32, i16)]) padded_tuple = { data_ptr = *0x555555554ff0 length = 2 }
 
 // lldb-command:print padded_struct
-// lldb-check:[...]$5 = &[AStruct { x: 10, y: 11, z: 12 }, AStruct { x: 13, y: 14, z: 15 }]
+// lldbg-check:[...]$5 = &[AStruct { x: 10, y: 11, z: 12 }, AStruct { x: 13, y: 14, z: 15 }]
+// lldbr-check:(&[vec_slices::AStruct]) padded_struct = &[AStruct { x: 10, y: 11, z: 12 }, AStruct { x: 13, y: 14, z: 15 }]
 
 #![allow(dead_code, unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

@@ -79,58 +79,74 @@
 
 // BEFORE if
 // lldb-command:print x
-// lldb-check:[...]$0 = 999
+// lldbg-check:[...]$0 = 999
+// lldbr-check:(i32) x = 999
 // lldb-command:print y
-// lldb-check:[...]$1 = -1
+// lldbg-check:[...]$1 = -1
+// lldbr-check:(i32) y = -1
 // lldb-command:continue
 
 // AT BEGINNING of 'then' block
 // lldb-command:print x
-// lldb-check:[...]$2 = 999
+// lldbg-check:[...]$2 = 999
+// lldbr-check:(i32) x = 999
 // lldb-command:print y
-// lldb-check:[...]$3 = -1
+// lldbg-check:[...]$3 = -1
+// lldbr-check:(i32) y = -1
 // lldb-command:continue
 
 // AFTER 1st redeclaration of 'x'
 // lldb-command:print x
-// lldb-check:[...]$4 = 1001
+// lldbg-check:[...]$4 = 1001
+// lldbr-check:(i32) x = 1001
 // lldb-command:print y
-// lldb-check:[...]$5 = -1
+// lldbg-check:[...]$5 = -1
+// lldbr-check:(i32) y = -1
 // lldb-command:continue
 
 // AFTER 2st redeclaration of 'x'
 // lldb-command:print x
-// lldb-check:[...]$6 = 1002
+// lldbg-check:[...]$6 = 1002
+// lldbr-check:(i32) x = 1002
 // lldb-command:print y
-// lldb-check:[...]$7 = 1003
+// lldbg-check:[...]$7 = 1003
+// lldbr-check:(i32) y = 1003
 // lldb-command:continue
 
 // AFTER 1st if expression
 // lldb-command:print x
-// lldb-check:[...]$8 = 999
+// lldbg-check:[...]$8 = 999
+// lldbr-check:(i32) x = 999
 // lldb-command:print y
-// lldb-check:[...]$9 = -1
+// lldbg-check:[...]$9 = -1
+// lldbr-check:(i32) y = -1
 // lldb-command:continue
 
 // BEGINNING of else branch
 // lldb-command:print x
-// lldb-check:[...]$10 = 999
+// lldbg-check:[...]$10 = 999
+// lldbr-check:(i32) x = 999
 // lldb-command:print y
-// lldb-check:[...]$11 = -1
+// lldbg-check:[...]$11 = -1
+// lldbr-check:(i32) y = -1
 // lldb-command:continue
 
 // BEGINNING of else branch
 // lldb-command:print x
-// lldb-check:[...]$12 = 1004
+// lldbg-check:[...]$12 = 1004
+// lldbr-check:(i32) x = 1004
 // lldb-command:print y
-// lldb-check:[...]$13 = 1005
+// lldbg-check:[...]$13 = 1005
+// lldbr-check:(i32) y = 1005
 // lldb-command:continue
 
 // BEGINNING of else branch
 // lldb-command:print x
-// lldb-check:[...]$14 = 999
+// lldbg-check:[...]$14 = 999
+// lldbr-check:(i32) x = 999
 // lldb-command:print y
-// lldb-check:[...]$15 = -1
+// lldbg-check:[...]$15 = -1
+// lldbr-check:(i32) y = -1
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]
