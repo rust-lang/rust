@@ -1,0 +1,43 @@
+error[E0277]: `[std::ops::Range<{integer}>; 1]` is not an iterator
+  --> $DIR/array-of-ranges.rs:2:14
+   |
+LL |     for _ in [0..1] {}
+   |              ^^^^^^ if you meant to iterate between two values, remove the square brackets
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `[std::ops::Range<{integer}>; 1]`
+   = note: `[start..end]` is an array of one `Range`, you might have meant to have a `Range`: `start..end`
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error[E0277]: `[std::ops::Range<{integer}>; 1]` is not an iterator
+  --> $DIR/array-of-ranges.rs:5:14
+   |
+LL |     for _ in [start..end] {}
+   |              ^^^^^^^^^^^^ if you meant to iterate between two values, remove the square brackets
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `[std::ops::Range<{integer}>; 1]`
+   = note: `[start..end]` is an array of one `Range`, you might have meant to have a `Range`: `start..end`
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error[E0277]: `[std::ops::Range<{integer}>; 1]` is not an iterator
+  --> $DIR/array-of-ranges.rs:7:14
+   |
+LL |     for _ in array_of_range {}
+   |              ^^^^^^^^^^^^^^ if you meant to iterate between two values, remove the square brackets
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `[std::ops::Range<{integer}>; 1]`
+   = note: `[start..end]` is an array of one `Range`, you might have meant to have a `Range`: `start..end`
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error[E0277]: `[std::ops::Range<{integer}>; 2]` is not an iterator
+  --> $DIR/array-of-ranges.rs:8:14
+   |
+LL |     for _ in [0..1, 2..3] {}
+   |              ^^^^^^^^^^^^ borrow the array with `&` or call `.iter()` on it to iterate over it
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `[std::ops::Range<{integer}>; 2]`
+   = note: arrays are not an iterators, but slices like the following are: `&[1, 2, 3]`
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
