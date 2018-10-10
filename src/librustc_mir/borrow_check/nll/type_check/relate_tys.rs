@@ -32,7 +32,7 @@ pub(super) fn sub_types<'tcx>(
 ) -> Fallible<()> {
     debug!("sub_types(a={:?}, b={:?}, locations={:?})", a, b, locations);
     TypeRelating::new(
-        infcx.tcx,
+        infcx,
         NllTypeRelatingDelegate::new(infcx, borrowck_context, locations, category),
         ty::Variance::Covariant,
         ty::List::empty(),
@@ -51,7 +51,7 @@ pub(super) fn eq_types<'tcx>(
 ) -> Fallible<()> {
     debug!("eq_types(a={:?}, b={:?}, locations={:?})", a, b, locations);
     TypeRelating::new(
-        infcx.tcx,
+        infcx,
         NllTypeRelatingDelegate::new(infcx, borrowck_context, locations, category),
         ty::Variance::Invariant,
         ty::List::empty(),
@@ -86,7 +86,7 @@ pub(super) fn relate_type_and_user_type<'tcx>(
     let v1 = ty::Contravariant.xform(v);
 
     let mut type_relating = TypeRelating::new(
-        infcx.tcx,
+        infcx,
         NllTypeRelatingDelegate::new(infcx, borrowck_context, locations, category),
         v1,
         b_variables,
@@ -109,7 +109,7 @@ struct TypeRelating<'me, 'gcx: 'tcx, 'tcx: 'me, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    tcx: TyCtxt<'me, 'gcx, 'tcx>,
+    infcx: &'me InferCtxt<'me, 'gcx, 'tcx>,
 
     /// Callback to use when we deduce an outlives relationship
     delegate: D,
@@ -276,14 +276,14 @@ where
     D: TypeRelatingDelegate<'tcx>,
 {
     fn new(
-        tcx: TyCtxt<'me, 'gcx, 'tcx>,
+        infcx: &'me InferCtxt<'me, 'gcx, 'tcx>,
         delegate: D,
         ambient_variance: ty::Variance,
         canonical_var_infos: CanonicalVarInfos<'tcx>,
     ) -> Self {
         let canonical_var_values = IndexVec::from_elem_n(None, canonical_var_infos.len());
         Self {
-            tcx,
+            infcx,
             delegate,
             ambient_variance,
             canonical_var_values,
@@ -432,7 +432,7 @@ where
 
     fn generalize_value(&mut self, kind: Kind<'tcx>) -> Kind<'tcx> {
         TypeGeneralizer {
-            tcx: self.tcx,
+            tcx: self.infcx.tcx,
             delegate: &mut self.delegate,
             first_free_index: ty::INNERMOST,
             ambient_variance: self.ambient_variance,
@@ -450,7 +450,7 @@ where
     D: TypeRelatingDelegate<'tcx>,
 {
     fn tcx(&self) -> TyCtxt<'me, 'gcx, 'tcx> {
-        self.tcx
+        self.infcx.tcx
     }
 
     fn tag(&self) -> &'static str {
