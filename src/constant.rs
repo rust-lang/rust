@@ -279,6 +279,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
     type MemoryData = ();
     type MemoryKinds = ();
     const MUT_STATIC_KIND: Option<()> = None;
+    const ENFORCE_VALIDITY: bool = true;
 
     fn before_terminator(_: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx> {
         panic!();
