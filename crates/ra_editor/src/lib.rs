@@ -88,7 +88,6 @@ pub fn highlight(file: &File) -> Vec<HighlightedRange> {
     let mut res = Vec::new();
     for node in file.syntax().descendants() {
         let tag = match node.kind() {
-            ERROR => "error",
             COMMENT | DOC_COMMENT => "comment",
             STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => "string",
             ATTR => "attribute",
