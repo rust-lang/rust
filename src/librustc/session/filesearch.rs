@@ -41,7 +41,7 @@ impl<'a> FileSearch<'a> {
         F: FnMut(&Path, PathKind)
     {
         let mut visited_dirs = FxHashSet::default();
-
+        visited_dirs.reserve(self.search_paths.paths.len() + 1);
         for (path, kind) in self.search_paths.iter(self.kind) {
             f(path, kind);
             visited_dirs.insert(path.to_path_buf());

@@ -490,10 +490,10 @@ pub enum Input {
 }
 
 impl Input {
-    pub fn filestem(&self) -> String {
+    pub fn filestem(&self) -> &str {
         match *self {
-            Input::File(ref ifile) => ifile.file_stem().unwrap().to_str().unwrap().to_string(),
-            Input::Str { .. } => "rust_out".to_string(),
+            Input::File(ref ifile) => ifile.file_stem().unwrap().to_str().unwrap(),
+            Input::Str { .. } => "rust_out",
         }
     }
 
@@ -1406,6 +1406,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     let atomic_cas = sess.target.target.options.atomic_cas;
 
     let mut ret = FxHashSet::default();
+    ret.reserve(6); // the minimum number of insertions
     // Target bindings.
     ret.insert((Symbol::intern("target_os"), Some(Symbol::intern(os))));
     if let Some(ref fam) = sess.target.target.options.target_family {
