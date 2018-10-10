@@ -1,9 +1,7 @@
 [dependencies]
 core = {}
-
-# Disabled due to bug in current cranelift version, fixed in master
-#alloc = {}
-#alloc_system = {}
+alloc = {}
+alloc_system = {}
 
 # Disabled due to missing support for many things (intrinsics, etc) in rustc_codegen_cranelift
 #std = {features = ["force_alloc_system"]}

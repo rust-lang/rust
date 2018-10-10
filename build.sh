@@ -76,7 +76,7 @@ time $RUSTC target/libcore/src/libcore/lib.rs --crate-type lib --crate-name core
 pushd xargo
 rm -r ~/.xargo/HOST || true
 export XARGO_RUST_SRC=$(pwd)'/../target/libcore/src'
-time xargo build --color always
+time SHOULD_CODEGEN=1 xargo build --color always
 rm -r target/
 popd
 
