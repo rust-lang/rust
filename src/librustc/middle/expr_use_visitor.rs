@@ -364,11 +364,12 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     }
 
     fn mutate_expr(&mut self,
+                   span: Span,
                    assignment_expr: &hir::Expr,
                    expr: &hir::Expr,
                    mode: MutateMode) {
         let cmt = return_if_err!(self.mc.cat_expr(expr));
-        self.delegate.mutate(assignment_expr.id, assignment_expr.span, &cmt, mode);
+        self.delegate.mutate(assignment_expr.id, span, &cmt, mode);
         self.walk_expr(expr);
     }
 
@@ -472,12 +473,16 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                     if o.is_indirect {
                         self.consume_expr(output);
                     } else {
-                        self.mutate_expr(expr, output,
-                                         if o.is_rw {
-                                             MutateMode::WriteAndRead
-                                         } else {
-                                             MutateMode::JustWrite
-                                         });
+                        self.mutate_expr(
+                            output.span,
+                            expr,
+                            output,
+                            if o.is_rw {
+                                MutateMode::WriteAndRead
+                            } else {
+                                MutateMode::JustWrite
+                            },
+                        );
                     }
                 }
                 self.consume_exprs(inputs);
@@ -515,7 +520,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             }
 
             hir::ExprKind::Assign(ref lhs, ref rhs) => {
-                self.mutate_expr(expr, &lhs, MutateMode::JustWrite);
+                self.mutate_expr(expr.span, expr, &lhs, MutateMode::JustWrite);
                 self.consume_expr(&rhs);
             }
 
@@ -527,7 +532,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 if self.mc.tables.is_method_call(expr) {
                     self.consume_expr(lhs);
                 } else {
-                    self.mutate_expr(expr, &lhs, MutateMode::WriteAndRead);
+                    self.mutate_expr(expr.span, expr, &lhs, MutateMode::WriteAndRead);
                 }
                 self.consume_expr(&rhs);
             }
