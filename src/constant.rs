@@ -52,7 +52,8 @@ pub fn trans_promoted<'a, 'tcx: 'a>(
         .const_eval(ParamEnv::reveal_all().and(GlobalId {
             instance: fx.instance,
             promoted: Some(promoted),
-        })).unwrap();
+        }))
+        .unwrap();
 
     let const_ = force_eval_const(fx, const_);
     trans_const_place(fx, const_)

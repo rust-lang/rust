@@ -131,7 +131,8 @@ impl<'tcx> CValue<'tcx> {
                     size: layout.size.bytes() as u32,
                     offset: None,
                 });
-                let addr = fx.bcx
+                let addr = fx
+                    .bcx
                     .ins()
                     .stack_addr(fx.module.pointer_type(), stack_slot, 0);
                 fx.bcx.ins().store(MemFlags::new(), value, addr, 0);
@@ -635,7 +636,8 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> fmt::Debug for FunctionCx<'a, 'tcx, B> {
             &mut clif,
             &self.bcx.func,
             None,
-        ).unwrap();
+        )
+        .unwrap();
         writeln!(f, "\n{}", clif)
     }
 }

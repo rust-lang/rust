@@ -122,7 +122,8 @@ fn build_vtable<'a, 'tcx: 'a>(
             &format!("vtable.{:?}.for.{:?}", trait_ref, ty),
             Linkage::Local,
             false,
-        ).unwrap();
+        )
+        .unwrap();
     fx.module.define_data(data_id, &data_ctx).unwrap();
     data_id
 }
@@ -140,5 +141,6 @@ fn write_usize(tcx: TyCtxt, buf: &mut [u8], idx: usize, num: u64) {
     match tcx.data_layout.endian {
         layout::Endian::Little => target.write_uint::<LittleEndian>(num, usize_size),
         layout::Endian::Big => target.write_uint::<BigEndian>(num, usize_size),
-    }.unwrap()
+    }
+    .unwrap()
 }

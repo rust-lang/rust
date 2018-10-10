@@ -237,7 +237,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
                     "some_file.o".to_string(),
                     FaerieTrapCollection::Disabled,
                     FaerieBuilder::default_libcall_names(),
-                ).unwrap(),
+                )
+                .unwrap(),
             );
             assert_eq!(pointer_ty(tcx), faerie_module.pointer_type());
 
@@ -282,7 +283,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
                     writable: false,
                 },
                 metadata.clone(),
-            ).unwrap();
+            )
+            .unwrap();
 
         for &crate_type in sess.opts.crate_types.iter() {
             match crate_type {
@@ -303,14 +305,16 @@ impl CodegenBackend for CraneliftCodegenBackend {
                                 metadata.len() as u64,
                             ),
                             ::std::io::Cursor::new(metadata.clone()),
-                        ).unwrap();
+                        )
+                        .unwrap();
                     if should_codegen(sess) {
                         let obj = artifact.emit().unwrap();
                         builder
                             .append(
                                 &ar::Header::new(b"data.o".to_vec(), obj.len() as u64),
                                 ::std::io::Cursor::new(obj),
-                            ).unwrap();
+                            )
+                            .unwrap();
                     }
                 }
                 _ => sess.fatal(&format!("Unsupported crate type: {:?}", crate_type)),
@@ -332,7 +336,10 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
     let mut ccx = ConstantCx::default();
 
     let mut log = if cfg!(debug_assertions) {
-        Some(::std::fs::File::create(concat!(env!("CARGO_MANIFEST_DIR"), "/target/out/log.txt")).unwrap())
+        Some(
+            ::std::fs::File::create(concat!(env!("CARGO_MANIFEST_DIR"), "/target/out/log.txt"))
+                .unwrap(),
+        )
     } else {
         None
     };
@@ -455,7 +462,8 @@ fn maybe_create_entry_wrapper<'a, 'tcx: 'a>(
                     ParamEnv::reveal_all(),
                     start_def_id,
                     tcx.intern_substs(&[main_ret_ty.into()]),
-                ).unwrap();
+                )
+                .unwrap();
 
                 let (start_name, start_sig) = get_function_name_and_sig(tcx, start_instance);
                 let start_func_id = m

@@ -32,7 +32,8 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
                             tcx,
                             Some(inst.def_id()),
                             &mut mir,
-                        ).unwrap();
+                        )
+                        .unwrap();
                         String::from_utf8(mir.into_inner()).unwrap()
                     }
                     InstanceDef::Item(_)
@@ -120,7 +121,8 @@ fn trans_fn<'a, 'tcx: 'a>(
     if cfg!(debug_assertions) {
         ::cranelift::codegen::write::decorate_function(&mut writer, &mut cton, &func, None)
             .unwrap();
-        let clif_file_name = concat!(env!("CARGO_MANIFEST_DIR"), "/target/out/clif/").to_string() + &tcx.symbol_name(instance).as_str();
+        let clif_file_name = concat!(env!("CARGO_MANIFEST_DIR"), "/target/out/clif/").to_string()
+            + &tcx.symbol_name(instance).as_str();
         ::std::fs::write(clif_file_name, cton.as_bytes()).unwrap();
     }
 
@@ -290,27 +292,27 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
                         &args1[..]
                     };*/
                     let (drop_fn, fn_ty) = match ty.sty {
-                        ty::Dynamic(..) => {
-                            let fn_ty = drop_fn.ty(bx.cx.tcx);
-                            let sig = common::ty_fn_sig(bx.cx, fn_ty);
-                            let sig = bx.tcx().normalize_erasing_late_bound_regions(
-                                ty::ParamEnv::reveal_all(),
-                                &sig,
-                            );
-                            let fn_ty = FnType::new_vtable(bx.cx, sig, &[]);
-                            let vtable = args[1];
-                            args = &args[..1];
-                            (meth::DESTRUCTOR.get_fn(&bx, vtable, &fn_ty), fn_ty)
-                        }
-                        _ => {
-                            let value = place.to_cvalue(fx);
-                            (callee::get_fn(bx.cx, drop_fn),
-                            FnType::of_instance(bx.cx, &drop_fn))
-                        }
+                    ty::Dynamic(..) => {
+                    let fn_ty = drop_fn.ty(bx.cx.tcx);
+                    let sig = common::ty_fn_sig(bx.cx, fn_ty);
+                    let sig = bx.tcx().normalize_erasing_late_bound_regions(
+                    ty::ParamEnv::reveal_all(),
+                    &sig,
+                    );
+                    let fn_ty = FnType::new_vtable(bx.cx, sig, &[]);
+                    let vtable = args[1];
+                    args = &args[..1];
+                    (meth::DESTRUCTOR.get_fn(&bx, vtable, &fn_ty), fn_ty)
+                    }
+                    _ => {
+                    let value = place.to_cvalue(fx);
+                    (callee::get_fn(bx.cx, drop_fn),
+                    FnType::of_instance(bx.cx, &drop_fn))
+                    }
                     };
                     do_call(self, bx, fn_ty, drop_fn, args,
-                            Some((ReturnDest::Nothing, target)),
-                            unwind);*/
+                    Some((ReturnDest::Nothing, target)),
+                    unwind);*/
                 }
 
                 let target_ebb = fx.get_ebb(*target);
@@ -592,13 +594,14 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let usize_layout = fx.layout_of(fx.tcx.types.usize);
                     let len = match place.layout().ty.sty {
                         ty::Array(_elem_ty, len) => {
-                            let len = crate::constant::force_eval_const(fx, len).unwrap_usize(fx.tcx) as i64;
+                            let len = crate::constant::force_eval_const(fx, len)
+                                .unwrap_usize(fx.tcx) as i64;
                             fx.bcx.ins().iconst(fx.module.pointer_type(), len)
-                        },
+                        }
                         ty::Slice(_elem_ty) => match place {
                             CPlace::Addr(_, size, _) => size.unwrap(),
                             CPlace::Var(_, _) => unreachable!(),
-                        }
+                        },
                         _ => bug!("Rvalue::Len({:?})", place),
                     };
                     lval.write_cvalue(fx, CValue::ByVal(len, usize_layout));
@@ -897,11 +900,13 @@ pub fn trans_checked_int_binop<'a, 'tcx: 'a>(
         BinOp::Sub => fx.bcx.ins().isub(lhs, rhs),
         BinOp::Mul => fx.bcx.ins().imul(lhs, rhs),
         BinOp::Shl => fx.bcx.ins().ishl(lhs, rhs),
-        BinOp::Shr => if !signed {
-            fx.bcx.ins().ushr(lhs, rhs)
-        } else {
-            fx.bcx.ins().sshr(lhs, rhs)
-        },
+        BinOp::Shr => {
+            if !signed {
+                fx.bcx.ins().ushr(lhs, rhs)
+            } else {
+                fx.bcx.ins().sshr(lhs, rhs)
+            }
+        }
         _ => bug!(
             "binop {:?} on checked int/uint lhs: {:?} rhs: {:?}",
             bin_op,

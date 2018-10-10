@@ -26,12 +26,10 @@ pub fn analyze<'a, 'tcx: 'a>(fx: &FunctionCx<'a, 'tcx, impl Backend>) -> HashMap
     for bb in fx.mir.basic_blocks().iter() {
         for stmt in bb.statements.iter() {
             match &stmt.kind {
-                Assign(_, rval) => {
-                    match &**rval {
-                        Rvalue::Ref(_, _, place) => analyze_non_ssa_place(&mut flag_map, place),
-                        _ => {}
-                    }
-                }
+                Assign(_, rval) => match &**rval {
+                    Rvalue::Ref(_, _, place) => analyze_non_ssa_place(&mut flag_map, place),
+                    _ => {}
+                },
                 _ => {}
             }
         }

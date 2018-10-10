@@ -242,7 +242,8 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
                     self.cton_type(arg.layout().ty).unwrap(),
                     arg.load_value(self),
                 )
-            }).unzip();
+            })
+            .unzip();
         let return_layout = self.layout_of(return_ty);
         let return_ty = if let ty::Tuple(tup) = return_ty.sty {
             if !tup.is_empty() {
@@ -325,7 +326,8 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
                     arg_ty,
                 )
             }
-        }).collect::<Vec<(Local, ArgKind, Ty)>>();
+        })
+        .collect::<Vec<(Local, ArgKind, Ty)>>();
 
     fx.bcx.switch_to_block(start_ebb);
 
@@ -550,7 +552,8 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
             };
 
             args.get(0).map(|arg| adjust_arg_for_abi(fx, sig, *arg))
-        }.into_iter()
+        }
+        .into_iter()
     };
 
     let call_args: Vec<Value> = return_ptr
@@ -560,7 +563,8 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
             args.into_iter()
                 .skip(1)
                 .map(|arg| adjust_arg_for_abi(fx, sig, arg)),
-        ).collect::<Vec<_>>();
+        )
+        .collect::<Vec<_>>();
 
     let sig = fx.bcx.import_signature(cton_sig_from_fn_ty(fx.tcx, fn_ty));
     let call_inst = if let Some(func_ref) = func_ref {
