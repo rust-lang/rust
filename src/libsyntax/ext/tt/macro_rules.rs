@@ -902,7 +902,8 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'
             "path" | "ty" => match *tok {
                 TokenTree::Token(_, ref tok) => match *tok {
                     OpenDelim(token::DelimToken::Brace) | OpenDelim(token::DelimToken::Bracket) |
-                    Comma | FatArrow | Colon | Eq | Gt | Semi | BinOp(token::Or) => Ok(true),
+                    Comma | FatArrow | Colon | Eq | Gt | BinOp(token::Shr) | Semi |
+                    BinOp(token::Or) => Ok(true),
                     Ident(i, false) if i.name == "as" || i.name == "where" => Ok(true),
                     _ => Ok(false)
                 },
