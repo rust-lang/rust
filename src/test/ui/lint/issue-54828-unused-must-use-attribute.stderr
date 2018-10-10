@@ -1,0 +1,48 @@
+error: unused attribute
+  --> $DIR/issue-54828-unused-must-use-attribute.rs:4:1
+   |
+LL | #[must_use]
+   | ^^^^^^^^^^^ help: remove it
+LL | fn truth() {}
+   |            - the return type `()` can be discarded
+   |
+note: lint level defined here
+  --> $DIR/issue-54828-unused-must-use-attribute.rs:2:9
+   |
+LL | #![deny(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: unused attribute
+  --> $DIR/issue-54828-unused-must-use-attribute.rs:7:1
+   |
+LL | #[must_use]
+   | ^^^^^^^^^^^ help: remove it
+LL | fn pain() -> () {}
+   |              -- the return type `()` can be discarded
+
+error: unused attribute
+  --> $DIR/issue-54828-unused-must-use-attribute.rs:10:1
+   |
+LL | #[must_use]
+   | ^^^^^^^^^^^ help: remove it
+LL | fn dignity() -> ! { panic!("despair"); }
+   |                 - the return type `!` can be discarded
+
+error: unused attribute
+  --> $DIR/issue-54828-unused-must-use-attribute.rs:16:5
+   |
+LL |     #[must_use] fn bravery() {}
+   |     ^^^^^^^^^^^              - the return type `()` can be discarded
+   |     |
+   |     help: remove it
+
+error: unused attribute
+  --> $DIR/issue-54828-unused-must-use-attribute.rs:28:5
+   |
+LL |     #[must_use] fn inspect() {}
+   |     ^^^^^^^^^^^              - the return type `()` can be discarded
+   |     |
+   |     help: remove it
+
+error: aborting due to 5 previous errors
+
