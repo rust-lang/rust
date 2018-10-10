@@ -15,11 +15,11 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::region::ScopeTree;
 use rustc::mir::{
-    self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, Field, Local,
+    self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, Constant, Field, Local,
     LocalDecl, LocalKind, Location, Operand, Place, PlaceProjection, ProjectionElem,
     Rvalue, Statement, StatementKind, TerminatorKind, VarBindingForm,
 };
-use rustc::ty;
+use rustc::ty::{self, DefIdTree};
 use rustc::util::ppaux::with_highlight_region_for_bound_region;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
@@ -129,6 +129,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 msg,
                 self.describe_place_with_options(&moved_place, IncludingDowncast(true)),
                 Origin::Mir,
+            );
+
+            self.add_closure_invoked_twice_with_moved_variable_suggestion(
+                context.loc,
+                used_place,
+                &mut err,
             );
 
             let mut is_loop_move = false;
@@ -1056,16 +1062,118 @@ enum StorageDeadOrDrop<'tcx> {
 }
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
-    // End-user visible description of `place` if one can be found. If the
-    // place is a temporary for instance, None will be returned.
+
+    /// Adds a suggestion when a closure is invoked twice with a moved variable.
+    ///
+    /// ```text
+    /// note: closure cannot be invoked more than once because it moves the variable `dict` out of
+    ///       its environment
+    ///   --> $DIR/issue-42065.rs:16:29
+    ///    |
+    /// LL |         for (key, value) in dict {
+    ///    |                             ^^^^
+    /// ```
+    pub(super) fn add_closure_invoked_twice_with_moved_variable_suggestion(
+        &self,
+        location: Location,
+        place: &Place<'tcx>,
+        diag: &mut DiagnosticBuilder<'_>,
+    ) {
+        let mut target = place.local();
+        debug!(
+            "add_closure_invoked_twice_with_moved_variable_suggestion: location={:?} place={:?} \
+             target={:?}",
+             location, place, target,
+        );
+        for stmt in &self.mir[location.block].statements[location.statement_index..] {
+            debug!(
+                "add_closure_invoked_twice_with_moved_variable_suggestion: stmt={:?} \
+                 target={:?}",
+                 stmt, target,
+            );
+            if let StatementKind::Assign(into, box Rvalue::Use(from)) = &stmt.kind {
+                debug!(
+                    "add_closure_invoked_twice_with_moved_variable_suggestion: into={:?} \
+                     from={:?}",
+                     into, from,
+                );
+                match from {
+                    Operand::Copy(ref place) |
+                    Operand::Move(ref place) if target == place.local() =>
+                        target = into.local(),
+                    _ => {},
+                }
+            }
+        }
+
+
+        let terminator = self.mir[location.block].terminator();
+        debug!(
+            "add_closure_invoked_twice_with_moved_variable_suggestion: terminator={:?}",
+            terminator,
+        );
+        if let TerminatorKind::Call {
+            func: Operand::Constant(box Constant {
+                literal: ty::Const { ty: &ty::TyS { sty: ty::TyKind::FnDef(id, _), ..  }, ..  },
+                ..
+            }),
+            args,
+            ..
+        } = &terminator.kind {
+            debug!("add_closure_invoked_twice_with_moved_variable_suggestion: id={:?}", id);
+            if self.infcx.tcx.parent(id) == self.infcx.tcx.lang_items().fn_once_trait() {
+                let closure = match args.first() {
+                    Some(Operand::Copy(ref place)) |
+                    Some(Operand::Move(ref place)) if target == place.local() =>
+                        place.local().unwrap(),
+                    _ => return,
+                };
+                debug!(
+                    "add_closure_invoked_twice_with_moved_variable_suggestion: closure={:?}",
+                     closure,
+                );
+
+                if let ty::TyKind::Closure(did, substs) = self.mir.local_decls[closure].ty.sty {
+                    let upvar_tys = substs.upvar_tys(did, self.infcx.tcx);
+                    let node_id = match self.infcx.tcx.hir.as_local_node_id(did) {
+                        Some(node_id) => node_id,
+                        _ => return,
+                    };
+
+                    self.infcx.tcx.with_freevars(node_id, |freevars| {
+                        for (freevar, upvar_ty) in freevars.iter().zip(upvar_tys) {
+                            debug!(
+                                "add_closure_invoked_twice_with_moved_variable_suggestion: \
+                                 freevar={:?} upvar_ty={:?}",
+                                freevar, upvar_ty,
+                            );
+                            if !upvar_ty.is_region_ptr() {
+                                diag.span_note(
+                                    freevar.span,
+                                    &format!(
+                                        "closure cannot be invoked more than once because it \
+                                         moves the variable `{}` out of its environment",
+                                         self.infcx.tcx.hir.name(freevar.var_id()),
+                                    ),
+                                );
+                            }
+                        }
+                    });
+                }
+            }
+        }
+    }
+
+    /// End-user visible description of `place` if one can be found. If the
+    /// place is a temporary for instance, None will be returned.
     pub(super) fn describe_place(&self, place: &Place<'tcx>) -> Option<String> {
         self.describe_place_with_options(place, IncludingDowncast(false))
     }
 
-    // End-user visible description of `place` if one can be found. If the
-    // place is a temporary for instance, None will be returned.
-    // `IncludingDowncast` parameter makes the function return `Err` if `ProjectionElem` is
-    // `Downcast` and `IncludingDowncast` is true
+    /// End-user visible description of `place` if one can be found. If the
+    /// place is a temporary for instance, None will be returned.
+    /// `IncludingDowncast` parameter makes the function return `Err` if `ProjectionElem` is
+    /// `Downcast` and `IncludingDowncast` is true
     pub(super) fn describe_place_with_options(
         &self,
         place: &Place<'tcx>,
@@ -1078,7 +1186,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
     }
 
-    // Appends end-user visible description of `place` to `buf`.
+    /// Appends end-user visible description of `place` to `buf`.
     fn append_place_to_string(
         &self,
         place: &Place<'tcx>,
@@ -1213,8 +1321,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         Ok(())
     }
 
-    // Appends end-user visible description of the `local` place to `buf`. If `local` doesn't have
-    // a name, then `Err` is returned
+    /// Appends end-user visible description of the `local` place to `buf`. If `local` doesn't have
+    /// a name, then `Err` is returned
     fn append_local_to_string(&self, local_index: Local, buf: &mut String) -> Result<(), ()> {
         let local = &self.mir.local_decls[local_index];
         match local.name {
@@ -1226,7 +1334,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
     }
 
-    // End-user visible description of the `field`nth field of `base`
+    /// End-user visible description of the `field`nth field of `base`
     fn describe_field(&self, base: &Place, field: Field) -> String {
         match *base {
             Place::Local(local) => {
@@ -1251,7 +1359,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
     }
 
-    // End-user visible description of the `field_index`nth field of `ty`
+    /// End-user visible description of the `field_index`nth field of `ty`
     fn describe_field_from_ty(&self, ty: &ty::Ty, field: Field) -> String {
         if ty.is_box() {
             // If the type is a box, the field is described from the boxed type
@@ -1294,7 +1402,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
     }
 
-    // Retrieve type of a place for the current MIR representation
+    /// Retrieve type of a place for the current MIR representation
     fn retrieve_type_for_place(&self, place: &Place<'tcx>) -> Option<ty::Ty> {
         match place {
             Place::Local(local) => {
