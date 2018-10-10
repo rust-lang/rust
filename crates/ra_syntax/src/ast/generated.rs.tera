@@ -77,8 +77,7 @@ impl<'a> {{ node }}<'a> {
 {%- else -%}
 {%- set method_name = m.0 -%}
 {%- set ChildName = m.1 %}
-{%- endif -%}
-
+{%- endif %}
     pub fn {{ method_name }}(self) -> Option<{{ ChildName }}<'a>> {
         super::child_opt(self)
     }
