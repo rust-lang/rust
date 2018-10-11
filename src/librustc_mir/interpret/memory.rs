@@ -855,6 +855,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             return Ok(());
         }
         let ptr = ptr.to_ptr()?;
+        // Check bounds, align and relocations on the edges
         self.get_bytes_with_undef_and_ptr(ptr, size, align)?;
         // Check undef, and maybe ptr
         self.check_defined(ptr, size)?;

@@ -511,7 +511,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         // This is the size in bytes of the whole array.
                         let size = Size::from_bytes(ty_size * len);
 
-                        // In run-time mode, we accept points in here.  This is actually more
+                        // In run-time mode, we accept pointers in here.  This is actually more
                         // permissive than a per-element check would be, e.g. we accept
                         // an &[u8] that contains a pointer even though bytewise checking would
                         // reject it.  However, that's good: We don't inherently want
