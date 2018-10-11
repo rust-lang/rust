@@ -1,4 +1,4 @@
-use std::collections::{HashMap};
+use rustc_hash::FxHashMap;
 
 use languageserver_types::{
     Diagnostic, DiagnosticSeverity, DocumentSymbol,
@@ -267,7 +267,7 @@ pub fn handle_runnables(
             bin: "cargo".to_string(),
             args,
             env: {
-                let mut m = HashMap::new();
+                let mut m = FxHashMap::default();
                 m.insert(
                     "RUST_BACKTRACE".to_string(),
                     "short".to_string(),

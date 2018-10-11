@@ -11,6 +11,7 @@ extern crate relative_path;
 extern crate crossbeam_channel;
 extern crate im;
 extern crate salsa;
+extern crate rustc_hash;
 
 mod symbol_index;
 mod module_map;
@@ -23,13 +24,13 @@ mod descriptors;
 
 use std::{
     sync::Arc,
-    collections::HashMap,
     fmt::Debug,
 };
 
 use relative_path::{RelativePath, RelativePathBuf};
 use ra_syntax::{File, TextRange, TextUnit, AtomEdit};
 use imp::{AnalysisImpl, AnalysisHostImpl, FileResolverImp};
+use rustc_hash::FxHashMap;
 
 pub use ra_editor::{
     StructureNode, LineIndex, FileSymbol,
@@ -46,7 +47,7 @@ pub struct CrateId(pub u32);
 
 #[derive(Debug, Clone, Default)]
 pub struct CrateGraph {
-    pub crate_roots: HashMap<CrateId, FileId>,
+    pub crate_roots: FxHashMap<CrateId, FileId>,
 }
 
 pub trait FileResolver: Debug + Send + Sync + 'static {

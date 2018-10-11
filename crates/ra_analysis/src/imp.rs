@@ -4,11 +4,12 @@ use std::{
         atomic::{AtomicBool, Ordering::SeqCst},
     },
     fmt,
-    collections::{HashSet, VecDeque},
+    collections::VecDeque,
     iter,
 };
 
 use relative_path::RelativePath;
+use rustc_hash::FxHashSet;
 use ra_editor::{self, FileSymbol, LineIndex, find_node_at_offset, LocalEdit, resolve_local_name};
 use ra_syntax::{
     TextUnit, TextRange, SmolStr, File, AstNode,
@@ -84,7 +85,7 @@ impl AnalysisHostImpl {
         data.root = Arc::new(data.root.apply_changes(&mut iter::empty(), Some(resolver)));
     }
     pub fn set_crate_graph(&mut self, graph: CrateGraph) {
-        let mut visited = HashSet::new();
+        let mut visited = FxHashSet::default();
         for &file_id in graph.crate_roots.values() {
             if !visited.insert(file_id) {
                 panic!("duplicate crate root: {:?}", file_id);
@@ -168,7 +169,7 @@ impl AnalysisImpl {
         let mut res = Vec::new();
         let mut work = VecDeque::new();
         work.push_back(file_id);
-        let mut visited = HashSet::new();
+        let mut visited = FxHashSet::default();
         while let Some(id) = work.pop_front() {
             if let Some(crate_id) = crate_graph.crate_id_for_crate_root(id) {
                 res.push(crate_id);

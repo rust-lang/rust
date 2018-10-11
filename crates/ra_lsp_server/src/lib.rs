@@ -16,6 +16,7 @@ extern crate walkdir;
 extern crate im;
 extern crate relative_path;
 extern crate cargo_metadata;
+extern crate rustc_hash;
 
 extern crate gen_lsp_server;
 extern crate ra_editor;
