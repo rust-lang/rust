@@ -46,7 +46,7 @@ error: this creates an owned instance just for comparison
   --> $DIR/cmp_owned.rs:47:5
    |
 47 |     y.to_owned() == **x;
-   |     ^^^^^^^^^^^^^^^^^^^ help: try: `y == x`
+   |     ^^^^^^^^^^^^^^^^^^^ help: try: `y == *x`
 
 error: this creates an owned instance just for comparison
   --> $DIR/cmp_owned.rs:54:9

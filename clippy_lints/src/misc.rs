@@ -546,7 +546,7 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
     } else if other_gets_derefed {
         // suggest dropping the to_owned on the left and the deref on the right
         let other_snippet = snippet(cx, other.span, "..").into_owned();
-        let other_without_deref = other_snippet.trim_left_matches('*');
+        let other_without_deref = other_snippet.replacen('*', "", 1);
 
         (expr.span.to(other.span), format!("{} == {}", snip.to_string(), other_without_deref))
     } else {
