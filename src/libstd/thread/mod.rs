@@ -657,8 +657,10 @@ pub fn panicking() -> bool {
 ///
 /// # Platform-specific behavior
 ///
-/// On Unix platforms this function may invoke multiple syscalls
-/// in case of a signal being received or a spurious wakeup.
+/// On Unix platforms, the underlying syscall may be interrupted by a
+/// spurious wakeup or signal handler. To ensure the sleep occurs for at least
+/// the specified duration, this function may invoke that system call multiple
+/// times.
 ///
 /// # Examples
 ///
@@ -681,8 +683,10 @@ pub fn sleep_ms(ms: u32) {
 ///
 /// # Platform-specific behavior
 ///
-/// On Unix platforms this function may invoke multiple syscalls
-/// in case of a signal being received or a spurious wakeup.
+/// On Unix platforms, the underlying syscall may be interrupted by a
+/// spurious wakeup or signal handler. To ensure the sleep occurs for at least
+/// the specified duration, this function may invoke that system call multiple
+/// times.
 /// Platforms which do not support nanosecond precision for sleeping will
 /// have `dur` rounded up to the nearest granularity of time they can sleep for.
 ///
