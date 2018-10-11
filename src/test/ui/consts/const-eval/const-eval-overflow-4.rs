@@ -20,9 +20,9 @@ use std::{i8, i16, i32, i64, isize};
 use std::{u8, u16, u32, u64, usize};
 
 const A_I8_T
-    //~^ ERROR could not evaluate constant expression
     : [u32; (i8::MAX as i8 + 1i8) as usize]
     //~^ ERROR attempt to add with overflow
+    //~| ERROR could not evaluate constant expression
     = [0; (i8::MAX as usize) + 1];
 
 fn main() {
