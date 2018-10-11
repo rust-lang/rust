@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// FIXME validation disabled because ptr::read uses mem::uninitialized
+// compile-flags: -Zmiri-disable-validation
+
 // Test that a class with only sendable fields can be sent
 
 use std::sync::mpsc::channel;

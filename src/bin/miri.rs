@@ -25,10 +25,14 @@ use std::path::PathBuf;
 
 struct MiriCompilerCalls {
     default: Box<RustcDefaultCalls>,
-    /// Whether to begin interpretation at the start_fn lang item or not
+
+    /// Whether to begin interpretation at the start_fn lang item or not.
     ///
-    /// If false, the interpretation begins at the `main` function
+    /// If false, the interpretation begins at the `main` function.
     start_fn: bool,
+
+    /// Whether to enforce the validity invariant.
+    validate: bool,
 }
 
 impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
@@ -87,7 +91,9 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         let mut control = this.default.build_controller(sess, matches);
         control.after_hir_lowering.callback = Box::new(after_hir_lowering);
         let start_fn = this.start_fn;
-        control.after_analysis.callback = Box::new(move |state| after_analysis(state, start_fn));
+        let validate = this.validate;
+        control.after_analysis.callback =
+            Box::new(move |state| after_analysis(state, start_fn, validate));
         control.after_analysis.stop = Compilation::Stop;
         control
     }
@@ -101,16 +107,21 @@ fn after_hir_lowering(state: &mut CompileState) {
     state.session.plugin_attributes.borrow_mut().push(attr);
 }
 
-fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>, use_start_fn: bool) {
+fn after_analysis<'a, 'tcx>(
+    state: &mut CompileState<'a, 'tcx>,
+    use_start_fn: bool,
+    validate: bool,
+) {
     state.session.abort_if_errors();
 
     let tcx = state.tcx.unwrap();
 
     if std::env::args().any(|arg| arg == "--test") {
-        struct Visitor<'a, 'tcx: 'a>(
-            TyCtxt<'a, 'tcx, 'tcx>,
-            &'a CompileState<'a, 'tcx>
-        );
+        struct Visitor<'a, 'tcx: 'a> {
+            tcx: TyCtxt<'a, 'tcx, 'tcx>,
+            state: &'a CompileState<'a, 'tcx>,
+            validate: bool,
+        };
         impl<'a, 'tcx: 'a, 'hir> itemlikevisit::ItemLikeVisitor<'hir> for Visitor<'a, 'tcx> {
             fn visit_item(&mut self, i: &'hir hir::Item) {
                 if let hir::ItemKind::Fn(.., body_id) = i.node {
@@ -118,13 +129,13 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>, use_start_fn: bo
                         attr.name() == "test"
                     })
                     {
-                        let did = self.0.hir.body_owner_def_id(body_id);
+                        let did = self.tcx.hir.body_owner_def_id(body_id);
                         println!(
                             "running test: {}",
-                            self.0.def_path_debug_str(did),
+                            self.tcx.def_path_debug_str(did),
                         );
-                        miri::eval_main(self.0, did, None);
-                        self.1.session.abort_if_errors();
+                        miri::eval_main(self.tcx, did, None, self.validate);
+                        self.state.session.abort_if_errors();
                     }
                 }
             }
@@ -132,7 +143,7 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>, use_start_fn: bo
             fn visit_impl_item(&mut self, _impl_item: &'hir hir::ImplItem) {}
         }
         state.hir_crate.unwrap().visit_all_item_likes(
-            &mut Visitor(tcx, state),
+            &mut Visitor { tcx, state, validate }
         );
     } else if let Some((entry_node_id, _, _)) = *state.session.entry_fn.borrow() {
         let entry_def_id = tcx.hir.local_def_id(entry_node_id);
@@ -142,7 +153,7 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>, use_start_fn: bo
         } else {
             None
         };
-        miri::eval_main(tcx, entry_def_id, start_wrapper);
+        miri::eval_main(tcx, entry_def_id, start_wrapper, validate);
 
         state.session.abort_if_errors();
     } else {
@@ -221,12 +232,18 @@ fn main() {
     }
 
     let mut start_fn = false;
+    let mut validate = true;
     args.retain(|arg| {
-        if arg == "-Zmiri-start-fn" {
-            start_fn = true;
-            false
-        } else {
-            true
+        match arg.as_str() {
+            "-Zmiri-start-fn" => {
+                start_fn = true;
+                false
+            },
+            "-Zmiri-disable-validation" => {
+                validate = false;
+                false
+            },
+            _ => true
         }
     });
 
@@ -235,6 +252,7 @@ fn main() {
         rustc_driver::run_compiler(&args, Box::new(MiriCompilerCalls {
             default: Box::new(RustcDefaultCalls),
             start_fn,
+            validate,
         }), None, None)
     });
     std::process::exit(result as i32);
