@@ -174,27 +174,10 @@ fn remove_newline(
         );
     } else if let (Some(_), Some(next)) = (ast::Comment::cast(prev), ast::Comment::cast(next)) {
         // Removes: newline (incl. surrounding whitespace), start of the next comment
-        let comment_text = next.text();
-        if let Some(newline_pos) = comment_text.find('\n') {
-            // Special case for multiline comments: join the comment content but
-            // keep the leading `/*`
-
-            let newline_offset = next.syntax().range().start()
-                                + TextUnit::from(newline_pos as u32)
-                                + TextUnit::of_char('\n');
-
-            edit.insert(newline_offset, "/*".to_string());
-            edit.delete(TextRange::from_to(
-                node.range().start(),
-                next.syntax().range().start() + TextUnit::of_str(next.prefix())
-            ));
-        } else {
-            // Single-line comments
-            edit.delete(TextRange::from_to(
-                node.range().start(),
-                next.syntax().range().start() + TextUnit::of_str(next.prefix())
-            ));
-        }
+        edit.delete(TextRange::from_to(
+            node.range().start(),
+            next.syntax().range().start() + TextUnit::of_str(next.prefix())
+        ));
     } else {
         // Remove newline but add a computed amount of whitespace characters
         edit.replace(
@@ -356,7 +339,7 @@ fn foo() {
     }
 
     #[test]
-    fn test_join_lines_multiline_comments() {
+    fn test_join_lines_multiline_comments_1() {
         check_join_lines(r"
 fn foo() {
     // Hello<|>
@@ -365,6 +348,24 @@ fn foo() {
 ", r"
 fn foo() {
     // Hello<|> world! */
+}
+");
+    }
+
+    #[test]
+    fn test_join_lines_multiline_comments_2() {
+        check_join_lines(r"
+fn foo() {
+    // The<|>
+    /* quick
+    brown
+    fox! */
+}
+", r"
+fn foo() {
+    // The<|> quick
+    brown
+    fox! */
 }
 ");
     }
