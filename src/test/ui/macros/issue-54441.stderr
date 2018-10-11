@@ -1,9 +1,6 @@
 error: expected one of `crate`, `fn`, `pub`, `static`, or `type`, found `let`
   --> $DIR/issue-54441.rs:5:9
    |
-LL | #![feature(macros_in_extern)]
-   | - expected one of `crate`, `fn`, `pub`, `static`, or `type` here
-...
 LL |         let //~ ERROR expected
    |         ^^^ unexpected token
 ...
