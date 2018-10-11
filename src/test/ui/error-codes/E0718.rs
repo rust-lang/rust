@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,8 +10,8 @@
 
 #![feature(lang_items)]
 
+// Arc is expected to be a struct, so this will error.
 #[lang = "arc"]
-struct Foo; //~ ERROR E0152
+static X: u32 = 42;
 
-fn main() {
-}
+fn main() {}
