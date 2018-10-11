@@ -234,6 +234,8 @@ impl Type {
     }
 
     pub fn ptr_to(&self) -> &Type {
+        assert_ne!(self.kind(), TypeKind::Function,
+                   "don't call ptr_to on function types, use ptr_to_llvm_type on FnType instead");
         unsafe {
             llvm::LLVMPointerType(self, 0)
         }
