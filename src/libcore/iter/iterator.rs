@@ -2608,19 +2608,18 @@ pub trait Iterator {
 
     /// Checks if the elements of this iterator are sorted.
     ///
-    /// That is, for each element `a` and its following element `b`, `a <= b`
-    /// must hold. If the iterator yields exactly zero or one element, `true`
-    /// is returned.
+    /// That is, for each element `a` and its following element `b`, `a <= b` must hold. If the
+    /// iterator yields exactly zero or one element, `true` is returned.
     ///
-    /// Note that if `Self::Item` is only `PartialOrd`, but not `Ord`, the above
-    /// definition implies that this function returns `false` if any two
-    /// consecutive items are not comparable.
+    /// Note that if `Self::Item` is only `PartialOrd`, but not `Ord`, the above definition
+    /// implies that this function returns `false` if any two consecutive items are not
+    /// comparable.
     ///
     /// # Examples
     ///
     /// ```
     /// #![feature(is_sorted)]
-    /// 
+    ///
     /// assert!([1, 2, 2, 9].iter().is_sorted());
     /// assert!(![1, 3, 2, 4].iter().is_sorted());
     /// assert!([0].iter().is_sorted());
@@ -2636,13 +2635,11 @@ pub trait Iterator {
         self.is_sorted_by(|a, b| a.partial_cmp(b))
     }
 
-    /// Checks if the elements of this iterator are sorted using the given
-    /// comparator function.
+    /// Checks if the elements of this iterator are sorted using the given comparator function.
     ///
-    /// Instead of using `PartialOrd::partial_cmp`, this function uses the given
-    /// `compare` function to determine the ordering of two elements. Apart from
-    /// that, it's equivalent to `is_sorted`; see its documentation for more
-    /// information.
+    /// Instead of using `PartialOrd::partial_cmp`, this function uses the given `compare`
+    /// function to determine the ordering of two elements. Apart from that, it's equivalent to
+    /// `is_sorted`; see its documentation for more information.
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
     fn is_sorted_by<F>(mut self, mut compare: F) -> bool
     where
@@ -2664,19 +2661,18 @@ pub trait Iterator {
         true
     }
 
-    /// Checks if the elements of this iterator are sorted using the given
-    /// key extraction function.
+    /// Checks if the elements of this iterator are sorted using the given key extraction
+    /// function.
     ///
-    /// Instead of comparing the iterator's elements directly, this function
-    /// compares the keys of the elements, as determined by `f`. Apart from
-    /// that, it's equivalent to `is_sorted`; see its documentation for more
-    /// information.
+    /// Instead of comparing the iterator's elements directly, this function compares the keys of
+    /// the elements, as determined by `f`. Apart from that, it's equivalent to `is_sorted`; see
+    /// its documentation for more information.
     ///
     /// # Examples
     ///
     /// ```
     /// #![feature(is_sorted)]
-    /// 
+    ///
     /// assert!(["c", "bb", "aaa"].iter().is_sorted_by_key(|s| s.len()));
     /// assert!(![-2i32, -1, 0, 3].iter().is_sorted_by_key(|n| n.abs()));
     /// ```
