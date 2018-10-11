@@ -2,25 +2,19 @@ error[E0223]: ambiguous associated type
   --> $DIR/associated-types-in-ambiguous-context.rs:16:36
    |
 LL | fn get<T:Get,U:Get>(x: T, y: U) -> Get::Value {}
-   |                                    ^^^^^^^^^^ ambiguous associated type
-   |
-   = note: specify the type using the syntax `<Type as Get>::Value`
+   |                                    ^^^^^^^^^^ help: use fully-qualified syntax: `<Type as Get>::Value`
 
 error[E0223]: ambiguous associated type
   --> $DIR/associated-types-in-ambiguous-context.rs:25:10
    |
 LL | type X = std::ops::Deref::Target;
-   |          ^^^^^^^^^^^^^^^^^^^^^^^ ambiguous associated type
-   |
-   = note: specify the type using the syntax `<Type as std::ops::Deref>::Target`
+   |          ^^^^^^^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<Type as std::ops::Deref>::Target`
 
 error[E0223]: ambiguous associated type
   --> $DIR/associated-types-in-ambiguous-context.rs:21:23
    |
 LL |     fn grab(&self) -> Grab::Value;
-   |                       ^^^^^^^^^^^ ambiguous associated type
-   |
-   = note: specify the type using the syntax `<Type as Grab>::Value`
+   |                       ^^^^^^^^^^^ help: use fully-qualified syntax: `<Type as Grab>::Value`
 
 error: aborting due to 3 previous errors
 

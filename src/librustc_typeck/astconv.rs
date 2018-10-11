@@ -30,7 +30,7 @@ use std::slice;
 use require_c_abi_if_variadic;
 use util::common::ErrorReported;
 use util::nodemap::FxHashMap;
-use errors::{FatalError, DiagnosticId};
+use errors::{Applicability, FatalError, DiagnosticId};
 use lint;
 
 use std::iter;
@@ -1092,11 +1092,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                                         trait_str: &str,
                                         name: &str) {
         struct_span_err!(self.tcx().sess, span, E0223, "ambiguous associated type")
-            .span_label(span, "ambiguous associated type")
-            .note(&format!("specify the type using the syntax `<{} as {}>::{}`",
-                           type_str, trait_str, name))
-            .emit();
-
+            .span_suggestion_with_applicability(
+                span,
+                "use fully-qualified syntax",
+                format!("<{} as {}>::{}", type_str, trait_str, name),
+                Applicability::HasPlaceholders
+            ).emit();
     }
 
     // Search for a bound on a type parameter which includes the associated item
