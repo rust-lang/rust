@@ -72,26 +72,6 @@ pub(super) fn relate_type_and_user_type<'tcx>(
         a, v, user_ty, locations
     );
 
-    let b = match user_ty {
-        UserTypeAnnotation::Ty(canonical_ty) => {
-            let (ty, _) =
-                infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_ty);
-            ty
-        }
-        UserTypeAnnotation::FnDef(def_id, canonical_substs) => {
-            let (UserSubsts { substs, user_self_ty }, _) =
-                infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_substs);
-            assert!(user_self_ty.is_none()); // TODO for now
-            infcx.tcx.mk_fn_def(def_id, substs)
-        }
-        UserTypeAnnotation::AdtDef(adt_def, canonical_substs) => {
-            let (UserSubsts { substs, user_self_ty }, _) =
-                infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_substs);
-            assert!(user_self_ty.is_none()); // TODO for now
-            infcx.tcx.mk_adt(adt_def, substs)
-        }
-    };
-
     // The `TypeRelating` code assumes that the "canonical variables"
     // appear in the "a" side, so flip `Contravariant` ambient
     // variance to get the right relationship.
@@ -102,9 +82,41 @@ pub(super) fn relate_type_and_user_type<'tcx>(
         NllTypeRelatingDelegate::new(infcx, borrowck_context, locations, category),
         v1,
     );
-    type_relating.relate(&b, &a)?;
 
-    Ok(b)
+    match user_ty {
+        UserTypeAnnotation::Ty(canonical_ty) => {
+            let (ty, _) =
+                infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_ty);
+            type_relating.relate(&ty, &a)?;
+            Ok(ty)
+        }
+        UserTypeAnnotation::FnDef(def_id, canonical_substs) => {
+            let (
+                UserSubsts {
+                    substs,
+                    user_self_ty,
+                },
+                _,
+            ) = infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_substs);
+            assert!(user_self_ty.is_none()); // TODO for now
+            let ty = infcx.tcx.mk_fn_def(def_id, substs);
+            type_relating.relate(&ty, &a)?;
+            Ok(ty)
+        }
+        UserTypeAnnotation::AdtDef(adt_def, canonical_substs) => {
+            let (
+                UserSubsts {
+                    substs,
+                    user_self_ty,
+                },
+                _,
+            ) = infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_substs);
+            assert!(user_self_ty.is_none()); // TODO for now
+            let ty = infcx.tcx.mk_adt(adt_def, substs);
+            type_relating.relate(&ty, &a)?;
+            Ok(ty)
+        }
+    }
 }
 
 struct NllTypeRelatingDelegate<'me, 'bccx: 'me, 'gcx: 'tcx, 'tcx: 'bccx> {
