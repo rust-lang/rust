@@ -12,7 +12,7 @@
 #![feature(box_syntax)]
 #![feature(rustc_private)]
 
-#![allow(unknown_lints, clippy::missing_docs_in_private_items)]
+#![allow(clippy::missing_docs_in_private_items)]
 
 use rustc_tools_util::*;
 

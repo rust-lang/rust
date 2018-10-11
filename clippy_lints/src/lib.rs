@@ -15,7 +15,7 @@
 #![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]
 #![feature(range_contains)]
-#![allow(unknown_lints, clippy::shadow_reuse, clippy::missing_docs_in_private_items)]
+#![allow(clippy::shadow_reuse, clippy::missing_docs_in_private_items)]
 #![recursion_limit = "256"]
 #![feature(macro_at_most_once_rep)]
 

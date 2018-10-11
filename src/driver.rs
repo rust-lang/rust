@@ -13,7 +13,7 @@
 #![feature(rustc_private)]
 
 #![feature(try_from)]
-#![allow(unknown_lints, clippy::missing_docs_in_private_items)]
+#![allow(clippy::missing_docs_in_private_items)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (currently there is no way to opt into sysroot crates w/o `extern crate`)
