@@ -131,91 +131,83 @@ fn remove_newline(
     node_text: &str,
     offset: TextUnit,
 ) {
-    if node.kind() == WHITESPACE && node_text.bytes().filter(|&b| b == b'\n').count() == 1 {
-        // Special case that turns something like:
-        //
-        // ```
-        // my_function({<|>
-        //    <some-expr>
-        // })
-        // ```
-        //
-        // into `my_function(<some-expr>)`
-        if join_single_expr_block(edit, node).is_some() {
-            return
-        }
+    if node.kind() != WHITESPACE || node_text.bytes().filter(|&b| b == b'\n').count() != 1 {
+        // The node is either the first or the last in the file
+        let suff = &node_text[TextRange::from_to(
+            offset - node.range().start() + TextUnit::of_char('\n'),
+            TextUnit::of_str(node_text),
+        )];
+        let spaces = suff.bytes().take_while(|&b| b == b' ').count();
 
-        if let (Some(prev), Some(next)) = (node.prev_sibling(), node.next_sibling()) {
-            let range = TextRange::from_to(prev.range().start(), node.range().end());
-            if is_trailing_comma(prev.kind(), next.kind()) {
-                // Removes: trailing comma, newline (incl. surrounding whitespace)
-                edit.delete(range);
-            } else if no_space_required(prev.kind(), next.kind()) {
-                // Removes: newline (incl. surrounding whitespace)
-                edit.delete(node.range());
-            } else if prev.kind() == COMMA && next.kind() == R_CURLY {
-                // Removes: comma, newline (incl. surrounding whitespace)
-                // Adds: a single whitespace
-                edit.replace(range, " ".to_string());
-            } else if let (Some(_), Some(next)) = (ast::Comment::cast(prev), ast::Comment::cast(next)) {
-                // Removes: newline (incl. surrounding whitespace), start of the next comment
-                let comment_text = next.text();
-                if let Some(newline_pos) = comment_text.find('\n') {
-                    // Special case for multi-line c-like comments: join the comment content but
-                    // keep the leading `/*`
-
-                    let newline_offset = next.syntax().range().start()
-                                        + TextUnit::from(newline_pos as u32)
-                                        + TextUnit::of_char('\n');
-
-                    edit.insert(newline_offset, "/*".to_string());
-                    edit.delete(TextRange::from_to(
-                        node.range().start(),
-                        next.syntax().range().start() + TextUnit::of_str(next.prefix())
-                    ));
-                } else {
-                    // Single-line comments
-                    edit.delete(TextRange::from_to(
-                        node.range().start(),
-                        next.syntax().range().start() + TextUnit::of_str(next.prefix())
-                    ));
-                }
-            } else {
-                // Remove newline but add a computed amount of whitespace characters
-                edit.replace(
-                    node.range(),
-                    compute_ws(prev, next).to_string(),
-                );
-            }
-
-            return;
-        }
+        edit.replace(
+            TextRange::offset_len(offset, ((spaces + 1) as u32).into()),
+            " ".to_string(),
+        );
+        return;
     }
 
-    // The node is either the first or the last in the file
-    let suff = &node_text[TextRange::from_to(
-        offset - node.range().start() + TextUnit::of_char('\n'),
-        TextUnit::of_str(node_text),
-    )];
-    let spaces = suff.bytes().take_while(|&b| b == b' ').count();
+    // Special case that turns something like:
+    //
+    // ```
+    // my_function({<|>
+    //    <some-expr>
+    // })
+    // ```
+    //
+    // into `my_function(<some-expr>)`
+    if join_single_expr_block(edit, node).is_some() {
+        return
+    }
 
-    edit.replace(
-        TextRange::offset_len(offset, ((spaces + 1) as u32).into()),
-        " ".to_string(),
-    );
+    // The node is between two other nodes
+    let prev = node.prev_sibling().unwrap();
+    let next = node.next_sibling().unwrap();
+    if is_trailing_comma(prev.kind(), next.kind()) {
+        // Removes: trailing comma, newline (incl. surrounding whitespace)
+        edit.delete(TextRange::from_to(prev.range().start(), node.range().end()));
+    } else if prev.kind() == COMMA && next.kind() == R_CURLY {
+        // Removes: comma, newline (incl. surrounding whitespace)
+        // Adds: a single whitespace
+        edit.replace(
+            TextRange::from_to(prev.range().start(), node.range().end()),
+            " ".to_string()
+        );
+    } else if let (Some(_), Some(next)) = (ast::Comment::cast(prev), ast::Comment::cast(next)) {
+        // Removes: newline (incl. surrounding whitespace), start of the next comment
+        let comment_text = next.text();
+        if let Some(newline_pos) = comment_text.find('\n') {
+            // Special case for multiline comments: join the comment content but
+            // keep the leading `/*`
+
+            let newline_offset = next.syntax().range().start()
+                                + TextUnit::from(newline_pos as u32)
+                                + TextUnit::of_char('\n');
+
+            edit.insert(newline_offset, "/*".to_string());
+            edit.delete(TextRange::from_to(
+                node.range().start(),
+                next.syntax().range().start() + TextUnit::of_str(next.prefix())
+            ));
+        } else {
+            // Single-line comments
+            edit.delete(TextRange::from_to(
+                node.range().start(),
+                next.syntax().range().start() + TextUnit::of_str(next.prefix())
+            ));
+        }
+    } else {
+        // Remove newline but add a computed amount of whitespace characters
+        edit.replace(
+            node.range(),
+            compute_ws(prev, next).to_string(),
+        );
+    }
 }
 
 fn is_trailing_comma(left: SyntaxKind, right: SyntaxKind) -> bool {
     match (left, right) {
        (COMMA, R_PAREN) | (COMMA, R_BRACK) => true,
        _ => false
-    }
-}
-
-fn no_space_required(left: SyntaxKind, right: SyntaxKind) -> bool {
-    match (left, right) {
-       (_, DOT) => true,
-        _ => false
     }
 }
 
@@ -260,6 +252,7 @@ fn compute_ws(left: SyntaxNodeRef, right: SyntaxNodeRef) -> &'static str {
     }
     match right.kind() {
         R_PAREN | R_BRACK => return "",
+        DOT => return "",
         _ => (),
     }
     " "
