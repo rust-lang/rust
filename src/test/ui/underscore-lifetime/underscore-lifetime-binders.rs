@@ -15,13 +15,13 @@ impl Foo<'_> { //~ ERROR missing lifetime specifier
     fn x() {}
 }
 
-fn foo<'_> //~ ERROR invalid lifetime parameter name: `'_`
+fn foo<'_> //~ ERROR cannot be used here
 (_: Foo<'_>) {}
 
 trait Meh<'a> {}
 impl<'a> Meh<'a> for u8 {}
 
-fn meh() -> Box<for<'_> Meh<'_>> //~ ERROR invalid lifetime parameter name: `'_`
+fn meh() -> Box<for<'_> Meh<'_>> //~ ERROR cannot be used here
 //~^ ERROR missing lifetime specifier
 {
   Box::new(5u8)

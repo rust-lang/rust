@@ -43,20 +43,23 @@ use hir::{self, GenericParamKind, LifetimeParamKind};
 /// This is used to prevent the usage of in-band lifetimes in `Fn`/`fn` syntax.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub enum LifetimeDefOrigin {
-    // Explicit binders like `fn foo<'a>(x: &'a u8)`
-    Explicit,
+    // Explicit binders like `fn foo<'a>(x: &'a u8)` or elided like `impl Foo<&u32>`
+    ExplicitOrElided,
     // In-band declarations like `fn foo(x: &'a u8)`
     InBand,
+    // Some kind of erroneous origin
+    Error,
 }
 
 impl LifetimeDefOrigin {
     fn from_param(param: &GenericParam) -> Self {
         match param.kind {
             GenericParamKind::Lifetime { kind } => {
-                if kind == LifetimeParamKind::InBand {
-                    LifetimeDefOrigin::InBand
-                } else {
-                    LifetimeDefOrigin::Explicit
+                match kind {
+                    LifetimeParamKind::InBand => LifetimeDefOrigin::InBand,
+                    LifetimeParamKind::Explicit => LifetimeDefOrigin::ExplicitOrElided,
+                    LifetimeParamKind::Elided => LifetimeDefOrigin::ExplicitOrElided,
+                    LifetimeParamKind::Error => LifetimeDefOrigin::Error,
                 }
             }
             _ => bug!("expected a lifetime param"),
@@ -612,6 +615,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         // If the user wrote an explicit name, use that.
                         self.visit_lifetime(lifetime);
                     }
+                    LifetimeName::Error => { }
                 }
             }
             hir::TyKind::Rptr(ref lifetime_ref, ref mt) => {
@@ -1631,6 +1635,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
     fn resolve_lifetime_ref(&mut self, lifetime_ref: &'tcx hir::Lifetime) {
         debug!("resolve_lifetime_ref(lifetime_ref={:?})", lifetime_ref);
+
+        // If we've already reported an error, just ignore `lifetime_ref`.
+        if let LifetimeName::Error = lifetime_ref.name {
+            return;
+        }
+
         // Walk up the scope chain, tracking the number of fn scopes
         // that we pass through, until we find a lifetime with the
         // given name or we run out of scopes.
@@ -1650,16 +1660,17 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 }
 
                 Scope::Binder { ref lifetimes, s, .. } => {
-                    let name = match lifetime_ref.name {
-                        LifetimeName::Param(param_name) => param_name,
+                    match lifetime_ref.name {
+                        LifetimeName::Param(param_name) => {
+                            if let Some(&def) = lifetimes.get(&param_name.modern()) {
+                                break Some(def.shifted(late_depth));
+                            }
+                        }
                         _ => bug!("expected LifetimeName::Param"),
-                    };
-                    if let Some(&def) = lifetimes.get(&name.modern()) {
-                        break Some(def.shifted(late_depth));
-                    } else {
-                        late_depth += 1;
-                        scope = s;
                     }
+
+                    late_depth += 1;
+                    scope = s;
                 }
 
                 Scope::Elision { s, .. } | Scope::ObjectLifetimeDefault { s, .. } => {
@@ -1709,8 +1720,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     }
 
                     Region::Static
-                    | Region::EarlyBound(_, _, LifetimeDefOrigin::Explicit)
-                    | Region::LateBound(_, _, LifetimeDefOrigin::Explicit)
+                    | Region::EarlyBound(_, _, LifetimeDefOrigin::ExplicitOrElided)
+                    | Region::LateBound(_, _, LifetimeDefOrigin::ExplicitOrElided)
+                    | Region::EarlyBound(_, _, LifetimeDefOrigin::Error)
+                    | Region::LateBound(_, _, LifetimeDefOrigin::Error)
                     | Region::LateBoundAnon(..)
                     | Region::Free(..) => {}
                 }
@@ -2339,14 +2352,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 match bound {
                     hir::GenericBound::Outlives(lt) => match lt.name {
                         hir::LifetimeName::Underscore => {
-                            let mut err = struct_span_err!(
-                                self.tcx.sess,
-                                lt.span,
-                                E0637,
-                                "invalid lifetime bound name: `'_`"
-                            );
-                            err.span_label(lt.span, "`'_` is a reserved lifetime name");
-                            err.emit();
+                            self.tcx.sess.delay_span_bug(lt.span, "use of `'_` in illegal place, but not caught by lowering")
                         }
                         hir::LifetimeName::Static => {
                             self.insert_lifetime(lt, Region::Static);
@@ -2363,6 +2369,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         }
                         hir::LifetimeName::Param(_) | hir::LifetimeName::Implicit => {
                             self.resolve_lifetime_ref(lt);
+                        }
+                        hir::LifetimeName::Error => {
+                            // No need to do anything, error already reported.
                         }
                     }
                     _ => bug!(),
