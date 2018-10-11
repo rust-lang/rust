@@ -15,6 +15,7 @@ use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::mir::{ConstraintCategory, UserTypeAnnotation};
 use rustc::traits::query::Fallible;
 use rustc::ty::relate::TypeRelation;
+use rustc::ty::subst::UserSubsts;
 use rustc::ty::{self, Ty};
 use syntax_pos::DUMMY_SP;
 
@@ -78,13 +79,15 @@ pub(super) fn relate_type_and_user_type<'tcx>(
             ty
         }
         UserTypeAnnotation::FnDef(def_id, canonical_substs) => {
-            let (substs, _) =
+            let (UserSubsts { substs, user_self_ty }, _) =
                 infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_substs);
+            assert!(user_self_ty.is_none()); // TODO for now
             infcx.tcx.mk_fn_def(def_id, substs)
         }
         UserTypeAnnotation::AdtDef(adt_def, canonical_substs) => {
-            let (substs, _) =
+            let (UserSubsts { substs, user_self_ty }, _) =
                 infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_substs);
+            assert!(user_self_ty.is_none()); // TODO for now
             infcx.tcx.mk_adt(adt_def, substs)
         }
     };

@@ -37,7 +37,7 @@ use syntax::ast::{self, Name};
 use syntax::symbol::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use ty::subst::{CanonicalSubsts, Subst, Substs};
+use ty::subst::{CanonicalUserSubsts, Subst, Substs};
 use ty::{self, AdtDef, CanonicalTy, ClosureSubsts, GeneratorSubsts, Region, Ty, TyCtxt};
 use util::ppaux;
 
@@ -2413,8 +2413,8 @@ pub struct Constant<'tcx> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum UserTypeAnnotation<'tcx> {
     Ty(CanonicalTy<'tcx>),
-    FnDef(DefId, CanonicalSubsts<'tcx>),
-    AdtDef(&'tcx AdtDef, CanonicalSubsts<'tcx>),
+    FnDef(DefId, CanonicalUserSubsts<'tcx>),
+    AdtDef(&'tcx AdtDef, CanonicalUserSubsts<'tcx>),
 }
 
 EnumTypeFoldableImpl! {

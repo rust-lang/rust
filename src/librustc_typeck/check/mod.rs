@@ -95,7 +95,7 @@ use rustc::infer::opaque_types::OpaqueTypeDecl;
 use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region;
 use rustc::mir::interpret::{ConstValue, GlobalId};
-use rustc::ty::subst::{CanonicalSubsts, UnpackedKind, Subst, Substs};
+use rustc::ty::subst::{CanonicalUserSubsts, UnpackedKind, Subst, Substs, UserSubsts};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind, Visibility, ToPredicate, RegionKind};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
@@ -2136,7 +2136,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             method.substs[i]
                         }
                     });
-                    self.infcx.canonicalize_response(&just_method_substs)
+                    self.infcx.canonicalize_response(&UserSubsts {
+                        substs: just_method_substs,
+                        user_self_ty: None, // not relevant here
+                    })
                 });
 
                 debug!("write_method_call: user_substs = {:?}", user_substs);
@@ -2172,13 +2175,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         );
 
         if !substs.is_noop() {
-            let user_substs = self.infcx.canonicalize_response(&substs);
+            let user_substs = self.infcx.canonicalize_response(&UserSubsts {
+                substs,
+                user_self_ty: None, // TODO -- fix in future commit
+            });
             debug!("instantiate_value_path: user_substs = {:?}", user_substs);
             self.write_user_substs(hir_id, user_substs);
         }
     }
 
-    pub fn write_user_substs(&self, hir_id: hir::HirId, substs: CanonicalSubsts<'tcx>) {
+    pub fn write_user_substs(&self, hir_id: hir::HirId, substs: CanonicalUserSubsts<'tcx>) {
         debug!(
             "write_user_substs({:?}, {:?}) in fcx {}",
             hir_id,
