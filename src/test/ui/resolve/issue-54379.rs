@@ -7,9 +7,15 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+struct MyStruct {
+    pub s1: Option<String>,
+}
 
-#[warn(clippy::decimal_literal_representation)]
-//~^ ERROR scoped lint `clippy::decimal_literal_representation` is experimental
 fn main() {
-    let a = 65_535;
+    let thing = MyStruct { s1: None };
+
+    match thing {
+        MyStruct { .., Some(_) } => {},
+        _ => {}
+    }
 }

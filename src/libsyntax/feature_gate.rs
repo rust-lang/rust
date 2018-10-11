@@ -433,9 +433,6 @@ declare_features! (
     // #[doc(alias = "...")]
     (active, doc_alias, "1.27.0", Some(50146), None),
 
-    // Scoped lints
-    (active, tool_lints, "1.28.0", Some(44690), None),
-
     // Allows irrefutable patterns in if-let and while-let statements (RFC 2086)
     (active, irrefutable_let_patterns, "1.27.0", Some(44495), None),
 
@@ -499,6 +496,9 @@ declare_features! (
 
     // Allows `impl Trait` in bindings (`let`, `const`, `static`)
     (active, impl_trait_in_bindings, "1.30.0", Some(34511), None),
+
+    // #[cfg_attr(predicate, multiple, attributes, here)]
+    (active, cfg_attr_multi, "1.31.0", Some(54881), None),
 );
 
 declare_features! (
@@ -679,6 +679,8 @@ declare_features! (
     (accepted, pattern_parentheses, "1.31.0", Some(51087), None),
     // Allows the definition of `const fn` functions.
     (accepted, min_const_fn, "1.31.0", Some(53555), None),
+    // Scoped lints
+    (accepted, tool_lints, "1.31.0", Some(44690), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must

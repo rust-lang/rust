@@ -1,4 +1,4 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,9 +7,10 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+//
+// compile-flags: --cfg broken
 
+#![feature(cfg_attr_multi)]
+#![cfg_attr(broken, no_core, no_std)] //~ ERROR no_core is experimental
 
-
-#[warn(foo::bar)]
-//~^ ERROR an unknown tool name found in scoped lint: `foo::bar`
-fn main() {}
+fn main() { }

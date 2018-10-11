@@ -469,7 +469,7 @@ impl fmt::Display for traits::QuantifierKind {
 
 impl<'tcx> fmt::Display for traits::Goal<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use traits::Goal::*;
+        use traits::GoalKind::*;
 
         match self {
             Implies(hypotheses, goal) => {
@@ -598,25 +598,25 @@ CloneTypeFoldableAndLiftImpls! {
 }
 
 EnumTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for traits::Goal<'tcx> {
-        (traits::Goal::Implies)(hypotheses, goal),
-        (traits::Goal::And)(goal1, goal2),
-        (traits::Goal::Not)(goal),
-        (traits::Goal::DomainGoal)(domain_goal),
-        (traits::Goal::Quantified)(qkind, goal),
-        (traits::Goal::CannotProve),
+    impl<'tcx> TypeFoldable<'tcx> for traits::GoalKind<'tcx> {
+        (traits::GoalKind::Implies)(hypotheses, goal),
+        (traits::GoalKind::And)(goal1, goal2),
+        (traits::GoalKind::Not)(goal),
+        (traits::GoalKind::DomainGoal)(domain_goal),
+        (traits::GoalKind::Quantified)(qkind, goal),
+        (traits::GoalKind::CannotProve),
     }
 }
 
 EnumLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for traits::Goal<'a> {
-        type Lifted = traits::Goal<'tcx>;
-        (traits::Goal::Implies)(hypotheses, goal),
-        (traits::Goal::And)(goal1, goal2),
-        (traits::Goal::Not)(goal),
-        (traits::Goal::DomainGoal)(domain_goal),
-        (traits::Goal::Quantified)(kind, goal),
-        (traits::Goal::CannotProve),
+    impl<'a, 'tcx> Lift<'tcx> for traits::GoalKind<'a> {
+        type Lifted = traits::GoalKind<'tcx>;
+        (traits::GoalKind::Implies)(hypotheses, goal),
+        (traits::GoalKind::And)(goal1, goal2),
+        (traits::GoalKind::Not)(goal),
+        (traits::GoalKind::DomainGoal)(domain_goal),
+        (traits::GoalKind::Quantified)(kind, goal),
+        (traits::GoalKind::CannotProve),
     }
 }
 
@@ -633,7 +633,7 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<traits::Goal<'tcx>> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for &'tcx traits::Goal<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for traits::Goal<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         let v = (**self).fold_with(folder);
         folder.tcx().mk_goal(v)
