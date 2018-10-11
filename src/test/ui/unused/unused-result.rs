@@ -28,8 +28,8 @@ fn qux() -> MustUseMsg { return foo::<MustUseMsg>(); }
 #[allow(unused_results)]
 fn test() {
     foo::<isize>();
-    foo::<MustUse>(); //~ ERROR: unused `MustUse` which must be used
-    foo::<MustUseMsg>(); //~ ERROR: unused `MustUseMsg` which must be used
+    foo::<MustUse>(); //~ ERROR: unused `MustUse` that must be used
+    foo::<MustUseMsg>(); //~ ERROR: unused `MustUseMsg` that must be used
     //~^ NOTE: some message
 }
 
@@ -42,8 +42,8 @@ fn test2() {
 
 fn main() {
     foo::<isize>(); //~ ERROR: unused result
-    foo::<MustUse>(); //~ ERROR: unused `MustUse` which must be used
-    foo::<MustUseMsg>(); //~ ERROR: unused `MustUseMsg` which must be used
+    foo::<MustUse>(); //~ ERROR: unused `MustUse` that must be used
+    foo::<MustUseMsg>(); //~ ERROR: unused `MustUseMsg` that must be used
     //~^ NOTE: some message
 
     let _ = foo::<isize>();
