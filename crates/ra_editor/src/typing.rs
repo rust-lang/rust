@@ -30,6 +30,7 @@ pub fn join_lines(file: &File, range: TextRange) -> LocalEdit {
     } else {
         range
     };
+
     let node = find_covering_node(file.syntax(), range);
     let mut edit = EditBuilder::new();
     for node in node.descendants() {
@@ -57,14 +58,19 @@ pub fn join_lines(file: &File, range: TextRange) -> LocalEdit {
 }
 
 pub fn on_enter(file: &File, offset: TextUnit) -> Option<LocalEdit> {
-    let comment = find_leaf_at_offset(file.syntax(), offset).left_biased().filter(|it| it.kind() == COMMENT)?;
-    let prefix = comment_preffix(comment)?;
-    if offset < comment.range().start() + TextUnit::of_str(prefix) {
+    let comment = find_leaf_at_offset(file.syntax(), offset).left_biased().and_then(|it| ast::Comment::cast(it))?;
+
+    if let ast::CommentFlavor::Multiline = comment.flavor() {
         return None;
     }
 
-    let indent = node_indent(file, comment)?;
-    let inserted = format!("\n{}{}", indent, prefix);
+    let prefix = comment.prefix();
+    if offset < comment.syntax().range().start() + TextUnit::of_str(prefix) + TextUnit::from(1) {
+        return None;
+    }
+
+    let indent = node_indent(file, comment.syntax())?;
+    let inserted = format!("\n{}{} ", indent, prefix);
     let cursor_position = offset + TextUnit::of_str(&inserted);
     let mut edit = EditBuilder::new();
     edit.insert(offset, inserted);
@@ -72,20 +78,6 @@ pub fn on_enter(file: &File, offset: TextUnit) -> Option<LocalEdit> {
         edit: edit.finish(),
         cursor_position: Some(cursor_position),
     })
-}
-
-fn comment_preffix(comment: SyntaxNodeRef) -> Option<&'static str> {
-    let text = comment.leaf_text().unwrap();
-    let res = if text.starts_with("///") {
-        "/// "
-    } else if text.starts_with("//!") {
-        "//! "
-    } else if text.starts_with("//") {
-        "// "
-    } else {
-        return None;
-    };
-    Some(res)
 }
 
 fn node_indent<'a>(file: &'a File, node: SyntaxNodeRef) -> Option<&'a str> {
@@ -139,54 +131,66 @@ fn remove_newline(
     node_text: &str,
     offset: TextUnit,
 ) {
-    if node.kind() == WHITESPACE && node_text.bytes().filter(|&b| b == b'\n').count() == 1 {
-        if join_single_expr_block(edit, node).is_some() {
-            return
-        }
-        match (node.prev_sibling(), node.next_sibling()) {
-            (Some(prev), Some(next)) => {
-                let range = TextRange::from_to(prev.range().start(), node.range().end());
-                if is_trailing_comma(prev.kind(), next.kind()) {
-                    edit.delete(range);
-                } else if no_space_required(prev.kind(), next.kind()) {
-                    edit.delete(node.range());
-                } else if prev.kind() == COMMA && next.kind() == R_CURLY {
-                    edit.replace(range, " ".to_string());
-                } else {
-                    edit.replace(
-                        node.range(),
-                        compute_ws(prev, next).to_string(),
-                    );
-                }
-                return;
-            }
-            _ => (),
-        }
+    if node.kind() != WHITESPACE || node_text.bytes().filter(|&b| b == b'\n').count() != 1 {
+        // The node is either the first or the last in the file
+        let suff = &node_text[TextRange::from_to(
+            offset - node.range().start() + TextUnit::of_char('\n'),
+            TextUnit::of_str(node_text),
+        )];
+        let spaces = suff.bytes().take_while(|&b| b == b' ').count();
+
+        edit.replace(
+            TextRange::offset_len(offset, ((spaces + 1) as u32).into()),
+            " ".to_string(),
+        );
+        return;
     }
 
-    let suff = &node_text[TextRange::from_to(
-        offset - node.range().start() + TextUnit::of_char('\n'),
-        TextUnit::of_str(node_text),
-    )];
-    let spaces = suff.bytes().take_while(|&b| b == b' ').count();
+    // Special case that turns something like:
+    //
+    // ```
+    // my_function({<|>
+    //    <some-expr>
+    // })
+    // ```
+    //
+    // into `my_function(<some-expr>)`
+    if join_single_expr_block(edit, node).is_some() {
+        return
+    }
 
-    edit.replace(
-        TextRange::offset_len(offset, ((spaces + 1) as u32).into()),
-        " ".to_string(),
-    );
+    // The node is between two other nodes
+    let prev = node.prev_sibling().unwrap();
+    let next = node.next_sibling().unwrap();
+    if is_trailing_comma(prev.kind(), next.kind()) {
+        // Removes: trailing comma, newline (incl. surrounding whitespace)
+        edit.delete(TextRange::from_to(prev.range().start(), node.range().end()));
+    } else if prev.kind() == COMMA && next.kind() == R_CURLY {
+        // Removes: comma, newline (incl. surrounding whitespace)
+        // Adds: a single whitespace
+        edit.replace(
+            TextRange::from_to(prev.range().start(), node.range().end()),
+            " ".to_string()
+        );
+    } else if let (Some(_), Some(next)) = (ast::Comment::cast(prev), ast::Comment::cast(next)) {
+        // Removes: newline (incl. surrounding whitespace), start of the next comment
+        edit.delete(TextRange::from_to(
+            node.range().start(),
+            next.syntax().range().start() + TextUnit::of_str(next.prefix())
+        ));
+    } else {
+        // Remove newline but add a computed amount of whitespace characters
+        edit.replace(
+            node.range(),
+            compute_ws(prev, next).to_string(),
+        );
+    }
 }
 
 fn is_trailing_comma(left: SyntaxKind, right: SyntaxKind) -> bool {
     match (left, right) {
        (COMMA, R_PAREN) | (COMMA, R_BRACK) => true,
        _ => false
-    }
-}
-
-fn no_space_required(left: SyntaxKind, right: SyntaxKind) -> bool {
-    match (left, right) {
-       (_, DOT) => true,
-        _ => false
     }
 }
 
@@ -231,6 +235,7 @@ fn compute_ws(left: SyntaxNodeRef, right: SyntaxNodeRef) -> &'static str {
     }
     match right.kind() {
         R_PAREN | R_BRACK => return "",
+        DOT => return "",
         _ => (),
     }
     " "
@@ -289,6 +294,80 @@ fn foo() {
 fn foo() {
     foo(<|>92)
 }");
+    }
+
+    #[test]
+    fn test_join_lines_normal_comments() {
+        check_join_lines(r"
+fn foo() {
+    // Hello<|>
+    // world!
+}
+", r"
+fn foo() {
+    // Hello<|> world!
+}
+");
+    }
+
+    #[test]
+    fn test_join_lines_doc_comments() {
+        check_join_lines(r"
+fn foo() {
+    /// Hello<|>
+    /// world!
+}
+", r"
+fn foo() {
+    /// Hello<|> world!
+}
+");
+    }
+
+    #[test]
+    fn test_join_lines_mod_comments() {
+        check_join_lines(r"
+fn foo() {
+    //! Hello<|>
+    //! world!
+}
+", r"
+fn foo() {
+    //! Hello<|> world!
+}
+");
+    }
+
+    #[test]
+    fn test_join_lines_multiline_comments_1() {
+        check_join_lines(r"
+fn foo() {
+    // Hello<|>
+    /* world! */
+}
+", r"
+fn foo() {
+    // Hello<|> world! */
+}
+");
+    }
+
+    #[test]
+    fn test_join_lines_multiline_comments_2() {
+        check_join_lines(r"
+fn foo() {
+    // The<|>
+    /* quick
+    brown
+    fox! */
+}
+", r"
+fn foo() {
+    // The<|> quick
+    brown
+    fox! */
+}
+");
     }
 
     fn check_join_lines_sel(before: &str, after: &str) {
