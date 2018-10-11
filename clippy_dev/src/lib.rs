@@ -56,8 +56,8 @@ impl Lint {
     }
 
     /// Returns all non-deprecated lints
-    pub fn active_lints(lints: &[Self]) -> impl Iterator<Item=&Self> {
-        lints.iter().filter(|l| l.deprecation.is_none())
+    pub fn active_lints(lints: impl Iterator<Item=Self>) -> impl Iterator<Item=Self> {
+        lints.filter(|l| l.deprecation.is_none())
     }
 
     /// Returns the lints in a HashMap, grouped by the different lint groups
@@ -144,7 +144,7 @@ fn test_active_lints() {
     let expected = vec![
         Lint::new("should_assert_eq2", "Not Deprecated", "abc", None, "module_name")
     ];
-    assert_eq!(expected, Lint::active_lints(&lints).cloned().collect::<Vec<Lint>>());
+    assert_eq!(expected, Lint::active_lints(lints.into_iter()).collect::<Vec<Lint>>());
 }
 
 #[test]
