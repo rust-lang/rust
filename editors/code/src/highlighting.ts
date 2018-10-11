@@ -20,13 +20,6 @@ export class Highlighter {
             [string, vscode.TextEditorDecorationType]
         > = [
             ['background', decor('#3F3F3F')],
-            [
-                'error',
-                vscode.window.createTextEditorDecorationType({
-                    borderColor: 'red',
-                    borderStyle: 'none none dashed none'
-                })
-            ],
             ['comment', decor('#7F9F7F')],
             ['string', decor('#CC9393')],
             ['keyword', decor('#F0DFAF')],

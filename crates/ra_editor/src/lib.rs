@@ -88,7 +88,6 @@ pub fn highlight(file: &File) -> Vec<HighlightedRange> {
     let mut res = Vec::new();
     for node in file.syntax().descendants() {
         let tag = match node.kind() {
-            ERROR => "error",
             COMMENT | DOC_COMMENT => "comment",
             STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => "string",
             ATTR => "attribute",
@@ -108,21 +107,10 @@ pub fn highlight(file: &File) -> Vec<HighlightedRange> {
 }
 
 pub fn diagnostics(file: &File) -> Vec<Diagnostic> {
-    let mut res = Vec::new();
-
-    for node in file.syntax().descendants() {
-        if node.kind() == ERROR {
-            res.push(Diagnostic {
-                range: node.range(),
-                msg: "Syntax Error".to_string(),
-            });
-        }
-    }
-    res.extend(file.errors().into_iter().map(|err| Diagnostic {
+    file.errors().into_iter().map(|err| Diagnostic {
         range: TextRange::offset_len(err.offset, 1.into()),
-        msg: err.msg,
-    }));
-    res
+        msg: "Syntax Error: ".to_string() + &err.msg,
+    }).collect()
 }
 
 pub fn syntax_tree(file: &File) -> String {
