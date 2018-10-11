@@ -377,6 +377,7 @@ define_queries! { <'tcx>
         // might want to use `reveal_all()` method to change modes.
         [] fn param_env: ParamEnv(DefId) -> ty::ParamEnv<'tcx>,
 
+        // Get the chalk-style environment of the given item.
         [] fn environment: Environment(DefId) -> traits::Environment<'tcx>,
 
         // Trait selection queries. These are best used by invoking `ty.moves_by_default()`,

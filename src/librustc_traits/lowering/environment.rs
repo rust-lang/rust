@@ -17,6 +17,7 @@ use rustc::traits::{
     Environment,
 };
 use rustc::ty::{self, TyCtxt, Ty};
+use rustc::hir::def_id::DefId;
 use rustc_data_structures::fx::FxHashSet;
 
 struct ClauseVisitor<'set, 'a, 'tcx: 'a> {
@@ -161,4 +162,27 @@ crate fn program_clauses_for_env<'a, 'tcx>(
     return tcx.mk_clauses(
         closure.into_iter()
     );
+}
+
+crate fn environment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Environment<'tcx> {
+    use super::{Lower, IntoFromEnvGoal};
+
+    // The environment of an impl Trait type is its defining function's environment
+    if let Some(parent) = ty::is_impl_trait_defn(tcx, def_id) {
+        return environment(tcx, parent);
+    }
+
+    // Compute the bounds on `Self` and the type parameters.
+    let ty::InstantiatedPredicates { predicates } =
+        tcx.predicates_of(def_id).instantiate_identity(tcx);
+    
+    let clauses = predicates.into_iter()
+        .map(|predicate| predicate.lower())
+        .map(|domain_goal| domain_goal.map_bound(|dg| dg.into_from_env_goal()))
+        .map(|domain_goal| domain_goal.map_bound(|dg| dg.into_program_clause()))
+        .map(Clause::ForAll);
+    
+    Environment {
+        clauses: tcx.mk_clauses(clauses),
+    }
 }

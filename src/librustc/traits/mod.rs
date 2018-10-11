@@ -337,6 +337,13 @@ impl<'tcx> DomainGoal<'tcx> {
     pub fn into_goal(self) -> GoalKind<'tcx> {
         GoalKind::DomainGoal(self)
     }
+
+    pub fn into_program_clause(self) -> ProgramClause<'tcx> {
+        ProgramClause {
+            goal: self,
+            hypotheses: &ty::List::empty(),
+        }
+    }
 }
 
 impl<'tcx> GoalKind<'tcx> {
@@ -400,11 +407,6 @@ impl Environment<'tcx> {
 pub struct InEnvironment<'tcx, G> {
     pub environment: Environment<'tcx>,
     pub goal: G,
-}
-
-/// Compute the environment of the given item.
-fn environment<'a, 'tcx>(_tcx: TyCtxt<'a, 'tcx, 'tcx>, _def_id: DefId) -> Environment<'tcx> {
-    panic!()
 }
 
 pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;
@@ -1109,7 +1111,6 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         codegen_fulfill_obligation: codegen::codegen_fulfill_obligation,
         vtable_methods,
         substitute_normalize_and_test_predicates,
-        environment,
         ..*providers
     };
 }

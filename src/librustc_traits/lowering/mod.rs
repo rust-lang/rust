@@ -35,6 +35,7 @@ crate fn provide(p: &mut Providers) {
     *p = Providers {
         program_clauses_for,
         program_clauses_for_env: environment::program_clauses_for_env,
+        environment: environment::environment,
         ..*p
     };
 }
