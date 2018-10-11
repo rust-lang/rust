@@ -377,9 +377,6 @@ define_queries! { <'tcx>
         // might want to use `reveal_all()` method to change modes.
         [] fn param_env: ParamEnv(DefId) -> ty::ParamEnv<'tcx>,
 
-        // Get the chalk-style environment of the given item.
-        [] fn environment: Environment(DefId) -> traits::Environment<'tcx>,
-
         // Trait selection queries. These are best used by invoking `ty.moves_by_default()`,
         // `ty.is_copy()`, etc, since that will prune the environment where possible.
         [] fn is_copy_raw: is_copy_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
@@ -669,6 +666,9 @@ define_queries! { <'tcx>
         [] fn program_clauses_for_env: ProgramClausesForEnv(
             traits::Environment<'tcx>
         ) -> Clauses<'tcx>,
+
+        // Get the chalk-style environment of the given item.
+        [] fn environment: Environment(DefId) -> traits::Environment<'tcx>,
     },
 
     Linking {

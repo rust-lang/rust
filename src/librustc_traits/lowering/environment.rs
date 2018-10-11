@@ -45,7 +45,7 @@ impl ClauseVisitor<'set, 'a, 'tcx> {
 
             // forall<'a, T> { `Outlives(T, 'a) :- FromEnv(&'a T)` }
             ty::Ref(_region, _sub_ty, ..) => {
-                // FIXME: we need bound tys in order to write the above rule
+                // FIXME: we'd need bound tys in order to properly write the above rule
             }
 
             ty::Dynamic(..) => {
@@ -166,8 +166,9 @@ crate fn program_clauses_for_env<'a, 'tcx>(
 
 crate fn environment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Environment<'tcx> {
     use super::{Lower, IntoFromEnvGoal};
+    use rustc::hir::{Node, TraitItemKind, ImplItemKind, ItemKind, ForeignItemKind};
 
-    // The environment of an impl Trait type is its defining function's environment
+    // The environment of an impl Trait type is its defining function's environment.
     if let Some(parent) = ty::is_impl_trait_defn(tcx, def_id) {
         return environment(tcx, parent);
     }
@@ -178,9 +179,70 @@ crate fn environment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> En
     
     let clauses = predicates.into_iter()
         .map(|predicate| predicate.lower())
-        .map(|domain_goal| domain_goal.map_bound(|dg| dg.into_from_env_goal()))
-        .map(|domain_goal| domain_goal.map_bound(|dg| dg.into_program_clause()))
+        .map(|domain_goal| domain_goal.map_bound(|bound| bound.into_from_env_goal()))
+        .map(|domain_goal| domain_goal.map_bound(|bound| bound.into_program_clause()))
+
+        // `ForAll` because each `domain_goal` is a `PolyDomainGoal` and
+        // could bound lifetimes.
         .map(Clause::ForAll);
+    
+    let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
+    let node = tcx.hir.get(node_id);
+
+    let mut is_fn = false;
+    let mut is_impl = false;
+    match node {
+        Node::TraitItem(item) => match item.node {
+            TraitItemKind::Method(..) => is_fn = true,
+            _ => (),
+        }
+
+        Node::ImplItem(item) => match item.node {
+            ImplItemKind::Method(..) => is_fn = true,
+            _ => (),
+        }
+
+        Node::Item(item) => match item.node {
+            ItemKind::Impl(..) => is_impl = true,
+            ItemKind::Fn(..) => is_fn = true,
+            _ => (),
+        }
+
+        Node::ForeignItem(item) => match item.node {
+            ForeignItemKind::Fn(..) => is_fn = true,
+            _ => (),
+        }
+
+        // FIXME: closures?
+        _ => (),
+    }
+
+    let mut input_tys = FxHashSet::default();
+
+    // In an impl, we assume that the receiver type and all its constituents
+    // are well-formed.
+    if is_impl {
+        let trait_ref = tcx.impl_trait_ref(def_id).expect("not an impl");
+        input_tys.extend(trait_ref.self_ty().walk());
+    }
+
+    // In an fn, we assume that the arguments and all their constitutents are
+    // well-formed.
+    if is_fn {
+        let fn_sig = tcx.fn_sig(def_id)
+            .no_late_bound_regions()
+            .expect("only early bound regions");
+        input_tys.extend(
+            fn_sig.inputs().iter().flat_map(|ty| ty.walk())
+        );
+    }
+
+    let clauses = clauses.chain(
+        input_tys.into_iter()
+            .map(|ty| DomainGoal::FromEnv(FromEnv::Ty(ty)))
+            .map(|domain_goal| domain_goal.into_program_clause())
+            .map(Clause::Implies)
+    );
     
     Environment {
         clauses: tcx.mk_clauses(clauses),
