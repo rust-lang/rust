@@ -18,6 +18,7 @@ use crate::rustc::ty::{self, Ty, TyCtxt, Instance};
 use crate::rustc::ty::subst::{Subst, Substs};
 use std::cmp::Ordering::{self, Equal};
 use std::cmp::PartialOrd;
+use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
 use std::mem;
 use std::rc::Rc;
@@ -229,6 +230,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
         }
     }
 
+    #[allow(clippy::cast_possible_wrap)]
     fn constant_not(&self, o: &Constant, ty: ty::Ty<'_>) -> Option<Constant> {
         use self::Constant::*;
         match *o {
@@ -341,8 +343,12 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                             BinOpKind::Mul => l.checked_mul(r).map(zext),
                             BinOpKind::Div if r != 0 => l.checked_div(r).map(zext),
                             BinOpKind::Rem if r != 0 => l.checked_rem(r).map(zext),
-                            BinOpKind::Shr => l.checked_shr(r as u128 as u32).map(zext),
-                            BinOpKind::Shl => l.checked_shl(r as u128 as u32).map(zext),
+                            BinOpKind::Shr => l.checked_shr(
+                                    r.try_into().expect("invalid shift")
+                                ).map(zext),
+                            BinOpKind::Shl => l.checked_shl(
+                                    r.try_into().expect("invalid shift")
+                                ).map(zext),
                             BinOpKind::BitXor => Some(zext(l ^ r)),
                             BinOpKind::BitOr => Some(zext(l | r)),
                             BinOpKind::BitAnd => Some(zext(l & r)),
@@ -362,8 +368,12 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                             BinOpKind::Mul => l.checked_mul(r).map(Constant::Int),
                             BinOpKind::Div => l.checked_div(r).map(Constant::Int),
                             BinOpKind::Rem => l.checked_rem(r).map(Constant::Int),
-                            BinOpKind::Shr => l.checked_shr(r as u32).map(Constant::Int),
-                            BinOpKind::Shl => l.checked_shl(r as u32).map(Constant::Int),
+                            BinOpKind::Shr => l.checked_shr(
+                                    r.try_into().expect("shift too large")
+                                ).map(Constant::Int),
+                            BinOpKind::Shl => l.checked_shl(
+                                    r.try_into().expect("shift too large")
+                                ).map(Constant::Int),
                             BinOpKind::BitXor => Some(Constant::Int(l ^ r)),
                             BinOpKind::BitOr => Some(Constant::Int(l | r)),
                             BinOpKind::BitAnd => Some(Constant::Int(l & r)),
@@ -426,8 +436,12 @@ pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'
         ConstValue::Scalar(Scalar::Bits{ bits: b, ..}) => match result.ty.sty {
             ty::Bool => Some(Constant::Bool(b == 1)),
             ty::Uint(_) | ty::Int(_) => Some(Constant::Int(b)),
-            ty::Float(FloatTy::F32) => Some(Constant::F32(f32::from_bits(b as u32))),
-            ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(b as u64))),
+            ty::Float(FloatTy::F32) => Some(Constant::F32(f32::from_bits(
+                b.try_into().expect("invalid f32 bit representation")
+            ))),
+            ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(
+                b.try_into().expect("invalid f64 bit representation")
+            ))),
             // FIXME: implement other conversion
             _ => None,
         },
@@ -439,7 +453,7 @@ pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'
                         .alloc_map
                         .lock()
                         .unwrap_memory(ptr.alloc_id);
-                    let offset = ptr.offset.bytes() as usize;
+                    let offset = ptr.offset.bytes().try_into().expect("too-large pointer offset");
                     let n = n as usize;
                     String::from_utf8(alloc.bytes[offset..(offset + n)].to_owned()).ok().map(Constant::Str)
                 },
