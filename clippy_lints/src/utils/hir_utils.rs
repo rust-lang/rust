@@ -73,6 +73,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             && both(&left.expr, &right.expr, |l, r| self.eq_expr(l, r))
     }
 
+    #[allow(clippy::similar_names)]
     pub fn eq_expr(&mut self, left: &Expr, right: &Expr) -> bool {
         if self.ignore_fn && differing_macro_contexts(left.span, right.span) {
             return false;
@@ -208,6 +209,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         }
     }
 
+    #[allow(clippy::similar_names)]
     fn eq_qpath(&mut self, left: &QPath, right: &QPath) -> bool {
         match (left, right) {
             (&QPath::Resolved(ref lty, ref lpath), &QPath::Resolved(ref rty, ref rpath)) => {
@@ -262,6 +264,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         self.eq_ty_kind(&left.node, &right.node)
     }
 
+    #[allow(clippy::similar_names)]
     pub fn eq_ty_kind(&mut self, left: &TyKind, right: &TyKind) -> bool {
         match (left, right) {
             (&TyKind::Slice(ref l_vec), &TyKind::Slice(ref r_vec)) => self.eq_ty(l_vec, r_vec),

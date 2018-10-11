@@ -255,6 +255,7 @@ impl EarlyLintPass for EnumVariantNames {
         assert!(last.is_some());
     }
 
+    #[allow(clippy::similar_names)]
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         let item_name = item.ident.as_str();
         let item_name_chars = item_name.chars().count();

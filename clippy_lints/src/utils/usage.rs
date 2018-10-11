@@ -54,6 +54,7 @@ struct MutVarsDelegate {
 }
 
 impl<'tcx> MutVarsDelegate {
+    #[allow(clippy::similar_names)]
     fn update(&mut self, cat: &'tcx Categorization<'_>) {
         match *cat {
             Categorization::Local(id) => {

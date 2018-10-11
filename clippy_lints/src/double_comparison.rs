@@ -49,6 +49,7 @@ impl LintPass for DoubleComparisonPass {
 }
 
 impl<'a, 'tcx> DoubleComparisonPass {
+    #[allow(clippy::similar_names)]
     fn check_binop(
         &self,
         cx: &LateContext<'a, 'tcx>,
