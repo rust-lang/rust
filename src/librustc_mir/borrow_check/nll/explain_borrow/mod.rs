@@ -13,8 +13,10 @@ use borrow_check::error_reporting::UseSpans;
 use borrow_check::nll::region_infer::Cause;
 use borrow_check::{Context, MirBorrowckCtxt, WriteKind};
 use rustc::ty::{self, Region, TyCtxt};
-use rustc::mir::{FakeReadCause, Local, Location, Mir, Operand};
-use rustc::mir::{Place, StatementKind, TerminatorKind};
+use rustc::mir::{
+    CastKind, FakeReadCause, Local, Location, Mir, Operand, Place, Projection, ProjectionElem,
+    Rvalue, Statement, StatementKind, TerminatorKind
+};
 use rustc_errors::DiagnosticBuilder;
 use syntax_pos::Span;
 
@@ -34,6 +36,7 @@ pub(in borrow_check) enum BorrowExplanation<'tcx> {
 
 #[derive(Clone, Copy)]
 pub(in borrow_check) enum LaterUseKind {
+    TraitCapture,
     ClosureCapture,
     Call,
     FakeLetRead,
@@ -51,6 +54,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
         match *self {
             BorrowExplanation::UsedLater(later_use_kind, var_or_use_span) => {
                 let message = match later_use_kind {
+                    LaterUseKind::TraitCapture => "borrow later captured here by trait object",
                     LaterUseKind::ClosureCapture => "borrow later captured here by closure",
                     LaterUseKind::Call =>  "borrow later used by call",
                     LaterUseKind::FakeLetRead => "borrow later stored here",
@@ -60,9 +64,10 @@ impl<'tcx> BorrowExplanation<'tcx> {
             },
             BorrowExplanation::UsedLaterInLoop(later_use_kind, var_or_use_span) => {
                 let message = match later_use_kind {
-                    LaterUseKind::ClosureCapture => {
-                        "borrow captured here by closure, in later iteration of loop"
-                    },
+                    LaterUseKind::TraitCapture =>
+                        "borrow captured here by trait object, in later iteration of loop",
+                    LaterUseKind::ClosureCapture =>
+                        "borrow captured here by closure, in later iteration of loop",
                     LaterUseKind::Call =>  "borrow used by call, in later iteration of loop",
                     LaterUseKind::FakeLetRead => "borrow later stored here",
                     LaterUseKind::Other => "borrow used here, in later iteration of loop",
@@ -200,13 +205,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     .or_else(|| self.borrow_spans(span, location));
 
                 if self.is_borrow_location_in_loop(context.loc) {
-                    let later_use = self.later_use_kind(spans, location);
+                    let later_use = self.later_use_kind(borrow, spans, location);
                     BorrowExplanation::UsedLaterInLoop(later_use.0, later_use.1)
                 } else {
                     // Check if the location represents a `FakeRead`, and adapt the error
                     // message to the `FakeReadCause` it is from: in particular,
                     // the ones inserted in optimized `let var = <expr>` patterns.
-                    let later_use = self.later_use_kind(spans, location);
+                    let later_use = self.later_use_kind(borrow, spans, location);
                     BorrowExplanation::UsedLater(later_use.0, later_use.1)
                 }
             }
@@ -316,42 +321,184 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         false
     }
 
-    fn later_use_kind(&self, use_spans: UseSpans, location: Location) -> (LaterUseKind, Span) {
-        use self::LaterUseKind::*;
-
-        let block = &self.mir.basic_blocks()[location.block];
+    /// Determine how the borrow was later used.
+    fn later_use_kind(
+        &self,
+        borrow: &BorrowData<'tcx>,
+        use_spans: UseSpans,
+        location: Location
+    ) -> (LaterUseKind, Span) {
         match use_spans {
-            UseSpans::ClosureUse { var_span, .. } => (LaterUseKind::ClosureCapture, var_span),
+            UseSpans::ClosureUse { var_span, .. } => {
+                // Used in a closure.
+                (LaterUseKind::ClosureCapture, var_span)
+            },
             UseSpans::OtherUse(span) => {
-                (if let Some(stmt) = block.statements.get(location.statement_index) {
-                    match stmt.kind {
-                        StatementKind::FakeRead(FakeReadCause::ForLet, _) => FakeLetRead,
-                        _ => Other,
+                let block = &self.mir.basic_blocks()[location.block];
+
+                let kind = if let Some(&Statement {
+                    kind: StatementKind::FakeRead(FakeReadCause::ForLet, _),
+                    ..
+                }) = block.statements.get(location.statement_index) {
+                    LaterUseKind::FakeLetRead
+                } else if self.was_captured_by_trait_object(borrow) {
+                    LaterUseKind::TraitCapture
+                } else if location.statement_index == block.statements.len() {
+                    if let TerminatorKind::Call {
+                        ref func, from_hir_call: true, ..
+                    } = block.terminator().kind {
+                        // Just point to the function, to reduce the chance of overlapping spans.
+                        let function_span = match func {
+                            Operand::Constant(c) => c.span,
+                            Operand::Copy(Place::Local(l)) | Operand::Move(Place::Local(l)) => {
+                                let local_decl = &self.mir.local_decls[*l];
+                                if local_decl.name.is_none() {
+                                    local_decl.source_info.span
+                                } else {
+                                    span
+                                }
+                            },
+                            _ => span,
+                        };
+                        return (LaterUseKind::Call, function_span);
+                    } else {
+                        LaterUseKind::Other
                     }
                 } else {
-                    assert_eq!(location.statement_index, block.statements.len());
-                    match block.terminator().kind {
-                        TerminatorKind::Call { ref func, from_hir_call: true, .. } => {
-                            // Just point to the function, to reduce the chance
-                            // of overlapping spans.
-                            let function_span = match func {
-                                Operand::Constant(c) => c.span,
-                                Operand::Copy(Place::Local(l)) | Operand::Move(Place::Local(l)) => {
-                                    let local_decl = &self.mir.local_decls[*l];
-                                    if local_decl.name.is_none() {
-                                        local_decl.source_info.span
-                                    } else {
-                                        span
-                                    }
-                                },
-                                _ => span,
-                            };
-                            return (Call, function_span);
-                        },
-                        _ => Other,
-                    }
-                }, span)
+                    LaterUseKind::Other
+                };
+
+                (kind, span)
             }
         }
+    }
+
+    /// Check if a borrowed value was captured by a trait object. We do this by
+    /// looking forward in the MIR from the reserve location and checking if we see
+    /// a unsized cast to a trait object on our data.
+    fn was_captured_by_trait_object(&self, borrow: &BorrowData<'tcx>) -> bool {
+        // Start at the reserve location, find the place that we want to see cast to a trait object.
+        let location = borrow.reserve_location;
+        let block = &self.mir[location.block];
+        let stmt = block.statements.get(location.statement_index);
+        debug!("was_captured_by_trait_object: location={:?} stmt={:?}", location, stmt);
+
+        // We make a `queue` vector that has the locations we want to visit. As of writing, this
+        // will only ever have one item at any given time, but by using a vector, we can pop from
+        // it which simplifies the termination logic.
+        let mut queue = vec![location];
+        let mut target = if let Some(&Statement {
+            kind: StatementKind::Assign(Place::Local(local), _),
+            ..
+        }) = stmt {
+            local
+        } else {
+            return false;
+        };
+
+        debug!("was_captured_by_trait: target={:?} queue={:?}", target, queue);
+        while let Some(current_location) = queue.pop() {
+            debug!("was_captured_by_trait: target={:?}", target);
+            let block = &self.mir[current_location.block];
+            // We need to check the current location to find out if it is a terminator.
+            let is_terminator = current_location.statement_index == block.statements.len();
+            if !is_terminator {
+                let stmt = &block.statements[current_location.statement_index];
+                debug!("was_captured_by_trait_object: stmt={:?}", stmt);
+
+                // The only kind of statement that we care about is assignments...
+                if let StatementKind::Assign(
+                    place,
+                    box rvalue,
+                ) = &stmt.kind {
+                    let into = match place {
+                        Place::Local(into) => into,
+                        Place::Projection(box Projection {
+                            base: Place::Local(into),
+                            elem: ProjectionElem::Deref,
+                        }) => into,
+                        _ =>  {
+                            // Continue at the next location.
+                            queue.push(current_location.successor_within_block());
+                            continue;
+                        },
+                    };
+
+                    match rvalue {
+                        // If we see a use, we should check whether it is our data, and if so
+                        // update the place that we're looking for to that new place.
+                        Rvalue::Use(operand) => match operand {
+                            Operand::Copy(Place::Local(from)) |
+                            Operand::Move(Place::Local(from)) if *from == target => {
+                                target = *into;
+                            },
+                            _ => {},
+                        },
+                        // If we see a unsized cast, then if it is our data we should check
+                        // whether it is being cast to a trait object.
+                        Rvalue::Cast(CastKind::Unsize, operand, ty) => match operand {
+                            Operand::Copy(Place::Local(from)) |
+                            Operand::Move(Place::Local(from)) if *from == target => {
+                                debug!("was_captured_by_trait_object: ty={:?}", ty);
+                                // Check the type for a trait object.
+                                match ty.sty {
+                                    // `&dyn Trait`
+                                    ty::TyKind::Ref(_, ty, _) if ty.is_trait() => return true,
+                                    // `Box<dyn Trait>`
+                                    _ if ty.is_box() && ty.boxed_ty().is_trait() =>
+                                        return true,
+                                    // `dyn Trait`
+                                    _ if ty.is_trait() => return true,
+                                    // Anything else.
+                                    _ => return false,
+                                }
+                            },
+                            _ => return false,
+                        },
+                        _ => {},
+                    }
+                }
+
+                // Continue at the next location.
+                queue.push(current_location.successor_within_block());
+            } else {
+                // The only thing we need to do for terminators is progress to the next block.
+                let terminator = block.terminator();
+                debug!("was_captured_by_trait_object: terminator={:?}", terminator);
+
+                match &terminator.kind {
+                    TerminatorKind::Call {
+                        destination: Some((Place::Local(dest), block)),
+                        args,
+                        ..
+                    } => {
+                        debug!(
+                            "was_captured_by_trait_object: target={:?} dest={:?} args={:?}",
+                            target, dest, args
+                        );
+                        // Check if one of the arguments to this function is the target place.
+                        let found_target = args.iter().any(|arg| {
+                            if let Operand::Move(Place::Local(potential)) = arg {
+                                *potential == target
+                            } else {
+                                false
+                            }
+                        });
+
+                        // If it is, follow this to the next block and update the target.
+                        if found_target {
+                            target = *dest;
+                            queue.push(block.start_location());
+                        }
+                    },
+                    _ => {},
+                }
+            }
+
+            debug!("was_captured_by_trait: queue={:?}", queue);
+        }
+
+        // We didn't find anything and ran out of locations to check.
+        false
     }
 }
