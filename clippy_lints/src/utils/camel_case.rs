@@ -10,7 +10,7 @@
 
 /// Return the index of the character after the first camel-case component of
 /// `s`.
-pub fn camel_case_until(s: &str) -> usize {
+pub fn until(s: &str) -> usize {
     let mut iter = s.char_indices();
     if let Some((_, first)) = iter.next() {
         if !first.is_uppercase() {
@@ -43,7 +43,7 @@ pub fn camel_case_until(s: &str) -> usize {
 }
 
 /// Return index of the last camel-case component of `s`.
-pub fn camel_case_from(s: &str) -> usize {
+pub fn from(s: &str) -> usize {
     let mut iter = s.char_indices().rev();
     if let Some((_, first)) = iter.next() {
         if !first.is_lowercase() {
@@ -73,52 +73,52 @@ pub fn camel_case_from(s: &str) -> usize {
 
 #[cfg(test)]
 mod test {
-    use super::{camel_case_from, camel_case_until};
+    use super::{from, until};
 
     #[test]
     fn from_full() {
-        assert_eq!(camel_case_from("AbcDef"), 0);
-        assert_eq!(camel_case_from("Abc"), 0);
+        assert_eq!(from("AbcDef"), 0);
+        assert_eq!(from("Abc"), 0);
     }
 
     #[test]
     fn from_partial() {
-        assert_eq!(camel_case_from("abcDef"), 3);
-        assert_eq!(camel_case_from("aDbc"), 1);
+        assert_eq!(from("abcDef"), 3);
+        assert_eq!(from("aDbc"), 1);
     }
 
     #[test]
     fn from_not() {
-        assert_eq!(camel_case_from("AbcDef_"), 7);
-        assert_eq!(camel_case_from("AbcDD"), 5);
+        assert_eq!(from("AbcDef_"), 7);
+        assert_eq!(from("AbcDD"), 5);
     }
 
     #[test]
     fn from_caps() {
-        assert_eq!(camel_case_from("ABCD"), 4);
+        assert_eq!(from("ABCD"), 4);
     }
 
     #[test]
     fn until_full() {
-        assert_eq!(camel_case_until("AbcDef"), 6);
-        assert_eq!(camel_case_until("Abc"), 3);
+        assert_eq!(until("AbcDef"), 6);
+        assert_eq!(until("Abc"), 3);
     }
 
     #[test]
     fn until_not() {
-        assert_eq!(camel_case_until("abcDef"), 0);
-        assert_eq!(camel_case_until("aDbc"), 0);
+        assert_eq!(until("abcDef"), 0);
+        assert_eq!(until("aDbc"), 0);
     }
 
     #[test]
     fn until_partial() {
-        assert_eq!(camel_case_until("AbcDef_"), 6);
-        assert_eq!(camel_case_until("CallTypeC"), 8);
-        assert_eq!(camel_case_until("AbcDD"), 3);
+        assert_eq!(until("AbcDef_"), 6);
+        assert_eq!(until("CallTypeC"), 8);
+        assert_eq!(until("AbcDD"), 3);
     }
 
     #[test]
     fn until_caps() {
-        assert_eq!(camel_case_until("ABCD"), 0);
+        assert_eq!(until("ABCD"), 0);
     }
 }

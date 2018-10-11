@@ -16,7 +16,7 @@ use crate::syntax::ast::*;
 use crate::syntax::source_map::Span;
 use crate::syntax::symbol::LocalInternedString;
 use crate::utils::{span_help_and_lint, span_lint};
-use crate::utils::{camel_case_from, camel_case_until, in_macro};
+use crate::utils::{camel_case, in_macro};
 
 /// **What it does:** Detects enumeration variants that are prefixed or suffixed
 /// by the same characters.
@@ -184,19 +184,19 @@ fn check_variant(
         }
     }
     let first = var2str(&def.variants[0]);
-    let mut pre = &first[..camel_case_until(&*first)];
-    let mut post = &first[camel_case_from(&*first)..];
+    let mut pre = &first[..camel_case::until(&*first)];
+    let mut post = &first[camel_case::from(&*first)..];
     for var in &def.variants {
         let name = var2str(var);
 
         let pre_match = partial_match(pre, &name);
         pre = &pre[..pre_match];
-        let pre_camel = camel_case_until(pre);
+        let pre_camel = camel_case::until(pre);
         pre = &pre[..pre_camel];
         while let Some((next, last)) = name[pre.len()..].chars().zip(pre.chars().rev()).next() {
             if next.is_lowercase() {
                 let last = pre.len() - last.len_utf8();
-                let last_camel = camel_case_until(&pre[..last]);
+                let last_camel = camel_case::until(&pre[..last]);
                 pre = &pre[..last_camel];
             } else {
                 break;
@@ -206,7 +206,7 @@ fn check_variant(
         let post_match = partial_rmatch(post, &name);
         let post_end = post.len() - post_match;
         post = &post[post_end..];
-        let post_camel = camel_case_from(post);
+        let post_camel = camel_case::from(post);
         post = &post[post_camel..];
     }
     let (what, value) = match (pre.is_empty(), post.is_empty()) {

@@ -33,8 +33,7 @@ use crate::syntax::source_map::{Span, DUMMY_SP};
 use crate::syntax::errors::DiagnosticBuilder;
 use crate::syntax::symbol::keywords;
 
-mod camel_case;
-pub use self::camel_case::{camel_case_from, camel_case_until};
+pub mod camel_case;
 
 pub mod comparisons;
 pub mod conf;

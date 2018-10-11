@@ -40,6 +40,7 @@ declare_clippy_lint! {
     "unnecessary double comparisons that can be simplified"
 }
 
+#[allow(clippy::stutter)]
 pub struct DoubleComparisonPass;
 
 impl LintPass for DoubleComparisonPass {

@@ -44,6 +44,7 @@ declare_clippy_lint!{
     "checks for expressions that could be replaced by the question mark operator"
 }
 
+#[allow(clippy::stutter)]
 #[derive(Copy, Clone)]
 pub struct QuestionMarkPass;
 
