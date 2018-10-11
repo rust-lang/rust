@@ -13,11 +13,10 @@ use rustc::traits::{
     Clauses,
     DomainGoal,
     FromEnv,
-    Goal,
     ProgramClause,
     Environment,
 };
-use rustc::ty::{TyCtxt, Ty};
+use rustc::ty::{self, TyCtxt, Ty};
 use rustc_data_structures::fx::FxHashSet;
 
 struct ClauseVisitor<'set, 'a, 'tcx: 'a> {
@@ -33,8 +32,63 @@ impl ClauseVisitor<'set, 'a, 'tcx> {
         }
     }
 
-    fn visit_ty(&mut self, _ty: Ty<'tcx>) {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) {
+        match ty.sty {
+            ty::Projection(data) => {
+                self.round.extend(
+                    self.tcx.program_clauses_for(data.item_def_id)
+                        .iter()
+                        .cloned()
+                );
+            }
 
+            // forall<'a, T> { `Outlives(T, 'a) :- FromEnv(&'a T)` }
+            ty::Ref(_region, _sub_ty, ..) => {
+                // FIXME: we need bound tys in order to write the above rule
+            }
+
+            ty::Dynamic(..) => {
+                // FIXME: trait object rules are not yet implemented
+            }
+
+            ty::Adt(def, ..) => {
+                self.round.extend(
+                    self.tcx.program_clauses_for(def.did)
+                        .iter()
+                        .cloned()
+                );
+            }
+
+            ty::Foreign(def_id) |
+            ty::FnDef(def_id, ..) |
+            ty::Closure(def_id, ..) |
+            ty::Generator(def_id, ..) |
+            ty::Opaque(def_id, ..) => {
+                self.round.extend(
+                    self.tcx.program_clauses_for(def_id)
+                        .iter()
+                        .cloned()
+                );
+            }
+
+            ty::Bool |
+            ty::Char |
+            ty::Int(..) |
+            ty::Uint(..) |
+            ty::Float(..) |
+            ty::Str |
+            ty::Array(..) |
+            ty::Slice(..) |
+            ty::RawPtr(..) |
+            ty::FnPtr(..) |
+            ty::Never |
+            ty::Tuple(..) |
+            ty::GeneratorWitness(..) |
+            ty::UnnormalizedProjection(..) |
+            ty::Param(..) |
+            ty::Infer(..) |
+            ty::Error => (),
+        }
     }
 
     fn visit_from_env(&mut self, from_env: FromEnv<'tcx>) {
@@ -52,37 +106,20 @@ impl ClauseVisitor<'set, 'a, 'tcx> {
     }
 
     fn visit_domain_goal(&mut self, domain_goal: DomainGoal<'tcx>) {
+        // The only domain goals we can find in an environment are:
+        // * `DomainGoal::Holds(..)`
+        // * `DomainGoal::FromEnv(..)`
+        // The former do not lead to any implied bounds. So we only need
+        // to visit the latter.
         if let DomainGoal::FromEnv(from_env) = domain_goal {
             self.visit_from_env(from_env);
         }
     }
 
-    fn visit_goal(&mut self, goal: Goal<'tcx>) {
-        match goal {
-            Goal::Implies(clauses, goal) => {
-                for clause in clauses {
-                    self.visit_clause(*clause);
-                }
-                self.visit_goal(*goal);
-            }
-
-            Goal::And(goal1, goal2) => {
-                self.visit_goal(*goal1);
-                self.visit_goal(*goal2);
-            }
-
-            Goal::Not(goal) => self.visit_goal(*goal),
-            Goal::DomainGoal(domain_goal) => self.visit_domain_goal(domain_goal),
-            Goal::Quantified(_, goal) => self.visit_goal(**goal.skip_binder()),
-            Goal::CannotProve => (),
-        }
-    }
-
     fn visit_program_clause(&mut self, clause: ProgramClause<'tcx>) {
         self.visit_domain_goal(clause.goal);
-        for goal in clause.hypotheses {
-            self.visit_goal(*goal);
-        }
+        // No need to visit `clause.hypotheses`: they are always of the form
+        // `FromEnv(...)` and were visited at a previous round.
     }
 
     fn visit_clause(&mut self, clause: Clause<'tcx>) {
@@ -102,8 +139,8 @@ crate fn program_clauses_for_env<'a, 'tcx>(
     let mut last_round = FxHashSet();
     {
         let mut visitor = ClauseVisitor::new(tcx, &mut last_round);
-        for clause in environment.clauses {
-            visitor.visit_clause(*clause);
+        for &clause in environment.clauses {
+            visitor.visit_clause(clause);
         }
     }
 
