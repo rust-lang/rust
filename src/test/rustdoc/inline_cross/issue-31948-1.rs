@@ -22,13 +22,13 @@ extern crate rustdoc_nonreachable_impls;
 pub use rustdoc_nonreachable_impls::hidden::Wobble;
 
 // @has issue_31948_1/trait.Bark.html
-// FIXME(33025): has - '//code' 'for Foo'
+// @has - '//code' 'for Foo'
 // @has - '//code' 'for Wobble'
 // @!has - '//code' 'for Wibble'
 pub use rustdoc_nonreachable_impls::Bark;
 
 // @has issue_31948_1/trait.Woof.html
-// FIXME(33025): has - '//code' 'for Foo'
+// @has - '//code' 'for Foo'
 // @has - '//code' 'for Wobble'
 // @!has - '//code' 'for Wibble'
 pub use rustdoc_nonreachable_impls::Woof;
