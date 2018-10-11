@@ -2299,7 +2299,11 @@ impl<'a> LoweringContext<'a> {
                 self.lower_trait_bound_modifier(modifier),
             ),
             GenericBound::Outlives(ref lifetime) => {
-                hir::GenericBound::Outlives(self.lower_lifetime(lifetime))
+                // We don't want to accept `'a: '_`:
+                self.with_anonymous_lifetime_mode(
+                    AnonymousLifetimeMode::PassThrough,
+                    |this| hir::GenericBound::Outlives(this.lower_lifetime(lifetime)),
+                )
             }
         }
     }
