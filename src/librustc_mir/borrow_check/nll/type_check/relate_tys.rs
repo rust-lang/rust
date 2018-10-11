@@ -16,7 +16,7 @@ use rustc::mir::{ConstraintCategory, UserTypeAnnotation};
 use rustc::traits::query::Fallible;
 use rustc::ty::relate::TypeRelation;
 use rustc::ty::subst::{Subst, UserSelfTy, UserSubsts};
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, TypeFoldable};
 use syntax_pos::DUMMY_SP;
 
 /// Adds sufficient constraints to ensure that `a <: b`.
@@ -109,6 +109,18 @@ pub(super) fn relate_type_and_user_type<'tcx>(
             {
                 let impl_self_ty = infcx.tcx.type_of(impl_def_id);
                 let impl_self_ty = impl_self_ty.subst(infcx.tcx, &substs);
+
+                // There may be type variables in `substs` and hence
+                // in `impl_self_ty`, but they should all have been
+                // resolved to some fixed value during the first call
+                // to `relate`, above. Therefore, if we use
+                // `resolve_type_vars_if_possible` we should get to
+                // something without type variables. This is important
+                // because the `b` type in `relate_with_variance`
+                // below is not permitted to have inference variables.
+                let impl_self_ty = infcx.resolve_type_vars_if_possible(&impl_self_ty);
+                assert!(!impl_self_ty.has_infer_types());
+
                 type_relating.relate_with_variance(
                     ty::Variance::Invariant,
                     &self_ty,
