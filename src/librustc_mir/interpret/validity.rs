@@ -559,17 +559,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         match layout.ty.sty {
             // generators and closures.
             ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
-                if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
-                    if let Some(freevar) = self.tcx.with_freevars(
-                        node_id,
-                        |fv| fv.get(field).map(|field| *field))
-                    {
-                        return PathElem::ClosureVar(self.tcx.hir.name(freevar.var_id()));
-                    }
+                if let Some(upvar) = self.tcx.optimized_mir(def_id).upvar_decls.get(field) {
+                    PathElem::ClosureVar(upvar.debug_name)
+                } else {
+                    // Sometimes the index is beyond the number of freevars (seen
+                    // for a generator).
+                    PathElem::ClosureVar(Symbol::intern(&field.to_string()))
                 }
-                // The closure is not local, or the freevars don't match up (seen for a generator!),
-                // so we cannot get the name.
-                PathElem::ClosureVar(Symbol::intern(&field.to_string()))
             }
 
             // tuples
