@@ -50,11 +50,12 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     main_id: DefId,
     start_wrapper: Option<DefId>,
+    validate: bool,
 ) -> EvalResult<'tcx, EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>> {
     let mut ecx = EvalContext::new(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
-        Default::default(),
+        Evaluator::new(validate),
         Default::default(),
     );
 
@@ -145,8 +146,9 @@ pub fn eval_main<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     main_id: DefId,
     start_wrapper: Option<DefId>,
+    validate: bool,
 ) {
-    let mut ecx = create_ecx(tcx, main_id, start_wrapper).expect("Couldn't create ecx");
+    let mut ecx = create_ecx(tcx, main_id, start_wrapper, validate).expect("Couldn't create ecx");
 
     let res: EvalResult = (|| {
         ecx.run()?;
@@ -221,7 +223,7 @@ impl Into<MemoryKind<MiriMemoryKind>> for MiriMemoryKind {
 }
 
 
-#[derive(Clone, Default, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Evaluator<'tcx> {
     /// Environment variables set by `setenv`
     /// Miri does not expose env vars from the host to the emulated program
@@ -229,6 +231,19 @@ pub struct Evaluator<'tcx> {
 
     /// TLS state
     pub(crate) tls: TlsData<'tcx>,
+
+    /// Whether to enforce the validity invariant
+    pub(crate) validate: bool,
+}
+
+impl<'tcx> Evaluator<'tcx> {
+    fn new(validate: bool) -> Self {
+        Evaluator {
+            env_vars: HashMap::default(),
+            tls: TlsData::default(),
+            validate,
+        }
+    }
 }
 
 impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
@@ -241,8 +256,8 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     const STATIC_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::MutStatic);
 
     #[inline(always)]
-    fn enforce_validity(_ecx: &EvalContext<'a, 'mir, 'tcx, Self>) -> bool {
-        false // this is still WIP
+    fn enforce_validity(ecx: &EvalContext<'a, 'mir, 'tcx, Self>) -> bool {
+        ecx.machine.validate
     }
 
     /// Returns Ok() when the function was handled, fail otherwise
