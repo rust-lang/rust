@@ -239,7 +239,11 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     type MemoryMap = MonoHashMap<AllocId, (MemoryKind<MiriMemoryKind>, Allocation<()>)>;
 
     const STATIC_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::MutStatic);
-    const ENFORCE_VALIDITY: bool = false; // this is still WIP
+
+    #[inline(always)]
+    fn enforce_validity(_ecx: &EvalContext<'a, 'mir, 'tcx, Self>) -> bool {
+        false // this is still WIP
+    }
 
     /// Returns Ok() when the function was handled, fail otherwise
     fn find_fn(
