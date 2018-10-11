@@ -977,7 +977,8 @@ impl LintPass for CastPass {
             CAST_LOSSLESS,
             UNNECESSARY_CAST,
             CAST_PTR_ALIGNMENT,
-            FN_TO_NUMERIC_CAST
+            FN_TO_NUMERIC_CAST,
+            FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
         )
     }
 }
