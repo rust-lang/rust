@@ -333,7 +333,10 @@ fn identify_comment(
     let rewritten_first_group =
         if !config.normalize_comments() && has_bare_lines && style.is_block_comment() {
             light_rewrite_block_comment_with_bare_lines(first_group, shape, config)?
-        } else if !config.normalize_comments() && !config.wrap_comments() {
+        } else if !config.normalize_comments()
+            && !config.wrap_comments()
+            && !config.format_doc_comments()
+        {
             light_rewrite_comment(first_group, shape.indent, config, is_doc_comment)?
         } else {
             rewrite_comment_inner(
@@ -593,7 +596,7 @@ fn rewrite_comment_inner(
                     _ if code_block_buffer.is_empty() => String::new(),
                     _ => {
                         let mut config = config.clone();
-                        config.set().wrap_comments(false);
+                        config.set().format_doc_comments(false);
                         match ::format_code_block(&code_block_buffer, &config) {
                             Some(ref s) => trim_custom_comment_prefix(s),
                             None => trim_custom_comment_prefix(&code_block_buffer),
@@ -1622,7 +1625,7 @@ mod test {
 
     #[test]
     #[rustfmt::skip]
-    fn format_comments() {
+    fn format_doc_comments() {
         let mut wrap_normalize_config: ::config::Config = Default::default();
         wrap_normalize_config.set().wrap_comments(true);
         wrap_normalize_config.set().normalize_comments(true);

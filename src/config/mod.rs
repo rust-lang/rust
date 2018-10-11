@@ -46,6 +46,7 @@ create_config! {
 
     // Comments. macros, and strings
     wrap_comments: bool, false, false, "Break comments to fit on the line";
+    format_doc_comments: bool, false, false, "Format doc comments.";
     comment_width: usize, 80, false,
         "Maximum length of comments. No effect unless wrap_comments = true";
     normalize_comments: bool, false, false, "Convert /* */ comments to // comments where possible";

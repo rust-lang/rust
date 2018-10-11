@@ -1979,6 +1979,56 @@ fn main() {
 }
 ```
 
+## `format_doc_comments`
+
+Format doc comments.
+
+- **Default value**: `false`
+- **Possible values**: `true`, `false`
+- **Stable**: No
+
+#### `false` (default):
+
+```rust
+/// Adds one to the number given.
+///
+/// # Examples
+///
+/// ```rust
+/// let five=5;
+///
+/// assert_eq!(
+///     6,
+///     add_one(5)
+/// );
+/// # fn add_one(x: i32) -> i32 {
+/// #     x + 1
+/// # }
+/// ```
+fn add_one(x: i32) -> i32 {
+    x + 1
+}
+```
+
+#### `true`
+
+```rust
+/// Adds one to the number given.
+///
+/// # Examples
+///
+/// ```rust
+/// let five = 5;
+///
+/// assert_eq!(6, add_one(5));
+/// # fn add_one(x: i32) -> i32 {
+/// #     x + 1
+/// # }
+/// ```
+fn add_one(x: i32) -> i32 {
+    x + 1
+}
+```
 
 ## `wrap_comments`
 
