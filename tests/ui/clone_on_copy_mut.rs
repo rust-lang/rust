@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 pub fn dec_read_dec(i: &mut i32) -> i32 {
     *i -= 1;

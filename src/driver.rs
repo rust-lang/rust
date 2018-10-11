@@ -11,7 +11,7 @@
 // error-pattern:yummy
 #![feature(box_syntax)]
 #![feature(rustc_private)]
-#![feature(tool_lints)]
+
 #![feature(try_from)]
 #![allow(unknown_lints, clippy::missing_docs_in_private_items)]
 

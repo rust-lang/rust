@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 
 #![warn(clippy::while_let_loop, clippy::empty_loop, clippy::while_let_on_iterator)]

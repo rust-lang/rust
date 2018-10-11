@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 #[warn(clippy::cast_lossless)]
 #[allow(clippy::no_effect, clippy::unnecessary_operation)]
 fn main() {

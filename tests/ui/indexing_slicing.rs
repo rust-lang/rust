@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 #![feature(plugin)]
 #![warn(clippy::indexing_slicing)]

@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 
 #![warn(clippy::inline_fn_without_body)]

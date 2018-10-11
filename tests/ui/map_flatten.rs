@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::missing_docs_in_private_items)]
 

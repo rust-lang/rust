@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 #![allow(unused_must_use)]
 #![warn(clippy::write_literal)]

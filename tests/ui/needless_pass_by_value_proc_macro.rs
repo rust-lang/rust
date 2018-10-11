@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 #![crate_type = "proc-macro"]
 #![warn(clippy::needless_pass_by_value)]

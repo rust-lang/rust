@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 #![warn(clippy::option_map_unit_fn)]
 #![allow(unused)]

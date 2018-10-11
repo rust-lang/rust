@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 #![allow(unused, dead_code, clippy::needless_lifetimes, clippy::needless_pass_by_value, clippy::trivially_copy_pass_by_ref)]
 #![warn(clippy::extra_unused_lifetimes)]

@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 
 #![warn(clippy::integer_arithmetic, clippy::float_arithmetic)]

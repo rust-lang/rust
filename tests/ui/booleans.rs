@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 #![warn(clippy::nonminimal_bool, clippy::logic_bug)]
 

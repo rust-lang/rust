@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 #![warn(clippy::clone_on_ref_ptr)]
 #![allow(unused)]

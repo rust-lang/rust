@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 #![feature(exclusive_range_pattern)]
 
 

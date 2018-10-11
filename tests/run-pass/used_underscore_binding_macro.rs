@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 #![allow(clippy::useless_attribute)] //issue #2910
 
