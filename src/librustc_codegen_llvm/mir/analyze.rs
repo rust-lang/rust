@@ -151,9 +151,9 @@ impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
     }
 
     fn visit_place(&mut self,
-                    place: &mir::Place<'tcx>,
-                    context: PlaceContext<'tcx>,
-                    location: Location) {
+                   place: &mir::Place<'tcx>,
+                   context: PlaceContext<'tcx>,
+                   location: Location) {
         debug!("visit_place(place={:?}, context={:?})", place, context);
         let cx = self.fx.cx;
 

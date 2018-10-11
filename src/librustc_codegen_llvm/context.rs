@@ -59,8 +59,8 @@ pub struct CodegenCx<'a, 'tcx: 'a> {
     /// Cache instances of monomorphic and polymorphic items
     pub instances: RefCell<FxHashMap<Instance<'tcx>, &'a Value>>,
     /// Cache generated vtables
-    pub vtables: RefCell<FxHashMap<(Ty<'tcx>,
-                                Option<ty::PolyExistentialTraitRef<'tcx>>), &'a Value>>,
+    pub vtables: RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>),
+                                   &'a Value>>,
     /// Cache of constant strings,
     pub const_cstr_cache: RefCell<FxHashMap<LocalInternedString, &'a Value>>,
 
@@ -213,9 +213,9 @@ pub unsafe fn create_module(
 
 impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
     crate fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               codegen_unit: Arc<CodegenUnit<'tcx>>,
-               llvm_module: &'a ::ModuleLlvm)
-               -> CodegenCx<'a, 'tcx> {
+                 codegen_unit: Arc<CodegenUnit<'tcx>>,
+                 llvm_module: &'a ::ModuleLlvm)
+                 -> CodegenCx<'a, 'tcx> {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
         // attributes in LLVM IR as well as native dependencies (in C these
@@ -270,8 +270,8 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
         let dbg_cx = if tcx.sess.opts.debuginfo != DebugInfo::None {
             let dctx = debuginfo::CrateDebugContext::new(llmod);
             debuginfo::metadata::compile_unit_metadata(tcx,
-                                                        &codegen_unit.name().as_str(),
-                                                        &dctx);
+                                                       &codegen_unit.name().as_str(),
+                                                       &dctx);
             Some(dctx)
         } else {
             None
@@ -318,10 +318,8 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         if let Some(v) = self.intrinsics.borrow().get(key).cloned() {
             return v;
         }
-        match declare_intrinsic(self, key) {
-            Some(v) => return v,
-            None => bug!("unknown intrinsic '{}'", key)
-        }
+
+        declare_intrinsic(self, key).unwrap_or_else(|| bug!("unknown intrinsic '{}'", key))
     }
 
     /// Generate a new symbol name with the given prefix. This symbol name must
@@ -465,9 +463,10 @@ impl LayoutOf for &'a CodegenCx<'ll, 'tcx> {
 
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
         self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty))
-            .unwrap_or_else(|e| match e {
-                LayoutError::SizeOverflow(_) => self.sess().fatal(&e.to_string()),
-                _ => bug!("failed to get layout for `{}`: {}", ty, e)
+            .unwrap_or_else(|e| if let LayoutError::SizeOverflow(_) = e {
+                self.sess().fatal(&e.to_string())
+            } else {
+                bug!("failed to get layout for `{}`: {}", ty, e)
             })
     }
 }
@@ -772,5 +771,6 @@ fn declare_intrinsic(cx: &CodegenCx<'ll, '_>, key: &str) -> Option<&'ll Value> {
         ifn!("llvm.dbg.declare", fn(Type::metadata(cx), Type::metadata(cx)) -> void);
         ifn!("llvm.dbg.value", fn(Type::metadata(cx), t_i64, Type::metadata(cx)) -> void);
     }
-    return None;
+
+    None
 }

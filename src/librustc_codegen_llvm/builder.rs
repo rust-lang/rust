@@ -110,10 +110,10 @@ impl Builder<'a, 'll, 'tcx> {
         }
         if self.cx.sess().count_llvm_insns() {
             *self.cx.stats
-                .borrow_mut()
-                .llvm_insns
-                .entry(category.to_string())
-                .or_insert(0) += 1;
+                    .borrow_mut()
+                    .llvm_insns
+                    .entry(category.to_string())
+                    .or_insert(0) += 1;
         }
     }
 
@@ -735,9 +735,9 @@ impl Builder<'a, 'll, 'tcx> {
     }
 
     pub fn inline_asm_call(&self, asm: *const c_char, cons: *const c_char,
-                         inputs: &[&'ll Value], output: &'ll Type,
-                         volatile: bool, alignstack: bool,
-                         dia: AsmDialect) -> Option<&'ll Value> {
+                           inputs: &[&'ll Value], output: &'ll Type,
+                           volatile: bool, alignstack: bool,
+                           dia: AsmDialect) -> Option<&'ll Value> {
         self.count_insn("inlineasm");
 
         let volatile = if volatile { llvm::True }
@@ -1093,7 +1093,7 @@ impl Builder<'a, 'll, 'tcx> {
     ) -> &'ll Value {
         unsafe {
             llvm::LLVMRustBuildAtomicCmpXchg(self.llbuilder, dst, cmp, src,
-                                         order, failure_order, weak)
+                                             order, failure_order, weak)
         }
     }
     pub fn atomic_rmw(
@@ -1194,7 +1194,7 @@ impl Builder<'a, 'll, 'tcx> {
             })
             .collect();
 
-        return Cow::Owned(casted_args);
+        Cow::Owned(casted_args)
     }
 
     pub fn lifetime_start(&self, ptr: &'ll Value, size: Size) {

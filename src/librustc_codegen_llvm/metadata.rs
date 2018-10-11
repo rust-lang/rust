@@ -63,7 +63,7 @@ impl MetadataLoader for LlvmMetadataLoader {
             let of = ObjectFile::new(mb)
                 .map(|of| OwningRef::new(box of))
                 .ok_or_else(|| format!("provided path not an object file: '{}'",
-                                        filename.display()))?;
+                                       filename.display()))?;
             let buf = of.try_map(|of| search_meta_section(of, target, filename))?;
             Ok(rustc_erase_owner!(buf))
         }

@@ -213,8 +213,8 @@ pub fn unsized_info(
                             vtable_ptr.llvm_type(cx))
         }
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}",
-                                     source,
-                                     target),
+                  source,
+                  target),
     }
 }
 
@@ -340,11 +340,11 @@ pub fn cast_shift_expr_rhs(
 }
 
 fn cast_shift_rhs<'ll, F, G>(op: hir::BinOpKind,
-                        lhs: &'ll Value,
-                        rhs: &'ll Value,
-                        trunc: F,
-                        zext: G)
-                        -> &'ll Value
+                             lhs: &'ll Value,
+                             rhs: &'ll Value,
+                             trunc: F,
+                             zext: G)
+                             -> &'ll Value
     where F: FnOnce(&'ll Value, &'ll Type) -> &'ll Value,
           G: FnOnce(&'ll Value, &'ll Type) -> &'ll Value
 {
@@ -363,8 +363,8 @@ fn cast_shift_rhs<'ll, F, G>(op: hir::BinOpKind,
         if lhs_sz < rhs_sz {
             trunc(rhs, lhs_llty)
         } else if lhs_sz > rhs_sz {
-            // FIXME (#1877: If shifting by negative
-            // values becomes not undefined then this is wrong.
+            // FIXME (#1877: If in the future shifting by negative
+            // values is no longer undefined then this is wrong.
             zext(rhs, lhs_llty)
         } else {
             rhs
@@ -495,10 +495,8 @@ pub fn codegen_instance<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, instance: Instance<'
     let sig = common::ty_fn_sig(cx, fn_ty);
     let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
 
-    let lldecl = match cx.instances.borrow().get(&instance) {
-        Some(&val) => val,
-        None => bug!("Instance `{:?}` not already declared", instance)
-    };
+    let lldecl = cx.instances.borrow().get(&instance).cloned().unwrap_or_else(||
+        bug!("Instance `{:?}` not already declared", instance));
 
     cx.stats.borrow_mut().n_closures += 1;
 
@@ -566,8 +564,8 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
         if declare::get_defined_value(cx, "main").is_some() {
             // FIXME: We should be smart and show a better diagnostic here.
             cx.sess().struct_span_err(sp, "entry symbol `main` defined multiple times")
-                      .help("did you use #[no_mangle] on `fn main`? Use #[start] instead")
-                      .emit();
+                     .help("did you use #[no_mangle] on `fn main`? Use #[start] instead")
+                     .emit();
             cx.sess().abort_if_errors();
             bug!();
         }
@@ -736,9 +734,9 @@ fn determine_cgu_reuse<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             rx: mpsc::Receiver<Box<dyn Any + Send>>)
-                             -> OngoingCodegen {
-
+                               rx: mpsc::Receiver<Box<dyn Any + Send>>)
+                               -> OngoingCodegen
+{
     check_for_rustc_errors_attr(tcx);
 
     if let Some(true) = tcx.sess.opts.debugging_opts.thinlto {
@@ -803,8 +801,7 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Run the monomorphization collector and partition the collected items into
     // codegen units.
-    let codegen_units =
-        tcx.collect_and_partition_mono_items(LOCAL_CRATE).1;
+    let codegen_units = tcx.collect_and_partition_mono_items(LOCAL_CRATE).1;
     let codegen_units = (*codegen_units).clone();
 
     // Force all codegen_unit queries so they are already either red or green
@@ -837,12 +834,7 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         .iter()
         .any(|(_, list)| {
             use rustc::middle::dependency_format::Linkage;
-            list.iter().any(|linkage| {
-                match linkage {
-                    Linkage::Dynamic => true,
-                    _ => false,
-                }
-            })
+            list.iter().any(|&linkage| linkage == Linkage::Dynamic)
         });
     let allocator_module = if any_dynamic_crate {
         None
@@ -988,7 +980,7 @@ fn collect_and_partition_mono_items<'a, 'tcx>(
                 if mode_string != "lazy" {
                     let message = format!("Unknown codegen-item collection mode '{}'. \
                                            Falling back to 'lazy' mode.",
-                                           mode_string);
+                                          mode_string);
                     tcx.sess.warn(&message);
                 }
 
@@ -1123,7 +1115,15 @@ impl CrateInfo {
             info.load_wasm_imports(tcx, LOCAL_CRATE);
         }
 
-        for &cnum in tcx.crates().iter() {
+        let crates = tcx.crates();
+
+        let n_crates = crates.len();
+        info.native_libraries.reserve(n_crates);
+        info.crate_name.reserve(n_crates);
+        info.used_crate_source.reserve(n_crates);
+        info.missing_lang_items.reserve(n_crates);
+
+        for &cnum in crates.iter() {
             info.native_libraries.insert(cnum, tcx.native_libraries(cnum));
             info.crate_name.insert(cnum, tcx.crate_name(cnum).to_string());
             info.used_crate_source.insert(cnum, tcx.used_crate_source(cnum));
@@ -1165,11 +1165,12 @@ impl CrateInfo {
     }
 
     fn load_wasm_imports(&mut self, tcx: TyCtxt, cnum: CrateNum) {
-        for (&id, module) in tcx.wasm_import_module_map(cnum).iter() {
+        self.wasm_imports.extend(tcx.wasm_import_module_map(cnum).iter().map(|(&id, module)| {
             let instance = Instance::mono(tcx, id);
             let import_name = tcx.symbol_name(instance);
-            self.wasm_imports.insert(import_name.to_string(), module.clone());
-        }
+
+            (import_name.to_string(), module.clone())
+        }));
     }
 }
 

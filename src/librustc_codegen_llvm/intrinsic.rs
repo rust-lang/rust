@@ -115,8 +115,8 @@ pub fn codegen_intrinsic_call(
     let llval = match name {
         _ if simple.is_some() => {
             bx.call(simple.unwrap(),
-                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                     None)
+                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                    None)
         }
         "unreachable" => {
             return;
@@ -373,7 +373,6 @@ pub fn codegen_intrinsic_call(
                     return;
                 }
             }
-
         },
         "fadd_fast" | "fsub_fast" | "fmul_fast" | "fdiv_fast" | "frem_fast" => {
             let sty = &arg_tys[0].sty;
@@ -540,10 +539,9 @@ pub fn codegen_intrinsic_call(
         }
 
         _ => {
-            let intr = match Intrinsic::find(&name) {
-                Some(intr) => intr,
-                None => bug!("unknown intrinsic '{}'", name),
-            };
+            let intr = Intrinsic::find(&name).unwrap_or_else(||
+                bug!("unknown intrinsic '{}'", name));
+
             fn one<T>(x: Vec<T>) -> T {
                 assert_eq!(x.len(), 1);
                 x.into_iter().next().unwrap()
@@ -822,8 +820,7 @@ fn codegen_msvc_try(
         let i64p = Type::i64(cx).ptr_to();
         let ptr_align = bx.tcx().data_layout.pointer_align;
         let slot = bx.alloca(i64p, "slot", ptr_align);
-        bx.invoke(func, &[data], normal.llbb(), catchswitch.llbb(),
-            None);
+        bx.invoke(func, &[data], normal.llbb(), catchswitch.llbb(), None);
 
         normal.ret(C_i32(cx, 0));
 
@@ -911,8 +908,7 @@ fn codegen_gnu_try(
         // being thrown.  The second value is a "selector" indicating which of
         // the landing pad clauses the exception's type had been matched to.
         // rust_try ignores the selector.
-        let lpad_ty = Type::struct_(cx, &[Type::i8p(cx), Type::i32(cx)],
-                                    false);
+        let lpad_ty = Type::struct_(cx, &[Type::i8p(cx), Type::i32(cx)], false);
         let vals = catch.landing_pad(lpad_ty, bx.cx.eh_personality(), 1);
         catch.add_clause(vals, C_null(Type::i8p(cx)));
         let ptr = catch.extract_value(vals, 0);
@@ -976,7 +972,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
     let output = tcx.types.i32;
     let rust_try = gen_fn(cx, "__rust_try", vec![fn_ty, i8p, i8p], output, codegen);
     cx.rust_try_fn.set(Some(rust_try));
-    return rust_try
+    rust_try
 }
 
 fn span_invalid_monomorphization_error(a: &Session, b: Span, c: &str) {
@@ -1000,11 +996,11 @@ fn generic_simd_intrinsic(
         ($msg: tt, $($fmt: tt)*) => {
             span_invalid_monomorphization_error(
                 bx.sess(), span,
-                &format!(concat!("invalid monomorphization of `{}` intrinsic: ",
-                                 $msg),
+                &format!(concat!("invalid monomorphization of `{}` intrinsic: ", $msg),
                          name, $($fmt)*));
         }
     }
+
     macro_rules! return_error {
         ($($fmt: tt)*) => {
             {
@@ -1021,13 +1017,12 @@ fn generic_simd_intrinsic(
             }
         };
     }
+
     macro_rules! require_simd {
         ($ty: expr, $position: expr) => {
             require!($ty.is_simd(), "expected SIMD {} type, found non-SIMD `{}`", $position, $ty)
         }
     }
-
-
 
     let tcx = bx.tcx();
     let sig = tcx.normalize_erasing_late_bound_regions(
@@ -1075,11 +1070,8 @@ fn generic_simd_intrinsic(
     }
 
     if name.starts_with("simd_shuffle") {
-        let n: usize = match name["simd_shuffle".len()..].parse() {
-            Ok(n) => n,
-            Err(_) => span_bug!(span,
-                                "bad `simd_shuffle` instruction only caught in codegen?")
-        };
+        let n: usize = name["simd_shuffle".len()..].parse().unwrap_or_else(|_|
+            span_bug!(span, "bad `simd_shuffle` instruction only caught in codegen?"));
 
         require_simd!(ret_ty, "return");
 
@@ -1121,8 +1113,8 @@ fn generic_simd_intrinsic(
         };
 
         return Ok(bx.shuffle_vector(args[0].immediate(),
-                                     args[1].immediate(),
-                                     C_vector(&indices)))
+                                    args[1].immediate(),
+                                    C_vector(&indices)))
     }
 
     if name == "simd_insert" {
@@ -1130,8 +1122,8 @@ fn generic_simd_intrinsic(
                  "expected inserted type `{}` (element of input `{}`), found `{}`",
                  in_elem, in_ty, arg_tys[2]);
         return Ok(bx.insert_element(args[0].immediate(),
-                                     args[2].immediate(),
-                                     args[1].immediate()))
+                                    args[2].immediate(),
+                                    args[1].immediate()))
     }
     if name == "simd_extract" {
         require!(ret_ty == in_elem,
@@ -1150,9 +1142,7 @@ fn generic_simd_intrinsic(
         );
         match m_elem_ty.sty {
             ty::Int(_) => {},
-            _ => {
-                return_error!("mask element type is `{}`, expected `i_`", m_elem_ty);
-            }
+            _ => return_error!("mask element type is `{}`, expected `i_`", m_elem_ty)
         }
         // truncate the mask to a vector of i1s
         let i1 = Type::i1(bx.cx);
@@ -1177,8 +1167,7 @@ fn generic_simd_intrinsic(
             ($msg: tt, $($fmt: tt)*) => {
                 span_invalid_monomorphization_error(
                     bx.sess(), span,
-                    &format!(concat!("invalid monomorphization of `{}` intrinsic: ",
-                                     $msg),
+                    &format!(concat!("invalid monomorphization of `{}` intrinsic: ", $msg),
                              name, $($fmt)*));
             }
         }
@@ -1223,63 +1212,53 @@ fn generic_simd_intrinsic(
                         &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                         None);
         unsafe { llvm::LLVMRustSetHasUnsafeAlgebra(c) };
-        return Ok(c);
+        Ok(c)
     }
 
-    if name == "simd_fsqrt" {
-        return simd_simple_float_intrinsic("sqrt", in_elem, in_ty, in_len, bx, span, args);
-    }
-
-    if name == "simd_fsin" {
-        return simd_simple_float_intrinsic("sin", in_elem, in_ty, in_len, bx, span, args);
-    }
-
-    if name == "simd_fcos" {
-        return simd_simple_float_intrinsic("cos", in_elem, in_ty, in_len, bx, span, args);
-    }
-
-    if name == "simd_fabs" {
-        return simd_simple_float_intrinsic("fabs", in_elem, in_ty, in_len, bx, span, args);
-    }
-
-    if name == "simd_floor" {
-        return simd_simple_float_intrinsic("floor", in_elem, in_ty, in_len, bx, span, args);
-    }
-
-    if name == "simd_ceil" {
-        return simd_simple_float_intrinsic("ceil", in_elem, in_ty, in_len, bx, span, args);
-    }
-
-    if name == "simd_fexp" {
-        return simd_simple_float_intrinsic("exp", in_elem, in_ty, in_len, bx, span, args);
-    }
-
-    if name == "simd_fexp2" {
-        return simd_simple_float_intrinsic("exp2", in_elem, in_ty, in_len, bx, span, args);
-    }
-
-    if name == "simd_flog10" {
-        return simd_simple_float_intrinsic("log10", in_elem, in_ty, in_len, bx, span, args);
-    }
-
-    if name == "simd_flog2" {
-        return simd_simple_float_intrinsic("log2", in_elem, in_ty, in_len, bx, span, args);
-    }
-
-    if name == "simd_flog" {
-        return simd_simple_float_intrinsic("log", in_elem, in_ty, in_len, bx, span, args);
-    }
-
-    if name == "simd_fpowi" {
-        return simd_simple_float_intrinsic("powi", in_elem, in_ty, in_len, bx, span, args);
-    }
-
-    if name == "simd_fpow"  {
-        return simd_simple_float_intrinsic("pow", in_elem, in_ty, in_len, bx, span, args);
-    }
-
-    if name == "simd_fma" {
-        return simd_simple_float_intrinsic("fma", in_elem, in_ty, in_len, bx, span, args);
+    match name {
+        "simd_fsqrt" => {
+            return simd_simple_float_intrinsic("sqrt", in_elem, in_ty, in_len, bx, span, args);
+        }
+        "simd_fsin" => {
+            return simd_simple_float_intrinsic("sin", in_elem, in_ty, in_len, bx, span, args);
+        }
+        "simd_fcos" => {
+            return simd_simple_float_intrinsic("cos", in_elem, in_ty, in_len, bx, span, args);
+        }
+        "simd_fabs" => {
+            return simd_simple_float_intrinsic("fabs", in_elem, in_ty, in_len, bx, span, args);
+        }
+        "simd_floor" => {
+            return simd_simple_float_intrinsic("floor", in_elem, in_ty, in_len, bx, span, args);
+        }
+        "simd_ceil" => {
+            return simd_simple_float_intrinsic("ceil", in_elem, in_ty, in_len, bx, span, args);
+        }
+        "simd_fexp" => {
+            return simd_simple_float_intrinsic("exp", in_elem, in_ty, in_len, bx, span, args);
+        }
+        "simd_fexp2" => {
+            return simd_simple_float_intrinsic("exp2", in_elem, in_ty, in_len, bx, span, args);
+        }
+        "simd_flog10" => {
+            return simd_simple_float_intrinsic("log10", in_elem, in_ty, in_len, bx, span, args);
+        }
+        "simd_flog2" => {
+            return simd_simple_float_intrinsic("log2", in_elem, in_ty, in_len, bx, span, args);
+        }
+        "simd_flog" => {
+            return simd_simple_float_intrinsic("log", in_elem, in_ty, in_len, bx, span, args);
+        }
+        "simd_fpowi" => {
+            return simd_simple_float_intrinsic("powi", in_elem, in_ty, in_len, bx, span, args);
+        }
+        "simd_fpow" => {
+            return simd_simple_float_intrinsic("pow", in_elem, in_ty, in_len, bx, span, args);
+        }
+        "simd_fma" => {
+            return simd_simple_float_intrinsic("fma", in_elem, in_ty, in_len, bx, span, args);
+        }
+        _ => { /* fallthrough */ }
     }
 
     // FIXME: use:
@@ -1312,7 +1291,7 @@ fn generic_simd_intrinsic(
     }
 
 
-    if name == "simd_gather"  {
+    if name == "simd_gather" {
         // simd_gather(values: <N x T>, pointers: <N x *_ T>,
         //             mask: <N x i{M}>) -> <N x T>
         // * N: number of elements in the input vectors
@@ -1360,7 +1339,7 @@ fn generic_simd_intrinsic(
         // to the element type of the first argument
         let (pointer_count, underlying_ty) = match arg_tys[1].simd_type(tcx).sty {
             ty::RawPtr(p) if p.ty == in_elem => (ptr_count(arg_tys[1].simd_type(tcx)),
-                                                   non_ptr(arg_tys[1].simd_type(tcx))),
+                                                 non_ptr(arg_tys[1].simd_type(tcx))),
             _ => {
                 require!(false, "expected element type `{}` of second argument `{}` \
                                  to be a pointer to the element type `{}` of the first \
@@ -1371,7 +1350,7 @@ fn generic_simd_intrinsic(
             }
         };
         assert!(pointer_count > 0);
-        assert!(pointer_count - 1 == ptr_count(arg_tys[0].simd_type(tcx)));
+        assert_eq!(pointer_count - 1, ptr_count(arg_tys[0].simd_type(tcx)));
         assert_eq!(underlying_ty, non_ptr(arg_tys[0].simd_type(tcx)));
 
         // The element type of the third argument must be a signed integer type of any width:
@@ -1414,7 +1393,7 @@ fn generic_simd_intrinsic(
         return Ok(v);
     }
 
-    if name == "simd_scatter"  {
+    if name == "simd_scatter" {
         // simd_scatter(values: <N x T>, pointers: <N x *mut T>,
         //             mask: <N x i{M}>) -> ()
         // * N: number of elements in the input vectors
@@ -1468,7 +1447,7 @@ fn generic_simd_intrinsic(
             }
         };
         assert!(pointer_count > 0);
-        assert!(pointer_count - 1 == ptr_count(arg_tys[0].simd_type(tcx)));
+        assert_eq!(pointer_count - 1, ptr_count(arg_tys[0].simd_type(tcx)));
         assert_eq!(underlying_ty, non_ptr(arg_tys[0].simd_type(tcx)));
 
         // The element type of the third argument must be a signed integer type of any width:
@@ -1570,7 +1549,6 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                                     )
                                 }
                             }
-
                         };
                         Ok(bx.$float_reduce(acc, args[0].immediate()))
                     }
@@ -1750,9 +1728,9 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                     _ => {},
                 }
                 require!(false,
-                            "unsupported operation on `{}` with element `{}`",
-                            in_ty,
-                            in_elem)
+                         "unsupported operation on `{}` with element `{}`",
+                         in_ty,
+                         in_elem)
             })*
         }
     }

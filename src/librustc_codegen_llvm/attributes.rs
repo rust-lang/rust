@@ -94,9 +94,8 @@ pub fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     // Currently stack probes seem somewhat incompatible with the address
     // sanitizer. With asan we're already protected from stack overflow anyway
     // so we don't really need stack probes regardless.
-    match cx.sess().opts.debugging_opts.sanitizer {
-        Some(Sanitizer::Address) => return,
-        _ => {}
+    if let Some(Sanitizer::Address) = cx.sess().opts.debugging_opts.sanitizer {
+        return
     }
 
     // probestack doesn't play nice either with pgo-gen.
@@ -280,12 +279,14 @@ pub fn provide_extern(providers: &mut Providers) {
         // `NativeLibrary` internally contains information about
         // `#[link(wasm_import_module = "...")]` for example.
         let native_libs = tcx.native_libraries(cnum);
-        let mut def_id_to_native_lib = FxHashMap();
-        for lib in native_libs.iter() {
+
+        let def_id_to_native_lib = native_libs.iter().filter_map(|lib|
             if let Some(id) = lib.foreign_module {
-                def_id_to_native_lib.insert(id, lib);
+                Some((id, lib))
+            } else {
+                None
             }
-        }
+        ).collect::<FxHashMap<_, _>>();
 
         let mut ret = FxHashMap();
         for lib in tcx.foreign_modules(cnum).iter() {
@@ -296,10 +297,10 @@ pub fn provide_extern(providers: &mut Providers) {
                 Some(s) => s,
                 None => continue,
             };
-            for id in lib.foreign_items.iter() {
+            ret.extend(lib.foreign_items.iter().map(|id| {
                 assert_eq!(id.krate, cnum);
-                ret.insert(*id, module.to_string());
-            }
+                (*id, module.to_string())
+            }));
         }
 
         Lrc::new(ret)

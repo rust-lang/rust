@@ -49,9 +49,9 @@ impl FunctionCx<'a, 'll, 'tcx> {
     }
 
     fn codegen_terminator(&mut self,
-                        mut bx: Builder<'a, 'll, 'tcx>,
-                        bb: mir::BasicBlock,
-                        terminator: &mir::Terminator<'tcx>)
+                          mut bx: Builder<'a, 'll, 'tcx>,
+                          bb: mir::BasicBlock,
+                          terminator: &mir::Terminator<'tcx>)
     {
         debug!("codegen_terminator: {:?}", terminator);
 

@@ -150,7 +150,7 @@ impl LlvmType for CastTarget {
         // Create list of fields in the main structure
         let mut args: Vec<_> =
             self.prefix.iter().flat_map(|option_kind| option_kind.map(
-                    |kind| Reg { kind: kind, size: self.prefix_chunk }.llvm_type(cx)))
+                |kind| Reg { kind: kind, size: self.prefix_chunk }.llvm_type(cx)))
             .chain((0..rest_count).map(|_| rest_ll_unit))
             .collect();
 
@@ -259,8 +259,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
 }
 
 pub trait FnTypeExt<'tcx> {
-    fn of_instance(cx: &CodegenCx<'ll, 'tcx>, instance: &ty::Instance<'tcx>)
-                   -> Self;
+    fn of_instance(cx: &CodegenCx<'ll, 'tcx>, instance: &ty::Instance<'tcx>) -> Self;
     fn new(cx: &CodegenCx<'ll, 'tcx>,
            sig: ty::FnSig<'tcx>,
            extra_args: &[Ty<'tcx>]) -> Self;
@@ -283,8 +282,7 @@ pub trait FnTypeExt<'tcx> {
 }
 
 impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
-    fn of_instance(cx: &CodegenCx<'ll, 'tcx>, instance: &ty::Instance<'tcx>)
-                       -> Self {
+    fn of_instance(cx: &CodegenCx<'ll, 'tcx>, instance: &ty::Instance<'tcx>) -> Self {
         let fn_ty = instance.ty(cx.tcx);
         let sig = ty_fn_sig(cx, fn_ty);
         let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
@@ -292,16 +290,16 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
     }
 
     fn new(cx: &CodegenCx<'ll, 'tcx>,
-               sig: ty::FnSig<'tcx>,
-               extra_args: &[Ty<'tcx>]) -> Self {
+           sig: ty::FnSig<'tcx>,
+           extra_args: &[Ty<'tcx>]) -> Self {
         FnType::new_internal(cx, sig, extra_args, |ty, _| {
             ArgType::new(cx.layout_of(ty))
         })
     }
 
     fn new_vtable(cx: &CodegenCx<'ll, 'tcx>,
-                      sig: ty::FnSig<'tcx>,
-                      extra_args: &[Ty<'tcx>]) -> Self {
+                  sig: ty::FnSig<'tcx>,
+                  extra_args: &[Ty<'tcx>]) -> Self {
         FnType::new_internal(cx, sig, extra_args, |ty, arg_idx| {
             let mut layout = cx.layout_of(ty);
             // Don't pass the vtable, it's not an argument of the virtual fn.
@@ -338,7 +336,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             RustIntrinsic | PlatformIntrinsic |
             Rust | RustCall => Conv::C,
 
-            // It's the ABI's job to select this, not us.
+            // It's the ABI's job to select this, not ours.
             System => bug!("system abi should be selected elsewhere"),
 
             Stdcall => Conv::X86Stdcall,
@@ -697,14 +695,13 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             // If the value is a boolean, the range is 0..2 and that ultimately
             // become 0..0 when the type becomes i1, which would be rejected
             // by the LLVM verifier.
-            match scalar.value {
-                layout::Int(..) if !scalar.is_bool() => {
+            if let layout::Int(..) = scalar.value {
+                if !scalar.is_bool() {
                     let range = scalar.valid_range_exclusive(bx.cx);
                     if range.start != range.end {
                         bx.range_metadata(callsite, range);
                     }
                 }
-                _ => {}
             }
         }
         for arg in &self.args {
