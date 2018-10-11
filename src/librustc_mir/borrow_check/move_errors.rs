@@ -68,6 +68,7 @@ enum GroupedMoveError<'tcx> {
 enum BorrowedContentSource {
     Arc,
     Rc,
+    DerefRawPointer,
     Other,
 }
 
@@ -76,6 +77,7 @@ impl Display for BorrowedContentSource {
         match *self {
             BorrowedContentSource::Arc => write!(f, "an `Arc`"),
             BorrowedContentSource::Rc => write!(f, "an `Rc`"),
+            BorrowedContentSource::DerefRawPointer => write!(f, "dereference of raw pointer"),
             BorrowedContentSource::Other => write!(f, "borrowed content"),
         }
     }
@@ -279,6 +281,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                             self.prefixes(&original_path, PrefixSet::All)
                             .any(|p| p.is_upvar_field_projection(self.mir, &self.infcx.tcx)
                                  .is_some());
+                        debug!("report: ty={:?}", ty);
                         match ty.sty {
                             ty::Array(..) | ty::Slice(..) =>
                                 self.infcx.tcx.cannot_move_out_of_interior_noncopy(
@@ -579,6 +582,18 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         }
                     }
                 }
+            }
+        }
+
+        // If we didn't find an `Arc` or an `Rc`, then check specifically for
+        // a dereference of a place that has the type of a raw pointer.
+        // We can't use `place.ty(..).to_ty(..)` here as that strips away the raw pointer.
+        if let Place::Projection(box Projection {
+            base,
+            elem: ProjectionElem::Deref,
+        }) = place {
+            if base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx).is_unsafe_ptr() {
+                return BorrowedContentSource::DerefRawPointer;
             }
         }
 
