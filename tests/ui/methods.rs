@@ -14,7 +14,7 @@
 #![warn(clippy::all, clippy::pedantic, clippy::option_unwrap_used)]
 #![allow(clippy::blacklisted_name, unused, clippy::print_stdout, clippy::non_ascii_literal, clippy::new_without_default,
     clippy::new_without_default_derive, clippy::missing_docs_in_private_items, clippy::needless_pass_by_value,
-    clippy::default_trait_access, clippy::use_self)]
+    clippy::default_trait_access, clippy::use_self, clippy::useless_format)]
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -403,6 +403,9 @@ fn expect_fun_call() {
     //Issue #2979 - this should not lint
     let msg = "bar";
     Some("foo").expect(msg);
+
+    Some("foo").expect({ &format!("error") });
+    Some("foo").expect(format!("error").as_ref());
 }
 
 /// Checks implementation of `ITER_NTH` lint
