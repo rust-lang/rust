@@ -99,6 +99,49 @@ impl<'a> Lifetime<'a> {
     }
 }
 
+impl<'a> Comment<'a> {
+    pub fn text(&self) -> SmolStr {
+        self.syntax().leaf_text().unwrap().clone()
+    }
+
+    pub fn flavor(&self) -> CommentFlavor {
+        let text = self.text();
+        if text.starts_with("///") {
+            CommentFlavor::Doc
+        } else if text.starts_with("//!") {
+            CommentFlavor::ModuleDoc
+        } else if text.starts_with("//") {
+            CommentFlavor::Line
+        } else {
+            CommentFlavor::Multiline
+        }
+    }
+
+    pub fn prefix(&self) -> &'static str {
+        self.flavor().prefix()
+    }
+}
+
+#[derive(Debug)]
+pub enum CommentFlavor {
+    Line,
+    Doc,
+    ModuleDoc,
+    Multiline
+}
+
+impl CommentFlavor {
+    pub fn prefix(&self) -> &'static str {
+        use self::CommentFlavor::*;
+        match *self {
+            Line => "//",
+            Doc => "///",
+            ModuleDoc => "//!",
+            Multiline => "/*"
+        }
+    }
+}
+
 impl<'a> Name<'a> {
     pub fn text(&self) -> SmolStr {
         let ident = self.syntax().first_child()

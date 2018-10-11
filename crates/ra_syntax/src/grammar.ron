@@ -537,5 +537,6 @@ Grammar(
         "PathSegment": (
             options: [ "NameRef" ]
         ),
+        "Comment": (),
     },
 )

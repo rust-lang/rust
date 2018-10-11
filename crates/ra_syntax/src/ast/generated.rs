@@ -227,6 +227,24 @@ impl<'a> AstNode<'a> for CastExpr<'a> {
 
 impl<'a> CastExpr<'a> {}
 
+// Comment
+#[derive(Debug, Clone, Copy)]
+pub struct Comment<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for Comment<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            COMMENT => Some(Comment { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> Comment<'a> {}
+
 // Condition
 #[derive(Debug, Clone, Copy)]
 pub struct Condition<'a> {

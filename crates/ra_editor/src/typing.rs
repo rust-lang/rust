@@ -58,14 +58,19 @@ pub fn join_lines(file: &File, range: TextRange) -> LocalEdit {
 }
 
 pub fn on_enter(file: &File, offset: TextUnit) -> Option<LocalEdit> {
-    let comment = find_leaf_at_offset(file.syntax(), offset).left_biased().filter(|it| it.kind() == COMMENT)?;
-    let prefix = comment_preffix(comment)?;
-    if offset < comment.range().start() + TextUnit::of_str(prefix) {
+    let comment = find_leaf_at_offset(file.syntax(), offset).left_biased().and_then(|it| ast::Comment::cast(it))?;
+
+    if let ast::CommentFlavor::Multiline = comment.flavor() {
         return None;
     }
 
-    let indent = node_indent(file, comment)?;
-    let inserted = format!("\n{}{}", indent, prefix);
+    let prefix = comment.prefix();
+    if offset < comment.syntax().range().start() + TextUnit::of_str(prefix) + TextUnit::from(1) {
+        return None;
+    }
+
+    let indent = node_indent(file, comment.syntax())?;
+    let inserted = format!("\n{}{} ", indent, prefix);
     let cursor_position = offset + TextUnit::of_str(&inserted);
     let mut edit = EditBuilder::new();
     edit.insert(offset, inserted);
@@ -73,20 +78,6 @@ pub fn on_enter(file: &File, offset: TextUnit) -> Option<LocalEdit> {
         edit: edit.finish(),
         cursor_position: Some(cursor_position),
     })
-}
-
-fn comment_preffix(comment: SyntaxNodeRef) -> Option<&'static str> {
-    let text = comment.leaf_text().unwrap();
-    let res = if text.starts_with("///") {
-        "/// "
-    } else if text.starts_with("//!") {
-        "//! "
-    } else if text.starts_with("//") {
-        "// "
-    } else {
-        return None;
-    };
-    Some(res)
 }
 
 fn node_indent<'a>(file: &'a File, node: SyntaxNodeRef) -> Option<&'a str> {
@@ -166,31 +157,27 @@ fn remove_newline(
                 // Removes: comma, newline (incl. surrounding whitespace)
                 // Adds: a single whitespace
                 edit.replace(range, " ".to_string());
-            } else if prev.kind() == COMMENT && next.kind() == COMMENT {
+            } else if let (Some(_), Some(next)) = (ast::Comment::cast(prev), ast::Comment::cast(next)) {
                 // Removes: newline (incl. surrounding whitespace), start of the next comment
-
-                // FIXME: I guess it is safe to unwrap here? A comment always has text, right?
-                let comment_text = next.leaf_text().unwrap().as_str();
-                let comment_start_length = comment_start_length(comment_text);
-
+                let comment_text = next.text();
                 if let Some(newline_pos) = comment_text.find('\n') {
                     // Special case for multi-line c-like comments: join the comment content but
                     // keep the leading `/*`
 
-                    let newline_offset = next.range().start()
+                    let newline_offset = next.syntax().range().start()
                                         + TextUnit::from(newline_pos as u32)
                                         + TextUnit::of_char('\n');
 
                     edit.insert(newline_offset, "/*".to_string());
                     edit.delete(TextRange::from_to(
                         node.range().start(),
-                        next.range().start() + comment_start_length
+                        next.syntax().range().start() + TextUnit::of_str(next.prefix())
                     ));
                 } else {
                     // Single-line comments
                     edit.delete(TextRange::from_to(
                         node.range().start(),
-                        next.range().start() + comment_start_length
+                        next.syntax().range().start() + TextUnit::of_str(next.prefix())
                     ));
                 }
             } else {
@@ -205,7 +192,7 @@ fn remove_newline(
         }
     }
 
-    // FIXME: do we ever reach this point? What does it mean to be here? I think we should document it
+    // The node is either the first or the last in the file
     let suff = &node_text[TextRange::from_to(
         offset - node.range().start() + TextUnit::of_char('\n'),
         TextUnit::of_str(node_text),
@@ -216,13 +203,6 @@ fn remove_newline(
         TextRange::offset_len(offset, ((spaces + 1) as u32).into()),
         " ".to_string(),
     );
-}
-
-// Return the start length of the comment (e.g. 2 for `//` and 3 for `//!`)
-fn comment_start_length(_text: &str) -> TextUnit {
-    // TODO: use the parser here instead of reimplementing comment parsing?
-    // Otherwise, reimplement comment parsing :)
-    return TextUnit::from(2);
 }
 
 fn is_trailing_comma(left: SyntaxKind, right: SyntaxKind) -> bool {
