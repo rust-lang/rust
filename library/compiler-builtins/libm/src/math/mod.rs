@@ -58,6 +58,17 @@ macro_rules! i {
     };
 }
 
+macro_rules! llvm_intrinsically_optimized {
+    (#[cfg($($clause:tt)*)] $e:expr) => {
+        #[cfg(all(not(feature = "stable"), $($clause)*))]
+        {
+            if true { // thwart the dead code lint
+                $e
+            }
+        }
+    };
+}
+
 // Public modules
 mod acos;
 mod acosf;

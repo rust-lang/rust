@@ -29,6 +29,13 @@ matrix:
     - env: TARGET=cargo-fmt
       rust: beta
 
+    - env: TARGET=wasm32-unknown-unknown
+      rust: nightly
+      install: rustup target add $TARGET
+      script:
+        - cargo build --target $TARGET
+        - cargo build --no-default-features --target $TARGET
+
 before_install: set -e
 
 install:

@@ -17,6 +17,18 @@ const TINY: f32 = 1.0e-30;
 
 #[inline]
 pub fn sqrtf(x: f32) -> f32 {
+    // On wasm32 we know that LLVM's intrinsic will compile to an optimized
+    // `f32.sqrt` native instruction, so we can leverage this for both code size
+    // and speed.
+    llvm_intrinsically_optimized! {
+        #[cfg(target_arch = "wasm32")] {
+            return if x < 0.0 {
+                ::core::f32::NAN
+            } else {
+                unsafe { ::core::intrinsics::sqrtf32(x) }
+            }
+        }
+    }
     let mut z: f32;
     let sign: i32 = 0x80000000u32 as i32;
     let mut ix: i32;

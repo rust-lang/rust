@@ -2,6 +2,14 @@ use core::f32;
 
 #[inline]
 pub fn ceilf(x: f32) -> f32 {
+    // On wasm32 we know that LLVM's intrinsic will compile to an optimized
+    // `f32.ceil` native instruction, so we can leverage this for both code size
+    // and speed.
+    llvm_intrinsically_optimized! {
+        #[cfg(target_arch = "wasm32")] {
+            return unsafe { ::core::intrinsics::ceilf32(x) }
+        }
+    }
     let mut ui = x.to_bits();
     let e = (((ui >> 23) & 0xff) - 0x7f) as i32;
 

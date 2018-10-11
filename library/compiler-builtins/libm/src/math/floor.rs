@@ -4,6 +4,14 @@ const TOINT: f64 = 1. / f64::EPSILON;
 
 #[inline]
 pub fn floor(x: f64) -> f64 {
+    // On wasm32 we know that LLVM's intrinsic will compile to an optimized
+    // `f64.floor` native instruction, so we can leverage this for both code size
+    // and speed.
+    llvm_intrinsically_optimized! {
+        #[cfg(target_arch = "wasm32")] {
+            return unsafe { ::core::intrinsics::floorf64(x) }
+        }
+    }
     let ui = x.to_bits();
     let e = ((ui >> 52) & 0x7ff) as i32;
 

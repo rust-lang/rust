@@ -82,6 +82,18 @@ const TINY: f64 = 1.0e-300;
 
 #[inline]
 pub fn sqrt(x: f64) -> f64 {
+    // On wasm32 we know that LLVM's intrinsic will compile to an optimized
+    // `f64.sqrt` native instruction, so we can leverage this for both code size
+    // and speed.
+    llvm_intrinsically_optimized! {
+        #[cfg(target_arch = "wasm32")] {
+            return if x < 0.0 {
+                f64::NAN
+            } else {
+                unsafe { ::core::intrinsics::sqrtf64(x) }
+            }
+        }
+    }
     let mut z: f64;
     let sign: u32 = 0x80000000;
     let mut ix0: i32;

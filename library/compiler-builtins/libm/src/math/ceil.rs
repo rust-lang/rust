@@ -4,6 +4,14 @@ const TOINT: f64 = 1. / f64::EPSILON;
 
 #[inline]
 pub fn ceil(x: f64) -> f64 {
+    // On wasm32 we know that LLVM's intrinsic will compile to an optimized
+    // `f64.ceil` native instruction, so we can leverage this for both code size
+    // and speed.
+    llvm_intrinsically_optimized! {
+        #[cfg(target_arch = "wasm32")] {
+            return unsafe { ::core::intrinsics::ceilf64(x) }
+        }
+    }
     let u: u64 = x.to_bits();
     let e: i64 = (u >> 52 & 0x7ff) as i64;
     let y: f64;
