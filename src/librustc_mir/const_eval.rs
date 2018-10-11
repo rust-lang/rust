@@ -343,7 +343,11 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation<()>)>;
 
     const STATIC_KIND: Option<!> = None; // no copying of statics allowed
-    const ENFORCE_VALIDITY: bool = false; // for now, we don't
+
+    #[inline(always)]
+    fn enforce_validity(_ecx: &EvalContext<'a, 'mir, 'tcx, Self>) -> bool {
+        false // for now, we don't enforce validity
+    }
 
     fn find_fn(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,

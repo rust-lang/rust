@@ -607,7 +607,7 @@ where
     ) -> EvalResult<'tcx> {
         self.write_value_no_validate(src_val, dest)?;
 
-        if M::ENFORCE_VALIDITY {
+        if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
             self.validate_operand(self.place_to_op(dest)?, &mut vec![], None, /*const_mode*/false)?;
         }
@@ -729,7 +729,7 @@ where
     ) -> EvalResult<'tcx> {
         self.copy_op_no_validate(src, dest)?;
 
-        if M::ENFORCE_VALIDITY {
+        if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
             self.validate_operand(self.place_to_op(dest)?, &mut vec![], None, /*const_mode*/false)?;
         }
@@ -807,7 +807,7 @@ where
             PlaceTy::from(MPlaceTy { mplace: *dest, layout: src.layout }),
         )?;
 
-        if M::ENFORCE_VALIDITY {
+        if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
             self.validate_operand(dest.into(), &mut vec![], None, /*const_mode*/false)?;
         }

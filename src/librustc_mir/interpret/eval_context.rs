@@ -524,7 +524,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         }
         // Validate the return value.
         if let Some(return_place) = frame.return_place {
-            if M::ENFORCE_VALIDITY {
+            if M::enforce_validity(self) {
                 // Data got changed, better make sure it matches the type!
                 // It is still possible that the return place held invalid data while
                 // the function is running, but that's okay because nobody could have
