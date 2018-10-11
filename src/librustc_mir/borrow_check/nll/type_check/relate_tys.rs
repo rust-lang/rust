@@ -15,7 +15,7 @@ use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::mir::{ConstraintCategory, UserTypeAnnotation};
 use rustc::traits::query::Fallible;
 use rustc::ty::relate::TypeRelation;
-use rustc::ty::subst::UserSubsts;
+use rustc::ty::subst::{Subst, UserSelfTy, UserSubsts};
 use rustc::ty::{self, Ty};
 use syntax_pos::DUMMY_SP;
 
@@ -98,9 +98,24 @@ pub(super) fn relate_type_and_user_type<'tcx>(
                 },
                 _,
             ) = infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_substs);
-            assert!(user_self_ty.is_none()); // TODO for now
             let ty = infcx.tcx.mk_fn_def(def_id, substs);
+
             type_relating.relate(&ty, &a)?;
+
+            if let Some(UserSelfTy {
+                impl_def_id,
+                self_ty,
+            }) = user_self_ty
+            {
+                let impl_self_ty = infcx.tcx.type_of(impl_def_id);
+                let impl_self_ty = impl_self_ty.subst(infcx.tcx, &substs);
+                type_relating.relate_with_variance(
+                    ty::Variance::Invariant,
+                    &self_ty,
+                    &impl_self_ty,
+                )?;
+            }
+
             Ok(ty)
         }
         UserTypeAnnotation::AdtDef(adt_def, canonical_substs) => {
@@ -111,7 +126,10 @@ pub(super) fn relate_type_and_user_type<'tcx>(
                 },
                 _,
             ) = infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_substs);
-            assert!(user_self_ty.is_none()); // TODO for now
+
+            // We don't extract adt-defs with a self-type.
+            assert!(user_self_ty.is_none());
+
             let ty = infcx.tcx.mk_adt(adt_def, substs);
             type_relating.relate(&ty, &a)?;
             Ok(ty)
