@@ -11,7 +11,7 @@ LL | struct Foo(NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |                        ^^^^^^^^^^^^^^^^^^^^^^^ `i32` is not an iterator
    |
    = help: the trait `std::iter::Iterator` is not implemented for `i32`
-   = note: if you want to iterate between `0` until a value `end`, use the range syntax: `0..end`
+   = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
 
 error[E0204]: the trait `Copy` may not be implemented for this type
   --> $DIR/issue-50480.rs:11:17

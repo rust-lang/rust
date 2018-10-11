@@ -351,7 +351,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
         obligation: &PredicateObligation<'tcx>,
     ) -> OnUnimplementedNote {
-    let def_id = self.impl_similar_to(trait_ref, obligation)
+        let def_id = self.impl_similar_to(trait_ref, obligation)
             .unwrap_or(trait_ref.def_id());
         let trait_ref = *trait_ref.skip_binder();
 

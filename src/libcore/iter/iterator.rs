@@ -33,8 +33,32 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item=()>) {}
     on(
         _Self="[std::ops::Range<Idx>; 1]",
         label="if you meant to iterate between two values, remove the square brackets",
-        note="`[start..end]` is an array of one `Range`, you might have meant to have a `Range`: \
-              `start..end`"
+        note="`[start..end]` is an array of one `Range`; you might have meant to have a `Range` \
+              without the brackets: `start..end`"
+    ),
+    on(
+        _Self="[std::ops::RangeFrom<Idx>; 1]",
+        label="if you meant to iterate from a value onwards, remove the square brackets",
+        note="`[start..]` is an array of one `RangeFrom`; you might have meant to have a \
+              `RangeFrom` without the brackets: `start..`"
+    ),
+    on(
+        _Self="[std::ops::RangeTo<Idx>; 1]",
+        label="if you meant to iterate until a value, remove the square brackets",
+        note="`[..end]` is an array of one `RangeTo`; you might have meant to have a \
+              `RangeTo` without the brackets: `..end`"
+    ),
+    on(
+        _Self="[std::ops::RangeInclusive<Idx>; 1]",
+        label="if you meant to iterate between two values, remove the square brackets",
+        note="`[start..=end]` is an array of one `RangeInclusive`; you might have meant to have a \
+              `RangeInclusive` without the brackets: `start..=end`"
+    ),
+    on(
+        _Self="[std::ops::RangeToInclusive<Idx>; 1]",
+        label="if you meant to iterate until a value, remove the square brackets",
+        note="`[..=end]` is an array of one `RangeToInclusive`; you might have meant to have a \
+              `RangeToInclusive` without the brackets: `..=end`"
     ),
     on(
         _Self="&str",
@@ -51,8 +75,8 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item=()>) {}
     ),
     on(
         _Self="{integral}",
-        note="if you want to iterate between `0` until a value `end`, use the range syntax: \
-              `0..end`"
+        note="if you want to iterate between `start` until a value `end`, use the exclusive range \
+              syntax `start..end` or the inclusive range syntax `start..=end`"
     ),
     label="`{Self}` is not an iterator",
     message="`{Self}` is not an iterator"
