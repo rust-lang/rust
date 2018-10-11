@@ -49,8 +49,9 @@ impl<'a> StringReader<'a> {
             token::Eof => {
                 let msg = "this file contains an un-closed delimiter";
                 let mut err = self.sess.span_diagnostic.struct_span_err(self.span, msg);
-                for &(_, sp) in &self.open_braces {
+                for &(tok, sp) in &self.open_braces {
                     err.span_label(sp, "un-closed delimiter");
+                    self.unmatched_braces.push((tok, sp));
                 }
 
                 if let Some((delim, _)) = self.open_braces.last() {
@@ -134,7 +135,7 @@ impl<'a> StringReader<'a> {
                             }
                             err.emit();
                         }
-                        self.open_braces.pop().unwrap();
+                        self.unmatched_braces.push(self.open_braces.pop().unwrap());
 
                         // If the incorrect delimiter matches an earlier opening
                         // delimiter, then don't consume it (it can be used to

@@ -22,7 +22,7 @@ use std::path::PathBuf;
 pub fn string_to_stream(source_str: String) -> TokenStream {
     let ps = ParseSess::new(FilePathMapping::empty());
     source_file_to_stream(&ps, ps.source_map()
-                             .new_source_file(PathBuf::from("bogofile").into(), source_str), None)
+                             .new_source_file(PathBuf::from("bogofile").into(), source_str), None).0
 }
 
 /// Map string to parser (via tts)

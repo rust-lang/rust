@@ -168,10 +168,13 @@ crate fn parse_stmt_from_source_str(name: FileName, source: String, sess: &Parse
     new_parser_from_source_str(sess, name, source).parse_stmt()
 }
 
-pub fn parse_stream_from_source_str(name: FileName, source: String, sess: &ParseSess,
-                                    override_span: Option<Span>)
-                                    -> TokenStream {
-    source_file_to_stream(sess, sess.source_map().new_source_file(name, source), override_span)
+pub fn parse_stream_from_source_str(
+    name: FileName,
+    source: String,
+    sess: &ParseSess,
+    override_span: Option<Span>,
+) -> TokenStream {
+    source_file_to_stream(sess, sess.source_map().new_source_file(name, source), override_span).0
 }
 
 // Create a new parser from a source string
@@ -191,11 +194,13 @@ pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path) -> Parser<'a> 
 /// Given a session, a crate config, a path, and a span, add
 /// the file at the given path to the source_map, and return a parser.
 /// On an error, use the given span as the source of the problem.
-crate fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
-                                    path: &Path,
-                                    directory_ownership: DirectoryOwnership,
-                                    module_name: Option<String>,
-                                    sp: Span) -> Parser<'a> {
+crate fn new_sub_parser_from_file<'a>(
+    sess: &'a ParseSess,
+    path: &Path,
+    directory_ownership: DirectoryOwnership,
+    module_name: Option<String>,
+    sp: Span,
+) -> Parser<'a> {
     let mut p = source_file_to_parser(sess, file_to_source_file(sess, path, Some(sp)));
     p.directory.ownership = directory_ownership;
     p.root_module_name = module_name;
@@ -203,14 +208,14 @@ crate fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
 }
 
 /// Given a source_file and config, return a parser
-fn source_file_to_parser(sess: & ParseSess, source_file: Lrc<SourceFile>) -> Parser {
+fn source_file_to_parser(sess: &ParseSess, source_file: Lrc<SourceFile>) -> Parser {
     let end_pos = source_file.end_pos;
-    let mut parser = stream_to_parser(sess, source_file_to_stream(sess, source_file, None));
-
+    let (tts, open_braces) = source_file_to_stream(sess, source_file, None);
+    let mut parser = stream_to_parser(sess, tts);
+    parser.open_braces = open_braces;
     if parser.token == token::Eof && parser.span.is_dummy() {
         parser.span = Span::new(end_pos, end_pos, parser.span.ctxt());
     }
-
     parser
 }
 
@@ -240,12 +245,15 @@ fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
 }
 
 /// Given a source_file, produce a sequence of token-trees
-pub fn source_file_to_stream(sess: &ParseSess,
-                             source_file: Lrc<SourceFile>,
-                             override_span: Option<Span>) -> TokenStream {
+pub fn source_file_to_stream(
+    sess: &ParseSess,
+    source_file: Lrc<SourceFile>,
+    override_span: Option<Span>,
+) -> (TokenStream, Vec<(token::DelimToken, Span)>) {
     let mut srdr = lexer::StringReader::new(sess, source_file, override_span);
     srdr.real_token();
-    panictry!(srdr.parse_all_token_trees())
+    let tt = panictry!(srdr.parse_all_token_trees());
+    (tt, srdr.unmatched_braces)
 }
 
 /// Given stream and the `ParseSess`, produce a parser

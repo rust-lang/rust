@@ -1,0 +1,34 @@
+error: incorrect close delimiter: `}`
+  --> $DIR/parser-recovery-4.rs:20:1
+   |
+LL | fn main() {
+   |           - close delimiter possibly meant for this
+LL |     let x = 1;
+LL |     foo(x
+   |        - un-closed delimiter
+...
+LL | }
+   | ^ incorrect close delimiter
+
+error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `{`, or an operator, found `bar`
+  --> $DIR/parser-recovery-4.rs:17:5
+   |
+LL |     foo(x
+   |        - -
+   |        | |
+   |        | expected one of 8 possible tokens here
+   |        | help: ...the missing `)` may belong here
+   |        if you meant to close this...
+LL |     bar()
+   |     ^^^ unexpected token
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `bar`
+  --> $DIR/parser-recovery-4.rs:17:5
+   |
+LL |     foo(x
+   |          - expected one of `.`, `;`, `?`, `}`, or an operator here
+LL |     bar()
+   |     ^^^ unexpected token
+
+error: aborting due to 3 previous errors
+

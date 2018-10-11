@@ -6,19 +6,23 @@ LL | pub fn trace_option(option: Option<isize>) {
 LL |     option.map(|some| 42;
    |               - un-closed delimiter
 ...
-LL | } //~ ERROR: incorrect close delimiter
+LL | }
    | ^ incorrect close delimiter
 
 error: expected one of `)`, `,`, `.`, `?`, or an operator, found `;`
   --> $DIR/issue-10636-2.rs:15:25
    |
 LL |     option.map(|some| 42;
-   |                         ^ expected one of `)`, `,`, `.`, `?`, or an operator here
+   |               -         ^
+   |               |         |
+   |               |         expected one of `)`, `,`, `.`, `?`, or an operator here
+   |               |         help: ...the missing `)` may belong here
+   |               if you meant to close this...
 
 error: expected expression, found `)`
   --> $DIR/issue-10636-2.rs:18:1
    |
-LL | } //~ ERROR: incorrect close delimiter
+LL | }
    | ^ expected expression
 
 error: aborting due to 3 previous errors
