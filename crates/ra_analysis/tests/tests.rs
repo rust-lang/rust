@@ -1,12 +1,13 @@
 extern crate relative_path;
 extern crate ra_analysis;
+extern crate rustc_hash;
 extern crate test_utils;
 
 use std::{
     sync::Arc,
-    collections::HashMap,
 };
 
+use rustc_hash::FxHashMap;
 use relative_path::{RelativePath, RelativePathBuf};
 use ra_analysis::{Analysis, AnalysisHost, FileId, FileResolver, JobHandle, CrateGraph, CrateId};
 use test_utils::assert_eq_dbg;
@@ -131,7 +132,7 @@ fn test_resolve_crate_root() {
 
     let crate_graph = CrateGraph {
         crate_roots: {
-            let mut m = HashMap::new();
+            let mut m = FxHashMap::default();
             m.insert(CrateId(1), FileId(1));
             m
         },

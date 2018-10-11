@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use languageserver_types::{TextDocumentIdentifier, Range, Url, Position, Location};
 use url_serde;
 
@@ -149,7 +149,7 @@ pub struct Runnable {
     pub label: String,
     pub bin: String,
     pub args: Vec<String>,
-    pub env: HashMap<String, String>,
+    pub env: FxHashMap<String, String>,
 }
 
 #[derive(Serialize, Debug)]

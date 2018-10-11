@@ -3,7 +3,6 @@ mod subscriptions;
 
 use std::{
     path::PathBuf,
-    collections::{HashMap},
 };
 
 use serde::{Serialize, de::DeserializeOwned};
@@ -15,6 +14,7 @@ use gen_lsp_server::{
     RawRequest, RawNotification, RawMessage, RawResponse, ErrorCode,
     handle_shutdown,
 };
+use rustc_hash::FxHashMap;
 
 use {
     req,
@@ -50,7 +50,7 @@ pub fn main_loop(
     info!("server initialized, serving requests");
     let mut state = ServerWorldState::new();
 
-    let mut pending_requests = HashMap::new();
+    let mut pending_requests = FxHashMap::default();
     let mut subs = Subscriptions::new();
     let main_res = main_loop_inner(
         internal_mode,
@@ -95,7 +95,7 @@ fn main_loop_inner(
     fs_worker: Worker<PathBuf, (PathBuf, Vec<FileEvent>)>,
     ws_worker: Worker<PathBuf, Result<CargoWorkspace>>,
     state: &mut ServerWorldState,
-    pending_requests: &mut HashMap<u64, JobHandle>,
+    pending_requests: &mut FxHashMap<u64, JobHandle>,
     subs: &mut Subscriptions,
 ) -> Result<()> {
     let (libdata_sender, libdata_receiver) = unbounded();
@@ -213,7 +213,7 @@ fn main_loop_inner(
 fn on_task(
     task: Task,
     msg_sender: &Sender<RawMessage>,
-    pending_requests: &mut HashMap<u64, JobHandle>,
+    pending_requests: &mut FxHashMap<u64, JobHandle>,
 ) {
     match task {
         Task::Respond(response) => {
@@ -229,7 +229,7 @@ fn on_task(
 
 fn on_request(
     world: &mut ServerWorldState,
-    pending_requests: &mut HashMap<u64, JobHandle>,
+    pending_requests: &mut FxHashMap<u64, JobHandle>,
     pool: &ThreadPool,
     sender: &Sender<Task>,
     req: RawRequest,
@@ -269,7 +269,7 @@ fn on_request(
 fn on_notification(
     msg_sender: &Sender<RawMessage>,
     state: &mut ServerWorldState,
-    pending_requests: &mut HashMap<u64, JobHandle>,
+    pending_requests: &mut FxHashMap<u64, JobHandle>,
     subs: &mut Subscriptions,
     not: RawNotification,
 ) -> Result<()> {

@@ -1,10 +1,10 @@
 use std::{
     fs,
     path::{PathBuf, Path},
-    collections::HashMap,
     sync::Arc,
 };
 
+use rustc_hash::FxHashMap;
 use languageserver_types::Url;
 use ra_analysis::{FileId, AnalysisHost, Analysis, CrateGraph, CrateId, LibraryData, FileResolver};
 
@@ -20,7 +20,7 @@ pub struct ServerWorldState {
     pub workspaces: Arc<Vec<CargoWorkspace>>,
     pub analysis_host: AnalysisHost,
     pub path_map: PathMap,
-    pub mem_map: HashMap<FileId, Option<String>>,
+    pub mem_map: FxHashMap<FileId, Option<String>>,
 }
 
 #[derive(Clone)]
@@ -36,7 +36,7 @@ impl ServerWorldState {
             workspaces: Arc::new(Vec::new()),
             analysis_host: AnalysisHost::new(),
             path_map: PathMap::new(),
-            mem_map: HashMap::new(),
+            mem_map: FxHashMap::default(),
         }
     }
     pub fn apply_fs_changes(&mut self, events: Vec<FileEvent>) {
@@ -121,7 +121,7 @@ impl ServerWorldState {
         Ok(file_id)
     }
     pub fn set_workspaces(&mut self, ws: Vec<CargoWorkspace>) {
-        let mut crate_roots = HashMap::new();
+        let mut crate_roots = FxHashMap::default();
         ws.iter()
           .flat_map(|ws| {
               ws.packages()

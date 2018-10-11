@@ -1,7 +1,7 @@
 use std::{
-    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
 };
+use rustc_hash::{FxHashMap, FxHashSet};
 use cargo_metadata::{metadata_run, CargoOpt};
 use ra_syntax::SmolStr;
 
@@ -80,11 +80,11 @@ impl CargoWorkspace {
             true,
             Some(CargoOpt::AllFeatures)
         ).map_err(|e| format_err!("cargo metadata failed: {}", e))?;
-        let mut pkg_by_id = HashMap::new();
+        let mut pkg_by_id = FxHashMap::default();
         let mut packages = Vec::new();
         let mut targets = Vec::new();
 
-        let ws_members: HashSet<String> = meta.workspace_members
+        let ws_members: FxHashSet<String> = meta.workspace_members
             .into_iter()
             .map(|it| it.raw)
             .collect();

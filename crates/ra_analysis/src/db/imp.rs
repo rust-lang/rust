@@ -2,9 +2,10 @@ use std::{
     sync::Arc,
     any::Any,
     hash::{Hash, Hasher},
-    collections::hash_map::{DefaultHasher, HashMap},
+    collections::hash_map::{DefaultHasher},
     iter,
 };
+use rustc_hash::FxHashMap;
 use salsa;
 use {FileId, imp::FileResolverImp};
 use super::{State, Query, QueryCtx};
@@ -13,7 +14,7 @@ pub(super) type Data = Arc<Any + Send + Sync + 'static>;
 
 #[derive(Debug)]
 pub(super) struct Db {
-    names: Arc<HashMap<salsa::QueryTypeId, &'static str>>,
+    names: Arc<FxHashMap<salsa::QueryTypeId, &'static str>>,
     pub(super) imp: salsa::Db<State, Data>,
 }
 
@@ -85,7 +86,7 @@ where
 
 pub(super) struct QueryRegistry {
     config: Option<salsa::QueryConfig<State, Data>>,
-    names: HashMap<salsa::QueryTypeId, &'static str>,
+    names: FxHashMap<salsa::QueryTypeId, &'static str>,
 }
 
 impl QueryRegistry {
@@ -109,7 +110,7 @@ impl QueryRegistry {
                 (Arc::new(res), fingerprint)
             })
         );
-        let mut names = HashMap::new();
+        let mut names = FxHashMap::default();
         names.insert(FILE_TEXT, "FILE_TEXT");
         names.insert(FILE_SET, "FILE_SET");
         QueryRegistry { config: Some(config), names }

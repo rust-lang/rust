@@ -2,6 +2,7 @@ extern crate ra_syntax;
 extern crate superslice;
 extern crate itertools;
 extern crate join_to_string;
+extern crate rustc_hash;
 #[cfg(test)]
 #[macro_use]
 extern crate test_utils as _test_utils;

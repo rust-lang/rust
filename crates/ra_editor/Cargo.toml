@@ -8,6 +8,7 @@ publish = false
 itertools = "0.7.8"
 superslice = "0.1.0"
 join_to_string = "0.1.1"
+rustc-hash = "1.0"
 
 ra_syntax = { path = "../ra_syntax" }
 

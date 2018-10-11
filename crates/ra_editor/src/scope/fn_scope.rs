@@ -1,7 +1,5 @@
-use std::{
-    fmt,
-    collections::HashMap,
-};
+use std::fmt;
+use rustc_hash::FxHashMap;
 
 use ra_syntax::{
     SyntaxNodeRef, SyntaxNode, SmolStr, AstNode,
@@ -15,7 +13,7 @@ type ScopeId = usize;
 pub struct FnScopes {
     pub self_param: Option<SyntaxNode>,
     scopes: Vec<ScopeData>,
-    scope_for: HashMap<SyntaxNode, ScopeId>,
+    scope_for: FxHashMap<SyntaxNode, ScopeId>,
 }
 
 impl FnScopes {
@@ -25,7 +23,7 @@ impl FnScopes {
                 .and_then(|it| it.self_param())
                 .map(|it| it.syntax().owned()),
             scopes: Vec::new(),
-            scope_for: HashMap::new()
+            scope_for: FxHashMap::default()
         };
         let root = scopes.root_scope();
         scopes.add_params_bindings(root, fn_def.param_list());
@@ -242,9 +240,9 @@ struct ScopeData {
 }
 
 pub fn resolve_local_name<'a>(name_ref: ast::NameRef, scopes: &'a FnScopes) -> Option<&'a ScopeEntry> {
-    use std::collections::HashSet;
+    use rustc_hash::FxHashSet;
 
-    let mut shadowed = HashSet::new();
+    let mut shadowed = FxHashSet::default();
     let ret = scopes.scope_chain(name_ref.syntax())
         .flat_map(|scope| scopes.entries(scope).iter())
         .filter(|entry| shadowed.insert(entry.name()))

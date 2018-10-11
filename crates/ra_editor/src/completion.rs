@@ -1,4 +1,4 @@
-use std::collections::{HashSet, HashMap};
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use ra_syntax::{
     File, TextUnit, AstNode, SyntaxNodeRef, SyntaxKind::*,
@@ -96,7 +96,7 @@ fn complete_name_ref(file: &File, name_ref: ast::NameRef, acc: &mut Vec<Completi
 }
 
 fn param_completions(ctx: SyntaxNodeRef, acc: &mut Vec<CompletionItem>) {
-    let mut params = HashMap::new();
+    let mut params = FxHashMap::default();
     for node in ctx.ancestors() {
         let _ = visitor_ctx(&mut params)
             .visit::<ast::Root, _>(process)
@@ -114,7 +114,7 @@ fn param_completions(ctx: SyntaxNodeRef, acc: &mut Vec<CompletionItem>) {
             })
         });
 
-    fn process<'a, N: ast::FnDefOwner<'a>>(node: N, params: &mut HashMap<String, (u32, ast::Param<'a>)>) {
+    fn process<'a, N: ast::FnDefOwner<'a>>(node: N, params: &mut FxHashMap<String, (u32, ast::Param<'a>)>) {
         node.functions()
             .filter_map(|it| it.param_list())
             .flat_map(|it| it.params())
@@ -232,7 +232,7 @@ fn complete_mod_item_snippets(acc: &mut Vec<CompletionItem>) {
 }
 
 fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<CompletionItem>) {
-    let mut shadowed = HashSet::new();
+    let mut shadowed = FxHashSet::default();
     acc.extend(
         scopes.scope_chain(name_ref.syntax())
             .flat_map(|scope| scopes.entries(scope).iter())

@@ -1,13 +1,13 @@
-use std::collections::HashSet;
+use rustc_hash::FxHashSet;
 use ra_analysis::FileId;
 
 pub struct Subscriptions {
-    subs: HashSet<FileId>,
+    subs: FxHashSet<FileId>,
 }
 
 impl Subscriptions {
     pub fn new() -> Subscriptions {
-        Subscriptions { subs: HashSet::new() }
+        Subscriptions { subs: FxHashSet::default() }
     }
     pub fn add_sub(&mut self, file_id: FileId) {
         self.subs.insert(file_id);

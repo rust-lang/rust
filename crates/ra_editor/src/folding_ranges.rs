@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use rustc_hash::FxHashSet;
 
 use ra_syntax::{
     File, TextRange, SyntaxNodeRef,
@@ -20,7 +20,7 @@ pub struct Fold {
 
 pub fn folding_ranges(file: &File) -> Vec<Fold> {
     let mut res = vec![];
-    let mut visited = HashSet::new();
+    let mut visited = FxHashSet::default();
 
     for node in file.syntax().descendants() {
         if visited.contains(&node) {
@@ -56,7 +56,7 @@ pub fn folding_ranges(file: &File) -> Vec<Fold> {
 fn contiguous_range_for<'a>(
     kind: SyntaxKind,
     node: SyntaxNodeRef<'a>,
-    visited: &mut HashSet<SyntaxNodeRef<'a>>,
+    visited: &mut FxHashSet<SyntaxNodeRef<'a>>,
 ) -> Option<TextRange> {
     visited.insert(node);
 

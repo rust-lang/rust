@@ -1,11 +1,11 @@
 use std::{
-    collections::HashMap,
     sync::Arc,
     panic,
 };
 
 use once_cell::sync::OnceCell;
 use rayon::prelude::*;
+use rustc_hash::FxHashMap;
 use ra_editor::LineIndex;
 use ra_syntax::File;
 
@@ -118,7 +118,7 @@ impl FileData {
 #[derive(Debug)]
 pub(crate) struct ReadonlySourceRoot {
     symbol_index: Arc<SymbolIndex>,
-    file_map: HashMap<FileId, FileData>,
+    file_map: FxHashMap<FileId, FileData>,
     module_tree: Arc<ModuleTreeDescriptor>,
 }
 
@@ -139,7 +139,7 @@ impl ReadonlySourceRoot {
         let symbol_index = SymbolIndex::for_files(
             modules.par_iter().map(|it| (it.0, it.1.clone()))
         );
-        let file_map: HashMap<FileId, FileData> = files
+        let file_map: FxHashMap<FileId, FileData> = files
             .into_iter()
             .map(|(id, text)| (id, FileData::new(text)))
             .collect();
