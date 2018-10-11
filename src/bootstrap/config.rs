@@ -628,6 +628,9 @@ impl Config {
         let default = false;
         config.llvm_assertions = llvm_assertions.unwrap_or(default);
 
+        let default = true;
+        config.rust_optimize = optimize.unwrap_or(default);
+
         let default = match &config.channel[..] {
             "stable" | "beta" | "nightly" => true,
             _ => false,
@@ -640,7 +643,6 @@ impl Config {
         config.debug_jemalloc = debug_jemalloc.unwrap_or(default);
         config.rust_debuginfo = debuginfo.unwrap_or(default);
         config.rust_debug_assertions = debug_assertions.unwrap_or(default);
-        config.rust_optimize = optimize.unwrap_or(!default);
 
         let default = config.channel == "dev";
         config.ignore_git = ignore_git.unwrap_or(default);
