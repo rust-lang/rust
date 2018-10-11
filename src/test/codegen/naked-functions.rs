@@ -15,7 +15,7 @@
 #![crate_type = "lib"]
 #![feature(naked_functions)]
 
-// CHECK: Function Attrs: naked uwtable
+// CHECK: Function Attrs: naked
 // CHECK-NEXT: define void @naked_empty()
 #[no_mangle]
 #[naked]
@@ -24,7 +24,7 @@ pub fn naked_empty() {
     // CHECK-NEXT: ret void
 }
 
-// CHECK: Function Attrs: naked uwtable
+// CHECK: Function Attrs: naked
 #[no_mangle]
 #[naked]
 // CHECK-NEXT: define void @naked_with_args(i{{[0-9]+}})
@@ -35,7 +35,7 @@ pub fn naked_with_args(a: isize) {
     // CHECK: ret void
 }
 
-// CHECK: Function Attrs: naked uwtable
+// CHECK: Function Attrs: naked
 // CHECK-NEXT: define i{{[0-9]+}} @naked_with_return()
 #[no_mangle]
 #[naked]
@@ -45,7 +45,7 @@ pub fn naked_with_return() -> isize {
     0
 }
 
-// CHECK: Function Attrs: naked uwtable
+// CHECK: Function Attrs: naked
 // CHECK-NEXT: define i{{[0-9]+}} @naked_with_args_and_return(i{{[0-9]+}})
 #[no_mangle]
 #[naked]
@@ -57,7 +57,7 @@ pub fn naked_with_args_and_return(a: isize) -> isize {
     a
 }
 
-// CHECK: Function Attrs: naked uwtable
+// CHECK: Function Attrs: naked
 // CHECK-NEXT: define void @naked_recursive()
 #[no_mangle]
 #[naked]

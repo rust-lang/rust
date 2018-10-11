@@ -137,6 +137,15 @@ pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
             target_cpu.as_c_str());
 }
 
+/// Sets the `NonLazyBind` LLVM attribute on a given function,
+/// assuming the codegen options allow skipping the PLT.
+pub fn non_lazy_bind(sess: &Session, llfn: &'ll Value) {
+    // Don't generate calls through PLT if it's not necessary
+    if !sess.needs_plt() {
+        Attribute::NonLazyBind.apply_llfn(Function, llfn);
+    }
+}
+
 /// Composite function which sets LLVM attributes for function depending on its AST (#[attribute])
 /// attributes.
 pub fn from_fn_attrs(

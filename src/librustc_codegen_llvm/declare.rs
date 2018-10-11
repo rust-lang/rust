@@ -104,6 +104,8 @@ fn declare_raw_fn(
         attributes::unwind(llfn, false);
     }
 
+    attributes::non_lazy_bind(cx.sess(), llfn);
+
     llfn
 }
 
