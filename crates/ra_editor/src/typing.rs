@@ -313,6 +313,62 @@ fn foo() {
 }");
     }
 
+    #[test]
+    fn test_join_lines_normal_comments() {
+        check_join_lines(r"
+fn foo() {
+    // Hello<|>
+    // world!
+}
+", r"
+fn foo() {
+    // Hello<|> world!
+}
+");
+    }
+
+    #[test]
+    fn test_join_lines_doc_comments() {
+        check_join_lines(r"
+fn foo() {
+    /// Hello<|>
+    /// world!
+}
+", r"
+fn foo() {
+    /// Hello<|> world!
+}
+");
+    }
+
+    #[test]
+    fn test_join_lines_mod_comments() {
+        check_join_lines(r"
+fn foo() {
+    //! Hello<|>
+    //! world!
+}
+", r"
+fn foo() {
+    //! Hello<|> world!
+}
+");
+    }
+
+    #[test]
+    fn test_join_lines_multiline_comments() {
+        check_join_lines(r"
+fn foo() {
+    // Hello<|>
+    /* world! */
+}
+", r"
+fn foo() {
+    // Hello<|> world! */
+}
+");
+    }
+
     fn check_join_lines_sel(before: &str, after: &str) {
         let (sel, before) = extract_range(before);
         let file = File::parse(&before);
