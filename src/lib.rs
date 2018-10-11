@@ -13,6 +13,9 @@ extern crate rustc_mir;
 extern crate rustc_target;
 extern crate syntax;
 
+use std::collections::HashMap;
+use std::borrow::Cow;
+
 use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
 use rustc::ty::layout::{TyLayout, LayoutOf, Size};
 use rustc::hir::def_id::DefId;
@@ -21,11 +24,10 @@ use rustc::mir;
 use syntax::ast::Mutability;
 use syntax::attr;
 
-use std::collections::HashMap;
 
 pub use rustc::mir::interpret::*;
 pub use rustc_mir::interpret::*;
-pub use rustc_mir::interpret;
+pub use rustc_mir::interpret::{self, AllocMap}; // resolve ambiguity
 
 mod fn_call;
 mod operator;
@@ -34,6 +36,7 @@ mod helpers;
 mod tls;
 mod locks;
 mod range_map;
+mod mono_hash_map;
 
 use fn_call::EvalContextExt as MissingFnsEvalContextExt;
 use operator::EvalContextExt as OperatorEvalContextExt;
@@ -41,6 +44,7 @@ use intrinsic::EvalContextExt as IntrinsicEvalContextExt;
 use tls::{EvalContextExt as TlsEvalContextExt, TlsData};
 use range_map::RangeMap;
 use helpers::FalibleScalarExt;
+use mono_hash_map::MonoHashMap;
 
 pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -231,8 +235,11 @@ pub struct Evaluator<'tcx> {
 impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     type MemoryData = ();
     type MemoryKinds = MiriMemoryKind;
+    type PointerTag = (); // still WIP
 
-    const MUT_STATIC_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::MutStatic);
+    type MemoryMap = MonoHashMap<AllocId, (MemoryKind<MiriMemoryKind>, Allocation<()>)>;
+
+    const STATIC_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::MutStatic);
     const ENFORCE_VALIDITY: bool = false; // this is still WIP
 
     /// Returns Ok() when the function was handled, fail otherwise
@@ -308,7 +315,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     fn find_foreign_static(
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         def_id: DefId,
-    ) -> EvalResult<'tcx, &'tcx Allocation> {
+    ) -> EvalResult<'tcx, Cow<'tcx, Allocation>> {
         let attrs = tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, "link_name") {
             Some(name) => name.as_str(),
@@ -319,14 +326,13 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
             "__cxa_thread_atexit_impl" => {
                 // This should be all-zero, pointer-sized
                 let data = vec![0; tcx.data_layout.pointer_size.bytes() as usize];
-                let alloc = Allocation::from_bytes(&data[..], tcx.data_layout.pointer_align);
-                tcx.intern_const_alloc(alloc)
+                Allocation::from_bytes(&data[..], tcx.data_layout.pointer_align)
             }
             _ => return err!(Unimplemented(
                     format!("can't access foreign static: {}", link_name),
                 )),
         };
-        Ok(alloc)
+        Ok(Cow::Owned(alloc))
     }
 
     fn validation_op(
@@ -343,5 +349,12 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     {
         // We are not interested in detecting loops
         Ok(())
+    }
+
+    fn static_with_default_tag(
+        alloc: &'_ Allocation
+    ) -> Cow<'_, Allocation<Self::PointerTag>> {
+        let alloc = alloc.clone();
+        Cow::Owned(alloc)
     }
 }

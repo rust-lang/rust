@@ -252,7 +252,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                         _ => {
                             // Do it in memory
                             let mplace = self.force_allocation(dest)?;
-                            assert!(mplace.extra.is_none());
+                            assert!(mplace.meta.is_none());
                             self.memory.write_repeat(mplace.ptr, 0, dest.layout.size)?;
                         }
                     }
@@ -410,7 +410,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                         _ => {
                             // Do it in memory
                             let mplace = self.force_allocation(dest)?;
-                            assert!(mplace.extra.is_none());
+                            assert!(mplace.meta.is_none());
                             self.memory.mark_definedness(mplace.ptr.to_ptr()?, dest.layout.size, false)?;
                         }
                     }
