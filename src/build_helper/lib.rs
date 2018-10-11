@@ -91,13 +91,13 @@ pub fn try_run_suppressed(cmd: &mut Command) -> bool {
     output.status.success()
 }
 
-pub fn gnu_target(target: &str) -> String {
+pub fn gnu_target(target: &str) -> &str {
     match target {
-        "i686-pc-windows-msvc" => "i686-pc-win32".to_string(),
-        "x86_64-pc-windows-msvc" => "x86_64-pc-win32".to_string(),
-        "i686-pc-windows-gnu" => "i686-w64-mingw32".to_string(),
-        "x86_64-pc-windows-gnu" => "x86_64-w64-mingw32".to_string(),
-        s => s.to_string(),
+        "i686-pc-windows-msvc" => "i686-pc-win32",
+        "x86_64-pc-windows-msvc" => "x86_64-pc-win32",
+        "i686-pc-windows-gnu" => "i686-w64-mingw32",
+        "x86_64-pc-windows-gnu" => "x86_64-w64-mingw32",
+        s => s,
     }
 }
 
