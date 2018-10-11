@@ -53,12 +53,12 @@ fn main() {
 //         StorageLive(_3);
 //         StorageLive(_4);
 //         StorageLive(_5);
-//         Validate(Suspend(ReScope(Node(ItemLocalId(12)))), [(*_2): i32]);
+//         Validate(Suspend(ReScope(Node(ItemLocalId(16)))), [(*_2): i32]);
 //         _5 = &ReErased mut (*_2);
-//         Validate(Acquire, [(*_5): i32/ReScope(Node(ItemLocalId(12)))]);
+//         Validate(Acquire, [(*_5): i32/ReScope(Node(ItemLocalId(16)))]);
 //         _4 = move _5 as *mut i32 (Misc);
 //         _3 = move _4;
-//         EndRegion(ReScope(Node(ItemLocalId(12))));
+//         EndRegion(ReScope(Node(ItemLocalId(16))));
 //         StorageDead(_4);
 //         StorageDead(_5);
 //         Validate(Release, [_0: bool, _3: *mut i32]);

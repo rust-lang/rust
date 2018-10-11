@@ -70,14 +70,14 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 // fn main::{{closure}}(_1: [closure@NodeId(33) d:D]) -> i32 {
 //     let mut _0: i32;
 //     ...
-//     let _2: &'16_0rs D;
+//     let _2: &'21_0rs D;
 //     ...
 //     bb0: {
 //         StorageLive(_2);
-//         _2 = &'16_0rs (_1.0: D);
+//         _2 = &'21_0rs (_1.0: D);
 //         FakeRead(ForLet, _2);
 //         _0 = ((*_2).0: i32);
-//         EndRegion('16_0rs);
+//         EndRegion('21_0rs);
 //         StorageDead(_2);
 //         drop(_1) -> [return: bb2, unwind: bb1];
 //     }

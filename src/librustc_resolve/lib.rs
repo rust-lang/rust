@@ -1675,8 +1675,8 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
                 module.def().unwrap(),
             PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 =>
-                *def = path_res.base_def(),
-            PathResult::NonModule(..) =>
+                path_res.base_def(),
+            PathResult::NonModule(..) => {
                 if let PathResult::Failed(span, msg, _) = self.resolve_path(
                     None,
                     &path,
@@ -1686,7 +1686,9 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                     CrateLint::No,
                 ) {
                     error_callback(self, span, ResolutionError::FailedToResolve(&msg));
-                },
+                }
+                Def::Err
+            }
             PathResult::Module(ModuleOrUniformRoot::UniformRoot(_)) |
             PathResult::Indeterminate => unreachable!(),
             PathResult::Failed(span, msg, _) => {
@@ -3042,7 +3044,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         let report_errors = |this: &mut Self, def: Option<Def>| {
             // Make the base error.
             let expected = source.descr_expected();
-            let path_str = names_to_string(path);
+            let path_str = Segment::names_to_string(path);
             let item_str = path.last().unwrap().ident;
             let code = source.error_code(def.is_some());
             let (base_msg, fallback_label, base_span) = if let Some(def) = def {

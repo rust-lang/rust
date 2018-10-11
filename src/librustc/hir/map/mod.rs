@@ -1100,7 +1100,7 @@ impl<'a> print::State<'a> {
             Node::AnonConst(a)    => self.print_anon_const(&a),
             Node::Expr(a)         => self.print_expr(&a),
             Node::Stmt(a)         => self.print_stmt(&a),
-            Node::PathSegment(_)  => bug!("cannot print PathSegment"),
+            Node::PathSegment(a)  => self.print_path_segment(&a),
             Node::Ty(a)           => self.print_type(&a),
             Node::TraitRef(a)     => self.print_trait_ref(&a),
             Node::Binding(a)      |

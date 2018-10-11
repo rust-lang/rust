@@ -40,19 +40,19 @@ fn main() {
 //     ...
 //     bb0: {
 //         ...
-//         Validate(Suspend(ReScope(Node(ItemLocalId(10)))), [_1: i32]);
+//         Validate(Suspend(ReScope(Node(ItemLocalId(13)))), [_1: i32]);
 //         _6 = &ReErased mut _1;
-//         Validate(Acquire, [(*_6): i32/ReScope(Node(ItemLocalId(10)))]);
-//         Validate(Suspend(ReScope(Node(ItemLocalId(10)))), [(*_6): i32/ReScope(Node(ItemLocalId(10)))]);
+//         Validate(Acquire, [(*_6): i32/ReScope(Node(ItemLocalId(13)))]);
+//         Validate(Suspend(ReScope(Node(ItemLocalId(13)))), [(*_6): i32/ReScope(Node(ItemLocalId(13)))]);
 //         _5 = &ReErased mut (*_6);
-//         Validate(Acquire, [(*_5): i32/ReScope(Node(ItemLocalId(10)))]);
-//         Validate(Release, [_2: (), _3: &ReScope(Node(ItemLocalId(10))) Test, _5: &ReScope(Node(ItemLocalId(10))) mut i32]);
+//         Validate(Acquire, [(*_5): i32/ReScope(Node(ItemLocalId(13)))]);
+//         Validate(Release, [_2: (), _3: &ReScope(Node(ItemLocalId(13))) Test, _5: &ReScope(Node(ItemLocalId(13))) mut i32]);
 //         _2 = const Test::foo(move _3, move _5) -> bb1;
 //     }
 //
 //     bb1: {
 //         Validate(Acquire, [_2: ()]);
-//         EndRegion(ReScope(Node(ItemLocalId(10))));
+//         EndRegion(ReScope(Node(ItemLocalId(13))));
 //         ...
 //         return;
 //     }
@@ -64,11 +64,11 @@ fn main() {
 //     bb0: {
 //         Validate(Acquire, [_1: &ReFree(DefId(0/1:11 ~ validate_1[317d]::main[0]::{{closure}}[0]), BrEnv) [closure@NodeId(65)], _2: &ReFree(DefId(0/1:11 ~ validate_1[317d]::main[0]::{{closure}}[0]), BrAnon(0)) mut i32]);
 //         StorageLive(_3);
-//         Validate(Suspend(ReScope(Remainder { block: ItemLocalId(25), first_statement_index: 0 })), [(*_2): i32]);
+//         Validate(Suspend(ReScope(Remainder { block: ItemLocalId(31), first_statement_index: 0 })), [(*_2): i32]);
 //         _3 = &ReErased (*_2);
-//         Validate(Acquire, [(*_3): i32/ReScope(Remainder { block: ItemLocalId(25), first_statement_index: 0 }) (imm)]);
+//         Validate(Acquire, [(*_3): i32/ReScope(Remainder { block: ItemLocalId(31), first_statement_index: 0 }) (imm)]);
 //         _0 = (*_3);
-//         EndRegion(ReScope(Remainder { block: ItemLocalId(25), first_statement_index: 0 }));
+//         EndRegion(ReScope(Remainder { block: ItemLocalId(31), first_statement_index: 0 }));
 //         StorageDead(_3);
 //         return;
 //     }

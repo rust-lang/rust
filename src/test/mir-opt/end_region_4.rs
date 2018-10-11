@@ -32,9 +32,9 @@ fn foo(i: i32) {
 // START rustc.main.SimplifyCfg-qualify-consts.after.mir
 //     let mut _0: ();
 //     ...
-//     let _6: &'26_4rs i32;
+//     let _6: &'31_4rs i32;
 //     ...
-//     let _3: &'26_2rs i32;
+//     let _3: &'31_2rs i32;
 //     ...
 //     let _2: i32;
 //     ...
@@ -50,7 +50,7 @@ fn foo(i: i32) {
 //         _2 = const 0i32;
 //         FakeRead(ForLet, _2);
 //         StorageLive(_3);
-//         _3 = &'26_2rs _2;
+//         _3 = &'31_2rs _2;
 //         FakeRead(ForLet, _3);
 //         StorageLive(_5);
 //         _5 = (*_3);
@@ -62,18 +62,18 @@ fn foo(i: i32) {
 //     bb2: {
 //         StorageDead(_5);
 //         StorageLive(_6);
-//         _6 = &'26_4rs _2;
+//         _6 = &'31_4rs _2;
 //         FakeRead(ForLet, _6);
 //         _0 = ();
-//         EndRegion('26_4rs);
+//         EndRegion('31_4rs);
 //         StorageDead(_6);
-//         EndRegion('26_2rs);
+//         EndRegion('31_2rs);
 //         StorageDead(_3);
 //         StorageDead(_2);
 //         drop(_1) -> [return: bb4, unwind: bb1];
 //     }
 //     bb3: {
-//         EndRegion('26_2rs);
+//         EndRegion('31_2rs);
 //         drop(_1) -> bb1;
 //     }
 //     bb4: {

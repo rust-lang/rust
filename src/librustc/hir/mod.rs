@@ -347,6 +347,11 @@ impl fmt::Display for Path {
 pub struct PathSegment {
     /// The identifier portion of this path segment.
     pub ident: Ident,
+    // `id` and `def` are optional. We currently only use these in save-analysis,
+    // any path segments without these will not have save-analysis info and
+    // therefore will not have 'jump to def' in IDEs, but otherwise will not be
+    // affected. (In general, we don't bother to get the defs for synthesized
+    // segments, only for segments which have come from the AST).
     pub id: Option<NodeId>,
     pub def: Option<Def>,
 

@@ -1624,10 +1624,6 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                 if let Some(fn_data) = self.save_ctxt.get_extern_item_data(item) {
                     down_cast_data!(fn_data, DefData, item.span);
 
-                    self.nest_tables(
-                        item.id,
-                        |v| v.process_formals(&decl.inputs, &fn_data.qualname),
-                    );
                     self.process_generic_params(generics, &fn_data.qualname, item.id);
                     self.dumper.dump_def(&access, fn_data);
                 }
