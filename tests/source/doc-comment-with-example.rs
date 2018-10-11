@@ -1,4 +1,4 @@
-// rustfmt-wrap_comments: true
+// rustfmt-format_doc_comments: true
 
 /// Foo
 ///
