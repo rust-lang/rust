@@ -9,12 +9,13 @@
 
 
 use crate::utils::{
-    match_qpath, match_type, paths, span_help_and_lint, span_lint, span_lint_and_sugg, walk_ptrs_ty,
+    match_def_path, match_qpath, match_type, paths, span_help_and_lint, span_lint, span_lint_and_sugg, walk_ptrs_ty,
 };
 use if_chain::if_chain;
 use crate::rustc::hir;
 use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use crate::rustc::hir::*;
+use crate::rustc::hir::def::Def;
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -161,7 +162,8 @@ impl LintPass for LintWithoutLintPass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let hir::ItemKind::Static(ref ty, MutImmutable, body_id) = item.node {
-            if is_lint_ref_type(ty) {
+
+            if is_lint_ref_type(cx, ty) {
                 self.declared_lints.insert(item.name, item.span);
             } else if is_lint_array_type(ty) && item.name == "ARRAY" {
                 if let VisibilityKind::Inherited = item.vis.node {
@@ -203,19 +205,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
     }
 }
 
-fn is_lint_ref_type(ty: &Ty) -> bool {
+fn is_lint_ref_type<'tcx>(cx: &LateContext<'_, 'tcx>, ty: &Ty) -> bool {
     if let TyKind::Rptr(
         _,
         MutTy {
             ty: ref inner,
             mutbl: MutImmutable,
         },
-    ) = ty.node
-    {
+    ) = ty.node {
         if let TyKind::Path(ref path) = inner.node {
-            return match_qpath(path, &paths::LINT);
+            if let Def::Struct(def_id) = cx.tables.qpath_def(path, inner.hir_id) {
+                return match_def_path(cx.tcx, def_id, &paths::LINT);
+            }
         }
     }
+
     false
 }
 
