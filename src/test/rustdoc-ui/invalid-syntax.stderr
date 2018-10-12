@@ -1,0 +1,10 @@
+Output from rustc:
+error: unknown start of token: /
+ --> <stdin>:1:1
+  |
+1 | /__________pkt->size___________/          /_result->size_/ /__pkt->size__/
+  | ^
+
+warning: Invalid doc comment starting with: `/__________pkt->size___________/          /_result->size_/ /__pkt->size__/`
+(Ignoring this codeblock)
+
