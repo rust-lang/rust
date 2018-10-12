@@ -22,6 +22,11 @@ impl MyStruct {
     fn need_to_use_this_method_value(&self) -> usize {
         self.n
     }
+
+    #[must_use]
+    fn need_to_use_this_associated_function_value() -> isize {
+        -1
+    }
 }
 
 trait EvenNature {
@@ -64,6 +69,9 @@ fn main() {
 
     m.need_to_use_this_method_value(); //~ WARN unused return value
     m.is_even(); // trait method!
+    //~^ WARN unused return value
+
+    MyStruct::need_to_use_this_associated_function_value();
     //~^ WARN unused return value
 
     m.replace(3); // won't warn (annotation needs to be in trait definition)

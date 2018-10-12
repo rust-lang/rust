@@ -12,7 +12,7 @@
 
 fn check<Clone>(_c: Clone) {
     fn check2() {
-        <() as std::clone::Clone>::clone(&());
+        let _ = <() as std::clone::Clone>::clone(&());
     }
     check2();
 }
