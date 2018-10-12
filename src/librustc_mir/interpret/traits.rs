@@ -28,7 +28,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     ) -> EvalResult<'tcx, Pointer<M::PointerTag>> {
         debug!("get_vtable(trait_ref={:?})", trait_ref);
 
-        // FIXME: Cache this!
+        if let Some(&vtable) = self.vtables.get(&(ty, trait_ref)) {
+            return Ok(Pointer::from(vtable).with_default_tag());
+        }
 
         let layout = self.layout_of(trait_ref.self_ty())?;
         assert!(!layout.is_unsized(), "can't create a vtable for an unsized type");
@@ -64,6 +66,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         }
 
         self.memory.mark_immutable(vtable.alloc_id)?;
+        assert!(self.vtables.insert((ty, trait_ref), vtable.alloc_id).is_none());
 
         Ok(vtable)
     }
