@@ -1,3 +1,6 @@
+// Validation makes this fail in the wrong place
+// compile-flags: -Zmir-emit-validate=0 -Zmiri-disable-validation
+
 fn main() {
     assert!(std::char::from_u32(-1_i32 as u32).is_none());
     let c = unsafe { std::mem::transmute::<i32, char>(-1) };
