@@ -19,7 +19,7 @@ use syntax::source_map::{BytePos, Span};
 use comment::{combine_strs_with_missing_comments, contains_comment};
 use expr::rewrite_field;
 use items::{rewrite_struct_field, rewrite_struct_field_prefix};
-use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
+use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
 use source_map::SpanUtils;
@@ -227,7 +227,7 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
         field_prefix_max_width = 0;
     }
 
-    let items = itemize_list(
+    let mut items = itemize_list(
         context.snippet_provider,
         fields.iter(),
         "}",
@@ -247,6 +247,20 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
         Separator::Comma,
         one_line_width,
     );
+
+    if tactic == DefinitiveListTactic::Horizontal {
+        // since the items fits on a line, there is no need to align them
+        let do_rewrite =
+            |field: &T| -> Option<String> { field.rewrite_aligned_item(context, item_shape, 0) };
+        fields
+            .iter()
+            .zip(items.iter_mut())
+            .for_each(|(field, list_item): (&T, &mut ListItem)| {
+                if list_item.item.is_some() {
+                    list_item.item = do_rewrite(field);
+                }
+            });
+    }
 
     let fmt = ListFormatting::new(item_shape, context.config)
         .tactic(tactic)
