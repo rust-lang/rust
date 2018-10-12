@@ -482,6 +482,8 @@ pub mod debuginfo {
 extern { pub type ModuleBuffer; }
 
 extern "C" {
+    pub fn LLVMRustInstallFatalErrorHandler();
+
     // Create and destroy contexts.
     pub fn LLVMRustContextCreate(shouldDiscardNames: bool) -> &'static mut Context;
     pub fn LLVMContextDispose(C: &'static mut Context);
