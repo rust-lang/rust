@@ -316,6 +316,9 @@ pub struct WidthHeuristics {
     // Maximum width of the args of a function call before falling back
     // to vertical formatting.
     pub fn_call_width: usize,
+    // Maximum width of the args of a function-like attributes before falling
+    // back to vertical formatting.
+    pub attr_fn_like_width: usize,
     // Maximum width in the body of a struct lit before falling back to
     // vertical formatting.
     pub struct_lit_width: usize,
@@ -337,6 +340,7 @@ impl WidthHeuristics {
     pub fn null() -> WidthHeuristics {
         WidthHeuristics {
             fn_call_width: usize::max_value(),
+            attr_fn_like_width: usize::max_value(),
             struct_lit_width: 0,
             struct_variant_width: 0,
             array_width: usize::max_value(),
@@ -348,6 +352,7 @@ impl WidthHeuristics {
     pub fn set(max_width: usize) -> WidthHeuristics {
         WidthHeuristics {
             fn_call_width: max_width,
+            attr_fn_like_width: max_width,
             struct_lit_width: max_width,
             struct_variant_width: max_width,
             array_width: max_width,
@@ -368,6 +373,7 @@ impl WidthHeuristics {
         };
         WidthHeuristics {
             fn_call_width: (60.0 * max_width_ratio).round() as usize,
+            attr_fn_like_width: (70.0 * max_width_ratio).round() as usize,
             struct_lit_width: (18.0 * max_width_ratio).round() as usize,
             struct_variant_width: (35.0 * max_width_ratio).round() as usize,
             array_width: (60.0 * max_width_ratio).round() as usize,

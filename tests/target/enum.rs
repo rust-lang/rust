@@ -255,7 +255,7 @@ pub enum QlError {
     TranslationError(String, String),
     // (kind, input, expected)
     #[fail(
-        display = "Could not find {}: Found: {}, expected: {:?}",
+        display = "aaaaaaaaaaaaCould not find {}: Found: {}, expected: {:?}",
         0, 1, 2
     )]
     ResolveError(&'static str, String, Option<String>),

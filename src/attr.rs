@@ -224,7 +224,7 @@ impl Rewrite for ast::MetaItem {
                     // 1 = "]"
                     shape.sub_width(1)?,
                     self.span,
-                    context.config.width_heuristics().fn_call_width,
+                    context.config.width_heuristics().attr_fn_like_width,
                     Some(if has_trailing_comma {
                         SeparatorTactic::Always
                     } else {
