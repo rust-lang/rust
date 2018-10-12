@@ -24,6 +24,7 @@ fn check_props(s: &str) -> Result<(), proptest::test_runner::TestCaseError> {
     let smol = SmolStr::new(s);
     prop_assert_eq!(smol.as_str(), s);
     prop_assert_eq!(smol.len(), s.len());
+    prop_assert_eq!(smol.is_empty(), s.is_empty());
     Ok(())
 }
 
