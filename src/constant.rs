@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use cranelift_module::*;
 use crate::prelude::*;
 use crate::rustc::mir::interpret::{
@@ -225,7 +226,7 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
 
         data_ctx.define(alloc.bytes.to_vec().into_boxed_slice());
 
-        for &(offset, reloc) in alloc.relocations.iter() {
+        for &(offset, (_tag, reloc)) in alloc.relocations.iter() {
             let reloc_offset = {
                 let endianness = tcx.data_layout.endian;
                 let offset = offset.bytes() as usize;
@@ -279,7 +280,9 @@ struct TransPlaceInterpreter;
 impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
     type MemoryData = ();
     type MemoryKinds = ();
-    const MUT_STATIC_KIND: Option<()> = None;
+    type MemoryMap = FxHashMap<AllocId, (MemoryKind<()>, Allocation<()>)>;
+    type PointerTag = ();
+    const STATIC_KIND: Option<()> = None;
     const ENFORCE_VALIDITY: bool = true;
 
     fn before_terminator(_: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx> {
@@ -308,8 +311,12 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
     fn find_foreign_static(
         _: crate::rustc::ty::query::TyCtxtAt<'a, 'tcx, 'tcx>,
         _: DefId,
-    ) -> EvalResult<'tcx, &'tcx Allocation> {
+    ) -> EvalResult<'tcx, Cow<'tcx, Allocation>> {
         panic!();
+    }
+
+    fn static_with_default_tag(alloc: &Allocation) -> Cow<Allocation<()>> {
+        Cow::Borrowed(alloc)
     }
 
     fn ptr_op(
