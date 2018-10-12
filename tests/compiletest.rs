@@ -103,8 +103,6 @@ fn miri_pass(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir:
     flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
     if have_fullmir() {
         flags.push("-Zmiri-start-fn".to_owned());
-        // start-fn uses ptr::read, and so fails validation
-        flags.push("-Zmiri-disable-validation".to_owned());
     }
     if opt {
         flags.push("-Zmir-opt-level=3".to_owned());

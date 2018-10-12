@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME validation disabled because ptr::read uses mem::uninitialized
-// compile-flags: -Zmiri-disable-validation
-
 #![feature(box_syntax)]
 
 use std::sync::mpsc::channel;

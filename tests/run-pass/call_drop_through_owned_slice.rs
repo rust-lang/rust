@@ -1,6 +1,3 @@
-// FIXME validation disabled because ptr::read uses mem::uninitialized
-// compile-flags: -Zmiri-disable-validation
-
 struct Bar;
 
 static mut DROP_COUNT: usize = 0;
