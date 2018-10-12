@@ -188,14 +188,16 @@ pub fn run<F>(run_compiler: F) -> isize
                     }
                     None => {
                         let emitter =
-                            errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
-                                                                None,
-                                                                true,
-                                                                false);
+                            errors::emitter::EmitterWriter::stderr(
+                                errors::ColorConfig::Auto,
+                                None,
+                                true,
+                                false
+                            );
                         let handler = errors::Handler::with_emitter(true, false, Box::new(emitter));
                         handler.emit(&MultiSpan::new(),
-                                    "aborting due to previous error(s)",
-                                    errors::Level::Fatal);
+                                     "aborting due to previous error(s)",
+                                     errors::Level::Fatal);
                         panic::resume_unwind(Box::new(errors::FatalErrorMarker));
                     }
                 }
@@ -316,9 +318,8 @@ fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend> {
     let sysroot = sysroot_candidates.iter()
         .map(|sysroot| {
             let libdir = filesearch::relative_target_lib_path(&sysroot, &target);
-            sysroot.join(libdir)
-                .with_file_name(option_env!("CFG_CODEGEN_BACKENDS_DIR")
-                                .unwrap_or("codegen-backends"))
+            sysroot.join(libdir).with_file_name(
+                option_env!("CFG_CODEGEN_BACKENDS_DIR").unwrap_or("codegen-backends"))
         })
         .filter(|f| {
             info!("codegen backend candidate: {}", f.display());
@@ -360,8 +361,8 @@ fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend> {
         }
         if let Some(ref prev) = file {
             let err = format!("duplicate codegen backends found\n\
-                first:  {}\n\
-                second: {}\n\
+                               first:  {}\n\
+                               second: {}\n\
             ", prev.display(), path.display());
             early_error(ErrorOutputType::default(), &err);
         }
@@ -373,7 +374,7 @@ fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend> {
         None => {
             let err = format!("failed to load default codegen backend for `{}`, \
                                no appropriate codegen dylib found in `{}`",
-                               backend_name, sysroot.display());
+                              backend_name, sysroot.display());
             early_error(ErrorOutputType::default(), &err);
         }
     }
@@ -1010,7 +1011,7 @@ impl RustcDefaultCalls {
         use rustc::session::config::PrintRequest::*;
         // PrintRequest::NativeStaticLibs is special - printed during linking
         // (empty iterator returns true)
-        if sess.opts.prints.iter().all(|&p| p==PrintRequest::NativeStaticLibs) {
+        if sess.opts.prints.iter().all(|&p| p == PrintRequest::NativeStaticLibs) {
             return Compilation::Continue;
         }
 
@@ -1054,10 +1055,7 @@ impl RustcDefaultCalls {
                             &id,
                             &t_outputs
                         );
-                        println!("{}",
-                                 fname.file_name()
-                                      .unwrap()
-                                      .to_string_lossy());
+                        println!("{}", fname.file_name().unwrap().to_string_lossy());
                     }
                 }
                 Cfg => {
@@ -1129,9 +1127,8 @@ fn commit_date_str() -> Option<&'static str> {
 pub fn version(binary: &str, matches: &getopts::Matches) {
     let verbose = matches.opt_present("verbose");
 
-    println!("{} {}",
-             binary,
-             option_env!("CFG_VERSION").unwrap_or("unknown version"));
+    println!("{} {}", binary, option_env!("CFG_VERSION").unwrap_or("unknown version"));
+
     if verbose {
         fn unw(x: Option<&str>) -> &str {
             x.unwrap_or("unknown")
@@ -1251,8 +1248,6 @@ Available lint options:
     };
 
     print_lints(builtin);
-
-
 
     let max_name_len = max("warnings".len(),
                            plugin_groups.iter()
@@ -1429,6 +1424,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     }
 
     let cg_flags = matches.opt_strs("C");
+
     if cg_flags.iter().any(|x| *x == "help") {
         describe_codegen_flags();
         return None;
@@ -1477,7 +1473,7 @@ pub fn in_named_rustc_thread<F, R>(name: String, f: F) -> Result<R, Box<dyn Any 
     // Temporarily have stack size set to 16MB to deal with nom-using crates failing
     const STACK_SIZE: usize = 16 * 1024 * 1024; // 16MB
 
-    #[cfg(all(unix,not(target_os = "haiku")))]
+    #[cfg(all(unix, not(target_os = "haiku")))]
     let spawn_thread = unsafe {
         // Fetch the current resource limits
         let mut rlim = libc::rlimit {
@@ -1531,7 +1527,7 @@ pub fn in_named_rustc_thread<F, R>(name: String, f: F) -> Result<R, Box<dyn Any 
         }
     };
 
-    #[cfg(not(any(windows,unix)))]
+    #[cfg(not(any(windows, unix)))]
     let spawn_thread = true;
 
     // The or condition is added from backward compatibility.

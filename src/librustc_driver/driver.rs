@@ -1021,6 +1021,7 @@ where
             .cloned()
             .collect();
         missing_fragment_specifiers.sort();
+
         for span in missing_fragment_specifiers {
             let lint = lint::builtin::MISSING_FRAGMENT_SPECIFIER;
             let msg = "missing fragment specifier";
@@ -1517,6 +1518,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
                             Symbol::intern("proc-macro"),
                             Symbol::intern("bin")
                         ];
+
                         if let ast::MetaItemKind::NameValue(spanned) = a.meta().unwrap().node {
                             let span = spanned.span;
                             let lev_candidate = find_best_match_for_name(
@@ -1587,12 +1589,12 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
     base.retain(|crate_type| {
         let res = !::rustc_codegen_utils::link::invalid_output_for_target(session, *crate_type);
 
-            if !res {
-                session.warn(&format!(
-                    "dropping unsupported crate type `{}` for target `{}`",
-                    *crate_type, session.opts.target_triple
-                ));
-            }
+        if !res {
+            session.warn(&format!(
+                "dropping unsupported crate type `{}` for target `{}`",
+                *crate_type, session.opts.target_triple
+            ));
+        }
 
         res
     });
