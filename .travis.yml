@@ -5,6 +5,7 @@ rust: nightly
 os:
   - linux
   - osx
+  - windows
 
 sudo: false
 
@@ -36,6 +37,8 @@ matrix:
       env: BASE_TESTS=true
     - os: linux
       env: BASE_TESTS=true
+    - os: windows
+      env: BASE_TEST=true
     - env: INTEGRATION=rust-lang/cargo
     - env: INTEGRATION=rust-lang-nursery/rand
     - env: INTEGRATION=rust-lang-nursery/stdsimd
@@ -53,6 +56,7 @@ matrix:
   exclude:
     - os: linux
     - os: osx
+    - os: windows
 
 script:
   - |
