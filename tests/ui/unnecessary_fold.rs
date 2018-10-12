@@ -45,6 +45,13 @@ fn unnecessary_fold_should_ignore() {
 
     let _ = [(0..2), (0..3)].iter().fold(0, |a, b| a + b.len());
     let _ = [(0..2), (0..3)].iter().fold(1, |a, b| a * b.len());
+
+    // Because `any` takes the iterator as a mutable reference,
+    // it cannot be used in a pattern guard, and we must use `fold`.
+    match 1 {
+        _ if (0..3).fold(false, |acc, x| acc || x > 2) => {}
+        _ => {}
+    }
 }
 
 fn main() {}

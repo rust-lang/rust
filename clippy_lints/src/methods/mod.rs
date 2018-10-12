@@ -9,6 +9,7 @@
 
 
 use crate::rustc::hir;
+use crate::rustc::hir::{ExprKind, Guard, Node};
 use crate::rustc::hir::def::Def;
 use crate::rustc::lint::{in_external_macro, LateContext, LateLintPass, Lint, LintArray, LintContext, LintPass};
 use crate::rustc::ty::{self, Ty};
@@ -1426,6 +1427,23 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: 
     // Check that this is a call to Iterator::fold rather than just some function called fold
     if !match_trait_method(cx, expr, &paths::ITERATOR) {
         return;
+    }
+
+    // `Iterator::any` cannot be used within a pattern guard
+    // See https://github.com/rust-lang-nursery/rust-clippy/issues/3069
+    if_chain! {
+        if let Some(fold_parent) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(expr.id));
+        if let Node::Expr(fold_parent) = fold_parent;
+        if let ExprKind::Match(_, ref arms, _) = fold_parent.node;
+        if arms.iter().any(|arm| {
+            if let Some(Guard::If(ref guard)) = arm.guard {
+                return guard.id == expr.id;
+            }
+            false
+        });
+        then {
+            return;
+        }
     }
 
     assert!(fold_args.len() == 3,
