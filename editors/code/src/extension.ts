@@ -20,8 +20,8 @@ export function activate(context: vscode.ExtensionContext) {
         f: (...args: any[]) => Promise<boolean>
     ) {
         const defaultCmd = `default:${name}`;
-        const original = async (...args: any[]) =>
-            await vscode.commands.executeCommand(defaultCmd, ...args);
+        const original = (...args: any[]) =>
+            vscode.commands.executeCommand(defaultCmd, ...args);
 
         registerCommand(name, async (...args: any[]) => {
             const editor = vscode.window.activeTextEditor;

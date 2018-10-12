@@ -1,6 +1,8 @@
 use rustc_hash::FxHashSet;
 
 use ra_syntax::{
+    ast,
+    AstNode,
     File, TextRange, SyntaxNodeRef,
     SyntaxKind,
     Direction,
@@ -27,27 +29,25 @@ pub fn folding_ranges(file: &File) -> Vec<Fold> {
             continue;
         }
 
-        let range_and_kind = match node.kind() {
-            SyntaxKind::COMMENT => (
-                contiguous_range_for(SyntaxKind::COMMENT, node, &mut visited),
-                Some(FoldKind::Comment),
-            ),
-            SyntaxKind::USE_ITEM => (
-                contiguous_range_for(SyntaxKind::USE_ITEM, node, &mut visited),
-                Some(FoldKind::Imports),
-            ),
-            _ => (None, None),
-        };
+        if let Some(comment) = ast::Comment::cast(node) {
+            // Multiline comments (`/* ... */`) can only be folded if they span multiple lines
+            let range = if let ast::CommentFlavor::Multiline = comment.flavor() {
+                if comment.text().contains('\n') {
+                    Some(comment.syntax().range())
+                } else {
+                    None
+                }
+            } else {
+                contiguous_range_for(SyntaxKind::COMMENT, node, &mut visited)
+            };
 
-        match range_and_kind {
-            (Some(range), Some(kind)) => {
-                res.push(Fold {
-                    range: range,
-                    kind: kind
-                });
-            }
-            _ => {}
+            range.map(|range| res.push(Fold { range, kind: FoldKind::Comment }));
         }
+
+        if let SyntaxKind::USE_ITEM = node.kind() {
+            contiguous_range_for(SyntaxKind::USE_ITEM, node, &mut visited)
+                .map(|range| res.push(Fold { range, kind: FoldKind::Imports}));
+        };
     }
 
     res
