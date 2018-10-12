@@ -1,0 +1,14 @@
+error[E0599]: no method named `methodd` found for type `B` in the current scope
+  --> $DIR/method-suggestion-impl-trait.rs:21:7
+   |
+LL | struct B;
+   | --------- method `methodd` not found for this
+...
+LL |     b.methodd();
+   |       ^^^^^^^
+   |
+   = help: did you mean `method`?
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.
