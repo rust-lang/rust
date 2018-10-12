@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 #![allow(unused, clippy::many_single_char_names)]
 #![warn(clippy::ptr_arg)]

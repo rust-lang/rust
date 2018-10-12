@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 
 #![allow(unused_variables, clippy::trivially_copy_pass_by_ref)]

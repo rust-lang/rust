@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 #![warn(clippy::all)]
 #![allow(unused, clippy::needless_pass_by_value)]

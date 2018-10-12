@@ -11,8 +11,9 @@
 // error-pattern:yummy
 #![feature(box_syntax)]
 #![feature(rustc_private)]
-#![feature(tool_lints)]
-#![allow(unknown_lints, clippy::missing_docs_in_private_items)]
+
+#![feature(try_from)]
+#![allow(clippy::missing_docs_in_private_items)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (currently there is no way to opt into sysroot crates w/o `extern crate`)
@@ -22,6 +23,7 @@ extern crate rustc_driver;
 extern crate rustc_plugin;
 use self::rustc_driver::{driver::CompileController, Compilation};
 
+use std::convert::TryInto;
 use std::path::Path;
 use std::process::{exit, Command};
 
@@ -153,5 +155,5 @@ pub fn main() {
 
         let args = args;
         rustc_driver::run_compiler(&args, Box::new(controller), None, None)
-    }) as i32)
+    }).try_into().expect("exit code too large"))
 }

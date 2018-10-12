@@ -15,12 +15,13 @@
 #![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]
 #![feature(range_contains)]
-#![allow(unknown_lints, clippy::shadow_reuse, clippy::missing_docs_in_private_items)]
+#![allow(clippy::shadow_reuse, clippy::missing_docs_in_private_items)]
 #![recursion_limit = "256"]
 #![feature(macro_at_most_once_rep)]
-#![feature(tool_lints)]
+
 #![warn(rust_2018_idioms, trivial_casts, trivial_numeric_casts)]
 #![feature(crate_visibility_modifier)]
+#![feature(try_from)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (currently there is no way to opt into sysroot crates w/o `extern crate`)

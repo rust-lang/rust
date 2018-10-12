@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 #![feature(exhaustive_patterns, never_type)]
 #![allow(clippy::let_and_return)]

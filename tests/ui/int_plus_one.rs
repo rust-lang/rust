@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 
 #[allow(clippy::no_effect, clippy::unnecessary_operation)]
@@ -16,7 +16,7 @@
 fn main() {
     let x = 1i32;
     let y = 0i32;
-    
+
     x >= y + 1;
     y + 1 <= x;
 

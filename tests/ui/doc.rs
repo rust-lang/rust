@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 //! This file tests for the DOC_MARKDOWN lint
 

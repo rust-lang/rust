@@ -361,7 +361,7 @@ error: use of `expect` followed by a function call
    --> $DIR/methods.rs:379:26
     |
 379 |     with_none_and_as_str.expect(format!("Error {}: fake error", error_code).as_str());
-    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!(format!("Error {}: fake error", error_code).as_str()))`
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!("Error {}: fake error", error_code))`
 
 error: use of `expect` followed by a function call
    --> $DIR/methods.rs:389:25
@@ -373,85 +373,97 @@ error: use of `expect` followed by a function call
    --> $DIR/methods.rs:392:25
     |
 392 |     with_err_and_as_str.expect(format!("Error {}: fake error", error_code).as_str());
-    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|_| panic!(format!("Error {}: fake error", error_code).as_str()))`
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|_| panic!("Error {}: fake error", error_code))`
+
+error: use of `expect` followed by a function call
+   --> $DIR/methods.rs:407:17
+    |
+407 |     Some("foo").expect({ &format!("error") });
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| { let msg = { &format!("error") }; panic!(msg) }))`
+
+error: use of `expect` followed by a function call
+   --> $DIR/methods.rs:408:17
+    |
+408 |     Some("foo").expect(format!("error").as_ref());
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!("error"))`
 
 error: called `.iter().nth()` on a Vec. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:416:23
+   --> $DIR/methods.rs:419:23
     |
-416 |         let bad_vec = some_vec.iter().nth(3);
+419 |         let bad_vec = some_vec.iter().nth(3);
     |                       ^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D clippy::iter-nth` implied by `-D warnings`
 
 error: called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:417:26
+   --> $DIR/methods.rs:420:26
     |
-417 |         let bad_slice = &some_vec[..].iter().nth(3);
+420 |         let bad_slice = &some_vec[..].iter().nth(3);
     |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:418:31
+   --> $DIR/methods.rs:421:31
     |
-418 |         let bad_boxed_slice = boxed_slice.iter().nth(3);
+421 |         let bad_boxed_slice = boxed_slice.iter().nth(3);
     |                               ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter().nth()` on a VecDeque. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:419:29
+   --> $DIR/methods.rs:422:29
     |
-419 |         let bad_vec_deque = some_vec_deque.iter().nth(3);
+422 |         let bad_vec_deque = some_vec_deque.iter().nth(3);
     |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a Vec. Calling `.get_mut()` is both faster and more readable
-   --> $DIR/methods.rs:424:23
+   --> $DIR/methods.rs:427:23
     |
-424 |         let bad_vec = some_vec.iter_mut().nth(3);
+427 |         let bad_vec = some_vec.iter_mut().nth(3);
     |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a slice. Calling `.get_mut()` is both faster and more readable
-   --> $DIR/methods.rs:427:26
+   --> $DIR/methods.rs:430:26
     |
-427 |         let bad_slice = &some_vec[..].iter_mut().nth(3);
+430 |         let bad_slice = &some_vec[..].iter_mut().nth(3);
     |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a VecDeque. Calling `.get_mut()` is both faster and more readable
-   --> $DIR/methods.rs:430:29
+   --> $DIR/methods.rs:433:29
     |
-430 |         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
+433 |         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
     |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:442:13
+   --> $DIR/methods.rs:445:13
     |
-442 |     let _ = some_vec.iter().skip(42).next();
+445 |     let _ = some_vec.iter().skip(42).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D clippy::iter-skip-next` implied by `-D warnings`
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:443:13
+   --> $DIR/methods.rs:446:13
     |
-443 |     let _ = some_vec.iter().cycle().skip(42).next();
+446 |     let _ = some_vec.iter().cycle().skip(42).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:444:13
+   --> $DIR/methods.rs:447:13
     |
-444 |     let _ = (1..10).skip(10).next();
+447 |     let _ = (1..10).skip(10).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:445:14
+   --> $DIR/methods.rs:448:14
     |
-445 |     let _ = &some_vec[..].iter().skip(3).next();
+448 |     let _ = &some_vec[..].iter().skip(3).next();
     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:454:13
+   --> $DIR/methods.rs:457:13
     |
-454 |     let _ = opt.unwrap();
+457 |     let _ = opt.unwrap();
     |             ^^^^^^^^^^^^
     |
     = note: `-D clippy::option-unwrap-used` implied by `-D warnings`
 
-error: aborting due to 56 previous errors
+error: aborting due to 58 previous errors
 

@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
 #![allow(clippy::if_same_then_else)]

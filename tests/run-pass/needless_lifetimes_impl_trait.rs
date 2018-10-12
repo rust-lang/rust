@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 #![deny(clippy::needless_lifetimes)]
 #![allow(dead_code)]

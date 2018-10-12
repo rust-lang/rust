@@ -16,6 +16,7 @@ use crate::rustc::hir;
 use crate::rustc::lint::{EarlyContext, LateContext, LintContext};
 use crate::rustc_errors;
 use std::borrow::Cow;
+use std::convert::TryInto;
 use std::fmt::Display;
 use std;
 use crate::syntax::source_map::{CharPos, Span};
@@ -551,7 +552,7 @@ impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_error
             let non_whitespace_offset = src[fmpos.pos.to_usize()..].find(|c| c != ' ' && c != '\t' && c != '\n');
 
             if let Some(non_whitespace_offset) = non_whitespace_offset {
-                remove_span = remove_span.with_hi(remove_span.hi() + BytePos(non_whitespace_offset as u32))
+                remove_span = remove_span.with_hi(remove_span.hi() + BytePos(non_whitespace_offset.try_into().expect("offset too large")))
             }
         }
 

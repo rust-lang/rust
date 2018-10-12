@@ -11,8 +11,7 @@
 // error-pattern:cargo-clippy
 #![feature(plugin_registrar)]
 #![feature(rustc_private)]
-#![feature(tool_lints)]
-#![allow(unknown_lints)]
+
 #![allow(clippy::missing_docs_in_private_items)]
 #![warn(rust_2018_idioms)]
 

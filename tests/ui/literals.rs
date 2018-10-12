@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 #![warn(clippy::mixed_case_hex_literals)]
 #![warn(clippy::unseparated_literal_suffix)]

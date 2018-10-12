@@ -1069,12 +1069,19 @@ fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Spa
 /// Checks for the `EXPECT_FUN_CALL` lint.
 fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Span, name: &str, args: &[hir::Expr]) {
     fn extract_format_args(arg: &hir::Expr) -> Option<&hir::HirVec<hir::Expr>> {
-        if let hir::ExprKind::AddrOf(_, ref addr_of) = arg.node {
-            if let hir::ExprKind::Call(ref inner_fun, ref inner_args) = addr_of.node {
-                if is_expn_of(inner_fun.span, "format").is_some() && inner_args.len() == 1 {
-                    if let hir::ExprKind::Call(_, ref format_args) = inner_args[0].node {
-                        return Some(format_args);
-                    }
+        let arg  = match &arg.node {
+            hir::ExprKind::AddrOf(_, expr)=> expr,
+            hir::ExprKind::MethodCall(method_name, _, args)
+                if method_name.ident.name == "as_str" ||
+                   method_name.ident.name == "as_ref"
+                => &args[0],
+            _ => arg,
+        };
+
+        if let hir::ExprKind::Call(ref inner_fun, ref inner_args) = arg.node {
+            if is_expn_of(inner_fun.span, "format").is_some() && inner_args.len() == 1 {
+                if let hir::ExprKind::Call(_, ref format_args) = inner_args[0].node {
+                    return Some(format_args);
                 }
             }
         }
@@ -1111,7 +1118,8 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
                 | hir::ExprKind::MethodCall(..)
                 // These variants are debatable or require further examination
                 | hir::ExprKind::If(..)
-                | hir::ExprKind::Match(..) => true,
+                | hir::ExprKind::Match(..)
+                | hir::ExprKind::Block{ .. } => true,
                 _ => false,
             }
         }
@@ -1165,7 +1173,7 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
             span_replace_word,
             &format!("use of `{}` followed by a function call", name),
             "try this",
-            format!("unwrap_or_else({} panic!({}))", closure, sugg),
+            format!("unwrap_or_else({} {{ let msg = {}; panic!(msg) }}))", closure, sugg),
         );
     }
 

@@ -971,12 +971,14 @@ pub fn int_bits(tcx: TyCtxt<'_, '_, '_>, ity: ast::IntTy) -> u64 {
     layout::Integer::from_attr(tcx, attr::IntType::SignedInt(ity)).size().bits()
 }
 
+#[allow(clippy::cast_possible_wrap)]
 /// Turn a constant int byte representation into an i128
 pub fn sext(tcx: TyCtxt<'_, '_, '_>, u: u128, ity: ast::IntTy) -> i128 {
     let amt = 128 - int_bits(tcx, ity);
     ((u as i128) << amt) >> amt
 }
 
+#[allow(clippy::cast_sign_loss)]
 /// clip unused bytes
 pub fn unsext(tcx: TyCtxt<'_, '_, '_>, u: i128, ity: ast::IntTy) -> u128 {
     let amt = 128 - int_bits(tcx, ity);

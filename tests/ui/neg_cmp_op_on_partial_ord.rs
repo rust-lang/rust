@@ -8,7 +8,7 @@
 // except according to those terms.
 
 
-#![feature(tool_lints)]
+
 
 //! This test case utilizes `f64` an easy example for `PartialOrd` only types
 //! but the lint itself actually validates any expression where the left
@@ -27,7 +27,7 @@ fn main() {
 
     // Not Less but potentially Greater, Equal or Uncomparable.
     let _not_less = !(a_value < another_value);
-    
+
     // Not Less or Equal but potentially Greater or Uncomparable.
     let _not_less_or_equal = !(a_value <= another_value);
 

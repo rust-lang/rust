@@ -51,5 +51,5 @@ fn print_lints() {
         }
     }
 
-    println!("there are {} lints", Lint::active_lints(&lint_list).count());
+    println!("there are {} lints", Lint::active_lints(lint_list.into_iter()).count());
 }
