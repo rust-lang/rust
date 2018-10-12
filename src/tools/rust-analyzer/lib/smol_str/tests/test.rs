@@ -49,6 +49,7 @@ proptest! {
     }
 }
 
+#[cfg(feature = "serde")]
 #[test]
 fn test_serde() {
     let s = SmolStr::new("Hello, World");
