@@ -82,3 +82,12 @@ impl Future<Item = (), Error = SomeError> + 'a,
     'a + 'b +
     'c {
 }
+
+// #3060
+macro_rules! foo {
+    ($foo_api: ty) => {
+        type Target = ( $foo_api ) + 'static;
+    }
+}
+
+type Target = ( FooAPI ) + 'static;
