@@ -1,3 +1,6 @@
+// This should fail even without validation
+// compile-flags: -Zmir-emit-validate=0 -Zmiri-disable-validation
+
 static mut LEAK: usize = 0;
 
 fn fill(v: &mut i32) {
