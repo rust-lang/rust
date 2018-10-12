@@ -76,9 +76,9 @@ pub enum StringPart {
 }
 
 impl StringPart {
-    pub fn content(&self) -> String {
+    pub fn content(&self) -> &str {
         match self {
-            &StringPart::Normal(ref s) | & StringPart::Highlighted(ref s) => s.to_owned()
+            &StringPart::Normal(ref s) | & StringPart::Highlighted(ref s) => s
         }
     }
 }
@@ -398,7 +398,7 @@ impl Diagnostic {
     }
 
     pub fn message(&self) -> String {
-        self.message.iter().map(|i| i.0.to_owned()).collect::<String>()
+        self.message.iter().map(|i| i.0.as_str()).collect::<String>()
     }
 
     pub fn styled_message(&self) -> &Vec<(String, Style)> {
@@ -448,7 +448,7 @@ impl Diagnostic {
 
 impl SubDiagnostic {
     pub fn message(&self) -> String {
-        self.message.iter().map(|i| i.0.to_owned()).collect::<String>()
+        self.message.iter().map(|i| i.0.as_str()).collect::<String>()
     }
 
     pub fn styled_message(&self) -> &Vec<(String, Style)> {

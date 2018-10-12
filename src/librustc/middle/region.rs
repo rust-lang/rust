@@ -167,8 +167,7 @@ newtype_index! {
 impl_stable_hash_for!(struct ::middle::region::FirstStatementIndex { private });
 
 // compilation error if size of `ScopeData` is not the same as a `u32`
-#[allow(dead_code)]
-static ASSERT: () = [()][!(mem::size_of::<ScopeData>() == 4) as usize];
+static_assert!(ASSERT_SCOPE_DATA: mem::size_of::<ScopeData>() == 4);
 
 impl Scope {
     /// Returns a item-local id associated with this scope.

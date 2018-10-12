@@ -829,12 +829,9 @@ impl<'tcx> CommonTypes<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>) -> CommonTypes<'tcx> {
         // Ensure our type representation does not grow
         #[cfg(target_pointer_width = "64")]
-        #[allow(dead_code)]
-        static ASSERT_TY_KIND: () =
-            [()][!(::std::mem::size_of::<ty::TyKind<'_>>() <= 24) as usize];
+        static_assert!(ASSERT_TY_KIND: ::std::mem::size_of::<ty::TyKind<'_>>() <= 24);
         #[cfg(target_pointer_width = "64")]
-        #[allow(dead_code)]
-        static ASSERT_TYS: () = [()][!(::std::mem::size_of::<ty::TyS<'_>>() <= 32) as usize];
+        static_assert!(ASSERT_TYS: ::std::mem::size_of::<ty::TyS<'_>>() <= 32);
 
         let mk = |sty| CtxtInterners::intern_ty(interners, interners, sty);
         let mk_region = |r| {

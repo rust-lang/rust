@@ -11,7 +11,6 @@
 //! Functions concerning immediate values and operands, and reading from operands.
 //! All high-level functions to read from memory work on operands as sources.
 
-use std::hash::{Hash, Hasher};
 use std::convert::TryInto;
 
 use rustc::{mir, ty};
@@ -290,7 +289,7 @@ impl<Tag> Operand<Tag> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct OpTy<'tcx, Tag=()> {
     crate op: Operand<Tag>, // ideally we'd make this private, but const_prop needs this
     pub layout: TyLayout<'tcx>,
@@ -323,26 +322,6 @@ impl<'tcx, Tag> From<ValTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
         }
     }
 }
-
-// Validation needs to hash OpTy, but we cannot hash Layout -- so we just hash the type
-impl<'tcx, Tag> Hash for OpTy<'tcx, Tag>
-    where Tag: Hash
-{
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.op.hash(state);
-        self.layout.ty.hash(state);
-    }
-}
-impl<'tcx, Tag> PartialEq for OpTy<'tcx, Tag>
-    where Tag: PartialEq
-{
-    fn eq(&self, other: &Self) -> bool {
-        self.op == other.op && self.layout.ty == other.layout.ty
-    }
-}
-impl<'tcx, Tag> Eq for OpTy<'tcx, Tag>
-    where Tag: Eq
-{}
 
 impl<'tcx, Tag> OpTy<'tcx, Tag>
 {
