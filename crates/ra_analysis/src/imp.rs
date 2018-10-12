@@ -321,47 +321,45 @@ impl AnalysisImpl {
         for (_, fs) in file_symbols {
             if fs.kind == FN_DEF {
                 if let Some(fn_def) = find_node_at_offset(syntax, fs.node_range.start()) {
-                    let descriptor = FnDescriptor::new(fn_def);
+                    if let Some(descriptor) = FnDescriptor::new(fn_def) {
+                        // If we have a calling expression let's find which argument we are on
+                        let mut current_parameter = None;
 
-                    // If we have a calling expression let's find which argument we are on
-                    let mut current_parameter = None;
+                        let num_params = descriptor.params.len();
+                        let has_self = fn_def.param_list()
+                            .and_then(|l| l.self_param())
+                            .is_some();
 
-                    let num_params = descriptor.params.len();
-                    let has_self = fn_def.param_list()
-                        .and_then(|l| l.self_param())
-                        .is_some();
-
-
-                    if num_params == 1 {
-                        if !has_self {
-                            current_parameter = Some(1);
-                        }
-                    }
-                    else if num_params > 1 {
-                        // Count how many parameters into the call we are.
-                        // TODO: This is best effort for now and should be fixed at some point.
-                        // It may be better to see where we are in the arg_list and then check
-                        // where offset is in that list (or beyond).
-                        // Revisit this after we get documentation comments in.
-                        if let Some(ref arg_list) = calling_node.arg_list() {
-                            let start = arg_list.syntax().range().start();
-
-                            let range_search = TextRange::from_to(start, offset);
-                            let mut commas : usize = arg_list.syntax().text()
-                                .slice(range_search).to_string()
-                                .matches(",")
-                                .count();
-
-                            // If we have a method call eat the first param since it's just self.
-                            if has_self {
-                                commas = commas + 1;
+                        if num_params == 1 {
+                            if !has_self {
+                                current_parameter = Some(1);
                             }
+                        } else if num_params > 1 {
+                            // Count how many parameters into the call we are.
+                            // TODO: This is best effort for now and should be fixed at some point.
+                            // It may be better to see where we are in the arg_list and then check
+                            // where offset is in that list (or beyond).
+                            // Revisit this after we get documentation comments in.
+                            if let Some(ref arg_list) = calling_node.arg_list() {
+                                let start = arg_list.syntax().range().start();
 
-                            current_parameter = Some(commas);
+                                let range_search = TextRange::from_to(start, offset);
+                                let mut commas: usize = arg_list.syntax().text()
+                                    .slice(range_search).to_string()
+                                    .matches(",")
+                                    .count();
+
+                                // If we have a method call eat the first param since it's just self.
+                                if has_self {
+                                    commas = commas + 1;
+                                }
+
+                                current_parameter = Some(commas);
+                            }
                         }
-                    }
 
-                    return Some((descriptor, current_parameter));
+                        return Some((descriptor, current_parameter));
+                    }
                 }
             }
         }

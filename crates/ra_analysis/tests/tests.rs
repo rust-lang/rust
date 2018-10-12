@@ -164,7 +164,7 @@ fn test_fn_signature_two_args_first() {
 r#"fn foo(x: u32, y: u32) -> u32 {x + y}
 fn bar() { foo(<|>3, ); }"#);
 
-    assert_eq!(desc.name, Some("foo".into()));
+    assert_eq!(desc.name, "foo".to_string());
     assert_eq!(desc.params, vec!("x".to_string(),"y".to_string()));
     assert_eq!(desc.ret_type, Some("-> u32".into()));
     assert_eq!(param, Some(0));
@@ -176,7 +176,7 @@ fn test_fn_signature_two_args_second() {
         r#"fn foo(x: u32, y: u32) -> u32 {x + y}
 fn bar() { foo(3, <|>); }"#);
 
-    assert_eq!(desc.name, Some("foo".into()));
+    assert_eq!(desc.name, "foo".to_string());
     assert_eq!(desc.params, vec!("x".to_string(),"y".to_string()));
     assert_eq!(desc.ret_type, Some("-> u32".into()));
     assert_eq!(param, Some(1));
@@ -188,7 +188,7 @@ fn test_fn_signature_for_impl() {
 r#"struct F; impl F { pub fn new() { F{}} }
 fn bar() {let _ : F = F::new(<|>);}"#);
 
-    assert_eq!(desc.name, Some("new".into()));
+    assert_eq!(desc.name, "new".to_string());
     assert_eq!(desc.params, Vec::<String>::new());
     assert_eq!(desc.ret_type, None);
     assert_eq!(param, None);
@@ -211,7 +211,7 @@ fn bar() {
     f.do_it(<|>);
 }"#);
 
-    assert_eq!(desc.name, Some("do_it".into()));
+    assert_eq!(desc.name, "do_it".to_string());
     assert_eq!(desc.params, vec!["&self".to_string()]);
     assert_eq!(desc.ret_type, None);
     assert_eq!(param, None);
@@ -234,7 +234,7 @@ fn bar() {
     f.do_it(<|>);
 }"#);
 
-    assert_eq!(desc.name, Some("do_it".into()));
+    assert_eq!(desc.name, "do_it".to_string());
     assert_eq!(desc.params, vec!["&self".to_string(), "x".to_string()]);
     assert_eq!(desc.ret_type, None);
     assert_eq!(param, Some(1));

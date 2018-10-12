@@ -4,7 +4,7 @@ use std::{
 use relative_path::RelativePathBuf;
 use ra_syntax::{
     SmolStr,
-    ast::{self, NameOwner, AstNode, TypeParamsOwner},
+    ast::{self, NameOwner, AstNode},
     text_utils::is_subrange
 };
 use {
@@ -222,15 +222,15 @@ fn resolve_submodule(
 
 #[derive(Debug, Clone)]
 pub struct FnDescriptor {
-    pub name: Option<String>,
+    pub name: String,
     pub label : String,
     pub ret_type: Option<String>,
     pub params: Vec<String>,
 }
 
 impl FnDescriptor {
-    pub fn new(node: ast::FnDef) -> Self {
-        let name = node.name().map(|name| name.text().to_string());
+    pub fn new(node: ast::FnDef) -> Option<Self> {
+        let name = node.name()?.text().to_string();
 
         // Strip the body out for the label.
         let label : String = if let Some(body) = node.body() {
@@ -247,12 +247,12 @@ impl FnDescriptor {
         let params = FnDescriptor::param_list(node);
         let ret_type = node.ret_type().map(|r| r.syntax().text().to_string());
 
-        FnDescriptor {
+        Some(FnDescriptor {
             name,
             ret_type,
             params,
             label
-        }
+        })
     }
 
     fn param_list(node: ast::FnDef) -> Vec<String> {
