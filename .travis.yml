@@ -5,6 +5,7 @@ rust: nightly
 os:
   - linux
   - osx
+  - windows
 
 sudo: false
 
@@ -23,7 +24,7 @@ before_install:
 
 install:
   - |
-    if [ -z ${INTEGRATION} ]; then
+    if [ -z ${INTEGRATION} ] && [ "$TRAVIS_OS_NAME" == "linux" ]; then
       . $HOME/.nvm/nvm.sh
       nvm install stable
       nvm use stable
@@ -36,6 +37,8 @@ matrix:
       env: BASE_TESTS=true
     - os: linux
       env: BASE_TESTS=true
+    - os: windows
+      env: BASE_TEST=true
     - env: INTEGRATION=rust-lang/cargo
     - env: INTEGRATION=rust-lang-nursery/rand
     - env: INTEGRATION=rust-lang-nursery/stdsimd
@@ -49,10 +52,14 @@ matrix:
     - env: INTEGRATION=serde-rs/serde
     - env: INTEGRATION=Geal/nom
     - env: INTEGRATION=hyperium/hyper
+  allow_failures:
+  - os: windows
+    env: BASE_TEST=true
 # prevent these jobs with default env vars
   exclude:
     - os: linux
     - os: osx
+    - os: windows
 
 script:
   - |
