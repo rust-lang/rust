@@ -88,7 +88,9 @@ assert_eq!(size_of::<Option<std::num::", stringify!($Ty), ">>(), size_of::<", st
                 #[stable(feature = "nonzero", since = "1.28.0")]
                 #[inline]
                 pub fn get(self) -> $Int {
-                    self.0 .0
+                    let r = self.0 .0;
+                    unsafe { intrinsics::assume(r != 0) };
+                    r
                 }
 
             }
