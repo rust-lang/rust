@@ -137,9 +137,7 @@ pub mod target_features {
                              codegen_backend: &dyn CodegenBackend) {
         let tf = Symbol::intern("target_feature");
 
-        for feat in codegen_backend.target_features(sess) {
-            cfg.insert((tf, Some(feat)));
-        }
+        cfg.extend(codegen_backend.target_features(sess).into_iter().map(|feat| (tf, Some(feat))));
 
         if sess.crt_static_feature() {
             cfg.insert((tf, Some(Symbol::intern("crt-static"))));
@@ -997,7 +995,7 @@ impl RustcDefaultCalls {
                          input: &Input)
                          -> Compilation {
         let r = matches.opt_strs("Z");
-        if r.contains(&("ls".to_string())) {
+        if r.iter().any(|s| *s == "ls") {
             match input {
                 &Input::File(ref ifile) => {
                     let path = &(*ifile);
@@ -1085,8 +1083,7 @@ impl RustcDefaultCalls {
                     let allow_unstable_cfg = UnstableFeatures::from_environment()
                         .is_nightly_build();
 
-                    let mut cfgs = Vec::new();
-                    for &(name, ref value) in sess.parse_sess.config.iter() {
+                    let mut cfgs = sess.parse_sess.config.iter().filter_map(|&(name, ref value)| {
                         let gated_cfg = GatedCfg::gate(&ast::MetaItem {
                             ident: ast::Path::from_ident(ast::Ident::with_empty_ctxt(name)),
                             node: ast::MetaItemKind::Word,
@@ -1105,16 +1102,16 @@ impl RustcDefaultCalls {
                         let value = value.as_ref().map(|s| s.as_ref());
                         if name != "target_feature" || value != Some("crt-static") {
                             if !allow_unstable_cfg && gated_cfg.is_some() {
-                                continue;
+                                return None
                             }
                         }
 
-                        cfgs.push(if let Some(value) = value {
-                            format!("{}=\"{}\"", name, value)
+                        if let Some(value) = value {
+                            Some(format!("{}=\"{}\"", name, value))
                         } else {
-                            name.to_string()
-                        });
-                    }
+                            Some(name.to_string())
+                        }
+                    }).collect::<Vec<String>>();
 
                     cfgs.sort();
                     for cfg in cfgs {
@@ -1177,7 +1174,7 @@ fn usage(verbose: bool, include_unstable_options: bool) {
     for option in groups.iter().filter(|x| include_unstable_options || x.is_stable()) {
         (option.apply)(&mut options);
     }
-    let message = "Usage: rustc [OPTIONS] INPUT".to_string();
+    let message = "Usage: rustc [OPTIONS] INPUT";
     let nightly_help = if nightly_options::is_nightly_build() {
         "\n    -Z help             Print internal options for debugging rustc"
     } else {
@@ -1192,7 +1189,7 @@ fn usage(verbose: bool, include_unstable_options: bool) {
     -C help             Print codegen options
     -W help             \
               Print 'lint' options and default settings{}{}\n",
-             options.usage(&message),
+             options.usage(message),
              nightly_help,
              verbose_help);
 }
@@ -1463,7 +1460,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
                    "the --no-stack-check flag is deprecated and does nothing");
     }
 
-    if cg_flags.contains(&"passes=list".to_string()) {
+    if cg_flags.iter().any(|x| *x == "passes=list") {
         get_codegen_sysroot("llvm")().print_passes();
         return None;
     }

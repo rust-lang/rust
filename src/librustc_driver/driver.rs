@@ -1586,9 +1586,8 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
         base.dedup();
     }
 
-    base.into_iter()
-        .filter(|crate_type| {
-            let res = !::rustc_codegen_utils::link::invalid_output_for_target(session, *crate_type);
+    base.retain(|crate_type| {
+        let res = !::rustc_codegen_utils::link::invalid_output_for_target(session, *crate_type);
 
             if !res {
                 session.warn(&format!(
@@ -1597,9 +1596,10 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
                 ));
             }
 
-            res
-        })
-        .collect()
+        res
+    });
+
+    base
 }
 
 pub fn compute_crate_disambiguator(session: &Session) -> CrateDisambiguator {

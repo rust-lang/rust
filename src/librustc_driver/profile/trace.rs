@@ -89,18 +89,18 @@ fn html_of_duration(_start: &Instant, dur: &Duration) -> (String, String) {
     )
 }
 
-fn html_of_fraction(frac: f64) -> (String, String) {
+fn html_of_fraction(frac: f64) -> (String, &'static str) {
     let css = {
-        if       frac > 0.50  { "frac-50".to_string() }
-        else if  frac > 0.40  { "frac-40".to_string() }
-        else if  frac > 0.30  { "frac-30".to_string() }
-        else if  frac > 0.20  { "frac-20".to_string() }
-        else if  frac > 0.10  { "frac-10".to_string() }
-        else if  frac > 0.05  { "frac-05".to_string() }
-        else if  frac > 0.02  { "frac-02".to_string() }
-        else if  frac > 0.01  { "frac-01".to_string() }
-        else if  frac > 0.001 { "frac-001".to_string() }
-        else                  { "frac-0".to_string() }
+        if       frac > 0.50  { "frac-50" }
+        else if  frac > 0.40  { "frac-40" }
+        else if  frac > 0.30  { "frac-30" }
+        else if  frac > 0.20  { "frac-20" }
+        else if  frac > 0.10  { "frac-10" }
+        else if  frac > 0.05  { "frac-05" }
+        else if  frac > 0.02  { "frac-02" }
+        else if  frac > 0.01  { "frac-01" }
+        else if  frac > 0.001 { "frac-001" }
+        else                  { "frac-0" }
     };
     let percent = frac * 100.0;
     if percent > 0.1 { (format!("{:.1}%", percent), css) }
@@ -148,6 +148,7 @@ fn write_traces_rec(file: &mut File, traces: &[Rec], total: Duration, depth: usi
 }
 
 fn compute_counts_rec(counts: &mut FxHashMap<String,QueryMetric>, traces: &[Rec]) {
+    counts.reserve(traces.len());
     for t in traces.iter() {
         match t.effect {
             Effect::TimeBegin(ref msg) => {
