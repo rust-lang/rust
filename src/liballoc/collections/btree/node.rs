@@ -42,7 +42,7 @@
 //   This implies that even an empty internal node has at least one edge.
 
 use core::marker::PhantomData;
-use core::mem;
+use core::mem::{self, MaybeUninit};
 use core::ptr::{self, Unique, NonNull};
 use core::slice;
 
@@ -58,9 +58,6 @@ pub const CAPACITY: usize = 2 * B - 1;
 /// these should always be put behind pointers, and specifically behind `BoxedNode` in the owned
 /// case.
 ///
-/// See also rust-lang/rfcs#197, which would make this structure significantly more safe by
-/// avoiding accidentally dropping unused and uninitialized keys and values.
-///
 /// We put the metadata first so that its position is the same for every `K` and `V`, in order
 /// to statically allocate a single dummy node to avoid allocations. This struct is `repr(C)` to
 /// prevent them from being reordered.
@@ -73,7 +70,7 @@ struct LeafNode<K, V> {
     /// This node's index into the parent node's `edges` array.
     /// `*node.parent.edges[node.parent_idx]` should be the same thing as `node`.
     /// This is only guaranteed to be initialized when `parent` is nonnull.
-    parent_idx: u16,
+    parent_idx: MaybeUninit<u16>,
 
     /// The number of keys and values this node stores.
     ///
@@ -83,8 +80,8 @@ struct LeafNode<K, V> {
 
     /// The arrays storing the actual data of the node. Only the first `len` elements of each
     /// array are initialized and valid.
-    keys: [K; CAPACITY],
-    vals: [V; CAPACITY],
+    keys: MaybeUninit<[K; CAPACITY]>,
+    vals: MaybeUninit<[V; CAPACITY]>,
 }
 
 impl<K, V> LeafNode<K, V> {
@@ -94,10 +91,10 @@ impl<K, V> LeafNode<K, V> {
         LeafNode {
             // As a general policy, we leave fields uninitialized if they can be, as this should
             // be both slightly faster and easier to track in Valgrind.
-            keys: mem::uninitialized(),
-            vals: mem::uninitialized(),
+            keys: MaybeUninit::uninitialized(),
+            vals: MaybeUninit::uninitialized(),
             parent: ptr::null(),
-            parent_idx: mem::uninitialized(),
+            parent_idx: MaybeUninit::uninitialized(),
             len: 0
         }
     }
@@ -115,10 +112,10 @@ unsafe impl Sync for LeafNode<(), ()> {}
 // ever take a pointer past the first key.
 static EMPTY_ROOT_NODE: LeafNode<(), ()> = LeafNode {
     parent: ptr::null(),
-    parent_idx: 0,
+    parent_idx: MaybeUninit::uninitialized(),
     len: 0,
-    keys: [(); CAPACITY],
-    vals: [(); CAPACITY],
+    keys: MaybeUninit::uninitialized(),
+    vals: MaybeUninit::uninitialized(),
 };
 
 /// The underlying representation of internal nodes. As with `LeafNode`s, these should be hidden
@@ -430,7 +427,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
                     root: self.root,
                     _marker: PhantomData
                 },
-                idx: self.as_leaf().parent_idx as usize,
+                idx: unsafe { usize::from(*self.as_leaf().parent_idx.get_ref()) },
                 _marker: PhantomData
             })
         } else {
@@ -567,7 +564,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
             // the node, which is allowed by LLVM.
             unsafe {
                 slice::from_raw_parts(
-                    self.as_leaf().keys.as_ptr(),
+                    self.as_leaf().keys.as_ptr() as *const K,
                     self.len()
                 )
             }
@@ -578,7 +575,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
         debug_assert!(!self.is_shared_root());
         unsafe {
             slice::from_raw_parts(
-                self.as_leaf().vals.as_ptr(),
+                self.as_leaf().vals.as_ptr() as *const V,
                 self.len()
             )
         }
@@ -605,7 +602,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         } else {
             unsafe {
                 slice::from_raw_parts_mut(
-                    &mut self.as_leaf_mut().keys as *mut [K] as *mut K,
+                    self.as_leaf_mut().keys.get_mut() as *mut [K] as *mut K,
                     self.len()
                 )
             }
@@ -616,7 +613,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         debug_assert!(!self.is_shared_root());
         unsafe {
             slice::from_raw_parts_mut(
-                &mut self.as_leaf_mut().vals as *mut [V] as *mut V,
+                self.as_leaf_mut().vals.get_mut() as *mut [V] as *mut V,
                 self.len()
             )
         }
@@ -1013,7 +1010,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         let ptr = self.node.as_internal_mut() as *mut _;
         let mut child = self.descend();
         child.as_leaf_mut().parent = ptr;
-        child.as_leaf_mut().parent_idx = idx;
+        child.as_leaf_mut().parent_idx.set(idx);
     }
 
     /// Unsafely asserts to the compiler some static information about whether the underlying
@@ -1152,12 +1149,12 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> 
 
             ptr::copy_nonoverlapping(
                 self.node.keys().as_ptr().add(self.idx + 1),
-                new_node.keys.as_mut_ptr(),
+                new_node.keys.as_mut_ptr() as *mut K,
                 new_len
             );
             ptr::copy_nonoverlapping(
                 self.node.vals().as_ptr().add(self.idx + 1),
-                new_node.vals.as_mut_ptr(),
+                new_node.vals.as_mut_ptr() as *mut V,
                 new_len
             );
 
@@ -1210,12 +1207,12 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
 
             ptr::copy_nonoverlapping(
                 self.node.keys().as_ptr().add(self.idx + 1),
-                new_node.data.keys.as_mut_ptr(),
+                new_node.data.keys.as_mut_ptr() as *mut K,
                 new_len
             );
             ptr::copy_nonoverlapping(
                 self.node.vals().as_ptr().add(self.idx + 1),
-                new_node.data.vals.as_mut_ptr(),
+                new_node.data.vals.as_mut_ptr() as *mut V,
                 new_len
             );
             ptr::copy_nonoverlapping(
