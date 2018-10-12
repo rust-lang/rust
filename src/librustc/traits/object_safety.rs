@@ -437,16 +437,16 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     /// in the following way:
     /// - let `Receiver` be the type of the `self` argument, i.e `Self`, `&Self`, `Rc<Self>`
     /// - require the following bound:
-    ///       forall(T: Trait) {
-    ///           Receiver[Self => T]: DispatchFromDyn<Receiver[Self => dyn Trait]>
-    ///       }
-    ///   where `Foo[X => Y]` means "the same type as `Foo`, but with `X` replaced with `Y`"
+    ///
+    ///        Receiver[Self => T]: DispatchFromDyn<Receiver[Self => dyn Trait]>
+    ///
+    ///    where `Foo[X => Y]` means "the same type as `Foo`, but with `X` replaced with `Y`"
     ///   (substitution notation).
     ///
     /// some examples of receiver types and their required obligation
-    /// - `&'a mut self` requires `&'a mut T: DispatchFromDyn<&'a mut dyn Trait>`
-    /// - `self: Rc<Self>` requires `Rc<T>: DispatchFromDyn<Rc<dyn Trait>>`
-    /// - `self: Pin<Box<Self>>` requires `Pin<Box<T>>: DispatchFromDyn<Pin<Box<dyn Trait>>>`
+    /// - `&'a mut self` requires `&'a mut Self: DispatchFromDyn<&'a mut dyn Trait>`
+    /// - `self: Rc<Self>` requires `Rc<Self>: DispatchFromDyn<Rc<dyn Trait>>`
+    /// - `self: Pin<Box<Self>>` requires `Pin<Box<Self>>: DispatchFromDyn<Pin<Box<dyn Trait>>>`
     ///
     /// The only case where the receiver is not dispatchable, but is still a valid receiver
     /// type (just not object-safe), is when there is more than one level of pointer indirection.
@@ -456,14 +456,12 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     /// contained by the trait object, because the object that needs to be coerced is behind
     /// a pointer.
     ///
-    /// In practice, there are issues with the above bound: `where` clauses that apply to `Self`
-    /// would have to apply to `T`, trait object types have a lot of parameters that need to
-    /// be filled in (lifetime and type parameters, and the lifetime of the actual object), and
-    /// I'm pretty sure using `dyn Trait` in the query causes another object-safety query for
-    /// `Trait`, resulting in cyclic queries. So in the implementation, we use the following,
-    /// more general bound:
+    /// In practice, we cannot use `dyn Trait` explicitly in the obligation because it would result
+    /// in a new check that `Trait` is object safe, creating a cycle. So instead, we fudge a little
+    /// by introducing a new type parameter `U` such that `Self: Unsize<U>` and `U: Trait + ?Sized`,
+    /// and use `U` in place of `dyn Trait`. Written as a chalk-style query:
     ///
-    ///     forall (U: ?Sized) {
+    ///     forall (U: Trait + ?Sized) {
     ///         if (Self: Unsize<U>) {
     ///             Receiver: DispatchFromDyn<Receiver[Self => U]>
     ///         }
@@ -493,6 +491,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             return false;
         };
 
+        // the type `U` in the query
         // use a bogus type parameter to mimick a forall(U) query using u32::MAX for now.
         // FIXME(mikeyhew) this is a total hack, and we should replace it when real forall queries
         // are implemented
@@ -501,33 +500,47 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             Name::intern("RustaceansAreAwesome").as_interned_str(),
         );
 
-        // create a modified param env, with `Self: Unsize<U>` added to the caller bounds
+        // `Receiver[Self => U]`
+        let unsized_receiver_ty = self.receiver_for_self_ty(
+            receiver_ty, unsized_self_ty, method.def_id
+        );
+
+        // create a modified param env, with `Self: Unsize<U>` and `U: Trait` added to caller bounds
+        // `U: ?Sized` is already implied here
         let param_env = {
             let mut param_env = self.param_env(method.def_id);
 
-            let predicate = ty::TraitRef {
+            // Self: Unsize<U>
+            let unsize_predicate = ty::TraitRef {
                 def_id: unsize_did,
                 substs: self.mk_substs_trait(self.mk_self_type(), &[unsized_self_ty.into()]),
             }.to_predicate();
 
+            // U: Trait<Arg1, ..., ArgN>
+            let trait_predicate = {
+                let substs = Substs::for_item(self, method.container.assert_trait(), |param, _| {
+                    if param.index == 0 {
+                        unsized_self_ty.into()
+                    } else {
+                        self.mk_param_from_def(param)
+                    }
+                });
+
+                ty::TraitRef {
+                    def_id: unsize_did,
+                    substs,
+                }.to_predicate()
+            };
+
             let caller_bounds: Vec<Predicate<'tcx>> = param_env.caller_bounds.iter().cloned()
-                .chain(iter::once(predicate))
+                .chain(iter::once(unsize_predicate))
+                .chain(iter::once(trait_predicate))
                 .collect();
 
             param_env.caller_bounds = self.intern_predicates(&caller_bounds);
 
             param_env
         };
-
-        let receiver_substs = Substs::for_item(self, method.def_id, |param, _| {
-            if param.index == 0 {
-                unsized_self_ty.into()
-            } else {
-                self.mk_param_from_def(param)
-            }
-        });
-        // the type `Receiver[Self => U]` in the query
-        let unsized_receiver_ty = receiver_ty.subst(self, receiver_substs);
 
         // Receiver: DispatchFromDyn<Receiver[Self => U]>
         let obligation = {
