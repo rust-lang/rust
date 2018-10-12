@@ -329,7 +329,7 @@ impl Once {
     /// assert!(handle.join().is_err());
     /// assert_eq!(INIT.is_completed(), false);
     /// ```
-    #[unstable(feature = "once_is_completed", issue = "42")]
+    #[unstable(feature = "once_is_completed", issue = "54890")]
     #[inline]
     pub fn is_completed(&self) -> bool {
         // An `Acquire` load is enough because that makes all the initialization

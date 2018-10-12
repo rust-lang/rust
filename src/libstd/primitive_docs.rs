@@ -908,10 +908,35 @@ mod prim_usize { }
 /// `&mut T` references can be freely coerced into `&T` references with the same referent type, and
 /// references with longer lifetimes can be freely coerced into references with shorter ones.
 ///
+/// Reference equality by address, instead of comparing the values pointed to, is accomplished via
+/// implicit reference-pointer coercion and raw pointer equality via [`ptr::eq`], while
+/// [`PartialEq`] compares values.
+///
+/// [`ptr::eq`]: ptr/fn.eq.html
+/// [`PartialEq`]: cmp/trait.PartialEq.html
+///
+/// ```
+/// use std::ptr;
+///
+/// let five = 5;
+/// let other_five = 5;
+/// let five_ref = &five;
+/// let same_five_ref = &five;
+/// let other_five_ref = &other_five;
+///
+/// assert!(five_ref == same_five_ref);
+/// assert!(five_ref == other_five_ref);
+///
+/// assert!(ptr::eq(five_ref, same_five_ref));
+/// assert!(!ptr::eq(five_ref, other_five_ref));
+/// ```
+///
 /// For more information on how to use references, see [the book's section on "References and
 /// Borrowing"][book-refs].
 ///
 /// [book-refs]: ../book/second-edition/ch04-02-references-and-borrowing.html
+///
+/// # Trait implementations
 ///
 /// The following traits are implemented for all `&T`, regardless of the type of its referent:
 ///

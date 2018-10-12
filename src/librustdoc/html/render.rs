@@ -4098,12 +4098,13 @@ impl<'a> fmt::Display for Sidebar<'a> {
                         </div>",
                        version)?;
             }
-
-            write!(fmt, "<a id='all-types' href='all.html'><p>See all {}'s items</p></a>",
-                   it.name.as_ref().expect("crates always have a name"))?;
         }
 
         write!(fmt, "<div class=\"sidebar-elems\">")?;
+        if it.is_crate() {
+            write!(fmt, "<a id='all-types' href='all.html'><p>See all {}'s items</p></a>",
+                   it.name.as_ref().expect("crates always have a name"))?;
+        }
         match it.inner {
             clean::StructItem(ref s) => sidebar_struct(fmt, it, s)?,
             clean::TraitItem(ref t) => sidebar_trait(fmt, it, t)?,

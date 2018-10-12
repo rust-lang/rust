@@ -59,15 +59,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         }
 
         let t = cx.tables.expr_ty(&expr);
-        let ty_warned = match t.sty {
-            ty::Tuple(ref tys) if tys.is_empty() => return,
-            ty::Never => return,
+        // FIXME(varkor): replace with `t.is_unit() || t.conservative_is_uninhabited()`.
+        let type_permits_no_use = match t.sty {
+            ty::Tuple(ref tys) if tys.is_empty() => true,
+            ty::Never => true,
             ty::Adt(def, _) => {
                 if def.variants.is_empty() {
-                    return;
+                    true
+                } else {
+                    check_must_use(cx, def.did, s.span, "")
                 }
-                check_must_use(cx, def.did, s.span, "")
-            },
+            }
             _ => false,
         };
 
@@ -95,7 +97,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         if let Some(def) = maybe_def {
             let def_id = def.def_id();
             fn_warned = check_must_use(cx, def_id, s.span, "return value of ");
+        } else if type_permits_no_use {
+            // We don't warn about unused unit or uninhabited types.
+            // (See https://github.com/rust-lang/rust/issues/43806 for details.)
+            return;
         }
+
         let must_use_op = match expr.node {
             // Hardcoding operators here seemed more expedient than the
             // refactoring that would be needed to look up the `#[must_use]`
@@ -139,7 +146,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             op_warned = true;
         }
 
-        if !(ty_warned || fn_warned || op_warned) {
+        if !(type_permits_no_use || fn_warned || op_warned) {
             cx.span_lint(UNUSED_RESULTS, s.span, "unused result");
         }
 
@@ -233,7 +240,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
                 .find(|&&(builtin, ty, _)| name == builtin && ty == AttributeType::CrateLevel)
                 .is_some();
 
-            // Has a plugin registered this attribute as one which must be used at
+            // Has a plugin registered this attribute as one that must be used at
             // the crate level?
             let plugin_crate = plugin_attributes.iter()
                 .find(|&&(ref x, t)| name == &**x && AttributeType::CrateLevel == t)

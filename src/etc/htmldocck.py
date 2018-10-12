@@ -15,65 +15,66 @@ htmldocck.py is a custom checker script for Rustdoc HTML outputs.
 
 The principle is simple: This script receives a path to generated HTML
 documentation and a "template" script, which has a series of check
-commands like `@has` or `@matches`. Each command can be used to check if
+commands like `@has` or `@matches`. Each command is used to check if
 some pattern is present or not present in the particular file or in
-the particular node of HTML tree. In many cases, the template script
-happens to be a source code given to rustdoc.
+a particular node of the HTML tree. In many cases, the template script
+happens to be the source code given to rustdoc.
 
 While it indeed is possible to test in smaller portions, it has been
 hard to construct tests in this fashion and major rendering errors were
-discovered much later. This script is designed for making the black-box
-and regression testing of Rustdoc easy. This does not preclude the needs
-for unit testing, but can be used to complement related tests by quickly
+discovered much later. This script is designed to make black-box and
+regression testing of Rustdoc easy. This does not preclude the needs for
+unit testing, but can be used to complement related tests by quickly
 showing the expected renderings.
 
 In order to avoid one-off dependencies for this task, this script uses
 a reasonably working HTML parser and the existing XPath implementation
-from Python's standard library. Hopefully we won't render
+from Python's standard library. Hopefully, we won't render
 non-well-formed HTML.
 
 # Commands
 
 Commands start with an `@` followed by a command name (letters and
 hyphens), and zero or more arguments separated by one or more whitespace
-and optionally delimited with single or double quotes. The `@` mark
-cannot be preceded by a non-whitespace character. Other lines (including
-every text up to the first `@`) are ignored, but it is recommended to
-avoid the use of `@` in the template file.
+characters and optionally delimited with single or double quotes. The `@`
+mark cannot be preceded by a non-whitespace character. Other lines
+(including every text up to the first `@`) are ignored, but it is
+recommended to avoid the use of `@` in the template file.
 
 There are a number of supported commands:
 
-* `@has PATH` checks for the existence of given file.
+* `@has PATH` checks for the existence of the given file.
 
   `PATH` is relative to the output directory. It can be given as `-`
   which repeats the most recently used `PATH`.
 
 * `@has PATH PATTERN` and `@matches PATH PATTERN` checks for
-  the occurrence of given `PATTERN` in the given file. Only one
-  occurrence of given pattern is enough.
+  the occurrence of the given pattern `PATTERN` in the specified file.
+  Only one occurrence of the pattern is enough.
 
   For `@has`, `PATTERN` is a whitespace-normalized (every consecutive
   whitespace being replaced by one single space character) string.
   The entire file is also whitespace-normalized including newlines.
 
   For `@matches`, `PATTERN` is a Python-supported regular expression.
-  The file remains intact but the regexp is matched with no `MULTILINE`
-  and `IGNORECASE` option. You can still use a prefix `(?m)` or `(?i)`
+  The file remains intact but the regexp is matched without the `MULTILINE`
+  and `IGNORECASE` options. You can still use a prefix `(?m)` or `(?i)`
   to override them, and `\A` and `\Z` for definitely matching
   the beginning and end of the file.
 
   (The same distinction goes to other variants of these commands.)
 
 * `@has PATH XPATH PATTERN` and `@matches PATH XPATH PATTERN` checks for
-  the presence of given `XPATH` in the given HTML file, and also
-  the occurrence of given `PATTERN` in the matching node or attribute.
-  Only one occurrence of given pattern in the match is enough.
+  the presence of the given XPath `XPATH` in the specified HTML file,
+  and also the occurrence of the given pattern `PATTERN` in the matching
+  node or attribute. Only one occurrence of the pattern in the match
+  is enough.
 
   `PATH` should be a valid and well-formed HTML file. It does *not*
   accept arbitrary HTML5; it should have matching open and close tags
   and correct entity references at least.
 
-  `XPATH` is an XPath expression to match. This is fairly limited:
+  `XPATH` is an XPath expression to match. The XPath is fairly limited:
   `tag`, `*`, `.`, `//`, `..`, `[@attr]`, `[@attr='value']`, `[tag]`,
   `[POS]` (element located in given `POS`), `[last()-POS]`, `text()`
   and `@attr` (both as the last segment) are supported. Some examples:
@@ -85,7 +86,7 @@ There are a number of supported commands:
   - `//h1[@class="fqn"]/span[1]/a[last()]/@class` matches a value of
     `class` attribute in the last `a` element (can be followed by more
     elements that are not `a`) inside the first `span` in the `h1` with
-    a class of `fqn`. Note that there cannot be no additional elements
+    a class of `fqn`. Note that there cannot be any additional elements
     between them due to the use of `/` instead of `//`.
 
   Do not try to use non-absolute paths, it won't work due to the flawed
@@ -93,11 +94,12 @@ There are a number of supported commands:
 
   For the text matches (i.e. paths not ending with `@attr`), any
   subelements are flattened into one string; this is handy for ignoring
-  highlights for example. If you want to simply check the presence of
-  given node or attribute, use an empty string (`""`) as a `PATTERN`.
+  highlights for example. If you want to simply check for the presence of
+  a given node or attribute, use an empty string (`""`) as a `PATTERN`.
 
-* `@count PATH XPATH COUNT' checks for the occurrence of given XPath
-  in the given file. The number of occurrences must match the given count.
+* `@count PATH XPATH COUNT' checks for the occurrence of the given XPath
+  in the specified file. The number of occurrences must match the given
+  count.
 
 * `@has-dir PATH` checks for the existence of the given directory.
 
