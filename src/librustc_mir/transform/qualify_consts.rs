@@ -735,8 +735,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     (CastTy::Ptr(_), CastTy::Int(_)) |
                     (CastTy::FnPtr, CastTy::Int(_)) => {
                         if let Mode::Fn = self.mode {
+                            // in normal functions, mark such casts as not promotable
                             self.add(Qualif::NOT_CONST);
                         } else if !self.tcx.sess.features_untracked().const_raw_ptr_to_usize_cast {
+                            // in const fn and constants require the feature gate
+                            // FIXME: make it unsafe inside const fn and constants
                             emit_feature_err(
                                 &self.tcx.sess.parse_sess, "const_raw_ptr_to_usize_cast",
                                 self.span, GateIssue::Language,
@@ -759,8 +762,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             op == BinOp::Offset);
 
                     if let Mode::Fn = self.mode {
+                        // raw pointer operations are not allowed inside promoteds
                         self.add(Qualif::NOT_CONST);
                     } else if !self.tcx.sess.features_untracked().const_compare_raw_pointers {
+                        // require the feature gate inside constants and const fn
+                        // FIXME: make it unsafe to use these operations
                         emit_feature_err(
                             &self.tcx.sess.parse_sess,
                             "const_compare_raw_pointers",
