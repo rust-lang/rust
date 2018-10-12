@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// min-lldb-version: 310
+// Some versions of the non-rust-enabled LLDB print the wrong generic
+// parameter type names in this test.
+// rust-lldb
 
 // compile-flags:-g
 

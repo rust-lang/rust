@@ -824,11 +824,13 @@ LLVMRustDIBuilderCreateNameSpace(LLVMRustDIBuilderRef Builder,
 }
 
 extern "C" void
-LLVMRustDICompositeTypeSetTypeArray(LLVMRustDIBuilderRef Builder,
-                                    LLVMMetadataRef CompositeTy,
-                                    LLVMMetadataRef TyArray) {
+LLVMRustDICompositeTypeReplaceArrays(LLVMRustDIBuilderRef Builder,
+                                     LLVMMetadataRef CompositeTy,
+                                     LLVMMetadataRef Elements,
+                                     LLVMMetadataRef Params) {
   DICompositeType *Tmp = unwrapDI<DICompositeType>(CompositeTy);
-  Builder->replaceArrays(Tmp, DINodeArray(unwrap<MDTuple>(TyArray)));
+  Builder->replaceArrays(Tmp, DINodeArray(unwrap<MDTuple>(Elements)),
+                         DINodeArray(unwrap<MDTuple>(Params)));
 }
 
 extern "C" LLVMValueRef
