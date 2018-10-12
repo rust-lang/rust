@@ -232,13 +232,13 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// `V[1]: V[2]`.
     pub fn closure_mapping(
         tcx: TyCtxt<'_, '_, 'tcx>,
-        closure_ty: Ty<'tcx>,
+        closure_substs: &'tcx Substs<'tcx>,
         expected_num_vars: usize,
         closure_base_def_id: DefId,
     ) -> IndexVec<RegionVid, ty::Region<'tcx>> {
         let mut region_mapping = IndexVec::with_capacity(expected_num_vars);
         region_mapping.push(tcx.types.re_static);
-        tcx.for_each_free_region(&closure_ty, |fr| {
+        tcx.for_each_free_region(&closure_substs, |fr| {
             region_mapping.push(fr);
         });
 

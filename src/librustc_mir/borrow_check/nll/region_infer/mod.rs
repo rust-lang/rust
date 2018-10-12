@@ -1268,7 +1268,7 @@ pub trait ClosureRegionRequirementsExt<'gcx, 'tcx> {
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         location: Location,
         closure_def_id: DefId,
-        closure_substs: ty::ClosureSubsts<'tcx>,
+        closure_substs: &'tcx ty::subst::Substs<'tcx>,
     ) -> Vec<QueryRegionConstraint<'tcx>>;
 
     fn subst_closure_mapping<T>(
@@ -1299,23 +1299,19 @@ impl<'gcx, 'tcx> ClosureRegionRequirementsExt<'gcx, 'tcx> for ClosureRegionRequi
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         location: Location,
         closure_def_id: DefId,
-        closure_substs: ty::ClosureSubsts<'tcx>,
+        closure_substs: &'tcx ty::subst::Substs<'tcx>,
     ) -> Vec<QueryRegionConstraint<'tcx>> {
         debug!(
             "apply_requirements(location={:?}, closure_def_id={:?}, closure_substs={:?})",
             location, closure_def_id, closure_substs
         );
 
-        // Get Tu.
-        let user_closure_ty = tcx.mk_closure(closure_def_id, closure_substs);
-        debug!("apply_requirements: user_closure_ty={:?}", user_closure_ty);
-
-        // Extract the values of the free regions in `user_closure_ty`
+        // Extract the values of the free regions in `closure_substs`
         // into a vector.  These are the regions that we will be
         // relating to one another.
         let closure_mapping = &UniversalRegions::closure_mapping(
             tcx,
-            user_closure_ty,
+            closure_substs,
             self.num_external_vids,
             tcx.closure_base_def_id(closure_def_id),
         );
