@@ -4,7 +4,7 @@ use ra_syntax::{
     ast,
     AstNode,
     File, TextRange, SyntaxNodeRef,
-    SyntaxKind,
+    SyntaxKind::{self, *},
     Direction,
 };
 
@@ -22,7 +22,7 @@ pub struct Fold {
 
 pub fn folding_ranges(file: &File) -> Vec<Fold> {
     let mut res = vec![];
-    let mut group_members = FxHashSet::default();
+    let mut visited_comments = FxHashSet::default();
 
     for node in file.syntax().descendants() {
         // Fold items that span multiple lines
@@ -32,17 +32,13 @@ pub fn folding_ranges(file: &File) -> Vec<Fold> {
             }
         }
 
-        // Also fold item *groups* that span multiple lines
-
-        // Note: we need to skip elements of the group that we have already visited,
-        // otherwise there will be folds for the whole group and for its sub groups
-        if group_members.contains(&node) {
+        // Also fold groups of comments
+        if visited_comments.contains(&node) {
             continue;
         }
-
-        if let Some(kind) = fold_kind(node.kind()) {
-            contiguous_range_for_group(node.kind(), node, &mut group_members)
-                .map(|range| res.push(Fold { range, kind }));
+        if node.kind() == COMMENT {
+            contiguous_range_for_comment(node, &mut visited_comments)
+                .map(|range| res.push(Fold { range, kind: FoldKind::Comment }));
         }
     }
 
@@ -51,8 +47,8 @@ pub fn folding_ranges(file: &File) -> Vec<Fold> {
 
 fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
     match kind {
-        SyntaxKind::COMMENT => Some(FoldKind::Comment),
-        SyntaxKind::USE_ITEM => Some(FoldKind::Imports),
+        COMMENT => Some(FoldKind::Comment),
+        USE_ITEM => Some(FoldKind::Imports),
         _ => None
     }
 }
@@ -75,17 +71,17 @@ fn has_newline(
     false
 }
 
-fn contiguous_range_for_group<'a>(
-    group_kind: SyntaxKind,
+fn contiguous_range_for_comment<'a>(
     first: SyntaxNodeRef<'a>,
     visited: &mut FxHashSet<SyntaxNodeRef<'a>>,
 ) -> Option<TextRange> {
     visited.insert(first);
 
-    let mut last = first;
+    // Only fold comments of the same flavor
+    let group_flavor = ast::Comment::cast(first)?.flavor();
 
+    let mut last = first;
     for node in first.siblings(Direction::Next) {
-        visited.insert(node);
         if let Some(ws) = ast::Whitespace::cast(node) {
             // There is a blank line, which means the group ends here
             if ws.count_newlines_lazy().take(2).count() == 2 {
@@ -96,13 +92,18 @@ fn contiguous_range_for_group<'a>(
             continue;
         }
 
-        // The group ends when an element of a different kind is reached
-        if node.kind() != group_kind {
-            break;
+        match ast::Comment::cast(node) {
+            Some(next_comment) if next_comment.flavor() == group_flavor => {
+                visited.insert(node);
+                last = node;
+            }
+            // The comment group ends because either:
+            // * An element of a different kind was reached
+            // * A comment of a different flavor was reached
+            _ => {
+                break
+            }
         }
-
-        // Keep track of the last node in the group
-        last = node;
     }
 
     if first != last {
@@ -152,9 +153,11 @@ fn main() {
     #[test]
     fn test_fold_imports() {
         let text = r#"
-use std::str;
-use std::vec;
-use std::io as iop;
+use std::{
+    str,
+    vec,
+    io as iop
+};
 
 fn main() {
 }"#;
@@ -163,7 +166,7 @@ fn main() {
         let folds = folding_ranges(&file);
         assert_eq!(folds.len(), 1);
         assert_eq!(folds[0].range.start(), 1.into());
-        assert_eq!(folds[0].range.end(), 48.into());
+        assert_eq!(folds[0].range.end(), 46.into());
         assert_eq!(folds[0].kind, FoldKind::Imports);
     }
 

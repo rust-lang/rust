@@ -130,7 +130,7 @@ impl<'a> Comment<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum CommentFlavor {
     Line,
     Doc,
