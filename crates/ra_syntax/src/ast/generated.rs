@@ -1387,7 +1387,8 @@ impl<'a> AstNode<'a> for PathExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
-impl<'a> PathExpr<'a> {pub fn path(self) -> Option<Path<'a>> {
+impl<'a> PathExpr<'a> {
+    pub fn path(self) -> Option<Path<'a>> {
         super::child_opt(self)
     }
 }
