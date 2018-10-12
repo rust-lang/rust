@@ -997,7 +997,7 @@ impl RustcDefaultCalls {
             return Compilation::Stop;
         }
 
-        return Compilation::Continue;
+        Compilation::Continue
     }
 
 
