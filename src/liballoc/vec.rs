@@ -120,11 +120,17 @@ use raw_vec::RawVec;
 /// assert_eq!(vec, [1, 2, 3, 4]);
 /// ```
 ///
-/// It can also initialize each element of a `Vec<T>` with a given value:
+/// It can also initialize each element of a `Vec<T>` with a given value.
+/// This may be more efficient than performing allocation and initialization
+/// in separate steps, especially when initializing a vector of zeros:
 ///
 /// ```
 /// let vec = vec![0; 5];
 /// assert_eq!(vec, [0, 0, 0, 0, 0]);
+///
+/// // The following is equivalent, but potentially slower:
+/// let mut vec1 = Vec::with_capacity(5);
+/// vec1.resize(5, 0);
 /// ```
 ///
 /// Use a `Vec<T>` as an efficient stack:
