@@ -44,7 +44,7 @@ use serialize::json;
 
 use std::any::Any;
 use std::env;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::fs;
 use std::io::{self, Write};
 use std::iter;
@@ -1648,14 +1648,14 @@ pub fn build_output_filenames(
             // "-" as input file will cause the parser to read from stdin so we
             // have to make up a name
             // We want to toss everything after the final '.'
-            let dirpath = (*odir).as_ref().cloned().unwrap_or_else(|| PathBuf::new());
+            let dirpath = (*odir).as_ref().cloned().unwrap_or_default();
 
             // If a crate name is present, we use it as the link name
             let stem = sess.opts
                 .crate_name
                 .clone()
                 .or_else(|| attr::find_crate_name(attrs).map(|n| n.to_string()))
-                .unwrap_or(input.filestem());
+                .unwrap_or_else(|| input.filestem());
 
             OutputFilenames {
                 out_directory: dirpath,
@@ -1688,13 +1688,11 @@ pub fn build_output_filenames(
                 sess.warn("ignoring -C extra-filename flag due to -o flag");
             }
 
-            let cur_dir = Path::new("");
-
             OutputFilenames {
-                out_directory: out_file.parent().unwrap_or(cur_dir).to_path_buf(),
+                out_directory: out_file.parent().unwrap_or_else(|| Path::new("")).to_path_buf(),
                 out_filestem: out_file
                     .file_stem()
-                    .unwrap_or(OsStr::new(""))
+                    .unwrap_or_default()
                     .to_str()
                     .unwrap()
                     .to_string(),
