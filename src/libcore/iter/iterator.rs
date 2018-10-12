@@ -2626,6 +2626,7 @@ pub trait Iterator {
     /// assert!(std::iter::empty::<i32>().is_sorted());
     /// assert!(![0.0, 1.0, std::f32::NAN].iter().is_sorted());
     /// ```
+    #[inline]
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
     fn is_sorted(self) -> bool
     where
@@ -2676,6 +2677,7 @@ pub trait Iterator {
     /// assert!(["c", "bb", "aaa"].iter().is_sorted_by_key(|s| s.len()));
     /// assert!(![-2i32, -1, 0, 3].iter().is_sorted_by_key(|n| n.abs()));
     /// ```
+    #[inline]
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
     fn is_sorted_by_key<F, K>(self, mut f: F) -> bool
     where

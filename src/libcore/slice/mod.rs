@@ -2272,6 +2272,7 @@ impl<T> [T] {
     /// assert!(empty.is_sorted());
     /// assert!(![0.0, 1.0, std::f32::NAN].is_sorted());
     /// ```
+    #[inline]
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
     pub fn is_sorted(&self) -> bool
     where
@@ -2319,6 +2320,7 @@ impl<T> [T] {
     /// assert!(["c", "bb", "aaa"].is_sorted_by_key(|s| s.len()));
     /// assert!(![-2i32, -1, 0, 3].is_sorted_by_key(|n| n.abs()));
     /// ```
+    #[inline]
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
     pub fn is_sorted_by_key<F, K>(&self, mut f: F) -> bool
     where
