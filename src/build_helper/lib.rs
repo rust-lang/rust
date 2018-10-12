@@ -233,7 +233,8 @@ pub fn native_lib_boilerplate(
     let src_dir = current_dir.join("..").join(src_name);
     rerun_if_changed_anything_in_dir(&src_dir);
 
-    let out_dir = env::var_os("RUSTBUILD_NATIVE_DIR").unwrap_or(env::var_os("OUT_DIR").unwrap());
+    let out_dir = env::var_os("RUSTBUILD_NATIVE_DIR").unwrap_or_else(||
+        env::var_os("OUT_DIR").unwrap());
     let out_dir = PathBuf::from(out_dir).join(out_name);
     t!(fs::create_dir_all(&out_dir));
     if link_name.contains('=') {

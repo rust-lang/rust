@@ -103,7 +103,7 @@ pub fn filename_for_metadata(sess: &Session,
     let libname = format!("{}{}", crate_name, sess.opts.cg.extra_filename);
 
     let out_filename = outputs.single_output_file.clone()
-        .unwrap_or(outputs.out_directory.join(&format!("lib{}.rmeta", libname)));
+        .unwrap_or_else(|| outputs.out_directory.join(&format!("lib{}.rmeta", libname)));
 
     check_file_is_writeable(&out_filename, sess);
 

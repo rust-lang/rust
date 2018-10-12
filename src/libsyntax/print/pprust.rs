@@ -3119,7 +3119,7 @@ impl<'a> State<'a> {
             if cmnt.style != comments::Trailing { return Ok(()) }
             let span_line = cm.lookup_char_pos(span.hi());
             let comment_line = cm.lookup_char_pos(cmnt.pos);
-            let next = next_pos.unwrap_or(cmnt.pos + BytePos(1));
+            let next = next_pos.unwrap_or_else(|| cmnt.pos + BytePos(1));
             if span.hi() < cmnt.pos && cmnt.pos < next && span_line.line == comment_line.line {
                 self.print_comment(cmnt)?;
             }

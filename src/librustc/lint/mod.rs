@@ -519,7 +519,7 @@ impl LintBuffer {
     }
 
     pub fn take(&mut self, id: ast::NodeId) -> Vec<BufferedEarlyLint> {
-        self.map.remove(&id).unwrap_or(Vec::new())
+        self.map.remove(&id).unwrap_or_default()
     }
 
     pub fn get_any(&self) -> Option<&[BufferedEarlyLint]> {

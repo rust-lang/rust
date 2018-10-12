@@ -678,7 +678,7 @@ impl<'a> Context<'a> {
             if let Some((ref prev, _)) = ret {
                 let sysroot = self.sess.sysroot();
                 let sysroot = sysroot.canonicalize()
-                                     .unwrap_or(sysroot.to_path_buf());
+                                     .unwrap_or_else(|_| sysroot.to_path_buf());
                 if prev.starts_with(&sysroot) {
                     continue
                 }

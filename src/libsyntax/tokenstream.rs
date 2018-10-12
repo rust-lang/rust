@@ -606,7 +606,7 @@ impl Cursor {
             CursorKind::JointTree(ref tree, _) => tree.clone().joint(),
             CursorKind::Stream(ref cursor) => TokenStream::concat_rc_vec({
                 cursor.stack.get(0).cloned().map(|(stream, _)| stream)
-                    .unwrap_or(cursor.stream.clone())
+                    .unwrap_or_else(|| cursor.stream.clone())
             }),
         }
     }

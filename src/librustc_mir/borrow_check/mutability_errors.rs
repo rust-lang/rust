@@ -208,7 +208,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     format!(
                         "mutable borrow occurs due to use of `{}` in closure",
                         // always Some() if the message is printed.
-                        self.describe_place(access_place).unwrap_or(String::new()),
+                        self.describe_place(access_place).unwrap_or_default(),
                     )
                 );
                 borrow_span

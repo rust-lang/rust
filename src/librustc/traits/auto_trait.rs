@@ -498,8 +498,8 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     panic!("Missing lifetime with name {:?} for {:?}", name, region)
                 )
             )
-            .unwrap_or(&"'static".to_owned())
-            .clone()
+            .cloned()
+            .unwrap_or_else(|| "'static".to_owned())
     }
 
     // This is very similar to handle_lifetimes. However, instead of matching ty::Region's

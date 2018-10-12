@@ -3228,7 +3228,7 @@ impl<'a> Parser<'a> {
                         }));
 
                         let expr_str = self.sess.source_map().span_to_snippet(expr.span)
-                                                .unwrap_or(pprust::expr_to_string(&expr));
+                                                .unwrap_or_else(|_| pprust::expr_to_string(&expr));
                         err.span_suggestion_with_applicability(
                             expr.span,
                             &format!("try {} the cast value", op_verb),

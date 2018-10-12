@@ -174,7 +174,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                               .map(|arg| print::to_string(print::NO_ANN,
                                                                           |s| s.print_expr(arg)))
                                               .collect::<Vec<_>>()
-                                              .join(", ")).unwrap_or("...".to_owned())));
+                                              .join(", ")).unwrap_or_else(|| "...".to_owned())));
                     }
                 }
             }
@@ -249,7 +249,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         match expr.node {
                             hir::ExprKind::Lit(ref lit) => { // numeric literal
                                 let snippet = tcx.sess.source_map().span_to_snippet(lit.span)
-                                    .unwrap_or("<numeric literal>".to_owned());
+                                    .unwrap_or_else(|_| "<numeric literal>".to_owned());
 
                                 err.span_suggestion_with_applicability(
                                                     lit.span,
