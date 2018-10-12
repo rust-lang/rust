@@ -2,7 +2,7 @@ error[E0597]: `my_string` does not live long enough
   --> $DIR/try-block-bad-lifetime.rs:25:33
    |
 LL |         let result: Result<(), &str> = try {
-   |             ------ borrow later used here
+   |             ------ borrow later stored here
 LL |             let my_string = String::from("");
 LL |             let my_str: & str = & my_string;
    |                                 ^^^^^^^^^^^ borrowed value does not live long enough

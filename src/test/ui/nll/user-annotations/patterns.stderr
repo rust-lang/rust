@@ -131,12 +131,12 @@ LL |     y //~ ERROR
    |     ^ returning this value requires that `'a` must outlive `'static`
 
 error: unsatisfied lifetime constraints
-  --> $DIR/patterns.rs:117:9
+  --> $DIR/patterns.rs:117:18
    |
 LL | fn a_to_static_then_static<'a>(x: &'a u32) -> &'static u32 {
    |                            -- lifetime `'a` defined here
 LL |     let (y, _z): (&'static u32, u32) = (x, 44); //~ ERROR
-   |         ^^^^^^^ type annotation requires that `'a` must outlive `'static`
+   |                  ^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: aborting due to 14 previous errors
 

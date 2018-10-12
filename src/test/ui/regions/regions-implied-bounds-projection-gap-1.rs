@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-compare-mode-nll
-
 // Illustrates the "projection gap": in this test, even though we know
 // that `T::Foo: 'x`, that does not tell us that `T: 'x`, because
 // there might be other ways for the caller of `func` to show that

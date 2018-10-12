@@ -10,7 +10,7 @@
 
 use borrow_check::nll::constraints::OutlivesConstraint;
 use borrow_check::nll::type_check::{BorrowCheckContext, Locations};
-use rustc::infer::canonical::{Canonical, CanonicalVarInfos};
+use rustc::infer::canonical::{Canonical, CanonicalVarInfos, CanonicalVarValues};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::mir::ConstraintCategory;
 use rustc::traits::query::Fallible;
@@ -70,7 +70,7 @@ pub(super) fn relate_type_and_user_type<'tcx>(
     locations: Locations,
     category: ConstraintCategory,
     borrowck_context: Option<&mut BorrowCheckContext<'_, 'tcx>>,
-) -> Fallible<()> {
+) -> Fallible<Ty<'tcx>> {
     debug!(
         "sub_type_and_user_type(a={:?}, b={:?}, locations={:?})",
         a, b, locations
@@ -85,13 +85,24 @@ pub(super) fn relate_type_and_user_type<'tcx>(
     // variance to get the right relationship.
     let v1 = ty::Contravariant.xform(v);
 
-    TypeRelating::new(
+    let mut type_relating = TypeRelating::new(
         infcx.tcx,
         NllTypeRelatingDelegate::new(infcx, borrowck_context, locations, category),
         v1,
         b_variables,
-    ).relate(&b_value, &a)?;
-    Ok(())
+    );
+    type_relating.relate(&b_value, &a)?;
+
+    Ok(b.substitute(
+        infcx.tcx,
+        &CanonicalVarValues {
+            var_values: type_relating
+                .canonical_var_values
+                .into_iter()
+                .map(|x| x.expect("unsubstituted canonical variable"))
+                .collect(),
+        },
+    ))
 }
 
 struct TypeRelating<'me, 'gcx: 'tcx, 'tcx: 'me, D>

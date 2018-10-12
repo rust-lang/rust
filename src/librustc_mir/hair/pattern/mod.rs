@@ -71,6 +71,7 @@ pub enum PatternKind<'tcx> {
     AscribeUserType {
         user_ty: CanonicalTy<'tcx>,
         subpattern: Pattern<'tcx>,
+        user_ty_span: Span,
     },
 
     /// x, ref x, x @ P, etc
@@ -692,6 +693,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             kind = PatternKind::AscribeUserType {
                 subpattern,
                 user_ty,
+                user_ty_span: span,
             };
         }
 
@@ -1015,9 +1017,11 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
             PatternKind::AscribeUserType {
                 ref subpattern,
                 user_ty,
+                user_ty_span,
             } => PatternKind::AscribeUserType {
                 subpattern: subpattern.fold_with(folder),
                 user_ty: user_ty.fold_with(folder),
+                user_ty_span,
             },
             PatternKind::Binding {
                 mutability,

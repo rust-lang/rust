@@ -735,7 +735,7 @@ macro_rules! make_mir_visitor {
                     local,
                     source_info: *source_info,
                 });
-                if let Some(user_ty) = user_ty {
+                if let Some((user_ty, _)) = user_ty {
                     self.visit_user_ty(user_ty);
                 }
                 self.visit_source_info(source_info);
