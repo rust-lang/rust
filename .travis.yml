@@ -24,7 +24,7 @@ before_install:
 
 install:
   - |
-    if [ -z ${INTEGRATION} ]; then
+    if [ -z ${INTEGRATION} ] && [ "$TRAVIS_OS_NAME" == "linux" ]; then
       . $HOME/.nvm/nvm.sh
       nvm install stable
       nvm use stable
