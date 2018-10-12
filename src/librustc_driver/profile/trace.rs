@@ -108,11 +108,7 @@ fn html_of_fraction(frac: f64) -> (String, &'static str) {
 }
 
 fn total_duration(traces: &[Rec]) -> Duration {
-    let mut sum : Duration = Duration::new(0,0);
-    for t in traces.iter() {
-        sum += t.dur_total;
-    }
-    return sum
+    Duration::new(0, 0) + traces.iter().map(|t| t.dur_total).sum()
 }
 
 fn duration_div(nom: Duration, den: Duration) -> f64 {

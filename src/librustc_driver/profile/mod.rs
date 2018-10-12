@@ -90,7 +90,7 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
         match msg {
             ProfileQueriesMsg::Halt => return,
             ProfileQueriesMsg::Dump(params) => {
-                assert!(stack.len() == 0);
+                assert!(stack.is_empty());
                 assert!(frame.parse_st == ParseState::Clear);
                 {
                     // write log of all messages
@@ -141,7 +141,7 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                      ProfileQueriesMsg::QueryBegin(span,querymsg)) => {
                         let start = Instant::now();
                         frame.parse_st = ParseState::HaveQuery
-                            (Query{span:span, msg:querymsg}, start)
+                            (Query { span, msg: querymsg }, start)
                     },
                     (ParseState::Clear,
                      ProfileQueriesMsg::CacheHit) => {

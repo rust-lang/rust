@@ -224,15 +224,10 @@ fn load_backend_from_dylib(path: &Path) -> fn() -> Box<dyn CodegenBackend> {
     // available for future dynamic libraries opened. This is currently used by
     // loading LLVM and then making its symbols available for other dynamic
     // libraries.
-    let lib = match DynamicLibrary::open_global_now(path) {
-        Ok(lib) => lib,
-        Err(err) => {
-            let err = format!("couldn't load codegen backend {:?}: {:?}",
-                              path,
-                              err);
-            early_error(ErrorOutputType::default(), &err);
-        }
-    };
+    let lib = DynamicLibrary::open_global_now(path).unwrap_or_else(|err| {
+        let err = format!("couldn't load codegen backend {:?}: {:?}", path, err);
+        early_error(ErrorOutputType::default(), &err);
+    });
     unsafe {
         match lib.symbol("__rustc_codegen_backend") {
             Ok(f) => {
@@ -337,28 +332,22 @@ fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend> {
             f.exists()
         })
         .next();
-    let sysroot = match sysroot {
-        Some(path) => path,
-        None => {
-            let candidates = sysroot_candidates.iter()
-                .map(|p| p.display().to_string())
-                .collect::<Vec<_>>()
-                .join("\n* ");
-            let err = format!("failed to find a `codegen-backends` folder \
-                               in the sysroot candidates:\n* {}", candidates);
-            early_error(ErrorOutputType::default(), &err);
-        }
-    };
+    let sysroot = sysroot.unwrap_or_else(|| {
+        let candidates = sysroot_candidates.iter()
+            .map(|p| p.display().to_string())
+            .collect::<Vec<_>>()
+            .join("\n* ");
+        let err = format!("failed to find a `codegen-backends` folder \
+                           in the sysroot candidates:\n* {}", candidates);
+        early_error(ErrorOutputType::default(), &err);
+    });
     info!("probing {} for a codegen backend", sysroot.display());
 
-    let d = match sysroot.read_dir() {
-        Ok(d) => d,
-        Err(e) => {
-            let err = format!("failed to load default codegen backend, couldn't \
-                               read `{}`: {}", sysroot.display(), e);
-            early_error(ErrorOutputType::default(), &err);
-        }
-    };
+    let d = sysroot.read_dir().unwrap_or_else(|e| {
+        let err = format!("failed to load default codegen backend, couldn't \
+                           read `{}`: {}", sysroot.display(), e);
+        early_error(ErrorOutputType::default(), &err);
+    });
 
     let mut file: Option<PathBuf> = None;
 
@@ -1055,10 +1044,8 @@ impl RustcDefaultCalls {
                 Sysroot => println!("{}", sess.sysroot().display()),
                 TargetSpec => println!("{}", sess.target.target.to_json().pretty()),
                 FileNames | CrateName => {
-                    let input = match input {
-                        Some(input) => input,
-                        None => early_error(ErrorOutputType::default(), "no input file provided"),
-                    };
+                    let input = input.unwrap_or_else(||
+                        early_error(ErrorOutputType::default(), "no input file provided"));
                     let attrs = attrs.as_ref().unwrap();
                     let t_outputs = driver::build_output_filenames(input, odir, ofile, attrs, sess);
                     let id = rustc_codegen_utils::link::find_crate_name(Some(sess), attrs, input);
@@ -1406,10 +1393,8 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     for option in config::rustc_optgroups() {
         (option.apply)(&mut options);
     }
-    let matches = match options.parse(args) {
-        Ok(m) => m,
-        Err(f) => early_error(ErrorOutputType::default(), &f.to_string()),
-    };
+    let matches = options.parse(args).unwrap_or_else(|f|
+        early_error(ErrorOutputType::default(), &f.to_string()));
 
     // For all options we just parsed, we check a few aspects:
     //
@@ -1631,7 +1616,7 @@ fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
         }
     }
 
-    if result.len() > 0 {
+    if !result.is_empty() {
         Some((result, excluded_cargo_defaults))
     } else {
         None

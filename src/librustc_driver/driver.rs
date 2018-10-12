@@ -1484,15 +1484,12 @@ fn write_out_deps(sess: &Session, outputs: &OutputFilenames, out_filenames: &[Pa
         Ok(())
     })();
 
-    match result {
-        Ok(()) => {}
-        Err(e) => {
-            sess.fatal(&format!(
-                "error writing dependencies to `{}`: {}",
-                deps_filename.display(),
-                e
-            ));
-        }
+    if let Err(e) = result {
+        sess.fatal(&format!(
+            "error writing dependencies to `{}`: {}",
+            deps_filename.display(),
+            e
+        ));
     }
 }
 
@@ -1650,10 +1647,7 @@ pub fn build_output_filenames(
             // "-" as input file will cause the parser to read from stdin so we
             // have to make up a name
             // We want to toss everything after the final '.'
-            let dirpath = match *odir {
-                Some(ref d) => d.clone(),
-                None => PathBuf::new(),
-            };
+            let dirpath = (*odir).as_ref().cloned().unwrap_or_else(|| PathBuf::new());
 
             // If a crate name is present, we use it as the link name
             let stem = sess.opts
