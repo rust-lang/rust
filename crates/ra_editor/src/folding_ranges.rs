@@ -22,65 +22,96 @@ pub struct Fold {
 
 pub fn folding_ranges(file: &File) -> Vec<Fold> {
     let mut res = vec![];
-    let mut visited = FxHashSet::default();
+    let mut group_members = FxHashSet::default();
 
     for node in file.syntax().descendants() {
-        if visited.contains(&node) {
+        // Fold items that span multiple lines
+        if let Some(kind) = fold_kind(node.kind()) {
+            if has_newline(node) {
+                res.push(Fold { range: node.range(), kind });
+            }
+        }
+
+        // Also fold item *groups* that span multiple lines
+
+        // Note: we need to skip elements of the group that we have already visited,
+        // otherwise there will be folds for the whole group and for its sub groups
+        if group_members.contains(&node) {
             continue;
         }
 
-        if let Some(comment) = ast::Comment::cast(node) {
-            // Multiline comments (`/* ... */`) can only be folded if they span multiple lines
-            let range = if let ast::CommentFlavor::Multiline = comment.flavor() {
-                if comment.text().contains('\n') {
-                    Some(comment.syntax().range())
-                } else {
-                    None
-                }
-            } else {
-                contiguous_range_for(SyntaxKind::COMMENT, node, &mut visited)
-            };
-
-            range.map(|range| res.push(Fold { range, kind: FoldKind::Comment }));
+        if let Some(kind) = fold_kind(node.kind()) {
+            contiguous_range_for_group(node.kind(), node, &mut group_members)
+                .map(|range| res.push(Fold { range, kind }));
         }
-
-        if let SyntaxKind::USE_ITEM = node.kind() {
-            contiguous_range_for(SyntaxKind::USE_ITEM, node, &mut visited)
-                .map(|range| res.push(Fold { range, kind: FoldKind::Imports}));
-        };
     }
 
     res
 }
 
-fn contiguous_range_for<'a>(
-    kind: SyntaxKind,
-    node: SyntaxNodeRef<'a>,
-    visited: &mut FxHashSet<SyntaxNodeRef<'a>>,
-) -> Option<TextRange> {
-    visited.insert(node);
+fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
+    match kind {
+        SyntaxKind::COMMENT => Some(FoldKind::Comment),
+        SyntaxKind::USE_ITEM => Some(FoldKind::Imports),
+        _ => None
+    }
+}
 
-    let left = node;
-    let mut right = node;
-    for node in node.siblings(Direction::Next) {
-        visited.insert(node);
-        match node.kind() {
-            SyntaxKind::WHITESPACE if !node.leaf_text().unwrap().as_str().contains("\n\n") => (),
-            k => {
-                if k == kind {
-                    right = node
-                } else {
-                    break;
-                }
+fn has_newline(
+    node: SyntaxNodeRef,
+) -> bool {
+    for descendant in node.descendants() {
+        if let Some(ws) = ast::Whitespace::cast(descendant) {
+            if ws.has_newlines() {
+                return true;
+            }
+        } else if let Some(comment) = ast::Comment::cast(descendant) {
+            if comment.has_newlines() {
+                return true;
             }
         }
     }
-    if left != right {
+
+    false
+}
+
+fn contiguous_range_for_group<'a>(
+    group_kind: SyntaxKind,
+    first: SyntaxNodeRef<'a>,
+    visited: &mut FxHashSet<SyntaxNodeRef<'a>>,
+) -> Option<TextRange> {
+    visited.insert(first);
+
+    let mut last = first;
+
+    for node in first.siblings(Direction::Next) {
+        visited.insert(node);
+        if let Some(ws) = ast::Whitespace::cast(node) {
+            // There is a blank line, which means the group ends here
+            if ws.count_newlines_lazy().take(2).count() == 2 {
+                break;
+            }
+
+            // Ignore whitespace without blank lines
+            continue;
+        }
+
+        // The group ends when an element of a different kind is reached
+        if node.kind() != group_kind {
+            break;
+        }
+
+        // Keep track of the last node in the group
+        last = node;
+    }
+
+    if first != last {
         Some(TextRange::from_to(
-            left.range().start(),
-            right.range().end(),
+            first.range().start(),
+            last.range().end(),
         ))
     } else {
+        // The group consists of only one element, therefore it cannot be folded
         None
     }
 }

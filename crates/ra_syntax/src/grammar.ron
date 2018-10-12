@@ -538,5 +538,6 @@ Grammar(
             options: [ "NameRef" ]
         ),
         "Comment": (),
+        "Whitespace": (),
     },
 )

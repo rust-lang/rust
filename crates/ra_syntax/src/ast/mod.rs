@@ -100,8 +100,8 @@ impl<'a> Lifetime<'a> {
 }
 
 impl<'a> Comment<'a> {
-    pub fn text(&self) -> SmolStr {
-        self.syntax().leaf_text().unwrap().clone()
+    pub fn text(&self) -> &SmolStr {
+        self.syntax().leaf_text().unwrap()
     }
 
     pub fn flavor(&self) -> CommentFlavor {
@@ -119,6 +119,14 @@ impl<'a> Comment<'a> {
 
     pub fn prefix(&self) -> &'static str {
         self.flavor().prefix()
+    }
+
+    pub fn count_newlines_lazy(&self) -> impl Iterator<Item = &()> {
+        self.text().chars().filter(|&c| c == '\n').map(|_| &())
+    }
+
+    pub fn has_newlines(&self) -> bool {
+        self.count_newlines_lazy().count() > 0
     }
 }
 
@@ -139,6 +147,20 @@ impl CommentFlavor {
             ModuleDoc => "//!",
             Multiline => "/*"
         }
+    }
+}
+
+impl<'a> Whitespace<'a> {
+    pub fn text(&self) -> &SmolStr {
+        &self.syntax().leaf_text().unwrap()
+    }
+
+    pub fn count_newlines_lazy(&self) -> impl Iterator<Item = &()> {
+        self.text().chars().filter(|&c| c == '\n').map(|_| &())
+    }
+
+    pub fn has_newlines(&self) -> bool {
+        self.count_newlines_lazy().count() > 0
     }
 }
 
