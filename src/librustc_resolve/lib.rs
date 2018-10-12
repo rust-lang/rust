@@ -3888,7 +3888,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             // report an error.
                             if record_used {
                                 resolve_error(self, span,
-                                        ResolutionError::CannotCaptureDynamicEnvironmentInFnItem);
+                                    ResolutionError::CannotCaptureDynamicEnvironmentInFnItem);
                             }
                             return Def::Err;
                         }
@@ -3896,7 +3896,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             // Still doesn't deal with upvars
                             if record_used {
                                 resolve_error(self, span,
-                                        ResolutionError::AttemptToUseNonConstantValueInConstant);
+                                    ResolutionError::AttemptToUseNonConstantValueInConstant);
                             }
                             return Def::Err;
                         }

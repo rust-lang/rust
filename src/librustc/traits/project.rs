@@ -19,10 +19,7 @@ use super::PredicateObligation;
 use super::Selection;
 use super::SelectionContext;
 use super::SelectionError;
-use super::VtableClosureData;
-use super::VtableGeneratorData;
-use super::VtableFnPointerData;
-use super::VtableImplData;
+use super::{VtableImplData, VtableClosureData, VtableGeneratorData, VtableFnPointerData};
 use super::util;
 
 use hir::def_id::DefId;
@@ -1073,7 +1070,8 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
             super::VtableClosure(_) |
             super::VtableGenerator(_) |
             super::VtableFnPointer(_) |
-            super::VtableObject(_) => {
+            super::VtableObject(_) |
+            super::VtableTraitAlias(_) => {
                 debug!("assemble_candidates_from_impls: vtable={:?}",
                        vtable);
                 true
@@ -1235,7 +1233,8 @@ fn confirm_select_candidate<'cx, 'gcx, 'tcx>(
             confirm_object_candidate(selcx, obligation, obligation_trait_ref),
         super::VtableAutoImpl(..) |
         super::VtableParam(..) |
-        super::VtableBuiltin(..) =>
+        super::VtableBuiltin(..) |
+        super::VtableTraitAlias(..) =>
             // we don't create Select candidates with this kind of resolution
             span_bug!(
                 obligation.cause.span,
@@ -1486,7 +1485,7 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
     impl_vtable: VtableImplData<'tcx, PredicateObligation<'tcx>>)
     -> Progress<'tcx>
 {
-    let VtableImplData { substs, nested, impl_def_id } = impl_vtable;
+    let VtableImplData { impl_def_id, substs, nested } = impl_vtable;
 
     let tcx = selcx.tcx();
     let param_env = obligation.param_env;

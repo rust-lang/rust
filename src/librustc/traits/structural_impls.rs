@@ -62,6 +62,8 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::Vtable<'tcx, N> {
             super::VtableParam(ref n) => write!(f, "VtableParam({:?})", n),
 
             super::VtableBuiltin(ref d) => write!(f, "{:?}", d),
+
+            super::VtableTraitAlias(ref d) => write!(f, "{:?}", d),
         }
     }
 }
@@ -70,7 +72,7 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableImplData<'tcx, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "VtableImpl(impl_def_id={:?}, substs={:?}, nested={:?})",
+            "VtableImplData(impl_def_id={:?}, substs={:?}, nested={:?})",
             self.impl_def_id, self.substs, self.nested
         )
     }
@@ -80,7 +82,7 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableGeneratorData<'tcx, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "VtableGenerator(generator_def_id={:?}, substs={:?}, nested={:?})",
+            "VtableGeneratorData(generator_def_id={:?}, substs={:?}, nested={:?})",
             self.generator_def_id, self.substs, self.nested
         )
     }
@@ -90,7 +92,7 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableClosureData<'tcx, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "VtableClosure(closure_def_id={:?}, substs={:?}, nested={:?})",
+            "VtableClosureData(closure_def_id={:?}, substs={:?}, nested={:?})",
             self.closure_def_id, self.substs, self.nested
         )
     }
@@ -98,7 +100,7 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableClosureData<'tcx, N> {
 
 impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableBuiltinData<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "VtableBuiltin(nested={:?})", self.nested)
+        write!(f, "VtableBuiltinData(nested={:?})", self.nested)
     }
 }
 
@@ -116,7 +118,7 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableObjectData<'tcx, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "VtableObject(upcast={:?}, vtable_base={}, nested={:?})",
+            "VtableObjectData(upcast={:?}, vtable_base={}, nested={:?})",
             self.upcast_trait_ref, self.vtable_base, self.nested
         )
     }
@@ -126,8 +128,18 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableFnPointerData<'tcx, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "VtableFnPointer(fn_ty={:?}, nested={:?})",
+            "VtableFnPointerData(fn_ty={:?}, nested={:?})",
             self.fn_ty, self.nested
+        )
+    }
+}
+
+impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableTraitAliasData<'tcx, N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "VtableTraitAlias(alias_def_id={:?}, substs={:?}, nested={:?})",
+            self.alias_def_id, self.substs, self.nested
         )
     }
 }
@@ -321,6 +333,17 @@ impl<'a, 'tcx> Lift<'tcx> for traits::Vtable<'a, ()> {
                     nested,
                 })
             ),
+            traits::VtableTraitAlias(traits::VtableTraitAliasData {
+                alias_def_id,
+                substs,
+                nested,
+            }) => tcx.lift(&substs).map(|substs|
+                traits::VtableTraitAlias(traits::VtableTraitAliasData {
+                    alias_def_id,
+                    substs,
+                    nested,
+                })
+            ),
         }
     }
 }
@@ -386,6 +409,12 @@ BraceStructTypeFoldableImpl! {
     } where N: TypeFoldable<'tcx>
 }
 
+BraceStructTypeFoldableImpl! {
+    impl<'tcx, N> TypeFoldable<'tcx> for traits::VtableTraitAliasData<'tcx, N> {
+        alias_def_id, substs, nested
+    } where N: TypeFoldable<'tcx>
+}
+
 EnumTypeFoldableImpl! {
     impl<'tcx, N> TypeFoldable<'tcx> for traits::Vtable<'tcx, N> {
         (traits::VtableImpl)(a),
@@ -396,6 +425,7 @@ EnumTypeFoldableImpl! {
         (traits::VtableParam)(a),
         (traits::VtableBuiltin)(a),
         (traits::VtableObject)(a),
+        (traits::VtableTraitAlias)(a),
     } where N: TypeFoldable<'tcx>
 }
 

@@ -301,9 +301,7 @@ impl<'hir> Map<'hir> {
                     ItemKind::Struct(..) => Some(Def::Struct(def_id())),
                     ItemKind::Union(..) => Some(Def::Union(def_id())),
                     ItemKind::Trait(..) => Some(Def::Trait(def_id())),
-                    ItemKind::TraitAlias(..) => {
-                        bug!("trait aliases are not yet implemented (see issue #41517)")
-                    },
+                    ItemKind::TraitAlias(..) => Some(Def::TraitAlias(def_id())),
                     ItemKind::ExternCrate(_) |
                     ItemKind::Use(..) |
                     ItemKind::ForeignMod(..) |
