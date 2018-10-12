@@ -579,7 +579,7 @@ pub fn set_sigpipe_handler() {
     unsafe {
         // Set the SIGPIPE signal handler, so that an EPIPE
         // will cause rustc to terminate, as expected.
-        assert!(libc::signal(libc::SIGPIPE, libc::SIG_DFL) != libc::SIG_ERR);
+        assert_ne!(libc::signal(libc::SIGPIPE, libc::SIG_DFL), libc::SIG_ERR);
     }
 }
 

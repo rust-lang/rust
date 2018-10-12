@@ -130,22 +130,20 @@ fn write_traces_rec(file: &mut File, traces: &[Rec], total: Duration, depth: usi
         let fraction = duration_div(t.dur_total, total);
         let percent = fraction * 100.0;
         let (frc_text, frc_css_classes) = html_of_fraction(fraction);
-        write!(file, "<div class=\"trace depth-{} extent-{}{} {} {} {}\">\n",
-               depth,
-               t.extent.len(),
-               /* Heuristic for 'important' CSS class: */
-               if t.extent.len() > 5 || percent >= 1.0 {
-                   " important" }
-               else { "" },
-               eff_css_classes,
-               dur_css_classes,
-               frc_css_classes,
+        writeln!(file, "<div class=\"trace depth-{} extent-{}{} {} {} {}\">",
+                 depth,
+                 t.extent.len(),
+                 /* Heuristic for 'important' CSS class: */
+                 if t.extent.len() > 5 || percent >= 1.0 { " important" } else { "" },
+                 eff_css_classes,
+                 dur_css_classes,
+                 frc_css_classes,
         ).unwrap();
-        write!(file, "<div class=\"eff\">{}</div>\n", eff_text).unwrap();
-        write!(file, "<div class=\"dur\">{}</div>\n", dur_text).unwrap();
-        write!(file, "<div class=\"frc\">{}</div>\n", frc_text).unwrap();
+        writeln!(file, "<div class=\"eff\">{}</div>", eff_text).unwrap();
+        writeln!(file, "<div class=\"dur\">{}</div>", dur_text).unwrap();
+        writeln!(file, "<div class=\"frc\">{}</div>", frc_text).unwrap();
         write_traces_rec(file, &t.extent, total, depth + 1);
-        write!(file, "</div>\n").unwrap();
+        writeln!(file, "</div>").unwrap();
     }
 }
 
@@ -209,10 +207,10 @@ pub fn write_counts(count_file: &mut File, counts: &mut FxHashMap<String,QueryMe
     ).collect::<Vec<_>>();
     data.sort_by_key(|k| Reverse(k.3));
     for (cons, count, dur_total, dur_self) in data {
-        write!(count_file, "{}, {}, {}, {}\n",
-               cons, count,
-               duration_to_secs_str(dur_total),
-               duration_to_secs_str(dur_self)
+        writeln!(count_file, "{}, {}, {}, {}",
+                 cons, count,
+                 duration_to_secs_str(dur_total),
+                 duration_to_secs_str(dur_self)
         ).unwrap();
     }
 }

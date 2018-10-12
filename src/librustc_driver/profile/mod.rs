@@ -109,17 +109,14 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                     let counts_path = format!("{}.counts.txt", params.path);
                     let mut counts_file = File::create(&counts_path).unwrap();
 
-                    write!(html_file, "<html>\n").unwrap();
-                    write!(html_file,
-                           "<head>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"{}\">\n",
-                           "profile_queries.css").unwrap();
-                    write!(html_file, "<style>\n").unwrap();
+                    writeln!(html_file,
+                        "<html>\n<head>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"{}\">",
+                        "profile_queries.css").unwrap();
+                    writeln!(html_file, "<style>").unwrap();
                     trace::write_style(&mut html_file);
-                    write!(html_file, "</style>\n").unwrap();
-                    write!(html_file, "</head>\n").unwrap();
-                    write!(html_file, "<body>\n").unwrap();
+                    writeln!(html_file, "</style>\n</head>\n<body>").unwrap();
                     trace::write_traces(&mut html_file, &mut counts_file, &frame.traces);
-                    write!(html_file, "</body>\n</html>\n").unwrap();
+                    writeln!(html_file, "</body>\n</html>").unwrap();
 
                     let ack_path = format!("{}.ack", params.path);
                     let ack_file = File::create(&ack_path).unwrap();

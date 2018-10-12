@@ -1472,7 +1472,7 @@ fn write_out_deps(sess: &Session, outputs: &OutputFilenames, out_filenames: &[Pa
             .collect();
         let mut file = fs::File::create(&deps_filename)?;
         for path in out_filenames {
-            write!(file, "{}: {}\n\n", path.display(), files.join(" "))?;
+            writeln!(file, "{}: {}\n", path.display(), files.join(" "))?;
         }
 
         // Emit a fake target for each input file to the compilation. This

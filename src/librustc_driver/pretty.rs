@@ -855,7 +855,7 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
                     break n.body();
                 }
                 let parent = tcx.hir.get_parent_node(node_id);
-                assert!(node_id != parent);
+                assert_ne!(node_id, parent);
                 node_id = parent;
             }
         }
