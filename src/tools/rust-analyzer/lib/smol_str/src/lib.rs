@@ -38,6 +38,11 @@ impl SmolStr {
     pub fn len(&self) -> usize {
         self.0.len()
     }
+
+    #[inline(always)]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 impl Deref for SmolStr {
@@ -177,6 +182,15 @@ impl Repr {
             Repr::Heap(data) => data.len(),
             Repr::Inline { len, .. } => *len as usize,
             Repr::Substring { newlines, spaces } => *newlines + *spaces,
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        match self {
+            Repr::Heap(data) => data.is_empty(),
+            Repr::Inline { len, .. } => *len == 0,
+            // A substring isn't created for an empty string.
+            Repr::Substring { .. } => false,
         }
     }
 
