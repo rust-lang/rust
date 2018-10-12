@@ -273,11 +273,9 @@ pub fn format_expr(
 
                 format!(
                     "{}{}{}",
-                    lhs.map(|lhs| space_if(needs_space_before_range(context, lhs)))
-                        .unwrap_or(""),
+                    lhs.map_or("", |lhs| space_if(needs_space_before_range(context, lhs))),
                     delim,
-                    rhs.map(|rhs| space_if(needs_space_after_range(rhs)))
-                        .unwrap_or(""),
+                    rhs.map_or("", |rhs| space_if(needs_space_after_range(rhs))),
                 )
             };
 
