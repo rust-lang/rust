@@ -20,6 +20,10 @@
 #![feature(nll)]
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
+#![cfg_attr(
+    all(target_arch = "wasm32", not(target_os = "emscripten")),
+    feature(integer_atomics, stdsimd)
+)]
 #![cfg_attr(any(unix, target_os = "cloudabi", target_os = "redox"), feature(libc))]
 #![rustc_alloc_kind = "lib"]
 
@@ -331,29 +335,76 @@ mod platform {
     use core::alloc::{GlobalAlloc, Layout};
     use System;
 
-    // No need for synchronization here as wasm is currently single-threaded
     static mut DLMALLOC: dlmalloc::Dlmalloc = dlmalloc::DLMALLOC_INIT;
 
     #[stable(feature = "alloc_system_type", since = "1.28.0")]
     unsafe impl GlobalAlloc for System {
         #[inline]
         unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+            let _lock = lock::lock();
             DLMALLOC.malloc(layout.size(), layout.align())
         }
 
         #[inline]
         unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+            let _lock = lock::lock();
             DLMALLOC.calloc(layout.size(), layout.align())
         }
 
         #[inline]
         unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+            let _lock = lock::lock();
             DLMALLOC.free(ptr, layout.size(), layout.align())
         }
 
         #[inline]
         unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+            let _lock = lock::lock();
             DLMALLOC.realloc(ptr, layout.size(), layout.align(), new_size)
         }
+    }
+
+    #[cfg(target_feature = "atomics")]
+    mod lock {
+        use core::arch::wasm32;
+        use core::sync::atomic::{AtomicI32, Ordering::SeqCst};
+
+        static LOCKED: AtomicI32 = AtomicI32::new(0);
+
+        pub struct DropLock;
+
+        pub fn lock() -> DropLock {
+            loop {
+                if LOCKED.swap(1, SeqCst) == 0 {
+                    return DropLock
+                }
+                unsafe {
+                    let r = wasm32::atomic::wait_i32(
+                        &LOCKED as *const AtomicI32 as *mut i32,
+                        1,  // expected value
+                        -1, // timeout
+                    );
+                    debug_assert!(r == 0 || r == 1);
+                }
+            }
+        }
+
+        impl Drop for DropLock {
+            fn drop(&mut self) {
+                let r = LOCKED.swap(0, SeqCst);
+                debug_assert_eq!(r, 1);
+                unsafe {
+                    wasm32::atomic::wake(
+                        &LOCKED as *const AtomicI32 as *mut i32,
+                        1, // only one thread
+                    );
+                }
+            }
+        }
+    }
+
+    #[cfg(not(target_feature = "atomics"))]
+    mod lock {
+        pub fn lock() {} // no atomics, no threads, that's easy!
     }
 }
