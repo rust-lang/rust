@@ -369,16 +369,16 @@ define_queries! { <'tcx>
             -> Lrc<specialization_graph::Graph>,
         [] fn is_object_safe: ObjectSafety(DefId) -> bool,
 
-        // Get the ParameterEnvironment for a given item; this environment
-        // will be in "user-facing" mode, meaning that it is suitabe for
-        // type-checking etc, and it does not normalize specializable
-        // associated types. This is almost always what you want,
-        // unless you are doing MIR optimizations, in which case you
-        // might want to use `reveal_all()` method to change modes.
+        /// Get the ParameterEnvironment for a given item; this environment
+        /// will be in "user-facing" mode, meaning that it is suitabe for
+        /// type-checking etc, and it does not normalize specializable
+        /// associated types. This is almost always what you want,
+        /// unless you are doing MIR optimizations, in which case you
+        /// might want to use `reveal_all()` method to change modes.
         [] fn param_env: ParamEnv(DefId) -> ty::ParamEnv<'tcx>,
 
-        // Trait selection queries. These are best used by invoking `ty.moves_by_default()`,
-        // `ty.is_copy()`, etc, since that will prune the environment where possible.
+        /// Trait selection queries. These are best used by invoking `ty.moves_by_default()`,
+        /// `ty.is_copy()`, etc, since that will prune the environment where possible.
         [] fn is_copy_raw: is_copy_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
         [] fn is_sized_raw: is_sized_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
         [] fn is_freeze_raw: is_freeze_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
