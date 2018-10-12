@@ -20,7 +20,8 @@ pub struct SmolStr(Repr);
 
 impl SmolStr {
     pub fn new<T>(text: T) -> SmolStr
-        where T: Into<String> + AsRef<str>
+    where
+        T: Into<String> + AsRef<str>,
     {
         SmolStr(Repr::new(text))
     }
@@ -122,7 +123,8 @@ impl fmt::Display for SmolStr {
 }
 
 impl<T> From<T> for SmolStr
-    where T: Into<String> + AsRef<str>
+where
+    T: Into<String> + AsRef<str>,
 {
     fn from(text: T) -> Self {
         Self::new(text)
@@ -144,7 +146,8 @@ enum Repr {
 
 impl Repr {
     fn new<T>(text: T) -> Self
-        where T: Into<String> + AsRef<str>
+    where
+        T: Into<String> + AsRef<str>,
     {
         {
             let text = text.as_ref();
@@ -173,7 +176,7 @@ impl Repr {
         match self {
             Repr::Heap(data) => data.len(),
             Repr::Inline { len, .. } => *len as usize,
-            Repr::Substring { newlines, spaces } => *newlines + *spaces
+            Repr::Substring { newlines, spaces } => *newlines + *spaces,
         }
     }
 
@@ -204,14 +207,18 @@ mod serde {
     impl serde::Serialize for SmolStr {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
-            S: serde::Serializer
-        { self.as_str().serialize(serializer) }
+            S: serde::Serializer,
+        {
+            self.as_str().serialize(serializer)
+        }
     }
 
     impl<'de> serde::Deserialize<'de> for SmolStr {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
         where
-            D: serde::Deserializer<'de>
-        { <&'de str>::deserialize(deserializer).map(SmolStr::from) }
+            D: serde::Deserializer<'de>,
+        {
+            <&'de str>::deserialize(deserializer).map(SmolStr::from)
+        }
     }
 }
