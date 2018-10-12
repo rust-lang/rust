@@ -24,6 +24,15 @@ We have a bunch of lint categories to allow you to choose how much Clippy is sup
 
 More to come, please [file an issue](https://github.com/rust-lang-nursery/rust-clippy/issues) if you have ideas!
 
+Only the following of those categories are enabled by default:
+
+* `clippy::style`
+* `clippy::correctness`
+* `clippy::complexity`
+* `clippy::perf`
+
+Other categories need to be enabled in order for their lints to be executed.
+
 Table of contents:
 
 *   [Usage instructions](#usage)
