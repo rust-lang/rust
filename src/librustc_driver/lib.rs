@@ -152,21 +152,14 @@ pub const EXIT_SUCCESS: isize = 0;
 /// Exit status code used for compilation failures and  invalid flags.
 pub const EXIT_FAILURE: isize = 1;
 
-const BUG_REPORT_URL: &'static str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
-                                      md#bug-reports";
+const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
+                              md#bug-reports";
 
-const ICE_REPORT_COMPILER_FLAGS: &'static [&'static str] = &[
-    "Z",
-    "C",
-    "crate-type",
-];
-const ICE_REPORT_COMPILER_FLAGS_EXCLUDE: &'static [&'static str] = &[
-    "metadata",
-    "extra-filename",
-];
-const ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE: &'static [&'static str] = &[
-    "incremental",
-];
+const ICE_REPORT_COMPILER_FLAGS: &[&str] = &["Z", "C", "crate-type"];
+
+const ICE_REPORT_COMPILER_FLAGS_EXCLUDE: &[&str] = &["metadata", "extra-filename"];
+
+const ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE: &[&str] = &["incremental"];
 
 pub fn abort_on_err<T>(result: Result<T, CompileIncomplete>, sess: &Session) -> T {
     match result {
