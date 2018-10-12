@@ -43,18 +43,18 @@ pub struct QueryMetric {
     pub dur_total: Duration,
 }
 
+fn cons(s: &str) -> String {
+    let first = s.split(|d| d == '(' || d == '{').next();
+    assert!(first.is_some() && first != Some(""));
+    first.unwrap().to_owned()
+}
+
 pub fn cons_of_query_msg(q: &trace::Query) -> String {
-    let s = format!("{:?}", q.msg);
-    let cons: Vec<&str> = s.split(|d| d == '(' || d == '{').collect();
-    assert!(cons.len() > 0 && cons[0] != "");
-    cons[0].to_string()
+    cons(&format!("{:?}", q.msg))
 }
 
 pub fn cons_of_key(k: &DepNode) -> String {
-    let s = format!("{:?}", k);
-    let cons: Vec<&str> = s.split(|d| d == '(' || d == '{').collect();
-    assert!(cons.len() > 0 && cons[0] != "");
-    cons[0].to_string()
+    cons(&format!("{:?}", k))
 }
 
 // First return value is text; second return value is a CSS class
