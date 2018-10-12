@@ -295,17 +295,14 @@ pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
-    // Give ourselves some scratch space to work with
-    let mut tmp: T = mem::uninitialized();
+    // Give ourselves some scratch space to work with.
+    // We do not have to worry about drops: `MaybeUninit` does nothing when dropped.
+    let mut tmp = MaybeUninit::<T>::uninitialized();
 
     // Perform the swap
-    copy_nonoverlapping(x, &mut tmp, 1);
+    copy_nonoverlapping(x, tmp.as_mut_ptr(), 1);
     copy(y, x, 1); // `x` and `y` may overlap
-    copy_nonoverlapping(&tmp, y, 1);
-
-    // y and t now point to the same thing, but we need to completely forget `tmp`
-    // because it's no longer relevant.
-    mem::forget(tmp);
+    copy_nonoverlapping(tmp.get_ref(), y, 1);
 }
 
 /// Swaps `count * size_of::<T>()` bytes between the two regions of memory
