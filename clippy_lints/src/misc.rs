@@ -579,6 +579,10 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
                     }
                 }
             }
+            if other_gets_derefed {
+                db.span_label(lint_span, "try implementing the comparison without allocating");
+                return;
+            }
             db.span_suggestion_with_applicability(
                 lint_span,
                 "try",

@@ -40,13 +40,13 @@ error: this creates an owned instance just for comparison
   --> $DIR/cmp_owned.rs:42:5
    |
 42 |     y.to_owned() == *x;
-   |     ^^^^^^^^^^^^^^^^^^ help: try: `y == x`
+   |     ^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating
 
 error: this creates an owned instance just for comparison
   --> $DIR/cmp_owned.rs:47:5
    |
 47 |     y.to_owned() == **x;
-   |     ^^^^^^^^^^^^^^^^^^^ help: try: `y == *x`
+   |     ^^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating
 
 error: this creates an owned instance just for comparison
   --> $DIR/cmp_owned.rs:54:9
