@@ -21,7 +21,7 @@ use crate::utils::{get_item_name, get_parent_expr, implements_trait, in_constant
             iter_input_pats, last_path_segment, match_qpath, match_trait_method, paths, snippet, span_lint,
             span_lint_and_then, walk_ptrs_ty, SpanlessEq};
 use crate::utils::sugg::Sugg;
-use crate::syntax::ast::{LitKind, CRATE_NODE_ID};
+use crate::syntax::ast::LitKind;
 use crate::consts::{constant, Constant};
 use crate::rustc_errors::Applicability;
 
@@ -535,34 +535,39 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
         return;
     }
 
+    let other_gets_derefed = match other.node {
+        ExprKind::Unary(UnDeref, _) => true,
+        _ => false,
+    };
+
+    let lint_span = if other_gets_derefed {
+        expr.span.to(other.span)
+    } else {
+        expr.span
+    };
+
     span_lint_and_then(
         cx,
         CMP_OWNED,
-        expr.span,
+        lint_span,
         "this creates an owned instance just for comparison",
         |db| {
-            // this is as good as our recursion check can get, we can't prove that the
-            // current function is
-            // called by
-            // PartialEq::eq, but we can at least ensure that this code is not part of it
-            let parent_fn = cx.tcx.hir.get_parent(expr.id);
-            let parent_impl = cx.tcx.hir.get_parent(parent_fn);
-            if parent_impl != CRATE_NODE_ID {
-                if let Node::Item(item) = cx.tcx.hir.get(parent_impl) {
-                    if let ItemKind::Impl(.., Some(ref trait_ref), _, _) = item.node {
-                        if trait_ref.path.def.def_id() == partial_eq_trait_id {
-                            // we are implementing PartialEq, don't suggest not doing `to_owned`, otherwise
-                            // we go into
-                            // recursion
-                            db.span_label(expr.span, "try calling implementing the comparison without allocating");
-                            return;
-                        }
-                    }
-                }
+            // this also catches PartialEq implementations that call to_owned
+            if other_gets_derefed {
+                db.span_label(lint_span, "try implementing the comparison without allocating");
+                return;
             }
-            let try_hint = if deref_arg_impl_partial_eq_other { format!("*{}", snip) } else { snip.to_string() };
+
+            let try_hint = if deref_arg_impl_partial_eq_other {
+                // suggest deref on the left
+                format!("*{}", snip)
+            } else {
+                // suggest dropping the to_owned on the left
+                snip.to_string()
+            };
+
             db.span_suggestion_with_applicability(
-                expr.span,
+                lint_span,
                 "try",
                 try_hint,
                 Applicability::MachineApplicable, // snippet
