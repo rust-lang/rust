@@ -24,11 +24,16 @@ before_install:
 
 install:
   - |
-    if [ -z ${INTEGRATION} ] && [ "$TRAVIS_OS_NAME" == "linux" ]; then
-      . $HOME/.nvm/nvm.sh
-      nvm install stable
-      nvm use stable
-      npm install remark-cli remark-lint
+    if [ -z ${INTEGRATION} ]; then
+      if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+        . $HOME/.nvm/nvm.sh
+        nvm install stable
+        nvm use stable
+        npm install remark-cli remark-lint
+      fi
+      if [ "$TRAVIS_OS_NAME" == "windows" ]; then
+        choco install windows-sdk-10.0
+      fi
     fi
 
 matrix:
