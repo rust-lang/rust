@@ -64,4 +64,7 @@ fn main() {
     let fail21 = 4___16;
     let fail22 = 3__4___23;
     let fail23 = 3__16___23;
+
+    //let fail24 = 1E2_32;
+    let fail25 = 1.2_32;
 }

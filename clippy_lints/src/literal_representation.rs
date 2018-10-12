@@ -173,8 +173,10 @@ impl<'a> DigitInfo<'a> {
             } else {
                 d_idx
             };
-            if float && (d == 'f' || d == 'e' || d == 'E') ||
-                !float && (d == 'i' || d == 'u' || is_possible_suffix_index(&sans_prefix, suffix_start, len)) {
+            if float && ((is_possible_float_suffix_index(&sans_prefix, suffix_start, len)) ||
+                (d == 'f' || d == 'e' || d == 'E')) ||
+                !float && (d == 'i' || d == 'u' ||
+                is_possible_suffix_index(&sans_prefix, suffix_start, len)) {
                     let (digits, suffix) = sans_prefix.split_at(suffix_start);
                     return Self {
                         digits,
@@ -248,6 +250,9 @@ impl<'a> DigitInfo<'a> {
                 hint = format!("{:0>4}{}", &hint[..nb_digits_to_fill], &hint[nb_digits_to_fill..]);
             }
             let suffix_hint = match self.suffix {
+                Some(suffix) if is_mistyped_float_suffix(suffix) && self.digits.contains(".") => {
+                    format!("_f{}", &suffix[1..])
+                },
                 Some(suffix) if is_mistyped_suffix(suffix) => {
                     format!("_i{}", &suffix[1..])
                 },
@@ -571,4 +576,13 @@ fn is_mistyped_suffix(suffix: &str) -> bool {
 fn is_possible_suffix_index(lit: &str, idx: usize, len: usize) -> bool {
     ((len > 3 && idx == len - 3) || (len > 2 && idx == len - 2)) &&
         is_mistyped_suffix(lit.split_at(idx).1)
+}
+
+fn is_mistyped_float_suffix(suffix: &str) -> bool {
+    ["_32", "_64"].contains(&suffix)
+}
+
+fn is_possible_float_suffix_index(lit: &str, idx: usize, len: usize) -> bool {
+    ((len > 3 && idx == len - 3) || (len > 2 && idx == len - 2)) &&
+        is_mistyped_float_suffix(lit.split_at(idx).1)
 }
