@@ -72,9 +72,7 @@ impl ConfigType for IgnoreList {
 /// nightly compiler when installed from crates.io, default to nightly mode.
 macro_rules! is_nightly_channel {
     () => {
-        option_env!("CFG_RELEASE_CHANNEL")
-            .map(|c| c == "nightly" || c == "dev")
-            .unwrap_or(true)
+        option_env!("CFG_RELEASE_CHANNEL").map_or(true, |c| c == "nightly" || c == "dev")
     };
 }
 
