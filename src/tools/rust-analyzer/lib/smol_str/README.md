@@ -18,5 +18,5 @@ A `SmolStr` is a string type that has the following properties:
 Unlike `String`, however, `SmolStr` is immutable. The primary use case for
 `SmolStr` is a good enough default storage for tokens of typical programming
 languages. Strings consisting of a series of newlines, followed by a series of
-whitespace are a typical pattern in computer programms because of indentation.
+whitespace are a typical pattern in computer programs because of indentation.
 Note that a specialized interner might be a better solution for some use cases.
