@@ -495,20 +495,22 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     this.super_place(place, context, location);
                     match proj.elem {
                         ProjectionElem::Deref => {
-                            if let Mode::Fn = this.mode {
-                                this.add(Qualif::NOT_CONST);
-                            } else {
-                                let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
-                                if let ty::RawPtr(_) = base_ty.sty {
-                                    if !this.tcx.sess.features_untracked().const_raw_ptr_deref {
-                                        emit_feature_err(
-                                            &this.tcx.sess.parse_sess, "const_raw_ptr_deref",
-                                            this.span, GateIssue::Language,
-                                            &format!(
-                                                "dereferencing raw pointers in {}s is unstable",
-                                                this.mode,
-                                            ),
-                                        );
+                            this.add(Qualif::NOT_CONST);
+                            let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
+                            match this.mode {
+                                Mode::Fn => {},
+                                _ => {
+                                    if let ty::RawPtr(_) = base_ty.sty {
+                                        if !this.tcx.sess.features_untracked().const_raw_ptr_deref {
+                                            emit_feature_err(
+                                                &this.tcx.sess.parse_sess, "const_raw_ptr_deref",
+                                                this.span, GateIssue::Language,
+                                                &format!(
+                                                    "dereferencing raw pointers in {}s is unstable",
+                                                    this.mode,
+                                                ),
+                                            );
+                                        }
                                     }
                                 }
                             }
@@ -732,8 +734,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     (CastTy::Ptr(_), CastTy::Int(_)) |
                     (CastTy::FnPtr, CastTy::Int(_)) => {
                         if let Mode::Fn = self.mode {
+                            // in normal functions, mark such casts as not promotable
                             self.add(Qualif::NOT_CONST);
                         } else if !self.tcx.sess.features_untracked().const_raw_ptr_to_usize_cast {
+                            // in const fn and constants require the feature gate
+                            // FIXME: make it unsafe inside const fn and constants
                             emit_feature_err(
                                 &self.tcx.sess.parse_sess, "const_raw_ptr_to_usize_cast",
                                 self.span, GateIssue::Language,
@@ -756,8 +761,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             op == BinOp::Offset);
 
                     if let Mode::Fn = self.mode {
+                        // raw pointer operations are not allowed inside promoteds
                         self.add(Qualif::NOT_CONST);
                     } else if !self.tcx.sess.features_untracked().const_compare_raw_pointers {
+                        // require the feature gate inside constants and const fn
+                        // FIXME: make it unsafe to use these operations
                         emit_feature_err(
                             &self.tcx.sess.parse_sess,
                             "const_compare_raw_pointers",
