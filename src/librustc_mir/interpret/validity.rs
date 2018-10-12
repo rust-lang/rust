@@ -517,7 +517,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         // reject it.  However, that's good: We don't inherently want
                         // to reject those pointers, we just do not have the machinery to
                         // talk about parts of a pointer.
-                        match self.memory.check_bytes(dest.ptr, size, /*allow_ptr*/!const_mode) {
+                        // We also accept undef, for consistency with the type-based checks.
+                        match self.memory.check_bytes(
+                            dest.ptr,
+                            size,
+                            /*allow_ptr_and_undef*/!const_mode,
+                        ) {
                             // In the happy case, we needn't check anything else.
                             Ok(()) => {},
                             // Some error happened, try to provide a more detailed description.

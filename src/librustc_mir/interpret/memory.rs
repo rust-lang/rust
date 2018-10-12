@@ -846,7 +846,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         &self,
         ptr: Scalar<M::PointerTag>,
         size: Size,
-        allow_ptr: bool,
+        allow_ptr_and_undef: bool,
     ) -> EvalResult<'tcx> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
         let align = Align::from_bytes(1, 1).unwrap();
@@ -857,9 +857,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         let ptr = ptr.to_ptr()?;
         // Check bounds, align and relocations on the edges
         self.get_bytes_with_undef_and_ptr(ptr, size, align)?;
-        // Check undef, and maybe ptr
-        self.check_defined(ptr, size)?;
-        if !allow_ptr {
+        // Check undef and ptr
+        if !allow_ptr_and_undef {
+            self.check_defined(ptr, size)?;
             self.check_relocations(ptr, size)?;
         }
         Ok(())
