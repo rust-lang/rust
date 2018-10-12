@@ -22,7 +22,7 @@ extern crate rustdoc_nonreachable_impls;
 pub use rustdoc_nonreachable_impls::hidden::Wobble;
 
 // @has issue_31948_2/trait.Qux.html
-// FIXME(33025): has - '//code' 'for Foo'
+// @has - '//code' 'for Foo'
 // @has - '//code' 'for Wobble'
 pub use rustdoc_nonreachable_impls::hidden::Qux;
 
