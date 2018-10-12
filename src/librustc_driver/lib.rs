@@ -90,6 +90,7 @@ use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use serialize::json::ToJson;
 
 use std::any::Any;
+use std::borrow::Cow;
 use std::cmp::max;
 use std::default::Default;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
@@ -1678,25 +1679,25 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) -> Result<(), CompilationFail
                              errors::Level::Bug);
             }
 
-            let mut xs = vec![
-                "the compiler unexpectedly panicked. this is a bug.".to_string(),
-                format!("we would appreciate a bug report: {}", BUG_REPORT_URL),
+            let mut xs: Vec<Cow<'static, str>> = vec![
+                "the compiler unexpectedly panicked. this is a bug.".into(),
+                format!("we would appreciate a bug report: {}", BUG_REPORT_URL).into(),
                 format!("rustc {} running on {}",
                         option_env!("CFG_VERSION").unwrap_or("unknown_version"),
-                        config::host_triple()),
+                        config::host_triple()).into(),
             ];
 
             if let Some((flags, excluded_cargo_defaults)) = extra_compiler_flags() {
-                xs.push(format!("compiler flags: {}", flags.join(" ")));
+                xs.push(format!("compiler flags: {}", flags.join(" ")).into());
 
                 if excluded_cargo_defaults {
-                    xs.push("some of the compiler flags provided by cargo are hidden".to_string());
+                    xs.push("some of the compiler flags provided by cargo are hidden".into());
                 }
             }
 
             for note in &xs {
                 handler.emit(&MultiSpan::new(),
-                             &note,
+                             note,
                              errors::Level::Note);
             }
 
