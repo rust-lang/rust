@@ -496,7 +496,7 @@ impl<'tcx> fmt::Display for traits::Goal<'tcx> {
 
 impl<'tcx> fmt::Display for traits::ProgramClause<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let traits::ProgramClause { goal, hypotheses } = self;
+        let traits::ProgramClause { goal, hypotheses, .. } = self;
         write!(fmt, "{}", goal)?;
         if !hypotheses.is_empty() {
             write!(fmt, " :- ")?;
@@ -647,8 +647,13 @@ impl<'tcx> TypeFoldable<'tcx> for traits::Goal<'tcx> {
 BraceStructTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for traits::ProgramClause<'tcx> {
         goal,
-        hypotheses
+        hypotheses,
+        category,
     }
+}
+
+CloneTypeFoldableAndLiftImpls! {
+    traits::ProgramClauseCategory,
 }
 
 EnumTypeFoldableImpl! {

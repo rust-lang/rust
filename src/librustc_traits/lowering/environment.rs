@@ -14,6 +14,7 @@ use rustc::traits::{
     DomainGoal,
     FromEnv,
     ProgramClause,
+    ProgramClauseCategory,
     Environment,
 };
 use rustc::ty::{self, TyCtxt, Ty};
@@ -39,6 +40,7 @@ impl ClauseVisitor<'set, 'a, 'tcx> {
                 self.round.extend(
                     self.tcx.program_clauses_for(data.item_def_id)
                         .iter()
+                        .filter(|c| c.category() == ProgramClauseCategory::ImpliedBound)
                         .cloned()
                 );
             }
@@ -56,6 +58,7 @@ impl ClauseVisitor<'set, 'a, 'tcx> {
                 self.round.extend(
                     self.tcx.program_clauses_for(def.did)
                         .iter()
+                        .filter(|c| c.category() == ProgramClauseCategory::ImpliedBound)
                         .cloned()
                 );
             }
@@ -68,6 +71,7 @@ impl ClauseVisitor<'set, 'a, 'tcx> {
                 self.round.extend(
                     self.tcx.program_clauses_for(def_id)
                         .iter()
+                        .filter(|c| c.category() == ProgramClauseCategory::ImpliedBound)
                         .cloned()
                 );
             }
@@ -98,6 +102,7 @@ impl ClauseVisitor<'set, 'a, 'tcx> {
                 self.round.extend(
                     self.tcx.program_clauses_for(predicate.def_id())
                         .iter()
+                        .filter(|c| c.category() == ProgramClauseCategory::ImpliedBound)
                         .cloned()
                 );
             }
@@ -176,7 +181,7 @@ crate fn environment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> En
     // Compute the bounds on `Self` and the type parameters.
     let ty::InstantiatedPredicates { predicates } =
         tcx.predicates_of(def_id).instantiate_identity(tcx);
-    
+
     let clauses = predicates.into_iter()
         .map(|predicate| predicate.lower())
         .map(|domain_goal| domain_goal.map_bound(|bound| bound.into_from_env_goal()))
@@ -185,7 +190,7 @@ crate fn environment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> En
         // `ForAll` because each `domain_goal` is a `PolyDomainGoal` and
         // could bound lifetimes.
         .map(Clause::ForAll);
-    
+
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
     let node = tcx.hir.get(node_id);
 
@@ -243,7 +248,7 @@ crate fn environment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> En
             .map(|domain_goal| domain_goal.into_program_clause())
             .map(Clause::Implies)
     );
-    
+
     Environment {
         clauses: tcx.mk_clauses(clauses),
     }

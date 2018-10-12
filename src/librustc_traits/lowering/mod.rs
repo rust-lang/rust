@@ -22,6 +22,7 @@ use rustc::traits::{
     GoalKind,
     PolyDomainGoal,
     ProgramClause,
+    ProgramClauseCategory,
     WellFormed,
     WhereClause,
 };
@@ -204,6 +205,7 @@ fn program_clauses_for_trait<'a, 'tcx>(
     let implemented_from_env = ProgramClause {
         goal: impl_trait,
         hypotheses,
+        category: ProgramClauseCategory::ImpliedBound,
     };
 
     let clauses = iter::once(Clause::ForAll(ty::Binder::dummy(implemented_from_env)));
@@ -231,6 +233,7 @@ fn program_clauses_for_trait<'a, 'tcx>(
         .map(|wc| wc.map_bound(|goal| ProgramClause {
             goal: goal.into_from_env_goal(),
             hypotheses,
+            category: ProgramClauseCategory::ImpliedBound,
         }))
         .map(Clause::ForAll);
 
@@ -257,6 +260,7 @@ fn program_clauses_for_trait<'a, 'tcx>(
         hypotheses: tcx.mk_goals(
             wf_conditions.map(|wc| tcx.mk_goal(GoalKind::from_poly_domain_goal(wc, tcx))),
         ),
+        category: ProgramClauseCategory::WellFormed,
     };
     let wf_clause = iter::once(Clause::ForAll(ty::Binder::dummy(wf_clause)));
 
@@ -299,6 +303,7 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
             where_clauses
                 .map(|wc| tcx.mk_goal(GoalKind::from_poly_domain_goal(wc, tcx))),
         ),
+        category: ProgramClauseCategory::Other,
     };
     tcx.mk_clauses(iter::once(Clause::ForAll(ty::Binder::dummy(clause))))
 }
@@ -335,6 +340,7 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
                 .cloned()
                 .map(|wc| tcx.mk_goal(GoalKind::from_poly_domain_goal(wc, tcx))),
         ),
+        category: ProgramClauseCategory::WellFormed,
     };
 
     let well_formed_clause = iter::once(Clause::ForAll(ty::Binder::dummy(well_formed)));
@@ -360,6 +366,7 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
         .map(|wc| wc.map_bound(|goal| ProgramClause {
             goal: goal.into_from_env_goal(),
             hypotheses,
+            category: ProgramClauseCategory::ImpliedBound,
         }))
 
         .map(Clause::ForAll);
@@ -407,7 +414,8 @@ pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
 
     let projection_eq_clause = ProgramClause {
         goal: DomainGoal::Holds(projection_eq),
-        hypotheses: &ty::List::empty(),
+        hypotheses: ty::List::empty(),
+        category: ProgramClauseCategory::Other,
     };
 
     // Rule WellFormed-AssocTy
@@ -425,6 +433,7 @@ pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
     let wf_clause = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Ty(placeholder_ty)),
         hypotheses: tcx.mk_goals(iter::once(hypothesis)),
+        category: ProgramClauseCategory::Other,
     };
 
     // Rule Implied-Trait-From-AssocTy
@@ -441,6 +450,7 @@ pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
     let from_env_clause = ProgramClause {
         goal: DomainGoal::FromEnv(FromEnv::Trait(trait_predicate)),
         hypotheses: tcx.mk_goals(iter::once(hypothesis)),
+        category: ProgramClauseCategory::ImpliedBound,
     };
 
     let clauses = iter::once(projection_eq_clause)
@@ -506,6 +516,7 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
                 .into_iter()
                 .map(|wc| tcx.mk_goal(GoalKind::from_poly_domain_goal(wc, tcx))),
         ),
+        category: ProgramClauseCategory::Other,
     };
     tcx.mk_clauses(iter::once(Clause::ForAll(ty::Binder::dummy(clause))))
 }

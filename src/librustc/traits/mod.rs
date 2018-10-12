@@ -341,7 +341,8 @@ impl<'tcx> DomainGoal<'tcx> {
     pub fn into_program_clause(self) -> ProgramClause<'tcx> {
         ProgramClause {
             goal: self,
-            hypotheses: &ty::List::empty(),
+            hypotheses: ty::List::empty(),
+            category: ProgramClauseCategory::Other,
         }
     }
 }
@@ -369,6 +370,15 @@ pub enum Clause<'tcx> {
     ForAll(ty::Binder<ProgramClause<'tcx>>),
 }
 
+impl Clause<'tcx> {
+    pub fn category(self) -> ProgramClauseCategory {
+        match self {
+            Clause::Implies(clause) => clause.category,
+            Clause::ForAll(clause) => clause.skip_binder().category,
+        }
+    }
+}
+
 /// Multiple clauses.
 pub type Clauses<'tcx> = &'tcx List<Clause<'tcx>>;
 
@@ -385,6 +395,16 @@ pub struct ProgramClause<'tcx> {
 
     /// ...if we can prove these hypotheses (there may be no hypotheses at all):
     pub hypotheses: Goals<'tcx>,
+
+    /// Useful for filtering clauses.
+    pub category: ProgramClauseCategory,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum ProgramClauseCategory {
+    ImpliedBound,
+    WellFormed,
+    Other,
 }
 
 /// A set of clauses that we assume to be true.

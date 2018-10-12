@@ -1395,9 +1395,15 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::Goal<'tcx> {
 
 impl_stable_hash_for!(
     impl<'tcx> for struct traits::ProgramClause<'tcx> {
-        goal, hypotheses
+        goal, hypotheses, category
     }
 );
+
+impl_stable_hash_for!(enum traits::ProgramClauseCategory {
+    ImpliedBound,
+    WellFormed,
+    Other,
+});
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::Clause<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
