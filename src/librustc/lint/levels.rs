@@ -21,6 +21,7 @@ use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
 use session::Session;
 use syntax::ast;
 use syntax::attr;
+use syntax::feature_gate;
 use syntax::source_map::MultiSpan;
 use syntax::symbol::Symbol;
 use util::nodemap::FxHashMap;
@@ -210,7 +211,7 @@ impl<'a> LintLevelsBuilder<'a> {
             let meta = unwrap_or!(attr.meta(), continue);
             attr::mark_used(attr);
 
-            let metas = if let Some(metas) = meta.meta_item_list() {
+            let mut metas = if let Some(metas) = meta.meta_item_list() {
                 metas
             } else {
                 let mut err = bad_attr(meta.span);
@@ -218,44 +219,43 @@ impl<'a> LintLevelsBuilder<'a> {
                 continue
             };
 
-            // Before processing the lint names, look for a reason (RFC 2383).
+            // Before processing the lint names, look for a reason (RFC 2383)
+            // at the end.
             let mut reason = None;
-            for li in metas {
-                if let Some(item) = li.meta_item() {
-                    match item.node {
-                        ast::MetaItemKind::Word => {}  // actual lint names handled later
-                        ast::MetaItemKind::NameValue(ref name_value) => {
-                            let gate_reasons = !self.sess.features_untracked().lint_reasons;
-                            let name_ident = item.ident.segments[0].ident;
-                            let name = name_ident.name.as_str();
-
-                            if name == "reason" {
-                                if let ast::LitKind::Str(rationale, _) = name_value.node {
-                                    if gate_reasons {
-                                        feature_gate::emit_feature_err(
-                                            &self.sess.parse_sess,
-                                            "lint_reasons",
-                                            item.span,
-                                            feature_gate::GateIssue::Language,
-                                            "lint reasons are experimental"
-                                        );
-                                    } else {
-                                        reason = Some(rationale);
-                                    }
+            let tail_li = &metas[metas.len()-1];
+            if let Some(item) = tail_li.meta_item() {
+                match item.node {
+                    ast::MetaItemKind::Word => {}  // actual lint names handled later
+                    ast::MetaItemKind::NameValue(ref name_value) => {
+                        let gate_reasons = !self.sess.features_untracked().lint_reasons;
+                        if item.ident == "reason" {
+                            // found reason, reslice meta list to exclude it
+                            metas = &metas[0..metas.len()-1];
+                            if let ast::LitKind::Str(rationale, _) = name_value.node {
+                                if gate_reasons {
+                                    feature_gate::emit_feature_err(
+                                        &self.sess.parse_sess,
+                                        "lint_reasons",
+                                        item.span,
+                                        feature_gate::GateIssue::Language,
+                                        "lint reasons are experimental"
+                                    );
                                 } else {
-                                    let mut err = bad_attr(name_value.span);
-                                    err.help("reason must be a string literal");
-                                    err.emit();
+                                    reason = Some(rationale);
                                 }
                             } else {
-                                let mut err = bad_attr(item.span);
+                                let mut err = bad_attr(name_value.span);
+                                err.help("reason must be a string literal");
                                 err.emit();
                             }
-                        },
-                        ast::MetaItemKind::List(_) => {
+                        } else {
                             let mut err = bad_attr(item.span);
                             err.emit();
                         }
+                    },
+                    ast::MetaItemKind::List(_) => {
+                        let mut err = bad_attr(item.span);
+                        err.emit();
                     }
                 }
             }
@@ -263,7 +263,18 @@ impl<'a> LintLevelsBuilder<'a> {
             for li in metas {
                 let word = match li.word() {
                     Some(word) => word,
-                    None => { continue; }
+                    None => {
+                        let mut err = bad_attr(li.span);
+                        if let Some(item) = li.meta_item() {
+                            if let ast::MetaItemKind::NameValue(_) = item.node {
+                                if item.ident == "reason" {
+                                    err.help("reason in lint attribute must come last");
+                                }
+                            }
+                        }
+                        err.emit();
+                        continue;
+                    }
                 };
                 let tool_name = if let Some(lint_tool) = word.is_scoped() {
                     if !attr::is_known_lint_tool(lint_tool) {

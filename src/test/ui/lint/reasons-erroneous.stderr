@@ -32,14 +32,30 @@ error[E0452]: malformed lint attribute
 LL | #![warn(elided_lifetimes_in_paths, reason("disrespectful to ancestors", "irresponsible to heirs"))]
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: unknown lint: `reason`
+error[E0452]: malformed lint attribute
   --> $DIR/reasons-erroneous.rs:15:44
    |
-LL | #![warn(ellipsis_inclusive_range_patterns, reason)]
-   |                                            ^^^^^^
+LL | #![warn(ellipsis_inclusive_range_patterns, reason = "born barren", reason = "a freak growth")]
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: reason in lint attribute must come last
+
+error[E0452]: malformed lint attribute
+  --> $DIR/reasons-erroneous.rs:18:25
+   |
+LL | #![warn(keyword_idents, reason = "root in rubble", macro_use_extern_crate)]
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: reason in lint attribute must come last
+
+warning: unknown lint: `reason`
+  --> $DIR/reasons-erroneous.rs:21:39
+   |
+LL | #![warn(missing_copy_implementations, reason)]
+   |                                       ^^^^^^
    |
    = note: #[warn(unknown_lints)] on by default
 
-error: aborting due to 5 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0452`.
