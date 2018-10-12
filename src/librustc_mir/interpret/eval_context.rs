@@ -53,7 +53,7 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
     pub(crate) stack: Vec<Frame<'mir, 'tcx, M::PointerTag>>,
 
     /// A cache for deduplicating vtables
-    pub(super) vtables: FxHashMap<(Ty<'tcx>, ty::PolyTraitRef<'tcx>), AllocId>,
+    pub(super) vtables: FxHashMap<(Ty<'tcx>, ty::PolyExistentialTraitRef<'tcx>), AllocId>,
 }
 
 /// A stack frame.

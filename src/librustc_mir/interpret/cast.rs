@@ -327,12 +327,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             }
             (_, &ty::Dynamic(ref data, _)) => {
                 // Initial cast from sized to dyn trait
-                let trait_ref = data.principal().with_self_ty(
-                    *self.tcx,
-                    src_pointee_ty,
-                );
-                let trait_ref = self.tcx.erase_regions(&trait_ref);
-                let vtable = self.get_vtable(src_pointee_ty, trait_ref)?;
+                let vtable = self.get_vtable(src_pointee_ty, data.principal())?;
                 let ptr = self.read_value(src)?.to_scalar_ptr()?;
                 let val = Value::new_dyn_trait(ptr, vtable);
                 self.write_value(val, dest)
