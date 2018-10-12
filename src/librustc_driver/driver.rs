@@ -1578,9 +1578,10 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
             base.push(::rustc_codegen_utils::link::default_output_for_target(
                 session,
             ));
+        } else {
+            base.sort();
+            base.dedup();
         }
-        base.sort();
-        base.dedup();
     }
 
     base.retain(|crate_type| {
