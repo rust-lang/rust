@@ -1,5 +1,5 @@
-extern crate smol_str;
 extern crate serde_json;
+extern crate smol_str;
 #[macro_use]
 extern crate proptest;
 
