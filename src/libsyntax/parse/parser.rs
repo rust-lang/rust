@@ -772,6 +772,11 @@ impl<'a> Parser<'a> {
                     //   |                   expected one of 8 possible tokens here
                     err.span_label(self.span, label_exp);
                 }
+                _ if self.prev_span == syntax_pos::DUMMY_SP => {
+                    // Account for macro context where the previous span might not be
+                    // available to avoid incorrect output (#54841).
+                    err.span_label(self.span, "unexpected token");
+                }
                 _ => {
                     err.span_label(sp, label_exp);
                     err.span_label(self.span, "unexpected token");
