@@ -120,54 +120,65 @@ fn contiguous_range_for_comment<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use test_utils::extract_ranges;
+
+    fn do_check(text: &str, fold_kinds: &[FoldKind]) {
+        let (ranges, text) = extract_ranges(text);
+        let file = File::parse(&text);
+        let folds = folding_ranges(&file);
+
+        assert_eq!(folds.len(), ranges.len());
+        for ((fold, range), fold_kind) in folds.into_iter().zip(ranges.into_iter()).zip(fold_kinds.into_iter()) {
+            assert_eq!(fold.range.start(), range.start());
+            assert_eq!(fold.range.end(), range.end());
+            assert_eq!(&fold.kind, fold_kind);
+        }
+    }
 
     #[test]
     fn test_fold_comments() {
         let text = r#"
-// Hello
+<|>// Hello
 // this is a multiline
 // comment
-//
+//<|>
 
 // But this is not
 
 fn main() {
-    // We should
+    <|>// We should
     // also
     // fold
-    // this one.
+    // this one.<|>
+    <|>//! But this one is different
+    //! because it has another flavor<|>
+    <|>/* As does this
+    multiline comment */<|>
 }"#;
 
-        let file = File::parse(&text);
-        let folds = folding_ranges(&file);
-        assert_eq!(folds.len(), 2);
-        assert_eq!(folds[0].range.start(), 1.into());
-        assert_eq!(folds[0].range.end(), 46.into());
-        assert_eq!(folds[0].kind, FoldKind::Comment);
-
-        assert_eq!(folds[1].range.start(), 84.into());
-        assert_eq!(folds[1].range.end(), 137.into());
-        assert_eq!(folds[1].kind, FoldKind::Comment);
+        let fold_kinds = &[
+            FoldKind::Comment,
+            FoldKind::Comment,
+            FoldKind::Comment,
+            FoldKind::Comment,
+        ];
+        do_check(text, fold_kinds);
     }
 
     #[test]
     fn test_fold_imports() {
         let text = r#"
-use std::{
+<|>use std::{
     str,
     vec,
     io as iop
-};
+};<|>
 
 fn main() {
 }"#;
 
-        let file = File::parse(&text);
-        let folds = folding_ranges(&file);
-        assert_eq!(folds.len(), 1);
-        assert_eq!(folds[0].range.start(), 1.into());
-        assert_eq!(folds[0].range.end(), 46.into());
-        assert_eq!(folds[0].kind, FoldKind::Imports);
+        let folds = &[FoldKind::Imports];
+        do_check(text, folds);
     }
 
 
