@@ -21,7 +21,7 @@ use rustc::ty::{self, TyCtxt, Ty};
 use rustc::hir::def_id::DefId;
 use rustc_data_structures::fx::FxHashSet;
 
-struct ClauseVisitor<'set, 'a, 'tcx: 'a> {
+struct ClauseVisitor<'set, 'a, 'tcx: 'a + 'set> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     round: &'set mut FxHashSet<Clause<'tcx>>,
 }
@@ -154,12 +154,12 @@ crate fn program_clauses_for_env<'a, 'tcx>(
     let mut next_round = FxHashSet();
     while !last_round.is_empty() {
         let mut visitor = ClauseVisitor::new(tcx, &mut next_round);
-        for clause in last_round {
+        for clause in last_round.drain() {
             visitor.visit_clause(clause);
         }
-        last_round = next_round.drain()
-            .filter(|&clause| closure.insert(clause))
-            .collect();
+        last_round.extend(
+            next_round.drain().filter(|&clause| closure.insert(clause))
+        );
     }
 
     debug!("program_clauses_for_env: closure = {:#?}", closure);

@@ -1424,15 +1424,12 @@ impl_stable_hash_for!(enum traits::QuantifierKind {
     Existential
 });
 
-<<<<<<< HEAD
 impl_stable_hash_for!(struct ty::subst::UserSubsts<'tcx> { substs, user_self_ty });
 
 impl_stable_hash_for!(struct ty::subst::UserSelfTy<'tcx> { impl_def_id, self_ty });
 
-=======
 impl_stable_hash_for!(
     impl<'tcx> for struct traits::Environment<'tcx> {
         clauses,
     }
 );
->>>>>>> Use `Environment` instead of `ty::ParamEnv` in chalk context
