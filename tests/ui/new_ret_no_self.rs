@@ -1,5 +1,3 @@
-#![feature(tool_lints)]
-
 #![warn(clippy::new_ret_no_self)]
 #![allow(dead_code, clippy::trivially_copy_pass_by_ref)]
 
