@@ -713,7 +713,7 @@ impl<T: ?Sized> Clone for Arc<T> {
     ///
     /// let five = Arc::new(5);
     ///
-    /// Arc::clone(&five);
+    /// let _ = Arc::clone(&five);
     /// ```
     #[inline]
     fn clone(&self) -> Arc<T> {
@@ -1135,7 +1135,7 @@ impl<T: ?Sized> Clone for Weak<T> {
     ///
     /// let weak_five = Arc::downgrade(&Arc::new(5));
     ///
-    /// Weak::clone(&weak_five);
+    /// let _ = Weak::clone(&weak_five);
     /// ```
     #[inline]
     fn clone(&self) -> Weak<T> {
