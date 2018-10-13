@@ -2,17 +2,13 @@ error[E0223]: ambiguous associated type
   --> $DIR/self-impl.rs:33:16
    |
 LL |         let _: <Self>::Baz = true;
-   |                ^^^^^^^^^^^ ambiguous associated type
-   |
-   = note: specify the type using the syntax `<Bar as Trait>::Baz`
+   |                ^^^^^^^^^^^ help: use fully-qualified syntax: `<Bar as Trait>::Baz`
 
 error[E0223]: ambiguous associated type
   --> $DIR/self-impl.rs:35:16
    |
 LL |         let _: Self::Baz = true;
-   |                ^^^^^^^^^ ambiguous associated type
-   |
-   = note: specify the type using the syntax `<Bar as Trait>::Baz`
+   |                ^^^^^^^^^ help: use fully-qualified syntax: `<Bar as Trait>::Baz`
 
 error: aborting due to 2 previous errors
 

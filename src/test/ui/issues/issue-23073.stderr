@@ -2,9 +2,7 @@ error[E0223]: ambiguous associated type
   --> $DIR/issue-23073.rs:16:17
    |
 LL |     type FooT = <<Self as Bar>::Foo>::T; //~ ERROR ambiguous associated type
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^ ambiguous associated type
-   |
-   = note: specify the type using the syntax `<<Self as Bar>::Foo as Trait>::T`
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<<Self as Bar>::Foo as Trait>::T`
 
 error: aborting due to previous error
 

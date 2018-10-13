@@ -32,9 +32,7 @@ error[E0223]: ambiguous associated type
   --> $DIR/struct-path-associated-type.rs:42:13
    |
 LL |     let s = S::A {}; //~ ERROR ambiguous associated type
-   |             ^^^^ ambiguous associated type
-   |
-   = note: specify the type using the syntax `<S as Trait>::A`
+   |             ^^^^ help: use fully-qualified syntax: `<S as Trait>::A`
 
 error[E0109]: type parameters are not allowed on this type
   --> $DIR/struct-path-associated-type.rs:43:20
@@ -46,17 +44,13 @@ error[E0223]: ambiguous associated type
   --> $DIR/struct-path-associated-type.rs:43:13
    |
 LL |     let z = S::A::<u8> {}; //~ ERROR ambiguous associated type
-   |             ^^^^^^^^^^ ambiguous associated type
-   |
-   = note: specify the type using the syntax `<S as Trait>::A`
+   |             ^^^^^^^^^^ help: use fully-qualified syntax: `<S as Trait>::A`
 
 error[E0223]: ambiguous associated type
   --> $DIR/struct-path-associated-type.rs:46:9
    |
 LL |         S::A {} => {} //~ ERROR ambiguous associated type
-   |         ^^^^ ambiguous associated type
-   |
-   = note: specify the type using the syntax `<S as Trait>::A`
+   |         ^^^^ help: use fully-qualified syntax: `<S as Trait>::A`
 
 error: aborting due to 9 previous errors
 
