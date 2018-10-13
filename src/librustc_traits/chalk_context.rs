@@ -22,7 +22,7 @@ use rustc::traits::{
     ExClauseLift,
     Goal,
     GoalKind,
-    ProgramClause,
+    Clause,
     QuantifierKind,
     Environment,
     InEnvironment,
@@ -100,9 +100,9 @@ impl context::Context for ChalkArenas<'tcx> {
 
     type Parameter = Kind<'tcx>;
 
-    type ProgramClause = ProgramClause<'tcx>;
+    type ProgramClause = Clause<'tcx>;
 
-    type ProgramClauses = Vec<ProgramClause<'tcx>>;
+    type ProgramClauses = Vec<Clause<'tcx>>;
 
     type UnificationResult = InferOk<'tcx, ()>;
 
@@ -272,10 +272,14 @@ impl context::InferenceTable<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
 
     fn add_clauses(
         &mut self,
-        _env: &Environment<'tcx>,
-        _clauses: Vec<ProgramClause<'tcx>>,
+        env: &Environment<'tcx>,
+        clauses: Vec<Clause<'tcx>>,
     ) -> Environment<'tcx> {
-        panic!("FIXME no method to add clauses to Environment yet")
+        Environment {
+            clauses: self.infcx.tcx.mk_clauses(
+                env.clauses.iter().cloned().chain(clauses.into_iter())
+            )
+        }
     }
 }
 
@@ -287,7 +291,7 @@ impl context::ResolventOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         _environment: &Environment<'tcx>,
         _goal: &DomainGoal<'tcx>,
         _subst: &CanonicalVarValues<'tcx>,
-        _clause: &ProgramClause<'tcx>,
+        _clause: &Clause<'tcx>,
     ) -> chalk_engine::fallible::Fallible<Canonical<'gcx, ChalkExClause<'gcx>>> {
         panic!()
     }
@@ -328,7 +332,7 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         &self,
         _environment: &Environment<'tcx>,
         goal: &DomainGoal<'tcx>,
-    ) -> Vec<ProgramClause<'tcx>> {
+    ) -> Vec<Clause<'tcx>> {
         use rustc::traits::WhereClause::*;
 
         match goal {
