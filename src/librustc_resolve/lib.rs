@@ -1680,13 +1680,15 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         let mut extern_prelude: FxHashSet<Name> =
             session.opts.externs.iter().map(|kv| Symbol::intern(kv.0)).collect();
 
-        // HACK(eddyb) this ignore the `no_{core,std}` attributes.
-        // FIXME(eddyb) warn (elsewhere) if core/std is used with `no_{core,std}`.
-        // if !attr::contains_name(&krate.attrs, "no_core") {
-        // if !attr::contains_name(&krate.attrs, "no_std") {
-        extern_prelude.insert(Symbol::intern("core"));
-        extern_prelude.insert(Symbol::intern("std"));
-        extern_prelude.insert(Symbol::intern("meta"));
+        if !attr::contains_name(&krate.attrs, "no_core") {
+            extern_prelude.insert(Symbol::intern("core"));
+            if !attr::contains_name(&krate.attrs, "no_std") {
+                extern_prelude.insert(Symbol::intern("std"));
+                if session.rust_2018() {
+                    extern_prelude.insert(Symbol::intern("meta"));
+                }
+            }
+        }
 
         let mut invocations = FxHashMap();
         invocations.insert(Mark::root(),
