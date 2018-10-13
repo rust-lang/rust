@@ -40,6 +40,8 @@ impl ConstraintDescription for ConstraintCategory {
         match self {
             ConstraintCategory::Assignment => "assignment ",
             ConstraintCategory::Return => "returning this value ",
+            ConstraintCategory::UseAsConst => "using this value as a constant ",
+            ConstraintCategory::UseAsStatic => "using this value as a static ",
             ConstraintCategory::Cast => "cast ",
             ConstraintCategory::CallArgument => "argument ",
             ConstraintCategory::TypeAnnotation => "type annotation ",
@@ -375,12 +377,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let outlived_fr_name_and_span =
             self.get_var_name_and_span_for_region(infcx.tcx, mir, outlived_fr);
 
-        let escapes_from = if infcx.tcx.is_closure(mir_def_id) { "closure" } else { "function" };
+        let escapes_from = match self.universal_regions.defining_ty {
+            DefiningTy::Closure(..) => "closure",
+            DefiningTy::Generator(..) => "generator",
+            DefiningTy::FnDef(..) => "function",
+            DefiningTy::Const(..) => "const"
+        };
 
         // Revert to the normal error in these cases.
         // Assignments aren't "escapes" in function items.
         if (fr_name_and_span.is_none() && outlived_fr_name_and_span.is_none())
             || (category == ConstraintCategory::Assignment && escapes_from == "function")
+            || escapes_from == "const"
         {
             return self.report_general_error(mir, infcx, mir_def_id,
                                              fr, true, outlived_fr, false,
