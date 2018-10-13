@@ -44,17 +44,16 @@ declare_clippy_lint!{
     "checks for expressions that could be replaced by the question mark operator"
 }
 
-#[allow(clippy::stutter)]
 #[derive(Copy, Clone)]
-pub struct QuestionMarkPass;
+pub struct Pass;
 
-impl LintPass for QuestionMarkPass {
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(QUESTION_MARK)
     }
 }
 
-impl QuestionMarkPass {
+impl Pass {
     /// Check if the given expression on the given context matches the following structure:
     ///
     /// ```ignore
@@ -146,7 +145,7 @@ impl QuestionMarkPass {
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for QuestionMarkPass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         Self::check_is_none_and_early_return_none(cx, expr);
     }
