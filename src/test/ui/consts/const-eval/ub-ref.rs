@@ -21,6 +21,9 @@ const NULL: &u16 = unsafe { mem::transmute(0usize) };
 const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
 //~^ ERROR this constant likely exhibits undefined behavior
 
+const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
+//~^ ERROR this constant likely exhibits undefined behavior
+
 const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
 //~^ ERROR this constant likely exhibits undefined behavior
 

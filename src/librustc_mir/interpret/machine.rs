@@ -86,7 +86,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     const STATIC_KIND: Option<Self::MemoryKinds>;
 
     /// Whether to enforce the validity invariant
-    const ENFORCE_VALIDITY: bool;
+    fn enforce_validity(ecx: &EvalContext<'a, 'mir, 'tcx, Self>) -> bool;
 
     /// Called before a basic block terminator is executed.
     /// You can use this to detect endlessly running programs.

@@ -208,7 +208,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 // for safe ptrs, also check the ptr values itself
                 if !ty.is_unsafe_ptr() {
                     // Make sure this is non-NULL and aligned
-                    let (size, align) = self.size_and_align_of(place.meta, place.layout)?;
+                    let (size, align) = self.size_and_align_of(place.meta, place.layout)?
+                        // for the purpose of validity, consider foreign types to have
+                        // alignment and size determined by the layout (size will be 0,
+                        // alignment should take attributes into account).
+                        .unwrap_or_else(|| place.layout.size_and_align());
                     match self.memory.check_align(place.ptr, align) {
                         Ok(_) => {},
                         Err(err) => match err.kind {
@@ -218,7 +222,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                                 return validation_failure!("unaligned reference", path),
                             _ =>
                                 return validation_failure!(
-                                    "dangling (deallocated) reference", path
+                                    "dangling (out-of-bounds) reference (might be NULL at \
+                                     run-time)",
+                                    path
                                 ),
                         }
                     }
@@ -490,9 +496,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     }
                     // Special handling for arrays/slices of builtin integer types
                     ty::Array(tys, ..) | ty::Slice(tys) if {
-                        // This optimization applies only for integer types
+                        // This optimization applies only for integer and floating point types
+                        // (i.e., types that can hold arbitrary bytes).
                         match tys.sty {
-                            ty::Int(..) | ty::Uint(..) => true,
+                            ty::Int(..) | ty::Uint(..) | ty::Float(..) => true,
                             _ => false,
                         }
                     } => {
@@ -504,9 +511,20 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         // This is the size in bytes of the whole array.
                         let size = Size::from_bytes(ty_size * len);
 
-                        match self.memory.read_bytes(dest.ptr, size) {
+                        // In run-time mode, we accept pointers in here.  This is actually more
+                        // permissive than a per-element check would be, e.g. we accept
+                        // an &[u8] that contains a pointer even though bytewise checking would
+                        // reject it.  However, that's good: We don't inherently want
+                        // to reject those pointers, we just do not have the machinery to
+                        // talk about parts of a pointer.
+                        // We also accept undef, for consistency with the type-based checks.
+                        match self.memory.check_bytes(
+                            dest.ptr,
+                            size,
+                            /*allow_ptr_and_undef*/!const_mode,
+                        ) {
                             // In the happy case, we needn't check anything else.
-                            Ok(_) => {},
+                            Ok(()) => {},
                             // Some error happened, try to provide a more detailed description.
                             Err(err) => {
                                 // For some errors we might be able to provide extra information
@@ -553,11 +571,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         match layout.ty.sty {
             // generators and closures.
             ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
-                if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
-                    let freevar = self.tcx.with_freevars(node_id, |fv| fv[field]);
-                    PathElem::ClosureVar(self.tcx.hir.name(freevar.var_id()))
+                if let Some(upvar) = self.tcx.optimized_mir(def_id).upvar_decls.get(field) {
+                    PathElem::ClosureVar(upvar.debug_name)
                 } else {
-                    // The closure is not local, so we cannot get the name
+                    // Sometimes the index is beyond the number of freevars (seen
+                    // for a generator).
                     PathElem::ClosureVar(Symbol::intern(&field.to_string()))
                 }
             }

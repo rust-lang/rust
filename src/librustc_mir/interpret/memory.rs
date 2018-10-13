@@ -650,7 +650,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     }
 
     /// It is the caller's responsibility to handle undefined and pointer bytes.
-    /// However, this still checks that there are no relocations on the egdes.
+    /// However, this still checks that there are no relocations on the *egdes*.
     #[inline]
     fn get_bytes_with_undef_and_ptr(
         &self,
@@ -840,6 +840,29 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             }
             None => err!(UnterminatedCString(ptr.erase_tag())),
         }
+    }
+
+    pub fn check_bytes(
+        &self,
+        ptr: Scalar<M::PointerTag>,
+        size: Size,
+        allow_ptr_and_undef: bool,
+    ) -> EvalResult<'tcx> {
+        // Empty accesses don't need to be valid pointers, but they should still be non-NULL
+        let align = Align::from_bytes(1, 1).unwrap();
+        if size.bytes() == 0 {
+            self.check_align(ptr, align)?;
+            return Ok(());
+        }
+        let ptr = ptr.to_ptr()?;
+        // Check bounds, align and relocations on the edges
+        self.get_bytes_with_undef_and_ptr(ptr, size, align)?;
+        // Check undef and ptr
+        if !allow_ptr_and_undef {
+            self.check_defined(ptr, size)?;
+            self.check_relocations(ptr, size)?;
+        }
+        Ok(())
     }
 
     pub fn read_bytes(&self, ptr: Scalar<M::PointerTag>, size: Size) -> EvalResult<'tcx, &[u8]> {

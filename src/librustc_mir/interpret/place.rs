@@ -256,12 +256,6 @@ impl<'tcx, Tag: ::std::fmt::Debug> Place<Tag> {
 }
 
 impl<'tcx, Tag: ::std::fmt::Debug> PlaceTy<'tcx, Tag> {
-    /// Produces a Place that will error if attempted to be read from or written to
-    #[inline]
-    pub fn null(cx: impl HasDataLayout, layout: TyLayout<'tcx>) -> Self {
-        PlaceTy { place: Place::from_scalar_ptr(Scalar::ptr_null(cx), layout.align), layout }
-    }
-
     #[inline]
     pub fn to_mem_place(self) -> MPlaceTy<'tcx, Tag> {
         MPlaceTy { mplace: self.place.to_mem_place(), layout: self.layout }
@@ -325,9 +319,9 @@ where
         // Offset may need adjustment for unsized fields
         let (meta, offset) = if field_layout.is_unsized() {
             // re-use parent metadata to determine dynamic field layout
-            let (_, align) = self.size_and_align_of(base.meta, field_layout)?;
+            let (_, align) = self.size_and_align_of(base.meta, field_layout)?
+                .expect("Fields cannot be extern types");
             (base.meta, offset.abi_align(align))
-
         } else {
             // base.meta could be present; we might be accessing a sized field of an unsized
             // struct.
@@ -565,9 +559,15 @@ where
     ) -> EvalResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
         use rustc::mir::Place::*;
         let place = match *mir_place {
-            Local(mir::RETURN_PLACE) => PlaceTy {
-                place: self.frame().return_place,
-                layout: self.layout_of_local(self.cur_frame(), mir::RETURN_PLACE)?,
+            Local(mir::RETURN_PLACE) => match self.frame().return_place {
+                Some(return_place) =>
+                    // We use our layout to verify our assumption; caller will validate
+                    // their layout on return.
+                    PlaceTy {
+                        place: *return_place,
+                        layout: self.layout_of_local(self.cur_frame(), mir::RETURN_PLACE)?,
+                    },
+                None => return err!(InvalidNullPointerUsage),
             },
             Local(local) => PlaceTy {
                 place: Place::Local {
@@ -599,18 +599,47 @@ where
     }
 
     /// Write a value to a place
+    #[inline(always)]
     pub fn write_value(
         &mut self,
         src_val: Value<M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
-        trace!("write_value: {:?} <- {:?}", *dest, src_val);
-        // Check that the value actually is okay for that type
-        if M::ENFORCE_VALIDITY {
-            // Something changed somewhere, better make sure it matches the type!
-            let op = OpTy { op: Operand::Immediate(src_val), layout: dest.layout };
-            self.validate_operand(op, &mut vec![], None, /*const_mode*/false)?;
+        self.write_value_no_validate(src_val, dest)?;
+
+        if M::enforce_validity(self) {
+            // Data got changed, better make sure it matches the type!
+            self.validate_operand(self.place_to_op(dest)?, &mut vec![], None, /*const_mode*/false)?;
         }
+
+        Ok(())
+    }
+
+    /// Write a value to a place.
+    /// If you use this you are responsible for validating that things got copied at the
+    /// right type.
+    fn write_value_no_validate(
+        &mut self,
+        src_val: Value<M::PointerTag>,
+        dest: PlaceTy<'tcx, M::PointerTag>,
+    ) -> EvalResult<'tcx> {
+        if cfg!(debug_assertions) {
+            // This is a very common path, avoid some checks in release mode
+            assert!(!dest.layout.is_unsized(), "Cannot write unsized data");
+            match src_val {
+                Value::Scalar(ScalarMaybeUndef::Scalar(Scalar::Ptr(_))) =>
+                    assert_eq!(self.pointer_size(), dest.layout.size,
+                        "Size mismatch when writing pointer"),
+                Value::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits { size, .. })) =>
+                    assert_eq!(Size::from_bytes(size.into()), dest.layout.size,
+                        "Size mismatch when writing bits"),
+                Value::Scalar(ScalarMaybeUndef::Undef) => {}, // undef can have any size
+                Value::ScalarPair(_, _) => {
+                    // FIXME: Can we check anything here?
+                }
+            }
+        }
+        trace!("write_value: {:?} <- {:?}: {}", *dest, src_val, dest.layout.ty);
 
         // See if we can avoid an allocation. This is the counterpart to `try_read_value`,
         // but not factored as a separate function.
@@ -627,15 +656,16 @@ where
             },
             Place::Ptr(mplace) => mplace, // already in memory
         };
+        let dest = MPlaceTy { mplace, layout: dest.layout };
 
         // This is already in memory, write there.
-        let dest = MPlaceTy { mplace, layout: dest.layout };
-        self.write_value_to_mplace(src_val, dest)
+        self.write_value_to_mplace_no_validate(src_val, dest)
     }
 
-    /// Write a value to memory. This does NOT do validation, so you better had already
-    /// done that before calling this!
-    fn write_value_to_mplace(
+    /// Write a value to memory.
+    /// If you use this you are responsible for validating that things git copied at the
+    /// right type.
+    fn write_value_to_mplace_no_validate(
         &mut self,
         value: Value<M::PointerTag>,
         dest: MPlaceTy<'tcx, M::PointerTag>,
@@ -653,8 +683,17 @@ where
         }
 
         let ptr = ptr.to_ptr()?;
+        // FIXME: We should check that there are dest.layout.size many bytes available in
+        // memory.  The code below is not sufficient, with enough padding it might not
+        // cover all the bytes!
         match value {
             Value::Scalar(scalar) => {
+                match dest.layout.abi {
+                    layout::Abi::Scalar(_) => {}, // fine
+                    _ => bug!("write_value_to_mplace: invalid Scalar layout: {:#?}",
+                            dest.layout)
+                }
+
                 self.memory.write_scalar(
                     ptr, ptr_align.min(dest.layout.align), scalar, dest.layout.size
                 )
@@ -670,45 +709,109 @@ where
                 let b_offset = a_size.abi_align(b_align);
                 let b_ptr = ptr.offset(b_offset, &self)?.into();
 
+                // It is tempting to verify `b_offset` against `layout.fields.offset(1)`,
+                // but that does not work: We could be a newtype around a pair, then the
+                // fields do not match the `ScalarPair` components.
+
                 self.memory.write_scalar(ptr, ptr_align.min(a_align), a_val, a_size)?;
                 self.memory.write_scalar(b_ptr, ptr_align.min(b_align), b_val, b_size)
             }
         }
     }
 
-    /// Copy the data from an operand to a place
+    /// Copy the data from an operand to a place.  This does not support transmuting!
+    /// Use `copy_op_transmute` if the layouts could disagree.
+    #[inline(always)]
     pub fn copy_op(
         &mut self,
         src: OpTy<'tcx, M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
-        assert!(!src.layout.is_unsized() && !dest.layout.is_unsized(),
+        self.copy_op_no_validate(src, dest)?;
+
+        if M::enforce_validity(self) {
+            // Data got changed, better make sure it matches the type!
+            self.validate_operand(self.place_to_op(dest)?, &mut vec![], None, /*const_mode*/false)?;
+        }
+
+        Ok(())
+    }
+
+    /// Copy the data from an operand to a place.  This does not support transmuting!
+    /// Use `copy_op_transmute` if the layouts could disagree.
+    /// Also, if you use this you are responsible for validating that things git copied at the
+    /// right type.
+    fn copy_op_no_validate(
+        &mut self,
+        src: OpTy<'tcx, M::PointerTag>,
+        dest: PlaceTy<'tcx, M::PointerTag>,
+    ) -> EvalResult<'tcx> {
+        debug_assert!(!src.layout.is_unsized() && !dest.layout.is_unsized(),
             "Cannot copy unsized data");
-        assert_eq!(src.layout.size, dest.layout.size,
-            "Size mismatch when copying!\nsrc: {:#?}\ndest: {:#?}", src, dest);
+        // We do NOT compare the types for equality, because well-typed code can
+        // actually "transmute" `&mut T` to `&T` in an assignment without a cast.
+        assert!(src.layout.details == dest.layout.details,
+            "Layout mismatch when copying!\nsrc: {:#?}\ndest: {:#?}", src, dest);
 
         // Let us see if the layout is simple so we take a shortcut, avoid force_allocation.
-        let (src_ptr, src_align) = match self.try_read_value(src)? {
-            Ok(src_val) =>
-                // Yay, we got a value that we can write directly.  We write with the
-                // *source layout*, because that was used to load, and if they do not match
-                // this is a transmute we want to support.
-                return self.write_value(src_val, PlaceTy { place: *dest, layout: src.layout }),
-            Err(mplace) => mplace.to_scalar_ptr_align(),
+        let src = match self.try_read_value(src)? {
+            Ok(src_val) => {
+                // Yay, we got a value that we can write directly.
+                return self.write_value_no_validate(src_val, dest);
+            }
+            Err(mplace) => mplace,
         };
         // Slow path, this does not fit into an immediate. Just memcpy.
-        trace!("copy_op: {:?} <- {:?}", *dest, *src);
+        trace!("copy_op: {:?} <- {:?}: {}", *dest, src, dest.layout.ty);
+
         let dest = self.force_allocation(dest)?;
+        let (src_ptr, src_align) = src.to_scalar_ptr_align();
         let (dest_ptr, dest_align) = dest.to_scalar_ptr_align();
         self.memory.copy(
             src_ptr, src_align,
             dest_ptr, dest_align,
-            src.layout.size, false
+            dest.layout.size, false
         )?;
-        if M::ENFORCE_VALIDITY {
-            // Something changed somewhere, better make sure it matches the type!
+
+        Ok(())
+    }
+
+    /// Copy the data from an operand to a place.  The layouts may disagree, but they must
+    /// have the same size.
+    pub fn copy_op_transmute(
+        &mut self,
+        src: OpTy<'tcx, M::PointerTag>,
+        dest: PlaceTy<'tcx, M::PointerTag>,
+    ) -> EvalResult<'tcx> {
+        if src.layout.details == dest.layout.details {
+            // Fast path: Just use normal `copy_op`
+            return self.copy_op(src, dest);
+        }
+        // We still require the sizes to match
+        debug_assert!(!src.layout.is_unsized() && !dest.layout.is_unsized(),
+            "Cannot copy unsized data");
+        assert!(src.layout.size == dest.layout.size,
+            "Size mismatch when transmuting!\nsrc: {:#?}\ndest: {:#?}", src, dest);
+
+        // The hard case is `ScalarPair`.  `src` is already read from memory in this case,
+        // using `src.layout` to figure out which bytes to use for the 1st and 2nd field.
+        // We have to write them to `dest` at the offsets they were *read at*, which is
+        // not necessarily the same as the offsets in `dest.layout`!
+        // Hence we do the copy with the source layout on both sides.  We also make sure to write
+        // into memory, because if `dest` is a local we would not even have a way to write
+        // at the `src` offsets; the fact that we came from a different layout would
+        // just be lost.
+        let dest = self.force_allocation(dest)?;
+        self.copy_op_no_validate(
+            src,
+            PlaceTy::from(MPlaceTy { mplace: *dest, layout: src.layout }),
+        )?;
+
+        if M::enforce_validity(self) {
+            // Data got changed, better make sure it matches the type!
             self.validate_operand(dest.into(), &mut vec![], None, /*const_mode*/false)?;
         }
+
         Ok(())
     }
 
@@ -734,7 +837,7 @@ where
                         let ptr = self.allocate(local_layout, MemoryKind::Stack)?;
                         // We don't have to validate as we can assume the local
                         // was already valid for its type.
-                        self.write_value_to_mplace(value, ptr)?;
+                        self.write_value_to_mplace_no_validate(value, ptr)?;
                         let mplace = ptr.mplace;
                         // Update the local
                         *self.stack[frame].locals[local].access_mut()? =

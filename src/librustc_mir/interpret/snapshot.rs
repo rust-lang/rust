@@ -337,7 +337,7 @@ struct FrameSnapshot<'a, 'tcx: 'a> {
     instance: &'a ty::Instance<'tcx>,
     span: &'a Span,
     return_to_block: &'a StackPopCleanup,
-    return_place: Place<(), AllocIdSnapshot<'a>>,
+    return_place: Option<Place<(), AllocIdSnapshot<'a>>>,
     locals: IndexVec<mir::Local, LocalValue<(), AllocIdSnapshot<'a>>>,
     block: &'a mir::BasicBlock,
     stmt: usize,
@@ -362,7 +362,7 @@ impl<'a, 'mir, 'tcx: 'mir> HashStable<StableHashingContext<'a>> for Frame<'mir, 
         } = self;
 
         (mir, instance, span, return_to_block).hash_stable(hcx, hasher);
-        (return_place, locals, block, stmt).hash_stable(hcx, hasher);
+        (return_place.as_ref().map(|r| &**r), locals, block, stmt).hash_stable(hcx, hasher);
     }
 }
 impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
@@ -388,7 +388,7 @@ impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
             return_to_block,
             block,
             stmt: *stmt,
-            return_place: return_place.snapshot(ctx),
+            return_place: return_place.map(|r| r.snapshot(ctx)),
             locals: locals.iter().map(|local| local.snapshot(ctx)).collect(),
         }
     }

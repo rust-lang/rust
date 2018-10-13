@@ -31,7 +31,7 @@ use rustc::mir::interpret::{
 use syntax::source_map::{self, Span};
 
 use super::{
-    Value, Operand, MemPlace, MPlaceTy, Place, ScalarMaybeUndef,
+    Value, Operand, MemPlace, MPlaceTy, Place, PlaceTy, ScalarMaybeUndef,
     Memory, Machine
 };
 
@@ -73,8 +73,9 @@ pub struct Frame<'mir, 'tcx: 'mir, Tag=()> {
     /// Work to perform when returning from this function
     pub return_to_block: StackPopCleanup,
 
-    /// The location where the result of the current stack frame should be written to.
-    pub return_place: Place<Tag>,
+    /// The location where the result of the current stack frame should be written to,
+    /// and its layout in the caller.
+    pub return_place: Option<PlaceTy<'tcx, Tag>>,
 
     /// The list of locals for this stack frame, stored in order as
     /// `[return_ptr, arguments..., variables..., temporaries...]`.
@@ -97,7 +98,8 @@ pub struct Frame<'mir, 'tcx: 'mir, Tag=()> {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum StackPopCleanup {
     /// Jump to the next block in the caller, or cause UB if None (that's a function
-    /// that may never return).
+    /// that may never return). Also store layout of return place so
+    /// we can validate it at that layout.
     Goto(Option<mir::BasicBlock>),
     /// Just do nohing: Used by Main and for the box_alloc hook in miri.
     /// `cleanup` says whether locals are deallocated.  Static computation
@@ -330,22 +332,16 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     }
 
     /// Return the actual dynamic size and alignment of the place at the given type.
-    /// Only the `meta` part of the place matters.
+    /// Only the "meta" (metadata) part of the place matters.
+    /// This can fail to provide an answer for extern types.
     pub(super) fn size_and_align_of(
         &self,
         metadata: Option<Scalar<M::PointerTag>>,
         layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, (Size, Align)> {
-        let metadata = match metadata {
-            None => {
-                assert!(!layout.is_unsized());
-                return Ok(layout.size_and_align())
-            }
-            Some(metadata) => {
-                assert!(layout.is_unsized());
-                metadata
-            }
-        };
+    ) -> EvalResult<'tcx, Option<(Size, Align)>> {
+        if !layout.is_unsized() {
+            return Ok(Some(layout.size_and_align()));
+        }
         match layout.ty.sty {
             ty::Adt(..) | ty::Tuple(..) => {
                 // First get the size of all statically known fields.
@@ -365,9 +361,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                 );
 
                 // Recurse to get the size of the dynamically sized field (must be
-                // the last field).
+                // the last field).  Can't have foreign types here, how would we
+                // adjust alignment and size for them?
                 let field = layout.field(self, layout.fields.count() - 1)?;
-                let (unsized_size, unsized_align) = self.size_and_align_of(Some(metadata), field)?;
+                let (unsized_size, unsized_align) = self.size_and_align_of(metadata, field)?
+                    .expect("Fields cannot be extern types");
 
                 // FIXME (#26403, #27023): We should be adding padding
                 // to `sized_size` (to accommodate the `unsized_align`
@@ -394,18 +392,22 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                 //
                 //   `(size + (align-1)) & -align`
 
-                Ok((size.abi_align(align), align))
+                Ok(Some((size.abi_align(align), align)))
             }
             ty::Dynamic(..) => {
-                let vtable = metadata.to_ptr()?;
+                let vtable = metadata.expect("dyn trait fat ptr must have vtable").to_ptr()?;
                 // the second entry in the vtable is the dynamic size of the object.
-                self.read_size_and_align_from_vtable(vtable)
+                Ok(Some(self.read_size_and_align_from_vtable(vtable)?))
             }
 
             ty::Slice(_) | ty::Str => {
-                let len = metadata.to_usize(self)?;
+                let len = metadata.expect("slice fat ptr must have vtable").to_usize(self)?;
                 let (elem_size, align) = layout.field(self, 0)?.size_and_align();
-                Ok((elem_size * len, align))
+                Ok(Some((elem_size * len, align)))
+            }
+
+            ty::Foreign(_) => {
+                Ok(None)
             }
 
             _ => bug!("size_and_align_of::<{:?}> not supported", layout.ty),
@@ -415,7 +417,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     pub fn size_and_align_of_mplace(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>
-    ) -> EvalResult<'tcx, (Size, Align)> {
+    ) -> EvalResult<'tcx, Option<(Size, Align)>> {
         self.size_and_align_of(mplace.meta, mplace.layout)
     }
 
@@ -424,7 +426,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         instance: ty::Instance<'tcx>,
         span: source_map::Span,
         mir: &'mir mir::Mir<'tcx>,
-        return_place: Place<M::PointerTag>,
+        return_place: Option<PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,
     ) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation += 1;
@@ -509,14 +511,37 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             }
             StackPopCleanup::None { cleanup } => {
                 if !cleanup {
-                    // Leak the locals
+                    // Leak the locals. Also skip validation, this is only used by
+                    // static/const computation which does its own (stronger) final
+                    // validation.
                     return Ok(());
                 }
             }
         }
-        // deallocate all locals that are backed by an allocation
+        // Deallocate all locals that are backed by an allocation.
         for local in frame.locals {
             self.deallocate_local(local)?;
+        }
+        // Validate the return value.
+        if let Some(return_place) = frame.return_place {
+            if M::enforce_validity(self) {
+                // Data got changed, better make sure it matches the type!
+                // It is still possible that the return place held invalid data while
+                // the function is running, but that's okay because nobody could have
+                // accessed that same data from the "outside" to observe any broken
+                // invariant -- that is, unless a function somehow has a ptr to
+                // its return place... but the way MIR is currently generated, the
+                // return place is always a local and then this cannot happen.
+                self.validate_operand(
+                    self.place_to_op(return_place)?,
+                    &mut vec![],
+                    None,
+                    /*const_mode*/false,
+                )?;
+            }
+        } else {
+            // Uh, that shouln't happen... the function did not intend to return
+            return err!(Unreachable);
         }
 
         Ok(())
