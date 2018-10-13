@@ -680,6 +680,12 @@ pub struct TargetOptions {
     /// typically because the platform needs to unwind for things like stack
     /// unwinders.
     pub requires_uwtable: bool,
+
+    /// Whether or not SIMD types are passed by reference in the Rust ABI,
+    /// typically required if a target can be compiled with a mixed set of
+    /// target features. This is `true` by default, and `false` for targets like
+    /// wasm32 where the whole program either has simd or not.
+    pub simd_types_indirect: bool,
 }
 
 impl Default for TargetOptions {
@@ -760,6 +766,7 @@ impl Default for TargetOptions {
             embed_bitcode: false,
             emit_debug_gdb_scripts: true,
             requires_uwtable: false,
+            simd_types_indirect: true,
         }
     }
 }
@@ -1041,6 +1048,7 @@ impl Target {
         key!(embed_bitcode, bool);
         key!(emit_debug_gdb_scripts, bool);
         key!(requires_uwtable, bool);
+        key!(simd_types_indirect, bool);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -1250,6 +1258,7 @@ impl ToJson for Target {
         target_option_val!(embed_bitcode);
         target_option_val!(emit_debug_gdb_scripts);
         target_option_val!(requires_uwtable);
+        target_option_val!(simd_types_indirect);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()
