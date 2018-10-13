@@ -287,10 +287,6 @@ fn main() {
         cmd.arg("--cfg").arg("parallel_queries");
     }
 
-    if env::var_os("RUSTC_VERIFY_LLVM_IR").is_some() {
-        cmd.arg("-Z").arg("verify-llvm-ir");
-    }
-
     if env::var_os("RUSTC_DENY_WARNINGS").is_some() && env::var_os("RUSTC_EXTERNAL_TOOL").is_none()
     {
         cmd.arg("-Dwarnings");
