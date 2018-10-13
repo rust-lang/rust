@@ -14,40 +14,80 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use syntax_pos::Span;
-use ty::TyCtxt;
-
 use hir;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
+use ty::TyCtxt;
+use std::fmt::{self, Display};
+use syntax_pos::Span;
 
 #[derive(Copy, Clone, PartialEq)]
-enum Target {
+pub(crate) enum Target {
+    ExternCrate,
+    Use,
+    Static,
+    Const,
     Fn,
+    Closure,
+    Mod,
+    ForeignMod,
+    GlobalAsm,
+    Ty,
+    Existential,
+    Enum,
     Struct,
     Union,
-    Enum,
-    Const,
-    ForeignMod,
+    Trait,
+    TraitAlias,
+    Impl,
     Expression,
     Statement,
-    Closure,
-    Static,
-    Trait,
-    Other,
+}
+
+impl Display for Target {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", match *self {
+            Target::ExternCrate => "extern crate",
+            Target::Use => "use",
+            Target::Static => "static item",
+            Target::Const => "constant item",
+            Target::Fn => "function",
+            Target::Closure => "closure",
+            Target::Mod => "module",
+            Target::ForeignMod => "foreign module",
+            Target::GlobalAsm => "global asm",
+            Target::Ty => "type alias",
+            Target::Existential => "existential type",
+            Target::Enum => "enum",
+            Target::Struct => "struct",
+            Target::Union => "union",
+            Target::Trait => "trait",
+            Target::TraitAlias => "trait alias",
+            Target::Impl => "item",
+            Target::Expression => "expression",
+            Target::Statement => "statement",
+        })
+    }
 }
 
 impl Target {
-    fn from_item(item: &hir::Item) -> Target {
+    pub(crate) fn from_item(item: &hir::Item) -> Target {
         match item.node {
+            hir::ItemKind::ExternCrate(..) => Target::ExternCrate,
+            hir::ItemKind::Use(..) => Target::Use,
+            hir::ItemKind::Static(..) => Target::Static,
+            hir::ItemKind::Const(..) => Target::Const,
             hir::ItemKind::Fn(..) => Target::Fn,
+            hir::ItemKind::Mod(..) => Target::Mod,
+            hir::ItemKind::ForeignMod(..) => Target::ForeignMod,
+            hir::ItemKind::GlobalAsm(..) => Target::GlobalAsm,
+            hir::ItemKind::Ty(..) => Target::Ty,
+            hir::ItemKind::Existential(..) => Target::Existential,
+            hir::ItemKind::Enum(..) => Target::Enum,
             hir::ItemKind::Struct(..) => Target::Struct,
             hir::ItemKind::Union(..) => Target::Union,
-            hir::ItemKind::Enum(..) => Target::Enum,
-            hir::ItemKind::Const(..) => Target::Const,
-            hir::ItemKind::ForeignMod(..) => Target::ForeignMod,
-            hir::ItemKind::Static(..) => Target::Static,
             hir::ItemKind::Trait(..) => Target::Trait,
-            _ => Target::Other,
+            hir::ItemKind::TraitAlias(..) => Target::TraitAlias,
+            hir::ItemKind::Impl(..) => Target::Impl,
         }
     }
 }
