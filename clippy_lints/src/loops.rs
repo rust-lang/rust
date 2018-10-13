@@ -1952,10 +1952,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
                     _ => (),
                 }
             }
-        } else if is_loop(expr) {
-            walk_expr(self, expr);
-            return;
-        } else if is_conditional(expr) {
+        } else if is_loop(expr) || is_conditional(expr) {
             self.depth += 1;
             walk_expr(self, expr);
             self.depth -= 1;
