@@ -177,6 +177,7 @@ impl Repr {
         Repr::Heap(text.into().into_boxed_str().into())
     }
 
+    #[inline(always)]
     fn len(&self) -> usize {
         match self {
             Repr::Heap(data) => data.len(),
@@ -185,6 +186,7 @@ impl Repr {
         }
     }
 
+    #[inline(always)]
     fn is_empty(&self) -> bool {
         match self {
             Repr::Heap(data) => data.is_empty(),
