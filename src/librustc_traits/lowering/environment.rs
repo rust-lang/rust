@@ -231,14 +231,15 @@ crate fn environment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> En
         input_tys.extend(trait_ref.self_ty().walk());
     }
 
-    // In an fn, we assume that the arguments and all their constitutents are
+    // In an fn, we assume that the arguments and all their constituents are
     // well-formed.
     if is_fn {
-        let fn_sig = tcx.fn_sig(def_id)
-            .no_late_bound_regions()
-            .expect("only early bound regions");
+        let fn_sig = tcx.fn_sig(def_id);
         input_tys.extend(
-            fn_sig.inputs().iter().flat_map(|ty| ty.walk())
+            // FIXME: `skip_binder` seems ok for now? In a real setting,
+            // the late bound regions would next be instantiated with things
+            // in the inference table.
+            fn_sig.skip_binder().inputs().iter().flat_map(|ty| ty.walk())
         );
     }
 
