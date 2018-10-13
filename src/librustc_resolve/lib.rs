@@ -1360,7 +1360,7 @@ pub struct Resolver<'a, 'b: 'a> {
     graph_root: Module<'a>,
 
     prelude: Option<Module<'a>>,
-    extern_prelude: FxHashSet<Name>,
+    pub extern_prelude: FxHashSet<Name>,
 
     /// n.b. This is used only for better diagnostics, not name resolution itself.
     has_self: FxHashSet<DefId>,
