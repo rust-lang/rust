@@ -166,6 +166,7 @@ fn print_decl(cx: &LateContext<'_, '_>, decl: &hir::Decl) {
     }
 }
 
+#[allow(clippy::similar_names)]
 fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr, indent: usize) {
     let ind = "  ".repeat(indent);
     println!("{}+", ind);
@@ -424,6 +425,7 @@ fn print_item(cx: &LateContext<'_, '_>, item: &hir::Item) {
     }
 }
 
+#[allow(clippy::similar_names)]
 fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat, indent: usize) {
     let ind = "  ".repeat(indent);
     println!("{}+", ind);

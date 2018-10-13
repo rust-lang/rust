@@ -227,6 +227,7 @@ impl LintPass for Transmute {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
+    #[allow(clippy::similar_names)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprKind::Call(ref path_expr, ref args) = e.node {
             if let ExprKind::Path(ref qpath) = path_expr.node {

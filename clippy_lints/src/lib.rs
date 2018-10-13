@@ -430,8 +430,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box fallible_impl_from::FallibleImplFrom);
     reg.register_late_lint_pass(box replace_consts::ReplaceConsts);
     reg.register_late_lint_pass(box types::UnitArg);
-    reg.register_late_lint_pass(box double_comparison::DoubleComparisonPass);
-    reg.register_late_lint_pass(box question_mark::QuestionMarkPass);
+    reg.register_late_lint_pass(box double_comparison::Pass);
+    reg.register_late_lint_pass(box question_mark::Pass);
     reg.register_late_lint_pass(box suspicious_trait_impl::SuspiciousImpl);
     reg.register_early_lint_pass(box multiple_crate_versions::Pass);
     reg.register_late_lint_pass(box map_unit_fn::Pass);
