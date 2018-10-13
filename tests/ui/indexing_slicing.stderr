@@ -267,5 +267,17 @@ error: indexing may panic.
    |
    = help: Consider using `.get(n)` or `.get_mut(n)` instead
 
-error: aborting due to 37 previous errors
+error: range is out of bounds
+  --> $DIR/indexing_slicing.rs:97:6
+   |
+97 |     &x[num..10]; // should trigger out of bounds error
+   |      ^^^^^^^^^^
+
+error: range is out of bounds
+  --> $DIR/indexing_slicing.rs:98:6
+   |
+98 |     &x[10..num]; // should trigger out of bounds error
+   |      ^^^^^^^^^^
+
+error: aborting due to 39 previous errors
 

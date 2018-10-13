@@ -111,17 +111,43 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
                 // Ranged indexes, i.e. &x[n..m], &x[n..], &x[..n] and &x[..]
                 if let ty::Array(_, s) = ty.sty {
                     let size: u128 = s.assert_usize(cx.tcx).unwrap().into();
-                    // Index is a constant range.
-                    if let Some((start, end)) = to_const_range(cx, range, size) {
-                        if start > size || end > size {
-                            utils::span_lint(
-                                cx,
-                                OUT_OF_BOUNDS_INDEXING,
-                                expr.span,
-                                "range is out of bounds",
-                            );
-                        }
-                        return;
+
+                    match to_const_range(cx, range, size) {
+                        (None, None) => {},
+                        (Some(start), None) => {
+                            if start > size {
+                                utils::span_lint(
+                                    cx,
+                                    OUT_OF_BOUNDS_INDEXING,
+                                    expr.span,
+                                    "range is out of bounds",
+                                );
+                                return;
+                            }
+                        },
+                        (None, Some(end)) => {
+                            if end > size {
+                                utils::span_lint(
+                                    cx,
+                                    OUT_OF_BOUNDS_INDEXING,
+                                    expr.span,
+                                    "range is out of bounds",
+                                );
+                                return;
+                            }
+                        },
+                        (Some(start), Some(end)) => {
+                            if start > size || end > size {
+                                utils::span_lint(
+                                    cx,
+                                    OUT_OF_BOUNDS_INDEXING,
+                                    expr.span,
+                                    "range is out of bounds",
+                                );
+                            }
+                            // early return because both start and end are constant
+                            return;
+                        },
                     }
                 }
 
@@ -161,20 +187,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
     }
 }
 
-/// Returns an option containing a tuple with the start and end (exclusive) of
-/// the range.
+/// Returns a tuple of options with the start and end (exclusive) values of
+/// the range. If the start or end is not constant, None is returned.
 fn to_const_range<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     range: Range<'_>,
     array_size: u128,
-) -> Option<(u128, u128)> {
+) -> (Option<u128>, Option<u128>) {
     let s = range
         .start
         .map(|expr| constant(cx, cx.tables, expr).map(|(c, _)| c));
     let start = match s {
-        Some(Some(Constant::Int(x))) => x,
-        Some(_) => return None,
-        None => 0,
+        Some(Some(Constant::Int(x))) => Some(x),
+        Some(_) => None,
+        None => Some(0),
     };
 
     let e = range
@@ -182,13 +208,13 @@ fn to_const_range<'a, 'tcx>(
         .map(|expr| constant(cx, cx.tables, expr).map(|(c, _)| c));
     let end = match e {
         Some(Some(Constant::Int(x))) => if range.limits == RangeLimits::Closed {
-            x + 1
+            Some(x + 1)
         } else {
-            x
+            Some(x)
         },
-        Some(_) => return None,
-        None => array_size,
+        Some(_) => None,
+        None => Some(array_size),
     };
 
-    Some((start, end))
+    (start, end)
 }
