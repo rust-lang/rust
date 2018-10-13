@@ -389,3 +389,16 @@ pub struct BigX;
 
 Then, when looking for it through the `rustdoc` search, if you enter "x" or
 "big", search will show the `BigX` struct first.
+
+### `--index-page`: provide a top-level landing page for docs
+
+This feature allows you to generate an index-page with a given markdown file. A good example of it
+is the [rust documentation index](https://doc.rust-lang.org/index.html).
+
+With this, you'll have a page which you can custom as much as you want at the top of your crates.
+
+Using `index-page` option enables `enable-index-page` option as well.
+
+### `--enable-index-page`: generate a default index page for docs
+
+This feature allows the generation of a default index-page which lists the generated crates.
