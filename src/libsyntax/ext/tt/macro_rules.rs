@@ -34,6 +34,10 @@ use std::collections::hash_map::Entry;
 use rustc_data_structures::sync::Lrc;
 use errors::Applicability;
 
+const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
+    `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, \
+    `path`, `meta`, `tt`, `item` and `vis`";
+
 pub struct ParserAnyMacro<'a> {
     parser: Parser<'a>,
 
@@ -708,8 +712,7 @@ fn check_matcher_core(sess: &ParseSess,
                 if let Err(bad_frag) = has_legal_fragment_specifier(sess, features, attrs, token) {
                     let msg = format!("invalid fragment specifier `{}`", bad_frag);
                     sess.span_diagnostic.struct_span_err(token.span(), &msg)
-                        .help("valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, \
-                              `pat`, `ty`, `literal`, `path`, `meta`, `tt`, `item` and `vis`")
+                        .help(VALID_FRAGMENT_NAMES_MSG)
                         .emit();
                     // (This eliminates false positives and duplicates
                     // from error messages.)
@@ -938,9 +941,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'
             },
             "" => Ok(true), // keywords::Invalid
             _ => Err((format!("invalid fragment specifier `{}`", frag),
-                     "valid fragment specifiers are `ident`, `block`, \
-                      `stmt`, `expr`, `pat`, `ty`, `path`, `meta`, `tt`, \
-                      `literal`, `item` and `vis`"))
+                     VALID_FRAGMENT_NAMES_MSG))
         }
     }
 }
