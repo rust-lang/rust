@@ -320,12 +320,13 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                 output.push(']');
             },
             ty::Dynamic(ref trait_data, ..) => {
-                if let Some(principal) = trait_data.principal() {
-                    self.push_def_path(principal.def_id(), output);
-                    self.push_type_params(principal.skip_binder().substs,
-                        trait_data.projection_bounds(),
-                        output);
-                }
+                let principal = trait_data.principal();
+                self.push_def_path(principal.def_id(), output);
+                self.push_type_params(
+                    principal.skip_binder().substs,
+                    trait_data.projection_bounds(),
+                    output,
+                );
             },
             ty::Foreign(did) => self.push_def_path(did, output),
             ty::FnDef(..) |
