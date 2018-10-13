@@ -637,8 +637,8 @@ Erroneous code example:
 ```compile_fail,E0152
 #![feature(lang_items)]
 
-#[lang = "panic_impl"]
-struct Foo; // error: duplicate lang item found: `panic_impl`
+#[lang = "arc"]
+struct Foo; // error: duplicate lang item found: `arc`
 ```
 
 Lang items are already implemented in the standard library. Unless you are
@@ -2113,6 +2113,20 @@ Examples of erroneous code:
 
 #[non_exhaustive(anything)]
 struct Foo;
+```
+"##,
+
+E0718: r##"
+This error indicates that a `#[lang = ".."]` attribute was placed
+on the wrong type of item.
+
+Examples of erroneous code:
+
+```compile_fail,E0718
+#![feature(lang_items)]
+
+#[lang = "arc"]
+static X: u32 = 42;
 ```
 "##,
 
