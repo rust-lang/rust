@@ -7,11 +7,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![allow(clippy::blacklisted_name, clippy::collapsible_if, clippy::cyclomatic_complexity, clippy::eq_op, clippy::needless_continue,
-         clippy::needless_return, clippy::never_loop, clippy::no_effect, clippy::zero_divided_by_zero)]
+         clippy::needless_return, clippy::never_loop, clippy::no_effect, clippy::zero_divided_by_zero, clippy::unused_unit)]
+
+
 
 fn bar<T>(_: T) {}
 fn foo() -> bool { unimplemented!() }
@@ -28,6 +27,7 @@ pub enum Abc {
 
 #[warn(clippy::if_same_then_else)]
 #[warn(clippy::match_same_arms)]
+#[allow(clippy::unused_unit)]
 fn if_same_then_else() -> Result<&'static str, ()> {
     if true {
         Foo { bar: 42 };
