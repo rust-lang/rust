@@ -51,6 +51,7 @@ rustc-ap-rustc_target = "272.0.0"
 rustc-ap-syntax = "272.0.0"
 rustc-ap-syntax_pos = "272.0.0"
 failure = "0.1.1"
+bytecount = { version = "0.3", features = ["simd-accel"] }
 
 [dev-dependencies]
 assert_cli = "0.6"

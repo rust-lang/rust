@@ -17,6 +17,7 @@
 #[macro_use]
 extern crate derive_new;
 extern crate atty;
+extern crate bytecount;
 extern crate diff;
 extern crate failure;
 extern crate itertools;
