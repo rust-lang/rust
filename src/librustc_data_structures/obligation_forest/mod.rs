@@ -26,6 +26,8 @@ use std::marker::PhantomData;
 mod node_index;
 use self::node_index::NodeIndex;
 
+mod graphviz;
+
 #[cfg(test)]
 mod test;
 
