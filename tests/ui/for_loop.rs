@@ -646,3 +646,38 @@ mod issue_1219 {
         }
     }
 }
+
+mod issue_3308 {
+    #[warn(clippy::explicit_counter_loop)]
+    pub fn test() {
+        // should not trigger the lint because the count is incremented multiple times
+        let mut skips = 0;
+        let erasures = vec![];
+        for i in 0..10 {
+            while erasures.contains(&(i + skips)) {
+                skips += 1;
+            }
+            println!("{}", skips);
+        }
+
+        // should not trigger the lint because the count is incremented multiple times
+        let mut skips = 0;
+        for i in 0..10 {
+            let mut j = 0;
+            while j < 5 {
+                skips += 1;
+                j += 1;
+            }
+            println!("{}", skips);
+        }
+
+        // should not trigger the lint because the count is incremented multiple times
+        let mut skips = 0;
+        for i in 0..10 {
+            for j in 0..5 {
+                skips += 1;
+            }
+            println!("{}", skips);
+        }
+    }
+}
