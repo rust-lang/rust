@@ -391,6 +391,7 @@ impl Builder {
     }
     
     /// TODO: Doc
+    #[unstable(feature = "thread_spawn_unchecked", issue = "0")]
     pub unsafe fn spawn_unchecked<'a, F, T>(self, f: F) -> io::Result<JoinHandle<T>> where
         F: FnOnce() -> T, F: Send + 'a, T: Send + 'a
     {
@@ -421,9 +422,7 @@ impl Builder {
         };
 
         Ok(JoinHandle(JoinInner {
-            native: unsafe {
-                Some(imp::Thread::new(stack_size, Box::new(main))?)
-            },
+            native: Some(imp::Thread::new(stack_size, Box::new(main))?),
             thread: my_thread,
             packet: Packet(my_packet),
         }))   
