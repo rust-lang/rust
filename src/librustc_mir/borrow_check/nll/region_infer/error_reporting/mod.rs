@@ -138,6 +138,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 | ConstraintCategory::Boring
                 | ConstraintCategory::BoringNoLocation
                 | ConstraintCategory::Internal => false,
+                ConstraintCategory::TypeAnnotation
+                | ConstraintCategory::Return => true,
                 _ => constraint_sup_scc != target_scc,
             }
         });
