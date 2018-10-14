@@ -204,11 +204,12 @@ where
         // If the length of the lhs is equal to or shorter than the tab width or
         // the rhs looks like block expression, we put the rhs on the same
         // line with the lhs even if the rhs is multi-lined.
-        let allow_same_line = lhs_result.len() <= tab_spaces || rhs_result
-            .lines()
-            .next()
-            .map(|first_line| first_line.ends_with('{'))
-            .unwrap_or(false);
+        let allow_same_line = lhs_result.len() <= tab_spaces
+            || rhs_result
+                .lines()
+                .next()
+                .map(|first_line| first_line.ends_with('{'))
+                .unwrap_or(false);
         if !rhs_result.contains('\n') || allow_same_line {
             let one_line_width = last_line_width(&lhs_result)
                 + pp.infix.len()
@@ -308,10 +309,7 @@ impl FlattenPair for ast::Expr {
         }
 
         assert_eq!(list.len() - 1, separators.len());
-        Some(PairList {
-            list,
-            separators,
-        })
+        Some(PairList { list, separators })
     }
 }
 
