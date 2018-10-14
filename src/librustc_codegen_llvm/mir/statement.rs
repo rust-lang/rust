@@ -84,18 +84,18 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 }).collect();
 
                 let input_vals = inputs.iter()
-                    .try_fold(Vec::with_capacity(inputs.len()), |mut acc, input| {
+                    .try_fold(Vec::with_capacity(inputs.len()), |mut acc, (span, input)| {
                         let op = self.codegen_operand(&bx, input);
                         if let OperandValue::Immediate(_) = op.val {
                             acc.push(op.immediate());
                             Ok(acc)
                         } else {
-                            Err(op)
+                            Err(span)
                         }
                 });
 
-                if input_vals.is_err() {
-                   span_err!(bx.sess(), statement.source_info.span, E0669,
+                if let Err(span) = input_vals {
+                    span_err!(bx.sess(), span.to_owned(), E0669,
                              "invalid value for constraint in inline assembly");
                 } else {
                     let input_vals = input_vals.unwrap();

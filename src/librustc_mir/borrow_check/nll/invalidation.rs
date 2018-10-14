@@ -128,7 +128,7 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
                         );
                     }
                 }
-                for input in inputs.iter() {
+                for (_, input) in inputs.iter() {
                     self.consume_operand(context, input);
                 }
             }

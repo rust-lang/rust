@@ -383,7 +383,8 @@ macro_rules! make_mir_visitor {
                         for output in & $($mutability)* outputs[..] {
                             self.visit_place(output, PlaceContext::AsmOutput, location);
                         }
-                        for input in & $($mutability)* inputs[..] {
+                        for (span, input) in & $($mutability)* inputs[..] {
+                            self.visit_span(span);
                             self.visit_operand(input, location);
                         }
                     }

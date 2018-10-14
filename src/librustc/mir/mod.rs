@@ -1713,7 +1713,7 @@ pub enum StatementKind<'tcx> {
     InlineAsm {
         asm: Box<InlineAsm>,
         outputs: Box<[Place<'tcx>]>,
-        inputs: Box<[Operand<'tcx>]>,
+        inputs: Box<[(Span, Operand<'tcx>)]>,
     },
 
     /// Assert the given places to be valid inhabitants of their type.  These statements are
