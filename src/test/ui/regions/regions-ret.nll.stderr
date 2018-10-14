@@ -1,19 +1,12 @@
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/regions-ret.rs:14:13
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/regions-ret.rs:14:12
    |
 LL |     return &id(3); //~ ERROR borrowed value does not live long enough
-   |             ^^^^^- temporary value is freed at the end of this statement
-   |             |
-   |             creates a temporary which is freed while still in use
-   |
-note: borrowed value must be valid for the anonymous lifetime #1 defined on the function body at 13:1...
-  --> $DIR/regions-ret.rs:13:1
-   |
-LL | / fn f(_x: &isize) -> &isize {
-LL | |     return &id(3); //~ ERROR borrowed value does not live long enough
-LL | | }
-   | |_^
+   |            ^-----
+   |            ||
+   |            |temporary value created here
+   |            returns a reference to data owned by the current function
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0716`.
+For more information about this error, try `rustc --explain E0515`.

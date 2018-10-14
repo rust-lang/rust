@@ -1,17 +1,9 @@
-error[E0597]: `local` does not live long enough
+error[E0515]: cannot return reference to local variable `local`
   --> $DIR/issue-47470.rs:27:9
    |
-LL |         &local //~ ERROR `local` does not live long enough
-   |         ^^^^^^ borrowed value does not live long enough
-LL |     }
-   |     - `local` dropped here while still borrowed
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the impl at 23:6...
-  --> $DIR/issue-47470.rs:23:6
-   |
-LL | impl<'a> Bar for Foo<'a> {
-   |      ^^
+LL |         &local //~ ERROR cannot return reference to local variable `local`
+   |         ^^^^^^ returns a reference to data owned by the current function
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0515`.

@@ -1,38 +1,38 @@
 error[E0499]: cannot borrow `*arg` as mutable more than once at a time
   --> $DIR/mut-borrow-in-loop.rs:20:25
    |
-LL |             (self.func)(arg) //~ ERROR cannot borrow
-   |                         ^^^ mutable borrow starts here in previous iteration of loop
-   |
-note: first borrowed value must be valid for the lifetime 'a as defined on the impl at 17:6...
-  --> $DIR/mut-borrow-in-loop.rs:17:6
-   |
 LL | impl<'a, T : 'a> FuncWrapper<'a, T> {
-   |      ^^
+   |      -- lifetime `'a` defined here
+...
+LL |             (self.func)(arg) //~ ERROR cannot borrow
+   |             ------------^^^-
+   |             |           |
+   |             |           mutable borrow starts here in previous iteration of loop
+   |             argument requires that `*arg` is borrowed for `'a`
 
 error[E0499]: cannot borrow `*arg` as mutable more than once at a time
   --> $DIR/mut-borrow-in-loop.rs:26:25
    |
-LL |             (self.func)(arg) //~ ERROR cannot borrow
-   |                         ^^^ mutable borrow starts here in previous iteration of loop
-   |
-note: first borrowed value must be valid for the lifetime 'a as defined on the impl at 17:6...
-  --> $DIR/mut-borrow-in-loop.rs:17:6
-   |
 LL | impl<'a, T : 'a> FuncWrapper<'a, T> {
-   |      ^^
+   |      -- lifetime `'a` defined here
+...
+LL |             (self.func)(arg) //~ ERROR cannot borrow
+   |             ------------^^^-
+   |             |           |
+   |             |           mutable borrow starts here in previous iteration of loop
+   |             argument requires that `*arg` is borrowed for `'a`
 
 error[E0499]: cannot borrow `*arg` as mutable more than once at a time
   --> $DIR/mut-borrow-in-loop.rs:33:25
    |
-LL |             (self.func)(arg) //~ ERROR cannot borrow
-   |                         ^^^ mutable borrow starts here in previous iteration of loop
-   |
-note: first borrowed value must be valid for the lifetime 'a as defined on the impl at 17:6...
-  --> $DIR/mut-borrow-in-loop.rs:17:6
-   |
 LL | impl<'a, T : 'a> FuncWrapper<'a, T> {
-   |      ^^
+   |      -- lifetime `'a` defined here
+...
+LL |             (self.func)(arg) //~ ERROR cannot borrow
+   |             ------------^^^-
+   |             |           |
+   |             |           mutable borrow starts here in previous iteration of loop
+   |             argument requires that `*arg` is borrowed for `'a`
 
 error: aborting due to 3 previous errors
 

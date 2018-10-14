@@ -1,21 +1,9 @@
-error[E0597]: `x` does not live long enough
+error[E0515]: cannot return reference to local variable `x`
   --> $DIR/issue-30438-c.rs:19:5
    |
-LL | fn silly<'y, 'z>(_s: &'y Test<'z>) -> &'y <Test<'z> as Trait>::Out where 'z: 'static {
-   |                       --               -- also has lifetime `'y`
-   |                       |
-   |                       has lifetime `'y`
-LL |     let x = Test { s: "this cannot last" };
 LL |     &x
-   |     ^^ `x` would have to be valid for `'y`...
-LL |     //~^ ERROR: `x` does not live long enough
-LL | }
-   | - ...but `x` will be dropped here, when the function `silly` returns
-   |
-   = help: use data from the highlighted arguments which match the `'y` lifetime of the return type
-   = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-references-and-borrowing.html#dangling-references>
+   |     ^^ returns a reference to data owned by the current function
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0515`.

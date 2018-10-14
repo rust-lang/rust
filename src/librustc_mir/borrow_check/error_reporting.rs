@@ -9,19 +9,22 @@
 // except according to those terms.
 
 use borrow_check::nll::explain_borrow::BorrowExplanation;
+use borrow_check::nll::region_infer::{RegionName, RegionNameSource};
 use borrow_check::prefixes::IsPrefixOf;
 use borrow_check::WriteKind;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::region::ScopeTree;
 use rustc::mir::{
-    self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, Constant, Field, Local,
-    LocalDecl, LocalKind, Location, Operand, Place, PlaceProjection, ProjectionElem,
-    Rvalue, Statement, StatementKind, TerminatorKind, VarBindingForm,
+    self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, Constant,
+    ConstraintCategory, Field, Local, LocalDecl, LocalKind, Location, Operand,
+    Place, PlaceProjection, ProjectionElem, Rvalue, Statement, StatementKind,
+    TerminatorKind, VarBindingForm,
 };
 use rustc::ty::{self, DefIdTree};
 use rustc::util::ppaux::with_highlight_region_for_bound_region;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use syntax_pos::Span;
@@ -29,7 +32,6 @@ use syntax_pos::Span;
 use super::borrow_set::BorrowData;
 use super::{Context, MirBorrowckCtxt};
 use super::{InitializationRequiringAction, PrefixSet};
-
 use dataflow::drop_flag_effects;
 use dataflow::move_paths::indexes::MoveOutIndex;
 use dataflow::move_paths::MovePathIndex;
@@ -581,26 +583,81 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
         }
 
-        let err = match &self.describe_place(&borrow.borrowed_place) {
-            Some(_) if self.is_place_thread_local(root_place) => {
+        let place_desc = self.describe_place(&borrow.borrowed_place);
+
+        let kind_place = kind.filter(|_| place_desc.is_some()).map(|k| (k, place_span.0));
+        let explanation = self.explain_why_borrow_contains_point(context, &borrow, kind_place);
+
+        let err = match (place_desc, explanation) {
+            (Some(_), _) if self.is_place_thread_local(root_place) => {
                 self.report_thread_local_value_does_not_live_long_enough(drop_span, borrow_span)
             }
-            Some(name) => self.report_local_value_does_not_live_long_enough(
+            // If the outlives constraint comes from inside the closure,
+            // for example:
+            //
+            // let x = 0;
+            // let y = &x;
+            // Box::new(|| y) as Box<Fn() -> &'static i32>
+            //
+            // then just use the normal error. The closure isn't escaping
+            // and `move` will not help here.
+            (
+                Some(ref name),
+                BorrowExplanation::MustBeValidFor {
+                    category: category @ ConstraintCategory::Return,
+                    from_closure: false,
+                    ref region_name,
+                    span,
+                    ..
+                },
+            )
+            | (
+                Some(ref name),
+                BorrowExplanation::MustBeValidFor {
+                    category: category @ ConstraintCategory::CallArgument,
+                    from_closure: false,
+                    ref region_name,
+                    span,
+                    ..
+                },
+            ) if borrow_spans.for_closure() => self.report_escaping_closure_capture(
+                borrow_spans.args_or_use(),
+                borrow_span,
+                region_name,
+                category,
+                span,
+                &format!("`{}`", name),
+            ),
+            (
+                ref name,
+                BorrowExplanation::MustBeValidFor {
+                    category: ConstraintCategory::Assignment,
+                    from_closure: false,
+                    region_name: RegionName {
+                        source: RegionNameSource::AnonRegionFromUpvar(upvar_span, ref upvar_name),
+                        ..
+                    },
+                    span,
+                    ..
+                },
+            ) => self.report_escaping_data(borrow_span, name, upvar_span, upvar_name, span),
+            (Some(name), explanation) => self.report_local_value_does_not_live_long_enough(
                 context,
-                name,
+                &name,
                 &scope_tree,
                 &borrow,
                 drop_span,
                 borrow_spans,
-                kind.map(|k| (k, place_span.0)),
+                explanation,
             ),
-            None => self.report_temporary_value_does_not_live_long_enough(
+            (None, explanation) => self.report_temporary_value_does_not_live_long_enough(
                 context,
                 &scope_tree,
                 &borrow,
                 drop_span,
                 borrow_spans,
                 proper_span,
+                explanation,
             ),
         };
 
@@ -615,7 +672,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
         borrow_spans: UseSpans,
-        kind_place: Option<(WriteKind, &Place<'tcx>)>,
+        explanation: BorrowExplanation,
     ) -> DiagnosticBuilder<'cx> {
         debug!(
             "report_local_value_does_not_live_long_enough(\
@@ -625,13 +682,27 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         );
 
         let borrow_span = borrow_spans.var_or_use();
+        if let BorrowExplanation::MustBeValidFor {
+            category: ConstraintCategory::Return,
+            span,
+            ref opt_place_desc,
+            from_closure: false,
+            ..
+        } = explanation {
+            return self.report_cannot_return_reference_to_local(
+                borrow,
+                borrow_span,
+                span,
+                opt_place_desc.as_ref(),
+            );
+        }
+
         let mut err = self.infcx.tcx.path_does_not_live_long_enough(
             borrow_span,
             &format!("`{}`", name),
             Origin::Mir,
         );
 
-        let explanation = self.explain_why_borrow_contains_point(context, borrow, kind_place);
         if let Some(annotation) = self.annotate_argument_and_return_for_borrow(borrow) {
             let region_name = annotation.emit(&mut err);
 
@@ -665,7 +736,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 );
             }
 
-            if let BorrowExplanation::MustBeValidFor(..) = explanation {
+            if let BorrowExplanation::MustBeValidFor { .. } = explanation {
             } else {
                 explanation.add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "");
             }
@@ -693,7 +764,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         err
     }
 
-    pub(super) fn report_borrow_conflicts_with_destructor(
+    fn report_borrow_conflicts_with_destructor(
         &mut self,
         context: Context,
         borrow: &BorrowData<'tcx>,
@@ -785,6 +856,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         drop_span: Span,
         borrow_spans: UseSpans,
         proper_span: Span,
+        explanation: BorrowExplanation,
     ) -> DiagnosticBuilder<'cx> {
         debug!(
             "report_temporary_value_does_not_live_long_enough(\
@@ -792,6 +864,20 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
              )",
             context, scope_tree, borrow, drop_span, proper_span
         );
+
+        if let BorrowExplanation::MustBeValidFor {
+            category: ConstraintCategory::Return,
+            span,
+            from_closure: false,
+            ..
+        } = explanation {
+            return self.report_cannot_return_reference_to_local(
+                borrow,
+                proper_span,
+                span,
+                None,
+            );
+        }
 
         let tcx = self.infcx.tcx;
         let mut err = tcx.temporary_value_borrowed_for_too_long(proper_span, Origin::Mir);
@@ -804,7 +890,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             "temporary value is freed at the end of this statement",
         );
 
-        let explanation = self.explain_why_borrow_contains_point(context, borrow, None);
         match explanation {
             BorrowExplanation::UsedLater(..)
             | BorrowExplanation::UsedLaterInLoop(..)
@@ -826,6 +911,189 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             &mut err,
             format!("value captured here{}", within),
         );
+
+        err
+    }
+
+    fn report_cannot_return_reference_to_local(
+        &self,
+        borrow: &BorrowData<'tcx>,
+        borrow_span: Span,
+        return_span: Span,
+        opt_place_desc: Option<&String>,
+    ) -> DiagnosticBuilder<'cx> {
+        let tcx = self.infcx.tcx;
+
+        // FIXME use a better heuristic than Spans
+        let reference_desc = if return_span == self.mir.source_info(borrow.reserve_location).span {
+            "reference to"
+        } else {
+            "value referencing"
+        };
+
+        let (place_desc, note) = if let Some(place_desc) = opt_place_desc {
+            let local_kind = match borrow.borrowed_place {
+                Place::Local(local) => {
+                    match self.mir.local_kind(local) {
+                        LocalKind::ReturnPointer
+                        | LocalKind::Temp => bug!("temporary or return pointer with a name"),
+                        LocalKind::Var => "local variable ",
+                        LocalKind::Arg
+                        if !self.mir.upvar_decls.is_empty()
+                            && local == Local::new(1) => {
+                            "variable captured by `move` "
+                        }
+                        LocalKind::Arg => {
+                            "function parameter "
+                        }
+                    }
+                }
+                _ => "local data ",
+            };
+            (
+                format!("{}`{}`", local_kind, place_desc),
+                format!("`{}` is borrowed here", place_desc),
+            )
+        } else {
+            let root_place = self.prefixes(&borrow.borrowed_place, PrefixSet::All)
+                .last()
+                .unwrap();
+            let local = if let Place::Local(local) = *root_place {
+                local
+            } else {
+                bug!("report_cannot_return_reference_to_local: not a local")
+            };
+            match self.mir.local_kind(local) {
+                LocalKind::ReturnPointer | LocalKind::Temp => {
+                    (
+                        "temporary value".to_string(),
+                        "temporary value created here".to_string(),
+                    )
+                }
+                LocalKind::Arg => {
+                    (
+                        "function parameter".to_string(),
+                        "function parameter borrowed here".to_string(),
+                    )
+                },
+                LocalKind::Var => bug!("local variable without a name"),
+            }
+        };
+
+        let mut err = tcx.cannot_return_reference_to_local(
+            return_span,
+            reference_desc,
+            &place_desc,
+            Origin::Mir,
+        );
+
+        if return_span != borrow_span {
+            err.span_label(borrow_span, note);
+        }
+
+        err
+    }
+
+    fn report_escaping_closure_capture(
+        &mut self,
+        args_span: Span,
+        var_span: Span,
+        fr_name: &RegionName,
+        category: ConstraintCategory,
+        constraint_span: Span,
+        captured_var: &str,
+    ) -> DiagnosticBuilder<'cx> {
+        let tcx = self.infcx.tcx;
+
+        let mut err = tcx.cannot_capture_in_long_lived_closure(
+            args_span,
+            captured_var,
+            var_span,
+          Origin::Mir,
+        );
+
+        let suggestion = match tcx.sess.source_map().span_to_snippet(args_span) {
+            Ok(string) => format!("move {}", string),
+            Err(_) => "move |<args>| <body>".to_string()
+        };
+
+        err.span_suggestion_with_applicability(
+            args_span,
+            &format!("to force the closure to take ownership of {} (and any \
+                      other referenced variables), use the `move` keyword",
+                      captured_var),
+            suggestion,
+            Applicability::MachineApplicable,
+        );
+
+        match category {
+            ConstraintCategory::Return => {
+                err.span_note(constraint_span, &format!("closure is returned here"));
+            }
+            ConstraintCategory::CallArgument => {
+                fr_name.highlight_region_name(&mut err);
+                err.span_note(
+                    constraint_span,
+                    &format!("function requires argument type to outlive `{}`", fr_name),
+                );
+            }
+            _ => bug!("report_escaping_closure_capture called with unexpected constraint \
+                       category: `{:?}`", category),
+        }
+        err
+    }
+
+    fn report_escaping_data(
+        &mut self,
+        borrow_span: Span,
+        name: &Option<String>,
+        upvar_span: Span,
+        upvar_name: &str,
+        escape_span: Span,
+    ) -> DiagnosticBuilder<'cx> {
+        let tcx = self.infcx.tcx;
+
+        let escapes_from = if tcx.is_closure(self.mir_def_id) {
+            let tables = tcx.typeck_tables_of(self.mir_def_id);
+            let mir_hir_id = tcx.hir.def_index_to_hir_id(self.mir_def_id.index);
+            match tables.node_id_to_type(mir_hir_id).sty {
+                ty::Closure(..) => "closure",
+                ty::Generator(..) => "generator",
+                _ => bug!("Closure body doesn't have a closure or generator type"),
+            }
+        } else {
+            "function"
+        };
+
+        let mut err = tcx.borrowed_data_escapes_closure(escape_span, escapes_from, Origin::Mir);
+
+        err.span_label(
+            upvar_span,
+            format!(
+                "`{}` is declared here, outside of the {} body",
+                upvar_name, escapes_from
+            ),
+        );
+
+        err.span_label(
+            borrow_span,
+            format!(
+                "borrow is only valid in the {} body",
+                escapes_from
+            ),
+        );
+
+        if let Some(name) = name {
+            err.span_label(
+                escape_span,
+                format!("reference to `{}` escapes the {} body here", name, escapes_from),
+            );
+        } else {
+            err.span_label(
+                escape_span,
+                format!("reference escapes the {} body here", escapes_from),
+            );
+        }
 
         err
     }

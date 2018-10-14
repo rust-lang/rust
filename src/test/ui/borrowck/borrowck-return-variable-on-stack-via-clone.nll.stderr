@@ -1,17 +1,12 @@
-error[E0597]: `x` does not live long enough
+error[E0515]: cannot return value referencing function parameter `x`
   --> $DIR/borrowck-return-variable-on-stack-via-clone.rs:17:5
    |
 LL |     (&x).clone() //~ ERROR `x` does not live long enough
-   |     ^^^^ borrowed value does not live long enough
-LL | }
-   | - `x` dropped here while still borrowed
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 16:9...
-  --> $DIR/borrowck-return-variable-on-stack-via-clone.rs:16:9
-   |
-LL | fn leak<'a, T>(x: T) -> &'a T {
-   |         ^^
+   |     ----^^^^^^^^
+   |     |
+   |     returns a value referencing data owned by the current function
+   |     `x` is borrowed here
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0515`.

@@ -1,12 +1,8 @@
-error[E0597]: `x` does not live long enough
+error[E0515]: cannot return reference to local variable `x`
   --> $DIR/polonius-smoke-test.rs:7:5
    |
 LL |     &x //~ ERROR
-   |     ^^ borrowed value does not live long enough
-LL | }
-   | - `x` dropped here while still borrowed
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   |     ^^ returns a reference to data owned by the current function
 
 error[E0503]: cannot use `x` because it was mutably borrowed
   --> $DIR/polonius-smoke-test.rs:13:13
@@ -41,5 +37,5 @@ LL |     tmp;
 
 error: aborting due to 4 previous errors
 
-Some errors occurred: E0503, E0505, E0597.
+Some errors occurred: E0503, E0505, E0515.
 For more information about an error, try `rustc --explain E0503`.

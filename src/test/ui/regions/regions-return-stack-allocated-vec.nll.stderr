@@ -1,13 +1,12 @@
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/regions-return-stack-allocated-vec.rs:14:6
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/regions-return-stack-allocated-vec.rs:14:5
    |
 LL |     &[x] //~ ERROR borrowed value does not live long enough
-   |      ^^^ creates a temporary which is freed while still in use
-LL | }
-   | - temporary value is freed at the end of this statement
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   |     ^---
+   |     ||
+   |     |temporary value created here
+   |     returns a reference to data owned by the current function
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0716`.
+For more information about this error, try `rustc --explain E0515`.

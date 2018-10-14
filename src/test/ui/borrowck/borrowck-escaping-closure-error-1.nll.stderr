@@ -1,16 +1,21 @@
-error[E0597]: `books` does not live long enough
-  --> $DIR/borrowck-escaping-closure-error-1.rs:23:14
+error[E0373]: closure may outlive the current function, but it borrows `books`, which is owned by the current function
+  --> $DIR/borrowck-escaping-closure-error-1.rs:23:11
    |
 LL |     spawn(|| books.push(4));
-   |           -- ^^^^^ borrowed value does not live long enough
+   |           ^^ ----- `books` is borrowed here
    |           |
-   |           value captured here
-LL |     //~^ ERROR E0373
-LL | }
-   | - `books` dropped here while still borrowed
+   |           may outlive borrowed value `books`
    |
-   = note: borrowed value must be valid for the static lifetime...
+note: function requires argument type to outlive `'static`
+  --> $DIR/borrowck-escaping-closure-error-1.rs:23:5
+   |
+LL |     spawn(|| books.push(4));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+help: to force the closure to take ownership of `books` (and any other referenced variables), use the `move` keyword
+   |
+LL |     spawn(move || books.push(4));
+   |           ^^^^^^^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0373`.

@@ -1,21 +1,9 @@
-error[E0597]: `v` does not live long enough
+error[E0515]: cannot return reference to local variable `v`
   --> $DIR/borrowed-universal-error-2.rs:16:5
    |
-LL | fn foo<'a>(x: &'a (u32,)) -> &'a u32 {
-   |                --             -- also has lifetime `'a`
-   |                |
-   |                has lifetime `'a`
-LL |     let v = 22;
 LL |     &v
-   |     ^^ `v` would have to be valid for `'a`...
-LL |     //~^ ERROR `v` does not live long enough [E0597]
-LL | }
-   | - ...but `v` will be dropped here, when the function `foo` returns
-   |
-   = help: use data from the highlighted arguments which match the `'a` lifetime of the return type
-   = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-references-and-borrowing.html#dangling-references>
+   |     ^^ returns a reference to data owned by the current function
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0515`.

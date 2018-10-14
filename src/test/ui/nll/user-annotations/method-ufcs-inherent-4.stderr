@@ -1,32 +1,32 @@
 error[E0597]: `v` does not live long enough
   --> $DIR/method-ufcs-inherent-4.rs:17:37
    |
+LL | fn foo<'a>() {
+   |        -- lifetime `'a` defined here
+LL |     let v = 22;
 LL |     let x = <A<'a>>::new::<&'a u32>(&v, &v);
-   |                                     ^^ borrowed value does not live long enough
+   |             ------------------------^^-----
+   |             |                       |
+   |             |                       borrowed value does not live long enough
+   |             argument requires that `v` is borrowed for `'a`
 ...
 LL | }
    | - `v` dropped here while still borrowed
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 15:8...
-  --> $DIR/method-ufcs-inherent-4.rs:15:8
-   |
-LL | fn foo<'a>() {
-   |        ^^
 
 error[E0597]: `v` does not live long enough
   --> $DIR/method-ufcs-inherent-4.rs:17:41
    |
+LL | fn foo<'a>() {
+   |        -- lifetime `'a` defined here
+LL |     let v = 22;
 LL |     let x = <A<'a>>::new::<&'a u32>(&v, &v);
-   |                                         ^^ borrowed value does not live long enough
+   |             ----------------------------^^-
+   |             |                           |
+   |             |                           borrowed value does not live long enough
+   |             argument requires that `v` is borrowed for `'a`
 ...
 LL | }
    | - `v` dropped here while still borrowed
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 15:8...
-  --> $DIR/method-ufcs-inherent-4.rs:15:8
-   |
-LL | fn foo<'a>() {
-   |        ^^
 
 error: aborting due to 2 previous errors
 

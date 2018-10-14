@@ -190,15 +190,15 @@ error: trait bounds other than `Sized` on const fn parameters are unstable
 LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning[E0716]: temporary value dropped while borrowed
-  --> $DIR/min_const_fn.rs:142:64
+warning[E0515]: cannot return reference to temporary value
+  --> $DIR/min_const_fn.rs:142:63
    |
 LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
-   |                                                                ^^ - temporary value is freed at the end of this statement
-   |                                                                |
-   |                                                                creates a temporary which is freed while still in use
+   |                                                               ^--
+   |                                                               ||
+   |                                                               |temporary value created here
+   |                                                               returns a reference to data owned by the current function
    |
-   = note: borrowed value must be valid for the static lifetime...
    = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
            It represents potential unsoundness in your code.
            This warning will become a hard error in the future.
@@ -223,5 +223,5 @@ LL | const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
 
 error: aborting due to 35 previous errors
 
-Some errors occurred: E0493, E0716.
+Some errors occurred: E0493, E0515.
 For more information about an error, try `rustc --explain E0493`.

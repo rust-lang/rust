@@ -1,19 +1,21 @@
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/issue-27592.rs:26:27
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/issue-27592.rs:26:14
    |
 LL |     write(|| format_args!("{}", String::from("Hello world")));
-   |                           ^^^^                             - temporary value is freed at the end of this statement
-   |                           |
-   |                           creates a temporary which is freed while still in use
+   |              ^^^^^^^^^^^^^^^^^^^---------------------------^
+   |              |                  |
+   |              |                  temporary value created here
+   |              returns a value referencing data owned by the current function
 
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/issue-27592.rs:26:33
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/issue-27592.rs:26:14
    |
 LL |     write(|| format_args!("{}", String::from("Hello world")));
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
-   |                                 |
-   |                                 creates a temporary which is freed while still in use
+   |              ^^^^^^^^^^^^^----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |            |
+   |              |            temporary value created here
+   |              returns a value referencing data owned by the current function
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0716`.
+For more information about this error, try `rustc --explain E0515`.

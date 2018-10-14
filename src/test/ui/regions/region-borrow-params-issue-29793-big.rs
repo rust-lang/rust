@@ -81,8 +81,8 @@ fn main() {
         WrapB::new().set(|t: bool| if t { x } else { y }) // (separate errors for `x` vs `y`)
             //[ast]~^ ERROR `x` does not live long enough
             //[ast]~| ERROR `y` does not live long enough
-            //[mir]~^^^ ERROR `x` does not live long enough
-            //[mir]~| ERROR `y` does not live long enough
+            //[mir]~^^^ ERROR closure may outlive the current function
+            //[mir]~| ERROR closure may outlive the current function
     });
 
     w.handle(); // This works

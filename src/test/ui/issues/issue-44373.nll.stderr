@@ -2,11 +2,11 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/issue-44373.rs:15:42
    |
 LL |     let _val: &'static [&'static u32] = &[&FOO]; //~ ERROR borrowed value does not live long enough
-   |                                          ^^^^^^ creates a temporary which is freed while still in use
+   |               -----------------------    ^^^^^^ creates a temporary which is freed while still in use
+   |               |
+   |               type annotation requires that borrow lasts for `'static`
 LL | }
    | - temporary value is freed at the end of this statement
-   |
-   = note: borrowed value must be valid for the static lifetime...
 
 error: aborting due to previous error
 

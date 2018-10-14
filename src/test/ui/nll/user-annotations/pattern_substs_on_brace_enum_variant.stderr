@@ -3,11 +3,11 @@ error[E0597]: `y` does not live long enough
    |
 LL |     let foo = Foo::Bar { field: &y };
    |                                 ^^ borrowed value does not live long enough
-...
+LL |     //~^ ERROR `y` does not live long enough
+LL |     let Foo::Bar::<'static> { field: _z } = foo;
+   |         --------------------------------- type annotation requires that `y` is borrowed for `'static`
 LL | }
    | - `y` dropped here while still borrowed
-   |
-   = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: `y` does not live long enough
   --> $DIR/pattern_substs_on_brace_enum_variant.rs:16:33
@@ -15,10 +15,11 @@ error[E0597]: `y` does not live long enough
 LL |     let foo = Foo::Bar { field: &y };
    |                                 ^^ borrowed value does not live long enough
 ...
+LL |         Foo::Bar::<'static> { field: _z } => {
+   |         --------------------------------- type annotation requires that `y` is borrowed for `'static`
+...
 LL | }
    | - `y` dropped here while still borrowed
-   |
-   = note: borrowed value must be valid for the static lifetime...
 
 error: aborting due to 2 previous errors
 

@@ -632,6 +632,31 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         self.cancel_if_wrong_origin(err, o)
     }
 
+    fn cannot_return_reference_to_local(
+        self,
+        span: Span,
+        reference_desc: &str,
+        path_desc: &str,
+        o: Origin,
+    ) -> DiagnosticBuilder<'cx> {
+        let mut err = struct_span_err!(
+            self,
+            span,
+            E0515,
+            "cannot return {REFERENCE} {LOCAL}{OGN}",
+            REFERENCE=reference_desc,
+            LOCAL=path_desc,
+            OGN = o
+        );
+
+        err.span_label(
+            span,
+            format!("returns a {} data owned by the current function", reference_desc),
+        );
+
+        self.cancel_if_wrong_origin(err, o)
+    }
+
     fn lifetime_too_short_for_reborrow(
         self,
         span: Span,
