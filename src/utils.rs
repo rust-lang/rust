@@ -10,6 +10,8 @@
 
 use std::borrow::Cow;
 
+use bytecount;
+
 use rustc_target::spec::abi;
 use syntax::ast::{
     self, Attribute, CrateSugar, MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind, Path,
@@ -305,8 +307,8 @@ pub fn stmt_expr(stmt: &ast::Stmt) -> Option<&ast::Expr> {
 
 #[inline]
 pub fn count_newlines(input: &str) -> usize {
-    // Using `as_bytes` to omit UTF-8 decoding
-    input.as_bytes().iter().filter(|&&c| c == b'\n').count()
+    // Using bytes to omit UTF-8 decoding
+    bytecount::count(input.as_bytes(), b'\n')
 }
 
 // For format_missing and last_pos, need to use the source callsite (if applicable).
