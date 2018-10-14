@@ -1592,8 +1592,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         debug!("ty_of_fn");
 
         let tcx = self.tcx();
-        let input_tys: Vec<Ty> =
-            decl.inputs.iter().map(|a| self.ty_of_arg(a, None)).collect();
+        let input_tys =
+            decl.inputs.iter().map(|a| self.ty_of_arg(a, None));
 
         let output_ty = match decl.output {
             hir::Return(ref output) => self.ast_ty_to_ty(output),
@@ -1603,7 +1603,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         debug!("ty_of_fn: output_ty={:?}", output_ty);
 
         let bare_fn_ty = ty::Binder::bind(tcx.mk_fn_sig(
-            input_tys.into_iter(),
+            input_tys,
             output_ty,
             decl.variadic,
             unsafety,

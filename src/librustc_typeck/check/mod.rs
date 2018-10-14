@@ -1769,7 +1769,7 @@ fn check_transparent<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: De
     }
 
     // For each field, figure out if it's known to be a ZST and align(1)
-    let field_infos: Vec<_> = adt.non_enum_variant().fields.iter().map(|field| {
+    let field_infos = adt.non_enum_variant().fields.iter().map(|field| {
         let ty = field.ty(tcx, Substs::identity_for_item(tcx, field.did));
         let param_env = tcx.param_env(field.did);
         let layout = tcx.layout_of(param_env.and(ty));
@@ -1778,19 +1778,19 @@ fn check_transparent<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: De
         let zst = layout.map(|layout| layout.is_zst()).unwrap_or(false);
         let align1 = layout.map(|layout| layout.align.abi() == 1).unwrap_or(false);
         (span, zst, align1)
-    }).collect();
+    });
 
-    let non_zst_fields = field_infos.iter().filter(|(_span, zst, _align1)| !*zst);
+    let non_zst_fields = field_infos.clone().filter(|(_span, zst, _align1)| !*zst);
     let non_zst_count = non_zst_fields.clone().count();
     if non_zst_count != 1 {
-        let field_spans: Vec<_> = non_zst_fields.map(|(span, _zst, _align1)| *span).collect();
+        let field_spans: Vec<_> = non_zst_fields.map(|(span, _zst, _align1)| span).collect();
         struct_span_err!(tcx.sess, sp, E0690,
                          "transparent struct needs exactly one non-zero-sized field, but has {}",
                          non_zst_count)
         .span_note(field_spans, "non-zero-sized field")
         .emit();
     }
-    for &(span, zst, align1) in &field_infos {
+    for (span, zst, align1) in field_infos {
         if zst && !align1 {
             span_err!(tcx.sess, span, E0691,
                       "zero-sized field in transparent struct has alignment larger than 1");
