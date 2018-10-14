@@ -23,7 +23,7 @@ use crate::utils::{match_def_path, opt_def_id, paths, span_lint};
 ///
 /// **Example:**
 /// ```rust
-/// mem::forget(Rc::new(55)))
+/// mem::forget(Rc::new(55))
 /// ```
 declare_clippy_lint! {
     pub MEM_FORGET,
