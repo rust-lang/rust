@@ -43,7 +43,7 @@ pub(crate) fn rewrite_all_pairs(
     context: &RewriteContext,
 ) -> Option<String> {
     // First we try formatting on one line.
-    if let Some(list) = expr.flatten(context, false) {
+    if let Some(list) = expr.flatten(false) {
         if let Some(r) = rewrite_pairs_one_line(&list, shape, context) {
             return Some(r);
         }
@@ -53,7 +53,7 @@ pub(crate) fn rewrite_all_pairs(
     // to only flatten pairs with the same operator, that way we don't
     // necessarily need one line per sub-expression, but we don't do anything
     // too funny wrt precedence.
-    expr.flatten(context, true)
+    expr.flatten(true)
         .and_then(|list| rewrite_pairs_multiline(list, shape, context))
 }
 
@@ -83,33 +83,22 @@ fn rewrite_pairs_one_line<T: Rewrite>(
         result.push(' ');
     }
 
+    let prefix_len = result.len();
     let last = list.list.last().unwrap();
     let cur_shape = base_shape.offset_left(last_line_width(&result))?;
-    let rewrite = last.rewrite(context, cur_shape)?;
-    result.push_str(&rewrite);
+    let last_rewrite = last.rewrite(context, cur_shape)?;
+    result.push_str(&last_rewrite);
 
     if first_line_width(&result) > shape.width {
         return None;
     }
 
-    // Check the last expression in the list. We let this expression go over
-    // multiple lines, but we check that if this is necessary, then we can't
-    // do better using multi-line formatting.
-    if !is_single_line(&result) {
-        let multiline_shape = shape.offset_left(list.separators.last().unwrap().len() + 1)?;
-        let multiline_list: PairList<T> = PairList {
-            list: vec![last],
-            separators: vec![],
-            separator_place: list.separator_place,
-        };
-        // Format as if we were multi-line.
-        if let Some(rewrite) = rewrite_pairs_multiline(multiline_list, multiline_shape, context) {
-            // Also, don't let expressions surrounded by parens go multi-line,
-            // this looks really bad.
-            if rewrite.starts_with('(') || is_single_line(&rewrite) {
-                return None;
-            }
-        }
+    // Check the last expression in the list. We sometimes let this expression
+    // go over multiple lines, but we check for some ugly conditions.
+    if !(is_single_line(&result) || last_rewrite.starts_with('{'))
+        && (last_rewrite.starts_with('(') || prefix_len > context.config.tab_spaces())
+    {
+        return None;
     }
 
     wrap_str(result, context.config.max_width(), shape)
@@ -272,7 +261,7 @@ trait FlattenPair: Rewrite + Sized {
     // operator into the list. E.g,, if the source is `a * b + c`, if `_same_op`
     // is true, we make `[(a * b), c]` if `_same_op` is false, we make
     // `[a, b, c]`
-    fn flatten(&self, _context: &RewriteContext, _same_op: bool) -> Option<PairList<Self>> {
+    fn flatten(&self, _same_op: bool) -> Option<PairList<Self>> {
         None
     }
 }
@@ -280,11 +269,10 @@ trait FlattenPair: Rewrite + Sized {
 struct PairList<'a, 'b, T: Rewrite + 'b> {
     list: Vec<&'b T>,
     separators: Vec<&'a str>,
-    separator_place: SeparatorPlace,
 }
 
 impl FlattenPair for ast::Expr {
-    fn flatten(&self, context: &RewriteContext, same_op: bool) -> Option<PairList<ast::Expr>> {
+    fn flatten(&self, same_op: bool) -> Option<PairList<ast::Expr>> {
         let top_op = match self.node {
             ast::ExprKind::Binary(op, _, _) => op.node,
             _ => return None,
@@ -323,7 +311,6 @@ impl FlattenPair for ast::Expr {
         Some(PairList {
             list,
             separators,
-            separator_place: context.config.binop_separator(),
         })
     }
 }
