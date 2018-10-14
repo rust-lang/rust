@@ -1121,6 +1121,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 
         let snippet = context.snippet(item.span);
         let open_pos = snippet.find_uncommented("{")? + 1;
+        let outer_indent_str = offset.block_only().to_string_with_newline(context.config);
 
         if !trait_items.is_empty() || contains_comment(&snippet[open_pos..]) {
             let mut visitor = FmtVisitor::from_context(context);
@@ -1134,13 +1135,12 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             visitor.format_missing(item.span.hi() - BytePos(1));
 
             let inner_indent_str = visitor.block_indent.to_string_with_newline(context.config);
-            let outer_indent_str = offset.block_only().to_string_with_newline(context.config);
 
             result.push_str(&inner_indent_str);
             result.push_str(visitor.buffer.to_string().trim());
             result.push_str(&outer_indent_str);
         } else if result.contains('\n') {
-            result.push('\n');
+            result.push_str(&outer_indent_str);
         }
 
         result.push('}');
