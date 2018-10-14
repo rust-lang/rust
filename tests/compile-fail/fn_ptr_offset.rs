@@ -1,5 +1,5 @@
 // Validation makes this fail in the wrong place
-// compile-flags: -Zmir-emit-validate=0
+// compile-flags: -Zmir-emit-validate=0 -Zmiri-disable-validation
 
 use std::mem;
 

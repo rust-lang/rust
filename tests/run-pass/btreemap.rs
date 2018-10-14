@@ -1,5 +1,5 @@
-// mir validation can't cope with `mem::uninitialized()`, so this test fails with validation & full-MIR.
-// compile-flags: -Zmir-emit-validate=0
+// FIXME: Validation disabled due to https://github.com/rust-lang/rust/issues/54957
+// compile-flags: -Zmiri-disable-validation
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum Foo {
@@ -14,4 +14,6 @@ pub fn main() {
     b.insert(Foo::A("/="));
     b.insert(Foo::A("#"));
     b.insert(Foo::A("0o"));
+    assert!(b.remove(&Foo::A("/=")));
+    assert!(!b.remove(&Foo::A("/=")));
 }

@@ -252,12 +252,12 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
                 // Now we make a function call.  TODO: Consider making this re-usable?  EvalContext::step does sth. similar for the TLS dtors,
                 // and of course eval_main.
                 let mir = self.load_mir(f_instance.def)?;
-                let closure_dest = Place::null(&self);
+                let ret_place = MPlaceTy::dangling(self.layout_of(self.tcx.mk_unit())?, &self).into();
                 self.push_stack_frame(
                     f_instance,
                     mir.span,
                     mir,
-                    closure_dest,
+                    Some(ret_place),
                     StackPopCleanup::Goto(Some(ret)), // directly return to caller
                 )?;
                 let mut args = self.frame().mir.args_iter();
