@@ -1136,6 +1136,8 @@ extern "C" {
     /// Runs a pass manager on a module.
     pub fn LLVMRunPassManager(PM: &PassManager<'a>, M: &'a Module) -> Bool;
 
+    pub fn LLVMRustDemoteSimdArguments(M: &'a Module);
+
     pub fn LLVMInitializePasses();
 
     pub fn LLVMPassManagerBuilderCreate() -> &'static mut PassManagerBuilder;
