@@ -11,8 +11,8 @@ Some of the components of this repository are generated through automatic
 processes. These are outlined below:
 
 - `gen-kinds`: The kinds of tokens are reused in several places, so a generator
-  is used. This process uses [tera] to generate, using data in [grammar.ron],
-  the files:
+  is used. We use tera templates to generate the files listed below, based on
+  the grammar described in [grammar.ron]:
   - [ast/generated.rs][ast generated] in `ra_syntax` based on
     [ast/generated.tera.rs][ast source]
   - [syntax_kinds/generated.rs][syntax_kinds generated] in `ra_syntax` based on
@@ -21,9 +21,9 @@ processes. These are outlined below:
 [tera]: https://tera.netlify.com/
 [grammar.ron]: ./crates/ra_syntax/src/grammar.ron
 [ast generated]: ./crates/ra_syntax/src/ast/generated.rs
-[ast source]: ./crates/ra_syntax/src/ast/generated.tera.rs
+[ast source]: ./crates/ra_syntax/src/ast/generated.rs.tera
 [syntax_kinds generated]: ./crates/ra_syntax/src/syntax_kinds/generated.rs
-[syntax_kinds source]: ./crates/ra_syntax/src/syntax_kinds/generated.tera.rs
+[syntax_kinds source]: ./crates/ra_syntax/src/syntax_kinds/generated.rs.tera
 
 
 ## Code Walk-Through
@@ -36,7 +36,7 @@ notes.
 
 - [rowan](https://github.com/rust-analyzer/rowan) library is used for constructing syntax trees.
 - `grammar` module is the actual parser. It is a hand-written recursive descent parsers, which
-  produced a sequence of events like "start node X", "finish not Y". It works similarly to  [kotlin parser](https://github.com/JetBrains/kotlin/blob/4d951de616b20feca92f3e9cc9679b2de9e65195/compiler/frontend/src/org/jetbrains/kotlin/parsing/KotlinParsing.java),
+  produces a sequence of events like "start node X", "finish not Y". It works similarly to  [kotlin parser](https://github.com/JetBrains/kotlin/blob/4d951de616b20feca92f3e9cc9679b2de9e65195/compiler/frontend/src/org/jetbrains/kotlin/parsing/KotlinParsing.java),
   which is a good source for inspiration for dealing with syntax errors and incomplete input. Original [libsyntax parser](https://github.com/rust-lang/rust/blob/6b99adeb11313197f409b4f7c4083c2ceca8a4fe/src/libsyntax/parse/parser.rs)
   is what we use for the definition of the Rust language.
 - `parser_api/parser_impl` bridges the tree-agnostic parser from `grammar` with `rowan` trees.
@@ -69,7 +69,7 @@ synchronization and such.
 In a sense, `ra_editor` is just a bunch of pure functions which take a
 syntax tree as an input.
 
-The tests for `ra_editor` are `[cfg(test)] mod tests` unit-tests spread
+The tests for `ra_editor` are `#[cfg(test)] mod tests` unit-tests spread
 throughout its modules.
 
 ### `crates/salsa`
@@ -104,7 +104,7 @@ A CLI interface to rust-analyzer.
 
 ### `crate/tools`
 
-Code-gen tasks, used to develop rust-analyzer:
+Custom Cargo tasks used to develop rust-analyzer:
 
 - `cargo gen-kinds` -- generate `ast` and `syntax_kinds`
 - `cargo gen-tests` -- collect inline tests from grammar
@@ -117,11 +117,17 @@ VS Code plugin
 
 ## Common workflows
 
-To try out VS Code extensions, run `cargo install-code`. To see logs from the language server,
-set `RUST_LOG=info` env variable. To see all communication between the server and the client, use
+To try out VS Code extensions, run `cargo install-code`.  This installs both the
+`ra_lsp_server` binary and VS Code extension. To install only the binary, `use
+cargo install --path crates/ra_lsp_server --force`
+
+To see logs from the language server, set `RUST_LOG=info` env variable. To see
+all communication between the server and the client, use
 `RUST_LOG=gen_lsp_server=debug` (will print quite a bit of stuff).
 
 To run tests, just `cargo test`.
 
-To work on VS Code extension, launch code inside `editors/code` and use `F5` to launch/debug.
+To work on VS Code extension, launch code inside `editors/code` and use `F5` to
+launch/debug. To automatically apply formatter and linter suggestions, use `npm
+run fix`.
 
