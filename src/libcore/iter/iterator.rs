@@ -2640,7 +2640,9 @@ pub trait Iterator {
     ///
     /// Instead of using `PartialOrd::partial_cmp`, this function uses the given `compare`
     /// function to determine the ordering of two elements. Apart from that, it's equivalent to
-    /// `is_sorted`; see its documentation for more information.
+    /// [`is_sorted`]; see its documentation for more information.
+    ///
+    /// [`is_sorted`]: trait.Iterator.html#method.is_sorted
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
     fn is_sorted_by<F>(mut self, mut compare: F) -> bool
     where
@@ -2666,8 +2668,10 @@ pub trait Iterator {
     /// function.
     ///
     /// Instead of comparing the iterator's elements directly, this function compares the keys of
-    /// the elements, as determined by `f`. Apart from that, it's equivalent to `is_sorted`; see
+    /// the elements, as determined by `f`. Apart from that, it's equivalent to [`is_sorted`]; see
     /// its documentation for more information.
+    ///
+    /// [`is_sorted`]: trait.Iterator.html#method.is_sorted
     ///
     /// # Examples
     ///

@@ -2285,22 +2285,23 @@ impl<T> [T] {
     ///
     /// Instead of using `PartialOrd::partial_cmp`, this function uses the given `compare`
     /// function to determine the ordering of two elements. Apart from that, it's equivalent to
-    /// `is_sorted`; see its documentation for more information.
+    /// [`is_sorted`]; see its documentation for more information.
+    ///
+    /// [`is_sorted`]: #method.is_sorted
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
     pub fn is_sorted_by<F>(&self, mut compare: F) -> bool
     where
         F: FnMut(&T, &T) -> Option<Ordering>
     {
-        let mut last = match self.first() {
-            Some(e) => e,
-            None => return true,
-        };
+        let len = self.len();
+        if len <= 1 {
+            return true;
+        }
 
-        for curr in &self[1..] {
-            if compare(&last, &curr).map(|o| o == Ordering::Greater).unwrap_or(true) {
+        for i in 1..len {
+            if compare(&self[i - 1], &self[i]).map(|o| o == Ordering::Greater).unwrap_or(true) {
                 return false;
             }
-            last = &curr;
         }
 
         true
@@ -2309,8 +2310,10 @@ impl<T> [T] {
     /// Checks if the elements of this slice are sorted using the given key extraction function.
     ///
     /// Instead of comparing the slice's elements directly, this function compares the keys of the
-    /// elements, as determined by `f`. Apart from that, it's equivalent to `is_sorted`; see its
+    /// elements, as determined by `f`. Apart from that, it's equivalent to [`is_sorted`]; see its
     /// documentation for more information.
+    ///
+    /// [`is_sorted`]: #method.is_sorted
     ///
     /// # Examples
     ///
