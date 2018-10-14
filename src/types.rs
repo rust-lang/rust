@@ -473,7 +473,7 @@ fn rewrite_bounded_lifetime(
             "{}{}{}",
             result,
             colon,
-            join_bounds(context, shape.sub_width(overhead)?, bounds, true)?
+            join_bounds(context, shape.sub_width(overhead)?, bounds, true, false)?
         );
         Some(result)
     }
@@ -515,13 +515,7 @@ impl Rewrite for ast::GenericBounds {
         } else {
             shape
         };
-        join_bounds(context, bounds_shape, self, true).map(|s| {
-            if has_paren {
-                format!("({})", s)
-            } else {
-                s
-            }
-        })
+        join_bounds(context, bounds_shape, self, true, has_paren)
     }
 }
 
@@ -757,7 +751,10 @@ fn join_bounds(
     shape: Shape,
     items: &[ast::GenericBound],
     need_indent: bool,
+    has_paren: bool,
 ) -> Option<String> {
+    debug_assert!(!items.is_empty());
+
     // Try to join types in a single line
     let joiner = match context.config.type_punctuation_density() {
         TypeDensity::Compressed => "+",
@@ -765,9 +762,36 @@ fn join_bounds(
     };
     let type_strs = items
         .iter()
-        .map(|item| item.rewrite(context, shape))
+        .map(|item| {
+            item.rewrite(
+                context,
+                if has_paren {
+                    shape.sub_width(1)?.offset_left(1)?
+                } else {
+                    shape
+                },
+            )
+        })
         .collect::<Option<Vec<_>>>()?;
-    let result = type_strs.join(joiner);
+    let mut result = String::with_capacity(128);
+    let mut closing_paren = has_paren;
+    if has_paren {
+        result.push('(');
+    }
+    result.push_str(&type_strs[0]);
+    if has_paren && type_strs.len() == 1 {
+        result.push(')');
+    }
+    for (i, type_str) in type_strs[1..].iter().enumerate() {
+        if closing_paren {
+            if let ast::GenericBound::Outlives(..) = items[i + 1] {
+                result.push(')');
+                closing_paren = false;
+            }
+        }
+        result.push_str(joiner);
+        result.push_str(type_str);
+    }
     if items.len() <= 1 || (!result.contains('\n') && result.len() <= shape.width) {
         return Some(result);
     }
@@ -790,10 +814,20 @@ fn join_bounds(
         ast::GenericBound::Trait(..) => last_line_extendable(s),
     };
     let mut result = String::with_capacity(128);
+    let mut closing_paren = has_paren;
+    if has_paren {
+        result.push('(');
+    }
     result.push_str(&type_strs[0]);
     let mut can_be_put_on_the_same_line = is_bound_extendable(&result, &items[0]);
     let generic_bounds_in_order = is_generic_bounds_in_order(items);
     for (bound, bound_str) in items[1..].iter().zip(type_strs[1..].iter()) {
+        if closing_paren {
+            if let ast::GenericBound::Outlives(..) = bound {
+                closing_paren = false;
+                result.push(')');
+            }
+        }
         if generic_bounds_in_order && can_be_put_on_the_same_line {
             result.push_str(joiner);
         } else {

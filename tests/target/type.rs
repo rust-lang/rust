@@ -81,3 +81,12 @@ pub fn do_something<'a, T: Trait1 + Trait2 + 'a>(
     Error = SomeError,
 > + 'a + 'b + 'c {
 }
+
+// #3060
+macro_rules! foo {
+    ($foo_api: ty) => {
+        type Target = ($foo_api) + 'static;
+    };
+}
+
+type Target = (FooAPI) + 'static;
