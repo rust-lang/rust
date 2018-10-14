@@ -392,8 +392,8 @@ impl Builder {
 
     /// FIXME: Doc
     #[unstable(feature = "thread_spawn_unchecked", issue = "0")]
-    pub unsafe fn spawn_unchecked<'a, F, T>(self, f: F) -> io::Result<JoinHandle<T>> where
-        F: FnOnce() -> T, F: Send + 'a, T: Send + 'a
+    pub unsafe fn spawn_unchecked<F, T>(self, f: F) -> io::Result<JoinHandle<T>> where
+        F: FnOnce() -> T, F: Send, T: Send
     {
         let Builder { name, stack_size } = self;
 
