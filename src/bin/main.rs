@@ -156,9 +156,7 @@ fn make_opts() -> Options {
 }
 
 fn is_nightly() -> bool {
-    option_env!("CFG_RELEASE_CHANNEL")
-        .map(|c| c == "nightly" || c == "dev")
-        .unwrap_or(false)
+    option_env!("CFG_RELEASE_CHANNEL").map_or(false, |c| c == "nightly" || c == "dev")
 }
 
 // Returned i32 is an exit code
