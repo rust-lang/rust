@@ -40,11 +40,6 @@ script:
   cargo test --release --all-features &&
   cargo install --all-features --force --path .
 - |
-  # test that the rustc_tests binary compiles
-  cd rustc_tests &&
-  cargo build --release &&
-  cd ..
-- |
   # get ourselves a MIR-full libstd
   xargo/build.sh &&
   export MIRI_SYSROOT=~/.xargo/HOST
