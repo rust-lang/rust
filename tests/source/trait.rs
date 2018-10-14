@@ -106,3 +106,12 @@ trait Foo<'a> {
 impl<'a> Foo<'a> for i32 {
     type Bar<  'a  > = i32;
 }
+
+// #3092
+pub mod test {
+    pub trait ATraitWithALooongName {}
+    pub trait ATrait
+        :ATraitWithALooongName + ATraitWithALooongName + ATraitWithALooongName + ATraitWithALooongName
+{
+}
+}
