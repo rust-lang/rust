@@ -559,10 +559,10 @@ impl<'a, 'gcx, 'tcx> Binder<ExistentialPredicate<'tcx>> {
 impl<'tcx> serialize::UseSpecializedDecodable for &'tcx List<ExistentialPredicate<'tcx>> {}
 
 impl<'tcx> List<ExistentialPredicate<'tcx>> {
-    pub fn principal(&self) -> Option<ExistentialTraitRef<'tcx>> {
-        match self.get(0) {
-            Some(&ExistentialPredicate::Trait(tr)) => Some(tr),
-            _ => None,
+    pub fn principal(&self) -> ExistentialTraitRef<'tcx> {
+        match self[0] {
+            ExistentialPredicate::Trait(tr) => tr,
+            other => bug!("first predicate is {:?}", other),
         }
     }
 
@@ -589,8 +589,8 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
 }
 
 impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
-    pub fn principal(&self) -> Option<PolyExistentialTraitRef<'tcx>> {
-        self.skip_binder().principal().map(Binder::bind)
+    pub fn principal(&self) -> PolyExistentialTraitRef<'tcx> {
+        Binder::bind(self.skip_binder().principal())
     }
 
     #[inline]
@@ -1825,9 +1825,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             }
             Dynamic(ref obj, region) => {
                 let mut v = vec![region];
-                if let Some(p) = obj.principal() {
-                    v.extend(p.skip_binder().substs.regions());
-                }
+                v.extend(obj.principal().skip_binder().substs.regions());
                 v
             }
             Adt(_, substs) | Opaque(_, substs) => {

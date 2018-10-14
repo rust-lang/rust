@@ -78,7 +78,7 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::Array(..) | ty::Slice(_) => Some(ArraySimplifiedType),
         ty::RawPtr(_) => Some(PtrSimplifiedType),
         ty::Dynamic(ref trait_info, ..) => {
-            trait_info.principal().map(|p| TraitSimplifiedType(p.def_id()))
+            Some(TraitSimplifiedType(trait_info.principal().def_id()))
         }
         ty::Ref(_, ty, _) => {
             // since we introduce auto-refs during method lookup, we

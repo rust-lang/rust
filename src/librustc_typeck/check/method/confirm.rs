@@ -290,7 +290,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             .include_raw_pointers()
             .filter_map(|(ty, _)|
                 match ty.sty {
-                    ty::Dynamic(ref data, ..) => data.principal().map(|p| closure(self, ty, p)),
+                    ty::Dynamic(ref data, ..) => Some(closure(self, ty, data.principal())),
                     _ => None,
                 }
             )

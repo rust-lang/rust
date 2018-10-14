@@ -2632,47 +2632,44 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 }
             }
             ty::Dynamic(ref obj, ref reg) => {
-                if let Some(principal) = obj.principal() {
-                    let did = principal.def_id();
+                let principal = obj.principal();
+                let did = principal.def_id();
+                inline::record_extern_fqn(cx, did, TypeKind::Trait);
+
+                let mut typarams = vec![];
+                reg.clean(cx).map(|b| typarams.push(GenericBound::Outlives(b)));
+                for did in obj.auto_traits() {
+                    let empty = cx.tcx.intern_substs(&[]);
+                    let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
+                        Some(did), false, vec![], empty);
                     inline::record_extern_fqn(cx, did, TypeKind::Trait);
+                    let bound = GenericBound::TraitBound(PolyTrait {
+                        trait_: ResolvedPath {
+                            path,
+                            typarams: None,
+                            did,
+                            is_generic: false,
+                        },
+                        generic_params: Vec::new(),
+                    }, hir::TraitBoundModifier::None);
+                    typarams.push(bound);
+                }
 
-                    let mut typarams = vec![];
-                    reg.clean(cx).map(|b| typarams.push(GenericBound::Outlives(b)));
-                    for did in obj.auto_traits() {
-                        let empty = cx.tcx.intern_substs(&[]);
-                        let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
-                            Some(did), false, vec![], empty);
-                        inline::record_extern_fqn(cx, did, TypeKind::Trait);
-                        let bound = GenericBound::TraitBound(PolyTrait {
-                            trait_: ResolvedPath {
-                                path,
-                                typarams: None,
-                                did,
-                                is_generic: false,
-                            },
-                            generic_params: Vec::new(),
-                        }, hir::TraitBoundModifier::None);
-                        typarams.push(bound);
-                    }
+                let mut bindings = vec![];
+                for pb in obj.projection_bounds() {
+                    bindings.push(TypeBinding {
+                        name: cx.tcx.associated_item(pb.item_def_id()).ident.name.clean(cx),
+                        ty: pb.skip_binder().ty.clean(cx)
+                    });
+                }
 
-                    let mut bindings = vec![];
-                    for pb in obj.projection_bounds() {
-                        bindings.push(TypeBinding {
-                            name: cx.tcx.associated_item(pb.item_def_id()).ident.name.clean(cx),
-                            ty: pb.skip_binder().ty.clean(cx)
-                        });
-                    }
-
-                    let path = external_path(cx, &cx.tcx.item_name(did).as_str(), Some(did),
-                        false, bindings, principal.skip_binder().substs);
-                    ResolvedPath {
-                        path,
-                        typarams: Some(typarams),
-                        did,
-                        is_generic: false,
-                    }
-                } else {
-                    Never
+                let path = external_path(cx, &cx.tcx.item_name(did).as_str(), Some(did),
+                    false, bindings, principal.skip_binder().substs);
+                ResolvedPath {
+                    path,
+                    typarams: Some(typarams),
+                    did,
+                    is_generic: false,
                 }
             }
             ty::Tuple(ref t) => Tuple(t.clean(cx)),
