@@ -134,7 +134,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                     "xsub" => mir::BinOp::Sub,
                     _ => bug!(),
                 };
-                // FIXME: what do atomics do on overflow?
+                // Atomics wrap around on overflow.
                 self.binop_ignore_overflow(op, old, rhs, ptr.into())?;
             }
 
