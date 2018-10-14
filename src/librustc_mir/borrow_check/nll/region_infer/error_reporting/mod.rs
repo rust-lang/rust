@@ -13,6 +13,7 @@ use borrow_check::nll::region_infer::RegionInferenceContext;
 use borrow_check::nll::region_infer::error_reporting::region_name::RegionNameSource;
 use borrow_check::nll::type_check::Locations;
 use borrow_check::nll::universal_regions::DefiningTy;
+use util::borrowck_errors::{BorrowckErrors, Origin};
 use rustc::hir::def_id::DefId;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc::infer::InferCtxt;
@@ -395,9 +396,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                                              category, span, errors_buffer);
         }
 
-        let mut diag = infcx.tcx.sess.struct_span_err(
-            span, &format!("borrowed data escapes outside of {}", escapes_from),
-        );
+        let mut diag = infcx.tcx.borrowed_data_escapes_closure(span, escapes_from, Origin::Mir);
 
         if let Some((Some(outlived_fr_name), outlived_fr_span)) = outlived_fr_name_and_span {
             diag.span_label(

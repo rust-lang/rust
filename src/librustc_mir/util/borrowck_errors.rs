@@ -717,6 +717,24 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         self.cancel_if_wrong_origin(err, o)
     }
 
+    fn borrowed_data_escapes_closure(
+        self,
+        escape_span: Span,
+        escapes_from: &str,
+        o: Origin,
+    ) -> DiagnosticBuilder<'cx> {
+        let err = struct_span_err!(
+            self,
+            escape_span,
+            E0521,
+            "borrowed data escapes outside of {}{OGN}",
+            escapes_from,
+            OGN = o
+        );
+
+        self.cancel_if_wrong_origin(err, o)
+    }
+
     fn thread_local_value_does_not_live_long_enough(
         self,
         span: Span,

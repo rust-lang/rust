@@ -2339,6 +2339,7 @@ register_diagnostics! {
 //  E0471, // constant evaluation error (in pattern)
 //    E0385, // {} in an aliasable location
     E0493, // destructors cannot be evaluated at compile-time
+    E0521,  // borrowed data escapes outside of closure
     E0524, // two closures require unique access to `..` at the same time
     E0526, // shuffle indices are not constant
     E0594, // cannot assign to {}

@@ -13,7 +13,7 @@ LL | |     })
                for<'r> extern "rust-call" fn((std::cell::Cell<&'_#1r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) u32>))
            ]
 
-error: borrowed data escapes outside of closure
+error[E0521]: borrowed data escapes outside of closure
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:32:9
    |
 LL |     foo(cell, |cell_a, cell_x| {
@@ -80,4 +80,5 @@ LL | }
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0597`.
+Some errors occurred: E0521, E0597.
+For more information about an error, try `rustc --explain E0521`.
