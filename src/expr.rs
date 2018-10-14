@@ -1937,7 +1937,9 @@ fn shape_from_rhs_tactic(
     rhs_tactic: RhsTactics,
 ) -> Option<Shape> {
     match rhs_tactic {
-        RhsTactics::ForceNextLineWithoutIndent => Some(shape.with_max_width(context.config)),
+        RhsTactics::ForceNextLineWithoutIndent => shape
+            .with_max_width(context.config)
+            .sub_width(shape.indent.width()),
         RhsTactics::Default => {
             Shape::indented(shape.indent.block_indent(context.config), context.config)
                 .sub_width(shape.rhs_overhead(context.config))
