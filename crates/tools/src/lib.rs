@@ -1,6 +1,19 @@
 extern crate itertools;
+#[macro_use]
+extern crate failure;
+extern crate ron;
+extern crate tera;
+extern crate heck;
 
+use std::{
+    collections::HashMap,
+    fs,
+    path::Path,
+};
 use itertools::Itertools;
+use heck::{CamelCase, ShoutySnakeCase, SnakeCase};
+
+type Result<T> = ::std::result::Result<T, failure::Error>;
 
 #[derive(Debug)]
 pub struct Test {
@@ -40,4 +53,58 @@ pub fn collect_tests(s: &str) -> Vec<(usize, Test)> {
         res.push((start_line, Test { name, text }))
     }
     res
+}
+
+
+pub fn update(path: &Path, contents: &str, verify: bool) -> Result<()> {
+    match fs::read_to_string(path) {
+        Ok(ref old_contents) if old_contents == contents => {
+            return Ok(());
+        }
+        _ => (),
+    }
+    if verify {
+        bail!("`{}` is not up-to-date", path.display());
+    }
+    eprintln!("updating {}", path.display());
+    fs::write(path, contents)?;
+    Ok(())
+}
+
+pub fn render_template(template: &str, grammarfile: &str) -> Result<String> {
+    let grammar: ron::value::Value = {
+        let text = fs::read_to_string(grammarfile)?;
+        ron::de::from_str(&text)?
+    };
+    let template = fs::read_to_string(template)?;
+    let mut tera = tera::Tera::default();
+    tera.add_raw_template("grammar", &template)
+        .map_err(|e| format_err!("template error: {:?}", e))?;
+    tera.register_function("concat", Box::new(concat));
+    tera.register_filter("camel", |arg, _| {
+        Ok(arg.as_str().unwrap().to_camel_case().into())
+    });
+    tera.register_filter("snake", |arg, _| {
+        Ok(arg.as_str().unwrap().to_snake_case().into())
+    });
+    tera.register_filter("SCREAM", |arg, _| {
+        Ok(arg.as_str().unwrap().to_shouty_snake_case().into())
+    });
+    let ret = tera
+        .render("grammar", &grammar)
+        .map_err(|e| format_err!("template error: {:?}", e))?;
+    return Ok(ret);
+
+    fn concat(args: HashMap<String, tera::Value>) -> tera::Result<tera::Value> {
+        let mut elements = Vec::new();
+        for &key in ["a", "b", "c"].iter() {
+            let val = match args.get(key) {
+                Some(val) => val,
+                None => continue,
+            };
+            let val = val.as_array().unwrap();
+            elements.extend(val.iter().cloned());
+        }
+        Ok(tera::Value::Array(elements))
+    }
 }

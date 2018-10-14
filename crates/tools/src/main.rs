@@ -1,21 +1,17 @@
 extern crate clap;
 #[macro_use]
 extern crate failure;
-extern crate ron;
-extern crate tera;
 extern crate tools;
 extern crate walkdir;
-extern crate heck;
 
 use clap::{App, Arg, SubCommand};
-use heck::{CamelCase, ShoutySnakeCase, SnakeCase};
 use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
     process::Command,
 };
-use tools::{collect_tests, Test};
+use tools::{Test, collect_tests, render_template, update};
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
 
@@ -51,8 +47,8 @@ fn main() -> Result<()> {
 fn run_gen_command(name: &str, verify: bool) -> Result<()> {
     match name {
         "gen-kinds" => {
-            update(Path::new(SYNTAX_KINDS), &render_template(SYNTAX_KINDS_TEMPLATE)?, verify)?;
-            update(Path::new(AST), &render_template(AST_TEMPLATE)?, verify)?;
+            update(Path::new(SYNTAX_KINDS), &render_template(SYNTAX_KINDS_TEMPLATE, GRAMMAR)?, verify)?;
+            update(Path::new(AST), &render_template(AST_TEMPLATE, GRAMMAR)?, verify)?;
         },
         "gen-tests" => {
             gen_tests(verify)?
@@ -62,58 +58,6 @@ fn run_gen_command(name: &str, verify: bool) -> Result<()> {
     Ok(())
 }
 
-fn update(path: &Path, contents: &str, verify: bool) -> Result<()> {
-    match fs::read_to_string(path) {
-        Ok(ref old_contents) if old_contents == contents => {
-            return Ok(());
-        }
-        _ => (),
-    }
-    if verify {
-        bail!("`{}` is not up-to-date", path.display());
-    }
-    eprintln!("updating {}", path.display());
-    fs::write(path, contents)?;
-    Ok(())
-}
-
-fn render_template(template: &str) -> Result<String> {
-    let grammar: ron::value::Value = {
-        let text = fs::read_to_string(GRAMMAR)?;
-        ron::de::from_str(&text)?
-    };
-    let template = fs::read_to_string(template)?;
-    let mut tera = tera::Tera::default();
-    tera.add_raw_template("grammar", &template)
-        .map_err(|e| format_err!("template error: {:?}", e))?;
-    tera.register_function("concat", Box::new(concat));
-    tera.register_filter("camel", |arg, _| {
-        Ok(arg.as_str().unwrap().to_camel_case().into())
-    });
-    tera.register_filter("snake", |arg, _| {
-        Ok(arg.as_str().unwrap().to_snake_case().into())
-    });
-    tera.register_filter("SCREAM", |arg, _| {
-        Ok(arg.as_str().unwrap().to_shouty_snake_case().into())
-    });
-    let ret = tera
-        .render("grammar", &grammar)
-        .map_err(|e| format_err!("template error: {:?}", e))?;
-    return Ok(ret);
-
-    fn concat(args: HashMap<String, tera::Value>) -> tera::Result<tera::Value> {
-        let mut elements = Vec::new();
-        for &key in ["a", "b", "c"].iter() {
-            let val = match args.get(key) {
-                Some(val) => val,
-                None => continue,
-            };
-            let val = val.as_array().unwrap();
-            elements.extend(val.iter().cloned());
-        }
-        Ok(tera::Value::Array(elements))
-    }
-}
 
 fn gen_tests(verify: bool) -> Result<()> {
     let tests = tests_from_dir(Path::new(GRAMMAR_DIR))?;
