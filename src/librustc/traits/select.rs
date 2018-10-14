@@ -1368,8 +1368,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         // Winnow, but record the exact outcome of evaluation, which
         // is needed for specialization. Propagate overflow if it occurs.
-        let candidates: Result<Vec<Option<EvaluatedCandidate<'_>>>, _> = candidates
-            .into_iter()
+        let mut candidates = candidates.into_iter()
             .map(|c| match self.evaluate_candidate(stack, &c) {
                 Ok(eval) if eval.may_apply() => Ok(Some(EvaluatedCandidate {
                     candidate: c,
@@ -1378,10 +1377,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Ok(_) => Ok(None),
                 Err(OverflowError) => Err(Overflow),
             })
-            .collect();
-
-        let mut candidates: Vec<EvaluatedCandidate<'_>> =
-            candidates?.into_iter().filter_map(|c| c).collect();
+           .flat_map(Result::transpose)
+           .collect::<Result<Vec<_>, _>>()?;
 
         debug!(
             "winnowed to {} candidates for {:?}: {:?}",
@@ -1390,7 +1387,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             candidates
         );
 
-        // If there are STILL multiple candidate, we can further
+        // If there are STILL multiple candidates, we can further
         // reduce the list by dropping duplicates -- including
         // resolving specializations.
         if candidates.len() > 1 {
