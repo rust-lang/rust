@@ -6346,7 +6346,13 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_item_const(&mut self, m: Option<Mutability>) -> PResult<'a, ItemInfo> {
-        let id = self.parse_ident()?;
+        let id = match self.token {
+                token::Ident(ident, false) if ident.name == keywords::Underscore.name() => {
+                    self.bump(); // `_`
+                    ident.gensym()
+                    },
+                _ => self.parse_ident()?,
+            };
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
         self.expect(&token::Eq)?;
