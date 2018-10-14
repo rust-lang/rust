@@ -11,9 +11,7 @@ use std::{
     path::{Path, PathBuf},
     process::Command,
 };
-use tools::{Test, collect_tests, render_template, update};
-
-type Result<T> = ::std::result::Result<T, failure::Error>;
+use tools::{Test, collect_tests, render_template, update, Result};
 
 const GRAMMAR_DIR: &str = "./crates/ra_syntax/src/grammar";
 const INLINE_TESTS_DIR: &str = "./crates/ra_syntax/tests/data/parser/inline";

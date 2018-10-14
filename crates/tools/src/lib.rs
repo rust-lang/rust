@@ -13,7 +13,7 @@ use std::{
 use itertools::Itertools;
 use heck::{CamelCase, ShoutySnakeCase, SnakeCase};
 
-type Result<T> = ::std::result::Result<T, failure::Error>;
+pub type Result<T> = ::std::result::Result<T, failure::Error>;
 
 #[derive(Debug)]
 pub struct Test {
