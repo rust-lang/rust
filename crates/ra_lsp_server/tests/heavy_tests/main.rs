@@ -12,7 +12,7 @@ mod support;
 
 use ra_lsp_server::req::{Runnables, RunnablesParams};
 
-use support::project;
+use crate::support::project;
 
 
 const LOG: &'static str = "";

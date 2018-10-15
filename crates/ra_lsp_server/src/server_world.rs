@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 use languageserver_types::Url;
 use ra_analysis::{FileId, AnalysisHost, Analysis, CrateGraph, CrateId, LibraryData, FileResolver};
 
-use {
+use crate::{
     Result,
     path_map::{PathMap, Root},
     vfs::{FileEvent, FileEventKind},

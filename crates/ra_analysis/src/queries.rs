@@ -1,13 +1,13 @@
 use std::sync::Arc;
 use ra_syntax::File;
 use ra_editor::LineIndex;
-use {
+use crate::{
     FileId,
     db::{Query, QueryCtx, QueryRegistry},
     symbol_index::SymbolIndex,
 };
 
-pub(crate) use db::{file_text, file_set};
+pub(crate) use crate::db::{file_text, file_set};
 
 pub(crate) fn file_syntax(ctx: QueryCtx, file_id: FileId) -> File {
     (&*ctx.get(FILE_SYNTAX, file_id)).clone()

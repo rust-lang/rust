@@ -13,7 +13,7 @@ use ra_syntax::{
     text_utils::contains_offset_nonstrict
 };
 
-use ::{
+use crate::{
     req::{self, Decoration}, Result,
     conv::{Conv, ConvWith, TryConvWith, MapConvWith, to_location},
     server_world::ServerWorld,

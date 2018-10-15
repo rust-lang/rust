@@ -5,7 +5,7 @@ use std::{
 
 use walkdir::WalkDir;
 
-use {
+use crate::{
     thread_watcher::{Worker, ThreadWatcher},
 };
 

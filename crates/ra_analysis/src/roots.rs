@@ -9,7 +9,7 @@ use rustc_hash::FxHashMap;
 use ra_editor::LineIndex;
 use ra_syntax::File;
 
-use {
+use crate::{
     FileId,
     imp::FileResolverImp,
     symbol_index::SymbolIndex,
@@ -62,23 +62,23 @@ impl WritableSourceRoot {
 
 impl SourceRoot for WritableSourceRoot {
     fn module_tree(&self) -> Arc<ModuleTreeDescriptor> {
-        self.db.make_query(::module_map::module_tree)
+        self.db.make_query(crate::module_map::module_tree)
     }
 
     fn contains(&self, file_id: FileId) -> bool {
         self.db.state().file_map.contains_key(&file_id)
     }
     fn lines(&self, file_id: FileId) -> Arc<LineIndex> {
-        self.db.make_query(|ctx| ::queries::file_lines(ctx, file_id))
+        self.db.make_query(|ctx| crate::queries::file_lines(ctx, file_id))
     }
     fn syntax(&self, file_id: FileId) -> File {
-        self.db.make_query(|ctx| ::queries::file_syntax(ctx, file_id))
+        self.db.make_query(|ctx| crate::queries::file_syntax(ctx, file_id))
     }
     fn symbols<'a>(&'a self, acc: &mut Vec<Arc<SymbolIndex>>) {
         self.db.make_query(|ctx| {
-            let file_set = ::queries::file_set(ctx);
+            let file_set = crate::queries::file_set(ctx);
             let syms = file_set.0.iter()
-                .map(|file_id| ::queries::file_symbols(ctx, *file_id));
+                .map(|file_id| crate::queries::file_symbols(ctx, *file_id));
             acc.extend(syms);
         });
     }

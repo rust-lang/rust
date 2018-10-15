@@ -7,7 +7,7 @@ use ra_editor::{LineIndex, LineCol, Edit, AtomEdit};
 use ra_syntax::{SyntaxKind, TextUnit, TextRange};
 use ra_analysis::{FileId, SourceChange, SourceFileEdit, FileSystemEdit};
 
-use {
+use crate::{
     Result,
     server_world::ServerWorld,
     req,
@@ -299,7 +299,7 @@ pub fn to_location(
         Ok(loc)
 }
 
-pub trait MapConvWith<'a>: Sized {
+pub trait MapConvWith<'a>: Sized + 'a {
     type Ctx;
     type Output;
 
@@ -309,7 +309,7 @@ pub trait MapConvWith<'a>: Sized {
 }
 
 impl<'a, I> MapConvWith<'a> for I
-    where I: Iterator,
+    where I: Iterator + 'a,
           I::Item: ConvWith
 {
     type Ctx = <I::Item as ConvWith>::Ctx;

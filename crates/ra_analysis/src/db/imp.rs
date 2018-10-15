@@ -7,7 +7,7 @@ use std::{
 };
 use rustc_hash::FxHashMap;
 use salsa;
-use {FileId, imp::FileResolverImp};
+use crate::{FileId, imp::FileResolverImp};
 use super::{State, Query, QueryCtx};
 
 pub(super) type Data = Arc<Any + Send + Sync + 'static>;
@@ -51,7 +51,7 @@ pub(crate) trait EvalQuery {
     type Output;
     fn query_type(&self) -> salsa::QueryTypeId;
     fn f(&self) -> salsa::QueryFn<State, Data>;
-    fn get(&self, &QueryCtx, Self::Params) -> Arc<Self::Output>;
+    fn get(&self, ctx: &QueryCtx, params: Self::Params) -> Arc<Self::Output>;
 }
 
 impl<T, R> EvalQuery for Query<T, R>
