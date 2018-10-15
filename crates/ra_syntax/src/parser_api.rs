@@ -1,8 +1,8 @@
 use crate::{
-    token_set::TokenSet,
-    parser_impl::ParserImpl,
-    SyntaxKind::{self, ERROR},
     drop_bomb::DropBomb,
+    parser_impl::ParserImpl,
+    token_set::TokenSet,
+    SyntaxKind::{self, ERROR},
 };
 
 /// `Parser` struct provides the low-level API for
@@ -116,9 +116,7 @@ impl<'t> Parser<'t> {
 
     /// Create an error node and consume the next token.
     pub(crate) fn err_recover(&mut self, message: &str, recovery: TokenSet) {
-        if self.at(SyntaxKind::L_CURLY)
-            || self.at(SyntaxKind::R_CURLY)
-            || self.at_ts(recovery) {
+        if self.at(SyntaxKind::L_CURLY) || self.at(SyntaxKind::R_CURLY) || self.at_ts(recovery) {
             self.error(message);
         } else {
             let m = self.start();

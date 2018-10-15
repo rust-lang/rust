@@ -1,7 +1,8 @@
-use std::thread;
-use crossbeam_channel::{bounded, unbounded, Sender, Receiver};
-use drop_bomb::DropBomb;
 use crate::Result;
+use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
+use drop_bomb::DropBomb;
+
+use std::thread;
 
 pub struct Worker<I, O> {
     pub inp: Sender<I>,
@@ -50,11 +51,13 @@ impl ThreadWatcher {
         info!("waiting for {} to finish ...", self.name);
         let name = self.name;
         self.bomb.defuse();
-        let res = self.thread.join()
+        let res = self
+            .thread
+            .join()
             .map_err(|_| format_err!("ThreadWatcher {} died", name));
         match &res {
             Ok(()) => info!("... {} terminated with ok", name),
-            Err(_) => error!("... {} terminated with err", name)
+            Err(_) => error!("... {} terminated with err", name),
         }
         res
     }
@@ -66,5 +69,9 @@ impl ThreadWatcher {
 fn worker_chan<I, O>(buf: usize) -> ((Sender<I>, Receiver<O>), Receiver<I>, Sender<O>) {
     let (input_sender, input_receiver) = bounded::<I>(buf);
     let (output_sender, output_receiver) = unbounded::<O>();
-    ((input_sender, output_receiver), input_receiver, output_sender)
+    (
+        (input_sender, output_receiver),
+        input_receiver,
+        output_sender,
+    )
 }

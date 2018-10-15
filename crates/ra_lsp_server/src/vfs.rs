@@ -1,14 +1,11 @@
 use std::{
-    path::{PathBuf, Path},
     fs,
+    path::{Path, PathBuf},
 };
 
 use walkdir::WalkDir;
 
-use crate::{
-    thread_watcher::{Worker, ThreadWatcher},
-};
-
+use crate::thread_watcher::{ThreadWatcher, Worker};
 
 #[derive(Debug)]
 pub struct FileEvent {
@@ -24,7 +21,8 @@ pub enum FileEventKind {
 pub fn roots_loader() -> (Worker<PathBuf, (PathBuf, Vec<FileEvent>)>, ThreadWatcher) {
     Worker::<PathBuf, (PathBuf, Vec<FileEvent>)>::spawn(
         "roots loader",
-        128, |input_receiver, output_sender| {
+        128,
+        |input_receiver, output_sender| {
             input_receiver
                 .into_iter()
                 .map(|path| {
@@ -34,7 +32,7 @@ pub fn roots_loader() -> (Worker<PathBuf, (PathBuf, Vec<FileEvent>)>, ThreadWatc
                     (path, events)
                 })
                 .for_each(|it| output_sender.send(it))
-        }
+        },
     )
 }
 

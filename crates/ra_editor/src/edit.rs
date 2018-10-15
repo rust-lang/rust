@@ -1,8 +1,5 @@
 use crate::{TextRange, TextUnit};
-use ra_syntax::{
-    AtomEdit,
-    text_utils::contains_offset_nonstrict,
-};
+use ra_syntax::{text_utils::contains_offset_nonstrict, AtomEdit};
 
 #[derive(Debug, Clone)]
 pub struct Edit {
@@ -11,7 +8,7 @@ pub struct Edit {
 
 #[derive(Debug)]
 pub struct EditBuilder {
-    atoms: Vec<AtomEdit>
+    atoms: Vec<AtomEdit>,
 }
 
 impl EditBuilder {
@@ -36,7 +33,9 @@ impl EditBuilder {
         Edit { atoms }
     }
     pub fn invalidates_offset(&self, offset: TextUnit) -> bool {
-        self.atoms.iter().any(|atom| contains_offset_nonstrict(atom.delete, offset))
+        self.atoms
+            .iter()
+            .any(|atom| contains_offset_nonstrict(atom.delete, offset))
     }
 }
 
@@ -74,7 +73,7 @@ impl Edit {
                 break;
             }
             if offset < atom.delete.end() {
-                return None
+                return None;
             }
             res += TextUnit::of_str(&atom.insert);
             res -= atom.delete.len();

@@ -1,12 +1,12 @@
 #[macro_use]
 extern crate crossbeam_channel;
-extern crate tempdir;
+extern crate flexi_logger;
+extern crate gen_lsp_server;
 extern crate languageserver_types;
+extern crate ra_lsp_server;
 extern crate serde;
 extern crate serde_json;
-extern crate gen_lsp_server;
-extern crate flexi_logger;
-extern crate ra_lsp_server;
+extern crate tempdir;
 
 mod support;
 
@@ -14,17 +14,18 @@ use ra_lsp_server::req::{Runnables, RunnablesParams};
 
 use crate::support::project;
 
-
 const LOG: &'static str = "";
 
 #[test]
 fn test_runnables_no_project() {
-    let server = project(r"
+    let server = project(
+        r"
 //- lib.rs
 #[test]
 fn foo() {
 }
-");
+",
+    );
     server.request::<Runnables>(
         RunnablesParams {
             text_document: server.doc_id("lib.rs"),
@@ -41,13 +42,14 @@ fn foo() {
               "start": { "character": 0, "line": 0 }
             }
           }
-        ]"#
+        ]"#,
     );
 }
 
 #[test]
 fn test_runnables_project() {
-    let server = project(r#"
+    let server = project(
+        r#"
 //- Cargo.toml
 [package]
 name = "foo"
@@ -59,7 +61,8 @@ pub fn foo() {}
 //- tests/spam.rs
 #[test]
 fn test_eggs() {}
-"#);
+"#,
+    );
     server.wait_for_feedback("workspace loaded");
     server.request::<Runnables>(
         RunnablesParams {

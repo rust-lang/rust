@@ -4,13 +4,13 @@ mod input;
 use std::cell::Cell;
 
 use crate::{
-    TextUnit, SmolStr,
     lexer::Token,
     parser_api::Parser,
     parser_impl::{
-        event::{EventProcessor, Event},
+        event::{Event, EventProcessor},
         input::{InputPosition, ParserInput},
     },
+    SmolStr, TextUnit,
 };
 
 use crate::SyntaxKind::{self, EOF, TOMBSTONE};
@@ -86,7 +86,9 @@ impl<'t> ParserImpl<'t> {
         let c2 = self.inp.kind(self.pos + 1);
         let c3 = self.inp.kind(self.pos + 2);
         if self.inp.start(self.pos + 1) == self.inp.start(self.pos) + self.inp.len(self.pos)
-           && self.inp.start(self.pos + 2) == self.inp.start(self.pos + 1) + self.inp.len(self.pos + 1){
+            && self.inp.start(self.pos + 2)
+                == self.inp.start(self.pos + 1) + self.inp.len(self.pos + 1)
+        {
             Some((c1, c2, c3))
         } else {
             None
@@ -138,10 +140,7 @@ impl<'t> ParserImpl<'t> {
 
     fn do_bump(&mut self, kind: SyntaxKind, n_raw_tokens: u8) {
         self.pos += u32::from(n_raw_tokens);
-        self.event(Event::Token {
-            kind,
-            n_raw_tokens,
-        });
+        self.event(Event::Token { kind, n_raw_tokens });
     }
 
     pub(super) fn error(&mut self, msg: String) {

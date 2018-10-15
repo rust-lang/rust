@@ -7,14 +7,14 @@
 //! tree builder: the parser produces a stream of events like
 //! `start node`, `finish node`, and `FileBuilder` converts
 //! this stream to a real tree.
-use std::mem;
 use crate::{
-    TextUnit, TextRange, SmolStr,
     lexer::Token,
     parser_impl::Sink,
+    SmolStr,
     SyntaxKind::{self, *},
+    TextRange, TextUnit,
 };
-
+use std::mem;
 
 /// `Parser` produces a flat list of `Event`s.
 /// They are converted to a tree-structure in
@@ -89,20 +89,28 @@ pub(super) struct EventProcessor<'a, S: Sink> {
 }
 
 impl<'a, S: Sink> EventProcessor<'a, S> {
-    pub(super) fn new(sink: S, text: &'a str, tokens: &'a[Token], events: &'a mut [Event]) -> EventProcessor<'a, S> {
+    pub(super) fn new(
+        sink: S,
+        text: &'a str,
+        tokens: &'a [Token],
+        events: &'a mut [Event],
+    ) -> EventProcessor<'a, S> {
         EventProcessor {
             sink,
             text_pos: 0.into(),
             text,
             token_pos: 0,
             tokens,
-            events
+            events,
         }
     }
 
     pub(super) fn process(mut self) -> S {
         fn tombstone() -> Event {
-            Event::Start { kind: TOMBSTONE, forward_parent: None }
+            Event::Start {
+                kind: TOMBSTONE,
+                forward_parent: None,
+            }
         }
         let mut forward_parents = Vec::new();
 
@@ -112,7 +120,10 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
                     kind: TOMBSTONE, ..
                 } => (),
 
-                Event::Start { kind, forward_parent } => {
+                Event::Start {
+                    kind,
+                    forward_parent,
+                } => {
                     forward_parents.push(kind);
                     let mut idx = i;
                     let mut fp = forward_parent;
@@ -125,7 +136,7 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
                             } => {
                                 forward_parents.push(kind);
                                 forward_parent
-                            },
+                            }
                             _ => unreachable!(),
                         };
                     }
@@ -136,7 +147,7 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
                 Event::Finish => {
                     let last = i == self.events.len() - 1;
                     self.finish(last);
-                },
+                }
                 Event::Token { kind, n_raw_tokens } => {
                     self.eat_ws();
                     let n_raw_tokens = n_raw_tokens as usize;
@@ -162,19 +173,16 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
             .take_while(|it| it.kind.is_trivia())
             .count();
         let leading_trivias = &self.tokens[self.token_pos..self.token_pos + n_trivias];
-        let mut trivia_end = self.text_pos + leading_trivias
-            .iter()
-            .map(|it| it.len)
-            .sum::<TextUnit>();
+        let mut trivia_end =
+            self.text_pos + leading_trivias.iter().map(|it| it.len).sum::<TextUnit>();
 
         let n_attached_trivias = {
-            let leading_trivias = leading_trivias.iter().rev()
-                .map(|it| {
-                    let next_end = trivia_end - it.len;
-                    let range = TextRange::from_to(next_end, trivia_end);
-                    trivia_end = next_end;
-                    (it.kind, &self.text[range])
-                });
+            let leading_trivias = leading_trivias.iter().rev().map(|it| {
+                let next_end = trivia_end - it.len;
+                let range = TextRange::from_to(next_end, trivia_end);
+                trivia_end = next_end;
+                (it.kind, &self.text[range])
+            });
             n_attached_trivias(kind, leading_trivias)
         };
         self.eat_n_trivias(n_trivias - n_attached_trivias);
@@ -215,7 +223,10 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
     }
 }
 
-fn n_attached_trivias<'a>(kind: SyntaxKind, trivias: impl Iterator<Item=(SyntaxKind, &'a str)>) -> usize {
+fn n_attached_trivias<'a>(
+    kind: SyntaxKind,
+    trivias: impl Iterator<Item = (SyntaxKind, &'a str)>,
+) -> usize {
     match kind {
         STRUCT_DEF | ENUM_DEF | FN_DEF | TRAIT_DEF | MODULE => {
             let mut res = 0;
@@ -236,5 +247,4 @@ fn n_attached_trivias<'a>(kind: SyntaxKind, trivias: impl Iterator<Item=(SyntaxK
         }
         _ => 0,
     }
-
 }

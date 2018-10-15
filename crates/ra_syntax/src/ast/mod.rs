@@ -4,15 +4,18 @@ use std::marker::PhantomData;
 
 use itertools::Itertools;
 
-use crate::{
-    SmolStr, SyntaxNodeRef, SyntaxKind::*,
-    yellow::{RefRoot, SyntaxNodeChildren},
-};
 pub use self::generated::*;
+use crate::{
+    yellow::{RefRoot, SyntaxNodeChildren},
+    SmolStr,
+    SyntaxKind::*,
+    SyntaxNodeRef,
+};
 
 pub trait AstNode<'a>: Clone + Copy + 'a {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self>
-        where Self: Sized;
+    where
+        Self: Sized;
     fn syntax(self) -> SyntaxNodeRef<'a>;
 }
 
@@ -64,9 +67,7 @@ pub trait AttrsOwner<'a>: AstNode<'a> {
 
 impl<'a> FnDef<'a> {
     pub fn has_atom_attr(&self, atom: &str) -> bool {
-        self.attrs()
-            .filter_map(|x| x.as_atom())
-            .any(|x| x == atom)
+        self.attrs().filter_map(|x| x.as_atom()).any(|x| x == atom)
     }
 }
 
@@ -135,7 +136,7 @@ pub enum CommentFlavor {
     Line,
     Doc,
     ModuleDoc,
-    Multiline
+    Multiline,
 }
 
 impl CommentFlavor {
@@ -145,7 +146,7 @@ impl CommentFlavor {
             Line => "//",
             Doc => "///",
             ModuleDoc => "//!",
-            Multiline => "/*"
+            Multiline => "/*",
         }
     }
 }
@@ -166,16 +167,14 @@ impl<'a> Whitespace<'a> {
 
 impl<'a> Name<'a> {
     pub fn text(&self) -> SmolStr {
-        let ident = self.syntax().first_child()
-            .unwrap();
+        let ident = self.syntax().first_child().unwrap();
         ident.leaf_text().unwrap().clone()
     }
 }
 
 impl<'a> NameRef<'a> {
     pub fn text(&self) -> SmolStr {
-        let ident = self.syntax().first_child()
-            .unwrap();
+        let ident = self.syntax().first_child().unwrap();
         ident.leaf_text().unwrap().clone()
     }
 }
@@ -240,7 +239,6 @@ fn child_opt<'a, P: AstNode<'a>, C: AstNode<'a>>(parent: P) -> Option<C> {
 fn children<'a, P: AstNode<'a>, C: AstNode<'a>>(parent: P) -> AstChildren<'a, C> {
     AstChildren::new(parent.syntax())
 }
-
 
 #[derive(Debug)]
 pub struct AstChildren<'a, N> {

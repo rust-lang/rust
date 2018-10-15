@@ -1,22 +1,19 @@
-use std::{
-    sync::Arc,
-    panic,
-};
+use std::{panic, sync::Arc};
 
 use once_cell::sync::OnceCell;
-use rayon::prelude::*;
-use salsa::Database;
-use rustc_hash::{FxHashMap, FxHashSet};
 use ra_editor::LineIndex;
 use ra_syntax::File;
+use rayon::prelude::*;
+use rustc_hash::{FxHashMap, FxHashSet};
+use salsa::Database;
 
 use crate::{
-    FileId,
-    imp::FileResolverImp,
-    symbol_index::SymbolIndex,
-    descriptors::{ModuleDescriptor, ModuleTreeDescriptor},
     db::{self, FilesDatabase, SyntaxDatabase},
+    descriptors::{ModuleDescriptor, ModuleTreeDescriptor},
+    imp::FileResolverImp,
     module_map::ModulesDatabase,
+    symbol_index::SymbolIndex,
+    FileId,
 };
 
 pub(crate) trait SourceRoot {
@@ -35,7 +32,7 @@ pub(crate) struct WritableSourceRoot {
 impl WritableSourceRoot {
     pub fn apply_changes(
         &mut self,
-        changes: &mut dyn Iterator<Item=(FileId, Option<String>)>,
+        changes: &mut dyn Iterator<Item = (FileId, Option<String>)>,
         file_resolver: Option<FileResolverImp>,
     ) {
         let mut changed = FxHashSet::default();
@@ -46,22 +43,22 @@ impl WritableSourceRoot {
                     removed.insert(file_id);
                 }
                 Some(text) => {
-                    self.db.query(db::FileTextQuery)
+                    self.db
+                        .query(db::FileTextQuery)
                         .set(file_id, Arc::new(text));
                     changed.insert(file_id);
                 }
             }
         }
         let file_set = self.db.file_set(());
-        let mut files: FxHashSet<FileId> = file_set
-            .files
-            .clone();
+        let mut files: FxHashSet<FileId> = file_set.files.clone();
         for file_id in removed {
             files.remove(&file_id);
         }
         files.extend(changed);
         let resolver = file_resolver.unwrap_or_else(|| file_set.resolver.clone());
-        self.db.query(db::FileSetQuery)
+        self.db
+            .query(db::FileSetQuery)
             .set((), Arc::new(db::FileSet { files, resolver }));
     }
 }
@@ -71,9 +68,7 @@ impl SourceRoot for WritableSourceRoot {
         self.db.module_tree(())
     }
     fn contains(&self, file_id: FileId) -> bool {
-        self.db.file_set(())
-            .files
-            .contains(&file_id)
+        self.db.file_set(()).files.contains(&file_id)
     }
     fn lines(&self, file_id: FileId) -> Arc<LineIndex> {
         self.db.file_lines(file_id)
@@ -83,7 +78,7 @@ impl SourceRoot for WritableSourceRoot {
     }
     fn symbols<'a>(&'a self, acc: &mut Vec<Arc<SymbolIndex>>) {
         let db = &self.db;
-        let symbols =  db.file_set(());
+        let symbols = db.file_set(());
         let symbols = symbols
             .files
             .iter()
@@ -108,12 +103,15 @@ impl FileData {
         }
     }
     fn lines(&self) -> &Arc<LineIndex> {
-        self.lines.get_or_init(|| Arc::new(LineIndex::new(&self.text)))
+        self.lines
+            .get_or_init(|| Arc::new(LineIndex::new(&self.text)))
     }
     fn syntax(&self) -> &File {
         let text = &self.text;
         let syntax = &self.syntax;
-        match panic::catch_unwind(panic::AssertUnwindSafe(|| syntax.get_or_init(|| File::parse(text)))) {
+        match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            syntax.get_or_init(|| File::parse(text))
+        })) {
             Ok(file) => file,
             Err(err) => {
                 error!("Parser paniced on:\n------\n{}\n------\n", text);
@@ -131,22 +129,23 @@ pub(crate) struct ReadonlySourceRoot {
 }
 
 impl ReadonlySourceRoot {
-    pub(crate) fn new(files: Vec<(FileId, String)>, file_resolver: FileResolverImp) -> ReadonlySourceRoot {
-        let modules = files.par_iter()
+    pub(crate) fn new(
+        files: Vec<(FileId, String)>,
+        file_resolver: FileResolverImp,
+    ) -> ReadonlySourceRoot {
+        let modules = files
+            .par_iter()
             .map(|(file_id, text)| {
                 let syntax = File::parse(text);
                 let mod_descr = ModuleDescriptor::new(syntax.ast());
                 (*file_id, syntax, mod_descr)
             })
             .collect::<Vec<_>>();
-        let module_tree = ModuleTreeDescriptor::new(
-            modules.iter().map(|it| (it.0, &it.2)),
-            &file_resolver,
-        );
+        let module_tree =
+            ModuleTreeDescriptor::new(modules.iter().map(|it| (it.0, &it.2)), &file_resolver);
 
-        let symbol_index = SymbolIndex::for_files(
-            modules.par_iter().map(|it| (it.0, it.1.clone()))
-        );
+        let symbol_index =
+            SymbolIndex::for_files(modules.par_iter().map(|it| (it.0, it.1.clone())));
         let file_map: FxHashMap<FileId, FileData> = files
             .into_iter()
             .map(|(id, text)| (id, FileData::new(text)))

@@ -1,15 +1,16 @@
-use std::{
-    sync::Arc,
-    hash::{Hash, Hasher},
-};
-use ra_editor::{FileSymbol, file_symbols};
+use crate::{FileId, JobToken, Query};
+use fst::{self, Streamer};
+use ra_editor::{file_symbols, FileSymbol};
 use ra_syntax::{
     File,
     SyntaxKind::{self, *},
 };
-use fst::{self, Streamer};
 use rayon::prelude::*;
-use crate::{Query, FileId, JobToken};
+
+use std::{
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 
 #[derive(Debug)]
 pub(crate) struct SymbolIndex {
@@ -23,8 +24,7 @@ impl PartialEq for SymbolIndex {
     }
 }
 
-impl Eq for SymbolIndex {
-}
+impl Eq for SymbolIndex {}
 
 impl Hash for SymbolIndex {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
@@ -33,14 +33,12 @@ impl Hash for SymbolIndex {
 }
 
 impl SymbolIndex {
-    pub(crate) fn for_files(files: impl ParallelIterator<Item=(FileId, File)>) -> SymbolIndex {
+    pub(crate) fn for_files(files: impl ParallelIterator<Item = (FileId, File)>) -> SymbolIndex {
         let mut symbols = files
             .flat_map(|(file_id, file)| {
                 file_symbols(&file)
                     .into_iter()
-                    .map(move |symbol| {
-                        (symbol.name.as_str().to_lowercase(), (file_id, symbol))
-                    })
+                    .map(move |symbol| (symbol.name.as_str().to_lowercase(), (file_id, symbol)))
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
@@ -48,9 +46,7 @@ impl SymbolIndex {
         symbols.dedup_by(|s1, s2| s1.0 == s2.0);
         let (names, symbols): (Vec<String>, Vec<(FileId, FileSymbol)>) =
             symbols.into_iter().unzip();
-        let map = fst::Map::from_iter(
-            names.into_iter().zip(0u64..)
-        ).unwrap();
+        let map = fst::Map::from_iter(names.into_iter().zip(0u64..)).unwrap();
         SymbolIndex { symbols, map }
     }
 
@@ -65,7 +61,6 @@ impl Query {
         indices: &[Arc<SymbolIndex>],
         token: &JobToken,
     ) -> Vec<(FileId, FileSymbol)> {
-
         let mut op = fst::map::OpBuilder::new();
         for file_symbols in indices.iter() {
             let automaton = fst::automaton::Subsequence::new(&self.lowercased);

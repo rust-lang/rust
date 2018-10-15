@@ -1,11 +1,9 @@
 use std::{
+    io::{stdin, stdout},
     thread,
-    io::{
-        stdout, stdin,
-    },
 };
 
-use crossbeam_channel::{Receiver, Sender, bounded};
+use crossbeam_channel::{bounded, Receiver, Sender};
 
 use {RawMessage, Result};
 

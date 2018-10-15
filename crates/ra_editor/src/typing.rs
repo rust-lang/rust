@@ -1,32 +1,30 @@
 use std::mem;
 
 use ra_syntax::{
-    TextUnit, TextRange, SyntaxNodeRef, File, AstNode, SyntaxKind,
+    algo::{find_covering_node, find_leaf_at_offset, LeafAtOffset},
     ast,
-    algo::{
-        find_covering_node, find_leaf_at_offset, LeafAtOffset,
-    },
-    text_utils::{intersect, contains_offset_nonstrict},
+    text_utils::{contains_offset_nonstrict, intersect},
+    AstNode, File, SyntaxKind,
     SyntaxKind::*,
+    SyntaxNodeRef, TextRange, TextUnit,
 };
 
-use crate::{LocalEdit, EditBuilder, find_node_at_offset};
+use crate::{find_node_at_offset, EditBuilder, LocalEdit};
 
 pub fn join_lines(file: &File, range: TextRange) -> LocalEdit {
     let range = if range.is_empty() {
         let syntax = file.syntax();
         let text = syntax.text().slice(range.start()..);
         let pos = match text.find('\n') {
-            None => return LocalEdit {
-                edit: EditBuilder::new().finish(),
-                cursor_position: None
-            },
-            Some(pos) => pos
+            None => {
+                return LocalEdit {
+                    edit: EditBuilder::new().finish(),
+                    cursor_position: None,
+                }
+            }
+            Some(pos) => pos,
         };
-        TextRange::offset_len(
-            range.start() + pos,
-            TextUnit::of_char('\n'),
-        )
+        TextRange::offset_len(range.start() + pos, TextUnit::of_char('\n'))
     } else {
         range
     };
@@ -58,7 +56,9 @@ pub fn join_lines(file: &File, range: TextRange) -> LocalEdit {
 }
 
 pub fn on_enter(file: &File, offset: TextUnit) -> Option<LocalEdit> {
-    let comment = find_leaf_at_offset(file.syntax(), offset).left_biased().and_then(|it| ast::Comment::cast(it))?;
+    let comment = find_leaf_at_offset(file.syntax(), offset)
+        .left_biased()
+        .and_then(|it| ast::Comment::cast(it))?;
 
     if let ast::CommentFlavor::Multiline = comment.flavor() {
         return None;
@@ -88,7 +88,7 @@ fn node_indent<'a>(file: &'a File, node: SyntaxNodeRef) -> Option<&'a str> {
         }
         LeafAtOffset::Single(n) => {
             assert!(n == node);
-            return Some("")
+            return Some("");
         }
         LeafAtOffset::None => unreachable!(),
     };
@@ -110,7 +110,12 @@ pub fn on_eq_typed(file: &File, offset: TextUnit) -> Option<LocalEdit> {
         if contains_offset_nonstrict(expr_range, offset) && offset != expr_range.start() {
             return None;
         }
-        if file.syntax().text().slice(offset..expr_range.start()).contains('\n') {
+        if file
+            .syntax()
+            .text()
+            .slice(offset..expr_range.start())
+            .contains('\n')
+        {
             return None;
         }
     } else {
@@ -125,12 +130,7 @@ pub fn on_eq_typed(file: &File, offset: TextUnit) -> Option<LocalEdit> {
     })
 }
 
-fn remove_newline(
-    edit: &mut EditBuilder,
-    node: SyntaxNodeRef,
-    node_text: &str,
-    offset: TextUnit,
-) {
+fn remove_newline(edit: &mut EditBuilder, node: SyntaxNodeRef, node_text: &str, offset: TextUnit) {
     if node.kind() != WHITESPACE || node_text.bytes().filter(|&b| b == b'\n').count() != 1 {
         // The node is either the first or the last in the file
         let suff = &node_text[TextRange::from_to(
@@ -156,7 +156,7 @@ fn remove_newline(
     //
     // into `my_function(<some-expr>)`
     if join_single_expr_block(edit, node).is_some() {
-        return
+        return;
     }
 
     // The node is between two other nodes
@@ -170,34 +170,28 @@ fn remove_newline(
         // Adds: a single whitespace
         edit.replace(
             TextRange::from_to(prev.range().start(), node.range().end()),
-            " ".to_string()
+            " ".to_string(),
         );
     } else if let (Some(_), Some(next)) = (ast::Comment::cast(prev), ast::Comment::cast(next)) {
         // Removes: newline (incl. surrounding whitespace), start of the next comment
         edit.delete(TextRange::from_to(
             node.range().start(),
-            next.syntax().range().start() + TextUnit::of_str(next.prefix())
+            next.syntax().range().start() + TextUnit::of_str(next.prefix()),
         ));
     } else {
         // Remove newline but add a computed amount of whitespace characters
-        edit.replace(
-            node.range(),
-            compute_ws(prev, next).to_string(),
-        );
+        edit.replace(node.range(), compute_ws(prev, next).to_string());
     }
 }
 
 fn is_trailing_comma(left: SyntaxKind, right: SyntaxKind) -> bool {
     match (left, right) {
-       (COMMA, R_PAREN) | (COMMA, R_BRACK) => true,
-       _ => false
+        (COMMA, R_PAREN) | (COMMA, R_BRACK) => true,
+        _ => false,
     }
 }
 
-fn join_single_expr_block(
-    edit: &mut EditBuilder,
-    node: SyntaxNodeRef,
-) -> Option<()> {
+fn join_single_expr_block(edit: &mut EditBuilder, node: SyntaxNodeRef) -> Option<()> {
     let block = ast::Block::cast(node.parent()?)?;
     let block_expr = ast::BlockExpr::cast(block.syntax().parent()?)?;
     let expr = single_expr(block)?;
@@ -244,7 +238,7 @@ fn compute_ws(left: SyntaxNodeRef, right: SyntaxNodeRef) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{check_action, extract_range, extract_offset, add_cursor};
+    use crate::test_utils::{add_cursor, check_action, extract_offset, extract_range};
 
     fn check_join_lines(before: &str, after: &str) {
         check_action(before, after, |file, offset| {
@@ -256,118 +250,142 @@ mod tests {
 
     #[test]
     fn test_join_lines_comma() {
-        check_join_lines(r"
+        check_join_lines(
+            r"
 fn foo() {
     <|>foo(1,
     )
 }
-", r"
+",
+            r"
 fn foo() {
     <|>foo(1)
 }
-");
+",
+        );
     }
 
     #[test]
     fn test_join_lines_lambda_block() {
-        check_join_lines(r"
+        check_join_lines(
+            r"
 pub fn reparse(&self, edit: &AtomEdit) -> File {
     <|>self.incremental_reparse(edit).unwrap_or_else(|| {
         self.full_reparse(edit)
     })
 }
-", r"
+",
+            r"
 pub fn reparse(&self, edit: &AtomEdit) -> File {
     <|>self.incremental_reparse(edit).unwrap_or_else(|| self.full_reparse(edit))
 }
-");
+",
+        );
     }
 
     #[test]
     fn test_join_lines_block() {
-        check_join_lines(r"
+        check_join_lines(
+            r"
 fn foo() {
     foo(<|>{
         92
     })
-}", r"
+}",
+            r"
 fn foo() {
     foo(<|>92)
-}");
+}",
+        );
     }
 
     #[test]
     fn test_join_lines_normal_comments() {
-        check_join_lines(r"
+        check_join_lines(
+            r"
 fn foo() {
     // Hello<|>
     // world!
 }
-", r"
+",
+            r"
 fn foo() {
     // Hello<|> world!
 }
-");
+",
+        );
     }
 
     #[test]
     fn test_join_lines_doc_comments() {
-        check_join_lines(r"
+        check_join_lines(
+            r"
 fn foo() {
     /// Hello<|>
     /// world!
 }
-", r"
+",
+            r"
 fn foo() {
     /// Hello<|> world!
 }
-");
+",
+        );
     }
 
     #[test]
     fn test_join_lines_mod_comments() {
-        check_join_lines(r"
+        check_join_lines(
+            r"
 fn foo() {
     //! Hello<|>
     //! world!
 }
-", r"
+",
+            r"
 fn foo() {
     //! Hello<|> world!
 }
-");
+",
+        );
     }
 
     #[test]
     fn test_join_lines_multiline_comments_1() {
-        check_join_lines(r"
+        check_join_lines(
+            r"
 fn foo() {
     // Hello<|>
     /* world! */
 }
-", r"
+",
+            r"
 fn foo() {
     // Hello<|> world! */
 }
-");
+",
+        );
     }
 
     #[test]
     fn test_join_lines_multiline_comments_2() {
-        check_join_lines(r"
+        check_join_lines(
+            r"
 fn foo() {
     // The<|>
     /* quick
     brown
     fox! */
 }
-", r"
+",
+            r"
 fn foo() {
     // The<|> quick
     brown
     fox! */
 }
-");
+",
+        );
     }
 
     fn check_join_lines_sel(before: &str, after: &str) {
@@ -380,59 +398,71 @@ fn foo() {
 
     #[test]
     fn test_join_lines_selection_fn_args() {
-        check_join_lines_sel(r"
+        check_join_lines_sel(
+            r"
 fn foo() {
     <|>foo(1,
         2,
         3,
     <|>)
 }
-    ", r"
+    ",
+            r"
 fn foo() {
     foo(1, 2, 3)
 }
-    ");
+    ",
+        );
     }
 
     #[test]
     fn test_join_lines_selection_struct() {
-        check_join_lines_sel(r"
+        check_join_lines_sel(
+            r"
 struct Foo <|>{
     f: u32,
 }<|>
-    ", r"
+    ",
+            r"
 struct Foo { f: u32 }
-    ");
+    ",
+        );
     }
 
     #[test]
     fn test_join_lines_selection_dot_chain() {
-        check_join_lines_sel(r"
+        check_join_lines_sel(
+            r"
 fn foo() {
     join(<|>type_params.type_params()
             .filter_map(|it| it.name())
             .map(|it| it.text())<|>)
-}", r"
+}",
+            r"
 fn foo() {
     join(type_params.type_params().filter_map(|it| it.name()).map(|it| it.text()))
-}");
+}",
+        );
     }
 
     #[test]
     fn test_join_lines_selection_lambda_block_body() {
-        check_join_lines_sel(r"
+        check_join_lines_sel(
+            r"
 pub fn handle_find_matching_brace() {
     params.offsets
         .map(|offset| <|>{
             world.analysis().matching_brace(&file, offset).unwrap_or(offset)
         }<|>)
         .collect();
-}", r"
+}",
+            r"
 pub fn handle_find_matching_brace() {
     params.offsets
         .map(|offset| world.analysis().matching_brace(&file, offset).unwrap_or(offset))
         .collect();
-}");
+}",
+        );
     }
 
     #[test]
@@ -454,15 +484,18 @@ pub fn handle_find_matching_brace() {
         //     let foo =;
         // }
         // ");
-        do_check(r"
+        do_check(
+            r"
 fn foo() {
     let foo =<|> 1 + 1
 }
-", r"
+",
+            r"
 fn foo() {
     let foo = 1 + 1;
 }
-");
+",
+        );
         //     do_check(r"
         // fn foo() {
         //     let foo =<|>
@@ -496,28 +529,34 @@ fn foo() {
             assert!(apply_on_enter(text).is_none())
         }
 
-        do_check(r"
+        do_check(
+            r"
 /// Some docs<|>
 fn foo() {
 }
-", r"
+",
+            r"
 /// Some docs
 /// <|>
 fn foo() {
 }
-");
-        do_check(r"
+",
+        );
+        do_check(
+            r"
 impl S {
     /// Some<|> docs.
     fn foo() {}
 }
-", r"
+",
+            r"
 impl S {
     /// Some
     /// <|> docs.
     fn foo() {}
 }
-");
+",
+        );
         do_check_noop(r"<|>//! docz");
     }
 }

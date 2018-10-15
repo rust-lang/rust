@@ -1,32 +1,31 @@
 use std::{
-    sync::{
-        Arc,
-    },
-    hash::{Hash, Hasher},
-    fmt,
     collections::VecDeque,
+    fmt,
+    hash::{Hash, Hasher},
     iter,
+    sync::Arc,
 };
 
+use ra_editor::{self, find_node_at_offset, resolve_local_name, FileSymbol, LineIndex, LocalEdit};
+use ra_syntax::{
+    ast::{self, ArgListOwner, Expr, NameOwner},
+    AstNode, File, SmolStr,
+    SyntaxKind::*,
+    SyntaxNodeRef, TextRange, TextUnit,
+};
 use relative_path::RelativePath;
 use rustc_hash::FxHashSet;
-use ra_editor::{self, FileSymbol, LineIndex, find_node_at_offset, LocalEdit, resolve_local_name};
-use ra_syntax::{
-    TextUnit, TextRange, SmolStr, File, AstNode, SyntaxNodeRef,
-    SyntaxKind::*,
-    ast::{self, NameOwner, ArgListOwner, Expr},
-};
 
 use crate::{
-    FileId, FileResolver, Query, Diagnostic, SourceChange, SourceFileEdit, Position, FileSystemEdit,
-    JobToken, CrateGraph, CrateId,
-    roots::{SourceRoot, ReadonlySourceRoot, WritableSourceRoot},
     descriptors::{FnDescriptor, ModuleTreeDescriptor, Problem},
+    roots::{ReadonlySourceRoot, SourceRoot, WritableSourceRoot},
+    CrateGraph, CrateId, Diagnostic, FileId, FileResolver, FileSystemEdit, JobToken, Position,
+    Query, SourceChange, SourceFileEdit,
 };
 
 #[derive(Clone, Debug)]
 pub(crate) struct FileResolverImp {
-    inner: Arc<FileResolver>
+    inner: Arc<FileResolver>,
 }
 
 impl PartialEq for FileResolverImp {
@@ -35,8 +34,7 @@ impl PartialEq for FileResolverImp {
     }
 }
 
-impl Eq for FileResolverImp {
-}
+impl Eq for FileResolverImp {}
 
 impl Hash for FileResolverImp {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
@@ -67,17 +65,23 @@ impl Default for FileResolverImp {
             fn file_stem(&self, _file_: FileId) -> String {
                 panic!("file resolver not set")
             }
-            fn resolve(&self, _file_id: FileId, _path: &::relative_path::RelativePath) -> Option<FileId> {
+            fn resolve(
+                &self,
+                _file_id: FileId,
+                _path: &::relative_path::RelativePath,
+            ) -> Option<FileId> {
                 panic!("file resolver not set")
             }
         }
-        FileResolverImp { inner: Arc::new(DummyResolver) }
+        FileResolverImp {
+            inner: Arc::new(DummyResolver),
+        }
     }
 }
 
 #[derive(Debug)]
 pub(crate) struct AnalysisHostImpl {
-    data: WorldData
+    data: WorldData,
 }
 
 impl AnalysisHostImpl {
@@ -91,13 +95,13 @@ impl AnalysisHostImpl {
             data: self.data.clone(),
         }
     }
-    pub fn change_files(&mut self, changes: &mut dyn Iterator<Item=(FileId, Option<String>)>) {
-        self.data_mut()
-            .root.apply_changes(changes, None);
+    pub fn change_files(&mut self, changes: &mut dyn Iterator<Item = (FileId, Option<String>)>) {
+        self.data_mut().root.apply_changes(changes, None);
     }
     pub fn set_file_resolver(&mut self, resolver: FileResolverImp) {
         self.data_mut()
-            .root.apply_changes(&mut iter::empty(), Some(resolver));
+            .root
+            .apply_changes(&mut iter::empty(), Some(resolver));
     }
     pub fn set_crate_graph(&mut self, graph: CrateGraph) {
         let mut visited = FxHashSet::default();
@@ -131,7 +135,12 @@ impl AnalysisImpl {
         if self.data.root.contains(file_id) {
             return &self.data.root;
         }
-        &**self.data.libs.iter().find(|it| it.contains(file_id)).unwrap()
+        &**self
+            .data
+            .libs
+            .iter()
+            .find(|it| it.contains(file_id))
+            .unwrap()
     }
     pub fn file_syntax(&self, file_id: FileId) -> File {
         self.root(file_id).syntax(file_id)
@@ -142,18 +151,17 @@ impl AnalysisImpl {
     pub fn world_symbols(&self, query: Query, token: &JobToken) -> Vec<(FileId, FileSymbol)> {
         let mut buf = Vec::new();
         if query.libs {
-            self.data.libs.iter()
-                .for_each(|it| it.symbols(&mut buf));
+            self.data.libs.iter().for_each(|it| it.symbols(&mut buf));
         } else {
             self.data.root.symbols(&mut buf);
         }
         query.search(&buf, token)
-
     }
     pub fn parent_module(&self, file_id: FileId) -> Vec<(FileId, FileSymbol)> {
         let root = self.root(file_id);
         let module_tree = root.module_tree();
-        module_tree.parent_modules(file_id)
+        module_tree
+            .parent_modules(file_id)
             .iter()
             .map(|link| {
                 let file_id = link.owner(&module_tree);
@@ -203,15 +211,17 @@ impl AnalysisImpl {
         let file = root.syntax(file_id);
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, offset) {
-
             // First try to resolve the symbol locally
             if let Some((name, range)) = resolve_local_name(&file, offset, name_ref) {
                 let mut vec = vec![];
-                vec.push((file_id, FileSymbol {
-                    name,
-                    node_range: range,
-                    kind : NAME
-                }));
+                vec.push((
+                    file_id,
+                    FileSymbol {
+                        name,
+                        node_range: range,
+                        kind: NAME,
+                    },
+                ));
 
                 return vec;
             } else {
@@ -224,17 +234,21 @@ impl AnalysisImpl {
                 if module.has_semi() {
                     let file_ids = self.resolve_module(&*module_tree, file_id, module);
 
-                    let res = file_ids.into_iter().map(|id| {
-                        let name = module.name()
-                            .map(|n| n.text())
-                            .unwrap_or_else(|| SmolStr::new(""));
-                        let symbol = FileSymbol {
-                            name,
-                            node_range: TextRange::offset_len(0.into(), 0.into()),
-                            kind: MODULE,
-                        };
-                        (id, symbol)
-                    }).collect();
+                    let res = file_ids
+                        .into_iter()
+                        .map(|id| {
+                            let name = module
+                                .name()
+                                .map(|n| n.text())
+                                .unwrap_or_else(|| SmolStr::new(""));
+                            let symbol = FileSymbol {
+                                name,
+                                node_range: TextRange::offset_len(0.into(), 0.into()),
+                                kind: MODULE,
+                            };
+                            (id, symbol)
+                        })
+                        .collect();
 
                     return res;
                 }
@@ -245,12 +259,16 @@ impl AnalysisImpl {
 
     pub fn diagnostics(&self, file_id: FileId) -> Vec<Diagnostic> {
         let root = self.root(file_id);
-        let module_tree  = root.module_tree();
+        let module_tree = root.module_tree();
         let syntax = root.syntax(file_id);
 
         let mut res = ra_editor::diagnostics(&syntax)
             .into_iter()
-            .map(|d| Diagnostic { range: d.range, message: d.msg, fix: None })
+            .map(|d| Diagnostic {
+                range: d.range,
+                message: d.msg,
+                fix: None,
+            })
             .collect::<Vec<_>>();
 
         for (name_node, problem) in module_tree.problems(file_id, syntax.ast()) {
@@ -273,8 +291,14 @@ impl AnalysisImpl {
                     }
                 }
                 Problem::NotDirOwner { move_to, candidate } => {
-                    let move_file = FileSystemEdit::MoveFile { file: file_id, path: move_to.clone() };
-                    let create_file = FileSystemEdit::CreateFile { anchor: file_id, path: move_to.join(candidate) };
+                    let move_file = FileSystemEdit::MoveFile {
+                        file: file_id,
+                        path: move_to.clone(),
+                    };
+                    let create_file = FileSystemEdit::CreateFile {
+                        anchor: file_id,
+                        path: move_to.join(candidate),
+                    };
                     let fix = SourceChange {
                         label: "move file and create module".to_string(),
                         source_file_edits: Vec::new(),
@@ -297,23 +321,34 @@ impl AnalysisImpl {
         let file = self.file_syntax(file_id);
         let offset = range.start();
         let actions = vec![
-            ("flip comma", ra_editor::flip_comma(&file, offset).map(|f| f())),
-            ("add `#[derive]`", ra_editor::add_derive(&file, offset).map(|f| f())),
+            (
+                "flip comma",
+                ra_editor::flip_comma(&file, offset).map(|f| f()),
+            ),
+            (
+                "add `#[derive]`",
+                ra_editor::add_derive(&file, offset).map(|f| f()),
+            ),
             ("add impl", ra_editor::add_impl(&file, offset).map(|f| f())),
-            ("introduce variable", ra_editor::introduce_variable(&file, range).map(|f| f())),
+            (
+                "introduce variable",
+                ra_editor::introduce_variable(&file, range).map(|f| f()),
+            ),
         ];
-        actions.into_iter()
+        actions
+            .into_iter()
             .filter_map(|(name, local_edit)| {
-                Some(SourceChange::from_local_edit(
-                    file_id, name, local_edit?,
-                ))
+                Some(SourceChange::from_local_edit(file_id, name, local_edit?))
             })
             .collect()
     }
 
-    pub fn resolve_callable(&self, file_id: FileId, offset: TextUnit, token: &JobToken)
-        -> Option<(FnDescriptor, Option<usize>)> {
-
+    pub fn resolve_callable(
+        &self,
+        file_id: FileId,
+        offset: TextUnit,
+        token: &JobToken,
+    ) -> Option<(FnDescriptor, Option<usize>)> {
         let root = self.root(file_id);
         let file = root.syntax(file_id);
         let syntax = file.syntax();
@@ -332,9 +367,7 @@ impl AnalysisImpl {
                         let mut current_parameter = None;
 
                         let num_params = descriptor.params.len();
-                        let has_self = fn_def.param_list()
-                            .and_then(|l| l.self_param())
-                            .is_some();
+                        let has_self = fn_def.param_list().and_then(|l| l.self_param()).is_some();
 
                         if num_params == 1 {
                             if !has_self {
@@ -350,8 +383,11 @@ impl AnalysisImpl {
                                 let start = arg_list.syntax().range().start();
 
                                 let range_search = TextRange::from_to(start, offset);
-                                let mut commas: usize = arg_list.syntax().text()
-                                    .slice(range_search).to_string()
+                                let mut commas: usize = arg_list
+                                    .syntax()
+                                    .text()
+                                    .slice(range_search)
+                                    .to_string()
                                     .matches(",")
                                     .count();
 
@@ -381,7 +417,12 @@ impl AnalysisImpl {
         self.world_symbols(query, token)
     }
 
-    fn resolve_module(&self, module_tree: &ModuleTreeDescriptor, file_id: FileId, module: ast::Module) -> Vec<FileId> {
+    fn resolve_module(
+        &self,
+        module_tree: &ModuleTreeDescriptor,
+        file_id: FileId,
+        module: ast::Module,
+    ) -> Vec<FileId> {
         let name = match module.name() {
             Some(name) => name.text(),
             None => return Vec::new(),
@@ -407,15 +448,17 @@ impl SourceChange {
             label: label.to_string(),
             source_file_edits: vec![file_edit],
             file_system_edits: vec![],
-            cursor_position: edit.cursor_position
-                .map(|offset| Position { offset, file_id })
+            cursor_position: edit
+                .cursor_position
+                .map(|offset| Position { offset, file_id }),
         }
     }
 }
 
 impl CrateGraph {
     fn crate_id_for_crate_root(&self, file_id: FileId) -> Option<CrateId> {
-        let (&crate_id, _) = self.crate_roots
+        let (&crate_id, _) = self
+            .crate_roots
             .iter()
             .find(|(_crate_id, &root_id)| root_id == file_id)?;
         Some(crate_id)
@@ -424,7 +467,7 @@ impl CrateGraph {
 
 enum FnCallNode<'a> {
     CallExpr(ast::CallExpr<'a>),
-    MethodCallExpr(ast::MethodCallExpr<'a>)
+    MethodCallExpr(ast::MethodCallExpr<'a>),
 }
 
 impl<'a> FnCallNode<'a> {
@@ -440,27 +483,23 @@ impl<'a> FnCallNode<'a> {
 
     pub fn name_ref(&self) -> Option<ast::NameRef> {
         match *self {
-            FnCallNode::CallExpr(call_expr) => {
-                Some(match call_expr.expr()? {
-                    Expr::PathExpr(path_expr) => {
-                        path_expr.path()?.segment()?.name_ref()?
-                    },
-                    _ => return None
-                })
-            },
+            FnCallNode::CallExpr(call_expr) => Some(match call_expr.expr()? {
+                Expr::PathExpr(path_expr) => path_expr.path()?.segment()?.name_ref()?,
+                _ => return None,
+            }),
 
-            FnCallNode::MethodCallExpr(call_expr) => {
-                call_expr.syntax().children()
-                    .filter_map(ast::NameRef::cast)
-                    .nth(0)
-            }
+            FnCallNode::MethodCallExpr(call_expr) => call_expr
+                .syntax()
+                .children()
+                .filter_map(ast::NameRef::cast)
+                .nth(0),
         }
     }
 
     pub fn arg_list(&self) -> Option<ast::ArgList> {
         match *self {
             FnCallNode::CallExpr(expr) => expr.arg_list(),
-            FnCallNode::MethodCallExpr(expr) => expr.arg_list()
+            FnCallNode::MethodCallExpr(expr) => expr.arg_list(),
         }
     }
 }

@@ -1,8 +1,8 @@
-use std::fmt::Write;
 use crate::{
     algo::walk::{walk, WalkEvent},
-    SyntaxKind, File, SyntaxNodeRef
+    File, SyntaxKind, SyntaxNodeRef,
 };
+use std::fmt::Write;
 
 /// Parse a file and create a string representation of the resulting parse tree.
 pub fn dump_tree(syntax: SyntaxNodeRef) -> String {
@@ -58,9 +58,7 @@ pub(crate) fn validate_block_structure(root: SyntaxNodeRef) {
     let mut stack = Vec::new();
     for node in root.descendants() {
         match node.kind() {
-            SyntaxKind::L_CURLY => {
-                stack.push(node)
-            }
+            SyntaxKind::L_CURLY => stack.push(node),
             SyntaxKind::R_CURLY => {
                 if let Some(pair) = stack.pop() {
                     assert_eq!(

@@ -1,17 +1,14 @@
 use join_to_string::join;
 
 use ra_syntax::{
-    File, TextUnit, TextRange, Direction,
-    ast::{self, AstNode, AttrsOwner, TypeParamsOwner, NameOwner},
+    algo::{find_covering_node, find_leaf_at_offset},
+    ast::{self, AstNode, AttrsOwner, NameOwner, TypeParamsOwner},
+    Direction, File,
     SyntaxKind::{COMMA, WHITESPACE},
-    SyntaxNodeRef,
-    algo::{
-        find_leaf_at_offset,
-        find_covering_node,
-    },
+    SyntaxNodeRef, TextRange, TextUnit,
 };
 
-use crate::{EditBuilder, Edit, find_node_at_offset};
+use crate::{find_node_at_offset, Edit, EditBuilder};
 
 #[derive(Debug)]
 pub struct LocalEdit {
@@ -52,9 +49,7 @@ pub fn add_derive<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() 
                 edit.insert(node_start, "#[derive()]\n".to_string());
                 node_start + TextUnit::of_str("#[derive(")
             }
-            Some(tt) => {
-                tt.syntax().range().end() - TextUnit::of_char(')')
-            }
+            Some(tt) => tt.syntax().range().end() - TextUnit::of_char(')'),
         };
         LocalEdit {
             edit: edit.finish(),
@@ -74,14 +69,19 @@ pub fn add_impl<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() ->
         let mut buf = String::new();
         buf.push_str("\n\nimpl");
         if let Some(type_params) = type_params {
-            type_params.syntax().text()
-                .push_to(&mut buf);
+            type_params.syntax().text().push_to(&mut buf);
         }
         buf.push_str(" ");
         buf.push_str(name.text().as_str());
         if let Some(type_params) = type_params {
-            let lifetime_params = type_params.lifetime_params().filter_map(|it| it.lifetime()).map(|it| it.text());
-            let type_params = type_params.type_params().filter_map(|it| it.name()).map(|it| it.text());
+            let lifetime_params = type_params
+                .lifetime_params()
+                .filter_map(|it| it.lifetime())
+                .map(|it| it.text());
+            let type_params = type_params
+                .type_params()
+                .filter_map(|it| it.name())
+                .map(|it| it.text());
             join(lifetime_params.chain(type_params))
                 .surround_with("<", ">")
                 .to_buf(&mut buf);
@@ -97,10 +97,17 @@ pub fn add_impl<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() ->
     })
 }
 
-pub fn introduce_variable<'a>(file: &'a File, range: TextRange) -> Option<impl FnOnce() -> LocalEdit + 'a> {
+pub fn introduce_variable<'a>(
+    file: &'a File,
+    range: TextRange,
+) -> Option<impl FnOnce() -> LocalEdit + 'a> {
     let node = find_covering_node(file.syntax(), range);
     let expr = node.ancestors().filter_map(ast::Expr::cast).next()?;
-    let anchor_stmt = expr.syntax().ancestors().filter_map(ast::Stmt::cast).next()?;
+    let anchor_stmt = expr
+        .syntax()
+        .ancestors()
+        .filter_map(ast::Stmt::cast)
+        .next()?;
     let indent = anchor_stmt.syntax().prev_sibling()?;
     if indent.kind() != WHITESPACE {
         return None;
@@ -191,7 +198,8 @@ mod tests {
             "
 fn foo() {
     foo(<|>1 + 1<|>);
-}", "
+}",
+            "
 fn foo() {
     let <|>var_name = 1 + 1;
     foo(var_name);
@@ -201,11 +209,12 @@ fn foo() {
     }
     #[test]
     fn test_intrdoduce_var_expr_stmt() {
-check_action_range(
+        check_action_range(
             "
 fn foo() {
     <|>1 + 1<|>;
-}", "
+}",
+            "
 fn foo() {
     let <|>var_name = 1 + 1;
 }",

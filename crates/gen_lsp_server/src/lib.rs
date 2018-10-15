@@ -59,7 +59,6 @@
 //! }
 //! ```
 
-
 #[macro_use]
 extern crate failure;
 #[macro_use]
@@ -74,16 +73,16 @@ extern crate languageserver_types;
 mod msg;
 mod stdio;
 
-use crossbeam_channel::{Sender, Receiver};
+use crossbeam_channel::{Receiver, Sender};
 use languageserver_types::{
-    ServerCapabilities, InitializeResult, InitializeParams,
+    notification::{Exit, Initialized},
     request::{Initialize, Shutdown},
-    notification::{Initialized, Exit},
+    InitializeParams, InitializeResult, ServerCapabilities,
 };
 
 pub type Result<T> = ::std::result::Result<T, failure::Error>;
 pub use {
-    msg::{RawMessage, RawRequest, RawResponse, RawResponseError, RawNotification, ErrorCode},
+    msg::{ErrorCode, RawMessage, RawNotification, RawRequest, RawResponse, RawResponseError},
     stdio::{stdio_transport, Threads},
 };
 
@@ -97,11 +96,7 @@ pub fn run_server(
     caps: ServerCapabilities,
     receiver: Receiver<RawMessage>,
     sender: Sender<RawMessage>,
-    server: impl FnOnce(
-        InitializeParams,
-        &Receiver<RawMessage>,
-        &Sender<RawMessage>,
-    ) -> Result<()>,
+    server: impl FnOnce(InitializeParams, &Receiver<RawMessage>, &Sender<RawMessage>) -> Result<()>,
 ) -> Result<()> {
     info!("lsp server initializes");
     let params = initialize(&receiver, &sender, caps)?;
@@ -109,12 +104,10 @@ pub fn run_server(
     server(params, &receiver, &sender)?;
     info!("lsp server waiting for exit notification");
     match receiver.recv() {
-        Some(RawMessage::Notification(n)) => {
-            n.cast::<Exit>().map_err(|n| format_err!(
-                "unexpected notification during shutdown: {:?}", n
-            ))?
-        }
-        m => bail!("unexpected message during shutdown: {:?}", m)
+        Some(RawMessage::Notification(n)) => n
+            .cast::<Exit>()
+            .map_err(|n| format_err!("unexpected notification during shutdown: {:?}", n))?,
+        m => bail!("unexpected message during shutdown: {:?}", m),
     }
     info!("lsp server shutdown complete");
     Ok(())
@@ -141,17 +134,15 @@ fn initialize(
         Some(RawMessage::Request(req)) => match req.cast::<Initialize>() {
             Err(req) => bail!("expected initialize request, got {:?}", req),
             Ok(req) => req,
-        }
-        msg =>
-            bail!("expected initialize request, got {:?}", msg),
+        },
+        msg => bail!("expected initialize request, got {:?}", msg),
     };
     let resp = RawResponse::ok::<Initialize>(id, &InitializeResult { capabilities: caps });
     sender.send(RawMessage::Response(resp));
     match receiver.recv() {
         Some(RawMessage::Notification(n)) => {
-            n.cast::<Initialized>().map_err(|_| format_err!(
-                "expected initialized notification"
-            ))?;
+            n.cast::<Initialized>()
+                .map_err(|_| format_err!("expected initialized notification"))?;
         }
         _ => bail!("expected initialized notification"),
     }

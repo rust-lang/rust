@@ -128,4 +128,3 @@ pub(crate) fn impl_type(p: &mut Parser) {
     }
     types::type_(p);
 }
-

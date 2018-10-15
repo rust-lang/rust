@@ -1,44 +1,41 @@
-extern crate ra_syntax;
-extern crate superslice;
 extern crate itertools;
 extern crate join_to_string;
+extern crate ra_syntax;
 extern crate rustc_hash;
+extern crate superslice;
 #[cfg(test)]
 #[macro_use]
 extern crate test_utils as _test_utils;
 
-mod extend_selection;
-mod symbols;
-mod line_index;
-mod edit;
-mod folding_ranges;
 mod code_actions;
-mod typing;
 mod completion;
+mod edit;
+mod extend_selection;
+mod folding_ranges;
+mod line_index;
 mod scope;
+mod symbols;
 #[cfg(test)]
 mod test_utils;
+mod typing;
 
-use ra_syntax::{
-    File, TextUnit, TextRange, SmolStr, SyntaxNodeRef,
-    ast::{self, AstNode, NameOwner},
-    algo::find_leaf_at_offset,
-    SyntaxKind::{self, *},
+pub use self::{
+    code_actions::{add_derive, add_impl, flip_comma, introduce_variable, LocalEdit},
+    completion::{scope_completion, CompletionItem},
+    edit::{Edit, EditBuilder},
+    extend_selection::extend_selection,
+    folding_ranges::{folding_ranges, Fold, FoldKind},
+    line_index::{LineCol, LineIndex},
+    symbols::{file_structure, file_symbols, FileSymbol, StructureNode},
+    typing::{join_lines, on_enter, on_eq_typed},
 };
 pub use ra_syntax::AtomEdit;
-pub use self::{
-    line_index::{LineIndex, LineCol},
-    extend_selection::extend_selection,
-    symbols::{StructureNode, file_structure, FileSymbol, file_symbols},
-    edit::{EditBuilder, Edit},
-    code_actions::{
-        LocalEdit,
-        flip_comma, add_derive, add_impl,
-        introduce_variable,
-    },
-    typing::{join_lines, on_eq_typed, on_enter},
-    completion::{scope_completion, CompletionItem},
-    folding_ranges::{Fold, FoldKind, folding_ranges}
+use ra_syntax::{
+    algo::find_leaf_at_offset,
+    ast::{self, AstNode, NameOwner},
+    File, SmolStr,
+    SyntaxKind::{self, *},
+    SyntaxNodeRef, TextRange, TextUnit,
 };
 
 #[derive(Debug)]
@@ -67,10 +64,7 @@ pub enum RunnableKind {
 
 pub fn matching_brace(file: &File, offset: TextUnit) -> Option<TextUnit> {
     const BRACES: &[SyntaxKind] = &[
-        L_CURLY, R_CURLY,
-        L_BRACK, R_BRACK,
-        L_PAREN, R_PAREN,
-        L_ANGLE, R_ANGLE,
+        L_CURLY, R_CURLY, L_BRACK, R_BRACK, L_PAREN, R_PAREN, L_ANGLE, R_ANGLE,
     ];
     let (brace_node, brace_idx) = find_leaf_at_offset(file.syntax(), offset)
         .filter_map(|node| {
@@ -80,7 +74,8 @@ pub fn matching_brace(file: &File, offset: TextUnit) -> Option<TextUnit> {
         .next()?;
     let parent = brace_node.parent()?;
     let matching_kind = BRACES[brace_idx ^ 1];
-    let matching_node = parent.children()
+    let matching_node = parent
+        .children()
         .find(|node| node.kind() == matching_kind)?;
     Some(matching_node.range().start())
 }
@@ -108,10 +103,13 @@ pub fn highlight(file: &File) -> Vec<HighlightedRange> {
 }
 
 pub fn diagnostics(file: &File) -> Vec<Diagnostic> {
-    file.errors().into_iter().map(|err| Diagnostic {
-        range: TextRange::offset_len(err.offset, 1.into()),
-        msg: "Syntax Error: ".to_string() + &err.msg,
-    }).collect()
+    file.errors()
+        .into_iter()
+        .map(|err| Diagnostic {
+            range: TextRange::offset_len(err.offset, 1.into()),
+            msg: "Syntax Error: ".to_string() + &err.msg,
+        })
+        .collect()
 }
 
 pub fn syntax_tree(file: &File) -> String {
@@ -119,7 +117,8 @@ pub fn syntax_tree(file: &File) -> String {
 }
 
 pub fn runnables(file: &File) -> Vec<Runnable> {
-    file.syntax().descendants()
+    file.syntax()
+        .descendants()
         .filter_map(ast::FnDef::cast)
         .filter_map(|f| {
             let name = f.name()?.text();
@@ -127,7 +126,7 @@ pub fn runnables(file: &File) -> Vec<Runnable> {
                 RunnableKind::Bin
             } else if f.has_atom_attr("test") {
                 RunnableKind::Test {
-                    name: name.to_string()
+                    name: name.to_string(),
                 }
             } else {
                 return None;
@@ -145,15 +144,18 @@ pub fn find_node_at_offset<'a, N: AstNode<'a>>(
     offset: TextUnit,
 ) -> Option<N> {
     let leaves = find_leaf_at_offset(syntax, offset);
-    let leaf = leaves.clone()
+    let leaf = leaves
+        .clone()
         .find(|leaf| !leaf.kind().is_trivia())
         .or_else(|| leaves.right_biased())?;
-    leaf.ancestors()
-        .filter_map(N::cast)
-        .next()
+    leaf.ancestors().filter_map(N::cast).next()
 }
 
-pub fn resolve_local_name(file: &File, offset: TextUnit, name_ref: ast::NameRef) -> Option<(SmolStr, TextRange)> {
+pub fn resolve_local_name(
+    file: &File,
+    offset: TextUnit,
+    name_ref: ast::NameRef,
+) -> Option<(SmolStr, TextRange)> {
     let fn_def = find_node_at_offset::<ast::FnDef>(file.syntax(), offset)?;
     let scopes = scope::FnScopes::new(fn_def);
     let scope_entry = scope::resolve_local_name(name_ref, &scopes)?;
@@ -164,15 +166,17 @@ pub fn resolve_local_name(file: &File, offset: TextUnit, name_ref: ast::NameRef)
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{assert_eq_dbg, extract_offset, add_cursor};
+    use crate::test_utils::{add_cursor, assert_eq_dbg, extract_offset};
 
     #[test]
     fn test_highlighting() {
-        let file = File::parse(r#"
+        let file = File::parse(
+            r#"
 // comment
 fn main() {}
     println!("Hello, {}!", 92);
-"#);
+"#,
+        );
         let hls = highlight(&file);
         assert_eq_dbg(
             r#"[HighlightedRange { range: [1; 11), tag: "comment" },
@@ -187,7 +191,8 @@ fn main() {}
 
     #[test]
     fn test_runnables() {
-      let file = File::parse(r#"
+        let file = File::parse(
+            r#"
 fn main() {}
 
 #[test]
@@ -196,7 +201,8 @@ fn test_foo() {}
 #[test]
 #[ignore]
 fn test_foo() {}
-"#);
+"#,
+        );
         let runnables = runnables(&file);
         assert_eq_dbg(
             r#"[Runnable { range: [1; 13), kind: Bin },
@@ -219,9 +225,6 @@ fn test_foo() {}
             assert_eq_text!(after, &actual);
         }
 
-        do_check(
-            "struct Foo { a: i32, }<|>",
-            "struct Foo <|>{ a: i32, }",
-        );
+        do_check("struct Foo { a: i32, }<|>", "struct Foo <|>{ a: i32, }");
     }
 }

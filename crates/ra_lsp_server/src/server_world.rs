@@ -1,18 +1,18 @@
 use std::{
     fs,
-    path::{PathBuf, Path},
+    path::{Path, PathBuf},
     sync::Arc,
 };
 
-use rustc_hash::FxHashMap;
 use languageserver_types::Url;
-use ra_analysis::{FileId, AnalysisHost, Analysis, CrateGraph, CrateId, LibraryData, FileResolver};
+use ra_analysis::{Analysis, AnalysisHost, CrateGraph, CrateId, FileId, FileResolver, LibraryData};
+use rustc_hash::FxHashMap;
 
 use crate::{
-    Result,
     path_map::{PathMap, Root},
-    vfs::{FileEvent, FileEventKind},
     project_model::CargoWorkspace,
+    vfs::{FileEvent, FileEventKind},
+    Result,
 };
 
 #[derive(Debug)]
@@ -42,16 +42,15 @@ impl ServerWorldState {
         {
             let pm = &mut self.path_map;
             let mm = &mut self.mem_map;
-            let changes = events.into_iter()
+            let changes = events
+                .into_iter()
                 .map(|event| {
                     let text = match event.kind {
                         FileEventKind::Add(text) => Some(text),
                     };
                     (event.path, text)
                 })
-                .map(|(path, text)| {
-                    (pm.get_or_insert(path, Root::Workspace), text)
-                })
+                .map(|(path, text)| (pm.get_or_insert(path, Root::Workspace), text))
                 .filter_map(|(id, text)| {
                     if mm.contains_key(&id) {
                         mm.insert(id, text);
@@ -62,12 +61,17 @@ impl ServerWorldState {
                 });
             self.analysis_host.change_files(changes);
         }
-        self.analysis_host.set_file_resolver(Arc::new(self.path_map.clone()));
+        self.analysis_host
+            .set_file_resolver(Arc::new(self.path_map.clone()));
     }
-    pub fn events_to_files(&mut self, events: Vec<FileEvent>) -> (Vec<(FileId, String)>, Arc<FileResolver>) {
+    pub fn events_to_files(
+        &mut self,
+        events: Vec<FileEvent>,
+    ) -> (Vec<(FileId, String)>, Arc<FileResolver>) {
         let files = {
             let pm = &mut self.path_map;
-            events.into_iter()
+            events
+                .into_iter()
                 .map(|event| {
                     let text = match event.kind {
                         FileEventKind::Add(text) => text,
@@ -86,7 +90,8 @@ impl ServerWorldState {
 
     pub fn add_mem_file(&mut self, path: PathBuf, text: String) -> FileId {
         let file_id = self.path_map.get_or_insert(path, Root::Workspace);
-        self.analysis_host.set_file_resolver(Arc::new(self.path_map.clone()));
+        self.analysis_host
+            .set_file_resolver(Arc::new(self.path_map.clone()));
         self.mem_map.insert(file_id, None);
         if self.path_map.get_root(file_id) != Root::Lib {
             self.analysis_host.change_file(file_id, Some(text));
@@ -95,9 +100,10 @@ impl ServerWorldState {
     }
 
     pub fn change_mem_file(&mut self, path: &Path, text: String) -> Result<()> {
-        let file_id = self.path_map.get_id(path).ok_or_else(|| {
-            format_err!("change to unknown file: {}", path.display())
-        })?;
+        let file_id = self
+            .path_map
+            .get_id(path)
+            .ok_or_else(|| format_err!("change to unknown file: {}", path.display()))?;
         if self.path_map.get_root(file_id) != Root::Lib {
             self.analysis_host.change_file(file_id, Some(text));
         }
@@ -105,9 +111,10 @@ impl ServerWorldState {
     }
 
     pub fn remove_mem_file(&mut self, path: &Path) -> Result<FileId> {
-        let file_id = self.path_map.get_id(path).ok_or_else(|| {
-            format_err!("change to unknown file: {}", path.display())
-        })?;
+        let file_id = self
+            .path_map
+            .get_id(path)
+            .ok_or_else(|| format_err!("change to unknown file: {}", path.display()))?;
         match self.mem_map.remove(&file_id) {
             Some(_) => (),
             None => bail!("unmatched close notification"),
@@ -122,17 +129,17 @@ impl ServerWorldState {
     pub fn set_workspaces(&mut self, ws: Vec<CargoWorkspace>) {
         let mut crate_roots = FxHashMap::default();
         ws.iter()
-          .flat_map(|ws| {
-              ws.packages()
-                .flat_map(move |pkg| pkg.targets(ws))
-                .map(move |tgt| tgt.root(ws))
-          })
-          .for_each(|root| {
-              if let Some(file_id) = self.path_map.get_id(root) {
-                  let crate_id = CrateId(crate_roots.len() as u32);
-                  crate_roots.insert(crate_id, file_id);
-              }
-          });
+            .flat_map(|ws| {
+                ws.packages()
+                    .flat_map(move |pkg| pkg.targets(ws))
+                    .map(move |tgt| tgt.root(ws))
+            })
+            .for_each(|root| {
+                if let Some(file_id) = self.path_map.get_id(root) {
+                    let crate_id = CrateId(crate_roots.len() as u32);
+                    crate_roots.insert(crate_id, file_id);
+                }
+            });
         let crate_graph = CrateGraph { crate_roots };
         self.workspaces = Arc::new(ws);
         self.analysis_host.set_crate_graph(crate_graph);
@@ -141,7 +148,7 @@ impl ServerWorldState {
         ServerWorld {
             workspaces: Arc::clone(&self.workspaces),
             analysis: self.analysis_host.analysis(),
-            path_map: self.path_map.clone()
+            path_map: self.path_map.clone(),
         }
     }
 }
@@ -152,9 +159,12 @@ impl ServerWorld {
     }
 
     pub fn uri_to_file_id(&self, uri: &Url) -> Result<FileId> {
-        let path = uri.to_file_path()
+        let path = uri
+            .to_file_path()
             .map_err(|()| format_err!("invalid uri: {}", uri))?;
-        self.path_map.get_id(&path).ok_or_else(|| format_err!("unknown file: {}", path.display()))
+        self.path_map
+            .get_id(&path)
+            .ok_or_else(|| format_err!("unknown file: {}", path.display()))
     }
 
     pub fn file_id_to_uri(&self, id: FileId) -> Result<Url> {

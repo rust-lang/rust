@@ -1,5 +1,5 @@
-use rustc_hash::FxHashSet;
 use ra_analysis::FileId;
+use rustc_hash::FxHashSet;
 
 pub struct Subscriptions {
     subs: FxHashSet<FileId>,
@@ -7,7 +7,9 @@ pub struct Subscriptions {
 
 impl Subscriptions {
     pub fn new() -> Subscriptions {
-        Subscriptions { subs: FxHashSet::default() }
+        Subscriptions {
+            subs: FxHashSet::default(),
+        }
     }
     pub fn add_sub(&mut self, file_id: FileId) {
         self.subs.insert(file_id);

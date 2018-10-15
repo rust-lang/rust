@@ -1,23 +1,31 @@
+use crate::{AstNode, SyntaxNodeRef};
+
 use std::marker::PhantomData;
-use crate::{SyntaxNodeRef, AstNode};
 
-
-pub fn visitor<'a, T>() -> impl Visitor<'a, Output=T> {
+pub fn visitor<'a, T>() -> impl Visitor<'a, Output = T> {
     EmptyVisitor { ph: PhantomData }
 }
 
-pub fn visitor_ctx<'a, T, C>(ctx: C) -> impl VisitorCtx<'a, Output=T, Ctx=C> {
-    EmptyVisitorCtx { ph: PhantomData, ctx }
+pub fn visitor_ctx<'a, T, C>(ctx: C) -> impl VisitorCtx<'a, Output = T, Ctx = C> {
+    EmptyVisitorCtx {
+        ph: PhantomData,
+        ctx,
+    }
 }
 
 pub trait Visitor<'a>: Sized {
     type Output;
     fn accept(self, node: SyntaxNodeRef<'a>) -> Option<Self::Output>;
     fn visit<N, F>(self, f: F) -> Vis<Self, N, F>
-        where N: AstNode<'a>,
-              F: FnOnce(N) -> Self::Output,
+    where
+        N: AstNode<'a>,
+        F: FnOnce(N) -> Self::Output,
     {
-        Vis { inner: self, f, ph: PhantomData }
+        Vis {
+            inner: self,
+            f,
+            ph: PhantomData,
+        }
     }
 }
 
@@ -26,16 +34,21 @@ pub trait VisitorCtx<'a>: Sized {
     type Ctx;
     fn accept(self, node: SyntaxNodeRef<'a>) -> Result<Self::Output, Self::Ctx>;
     fn visit<N, F>(self, f: F) -> VisCtx<Self, N, F>
-        where N: AstNode<'a>,
-              F: FnOnce(N, Self::Ctx) -> Self::Output,
+    where
+        N: AstNode<'a>,
+        F: FnOnce(N, Self::Ctx) -> Self::Output,
     {
-        VisCtx { inner: self, f, ph: PhantomData }
+        VisCtx {
+            inner: self,
+            f,
+            ph: PhantomData,
+        }
     }
 }
 
 #[derive(Debug)]
 struct EmptyVisitor<T> {
-    ph: PhantomData<fn() -> T>
+    ph: PhantomData<fn() -> T>,
 }
 
 impl<'a, T> Visitor<'a> for EmptyVisitor<T> {
@@ -69,10 +82,10 @@ pub struct Vis<V, N, F> {
 }
 
 impl<'a, V, N, F> Visitor<'a> for Vis<V, N, F>
-    where
-        V: Visitor<'a>,
-        N: AstNode<'a>,
-        F: FnOnce(N) -> <V as Visitor<'a>>::Output,
+where
+    V: Visitor<'a>,
+    N: AstNode<'a>,
+    F: FnOnce(N) -> <V as Visitor<'a>>::Output,
 {
     type Output = <V as Visitor<'a>>::Output;
 
@@ -90,21 +103,19 @@ pub struct VisCtx<V, N, F> {
 }
 
 impl<'a, V, N, F> VisitorCtx<'a> for VisCtx<V, N, F>
-    where
-        V: VisitorCtx<'a>,
-        N: AstNode<'a>,
-        F: FnOnce(N, <V as VisitorCtx<'a>>::Ctx) -> <V as VisitorCtx<'a>>::Output,
+where
+    V: VisitorCtx<'a>,
+    N: AstNode<'a>,
+    F: FnOnce(N, <V as VisitorCtx<'a>>::Ctx) -> <V as VisitorCtx<'a>>::Output,
 {
     type Output = <V as VisitorCtx<'a>>::Output;
     type Ctx = <V as VisitorCtx<'a>>::Ctx;
 
     fn accept(self, node: SyntaxNodeRef<'a>) -> Result<Self::Output, Self::Ctx> {
         let VisCtx { inner, f, .. } = self;
-        inner.accept(node).or_else(|ctx|
-            match N::cast(node) {
-                None => Err(ctx),
-                Some(node) => Ok(f(node, ctx))
-            }
-        )
+        inner.accept(node).or_else(|ctx| match N::cast(node) {
+            None => Err(ctx),
+            Some(node) => Ok(f(node, ctx)),
+        })
     }
 }

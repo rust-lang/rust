@@ -20,11 +20,11 @@
 #![allow(missing_docs)]
 //#![warn(unreachable_pub)] // rust-lang/rust#47816
 
-extern crate itertools;
-extern crate unicode_xid;
 extern crate drop_bomb;
+extern crate itertools;
 extern crate parking_lot;
 extern crate rowan;
+extern crate unicode_xid;
 
 #[cfg(test)]
 #[macro_use]
@@ -35,33 +35,31 @@ pub mod ast;
 mod lexer;
 #[macro_use]
 mod token_set;
-mod parser_api;
 mod grammar;
+mod parser_api;
 mod parser_impl;
 mod reparsing;
 
 mod syntax_kinds;
-mod yellow;
+pub mod text_utils;
 /// Utilities for simple uses of the parser.
 pub mod utils;
-pub mod text_utils;
+mod yellow;
 
 pub use crate::{
-    rowan::{SmolStr, TextRange, TextUnit},
     ast::AstNode,
     lexer::{tokenize, Token},
-    syntax_kinds::SyntaxKind,
-    yellow::{SyntaxNode, SyntaxNodeRef, OwnedRoot, RefRoot, TreeRoot, SyntaxError, Direction},
     reparsing::AtomEdit,
+    rowan::{SmolStr, TextRange, TextUnit},
+    syntax_kinds::SyntaxKind,
+    yellow::{Direction, OwnedRoot, RefRoot, SyntaxError, SyntaxNode, SyntaxNodeRef, TreeRoot},
 };
 
-use crate::{
-    yellow::{GreenNode},
-};
+use crate::yellow::GreenNode;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct File {
-    root: SyntaxNode
+    root: SyntaxNode,
 }
 
 impl File {
@@ -74,21 +72,21 @@ impl File {
     }
     pub fn parse(text: &str) -> File {
         let tokens = tokenize(&text);
-        let (green, errors) = parser_impl::parse_with(
-            yellow::GreenBuilder::new(),
-            text, &tokens, grammar::root,
-        );
+        let (green, errors) =
+            parser_impl::parse_with(yellow::GreenBuilder::new(), text, &tokens, grammar::root);
         File::new(green, errors)
     }
     pub fn reparse(&self, edit: &AtomEdit) -> File {
-        self.incremental_reparse(edit).unwrap_or_else(|| self.full_reparse(edit))
+        self.incremental_reparse(edit)
+            .unwrap_or_else(|| self.full_reparse(edit))
     }
     pub fn incremental_reparse(&self, edit: &AtomEdit) -> Option<File> {
         reparsing::incremental_reparse(self.syntax(), edit, self.errors())
             .map(|(green_node, errors)| File::new(green_node, errors))
     }
     fn full_reparse(&self, edit: &AtomEdit) -> File {
-        let text = text_utils::replace_range(self.syntax().text().to_string(), edit.delete, &edit.insert);
+        let text =
+            text_utils::replace_range(self.syntax().text().to_string(), edit.delete, &edit.insert);
         File::parse(&text)
     }
     pub fn ast(&self) -> ast::Root {

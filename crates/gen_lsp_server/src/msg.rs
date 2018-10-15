@@ -1,11 +1,8 @@
 use std::io::{BufRead, Write};
 
-use serde_json::{Value, from_str, to_string, from_value, to_value};
-use serde::{Serialize, de::DeserializeOwned};
-use languageserver_types::{
-    request::Request,
-    notification::Notification,
-};
+use languageserver_types::{notification::Notification, request::Request};
+use serde::{de::DeserializeOwned, Serialize};
+use serde_json::{from_str, from_value, to_string, to_value, Value};
 
 use Result;
 
@@ -81,7 +78,10 @@ impl RawMessage {
             #[serde(flatten)]
             msg: RawMessage,
         }
-        let text = to_string(&JsonRpc { jsonrpc: "2.0", msg: self })?;
+        let text = to_string(&JsonRpc {
+            jsonrpc: "2.0",
+            msg: self,
+        })?;
         write_msg_text(w, &text)?;
         Ok(())
     }
@@ -115,8 +115,9 @@ impl RawRequest {
 
 impl RawResponse {
     pub fn ok<R>(id: u64, result: &R::Result) -> RawResponse
-    where R: Request,
-          R::Result: Serialize,
+    where
+        R: Request,
+        R::Result: Serialize,
     {
         RawResponse {
             id,
@@ -125,7 +126,11 @@ impl RawResponse {
         }
     }
     pub fn err(id: u64, code: i32, message: String) -> RawResponse {
-        let error = RawResponseError { code, message, data: None };
+        let error = RawResponseError {
+            code,
+            message,
+            data: None,
+        };
         RawResponse {
             id,
             result: None,
@@ -174,7 +179,9 @@ fn read_msg_text(inp: &mut impl BufRead) -> Result<Option<String>> {
         }
         let mut parts = buf.splitn(2, ": ");
         let header_name = parts.next().unwrap();
-        let header_value = parts.next().ok_or_else(|| format_err!("malformed header: {:?}", buf))?;
+        let header_value = parts
+            .next()
+            .ok_or_else(|| format_err!("malformed header: {:?}", buf))?;
         if header_name == "Content-Length" {
             size = Some(header_value.parse::<usize>()?);
         }

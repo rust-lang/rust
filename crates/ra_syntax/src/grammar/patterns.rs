@@ -1,11 +1,10 @@
 use super::*;
 
-pub(super) const PATTERN_FIRST: TokenSet =
-    token_set_union![
-        token_set![REF_KW, MUT_KW, L_PAREN, L_BRACK, AMP, UNDERSCORE],
-        expressions::LITERAL_FIRST,
-        paths::PATH_FIRST,
-    ];
+pub(super) const PATTERN_FIRST: TokenSet = token_set_union![
+    token_set![REF_KW, MUT_KW, L_PAREN, L_BRACK, AMP, UNDERSCORE],
+    expressions::LITERAL_FIRST,
+    paths::PATH_FIRST,
+];
 
 pub(super) fn pattern(p: &mut Parser) {
     pattern_r(p, PAT_RECOVERY_SET)
@@ -29,12 +28,13 @@ pub(super) fn pattern_r(p: &mut Parser, recovery_set: TokenSet) {
 const PAT_RECOVERY_SET: TokenSet =
     token_set![LET_KW, IF_KW, WHILE_KW, LOOP_KW, MATCH_KW, R_PAREN, COMMA];
 
-
 fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
     let la0 = p.nth(0);
     let la1 = p.nth(1);
-    if la0 == REF_KW || la0 == MUT_KW
-        || (la0 == IDENT && !(la1 == COLONCOLON || la1 == L_PAREN || la1 == L_CURLY)) {
+    if la0 == REF_KW
+        || la0 == MUT_KW
+        || (la0 == IDENT && !(la1 == COLONCOLON || la1 == L_PAREN || la1 == L_CURLY))
+    {
         return Some(bind_pat(p, true));
     }
     if paths::is_path_start(p) {
@@ -87,7 +87,7 @@ fn path_pat(p: &mut Parser) -> CompletedMarker {
             field_pat_list(p);
             STRUCT_PAT
         }
-        _ => PATH_PAT
+        _ => PATH_PAT,
     };
     m.complete(p, kind)
 }
@@ -195,7 +195,7 @@ fn pat_list(p: &mut Parser, ket: SyntaxKind) {
                     break;
                 }
                 pattern(p)
-            },
+            }
         }
         if !p.at(ket) {
             p.expect(COMMA);

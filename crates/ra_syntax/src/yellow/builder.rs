@@ -1,10 +1,9 @@
-use rowan::GreenNodeBuilder;
 use crate::{
-    TextUnit, SmolStr,
     parser_impl::Sink,
-    yellow::{GreenNode, SyntaxError, RaTypes},
-    SyntaxKind,
+    yellow::{GreenNode, RaTypes, SyntaxError},
+    SmolStr, SyntaxKind, TextUnit,
 };
+use rowan::GreenNodeBuilder;
 
 pub(crate) struct GreenBuilder {
     errors: Vec<SyntaxError>,
@@ -36,7 +35,10 @@ impl Sink for GreenBuilder {
     }
 
     fn error(&mut self, message: String, offset: TextUnit) {
-        let error = SyntaxError { msg: message, offset };
+        let error = SyntaxError {
+            msg: message,
+            offset,
+        };
         self.errors.push(error)
     }
 

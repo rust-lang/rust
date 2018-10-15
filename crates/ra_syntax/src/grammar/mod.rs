@@ -31,27 +31,17 @@ mod type_args;
 mod type_params;
 mod types;
 
-use crate::{
-    token_set::TokenSet,
-    parser_api::{Marker, CompletedMarker, Parser},
-    SyntaxKind::{self, *},
-};
 pub(crate) use self::{
-    expressions::{
-        block,
-    },
+    expressions::block,
     items::{
-        enum_variant_list,
-        extern_item_list,
-        impl_item_list,
-        match_arm_list,
-        mod_item_list,
-        named_field_def_list,
-        named_field_list,
-        token_tree,
-        trait_item_list,
-        use_tree_list,
+        enum_variant_list, extern_item_list, impl_item_list, match_arm_list, mod_item_list,
+        named_field_def_list, named_field_list, token_tree, trait_item_list, use_tree_list,
     },
+};
+use crate::{
+    parser_api::{CompletedMarker, Marker, Parser},
+    token_set::TokenSet,
+    SyntaxKind::{self, *},
 };
 
 pub(crate) fn root(p: &mut Parser) {
@@ -61,7 +51,6 @@ pub(crate) fn root(p: &mut Parser) {
     m.complete(p, ROOT);
 }
 
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum BlockLike {
     Block,
@@ -69,7 +58,9 @@ enum BlockLike {
 }
 
 impl BlockLike {
-    fn is_block(self) -> bool { self == BlockLike::Block }
+    fn is_block(self) -> bool {
+        self == BlockLike::Block
+    }
 }
 
 fn opt_visibility(p: &mut Parser) {

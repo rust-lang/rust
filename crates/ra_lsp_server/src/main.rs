@@ -6,7 +6,7 @@ extern crate flexi_logger;
 extern crate gen_lsp_server;
 extern crate ra_lsp_server;
 
-use flexi_logger::{Logger, Duplicate};
+use flexi_logger::{Duplicate, Logger};
 use gen_lsp_server::{run_server, stdio_transport};
 use ra_lsp_server::Result;
 
@@ -38,7 +38,8 @@ fn main_inner() -> Result<()> {
         receiver,
         sender,
         |params, r, s| {
-            let root = params.root_uri
+            let root = params
+                .root_uri
                 .and_then(|it| it.to_file_path().ok())
                 .unwrap_or(cwd);
             ra_lsp_server::main_loop(false, root, r, s)
@@ -49,4 +50,3 @@ fn main_inner() -> Result<()> {
     info!("... IO is down");
     Ok(())
 }
-

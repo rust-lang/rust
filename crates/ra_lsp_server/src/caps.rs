@@ -1,14 +1,8 @@
 use languageserver_types::{
-    ServerCapabilities,
-    CodeActionProviderCapability,
-    FoldingRangeProviderCapability,
-    TextDocumentSyncCapability,
+    CodeActionProviderCapability, CompletionOptions, DocumentOnTypeFormattingOptions,
+    ExecuteCommandOptions, FoldingRangeProviderCapability, ServerCapabilities,
+    SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
     TextDocumentSyncOptions,
-    TextDocumentSyncKind,
-    ExecuteCommandOptions,
-    CompletionOptions,
-    SignatureHelpOptions,
-    DocumentOnTypeFormattingOptions,
 };
 
 pub fn server_capabilities() -> ServerCapabilities {
@@ -20,7 +14,7 @@ pub fn server_capabilities() -> ServerCapabilities {
                 will_save: None,
                 will_save_wait_until: None,
                 save: None,
-            }
+            },
         )),
         hover_provider: None,
         completion_provider: Some(CompletionOptions {
@@ -28,7 +22,7 @@ pub fn server_capabilities() -> ServerCapabilities {
             trigger_characters: None,
         }),
         signature_help_provider: Some(SignatureHelpOptions {
-            trigger_characters: Some(vec!["(".to_string(), ",".to_string()])
+            trigger_characters: Some(vec!["(".to_string(), ",".to_string()]),
         }),
         definition_provider: Some(true),
         type_definition_provider: None,

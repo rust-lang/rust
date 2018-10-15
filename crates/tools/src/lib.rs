@@ -1,17 +1,17 @@
 extern crate itertools;
 #[macro_use]
 extern crate failure;
+extern crate heck;
 extern crate ron;
 extern crate tera;
-extern crate heck;
 
+use heck::{CamelCase, ShoutySnakeCase, SnakeCase};
+use itertools::Itertools;
 use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
 };
-use itertools::Itertools;
-use heck::{CamelCase, ShoutySnakeCase, SnakeCase};
 
 pub type Result<T> = ::std::result::Result<T, failure::Error>;
 
@@ -60,7 +60,6 @@ pub fn collect_tests(s: &str) -> Vec<(usize, Test)> {
     }
     res
 }
-
 
 pub fn update(path: &Path, contents: &str, verify: bool) -> Result<()> {
     match fs::read_to_string(path) {
@@ -116,5 +115,8 @@ pub fn render_template(template: &Path) -> Result<String> {
 }
 
 pub fn project_root() -> PathBuf {
-    Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).parent().unwrap().to_path_buf()
+    Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
+        .parent()
+        .unwrap()
+        .to_path_buf()
 }

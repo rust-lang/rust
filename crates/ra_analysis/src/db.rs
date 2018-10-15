@@ -1,16 +1,17 @@
+use crate::{
+    module_map::{ModuleDescriptorQuery, ModuleTreeQuery, ModulesDatabase},
+    symbol_index::SymbolIndex,
+    FileId, FileResolverImp,
+};
+use ra_editor::LineIndex;
+use ra_syntax::File;
+use rustc_hash::FxHashSet;
+use salsa;
+
 use std::{
     fmt,
-    sync::Arc,
     hash::{Hash, Hasher},
-};
-use salsa;
-use rustc_hash::FxHashSet;
-use ra_syntax::File;
-use ra_editor::{LineIndex};
-use crate::{
-    symbol_index::SymbolIndex,
-    module_map::{ModulesDatabase, ModuleTreeQuery, ModuleDescriptorQuery},
-    FileId, FileResolverImp,
+    sync::Arc,
 };
 
 #[derive(Default)]

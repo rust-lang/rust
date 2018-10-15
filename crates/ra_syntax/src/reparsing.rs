@@ -1,14 +1,11 @@
 use crate::algo;
 use crate::grammar;
 use crate::lexer::{tokenize, Token};
-use crate::yellow::{self, GreenNode, SyntaxNodeRef, SyntaxError};
-use crate::parser_impl;
 use crate::parser_api::Parser;
-use crate::{
-    TextUnit, TextRange,
-    SyntaxKind::*,
-};
+use crate::parser_impl;
 use crate::text_utils::replace_range;
+use crate::yellow::{self, GreenNode, SyntaxError, SyntaxNodeRef};
+use crate::{SyntaxKind::*, TextRange, TextUnit};
 
 #[derive(Debug, Clone)]
 pub struct AtomEdit {
@@ -18,7 +15,10 @@ pub struct AtomEdit {
 
 impl AtomEdit {
     pub fn replace(range: TextRange, replace_with: String) -> AtomEdit {
-        AtomEdit { delete: range, insert: replace_with }
+        AtomEdit {
+            delete: range,
+            insert: replace_with,
+        }
     }
 
     pub fn delete(range: TextRange) -> AtomEdit {
@@ -48,12 +48,7 @@ fn reparse_leaf<'node>(
 ) -> Option<(SyntaxNodeRef<'node>, GreenNode, Vec<SyntaxError>)> {
     let node = algo::find_covering_node(node, edit.delete);
     match node.kind() {
-        | WHITESPACE
-        | COMMENT
-        | DOC_COMMENT
-        | IDENT
-        | STRING
-        | RAW_STRING => {
+        WHITESPACE | COMMENT | DOC_COMMENT | IDENT | STRING | RAW_STRING => {
             let text = get_text_after_edit(node, &edit);
             let tokens = tokenize(&text);
             let token = match tokens[..] {
@@ -84,10 +79,7 @@ fn reparse_block<'node>(
         return None;
     }
     let (green, new_errors) =
-        parser_impl::parse_with(
-            yellow::GreenBuilder::new(),
-            &text, &tokens, reparser,
-        );
+        parser_impl::parse_with(yellow::GreenBuilder::new(), &text, &tokens, reparser);
     Some((node, green, new_errors))
 }
 
@@ -101,9 +93,7 @@ fn get_text_after_edit(node: SyntaxNodeRef, edit: &AtomEdit) -> String {
 
 fn is_contextual_kw(text: &str) -> bool {
     match text {
-        | "auto"
-        | "default"
-        | "union" => true,
+        "auto" | "default" | "union" => true,
         _ => false,
     }
 }
@@ -113,7 +103,8 @@ fn find_reparsable_node<'node>(
     range: TextRange,
 ) -> Option<(SyntaxNodeRef<'node>, fn(&mut Parser))> {
     let node = algo::find_covering_node(node, range);
-    return node.ancestors()
+    return node
+        .ancestors()
         .filter_map(|node| reparser(node).map(|r| (node, r)))
         .next();
 
@@ -145,17 +136,20 @@ fn find_reparsable_node<'node>(
 fn is_balanced(tokens: &[Token]) -> bool {
     if tokens.len() == 0
         || tokens.first().unwrap().kind != L_CURLY
-        || tokens.last().unwrap().kind != R_CURLY {
+        || tokens.last().unwrap().kind != R_CURLY
+    {
         return false;
     }
     let mut balance = 0usize;
     for t in tokens.iter() {
         match t.kind {
             L_CURLY => balance += 1,
-            R_CURLY => balance = match balance.checked_sub(1) {
-                Some(b) => b,
-                None => return false,
-            },
+            R_CURLY => {
+                balance = match balance.checked_sub(1) {
+                    Some(b) => b,
+                    None => return false,
+                }
+            }
             _ => (),
         }
     }
@@ -191,24 +185,14 @@ fn merge_errors(
 #[cfg(test)]
 mod tests {
     use super::{
-        super::{
-            File,
-            test_utils::extract_range,
-            text_utils::replace_range,
-            utils::dump_tree,
-        },
-        reparse_leaf, reparse_block, AtomEdit, GreenNode, SyntaxError, SyntaxNodeRef,
+        super::{test_utils::extract_range, text_utils::replace_range, utils::dump_tree, File},
+        reparse_block, reparse_leaf, AtomEdit, GreenNode, SyntaxError, SyntaxNodeRef,
     };
 
-    fn do_check<F>(
-        before: &str,
-        replace_with: &str,
-        reparser: F,
-    ) where
-        for<'a> F: Fn(
-            SyntaxNodeRef<'a>,
-            &AtomEdit,
-        ) -> Option<(SyntaxNodeRef<'a>, GreenNode, Vec<SyntaxError>)>
+    fn do_check<F>(before: &str, replace_with: &str, reparser: F)
+    where
+        for<'a> F: Fn(SyntaxNodeRef<'a>, &AtomEdit)
+            -> Option<(SyntaxNodeRef<'a>, GreenNode, Vec<SyntaxError>)>,
     {
         let (range, before) = extract_range(before);
         let after = replace_range(before.clone(), range, replace_with);
@@ -216,7 +200,10 @@ mod tests {
         let fully_reparsed = File::parse(&after);
         let incrementally_reparsed = {
             let f = File::parse(&before);
-            let edit = AtomEdit { delete: range, insert: replace_with.to_string() };
+            let edit = AtomEdit {
+                delete: range,
+                insert: replace_with.to_string(),
+            };
             let (node, green, new_errors) =
                 reparser(f.syntax(), &edit).expect("cannot incrementally reparse");
             let green_root = node.replace_with(green);
@@ -232,113 +219,183 @@ mod tests {
 
     #[test]
     fn reparse_block_tests() {
-        let do_check = |before, replace_to|
-            do_check(before, replace_to, reparse_block);
+        let do_check = |before, replace_to| do_check(before, replace_to, reparse_block);
 
-        do_check(r"
+        do_check(
+            r"
 fn foo() {
     let x = foo + <|>bar<|>
 }
-", "baz");
-        do_check(r"
+",
+            "baz",
+        );
+        do_check(
+            r"
 fn foo() {
     let x = foo<|> + bar<|>
 }
-", "baz");
-        do_check(r"
+",
+            "baz",
+        );
+        do_check(
+            r"
 struct Foo {
     f: foo<|><|>
 }
-", ",\n    g: (),");
-        do_check(r"
+",
+            ",\n    g: (),",
+        );
+        do_check(
+            r"
 fn foo {
     let;
     1 + 1;
     <|>92<|>;
 }
-", "62");
-        do_check(r"
+",
+            "62",
+        );
+        do_check(
+            r"
 mod foo {
     fn <|><|>
 }
-", "bar");
-        do_check(r"
+",
+            "bar",
+        );
+        do_check(
+            r"
 trait Foo {
     type <|>Foo<|>;
 }
-", "Output");
-        do_check(r"
+",
+            "Output",
+        );
+        do_check(
+            r"
 impl IntoIterator<Item=i32> for Foo {
     f<|><|>
 }
-", "n next(");
-        do_check(r"
+",
+            "n next(",
+        );
+        do_check(
+            r"
 use a::b::{foo,<|>,bar<|>};
-    ", "baz");
-        do_check(r"
+    ",
+            "baz",
+        );
+        do_check(
+            r"
 pub enum A {
     Foo<|><|>
 }
-", "\nBar;\n");
-        do_check(r"
+",
+            "\nBar;\n",
+        );
+        do_check(
+            r"
 foo!{a, b<|><|> d}
-", ", c[3]");
-        do_check(r"
+",
+            ", c[3]",
+        );
+        do_check(
+            r"
 fn foo() {
     vec![<|><|>]
 }
-", "123");
-        do_check(r"
+",
+            "123",
+        );
+        do_check(
+            r"
 extern {
     fn<|>;<|>
 }
-", " exit(code: c_int)");
+",
+            " exit(code: c_int)",
+        );
     }
 
     #[test]
     fn reparse_leaf_tests() {
-        let do_check = |before, replace_to|
-            do_check(before, replace_to, reparse_leaf);
+        let do_check = |before, replace_to| do_check(before, replace_to, reparse_leaf);
 
-        do_check(r"<|><|>
+        do_check(
+            r"<|><|>
 fn foo() -> i32 { 1 }
-", "\n\n\n   \n");
-        do_check(r"
+",
+            "\n\n\n   \n",
+        );
+        do_check(
+            r"
 fn foo() -> <|><|> {}
-", "  \n");
-        do_check(r"
+",
+            "  \n",
+        );
+        do_check(
+            r"
 fn <|>foo<|>() -> i32 { 1 }
-", "bar");
-        do_check(r"
+",
+            "bar",
+        );
+        do_check(
+            r"
 fn foo<|><|>foo() {  }
-", "bar");
-        do_check(r"
+",
+            "bar",
+        );
+        do_check(
+            r"
 fn foo /* <|><|> */ () {}
-", "some comment");
-        do_check(r"
+",
+            "some comment",
+        );
+        do_check(
+            r"
 fn baz <|><|> () {}
-", "    \t\t\n\n");
-        do_check(r"
+",
+            "    \t\t\n\n",
+        );
+        do_check(
+            r"
 fn baz <|><|> () {}
-", "    \t\t\n\n");
-        do_check(r"
+",
+            "    \t\t\n\n",
+        );
+        do_check(
+            r"
 /// foo <|><|>omment
 mod { }
-", "c");
-        do_check(r#"
+",
+            "c",
+        );
+        do_check(
+            r#"
 fn -> &str { "Hello<|><|>" }
-"#, ", world");
-        do_check(r#"
+"#,
+            ", world",
+        );
+        do_check(
+            r#"
 fn -> &str { // "Hello<|><|>"
-"#, ", world");
-        do_check(r##"
+"#,
+            ", world",
+        );
+        do_check(
+            r##"
 fn -> &str { r#"Hello<|><|>"#
-"##, ", world");
-        do_check(r"
+"##,
+            ", world",
+        );
+        do_check(
+            r"
 #[derive(<|>Copy<|>)]
 enum Foo {
 
 }
-", "Clone");
+",
+            "Clone",
+        );
     }
 }

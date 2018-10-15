@@ -13,9 +13,18 @@ use super::*;
 //     let _ = b"e";
 //     let _ = br"f";
 // }
-pub(crate) const LITERAL_FIRST: TokenSet =
-    token_set![TRUE_KW, FALSE_KW, INT_NUMBER, FLOAT_NUMBER, BYTE, CHAR,
-               STRING, RAW_STRING, BYTE_STRING, RAW_BYTE_STRING];
+pub(crate) const LITERAL_FIRST: TokenSet = token_set![
+    TRUE_KW,
+    FALSE_KW,
+    INT_NUMBER,
+    FLOAT_NUMBER,
+    BYTE,
+    CHAR,
+    STRING,
+    RAW_STRING,
+    BYTE_STRING,
+    RAW_BYTE_STRING
+];
 
 pub(crate) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
     if !p.at_ts(LITERAL_FIRST) {
@@ -26,15 +35,31 @@ pub(crate) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
     Some(m.complete(p, LITERAL))
 }
 
-pub(super) const ATOM_EXPR_FIRST: TokenSet =
-    token_set_union![
-        LITERAL_FIRST,
-        token_set![L_CURLY, L_PAREN, L_BRACK, PIPE, MOVE_KW, IF_KW, WHILE_KW, MATCH_KW, UNSAFE_KW,
-                   RETURN_KW, IDENT, SELF_KW, SUPER_KW, CRATE_KW, COLONCOLON, BREAK_KW, CONTINUE_KW, LIFETIME ],
-    ];
+pub(super) const ATOM_EXPR_FIRST: TokenSet = token_set_union![
+    LITERAL_FIRST,
+    token_set![
+        L_CURLY,
+        L_PAREN,
+        L_BRACK,
+        PIPE,
+        MOVE_KW,
+        IF_KW,
+        WHILE_KW,
+        MATCH_KW,
+        UNSAFE_KW,
+        RETURN_KW,
+        IDENT,
+        SELF_KW,
+        SUPER_KW,
+        CRATE_KW,
+        COLONCOLON,
+        BREAK_KW,
+        CONTINUE_KW,
+        LIFETIME
+    ],
+];
 
-const EXPR_RECOVERY_SET: TokenSet =
-    token_set![LET_KW];
+const EXPR_RECOVERY_SET: TokenSet = token_set![LET_KW];
 
 pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
     match literal(p) {
@@ -80,7 +105,7 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMark
             let m = p.start();
             p.bump();
             block_expr(p, Some(m))
-        },
+        }
         L_CURLY => block_expr(p, None),
         RETURN_KW => return_expr(p),
         CONTINUE_KW => continue_expr(p),
@@ -119,7 +144,14 @@ fn tuple_expr(p: &mut Parser) -> CompletedMarker {
         }
     }
     p.expect(R_PAREN);
-    m.complete(p, if saw_expr && !saw_comma { PAREN_EXPR } else { TUPLE_EXPR })
+    m.complete(
+        p,
+        if saw_expr && !saw_comma {
+            PAREN_EXPR
+        } else {
+            TUPLE_EXPR
+        },
+    )
 }
 
 // test array_expr

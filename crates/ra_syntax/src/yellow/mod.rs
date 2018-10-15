@@ -1,16 +1,16 @@
 mod builder;
 mod syntax_text;
 
+use self::syntax_text::SyntaxText;
+use crate::{SmolStr, SyntaxKind, TextRange, TextUnit};
+use rowan::Types;
 use std::{
     fmt,
     hash::{Hash, Hasher},
 };
-use rowan::Types;
-use crate::{SyntaxKind, TextUnit, TextRange, SmolStr};
-use self::syntax_text::SyntaxText;
 
-pub use rowan::{TreeRoot};
 pub(crate) use self::builder::GreenBuilder;
+pub use rowan::TreeRoot;
 
 #[derive(Debug, Clone, Copy)]
 pub enum RaTypes {}
@@ -31,9 +31,7 @@ pub struct SyntaxError {
 }
 
 #[derive(Clone, Copy)]
-pub struct SyntaxNode<R: TreeRoot<RaTypes> = OwnedRoot>(
-    ::rowan::SyntaxNode<RaTypes, R>,
-);
+pub struct SyntaxNode<R: TreeRoot<RaTypes> = OwnedRoot>(::rowan::SyntaxNode<RaTypes, R>);
 pub type SyntaxNodeRef<'a> = SyntaxNode<RefRoot<'a>>;
 
 impl<R1, R2> PartialEq<SyntaxNode<R1>> for SyntaxNode<R2>
@@ -69,16 +67,16 @@ impl<'a> SyntaxNodeRef<'a> {
     pub fn leaf_text(self) -> Option<&'a SmolStr> {
         self.0.leaf_text()
     }
-    pub fn ancestors(self) -> impl Iterator<Item=SyntaxNodeRef<'a>> {
+    pub fn ancestors(self) -> impl Iterator<Item = SyntaxNodeRef<'a>> {
         crate::algo::generate(Some(self), |&node| node.parent())
     }
-    pub fn descendants(self) -> impl Iterator<Item=SyntaxNodeRef<'a>> {
+    pub fn descendants(self) -> impl Iterator<Item = SyntaxNodeRef<'a>> {
         crate::algo::walk::walk(self).filter_map(|event| match event {
             crate::algo::walk::WalkEvent::Enter(node) => Some(node),
             crate::algo::walk::WalkEvent::Exit(_) => None,
         })
     }
-    pub fn siblings(self, direction: Direction) -> impl Iterator<Item=SyntaxNodeRef<'a>> {
+    pub fn siblings(self, direction: Direction) -> impl Iterator<Item = SyntaxNodeRef<'a>> {
         crate::algo::generate(Some(self), move |&node| match direction {
             Direction::Next => node.next_sibling(),
             Direction::Prev => node.prev_sibling(),
@@ -142,9 +140,7 @@ impl<R: TreeRoot<RaTypes>> fmt::Debug for SyntaxNode<R> {
 }
 
 #[derive(Debug)]
-pub struct SyntaxNodeChildren<R: TreeRoot<RaTypes>>(
-    ::rowan::SyntaxNodeChildren<RaTypes, R>
-);
+pub struct SyntaxNodeChildren<R: TreeRoot<RaTypes>>(::rowan::SyntaxNodeChildren<RaTypes, R>);
 
 impl<R: TreeRoot<RaTypes>> Iterator for SyntaxNodeChildren<R> {
     type Item = SyntaxNode<R>;
@@ -153,7 +149,6 @@ impl<R: TreeRoot<RaTypes>> Iterator for SyntaxNodeChildren<R> {
         self.0.next().map(SyntaxNode)
     }
 }
-
 
 fn has_short_text(kind: SyntaxKind) -> bool {
     use crate::SyntaxKind::*;
