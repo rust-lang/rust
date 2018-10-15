@@ -40,8 +40,7 @@
 /// All the parameters ***except for
 /// `from_theater`*** should be inserted as sent
 /// by the remote theater, ie. as passed to
-/// [`Theater::send`] on the remote
-/// actor:
+/// [`Theater::send`] on the remote actor:
 ///  * `from` is the sending (remote) [`ActorId`],
 ///    as reported by the remote theater by
 ///    theater-specific means
@@ -53,15 +52,13 @@
 /// All the parameters ***except for
 /// `from_theater`*** should be inserted as sent
 /// by the remote theater, ie. as passed to
-/// [`Theater::send`] on the remote
-/// actor
+/// [`Theater::send`] on the remote actor
 fn func1() {}
 
 /// All the parameters ***except for
 /// `from_theater`*** should be inserted as sent
 /// by the remote theater, ie. as passed to
-/// [`Theater::send`] on the remote
-/// actor:
+/// [`Theater::send`] on the remote actor:
 ///  * `from` is the sending (remote) [`ActorId`],
 ///    as reported by the remote theater by
 ///    theater-specific means

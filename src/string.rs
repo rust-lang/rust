@@ -70,7 +70,11 @@ impl<'a> StringFormat<'a> {
     }
 }
 
-pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> {
+pub fn rewrite_string<'a>(
+    orig: &str,
+    fmt: &StringFormat<'a>,
+    newline_max_chars: usize,
+) -> Option<String> {
     let max_chars_with_indent = fmt.max_chars_with_indent()?;
     let max_chars_without_indent = fmt.max_chars_without_indent()?;
     let indent_with_newline = fmt.shape.indent.to_string_with_newline(fmt.config);
@@ -129,7 +133,7 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
                 result.push_str(fmt.line_end);
                 result.push_str(&indent_with_newline);
                 result.push_str(fmt.line_start);
-                cur_max_chars = max_chars_with_indent;
+                cur_max_chars = newline_max_chars;
                 cur_start += len;
             }
             SnippetState::EndWithLineFeed(line, len) => {
@@ -358,7 +362,7 @@ mod test {
     fn issue343() {
         let config = Default::default();
         let fmt = StringFormat::new(Shape::legacy(2, Indent::empty()), &config);
-        rewrite_string("eq_", &fmt);
+        rewrite_string("eq_", &fmt, 2);
     }
 
     #[test]
@@ -463,7 +467,7 @@ mod test {
         let mut config: Config = Default::default();
         config.set().max_width(27);
         let fmt = StringFormat::new(Shape::legacy(25, Indent::empty()), &config);
-        let rewritten_string = rewrite_string(string, &fmt);
+        let rewritten_string = rewrite_string(string, &fmt, 27);
         assert_eq!(
             rewritten_string,
             Some("\"Nulla\nconsequat erat at massa. \\\n Vivamus id mi.\"".to_string())
@@ -477,11 +481,11 @@ mod test {
         let mut fmt = StringFormat::new(Shape::legacy(25, Indent::empty()), &config);
 
         fmt.trim_end = true;
-        let rewritten_string = rewrite_string(string, &fmt);
+        let rewritten_string = rewrite_string(string, &fmt, 25);
         assert_eq!(rewritten_string, Some("\"Vivamus id mi.\"".to_string()));
 
         fmt.trim_end = false; // default value of trim_end
-        let rewritten_string = rewrite_string(string, &fmt);
+        let rewritten_string = rewrite_string(string, &fmt, 25);
         assert_eq!(rewritten_string, Some("\"Vivamus id mi.  \"".to_string()));
     }
 
@@ -499,7 +503,7 @@ mod test {
             config: &config,
         };
 
-        let rewritten_string = rewrite_string(string, &fmt);
+        let rewritten_string = rewrite_string(string, &fmt, 100);
         assert_eq!(
             rewritten_string,
             Some("Vivamus id mi.\n    // Vivamus id mi.".to_string())
@@ -521,7 +525,7 @@ mod test {
         };
 
         assert_eq!(
-            rewrite_string(comment, &fmt),
+            rewrite_string(comment, &fmt, 30),
             Some(
                 "Aenean metus.\n        // Vestibulum ac lacus. Vivamus\n        // porttitor"
                     .to_string()
@@ -544,7 +548,7 @@ mod test {
         };
 
         assert_eq!(
-            rewrite_string(comment, &fmt),
+            rewrite_string(comment, &fmt, 30),
             Some(
                 "Aenean metus.\n        // Vestibulum ac lacus. Vivamus@\n        // porttitor"
                     .to_string()
@@ -567,7 +571,7 @@ mod test {
 
         let comment = "Aenean metus. Vestibulum\n\nac lacus. Vivamus porttitor";
         assert_eq!(
-            rewrite_string(comment, &fmt),
+            rewrite_string(comment, &fmt, 30),
             Some(
                 "Aenean metus. Vestibulum\n    //\n    // ac lacus. Vivamus porttitor".to_string()
             )
@@ -576,7 +580,7 @@ mod test {
         fmt.shape = Shape::legacy(15, Indent::from_width(&config, 4));
         let comment = "Aenean\n\nmetus. Vestibulum ac lacus. Vivamus porttitor";
         assert_eq!(
-            rewrite_string(comment, &fmt),
+            rewrite_string(comment, &fmt, 15),
             Some(
                 r#"Aenean
     //
@@ -603,7 +607,7 @@ mod test {
 
         let comment = "Aenean\n\nmetus. Vestibulum ac lacus.\n\n";
         assert_eq!(
-            rewrite_string(comment, &fmt),
+            rewrite_string(comment, &fmt, 20),
             Some(
                 "Aenean\n    //\n    // metus. Vestibulum ac\n    // lacus.\n    //\n".to_string()
             )
@@ -611,13 +615,13 @@ mod test {
 
         let comment = "Aenean\n\nmetus. Vestibulum ac lacus.\n";
         assert_eq!(
-            rewrite_string(comment, &fmt),
+            rewrite_string(comment, &fmt, 20),
             Some("Aenean\n    //\n    // metus. Vestibulum ac\n    // lacus.\n".to_string())
         );
 
         let comment = "Aenean\n        \nmetus. Vestibulum ac lacus.";
         assert_eq!(
-            rewrite_string(comment, &fmt),
+            rewrite_string(comment, &fmt, 20),
             Some("Aenean\n    //\n    // metus. Vestibulum ac\n    // lacus.".to_string())
         );
     }
@@ -637,14 +641,14 @@ mod test {
 
         let comment = "Aenean metus. Vestibulum ac lacus.";
         assert_eq!(
-            rewrite_string(comment, &fmt),
+            rewrite_string(comment, &fmt, 13),
             Some("Aenean metus.\n    // Vestibulum ac\n    // lacus.".to_string())
         );
 
         fmt.trim_end = false;
         let comment = "Vestibulum ac lacus.";
         assert_eq!(
-            rewrite_string(comment, &fmt),
+            rewrite_string(comment, &fmt, 13),
             Some("Vestibulum \n    // ac lacus.".to_string())
         );
 
@@ -652,7 +656,7 @@ mod test {
         fmt.line_end = "\\";
         let comment = "Vestibulum ac lacus.";
         assert_eq!(
-            rewrite_string(comment, &fmt),
+            rewrite_string(comment, &fmt, 13),
             Some("Vestibulum\\\n    // ac lacus.".to_string())
         );
     }

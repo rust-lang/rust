@@ -579,7 +579,11 @@ fn rewrite_comment_inner(
             let item_fmt = ib.create_string_format(&fmt);
             result.push_str(&comment_line_separator);
             result.push_str(&ib.opener);
-            match rewrite_string(&item_block_buffer.replace("\n", " "), &item_fmt) {
+            match rewrite_string(
+                &item_block_buffer.replace("\n", " "),
+                &item_fmt,
+                max_chars.saturating_sub(ib.indent),
+            ) {
                 Some(s) => result.push_str(&join_block(
                     &s,
                     &format!("{}{}", &comment_line_separator, ib.line_start),
@@ -654,7 +658,7 @@ fn rewrite_comment_inner(
         }
 
         if config.wrap_comments() && line.len() > fmt.shape.width && !has_url(line) {
-            match rewrite_string(line, &fmt) {
+            match rewrite_string(line, &fmt, max_chars) {
                 Some(ref s) => {
                     is_prev_line_multi_line = s.contains('\n');
                     result.push_str(s);
@@ -665,7 +669,7 @@ fn rewrite_comment_inner(
                     result.pop();
                     result.push_str(&comment_line_separator);
                     fmt.shape = Shape::legacy(max_chars, fmt_indent);
-                    match rewrite_string(line, &fmt) {
+                    match rewrite_string(line, &fmt, max_chars) {
                         Some(ref s) => {
                             is_prev_line_multi_line = s.contains('\n');
                             result.push_str(s);
@@ -719,7 +723,11 @@ fn rewrite_comment_inner(
         let item_fmt = ib.create_string_format(&fmt);
         result.push_str(&comment_line_separator);
         result.push_str(&ib.opener);
-        match rewrite_string(&item_block_buffer.replace("\n", " "), &item_fmt) {
+        match rewrite_string(
+            &item_block_buffer.replace("\n", " "),
+            &item_fmt,
+            max_chars.saturating_sub(ib.indent),
+        ) {
             Some(s) => result.push_str(&join_block(
                 &s,
                 &format!("{}{}", &comment_line_separator, ib.line_start),

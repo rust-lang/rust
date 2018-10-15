@@ -1254,6 +1254,7 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
     rewrite_string(
         str_lit,
         &StringFormat::new(shape.visual_indent(0), context.config),
+        shape.width.saturating_sub(2),
     )
 }
 
