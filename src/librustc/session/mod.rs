@@ -703,8 +703,8 @@ impl Session {
         match self.opts.maybe_sysroot {
             Some(ref sysroot) => sysroot,
             None => self.default_sysroot
-                .as_ref()
-                .expect("missing sysroot and default_sysroot in Session"),
+                        .as_ref()
+                        .expect("missing sysroot and default_sysroot in Session"),
         }
     }
     pub fn target_filesearch(&self, kind: PathKind) -> filesearch::FileSearch<'_> {
@@ -727,14 +727,8 @@ impl Session {
     pub fn set_incr_session_load_dep_graph(&self, load: bool) {
         let mut incr_comp_session = self.incr_comp_session.borrow_mut();
 
-        match *incr_comp_session {
-            IncrCompSession::Active {
-                ref mut load_dep_graph,
-                ..
-            } => {
-                *load_dep_graph = load;
-            }
-            _ => {}
+        if let IncrCompSession::Active { ref mut load_dep_graph, .. } = *incr_comp_session {
+            *load_dep_graph = load;
         }
     }
 
@@ -872,9 +866,9 @@ impl Session {
     /// This expends fuel if applicable, and records fuel if applicable.
     pub fn consider_optimizing<T: Fn() -> String>(&self, crate_name: &str, msg: T) -> bool {
         let mut ret = true;
-        match self.optimization_fuel_crate {
-            Some(ref c) if c == crate_name => {
-                assert!(self.query_threads() == 1);
+        if let Some(ref c) = self.optimization_fuel_crate {
+            if c == crate_name {
+                assert_eq!(self.query_threads(), 1);
                 let fuel = self.optimization_fuel_limit.get();
                 ret = fuel != 0;
                 if fuel == 0 && !self.out_of_fuel.get() {
@@ -884,14 +878,12 @@ impl Session {
                     self.optimization_fuel_limit.set(fuel - 1);
                 }
             }
-            _ => {}
         }
-        match self.print_fuel_crate {
-            Some(ref c) if c == crate_name => {
-                assert!(self.query_threads() == 1);
+        if let Some(ref c) = self.print_fuel_crate {
+            if c == crate_name {
+                assert_eq!(self.query_threads(), 1);
                 self.print_fuel.set(self.print_fuel.get() + 1);
             }
-            _ => {}
         }
         ret
     }
@@ -1108,14 +1100,11 @@ pub fn build_session_(
     source_map: Lrc<source_map::SourceMap>,
 ) -> Session {
     let host_triple = TargetTriple::from_triple(config::host_triple());
-    let host = match Target::search(&host_triple) {
-        Ok(t) => t,
-        Err(e) => {
-            span_diagnostic
-                .fatal(&format!("Error loading host specification: {}", e))
-                .raise();
-        }
-    };
+    let host = Target::search(&host_triple).unwrap_or_else(|e|
+        span_diagnostic
+            .fatal(&format!("Error loading host specification: {}", e))
+            .raise()
+    );
     let target_cfg = config::build_target_config(&sopts, &span_diagnostic);
 
     let p_s = parse::ParseSess::with_span_handler(span_diagnostic, source_map);
@@ -1135,12 +1124,11 @@ pub fn build_session_(
     let print_fuel_crate = sopts.debugging_opts.print_fuel.clone();
     let print_fuel = LockCell::new(0);
 
-    let working_dir = match env::current_dir() {
-        Ok(dir) => dir,
-        Err(e) => p_s.span_diagnostic
+    let working_dir = env::current_dir().unwrap_or_else(|e|
+        p_s.span_diagnostic
             .fatal(&format!("Current directory is invalid: {}", e))
-            .raise(),
-    };
+            .raise()
+    );
     let working_dir = file_path_mapping.map_prefix(working_dir);
 
     let cgu_reuse_tracker = if sopts.debugging_opts.query_dep_graph {

@@ -41,7 +41,7 @@ impl<'a> FileSearch<'a> {
         F: FnMut(&Path, PathKind)
     {
         let mut visited_dirs = FxHashSet::default();
-
+        visited_dirs.reserve(self.search_paths.paths.len() + 1);
         for (path, kind) in self.search_paths.iter(self.kind) {
             f(path, kind);
             visited_dirs.insert(path.to_path_buf());
@@ -160,7 +160,7 @@ pub fn get_or_default_sysroot() -> PathBuf {
     match env::current_exe() {
         Ok(exe) => {
             match canonicalize(Some(exe)) {
-                Some(mut p) => { p.pop(); p.pop(); return p; },
+                Some(mut p) => { p.pop(); p.pop(); p },
                 None => bug!("can't determine value for sysroot")
             }
         }
@@ -175,17 +175,8 @@ fn find_libdir(sysroot: &Path) -> Cow<'static, str> {
     // to lib64/lib32. This would be more foolproof by basing the sysroot off
     // of the directory where librustc is located, rather than where the rustc
     // binary is.
-    //If --libdir is set during configuration to the value other than
+    // If --libdir is set during configuration to the value other than
     // "lib" (i.e. non-default), this value is used (see issue #16552).
-
-    match option_env!("CFG_LIBDIR_RELATIVE") {
-        Some(libdir) if libdir != "lib" => return libdir.into(),
-        _ => if sysroot.join(PRIMARY_LIB_DIR).join(RUST_LIB_DIR).exists() {
-            return PRIMARY_LIB_DIR.into();
-        } else {
-            return SECONDARY_LIB_DIR.into();
-        }
-    }
 
     #[cfg(target_pointer_width = "64")]
     const PRIMARY_LIB_DIR: &'static str = "lib64";
@@ -194,6 +185,15 @@ fn find_libdir(sysroot: &Path) -> Cow<'static, str> {
     const PRIMARY_LIB_DIR: &'static str = "lib32";
 
     const SECONDARY_LIB_DIR: &'static str = "lib";
+
+    match option_env!("CFG_LIBDIR_RELATIVE") {
+        Some(libdir) if libdir != "lib" => libdir.into(),
+        _ => if sysroot.join(PRIMARY_LIB_DIR).join(RUST_LIB_DIR).exists() {
+            PRIMARY_LIB_DIR.into()
+        } else {
+            SECONDARY_LIB_DIR.into()
+        }
+    }
 }
 
 // The name of rustc's own place to organize libraries.
