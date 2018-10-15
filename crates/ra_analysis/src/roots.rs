@@ -78,7 +78,6 @@ impl SourceRoot for WritableSourceRoot {
     fn contains(&self, file_id: FileId) -> bool {
         let db = self.db.read();
         let files = &db.file_set(()).files;
-        eprintln!("files = {:?}", files);
         files.contains(&file_id)
     }
     fn lines(&self, file_id: FileId) -> Arc<LineIndex> {

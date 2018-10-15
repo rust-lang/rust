@@ -3,6 +3,7 @@ use std::{
         Arc,
         atomic::{AtomicBool, Ordering::SeqCst},
     },
+    hash::{Hash, Hasher},
     fmt,
     collections::VecDeque,
     iter,
@@ -29,6 +30,21 @@ pub(crate) struct FileResolverImp {
     inner: Arc<FileResolver>
 }
 
+impl PartialEq for FileResolverImp {
+    fn eq(&self, other: &FileResolverImp) -> bool {
+        self.inner() == other.inner()
+    }
+}
+
+impl Eq for FileResolverImp {
+}
+
+impl Hash for FileResolverImp {
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        self.inner().hash(hasher);
+    }
+}
+
 impl FileResolverImp {
     pub(crate) fn new(inner: Arc<FileResolver>) -> FileResolverImp {
         FileResolverImp { inner }
@@ -38,6 +54,9 @@ impl FileResolverImp {
     }
     pub(crate) fn resolve(&self, file_id: FileId, path: &RelativePath) -> Option<FileId> {
         self.inner.resolve(file_id, path)
+    }
+    fn inner(&self) -> *const FileResolver {
+        &*self.inner
     }
 }
 

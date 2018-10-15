@@ -61,19 +61,10 @@ salsa::query_group! {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, PartialEq, Eq)]
 pub(crate) struct FileSet {
     pub(crate) files: FxHashSet<FileId>,
     pub(crate) resolver: FileResolverImp,
-}
-
-impl PartialEq for FileSet {
-    fn eq(&self, other: &FileSet) -> bool {
-        self.files == other.files
-    }
-}
-
-impl Eq for FileSet {
 }
 
 impl Hash for FileSet {
