@@ -44,7 +44,7 @@ fn print_lints() {
         if lint_group == "Deprecated" { continue; }
         println!("\n## {}", lint_group);
 
-        lints.sort_by(|a, b| a.name.cmp(&b.name));
+        lints.sort_by_key(|l| l.name.clone());
 
         for lint in lints {
             println!("* [{}]({}#{}) ({})", lint.name, clippy_dev::DOCS_LINK.clone(), lint.name, lint.desc);
