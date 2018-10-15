@@ -167,6 +167,19 @@
             });
         }
 
+        function selectGroup($scope, selectedGroup) {
+            var groups = $scope.groups;
+            for (var group in groups) {
+                if (groups.hasOwnProperty(group)) {
+                    if (group === selectedGroup) {
+                        groups[group] = true;
+                    } else {
+                        groups[group] = false;
+                    }
+                }
+            }
+        }
+
         angular.module("clippy", [])
         .filter('markdown', function ($sce) {
             return function (text) {
@@ -223,6 +236,11 @@
                     return result;
                 }, {});
 
+                var selectedGroup = getQueryVariable("sel");
+                if (selectedGroup) {
+                    selectGroup($scope, selectedGroup.toLowerCase());
+                }
+
                 scrollToLintByURL($scope);
             })
             .error(function (data) {
@@ -243,6 +261,17 @@
             }, false);
         });
     })();
+
+    function getQueryVariable(variable) {
+        var query = window.location.search.substring(1);
+        var vars = query.split('&');
+        for (var i = 0; i < vars.length; i++) {
+            var pair = vars[i].split('=');
+            if (decodeURIComponent(pair[0]) == variable) {
+                return decodeURIComponent(pair[1]);
+            }
+        }
+    }
     </script>
 </body>
 </html>
