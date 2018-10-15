@@ -163,9 +163,18 @@ fn check_rvalue(
                 _ => check_operand(tcx, mir, operand, span),
             }
         }
-        Rvalue::Cast(_, _, _) => Err((
+        Rvalue::Cast(CastKind::UnsafeFnPointer, _, _) |
+        Rvalue::Cast(CastKind::ReifyFnPointer, _, _) => Err((
             span,
-            "only int casts are allowed in const fn".into(),
+            "function pointer casts are not allowed in const fn".into(),
+        )),
+        Rvalue::Cast(CastKind::ClosureFnPointer, _, _) => Err((
+            span,
+            "closures are not allowed in const fn".into(),
+        )),
+        Rvalue::Cast(CastKind::Unsize, _, _) => Err((
+            span,
+            "unsizing casts are not allowed in const fn".into(),
         )),
         // binops are fine on integers
         Rvalue::BinaryOp(_, lhs, rhs) | Rvalue::CheckedBinaryOp(_, lhs, rhs) => {
