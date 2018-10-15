@@ -93,6 +93,8 @@ fn parse_contents(content: &str, filename: &str) -> impl Iterator<Item=Lint> {
 
 /// Collects all .rs files in the `clippy_lints/src` directory
 fn lint_files() -> impl Iterator<Item=walkdir::DirEntry> {
+    // We use `WalkDir` instead of `fs::read_dir` here in order to recurse into subdirectories.
+    // Otherwise we would not collect all the lints, for example in `clippy_lints/src/methods/`.
     WalkDir::new("../clippy_lints/src")
         .into_iter()
         .filter_map(|f| f.ok())
