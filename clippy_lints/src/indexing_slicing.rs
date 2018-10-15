@@ -120,7 +120,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
                             utils::span_lint(
                                 cx,
                                 OUT_OF_BOUNDS_INDEXING,
-                                expr.span,
+                                range.start.map_or(expr.span, |start| start.span),
                                 "range is out of bounds",
                             );
                             return;
@@ -132,7 +132,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
                             utils::span_lint(
                                 cx,
                                 OUT_OF_BOUNDS_INDEXING,
-                                expr.span,
+                                range.end.map_or(expr.span, |end| end.span),
                                 "range is out of bounds",
                             );
                             return;
