@@ -1980,9 +1980,15 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         }
 
         if !module.no_implicit_prelude {
-            // `record_used` means that we don't try to load crates during speculative resolution
-            if record_used && ns == TypeNS && self.extern_prelude.contains(&ident.name) {
-                let crate_id = self.crate_loader.process_path_extern(ident.name, ident.span);
+            if ns == TypeNS && self.extern_prelude.contains(&ident.name) {
+                let crate_id = if record_used {
+                    self.crate_loader.process_path_extern(ident.name, ident.span)
+                } else if let Some(crate_id) =
+                        self.crate_loader.maybe_process_path_extern(ident.name, ident.span) {
+                    crate_id
+                } else {
+                    return None;
+                };
                 let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
                 self.populate_module_if_necessary(&crate_root);
 
