@@ -779,7 +779,7 @@ pub fn format_impl(
             let outer_indent_str = offset.block_only().to_string_with_newline(context.config);
 
             result.push_str(&inner_indent_str);
-            result.push_str(visitor.buffer.to_string().trim());
+            result.push_str(visitor.buffer.trim());
             result.push_str(&outer_indent_str);
         } else if need_newline || !context.config.empty_item_single_line() {
             result.push_str(&sep);
@@ -1137,7 +1137,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             let inner_indent_str = visitor.block_indent.to_string_with_newline(context.config);
 
             result.push_str(&inner_indent_str);
-            result.push_str(visitor.buffer.to_string().trim());
+            result.push_str(visitor.buffer.trim());
             result.push_str(&outer_indent_str);
         } else if result.contains('\n') {
             result.push_str(&outer_indent_str);
@@ -1543,7 +1543,7 @@ pub fn rewrite_struct_field_prefix(
             rewrite_ident(context, name),
             type_annotation_spacing.0
         ),
-        None => format!("{}", vis),
+        None => vis.to_string(),
     })
 }
 
@@ -2004,18 +2004,13 @@ fn rewrite_fn_base(
         one_line_budget, multi_line_budget, arg_indent
     );
 
+    result.push('(');
     // Check if vertical layout was forced.
-    if one_line_budget == 0 {
-        if snuggle_angle_bracket {
-            result.push('(');
-        } else {
-            result.push_str("(");
-            if context.config.indent_style() == IndentStyle::Visual {
-                result.push_str(&arg_indent.to_string_with_newline(context.config));
-            }
-        }
-    } else {
-        result.push('(');
+    if one_line_budget == 0
+        && !snuggle_angle_bracket
+        && context.config.indent_style() == IndentStyle::Visual
+    {
+        result.push_str(&arg_indent.to_string_with_newline(context.config));
     }
 
     // Skip `pub(crate)`.

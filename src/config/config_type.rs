@@ -112,7 +112,7 @@ macro_rules! create_config {
                 cloned.width_heuristics = None;
 
                 ::toml::to_string(&cloned)
-                    .map_err(|e| format!("Could not output config: {}", e.to_string()))
+                    .map_err(|e| format!("Could not output config: {}", e))
             }
         }
 

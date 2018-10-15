@@ -45,7 +45,7 @@ pub fn is_same_visibility(a: &Visibility, b: &Visibility) -> bool {
         (
             VisibilityKind::Restricted { path: p, .. },
             VisibilityKind::Restricted { path: q, .. },
-        ) => format!("{}", p) == format!("{}", q),
+        ) => p.to_string() == q.to_string(),
         (VisibilityKind::Public, VisibilityKind::Public)
         | (VisibilityKind::Inherited, VisibilityKind::Inherited)
         | (

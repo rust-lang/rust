@@ -425,7 +425,7 @@ impl<'a> Context<'a> {
                     _ => expr.rewrite(self.context, shape),
                 }
             }
-            item @ _ => item.rewrite(self.context, shape),
+            item => item.rewrite(self.context, shape),
         };
 
         if let Some(rewrite) = rewrite {

@@ -112,7 +112,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 if contains_skip(get_attrs_from_stmt(stmt)) {
                     self.push_skipped_with_span(stmt.span());
                 } else {
-                    let shape = self.shape().clone();
+                    let shape = self.shape();
                     let rewrite = self.with_context(|ctx| stmt.rewrite(&ctx, shape));
                     self.push_rewrite(stmt.span(), rewrite)
                 }
@@ -367,13 +367,13 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 let where_span_end = snippet
                     .find_uncommented("{")
                     .map(|x| BytePos(x as u32) + source!(self, item.span).lo());
-                let block_indent = self.block_indent.clone();
+                let block_indent = self.block_indent;
                 let rw =
                     self.with_context(|ctx| format_impl(&ctx, item, block_indent, where_span_end));
                 self.push_rewrite(item.span, rw);
             }
             ast::ItemKind::Trait(..) => {
-                let block_indent = self.block_indent.clone();
+                let block_indent = self.block_indent;
                 let rw = self.with_context(|ctx| format_trait(&ctx, item, block_indent));
                 self.push_rewrite(item.span, rw);
             }
@@ -652,20 +652,19 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                         ErrorKind::DeprecatedAttr,
                     )],
                 );
-            } else if attr.path.segments[0].ident.to_string() == "rustfmt" {
-                if attr.path.segments.len() == 1
-                    || attr.path.segments[1].ident.to_string() != "skip"
-                {
-                    let file_name = self.source_map.span_to_filename(attr.span).into();
-                    self.report.append(
-                        file_name,
-                        vec![FormattingError::from_span(
-                            attr.span,
-                            &self.source_map,
-                            ErrorKind::BadAttr,
-                        )],
-                    );
-                }
+            } else if attr.path.segments[0].ident.to_string() == "rustfmt"
+                && (attr.path.segments.len() == 1
+                    || attr.path.segments[1].ident.to_string() != "skip")
+            {
+                let file_name = self.source_map.span_to_filename(attr.span).into();
+                self.report.append(
+                    file_name,
+                    vec![FormattingError::from_span(
+                        attr.span,
+                        &self.source_map,
+                        ErrorKind::BadAttr,
+                    )],
+                );
             }
         }
         if contains_skip(attrs) {
@@ -792,13 +791,9 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     where
         F: Fn(&RewriteContext) -> Option<String>,
     {
-        let result;
-        let macro_rewrite_failure = {
-            let context = self.get_context();
-            result = f(&context);
-            unsafe { *context.macro_rewrite_failure.as_ptr() }
-        };
-        self.macro_rewrite_failure |= macro_rewrite_failure;
+        let context = self.get_context();
+        let result = f(&context);
+        self.macro_rewrite_failure |= *context.macro_rewrite_failure.borrow();
         result
     }
 

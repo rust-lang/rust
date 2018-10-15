@@ -83,7 +83,7 @@ fn main() {
     );
 
     if let Err(e) = run(&opts) {
-        println!("{}", opts.usage(&format!("{}", e)));
+        println!("{}", opts.usage(&e.to_string()));
         process::exit(1);
     }
 }

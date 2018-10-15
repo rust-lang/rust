@@ -120,7 +120,7 @@ impl<'a> FmtVisitor<'a> {
     }
 
     fn push_vertical_spaces(&mut self, mut newline_count: usize) {
-        let offset = self.count_trailing_newlines();
+        let offset = self.buffer.chars().rev().take_while(|c| *c == '\n').count();
         let newline_upper_bound = self.config.blank_lines_upper_bound() + 1;
         let newline_lower_bound = self.config.blank_lines_lower_bound() + 1;
 
@@ -140,16 +140,6 @@ impl<'a> FmtVisitor<'a> {
 
         let blank_lines = "\n".repeat(newline_count);
         self.push_str(&blank_lines);
-    }
-
-    fn count_trailing_newlines(&self) -> usize {
-        let mut buf = &*self.buffer;
-        let mut result = 0;
-        while buf.ends_with('\n') {
-            buf = &buf[..buf.len() - 1];
-            result += 1;
-        }
-        result
     }
 
     fn write_snippet<F>(&mut self, span: Span, process_last_snippet: F)
@@ -271,11 +261,7 @@ impl<'a> FmtVisitor<'a> {
 
         if let Some('/') = subslice.chars().nth(1) {
             // check that there are no contained block comments
-            if !subslice
-                .split('\n')
-                .map(|s| s.trim_left())
-                .any(|s| s.len() >= 2 && &s[0..2] == "/*")
-            {
+            if !subslice.lines().any(|s| s.trim_left().starts_with("/*")) {
                 // Add a newline after line comments
                 self.push_str("\n");
             }

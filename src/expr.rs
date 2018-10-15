@@ -1816,12 +1816,7 @@ fn rewrite_unary_op(
     shape: Shape,
 ) -> Option<String> {
     // For some reason, an UnOp is not spanned like BinOp!
-    let operator_str = match op {
-        ast::UnOp::Deref => "*",
-        ast::UnOp::Not => "!",
-        ast::UnOp::Neg => "-",
-    };
-    rewrite_unary_prefix(context, operator_str, expr, shape)
+    rewrite_unary_prefix(context, ast::UnOp::to_string(op), expr, shape)
 }
 
 fn rewrite_assignment(
