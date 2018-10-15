@@ -427,6 +427,7 @@ impl Builder {
     /// # Examples
     ///
     /// ```
+    /// #![feature(thread_spawn_unchecked)]
     /// use std::thread;
     ///
     /// let builder = thread::Builder::new();
