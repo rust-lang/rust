@@ -549,15 +549,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         self.infcx.probe(|snapshot| f(self, snapshot))
     }
 
-    /// Wraps a commit_if_ok s.t. obligations collected during it are not returned in selection if
-    /// the transaction fails and s.t. old obligations are retained.
-    fn commit_if_ok<T, E, F>(&mut self, f: F) -> Result<T, E>
-    where
-        F: FnOnce(&mut Self, &infer::CombinedSnapshot<'cx, 'tcx>) -> Result<T, E>,
-    {
-        self.infcx.commit_if_ok(|snapshot| f(self, snapshot))
-    }
-
     ///////////////////////////////////////////////////////////////////////////
     // Selection
     //
@@ -3041,7 +3032,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             // reported an ambiguity. (When we do find a match, also
             // record it for later.)
             let nonmatching = util::supertraits(tcx, poly_trait_ref).take_while(
-                |&t| match self.commit_if_ok(|this, _| this.match_poly_trait_ref(obligation, t)) {
+                |&t| match self.infcx.commit_if_ok(|_| self.match_poly_trait_ref(obligation, t)) {
                     Ok(obligations) => {
                         upcast_trait_ref = Some(t);
                         nested.extend(obligations);
