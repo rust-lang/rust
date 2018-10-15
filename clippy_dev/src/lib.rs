@@ -36,6 +36,7 @@ lazy_static! {
     pub static ref DOCS_LINK: String = "https://rust-lang-nursery.github.io/rust-clippy/master/index.html".to_string();
 }
 
+/// Lint data parsed from the Clippy source code.
 #[derive(Clone, PartialEq, Debug)]
 pub struct Lint {
     pub name: String,
@@ -67,6 +68,7 @@ impl Lint {
     }
 }
 
+/// Gathers all files in `src/clippy_lints` and gathers all lints inside
 pub fn gather_all() -> impl Iterator<Item=Lint> {
     lint_files().flat_map(|f| gather_from_file(&f))
 }
