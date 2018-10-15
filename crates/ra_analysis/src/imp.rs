@@ -94,12 +94,12 @@ impl AnalysisHostImpl {
         }
     }
     pub fn change_files(&mut self, changes: &mut dyn Iterator<Item=(FileId, Option<String>)>) {
-        let data = self.data_mut();
-        data.root = Arc::new(data.root.apply_changes(changes, None));
+        self.data_mut()
+            .root.apply_changes(changes, None);
     }
     pub fn set_file_resolver(&mut self, resolver: FileResolverImp) {
-        let data = self.data_mut();
-        data.root = Arc::new(data.root.apply_changes(&mut iter::empty(), Some(resolver)));
+        self.data_mut()
+            .root.apply_changes(&mut iter::empty(), Some(resolver));
     }
     pub fn set_crate_graph(&mut self, graph: CrateGraph) {
         let mut visited = FxHashSet::default();
@@ -141,7 +141,7 @@ impl Clone for AnalysisImpl {
 impl AnalysisImpl {
     fn root(&self, file_id: FileId) -> &SourceRoot {
         if self.data.root.contains(file_id) {
-            return &*self.data.root;
+            return &self.data.root;
         }
         &**self.data.libs.iter().find(|it| it.contains(file_id)).unwrap()
     }
@@ -405,7 +405,7 @@ impl AnalysisImpl {
 #[derive(Default, Clone, Debug)]
 struct WorldData {
     crate_graph: CrateGraph,
-    root: Arc<WritableSourceRoot>,
+    root: WritableSourceRoot,
     libs: Vec<Arc<ReadonlySourceRoot>>,
 }
 

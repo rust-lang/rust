@@ -35,10 +35,10 @@ pub(crate) struct WritableSourceRoot {
 
 impl WritableSourceRoot {
     pub fn apply_changes(
-        &self,
+        &mut self,
         changes: &mut dyn Iterator<Item=(FileId, Option<String>)>,
         file_resolver: Option<FileResolverImp>,
-    ) -> WritableSourceRoot {
+    ) {
         let db = self.db.write();
         let mut changed = FxHashSet::default();
         let mut removed = FxHashSet::default();
@@ -65,9 +65,6 @@ impl WritableSourceRoot {
         let resolver = file_resolver.unwrap_or_else(|| file_set.resolver.clone());
         db.query(db::FileSetQuery)
             .set((), Arc::new(db::FileSet { files, resolver }));
-        // TODO: reconcile sasla's API with our needs
-        // https://github.com/salsa-rs/salsa/issues/12
-        self.clone()
     }
 }
 
