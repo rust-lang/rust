@@ -779,7 +779,7 @@ pub fn format_impl(
             let outer_indent_str = offset.block_only().to_string_with_newline(context.config);
 
             result.push_str(&inner_indent_str);
-            result.push_str(visitor.buffer.to_string().trim());
+            result.push_str(visitor.buffer.trim());
             result.push_str(&outer_indent_str);
         } else if need_newline || !context.config.empty_item_single_line() {
             result.push_str(&sep);
@@ -1137,7 +1137,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             let inner_indent_str = visitor.block_indent.to_string_with_newline(context.config);
 
             result.push_str(&inner_indent_str);
-            result.push_str(visitor.buffer.to_string().trim());
+            result.push_str(visitor.buffer.trim());
             result.push_str(&outer_indent_str);
         } else if result.contains('\n') {
             result.push_str(&outer_indent_str);

@@ -764,12 +764,12 @@ fn trim_custom_comment_prefix(s: &str) -> String {
                 // due to comment wrapping, a line that was originaly behind `#` is split over
                 // multiple lines, which needs then to be prefixed with a `#`
                 if !orig.trim_left().starts_with("# ") {
-                    format!("# {}", orig)
+                    Cow::from(format!("# {}", orig))
                 } else {
-                    orig.to_string()
+                    Cow::from(orig)
                 }
             } else {
-                line.to_string()
+                Cow::from(line)
             }
         })
         .collect::<Vec<_>>()
