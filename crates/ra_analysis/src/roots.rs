@@ -2,7 +2,6 @@ use std::{
     sync::Arc,
     panic,
 };
-use parking_lot::RwLock;
 
 use once_cell::sync::OnceCell;
 use rayon::prelude::*;
@@ -30,7 +29,7 @@ pub(crate) trait SourceRoot {
 
 #[derive(Default, Debug, Clone)]
 pub(crate) struct WritableSourceRoot {
-    db: Arc<RwLock<db::RootDatabase>>,
+    db: db::RootDatabase,
 }
 
 impl WritableSourceRoot {
@@ -39,7 +38,6 @@ impl WritableSourceRoot {
         changes: &mut dyn Iterator<Item=(FileId, Option<String>)>,
         file_resolver: Option<FileResolverImp>,
     ) {
-        let db = self.db.write();
         let mut changed = FxHashSet::default();
         let mut removed = FxHashSet::default();
         for (file_id, text) in changes {
@@ -48,13 +46,13 @@ impl WritableSourceRoot {
                     removed.insert(file_id);
                 }
                 Some(text) => {
-                    db.query(db::FileTextQuery)
+                    self.db.query(db::FileTextQuery)
                         .set(file_id, Arc::new(text));
                     changed.insert(file_id);
                 }
             }
         }
-        let file_set = db.file_set(());
+        let file_set = self.db.file_set(());
         let mut files: FxHashSet<FileId> = file_set
             .files
             .clone();
@@ -63,28 +61,28 @@ impl WritableSourceRoot {
         }
         files.extend(changed);
         let resolver = file_resolver.unwrap_or_else(|| file_set.resolver.clone());
-        db.query(db::FileSetQuery)
+        self.db.query(db::FileSetQuery)
             .set((), Arc::new(db::FileSet { files, resolver }));
     }
 }
 
 impl SourceRoot for WritableSourceRoot {
     fn module_tree(&self) -> Arc<ModuleTreeDescriptor> {
-        self.db.read().module_tree(())
+        self.db.module_tree(())
     }
     fn contains(&self, file_id: FileId) -> bool {
-        let db = self.db.read();
-        let files = &db.file_set(()).files;
-        files.contains(&file_id)
+        self.db.file_set(())
+            .files
+            .contains(&file_id)
     }
     fn lines(&self, file_id: FileId) -> Arc<LineIndex> {
-        self.db.read().file_lines(file_id)
+        self.db.file_lines(file_id)
     }
     fn syntax(&self, file_id: FileId) -> File {
-        self.db.read().file_syntax(file_id)
+        self.db.file_syntax(file_id)
     }
     fn symbols<'a>(&'a self, acc: &mut Vec<Arc<SymbolIndex>>) {
-        let db = self.db.read();
+        let db = &self.db;
         let symbols =  db.file_set(());
         let symbols = symbols
             .files

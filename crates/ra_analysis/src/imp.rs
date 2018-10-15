@@ -78,13 +78,13 @@ impl Default for FileResolverImp {
 
 #[derive(Debug)]
 pub(crate) struct AnalysisHostImpl {
-    data: Arc<WorldData>
+    data: WorldData
 }
 
 impl AnalysisHostImpl {
     pub fn new() -> AnalysisHostImpl {
         AnalysisHostImpl {
-            data: Arc::new(WorldData::default()),
+            data: WorldData::default(),
         }
     }
     pub fn analysis(&self) -> AnalysisImpl {
@@ -114,18 +114,18 @@ impl AnalysisHostImpl {
         self.data_mut().libs.push(Arc::new(root));
     }
     fn data_mut(&mut self) -> &mut WorldData {
-        Arc::make_mut(&mut self.data)
+        &mut self.data
     }
 }
 
 pub(crate) struct AnalysisImpl {
     needs_reindex: AtomicBool,
-    data: Arc<WorldData>,
+    data: WorldData,
 }
 
 impl fmt::Debug for AnalysisImpl {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        (&*self.data).fmt(f)
+        self.data.fmt(f)
     }
 }
 
@@ -133,7 +133,7 @@ impl Clone for AnalysisImpl {
     fn clone(&self) -> AnalysisImpl {
         AnalysisImpl {
             needs_reindex: AtomicBool::new(self.needs_reindex.load(SeqCst)),
-            data: Arc::clone(&self.data),
+            data: self.data.clone(),
         }
     }
 }

@@ -30,6 +30,20 @@ impl salsa::Database for RootDatabase {
     }
 }
 
+impl salsa::ParallelDatabase for RootDatabase {
+    fn fork(&self) -> Self {
+        RootDatabase {
+            runtime: self.runtime.fork(),
+        }
+    }
+}
+
+impl Clone for RootDatabase {
+    fn clone(&self) -> RootDatabase {
+        salsa::ParallelDatabase::fork(self)
+    }
+}
+
 salsa::database_storage! {
     pub(crate) struct RootDatabaseStorage for RootDatabase {
         impl FilesDatabase {
