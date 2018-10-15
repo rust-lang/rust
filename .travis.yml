@@ -1,3 +1,5 @@
+cache: cargo
+
 matrix:
   include:
     - language: rust
