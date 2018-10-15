@@ -272,7 +272,7 @@ declare_lint! {
 pub struct UnusedParens;
 
 impl UnusedParens {
-    fn check_unused_parens_core(&self,
+    fn check_unused_parens_expr(&self,
                                 cx: &EarlyContext,
                                 value: &ast::Expr,
                                 msg: &str,
@@ -281,45 +281,56 @@ impl UnusedParens {
             let necessary = struct_lit_needs_parens &&
                             parser::contains_exterior_struct_lit(&inner);
             if !necessary {
-                let span_msg = format!("unnecessary parentheses around {}", msg);
-                let mut err = cx.struct_span_lint(UNUSED_PARENS,
-                                                  value.span,
-                                                  &span_msg);
-                // Remove exactly one pair of parentheses (rather than naïvely
-                // stripping all paren characters)
-                let mut ate_left_paren = false;
-                let mut ate_right_paren = false;
-                let parens_removed = pprust::expr_to_string(value)
-                    .trim_matches(|c| {
-                        match c {
-                            '(' => {
-                                if ate_left_paren {
-                                    false
-                                } else {
-                                    ate_left_paren = true;
-                                    true
-                                }
-                            },
-                            ')' => {
-                                if ate_right_paren {
-                                    false
-                                } else {
-                                    ate_right_paren = true;
-                                    true
-                                }
-                            },
-                            _ => false,
-                        }
-                    }).to_owned();
-                err.span_suggestion_short_with_applicability(
-                    value.span,
-                    "remove these parentheses",
-                    parens_removed,
-                    Applicability::MachineApplicable
-                );
-                err.emit();
+                let pattern = pprust::expr_to_string(value);
+                Self::remove_outer_parens(cx, value.span, &pattern, msg);
             }
         }
+    }
+
+    fn check_unused_parens_pat(&self,
+                                cx: &EarlyContext,
+                                value: &ast::Pat,
+                                msg: &str) {
+        if let ast::PatKind::Paren(_) = value.node {
+            let pattern = pprust::pat_to_string(value);
+            Self::remove_outer_parens(cx, value.span, &pattern, msg);
+        }
+    }
+
+    fn remove_outer_parens(cx: &EarlyContext, span: Span, pattern: &str, msg: &str) {
+        let span_msg = format!("unnecessary parentheses around {}", msg);
+        let mut err = cx.struct_span_lint(UNUSED_PARENS, span, &span_msg);
+        let mut ate_left_paren = false;
+        let mut ate_right_paren = false;
+        let parens_removed = pattern
+            .trim_matches(|c| {
+                match c {
+                    '(' => {
+                        if ate_left_paren {
+                            false
+                        } else {
+                            ate_left_paren = true;
+                            true
+                        }
+                    },
+                    ')' => {
+                        if ate_right_paren {
+                            false
+                        } else {
+                            ate_right_paren = true;
+                            true
+                        }
+                    },
+                    _ => false,
+                }
+            }).to_owned();
+        err.span_suggestion_short_with_applicability(
+                span,
+                "remove these parentheses",
+                parens_removed,
+                Applicability::MachineApplicable
+            );
+        err.emit();
     }
 }
 
@@ -349,7 +360,9 @@ impl EarlyLintPass for UnusedParens {
                     // first "argument" is self (which sometimes needs parens)
                     MethodCall(_, ref args) => (&args[1..], "method"),
                     // actual catch-all arm
-                    _ => { return; }
+                    _ => {
+                        return;
+                    }
                 };
                 // Don't lint if this is a nested macro expansion: otherwise, the lint could
                 // trigger in situations that macro authors shouldn't have to care about, e.g.,
@@ -362,18 +375,32 @@ impl EarlyLintPass for UnusedParens {
                 }
                 let msg = format!("{} argument", call_kind);
                 for arg in args_to_check {
-                    self.check_unused_parens_core(cx, arg, &msg, false);
+                    self.check_unused_parens_expr(cx, arg, &msg, false);
                 }
                 return;
             }
         };
-        self.check_unused_parens_core(cx, &value, msg, struct_lit_needs_parens);
+        self.check_unused_parens_expr(cx, &value, msg, struct_lit_needs_parens);
+    }
+
+    fn check_pat(&mut self, cx: &EarlyContext, p: &ast::Pat) {
+        use ast::PatKind::{Paren, Range};
+        // The lint visitor will visit each subpattern of `p`. We do not want to lint any range
+        // pattern no matter where it occurs in the pattern. For something like `&(a..=b)`, there
+        // is a recursive `check_pat` on `a` and `b`, but we will assume that if there are
+        // unnecessry parens they serve a purpose of readability.
+        if let Paren(ref pat) = p.node {
+            match pat.node {
+                Range(..) => {}
+                _ => self.check_unused_parens_pat(cx, &p, "pattern")
+            }
+        }
     }
 
     fn check_stmt(&mut self, cx: &EarlyContext, s: &ast::Stmt) {
         if let ast::StmtKind::Local(ref local) = s.node {
             if let Some(ref value) = local.init {
-                self.check_unused_parens_core(cx, &value, "assigned value", false);
+                self.check_unused_parens_expr(cx, &value, "assigned value", false);
             }
         }
     }
