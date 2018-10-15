@@ -96,9 +96,8 @@ pub type Result = result::Result<(), Error>;
 /// use std::fmt::{self, write};
 ///
 /// let mut output = String::new();
-/// match write(&mut output, format_args!("Hello {}!", "world")) {
-///     Err(fmt::Error) => panic!("An error occurred"),
-///     _ => (),
+/// if let Err(fmt::Error) = write(&mut output, format_args!("Hello {}!", "world")) {
+///     panic!("An error occurred");
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
