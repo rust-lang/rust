@@ -172,7 +172,7 @@ fn detect_url(s: &[&str], index: usize) -> Option<usize> {
     if s.len() < start + 8 {
         return None;
     }
-    let prefix = s[start..start + 8].join("");
+    let prefix = s[start..start + 8].concat();
     if prefix.starts_with("https://")
         || prefix.starts_with("http://")
         || prefix.starts_with("ftp://")
@@ -242,7 +242,7 @@ fn break_string(max_chars: usize, trim_end: bool, line_end: &str, input: &[&str]
         for (i, grapheme) in input[0..=index].iter().enumerate() {
             if is_line_feed(grapheme) {
                 if i <= index_minus_ws {
-                    let mut line = &input[0..i].join("")[..];
+                    let mut line = &input[0..i].concat()[..];
                     if trim_end {
                         line = line.trim_right();
                     }
@@ -256,7 +256,7 @@ fn break_string(max_chars: usize, trim_end: bool, line_end: &str, input: &[&str]
         for (i, grapheme) in input[index + 1..].iter().enumerate() {
             if !trim_end && is_line_feed(grapheme) {
                 return SnippetState::EndWithLineFeed(
-                    input[0..=index + 1 + i].join("").to_string(),
+                    input[0..=index + 1 + i].concat(),
                     index + 2 + i,
                 );
             } else if not_whitespace_except_line_feed(grapheme) {
@@ -266,15 +266,9 @@ fn break_string(max_chars: usize, trim_end: bool, line_end: &str, input: &[&str]
         }
 
         if trim_end {
-            SnippetState::LineEnd(
-                input[0..=index_minus_ws].join("").to_string(),
-                index_plus_ws + 1,
-            )
+            SnippetState::LineEnd(input[0..=index_minus_ws].concat(), index_plus_ws + 1)
         } else {
-            SnippetState::LineEnd(
-                input[0..=index_plus_ws].join("").to_string(),
-                index_plus_ws + 1,
-            )
+            SnippetState::LineEnd(input[0..=index_plus_ws].concat(), index_plus_ws + 1)
         }
     };
 
@@ -297,15 +291,9 @@ fn break_string(max_chars: usize, trim_end: bool, line_end: &str, input: &[&str]
             .position(|grapheme| not_whitespace_except_line_feed(grapheme))
             .unwrap_or(0);
         return if trim_end {
-            SnippetState::LineEnd(
-                input[..=url_index_end].join("").to_string(),
-                index_plus_ws + 1,
-            )
+            SnippetState::LineEnd(input[..=url_index_end].concat(), index_plus_ws + 1)
         } else {
-            return SnippetState::LineEnd(
-                input[..=index_plus_ws].join("").to_string(),
-                index_plus_ws + 1,
-            );
+            return SnippetState::LineEnd(input[..=index_plus_ws].concat(), index_plus_ws + 1);
         };
     }
     match input[0..max_chars]
@@ -330,7 +318,7 @@ fn break_string(max_chars: usize, trim_end: bool, line_end: &str, input: &[&str]
                 // A boundary was found after the line limit
                 Some(index) => break_at(max_chars + index),
                 // No boundary to the right, the input cannot be broken
-                None => SnippetState::EndOfInput(input.join("").to_string()),
+                None => SnippetState::EndOfInput(input.concat()),
             },
         },
     }
