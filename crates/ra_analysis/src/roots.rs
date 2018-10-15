@@ -1,5 +1,4 @@
 use std::{
-    collections::{HashMap, HashSet},
     sync::Arc,
     panic,
 };
@@ -8,6 +7,7 @@ use parking_lot::RwLock;
 use once_cell::sync::OnceCell;
 use rayon::prelude::*;
 use salsa::Database;
+use rustc_hash::{FxHashMap, FxHashSet};
 use ra_editor::LineIndex;
 use ra_syntax::File;
 
@@ -40,8 +40,8 @@ impl WritableSourceRoot {
         file_resolver: Option<FileResolverImp>,
     ) -> WritableSourceRoot {
         let db = self.db.write();
-        let mut changed = HashSet::new();
-        let mut removed = HashSet::new();
+        let mut changed = FxHashSet::default();
+        let mut removed = FxHashSet::default();
         for (file_id, text) in changes {
             match text {
                 None => {
@@ -55,7 +55,7 @@ impl WritableSourceRoot {
             }
         }
         let file_set = db.file_set(());
-        let mut files: HashSet<FileId> = file_set
+        let mut files: FxHashSet<FileId> = file_set
             .files
             .clone();
         for file_id in removed {

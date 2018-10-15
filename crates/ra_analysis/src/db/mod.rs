@@ -2,9 +2,9 @@ use std::{
     fmt,
     sync::Arc,
     hash::{Hash, Hasher},
-    collections::HashSet,
 };
 use salsa;
+use rustc_hash::FxHashSet;
 use ra_syntax::File;
 use ra_editor::{LineIndex};
 use crate::{
@@ -63,7 +63,7 @@ salsa::query_group! {
 
 #[derive(Default, Debug)]
 pub(crate) struct FileSet {
-    pub(crate) files: HashSet<FileId>,
+    pub(crate) files: FxHashSet<FileId>,
     pub(crate) resolver: FileResolverImp,
 }
 
