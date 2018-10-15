@@ -8,12 +8,18 @@ extern crate heck;
 use std::{
     collections::HashMap,
     fs,
-    path::Path,
+    path::{Path, PathBuf},
 };
 use itertools::Itertools;
 use heck::{CamelCase, ShoutySnakeCase, SnakeCase};
 
 pub type Result<T> = ::std::result::Result<T, failure::Error>;
+
+const GRAMMAR: &str = "ra_syntax/src/grammar.ron";
+pub const SYNTAX_KINDS: &str = "ra_syntax/src/syntax_kinds/generated.rs";
+pub const SYNTAX_KINDS_TEMPLATE: &str = "ra_syntax/src/syntax_kinds/generated.rs.tera";
+pub const AST: &str = "ra_syntax/src/ast/generated.rs";
+pub const AST_TEMPLATE: &str = "ra_syntax/src/ast/generated.rs.tera";
 
 #[derive(Debug)]
 pub struct Test {
@@ -71,9 +77,9 @@ pub fn update(path: &Path, contents: &str, verify: bool) -> Result<()> {
     Ok(())
 }
 
-pub fn render_template(template: &str) -> Result<String> {
+pub fn render_template(template: PathBuf) -> Result<String> {
     let grammar: ron::value::Value = {
-        let text = fs::read_to_string(format!("{}{}", Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).parent().unwrap().to_str().unwrap(), "/ra_syntax/src/grammar.ron"))?;
+        let text = fs::read_to_string(project_root().join(GRAMMAR))?;
         ron::de::from_str(&text)?
     };
     let template = fs::read_to_string(template)?;
@@ -107,4 +113,8 @@ pub fn render_template(template: &str) -> Result<String> {
         }
         Ok(tera::Value::Array(elements))
     }
+}
+
+pub fn project_root() -> PathBuf {
+    Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).parent().unwrap().to_path_buf()
 }

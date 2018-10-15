@@ -11,15 +11,10 @@ use std::{
     path::{Path, PathBuf},
     process::Command,
 };
-use tools::{Test, collect_tests, render_template, update, Result};
+use tools::{AST, AST_TEMPLATE, Result, SYNTAX_KINDS, SYNTAX_KINDS_TEMPLATE, Test, collect_tests, render_template, update, project_root};
 
 const GRAMMAR_DIR: &str = "./crates/ra_syntax/src/grammar";
 const INLINE_TESTS_DIR: &str = "./crates/ra_syntax/tests/data/parser/inline";
-const GRAMMAR: &str = "./crates/ra_syntax/src/grammar.ron";
-const SYNTAX_KINDS: &str = "./crates/ra_syntax/src/syntax_kinds/generated.rs";
-const SYNTAX_KINDS_TEMPLATE: &str = "./crates/ra_syntax/src/syntax_kinds/generated.rs.tera";
-const AST: &str = "./crates/ra_syntax/src/ast/generated.rs";
-const AST_TEMPLATE: &str = "./crates/ra_syntax/src/ast/generated.rs.tera";
 
 fn main() -> Result<()> {
     let matches = App::new("tasks")
@@ -45,8 +40,8 @@ fn main() -> Result<()> {
 fn run_gen_command(name: &str, verify: bool) -> Result<()> {
     match name {
         "gen-kinds" => {
-            update(Path::new(SYNTAX_KINDS), &render_template(SYNTAX_KINDS_TEMPLATE)?, verify)?;
-            update(Path::new(AST), &render_template(AST_TEMPLATE)?, verify)?;
+            update(&project_root().join(SYNTAX_KINDS), &render_template(project_root().join(SYNTAX_KINDS_TEMPLATE))?, verify)?;
+            update(&project_root().join(AST), &render_template(project_root().join(AST_TEMPLATE))?, verify)?;
         },
         "gen-tests" => {
             gen_tests(verify)?
