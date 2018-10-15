@@ -1,0 +1,12 @@
+error[E0277]: can't compare `Comparable` with `Comparable`
+  --> $DIR/issue-34229.rs:2:46
+   |
+LL | #[derive(PartialEq, PartialOrd)] struct Nope(Comparable);
+   |                                              ^^^^^^^^^^ no implementation for `Comparable < Comparable` and `Comparable > Comparable`
+   |
+   = help: the trait `std::cmp::PartialOrd` is not implemented for `Comparable`
+   = note: required by `std::cmp::PartialOrd::partial_cmp`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
