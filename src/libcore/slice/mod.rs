@@ -2293,13 +2293,11 @@ impl<T> [T] {
     where
         F: FnMut(&T, &T) -> Option<Ordering>
     {
-        let len = self.len();
-        if len <= 1 {
-            return true;
-        }
-
-        for i in 1..len {
-            if compare(&self[i - 1], &self[i]).map(|o| o == Ordering::Greater).unwrap_or(true) {
+        for pair in self.windows(2) {
+            if compare(&pair[0], &pair[1])
+                .map(|o| o == Ordering::Greater)
+                .unwrap_or(true)
+            {
                 return false;
             }
         }

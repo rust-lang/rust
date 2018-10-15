@@ -2655,7 +2655,10 @@ pub trait Iterator {
         };
 
         while let Some(curr) = self.next() {
-            if compare(&last, &curr).map(|o| o == Ordering::Greater).unwrap_or(true) {
+            if compare(&last, &curr)
+                .map(|o| o == Ordering::Greater)
+                .unwrap_or(true)
+            {
                 return false;
             }
             last = curr;
