@@ -10,24 +10,25 @@ You may also find the rustdocs [for the compiler itself][rustdocs] useful.
 [rustdocs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
 
 The guide can be useful today, but it has a lot of work still go.
-Once it gets more complete, the plan is probably to move it into the
-[main Rust repository](https://github.com/rust-lang/rust/).
 
 ### Contributing to the guide
 
-If you'd like to help finish the guide, we'd love to have you! The
-main tracking issue for the guide
-[can be found here](https://github.com/rust-lang-nursery/rustc-guide/issues/6). From
-there, you can find a list of all the planned chapters and subsections.
-If you think something is missing, please open an issue about it!
-Otherwise, find a chapter that sounds interesting to you and then go
-to its associated issue. There should be a list of things to do.
+If you'd like to help improve the guide, we'd love to have you! You can find
+plenty of issues on the [issue
+tracker](https://github.com/rust-lang-nursery/rustc-guide/issue). Just post a
+comment on the issue you would like to work on to make sure that we don't
+accidentally duplicate work. If you think something is missing, please open an
+issue about it!
 
 **In general, if you don't know how the compiler works, that is not a
 problem!** In that case, what we will do is to schedule a bit of time
 for you to talk with someone who **does** know the code, or who wants
 to pair with you and figure it out.  Then you can work on writing up
 what you learned.
+
+In general, when writing about a particular part of the compiler's code, we
+recommend that you link to the relevant parts of the [rustc
+rustdocs][rustdocs].
 
 To help prevent accidentally introducing broken links, we use the
 `mdbook-linkcheck`. If installed on your machine `mdbook` will automatically
