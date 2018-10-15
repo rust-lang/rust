@@ -7,7 +7,7 @@ use ra_syntax::{
     ast::{self, NameOwner, AstNode},
     text_utils::is_subrange
 };
-use {
+use crate::{
     FileId,
     imp::FileResolverImp,
 };

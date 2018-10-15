@@ -1,4 +1,4 @@
-use TextUnit;
+use crate::TextUnit;
 
 use std::str::Chars;
 

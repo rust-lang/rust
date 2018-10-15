@@ -9,7 +9,7 @@ use ra_syntax::{
 };
 use fst::{self, Streamer};
 use rayon::prelude::*;
-use {Query, FileId, JobToken};
+use crate::{Query, FileId, JobToken};
 
 #[derive(Debug)]
 pub(crate) struct SymbolIndex {

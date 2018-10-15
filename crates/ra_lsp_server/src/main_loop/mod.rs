@@ -16,7 +16,7 @@ use gen_lsp_server::{
 };
 use rustc_hash::FxHashMap;
 
-use {
+use crate::{
     req,
     Result,
     vfs::{self, FileEvent},

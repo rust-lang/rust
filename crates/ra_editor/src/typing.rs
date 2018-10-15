@@ -10,7 +10,7 @@ use ra_syntax::{
     SyntaxKind::*,
 };
 
-use {LocalEdit, EditBuilder, find_node_at_offset};
+use crate::{LocalEdit, EditBuilder, find_node_at_offset};
 
 pub fn join_lines(file: &File, range: TextRange) -> LocalEdit {
     let range = if range.is_empty() {
@@ -244,7 +244,7 @@ fn compute_ws(left: SyntaxNodeRef, right: SyntaxNodeRef) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use test_utils::{check_action, extract_range, extract_offset, add_cursor};
+    use crate::test_utils::{check_action, extract_range, extract_offset, add_cursor};
 
     fn check_join_lines(before: &str, after: &str) {
         check_action(before, after, |file, offset| {

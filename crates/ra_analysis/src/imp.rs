@@ -17,7 +17,7 @@ use ra_syntax::{
     ast::{self, NameOwner, ArgListOwner, Expr},
 };
 
-use {
+use crate::{
     FileId, FileResolver, Query, Diagnostic, SourceChange, SourceFileEdit, Position, FileSystemEdit,
     JobToken, CrateGraph, CrateId,
     roots::{SourceRoot, ReadonlySourceRoot, WritableSourceRoot},

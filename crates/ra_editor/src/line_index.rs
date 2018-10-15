@@ -1,5 +1,5 @@
 use superslice::Ext;
-use ::TextUnit;
+use crate::TextUnit;
 
 #[derive(Clone, Debug, Hash)]
 pub struct LineIndex {

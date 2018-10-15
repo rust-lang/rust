@@ -29,16 +29,18 @@ use std::{
 
 use relative_path::{RelativePath, RelativePathBuf};
 use ra_syntax::{File, TextRange, TextUnit, AtomEdit};
-use imp::{AnalysisImpl, AnalysisHostImpl, FileResolverImp};
 use rustc_hash::FxHashMap;
+use crate::imp::{AnalysisImpl, AnalysisHostImpl, FileResolverImp};
 
 pub use ra_editor::{
     StructureNode, LineIndex, FileSymbol,
     Runnable, RunnableKind, HighlightedRange, CompletionItem,
     Fold, FoldKind
 };
-pub use job::{JobToken, JobHandle};
-pub use descriptors::FnDescriptor;
+pub use crate::{
+    job::{JobToken, JobHandle},
+    descriptors::FnDescriptor,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FileId(pub u32);

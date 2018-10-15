@@ -1,14 +1,14 @@
-use algo;
-use grammar;
-use lexer::{tokenize, Token};
-use yellow::{self, GreenNode, SyntaxNodeRef, SyntaxError};
-use parser_impl;
-use parser_api::Parser;
-use {
+use crate::algo;
+use crate::grammar;
+use crate::lexer::{tokenize, Token};
+use crate::yellow::{self, GreenNode, SyntaxNodeRef, SyntaxError};
+use crate::parser_impl;
+use crate::parser_api::Parser;
+use crate::{
     TextUnit, TextRange,
     SyntaxKind::*,
 };
-use text_utils::replace_range;
+use crate::text_utils::replace_range;
 
 #[derive(Debug, Clone)]
 pub struct AtomEdit {

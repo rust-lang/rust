@@ -46,7 +46,7 @@ mod yellow;
 pub mod utils;
 pub mod text_utils;
 
-pub use {
+pub use crate::{
     rowan::{SmolStr, TextRange, TextUnit},
     ast::AstNode,
     lexer::{tokenize, Token},
@@ -55,7 +55,7 @@ pub use {
     reparsing::AtomEdit,
 };
 
-use {
+use crate::{
     yellow::{GreenNode},
 };
 

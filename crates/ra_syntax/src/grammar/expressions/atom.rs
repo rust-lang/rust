@@ -30,7 +30,7 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
     token_set_union![
         LITERAL_FIRST,
         token_set![L_CURLY, L_PAREN, L_BRACK, PIPE, MOVE_KW, IF_KW, WHILE_KW, MATCH_KW, UNSAFE_KW,
-                   RETURN_KW, IDENT, SELF_KW, SUPER_KW, COLONCOLON, BREAK_KW, CONTINUE_KW, LIFETIME ],
+                   RETURN_KW, IDENT, SELF_KW, SUPER_KW, CRATE_KW, COLONCOLON, BREAK_KW, CONTINUE_KW, LIFETIME ],
     ];
 
 const EXPR_RECOVERY_SET: TokenSet =

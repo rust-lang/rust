@@ -1,4 +1,5 @@
 [package]
+edition = "2018"
 name = "ra_lsp_server"
 version = "0.1.0"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]

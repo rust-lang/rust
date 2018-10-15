@@ -5,7 +5,7 @@ use std::{
 };
 use im;
 use salsa;
-use {FileId, imp::FileResolverImp};
+use crate::{FileId, imp::FileResolverImp};
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct State {
@@ -75,8 +75,8 @@ pub(crate) fn file_set(ctx: QueryCtx) -> Arc<(Vec<FileId>, FileResolverImp)> {
 impl QueryRegistry {
     fn new() -> QueryRegistry {
         let mut reg = QueryRegistry { imp: imp::QueryRegistry::new() };
-        ::queries::register_queries(&mut reg);
-        ::module_map::register_queries(&mut reg);
+        crate::queries::register_queries(&mut reg);
+        crate::module_map::register_queries(&mut reg);
         reg
     }
     pub(crate) fn add<Q: imp::EvalQuery>(&mut self, q: Q, name: &'static str) {

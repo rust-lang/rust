@@ -16,7 +16,8 @@ functionality is provided via a language server.
 
 ## Quick Start
 
-Rust analyzer builds on stable Rust >= 1.29.0.
+Rust analyzer builds on Rust >= 1.30.0 (currently in beta) and uses
+the 2018 edition.
 
 ```
 # run tests

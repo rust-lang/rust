@@ -1,6 +1,6 @@
-use lexer::ptr::Ptr;
+use crate::lexer::ptr::Ptr;
 
-use SyntaxKind::{self, *};
+use crate::SyntaxKind::{self, *};
 
 pub(crate) fn scan_shebang(ptr: &mut Ptr) -> bool {
     if ptr.at_str("!/") {

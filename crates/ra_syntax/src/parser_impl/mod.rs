@@ -3,7 +3,7 @@ mod input;
 
 use std::cell::Cell;
 
-use {
+use crate::{
     TextUnit, SmolStr,
     lexer::Token,
     parser_api::Parser,
@@ -13,7 +13,7 @@ use {
     },
 };
 
-use SyntaxKind::{self, EOF, TOMBSTONE};
+use crate::SyntaxKind::{self, EOF, TOMBSTONE};
 
 pub(crate) trait Sink {
     type Tree;

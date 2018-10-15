@@ -5,7 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use cargo_metadata::{metadata_run, CargoOpt};
 use ra_syntax::SmolStr;
 
-use {
+use crate::{
     Result,
     thread_watcher::{Worker, ThreadWatcher},
 };

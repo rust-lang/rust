@@ -1,4 +1,4 @@
-use {TextRange, TextUnit};
+use crate::{TextRange, TextUnit};
 
 pub fn contains_offset_nonstrict(range: TextRange, offset: TextUnit) -> bool {
     range.start() <= offset && offset <= range.end()

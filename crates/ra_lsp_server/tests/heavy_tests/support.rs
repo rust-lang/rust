@@ -25,7 +25,7 @@ use ra_lsp_server::{main_loop, req, thread_watcher::{ThreadWatcher, Worker}};
 
 pub fn project(fixture: &str) -> Server {
     static INIT: Once = Once::new();
-    INIT.call_once(|| Logger::with_env_or_str(::LOG).start().unwrap());
+    INIT.call_once(|| Logger::with_env_or_str(crate::LOG).start().unwrap());
 
     let tmp_dir = TempDir::new("test-project")
         .unwrap();

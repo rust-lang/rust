@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use {
+use crate::{
     FileId,
     db::{
         Query, QueryRegistry, QueryCtx,
@@ -38,7 +38,7 @@ mod tests {
     use std::collections::HashMap;
     use im;
     use relative_path::{RelativePath, RelativePathBuf};
-    use {
+    use crate::{
         db::{Db},
         imp::FileResolverImp,
         FileId, FileResolver,

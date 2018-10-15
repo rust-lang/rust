@@ -1,4 +1,4 @@
-use {TextRange, TextUnit};
+use crate::{TextRange, TextUnit};
 use ra_syntax::{
     AtomEdit,
     text_utils::contains_offset_nonstrict,
