@@ -159,7 +159,7 @@ trait TypeRelatingDelegate<'tcx> {
     fn push_outlives(&mut self, sup: ty::Region<'tcx>, sub: ty::Region<'tcx>);
 
     /// Creates a new universe index. Used when instantiating placeholders.
-    fn next_subuniverse(&mut self) -> ty::UniverseIndex;
+    fn create_next_universe(&mut self) -> ty::UniverseIndex;
 
     /// Creates a new region variable representing a higher-ranked
     /// region that is instantiated existentially. This creates an
@@ -218,8 +218,8 @@ impl NllTypeRelatingDelegate<'me, 'bccx, 'gcx, 'tcx> {
 }
 
 impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, '_, 'tcx> {
-    fn next_subuniverse(&mut self) -> ty::UniverseIndex {
-        self.infcx.create_subuniverse()
+    fn create_next_universe(&mut self) -> ty::UniverseIndex {
+        self.infcx.create_next_universe()
     }
 
     fn next_existential_region_var(&mut self) -> ty::Region<'tcx> {
@@ -324,7 +324,7 @@ where
                     // new universe for the placeholders we will make
                     // from here out.
                     let universe = lazy_universe.unwrap_or_else(|| {
-                        let universe = delegate.next_subuniverse();
+                        let universe = delegate.create_next_universe();
                         lazy_universe = Some(universe);
                         universe
                     });

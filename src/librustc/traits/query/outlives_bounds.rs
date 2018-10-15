@@ -9,9 +9,9 @@
 // except according to those terms.
 
 use infer::InferCtxt;
+use infer::canonical::OriginalQueryValues;
 use syntax::ast;
 use syntax::source_map::Span;
-use smallvec::SmallVec;
 use traits::{FulfillmentContext, ObligationCause, TraitEngine, TraitEngineExt};
 use traits::query::NoSolution;
 use ty::{self, Ty, TyCtxt};
@@ -105,7 +105,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     ) -> Vec<OutlivesBound<'tcx>> {
         debug!("implied_outlives_bounds(ty = {:?})", ty);
 
-        let mut orig_values = SmallVec::new();
+        let mut orig_values = OriginalQueryValues::default();
         let key = self.canonicalize_query(&param_env.and(ty), &mut orig_values);
         let result = match self.tcx.global_tcx().implied_outlives_bounds(key) {
             Ok(r) => r,
@@ -119,7 +119,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         };
         assert!(result.value.is_proven());
 
-        let result = self.instantiate_query_result_and_region_obligations(
+        let result = self.instantiate_query_response_and_region_obligations(
             &ObligationCause::misc(span, body_id), param_env, &orig_values, &result);
         debug!("implied_outlives_bounds for {:?}: {:#?}", ty, result);
         let result = match result {

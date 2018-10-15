@@ -13,9 +13,9 @@
 //! `normalize_projection_ty` query when it encounters projections.
 
 use infer::at::At;
+use infer::canonical::OriginalQueryValues;
 use infer::{InferCtxt, InferOk};
 use mir::interpret::{ConstValue, GlobalId};
-use smallvec::SmallVec;
 use traits::project::Normalized;
 use traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
 use ty::fold::{TypeFoldable, TypeFolder};
@@ -154,7 +154,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
 
                 let gcx = self.infcx.tcx.global_tcx();
 
-                let mut orig_values = SmallVec::new();
+                let mut orig_values = OriginalQueryValues::default();
                 let c_data = self.infcx.canonicalize_query(
                     &self.param_env.and(*data), &mut orig_values);
                 debug!("QueryNormalizer: c_data = {:#?}", c_data);
@@ -167,7 +167,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                             return ty;
                         }
 
-                        match self.infcx.instantiate_query_result_and_region_obligations(
+                        match self.infcx.instantiate_query_response_and_region_obligations(
                             self.cause,
                             self.param_env,
                             &orig_values,

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::infer::canonical::{Canonical, QueryResult};
+use rustc::infer::canonical::{Canonical, QueryResponse};
 use rustc::traits::query::{normalize::NormalizationResult, CanonicalProjectionGoal, NoSolution};
 use rustc::traits::{self, ObligationCause, SelectionContext, TraitEngineExt};
 use rustc::ty::query::Providers;
@@ -28,7 +28,7 @@ crate fn provide(p: &mut Providers) {
 fn normalize_projection_ty<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     goal: CanonicalProjectionGoal<'tcx>,
-) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, NormalizationResult<'tcx>>>>, NoSolution> {
+) -> Result<Lrc<Canonical<'tcx, QueryResponse<'tcx, NormalizationResult<'tcx>>>>, NoSolution> {
     debug!("normalize_provider(goal={:#?})", goal);
 
     tcx.sess

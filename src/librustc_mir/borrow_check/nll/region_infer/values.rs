@@ -148,8 +148,8 @@ crate enum RegionElement {
     /// a lifetime parameter).
     RootUniversalRegion(RegionVid),
 
-    /// A subuniverse from a subuniverse (e.g., instantiated from a
-    /// `for<'a> fn(&'a u32)` type).
+    /// A placeholder (e.g., instantiated from a `for<'a> fn(&'a u32)`
+    /// type).
     PlaceholderRegion(ty::Placeholder),
 }
 
@@ -249,19 +249,6 @@ impl PlaceholderIndices {
 
     crate fn len(&self) -> usize {
         self.from_index.len()
-    }
-}
-
-impl ::std::iter::FromIterator<ty::Placeholder> for PlaceholderIndices {
-    fn from_iter<I>(iter: I) -> Self
-    where
-        I: IntoIterator<Item = ty::Placeholder>,
-    {
-        let mut result = Self::default();
-        iter.into_iter().for_each(|p| {
-            result.insert(p);
-        });
-        result
     }
 }
 

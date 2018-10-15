@@ -57,6 +57,7 @@ use syntax::symbol::{keywords, Symbol, LocalInternedString, InternedString};
 use syntax_pos::{DUMMY_SP, Span};
 
 use smallvec;
+use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
 
@@ -1456,10 +1457,10 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 /// "Universes" are used during type- and trait-checking in the
 /// presence of `for<..>` binders to control what sets of names are
 /// visible. Universes are arranged into a tree: the root universe
-/// contains names that are always visible. But when you enter into
-/// some subuniverse, then it may add names that are only visible
-/// within that subtree (but it can still name the names of its
-/// ancestor universes).
+/// contains names that are always visible. Each child then adds a new
+/// set of names that are visible, in addition to those of its parent.
+/// We say that the child universe "extends" the parent universe with
+/// new names.
 ///
 /// To make this more concrete, consider this program:
 ///
@@ -1471,11 +1472,11 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 /// ```
 ///
 /// The struct name `Foo` is in the root universe U0. But the type
-/// parameter `T`, introduced on `bar`, is in a subuniverse U1 --
-/// i.e., within `bar`, we can name both `T` and `Foo`, but outside of
-/// `bar`, we cannot name `T`. Then, within the type of `y`, the
-/// region `'a` is in a subuniverse U2 of U1, because we can name it
-/// inside the fn type but not outside.
+/// parameter `T`, introduced on `bar`, is in an extended universe U1
+/// -- i.e., within `bar`, we can name both `T` and `Foo`, but outside
+/// of `bar`, we cannot name `T`. Then, within the type of `y`, the
+/// region `'a` is in a universe U2 that extends U1, because we can
+/// name it inside the fn type but not outside.
 ///
 /// Universes are used to do type- and trait-checking around these
 /// "forall" binders (also called **universal quantification**). The
@@ -1488,65 +1489,39 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 /// declared, but a type name in a non-zero universe is a placeholder
 /// type -- an idealized representative of "types in general" that we
 /// use for checking generic functions.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
-pub struct UniverseIndex(u32);
+newtype_index! {
+    pub struct UniverseIndex {
+        DEBUG_FORMAT = "U{}",
+    }
+}
+
+impl_stable_hash_for!(struct UniverseIndex { private });
 
 impl UniverseIndex {
-    /// The root universe, where things that the user defined are
-    /// visible.
-    pub const ROOT: Self = UniverseIndex(0);
+    pub const ROOT: UniverseIndex = UniverseIndex::from_u32_const(0);
 
-    /// The "max universe" -- this isn't really a valid universe, but
-    /// it's useful sometimes as a "starting value" when you are
-    /// taking the minimum of a (non-empty!) set of universes.
-    pub const MAX: Self = UniverseIndex(::std::u32::MAX);
-
-    /// Creates a universe index from the given integer.  Not to be
-    /// used lightly lest you pick a bad value. But sometimes we
-    /// convert universe indices into integers and back for various
-    /// reasons.
-    pub fn from_u32(index: u32) -> Self {
-        UniverseIndex(index)
-    }
-
-    /// A "subuniverse" corresponds to being inside a `forall` quantifier.
-    /// So, for example, suppose we have this type in universe `U`:
+    /// Returns the "next" universe index in order -- this new index
+    /// is considered to extend all previous universes. This
+    /// corresponds to entering a `forall` quantifier.  So, for
+    /// example, suppose we have this type in universe `U`:
     ///
     /// ```
     /// for<'a> fn(&'a u32)
     /// ```
     ///
     /// Once we "enter" into this `for<'a>` quantifier, we are in a
-    /// subuniverse of `U` -- in this new universe, we can name the
-    /// region `'a`, but that region was not nameable from `U` because
-    /// it was not in scope there.
-    pub fn subuniverse(self) -> UniverseIndex {
-        UniverseIndex(self.0.checked_add(1).unwrap())
+    /// new universe that extends `U` -- in this new universe, we can
+    /// name the region `'a`, but that region was not nameable from
+    /// `U` because it was not in scope there.
+    pub fn next_universe(self) -> UniverseIndex {
+        UniverseIndex::from_u32(self.private.checked_add(1).unwrap())
     }
 
-    /// True if the names in this universe are a subset of the names in `other`.
-    pub fn is_subset_of(self, other: UniverseIndex) -> bool {
-        self.0 <= other.0
-    }
-
-    pub fn as_u32(&self) -> u32 {
-        self.0
-    }
-
-    pub fn as_usize(&self) -> usize {
-        self.0 as usize
-    }
-}
-
-impl fmt::Debug for UniverseIndex {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(fmt, "U{}", self.as_u32())
-    }
-}
-
-impl From<u32> for UniverseIndex {
-    fn from(index: u32) -> Self {
-        UniverseIndex(index)
+    /// True if `self` can name a name from `other` -- in other words,
+    /// if the set of names in `self` is a superset of those in
+    /// `other`.
+    pub fn can_name(self, other: UniverseIndex) -> bool {
+        self.private >= other.private
     }
 }
 

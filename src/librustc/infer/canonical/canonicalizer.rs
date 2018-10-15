@@ -17,7 +17,7 @@
 
 use infer::canonical::{
     Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, Canonicalized,
-    SmallCanonicalVarValues,
+    OriginalQueryValues,
 };
 use infer::InferCtxt;
 use std::sync::atomic::Ordering;
@@ -48,7 +48,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     pub fn canonicalize_query<V>(
         &self,
         value: &V,
-        var_values: &mut SmallCanonicalVarValues<'tcx>
+        query_state: &mut OriginalQueryValues<'tcx>,
     ) -> Canonicalized<'gcx, V>
     where
         V: TypeFoldable<'tcx> + Lift<'gcx>,
@@ -63,11 +63,8 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             value,
             Some(self),
             self.tcx,
-            CanonicalizeRegionMode {
-                static_region: true,
-                other_free_regions: true,
-            },
-            var_values,
+            &CanonicalizeAllFreeRegions,
+            query_state,
         )
     }
 
@@ -96,23 +93,17 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// out the [chapter in the rustc guide][c].
     ///
     /// [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html#canonicalizing-the-query-result
-    pub fn canonicalize_response<V>(
-        &self,
-        value: &V,
-    ) -> Canonicalized<'gcx, V>
+    pub fn canonicalize_response<V>(&self, value: &V) -> Canonicalized<'gcx, V>
     where
         V: TypeFoldable<'tcx> + Lift<'gcx>,
     {
-        let mut var_values = SmallVec::new();
+        let mut query_state = OriginalQueryValues::default();
         Canonicalizer::canonicalize(
             value,
             Some(self),
             self.tcx,
-            CanonicalizeRegionMode {
-                static_region: false,
-                other_free_regions: false,
-            },
-            &mut var_values
+            &CanonicalizeQueryResponse,
+            &mut query_state,
         )
     }
 
@@ -128,7 +119,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     pub fn canonicalize_hr_query_hack<V>(
         &self,
         value: &V,
-        var_values: &mut SmallCanonicalVarValues<'tcx>
+        query_state: &mut OriginalQueryValues<'tcx>,
     ) -> Canonicalized<'gcx, V>
     where
         V: TypeFoldable<'tcx> + Lift<'gcx>,
@@ -143,27 +134,87 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             value,
             Some(self),
             self.tcx,
-            CanonicalizeRegionMode {
-                static_region: false,
-                other_free_regions: true,
-            },
-            var_values
+            &CanonicalizeFreeRegionsOtherThanStatic,
+            query_state,
         )
     }
 }
 
-/// If this flag is true, then all free regions will be replaced with
-/// a canonical var. This is used to make queries as generic as
-/// possible. For example, the query `F: Foo<'static>` would be
-/// canonicalized to `F: Foo<'0>`.
-struct CanonicalizeRegionMode {
-    static_region: bool,
-    other_free_regions: bool,
+/// Controls how we canonicalize "free regions" that are not inference
+/// variables. This depends on what we are canonicalizing *for* --
+/// e.g., if we are canonicalizing to create a query, we want to
+/// replace those with inference variables, since we want to make a
+/// maximally general query. But if we are canonicalizing a *query
+/// response*, then we don't typically replace free regions, as they
+/// must have been introduced from other parts of the system.
+trait CanonicalizeRegionMode {
+    fn canonicalize_free_region(
+        &self,
+        canonicalizer: &mut Canonicalizer<'_, '_, 'tcx>,
+        r: ty::Region<'tcx>,
+    ) -> ty::Region<'tcx>;
+
+    fn any(&self) -> bool;
 }
 
-impl CanonicalizeRegionMode {
+struct CanonicalizeQueryResponse;
+
+impl CanonicalizeRegionMode for CanonicalizeQueryResponse {
+    fn canonicalize_free_region(
+        &self,
+        _canonicalizer: &mut Canonicalizer<'_, '_, 'tcx>,
+        r: ty::Region<'tcx>,
+    ) -> ty::Region<'tcx> {
+        match r {
+            ty::ReFree(_) | ty::ReEmpty | ty::ReErased | ty::ReStatic | ty::ReEarlyBound(..) => r,
+            _ => {
+                // Other than `'static` or `'empty`, the query
+                // response should be executing in a fully
+                // canonicalized environment, so there shouldn't be
+                // any other region names it can come up.
+                bug!("unexpected region in query response: `{:?}`", r)
+            }
+        }
+    }
+
     fn any(&self) -> bool {
-        self.static_region || self.other_free_regions
+        false
+    }
+}
+
+struct CanonicalizeAllFreeRegions;
+
+impl CanonicalizeRegionMode for CanonicalizeAllFreeRegions {
+    fn canonicalize_free_region(
+        &self,
+        canonicalizer: &mut Canonicalizer<'_, '_, 'tcx>,
+        r: ty::Region<'tcx>,
+    ) -> ty::Region<'tcx> {
+        canonicalizer.canonical_var_for_region(r)
+    }
+
+    fn any(&self) -> bool {
+        true
+    }
+}
+
+struct CanonicalizeFreeRegionsOtherThanStatic;
+
+impl CanonicalizeRegionMode for CanonicalizeFreeRegionsOtherThanStatic {
+    fn canonicalize_free_region(
+        &self,
+        canonicalizer: &mut Canonicalizer<'_, '_, 'tcx>,
+        r: ty::Region<'tcx>,
+    ) -> ty::Region<'tcx> {
+        if let ty::ReStatic = r {
+            r
+        } else {
+            canonicalizer.canonical_var_for_region(r)
+        }
+    }
+
+    fn any(&self) -> bool {
+        true
     }
 }
 
@@ -171,11 +222,11 @@ struct Canonicalizer<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     infcx: Option<&'cx InferCtxt<'cx, 'gcx, 'tcx>>,
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     variables: SmallVec<[CanonicalVarInfo; 8]>,
-    var_values: &'cx mut SmallCanonicalVarValues<'tcx>,
+    query_state: &'cx mut OriginalQueryValues<'tcx>,
     // Note that indices is only used once `var_values` is big enough to be
     // heap-allocated.
     indices: FxHashMap<Kind<'tcx>, CanonicalVar>,
-    canonicalize_region_mode: CanonicalizeRegionMode,
+    canonicalize_region_mode: &'cx dyn CanonicalizeRegionMode,
     needs_canonical_flags: TypeFlags,
 }
 
@@ -192,51 +243,25 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
             }
 
             ty::ReVar(vid) => {
-                let r = self
-                    .infcx
+                let r = self.infcx
                     .unwrap()
                     .borrow_region_constraints()
                     .opportunistic_resolve_var(self.tcx, vid);
-                let info = CanonicalVarInfo {
-                    kind: CanonicalVarKind::Region,
-                };
                 debug!(
                     "canonical: region var found with vid {:?}, \
                      opportunistically resolved to {:?}",
                     vid, r
                 );
-                let cvar = self.canonical_var(info, r.into());
-                self.tcx().mk_region(ty::ReCanonical(cvar))
+                self.canonical_var_for_region(r)
             }
 
-            ty::ReStatic => {
-                if self.canonicalize_region_mode.static_region {
-                    let info = CanonicalVarInfo {
-                        kind: CanonicalVarKind::Region,
-                    };
-                    let cvar = self.canonical_var(info, r.into());
-                    self.tcx().mk_region(ty::ReCanonical(cvar))
-                } else {
-                    r
-                }
-            }
-
-            ty::ReEarlyBound(..)
+            ty::ReStatic
+            | ty::ReEarlyBound(..)
             | ty::ReFree(_)
             | ty::ReScope(_)
             | ty::RePlaceholder(..)
             | ty::ReEmpty
-            | ty::ReErased => {
-                if self.canonicalize_region_mode.other_free_regions {
-                    let info = CanonicalVarInfo {
-                        kind: CanonicalVarKind::Region,
-                    };
-                    let cvar = self.canonical_var(info, r.into());
-                    self.tcx().mk_region(ty::ReCanonical(cvar))
-                } else {
-                    r
-                }
-            }
+            | ty::ReErased => self.canonicalize_region_mode.canonicalize_free_region(self, r),
 
             ty::ReClosureBound(..) | ty::ReCanonical(_) => {
                 bug!("canonical region encountered during canonicalization")
@@ -302,10 +327,10 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
     /// `canonicalize_query` and `canonicalize_response`.
     fn canonicalize<V>(
         value: &V,
-        infcx: Option<&'cx InferCtxt<'cx, 'gcx, 'tcx>>,
-        tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-        canonicalize_region_mode: CanonicalizeRegionMode,
-        var_values: &'cx mut SmallCanonicalVarValues<'tcx>
+        infcx: Option<&InferCtxt<'_, 'gcx, 'tcx>>,
+        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        canonicalize_region_mode: &dyn CanonicalizeRegionMode,
+        query_state: &mut OriginalQueryValues<'tcx>,
     ) -> Canonicalized<'gcx, V>
     where
         V: TypeFoldable<'tcx> + Lift<'gcx>,
@@ -340,7 +365,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
             canonicalize_region_mode,
             needs_canonical_flags,
             variables: SmallVec::new(),
-            var_values,
+            query_state,
             indices: FxHashMap::default(),
         };
         let out_value = value.fold_with(&mut canonicalizer);
@@ -371,10 +396,12 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
     fn canonical_var(&mut self, info: CanonicalVarInfo, kind: Kind<'tcx>) -> CanonicalVar {
         let Canonicalizer {
             variables,
-            var_values,
+            query_state,
             indices,
             ..
         } = self;
+
+        let var_values = &mut query_state.var_values;
 
         // This code is hot. `variables` and `var_values` are usually small
         // (fewer than 8 elements ~95% of the time). They are SmallVec's to
@@ -398,26 +425,32 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
                 // fill up `indices` to facilitate subsequent lookups.
                 if var_values.spilled() {
                     assert!(indices.is_empty());
-                    *indices =
-                        var_values.iter()
-                            .enumerate()
-                            .map(|(i, &kind)| (kind, CanonicalVar::new(i)))
-                            .collect();
+                    *indices = var_values
+                        .iter()
+                        .enumerate()
+                        .map(|(i, &kind)| (kind, CanonicalVar::new(i)))
+                        .collect();
                 }
                 // The cv is the index of the appended element.
                 CanonicalVar::new(var_values.len() - 1)
             }
         } else {
             // `var_values` is large. Do a hashmap search via `indices`.
-            *indices
-                .entry(kind)
-                .or_insert_with(|| {
-                    variables.push(info);
-                    var_values.push(kind);
-                    assert_eq!(variables.len(), var_values.len());
-                    CanonicalVar::new(variables.len() - 1)
-                })
+            *indices.entry(kind).or_insert_with(|| {
+                variables.push(info);
+                var_values.push(kind);
+                assert_eq!(variables.len(), var_values.len());
+                CanonicalVar::new(variables.len() - 1)
+            })
         }
+    }
+
+    fn canonical_var_for_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        let info = CanonicalVarInfo {
+            kind: CanonicalVarKind::Region,
+        };
+        let cvar = self.canonical_var(info, r.into());
+        self.tcx().mk_region(ty::ReCanonical(cvar))
     }
 
     /// Given a type variable `ty_var` of the given kind, first check

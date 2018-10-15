@@ -112,7 +112,7 @@ struct RegionDefinition<'tcx> {
     /// Which universe is this region variable defined in? This is
     /// most often `ty::UniverseIndex::ROOT`, but when we encounter
     /// forall-quantifiers like `for<'a> { 'a = 'b }`, we would create
-    /// the variable for `'a` in a subuniverse.
+    /// the variable for `'a` in a fresh universe that extends ROOT.
     universe: ty::UniverseIndex,
 
     /// If this is 'static or an early-bound region, then this is
@@ -339,11 +339,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                 NLLRegionVariableOrigin::Placeholder(placeholder) => {
                     // Each placeholder region is only visible from
-                    // its universe `ui` and its superuniverses. So we
+                    // its universe `ui` and its extensions. So we
                     // can't just add it into `scc` unless the
                     // universe of the scc can name this region.
                     let scc_universe = self.scc_universes[scc];
-                    if placeholder.universe.is_subset_of(scc_universe) {
+                    if scc_universe.can_name(placeholder.universe) {
                         self.scc_values.add_element(scc, placeholder);
                     } else {
                         self.add_incompatible_universe(scc);
@@ -541,7 +541,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // Quick check: if scc_b's declared universe is a subset of
         // scc_a's declared univese (typically, both are ROOT), then
         // it cannot contain any problematic universe elements.
-        if self.scc_universes[scc_b].is_subset_of(universe_a) {
+        if universe_a.can_name(self.scc_universes[scc_b]) {
             return true;
         }
 
@@ -550,7 +550,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // from universe_a
         self.scc_values
             .placeholders_contained_in(scc_b)
-            .all(|p| p.universe.is_subset_of(universe_a))
+            .all(|p| universe_a.can_name(p.universe))
     }
 
     /// Extend `scc` so that it can outlive some placeholder region
