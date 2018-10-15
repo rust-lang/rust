@@ -27,6 +27,7 @@ use crate::rustc::ty::subst::Subst;
 use crate::rustc_errors::Applicability;
 use crate::rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use std::iter::{once, Iterator};
+use std::mem;
 use crate::syntax::ast;
 use crate::syntax::source_map::Span;
 use crate::syntax_pos::BytePos;
@@ -1082,16 +1083,35 @@ fn check_for_loop_range<'a, 'tcx>(
                     format!(".skip({})", snippet(cx, start.span, ".."))
                 };
 
+                let mut end_is_start_plus_val = false;
+
                 let take = if let Some(end) = *end {
+                    let mut take_expr = end;
+
+                    if let ExprKind::Binary(ref op, ref left, ref right) = end.node {
+                        if let BinOpKind::Add = op.node {
+                            let start_equal_left = SpanlessEq::new(cx).eq_expr(start, left);
+                            let start_equal_right = SpanlessEq::new(cx).eq_expr(start, right);
+
+                            if start_equal_left {
+                                take_expr = right;
+                            } else if start_equal_right {
+                                take_expr = left;
+                            }
+
+                            end_is_start_plus_val = start_equal_left | start_equal_right;
+                        }
+                    }
+
                     if is_len_call(end, indexed) {
                         String::new()
                     } else {
                         match limits {
                             ast::RangeLimits::Closed => {
-                                let end = sugg::Sugg::hir(cx, end, "<count>");
-                                format!(".take({})", end + sugg::ONE)
+                                let take_expr = sugg::Sugg::hir(cx, take_expr, "<count>");
+                                format!(".take({})", take_expr + sugg::ONE)
                             },
-                            ast::RangeLimits::HalfOpen => format!(".take({})", snippet(cx, end.span, "..")),
+                            ast::RangeLimits::HalfOpen => format!(".take({})", snippet(cx, take_expr.span, "..")),
                         }
                     }
                 } else {
@@ -1103,6 +1123,14 @@ fn check_for_loop_range<'a, 'tcx>(
                 } else {
                     ("", "iter")
                 };
+
+                let take_is_empty = take.is_empty();
+                let mut method_1 = take;
+                let mut method_2 = skip;
+
+                if end_is_start_plus_val {
+                    mem::swap(&mut method_1, &mut method_2);
+                }
 
                 if visitor.nonindex {
                     span_lint_and_then(
@@ -1116,16 +1144,16 @@ fn check_for_loop_range<'a, 'tcx>(
                                 "consider using an iterator".to_string(),
                                 vec![
                                     (pat.span, format!("({}, <item>)", ident.name)),
-                                    (arg.span, format!("{}.{}().enumerate(){}{}", indexed, method, take, skip)),
+                                    (arg.span, format!("{}.{}().enumerate(){}{}", indexed, method, method_1, method_2)),
                                 ],
                             );
                         },
                     );
                 } else {
-                    let repl = if starts_at_zero && take.is_empty() {
+                    let repl = if starts_at_zero && take_is_empty {
                         format!("&{}{}", ref_mut, indexed)
                     } else {
-                        format!("{}.{}(){}{}", indexed, method, take, skip)
+                        format!("{}.{}(){}{}", indexed, method, method_1, method_2)
                     };
 
                     span_lint_and_then(

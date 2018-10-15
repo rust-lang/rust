@@ -30,5 +30,25 @@ help: consider using an iterator
 45 |     for <item> in &mut ms {
    |         ^^^^^^    ^^^^^^^
 
-error: aborting due to 3 previous errors
+error: the loop variable `i` is only used to index `vec`.
+  --> $DIR/needless_range_loop.rs:69:14
+   |
+69 |     for i in x..x + 4 {
+   |              ^^^^^^^^
+help: consider using an iterator
+   |
+69 |     for <item> in vec.iter_mut().skip(x).take(4) {
+   |         ^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the loop variable `i` is only used to index `vec`.
+  --> $DIR/needless_range_loop.rs:76:14
+   |
+76 |     for i in x..=x + 4 {
+   |              ^^^^^^^^^
+help: consider using an iterator
+   |
+76 |     for <item> in vec.iter_mut().skip(x).take(4 + 1) {
+   |         ^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
 
