@@ -23,7 +23,6 @@ pub struct ServerWorldState {
     pub mem_map: FxHashMap<FileId, Option<String>>,
 }
 
-#[derive(Clone)]
 pub struct ServerWorld {
     pub workspaces: Arc<Vec<CargoWorkspace>>,
     pub analysis: Analysis,

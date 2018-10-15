@@ -162,7 +162,7 @@ impl Query {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Analysis {
     imp: AnalysisImpl
 }

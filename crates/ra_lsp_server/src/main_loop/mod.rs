@@ -391,7 +391,7 @@ fn update_file_notifications_on_threadpool(
 ) {
     pool.spawn(move || {
         for file_id in subscriptions {
-            match handlers::publish_diagnostics(world.clone(), file_id) {
+            match handlers::publish_diagnostics(&world, file_id) {
                 Err(e) => {
                     error!("failed to compute diagnostics: {:?}", e)
                 }
@@ -400,7 +400,7 @@ fn update_file_notifications_on_threadpool(
                     sender.send(Task::Notify(not));
                 }
             }
-            match handlers::publish_decorations(world.clone(), file_id) {
+            match handlers::publish_decorations(&world, file_id) {
                 Err(e) => {
                     error!("failed to compute decorations: {:?}", e)
                 }
