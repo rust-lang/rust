@@ -99,7 +99,6 @@ impl AnalysisHostImpl {
     }
     pub fn set_file_resolver(&mut self, resolver: FileResolverImp) {
         let data = self.data_mut();
-        data.file_resolver = resolver.clone();
         data.root = Arc::new(data.root.apply_changes(&mut iter::empty(), Some(resolver)));
     }
     pub fn set_crate_graph(&mut self, graph: CrateGraph) {
@@ -405,7 +404,6 @@ impl AnalysisImpl {
 
 #[derive(Default, Clone, Debug)]
 struct WorldData {
-    file_resolver: FileResolverImp,
     crate_graph: CrateGraph,
     root: Arc<WritableSourceRoot>,
     libs: Vec<Arc<ReadonlySourceRoot>>,
