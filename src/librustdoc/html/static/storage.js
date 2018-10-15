@@ -28,6 +28,12 @@ function onEach(arr, func) {
 
 function updateLocalStorage(name, value) {
     if (typeof(Storage) !== "undefined") {
+        try {
+            window.localStorage;
+        } catch(err) {
+            // Storage is supported, but browser preferences deny access to it.
+            return;
+        }
         localStorage[name] = value;
     } else {
         // No Web Storage support so we do nothing
