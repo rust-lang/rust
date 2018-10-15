@@ -390,7 +390,67 @@ impl Builder {
         unsafe { self.spawn_unchecked(f) }
     }
 
-    /// FIXME: Doc
+    /// Spawns a new thread without any lifetime restrictions by taking ownership
+    /// of the `Builder`, and returns an [`io::Result`] to its [`JoinHandle`].
+    ///
+    /// The spawned thread may outlive the caller (unless the caller thread
+    /// is the main thread; the whole process is terminated when the main
+    /// thread finishes). The join handle can be used to block on
+    /// termination of the child thread, including recovering its panics.
+    ///
+    /// This method is identical to [`thread::Builder::spawn`][`Builder::spawn`],
+    /// except for the relaxed lifetime bounds, which render it unsafe.
+    /// For a more complete documentation see [`thread::spawn`][`spawn`].
+    ///
+    /// # Errors
+    ///
+    /// Unlike the [`spawn`] free function, this method yields an
+    /// [`io::Result`] to capture any failure to create the thread at
+    /// the OS level.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a thread name was set and it contained null bytes.
+    ///
+    /// # Safety
+    ///
+    /// The caller has to ensure that no references in the supplied thread closure
+    /// or its return type can outlive the spawned thread's lifetime. This can be
+    /// guaranteed in two ways:
+    ///
+    /// - ensure that [`join`][`JoinHandle::join`] is called before any referenced
+    /// data is dropped
+    /// - use only types with `'static` lifetime bounds, i.e. those with no or only
+    /// `'static` references (both [`thread::Builder::spawn`][`Builder::spawn`]
+    /// and [`thread::spawn`][`spawn`] enforce this property statically)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(thread_spawn_unchecked)]
+    /// use std::thread;
+    ///
+    /// let builder = thread::Builder::new();
+    ///
+    /// let x = 1;
+    /// let thread_x = &x;
+    ///
+    /// let handler = unsafe {
+    ///     builder.spawn_unchecked(move || {
+    ///         println!("x = {}", *thread_x);
+    ///     }).unwrap()
+    /// };
+    ///
+    /// // caller has to ensure `join()` is called, otherwise
+    /// // it is possible to access freed memory if `x` gets
+    /// // dropped before the thread closure is executed!
+    /// handler.join().unwrap();
+    /// ```
+    ///
+    /// [`spawn`]: ../../std/thread/fn.spawn.html
+    /// [`Builder::spawn`]: ../../std/thread/struct.Builder.html#method.spawn
+    /// [`io::Result`]: ../../std/io/type.Result.html
+    /// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
     #[unstable(feature = "thread_spawn_unchecked", issue = "0")]
     pub unsafe fn spawn_unchecked<F, T>(self, f: F) -> io::Result<JoinHandle<T>> where
         F: FnOnce() -> T, F: Send, T: Send
