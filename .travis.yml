@@ -1,7 +1,7 @@
 matrix:
   include:
     - language: rust
-      rust: stable
+      rust: beta
       script:
         - cargo gen-kinds --verify
         - cargo gen-tests --verify
