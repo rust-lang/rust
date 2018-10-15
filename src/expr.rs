@@ -898,10 +898,11 @@ impl<'a> ControlFlow<'a> {
             let trial = self.rewrite_single_line(&pat_expr_string, context, shape.width);
 
             if let Some(cond_str) = trial {
-                if cond_str.len() <= context
-                    .config
-                    .width_heuristics()
-                    .single_line_if_else_max_width
+                if cond_str.len()
+                    <= context
+                        .config
+                        .width_heuristics()
+                        .single_line_if_else_max_width
                 {
                     return Some((cond_str, 0));
                 }

@@ -299,3 +299,8 @@ fn issue_2773() {
         None
     });
 }
+
+fn issue_3034() {
+    disallowed_headers.iter().any(|header| *header == name)
+        || disallowed_header_prefixes.iter().any(|prefix| name.starts_with(prefix))
+}

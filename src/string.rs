@@ -291,11 +291,12 @@ fn break_string(max_chars: usize, trim_end: bool, line_end: &str, input: &[&str]
         return break_at(max_chars - 1);
     }
     if let Some(url_index_end) = detect_url(input, max_chars) {
-        let index_plus_ws = url_index_end + input[url_index_end..]
-            .iter()
-            .skip(1)
-            .position(|grapheme| not_whitespace_except_line_feed(grapheme))
-            .unwrap_or(0);
+        let index_plus_ws = url_index_end
+            + input[url_index_end..]
+                .iter()
+                .skip(1)
+                .position(|grapheme| not_whitespace_except_line_feed(grapheme))
+                .unwrap_or(0);
         return if trim_end {
             SnippetState::LineEnd(
                 input[..=url_index_end].join("").to_string(),
