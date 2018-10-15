@@ -1073,7 +1073,7 @@ fn next_space(tok: &Token) -> SpaceState {
 /// when the macro is not an instance of try! (or parsing the inner expression
 /// failed).
 pub fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext) -> Option<ast::Expr> {
-    if &format!("{}", mac.node.path) == "try" {
+    if &mac.node.path.to_string() == "try" {
         let ts: TokenStream = mac.node.tts.clone().into();
         let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
 
@@ -1491,5 +1491,5 @@ fn rewrite_macro_with_items(
     result.push_str(&shape.indent.to_string_with_newline(context.config));
     result.push_str(closer);
     result.push_str(trailing_semicolon);
-    return Some(result);
+    Some(result)
 }

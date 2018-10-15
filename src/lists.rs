@@ -50,7 +50,7 @@ impl<'a> ListFormatting<'a> {
             ends_with_newline: true,
             preserve_newline: false,
             nested: false,
-            config: config,
+            config,
         }
     }
 

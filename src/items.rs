@@ -1543,7 +1543,7 @@ pub fn rewrite_struct_field_prefix(
             rewrite_ident(context, name),
             type_annotation_spacing.0
         ),
-        None => format!("{}", vis),
+        None => vis.to_string(),
     })
 }
 
@@ -2004,18 +2004,13 @@ fn rewrite_fn_base(
         one_line_budget, multi_line_budget, arg_indent
     );
 
+    result.push('(');
     // Check if vertical layout was forced.
-    if one_line_budget == 0 {
-        if snuggle_angle_bracket {
-            result.push('(');
-        } else {
-            result.push_str("(");
-            if context.config.indent_style() == IndentStyle::Visual {
-                result.push_str(&arg_indent.to_string_with_newline(context.config));
-            }
-        }
-    } else {
-        result.push('(');
+    if one_line_budget == 0
+        && !snuggle_angle_bracket
+        && context.config.indent_style() == IndentStyle::Visual
+    {
+        result.push_str(&arg_indent.to_string_with_newline(context.config));
     }
 
     // Skip `pub(crate)`.
