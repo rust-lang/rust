@@ -38,22 +38,44 @@ pub fn assert_eq_dbg(expected: &str, actual: &impl fmt::Debug) {
 }
 
 pub fn extract_offset(text: &str) -> (TextUnit, String) {
-    let cursor = "<|>";
-    let cursor_pos = match text.find(cursor) {
+    match try_extract_offset(text) {
         None => panic!("text should contain cursor marker"),
-        Some(pos) => pos,
-    };
+        Some(result) => result,
+    }
+}
+
+pub fn try_extract_offset(text: &str) -> Option<(TextUnit, String)> {
+    let cursor = "<|>";
+    let cursor_pos = text.find(cursor)?;
     let mut new_text = String::with_capacity(text.len() - cursor.len());
     new_text.push_str(&text[..cursor_pos]);
     new_text.push_str(&text[cursor_pos + cursor.len()..]);
     let cursor_pos = TextUnit::from(cursor_pos as u32);
-    (cursor_pos, new_text)
+    Some((cursor_pos, new_text))
 }
 
 pub fn extract_range(text: &str) -> (TextRange, String) {
-    let (start, text) = extract_offset(text);
-    let (end, text) = extract_offset(&text);
-    (TextRange::from_to(start, end), text)
+    match try_extract_range(text) {
+        None => panic!("text should contain cursor marker"),
+        Some(result) => result,
+    }
+}
+
+pub fn try_extract_range(text: &str) -> Option<(TextRange, String)> {
+    let (start, text) = try_extract_offset(text)?;
+    let (end, text) = try_extract_offset(&text)?;
+    Some((TextRange::from_to(start, end), text))
+}
+
+pub fn extract_ranges(text: &str) -> (Vec<TextRange>, String) {
+    let mut ranges = Vec::new();
+    let mut text = String::from(text);
+    while let Some((range, new_text)) = try_extract_range(&text) {
+        text = new_text;
+        ranges.push(range);
+    }
+
+    (ranges, text)
 }
 
 pub fn add_cursor(text: &str, offset: TextUnit) -> String {

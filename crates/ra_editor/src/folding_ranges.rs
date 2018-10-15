@@ -1,8 +1,10 @@
 use rustc_hash::FxHashSet;
 
 use ra_syntax::{
+    ast,
+    AstNode,
     File, TextRange, SyntaxNodeRef,
-    SyntaxKind,
+    SyntaxKind::{self, *},
     Direction,
 };
 
@@ -20,67 +22,97 @@ pub struct Fold {
 
 pub fn folding_ranges(file: &File) -> Vec<Fold> {
     let mut res = vec![];
-    let mut visited = FxHashSet::default();
+    let mut visited_comments = FxHashSet::default();
 
     for node in file.syntax().descendants() {
-        if visited.contains(&node) {
-            continue;
+        // Fold items that span multiple lines
+        if let Some(kind) = fold_kind(node.kind()) {
+            if has_newline(node) {
+                res.push(Fold { range: node.range(), kind });
+            }
         }
 
-        let range_and_kind = match node.kind() {
-            SyntaxKind::COMMENT => (
-                contiguous_range_for(SyntaxKind::COMMENT, node, &mut visited),
-                Some(FoldKind::Comment),
-            ),
-            SyntaxKind::USE_ITEM => (
-                contiguous_range_for(SyntaxKind::USE_ITEM, node, &mut visited),
-                Some(FoldKind::Imports),
-            ),
-            _ => (None, None),
-        };
-
-        match range_and_kind {
-            (Some(range), Some(kind)) => {
-                res.push(Fold {
-                    range: range,
-                    kind: kind
-                });
-            }
-            _ => {}
+        // Also fold groups of comments
+        if visited_comments.contains(&node) {
+            continue;
+        }
+        if node.kind() == COMMENT {
+            contiguous_range_for_comment(node, &mut visited_comments)
+                .map(|range| res.push(Fold { range, kind: FoldKind::Comment }));
         }
     }
 
     res
 }
 
-fn contiguous_range_for<'a>(
-    kind: SyntaxKind,
-    node: SyntaxNodeRef<'a>,
-    visited: &mut FxHashSet<SyntaxNodeRef<'a>>,
-) -> Option<TextRange> {
-    visited.insert(node);
+fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
+    match kind {
+        COMMENT => Some(FoldKind::Comment),
+        USE_ITEM => Some(FoldKind::Imports),
+        _ => None
+    }
+}
 
-    let left = node;
-    let mut right = node;
-    for node in node.siblings(Direction::Next) {
-        visited.insert(node);
-        match node.kind() {
-            SyntaxKind::WHITESPACE if !node.leaf_text().unwrap().as_str().contains("\n\n") => (),
-            k => {
-                if k == kind {
-                    right = node
-                } else {
-                    break;
-                }
+fn has_newline(
+    node: SyntaxNodeRef,
+) -> bool {
+    for descendant in node.descendants() {
+        if let Some(ws) = ast::Whitespace::cast(descendant) {
+            if ws.has_newlines() {
+                return true;
+            }
+        } else if let Some(comment) = ast::Comment::cast(descendant) {
+            if comment.has_newlines() {
+                return true;
             }
         }
     }
-    if left != right {
+
+    false
+}
+
+fn contiguous_range_for_comment<'a>(
+    first: SyntaxNodeRef<'a>,
+    visited: &mut FxHashSet<SyntaxNodeRef<'a>>,
+) -> Option<TextRange> {
+    visited.insert(first);
+
+    // Only fold comments of the same flavor
+    let group_flavor = ast::Comment::cast(first)?.flavor();
+
+    let mut last = first;
+    for node in first.siblings(Direction::Next) {
+        if let Some(ws) = ast::Whitespace::cast(node) {
+            // There is a blank line, which means the group ends here
+            if ws.count_newlines_lazy().take(2).count() == 2 {
+                break;
+            }
+
+            // Ignore whitespace without blank lines
+            continue;
+        }
+
+        match ast::Comment::cast(node) {
+            Some(next_comment) if next_comment.flavor() == group_flavor => {
+                visited.insert(node);
+                last = node;
+            }
+            // The comment group ends because either:
+            // * An element of a different kind was reached
+            // * A comment of a different flavor was reached
+            _ => {
+                break
+            }
+        }
+    }
+
+    if first != last {
         Some(TextRange::from_to(
-            left.range().start(),
-            right.range().end(),
+            first.range().start(),
+            last.range().end(),
         ))
     } else {
+        // The group consists of only one element, therefore it cannot be folded
         None
     }
 }
@@ -88,52 +120,65 @@ fn contiguous_range_for<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use test_utils::extract_ranges;
+
+    fn do_check(text: &str, fold_kinds: &[FoldKind]) {
+        let (ranges, text) = extract_ranges(text);
+        let file = File::parse(&text);
+        let folds = folding_ranges(&file);
+
+        assert_eq!(folds.len(), ranges.len());
+        for ((fold, range), fold_kind) in folds.into_iter().zip(ranges.into_iter()).zip(fold_kinds.into_iter()) {
+            assert_eq!(fold.range.start(), range.start());
+            assert_eq!(fold.range.end(), range.end());
+            assert_eq!(&fold.kind, fold_kind);
+        }
+    }
 
     #[test]
     fn test_fold_comments() {
         let text = r#"
-// Hello
+<|>// Hello
 // this is a multiline
 // comment
-//
+//<|>
 
 // But this is not
 
 fn main() {
-    // We should
+    <|>// We should
     // also
     // fold
-    // this one.
+    // this one.<|>
+    <|>//! But this one is different
+    //! because it has another flavor<|>
+    <|>/* As does this
+    multiline comment */<|>
 }"#;
 
-        let file = File::parse(&text);
-        let folds = folding_ranges(&file);
-        assert_eq!(folds.len(), 2);
-        assert_eq!(folds[0].range.start(), 1.into());
-        assert_eq!(folds[0].range.end(), 46.into());
-        assert_eq!(folds[0].kind, FoldKind::Comment);
-
-        assert_eq!(folds[1].range.start(), 84.into());
-        assert_eq!(folds[1].range.end(), 137.into());
-        assert_eq!(folds[1].kind, FoldKind::Comment);
+        let fold_kinds = &[
+            FoldKind::Comment,
+            FoldKind::Comment,
+            FoldKind::Comment,
+            FoldKind::Comment,
+        ];
+        do_check(text, fold_kinds);
     }
 
     #[test]
     fn test_fold_imports() {
         let text = r#"
-use std::str;
-use std::vec;
-use std::io as iop;
+<|>use std::{
+    str,
+    vec,
+    io as iop
+};<|>
 
 fn main() {
 }"#;
 
-        let file = File::parse(&text);
-        let folds = folding_ranges(&file);
-        assert_eq!(folds.len(), 1);
-        assert_eq!(folds[0].range.start(), 1.into());
-        assert_eq!(folds[0].range.end(), 48.into());
-        assert_eq!(folds[0].kind, FoldKind::Imports);
+        let folds = &[FoldKind::Imports];
+        do_check(text, folds);
     }
 
 
