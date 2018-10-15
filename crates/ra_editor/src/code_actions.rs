@@ -11,7 +11,7 @@ use ra_syntax::{
     },
 };
 
-use {EditBuilder, Edit, find_node_at_offset};
+use crate::{EditBuilder, Edit, find_node_at_offset};
 
 #[derive(Debug)]
 pub struct LocalEdit {
@@ -136,7 +136,7 @@ fn non_trivia_sibling(node: SyntaxNodeRef, direction: Direction) -> Option<Synta
 #[cfg(test)]
 mod tests {
     use super::*;
-    use test_utils::{check_action, check_action_range};
+    use crate::test_utils::{check_action, check_action_range};
 
     #[test]
     fn test_swap_comma() {

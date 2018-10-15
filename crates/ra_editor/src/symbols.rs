@@ -6,7 +6,7 @@ use ra_syntax::{
         walk::{walk, WalkEvent},
     },
 };
-use TextRange;
+use crate::TextRange;
 
 #[derive(Debug, Clone)]
 pub struct StructureNode {

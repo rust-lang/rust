@@ -164,7 +164,7 @@ pub fn resolve_local_name(file: &File, offset: TextUnit, name_ref: ast::NameRef)
 #[cfg(test)]
 mod tests {
     use super::*;
-    use test_utils::{assert_eq_dbg, extract_offset, add_cursor};
+    use crate::test_utils::{assert_eq_dbg, extract_offset, add_cursor};
 
     #[test]
     fn test_highlighting() {

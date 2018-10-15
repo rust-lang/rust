@@ -174,7 +174,7 @@ fn compute_expr_scopes(expr: ast::Expr, scopes: &mut FnScopes, scope: ScopeId) {
             }
         }
         ast::Expr::LambdaExpr(e) => {
-            let mut scope = scopes.new_scope(scope);
+            let scope = scopes.new_scope(scope);
             scopes.add_params_bindings(scope, e.param_list());
             if let Some(body) = e.body() {
                 scopes.set_scope(body.syntax(), scope);
@@ -256,7 +256,7 @@ pub fn resolve_local_name<'a>(name_ref: ast::NameRef, scopes: &'a FnScopes) -> O
 mod tests {
     use super::*;
     use ra_syntax::File;
-    use {find_node_at_offset, test_utils::extract_offset};
+    use crate::{find_node_at_offset, test_utils::extract_offset};
 
     fn do_check(code: &str, expected: &[&str]) {
         let (off, code) = extract_offset(code);

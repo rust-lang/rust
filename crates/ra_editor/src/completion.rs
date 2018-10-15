@@ -9,7 +9,7 @@ use ra_syntax::{
     text_utils::is_subrange,
 };
 
-use {
+use crate::{
     AtomEdit, find_node_at_offset,
     scope::{FnScopes, ModuleScope},
 };

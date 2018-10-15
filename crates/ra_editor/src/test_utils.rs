@@ -1,6 +1,6 @@
 use ra_syntax::{File, TextUnit, TextRange};
-pub use _test_utils::*;
-use LocalEdit;
+pub use crate::_test_utils::*;
+use crate::LocalEdit;
 
 pub fn check_action<F: Fn(&File, TextUnit) -> Option<LocalEdit>> (
     before: &str,
