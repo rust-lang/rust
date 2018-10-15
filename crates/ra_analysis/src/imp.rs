@@ -1,7 +1,6 @@
 use std::{
     sync::{
         Arc,
-        atomic::{AtomicBool, Ordering::SeqCst},
     },
     hash::{Hash, Hasher},
     fmt,
@@ -89,7 +88,6 @@ impl AnalysisHostImpl {
     }
     pub fn analysis(&self) -> AnalysisImpl {
         AnalysisImpl {
-            needs_reindex: AtomicBool::new(false),
             data: self.data.clone(),
         }
     }
@@ -119,22 +117,12 @@ impl AnalysisHostImpl {
 }
 
 pub(crate) struct AnalysisImpl {
-    needs_reindex: AtomicBool,
     data: WorldData,
 }
 
 impl fmt::Debug for AnalysisImpl {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.data.fmt(f)
-    }
-}
-
-impl Clone for AnalysisImpl {
-    fn clone(&self) -> AnalysisImpl {
-        AnalysisImpl {
-            needs_reindex: AtomicBool::new(self.needs_reindex.load(SeqCst)),
-            data: self.data.clone(),
-        }
     }
 }
 
