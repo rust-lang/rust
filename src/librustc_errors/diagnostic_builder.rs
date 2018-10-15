@@ -253,7 +253,7 @@ impl<'a> DiagnosticBuilder<'a> {
     pub fn span_suggestions_with_applicability(&mut self,
                                                sp: Span,
                                                msg: &str,
-                                               suggestions: Vec<String>,
+                                               suggestions: impl Iterator<Item = String>,
                                                applicability: Applicability)
                                                -> &mut Self {
         if !self.allow_suggestions {
