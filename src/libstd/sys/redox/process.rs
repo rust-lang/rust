@@ -10,15 +10,22 @@
 
 use env::{split_paths};
 use ffi::{CStr, OsStr};
+use fs::File;
 use os::unix::ffi::OsStrExt;
 use fmt;
+<<<<<<< HEAD
 use io::{self, Error, ErrorKind};
 use iter;
+=======
+use io::{self, prelude::*, BufReader, Error, ErrorKind, SeekFrom};
+>>>>>>> b7b1d416a1... Interpret shebangs on redox
 use libc::{EXIT_SUCCESS, EXIT_FAILURE};
 use path::{Path, PathBuf};
 use ptr;
+use sys::ext::fs::MetadataExt;
+use sys::ext::io::AsRawFd;
 use sys::fd::FileDesc;
-use sys::fs::{File, OpenOptions};
+use sys::fs::{File as SysFile, OpenOptions};
 use sys::os::{ENV_LOCK, environ};
 use sys::pipe::{self, AnonPipe};
 use sys::{cvt, syscall};
@@ -317,20 +324,80 @@ impl Command {
             None
         };
 
-        let fd = if let Some(program) = program {
-            t!(cvt(syscall::open(program.as_os_str().as_bytes(), syscall::O_RDONLY | syscall::O_CLOEXEC)))
+        let mut file = if let Some(program) = program {
+            t!(File::open(program.as_os_str()))
         } else {
             return io::Error::from_raw_os_error(syscall::ENOENT);
         };
 
-        let mut args: Vec<[usize; 2]> = iter::once(
-            [self.program.as_ptr() as usize, self.program.len()]
-        ).chain(
-            self.args.iter().map(|arg| [arg.as_ptr() as usize, arg.len()])
-        ).collect();
+        // Push all the arguments
+        let mut args: Vec<[usize; 2]> = Vec::with_capacity(1 + self.args.len());
 
+        let interpreter = {
+            let mut reader = BufReader::new(&file);
+
+            let mut shebang = [0; 2];
+            let mut read = 0;
+            loop {
+                match t!(reader.read(&mut shebang[read..])) {
+                    0 => break,
+                    n => read += n,
+                }
+            }
+
+            if &shebang == b"#!" {
+                // This is an interpreted script.
+                // First of all, since we'll be passing another file to
+                // fexec(), we need to manually check that we have permission
+                // to execute this file:
+                let uid = t!(cvt(syscall::getuid()));
+                let gid = t!(cvt(syscall::getgid()));
+                let meta = t!(file.metadata());
+
+                let mode = if uid == meta.uid() as usize {
+                    meta.mode() >> 3*2 & 0o7
+                } else if gid == meta.gid() as usize {
+                    meta.mode() >> 3*1 & 0o7
+                } else {
+                    meta.mode() & 0o7
+                };
+                if mode & 1 == 0 {
+                    return io::Error::from_raw_os_error(syscall::EPERM);
+                }
+
+                // Second of all, we need to actually read which interpreter it wants
+                let mut interpreter = Vec::new();
+                t!(reader.read_until(b'\n', &mut interpreter));
+                // Pop one trailing newline, if any
+                if interpreter.ends_with(&[b'\n']) {
+                    interpreter.pop().unwrap();
+                }
+
+                // TODO: Here we could just reassign `file` directly, if it
+                // wasn't for lexical lifetimes. Remove the whole `let
+                // interpreter = { ... };` hack once NLL lands.
+                // NOTE: Although DO REMEMBER to make sure the interpreter path
+                // still lives long enough to reach fexec.
+                Some(interpreter)
+            } else {
+                None
+            }
+        };
+        if let Some(ref interpreter) = interpreter {
+            let path: &OsStr = OsStr::from_bytes(&interpreter);
+            file = t!(File::open(path));
+
+            args.push([interpreter.as_ptr() as usize, interpreter.len()]);
+        } else {
+            t!(file.seek(SeekFrom::Start(0)));
+        }
+
+        args.push([self.program.as_ptr() as usize, self.program.len()]);
+        args.extend(self.args.iter().map(|arg| [arg.as_ptr() as usize, arg.len()]));
+
+        // Push all the variables
         let mut vars: Vec<[usize; 2]> = Vec::new();
-        unsafe {
+        {
             let _guard = ENV_LOCK.lock();
             let mut environ = *environ();
             while *environ != ptr::null() {
@@ -340,8 +407,7 @@ impl Command {
             }
         }
 
-        if let Err(err) = syscall::fexec(fd, &args, &vars) {
-            let _ = syscall::close(fd);
+        if let Err(err) = syscall::fexec(file.as_raw_fd(), &args, &vars) {
             io::Error::from_raw_os_error(err.errno as i32)
         } else {
             panic!("return from exec without err");
@@ -408,7 +474,7 @@ impl Stdio {
                 let mut opts = OpenOptions::new();
                 opts.read(readable);
                 opts.write(!readable);
-                let fd = File::open(Path::new("null:"), &opts)?;
+                let fd = SysFile::open(Path::new("null:"), &opts)?;
                 Ok((ChildStdio::Owned(fd.into_fd()), None))
             }
         }
@@ -421,8 +487,8 @@ impl From<AnonPipe> for Stdio {
     }
 }
 
-impl From<File> for Stdio {
-    fn from(file: File) -> Stdio {
+impl From<SysFile> for Stdio {
+    fn from(file: SysFile) -> Stdio {
         Stdio::Fd(file.into_fd())
     }
 }
