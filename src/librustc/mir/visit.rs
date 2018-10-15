@@ -214,7 +214,10 @@ macro_rules! make_mir_visitor {
                 self.super_ty(ty);
             }
 
-            fn visit_user_type_annotation(&mut self, ty: & $($mutability)* UserTypeAnnotation<'tcx>) {
+            fn visit_user_type_annotation(
+                &mut self,
+                ty: & $($mutability)* UserTypeAnnotation<'tcx>,
+            ) {
                 self.super_user_type_annotation(ty);
             }
 
@@ -783,7 +786,10 @@ macro_rules! make_mir_visitor {
                 self.visit_source_scope(scope);
             }
 
-            fn super_user_type_annotation(&mut self, _ty: & $($mutability)* UserTypeAnnotation<'tcx>) {
+            fn super_user_type_annotation(
+                &mut self,
+                _ty: & $($mutability)* UserTypeAnnotation<'tcx>,
+            ) {
             }
 
             fn super_ty(&mut self, _ty: & $($mutability)* Ty<'tcx>) {

@@ -722,7 +722,11 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let user_ty = UserTypeAnnotation::Ty(
                 *user_provided_tys
                     .get(ty.hir_id)
-                    .expect(&format!("{:?} not found in user_provided_tys, source: {:?}", ty, source))
+                    .expect(&format!(
+                        "{:?} not found in user_provided_tys, source: {:?}",
+                        ty,
+                        source,
+                    ))
             );
             if source.is_place_expr() {
                 ExprKind::PlaceTypeAscription {
