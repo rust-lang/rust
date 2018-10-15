@@ -1,5 +1,5 @@
 use std::marker::PhantomData;
-use {SyntaxNodeRef, AstNode};
+use crate::{SyntaxNodeRef, AstNode};
 
 
 pub fn visitor<'a, T>() -> impl Visitor<'a, Output=T> {

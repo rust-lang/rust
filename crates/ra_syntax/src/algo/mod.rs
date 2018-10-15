@@ -1,7 +1,7 @@
 pub mod walk;
 pub mod visit;
 
-use {
+use crate::{
     SyntaxNodeRef, TextUnit, TextRange,
     text_utils::{contains_offset_nonstrict, is_subrange},
 };

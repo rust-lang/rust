@@ -4,7 +4,7 @@ mod numbers;
 mod ptr;
 mod strings;
 
-use {
+use crate::{
     SyntaxKind::{self, *},
     TextUnit,
 };

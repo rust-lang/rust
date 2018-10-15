@@ -1,5 +1,5 @@
 use std::fmt::Write;
-use {
+use crate::{
     algo::walk::{walk, WalkEvent},
     SyntaxKind, File, SyntaxNodeRef
 };

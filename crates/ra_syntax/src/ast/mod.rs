@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use itertools::Itertools;
 
-use {
+use crate::{
     SmolStr, SyntaxNodeRef, SyntaxKind::*,
     yellow::{RefRoot, SyntaxNodeChildren},
 };

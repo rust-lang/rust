@@ -31,7 +31,7 @@ mod type_args;
 mod type_params;
 mod types;
 
-use {
+use crate::{
     token_set::TokenSet,
     parser_api::{Marker, CompletedMarker, Parser},
     SyntaxKind::{self, *},

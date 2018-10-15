@@ -1,5 +1,5 @@
 use rowan::GreenNodeBuilder;
-use {
+use crate::{
     TextUnit, SmolStr,
     parser_impl::Sink,
     yellow::{GreenNode, SyntaxError, RaTypes},

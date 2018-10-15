@@ -1,4 +1,4 @@
-use {
+use crate::{
     SyntaxNodeRef,
     algo::generate,
 };

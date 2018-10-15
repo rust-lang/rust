@@ -1,4 +1,4 @@
-use {
+use crate::{
     token_set::TokenSet,
     parser_impl::ParserImpl,
     SyntaxKind::{self, ERROR},

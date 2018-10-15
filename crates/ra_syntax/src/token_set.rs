@@ -1,4 +1,4 @@
-use SyntaxKind;
+use crate::SyntaxKind;
 
 #[derive(Clone, Copy)]
 pub(crate) struct TokenSet(pub(crate) u128);
@@ -29,7 +29,7 @@ macro_rules! token_set_union {
 
 #[test]
 fn token_set_works_for_tokens() {
-    use SyntaxKind::*;
+    use crate::SyntaxKind::*;
     let ts = token_set! { EOF, SHEBANG };
     assert!(ts.contains(EOF));
     assert!(ts.contains(SHEBANG));

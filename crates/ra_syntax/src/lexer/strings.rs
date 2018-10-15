@@ -1,6 +1,6 @@
-use SyntaxKind::{self, *};
+use crate::SyntaxKind::{self, *};
 
-use lexer::ptr::Ptr;
+use crate::lexer::ptr::Ptr;
 
 pub(crate) fn is_string_literal_start(c: char, c1: Option<char>, c2: Option<char>) -> bool {
     match (c, c1, c2) {

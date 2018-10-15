@@ -6,7 +6,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 use rowan::Types;
-use {SyntaxKind, TextUnit, TextRange, SmolStr};
+use crate::{SyntaxKind, TextUnit, TextRange, SmolStr};
 use self::syntax_text::SyntaxText;
 
 pub use rowan::{TreeRoot};
@@ -70,16 +70,16 @@ impl<'a> SyntaxNodeRef<'a> {
         self.0.leaf_text()
     }
     pub fn ancestors(self) -> impl Iterator<Item=SyntaxNodeRef<'a>> {
-        ::algo::generate(Some(self), |&node| node.parent())
+        crate::algo::generate(Some(self), |&node| node.parent())
     }
     pub fn descendants(self) -> impl Iterator<Item=SyntaxNodeRef<'a>> {
-        ::algo::walk::walk(self).filter_map(|event| match event {
-            ::algo::walk::WalkEvent::Enter(node) => Some(node),
-            ::algo::walk::WalkEvent::Exit(_) => None,
+        crate::algo::walk::walk(self).filter_map(|event| match event {
+            crate::algo::walk::WalkEvent::Enter(node) => Some(node),
+            crate::algo::walk::WalkEvent::Exit(_) => None,
         })
     }
     pub fn siblings(self, direction: Direction) -> impl Iterator<Item=SyntaxNodeRef<'a>> {
-        ::algo::generate(Some(self), move |&node| match direction {
+        crate::algo::generate(Some(self), move |&node| match direction {
             Direction::Next => node.next_sibling(),
             Direction::Prev => node.prev_sibling(),
         })
@@ -156,7 +156,7 @@ impl<R: TreeRoot<RaTypes>> Iterator for SyntaxNodeChildren<R> {
 
 
 fn has_short_text(kind: SyntaxKind) -> bool {
-    use SyntaxKind::*;
+    use crate::SyntaxKind::*;
     match kind {
         IDENT | LIFETIME | INT_NUMBER | FLOAT_NUMBER => true,
         _ => false,

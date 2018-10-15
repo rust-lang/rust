@@ -8,7 +8,7 @@
 //! `start node`, `finish node`, and `FileBuilder` converts
 //! this stream to a real tree.
 use std::mem;
-use {
+use crate::{
     TextUnit, TextRange, SmolStr,
     lexer::Token,
     parser_impl::Sink,
