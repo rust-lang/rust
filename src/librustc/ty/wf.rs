@@ -387,7 +387,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
                     let cause = self.cause(traits::MiscObligation);
                     let component_traits =
-                        data.auto_traits().chain(data.principal().map(|p| p.def_id()));
+                        data.auto_traits().chain(once(data.principal().def_id()));
                     self.out.extend(
                         component_traits.map(|did| traits::Obligation::new(
                             cause.clone(),

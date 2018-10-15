@@ -663,8 +663,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 ty::Adt(def, _) => def.did.is_local(),
                 ty::Foreign(did) => did.is_local(),
 
-                ty::Dynamic(ref tr, ..) => tr.principal()
-                    .map_or(false, |p| p.def_id().is_local()),
+                ty::Dynamic(ref tr, ..) => tr.principal().def_id().is_local(),
 
                 ty::Param(_) => true,
 

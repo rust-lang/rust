@@ -452,10 +452,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         match self_ty.sty {
             ty::Dynamic(ref data, ..) => {
-                if let Some(p) = data.principal() {
-                    self.assemble_inherent_candidates_from_object(self_ty, p);
-                    self.assemble_inherent_impl_candidates_for_type(p.def_id());
-                }
+                let p = data.principal();
+                self.assemble_inherent_candidates_from_object(self_ty, p);
+                self.assemble_inherent_impl_candidates_for_type(p.def_id());
             }
             ty::Adt(def, _) => {
                 self.assemble_inherent_impl_candidates_for_type(def.did);

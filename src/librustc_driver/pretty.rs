@@ -167,10 +167,10 @@ pub fn parse_pretty(sess: &Session,
 impl PpSourceMode {
     /// Constructs a `PrinterSupport` object and passes it to `f`.
     fn call_with_pp_support<'tcx, A, F>(&self,
-                                           sess: &'tcx Session,
-                                           hir_map: Option<&hir_map::Map<'tcx>>,
-                                           f: F)
-                                           -> A
+                                        sess: &'tcx Session,
+                                        hir_map: Option<&hir_map::Map<'tcx>>,
+                                        f: F)
+                                        -> A
         where F: FnOnce(&dyn PrinterSupport) -> A
     {
         match *self {
@@ -198,17 +198,18 @@ impl PpSourceMode {
             _ => panic!("Should use call_with_pp_support_hir"),
         }
     }
-    fn call_with_pp_support_hir<'tcx, A, F>(&self,
-                                               sess: &'tcx Session,
-                                               cstore: &'tcx CStore,
-                                               hir_map: &hir_map::Map<'tcx>,
-                                               analysis: &ty::CrateAnalysis,
-                                               resolutions: &Resolutions,
-                                               arenas: &'tcx AllArenas<'tcx>,
-                                               output_filenames: &OutputFilenames,
-                                               id: &str,
-                                               f: F)
-                                               -> A
+    fn call_with_pp_support_hir<'tcx, A, F>(
+        &self,
+        sess: &'tcx Session,
+        cstore: &'tcx CStore,
+        hir_map: &hir_map::Map<'tcx>,
+        analysis: &ty::CrateAnalysis,
+        resolutions: &Resolutions,
+        arenas: &'tcx AllArenas<'tcx>,
+        output_filenames: &OutputFilenames,
+        id: &str,
+        f: F
+    ) -> A
         where F: FnOnce(&dyn HirPrinterSupport, &hir::Crate) -> A
     {
         match *self {
@@ -855,7 +856,7 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
                     break n.body();
                 }
                 let parent = tcx.hir.get_parent_node(node_id);
-                assert!(node_id != parent);
+                assert_ne!(node_id, parent);
                 node_id = parent;
             }
         }
@@ -952,18 +953,17 @@ pub fn print_after_parsing(sess: &Session,
         // Silently ignores an identified node.
         let out: &mut dyn Write = &mut out;
         s.call_with_pp_support(sess, None, move |annotation| {
-                debug!("pretty printing source code {:?}", s);
-                let sess = annotation.sess();
-                pprust::print_crate(sess.source_map(),
-                                    &sess.parse_sess,
-                                    krate,
-                                    src_name,
-                                    &mut rdr,
-                                    box out,
-                                    annotation.pp_ann(),
-                                    false)
-            })
-            .unwrap()
+            debug!("pretty printing source code {:?}", s);
+            let sess = annotation.sess();
+            pprust::print_crate(sess.source_map(),
+                                &sess.parse_sess,
+                                krate,
+                                src_name,
+                                &mut rdr,
+                                box out,
+                                annotation.pp_ann(),
+                                false)
+        }).unwrap()
     } else {
         unreachable!();
     };

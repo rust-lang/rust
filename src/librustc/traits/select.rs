@@ -2088,10 +2088,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         return;
                     }
 
-                    match data.principal() {
-                        Some(p) => p.with_self_ty(this.tcx(), self_ty),
-                        None => return,
-                    }
+                    data.principal().with_self_ty(this.tcx(), self_ty)
                 }
                 ty::Infer(ty::TyVar(_)) => {
                     debug!("assemble_candidates_from_object_ty: ambiguous");
@@ -2183,15 +2180,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 //
                 // We always upcast when we can because of reason
                 // #2 (region bounds).
-                match (data_a.principal(), data_b.principal()) {
-                    (Some(a), Some(b)) => {
-                        a.def_id() == b.def_id()
-                            && data_b.auto_traits()
-                            // All of a's auto traits need to be in b's auto traits.
-                            .all(|b| data_a.auto_traits().any(|a| a == b))
-                    }
-                    _ => false,
-                }
+                data_a.principal().def_id() == data_b.principal().def_id()
+                    && data_b.auto_traits()
+                    // All of a's auto traits need to be in b's auto traits.
+                    .all(|b| data_a.auto_traits().any(|a| a == b))
             }
 
             // T -> Trait.
@@ -2981,7 +2973,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             .shallow_resolve(*obligation.self_ty().skip_binder());
         let poly_trait_ref = match self_ty.sty {
             ty::Dynamic(ref data, ..) => {
-                data.principal().unwrap().with_self_ty(self.tcx(), self_ty)
+                data.principal().with_self_ty(self.tcx(), self_ty)
             }
             _ => span_bug!(obligation.cause.span, "object candidate with non-object"),
         };
@@ -3244,10 +3236,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             (&ty::Dynamic(ref data_a, r_a), &ty::Dynamic(ref data_b, r_b)) => {
                 // See assemble_candidates_for_unsizing for more info.
                 let existential_predicates = data_a.map_bound(|data_a| {
-                    let principal = data_a.principal();
-                    let iter = principal
-                        .into_iter()
-                        .map(ty::ExistentialPredicate::Trait)
+                    let iter = iter::once(ty::ExistentialPredicate::Trait(data_a.principal()))
                         .chain(
                             data_a
                                 .projection_bounds()
@@ -3285,7 +3274,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             // T -> Trait.
             (_, &ty::Dynamic(ref data, r)) => {
                 let mut object_dids = data.auto_traits()
-                    .chain(data.principal().map(|p| p.def_id()));
+                    .chain(iter::once(data.principal().def_id()));
                 if let Some(did) = object_dids.find(|did| !tcx.is_object_safe(*did)) {
                     return Err(TraitNotObjectSafe(did));
                 }

@@ -54,6 +54,12 @@ pub fn target() -> Result<Target, String> {
         linker: Some("rust-lld".to_owned()),
         lld_flavor: LldFlavor::Wasm,
 
+        // No need for indirection here, simd types can always be passed by
+        // value as the whole module either has simd or not, which is different
+        // from x86 (for example) where programs can have functions that don't
+        // enable simd features.
+        simd_types_indirect: false,
+
         .. Default::default()
     };
     Ok(Target {

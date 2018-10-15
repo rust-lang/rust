@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// check that type parameters can't "shadow" qualified paths.
+// compile-pass
 
-fn check<Clone>(_c: Clone) {
-    fn check2() {
-        let _ = <() as std::clone::Clone>::clone(&());
-    }
-    check2();
+fn test<F: Fn(&u64, &u64)>(f: F) {}
+
+fn main() {
+    test(|x,      y     | {});
+    test(|x:&u64, y:&u64| {});
+    test(|x:&u64, y     | {});
+    test(|x,      y:&u64| {});
 }
-
-fn main() { check(()); }

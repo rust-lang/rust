@@ -19,7 +19,7 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
 use rustc::mir::*;
 use rustc::mir::visit::*;
-use rustc::ty::{self, Instance, Ty, TyCtxt};
+use rustc::ty::{self, Instance, InstanceDef, Ty, TyCtxt};
 use rustc::ty::subst::{Subst,Substs};
 
 use std::collections::VecDeque;
@@ -100,12 +100,21 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                                                                       param_env,
                                                                       callee_def_id,
                                                                       substs) {
-                                callsites.push_back(CallSite {
-                                    callee: instance.def_id(),
-                                    substs: instance.substs,
-                                    bb,
-                                    location: terminator.source_info
-                                });
+                                let is_virtual =
+                                    if let InstanceDef::Virtual(..) = instance.def {
+                                        true
+                                    } else {
+                                        false
+                                    };
+
+                                if !is_virtual {
+                                    callsites.push_back(CallSite {
+                                        callee: instance.def_id(),
+                                        substs: instance.substs,
+                                        bb,
+                                        location: terminator.source_info
+                                    });
+                                }
                             }
                         }
                     }

@@ -499,6 +499,9 @@ declare_features! (
 
     // #[cfg_attr(predicate, multiple, attributes, here)]
     (active, cfg_attr_multi, "1.31.0", Some(54881), None),
+
+    // Allows `const _: TYPE = VALUE`
+    (active, underscore_const_names, "1.31.0", Some(54912), None),
 );
 
 declare_features! (
@@ -1580,6 +1583,13 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 if i.ident.name == "_" {
                     gate_feature_post!(&self, underscore_imports, i.span,
                                        "renaming extern crates with `_` is unstable");
+                }
+            }
+
+            ast::ItemKind::Const(_,_) => {
+                if i.ident.name == "_" {
+                    gate_feature_post!(&self, underscore_const_names, i.span,
+                                        "naming constants with `_` is unstable");
                 }
             }
 
