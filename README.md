@@ -55,6 +55,14 @@ miri` to run your project, if it is a bin project, or run
 `MIRI_SYSROOT=~/.xargo/HOST cargo +nightly miri test` to run all tests in your
 project through Miri.
 
+## Miri `-Z` flags
+
+Miri adds some extra `-Z` flags to control its behavior:
+
+* `-Zmiri-start-fn`: This makes interpretation start with `lang_start` (defined
+  in libstd) instead of starting with `main`.  Requires full MIR!
+* `-Zmiri-disable-validation` disables enforcing the validity invariant.
+
 ## Development and Debugging
 
 Since the heart of Miri (the main interpreter engine) lives in rustc, working on
