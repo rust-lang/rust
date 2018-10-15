@@ -60,7 +60,6 @@ use util::nodemap::{DefIdMap, NodeMap};
 
 use std::collections::BTreeMap;
 use std::fmt::Debug;
-use std::iter;
 use std::mem;
 use smallvec::SmallVec;
 use syntax::attr;
@@ -3888,9 +3887,7 @@ impl<'a> LoweringContext<'a> {
                     .collect::<P<[hir::Field]>>();
 
                 let is_unit = fields.is_empty();
-                let struct_path = iter::once("ops")
-                    .chain(iter::once(path))
-                    .collect::<Vec<_>>();
+                let struct_path = ["ops", path];
                 let struct_path = self.std_path(e.span, &struct_path, None, is_unit);
                 let struct_path = hir::QPath::Resolved(None, P(struct_path));
 

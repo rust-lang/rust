@@ -306,8 +306,7 @@ fn program_clauses_for_trait<'a, 'tcx>(
     let wf_conditions = iter::once(ty::Binder::dummy(trait_pred.lower()))
         .chain(
             where_clauses
-                .iter()
-                .cloned()
+                .into_iter()
                 .map(|wc| wc.map_bound(|goal| goal.into_well_formed_goal()))
         );
 
@@ -350,15 +349,13 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
     // `WC`
     let where_clauses = tcx.predicates_of(def_id).predicates
         .into_iter()
-        .map(|(wc, _)| wc.lower())
-        .collect::<Vec<_>>();
+        .map(|(wc, _)| wc.lower());
 
     // `Implemented(A0: Trait<A1..An>) :- WC`
     let clause = ProgramClause {
         goal: trait_pred,
         hypotheses: tcx.mk_goals(
             where_clauses
-                .into_iter()
                 .map(|wc| tcx.mk_goal(GoalKind::from_poly_domain_goal(wc, tcx))),
         ),
     };
