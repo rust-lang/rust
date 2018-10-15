@@ -172,16 +172,22 @@ macro_rules! __thread_local_inner {
                 &'static $crate::cell::UnsafeCell<
                     $crate::option::Option<$t>>>
             {
-                #[cfg(target_arch = "wasm32")]
+                #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
                 static __KEY: $crate::thread::__StaticLocalKeyInner<$t> =
                     $crate::thread::__StaticLocalKeyInner::new();
 
                 #[thread_local]
-                #[cfg(all(target_thread_local, not(target_arch = "wasm32")))]
+                #[cfg(all(
+                    target_thread_local,
+                    not(all(target_arch = "wasm32", not(target_feature = "atomics"))),
+                ))]
                 static __KEY: $crate::thread::__FastLocalKeyInner<$t> =
                     $crate::thread::__FastLocalKeyInner::new();
 
-                #[cfg(all(not(target_thread_local), not(target_arch = "wasm32")))]
+                #[cfg(all(
+                    not(target_thread_local),
+                    not(all(target_arch = "wasm32", not(target_feature = "atomics"))),
+                ))]
                 static __KEY: $crate::thread::__OsLocalKeyInner<$t> =
                     $crate::thread::__OsLocalKeyInner::new();
 
@@ -302,7 +308,7 @@ impl<T: 'static> LocalKey<T> {
 /// On some platforms like wasm32 there's no threads, so no need to generate
 /// thread locals and we can instead just use plain statics!
 #[doc(hidden)]
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
 pub mod statik {
     use cell::UnsafeCell;
     use fmt;

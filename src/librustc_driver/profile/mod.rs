@@ -23,7 +23,7 @@ pub fn begin(sess: &Session) {
     use std::sync::mpsc::{channel};
     let (tx, rx) = channel();
     if profq_set_chan(sess, tx) {
-        thread::spawn(move||profile_queries_thread(rx));
+        thread::spawn(move || profile_queries_thread(rx));
     }
 }
 
@@ -34,11 +34,12 @@ pub fn begin(sess: &Session) {
 pub fn dump(sess: &Session, path: String) {
     use std::sync::mpsc::{channel};
     let (tx, rx) = channel();
-    let params = ProfQDumpParams{
-        path, ack:tx,
+    let params = ProfQDumpParams {
+        path,
+        ack: tx,
         // FIXME: Add another compiler flag to toggle whether this log
         // is written; false for now
-        dump_profq_msg_log:true,
+        dump_profq_msg_log: true,
     };
     profq_msg(sess, ProfileQueriesMsg::Dump(params));
     let _ = rx.recv().unwrap();
@@ -63,20 +64,20 @@ struct StackFrame {
 }
 
 fn total_duration(traces: &[trace::Rec]) -> Duration {
-    let mut sum : Duration = Duration::new(0,0);
+    let mut sum : Duration = Duration::new(0, 0);
     for t in traces.iter() { sum += t.dur_total; }
     return sum
 }
 
 // profiling thread; retains state (in local variables) and dump traces, upon request.
-fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
+fn profile_queries_thread(r: Receiver<ProfileQueriesMsg>) {
     use self::trace::*;
     use std::fs::File;
     use std::time::{Instant};
 
-    let mut profq_msgs : Vec<ProfileQueriesMsg> = vec![];
-    let mut frame : StackFrame = StackFrame{ parse_st:ParseState::Clear, traces:vec![] };
-    let mut stack : Vec<StackFrame> = vec![];
+    let mut profq_msgs: Vec<ProfileQueriesMsg> = vec![];
+    let mut frame: StackFrame = StackFrame { parse_st: ParseState::Clear, traces: vec![] };
+    let mut stack: Vec<StackFrame> = vec![];
     loop {
         let msg = r.recv();
         if let Err(_recv_err) = msg {
@@ -90,7 +91,7 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
         match msg {
             ProfileQueriesMsg::Halt => return,
             ProfileQueriesMsg::Dump(params) => {
-                assert!(stack.len() == 0);
+                assert!(stack.is_empty());
                 assert!(frame.parse_st == ParseState::Clear);
                 {
                     // write log of all messages
@@ -109,17 +110,14 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                     let counts_path = format!("{}.counts.txt", params.path);
                     let mut counts_file = File::create(&counts_path).unwrap();
 
-                    write!(html_file, "<html>\n").unwrap();
-                    write!(html_file,
-                           "<head>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"{}\">\n",
-                           "profile_queries.css").unwrap();
-                    write!(html_file, "<style>\n").unwrap();
+                    writeln!(html_file,
+                        "<html>\n<head>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"{}\">",
+                        "profile_queries.css").unwrap();
+                    writeln!(html_file, "<style>").unwrap();
                     trace::write_style(&mut html_file);
-                    write!(html_file, "</style>\n").unwrap();
-                    write!(html_file, "</head>\n").unwrap();
-                    write!(html_file, "<body>\n").unwrap();
+                    writeln!(html_file, "</style>\n</head>\n<body>").unwrap();
                     trace::write_traces(&mut html_file, &mut counts_file, &frame.traces);
-                    write!(html_file, "</body>\n</html>\n").unwrap();
+                    writeln!(html_file, "</body>\n</html>").unwrap();
 
                     let ack_path = format!("{}.ack", params.path);
                     let ack_file = File::create(&ack_path).unwrap();
@@ -141,10 +139,10 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
 
                     // Parse State: Clear
                     (ParseState::Clear,
-                     ProfileQueriesMsg::QueryBegin(span,querymsg)) => {
+                     ProfileQueriesMsg::QueryBegin(span, querymsg)) => {
                         let start = Instant::now();
                         frame.parse_st = ParseState::HaveQuery
-                            (Query{span:span, msg:querymsg}, start)
+                            (Query { span, msg: querymsg }, start)
                     },
                     (ParseState::Clear,
                      ProfileQueriesMsg::CacheHit) => {
@@ -287,8 +285,6 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                         frame = StackFrame{parse_st:ParseState::Clear, traces:vec![]};
                     },
 
-                    //
-                    //
                     // Parse errors:
 
                     (ParseState::HaveQuery(q,_),
@@ -310,7 +306,6 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                         unreachable!()
                     },
                 }
-
             }
         }
     }

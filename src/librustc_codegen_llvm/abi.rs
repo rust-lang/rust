@@ -536,7 +536,10 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                     // Note that the platform intrinsic ABI is exempt here as
                     // that's how we connect up to LLVM and it's unstable
                     // anyway, we control all calls to it in libstd.
-                    layout::Abi::Vector { .. } if abi != Abi::PlatformIntrinsic => {
+                    layout::Abi::Vector { .. }
+                        if abi != Abi::PlatformIntrinsic &&
+                            cx.sess().target.target.options.simd_types_indirect =>
+                    {
                         arg.make_indirect();
                         return
                     }

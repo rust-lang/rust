@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lang_items)]
+// compile-pass
 
-#[lang = "arc"]
-struct Foo; //~ ERROR E0152
+fn test<F: Fn(&u64, &u64)>(f: F) {}
 
 fn main() {
+    test(|x,      y     | {});
+    test(|x:&u64, y:&u64| {});
+    test(|x:&u64, y     | {});
+    test(|x,      y:&u64| {});
 }

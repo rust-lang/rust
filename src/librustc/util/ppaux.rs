@@ -621,16 +621,16 @@ define_print! {
                 // Use a type that can't appear in defaults of type parameters.
                 let dummy_self = tcx.mk_infer(ty::FreshTy(0));
 
-                if let Some(p) = self.principal() {
-                    let principal = tcx.lift(&p).expect("could not lift TraitRef for printing")
-                        .with_self_ty(tcx, dummy_self);
-                    let projections = self.projection_bounds().map(|p| {
-                        tcx.lift(&p)
-                            .expect("could not lift projection for printing")
-                            .with_self_ty(tcx, dummy_self)
-                    }).collect::<Vec<_>>();
-                    cx.parameterized(f, principal.substs, principal.def_id, &projections)?;
-                }
+                let principal = tcx
+                    .lift(&self.principal())
+                    .expect("could not lift TraitRef for printing")
+                    .with_self_ty(tcx, dummy_self);
+                let projections = self.projection_bounds().map(|p| {
+                    tcx.lift(&p)
+                        .expect("could not lift projection for printing")
+                        .with_self_ty(tcx, dummy_self)
+                }).collect::<Vec<_>>();
+                cx.parameterized(f, principal.substs, principal.def_id, &projections)?;
 
                 // Builtin bounds.
                 for did in self.auto_traits() {

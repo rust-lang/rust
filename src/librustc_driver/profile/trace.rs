@@ -43,18 +43,18 @@ pub struct QueryMetric {
     pub dur_total: Duration,
 }
 
+fn cons(s: &str) -> String {
+    let first = s.split(|d| d == '(' || d == '{').next();
+    assert!(first.is_some() && first != Some(""));
+    first.unwrap().to_owned()
+}
+
 pub fn cons_of_query_msg(q: &trace::Query) -> String {
-    let s = format!("{:?}", q.msg);
-    let cons: Vec<&str> = s.split(|d| d == '(' || d == '{').collect();
-    assert!(cons.len() > 0 && cons[0] != "");
-    cons[0].to_string()
+    cons(&format!("{:?}", q.msg))
 }
 
 pub fn cons_of_key(k: &DepNode) -> String {
-    let s = format!("{:?}", k);
-    let cons: Vec<&str> = s.split(|d| d == '(' || d == '{').collect();
-    assert!(cons.len() > 0 && cons[0] != "");
-    cons[0].to_string()
+    cons(&format!("{:?}", k))
 }
 
 // First return value is text; second return value is a CSS class
@@ -84,35 +84,33 @@ pub fn html_of_effect(eff: &Effect) -> (String, String) {
 // First return value is text; second return value is a CSS class
 fn html_of_duration(_start: &Instant, dur: &Duration) -> (String, String) {
     use rustc::util::common::duration_to_secs_str;
-    (duration_to_secs_str(dur.clone()),
-     String::new()
-    )
+    (duration_to_secs_str(dur.clone()), String::new())
 }
 
-fn html_of_fraction(frac: f64) -> (String, String) {
+fn html_of_fraction(frac: f64) -> (String, &'static str) {
     let css = {
-        if       frac > 0.50  { "frac-50".to_string() }
-        else if  frac > 0.40  { "frac-40".to_string() }
-        else if  frac > 0.30  { "frac-30".to_string() }
-        else if  frac > 0.20  { "frac-20".to_string() }
-        else if  frac > 0.10  { "frac-10".to_string() }
-        else if  frac > 0.05  { "frac-05".to_string() }
-        else if  frac > 0.02  { "frac-02".to_string() }
-        else if  frac > 0.01  { "frac-01".to_string() }
-        else if  frac > 0.001 { "frac-001".to_string() }
-        else                  { "frac-0".to_string() }
+        if       frac > 0.50  { "frac-50" }
+        else if  frac > 0.40  { "frac-40" }
+        else if  frac > 0.30  { "frac-30" }
+        else if  frac > 0.20  { "frac-20" }
+        else if  frac > 0.10  { "frac-10" }
+        else if  frac > 0.05  { "frac-05" }
+        else if  frac > 0.02  { "frac-02" }
+        else if  frac > 0.01  { "frac-01" }
+        else if  frac > 0.001 { "frac-001" }
+        else                  { "frac-0" }
     };
     let percent = frac * 100.0;
-    if percent > 0.1 { (format!("{:.1}%", percent), css) }
-    else { ("< 0.1%".to_string(), css) }
+
+    if percent > 0.1 {
+        (format!("{:.1}%", percent), css)
+    } else {
+        ("< 0.1%".to_string(), css)
+    }
 }
 
 fn total_duration(traces: &[Rec]) -> Duration {
-    let mut sum : Duration = Duration::new(0,0);
-    for t in traces.iter() {
-        sum += t.dur_total;
-    }
-    return sum
+    Duration::new(0, 0) + traces.iter().map(|t| t.dur_total).sum()
 }
 
 fn duration_div(nom: Duration, den: Duration) -> f64 {
@@ -130,64 +128,65 @@ fn write_traces_rec(file: &mut File, traces: &[Rec], total: Duration, depth: usi
         let fraction = duration_div(t.dur_total, total);
         let percent = fraction * 100.0;
         let (frc_text, frc_css_classes) = html_of_fraction(fraction);
-        write!(file, "<div class=\"trace depth-{} extent-{}{} {} {} {}\">\n",
-               depth,
-               t.extent.len(),
-               /* Heuristic for 'important' CSS class: */
-               if t.extent.len() > 5 || percent >= 1.0 {
-                   " important" }
-               else { "" },
-               eff_css_classes,
-               dur_css_classes,
-               frc_css_classes,
+        writeln!(file, "<div class=\"trace depth-{} extent-{}{} {} {} {}\">",
+                 depth,
+                 t.extent.len(),
+                 /* Heuristic for 'important' CSS class: */
+                 if t.extent.len() > 5 || percent >= 1.0 { " important" } else { "" },
+                 eff_css_classes,
+                 dur_css_classes,
+                 frc_css_classes,
         ).unwrap();
-        write!(file, "<div class=\"eff\">{}</div>\n", eff_text).unwrap();
-        write!(file, "<div class=\"dur\">{}</div>\n", dur_text).unwrap();
-        write!(file, "<div class=\"frc\">{}</div>\n", frc_text).unwrap();
+        writeln!(file, "<div class=\"eff\">{}</div>", eff_text).unwrap();
+        writeln!(file, "<div class=\"dur\">{}</div>", dur_text).unwrap();
+        writeln!(file, "<div class=\"frc\">{}</div>", frc_text).unwrap();
         write_traces_rec(file, &t.extent, total, depth + 1);
-        write!(file, "</div>\n").unwrap();
+        writeln!(file, "</div>").unwrap();
     }
 }
 
 fn compute_counts_rec(counts: &mut FxHashMap<String,QueryMetric>, traces: &[Rec]) {
+    counts.reserve(traces.len());
     for t in traces.iter() {
         match t.effect {
             Effect::TimeBegin(ref msg) => {
                 let qm = match counts.get(msg) {
-                    Some(_qm) => { panic!("TimeBegin with non-unique, repeat message") }
-                    None => QueryMetric{
+                    Some(_qm) => panic!("TimeBegin with non-unique, repeat message"),
+                    None => QueryMetric {
                         count: 1,
                         dur_self: t.dur_self,
                         dur_total: t.dur_total,
-                    }};
+                    }
+                };
                 counts.insert(msg.clone(), qm);
             },
             Effect::TaskBegin(ref key) => {
                 let cons = cons_of_key(key);
                 let qm = match counts.get(&cons) {
                     Some(qm) =>
-                        QueryMetric{
+                        QueryMetric {
                             count: qm.count + 1,
                             dur_self: qm.dur_self + t.dur_self,
                             dur_total: qm.dur_total + t.dur_total,
                         },
-                    None => QueryMetric{
+                    None => QueryMetric {
                         count: 1,
                         dur_self: t.dur_self,
                         dur_total: t.dur_total,
-                    }};
+                    }
+                };
                 counts.insert(cons, qm);
             },
             Effect::QueryBegin(ref qmsg, ref _cc) => {
                 let qcons = cons_of_query_msg(qmsg);
                 let qm = match counts.get(&qcons) {
                     Some(qm) =>
-                        QueryMetric{
+                        QueryMetric {
                             count: qm.count + 1,
                             dur_total: qm.dur_total + t.dur_total,
                             dur_self: qm.dur_self + t.dur_self
                         },
-                    None => QueryMetric{
+                    None => QueryMetric {
                         count: 1,
                         dur_total: t.dur_total,
                         dur_self: t.dur_self,
@@ -200,19 +199,20 @@ fn compute_counts_rec(counts: &mut FxHashMap<String,QueryMetric>, traces: &[Rec]
     }
 }
 
-pub fn write_counts(count_file: &mut File, counts: &mut FxHashMap<String,QueryMetric>) {
+pub fn write_counts(count_file: &mut File, counts: &mut FxHashMap<String, QueryMetric>) {
     use rustc::util::common::duration_to_secs_str;
     use std::cmp::Reverse;
 
     let mut data = counts.iter().map(|(ref cons, ref qm)|
         (cons.clone(), qm.count.clone(), qm.dur_total.clone(), qm.dur_self.clone())
     ).collect::<Vec<_>>();
+
     data.sort_by_key(|k| Reverse(k.3));
     for (cons, count, dur_total, dur_self) in data {
-        write!(count_file, "{}, {}, {}, {}\n",
-               cons, count,
-               duration_to_secs_str(dur_total),
-               duration_to_secs_str(dur_self)
+        writeln!(count_file, "{}, {}, {}, {}",
+                 cons, count,
+                 duration_to_secs_str(dur_total),
+                 duration_to_secs_str(dur_self)
         ).unwrap();
     }
 }
@@ -223,12 +223,12 @@ pub fn write_traces(html_file: &mut File, counts_file: &mut File, traces: &[Rec]
     compute_counts_rec(&mut counts, traces);
     write_counts(counts_file, &mut counts);
 
-    let total : Duration = total_duration(traces);
+    let total: Duration = total_duration(traces);
     write_traces_rec(html_file, traces, total, 0)
 }
 
 pub fn write_style(html_file: &mut File) {
-    write!(html_file,"{}", "
+    write!(html_file, "{}", "
 body {
     font-family: sans-serif;
     background: black;

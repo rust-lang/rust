@@ -867,7 +867,7 @@ impl<T: ?Sized> Clone for Rc<T> {
     ///
     /// let five = Rc::new(5);
     ///
-    /// Rc::clone(&five);
+    /// let _ = Rc::clone(&five);
     /// ```
     #[inline]
     fn clone(&self) -> Rc<T> {
@@ -1304,7 +1304,7 @@ impl<T: ?Sized> Clone for Weak<T> {
     ///
     /// let weak_five = Rc::downgrade(&Rc::new(5));
     ///
-    /// Weak::clone(&weak_five);
+    /// let _ = Weak::clone(&weak_five);
     /// ```
     #[inline]
     fn clone(&self) -> Weak<T> {

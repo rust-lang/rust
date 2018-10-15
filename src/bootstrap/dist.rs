@@ -1263,14 +1263,16 @@ impl Step for Clippy {
         builder.install(&cargoclippy, &image.join("bin"), 0o755);
         let doc = image.join("share/doc/clippy");
         builder.install(&src.join("README.md"), &doc, 0o644);
-        builder.install(&src.join("LICENSE"), &doc, 0o644);
+        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
+        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
 
         // Prepare the overlay
         let overlay = tmp.join("clippy-overlay");
         drop(fs::remove_dir_all(&overlay));
         t!(fs::create_dir_all(&overlay));
         builder.install(&src.join("README.md"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE"), &doc, 0o644);
+        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
+        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
         builder.create(&overlay.join("version"), &version);
 
         // Generate the installer tarball

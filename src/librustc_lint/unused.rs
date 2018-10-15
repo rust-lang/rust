@@ -80,10 +80,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                 match callee.node {
                     hir::ExprKind::Path(ref qpath) => {
                         let def = cx.tables.qpath_def(qpath, callee.hir_id);
-                        if let Def::Fn(_) = def {
-                            Some(def)
-                        } else {  // `Def::Local` if it was a closure, for which we
-                            None  // do not currently support must-use linting
+                        match def {
+                            Def::Fn(_) | Def::Method(_) => Some(def),
+                            // `Def::Local` if it was a closure, for which we
+                            // do not currently support must-use linting
+                            _ => None
                         }
                     },
                     _ => None
