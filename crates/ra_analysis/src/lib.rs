@@ -19,7 +19,6 @@ mod imp;
 mod job;
 mod roots;
 mod db;
-mod queries;
 mod descriptors;
 
 use std::{
@@ -162,7 +161,7 @@ impl Query {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Analysis {
     imp: AnalysisImpl
 }
@@ -257,4 +256,10 @@ impl LibraryData {
         let root = roots::ReadonlySourceRoot::new(files, file_resolver);
         LibraryData { root }
     }
+}
+
+#[test]
+fn analysis_is_send() {
+    fn is_send<T: Send>() {}
+    is_send::<Analysis>();
 }

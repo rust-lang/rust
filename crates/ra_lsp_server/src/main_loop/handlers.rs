@@ -478,7 +478,7 @@ pub fn handle_code_action(
 }
 
 pub fn publish_diagnostics(
-    world: ServerWorld,
+    world: &ServerWorld,
     file_id: FileId,
 ) -> Result<req::PublishDiagnosticsParams> {
     let uri = world.file_id_to_uri(file_id)?;
@@ -497,7 +497,7 @@ pub fn publish_diagnostics(
 }
 
 pub fn publish_decorations(
-    world: ServerWorld,
+    world: &ServerWorld,
     file_id: FileId,
 ) -> Result<req::PublishDecorationsParams> {
     let uri = world.file_id_to_uri(file_id)?;

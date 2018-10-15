@@ -1,8 +1,8 @@
 use std::{
     sync::{
         Arc,
-        atomic::{AtomicBool, Ordering::SeqCst},
     },
+    hash::{Hash, Hasher},
     fmt,
     collections::VecDeque,
     iter,
@@ -29,6 +29,21 @@ pub(crate) struct FileResolverImp {
     inner: Arc<FileResolver>
 }
 
+impl PartialEq for FileResolverImp {
+    fn eq(&self, other: &FileResolverImp) -> bool {
+        self.inner() == other.inner()
+    }
+}
+
+impl Eq for FileResolverImp {
+}
+
+impl Hash for FileResolverImp {
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        self.inner().hash(hasher);
+    }
+}
+
 impl FileResolverImp {
     pub(crate) fn new(inner: Arc<FileResolver>) -> FileResolverImp {
         FileResolverImp { inner }
@@ -38,6 +53,9 @@ impl FileResolverImp {
     }
     pub(crate) fn resolve(&self, file_id: FileId, path: &RelativePath) -> Option<FileId> {
         self.inner.resolve(file_id, path)
+    }
+    fn inner(&self) -> *const FileResolver {
+        &*self.inner
     }
 }
 
@@ -59,29 +77,27 @@ impl Default for FileResolverImp {
 
 #[derive(Debug)]
 pub(crate) struct AnalysisHostImpl {
-    data: Arc<WorldData>
+    data: WorldData
 }
 
 impl AnalysisHostImpl {
     pub fn new() -> AnalysisHostImpl {
         AnalysisHostImpl {
-            data: Arc::new(WorldData::default()),
+            data: WorldData::default(),
         }
     }
     pub fn analysis(&self) -> AnalysisImpl {
         AnalysisImpl {
-            needs_reindex: AtomicBool::new(false),
             data: self.data.clone(),
         }
     }
     pub fn change_files(&mut self, changes: &mut dyn Iterator<Item=(FileId, Option<String>)>) {
-        let data = self.data_mut();
-        data.root = Arc::new(data.root.apply_changes(changes, None));
+        self.data_mut()
+            .root.apply_changes(changes, None);
     }
     pub fn set_file_resolver(&mut self, resolver: FileResolverImp) {
-        let data = self.data_mut();
-        data.file_resolver = resolver.clone();
-        data.root = Arc::new(data.root.apply_changes(&mut iter::empty(), Some(resolver)));
+        self.data_mut()
+            .root.apply_changes(&mut iter::empty(), Some(resolver));
     }
     pub fn set_crate_graph(&mut self, graph: CrateGraph) {
         let mut visited = FxHashSet::default();
@@ -96,34 +112,24 @@ impl AnalysisHostImpl {
         self.data_mut().libs.push(Arc::new(root));
     }
     fn data_mut(&mut self) -> &mut WorldData {
-        Arc::make_mut(&mut self.data)
+        &mut self.data
     }
 }
 
 pub(crate) struct AnalysisImpl {
-    needs_reindex: AtomicBool,
-    data: Arc<WorldData>,
+    data: WorldData,
 }
 
 impl fmt::Debug for AnalysisImpl {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        (&*self.data).fmt(f)
-    }
-}
-
-impl Clone for AnalysisImpl {
-    fn clone(&self) -> AnalysisImpl {
-        AnalysisImpl {
-            needs_reindex: AtomicBool::new(self.needs_reindex.load(SeqCst)),
-            data: Arc::clone(&self.data),
-        }
+        self.data.fmt(f)
     }
 }
 
 impl AnalysisImpl {
     fn root(&self, file_id: FileId) -> &SourceRoot {
         if self.data.root.contains(file_id) {
-            return &*self.data.root;
+            return &self.data.root;
         }
         &**self.data.libs.iter().find(|it| it.contains(file_id)).unwrap()
     }
@@ -386,9 +392,8 @@ impl AnalysisImpl {
 
 #[derive(Default, Clone, Debug)]
 struct WorldData {
-    file_resolver: FileResolverImp,
     crate_graph: CrateGraph,
-    root: Arc<WritableSourceRoot>,
+    root: WritableSourceRoot,
     libs: Vec<Arc<ReadonlySourceRoot>>,
 }
 

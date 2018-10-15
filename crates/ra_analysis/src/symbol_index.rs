@@ -17,6 +17,15 @@ pub(crate) struct SymbolIndex {
     map: fst::Map,
 }
 
+impl PartialEq for SymbolIndex {
+    fn eq(&self, other: &SymbolIndex) -> bool {
+        self.symbols == other.symbols
+    }
+}
+
+impl Eq for SymbolIndex {
+}
+
 impl Hash for SymbolIndex {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         self.symbols.hash(hasher)

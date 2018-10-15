@@ -59,7 +59,7 @@ use crate::{
     yellow::{GreenNode},
 };
 
-#[derive(Clone, Debug, Hash)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct File {
     root: SyntaxNode
 }
