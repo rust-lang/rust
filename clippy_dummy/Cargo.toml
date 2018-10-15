@@ -1,5 +1,5 @@
 [package]
-name = "clippy" # rename to clippy before publishing
+name = "clippy_dummy" # rename to clippy before publishing
 version = "0.0.302"
 authors = ["Manish Goregaokar <manishsmail@gmail.com>"]
 edition = "2018"
