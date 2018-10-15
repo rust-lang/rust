@@ -139,7 +139,7 @@ macro_rules! print {
 ///
 /// [`format!`]: ../std/macro.format.html
 /// [`std::fmt`]: ../std/fmt/index.html
-/// [`eprintln!`]: ../std/macro.eprint.html
+/// [`eprintln!`]: ../std/macro.eprintln.html
 /// # Panics
 ///
 /// Panics if writing to `io::stdout` fails.

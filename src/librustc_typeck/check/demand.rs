@@ -115,7 +115,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // field is of the found type, suggest such variants. See Issue
         // #42764.
         if let ty::Adt(expected_adt, substs) = expected.sty {
-            let compatible_variants = expected_adt.variants
+            let mut compatible_variants = expected_adt.variants
                                                   .iter()
                                                   .filter(|variant| variant.fields.len() == 1)
                                                   .filter_map(|variant| {
@@ -127,12 +127,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 } else {
                     None
                 }
-            }).collect::<Vec<_>>();
+            }).peekable();
 
-            if !compatible_variants.is_empty() {
+            if compatible_variants.peek().is_some() {
                 let expr_text = print::to_string(print::NO_ANN, |s| s.print_expr(expr));
-                let suggestions = compatible_variants.iter()
-                    .map(|v| format!("{}({})", v, expr_text)).collect::<Vec<_>>();
+                let suggestions = compatible_variants.map(|v|
+                    format!("{}({})", v, expr_text)).collect::<Vec<_>>();
                 err.span_suggestions_with_applicability(
                      expr.span,
                      "try using a variant of the expected type",

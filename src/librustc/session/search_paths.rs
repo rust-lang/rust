@@ -14,7 +14,7 @@ use session::{early_error, config};
 
 #[derive(Clone, Debug)]
 pub struct SearchPaths {
-    paths: Vec<(PathKind, PathBuf)>,
+    crate paths: Vec<(PathKind, PathBuf)>,
 }
 
 pub struct Iter<'a> {
