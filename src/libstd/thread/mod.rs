@@ -443,7 +443,7 @@ impl Builder {
     /// // caller has to ensure `join()` is called, otherwise
     /// // it is possible to access freed memory if `x` gets
     /// // dropped before the thread closure is executed!
-    /// handler.join.unwrap();
+    /// handler.join().unwrap();
     /// ```
     ///
     /// [`spawn`]: ../../std/thread/fn.spawn.html
