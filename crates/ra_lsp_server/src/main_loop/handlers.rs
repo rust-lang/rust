@@ -411,6 +411,42 @@ pub fn handle_folding_range(
     Ok(res)
 }
 
+pub fn handle_signature_help(
+    world: ServerWorld,
+    params: req::TextDocumentPositionParams,
+    token: JobToken,
+) -> Result<Option<req::SignatureHelp>> {
+    use languageserver_types::{ParameterInformation, SignatureInformation};
+
+    let file_id = params.text_document.try_conv_with(&world)?;
+    let line_index = world.analysis().file_line_index(file_id);
+    let offset = params.position.conv_with(&line_index);
+
+    if let Some((descriptor, active_param)) = world.analysis().resolve_callable(file_id, offset, &token) {
+        let parameters : Vec<ParameterInformation> =
+            descriptor.params.iter().map(|param|
+                ParameterInformation {
+                    label: param.clone(),
+                    documentation: None
+                }
+            ).collect();
+
+        let sig_info = SignatureInformation {
+            label: descriptor.label,
+            documentation: None,
+            parameters: Some(parameters)
+        };
+
+        Ok(Some(req::SignatureHelp {
+            signatures: vec![sig_info],
+            active_signature: Some(0),
+            active_parameter: active_param.map(|a| a as u64)
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
 pub fn handle_code_action(
     world: ServerWorld,
     params: req::CodeActionParams,

@@ -1,6 +1,8 @@
 extern crate relative_path;
 extern crate ra_analysis;
 extern crate rustc_hash;
+extern crate ra_editor;
+extern crate ra_syntax;
 extern crate test_utils;
 
 use std::{
@@ -9,8 +11,8 @@ use std::{
 
 use rustc_hash::FxHashMap;
 use relative_path::{RelativePath, RelativePathBuf};
-use ra_analysis::{Analysis, AnalysisHost, FileId, FileResolver, JobHandle, CrateGraph, CrateId};
-use test_utils::assert_eq_dbg;
+use ra_analysis::{Analysis, AnalysisHost, FileId, FileResolver, JobHandle, CrateGraph, CrateId, FnDescriptor};
+use test_utils::{assert_eq_dbg, extract_offset};
 
 #[derive(Debug)]
 struct FileMap(Vec<(FileId, RelativePathBuf)>);
@@ -39,7 +41,7 @@ impl FileResolver for FileMap {
     }
 }
 
-fn analysis_host(files: &'static [(&'static str, &'static str)]) -> AnalysisHost {
+fn analysis_host(files: &[(&str, &str)]) -> AnalysisHost {
     let mut host = AnalysisHost::new();
     let mut file_map = Vec::new();
     for (id, &(path, contents)) in files.iter().enumerate() {
@@ -53,8 +55,18 @@ fn analysis_host(files: &'static [(&'static str, &'static str)]) -> AnalysisHost
     host
 }
 
-fn analysis(files: &'static [(&'static str, &'static str)]) -> Analysis {
+fn analysis(files: &[(&str, &str)]) -> Analysis {
     analysis_host(files).analysis()
+}
+
+fn get_signature(text: &str) -> (FnDescriptor, Option<usize>) {
+    let (offset, code) = extract_offset(text);
+    let code = code.as_str();
+
+    let (_handle, token) = JobHandle::new();
+    let snap = analysis(&[("/lib.rs", code)]);
+
+    snap.resolve_callable(FileId(1), offset, &token).unwrap()
 }
 
 #[test]
@@ -144,4 +156,86 @@ fn test_resolve_crate_root() {
         snap.crate_for(FileId(2)),
         vec![CrateId(1)],
     );
+}
+
+#[test]
+fn test_fn_signature_two_args_first() {
+    let (desc, param) = get_signature(
+r#"fn foo(x: u32, y: u32) -> u32 {x + y}
+fn bar() { foo(<|>3, ); }"#);
+
+    assert_eq!(desc.name, "foo".to_string());
+    assert_eq!(desc.params, vec!("x".to_string(),"y".to_string()));
+    assert_eq!(desc.ret_type, Some("-> u32".into()));
+    assert_eq!(param, Some(0));
+}
+
+#[test]
+fn test_fn_signature_two_args_second() {
+    let (desc, param) = get_signature(
+        r#"fn foo(x: u32, y: u32) -> u32 {x + y}
+fn bar() { foo(3, <|>); }"#);
+
+    assert_eq!(desc.name, "foo".to_string());
+    assert_eq!(desc.params, vec!("x".to_string(),"y".to_string()));
+    assert_eq!(desc.ret_type, Some("-> u32".into()));
+    assert_eq!(param, Some(1));
+}
+
+#[test]
+fn test_fn_signature_for_impl() {
+    let (desc, param) = get_signature(
+r#"struct F; impl F { pub fn new() { F{}} }
+fn bar() {let _ : F = F::new(<|>);}"#);
+
+    assert_eq!(desc.name, "new".to_string());
+    assert_eq!(desc.params, Vec::<String>::new());
+    assert_eq!(desc.ret_type, None);
+    assert_eq!(param, None);
+}
+
+#[test]
+fn test_fn_signature_for_method_self() {
+    let (desc, param) = get_signature(
+r#"struct F;
+impl F {
+    pub fn new() -> F{
+        F{}
+    }
+
+    pub fn do_it(&self) {}
+}
+
+fn bar() {
+    let f : F = F::new();
+    f.do_it(<|>);
+}"#);
+
+    assert_eq!(desc.name, "do_it".to_string());
+    assert_eq!(desc.params, vec!["&self".to_string()]);
+    assert_eq!(desc.ret_type, None);
+    assert_eq!(param, None);
+}
+
+#[test]
+fn test_fn_signature_for_method_with_arg() {
+    let (desc, param) = get_signature(
+r#"struct F;
+impl F {
+    pub fn new() -> F{
+        F{}
+    }
+
+    pub fn do_it(&self, x: i32) {}
+}
+
+fn bar() {
+    let f : F = F::new();
+    f.do_it(<|>);
+}"#);
+
+    assert_eq!(desc.name, "do_it".to_string());
+    assert_eq!(desc.params, vec!["&self".to_string(), "x".to_string()]);
+    assert_eq!(desc.ret_type, None);
+    assert_eq!(param, Some(1));
 }
