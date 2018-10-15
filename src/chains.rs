@@ -74,7 +74,7 @@ use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use source_map::SpanUtils;
 use utils::{
-    first_line_width, last_line_extendable, last_line_width, mk_sp, rewrite_ident,
+    self, first_line_width, last_line_extendable, last_line_width, mk_sp, rewrite_ident,
     trimmed_last_line_width, wrap_str,
 };
 
@@ -130,7 +130,7 @@ enum ChainItemKind {
 impl ChainItemKind {
     fn is_block_like(&self, context: &RewriteContext, reps: &str) -> bool {
         match self {
-            ChainItemKind::Parent(ref expr) => is_block_expr(context, expr, reps),
+            ChainItemKind::Parent(ref expr) => utils::is_block_expr(context, expr, reps),
             ChainItemKind::MethodCall(..)
             | ChainItemKind::StructField(..)
             | ChainItemKind::TupleField(..)
@@ -842,38 +842,6 @@ impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
 
     fn pure_root(&mut self) -> Option<String> {
         self.shared.pure_root()
-    }
-}
-
-// States whether an expression's last line exclusively consists of closing
-// parens, braces, and brackets in its idiomatic formatting.
-fn is_block_expr(context: &RewriteContext, expr: &ast::Expr, repr: &str) -> bool {
-    match expr.node {
-        ast::ExprKind::Mac(..)
-        | ast::ExprKind::Call(..)
-        | ast::ExprKind::MethodCall(..)
-        | ast::ExprKind::Array(..)
-        | ast::ExprKind::Struct(..)
-        | ast::ExprKind::While(..)
-        | ast::ExprKind::WhileLet(..)
-        | ast::ExprKind::If(..)
-        | ast::ExprKind::IfLet(..)
-        | ast::ExprKind::Block(..)
-        | ast::ExprKind::Loop(..)
-        | ast::ExprKind::ForLoop(..)
-        | ast::ExprKind::Match(..) => repr.contains('\n'),
-        ast::ExprKind::Paren(ref expr)
-        | ast::ExprKind::Binary(_, _, ref expr)
-        | ast::ExprKind::Index(_, ref expr)
-        | ast::ExprKind::Unary(_, ref expr)
-        | ast::ExprKind::Closure(_, _, _, _, ref expr, _)
-        | ast::ExprKind::Try(ref expr)
-        | ast::ExprKind::Yield(Some(ref expr)) => is_block_expr(context, expr, repr),
-        // This can only be a string lit
-        ast::ExprKind::Lit(_) => {
-            repr.contains('\n') && trimmed_last_line_width(repr) <= context.config.tab_spaces()
-        }
-        _ => false,
     }
 }
 

@@ -247,52 +247,42 @@ fn rewrite_match_arm(
     } else {
         (mk_sp(arm.span().lo(), arm.span().lo()), String::new())
     };
-    let pats_str =
-        rewrite_match_pattern(context, &ptr_vec_to_ref_vec(&arm.pats), &arm.guard, shape)
-            .and_then(|pats_str| {
-                combine_strs_with_missing_comments(
-                    context,
-                    &attrs_str,
-                    &pats_str,
-                    missing_span,
-                    shape,
-                    false,
-                )
-            })?;
+
+    // Patterns
+    // 5 = ` => {`
+    let pat_shape = shape.sub_width(5)?;
+    let pats_str = rewrite_multiple_patterns(context, &ptr_vec_to_ref_vec(&arm.pats), pat_shape)?;
+
+    // Guard
+    let block_like_pat = trimmed_last_line_width(&pats_str) <= context.config.tab_spaces();
+    let new_line_guard = pats_str.contains('\n') && !block_like_pat;
+    let guard_str = rewrite_guard(
+        context,
+        &arm.guard,
+        shape,
+        trimmed_last_line_width(&pats_str),
+        new_line_guard,
+    )?;
+
+    let lhs_str = combine_strs_with_missing_comments(
+        context,
+        &attrs_str,
+        &format!("{}{}", pats_str, guard_str),
+        missing_span,
+        shape,
+        false,
+    )?;
 
     let arrow_span = mk_sp(arm.pats.last().unwrap().span.hi(), arm.body.span.lo());
     rewrite_match_body(
         context,
         &arm.body,
-        &pats_str,
+        &lhs_str,
         shape,
-        arm.guard.is_some(),
+        guard_str.contains('\n'),
         arrow_span,
         is_last,
     )
-}
-
-fn rewrite_match_pattern(
-    context: &RewriteContext,
-    pats: &[&ast::Pat],
-    guard: &Option<ast::Guard>,
-    shape: Shape,
-) -> Option<String> {
-    // Patterns
-    // 5 = ` => {`
-    let pat_shape = shape.sub_width(5)?;
-    let pats_str = rewrite_multiple_patterns(context, pats, pat_shape)?;
-
-    // Guard
-    let guard_str = rewrite_guard(
-        context,
-        guard,
-        shape,
-        trimmed_last_line_width(&pats_str),
-        pats_str.contains('\n'),
-    )?;
-
-    Some(format!("{}{}", pats_str, guard_str))
 }
 
 fn block_can_be_flattened<'a>(

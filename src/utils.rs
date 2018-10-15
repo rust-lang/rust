@@ -417,3 +417,35 @@ pub fn starts_with_newline(s: &str) -> bool {
 pub fn first_line_ends_with(s: &str, c: char) -> bool {
     s.lines().next().map_or(false, |l| l.ends_with(c))
 }
+
+// States whether an expression's last line exclusively consists of closing
+// parens, braces, and brackets in its idiomatic formatting.
+pub fn is_block_expr(context: &RewriteContext, expr: &ast::Expr, repr: &str) -> bool {
+    match expr.node {
+        ast::ExprKind::Mac(..)
+        | ast::ExprKind::Call(..)
+        | ast::ExprKind::MethodCall(..)
+        | ast::ExprKind::Array(..)
+        | ast::ExprKind::Struct(..)
+        | ast::ExprKind::While(..)
+        | ast::ExprKind::WhileLet(..)
+        | ast::ExprKind::If(..)
+        | ast::ExprKind::IfLet(..)
+        | ast::ExprKind::Block(..)
+        | ast::ExprKind::Loop(..)
+        | ast::ExprKind::ForLoop(..)
+        | ast::ExprKind::Match(..) => repr.contains('\n'),
+        ast::ExprKind::Paren(ref expr)
+        | ast::ExprKind::Binary(_, _, ref expr)
+        | ast::ExprKind::Index(_, ref expr)
+        | ast::ExprKind::Unary(_, ref expr)
+        | ast::ExprKind::Closure(_, _, _, _, ref expr, _)
+        | ast::ExprKind::Try(ref expr)
+        | ast::ExprKind::Yield(Some(ref expr)) => is_block_expr(context, expr, repr),
+        // This can only be a string lit
+        ast::ExprKind::Lit(_) => {
+            repr.contains('\n') && trimmed_last_line_width(repr) <= context.config.tab_spaces()
+        }
+        _ => false,
+    }
+}
