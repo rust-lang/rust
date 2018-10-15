@@ -646,7 +646,7 @@ are:
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 
 [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/about-this-guide.html
-[gdfrustc]: http://manishearth.github.io/rust-internals-docs/rustc/
+[gdfrustc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
 [gsearchdocs]: https://www.google.com/search?q=site:doc.rust-lang.org+your+query+here
 [rif]: http://internals.rust-lang.org
 [rr]: https://doc.rust-lang.org/book/README.html
