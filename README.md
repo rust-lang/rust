@@ -47,13 +47,29 @@ You can also set `-Zmiri-start-fn` to make Miri start evaluation with the
 
 ## Running Miri on your own project('s test suite)
 
-Install Miri as a cargo subcommand with `cargo install --all-features`, and install
-a full libstd as described above.
+Install Miri as a cargo subcommand with `cargo install --all-features --path .`.
 
-Then, inside your own project, use `MIRI_SYSROOT=~/.xargo/HOST cargo +nightly
-miri` to run your project, if it is a bin project, or run
-`MIRI_SYSROOT=~/.xargo/HOST cargo +nightly miri test` to run all tests in your
-project through Miri.
+Compile your project and its dependencies against a MIR-enabled libstd as described
+above:
+
+1. Run `cargo clean` to eliminate any cached dependencies that were built against
+the non-MIR `libstd`.
+2. For a binary project, run `MIRI_SYSROOT=~/.xargo/HOST cargo +nightly miri` to
+build and run your project; for a binary or library, use `MIRI_SYSROOT=~/.xargo/HOST cargo +nightly miri test`
+to run all tests in your project through Miri.
+
+If you forget to set `MIRI_SYSROOT`, be sure to run `cargo clean` again before
+correcting it. Otherwise you are likely to get "dependency was built against possibly
+newer std" errors.
+
+## Using Rustup To Specify a Specific Nightly
+
+To target a specific nightly, modify the above instructions as follows.
+
+1. Install Miri using `cargo +nightly-2018-10-15 install --all-features --path .`,
+with the date replaced as appropriate.
+2. Run `xargo/build.sh` as `rustup run nightly-2018-10-15 build.sh`.
+3. When running tests, use `MIRI_SYSROOT=~/.xargo/HOST cargo +nightly-2018-10-15 miri test`.
 
 ## Miri `-Z` flags
 
