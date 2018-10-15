@@ -45,8 +45,8 @@ fn main() -> Result<()> {
 fn run_gen_command(name: &str, verify: bool) -> Result<()> {
     match name {
         "gen-kinds" => {
-            update(Path::new(SYNTAX_KINDS), &render_template(SYNTAX_KINDS_TEMPLATE, GRAMMAR)?, verify)?;
-            update(Path::new(AST), &render_template(AST_TEMPLATE, GRAMMAR)?, verify)?;
+            update(Path::new(SYNTAX_KINDS), &render_template(SYNTAX_KINDS_TEMPLATE)?, verify)?;
+            update(Path::new(AST), &render_template(AST_TEMPLATE)?, verify)?;
         },
         "gen-tests" => {
             gen_tests(verify)?

@@ -71,9 +71,9 @@ pub fn update(path: &Path, contents: &str, verify: bool) -> Result<()> {
     Ok(())
 }
 
-pub fn render_template(template: &str, grammarfile: &str) -> Result<String> {
+pub fn render_template(template: &str) -> Result<String> {
     let grammar: ron::value::Value = {
-        let text = fs::read_to_string(grammarfile)?;
+        let text = fs::read_to_string(format!("{}{}", Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).parent().unwrap().to_str().unwrap(), "/ra_syntax/src/grammar.ron"))?;
         ron::de::from_str(&text)?
     };
     let template = fs::read_to_string(template)?;
