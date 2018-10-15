@@ -62,6 +62,7 @@ mod higher_ranked;
 pub mod lattice;
 mod lexical_region_resolve;
 mod lub;
+pub mod nll_relate;
 pub mod opaque_types;
 pub mod outlives;
 pub mod region_constraints;
@@ -1239,7 +1240,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// sidesteps a number of important checks, such as the "occurs
     /// check" that prevents cyclic types, so it is important not to
     /// use this method during regular type-check.
-    pub fn force_instantiate_unchecked(&self, var: Ty<'tcx>, value: Ty<'tcx>) {
+    fn force_instantiate_unchecked(&self, var: Ty<'tcx>, value: Ty<'tcx>) {
         match (&var.sty, &value.sty) {
             (&ty::Infer(ty::TyVar(vid)), _) => {
                 let mut type_variables = self.type_variables.borrow_mut();
