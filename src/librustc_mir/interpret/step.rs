@@ -52,7 +52,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     }
 
     /// Returns true as long as there are more things to do.
-    fn step(&mut self) -> EvalResult<'tcx, bool> {
+    ///
+    /// This is used by [priroda](https://github.com/oli-obk/priroda)
+    pub fn step(&mut self) -> EvalResult<'tcx, bool> {
         if self.stack.is_empty() {
             return Ok(false);
         }
