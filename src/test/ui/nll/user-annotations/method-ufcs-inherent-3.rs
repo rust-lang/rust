@@ -14,6 +14,7 @@ impl<'a> A<'a> {
 fn foo<'a>() {
     let v = 22;
     let x = <A<'a>>::new(&v, 22);
+    //~^ ERROR
 }
 
 fn main() {}

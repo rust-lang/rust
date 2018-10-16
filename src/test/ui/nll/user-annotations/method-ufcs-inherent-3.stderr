@@ -3,6 +3,7 @@ error[E0597]: `v` does not live long enough
    |
 LL |     let x = <A<'a>>::new(&v, 22);
    |                          ^^ borrowed value does not live long enough
+LL |     //~^ ERROR
 LL | }
    | - `v` dropped here while still borrowed
    |

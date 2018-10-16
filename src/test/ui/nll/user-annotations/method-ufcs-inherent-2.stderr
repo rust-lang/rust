@@ -3,6 +3,7 @@ error[E0597]: `v` does not live long enough
    |
 LL |     let x = A::<'a>::new::<&'a u32>(&v, &v);
    |                                     ^^ borrowed value does not live long enough
+...
 LL | }
    | - `v` dropped here while still borrowed
    |
@@ -17,6 +18,7 @@ error[E0597]: `v` does not live long enough
    |
 LL |     let x = A::<'a>::new::<&'a u32>(&v, &v);
    |                                         ^^ borrowed value does not live long enough
+...
 LL | }
    | - `v` dropped here while still borrowed
    |
