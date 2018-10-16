@@ -1,32 +1,31 @@
-extern crate relative_path;
 extern crate ra_analysis;
-extern crate rustc_hash;
 extern crate ra_editor;
 extern crate ra_syntax;
+extern crate relative_path;
+extern crate rustc_hash;
 extern crate test_utils;
 
-use std::{
-    sync::Arc,
-};
+use std::sync::Arc;
 
-use rustc_hash::FxHashMap;
+use ra_analysis::{
+    Analysis, AnalysisHost, CrateGraph, CrateId, FileId, FileResolver, FnDescriptor, JobHandle,
+};
 use relative_path::{RelativePath, RelativePathBuf};
-use ra_analysis::{Analysis, AnalysisHost, FileId, FileResolver, JobHandle, CrateGraph, CrateId, FnDescriptor};
+use rustc_hash::FxHashMap;
 use test_utils::{assert_eq_dbg, extract_offset};
 
 #[derive(Debug)]
 struct FileMap(Vec<(FileId, RelativePathBuf)>);
 
 impl FileMap {
-    fn iter<'a>(&'a self) -> impl Iterator<Item=(FileId, &'a RelativePath)> + 'a {
-        self.0.iter().map(|(id, path)| (*id, path.as_relative_path()))
+    fn iter<'a>(&'a self) -> impl Iterator<Item = (FileId, &'a RelativePath)> + 'a {
+        self.0
+            .iter()
+            .map(|(id, path)| (*id, path.as_relative_path()))
     }
 
     fn path(&self, id: FileId) -> &RelativePath {
-        self.iter()
-            .find(|&(it, _)| it == id)
-            .unwrap()
-            .1
+        self.iter().find(|&(it, _)| it == id).unwrap().1
     }
 }
 
@@ -71,10 +70,7 @@ fn get_signature(text: &str) -> (FnDescriptor, Option<usize>) {
 
 #[test]
 fn test_resolve_module() {
-    let snap = analysis(&[
-        ("/lib.rs", "mod foo;"),
-        ("/foo.rs", "")
-    ]);
+    let snap = analysis(&[("/lib.rs", "mod foo;"), ("/foo.rs", "")]);
     let (_handle, token) = JobHandle::new();
     let symbols = snap.approximately_resolve_symbol(FileId(1), 4.into(), &token);
     assert_eq_dbg(
@@ -82,10 +78,7 @@ fn test_resolve_module() {
         &symbols,
     );
 
-    let snap = analysis(&[
-        ("/lib.rs", "mod foo;"),
-        ("/foo/mod.rs", "")
-    ]);
+    let snap = analysis(&[("/lib.rs", "mod foo;"), ("/foo/mod.rs", "")]);
     let symbols = snap.approximately_resolve_symbol(FileId(1), 4.into(), &token);
     assert_eq_dbg(
         r#"[(FileId(2), FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE })]"#,
@@ -114,18 +107,12 @@ fn test_unresolved_module_diagnostic() {
 fn test_unresolved_module_diagnostic_no_diag_for_inline_mode() {
     let snap = analysis(&[("/lib.rs", "mod foo {}")]);
     let diagnostics = snap.diagnostics(FileId(1));
-    assert_eq_dbg(
-        r#"[]"#,
-        &diagnostics,
-    );
+    assert_eq_dbg(r#"[]"#, &diagnostics);
 }
 
 #[test]
 fn test_resolve_parent_module() {
-    let snap = analysis(&[
-        ("/lib.rs", "mod foo;"),
-        ("/foo.rs", ""),
-    ]);
+    let snap = analysis(&[("/lib.rs", "mod foo;"), ("/foo.rs", "")]);
     let symbols = snap.parent_module(FileId(2));
     assert_eq_dbg(
         r#"[(FileId(1), FileSymbol { name: "foo", node_range: [0; 8), kind: MODULE })]"#,
@@ -135,10 +122,7 @@ fn test_resolve_parent_module() {
 
 #[test]
 fn test_resolve_crate_root() {
-    let mut host = analysis_host(&[
-        ("/lib.rs", "mod foo;"),
-        ("/foo.rs", ""),
-    ]);
+    let mut host = analysis_host(&[("/lib.rs", "mod foo;"), ("/foo.rs", "")]);
     let snap = host.analysis();
     assert!(snap.crate_for(FileId(2)).is_empty());
 
@@ -152,20 +136,18 @@ fn test_resolve_crate_root() {
     host.set_crate_graph(crate_graph);
     let snap = host.analysis();
 
-    assert_eq!(
-        snap.crate_for(FileId(2)),
-        vec![CrateId(1)],
-    );
+    assert_eq!(snap.crate_for(FileId(2)), vec![CrateId(1)],);
 }
 
 #[test]
 fn test_fn_signature_two_args_first() {
     let (desc, param) = get_signature(
-r#"fn foo(x: u32, y: u32) -> u32 {x + y}
-fn bar() { foo(<|>3, ); }"#);
+        r#"fn foo(x: u32, y: u32) -> u32 {x + y}
+fn bar() { foo(<|>3, ); }"#,
+    );
 
     assert_eq!(desc.name, "foo".to_string());
-    assert_eq!(desc.params, vec!("x".to_string(),"y".to_string()));
+    assert_eq!(desc.params, vec!("x".to_string(), "y".to_string()));
     assert_eq!(desc.ret_type, Some("-> u32".into()));
     assert_eq!(param, Some(0));
 }
@@ -174,10 +156,11 @@ fn bar() { foo(<|>3, ); }"#);
 fn test_fn_signature_two_args_second() {
     let (desc, param) = get_signature(
         r#"fn foo(x: u32, y: u32) -> u32 {x + y}
-fn bar() { foo(3, <|>); }"#);
+fn bar() { foo(3, <|>); }"#,
+    );
 
     assert_eq!(desc.name, "foo".to_string());
-    assert_eq!(desc.params, vec!("x".to_string(),"y".to_string()));
+    assert_eq!(desc.params, vec!("x".to_string(), "y".to_string()));
     assert_eq!(desc.ret_type, Some("-> u32".into()));
     assert_eq!(param, Some(1));
 }
@@ -185,8 +168,9 @@ fn bar() { foo(3, <|>); }"#);
 #[test]
 fn test_fn_signature_for_impl() {
     let (desc, param) = get_signature(
-r#"struct F; impl F { pub fn new() { F{}} }
-fn bar() {let _ : F = F::new(<|>);}"#);
+        r#"struct F; impl F { pub fn new() { F{}} }
+fn bar() {let _ : F = F::new(<|>);}"#,
+    );
 
     assert_eq!(desc.name, "new".to_string());
     assert_eq!(desc.params, Vec::<String>::new());
@@ -197,7 +181,7 @@ fn bar() {let _ : F = F::new(<|>);}"#);
 #[test]
 fn test_fn_signature_for_method_self() {
     let (desc, param) = get_signature(
-r#"struct F;
+        r#"struct F;
 impl F {
     pub fn new() -> F{
         F{}
@@ -209,7 +193,8 @@ impl F {
 fn bar() {
     let f : F = F::new();
     f.do_it(<|>);
-}"#);
+}"#,
+    );
 
     assert_eq!(desc.name, "do_it".to_string());
     assert_eq!(desc.params, vec!["&self".to_string()]);
@@ -220,7 +205,7 @@ fn bar() {
 #[test]
 fn test_fn_signature_for_method_with_arg() {
     let (desc, param) = get_signature(
-r#"struct F;
+        r#"struct F;
 impl F {
     pub fn new() -> F{
         F{}
@@ -232,7 +217,8 @@ impl F {
 fn bar() {
     let f : F = F::new();
     f.do_it(<|>);
-}"#);
+}"#,
+    );
 
     assert_eq!(desc.name, "do_it".to_string());
     assert_eq!(desc.params, vec!["&self".to_string(), "x".to_string()]);

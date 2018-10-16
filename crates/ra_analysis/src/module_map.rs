@@ -1,9 +1,10 @@
-use std::sync::Arc;
 use crate::{
-    FileId,
-    db::{SyntaxDatabase},
+    db::SyntaxDatabase,
     descriptors::{ModuleDescriptor, ModuleTreeDescriptor},
+    FileId,
 };
+
+use std::sync::Arc;
 
 salsa::query_group! {
     pub(crate) trait ModulesDatabase: SyntaxDatabase {
@@ -15,7 +16,6 @@ salsa::query_group! {
         }
     }
 }
-
 
 fn module_descriptor(db: &impl ModulesDatabase, file_id: FileId) -> Arc<ModuleDescriptor> {
     let file = db.file_syntax(file_id);
@@ -29,6 +29,9 @@ fn module_tree(db: &impl ModulesDatabase, (): ()) -> Arc<ModuleTreeDescriptor> {
         let module_descr = db.module_descriptor(file_id);
         files.push((file_id, module_descr));
     }
-    let res = ModuleTreeDescriptor::new(files.iter().map(|(file_id, descr)| (*file_id, &**descr)), &file_set.resolver);
+    let res = ModuleTreeDescriptor::new(
+        files.iter().map(|(file_id, descr)| (*file_id, &**descr)),
+        &file_set.resolver,
+    );
     Arc::new(res)
 }

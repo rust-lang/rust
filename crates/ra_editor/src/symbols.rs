@@ -1,12 +1,13 @@
+use crate::TextRange;
+
 use ra_syntax::{
-    SyntaxKind, SyntaxNodeRef, AstNode, File, SmolStr,
-    ast::{self, NameOwner},
     algo::{
         visit::{visitor, Visitor},
         walk::{walk, WalkEvent},
     },
+    ast::{self, NameOwner},
+    AstNode, File, SmolStr, SyntaxKind, SyntaxNodeRef,
 };
-use crate::TextRange;
 
 #[derive(Debug, Clone)]
 pub struct StructureNode {
@@ -25,9 +26,7 @@ pub struct FileSymbol {
 }
 
 pub fn file_symbols(file: &File) -> Vec<FileSymbol> {
-    file.syntax().descendants()
-        .filter_map(to_symbol)
-        .collect()
+    file.syntax().descendants().filter_map(to_symbol).collect()
 }
 
 fn to_symbol(node: SyntaxNodeRef) -> Option<FileSymbol> {
@@ -51,23 +50,20 @@ fn to_symbol(node: SyntaxNodeRef) -> Option<FileSymbol> {
         .accept(node)?
 }
 
-
 pub fn file_structure(file: &File) -> Vec<StructureNode> {
     let mut res = Vec::new();
     let mut stack = Vec::new();
 
     for event in walk(file.syntax()) {
         match event {
-            WalkEvent::Enter(node) => {
-                match structure_node(node) {
-                    Some(mut symbol) => {
-                        symbol.parent = stack.last().map(|&n| n);
-                        stack.push(res.len());
-                        res.push(symbol);
-                    }
-                    None => (),
+            WalkEvent::Enter(node) => match structure_node(node) {
+                Some(mut symbol) => {
+                    symbol.parent = stack.last().map(|&n| n);
+                    stack.push(res.len());
+                    res.push(symbol);
                 }
-            }
+                None => (),
+            },
             WalkEvent::Exit(node) => {
                 if structure_node(node).is_some() {
                     stack.pop().unwrap();
@@ -131,7 +127,8 @@ mod tests {
 
     #[test]
     fn test_file_structure() {
-        let file = File::parse(r#"
+        let file = File::parse(
+            r#"
 struct Foo {
     x: i32
 }
@@ -148,7 +145,8 @@ const C: i32 = 92;
 impl E {}
 
 impl fmt::Debug for E {}
-"#);
+"#,
+        );
         let symbols = file_structure(&file);
         assert_eq_dbg(
             r#"[StructureNode { parent: None, label: "Foo", navigation_range: [8; 11), node_range: [1; 26), kind: STRUCT_DEF },

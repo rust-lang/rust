@@ -1,44 +1,40 @@
 extern crate parking_lot;
 #[macro_use]
 extern crate log;
-extern crate once_cell;
-extern crate ra_syntax;
-extern crate ra_editor;
 extern crate fst;
+extern crate once_cell;
+extern crate ra_editor;
+extern crate ra_syntax;
 extern crate rayon;
 extern crate relative_path;
 #[macro_use]
 extern crate crossbeam_channel;
 extern crate im;
-extern crate salsa;
 extern crate rustc_hash;
+extern crate salsa;
 
-mod symbol_index;
-mod module_map;
-mod imp;
-mod job;
-mod roots;
 mod db;
 mod descriptors;
+mod imp;
+mod job;
+mod module_map;
+mod roots;
+mod symbol_index;
 
-use std::{
-    sync::Arc,
-    fmt::Debug,
-};
+use std::{fmt::Debug, sync::Arc};
 
+use crate::imp::{AnalysisHostImpl, AnalysisImpl, FileResolverImp};
+use ra_syntax::{AtomEdit, File, TextRange, TextUnit};
 use relative_path::{RelativePath, RelativePathBuf};
-use ra_syntax::{File, TextRange, TextUnit, AtomEdit};
 use rustc_hash::FxHashMap;
-use crate::imp::{AnalysisImpl, AnalysisHostImpl, FileResolverImp};
 
-pub use ra_editor::{
-    StructureNode, LineIndex, FileSymbol,
-    Runnable, RunnableKind, HighlightedRange, CompletionItem,
-    Fold, FoldKind
-};
 pub use crate::{
-    job::{JobToken, JobHandle},
     descriptors::FnDescriptor,
+    job::{JobHandle, JobToken},
+};
+pub use ra_editor::{
+    CompletionItem, FileSymbol, Fold, FoldKind, HighlightedRange, LineIndex, Runnable,
+    RunnableKind, StructureNode,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -59,20 +55,24 @@ pub trait FileResolver: Debug + Send + Sync + 'static {
 
 #[derive(Debug)]
 pub struct AnalysisHost {
-    imp: AnalysisHostImpl
+    imp: AnalysisHostImpl,
 }
 
 impl AnalysisHost {
     pub fn new() -> AnalysisHost {
-        AnalysisHost { imp: AnalysisHostImpl::new() }
+        AnalysisHost {
+            imp: AnalysisHostImpl::new(),
+        }
     }
     pub fn analysis(&self) -> Analysis {
-        Analysis { imp: self.imp.analysis() }
+        Analysis {
+            imp: self.imp.analysis(),
+        }
     }
     pub fn change_file(&mut self, file_id: FileId, text: Option<String>) {
         self.change_files(::std::iter::once((file_id, text)));
     }
-    pub fn change_files(&mut self, mut changes: impl Iterator<Item=(FileId, Option<String>)>) {
+    pub fn change_files(&mut self, mut changes: impl Iterator<Item = (FileId, Option<String>)>) {
         self.imp.change_files(&mut changes)
     }
     pub fn set_file_resolver(&mut self, resolver: Arc<FileResolver>) {
@@ -115,7 +115,7 @@ pub enum FileSystemEdit {
     MoveFile {
         file: FileId,
         path: RelativePathBuf,
-    }
+    },
 }
 
 #[derive(Debug)]
@@ -144,7 +144,7 @@ impl Query {
             only_types: false,
             libs: false,
             exact: false,
-            limit: usize::max_value()
+            limit: usize::max_value(),
         }
     }
     pub fn only_types(&mut self) {
@@ -163,7 +163,7 @@ impl Query {
 
 #[derive(Debug)]
 pub struct Analysis {
-    imp: AnalysisImpl
+    imp: AnalysisImpl,
 }
 
 impl Analysis {
@@ -195,7 +195,11 @@ impl Analysis {
     }
     pub fn on_eq_typed(&self, file_id: FileId, offset: TextUnit) -> Option<SourceChange> {
         let file = self.imp.file_syntax(file_id);
-        Some(SourceChange::from_local_edit(file_id, "add semicolon", ra_editor::on_eq_typed(&file, offset)?))
+        Some(SourceChange::from_local_edit(
+            file_id,
+            "add semicolon",
+            ra_editor::on_eq_typed(&file, offset)?,
+        ))
     }
     pub fn file_structure(&self, file_id: FileId) -> Vec<StructureNode> {
         let file = self.imp.file_syntax(file_id);
@@ -204,8 +208,14 @@ impl Analysis {
     pub fn symbol_search(&self, query: Query, token: &JobToken) -> Vec<(FileId, FileSymbol)> {
         self.imp.world_symbols(query, token)
     }
-    pub fn approximately_resolve_symbol(&self, file_id: FileId, offset: TextUnit, token: &JobToken) -> Vec<(FileId, FileSymbol)> {
-        self.imp.approximately_resolve_symbol(file_id, offset, token)
+    pub fn approximately_resolve_symbol(
+        &self,
+        file_id: FileId,
+        offset: TextUnit,
+        token: &JobToken,
+    ) -> Vec<(FileId, FileSymbol)> {
+        self.imp
+            .approximately_resolve_symbol(file_id, offset, token)
     }
     pub fn parent_module(&self, file_id: FileId) -> Vec<(FileId, FileSymbol)> {
         self.imp.parent_module(file_id)
@@ -239,15 +249,19 @@ impl Analysis {
         ra_editor::folding_ranges(&file)
     }
 
-    pub fn resolve_callable(&self, file_id: FileId, offset: TextUnit, token: &JobToken)
-        -> Option<(FnDescriptor, Option<usize>)> {
+    pub fn resolve_callable(
+        &self,
+        file_id: FileId,
+        offset: TextUnit,
+        token: &JobToken,
+    ) -> Option<(FnDescriptor, Option<usize>)> {
         self.imp.resolve_callable(file_id, offset, token)
     }
 }
 
 #[derive(Debug)]
 pub struct LibraryData {
-    root: roots::ReadonlySourceRoot
+    root: roots::ReadonlySourceRoot,
 }
 
 impl LibraryData {

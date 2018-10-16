@@ -134,10 +134,10 @@ mod tests {
     #[test]
     fn test_nth_is_p() {
         let ptr = Ptr::new("test");
-        assert!(ptr.nth_is_p(0,|c| c == 't'));
-        assert!(!ptr.nth_is_p(1,|c| c == 't'));
-        assert!(ptr.nth_is_p(3,|c| c == 't'));
-        assert!(!ptr.nth_is_p(150,|c| c == 't'));
+        assert!(ptr.nth_is_p(0, |c| c == 't'));
+        assert!(!ptr.nth_is_p(1, |c| c == 't'));
+        assert!(ptr.nth_is_p(3, |c| c == 't'));
+        assert!(!ptr.nth_is_p(150, |c| c == 't'));
     }
 
     #[test]

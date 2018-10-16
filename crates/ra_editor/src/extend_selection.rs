@@ -1,7 +1,8 @@
 use ra_syntax::{
-    File, TextRange, SyntaxNodeRef, TextUnit, Direction,
+    algo::{find_covering_node, find_leaf_at_offset, LeafAtOffset},
+    Direction, File,
     SyntaxKind::*,
-    algo::{find_leaf_at_offset, LeafAtOffset, find_covering_node},
+    SyntaxNodeRef, TextRange, TextUnit,
 };
 
 pub fn extend_selection(file: &File, range: TextRange) -> Option<TextRange> {
@@ -20,11 +21,11 @@ pub(crate) fn extend(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange>
             LeafAtOffset::None => return None,
             LeafAtOffset::Single(l) => {
                 if l.kind() == COMMENT {
-                    extend_single_word_in_comment(l, offset).unwrap_or_else(||l.range())
+                    extend_single_word_in_comment(l, offset).unwrap_or_else(|| l.range())
                 } else {
                     l.range()
                 }
-            },
+            }
             LeafAtOffset::Between(l, r) => pick_best(l, r).range(),
         };
         return Some(leaf_range);
@@ -66,7 +67,7 @@ fn extend_ws(root: SyntaxNodeRef, ws: SyntaxNodeRef, offset: TextUnit) -> TextRa
         if let Some(node) = ws.next_sibling() {
             let start = match ws_prefix.rfind('\n') {
                 Some(idx) => ws.range().start() + TextUnit::from((idx + 1) as u32),
-                None => node.range().start()
+                None => node.range().start(),
             };
             let end = if root.text().char_at(node.range().end()) == Some('\n') {
                 node.range().end() + TextUnit::of_char('\n')
@@ -94,10 +95,7 @@ fn extend_comments(node: SyntaxNodeRef) -> Option<TextRange> {
     let prev = adj_comments(node, Direction::Prev);
     let next = adj_comments(node, Direction::Next);
     if prev != next {
-        Some(TextRange::from_to(
-            prev.range().start(),
-            next.range().end(),
-        ))
+        Some(TextRange::from_to(prev.range().start(), next.range().end()))
     } else {
         None
     }
@@ -109,7 +107,7 @@ fn adj_comments(node: SyntaxNodeRef, dir: Direction) -> SyntaxNodeRef {
         match node.kind() {
             COMMENT => res = node,
             WHITESPACE if !node.leaf_text().unwrap().as_str().contains("\n\n") => (),
-            _ => break
+            _ => break,
         }
     }
     res
@@ -125,8 +123,7 @@ mod tests {
         let file = File::parse(&before);
         let mut range = TextRange::offset_len(cursor, 0.into());
         for &after in afters {
-            range = extend_selection(&file, range)
-                .unwrap();
+            range = extend_selection(&file, range).unwrap();
             let actual = &before[range];
             assert_eq!(after, actual);
         }
@@ -134,10 +131,7 @@ mod tests {
 
     #[test]
     fn test_extend_selection_arith() {
-        do_check(
-            r#"fn foo() { <|>1 + 1 }"#,
-            &["1", "1 + 1", "{ 1 + 1 }"],
-        );
+        do_check(r#"fn foo() { <|>1 + 1 }"#, &["1", "1 + 1", "{ 1 + 1 }"]);
     }
 
     #[test]
@@ -149,7 +143,7 @@ impl S {
 
     }
 }"#,
-            &["    fn foo() {\n\n    }\n"]
+            &["    fn foo() {\n\n    }\n"],
         );
     }
 
@@ -165,7 +159,11 @@ struct B {
     <|>
 }
             "#,
-            &["\n    \n", "{\n    \n}", "/// bla\n/// bla\nstruct B {\n    \n}"]
+            &[
+                "\n    \n",
+                "{\n    \n}",
+                "/// bla\n/// bla\nstruct B {\n    \n}",
+            ],
         )
     }
 
@@ -181,7 +179,7 @@ fn bar(){}
 
 // fn foo(){}
     "#,
-            &["// 1 + 1", "// fn foo() {\n// 1 + 1\n// }"]
+            &["// 1 + 1", "// fn foo() {\n// 1 + 1\n// }"],
         );
     }
 
@@ -191,42 +189,34 @@ fn bar(){}
             r#"
 fn main() { foo<|>+bar;}
     "#,
-            &["foo", "foo+bar"]
+            &["foo", "foo+bar"],
         );
         do_check(
             r#"
 fn main() { foo+<|>bar;}
     "#,
-            &["bar", "foo+bar"]
+            &["bar", "foo+bar"],
         );
     }
 
     #[test]
     fn test_extend_selection_prefer_lifetimes() {
-        do_check(
-            r#"fn foo<<|>'a>() {}"#,
-            &["'a", "<'a>"]
-        );
-        do_check(
-            r#"fn foo<'a<|>>() {}"#,
-            &["'a", "<'a>"]
-        );
+        do_check(r#"fn foo<<|>'a>() {}"#, &["'a", "<'a>"]);
+        do_check(r#"fn foo<'a<|>>() {}"#, &["'a", "<'a>"]);
     }
 
     #[test]
     fn test_extend_selection_select_first_word() {
+        do_check(r#"// foo bar b<|>az quxx"#, &["baz", "// foo bar baz quxx"]);
         do_check(
-            r#"// foo bar b<|>az quxx"#,
-            &["baz", "// foo bar baz quxx"]
-        );
-        do_check(r#"
+            r#"
 impl S {
     fn foo() {
         // hel<|>lo world
     }
 }
         "#,
-            &["hello", "// hello world"]
+            &["hello", "// hello world"],
         );
     }
 }

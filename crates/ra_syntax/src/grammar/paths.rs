@@ -97,7 +97,7 @@ fn opt_path_type_args(p: &mut Parser, mode: Mode) {
             } else {
                 type_args::opt_type_arg_list(p, false)
             }
-        },
+        }
         Mode::Expr => type_args::opt_type_arg_list(p, true),
     }
 }

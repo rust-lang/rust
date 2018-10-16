@@ -11,7 +11,10 @@ use std::{
     path::{Path, PathBuf},
     process::Command,
 };
-use tools::{AST, AST_TEMPLATE, Result, SYNTAX_KINDS, SYNTAX_KINDS_TEMPLATE, Test, collect_tests, render_template, update, project_root};
+use tools::{
+    collect_tests, project_root, render_template, update, Result, Test, AST, AST_TEMPLATE,
+    SYNTAX_KINDS, SYNTAX_KINDS_TEMPLATE,
+};
 
 const GRAMMAR_DIR: &str = "./crates/ra_syntax/src/grammar";
 const INLINE_TESTS_DIR: &str = "./crates/ra_syntax/tests/data/parser/inline";
@@ -40,17 +43,22 @@ fn main() -> Result<()> {
 fn run_gen_command(name: &str, verify: bool) -> Result<()> {
     match name {
         "gen-kinds" => {
-            update(&project_root().join(SYNTAX_KINDS), &render_template(&project_root().join(SYNTAX_KINDS_TEMPLATE))?, verify)?;
-            update(&project_root().join(AST), &render_template(&project_root().join(AST_TEMPLATE))?, verify)?;
-        },
-        "gen-tests" => {
-            gen_tests(verify)?
-        },
+            update(
+                &project_root().join(SYNTAX_KINDS),
+                &render_template(&project_root().join(SYNTAX_KINDS_TEMPLATE))?,
+                verify,
+            )?;
+            update(
+                &project_root().join(AST),
+                &render_template(&project_root().join(AST_TEMPLATE))?,
+                verify,
+            )?;
+        }
+        "gen-tests" => gen_tests(verify)?,
         _ => unreachable!(),
     }
     Ok(())
 }
-
 
 fn gen_tests(verify: bool) -> Result<()> {
     let tests = tests_from_dir(Path::new(GRAMMAR_DIR))?;
@@ -133,11 +141,20 @@ fn install_code_extension() -> Result<()> {
     } else {
         run(r"npm install", "./editors/code")?;
     }
-    run(r"node ./node_modules/vsce/out/vsce package", "./editors/code")?;
+    run(
+        r"node ./node_modules/vsce/out/vsce package",
+        "./editors/code",
+    )?;
     if cfg!(windows) {
-        run(r"cmd.exe /c code.cmd --install-extension ./ra-lsp-0.0.1.vsix", "./editors/code")?;
+        run(
+            r"cmd.exe /c code.cmd --install-extension ./ra-lsp-0.0.1.vsix",
+            "./editors/code",
+        )?;
     } else {
-        run(r"code --install-extension ./ra-lsp-0.0.1.vsix", "./editors/code")?;
+        run(
+            r"code --install-extension ./ra-lsp-0.0.1.vsix",
+            "./editors/code",
+        )?;
     }
     Ok(())
 }
@@ -145,7 +162,11 @@ fn install_code_extension() -> Result<()> {
 fn run(cmdline: &'static str, dir: &str) -> Result<()> {
     eprintln!("\nwill run: {}", cmdline);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let project_dir = Path::new(manifest_dir).ancestors().nth(2).unwrap().join(dir);
+    let project_dir = Path::new(manifest_dir)
+        .ancestors()
+        .nth(2)
+        .unwrap()
+        .join(dir);
     let mut args = cmdline.split_whitespace();
     let exec = args.next().unwrap();
     let status = Command::new(exec)

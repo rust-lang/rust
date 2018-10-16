@@ -4,14 +4,14 @@ extern crate test_utils;
 extern crate walkdir;
 
 use std::{
+    fmt::Write,
     fs,
     path::{Path, PathBuf},
-    fmt::Write,
 };
 
 use ra_syntax::{
+    utils::{check_fuzz_invariants, dump_tree},
     File,
-    utils::{dump_tree, check_fuzz_invariants},
 };
 
 #[test]
@@ -37,7 +37,6 @@ fn parser_fuzz_tests() {
     }
 }
 
-
 /// Read file and normalize newlines.
 ///
 /// `rustc` seems to always normalize `\r\n` newlines to `\n`:
@@ -54,8 +53,8 @@ fn read_text(path: &Path) -> String {
 }
 
 pub fn dir_tests<F>(paths: &[&str], f: F)
-    where
-        F: Fn(&str) -> String,
+where
+    F: Fn(&str) -> String,
 {
     for (path, input_code) in collect_tests(paths) {
         let parse_tree = f(&input_code);

@@ -1,20 +1,13 @@
+use languageserver_types::{Location, Position, Range, TextDocumentIdentifier, Url};
 use rustc_hash::FxHashMap;
-use languageserver_types::{TextDocumentIdentifier, Range, Url, Position, Location};
 use url_serde;
 
 pub use languageserver_types::{
-    request::*, notification::*,
-    InitializeResult, PublishDiagnosticsParams,
-    DocumentSymbolParams, DocumentSymbolResponse,
-    CodeActionParams, ApplyWorkspaceEditParams,
-    ExecuteCommandParams,
-    WorkspaceSymbolParams,
-    TextDocumentPositionParams,
-    TextEdit,
-    CompletionParams, CompletionResponse,
-    DocumentOnTypeFormattingParams,
-    TextDocumentEdit,
-    SignatureHelp, Hover
+    notification::*, request::*, ApplyWorkspaceEditParams, CodeActionParams, CompletionParams,
+    CompletionResponse, DocumentOnTypeFormattingParams, DocumentSymbolParams,
+    DocumentSymbolResponse, ExecuteCommandParams, Hover, InitializeResult,
+    PublishDiagnosticsParams, SignatureHelp, TextDocumentEdit, TextDocumentPositionParams,
+    TextEdit, WorkspaceSymbolParams,
 };
 
 pub enum SyntaxTree {}
@@ -28,7 +21,7 @@ impl Request for SyntaxTree {
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SyntaxTreeParams {
-    pub text_document: TextDocumentIdentifier
+    pub text_document: TextDocumentIdentifier,
 }
 
 pub enum ExtendSelection {}
@@ -94,7 +87,7 @@ pub struct PublishDecorationsParams {
 #[serde(rename_all = "camelCase")]
 pub struct Decoration {
     pub range: Range,
-    pub tag: &'static str
+    pub tag: &'static str,
 }
 
 pub enum ParentModule {}
@@ -167,14 +160,14 @@ pub struct SourceChange {
 pub enum FileSystemEdit {
     CreateFile {
         #[serde(with = "url_serde")]
-        uri: Url
+        uri: Url,
     },
     MoveFile {
         #[serde(with = "url_serde")]
         src: Url,
         #[serde(with = "url_serde")]
         dst: Url,
-    }
+    },
 }
 
 pub enum InternalFeedback {}

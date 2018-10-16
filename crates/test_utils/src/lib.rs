@@ -2,9 +2,9 @@ extern crate difference;
 extern crate itertools;
 extern crate text_unit;
 
-use std::fmt;
 use itertools::Itertools;
-use text_unit::{TextUnit, TextRange};
+use std::fmt;
+use text_unit::{TextRange, TextUnit};
 
 pub use self::difference::Changeset as __Changeset;
 

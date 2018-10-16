@@ -1,29 +1,26 @@
 mod handlers;
 mod subscriptions;
 
-use std::{
-    path::PathBuf,
-};
+use std::path::PathBuf;
 
-use serde::{Serialize, de::DeserializeOwned};
-use crossbeam_channel::{unbounded, Sender, Receiver};
-use rayon::{self, ThreadPool};
-use languageserver_types::{NumberOrString};
-use ra_analysis::{FileId, JobHandle, JobToken, LibraryData};
+use crossbeam_channel::{unbounded, Receiver, Sender};
 use gen_lsp_server::{
-    RawRequest, RawNotification, RawMessage, RawResponse, ErrorCode,
-    handle_shutdown,
+    handle_shutdown, ErrorCode, RawMessage, RawNotification, RawRequest, RawResponse,
 };
+use languageserver_types::NumberOrString;
+use ra_analysis::{FileId, JobHandle, JobToken, LibraryData};
+use rayon::{self, ThreadPool};
 use rustc_hash::FxHashMap;
+use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{
+    main_loop::subscriptions::Subscriptions,
+    project_model::{workspace_loader, CargoWorkspace},
     req,
-    Result,
-    vfs::{self, FileEvent},
-    server_world::{ServerWorldState, ServerWorld},
-    main_loop::subscriptions::{Subscriptions},
-    project_model::{CargoWorkspace, workspace_loader},
+    server_world::{ServerWorld, ServerWorldState},
     thread_watcher::Worker,
+    vfs::{self, FileEvent},
+    Result,
 };
 
 #[derive(Debug)]
@@ -147,56 +144,50 @@ fn main_loop_inner(
                 }
                 state_changed = true;
             }
-            Event::Ws(ws) => {
-                match ws {
-                    Ok(ws) => {
-                        let workspaces = vec![ws];
-                        feedback(internal_mode, "workspace loaded", msg_sender);
-                        for ws in workspaces.iter() {
-                            for pkg in ws.packages().filter(|pkg| !pkg.is_member(ws)) {
-                                debug!("sending root, {}", pkg.root(ws).to_path_buf().display());
-                                fs_worker.send(pkg.root(ws).to_path_buf());
-                            }
+            Event::Ws(ws) => match ws {
+                Ok(ws) => {
+                    let workspaces = vec![ws];
+                    feedback(internal_mode, "workspace loaded", msg_sender);
+                    for ws in workspaces.iter() {
+                        for pkg in ws.packages().filter(|pkg| !pkg.is_member(ws)) {
+                            debug!("sending root, {}", pkg.root(ws).to_path_buf().display());
+                            fs_worker.send(pkg.root(ws).to_path_buf());
                         }
-                        state.set_workspaces(workspaces);
-                        state_changed = true;
                     }
-                    Err(e) => warn!("loading workspace failed: {}", e),
+                    state.set_workspaces(workspaces);
+                    state_changed = true;
                 }
-            }
+                Err(e) => warn!("loading workspace failed: {}", e),
+            },
             Event::Lib(lib) => {
                 feedback(internal_mode, "library loaded", msg_sender);
                 state.add_lib(lib);
             }
-            Event::Msg(msg) => {
-                match msg {
-                    RawMessage::Request(req) => {
-                        let req = match handle_shutdown(req, msg_sender) {
-                            Some(req) => req,
-                            None => return Ok(()),
-                        };
-                        match on_request(state, pending_requests, pool, &task_sender, req)? {
-                            None => (),
-                            Some(req) => {
-                                error!("unknown request: {:?}", req);
-                                let resp = RawResponse::err(
-                                    req.id,
-                                    ErrorCode::MethodNotFound as i32,
-                                    "unknown request".to_string(),
-                                );
-                                msg_sender.send(RawMessage::Response(resp))
-                            }
+            Event::Msg(msg) => match msg {
+                RawMessage::Request(req) => {
+                    let req = match handle_shutdown(req, msg_sender) {
+                        Some(req) => req,
+                        None => return Ok(()),
+                    };
+                    match on_request(state, pending_requests, pool, &task_sender, req)? {
+                        None => (),
+                        Some(req) => {
+                            error!("unknown request: {:?}", req);
+                            let resp = RawResponse::err(
+                                req.id,
+                                ErrorCode::MethodNotFound as i32,
+                                "unknown request".to_string(),
+                            );
+                            msg_sender.send(RawMessage::Response(resp))
                         }
                     }
-                    RawMessage::Notification(not) => {
-                        on_notification(msg_sender, state, pending_requests, subs, not)?;
-                        state_changed = true;
-                    }
-                    RawMessage::Response(resp) => {
-                        error!("unexpected response: {:?}", resp)
-                    }
                 }
-            }
+                RawMessage::Notification(not) => {
+                    on_notification(msg_sender, state, pending_requests, subs, not)?;
+                    state_changed = true;
+                }
+                RawMessage::Response(resp) => error!("unexpected response: {:?}", resp),
+            },
         };
 
         if state_changed {
@@ -222,8 +213,7 @@ fn on_task(
             }
             msg_sender.send(RawMessage::Response(response))
         }
-        Task::Notify(n) =>
-            msg_sender.send(RawMessage::Notification(n)),
+        Task::Notify(n) => msg_sender.send(RawMessage::Notification(n)),
     }
 }
 
@@ -237,7 +227,9 @@ fn on_request(
     let mut pool_dispatcher = PoolDispatcher {
         req: Some(req),
         res: None,
-        pool, world, sender
+        pool,
+        world,
+        sender,
     };
     let req = pool_dispatcher
         .on::<req::SyntaxTree>(handlers::handle_syntax_tree)?
@@ -262,7 +254,7 @@ fn on_request(
             let inserted = pending_requests.insert(id, handle).is_none();
             assert!(inserted, "duplicate request: {}", id);
             Ok(None)
-        },
+        }
         Err(req) => Ok(Some(req)),
     }
 }
@@ -285,45 +277,53 @@ fn on_notification(
             if let Some(handle) = pending_requests.remove(&id) {
                 handle.cancel();
             }
-            return Ok(())
+            return Ok(());
         }
         Err(not) => not,
     };
     let not = match not.cast::<req::DidOpenTextDocument>() {
         Ok(params) => {
             let uri = params.text_document.uri;
-            let path = uri.to_file_path()
+            let path = uri
+                .to_file_path()
                 .map_err(|()| format_err!("invalid uri: {}", uri))?;
             let file_id = state.add_mem_file(path, params.text_document.text);
             subs.add_sub(file_id);
-            return Ok(())
+            return Ok(());
         }
         Err(not) => not,
     };
     let not = match not.cast::<req::DidChangeTextDocument>() {
         Ok(mut params) => {
             let uri = params.text_document.uri;
-            let path = uri.to_file_path()
+            let path = uri
+                .to_file_path()
                 .map_err(|()| format_err!("invalid uri: {}", uri))?;
-            let text = params.content_changes.pop()
+            let text = params
+                .content_changes
+                .pop()
                 .ok_or_else(|| format_err!("empty changes"))?
                 .text;
             state.change_mem_file(path.as_path(), text)?;
-            return Ok(())
+            return Ok(());
         }
         Err(not) => not,
     };
     let not = match not.cast::<req::DidCloseTextDocument>() {
         Ok(params) => {
             let uri = params.text_document.uri;
-            let path = uri.to_file_path()
+            let path = uri
+                .to_file_path()
                 .map_err(|()| format_err!("invalid uri: {}", uri))?;
             let file_id = state.remove_mem_file(path.as_path())?;
             subs.remove_sub(file_id);
-            let params = req::PublishDiagnosticsParams { uri, diagnostics: Vec::new() };
+            let params = req::PublishDiagnosticsParams {
+                uri,
+                diagnostics: Vec::new(),
+            };
             let not = RawNotification::new::<req::PublishDiagnostics>(&params);
             msg_sender.send(RawMessage::Notification(not));
-            return Ok(())
+            return Ok(());
         }
         Err(not) => not,
     };
@@ -342,11 +342,12 @@ struct PoolDispatcher<'a> {
 impl<'a> PoolDispatcher<'a> {
     fn on<'b, R>(
         &'b mut self,
-        f: fn(ServerWorld, R::Params, JobToken) -> Result<R::Result>
+        f: fn(ServerWorld, R::Params, JobToken) -> Result<R::Result>,
     ) -> Result<&'b mut Self>
-    where R: req::Request,
-          R::Params: DeserializeOwned + Send + 'static,
-          R::Result: Serialize + 'static,
+    where
+        R: req::Request,
+        R::Params: DeserializeOwned + Send + 'static,
+        R::Result: Serialize + 'static,
     {
         let req = match self.req.take() {
             None => return Ok(self),
@@ -360,16 +361,16 @@ impl<'a> PoolDispatcher<'a> {
                 self.pool.spawn(move || {
                     let resp = match f(world, params, token) {
                         Ok(resp) => RawResponse::ok::<R>(id, &resp),
-                        Err(e) => RawResponse::err(id, ErrorCode::InternalError as i32, e.to_string()),
+                        Err(e) => {
+                            RawResponse::err(id, ErrorCode::InternalError as i32, e.to_string())
+                        }
                     };
                     let task = Task::Respond(resp);
                     sender.send(task);
                 });
                 self.res = Some((id, handle));
             }
-            Err(req) => {
-                self.req = Some(req)
-            }
+            Err(req) => self.req = Some(req),
         }
         Ok(self)
     }
@@ -392,18 +393,14 @@ fn update_file_notifications_on_threadpool(
     pool.spawn(move || {
         for file_id in subscriptions {
             match handlers::publish_diagnostics(&world, file_id) {
-                Err(e) => {
-                    error!("failed to compute diagnostics: {:?}", e)
-                }
+                Err(e) => error!("failed to compute diagnostics: {:?}", e),
                 Ok(params) => {
                     let not = RawNotification::new::<req::PublishDiagnostics>(&params);
                     sender.send(Task::Notify(not));
                 }
             }
             match handlers::publish_decorations(&world, file_id) {
-                Err(e) => {
-                    error!("failed to compute decorations: {:?}", e)
-                }
+                Err(e) => error!("failed to compute decorations: {:?}", e),
                 Ok(params) => {
                     let not = RawNotification::new::<req::PublishDecorations>(&params);
                     sender.send(Task::Notify(not))

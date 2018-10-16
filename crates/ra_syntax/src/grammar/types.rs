@@ -1,15 +1,14 @@
 use super::*;
 
-pub(super) const TYPE_FIRST: TokenSet =
-    token_set_union![
-        token_set![
-            L_PAREN, EXCL, STAR, L_BRACK, AMP, UNDERSCORE, FN_KW, UNSAFE_KW, EXTERN_KW, FOR_KW, IMPL_KW, DYN_KW, L_ANGLE,
-        ],
-        paths::PATH_FIRST,
-    ];
+pub(super) const TYPE_FIRST: TokenSet = token_set_union![
+    token_set![
+        L_PAREN, EXCL, STAR, L_BRACK, AMP, UNDERSCORE, FN_KW, UNSAFE_KW, EXTERN_KW, FOR_KW,
+        IMPL_KW, DYN_KW, L_ANGLE,
+    ],
+    paths::PATH_FIRST,
+];
 
-const TYPE_RECOVERY_SET: TokenSet =
-    token_set![R_PAREN, COMMA];
+const TYPE_RECOVERY_SET: TokenSet = token_set![R_PAREN, COMMA];
 
 pub(super) fn type_(p: &mut Parser) {
     match p.current() {
@@ -200,7 +199,6 @@ pub(super) fn for_type(p: &mut Parser) {
         FN_KW | UNSAFE_KW | EXTERN_KW => fn_pointer_type(p),
         _ if paths::is_path_start(p) => path_type_(p, false),
         _ => p.error("expected a path"),
-
     }
     m.complete(p, FOR_TYPE);
 }

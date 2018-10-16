@@ -1,17 +1,18 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use ra_syntax::{
-    File, TextUnit, AstNode, SyntaxNodeRef, SyntaxKind::*,
+    algo::visit::{visitor, visitor_ctx, Visitor, VisitorCtx},
     ast::{self, LoopBodyOwner, ModuleItemOwner},
-    algo::{
-        visit::{visitor, Visitor, visitor_ctx, VisitorCtx},
-    },
     text_utils::is_subrange,
+    AstNode, File,
+    SyntaxKind::*,
+    SyntaxNodeRef, TextUnit,
 };
 
 use crate::{
-    AtomEdit, find_node_at_offset,
+    find_node_at_offset,
     scope::{FnScopes, ModuleScope},
+    AtomEdit,
 };
 
 #[derive(Debug)]
@@ -21,7 +22,7 @@ pub struct CompletionItem {
     /// What string is used for filtering, defaults to label
     pub lookup: Option<String>,
     /// What is inserted, defaults to label
-    pub snippet: Option<String>
+    pub snippet: Option<String>,
 }
 
 pub fn scope_completion(file: &File, offset: TextUnit) -> Option<Vec<CompletionItem>> {
@@ -40,7 +41,12 @@ pub fn scope_completion(file: &File, offset: TextUnit) -> Option<Vec<CompletionI
             param_completions(name_ref.syntax(), &mut res);
         }
         let name_range = name_ref.syntax().range();
-        let top_node = name_ref.syntax().ancestors().take_while(|it| it.range() == name_range).last().unwrap();
+        let top_node = name_ref
+            .syntax()
+            .ancestors()
+            .take_while(|it| it.range() == name_range)
+            .last()
+            .unwrap();
         match top_node.parent().map(|it| it.kind()) {
             Some(ROOT) | Some(ITEM_LIST) => complete_mod_item_snippets(&mut res),
             _ => (),
@@ -68,21 +74,23 @@ fn complete_name_ref(file: &File, name_ref: ast::NameRef, acc: &mut Vec<Completi
         if let Some(items) = visitor()
             .visit::<ast::Root, _>(|it| Some(it.items()))
             .visit::<ast::Module, _>(|it| Some(it.item_list()?.items()))
-            .accept(node) {
+            .accept(node)
+        {
             if let Some(items) = items {
                 let scope = ModuleScope::new(items);
                 acc.extend(
-                    scope.entries().iter()
+                    scope
+                        .entries()
+                        .iter()
                         .filter(|entry| entry.syntax() != name_ref.syntax())
                         .map(|entry| CompletionItem {
                             label: entry.name().to_string(),
                             lookup: None,
                             snippet: None,
-                        })
+                        }),
                 );
             }
             break;
-
         } else if !visited_fn {
             if let Some(fn_def) = ast::FnDef::cast(node) {
                 visited_fn = true;
@@ -103,26 +111,34 @@ fn param_completions(ctx: SyntaxNodeRef, acc: &mut Vec<CompletionItem>) {
             .visit::<ast::ItemList, _>(process)
             .accept(node);
     }
-    params.into_iter()
+    params
+        .into_iter()
         .filter_map(|(label, (count, param))| {
             let lookup = param.pat()?.syntax().text().to_string();
-            if count < 2 { None } else { Some((label, lookup)) }
+            if count < 2 {
+                None
+            } else {
+                Some((label, lookup))
+            }
         })
         .for_each(|(label, lookup)| {
             acc.push(CompletionItem {
-                label, lookup: Some(lookup), snippet: None
+                label,
+                lookup: Some(lookup),
+                snippet: None,
             })
         });
 
-    fn process<'a, N: ast::FnDefOwner<'a>>(node: N, params: &mut FxHashMap<String, (u32, ast::Param<'a>)>) {
+    fn process<'a, N: ast::FnDefOwner<'a>>(
+        node: N,
+        params: &mut FxHashMap<String, (u32, ast::Param<'a>)>,
+    ) {
         node.functions()
             .filter_map(|it| it.param_list())
             .flat_map(|it| it.params())
             .for_each(|param| {
                 let text = param.syntax().text().to_string();
-                params.entry(text)
-                      .or_insert((0, param))
-                      .0 += 1;
+                params.entry(text).or_insert((0, param)).0 += 1;
             })
     }
 }
@@ -134,8 +150,12 @@ fn is_node<'a, N: AstNode<'a>>(node: SyntaxNodeRef<'a>) -> bool {
     }
 }
 
-
-fn complete_expr_keywords(file: &File, fn_def: ast::FnDef, name_ref: ast::NameRef, acc: &mut Vec<CompletionItem>) {
+fn complete_expr_keywords(
+    file: &File,
+    fn_def: ast::FnDef,
+    name_ref: ast::NameRef,
+    acc: &mut Vec<CompletionItem>,
+) {
     acc.push(keyword("if", "if $0 {}"));
     acc.push(keyword("match", "match $0 {}"));
     acc.push(keyword("while", "while $0 {}"));
@@ -186,9 +206,14 @@ fn complete_return(fn_def: ast::FnDef, name_ref: ast::NameRef) -> Option<Complet
     //     return None;
     // }
 
-    let is_stmt = match name_ref.syntax().ancestors().filter_map(ast::ExprStmt::cast).next() {
+    let is_stmt = match name_ref
+        .syntax()
+        .ancestors()
+        .filter_map(ast::ExprStmt::cast)
+        .next()
+    {
         None => false,
-        Some(expr_stmt) => expr_stmt.syntax().range() == name_ref.syntax().range()
+        Some(expr_stmt) => expr_stmt.syntax().range() == name_ref.syntax().range(),
     };
     let snip = match (is_stmt, fn_def.ret_type().is_some()) {
         (true, true) => "return $0;",
@@ -209,39 +234,37 @@ fn keyword(kw: &str, snip: &str) -> CompletionItem {
 
 fn complete_expr_snippets(acc: &mut Vec<CompletionItem>) {
     acc.push(CompletionItem {
-            label: "pd".to_string(),
-            lookup: None,
-            snippet: Some("eprintln!(\"$0 = {:?}\", $0);".to_string()),
-        }
-    );
+        label: "pd".to_string(),
+        lookup: None,
+        snippet: Some("eprintln!(\"$0 = {:?}\", $0);".to_string()),
+    });
     acc.push(CompletionItem {
-            label: "ppd".to_string(),
-            lookup: None,
-            snippet: Some("eprintln!(\"$0 = {:#?}\", $0);".to_string()),
-        }
-    );
+        label: "ppd".to_string(),
+        lookup: None,
+        snippet: Some("eprintln!(\"$0 = {:#?}\", $0);".to_string()),
+    });
 }
 
 fn complete_mod_item_snippets(acc: &mut Vec<CompletionItem>) {
     acc.push(CompletionItem {
-            label: "tfn".to_string(),
-            lookup: None,
-            snippet: Some("#[test]\nfn $1() {\n    $0\n}".to_string()),
-        }
-    );
+        label: "tfn".to_string(),
+        lookup: None,
+        snippet: Some("#[test]\nfn $1() {\n    $0\n}".to_string()),
+    });
 }
 
 fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<CompletionItem>) {
     let mut shadowed = FxHashSet::default();
     acc.extend(
-        scopes.scope_chain(name_ref.syntax())
+        scopes
+            .scope_chain(name_ref.syntax())
             .flat_map(|scope| scopes.entries(scope).iter())
             .filter(|entry| shadowed.insert(entry.name()))
             .map(|entry| CompletionItem {
                 label: entry.name().to_string(),
                 lookup: None,
                 snippet: None,
-            })
+            }),
     );
     if scopes.self_param.is_some() {
         acc.push(CompletionItem {
@@ -281,20 +304,24 @@ mod tests {
 
     #[test]
     fn test_completion_let_scope() {
-        check_scope_completion(r"
+        check_scope_completion(
+            r"
             fn quux(x: i32) {
                 let y = 92;
                 1 + <|>;
                 let z = ();
             }
-            ", r#"[CompletionItem { label: "y", lookup: None, snippet: None },
+            ",
+            r#"[CompletionItem { label: "y", lookup: None, snippet: None },
                    CompletionItem { label: "x", lookup: None, snippet: None },
-                   CompletionItem { label: "quux", lookup: None, snippet: None }]"#);
+                   CompletionItem { label: "quux", lookup: None, snippet: None }]"#,
+        );
     }
 
     #[test]
     fn test_completion_if_let_scope() {
-        check_scope_completion(r"
+        check_scope_completion(
+            r"
             fn quux() {
                 if let Some(x) = foo() {
                     let y = 92;
@@ -304,67 +331,85 @@ mod tests {
                     1 + <|>
                 }
             }
-            ", r#"[CompletionItem { label: "b", lookup: None, snippet: None },
+            ",
+            r#"[CompletionItem { label: "b", lookup: None, snippet: None },
                    CompletionItem { label: "a", lookup: None, snippet: None },
-                   CompletionItem { label: "quux", lookup: None, snippet: None }]"#);
+                   CompletionItem { label: "quux", lookup: None, snippet: None }]"#,
+        );
     }
 
     #[test]
     fn test_completion_for_scope() {
-        check_scope_completion(r"
+        check_scope_completion(
+            r"
             fn quux() {
                 for x in &[1, 2, 3] {
                     <|>
                 }
             }
-            ", r#"[CompletionItem { label: "x", lookup: None, snippet: None },
-                   CompletionItem { label: "quux", lookup: None, snippet: None }]"#);
+            ",
+            r#"[CompletionItem { label: "x", lookup: None, snippet: None },
+                   CompletionItem { label: "quux", lookup: None, snippet: None }]"#,
+        );
     }
 
     #[test]
     fn test_completion_mod_scope() {
-        check_scope_completion(r"
+        check_scope_completion(
+            r"
             struct Foo;
             enum Baz {}
             fn quux() {
                 <|>
             }
-            ", r#"[CompletionItem { label: "Foo", lookup: None, snippet: None },
+            ",
+            r#"[CompletionItem { label: "Foo", lookup: None, snippet: None },
                    CompletionItem { label: "Baz", lookup: None, snippet: None },
-                   CompletionItem { label: "quux", lookup: None, snippet: None }]"#);
+                   CompletionItem { label: "quux", lookup: None, snippet: None }]"#,
+        );
     }
 
     #[test]
     fn test_completion_mod_scope_no_self_use() {
-        check_scope_completion(r"
+        check_scope_completion(
+            r"
             use foo<|>;
-            ", r#"[]"#);
+            ",
+            r#"[]"#,
+        );
     }
 
     #[test]
     fn test_completion_mod_scope_nested() {
-        check_scope_completion(r"
+        check_scope_completion(
+            r"
             struct Foo;
             mod m {
                 struct Bar;
                 fn quux() { <|> }
             }
-            ", r#"[CompletionItem { label: "Bar", lookup: None, snippet: None },
-                   CompletionItem { label: "quux", lookup: None, snippet: None }]"#);
+            ",
+            r#"[CompletionItem { label: "Bar", lookup: None, snippet: None },
+                   CompletionItem { label: "quux", lookup: None, snippet: None }]"#,
+        );
     }
 
     #[test]
     fn test_complete_type() {
-        check_scope_completion(r"
+        check_scope_completion(
+            r"
             struct Foo;
             fn x() -> <|>
-        ", r#"[CompletionItem { label: "Foo", lookup: None, snippet: None },
-               CompletionItem { label: "x", lookup: None, snippet: None }]"#)
+        ",
+            r#"[CompletionItem { label: "Foo", lookup: None, snippet: None },
+               CompletionItem { label: "x", lookup: None, snippet: None }]"#,
+        )
     }
 
     #[test]
     fn test_complete_shadowing() {
-        check_scope_completion(r"
+        check_scope_completion(
+            r"
             fn foo() -> {
                 let bar = 92;
                 {
@@ -372,15 +417,20 @@ mod tests {
                     <|>
                 }
             }
-        ", r#"[CompletionItem { label: "bar", lookup: None, snippet: None },
-               CompletionItem { label: "foo", lookup: None, snippet: None }]"#)
+        ",
+            r#"[CompletionItem { label: "bar", lookup: None, snippet: None },
+               CompletionItem { label: "foo", lookup: None, snippet: None }]"#,
+        )
     }
 
     #[test]
     fn test_complete_self() {
-        check_scope_completion(r"
+        check_scope_completion(
+            r"
             impl S { fn foo(&self) { <|> } }
-        ", r#"[CompletionItem { label: "self", lookup: None, snippet: None }]"#)
+        ",
+            r#"[CompletionItem { label: "self", lookup: None, snippet: None }]"#,
+        )
     }
 
     #[test]

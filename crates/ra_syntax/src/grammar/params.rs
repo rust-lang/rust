@@ -61,12 +61,8 @@ fn list_(p: &mut Parser, flavor: Flavor) {
     m.complete(p, PARAM_LIST);
 }
 
-
 const VALUE_PARAMETER_FIRST: TokenSet =
-    token_set_union![
-        patterns::PATTERN_FIRST,
-        types::TYPE_FIRST,
-    ];
+    token_set_union![patterns::PATTERN_FIRST, types::TYPE_FIRST,];
 
 fn value_parameter(p: &mut Parser, flavor: Flavor) {
     let m = p.start();
@@ -76,7 +72,7 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
             if p.at(COLON) || flavor.type_required() {
                 types::ascription(p)
             }
-        },
+        }
         // test value_parameters_no_patterns
         // type F = Box<Fn(a: i32, &b: &i32, &mut c: &i32, ())>;
         Flavor::OptionalPattern => {
@@ -86,13 +82,14 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
             let la3 = p.nth(3);
             if la0 == IDENT && la1 == COLON
                 || la0 == AMP && la1 == IDENT && la2 == COLON
-                || la0 == AMP && la1 == MUT_KW && la2 == IDENT && la3 == COLON {
+                || la0 == AMP && la1 == MUT_KW && la2 == IDENT && la3 == COLON
+            {
                 patterns::pattern(p);
                 types::ascription(p);
             } else {
                 types::type_(p);
             }
-        },
+        }
     }
     m.complete(p, PARAM);
 }

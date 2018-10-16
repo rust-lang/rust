@@ -72,12 +72,8 @@ pub(super) fn bounds_without_colon(p: &mut Parser) {
         p.eat(QUESTION);
         match p.current() {
             LIFETIME => p.bump(),
-            FOR_KW => {
-                types::for_type(p)
-            }
-            _ if paths::is_path_start(p) => {
-                types::path_type(p)
-            }
+            FOR_KW => types::for_type(p),
+            _ if paths::is_path_start(p) => types::path_type(p),
             _ => break,
         }
         if has_paren {
@@ -104,7 +100,7 @@ pub(super) fn opt_where_clause(p: &mut Parser) {
     p.bump();
     loop {
         if !(paths::is_path_start(p) || p.current() == LIFETIME) {
-            break
+            break;
         }
         where_predicate(p);
         if p.current() != L_CURLY && p.current() != SEMI {
@@ -130,7 +126,6 @@ fn where_predicate(p: &mut Parser) {
         } else {
             p.error("expected colon")
         }
-
     }
     m.complete(p, WHERE_PRED);
 }

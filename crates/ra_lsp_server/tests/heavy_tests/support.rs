@@ -1,34 +1,33 @@
 use std::{
-    fs,
     cell::{Cell, RefCell},
+    fs,
     path::PathBuf,
-    time::Duration,
     sync::Once,
+    time::Duration,
 };
 
-use tempdir::TempDir;
 use crossbeam_channel::{after, Receiver};
 use flexi_logger::Logger;
+use gen_lsp_server::{RawMessage, RawNotification, RawRequest};
 use languageserver_types::{
-    Url,
-    TextDocumentIdentifier,
-    request::{Request, Shutdown},
     notification::DidOpenTextDocument,
-    DidOpenTextDocumentParams,
-    TextDocumentItem,
+    request::{Request, Shutdown},
+    DidOpenTextDocumentParams, TextDocumentIdentifier, TextDocumentItem, Url,
 };
 use serde::Serialize;
-use serde_json::{Value, from_str, to_string_pretty};
-use gen_lsp_server::{RawMessage, RawRequest, RawNotification};
+use serde_json::{from_str, to_string_pretty, Value};
+use tempdir::TempDir;
 
-use ra_lsp_server::{main_loop, req, thread_watcher::{ThreadWatcher, Worker}};
+use ra_lsp_server::{
+    main_loop, req,
+    thread_watcher::{ThreadWatcher, Worker},
+};
 
 pub fn project(fixture: &str) -> Server {
     static INIT: Once = Once::new();
     INIT.call_once(|| Logger::with_env_or_str(crate::LOG).start().unwrap());
 
-    let tmp_dir = TempDir::new("test-project")
-        .unwrap();
+    let tmp_dir = TempDir::new("test-project").unwrap();
     let mut buf = String::new();
     let mut file_name = None;
     let mut paths = vec![];
@@ -40,7 +39,7 @@ pub fn project(fixture: &str) -> Server {
                 fs::write(path.as_path(), buf.as_bytes()).unwrap();
                 paths.push((path, buf.clone()));
             }
-        }
+        };
     };
     for line in fixture.lines() {
         if line.starts_with("//-") {
@@ -71,9 +70,8 @@ impl Server {
             "test server",
             128,
             move |mut msg_receiver, mut msg_sender| {
-                main_loop(true, path, &mut msg_receiver, &mut msg_sender)
-                    .unwrap()
-            }
+                main_loop(true, path, &mut msg_receiver, &mut msg_sender).unwrap()
+            },
         );
         let res = Server {
             req_id: Cell::new(1),
@@ -91,8 +89,8 @@ impl Server {
                         language_id: "rust".to_string(),
                         version: 0,
                         text,
-                    }
-                }
+                    },
+                },
             ))
         }
         res
@@ -105,11 +103,7 @@ impl Server {
         }
     }
 
-    pub fn request<R>(
-        &self,
-        params: R::Params,
-        expected_resp: &str,
-    )
+    pub fn request<R>(&self, params: R::Params, expected_resp: &str)
     where
         R: Request,
         R::Params: Serialize,
@@ -119,7 +113,8 @@ impl Server {
         let expected_resp: Value = from_str(expected_resp).unwrap();
         let actual = self.send_request::<R>(id, params);
         assert_eq!(
-            expected_resp, actual,
+            expected_resp,
+            actual,
             "Expected:\n{}\n\
              Actual:\n{}\n",
             to_string_pretty(&expected_resp).unwrap(),
@@ -135,12 +130,9 @@ impl Server {
         let r = RawRequest::new::<R>(id, &params);
         self.send_request_(r)
     }
-    fn send_request_(&self, r: RawRequest) -> Value
-    {
+    fn send_request_(&self, r: RawRequest) -> Value {
         let id = r.id;
-        self.worker.as_ref()
-            .unwrap()
-            .send(RawMessage::Request(r));
+        self.worker.as_ref().unwrap().send(RawMessage::Request(r));
         while let Some(msg) = self.recv() {
             match msg {
                 RawMessage::Request(req) => panic!("unexpected request: {:?}", req),
@@ -161,11 +153,10 @@ impl Server {
     }
     pub fn wait_for_feedback_n(&self, feedback: &str, n: usize) {
         let f = |msg: &RawMessage| match msg {
-                RawMessage::Notification(n) if n.method == "internalFeedback" => {
-                    return n.clone().cast::<req::InternalFeedback>()
-                        .unwrap() == feedback
-                }
-                _ => false,
+            RawMessage::Notification(n) if n.method == "internalFeedback" => {
+                return n.clone().cast::<req::InternalFeedback>().unwrap() == feedback
+            }
+            _ => false,
         };
         let mut total = 0;
         for msg in self.messages.borrow().iter() {
@@ -181,14 +172,14 @@ impl Server {
         }
     }
     fn recv(&self) -> Option<RawMessage> {
-        recv_timeout(&self.worker.as_ref().unwrap().out)
-            .map(|msg| {
-                self.messages.borrow_mut().push(msg.clone());
-                msg
-            })
+        recv_timeout(&self.worker.as_ref().unwrap().out).map(|msg| {
+            self.messages.borrow_mut().push(msg.clone());
+            msg
+        })
     }
     fn send_notification(&self, not: RawNotification) {
-        self.worker.as_ref()
+        self.worker
+            .as_ref()
             .unwrap()
             .send(RawMessage::Notification(not));
     }
@@ -201,10 +192,7 @@ impl Drop for Server {
         while let Some(msg) = recv_timeout(&receiver) {
             drop(msg);
         }
-        self.watcher.take()
-            .unwrap()
-            .stop()
-            .unwrap();
+        self.watcher.take().unwrap().stop().unwrap();
     }
 }
 

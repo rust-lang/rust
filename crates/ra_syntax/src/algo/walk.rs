@@ -1,8 +1,4 @@
-use crate::{
-    SyntaxNodeRef,
-    algo::generate,
-};
-
+use crate::{algo::generate, SyntaxNodeRef};
 
 #[derive(Debug, Copy, Clone)]
 pub enum WalkEvent<'a> {

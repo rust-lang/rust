@@ -1,13 +1,12 @@
-use std::{
-    path::{Path, PathBuf},
-};
-use rustc_hash::{FxHashMap, FxHashSet};
 use cargo_metadata::{metadata_run, CargoOpt};
 use ra_syntax::SmolStr;
+use rustc_hash::{FxHashMap, FxHashSet};
+
+use std::path::{Path, PathBuf};
 
 use crate::{
+    thread_watcher::{ThreadWatcher, Worker},
     Result,
-    thread_watcher::{Worker, ThreadWatcher},
 };
 
 #[derive(Debug, Clone)]
@@ -39,7 +38,12 @@ struct TargetData {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TargetKind {
-    Bin, Lib, Example, Test, Bench, Other,
+    Bin,
+    Lib,
+    Example,
+    Test,
+    Bench,
+    Other,
 }
 
 impl Package {
@@ -49,7 +53,7 @@ impl Package {
     pub fn root(self, ws: &CargoWorkspace) -> &Path {
         ws.pkg(self).manifest.parent().unwrap()
     }
-    pub fn targets<'a>(self, ws: &'a CargoWorkspace) -> impl Iterator<Item=Target> + 'a {
+    pub fn targets<'a>(self, ws: &'a CargoWorkspace) -> impl Iterator<Item = Target> + 'a {
         ws.pkg(self).targets.iter().cloned()
     }
     pub fn is_member(self, ws: &CargoWorkspace) -> bool {
@@ -78,13 +82,15 @@ impl CargoWorkspace {
         let meta = metadata_run(
             Some(cargo_toml.as_path()),
             true,
-            Some(CargoOpt::AllFeatures)
-        ).map_err(|e| format_err!("cargo metadata failed: {}", e))?;
+            Some(CargoOpt::AllFeatures),
+        )
+        .map_err(|e| format_err!("cargo metadata failed: {}", e))?;
         let mut pkg_by_id = FxHashMap::default();
         let mut packages = Vec::new();
         let mut targets = Vec::new();
 
-        let ws_members: FxHashSet<String> = meta.workspace_members
+        let ws_members: FxHashSet<String> = meta
+            .workspace_members
             .into_iter()
             .map(|it| it.raw)
             .collect();
@@ -114,7 +120,7 @@ impl CargoWorkspace {
 
         Ok(CargoWorkspace { packages, targets })
     }
-    pub fn packages<'a>(&'a self) -> impl Iterator<Item=Package> + 'a {
+    pub fn packages<'a>(&'a self) -> impl Iterator<Item = Package> + 'a {
         (0..self.packages.len()).map(Package)
     }
     pub fn target_by_root(&self, root: &Path) -> Option<Target> {
@@ -155,7 +161,7 @@ impl TargetKind {
                 "example" => TargetKind::Example,
                 _ if kind.contains("lib") => TargetKind::Lib,
                 _ => continue,
-            }
+            };
         }
         TargetKind::Other
     }
@@ -170,6 +176,6 @@ pub fn workspace_loader() -> (Worker<PathBuf, Result<CargoWorkspace>>, ThreadWat
                 .into_iter()
                 .map(|path| CargoWorkspace::from_cargo_metadata(path.as_path()))
                 .for_each(|it| output_sender.send(it))
-        }
+        },
     )
 }

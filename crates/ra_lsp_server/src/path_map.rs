@@ -1,11 +1,13 @@
-use std::path::{PathBuf, Path, Component};
 use im;
-use relative_path::RelativePath;
 use ra_analysis::{FileId, FileResolver};
+use relative_path::RelativePath;
+
+use std::path::{Component, Path, PathBuf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Root {
-    Workspace, Lib
+    Workspace,
+    Lib,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -21,7 +23,8 @@ impl PathMap {
         Default::default()
     }
     pub fn get_or_insert(&mut self, path: PathBuf, root: Root) -> FileId {
-        self.path2id.get(path.as_path())
+        self.path2id
+            .get(path.as_path())
             .map(|&id| id)
             .unwrap_or_else(|| {
                 let id = self.new_file_id();
@@ -33,9 +36,7 @@ impl PathMap {
         self.path2id.get(path).map(|&id| id)
     }
     pub fn get_path(&self, file_id: FileId) -> &Path {
-        self.id2path.get(&file_id)
-            .unwrap()
-            .as_path()
+        self.id2path.get(&file_id).unwrap().as_path()
     }
     pub fn get_root(&self, file_id: FileId) -> Root {
         self.id2root[&file_id]
@@ -55,7 +56,12 @@ impl PathMap {
 
 impl FileResolver for PathMap {
     fn file_stem(&self, file_id: FileId) -> String {
-        self.get_path(file_id).file_stem().unwrap().to_str().unwrap().to_string()
+        self.get_path(file_id)
+            .file_stem()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string()
     }
 
     fn resolve(&self, file_id: FileId, path: &RelativePath) -> Option<FileId> {
@@ -101,10 +107,6 @@ mod test {
         let mut m = PathMap::new();
         let id1 = m.get_or_insert(PathBuf::from("/foo"), Root::Workspace);
         let id2 = m.get_or_insert(PathBuf::from("/foo/bar.rs"), Root::Workspace);
-        assert_eq!(
-            m.resolve(id1, &RelativePath::new("bar.rs")),
-            Some(id2),
-        )
+        assert_eq!(m.resolve(id1, &RelativePath::new("bar.rs")), Some(id2),)
     }
 }
-

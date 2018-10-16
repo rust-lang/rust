@@ -1,11 +1,9 @@
 use rustc_hash::FxHashSet;
 
 use ra_syntax::{
-    ast,
-    AstNode,
-    File, TextRange, SyntaxNodeRef,
+    ast, AstNode, Direction, File,
     SyntaxKind::{self, *},
-    Direction,
+    SyntaxNodeRef, TextRange,
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -28,7 +26,10 @@ pub fn folding_ranges(file: &File) -> Vec<Fold> {
         // Fold items that span multiple lines
         if let Some(kind) = fold_kind(node.kind()) {
             if has_newline(node) {
-                res.push(Fold { range: node.range(), kind });
+                res.push(Fold {
+                    range: node.range(),
+                    kind,
+                });
             }
         }
 
@@ -37,8 +38,12 @@ pub fn folding_ranges(file: &File) -> Vec<Fold> {
             continue;
         }
         if node.kind() == COMMENT {
-            contiguous_range_for_comment(node, &mut visited_comments)
-                .map(|range| res.push(Fold { range, kind: FoldKind::Comment }));
+            contiguous_range_for_comment(node, &mut visited_comments).map(|range| {
+                res.push(Fold {
+                    range,
+                    kind: FoldKind::Comment,
+                })
+            });
         }
     }
 
@@ -49,13 +54,11 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
     match kind {
         COMMENT => Some(FoldKind::Comment),
         USE_ITEM => Some(FoldKind::Imports),
-        _ => None
+        _ => None,
     }
 }
 
-fn has_newline(
-    node: SyntaxNodeRef,
-) -> bool {
+fn has_newline(node: SyntaxNodeRef) -> bool {
     for descendant in node.descendants() {
         if let Some(ws) = ast::Whitespace::cast(descendant) {
             if ws.has_newlines() {
@@ -100,9 +103,7 @@ fn contiguous_range_for_comment<'a>(
             // The comment group ends because either:
             // * An element of a different kind was reached
             // * A comment of a different flavor was reached
-            _ => {
-                break
-            }
+            _ => break,
         }
     }
 
@@ -128,7 +129,11 @@ mod tests {
         let folds = folding_ranges(&file);
 
         assert_eq!(folds.len(), ranges.len());
-        for ((fold, range), fold_kind) in folds.into_iter().zip(ranges.into_iter()).zip(fold_kinds.into_iter()) {
+        for ((fold, range), fold_kind) in folds
+            .into_iter()
+            .zip(ranges.into_iter())
+            .zip(fold_kinds.into_iter())
+        {
             assert_eq!(fold.range.start(), range.start());
             assert_eq!(fold.range.end(), range.end());
             assert_eq!(&fold.kind, fold_kind);
@@ -180,6 +185,5 @@ fn main() {
         let folds = &[FoldKind::Imports];
         do_check(text, folds);
     }
-
 
 }

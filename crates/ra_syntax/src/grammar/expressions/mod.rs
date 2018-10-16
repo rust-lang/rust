@@ -1,23 +1,32 @@
 mod atom;
 
-use super::*;
-pub(super) use self::atom::{literal, LITERAL_FIRST};
 pub(crate) use self::atom::match_arm_list;
+pub(super) use self::atom::{literal, LITERAL_FIRST};
+use super::*;
 
 const EXPR_FIRST: TokenSet = LHS_FIRST;
 
 pub(super) fn expr(p: &mut Parser) -> BlockLike {
-    let r = Restrictions { forbid_structs: false, prefer_stmt: false };
+    let r = Restrictions {
+        forbid_structs: false,
+        prefer_stmt: false,
+    };
     expr_bp(p, r, 1)
 }
 
 pub(super) fn expr_stmt(p: &mut Parser) -> BlockLike {
-    let r = Restrictions { forbid_structs: false, prefer_stmt: true };
+    let r = Restrictions {
+        forbid_structs: false,
+        prefer_stmt: true,
+    };
     expr_bp(p, r, 1)
 }
 
 fn expr_no_struct(p: &mut Parser) {
-    let r = Restrictions { forbid_structs: true, prefer_stmt: false };
+    let r = Restrictions {
+        forbid_structs: true,
+        prefer_stmt: false,
+    };
     expr_bp(p, r, 1);
 }
 
@@ -107,10 +116,8 @@ enum Op {
 fn current_op(p: &Parser) -> (u8, Op) {
     if let Some(t) = p.next3() {
         match t {
-            (L_ANGLE, L_ANGLE, EQ) =>
-                return (1, Op::Composite(SHLEQ, 3)),
-            (R_ANGLE, R_ANGLE, EQ) =>
-                return (1, Op::Composite(SHREQ, 3)),
+            (L_ANGLE, L_ANGLE, EQ) => return (1, Op::Composite(SHLEQ, 3)),
+            (R_ANGLE, R_ANGLE, EQ) => return (1, Op::Composite(SHREQ, 3)),
             _ => (),
         }
     }
@@ -201,11 +208,10 @@ fn is_block(kind: SyntaxKind) -> bool {
     }
 }
 
-const LHS_FIRST: TokenSet =
-    token_set_union![
-        token_set![AMP, STAR, EXCL, DOTDOT, MINUS],
-        atom::ATOM_EXPR_FIRST,
-    ];
+const LHS_FIRST: TokenSet = token_set_union![
+    token_set![AMP, STAR, EXCL, DOTDOT, MINUS],
+    atom::ATOM_EXPR_FIRST,
+];
 
 fn lhs(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
     let m;
@@ -265,11 +271,13 @@ fn postfix_expr(p: &mut Parser, r: Restrictions, mut lhs: CompletedMarker) -> Co
             // }
             L_PAREN if allow_calls => call_expr(p, lhs),
             L_BRACK if allow_calls => index_expr(p, lhs),
-            DOT if p.nth(1) == IDENT => if p.nth(2) == L_PAREN || p.nth(2) == COLONCOLON {
-                method_call_expr(p, lhs)
-            } else {
-                field_expr(p, lhs)
-            },
+            DOT if p.nth(1) == IDENT => {
+                if p.nth(2) == L_PAREN || p.nth(2) == COLONCOLON {
+                    method_call_expr(p, lhs)
+                } else {
+                    field_expr(p, lhs)
+                }
+            }
             DOT if p.nth(1) == INT_NUMBER => field_expr(p, lhs),
             // test postfix_range
             // fn foo() { let x = 1..; }
@@ -318,10 +326,7 @@ fn index_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 //     y.bar::<T>(1, 2,);
 // }
 fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
-    assert!(
-        p.at(DOT) && p.nth(1) == IDENT
-            && (p.nth(2) == L_PAREN || p.nth(2) == COLONCOLON)
-    );
+    assert!(p.at(DOT) && p.nth(1) == IDENT && (p.nth(2) == L_PAREN || p.nth(2) == COLONCOLON));
     let m = lhs.precede(p);
     p.bump();
     name_ref(p);
@@ -410,7 +415,7 @@ fn path_expr(p: &mut Parser, r: Restrictions) -> CompletedMarker {
             items::macro_call_after_excl(p);
             m.complete(p, MACRO_CALL)
         }
-        _ => m.complete(p, PATH_EXPR)
+        _ => m.complete(p, PATH_EXPR),
     }
 }
 

@@ -2,19 +2,17 @@ extern crate clap;
 #[macro_use]
 extern crate failure;
 extern crate join_to_string;
-extern crate ra_syntax;
 extern crate ra_editor;
+extern crate ra_syntax;
 extern crate tools;
 
-use std::{
-    fs, io::Read, path::Path,
-    time::Instant
-};
+use std::{fs, io::Read, path::Path, time::Instant};
+
 use clap::{App, Arg, SubCommand};
 use join_to_string::join;
+use ra_editor::{extend_selection, file_structure, syntax_tree};
+use ra_syntax::{File, TextRange};
 use tools::collect_tests;
-use ra_syntax::{TextRange, File};
-use ra_editor::{syntax_tree, file_structure, extend_selection};
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
 
@@ -36,14 +34,12 @@ fn main() -> Result<()> {
                         .takes_value(true),
                 ),
         )
-        .subcommand(
-            SubCommand::with_name("parse")
-                .arg(Arg::with_name("no-dump").long("--no-dump"))
-        )
+        .subcommand(SubCommand::with_name("parse").arg(Arg::with_name("no-dump").long("--no-dump")))
         .subcommand(SubCommand::with_name("symbols"))
-        .subcommand(SubCommand::with_name("extend-selection")
-            .arg(Arg::with_name("start"))
-            .arg(Arg::with_name("end"))
+        .subcommand(
+            SubCommand::with_name("extend-selection")
+                .arg(Arg::with_name("start"))
+                .arg(Arg::with_name("end")),
         )
         .get_matches();
     match matches.subcommand() {
@@ -116,7 +112,8 @@ fn selections(file: &File, start: u32, end: u32) -> String {
         ranges.push(r);
         cur = extend_selection(&file, r);
     }
-    let ranges = ranges.iter()
+    let ranges = ranges
+        .iter()
         .map(|r| (1 + u32::from(r.start()), 1 + u32::from(r.end())))
         .map(|(s, e)| format!("({} {})", s, e));
     join(ranges)

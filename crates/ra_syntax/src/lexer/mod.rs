@@ -58,12 +58,16 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
     }
 
     match c {
-        '#' => if scan_shebang(ptr) {
-            return SHEBANG;
-        },
-        '/' => if let Some(kind) = scan_comment(ptr) {
-            return kind;
-        },
+        '#' => {
+            if scan_shebang(ptr) {
+                return SHEBANG;
+            }
+        }
+        '/' => {
+            if let Some(kind) = scan_comment(ptr) {
+                return kind;
+            }
+        }
         _ => (),
     }
 

@@ -1,17 +1,12 @@
 use languageserver_types::{
-    Range, SymbolKind, Position, TextEdit, Location, Url,
-    TextDocumentIdentifier, VersionedTextDocumentIdentifier, TextDocumentItem,
-    TextDocumentPositionParams, TextDocumentEdit,
+    Location, Position, Range, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
+    TextDocumentItem, TextDocumentPositionParams, TextEdit, Url, VersionedTextDocumentIdentifier,
 };
-use ra_editor::{LineIndex, LineCol, Edit, AtomEdit};
-use ra_syntax::{SyntaxKind, TextUnit, TextRange};
-use ra_analysis::{FileId, SourceChange, SourceFileEdit, FileSystemEdit};
+use ra_analysis::{FileId, FileSystemEdit, SourceChange, SourceFileEdit};
+use ra_editor::{AtomEdit, Edit, LineCol, LineIndex};
+use ra_syntax::{SyntaxKind, TextRange, TextUnit};
 
-use crate::{
-    Result,
-    server_world::ServerWorld,
-    req,
-};
+use crate::{req, server_world::ServerWorld, Result};
 
 pub trait Conv {
     type Output;
@@ -190,8 +185,12 @@ impl TryConvWith for SourceChange {
             None => None,
             Some(pos) => {
                 let line_index = world.analysis().file_line_index(pos.file_id);
-                let edits = self.source_file_edits.iter().find(|it| it.file_id == pos.file_id)
-                    .map(|it| it.edits.as_slice()).unwrap_or(&[]);
+                let edits = self
+                    .source_file_edits
+                    .iter()
+                    .find(|it| it.file_id == pos.file_id)
+                    .map(|it| it.edits.as_slice())
+                    .unwrap_or(&[]);
                 let line_col = translate_offset_with_edit(&*line_index, pos.offset, edits);
                 let position = Position::new(line_col.line as u64, u32::from(line_col.col) as u64);
                 Some(TextDocumentPositionParams {
@@ -224,11 +223,11 @@ fn translate_offset_with_edit(
     let fallback = pre_edit_index.line_col(offset);
     let edit = match edits.first() {
         None => return fallback,
-        Some(edit) => edit
+        Some(edit) => edit,
     };
     let end_offset = edit.delete.start() + TextUnit::of_str(&edit.insert);
     if !(edit.delete.start() <= offset && offset <= end_offset) {
-        return fallback
+        return fallback;
     }
     let rel_offset = offset - edit.delete.start();
     let in_edit_line_col = LineIndex::new(&edit.insert).line_col(rel_offset);
@@ -255,11 +254,11 @@ impl TryConvWith for SourceFileEdit {
             version: None,
         };
         let line_index = world.analysis().file_line_index(self.file_id);
-        let edits = self.edits
-            .into_iter()
-            .map_conv_with(&line_index)
-            .collect();
-        Ok(TextDocumentEdit { text_document, edits })
+        let edits = self.edits.into_iter().map_conv_with(&line_index).collect();
+        Ok(TextDocumentEdit {
+            text_document,
+            edits,
+        })
     }
 }
 
@@ -273,13 +272,13 @@ impl TryConvWith for FileSystemEdit {
                 let path = &path.as_str()[3..]; // strip `../` b/c url is weird
                 let uri = uri.join(path)?;
                 req::FileSystemEdit::CreateFile { uri }
-            },
+            }
             FileSystemEdit::MoveFile { file, path } => {
                 let src = world.file_id_to_uri(file)?;
                 let path = &path.as_str()[3..]; // strip `../` b/c url is weird
                 let dst = src.join(path)?;
                 req::FileSystemEdit::MoveFile { src, dst }
-            },
+            }
         };
         Ok(res)
     }
@@ -291,12 +290,9 @@ pub fn to_location(
     world: &ServerWorld,
     line_index: &LineIndex,
 ) -> Result<Location> {
-        let url = file_id.try_conv_with(world)?;
-        let loc = Location::new(
-            url,
-            range.conv_with(line_index),
-        );
-        Ok(loc)
+    let url = file_id.try_conv_with(world)?;
+    let loc = Location::new(url, range.conv_with(line_index));
+    Ok(loc)
 }
 
 pub trait MapConvWith<'a>: Sized + 'a {
@@ -309,8 +305,9 @@ pub trait MapConvWith<'a>: Sized + 'a {
 }
 
 impl<'a, I> MapConvWith<'a> for I
-    where I: Iterator + 'a,
-          I::Item: ConvWith
+where
+    I: Iterator + 'a,
+    I::Item: ConvWith,
 {
     type Ctx = <I::Item as ConvWith>::Ctx;
     type Output = <I::Item as ConvWith>::Output;
@@ -322,9 +319,9 @@ pub struct ConvWithIter<'a, I, Ctx: 'a> {
 }
 
 impl<'a, I, Ctx> Iterator for ConvWithIter<'a, I, Ctx>
-    where
-        I: Iterator,
-        I::Item: ConvWith<Ctx=Ctx>,
+where
+    I: Iterator,
+    I::Item: ConvWith<Ctx = Ctx>,
 {
     type Item = <I::Item as ConvWith>::Output;
 
@@ -332,4 +329,3 @@ impl<'a, I, Ctx> Iterator for ConvWithIter<'a, I, Ctx>
         self.iter.next().map(|item| item.conv_with(self.ctx))
     }
 }
-

@@ -1,10 +1,8 @@
-use std::{
-    fmt, ops,
-};
+use std::{fmt, ops};
 
 use crate::{
+    text_utils::{contains_offset_nonstrict, intersect},
     SyntaxNodeRef, TextRange, TextUnit,
-    text_utils::{intersect, contains_offset_nonstrict},
 };
 
 #[derive(Clone)]
@@ -17,19 +15,17 @@ impl<'a> SyntaxText<'a> {
     pub(crate) fn new(node: SyntaxNodeRef<'a>) -> SyntaxText<'a> {
         SyntaxText {
             node,
-            range: node.range()
+            range: node.range(),
         }
     }
-    pub fn chunks(&self) -> impl Iterator<Item=&'a str> {
+    pub fn chunks(&self) -> impl Iterator<Item = &'a str> {
         let range = self.range;
-        self.node
-            .descendants()
-            .filter_map(move |node| {
-                let text = node.leaf_text()?;
-                let range = intersect(range, node.range())?;
-                let range = range - node.range().start();
-                Some(&text[range])
-            })
+        self.node.descendants().filter_map(move |node| {
+            let text = node.leaf_text()?;
+            let range = intersect(range, node.range())?;
+            let range = range - node.range().start();
+            Some(&text[range])
+        })
     }
     pub fn push_to(&self, buf: &mut String) {
         self.chunks().for_each(|it| buf.push_str(it));
@@ -55,11 +51,13 @@ impl<'a> SyntaxText<'a> {
         self.range.len()
     }
     pub fn slice(&self, range: impl SyntaxTextSlice) -> SyntaxText<'a> {
-        let range = range.restrict(self.range)
-            .unwrap_or_else(|| {
-                panic!("invalid slice, range: {:?}, slice: {:?}", self.range, range)
-            });
-        SyntaxText { node: self.node, range }
+        let range = range.restrict(self.range).unwrap_or_else(|| {
+            panic!("invalid slice, range: {:?}, slice: {:?}", self.range, range)
+        });
+        SyntaxText {
+            node: self.node,
+            range,
+        }
     }
     pub fn char_at(&self, offset: TextUnit) -> Option<char> {
         let mut start: TextUnit = 0.into();

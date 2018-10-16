@@ -1,16 +1,15 @@
-
 mod consts;
 mod nominal;
 mod traits;
 mod use_item;
 
-use super::*;
 pub(crate) use self::{
-    expressions::{named_field_list, match_arm_list},
+    expressions::{match_arm_list, named_field_list},
     nominal::{enum_variant_list, named_field_def_list},
-    traits::{trait_item_list, impl_item_list},
+    traits::{impl_item_list, trait_item_list},
     use_item::use_tree_list,
 };
+use super::*;
 
 // test mod_contents
 // fn foo() {}
@@ -26,12 +25,14 @@ pub(super) fn mod_contents(p: &mut Parser, stop_on_r_curly: bool) {
 }
 
 pub(super) enum ItemFlavor {
-    Mod, Trait
+    Mod,
+    Trait,
 }
 
-const ITEM_RECOVERY_SET: TokenSet =
-    token_set![FN_KW, STRUCT_KW, ENUM_KW, IMPL_KW, TRAIT_KW, CONST_KW, STATIC_KW, LET_KW,
-               MOD_KW, PUB_KW, CRATE_KW];
+const ITEM_RECOVERY_SET: TokenSet = token_set![
+    FN_KW, STRUCT_KW, ENUM_KW, IMPL_KW, TRAIT_KW, CONST_KW, STATIC_KW, LET_KW, MOD_KW, PUB_KW,
+    CRATE_KW
+];
 
 pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool, flavor: ItemFlavor) {
     let m = p.start();
@@ -153,10 +154,12 @@ pub(super) fn maybe_item(p: &mut Parser, flavor: ItemFlavor) -> MaybeItem {
             traits::impl_item(p);
             IMPL_ITEM
         }
-        _ => return if has_mods {
-            MaybeItem::Modifiers
-        } else {
-            MaybeItem::None
+        _ => {
+            return if has_mods {
+                MaybeItem::Modifiers
+            } else {
+                MaybeItem::None
+            }
         }
     };
 
@@ -194,7 +197,7 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
             if p.at(SEMI) {
                 p.err_and_bump(
                     "expected item, found `;`\n\
-                     consider removing this semicolon"
+                     consider removing this semicolon",
                 );
             }
             STRUCT_DEF
@@ -227,7 +230,9 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
         }
         // test extern_block
         // extern {}
-        EXTERN_KW if la == L_CURLY || ((la == STRING || la == RAW_STRING) && p.nth(2) == L_CURLY) => {
+        EXTERN_KW
+            if la == L_CURLY || ((la == STRING || la == RAW_STRING) && p.nth(2) == L_CURLY) =>
+        {
             abi(p);
             extern_item_list(p);
             EXTERN_BLOCK
@@ -267,10 +272,8 @@ fn fn_def(p: &mut Parser, flavor: ItemFlavor) {
 
     if p.at(L_PAREN) {
         match flavor {
-            ItemFlavor::Mod =>
-                params::param_list(p),
-            ItemFlavor::Trait =>
-                params::param_list_opt_patterns(p),
+            ItemFlavor::Mod => params::param_list(p),
+            ItemFlavor::Trait => params::param_list_opt_patterns(p),
         }
     } else {
         p.error("expected function arguments");
@@ -361,7 +364,7 @@ pub(super) fn macro_call_after_excl(p: &mut Parser) -> BlockLike {
         _ => {
             p.error("expected `{`, `[`, `(`");
             BlockLike::NotBlock
-        },
+        }
     };
 
     flavor
@@ -385,9 +388,9 @@ pub(crate) fn token_tree(p: &mut Parser) {
                 return;
             }
             R_PAREN | R_BRACK => p.err_and_bump("unmatched brace"),
-            _ => p.bump()
+            _ => p.bump(),
         }
-    };
+    }
     p.expect(closing_paren_kind);
     m.complete(p, TOKEN_TREE);
 }
