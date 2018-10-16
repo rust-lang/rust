@@ -579,7 +579,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn report_local_value_does_not_live_long_enough(
         &mut self,
         context: Context,
-        name: &String,
+        name: &str,
         scope_tree: &Lrc<ScopeTree>,
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
@@ -1192,10 +1192,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Place::Static(ref static_) => self.describe_field_from_ty(&static_.ty, field),
             Place::Projection(ref proj) => match proj.elem {
                 ProjectionElem::Deref => self.describe_field(&proj.base, field),
-                ProjectionElem::Downcast(def, variant_index) => format!(
-                    "{}",
-                    def.variants[variant_index].fields[field.index()].ident
-                ),
+                ProjectionElem::Downcast(def, variant_index) =>
+                    def.variants[variant_index].fields[field.index()].ident.to_string(),
                 ProjectionElem::Field(_, field_type) => {
                     self.describe_field_from_ty(&field_type, field)
                 }
@@ -1783,8 +1781,8 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
                 ty::RegionKind::RePlaceholder(ty::Placeholder { name: br, .. }),
                 _,
                 _,
-            ) => with_highlight_region_for_bound_region(*br, counter, || format!("{}", ty)),
-            _ => format!("{}", ty),
+            ) => with_highlight_region_for_bound_region(*br, counter, || ty.to_string()),
+            _ => ty.to_string(),
         }
     }
 
@@ -1795,9 +1793,9 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
             ty::TyKind::Ref(region, _, _) => match region {
                 ty::RegionKind::ReLateBound(_, br)
                 | ty::RegionKind::RePlaceholder(ty::Placeholder { name: br, .. }) => {
-                    with_highlight_region_for_bound_region(*br, counter, || format!("{}", region))
+                    with_highlight_region_for_bound_region(*br, counter, || region.to_string())
                 }
-                _ => format!("{}", region),
+                _ => region.to_string(),
             },
             _ => bug!("ty for annotation of borrow region is not a reference"),
         }

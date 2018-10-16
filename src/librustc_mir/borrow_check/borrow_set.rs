@@ -92,12 +92,12 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
             mir::BorrowKind::Mut { .. } => "mut ",
         };
         let region = self.region.to_string();
-        let region = if region.len() > 0 {
-            format!("{} ", region)
+        let separator = if !region.is_empty() {
+            " "
         } else {
-            region
+            ""
         };
-        write!(w, "&{}{}{:?}", region, kind, self.borrowed_place)
+        write!(w, "&{}{}{}{:?}", region, separator, kind, self.borrowed_place)
     }
 }
 

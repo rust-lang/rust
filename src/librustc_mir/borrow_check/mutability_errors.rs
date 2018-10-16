@@ -504,7 +504,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                 );
 
                                 let extra = if found {
-                                    String::from("")
+                                    String::new()
                                 } else {
                                     format!(", but it is not implemented for `{}`",
                                             substs.type_at(0))
@@ -583,7 +583,7 @@ fn suggest_ampmut<'cx, 'gcx, 'tcx>(
                 let ty = &src[ws_pos..];
                 return (assignment_rhs_span, format!("&{} mut {}", lt_name, ty));
             } else if src.starts_with('&') {
-                let borrowed_expr = src[1..].to_string();
+                let borrowed_expr = &src[1..];
                 return (assignment_rhs_span, format!("&mut {}", borrowed_expr));
             }
         }
