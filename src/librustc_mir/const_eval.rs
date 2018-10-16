@@ -333,6 +333,14 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxHashMap<K, V> {
 type CompileTimeEvalContext<'a, 'mir, 'tcx> =
     EvalContext<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>;
 
+impl interpret::MayLeak for ! {
+    #[inline(always)]
+    fn may_leak(self) -> bool {
+        // `self` is uninhabited
+        self
+    }
+}
+
 impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     for CompileTimeInterpreter<'a, 'mir, 'tcx>
 {

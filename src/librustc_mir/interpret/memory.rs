@@ -32,7 +32,7 @@ use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 
 use syntax::ast::Mutability;
 
-use super::{Machine, AllocMap, ScalarMaybeUndef};
+use super::{Machine, AllocMap, MayLeak, ScalarMaybeUndef};
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub enum MemoryKind<T> {
@@ -42,6 +42,17 @@ pub enum MemoryKind<T> {
     Vtable,
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
     Machine(T),
+}
+
+impl<T: MayLeak> MayLeak for MemoryKind<T> {
+    #[inline]
+    fn may_leak(self) -> bool {
+        match self {
+            MemoryKind::Stack => false,
+            MemoryKind::Vtable => true,
+            MemoryKind::Machine(k) => k.may_leak()
+        }
+    }
 }
 
 // `Memory` has to depend on the `Machine` because some of its operations
@@ -584,13 +595,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn leak_report(&self) -> usize {
         trace!("### LEAK REPORT ###");
         let leaks: Vec<_> = self.alloc_map.filter_map_collect(|&id, &(kind, _)| {
-            // exclude statics and vtables
-            let exclude = match kind {
-                MemoryKind::Stack => false,
-                MemoryKind::Vtable => true,
-                MemoryKind::Machine(k) => Some(k) == M::STATIC_KIND,
-            };
-            if exclude { None } else { Some(id) }
+            if kind.may_leak() { None } else { Some(id) }
         });
         let n = leaks.len();
         self.dump_allocs(leaks);

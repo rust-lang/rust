@@ -22,6 +22,11 @@ use rustc::ty::{self, layout::TyLayout, query::TyCtxtAt};
 
 use super::{EvalContext, PlaceTy, OpTy, MemoryKind};
 
+/// Whether this kind of memory is allowed to leak
+pub trait MayLeak: Copy {
+    fn may_leak(self) -> bool;
+}
+
 /// The functionality needed by memory to manage its allocations
 pub trait AllocMap<K: Hash + Eq, V> {
     /// Test if the map contains the given key.
@@ -63,7 +68,7 @@ pub trait AllocMap<K: Hash + Eq, V> {
 /// and some use case dependent behaviour can instead be applied.
 pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
-    type MemoryKinds: ::std::fmt::Debug + Copy + Eq + 'static;
+    type MemoryKinds: ::std::fmt::Debug + MayLeak + Eq + 'static;
 
     /// Tag tracked alongside every pointer.  This is used to implement "Stacked Borrows"
     /// <https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html>.
