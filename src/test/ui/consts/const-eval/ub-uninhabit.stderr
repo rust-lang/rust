@@ -1,10 +1,12 @@
-error[E0080]: this constant likely exhibits undefined behavior
+error: this constant cannot be used
   --> $DIR/ub-uninhabit.rs:18:1
    |
 LL | const BAD_BAD_BAD: Bar = unsafe { mem::transmute(()) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of an uninhabited type
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------------------^^^
+   |                                   |
+   |                                   entered unreachable code
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+   = note: #[deny(const_err)] on by default
 
 error[E0080]: this constant likely exhibits undefined behavior
   --> $DIR/ub-uninhabit.rs:21:1
@@ -14,13 +16,13 @@ LL | const BAD_BAD_REF: &Bar = unsafe { mem::transmute(1usize) };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
-error[E0080]: this constant likely exhibits undefined behavior
+error: this constant cannot be used
   --> $DIR/ub-uninhabit.rs:24:1
    |
 LL | const BAD_BAD_ARRAY: [Bar; 1] = unsafe { mem::transmute(()) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of an uninhabited type at [0]
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------------------^^^
+   |                                          |
+   |                                          entered unreachable code
 
 error: aborting due to 3 previous errors
 
