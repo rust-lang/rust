@@ -10,7 +10,7 @@ in the right place!
 Some of the components of this repository are generated through automatic
 processes. These are outlined below:
 
-- `gen-kinds`: The kinds of tokens are reused in several places, so a generator
+- `gen-syntax`: The kinds of tokens are reused in several places, so a generator
   is used. We use tera templates to generate the files listed below, based on
   the grammar described in [grammar.ron]:
   - [ast/generated.rs][ast generated] in `ra_syntax` based on
@@ -43,7 +43,7 @@ notes.
   This is the thing that turns a flat list of events into a tree (see `EventProcessor`)
 - `ast` a type safe API on top of the raw `rowan` tree.
 - `grammar.ron` RON description of the grammar, which is used to
-  generate `syntax_kinds` and `ast` modules, using `cargo gen-kinds` command.
+  generate `syntax_kinds` and `ast` modules, using `cargo gen-syntax` command.
 - `algo`: generic tree algorithms, including `walk` for O(1) stack
   space tree traversal (this is cool) and `visit` for type-driven
   visiting the nodes (this is double plus cool, if you understand how
@@ -106,7 +106,7 @@ A CLI interface to rust-analyzer.
 
 Custom Cargo tasks used to develop rust-analyzer:
 
-- `cargo gen-kinds` -- generate `ast` and `syntax_kinds`
+- `cargo gen-syntax` -- generate `ast` and `syntax_kinds`
 - `cargo gen-tests` -- collect inline tests from grammar
 - `cargo install-code` -- build and install VS Code extension and server
 
