@@ -629,8 +629,22 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         &mut self,
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        self.infcx.probe(|_| {
-            self.evaluate_predicate_recursively(TraitObligationStackList::empty(), obligation)
+        self.evaluation_probe(|this| {
+            this.evaluate_predicate_recursively(TraitObligationStackList::empty(), obligation)
+        })
+    }
+
+    fn evaluation_probe(
+        &mut self,
+        op: impl FnOnce(&mut Self) -> Result<EvaluationResult, OverflowError>,
+    ) -> Result<EvaluationResult, OverflowError> {
+        self.infcx.probe(|snapshot| -> Result<EvaluationResult, OverflowError> {
+            let result = op(self)?;
+            if !self.infcx.region_constraints_added_in_snapshot(snapshot) {
+                Ok(result)
+            } else {
+                Ok(result.max(EvaluatedToOkModuloRegions))
+            }
         })
     }
 
@@ -988,10 +1002,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             "evaluate_candidate: depth={} candidate={:?}",
             stack.obligation.recursion_depth, candidate
         );
-        let result = self.infcx.probe(|_| {
+        let result = self.evaluation_probe(|this| {
             let candidate = (*candidate).clone();
-            match self.confirm_candidate(stack.obligation, candidate) {
-                Ok(selection) => self.evaluate_predicates_recursively(
+            match this.confirm_candidate(stack.obligation, candidate) {
+                Ok(selection) => this.evaluate_predicates_recursively(
                     stack.list(),
                     selection.nested_obligations().iter(),
                 ),
@@ -1775,10 +1789,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         stack: &TraitObligationStack<'o, 'tcx>,
         where_clause_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        self.infcx.probe(|_| {
-            match self.match_where_clause_trait_ref(stack.obligation, where_clause_trait_ref) {
+        self.evaluation_probe(|this| {
+            match this.match_where_clause_trait_ref(stack.obligation, where_clause_trait_ref) {
                 Ok(obligations) => {
-                    self.evaluate_predicates_recursively(stack.list(), obligations.iter())
+                    this.evaluate_predicates_recursively(stack.list(), obligations.iter())
                 }
                 Err(()) => Ok(EvaluatedToErr),
             }
