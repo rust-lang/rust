@@ -4786,7 +4786,10 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 err.span_suggestion_with_applicability(
                     binding.span,
                     rename_msg,
-                    match (snippet.split_whitespace().find(|w| *w == "as"), snippet.ends_with(";")) {
+                    match (
+                        snippet.split_whitespace().find(|w| *w == "as"),
+                        snippet.ends_with(";")
+                    ) {
                         (Some(_), false) => format!("{} as {}",
                             &snippet[..snippet.find(" as ").unwrap()],
                             suggested_name,
@@ -4796,7 +4799,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             suggested_name,
                         ),
                         (None, false) => format!("{} as {}", snippet, suggested_name),
-                        (None, true) => format!("{} as {};", 
+                        (None, true) => format!("{} as {};",
                             &snippet[..snippet.len() - 1],
                             suggested_name
                         ),
