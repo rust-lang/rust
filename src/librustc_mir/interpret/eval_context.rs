@@ -11,6 +11,7 @@
 use std::fmt::Write;
 use std::mem;
 
+use syntax::source_map::{self, Span, DUMMY_SP};
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
 use rustc::hir::map::definitions::DefPathData;
@@ -28,8 +29,6 @@ use rustc::mir::interpret::{
     truncate, sign_extend,
 };
 use rustc_data_structures::fx::FxHashMap;
-
-use syntax::source_map::{self, Span};
 
 use super::{
     Value, Operand, MemPlace, MPlaceTy, Place, PlaceTy, ScalarMaybeUndef,
@@ -216,51 +215,48 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         }
     }
 
+    #[inline(always)]
     pub fn memory(&self) -> &Memory<'a, 'mir, 'tcx, M> {
         &self.memory
     }
 
+    #[inline(always)]
     pub fn memory_mut(&mut self) -> &mut Memory<'a, 'mir, 'tcx, M> {
         &mut self.memory
     }
 
+    #[inline(always)]
     pub fn stack(&self) -> &[Frame<'mir, 'tcx, M::PointerTag>] {
         &self.stack
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn cur_frame(&self) -> usize {
         assert!(self.stack.len() > 0);
         self.stack.len() - 1
     }
 
-    /// Mark a storage as live, killing the previous content and returning it.
-    /// Remember to deallocate that!
-    pub fn storage_live(
-        &mut self,
-        local: mir::Local
-    ) -> EvalResult<'tcx, LocalValue<M::PointerTag>> {
-        assert!(local != mir::RETURN_PLACE, "Cannot make return place live");
-        trace!("{:?} is now live", local);
-
-        let layout = self.layout_of_local(self.cur_frame(), local)?;
-        let init = LocalValue::Live(self.uninit_operand(layout)?);
-        // StorageLive *always* kills the value that's currently stored
-        Ok(mem::replace(&mut self.frame_mut().locals[local], init))
+    #[inline(always)]
+    pub fn frame(&self) -> &Frame<'mir, 'tcx, M::PointerTag> {
+        self.stack.last().expect("no call frames exist")
     }
 
-    /// Returns the old value of the local.
-    /// Remember to deallocate that!
-    pub fn storage_dead(&mut self, local: mir::Local) -> LocalValue<M::PointerTag> {
-        assert!(local != mir::RETURN_PLACE, "Cannot make return place dead");
-        trace!("{:?} is now dead", local);
-
-        mem::replace(&mut self.frame_mut().locals[local], LocalValue::Dead)
+    #[inline(always)]
+    pub fn frame_mut(&mut self) -> &mut Frame<'mir, 'tcx, M::PointerTag> {
+        self.stack.last_mut().expect("no call frames exist")
     }
 
-    pub fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value<M::PointerTag>> {
-        let ptr = self.memory.allocate_static_bytes(s.as_bytes());
-        Ok(Value::new_slice(Scalar::Ptr(ptr), s.len() as u64, self.tcx.tcx))
+    #[inline(always)]
+    pub(super) fn mir(&self) -> &'mir mir::Mir<'tcx> {
+        self.frame().mir
+    }
+
+    pub fn substs(&self) -> &'tcx Substs<'tcx> {
+        if let Some(frame) = self.stack.last() {
+            frame.instance.substs
+        } else {
+            Substs::empty()
+        }
     }
 
     pub(super) fn resolve(
@@ -284,8 +280,12 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         ).ok_or_else(|| EvalErrorKind::TooGeneric.into())
     }
 
-    pub(super) fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
+    pub fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
         ty.is_sized(self.tcx, self.param_env)
+    }
+
+    pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
+        ty.is_freeze(*self.tcx, self.param_env, DUMMY_SP)
     }
 
     pub fn load_mir(
@@ -333,6 +333,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             self.stack[frame].instance.substs
         );
         self.layout_of(local_ty)
+    }
+
+    pub fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value<M::PointerTag>> {
+        let ptr = self.memory.allocate_static_bytes(s.as_bytes());
+        Ok(Value::new_slice(Scalar::Ptr(ptr), s.len() as u64, self.tcx.tcx))
     }
 
     /// Return the actual dynamic size and alignment of the place at the given type.
@@ -551,6 +556,30 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         Ok(())
     }
 
+    /// Mark a storage as live, killing the previous content and returning it.
+    /// Remember to deallocate that!
+    pub fn storage_live(
+        &mut self,
+        local: mir::Local
+    ) -> EvalResult<'tcx, LocalValue<M::PointerTag>> {
+        assert!(local != mir::RETURN_PLACE, "Cannot make return place live");
+        trace!("{:?} is now live", local);
+
+        let layout = self.layout_of_local(self.cur_frame(), local)?;
+        let init = LocalValue::Live(self.uninit_operand(layout)?);
+        // StorageLive *always* kills the value that's currently stored
+        Ok(mem::replace(&mut self.frame_mut().locals[local], init))
+    }
+
+    /// Returns the old value of the local.
+    /// Remember to deallocate that!
+    pub fn storage_dead(&mut self, local: mir::Local) -> LocalValue<M::PointerTag> {
+        assert!(local != mir::RETURN_PLACE, "Cannot make return place dead");
+        trace!("{:?} is now dead", local);
+
+        mem::replace(&mut self.frame_mut().locals[local], LocalValue::Dead)
+    }
+
     pub(super) fn deallocate_local(
         &mut self,
         local: LocalValue<M::PointerTag>,
@@ -573,28 +602,6 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         };
         self.tcx.const_eval(param_env.and(gid))
             .map_err(|err| EvalErrorKind::ReferencedConstant(err).into())
-    }
-
-    #[inline(always)]
-    pub fn frame(&self) -> &Frame<'mir, 'tcx, M::PointerTag> {
-        self.stack.last().expect("no call frames exist")
-    }
-
-    #[inline(always)]
-    pub fn frame_mut(&mut self) -> &mut Frame<'mir, 'tcx, M::PointerTag> {
-        self.stack.last_mut().expect("no call frames exist")
-    }
-
-    pub(super) fn mir(&self) -> &'mir mir::Mir<'tcx> {
-        self.frame().mir
-    }
-
-    pub fn substs(&self) -> &'tcx Substs<'tcx> {
-        if let Some(frame) = self.stack.last() {
-            frame.instance.substs
-        } else {
-            Substs::empty()
-        }
     }
 
     pub fn dump_place(&self, place: Place<M::PointerTag>) {
