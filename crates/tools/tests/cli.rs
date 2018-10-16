@@ -1,23 +1,12 @@
 extern crate tools;
 
 use tools::{
-    project_root, render_template, update, AST, AST_TEMPLATE, SYNTAX_KINDS, SYNTAX_KINDS_TEMPLATE,
+    generate, Verify
 };
 
 #[test]
 fn verify_template_generation() {
-    if let Err(error) = update(
-        &project_root().join(SYNTAX_KINDS),
-        &render_template(&project_root().join(SYNTAX_KINDS_TEMPLATE)).unwrap(),
-        true,
-    ) {
-        panic!("{}. Please update it by running `cargo gen-kinds`", error);
-    }
-    if let Err(error) = update(
-        &project_root().join(AST),
-        &render_template(&project_root().join(AST_TEMPLATE)).unwrap(),
-        true,
-    ) {
+    if let Err(error) = generate(Verify) {
         panic!("{}. Please update it by running `cargo gen-kinds`", error);
     }
 }

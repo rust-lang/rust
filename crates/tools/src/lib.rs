@@ -1,12 +1,14 @@
 extern crate itertools;
-#[macro_use]
 extern crate failure;
+extern crate teraron;
 
-use itertools::Itertools;
 use std::{
-    fs,
     path::{Path, PathBuf},
 };
+
+use itertools::Itertools;
+
+pub use teraron::{Mode, Verify, Overwrite};
 
 pub type Result<T> = ::std::result::Result<T, failure::Error>;
 
@@ -54,21 +56,22 @@ pub fn collect_tests(s: &str) -> Vec<(usize, Test)> {
     res
 }
 
-pub fn update(path: &Path, contents: &str, verify: bool) -> Result<()> {
-    match fs::read_to_string(path) {
-        Ok(ref old_contents) if old_contents == contents => {
-            return Ok(());
-        }
-        _ => (),
-    }
-    if verify {
-        bail!("`{}` is not up-to-date", path.display());
-    }
-    eprintln!("updating {}", path.display());
-    fs::write(path, contents)?;
+pub fn generate(mode: Mode) -> Result<()> {
+    let grammar = project_root().join(GRAMMAR);
+    let syntax_kinds = project_root().join(SYNTAX_KINDS);
+    let ast = project_root().join(AST);
+    teraron::generate(
+        &syntax_kinds,
+        &grammar,
+        mode,
+    )?;
+    teraron::generate(
+        &ast,
+        &grammar,
+        mode,
+    )?;
     Ok(())
 }
-
 
 pub fn project_root() -> PathBuf {
     Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap())

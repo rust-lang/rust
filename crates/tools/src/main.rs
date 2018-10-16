@@ -13,9 +13,8 @@ use std::{
     process::Command,
 };
 use tools::{
-    collect_tests, project_root, Result, Test, AST, SYNTAX_KINDS, GRAMMAR,
+    collect_tests, Result, Test, generate, Mode, Overwrite, Verify,
 };
-use teraron::{Mode, Verify, Overwrite};
 
 const GRAMMAR_DIR: &str = "./crates/ra_syntax/src/grammar";
 const INLINE_TESTS_DIR: &str = "./crates/ra_syntax/tests/data/parser/inline";
@@ -41,21 +40,7 @@ fn main() -> Result<()> {
     match matches.subcommand() {
         ("install-code", _) => install_code_extension()?,
         ("gen-tests", _) => gen_tests(mode)?,
-        ("gen-kinds", _) => {
-            let grammar = project_root().join(GRAMMAR);
-            let syntax_kinds = project_root().join(SYNTAX_KINDS);
-            let ast = project_root().join(AST);
-            teraron::generate(
-                &syntax_kinds,
-                &grammar,
-                mode,
-            )?;
-            teraron::generate(
-                &ast,
-                &grammar,
-                mode,
-            )?;
-        }
+        ("gen-kinds", _) => generate(Overwrite)?,
         _ => unreachable!(),
     }
     Ok(())
