@@ -233,7 +233,7 @@ pub struct FnDescriptor {
 }
 
 impl FnDescriptor {
-    pub fn new(node: ast::FnDef) -> Option<Self> {
+    pub fn new_opt(node: ast::FnDef) -> Option<Self> {
         let name = node.name()?.text().to_string();
 
         // Strip the body out for the label.

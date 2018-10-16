@@ -355,7 +355,7 @@ impl<'a> PoolDispatcher<'a> {
         };
         match req.cast::<R>() {
             Ok((id, params)) => {
-                let (handle, token) = JobHandle::new();
+                let (handle, token) = JobHandle::new_pair();
                 let world = self.world.snapshot();
                 let sender = self.sender.clone();
                 self.pool.spawn(move || {

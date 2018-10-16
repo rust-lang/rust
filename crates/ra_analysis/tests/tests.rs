@@ -62,7 +62,7 @@ fn get_signature(text: &str) -> (FnDescriptor, Option<usize>) {
     let (offset, code) = extract_offset(text);
     let code = code.as_str();
 
-    let (_handle, token) = JobHandle::new();
+    let (_handle, token) = JobHandle::new_pair();
     let snap = analysis(&[("/lib.rs", code)]);
 
     snap.resolve_callable(FileId(1), offset, &token).unwrap()
@@ -71,7 +71,7 @@ fn get_signature(text: &str) -> (FnDescriptor, Option<usize>) {
 #[test]
 fn test_resolve_module() {
     let snap = analysis(&[("/lib.rs", "mod foo;"), ("/foo.rs", "")]);
-    let (_handle, token) = JobHandle::new();
+    let (_handle, token) = JobHandle::new_pair();
     let symbols = snap.approximately_resolve_symbol(FileId(1), 4.into(), &token);
     assert_eq_dbg(
         r#"[(FileId(2), FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE })]"#,

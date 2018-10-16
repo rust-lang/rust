@@ -11,7 +11,7 @@ pub struct JobToken {
 }
 
 impl JobHandle {
-    pub fn new() -> (JobHandle, JobToken) {
+    pub fn new_pair() -> (JobHandle, JobToken) {
         let (sender_alive, receiver_alive) = bounded(0);
         let (sender_canceled, receiver_canceled) = bounded(0);
         let token = JobToken {
