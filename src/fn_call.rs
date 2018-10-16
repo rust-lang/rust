@@ -14,8 +14,8 @@ pub trait EvalContextExt<'tcx, 'mir> {
     fn emulate_foreign_item(
         &mut self,
         def_id: DefId,
-        args: &[OpTy<'tcx>],
-        dest: PlaceTy<'tcx>,
+        args: &[OpTy<'tcx, Borrow>],
+        dest: PlaceTy<'tcx, Borrow>,
         ret: mir::BasicBlock,
     ) -> EvalResult<'tcx>;
 
@@ -28,28 +28,28 @@ pub trait EvalContextExt<'tcx, 'mir> {
     fn emulate_missing_fn(
         &mut self,
         path: String,
-        args: &[OpTy<'tcx>],
-        dest: Option<PlaceTy<'tcx>>,
+        args: &[OpTy<'tcx, Borrow>],
+        dest: Option<PlaceTy<'tcx, Borrow>>,
         ret: Option<mir::BasicBlock>,
     ) -> EvalResult<'tcx>;
 
     fn find_fn(
         &mut self,
         instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx>],
-        dest: Option<PlaceTy<'tcx>>,
+        args: &[OpTy<'tcx, Borrow>],
+        dest: Option<PlaceTy<'tcx, Borrow>>,
         ret: Option<mir::BasicBlock>,
     ) -> EvalResult<'tcx, Option<&'mir mir::Mir<'tcx>>>;
 
-    fn write_null(&mut self, dest: PlaceTy<'tcx>) -> EvalResult<'tcx>;
+    fn write_null(&mut self, dest: PlaceTy<'tcx, Borrow>) -> EvalResult<'tcx>;
 }
 
 impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, 'mir, 'tcx, super::Evaluator<'tcx>> {
     fn find_fn(
         &mut self,
         instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx>],
-        dest: Option<PlaceTy<'tcx>>,
+        args: &[OpTy<'tcx, Borrow>],
+        dest: Option<PlaceTy<'tcx, Borrow>>,
         ret: Option<mir::BasicBlock>,
     ) -> EvalResult<'tcx, Option<&'mir mir::Mir<'tcx>>> {
         trace!("eval_fn_call: {:#?}, {:?}", instance, dest.map(|place| *place));
@@ -108,8 +108,8 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
     fn emulate_foreign_item(
         &mut self,
         def_id: DefId,
-        args: &[OpTy<'tcx>],
-        dest: PlaceTy<'tcx>,
+        args: &[OpTy<'tcx, Borrow>],
+        dest: PlaceTy<'tcx, Borrow>,
         ret: mir::BasicBlock,
     ) -> EvalResult<'tcx> {
         let attrs = self.tcx.get_attrs(def_id);
@@ -675,8 +675,8 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
     fn emulate_missing_fn(
         &mut self,
         path: String,
-        _args: &[OpTy<'tcx>],
-        dest: Option<PlaceTy<'tcx>>,
+        _args: &[OpTy<'tcx, Borrow>],
+        dest: Option<PlaceTy<'tcx, Borrow>>,
         ret: Option<mir::BasicBlock>,
     ) -> EvalResult<'tcx> {
         // In some cases in non-MIR libstd-mode, not having a destination is legit.  Handle these early.
@@ -724,7 +724,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
         Ok(())
     }
 
-    fn write_null(&mut self, dest: PlaceTy<'tcx>) -> EvalResult<'tcx> {
+    fn write_null(&mut self, dest: PlaceTy<'tcx, Borrow>) -> EvalResult<'tcx> {
         self.write_scalar(Scalar::from_int(0, dest.layout.size), dest)
     }
 }

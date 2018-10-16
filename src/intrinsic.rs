@@ -6,7 +6,7 @@ use rustc::mir::interpret::{EvalResult, PointerArithmetic};
 use rustc_mir::interpret::{EvalContext, PlaceTy, OpTy};
 
 use super::{
-    Value, Scalar, ScalarMaybeUndef,
+    Value, Scalar, ScalarMaybeUndef, Borrow,
     FalibleScalarExt, OperatorEvalContextExt
 };
 
@@ -14,8 +14,8 @@ pub trait EvalContextExt<'tcx> {
     fn call_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx>],
-        dest: PlaceTy<'tcx>,
+        args: &[OpTy<'tcx, Borrow>],
+        dest: PlaceTy<'tcx, Borrow>,
     ) -> EvalResult<'tcx>;
 }
 
@@ -23,8 +23,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
     fn call_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx>],
-        dest: PlaceTy<'tcx>,
+        args: &[OpTy<'tcx, Borrow>],
+        dest: PlaceTy<'tcx, Borrow>,
     ) -> EvalResult<'tcx> {
         if self.emulate_intrinsic(instance, args, dest)? {
             return Ok(());

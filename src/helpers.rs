@@ -7,7 +7,7 @@ pub trait FalibleScalarExt {
     fn to_bytes(self) -> EvalResult<'static, u128>;
 }
 
-impl FalibleScalarExt for Scalar {
+impl<Tag> FalibleScalarExt for Scalar<Tag> {
     fn to_bytes(self) -> EvalResult<'static, u128> {
         match self {
             Scalar::Bits { bits, size } => {
@@ -19,7 +19,7 @@ impl FalibleScalarExt for Scalar {
     }
 }
 
-impl FalibleScalarExt for ScalarMaybeUndef {
+impl<Tag> FalibleScalarExt for ScalarMaybeUndef<Tag> {
     fn to_bytes(self) -> EvalResult<'static, u128> {
         self.not_undef()?.to_bytes()
     }

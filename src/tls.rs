@@ -5,14 +5,14 @@ use rustc::{ty, ty::layout::HasDataLayout, mir};
 
 use super::{
     EvalResult, EvalErrorKind, StackPopCleanup, EvalContext, Evaluator,
-    MPlaceTy, Scalar,
+    MPlaceTy, Scalar, Borrow,
 };
 
 pub type TlsKey = u128;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct TlsEntry<'tcx> {
-    pub(crate) data: Scalar, // Will eventually become a map from thread IDs to `Scalar`s, if we ever support more than one thread.
+    pub(crate) data: Scalar<Borrow>, // Will eventually become a map from thread IDs to `Scalar`s, if we ever support more than one thread.
     pub(crate) dtor: Option<ty::Instance<'tcx>>,
 }
 
@@ -67,7 +67,7 @@ impl<'tcx> TlsData<'tcx> {
         }
     }
 
-    pub fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, Scalar> {
+    pub fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, Scalar<Borrow>> {
         match self.keys.get(&key) {
             Some(&TlsEntry { data, .. }) => {
                 trace!("TLS key {} loaded: {:?}", key, data);
@@ -77,7 +77,7 @@ impl<'tcx> TlsData<'tcx> {
         }
     }
 
-    pub fn store_tls(&mut self, key: TlsKey, new_data: Scalar) -> EvalResult<'tcx> {
+    pub fn store_tls(&mut self, key: TlsKey, new_data: Scalar<Borrow>) -> EvalResult<'tcx> {
         match self.keys.get_mut(&key) {
             Some(&mut TlsEntry { ref mut data, .. }) => {
                 trace!("TLS key {} stored: {:?}", key, new_data);
@@ -110,7 +110,7 @@ impl<'tcx> TlsData<'tcx> {
         &mut self,
         key: Option<TlsKey>,
         cx: impl HasDataLayout,
-    ) -> Option<(ty::Instance<'tcx>, Scalar, TlsKey)> {
+    ) -> Option<(ty::Instance<'tcx>, Scalar<Borrow>, TlsKey)> {
         use std::collections::Bound::*;
 
         let thread_local = &mut self.keys;

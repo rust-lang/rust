@@ -7,44 +7,44 @@ pub trait EvalContextExt<'tcx> {
     fn ptr_op(
         &self,
         bin_op: mir::BinOp,
-        left: Scalar,
+        left: Scalar<Borrow>,
         left_layout: TyLayout<'tcx>,
-        right: Scalar,
+        right: Scalar<Borrow>,
         right_layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, (Scalar, bool)>;
+    ) -> EvalResult<'tcx, (Scalar<Borrow>, bool)>;
 
     fn ptr_int_arithmetic(
         &self,
         bin_op: mir::BinOp,
-        left: Pointer,
+        left: Pointer<Borrow>,
         right: u128,
         signed: bool,
-    ) -> EvalResult<'tcx, (Scalar, bool)>;
+    ) -> EvalResult<'tcx, (Scalar<Borrow>, bool)>;
 
     fn ptr_eq(
         &self,
-        left: Scalar,
-        right: Scalar,
+        left: Scalar<Borrow>,
+        right: Scalar<Borrow>,
         size: Size,
     ) -> EvalResult<'tcx, bool>;
 
     fn pointer_offset_inbounds(
         &self,
-        ptr: Scalar,
+        ptr: Scalar<Borrow>,
         pointee_ty: Ty<'tcx>,
         offset: i64,
-    ) -> EvalResult<'tcx, Scalar>;
+    ) -> EvalResult<'tcx, Scalar<Borrow>>;
 }
 
 impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super::Evaluator<'tcx>> {
     fn ptr_op(
         &self,
         bin_op: mir::BinOp,
-        left: Scalar,
+        left: Scalar<Borrow>,
         left_layout: TyLayout<'tcx>,
-        right: Scalar,
+        right: Scalar<Borrow>,
         right_layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, (Scalar, bool)> {
+    ) -> EvalResult<'tcx, (Scalar<Borrow>, bool)> {
         use rustc::mir::BinOp::*;
 
         trace!("ptr_op: {:?} {:?} {:?}", left, bin_op, right);
@@ -124,8 +124,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
 
     fn ptr_eq(
         &self,
-        left: Scalar,
-        right: Scalar,
+        left: Scalar<Borrow>,
+        right: Scalar<Borrow>,
         size: Size,
     ) -> EvalResult<'tcx, bool> {
         Ok(match (left, right) {
@@ -203,13 +203,13 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
     fn ptr_int_arithmetic(
         &self,
         bin_op: mir::BinOp,
-        left: Pointer,
+        left: Pointer<Borrow>,
         right: u128,
         signed: bool,
-    ) -> EvalResult<'tcx, (Scalar, bool)> {
+    ) -> EvalResult<'tcx, (Scalar<Borrow>, bool)> {
         use rustc::mir::BinOp::*;
 
-        fn map_to_primval((res, over): (Pointer, bool)) -> (Scalar, bool) {
+        fn map_to_primval((res, over): (Pointer<Borrow>, bool)) -> (Scalar<Borrow>, bool) {
             (Scalar::Ptr(res), over)
         }
 
@@ -237,7 +237,14 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 if right & base_mask == base_mask {
                     // Case 1: The base address bits are all preserved, i.e., right is all-1 there
                     let offset = (left.offset.bytes() as u128 & right) as u64;
-                    (Scalar::Ptr(Pointer::new(left.alloc_id, Size::from_bytes(offset))), false)
+                    (
+                        Scalar::Ptr(Pointer::new_with_tag(
+                            left.alloc_id,
+                            Size::from_bytes(offset),
+                            left.tag,
+                        )),
+                        false,
+                    )
                 } else if right & base_mask == 0 {
                     // Case 2: The base address bits are all taken away, i.e., right is all-0 there
                     (Scalar::Bits { bits: (left.offset.bytes() as u128) & right, size: ptr_size }, false)
@@ -277,10 +284,10 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
     /// allocation.
     fn pointer_offset_inbounds(
         &self,
-        ptr: Scalar,
+        ptr: Scalar<Borrow>,
         pointee_ty: Ty<'tcx>,
         offset: i64,
-    ) -> EvalResult<'tcx, Scalar> {
+    ) -> EvalResult<'tcx, Scalar<Borrow>> {
         // FIXME: assuming here that type size is < i64::max_value()
         let pointee_size = self.layout_of(pointee_ty)?.size.bytes() as i64;
         let offset = offset.checked_mul(pointee_size).ok_or_else(|| EvalErrorKind::Overflow(mir::BinOp::Mul))?;
