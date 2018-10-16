@@ -21,7 +21,7 @@ impl ModuleDescriptor {
     }
 }
 
-fn modules<'a>(root: ast::Root<'a>) -> impl Iterator<Item = (SmolStr, ast::Module<'a>)> {
+fn modules(root: ast::Root<'_>) -> impl Iterator<Item = (SmolStr, ast::Module<'_>)> {
     root.modules().filter_map(|module| {
         let name = module.name()?.text();
         if !module.has_semi() {
