@@ -12,7 +12,7 @@ This flag can turn on or off various `#[cfg]` settings.
 
 The value can either be a single identifier or two identifiers separated by `=`.
 
-For examples, `--cfg 'verbose'` or `--cfg 'feature=serde'`. These correspond
+For examples, `--cfg 'verbose'` or `--cfg 'feature="serde"'`. These correspond
 to `#[cfg(verbose)]` and `#[cfg(feature = "serde")]` respectively.
 
 ## `-L`: add a directory to the library search path
