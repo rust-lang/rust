@@ -80,8 +80,8 @@ crate fn create(
         region_bound_pairs: Vec::new(),
         relations: UniversalRegionRelations {
             universal_regions: universal_regions.clone(),
-            outlives: TransitiveRelation::new(),
-            inverse_outlives: TransitiveRelation::new(),
+            outlives: Default::default(),
+            inverse_outlives: Default::default(),
         },
     }.create()
 }

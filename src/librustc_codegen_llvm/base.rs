@@ -70,7 +70,7 @@ use time_graph;
 use mono_item::{MonoItem, BaseMonoItemExt, MonoItemExt};
 use type_::Type;
 use type_of::LayoutLlvmExt;
-use rustc::util::nodemap::{FxHashMap, FxHashSet, DefIdSet};
+use rustc::util::nodemap::{FxHashMap, DefIdSet};
 use CrateInfo;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::sync::Lrc;
@@ -1030,7 +1030,7 @@ fn collect_and_partition_mono_items<'a, 'tcx>(
     }).collect();
 
     if tcx.sess.opts.debugging_opts.print_mono_items.is_some() {
-        let mut item_to_cgus: FxHashMap<_, Vec<_>> = FxHashMap::default();
+        let mut item_to_cgus: FxHashMap<_, Vec<_>> = Default::default();
 
         for cgu in &codegen_units {
             for (&mono_item, &linkage) in cgu.items() {
@@ -1092,17 +1092,17 @@ impl CrateInfo {
             compiler_builtins: None,
             profiler_runtime: None,
             sanitizer_runtime: None,
-            is_no_builtins: FxHashSet::default(),
-            native_libraries: FxHashMap::default(),
+            is_no_builtins: Default::default(),
+            native_libraries: Default::default(),
             used_libraries: tcx.native_libraries(LOCAL_CRATE),
             link_args: tcx.link_args(LOCAL_CRATE),
-            crate_name: FxHashMap::default(),
+            crate_name: Default::default(),
             used_crates_dynamic: cstore::used_crates(tcx, LinkagePreference::RequireDynamic),
             used_crates_static: cstore::used_crates(tcx, LinkagePreference::RequireStatic),
-            used_crate_source: FxHashMap::default(),
-            wasm_imports: FxHashMap::default(),
-            lang_item_to_crate: FxHashMap::default(),
-            missing_lang_items: FxHashMap::default(),
+            used_crate_source: Default::default(),
+            wasm_imports: Default::default(),
+            lang_item_to_crate: Default::default(),
+            missing_lang_items: Default::default(),
         };
         let lang_items = tcx.lang_items();
 

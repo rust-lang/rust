@@ -114,10 +114,9 @@ impl<T> TypedArenaChunk<T> {
 
 const PAGE: usize = 4096;
 
-impl<T> TypedArena<T> {
+impl<T> Default for TypedArena<T> {
     /// Creates a new `TypedArena`.
-    #[inline]
-    pub fn new() -> TypedArena<T> {
+    fn default() -> TypedArena<T> {
         TypedArena {
             // We set both `ptr` and `end` to 0 so that the first call to
             // alloc() will trigger a grow().
@@ -127,7 +126,9 @@ impl<T> TypedArena<T> {
             _own: PhantomData,
         }
     }
+}
 
+impl<T> TypedArena<T> {
     /// Allocates an object in the `TypedArena`, returning a reference to it.
     #[inline]
     pub fn alloc(&self, object: T) -> &mut T {
@@ -296,15 +297,17 @@ pub struct DroplessArena {
 
 unsafe impl Send for DroplessArena {}
 
-impl DroplessArena {
-    pub fn new() -> DroplessArena {
+impl Default for DroplessArena {
+    fn default() -> DroplessArena {
         DroplessArena {
             ptr: Cell::new(0 as *mut u8),
             end: Cell::new(0 as *mut u8),
-            chunks: RefCell::new(vec![]),
+            chunks: Default::default(),
         }
     }
+}
 
+impl DroplessArena {
     pub fn in_arena<T: ?Sized>(&self, ptr: *const T) -> bool {
         let ptr = ptr as *const u8 as *mut u8;
         for chunk in &*self.chunks.borrow() {
@@ -419,18 +422,13 @@ impl DroplessArena {
     }
 }
 
+#[derive(Default)]
+// FIXME(@Zoxc): this type is entirely unused in rustc
 pub struct SyncTypedArena<T> {
     lock: MTLock<TypedArena<T>>,
 }
 
 impl<T> SyncTypedArena<T> {
-    #[inline(always)]
-    pub fn new() -> SyncTypedArena<T> {
-        SyncTypedArena {
-            lock: MTLock::new(TypedArena::new())
-        }
-    }
-
     #[inline(always)]
     pub fn alloc(&self, object: T) -> &mut T {
         // Extend the lifetime of the result since it's limited to the lock guard
@@ -452,18 +450,12 @@ impl<T> SyncTypedArena<T> {
     }
 }
 
+#[derive(Default)]
 pub struct SyncDroplessArena {
     lock: MTLock<DroplessArena>,
 }
 
 impl SyncDroplessArena {
-    #[inline(always)]
-    pub fn new() -> SyncDroplessArena {
-        SyncDroplessArena {
-            lock: MTLock::new(DroplessArena::new())
-        }
-    }
-
     #[inline(always)]
     pub fn in_arena<T: ?Sized>(&self, ptr: *const T) -> bool {
         self.lock.lock().in_arena(ptr)

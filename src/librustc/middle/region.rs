@@ -1347,7 +1347,7 @@ fn region_scope_tree<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                 parent: None,
                 var_parent: None,
             },
-            terminating_scopes: FxHashSet::default(),
+            terminating_scopes: Default::default(),
         };
 
         let body = tcx.hir.body(body_id);

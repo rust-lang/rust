@@ -31,8 +31,8 @@ pub struct LibFeatures {
 impl LibFeatures {
     fn new() -> LibFeatures {
         LibFeatures {
-            stable: FxHashMap::default(),
-            unstable: FxHashSet::default(),
+            stable: Default::default(),
+            unstable: Default::default(),
         }
     }
 

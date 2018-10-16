@@ -166,7 +166,7 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
     previous: TraitObligationStackList<'prev, 'tcx>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct SelectionCache<'tcx> {
     hashmap: Lock<
         FxHashMap<ty::TraitRef<'tcx>, WithDepNode<SelectionResult<'tcx, SelectionCandidate<'tcx>>>>,
@@ -444,7 +444,7 @@ impl<'tcx> From<OverflowError> for SelectionError<'tcx> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct EvaluationCache<'tcx> {
     hashmap: Lock<FxHashMap<ty::PolyTraitRef<'tcx>, WithDepNode<EvaluationResult>>>,
 }
@@ -3789,26 +3789,14 @@ impl<'tcx> TraitObligation<'tcx> {
 }
 
 impl<'tcx> SelectionCache<'tcx> {
-    pub fn new() -> SelectionCache<'tcx> {
-        SelectionCache {
-            hashmap: Lock::new(FxHashMap::default()),
-        }
-    }
-
     pub fn clear(&self) {
-        *self.hashmap.borrow_mut() = FxHashMap::default()
+        self.hashmap.borrow_mut().clear();
     }
 }
 
 impl<'tcx> EvaluationCache<'tcx> {
-    pub fn new() -> EvaluationCache<'tcx> {
-        EvaluationCache {
-            hashmap: Lock::new(FxHashMap::default()),
-        }
-    }
-
     pub fn clear(&self) {
-        *self.hashmap.borrow_mut() = FxHashMap::default()
+        self.hashmap.borrow_mut().clear();
     }
 }
 

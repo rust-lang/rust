@@ -1404,7 +1404,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
             let cleaned_pred = pred.fold_with(&mut ParamToVarFolder {
                 infcx: self,
-                var_map: FxHashMap::default()
+                var_map: Default::default()
             });
 
             let cleaned_pred = super::project::normalize(

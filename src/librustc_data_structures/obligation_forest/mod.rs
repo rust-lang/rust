@@ -187,11 +187,11 @@ impl<O: ForestObligation> ObligationForest<O> {
     pub fn new() -> ObligationForest<O> {
         ObligationForest {
             nodes: vec![],
-            done_cache: FxHashSet::default(),
-            waiting_cache: FxHashMap::default(),
+            done_cache: Default::default(),
+            waiting_cache: Default::default(),
             scratch: Some(vec![]),
             obligation_tree_id_generator: (0..).map(|i| ObligationTreeId(i)),
-            error_cache: FxHashMap::default(),
+            error_cache: Default::default(),
         }
     }
 
@@ -303,7 +303,7 @@ impl<O: ForestObligation> ObligationForest<O> {
 
         self.error_cache
             .entry(node.obligation_tree_id)
-            .or_insert_with(|| FxHashSet::default())
+            .or_default()
             .insert(node.obligation.as_predicate().clone());
     }
 

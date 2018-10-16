@@ -175,7 +175,7 @@ impl<'a> LintLevelsBuilder<'a> {
             sess,
             sets,
             cur: 0,
-            id_to_set: FxHashMap::default(),
+            id_to_set: Default::default(),
             warn_about_weird_lints: sess.buffered_lints.borrow().is_some(),
         }
     }

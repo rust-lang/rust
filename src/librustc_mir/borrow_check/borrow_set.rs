@@ -151,11 +151,11 @@ impl<'tcx> BorrowSet<'tcx> {
             tcx,
             mir,
             idx_vec: IndexVec::new(),
-            location_map: FxHashMap::default(),
-            activation_map: FxHashMap::default(),
-            region_map: FxHashMap::default(),
-            local_map: FxHashMap::default(),
-            pending_activations: FxHashMap::default(),
+            location_map: Default::default(),
+            activation_map: Default::default(),
+            region_map: Default::default(),
+            local_map: Default::default(),
+            pending_activations: Default::default(),
             locals_state_at_exit:
                 LocalsStateAtExit::build(locals_are_invalidated_at_exit, mir, move_data),
         };

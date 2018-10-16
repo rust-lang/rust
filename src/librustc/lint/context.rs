@@ -159,9 +159,9 @@ impl LintStore {
             pre_expansion_passes: Some(vec![]),
             early_passes: Some(vec![]),
             late_passes: Some(vec![]),
-            by_name: FxHashMap::default(),
-            future_incompatible: FxHashMap::default(),
-            lint_groups: FxHashMap::default(),
+            by_name: Default::default(),
+            future_incompatible: Default::default(),
+            lint_groups: Default::default(),
         }
     }
 

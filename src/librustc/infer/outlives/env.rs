@@ -81,8 +81,8 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
     pub fn new(param_env: ty::ParamEnv<'tcx>) -> Self {
         let mut env = OutlivesEnvironment {
             param_env,
-            free_region_map: FreeRegionMap::new(),
-            region_bound_pairs_map: FxHashMap::default(),
+            free_region_map: Default::default(),
+            region_bound_pairs_map: Default::default(),
             region_bound_pairs_accum: vec![],
         };
 

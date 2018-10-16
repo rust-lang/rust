@@ -320,7 +320,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         f: F) -> R
         where F: for<'b> FnOnce(MatchCheckCtxt<'b, 'tcx>) -> R
     {
-        let pattern_arena = TypedArena::new();
+        let pattern_arena = TypedArena::default();
 
         f(MatchCheckCtxt {
             tcx,

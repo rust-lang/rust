@@ -703,7 +703,7 @@ fn internalize_symbols<'a, 'tcx>(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Build a map from every monomorphization to all the monomorphizations that
     // reference it.
-    let mut accessor_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>> = FxHashMap::default();
+    let mut accessor_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>> = Default::default();
     inlining_map.iter_accesses(|accessor, accessees| {
         for accessee in accessees {
             accessor_map.entry(*accessee)

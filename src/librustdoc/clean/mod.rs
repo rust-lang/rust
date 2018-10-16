@@ -75,8 +75,7 @@ use self::cfg::Cfg;
 use self::auto_trait::AutoTraitFinder;
 use self::blanket_impl::BlanketImplFinder;
 
-thread_local!(pub static MAX_DEF_ID: RefCell<FxHashMap<CrateNum, DefId>> =
-    RefCell::new(FxHashMap::default()));
+thread_local!(pub static MAX_DEF_ID: RefCell<FxHashMap<CrateNum, DefId>> = Default::default());
 
 const FN_OUTPUT_NAME: &'static str = "Output";
 
@@ -3388,7 +3387,7 @@ impl Clean<Vec<Item>> for doctree::Impl {
                   .into_iter()
                   .map(|meth| meth.ident.to_string())
                   .collect()
-        }).unwrap_or(FxHashSet::default());
+        }).unwrap_or_default();
 
         ret.push(Item {
             name: None,

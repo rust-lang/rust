@@ -224,6 +224,7 @@ impl<T: ::std::ops::Deref<Target=str>> PartialEq<T> for Symbol {
 }
 
 // The &'static strs in this type actually point into the arena
+#[derive(Default)]
 pub struct Interner {
     arena: DroplessArena,
     names: FxHashMap<&'static str, Symbol>,
@@ -232,17 +233,8 @@ pub struct Interner {
 }
 
 impl Interner {
-    pub fn new() -> Self {
-        Interner {
-            arena: DroplessArena::new(),
-            names: Default::default(),
-            strings: Default::default(),
-            gensyms: Default::default(),
-        }
-    }
-
     fn prefill(init: &[&str]) -> Self {
-        let mut this = Interner::new();
+        let mut this = Interner::default();
         for &string in init {
             if string == "" {
                 // We can't allocate empty strings in the arena, so handle this here
@@ -697,7 +689,7 @@ mod tests {
 
     #[test]
     fn interner_tests() {
-        let mut i: Interner = Interner::new();
+        let mut i: Interner = Interner::default();
         // first one is zero:
         assert_eq!(i.intern("dog"), Symbol(0));
         // re-use gets the same entry:

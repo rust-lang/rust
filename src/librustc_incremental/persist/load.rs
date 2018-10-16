@@ -48,7 +48,7 @@ impl LoadResult<(PreviousDepGraph, WorkProductMap)> {
         match self {
             LoadResult::Error { message } => {
                 sess.warn(&message);
-                (PreviousDepGraph::new(SerializedDepGraph::new()), FxHashMap::default())
+                Default::default()
             },
             LoadResult::DataOutOfDate => {
                 if let Err(err) = delete_all_session_dir_contents(sess) {
@@ -56,7 +56,7 @@ impl LoadResult<(PreviousDepGraph, WorkProductMap)> {
                                       incremental compilation session directory contents `{}`: {}.",
                                       dep_graph_path(sess).display(), err));
                 }
-                (PreviousDepGraph::new(SerializedDepGraph::new()), FxHashMap::default())
+                Default::default()
             }
             LoadResult::Ok { data } => data
         }
@@ -117,7 +117,7 @@ pub fn load_dep_graph(sess: &Session) ->
     if sess.opts.incremental.is_none() {
         // No incremental compilation.
         return MaybeAsync::Sync(LoadResult::Ok {
-            data: (PreviousDepGraph::new(SerializedDepGraph::new()), FxHashMap::default())
+            data: Default::default(),
         });
     }
 

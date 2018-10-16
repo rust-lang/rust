@@ -13,7 +13,7 @@ use rustc_data_structures::fx::FxHashMap;
 use super::dep_node::DepNode;
 use super::serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, RustcEncodable, RustcDecodable, Default)]
 pub struct PreviousDepGraph {
     data: SerializedDepGraph,
     index: FxHashMap<DepNode, SerializedDepNodeIndex>,

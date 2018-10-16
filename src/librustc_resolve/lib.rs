@@ -930,7 +930,7 @@ struct Rib<'a> {
 impl<'a> Rib<'a> {
     fn new(kind: RibKind<'a>) -> Rib<'a> {
         Rib {
-            bindings: FxHashMap::default(),
+            bindings: Default::default(),
             kind,
         }
     }
@@ -1053,11 +1053,11 @@ impl<'a> ModuleData<'a> {
             parent,
             kind,
             normal_ancestor_id,
-            resolutions: RefCell::new(FxHashMap::default()),
+            resolutions: Default::default(),
             legacy_macro_resolutions: RefCell::new(Vec::new()),
             macro_resolutions: RefCell::new(Vec::new()),
             builtin_attrs: RefCell::new(Vec::new()),
-            unresolved_invocations: RefCell::new(FxHashSet::default()),
+            unresolved_invocations: Default::default(),
             no_implicit_prelude: false,
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new(Vec::new()),
@@ -1315,13 +1315,14 @@ impl<'a> NameBinding<'a> {
 ///
 /// All other types are defined somewhere and possibly imported, but the primitive ones need
 /// special handling, since they have no place of origin.
+#[derive(Default)]
 struct PrimitiveTypeTable {
     primitive_types: FxHashMap<Name, PrimTy>,
 }
 
 impl PrimitiveTypeTable {
     fn new() -> PrimitiveTypeTable {
-        let mut table = PrimitiveTypeTable { primitive_types: FxHashMap::default() };
+        let mut table = PrimitiveTypeTable::default();
 
         table.intern("bool", Bool);
         table.intern("char", Char);
@@ -1482,6 +1483,7 @@ pub struct Resolver<'a, 'b: 'a> {
 }
 
 /// Nothing really interesting here, it just provides memory for the rest of the crate.
+#[derive(Default)]
 pub struct ResolverArenas<'a> {
     modules: arena::TypedArena<ModuleData<'a>>,
     local_modules: RefCell<Vec<Module<'a>>>,
@@ -1782,15 +1784,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
     }
 
     pub fn arenas() -> ResolverArenas<'a> {
-        ResolverArenas {
-            modules: arena::TypedArena::new(),
-            local_modules: RefCell::new(Vec::new()),
-            name_bindings: arena::TypedArena::new(),
-            import_directives: arena::TypedArena::new(),
-            name_resolutions: arena::TypedArena::new(),
-            invocation_data: arena::TypedArena::new(),
-            legacy_bindings: arena::TypedArena::new(),
-        }
+        Default::default()
     }
 
     /// Runs the function on each namespace.

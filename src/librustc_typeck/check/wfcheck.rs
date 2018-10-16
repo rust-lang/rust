@@ -475,6 +475,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
     });
     // Now we build the substituted predicates.
     let default_obligations = predicates.predicates.iter().flat_map(|&(pred, _)| {
+        #[derive(Default)]
         struct CountParams { params: FxHashSet<u32> }
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams {
             fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
@@ -491,7 +492,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
                 true
             }
         }
-        let mut param_count = CountParams { params: FxHashSet::default() };
+        let mut param_count = CountParams::default();
         let has_region = pred.visit_with(&mut param_count);
         let substituted_pred = pred.subst(fcx.tcx, substs);
         // Don't check non-defaulted params, dependent defaults (including lifetimes)

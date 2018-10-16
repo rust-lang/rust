@@ -89,13 +89,14 @@ pub struct AllArenas<'tcx> {
 impl<'tcx> AllArenas<'tcx> {
     pub fn new() -> Self {
         AllArenas {
-            global: WorkerLocal::new(|_| GlobalArenas::new()),
-            interner: SyncDroplessArena::new(),
+            global: WorkerLocal::new(|_| GlobalArenas::default()),
+            interner: SyncDroplessArena::default(),
         }
     }
 }
 
 /// Internal storage
+#[derive(Default)]
 pub struct GlobalArenas<'tcx> {
     // internings
     layout: TypedArena<LayoutDetails>,
@@ -109,21 +110,6 @@ pub struct GlobalArenas<'tcx> {
     tables: TypedArena<ty::TypeckTables<'tcx>>,
     /// miri allocations
     const_allocs: TypedArena<interpret::Allocation>,
-}
-
-impl<'tcx> GlobalArenas<'tcx> {
-    pub fn new() -> GlobalArenas<'tcx> {
-        GlobalArenas {
-            layout: TypedArena::new(),
-            generics: TypedArena::new(),
-            trait_def: TypedArena::new(),
-            adt_def: TypedArena::new(),
-            steal_mir: TypedArena::new(),
-            mir: TypedArena::new(),
-            tables: TypedArena::new(),
-            const_allocs: TypedArena::new(),
-        }
-    }
 }
 
 type InternedSet<'tcx, T> = Lock<FxHashSet<Interned<'tcx, T>>>;
@@ -462,15 +448,15 @@ impl<'tcx> TypeckTables<'tcx> {
             adjustments: ItemLocalMap(),
             pat_binding_modes: ItemLocalMap(),
             pat_adjustments: ItemLocalMap(),
-            upvar_capture_map: FxHashMap::default(),
+            upvar_capture_map: Default::default(),
             closure_kind_origins: ItemLocalMap(),
             liberated_fn_sigs: ItemLocalMap(),
             fru_field_types: ItemLocalMap(),
             cast_kinds: ItemLocalMap(),
             used_trait_imports: Lrc::new(DefIdSet()),
             tainted_by_errors: false,
-            free_region_map: FreeRegionMap::new(),
-            concrete_existential_types: FxHashMap::default(),
+            free_region_map: Default::default(),
+            concrete_existential_types: Default::default(),
         }
     }
 
@@ -1231,14 +1217,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 extern_providers,
                 on_disk_query_result_cache,
             ),
-            rcache: Lock::new(FxHashMap::default()),
-            selection_cache: traits::SelectionCache::new(),
-            evaluation_cache: traits::EvaluationCache::new(),
+            rcache: Default::default(),
+            selection_cache: Default::default(),
+            evaluation_cache: Default::default(),
             crate_name: Symbol::intern(crate_name),
             data_layout,
-            layout_interner: Lock::new(FxHashSet::default()),
-            stability_interner: Lock::new(FxHashSet::default()),
-            allocation_interner: Lock::new(FxHashSet::default()),
+            layout_interner: Default::default(),
+            stability_interner: Default::default(),
+            allocation_interner: Default::default(),
             alloc_map: Lock::new(interpret::AllocMap::new()),
             tx_to_llvm_workers: Lock::new(tx),
             output_filenames: Arc::new(output_filenames.clone()),

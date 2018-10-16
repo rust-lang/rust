@@ -48,7 +48,7 @@ pub use self::on_unimplemented::{OnUnimplementedDirective, OnUnimplementedNote};
 pub use self::select::{EvaluationCache, SelectionContext, SelectionCache};
 pub use self::select::{EvaluationResult, IntercrateAmbiguityCause, OverflowError};
 pub use self::specialize::{OverlapError, specialization_graph, translate_substs};
-pub use self::specialize::{SpecializesCache, find_associated_item};
+pub use self::specialize::find_associated_item;
 pub use self::engine::{TraitEngine, TraitEngineExt};
 pub use self::util::elaborate_predicates;
 pub use self::util::supertraits;

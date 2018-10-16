@@ -11,7 +11,7 @@
 use ty::{self, Lift, TyCtxt, Region};
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Default)]
 pub struct FreeRegionMap<'tcx> {
     // Stores the relation `a < b`, where `a` and `b` are regions.
     //
@@ -21,10 +21,6 @@ pub struct FreeRegionMap<'tcx> {
 }
 
 impl<'tcx> FreeRegionMap<'tcx> {
-    pub fn new() -> Self {
-        FreeRegionMap { relation: TransitiveRelation::new() }
-    }
-
     pub fn is_empty(&self) -> bool {
         self.relation.is_empty()
     }

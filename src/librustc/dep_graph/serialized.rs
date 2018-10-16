@@ -19,7 +19,7 @@ newtype_index! {
 }
 
 /// Data for use when recompiling the **current crate**.
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, RustcEncodable, RustcDecodable, Default)]
 pub struct SerializedDepGraph {
     /// The set of all DepNodes in the graph
     pub nodes: IndexVec<SerializedDepNodeIndex, DepNode>,
@@ -36,16 +36,6 @@ pub struct SerializedDepGraph {
 }
 
 impl SerializedDepGraph {
-
-    pub fn new() -> SerializedDepGraph {
-        SerializedDepGraph {
-            nodes: IndexVec::new(),
-            fingerprints: IndexVec::new(),
-            edge_list_indices: IndexVec::new(),
-            edge_list_data: Vec::new(),
-        }
-    }
-
     #[inline]
     pub fn edge_targets_from(&self,
                              source: SerializedDepNodeIndex)

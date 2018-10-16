@@ -51,8 +51,8 @@ struct Edge {
     target: Index,
 }
 
-impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
-    pub fn new() -> TransitiveRelation<T> {
+impl<T: Clone + Debug + Eq + Hash> Default for TransitiveRelation<T> {
+    fn default() -> TransitiveRelation<T> {
         TransitiveRelation {
             elements: vec![],
             map: FxHashMap::default(),
@@ -60,7 +60,9 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
             closure: Lock::new(None),
         }
     }
+}
 
+impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
     pub fn is_empty(&self) -> bool {
         self.edges.is_empty()
     }
@@ -95,7 +97,7 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
         where F: FnMut(&T) -> Option<U>,
               U: Clone + Debug + Eq + Hash + Clone,
     {
-        let mut result = TransitiveRelation::new();
+        let mut result = TransitiveRelation::default();
         for edge in &self.edges {
             result.add(f(&self.elements[edge.source.0])?, f(&self.elements[edge.target.0])?);
         }

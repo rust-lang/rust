@@ -459,7 +459,7 @@ impl<'a> Context<'a> {
         let mut candidates: FxHashMap<
             _,
             (FxHashMap<_, _>, FxHashMap<_, _>, FxHashMap<_, _>),
-        > = FxHashMap::default();
+        > = Default::default();
         let mut staticlibs = vec![];
 
         // First, find all possible candidate rlibs and dylibs purely based on

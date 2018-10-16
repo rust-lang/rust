@@ -405,9 +405,9 @@ impl<'a, 'tcx> Index<'tcx> {
         staged_api.insert(LOCAL_CRATE, is_staged_api);
         let mut index = Index {
             staged_api,
-            stab_map: FxHashMap::default(),
-            depr_map: FxHashMap::default(),
-            active_features: FxHashSet::default(),
+            stab_map: Default::default(),
+            depr_map: Default::default(),
+            active_features: Default::default(),
         };
 
         let ref active_lib_features = tcx.features().declared_lib_features;

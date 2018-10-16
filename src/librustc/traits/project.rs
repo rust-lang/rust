@@ -1601,6 +1601,7 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
 /// FIXME: we probably also want some sort of cross-infcx cache here to
 /// reduce the amount of duplication. Let's see what we get with the Chalk
 /// reforms.
+#[derive(Default)]
 pub struct ProjectionCache<'tcx> {
     map: SnapshotMap<ProjectionCacheKey<'tcx>, ProjectionCacheEntry<'tcx>>,
 }
@@ -1643,12 +1644,6 @@ pub struct ProjectionCacheSnapshot {
 }
 
 impl<'tcx> ProjectionCache<'tcx> {
-    pub fn new() -> Self {
-        ProjectionCache {
-            map: SnapshotMap::new()
-        }
-    }
-
     pub fn clear(&mut self) {
         self.map.clear();
     }

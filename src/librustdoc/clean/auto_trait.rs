@@ -178,7 +178,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
                 inner: ImplItem(Impl {
                     unsafety: hir::Unsafety::Normal,
                     generics: new_generics,
-                    provided_trait_methods: FxHashSet::default(),
+                    provided_trait_methods: Default::default(),
                     trait_: Some(trait_.clean(self.cx)),
                     for_: ty.clean(self.cx),
                     items: Vec::new(),
@@ -267,9 +267,9 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
         // all intermediate RegionVids. At the end, all constraints should
         // be between Regions (aka region variables). This gives us the information
         // we need to create the Generics.
-        let mut finished: FxHashMap<_, Vec<_>> = FxHashMap::default();
+        let mut finished: FxHashMap<_, Vec<_>> = Default::default();
 
-        let mut vid_map: FxHashMap<RegionTarget, RegionDeps> = FxHashMap::default();
+        let mut vid_map: FxHashMap<RegionTarget, RegionDeps> = Default::default();
 
         // Flattening is done in two parts. First, we insert all of the constraints
         // into a map. Each RegionTarget (either a RegionVid or a Region) maps
@@ -577,11 +577,11 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
         } = full_generics.clean(self.cx);
 
         let mut has_sized = FxHashSet::default();
-        let mut ty_to_bounds: FxHashMap<_, FxHashSet<_>> = FxHashMap::default();
-        let mut lifetime_to_bounds: FxHashMap<_, FxHashSet<_>> = FxHashMap::default();
-        let mut ty_to_traits: FxHashMap<Type, FxHashSet<Type>> = FxHashMap::default();
+        let mut ty_to_bounds: FxHashMap<_, FxHashSet<_>> = Default::default();
+        let mut lifetime_to_bounds: FxHashMap<_, FxHashSet<_>> = Default::default();
+        let mut ty_to_traits: FxHashMap<Type, FxHashSet<Type>> = Default::default();
 
-        let mut ty_to_fn: FxHashMap<Type, (Option<PolyTrait>, Option<Type>)> = FxHashMap::default();
+        let mut ty_to_fn: FxHashMap<Type, (Option<PolyTrait>, Option<Type>)> = Default::default();
 
         for (orig_p, p) in clean_where_predicates {
             match p {

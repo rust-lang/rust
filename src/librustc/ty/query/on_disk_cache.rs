@@ -136,14 +136,14 @@ impl<'sess> OnDiskCache<'sess> {
         OnDiskCache {
             serialized_data: data,
             file_index_to_stable_id: footer.file_index_to_stable_id,
-            file_index_to_file: Lock::new(FxHashMap::default()),
+            file_index_to_file: Default::default(),
             prev_cnums: footer.prev_cnums,
             cnum_map: Once::new(),
             source_map: sess.source_map(),
-            current_diagnostics: Lock::new(FxHashMap::default()),
+            current_diagnostics: Default::default(),
             query_result_index: footer.query_result_index.into_iter().collect(),
             prev_diagnostics_index: footer.diagnostics_index.into_iter().collect(),
-            synthetic_expansion_infos: Lock::new(FxHashMap::default()),
+            synthetic_expansion_infos: Default::default(),
             alloc_decoding_state: AllocDecodingState::new(footer.interpret_alloc_index),
         }
     }
@@ -151,15 +151,15 @@ impl<'sess> OnDiskCache<'sess> {
     pub fn new_empty(source_map: &'sess SourceMap) -> OnDiskCache<'sess> {
         OnDiskCache {
             serialized_data: Vec::new(),
-            file_index_to_stable_id: FxHashMap::default(),
-            file_index_to_file: Lock::new(FxHashMap::default()),
+            file_index_to_stable_id: Default::default(),
+            file_index_to_file: Default::default(),
             prev_cnums: vec![],
             cnum_map: Once::new(),
             source_map,
-            current_diagnostics: Lock::new(FxHashMap::default()),
-            query_result_index: FxHashMap::default(),
-            prev_diagnostics_index: FxHashMap::default(),
-            synthetic_expansion_infos: Lock::new(FxHashMap::default()),
+            current_diagnostics: Default::default(),
+            query_result_index: Default::default(),
+            prev_diagnostics_index: Default::default(),
+            synthetic_expansion_infos: Default::default(),
             alloc_decoding_state: AllocDecodingState::new(Vec::new()),
         }
     }
@@ -190,10 +190,10 @@ impl<'sess> OnDiskCache<'sess> {
             let mut encoder = CacheEncoder {
                 tcx,
                 encoder,
-                type_shorthands: FxHashMap::default(),
-                predicate_shorthands: FxHashMap::default(),
-                expn_info_shorthands: FxHashMap::default(),
-                interpret_allocs: FxHashMap::default(),
+                type_shorthands: Default::default(),
+                predicate_shorthands: Default::default(),
+                expn_info_shorthands: Default::default(),
+                interpret_allocs: Default::default(),
                 interpret_allocs_inverse: Vec::new(),
                 source_map: CachingSourceMapView::new(tcx.sess.source_map()),
                 file_to_file_index,

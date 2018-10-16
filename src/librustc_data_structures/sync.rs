@@ -133,7 +133,7 @@ cfg_if! {
 
         pub type MTRef<'a, T> = &'a mut T;
 
-        #[derive(Debug)]
+        #[derive(Debug, Default)]
         pub struct MTLock<T>(T);
 
         impl<T> MTLock<T> {
@@ -228,7 +228,7 @@ cfg_if! {
 
         pub type MTRef<'a, T> = &'a T;
 
-        #[derive(Debug)]
+        #[derive(Debug, Default)]
         pub struct MTLock<T>(Lock<T>);
 
         impl<T> MTLock<T> {
