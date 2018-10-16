@@ -27,19 +27,24 @@ comment like so:
 
     // Rule Foo-Bar-Baz
 
-you can also search through the `librustc_traits` crate in rustc
-to find the corresponding rules from the implementation.
+The reference implementation of these rules is to be found in
+[`chalk/src/rules.rs`][chalk_rules]. They are also ported in rustc in the
+[`librustc_traits`][librustc_traits] crate.
+
+[chalk_rules]: https://github.com/rust-lang-nursery/chalk/blob/master/src/rules.rs
+[librustc_traits]: https://github.com/rust-lang/rust/tree/master/src/librustc_traits
 
 ## Lowering where clauses
 
 When used in a goal position, where clauses can be mapped directly to
-[domain goals][dg], as follows:
+the `Holds` variant of [domain goals][dg], as follows:
 
-- `A0: Foo<A1..An>` maps to `Implemented(A0: Foo<A1..An>)`.
-- `A0: Foo<A1..An, Item = T>` maps to
-  `ProjectionEq(<A0 as Foo<A1..An>>::Item = T)`
+- `A0: Foo<A1..An>` maps to `Implemented(A0: Foo<A1..An>)`
 - `T: 'r` maps to `Outlives(T, 'r)`
 - `'a: 'b` maps to `Outlives('a, 'b)`
+- `A0: Foo<A1..An, Item = T>` is a bit special and expands to two distinct
+  goals, namely `Implemented(A0: Foo<A1..An>)` and
+  `ProjectionEq(<A0 as Foo<A1..An>>::Item = T)`
 
 In the rules below, we will use `WC` to indicate where clauses that
 appear in Rust syntax; we will then use the same `WC` to indicate
@@ -54,11 +59,10 @@ on the lowered where clauses, as defined here:
 
 - `FromEnv(WC)` – this indicates that:
   - `Implemented(TraitRef)` becomes `FromEnv(TraitRef)`
-  - `ProjectionEq(Projection = Ty)` becomes `FromEnv(Projection = Ty)`
   - other where-clauses are left intact
 - `WellFormed(WC)` – this indicates that:
   - `Implemented(TraitRef)` becomes `WellFormed(TraitRef)`
-  - `ProjectionEq(Projection = Ty)` becomes `WellFormed(Projection = Ty)`
+  - other where-clauses are left intact
 
 *TODO*: I suspect that we want to alter the outlives relations too,
 but Chalk isn't modeling those right now.
@@ -99,9 +103,11 @@ forall<Self, P1..Pn> {
 #### Implied bounds
 
 The next few clauses have to do with implied bounds (see also
-[RFC 2089]). For each trait, we produce two clauses:
+[RFC 2089] and the [implied bounds][implied_bounds] chapter for a more in depth
+cover). For each trait, we produce two clauses:
 
 [RFC 2089]: https://rust-lang.github.io/rfcs/2089-implied-bounds.html
+[implied_bounds]: ./implied-bounds.md
 
 ```text
 // Rule Implied-Bound-From-Trait
@@ -210,7 +216,7 @@ well-formed, we can also assume that its where clauses hold. That is,
 we produce the following family of rules:
 
 ```text
-// Rule FromEnv-Type
+// Rule Implied-Bound-From-Type
 //
 // For each where clause `WC`
 forall<P1..Pn> {
@@ -280,10 +286,10 @@ forall<Self, P1..Pn, Pn+1..Pm, U> {
 ```
 
 ```text
-// Rule ProjectionEq-Skolemize
+// Rule ProjectionEq-Placeholder
 //
-// ProjectionEq can succeed by skolemizing, see "associated type"
-// chapter for more:
+// ProjectionEq can succeed through the placeholder associated type,
+// see "associated type" chapter for more:
 forall<Self, P1..Pn, Pn+1..Pm> {
   ProjectionEq(
     <Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> =
@@ -303,7 +309,7 @@ elsewhere.
 // For each `Bound` in `Bounds`:
 forall<Self, P1..Pn, Pn+1..Pm> {
     FromEnv(<Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm>>: Bound) :-
-      FromEnv(Self: Trait<P1..Pn>)
+      FromEnv(Self: Trait<P1..Pn>) && WC1
 }
 ```
 
@@ -314,7 +320,7 @@ type to be well-formed...
 // Rule WellFormed-AssocTy
 forall<Self, P1..Pn, Pn+1..Pm> {
     WellFormed((Trait::AssocType)<Self, P1..Pn, Pn+1..Pm>) :-
-      WC1, Implemented(Self: Trait<P1..Pn>)
+      Implemented(Self: Trait<P1..Pn>) && WC1
 }
 ```
 

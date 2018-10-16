@@ -37,15 +37,33 @@ paper
 ["A Proof Procedure for the Logic of Hereditary Harrop Formulas"][pphhf]
 gives the details.
 
+In terms of code, these types are defined in
+[`librustc/traits/mod.rs`][traits_mod] in rustc, and in
+[`chalk-ir/src/lib.rs`][chalk_ir] in chalk.
+
 [pphhf]: ./bibliography.html#pphhf
+[traits_mod]: https://github.com/rust-lang/rust/blob/master/src/librustc/traits/mod.rs
+[chalk_ir]: https://github.com/rust-lang-nursery/chalk/blob/master/chalk-ir/src/lib.rs
 
 <a name="domain-goals"></a>
 
 ## Domain goals
 
+*Domain goals* are the atoms of the trait logic. As can be seen in the
+definitions given above, general goals basically consist in a combination of
+domain goals.
+
+Moreover, flattenning a bit the definition of clauses given previously, one can
+see that clauses are always of the form:
+```text
+forall<K1, ..., Kn> { DomainGoal :- Goal }
+```
+hence domain goals are in fact clauses LHS. That is, at the most granular level,
+domain goals are what the trait solver will end up trying to prove.
+
 <a name="trait-ref"></a>
 
-To define the set of *domain goals* in our system, we need to first
+To define the set of domain goals in our system, we need to first
 introduce a few simple formulations. A **trait reference** consists of
 the name of a trait along with a suitable set of inputs P0..Pn:
 
@@ -70,17 +88,23 @@ Projection = <P0 as TraitName<P1..Pn>>::AssocItem<Pn+1..Pm>
 Given these, we can define a `DomainGoal` as follows:
 
 ```text
-DomainGoal = Implemented(TraitRef)
-            | ProjectionEq(Projection = Type)
-            | Normalize(Projection -> Type)
+DomainGoal = Holds(WhereClause)
             | FromEnv(TraitRef)
-            | FromEnv(Projection = Type)
-            | WellFormed(Type)
+            | FromEnv(Type)
             | WellFormed(TraitRef)
-            | WellFormed(Projection = Type)
+            | WellFormed(Type)
+            | Normalize(Projection -> Type)
+
+WhereClause = Implemented(TraitRef)
+            | ProjectionEq(Projection = Type)
             | Outlives(Type: Region)
             | Outlives(Region: Region)
 ```
+
+`WhereClause` refers to a `where` clause that a Rust user would actually be able
+to write in a Rust program. This abstraction exists only as a convenience as we
+sometimes want to only coope with domain goals that are effectively writable in
+Rust.
 
 Let's break down each one of these, one-by-one.
 
@@ -109,12 +133,10 @@ also requires proving `Implemented(T: Trait)`.
 [n]: ./associated-types.html#normalize
 [at]: ./associated-types.html
 
-#### FromEnv(TraitRef), FromEnv(Projection = Type)
+#### FromEnv(TraitRef)
 e.g. `FromEnv(Self: Add<i32>)`
 
-e.g. `FromEnv(<Self as StreamingIterator>::Item<'a> = &'a [u8])`
-
-True if the inner `TraitRef` or projection equality is *assumed* to be true;
+True if the inner `TraitRef` is *assumed* to be true,
 that is, if it can be derived from the in-scope where clauses.
 
 For example, given the following function:
@@ -131,24 +153,50 @@ where clauses nest, so a function body inside an impl body inherits the
 impl body's where clauses, too.
 
 This and the next rule are used to implement [implied bounds]. As we'll see
-in the section on lowering, `FromEnv(X)` implies `Implemented(X)`, but not
-vice versa. This distinction is crucial to implied bounds.
+in the section on lowering, `FromEnv(TraitRef)` implies `Implemented(TraitRef)`,
+but not vice versa. This distinction is crucial to implied bounds.
+
+#### FromEnv(Type)
+e.g. `FromEnv(HashSet<K>)`
+
+True if the inner `Type` is *assumed* to be well-formed, that is, if it is an
+input type of a function or an impl.
+
+For example, given the following code:
+
+```rust,ignore
+struct HashSet<K> where K: Hash { ... }
+
+fn loud_insert<K>(set: &mut HashSet<K>, item: K) {
+    println!("inserting!");
+    set.insert(item);
+}
+```
+
+`HashSet<K>` is an input type of the `loud_insert` function. Hence, we assume it
+to be well-formed, so we would have `FromEnv(HashSet<K>)` inside the body or our
+function. As we'll see in the section on lowering, `FromEnv(HashSet<K>)` implies
+`Implemented(K: Hash)` because the
+`HashSet` declaration was written with a `K: Hash` where clause. Hence, we don't
+need to repeat that bound on the `loud_insert` function: we rather automatically
+assume that it is true.
 
 #### WellFormed(Item)
 These goals imply that the given item is *well-formed*.
 
 We can talk about different types of items being well-formed:
 
-**Types**, like `WellFormed(Vec<i32>)`, which is true in Rust, or
+* *Types*, like `WellFormed(Vec<i32>)`, which is true in Rust, or
   `WellFormed(Vec<str>)`, which is not (because `str` is not `Sized`.)
 
-**TraitRefs**, like `WellFormed(Vec<i32>: Clone)`.
-
-**Projections**, like `WellFormed(T: Iterator<Item = u32>)`.
+* *TraitRefs*, like `WellFormed(Vec<i32>: Clone)`.
 
 Well-formedness is important to [implied bounds]. In particular, the reason
-it is okay to assume `FromEnv(T: Clone)` in the example above is that we
+it is okay to assume `FromEnv(T: Clone)` in the `loud_clone` example is that we
 _also_ verify `WellFormed(T: Clone)` for each call site of `loud_clone`.
+Similarly, it is okay to assume `FromEnv(HashSet<K>)` in the `loud_insert`
+example because we will verify `WellFormed(HashSet<K>)` for each call site of
+`loud_insert`. 
 
 #### Outlives(Type: Region), Outlives(Region: Region)
 e.g. `Outlives(&'a str: 'b)`, `Outlives('a: 'static)`

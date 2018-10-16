@@ -67,7 +67,7 @@ type.)
 We could apply that rule to normalize either of the examples that
 we've seen so far.
 
-## Skolemized associated types
+## Placeholder associated types
 
 Sometimes however we want to work with associated types that cannot be
 normalized. For example, consider this function:
@@ -78,19 +78,28 @@ fn foo<T: IntoIterator>(...) { ... }
 
 In this context, how would we normalize the type `T::Item`? Without
 knowing what `T` is, we can't really do so. To represent this case, we
-introduce a type called a **skolemized associated type
+introduce a type called a **placeholder associated type
 projection**. This is written like so `(IntoIterator::Item)<T>`. You
 may note that it looks a lot like a regular type (e.g., `Option<T>`),
 except that the "name" of the type is `(IntoIterator::Item)`. This is
-not an accident: skolemized associated type projections work just like
+not an accident: placeholder associated type projections work just like
 ordinary types like `Vec<T>` when it comes to unification. That is,
 they are only considered equal if (a) they are both references to the
 same associated type, like `IntoIterator::Item` and (b) their type
 arguments are equal.
 
-Skolemized associated types are never written directly by the user.
+Placeholder associated types are never written directly by the user.
 They are used internally by the trait system only, as we will see
 shortly.
+
+In rustc, they correspond to the `TyKind::UnnormalizedProjectionTy` enum
+variant, declared in [`librustc/ty/sty.rs`][sty]. In chalk, we use an
+`ApplicationTy` with a name living in a special namespace dedicated to
+placeholder associated types (see the `TypeName` enum declared in
+[`chalk-ir/src/lib.rs`][chalk_type_name]).
+
+[sty]: https://github.com/rust-lang/rust/blob/master/src/librustc/ty/sty.rs
+[chalk_type_name]: https://github.com/rust-lang-nursery/chalk/blob/master/chalk-ir/src/lib.rs
 
 ## Projection equality
 
@@ -99,7 +108,7 @@ consider an associated type projection equal to another type?":
 
 - the `Normalize` predicate could be used to transform associated type
   projections when we knew which impl was applicable;
-- **skolemized** associated types can be used when we don't.
+- **placeholder** associated types can be used when we don't.
 
 We now introduce the `ProjectionEq` predicate to bring those two cases
 together. The `ProjectionEq` predicate looks like so:
@@ -109,7 +118,7 @@ ProjectionEq(<T as IntoIterator>::Item = U)
 ```
 
 and we will see that it can be proven *either* via normalization or
-skolemization. As part of lowering an associated type declaration from
+via the placeholder type. As part of lowering an associated type declaration from
 some trait, we create two program clauses for `ProjectionEq`:
 
 ```text

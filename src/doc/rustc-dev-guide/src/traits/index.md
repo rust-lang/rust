@@ -33,3 +33,17 @@ Trait solving is based around a few key ideas:
   constraints can be checked by thet type checker.
   
 Note: this is not a complete list of topics. See the sidebar for more.
+
+The design of the new-style trait solving currently happens in two places:
+* The [chalk][chalk] repository is where we experiment with new ideas and
+  designs for the trait system. It basically consists of a unit testing framework
+  for the correctness and feasibility of the logical rules defining the new-style
+  trait system. It also provides the [`chalk_engine`][chalk_engine] crate, which
+  defines the new-style trait solver used both in the unit testing framework and
+  in rustc.
+* Once we are happy with the logical rules, we proceed to implementing them in
+  rustc. This mainly happens in [`librustc_traits`][librustc_traits].
+
+[chalk]: https://github.com/rust-lang-nursery/chalk
+[chalk_engine]: https://github.com/rust-lang-nursery/chalk/tree/master/chalk-engine
+[librustc_traits]: https://github.com/rust-lang/rust/tree/master/src/librustc_traits
