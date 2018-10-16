@@ -1,4 +1,4 @@
-error[E0382]: use of moved value: `*b`
+error[E0382]: use of moved value: `b`
   --> $DIR/issue-27282-move-match-input-into-guard.rs:28:14
    |
 LL |         _ if { (|| { let bar = b; *bar = false; })();

@@ -1,4 +1,4 @@
-error[E0382]: use of moved value: `*self.x`
+error[E0382]: use of moved value: `self`
   --> $DIR/use-after-move-self.rs:20:16
    |
 LL |         self.bar();
