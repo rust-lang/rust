@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use spec::{LinkerFlavor, Target, TargetResult};
+use spec::{LldFlavor, LinkerFlavor, Target, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::fuchsia_base::opts();
     base.cpu = "x86-64".to_string();
     base.max_atomic_width = Some(64);
-    base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m64".to_string());
     base.stack_probes = true;
 
     Ok(Target {
@@ -27,7 +26,7 @@ pub fn target() -> TargetResult {
         target_os: "fuchsia".to_string(),
         target_env: String::new(),
         target_vendor: String::new(),
-        linker_flavor: LinkerFlavor::Gcc,
+        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         options: base,
     })
 }

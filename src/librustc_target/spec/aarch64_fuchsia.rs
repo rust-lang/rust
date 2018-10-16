@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use spec::{LldFlavor, LinkerFlavor, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::fuchsia_base::opts();
@@ -24,7 +24,7 @@ pub fn target() -> TargetResult {
         target_os: "fuchsia".to_string(),
         target_env: String::new(),
         target_vendor: String::new(),
-        linker_flavor: LinkerFlavor::Gcc,
+        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         options: TargetOptions {
             abi_blacklist: super::arm_base::abi_blacklist(),
             .. base

@@ -68,6 +68,7 @@ o("cargo-native-static", "build.cargo-native-static", "static native libraries i
 o("profiler", "build.profiler", "build the profiler runtime")
 o("emscripten", None, "compile the emscripten backend as well as LLVM")
 o("full-tools", None, "enable all tools")
+o("lld", "rust.lld", "build lld")
 o("lldb", "rust.lldb", "build lldb")
 o("missing-tools", "dist.missing-tools", "allow failures when building tools")
 
