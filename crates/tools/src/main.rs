@@ -3,6 +3,7 @@ extern crate clap;
 extern crate failure;
 extern crate tools;
 extern crate walkdir;
+extern crate teraron;
 
 use clap::{App, Arg, SubCommand};
 use std::{
@@ -12,9 +13,9 @@ use std::{
     process::Command,
 };
 use tools::{
-    collect_tests, project_root, render_template, update, Result, Test, AST, AST_TEMPLATE,
-    SYNTAX_KINDS, SYNTAX_KINDS_TEMPLATE,
+    collect_tests, project_root, Result, Test, AST, SYNTAX_KINDS, GRAMMAR,
 };
+use teraron::{Mode, Verify, Overwrite};
 
 const GRAMMAR_DIR: &str = "./crates/ra_syntax/src/grammar";
 const INLINE_TESTS_DIR: &str = "./crates/ra_syntax/tests/data/parser/inline";
@@ -32,35 +33,35 @@ fn main() -> Result<()> {
         .subcommand(SubCommand::with_name("gen-tests"))
         .subcommand(SubCommand::with_name("install-code"))
         .get_matches();
+    let mode = if matches.is_present("verify") {
+        Verify
+    } else {
+        Overwrite
+    };
     match matches.subcommand() {
         ("install-code", _) => install_code_extension()?,
-        (name, Some(matches)) => run_gen_command(name, matches.is_present("verify"))?,
-        _ => unreachable!(),
-    }
-    Ok(())
-}
-
-fn run_gen_command(name: &str, verify: bool) -> Result<()> {
-    match name {
-        "gen-kinds" => {
-            update(
-                &project_root().join(SYNTAX_KINDS),
-                &render_template(&project_root().join(SYNTAX_KINDS_TEMPLATE))?,
-                verify,
+        ("gen-tests", _) => gen_tests(mode)?,
+        ("gen-kinds", _) => {
+            let grammar = project_root().join(GRAMMAR);
+            let syntax_kinds = project_root().join(SYNTAX_KINDS);
+            let ast = project_root().join(AST);
+            teraron::generate(
+                &syntax_kinds,
+                &grammar,
+                mode,
             )?;
-            update(
-                &project_root().join(AST),
-                &render_template(&project_root().join(AST_TEMPLATE))?,
-                verify,
+            teraron::generate(
+                &ast,
+                &grammar,
+                mode,
             )?;
         }
-        "gen-tests" => gen_tests(verify)?,
         _ => unreachable!(),
     }
     Ok(())
 }
 
-fn gen_tests(verify: bool) -> Result<()> {
+fn gen_tests(mode: Mode) -> Result<()> {
     let tests = tests_from_dir(Path::new(GRAMMAR_DIR))?;
 
     let inline_tests_dir = Path::new(INLINE_TESTS_DIR);
@@ -83,7 +84,7 @@ fn gen_tests(verify: bool) -> Result<()> {
                 inline_tests_dir.join(file_name)
             }
         };
-        update(&path, &test.text, verify)?;
+        teraron::update(&path, &test.text, mode)?;
     }
     Ok(())
 }
