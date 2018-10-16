@@ -56,6 +56,8 @@ unsafe fn configure_llvm(sess: &Session) {
     let mut llvm_c_strs = Vec::with_capacity(n_args + 1);
     let mut llvm_args = Vec::with_capacity(n_args + 1);
 
+    llvm::LLVMRustInstallFatalErrorHandler();
+
     {
         let mut add = |arg: &str| {
             let s = CString::new(arg).unwrap();

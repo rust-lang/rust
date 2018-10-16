@@ -17,6 +17,7 @@
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Bitcode/BitcodeWriterPass.h"
+#include "llvm/Support/Signals.h"
 
 #include "llvm/IR/CallSite.h"
 
@@ -25,6 +26,8 @@
 #else
 #include <cstdlib>
 #endif
+
+#include <iostream>
 
 //===----------------------------------------------------------------------===
 //
@@ -61,6 +64,27 @@ static AtomicOrdering fromRust(LLVMAtomicOrdering Ordering) {
 }
 
 static LLVM_THREAD_LOCAL char *LastError;
+
+// Custom error handler for fatal LLVM errors.
+//
+// Notably it exits the process with code 101, unlike LLVM's default of 1.
+static void FatalErrorHandler(void *UserData,
+                              const std::string& Reason,
+                              bool GenCrashDiag) {
+  // Do the same thing that the default error handler does.
+  std::cerr << "LLVM ERROR: " << Reason << std::endl;
+
+  // Since this error handler exits the process, we have to run any cleanup that
+  // LLVM would run after handling the error. This might change with an LLVM
+  // upgrade.
+  sys::RunInterruptHandlers();
+
+  exit(101);
+}
+
+extern "C" void LLVMRustInstallFatalErrorHandler() {
+  install_fatal_error_handler(FatalErrorHandler);
+}
 
 extern "C" LLVMMemoryBufferRef
 LLVMRustCreateMemoryBufferWithContentsOfFile(const char *Path) {
