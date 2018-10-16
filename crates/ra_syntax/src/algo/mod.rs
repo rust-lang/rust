@@ -46,7 +46,7 @@ pub fn find_leaf_at_offset(node: SyntaxNodeRef, offset: TextUnit) -> LeafAtOffse
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum LeafAtOffset<'a> {
     None,
     Single(SyntaxNodeRef<'a>),
