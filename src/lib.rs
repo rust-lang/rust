@@ -105,7 +105,7 @@ use crate::prelude::*;
 
 pub struct Caches<'tcx> {
     pub context: Context,
-    pub vtables: HashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
+    pub vtables: HashMap<(Ty<'tcx>, ty::PolyExistentialTraitRef<'tcx>), DataId>,
 }
 
 impl<'tcx> Caches<'tcx> {

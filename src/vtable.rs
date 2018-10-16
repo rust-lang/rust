@@ -53,7 +53,7 @@ pub fn get_ptr_and_method_ref<'a, 'tcx: 'a>(
 pub fn get_vtable<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     ty: Ty<'tcx>,
-    trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    trait_ref: ty::PolyExistentialTraitRef<'tcx>,
 ) -> Value {
     let data_id = if let Some(data_id) = fx.caches.vtables.get(&(ty, trait_ref)) {
         *data_id
@@ -72,7 +72,7 @@ pub fn get_vtable<'a, 'tcx: 'a>(
 fn build_vtable<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     ty: Ty<'tcx>,
-    trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    trait_ref: ty::PolyExistentialTraitRef<'tcx>,
 ) -> DataId {
     let tcx = fx.tcx;
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
@@ -87,18 +87,16 @@ fn build_vtable<'a, 'tcx: 'a>(
 
     let mut components: Vec<_> = vec![Some(drop_in_place_fn), None, None];
 
-    if let Some(trait_ref) = trait_ref {
-        let trait_ref = trait_ref.with_self_ty(tcx, ty);
-        let methods = tcx.vtable_methods(trait_ref);
-        let methods = methods.iter().cloned().map(|opt_mth| {
-            opt_mth.map_or(None, |(def_id, substs)| {
-                Some(fx.get_function_id(
-                    Instance::resolve(tcx, ParamEnv::reveal_all(), def_id, substs).unwrap(),
-                ))
-            })
-        });
-        components.extend(methods);
-    }
+    let trait_ref = trait_ref.with_self_ty(tcx, ty);
+    let methods = tcx.vtable_methods(trait_ref);
+    let methods = methods.iter().cloned().map(|opt_mth| {
+        opt_mth.map_or(None, |(def_id, substs)| {
+            Some(fx.get_function_id(
+                Instance::resolve(tcx, ParamEnv::reveal_all(), def_id, substs).unwrap(),
+            ))
+        })
+    });
+    components.extend(methods);
 
     let mut data_ctx = DataContext::new();
     let mut data = ::std::iter::repeat(0u8)

@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use cranelift_module::*;
 use crate::prelude::*;
 use crate::rustc::mir::interpret::{
@@ -6,6 +5,7 @@ use crate::rustc::mir::interpret::{
 };
 use crate::rustc::ty::Const;
 use crate::rustc_mir::interpret::{EvalContext, Machine, Memory, MemoryKind, OpTy, PlaceTy};
+use std::borrow::Cow;
 
 #[derive(Default)]
 pub struct ConstantCx {
@@ -283,7 +283,10 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
     type MemoryMap = FxHashMap<AllocId, (MemoryKind<()>, Allocation<()>)>;
     type PointerTag = ();
     const STATIC_KIND: Option<()> = None;
-    const ENFORCE_VALIDITY: bool = true;
+
+    fn enforce_validity(_: &EvalContext<'a, 'mir, 'tcx, Self>) -> bool {
+        false
+    }
 
     fn before_terminator(_: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx> {
         panic!();
