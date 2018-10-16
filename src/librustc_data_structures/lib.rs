@@ -49,6 +49,7 @@ extern crate rustc_rayon as rayon;
 extern crate rustc_rayon_core as rayon_core;
 extern crate rustc_hash;
 extern crate serialize;
+extern crate graphviz;
 extern crate smallvec;
 
 // See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
