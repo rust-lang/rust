@@ -16,8 +16,7 @@ impl<I, O> Worker<I, O> {
         I: Send + 'static,
         O: Send + 'static,
     {
-        let ((inp, out), inp_r, out_s) = worker_chan(buf);
-        let worker = Worker { inp, out };
+        let (worker, inp_r, out_s) = worker_chan(buf);
         let watcher = ThreadWatcher::spawn(name, move || f(inp_r, out_s));
         (worker, watcher)
     }
@@ -66,11 +65,14 @@ impl ThreadWatcher {
 /// Sets up worker channels in a deadlock-avoind way.
 /// If one sets both input and output buffers to a fixed size,
 /// a worker might get stuck.
-fn worker_chan<I, O>(buf: usize) -> ((Sender<I>, Receiver<O>), Receiver<I>, Sender<O>) {
+fn worker_chan<I, O>(buf: usize) -> (Worker<I, O>, Receiver<I>, Sender<O>) {
     let (input_sender, input_receiver) = bounded::<I>(buf);
     let (output_sender, output_receiver) = unbounded::<O>();
     (
-        (input_sender, output_receiver),
+        Worker {
+            inp: input_sender,
+            out: output_receiver,
+        },
         input_receiver,
         output_sender,
     )
