@@ -106,6 +106,7 @@ fn lint_files() -> impl Iterator<Item=walkdir::DirEntry> {
 /// `path` is the relative path to the file on which you want to perform the replacement.
 ///
 /// See `replace_region_in_text` for documentation of the other options.
+#[allow(clippy::expect_fun_call)]
 pub fn replace_region_in_file<F>(path: &str, start: &str, end: &str, replace_start: bool, replacements: F) where F: Fn() -> Vec<String> {
     let mut f = fs::File::open(path).expect(&format!("File not found: {}", path));
     let mut contents = String::new();
@@ -116,7 +117,7 @@ pub fn replace_region_in_file<F>(path: &str, start: &str, end: &str, replace_sta
     f.write_all(replaced.as_bytes()).expect("Unable to write file");
     // Ensure we write the changes with a trailing newline so that
     // the file has the proper line endings.
-    f.write(b"\n").expect("Unable to write file");
+    f.write_all(b"\n").expect("Unable to write file");
 }
 
 /// Replace a region in a text delimited by two lines matching regexes.
