@@ -32,13 +32,17 @@ fn main() {
     if let Some(matches) = matches.subcommand_matches("update_lints") {
         if matches.is_present("print-only") {
             print_lints();
+        } else {
+            update_lints();
         }
     }
 }
 
 fn print_lints() {
-    let lint_list = gather_all().collect::<Vec<Lint>>();
-    let grouped_by_lint_group = Lint::by_lint_group(&lint_list);
+    let lint_list = gather_all();
+    let usable_lints: Vec<Lint> = Lint::usable_lints(lint_list).collect();
+    let lint_count = usable_lints.len();
+    let grouped_by_lint_group = Lint::by_lint_group(&usable_lints);
 
     for (lint_group, mut lints) in grouped_by_lint_group {
         if lint_group == "Deprecated" { continue; }
@@ -51,5 +55,23 @@ fn print_lints() {
         }
     }
 
-    println!("there are {} lints", Lint::active_lints(lint_list.into_iter()).count());
+    println!("there are {} lints", lint_count);
+}
+
+fn update_lints() {
+    let lint_list = gather_all();
+    let usable_lints: Vec<Lint> = Lint::usable_lints(lint_list).collect();
+    let lint_count = usable_lints.len();
+
+    replace_region_in_file(
+        "../README.md",
+        r#"\[There are \d+ lints included in this crate!\]\(https://rust-lang-nursery.github.io/rust-clippy/master/index.html\)"#,
+        "",
+        true,
+        || {
+            vec![
+                format!("[There are {} lints included in this crate!](https://rust-lang-nursery.github.io/rust-clippy/master/index.html)", lint_count)
+            ]
+        }
+    );
 }
