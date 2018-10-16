@@ -1,6 +1,6 @@
 [alias]
 # Automatically generates the ast and syntax kinds files
-gen-kinds =    "run --package tools -- gen-kinds"
+gen-syntax =    "run --package tools -- gen-syntax"
 gen-tests =    "run --package tools -- gen-tests"
 install-code = "run --package tools -- install-code"
 

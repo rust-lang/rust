@@ -28,7 +28,7 @@ fn main() -> Result<()> {
                 .help("Verify that generated code is up-to-date")
                 .global(true),
         )
-        .subcommand(SubCommand::with_name("gen-kinds"))
+        .subcommand(SubCommand::with_name("gen-syntax"))
         .subcommand(SubCommand::with_name("gen-tests"))
         .subcommand(SubCommand::with_name("install-code"))
         .get_matches();
@@ -40,7 +40,7 @@ fn main() -> Result<()> {
     match matches.subcommand() {
         ("install-code", _) => install_code_extension()?,
         ("gen-tests", _) => gen_tests(mode)?,
-        ("gen-kinds", _) => generate(Overwrite)?,
+        ("gen-syntax", _) => generate(Overwrite)?,
         _ => unreachable!(),
     }
     Ok(())
