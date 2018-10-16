@@ -97,24 +97,38 @@ fn main() {
             let kind = target.kind.get(0).expect(
                 "badly formatted cargo metadata: target::kind is an empty array",
             );
-            if test && kind == "test" {
-                if let Err(code) = process(
-                    vec!["--test".to_string(), target.name].into_iter().chain(
-                        args,
-                    ),
-                )
-                {
-                    std::process::exit(code);
+            match (test, &kind[..]) {
+                (true, "test") => {
+                    if let Err(code) = process(
+                        vec!["--test".to_string(), target.name].into_iter().chain(
+                            args,
+                        ),
+                    )
+                    {
+                        std::process::exit(code);
+                    }
                 }
-            } else if !test && kind == "bin" {
-                if let Err(code) = process(
-                    vec!["--bin".to_string(), target.name].into_iter().chain(
-                        args,
-                    ),
-                )
-                {
-                    std::process::exit(code);
+                (true, "lib") => {
+                    if let Err(code) = process(
+                        vec!["--".to_string(), "--test".to_string()].into_iter().chain(
+                            args,
+                        ),
+                    )
+                    {
+                        std::process::exit(code);
+                    }
                 }
+                (false, "bin") => {
+                    if let Err(code) = process(
+                        vec!["--bin".to_string(), target.name].into_iter().chain(
+                            args,
+                        ),
+                    )
+                    {
+                        std::process::exit(code);
+                    }
+                }
+                _ => {}
             }
         }
     } else {
