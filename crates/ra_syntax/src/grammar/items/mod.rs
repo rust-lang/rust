@@ -352,7 +352,7 @@ fn macro_call(p: &mut Parser) -> BlockLike {
 pub(super) fn macro_call_after_excl(p: &mut Parser) -> BlockLike {
     p.expect(EXCL);
     p.eat(IDENT);
-    let flavor = match p.current() {
+    match p.current() {
         L_CURLY => {
             token_tree(p);
             BlockLike::Block
@@ -365,9 +365,7 @@ pub(super) fn macro_call_after_excl(p: &mut Parser) -> BlockLike {
             p.error("expected `{`, `[`, `(`");
             BlockLike::NotBlock
         }
-    };
-
-    flavor
+    }
 }
 
 pub(crate) fn token_tree(p: &mut Parser) {

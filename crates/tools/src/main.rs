@@ -112,9 +112,8 @@ fn existing_tests(dir: &Path) -> Result<HashMap<String, (PathBuf, Test)>> {
             name: name.clone(),
             text,
         };
-        match res.insert(name, (path, test)) {
-            Some(old) => println!("Duplicate test: {:?}", old),
-            None => (),
+        if let Some(old) = res.insert(name, (path, test)) {
+            println!("Duplicate test: {:?}", old);
         }
     }
     Ok(res)

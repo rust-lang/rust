@@ -38,12 +38,12 @@ pub fn folding_ranges(file: &File) -> Vec<Fold> {
             continue;
         }
         if node.kind() == COMMENT {
-            contiguous_range_for_comment(node, &mut visited_comments).map(|range| {
+            if let Some(range) = contiguous_range_for_comment(node, &mut visited_comments) {
                 res.push(Fold {
                     range,
                     kind: FoldKind::Comment,
                 })
-            });
+            }
         }
     }
 

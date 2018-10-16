@@ -73,9 +73,7 @@ impl ServerWorldState {
             events
                 .into_iter()
                 .map(|event| {
-                    let text = match event.kind {
-                        FileEventKind::Add(text) => text,
-                    };
+                    let FileEventKind::Add(text) = event.kind;
                     (event.path, text)
                 })
                 .map(|(path, text)| (pm.get_or_insert(path, Root::Lib), text))

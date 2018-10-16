@@ -259,9 +259,8 @@ impl<'a, N: AstNode<'a>> Iterator for AstChildren<'a, N> {
     type Item = N;
     fn next(&mut self) -> Option<N> {
         loop {
-            match N::cast(self.inner.next()?) {
-                Some(n) => return Some(n),
-                None => (),
+            if let Some(n) = N::cast(self.inner.next()?) {
+                return Some(n);
             }
         }
     }

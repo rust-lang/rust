@@ -42,7 +42,7 @@ pub fn dump_tree(syntax: SyntaxNodeRef) -> String {
         writeln!(buf, "err: `{}`", err.msg).unwrap();
     }
 
-    return buf;
+    buf
 }
 
 pub fn check_fuzz_invariants(text: &str) {
