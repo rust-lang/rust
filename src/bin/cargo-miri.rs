@@ -99,6 +99,7 @@ fn main() {
             );
             match (test, &kind[..]) {
                 (true, "test") => {
+                    // For test binaries we call `cargo rustc --test target -- <rustc args>`
                     if let Err(code) = process(
                         vec!["--test".to_string(), target.name].into_iter().chain(
                             args,
@@ -109,6 +110,11 @@ fn main() {
                     }
                 }
                 (true, "lib") => {
+                    // For libraries we call `cargo rustc -- --test <rustc args>`
+                    // Notice now that `--test` is a rustc arg rather than a cargo arg. This tells
+                    // rustc to build a test harness which calls all #[test] functions. We don't
+                    // use the harness since we execute each #[test] function's MIR ourselves before
+                    // compilation even completes, but this option is necessary to build the library.
                     if let Err(code) = process(
                         vec!["--".to_string(), "--test".to_string()].into_iter().chain(
                             args,
@@ -119,6 +125,7 @@ fn main() {
                     }
                 }
                 (false, "bin") => {
+                    // For ordinary binaries we call `cargo rustc --bin target -- <rustc args>`
                     if let Err(code) = process(
                         vec!["--bin".to_string(), target.name].into_iter().chain(
                             args,
