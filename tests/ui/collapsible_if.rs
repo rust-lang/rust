@@ -151,4 +151,49 @@ fn main() {
     } else {
         assert!(true); // assert! is just an `if`
     }
+
+
+    // The following tests check for the fix of https://github.com/rust-lang-nursery/rust-clippy/issues/798
+    if x == "hello" {// Not collapsible
+        if y == "world" {
+            println!("Hello world!");
+        }
+    }
+
+    if x == "hello" { // Not collapsible
+        if y == "world" {
+            println!("Hello world!");
+        }
+    }
+
+    if x == "hello" {
+        // Not collapsible
+        if y == "world" {
+            println!("Hello world!");
+        }
+    }
+
+    if x == "hello" {
+        if y == "world" { // Collapsible
+            println!("Hello world!");
+        }
+    }
+
+    if x == "hello" {
+        print!("Hello ");
+    } else {
+        // Not collapsible
+        if y == "world" {
+            println!("world!")
+        }
+    }
+
+    if x == "hello" {
+        print!("Hello ");
+    } else {
+        // Not collapsible
+        if let Some(42) = Some(42) {
+            println!("world!")
+        }
+    }
 }

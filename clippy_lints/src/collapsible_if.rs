@@ -112,9 +112,17 @@ fn check_if(cx: &EarlyContext<'_>, expr: &ast::Expr) {
     }
 }
 
+fn block_starts_with_comment(cx: &EarlyContext<'_>, expr: &ast::Block) -> bool {
+    // The zeroth character in the trimmed block text is "{", which marks the beginning of the block.
+    // Therefore, we check if the first string after that is a comment, i.e. starts with //.
+    let trimmed_block_text = snippet_block(cx, expr.span, "..").trim_left().to_owned();
+    trimmed_block_text[1..trimmed_block_text.len()].trim_left().starts_with("//")
+}
+
 fn check_collapsible_maybe_if_let(cx: &EarlyContext<'_>, else_: &ast::Expr) {
     if_chain! {
         if let ast::ExprKind::Block(ref block, _) = else_.node;
+        if !block_starts_with_comment(cx, block);
         if let Some(else_) = expr_block(block);
         if !in_macro(else_.span);
         then {
@@ -135,6 +143,7 @@ fn check_collapsible_maybe_if_let(cx: &EarlyContext<'_>, else_: &ast::Expr) {
 
 fn check_collapsible_no_if_let(cx: &EarlyContext<'_>, expr: &ast::Expr, check: &ast::Expr, then: &ast::Block) {
     if_chain! {
+        if !block_starts_with_comment(cx, then);
         if let Some(inner) = expr_block(then);
         if let ast::ExprKind::If(ref check_inner, ref content, None) = inner.node;
         then {
