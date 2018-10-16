@@ -133,8 +133,8 @@ fn compute_types<'tcx,'ast>(tcx: &mut TypeContext<'tcx,'ast>,
 }
 
 pub fn main() {
-    let ty_arena = TypedArena::new();
-    let ast_arena = TypedArena::new();
+    let ty_arena = TypedArena::default();
+    let ast_arena = TypedArena::default();
     let mut tcx = TypeContext::new(&ty_arena, &ast_arena);
     let ast = tcx.ast(ExprInt);
     let ty = compute_types(&mut tcx, ast);
