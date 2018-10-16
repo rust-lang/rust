@@ -84,30 +84,30 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         ($sess:ident, $($name:ident),*,) => (
             {$(
                 store.register_early_pass($sess, false, box $name);
-                )*}
-            )
+            )*}
+        )
     }
 
     macro_rules! add_pre_expansion_builtin {
         ($sess:ident, $($name:ident),*,) => (
             {$(
                 store.register_pre_expansion_pass($sess, box $name);
-                )*}
-            )
+            )*}
+        )
     }
 
     macro_rules! add_early_builtin_with_new {
         ($sess:ident, $($name:ident),*,) => (
             {$(
                 store.register_early_pass($sess, false, box $name::new());
-                )*}
-            )
+            )*}
+        )
     }
 
     macro_rules! add_lint_group {
         ($sess:ident, $name:expr, $($lint:ident),*) => (
             store.register_group($sess, false, $name, None, vec![$(LintId::of($lint)),*]);
-            )
+        )
     }
 
     add_pre_expansion_builtin!(sess,
@@ -161,12 +161,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     ]], ['tcx]);
 
     store.register_late_pass(sess, false, box BuiltinCombinedLateLintPass::new());
-
-    add_lint_group!(sess,
-                    "bad_style",
-                    NON_CAMEL_CASE_TYPES,
-                    NON_SNAKE_CASE,
-                    NON_UPPER_CASE_GLOBALS);
 
     add_lint_group!(sess,
                     "nonstandard_style",
@@ -357,6 +351,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     store.register_removed("unsigned_negation", "replaced by negate_unsigned feature gate");
     store.register_removed("negate_unsigned", "cast a signed value instead");
     store.register_removed("raw_pointer_derive", "using derive with raw pointers is ok");
+    // Register lint group aliases
+    store.register_group_alias("nonstandard_style", "bad_style");
     // This was renamed to raw_pointer_derive, which was then removed,
     // so it is also considered removed
     store.register_removed("raw_pointer_deriving", "using derive with raw pointers is ok");
