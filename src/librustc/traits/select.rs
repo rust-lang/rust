@@ -3789,14 +3789,16 @@ impl<'tcx> TraitObligation<'tcx> {
 }
 
 impl<'tcx> SelectionCache<'tcx> {
+    /// Actually frees the underlying memory in contrast to what stdlib containers do on `clear`
     pub fn clear(&self) {
-        self.hashmap.borrow_mut().clear();
+        *self.hashmap.borrow_mut() = Default::default();
     }
 }
 
 impl<'tcx> EvaluationCache<'tcx> {
+    /// Actually frees the underlying memory in contrast to what stdlib containers do on `clear`
     pub fn clear(&self) {
-        self.hashmap.borrow_mut().clear();
+        *self.hashmap.borrow_mut() = Default::default();
     }
 }
 

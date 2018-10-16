@@ -398,7 +398,8 @@ impl Handler {
     /// tools that want to reuse a `Parser` cleaning the previously emitted diagnostics as well as
     /// the overall count of emitted error diagnostics.
     pub fn reset_err_count(&self) {
-        self.emitted_diagnostics.borrow_mut().clear();
+        // actually frees the underlying memory (which `clear` would not do)
+        *self.emitted_diagnostics.borrow_mut() = Default::default();
         self.err_count.store(0, SeqCst);
     }
 
