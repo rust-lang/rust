@@ -10,6 +10,10 @@ This flag will print out help information for `rustc`.
 
 This flag can turn on or off various `#[cfg]` settings.
 
+The value can either be a single identifier or two identifiers separated by `=`.
+
+For example, `--cfg="verbose"` or `--cfg="feature = serde"`.
+
 ## `-L`: add a directory to the library search path
 
 When looking for external crates, a directory passed to this flag will be searched.
