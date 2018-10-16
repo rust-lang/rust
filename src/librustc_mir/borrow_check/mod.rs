@@ -1009,13 +1009,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         return Control::Continue;
                     }
 
+                    error_reported = true;
                     match kind {
                         ReadKind::Copy  => {
-                            error_reported = true;
                             this.report_use_while_mutably_borrowed(context, place_span, borrow)
                         }
                         ReadKind::Borrow(bk) => {
-                            error_reported = true;
                             this.report_conflicting_borrow(context, place_span, bk, &borrow)
                         }
                     }
@@ -1045,13 +1044,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         Read(..) | Write(..) => {}
                     }
 
+                    error_reported = true;
                     match kind {
                         WriteKind::MutableBorrow(bk) => {
-                            error_reported = true;
                             this.report_conflicting_borrow(context, place_span, bk, &borrow)
                         }
                         WriteKind::StorageDeadOrDrop => {
-                            error_reported = true;
                             this.report_borrowed_value_does_not_live_long_enough(
                                 context,
                                 borrow,
@@ -1059,11 +1057,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                 Some(kind))
                         }
                         WriteKind::Mutate => {
-                            error_reported = true;
                             this.report_illegal_mutation_of_borrowed(context, place_span, borrow)
                         }
                         WriteKind::Move => {
-                            error_reported = true;
                             this.report_move_out_while_borrowed(context, place_span, &borrow)
                         }
                     }
