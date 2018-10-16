@@ -77,9 +77,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         if move_out_indices.is_empty() {
             let root_place = self.prefixes(&used_place, PrefixSet::All).last().unwrap();
 
-            if self.uninitialized_error_reported
-                .contains(&root_place.clone())
-            {
+            if self.uninitialized_error_reported.contains(root_place) {
                 debug!(
                     "report_use_of_moved_or_uninitialized place: error about {:?} suppressed",
                     root_place
