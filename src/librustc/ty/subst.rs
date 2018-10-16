@@ -577,7 +577,7 @@ pub struct UserSubsts<'tcx> {
     pub substs: &'tcx Substs<'tcx>,
 
     /// The self-type, in the case of a `<T>::Item` path (when applied
-    /// to an inherent impl). See `UserSubsts` below.
+    /// to an inherent impl). See `UserSelfTy` below.
     pub user_self_ty: Option<UserSelfTy<'tcx>>,
 }
 
