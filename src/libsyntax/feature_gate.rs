@@ -1930,7 +1930,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
     let incomplete_features = ["generic_associated_types"];
 
     let mut features = Features::new();
-    let mut edition_enabled_features = FxHashMap();
+    let mut edition_enabled_features = FxHashMap::default();
 
     for &edition in ALL_EDITIONS {
         if edition <= crate_edition {

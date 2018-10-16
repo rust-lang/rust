@@ -48,7 +48,7 @@ struct UseFinder<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
 impl<'cx, 'gcx, 'tcx> UseFinder<'cx, 'gcx, 'tcx> {
     fn find(&mut self) -> Option<Cause> {
         let mut queue = VecDeque::new();
-        let mut visited = FxHashSet();
+        let mut visited = FxHashSet::default();
 
         queue.push_back(self.start_point);
         while let Some(p) = queue.pop_front() {

@@ -1494,7 +1494,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let tcx = self.tcx;
         let mut visitor = ImplVisitor {
             tcx,
-            impls: FxHashMap(),
+            impls: FxHashMap::default(),
         };
         tcx.hir.krate().visit_all_item_likes(&mut visitor);
 

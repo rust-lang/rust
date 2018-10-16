@@ -111,9 +111,9 @@ impl TypeMap<'ll, 'tcx> {
     pub fn new() -> Self {
         TypeMap {
             unique_id_interner: Interner::new(),
-            type_to_metadata: FxHashMap(),
-            unique_id_to_metadata: FxHashMap(),
-            type_to_unique_id: FxHashMap(),
+            type_to_metadata: FxHashMap::default(),
+            unique_id_to_metadata: FxHashMap::default(),
+            type_to_unique_id: FxHashMap::default(),
         }
     }
 

@@ -58,8 +58,8 @@ impl<T> QueryValue<T> {
 impl<'tcx, M: QueryConfig<'tcx>> QueryCache<'tcx, M> {
     pub(super) fn new() -> QueryCache<'tcx, M> {
         QueryCache {
-            results: FxHashMap(),
-            active: FxHashMap(),
+            results: FxHashMap::default(),
+            active: FxHashMap::default(),
         }
     }
 }

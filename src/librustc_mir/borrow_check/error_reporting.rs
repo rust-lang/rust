@@ -838,7 +838,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             (predecessor, is_back_edge)
         }));
 
-        let mut visited = FxHashSet();
+        let mut visited = FxHashSet::default();
         let mut result = vec![];
 
         'dfs: while let Some((location, is_back_edge)) = stack.pop() {

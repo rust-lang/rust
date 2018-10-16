@@ -143,7 +143,7 @@ impl<'a, 'gcx, 'tcx> ConstraintGraph<'a, 'gcx, 'tcx> {
            map: &'a ConstraintMap<'tcx>)
            -> ConstraintGraph<'a, 'gcx, 'tcx> {
         let mut i = 0;
-        let mut node_ids = FxHashMap();
+        let mut node_ids = FxHashMap::default();
         {
             let mut add_node = |node| {
                 if let Vacant(e) = node_ids.entry(node) {
@@ -230,7 +230,7 @@ impl<'a, 'gcx, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
     type Node = Node;
     type Edge = Edge<'tcx>;
     fn nodes(&self) -> dot::Nodes<'_, Node> {
-        let mut set = FxHashSet();
+        let mut set = FxHashSet::default();
         for node in self.node_ids.keys() {
             set.insert(*node);
         }

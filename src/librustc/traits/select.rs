@@ -3742,7 +3742,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
         } else {
             // Three or more elements. Use a general deduplication process.
-            let mut seen = FxHashSet();
+            let mut seen = FxHashSet::default();
             predicates.retain(|i| seen.insert(i.clone()));
         }
         self.infcx()
@@ -3791,24 +3791,24 @@ impl<'tcx> TraitObligation<'tcx> {
 impl<'tcx> SelectionCache<'tcx> {
     pub fn new() -> SelectionCache<'tcx> {
         SelectionCache {
-            hashmap: Lock::new(FxHashMap()),
+            hashmap: Lock::new(FxHashMap::default()),
         }
     }
 
     pub fn clear(&self) {
-        *self.hashmap.borrow_mut() = FxHashMap()
+        *self.hashmap.borrow_mut() = FxHashMap::default()
     }
 }
 
 impl<'tcx> EvaluationCache<'tcx> {
     pub fn new() -> EvaluationCache<'tcx> {
         EvaluationCache {
-            hashmap: Lock::new(FxHashMap()),
+            hashmap: Lock::new(FxHashMap::default()),
         }
     }
 
     pub fn clear(&self) {
-        *self.hashmap.borrow_mut() = FxHashMap()
+        *self.hashmap.borrow_mut() = FxHashMap::default()
     }
 }
 

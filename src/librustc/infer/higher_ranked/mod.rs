@@ -553,7 +553,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let escaping_types =
             self.type_variables.borrow_mut().types_escaping_snapshot(&snapshot.type_snapshot);
 
-        let mut escaping_region_vars = FxHashSet();
+        let mut escaping_region_vars = FxHashSet::default();
         for ty in &escaping_types {
             self.tcx.collect_regions(ty, &mut escaping_region_vars);
         }

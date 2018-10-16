@@ -1842,7 +1842,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for AdtDef {
                                           hasher: &mut StableHasher<W>) {
         thread_local! {
             static CACHE: RefCell<FxHashMap<usize, Fingerprint>> =
-                RefCell::new(FxHashMap());
+                RefCell::new(FxHashMap::default());
         }
 
         let hash: Fingerprint = CACHE.with(|cache| {

@@ -100,11 +100,11 @@ impl<'a, 'tcx> CrateDebugContext<'a, 'tcx> {
             llcontext,
             llmod,
             builder,
-            created_files: RefCell::new(FxHashMap()),
-            created_enum_disr_types: RefCell::new(FxHashMap()),
+            created_files: RefCell::new(FxHashMap::default()),
+            created_enum_disr_types: RefCell::new(FxHashMap::default()),
             type_map: RefCell::new(TypeMap::new()),
             namespace_map: RefCell::new(DefIdMap()),
-            composite_types_completed: RefCell::new(FxHashSet()),
+            composite_types_completed: RefCell::new(FxHashSet::default()),
         }
     }
 }

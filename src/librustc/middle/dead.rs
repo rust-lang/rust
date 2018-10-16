@@ -131,7 +131,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn mark_live_symbols(&mut self) {
-        let mut scanned = FxHashSet();
+        let mut scanned = FxHashSet::default();
         while let Some(id) = self.worklist.pop() {
             if !scanned.insert(id) {
                 continue
@@ -429,7 +429,7 @@ fn find_live<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         worklist,
         tcx,
         tables: &ty::TypeckTables::empty(None),
-        live_symbols: box FxHashSet(),
+        live_symbols: box FxHashSet::default(),
         repr_has_repr_c: false,
         in_pat: false,
         inherited_pub_visibility: false,

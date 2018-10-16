@@ -77,7 +77,7 @@ fn precompute_borrows_out_of_scope<'tcx>(
     // `visited` once they are added to `stack`, before they are actually
     // processed, because this avoids the need to look them up again on
     // completion.
-    let mut visited = FxHashMap();
+    let mut visited = FxHashMap::default();
     visited.insert(location.block, location.statement_index);
 
     let mut stack = vec![];
@@ -162,7 +162,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             }
         });
 
-        let mut borrows_out_of_scope_at_location = FxHashMap();
+        let mut borrows_out_of_scope_at_location = FxHashMap::default();
         for (borrow_index, borrow_data) in borrow_set.borrows.iter_enumerated() {
             let borrow_region = borrow_data.region.to_region_vid();
             let location = borrow_set.borrows[borrow_index].reserve_location;

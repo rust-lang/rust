@@ -887,7 +887,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             .collect::<FxHashMap<_, _>>();
 
         // Keep track of which fields have already appeared in the pattern.
-        let mut used_fields = FxHashMap();
+        let mut used_fields = FxHashMap::default();
         let mut no_field_errors = true;
 
         let mut inexistent_fields = vec![];

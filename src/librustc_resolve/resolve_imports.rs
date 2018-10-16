@@ -652,7 +652,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         > = BTreeMap::new();
 
         let mut errors = false;
-        let mut seen_spans = FxHashSet();
+        let mut seen_spans = FxHashSet::default();
         let mut error_vec = Vec::new();
         let mut prev_root_id: NodeId = NodeId::new(0);
         for i in 0 .. self.determined_imports.len() {

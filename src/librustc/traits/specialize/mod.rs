@@ -291,7 +291,7 @@ pub struct SpecializesCache {
 impl SpecializesCache {
     pub fn new() -> Self {
         SpecializesCache {
-            map: FxHashMap()
+            map: FxHashMap::default()
         }
     }
 

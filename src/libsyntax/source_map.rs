@@ -145,7 +145,7 @@ impl SourceMap {
         SourceMap {
             files: Lock::new(SourceMapFiles {
                 file_maps: Vec::new(),
-                stable_id_to_source_file: FxHashMap(),
+                stable_id_to_source_file: FxHashMap::default(),
             }),
             file_loader: Box::new(RealFileLoader),
             path_mapping,
@@ -168,7 +168,7 @@ impl SourceMap {
         SourceMap {
             files: Lock::new(SourceMapFiles {
                 file_maps: Vec::new(),
-                stable_id_to_source_file: FxHashMap(),
+                stable_id_to_source_file: FxHashMap::default(),
             }),
             file_loader: file_loader,
             path_mapping,

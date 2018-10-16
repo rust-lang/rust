@@ -1732,7 +1732,7 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         in_body: false,
         span: krate.span,
         empty_tables: &empty_tables,
-        visited_opaque_tys: FxHashSet()
+        visited_opaque_tys: FxHashSet::default()
     };
     intravisit::walk_crate(&mut visitor, krate);
 

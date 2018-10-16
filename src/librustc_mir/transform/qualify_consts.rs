@@ -1291,7 +1291,7 @@ impl MirPass for QualifyAndPromoteConstants {
 fn args_required_const(tcx: TyCtxt, def_id: DefId) -> Option<FxHashSet<usize>> {
     let attrs = tcx.get_attrs(def_id);
     let attr = attrs.iter().find(|a| a.check_name("rustc_args_required_const"))?;
-    let mut ret = FxHashSet();
+    let mut ret = FxHashSet::default();
     for meta in attr.meta_item_list()? {
         match meta.literal()?.node {
             LitKind::Int(a, _) => { ret.insert(a as usize); }

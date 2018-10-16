@@ -393,9 +393,9 @@ fn resolve_lifetimes<'tcx>(
     let named_region_map = krate(tcx);
 
     let mut rl = ResolveLifetimes {
-        defs: FxHashMap(),
-        late_bound: FxHashMap(),
-        object_lifetime_defaults: FxHashMap(),
+        defs: FxHashMap::default(),
+        late_bound: FxHashMap::default(),
+        object_lifetime_defaults: FxHashMap::default(),
     };
 
     for (k, v) in named_region_map.defs {
@@ -692,7 +692,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 debug!("visit_ty: index = {}", index);
 
                 let mut elision = None;
-                let mut lifetimes = FxHashMap();
+                let mut lifetimes = FxHashMap::default();
                 let mut type_count = 0;
                 for param in &generics.params {
                     match param.kind {
@@ -2017,7 +2017,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     map: self.map,
                     outer_index: ty::INNERMOST,
                     have_bound_regions: false,
-                    lifetimes: FxHashSet(),
+                    lifetimes: FxHashSet::default(),
                 };
                 gather.visit_ty(input);
 
@@ -2537,14 +2537,14 @@ fn insert_late_bound_lifetimes(
            decl, generics);
 
     let mut constrained_by_input = ConstrainedCollector {
-        regions: FxHashSet(),
+        regions: FxHashSet::default(),
     };
     for arg_ty in &decl.inputs {
         constrained_by_input.visit_ty(arg_ty);
     }
 
     let mut appears_in_output = AllCollector {
-        regions: FxHashSet(),
+        regions: FxHashSet::default(),
     };
     intravisit::walk_fn_ret_ty(&mut appears_in_output, &decl.output);
 
@@ -2556,7 +2556,7 @@ fn insert_late_bound_lifetimes(
     // Subtle point: because we disallow nested bindings, we can just
     // ignore binders here and scrape up all names we see.
     let mut appears_in_where_clause = AllCollector {
-        regions: FxHashSet(),
+        regions: FxHashSet::default(),
     };
     appears_in_where_clause.visit_generics(generics);
 

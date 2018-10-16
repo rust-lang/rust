@@ -55,7 +55,7 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
     pub fn new() -> TransitiveRelation<T> {
         TransitiveRelation {
             elements: vec![],
-            map: FxHashMap(),
+            map: FxHashMap::default(),
             edges: vec![],
             closure: Lock::new(None),
         }

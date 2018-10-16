@@ -60,7 +60,7 @@ pub struct CodeStats {
 }
 
 impl CodeStats {
-    pub fn new() -> Self { CodeStats { type_sizes: FxHashSet() } }
+    pub fn new() -> Self { CodeStats { type_sizes: FxHashSet::default() } }
 
     pub fn record_type_size<S: ToString>(&mut self,
                                          kind: DataTypeKind,

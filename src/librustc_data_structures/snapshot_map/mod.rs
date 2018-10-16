@@ -40,7 +40,7 @@ impl<K, V> SnapshotMap<K, V>
 {
     pub fn new() -> Self {
         SnapshotMap {
-            map: FxHashMap(),
+            map: FxHashMap::default(),
             undo_log: vec![],
         }
     }

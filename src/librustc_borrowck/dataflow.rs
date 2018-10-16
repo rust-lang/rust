@@ -169,7 +169,7 @@ impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, 'tcx, O
 fn build_local_id_to_index(body: Option<&hir::Body>,
                            cfg: &cfg::CFG)
                            -> FxHashMap<hir::ItemLocalId, Vec<CFGIndex>> {
-    let mut index = FxHashMap();
+    let mut index = FxHashMap::default();
 
     // FIXME(#15020) Would it be better to fold formals from decl
     // into cfg itself?  i.e. introduce a fn-based flow-graph in

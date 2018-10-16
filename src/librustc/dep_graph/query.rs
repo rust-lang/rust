@@ -25,7 +25,7 @@ impl DepGraphQuery {
                edges: &[(DepNode, DepNode)])
                -> DepGraphQuery {
         let mut graph = Graph::with_capacity(nodes.len(), edges.len());
-        let mut indices = FxHashMap();
+        let mut indices = FxHashMap::default();
         for node in nodes {
             indices.insert(node.clone(), graph.add_node(node.clone()));
         }

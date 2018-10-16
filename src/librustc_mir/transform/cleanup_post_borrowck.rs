@@ -57,7 +57,7 @@ impl MirPass for CleanEndRegions {
         if !tcx.emit_end_regions() { return; }
 
         let mut gather = GatherBorrowedRegions {
-            seen_regions: FxHashSet()
+            seen_regions: FxHashSet::default()
         };
         gather.visit_mir(mir);
 
@@ -154,7 +154,7 @@ impl MirPass for CleanFakeReadsAndBorrows {
                           _source: MirSource,
                           mir: &mut Mir<'tcx>) {
         let mut delete_reads = DeleteAndRecordFakeReads {
-            fake_borrow_temporaries: FxHashSet(),
+            fake_borrow_temporaries: FxHashSet::default(),
         };
         delete_reads.visit_mir(mir);
         let mut delete_borrows = DeleteFakeBorrows {

@@ -183,7 +183,7 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
     // Process libs passed on the command line
     fn process_command_line(&mut self) {
         // First, check for errors
-        let mut renames = FxHashSet();
+        let mut renames = FxHashSet::default();
         for &(ref name, ref new_name, _) in &self.tcx.sess.opts.libs {
             if let &Some(ref new_name) = new_name {
                 let any_duplicate = self.libs

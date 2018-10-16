@@ -343,7 +343,7 @@ fn walk_nodes<'q>(query: &'q DepGraphQuery,
                   direction: Direction)
                   -> FxHashSet<&'q DepNode>
 {
-    let mut set = FxHashSet();
+    let mut set = FxHashSet::default();
     for &start in starts {
         debug!("walk_nodes: start={:?} outgoing?={:?}", start, direction == OUTGOING);
         if set.insert(start) {

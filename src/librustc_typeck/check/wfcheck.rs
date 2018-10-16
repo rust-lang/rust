@@ -491,7 +491,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
                 true
             }
         }
-        let mut param_count = CountParams { params: FxHashSet() };
+        let mut param_count = CountParams { params: FxHashSet::default() };
         let has_region = pred.visit_with(&mut param_count);
         let substituted_pred = pred.subst(fcx.tcx, substs);
         // Don't check non-defaulted params, dependent defaults (including lifetimes)
@@ -606,7 +606,7 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
                     let opaque_node_id = tcx.hir.as_local_node_id(def_id).unwrap();
                     if may_define_existential_type(tcx, fn_def_id, opaque_node_id) {
                         trace!("check_existential_types may define. Generics: {:#?}", generics);
-                        let mut seen: FxHashMap<_, Vec<_>> = FxHashMap();
+                        let mut seen: FxHashMap<_, Vec<_>> = FxHashMap::default();
                         for (subst, param) in substs.iter().zip(&generics.params) {
                             match subst.unpack() {
                                 ty::subst::UnpackedKind::Type(ty) => match ty.sty {

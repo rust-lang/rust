@@ -238,7 +238,7 @@ impl<'tcx> InliningMap<'tcx> {
 
     fn new() -> InliningMap<'tcx> {
         InliningMap {
-            index: FxHashMap(),
+            index: FxHashMap::default(),
             targets: Vec::new(),
             inlines: GrowableBitSet::with_capacity(1024),
         }
@@ -305,7 +305,7 @@ pub fn collect_crate_mono_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     debug!("Building mono item graph, beginning at roots");
 
-    let mut visited = MTLock::new(FxHashSet());
+    let mut visited = MTLock::new(FxHashSet::default());
     let mut inlining_map = MTLock::new(InliningMap::new());
 
     {

@@ -94,7 +94,7 @@ pub enum Linkage {
 
 pub fn calculate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let sess = &tcx.sess;
-    let mut fmts = FxHashMap();
+    let mut fmts = FxHashMap::default();
     for &ty in sess.crate_types.borrow().iter() {
         let linkage = calculate_type(tcx, ty);
         verify_ok(tcx, &linkage);
@@ -170,7 +170,7 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    let mut formats = FxHashMap();
+    let mut formats = FxHashMap::default();
 
     // Sweep all crates for found dylibs. Add all dylibs, as well as their
     // dependencies, ensuring there are no conflicts. The only valid case for a

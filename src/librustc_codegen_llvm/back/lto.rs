@@ -882,7 +882,7 @@ pub struct ThinLTOImports {
 impl ThinLTOImports {
     fn new() -> ThinLTOImports {
         ThinLTOImports {
-            imports: FxHashMap(),
+            imports: FxHashMap::default(),
         }
     }
 
@@ -911,7 +911,7 @@ impl ThinLTOImports {
                .push(imported_module_name.to_owned());
         }
         let mut map = ThinLTOImports {
-            imports: FxHashMap(),
+            imports: FxHashMap::default(),
         };
         llvm::LLVMRustGetThinLTOModuleImports(data,
                                               imported_module_callback,

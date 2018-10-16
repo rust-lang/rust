@@ -132,7 +132,7 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
         ::symbol_names::provide(providers);
 
         providers.target_features_whitelist = |_tcx, _cnum| {
-            Lrc::new(FxHashMap()) // Just a dummy
+            Lrc::new(FxHashMap::default()) // Just a dummy
         };
         providers.is_reachable_non_generic = |_tcx, _defid| true;
         providers.exported_symbols = |_tcx, _crate| Arc::new(Vec::new());

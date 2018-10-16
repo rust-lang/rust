@@ -219,7 +219,7 @@ pub fn prepare_session_directory(sess: &Session,
         }
     };
 
-    let mut source_directories_already_tried = FxHashSet();
+    let mut source_directories_already_tried = FxHashSet::default();
 
     loop {
         // Generate a session directory of the form:
@@ -656,8 +656,8 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
 
     // First do a pass over the crate directory, collecting lock files and
     // session directories
-    let mut session_directories = FxHashSet();
-    let mut lock_files = FxHashSet();
+    let mut session_directories = FxHashSet::default();
+    let mut lock_files = FxHashSet::default();
 
     for dir_entry in try!(crate_directory.read_dir()) {
         let dir_entry = match dir_entry {
@@ -875,7 +875,7 @@ fn all_except_most_recent(deletion_candidates: Vec<(SystemTime, PathBuf, Option<
                            .map(|(_, path, lock)| (path, lock))
                            .collect()
     } else {
-        FxHashMap()
+        FxHashMap::default()
     }
 }
 
@@ -924,7 +924,7 @@ fn test_all_except_most_recent() {
     assert_eq!(all_except_most_recent(
         vec![
         ]).keys().cloned().collect::<FxHashSet<PathBuf>>(),
-        FxHashSet()
+        FxHashSet::default()
     );
 }
 
@@ -939,7 +939,7 @@ fn test_timestamp_serialization() {
 
 #[test]
 fn test_find_source_directory_in_iter() {
-    let already_visited = FxHashSet();
+    let already_visited = FxHashSet::default();
 
     // Find newest
     assert_eq!(find_source_directory_in_iter(

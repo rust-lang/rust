@@ -51,8 +51,8 @@ pub struct CguReuseTracker {
 impl CguReuseTracker {
     pub fn new() -> CguReuseTracker {
         let data = TrackerData {
-            actual_reuse: FxHashMap(),
-            expected_reuse: FxHashMap(),
+            actual_reuse: FxHashMap::default(),
+            expected_reuse: FxHashMap::default(),
         };
 
         CguReuseTracker {

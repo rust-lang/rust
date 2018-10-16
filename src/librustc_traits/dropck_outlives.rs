@@ -86,7 +86,7 @@ fn dropck_outlives<'tcx>(
             let mut ty_stack = vec![(for_ty, 0)];
 
             // Set used to detect infinite recursion.
-            let mut ty_set = FxHashSet();
+            let mut ty_set = FxHashSet::default();
 
             let fulfill_cx = &mut FulfillmentContext::new();
 
@@ -321,8 +321,8 @@ crate fn adt_dtorck_constraint<'a, 'tcx>(
 }
 
 fn dedup_dtorck_constraint<'tcx>(c: &mut DtorckConstraint<'tcx>) {
-    let mut outlives = FxHashSet();
-    let mut dtorck_types = FxHashSet();
+    let mut outlives = FxHashSet::default();
+    let mut dtorck_types = FxHashSet::default();
 
     c.outlives.retain(|&val| outlives.replace(val).is_none());
     c.dtorck_types

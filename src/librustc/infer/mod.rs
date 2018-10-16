@@ -534,7 +534,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
                 lexical_region_resolutions: RefCell::new(None),
                 selection_cache: traits::SelectionCache::new(),
                 evaluation_cache: traits::EvaluationCache::new(),
-                reported_trait_errors: RefCell::new(FxHashMap()),
+                reported_trait_errors: RefCell::new(FxHashMap::default()),
                 tainted_by_errors_flag: Cell::new(false),
                 err_count_on_creation: tcx.sess.err_count(),
                 in_snapshot: Cell::new(false),

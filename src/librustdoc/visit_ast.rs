@@ -55,7 +55,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
         cx: &'a core::DocContext<'a, 'tcx, 'rcx, 'cstore>
     ) -> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
         // If the root is re-exported, terminate all recursion.
-        let mut stack = FxHashSet();
+        let mut stack = FxHashSet::default();
         stack.insert(ast::CRATE_NODE_ID);
         RustdocVisitor {
             module: Module::new(None),
@@ -64,7 +64,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
             view_item_stack: stack,
             inlining: false,
             inside_public_path: true,
-            exact_paths: Some(FxHashMap()),
+            exact_paths: Some(FxHashMap::default()),
         }
     }
 

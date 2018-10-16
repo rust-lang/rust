@@ -53,7 +53,7 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
                             v,
                         )
                     }).collect(),
-                    projections: FxHashMap(),
+                    projections: FxHashMap::default(),
                 },
                 move_paths,
                 path_map,

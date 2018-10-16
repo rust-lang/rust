@@ -462,7 +462,7 @@ impl<'tcx> TypeckTables<'tcx> {
             adjustments: ItemLocalMap(),
             pat_binding_modes: ItemLocalMap(),
             pat_adjustments: ItemLocalMap(),
-            upvar_capture_map: FxHashMap(),
+            upvar_capture_map: FxHashMap::default(),
             closure_kind_origins: ItemLocalMap(),
             liberated_fn_sigs: ItemLocalMap(),
             fru_field_types: ItemLocalMap(),
@@ -470,7 +470,7 @@ impl<'tcx> TypeckTables<'tcx> {
             used_trait_imports: Lrc::new(DefIdSet()),
             tainted_by_errors: false,
             free_region_map: FreeRegionMap::new(),
-            concrete_existential_types: FxHashMap(),
+            concrete_existential_types: FxHashMap::default(),
         }
     }
 
@@ -1190,7 +1190,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             None
         };
 
-        let mut trait_map: FxHashMap<_, Lrc<FxHashMap<_, _>>> = FxHashMap();
+        let mut trait_map: FxHashMap<_, Lrc<FxHashMap<_, _>>> = FxHashMap::default();
         for (k, v) in resolutions.trait_map {
             let hir_id = hir.node_to_hir_id(k);
             let map = trait_map.entry(hir_id.owner).or_default();
@@ -1231,14 +1231,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 extern_providers,
                 on_disk_query_result_cache,
             ),
-            rcache: Lock::new(FxHashMap()),
+            rcache: Lock::new(FxHashMap::default()),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             crate_name: Symbol::intern(crate_name),
             data_layout,
-            layout_interner: Lock::new(FxHashSet()),
-            stability_interner: Lock::new(FxHashSet()),
-            allocation_interner: Lock::new(FxHashSet()),
+            layout_interner: Lock::new(FxHashSet::default()),
+            stability_interner: Lock::new(FxHashSet::default()),
+            allocation_interner: Lock::new(FxHashSet::default()),
             alloc_map: Lock::new(interpret::AllocMap::new()),
             tx_to_llvm_workers: Lock::new(tx),
             output_filenames: Arc::new(output_filenames.clone()),
