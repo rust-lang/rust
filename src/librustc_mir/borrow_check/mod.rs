@@ -1589,7 +1589,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Place::Local(_) => panic!("should have move path for every Local"),
             Place::Projection(_) => panic!("PrefixSet::All meant don't stop for Projection"),
             Place::Promoted(_) |
-            Place::Static(_) => return Err(NoMovePathFound::ReachedStatic),
+            Place::Static(_) => Err(NoMovePathFound::ReachedStatic),
         }
     }
 
@@ -1881,7 +1881,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
 
         // at this point, we have set up the error reporting state.
-        if previously_initialized {
+        return if previously_initialized {
             self.report_mutability_error(
                 place,
                 span,
@@ -1889,10 +1889,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 error_access,
                 location,
             );
-            return true;
+            true
         } else {
-            return false;
-        }
+            false
+        };
     }
 
     fn is_local_ever_initialized(&self,
@@ -1907,7 +1907,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 return Some(index);
             }
         }
-        return None;
+        None
     }
 
     /// Adds the place into the used mutable variables set
