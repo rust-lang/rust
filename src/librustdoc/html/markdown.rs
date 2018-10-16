@@ -399,7 +399,6 @@ impl<'a, I: Iterator<Item = Event<'a>>> SummaryLine<'a, I> {
 fn check_if_allowed_tag(t: &Tag) -> bool {
     match *t {
         Tag::Paragraph
-        | Tag::CodeBlock(_)
         | Tag::Item
         | Tag::Emphasis
         | Tag::Strong
@@ -420,29 +419,36 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
         if !self.started {
             self.started = true;
         }
-        let event = self.inner.next();
-        let mut is_start = true;
-        let is_allowed_tag = match event {
-            Some(Event::Start(ref c)) => {
-                self.depth += 1;
-                check_if_allowed_tag(c)
-            }
-            Some(Event::End(ref c)) => {
-                self.depth -= 1;
-                is_start = false;
-                check_if_allowed_tag(c)
-            }
-            _ => true,
-        };
-        if is_allowed_tag == false {
-            if is_start {
-                Some(Event::Start(Tag::Paragraph))
+        while let Some(event) = self.inner.next() {
+            let mut is_start = true;
+            let is_allowed_tag = match event {
+                Event::Start(Tag::CodeBlock(_)) | Event::End(Tag::CodeBlock(_)) => {
+                    return None;
+                }
+                Event::Start(ref c) => {
+                    self.depth += 1;
+                    check_if_allowed_tag(c)
+                }
+                Event::End(ref c) => {
+                    self.depth -= 1;
+                    is_start = false;
+                    check_if_allowed_tag(c)
+                }
+                _ => {
+                    true
+                }
+            };
+            return if is_allowed_tag == false {
+                if is_start {
+                    Some(Event::Start(Tag::Paragraph))
+                } else {
+                    Some(Event::End(Tag::Paragraph))
+                }
             } else {
-                Some(Event::End(Tag::Paragraph))
-            }
-        } else {
-            event
+                Some(event)
+            };
         }
+        None
     }
 }
 

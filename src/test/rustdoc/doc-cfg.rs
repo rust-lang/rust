@@ -20,8 +20,8 @@ pub struct Portable;
 // @has doc_cfg/unix_only/index.html \
 //  '//*[@id="main"]/*[@class="stability"]/*[@class="stab portability"]' \
 //  'This is supported on Unix only.'
-// @matches - '//*[@class=" module-item"]//*[@class="stab portability"]' '\AUnix\Z'
-// @matches - '//*[@class=" module-item"]//*[@class="stab portability"]' '\AUnix and ARM\Z'
+// @matches - '//*[@class="module-item"]//*[@class="stab portability"]' '\AUnix\Z'
+// @matches - '//*[@class="module-item"]//*[@class="stab portability"]' '\AUnix and ARM\Z'
 // @count - '//*[@class="stab portability"]' 3
 #[doc(cfg(unix))]
 pub mod unix_only {
@@ -52,7 +52,7 @@ pub mod unix_only {
 
 // the portability header is different on the module view versus the full view
 // @has doc_cfg/index.html
-// @matches - '//*[@class=" module-item"]//*[@class="stab portability"]' '\Aavx\Z'
+// @matches - '//*[@class="module-item"]//*[@class="stab portability"]' '\Aavx\Z'
 
 // @has doc_cfg/fn.uses_target_feature.html
 // @has - '//*[@id="main"]/*[@class="stability"]/*[@class="stab portability"]' \
