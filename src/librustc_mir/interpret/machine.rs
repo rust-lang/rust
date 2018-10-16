@@ -62,22 +62,24 @@ pub trait AllocMap<K: Hash + Eq, V> {
 /// Methods of this trait signifies a point where CTFE evaluation would fail
 /// and some use case dependent behaviour can instead be applied.
 pub trait Machine<'a, 'mir, 'tcx>: Sized {
-    /// Additional data that can be accessed via the Memory
-    type MemoryData;
-
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
-    type MemoryKinds: ::std::fmt::Debug + Copy + Eq;
+    type MemoryKinds: ::std::fmt::Debug + Copy + Eq + 'static;
+
+    /// Tag tracked alongside every pointer.  This is used to implement "Stacked Borrows"
+    /// <https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html>.
+    type PointerTag: ::std::fmt::Debug + Default + Copy + Eq + Hash + 'static;
+
+    /// Extra data stored in every allocation.
+    type AllocExtra: ::std::fmt::Debug + Default + Clone;
 
     /// Memory's allocation map
     type MemoryMap:
-        AllocMap<AllocId, (MemoryKind<Self::MemoryKinds>, Allocation<Self::PointerTag>)> +
+        AllocMap<
+            AllocId,
+            (MemoryKind<Self::MemoryKinds>, Allocation<Self::PointerTag, Self::AllocExtra>)
+        > +
         Default +
         Clone;
-
-    /// Tag tracked alongside every pointer.  This is inert for now, in preparation for
-    /// a future implementation of "Stacked Borrows"
-    /// <https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html>.
-    type PointerTag: ::std::fmt::Debug + Default + Copy + Eq + Hash + 'static;
 
     /// The memory kind to use for copied statics -- or None if those are not supported.
     /// Statics are copied under two circumstances: When they are mutated, and when
@@ -127,7 +129,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     fn find_foreign_static(
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         def_id: DefId,
-    ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>>;
+    ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag, Self::AllocExtra>>>;
 
     /// Called to turn an allocation obtained from the `tcx` into one that has
     /// the appropriate tags on each pointer.
@@ -138,7 +140,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// owned allocation to the map even when the map is shared.)
     fn static_with_default_tag(
         alloc: &'_ Allocation
-    ) -> Cow<'_, Allocation<Self::PointerTag>>;
+    ) -> Cow<'_, Allocation<Self::PointerTag, Self::AllocExtra>>;
 
     /// Called for all binary operations on integer(-like) types when one operand is a pointer
     /// value, and for the `Offset` operation that is inherently about pointers.

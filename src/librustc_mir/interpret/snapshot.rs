@@ -305,7 +305,7 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for &'a Allocation
     type Item = AllocationSnapshot<'a>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
-        let Allocation { bytes, relocations, undef_mask, align, mutability } = self;
+        let Allocation { bytes, relocations, undef_mask, align, mutability, extra: () } = self;
 
         AllocationSnapshot {
             bytes,

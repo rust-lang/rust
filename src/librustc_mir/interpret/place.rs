@@ -267,7 +267,7 @@ impl<'a, 'mir, 'tcx, Tag, M> EvalContext<'a, 'mir, 'tcx, M>
 where
     Tag: ::std::fmt::Debug+Default+Copy+Eq+Hash+'static,
     M: Machine<'a, 'mir, 'tcx, PointerTag=Tag>,
-    M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<Tag>)>,
+    M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<Tag, M::AllocExtra>)>,
 {
     /// Take a value, which represents a (thin or fat) reference, and make it a place.
     /// Alignment is just based on the type.  This is the inverse of `MemPlace::to_ref`.

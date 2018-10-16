@@ -47,9 +47,6 @@ pub enum MemoryKind<T> {
 // `Memory` has to depend on the `Machine` because some of its operations
 // (e.g. `get`) call a `Machine` hook.
 pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
-    /// Additional data required by the Machine
-    pub data: M::MemoryData,
-
     /// Allocations local to this instance of the miri engine.  The kind
     /// helps ensure that the same mechanism is used for allocation and
     /// deallocation.  When an allocation is not found here, it is a
@@ -91,11 +88,9 @@ impl<'a, 'b, 'c, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
 // carefully copy only the reachable parts.
 impl<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>>
     Clone for Memory<'a, 'mir, 'tcx, M>
-    where M::MemoryData: Clone
 {
     fn clone(&self) -> Self {
         Memory {
-            data: self.data.clone(),
             alloc_map: self.alloc_map.clone(),
             dead_alloc_map: self.dead_alloc_map.clone(),
             tcx: self.tcx,
@@ -104,9 +99,8 @@ impl<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>>
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
-    pub fn new(tcx: TyCtxtAt<'a, 'tcx, 'tcx>, data: M::MemoryData) -> Self {
+    pub fn new(tcx: TyCtxtAt<'a, 'tcx, 'tcx>) -> Self {
         Memory {
-            data,
             alloc_map: Default::default(),
             dead_alloc_map: FxHashMap::default(),
             tcx,
@@ -123,7 +117,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     pub fn allocate_with(
         &mut self,
-        alloc: Allocation<M::PointerTag>,
+        alloc: Allocation<M::PointerTag, M::AllocExtra>,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> EvalResult<'tcx, AllocId> {
         let id = self.tcx.alloc_map.lock().reserve();
@@ -334,7 +328,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     fn get_static_alloc(
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         id: AllocId,
-    ) -> EvalResult<'tcx, Cow<'tcx, Allocation<M::PointerTag>>> {
+    ) -> EvalResult<'tcx, Cow<'tcx, Allocation<M::PointerTag, M::AllocExtra>>> {
         let alloc = tcx.alloc_map.lock().get(id);
         let def_id = match alloc {
             Some(AllocType::Memory(mem)) => {
@@ -376,7 +370,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         })
     }
 
-    pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation<M::PointerTag>> {
+    pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation<M::PointerTag, M::AllocExtra>> {
         // The error type of the inner closure here is somewhat funny.  We have two
         // ways of "erroring": An actual error, or because we got a reference from
         // `get_static_alloc` that we can actually use directly without inserting anything anywhere.
@@ -409,7 +403,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn get_mut(
         &mut self,
         id: AllocId,
-    ) -> EvalResult<'tcx, &mut Allocation<M::PointerTag>> {
+    ) -> EvalResult<'tcx, &mut Allocation<M::PointerTag, M::AllocExtra>> {
         let tcx = self.tcx;
         let a = self.alloc_map.get_mut_or(id, || {
             // Need to make a copy, even if `get_static_alloc` is able
@@ -482,12 +476,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         self.dump_allocs(vec![id]);
     }
 
-    fn dump_alloc_helper<Tag>(
+    fn dump_alloc_helper<Tag, Extra>(
         &self,
         allocs_seen: &mut FxHashSet<AllocId>,
         allocs_to_print: &mut VecDeque<AllocId>,
         mut msg: String,
-        alloc: &Allocation<Tag>,
+        alloc: &Allocation<Tag, Extra>,
         extra: String,
     ) {
         use std::fmt::Write;
@@ -687,8 +681,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 /// Interning (for CTFE)
 impl<'a, 'mir, 'tcx, M> Memory<'a, 'mir, 'tcx, M>
 where
-    M: Machine<'a, 'mir, 'tcx, PointerTag=()>,
-    M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<()>)>,
+    M: Machine<'a, 'mir, 'tcx, PointerTag=(), AllocExtra=()>,
+    M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation)>,
 {
     /// mark an allocation as static and initialized, either mutable or not
     pub fn intern_static(

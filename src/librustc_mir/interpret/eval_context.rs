@@ -205,13 +205,12 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         machine: M,
-        memory_data: M::MemoryData,
     ) -> Self {
         EvalContext {
             machine,
             tcx,
             param_env,
-            memory: Memory::new(tcx, memory_data),
+            memory: Memory::new(tcx),
             stack: Vec::new(),
             vtables: FxHashMap::default(),
         }

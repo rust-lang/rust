@@ -524,7 +524,7 @@ impl<'tcx, M: fmt::Debug + Eq + Hash + Clone> AllocMap<'tcx, M> {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
-pub struct Allocation<Tag=()> {
+pub struct Allocation<Tag=(),Extra=()> {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer
     pub bytes: Vec<u8>,
@@ -541,9 +541,11 @@ pub struct Allocation<Tag=()> {
     /// Also used by codegen to determine if a static should be put into mutable memory,
     /// which happens for `static mut` and `static` with interior mutability.
     pub mutability: Mutability,
+    /// Extra state for the machine.
+    pub extra: Extra,
 }
 
-impl<Tag> Allocation<Tag> {
+impl<Tag, Extra: Default> Allocation<Tag, Extra> {
     /// Creates a read-only allocation initialized by the given bytes
     pub fn from_bytes(slice: &[u8], align: Align) -> Self {
         let mut undef_mask = UndefMask::new(Size::ZERO);
@@ -554,6 +556,7 @@ impl<Tag> Allocation<Tag> {
             undef_mask,
             align,
             mutability: Mutability::Immutable,
+            extra: Extra::default(),
         }
     }
 
@@ -569,6 +572,7 @@ impl<Tag> Allocation<Tag> {
             undef_mask: UndefMask::new(size),
             align,
             mutability: Mutability::Mutable,
+            extra: Extra::default(),
         }
     }
 }
