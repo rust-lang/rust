@@ -6426,6 +6426,10 @@ impl<'a> Parser<'a> {
             self.directory.path.to_mut().push(&path.as_str());
             self.directory.ownership = DirectoryOwnership::Owned { relative: None };
         } else {
+            if let DirectoryOwnership::Owned{ relative: Some(id) } = self.directory.ownership {
+                self.directory.path.to_mut().push(id.as_str());
+                self.directory.ownership = DirectoryOwnership::Owned { relative: None };
+            }
             self.directory.path.to_mut().push(&id.as_str());
         }
     }
@@ -6533,16 +6537,7 @@ impl<'a> Parser<'a> {
         }
 
         let relative = match self.directory.ownership {
-            DirectoryOwnership::Owned { relative } => {
-                // Push the usage onto the list of non-mod.rs mod uses.
-                // This is used later for feature-gate error reporting.
-                if let Some(cur_file_ident) = relative {
-                    self.sess
-                        .non_modrs_mods.borrow_mut()
-                        .push((cur_file_ident, id_sp));
-                }
-                relative
-            },
+            DirectoryOwnership::Owned { relative } => relative,
             DirectoryOwnership::UnownedViaBlock |
             DirectoryOwnership::UnownedViaMod(_) => None,
         };
