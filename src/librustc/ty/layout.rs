@@ -551,13 +551,19 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 let size = element.size.checked_mul(count, dl)
                     .ok_or(LayoutError::SizeOverflow(ty))?;
 
+                let abi = if size != Size::ZERO && ty.conservative_is_uninhabited(tcx) {
+                    Abi::Uninhabited
+                } else {
+                    Abi::Aggregate { sized: true }
+                };
+
                 tcx.intern_layout(LayoutDetails {
                     variants: Variants::Single { index: VariantIdx::new(0) },
                     fields: FieldPlacement::Array {
                         stride: element.size,
                         count
                     },
-                    abi: Abi::Aggregate { sized: true },
+                    abi,
                     align: element.align,
                     size
                 })
