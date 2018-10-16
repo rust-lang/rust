@@ -91,6 +91,9 @@ pub struct Instant(time::Instant);
 /// fixed point in time, a `SystemTime` can be converted to a human-readable time,
 /// or perhaps some other string representation.
 ///
+/// `SystemTime` doesn't have leap seconds (e. g. year 2016 has exactly
+/// 31622400 seconds).
+///
 /// The size of a `SystemTime` struct may vary depending on the target operating
 /// system.
 ///
