@@ -681,7 +681,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                 match (r1, r2) {
                     (Representability::SelfRecursive(v1),
                      Representability::SelfRecursive(v2)) => {
-                        Representability::SelfRecursive(v1.iter().map(|s| *s).chain(v2).collect())
+                        Representability::SelfRecursive(v1.into_iter().chain(v2).collect())
                     }
                     (r1, r2) => cmp::max(r1, r2)
                 }
