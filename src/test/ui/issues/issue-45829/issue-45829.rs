@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue_45829_b.rs
-
 mod foo {
-    pub mod bar {}
+    pub struct A;
+    pub struct B;
 }
 
-use foo::bar;
-extern crate issue_45829_b as bar;
+use foo::{A, B as A};
 
 fn main() {}

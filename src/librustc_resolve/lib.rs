@@ -1248,15 +1248,6 @@ impl<'a> NameBinding<'a> {
         }
     }
 
-    fn is_renamed_extern_crate(&self) -> bool {
-        if let NameBindingKind::Import { directive, ..} = self.kind {
-            if let ImportDirectiveSubclass::ExternCrate(Some(_)) = directive.subclass {
-                return true;
-            }
-        }
-        false
-    }
-
     fn is_glob_import(&self) -> bool {
         match self.kind {
             NameBindingKind::Import { directive, .. } => directive.is_glob(),
@@ -4783,10 +4774,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             };
 
             let cm = self.session.source_map();
-            let rename_msg = "You can use `as` to change the binding name of the import";
+            let rename_msg = "you can use `as` to change the binding name of the import";
 
-            if let (Ok(snippet), false) = (cm.span_to_snippet(binding.span),
-                                           binding.is_renamed_extern_crate()) {
+            if let Ok(snippet) = cm.span_to_snippet(binding.span) {
                 let suggested_name = if name.as_str().chars().next().unwrap().is_uppercase() {
                     format!("Other{}", name)
                 } else {
@@ -4796,20 +4786,22 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 err.span_suggestion_with_applicability(
                     binding.span,
                     rename_msg,
-                    if snippet.contains(" as ") {
-                        format!(
-                            "{} as {}",
+                    match (snippet.split_whitespace().find(|w| *w == "as"), snippet.ends_with(";")) {
+                        (Some(_), false) => format!("{} as {}",
                             &snippet[..snippet.find(" as ").unwrap()],
                             suggested_name,
-                        )
-                    } else {
-                        if snippet.ends_with(';') {
-                            format!("{} as {};", &snippet[..snippet.len() - 1], suggested_name)
-                        } else {
-                            format!("{} as {}", snippet, suggested_name)
-                        }
+                        ),
+                        (Some(_), true) => format!("{} as {};",
+                            &snippet[..snippet.find(" as ").unwrap()],
+                            suggested_name,
+                        ),
+                        (None, false) => format!("{} as {}", snippet, suggested_name),
+                        (None, true) => format!("{} as {};", 
+                            &snippet[..snippet.len() - 1],
+                            suggested_name
+                        ),
                     },
-                    Applicability::MachineApplicable,
+                    Applicability::MaybeIncorrect,
                 );
             } else {
                 err.span_label(binding.span, rename_msg);
