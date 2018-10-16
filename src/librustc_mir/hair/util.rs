@@ -9,7 +9,8 @@
 // except according to those terms.
 
 use rustc::hir;
-use rustc::ty::{self, AdtDef, CanonicalTy, TyCtxt};
+use rustc::mir::UserTypeAnnotation;
+use rustc::ty::{self, AdtDef, TyCtxt};
 
 crate trait UserAnnotatedTyHelpers<'gcx: 'tcx, 'tcx> {
     fn tcx(&self) -> TyCtxt<'_, 'gcx, 'tcx>;
@@ -20,32 +21,22 @@ crate trait UserAnnotatedTyHelpers<'gcx: 'tcx, 'tcx> {
         &self,
         hir_id: hir::HirId,
         adt_def: &'tcx AdtDef,
-    ) -> Option<CanonicalTy<'tcx>> {
+    ) -> Option<UserTypeAnnotation<'tcx>> {
         let user_substs = self.tables().user_substs(hir_id)?;
-        Some(user_substs.unchecked_map(|user_substs| {
-            // Here, we just pair an `AdtDef` with the
-            // `user_substs`, so no new types etc are introduced.
-            self.tcx().mk_adt(adt_def, user_substs)
-        }))
+        Some(UserTypeAnnotation::AdtDef(adt_def, user_substs))
     }
 
     /// Looks up the type associated with this hir-id and applies the
     /// user-given substitutions; the hir-id must map to a suitable
     /// type.
-    fn user_substs_applied_to_ty_of_hir_id(&self, hir_id: hir::HirId) -> Option<CanonicalTy<'tcx>> {
+    fn user_substs_applied_to_ty_of_hir_id(
+        &self,
+        hir_id: hir::HirId,
+    ) -> Option<UserTypeAnnotation<'tcx>> {
         let user_substs = self.tables().user_substs(hir_id)?;
         match &self.tables().node_id_to_type(hir_id).sty {
-            ty::Adt(adt_def, _) => Some(user_substs.unchecked_map(|user_substs| {
-                // Ok to call `unchecked_map` because we just pair an
-                // `AdtDef` with the `user_substs`, so no new types
-                // etc are introduced.
-                self.tcx().mk_adt(adt_def, user_substs)
-            })),
-            ty::FnDef(def_id, _) => Some(user_substs.unchecked_map(|user_substs| {
-                // Here, we just pair a `DefId` with the
-                // `user_substs`, so no new types etc are introduced.
-                self.tcx().mk_fn_def(*def_id, user_substs)
-            })),
+            ty::Adt(adt_def, _) => Some(UserTypeAnnotation::AdtDef(adt_def, user_substs)),
+            ty::FnDef(def_id, _) => Some(UserTypeAnnotation::FnDef(*def_id, user_substs)),
             sty => bug!(
                 "sty: {:?} should not have user-substs {:?} recorded ",
                 sty,

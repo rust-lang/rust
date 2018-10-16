@@ -587,3 +587,24 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::ClosureOutlivesSubj
 }
 
 impl_stable_hash_for!(struct mir::interpret::GlobalId<'tcx> { instance, promoted });
+
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::UserTypeAnnotation<'gcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match *self {
+            mir::UserTypeAnnotation::Ty(ref ty) => {
+                ty.hash_stable(hcx, hasher);
+            }
+            mir::UserTypeAnnotation::FnDef(ref def_id, ref substs) => {
+                def_id.hash_stable(hcx, hasher);
+                substs.hash_stable(hcx, hasher);
+            }
+            mir::UserTypeAnnotation::AdtDef(ref def_id, ref substs) => {
+                def_id.hash_stable(hcx, hasher);
+                substs.hash_stable(hcx, hasher);
+            }
+        }
+    }
+}

@@ -20,9 +20,9 @@ use const_eval::{const_field, const_variant_index};
 
 use hair::util::UserAnnotatedTyHelpers;
 
-use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
+use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability, UserTypeAnnotation};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
-use rustc::ty::{self, CanonicalTy, TyCtxt, AdtDef, Ty, Region};
+use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::hir::{self, PatKind, RangeEnd};
 use rustc::hir::def::{Def, CtorKind};
@@ -69,7 +69,7 @@ pub enum PatternKind<'tcx> {
     Wild,
 
     AscribeUserType {
-        user_ty: CanonicalTy<'tcx>,
+        user_ty: UserTypeAnnotation<'tcx>,
         subpattern: Pattern<'tcx>,
         user_ty_span: Span,
     },
@@ -980,7 +980,7 @@ macro_rules! CloneImpls {
 CloneImpls!{ <'tcx>
     Span, Field, Mutability, ast::Name, ast::NodeId, usize, &'tcx ty::Const<'tcx>,
     Region<'tcx>, Ty<'tcx>, BindingMode<'tcx>, &'tcx AdtDef,
-    &'tcx Substs<'tcx>, &'tcx Kind<'tcx>, CanonicalTy<'tcx>
+    &'tcx Substs<'tcx>, &'tcx Kind<'tcx>, UserTypeAnnotation<'tcx>
 }
 
 impl<'tcx> PatternFoldable<'tcx> for FieldPattern<'tcx> {

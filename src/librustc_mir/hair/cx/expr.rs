@@ -295,13 +295,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     let substs = cx.tables().node_substs(fun.hir_id);
 
                     let user_ty = cx.tables().user_substs(fun.hir_id)
-                        .map(|user_substs| {
-                            user_substs.unchecked_map(|user_substs| {
-                                // Here, we just pair an `AdtDef` with the
-                                // `user_substs`, so no new types etc are introduced.
-                                cx.tcx().mk_adt(adt_def, user_substs)
-                            })
-                        });
+                        .map(|user_substs| UserTypeAnnotation::AdtDef(adt_def, user_substs));
 
                     let field_refs = args.iter()
                         .enumerate()
@@ -725,9 +719,15 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
         hir::ExprKind::Type(ref source, ref ty) => {
             let user_provided_tys = cx.tables.user_provided_tys();
-            let user_ty = *user_provided_tys
-                .get(ty.hir_id)
-                .expect(&format!("{:?} not found in user_provided_tys, source: {:?}", ty, source));
+            let user_ty = UserTypeAnnotation::Ty(
+                *user_provided_tys
+                    .get(ty.hir_id)
+                    .expect(&format!(
+                        "{:?} not found in user_provided_tys, source: {:?}",
+                        ty,
+                        source,
+                    ))
+            );
             if source.is_place_expr() {
                 ExprKind::PlaceTypeAscription {
                     source: source.to_ref(),
@@ -759,11 +759,11 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     }
 }
 
-fn user_annotated_ty_for_def(
+fn user_substs_applied_to_def(
     cx: &mut Cx<'a, 'gcx, 'tcx>,
     hir_id: hir::HirId,
     def: &Def,
-) -> Option<CanonicalTy<'tcx>> {
+) -> Option<UserTypeAnnotation<'tcx>> {
     match def {
         // A reference to something callable -- e.g., a fn, method, or
         // a tuple-struct or tuple-variant. This has the type of a
@@ -772,11 +772,7 @@ fn user_annotated_ty_for_def(
         Def::Method(_) |
         Def::StructCtor(_, CtorKind::Fn) |
         Def::VariantCtor(_, CtorKind::Fn) =>
-            Some(cx.tables().user_substs(hir_id)?.unchecked_map(|user_substs| {
-                // Here, we just pair a `DefId` with the
-                // `user_substs`, so no new types etc are introduced.
-                cx.tcx().mk_fn_def(def.def_id(), user_substs)
-            })),
+            Some(UserTypeAnnotation::FnDef(def.def_id(), cx.tables().user_substs(hir_id)?)),
 
         Def::Const(_def_id) |
         Def::AssociatedConst(_def_id) =>
@@ -795,7 +791,7 @@ fn user_annotated_ty_for_def(
             cx.user_substs_applied_to_ty_of_hir_id(hir_id),
 
         _ =>
-            bug!("user_annotated_ty_for_def: unexpected def {:?} at {:?}", def, hir_id)
+            bug!("user_substs_applied_to_def: unexpected def {:?} at {:?}", def, hir_id)
     }
 }
 
@@ -815,7 +811,7 @@ fn method_callee<'a, 'gcx, 'tcx>(
                 .unwrap_or_else(|| {
                     span_bug!(expr.span, "no type-dependent def for method callee")
                 });
-            let user_ty = user_annotated_ty_for_def(cx, expr.hir_id, def);
+            let user_ty = user_substs_applied_to_def(cx, expr.hir_id, def);
             (def.def_id(), cx.tables().node_substs(expr.hir_id), user_ty)
         }
     };
@@ -882,7 +878,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         Def::StructCtor(_, CtorKind::Fn) |
         Def::VariantCtor(_, CtorKind::Fn) |
         Def::SelfCtor(..) => {
-            let user_ty = user_annotated_ty_for_def(cx, expr.hir_id, &def);
+            let user_ty = user_substs_applied_to_def(cx, expr.hir_id, &def);
             ExprKind::Literal {
                 literal: ty::Const::zero_sized(
                     cx.tcx,

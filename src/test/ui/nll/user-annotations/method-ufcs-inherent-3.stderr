@@ -1,0 +1,18 @@
+error[E0597]: `v` does not live long enough
+  --> $DIR/method-ufcs-inherent-3.rs:16:26
+   |
+LL |     let x = <A<'a>>::new(&v, 22);
+   |                          ^^ borrowed value does not live long enough
+LL |     //~^ ERROR
+LL | }
+   | - `v` dropped here while still borrowed
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 14:8...
+  --> $DIR/method-ufcs-inherent-3.rs:14:8
+   |
+LL | fn foo<'a>() {
+   |        ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

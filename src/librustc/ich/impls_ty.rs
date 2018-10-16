@@ -1417,3 +1417,8 @@ impl_stable_hash_for!(enum traits::QuantifierKind {
     Universal,
     Existential
 });
+
+impl_stable_hash_for!(struct ty::subst::UserSubsts<'tcx> { substs, user_self_ty });
+
+impl_stable_hash_for!(struct ty::subst::UserSelfTy<'tcx> { impl_def_id, self_ty });
+

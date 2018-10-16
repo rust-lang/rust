@@ -62,6 +62,7 @@ mod higher_ranked;
 pub mod lattice;
 mod lexical_region_resolve;
 mod lub;
+pub mod nll_relate;
 pub mod opaque_types;
 pub mod outlives;
 pub mod region_constraints;

@@ -95,7 +95,8 @@ use rustc::infer::opaque_types::OpaqueTypeDecl;
 use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region;
 use rustc::mir::interpret::{ConstValue, GlobalId};
-use rustc::ty::subst::{CanonicalSubsts, UnpackedKind, Subst, Substs};
+use rustc::ty::subst::{CanonicalUserSubsts, UnpackedKind, Subst, Substs,
+                       UserSelfTy, UserSubsts};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind, Visibility, ToPredicate, RegionKind};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
@@ -2136,7 +2137,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             method.substs[i]
                         }
                     });
-                    self.infcx.canonicalize_response(&just_method_substs)
+                    self.infcx.canonicalize_response(&UserSubsts {
+                        substs: just_method_substs,
+                        user_self_ty: None, // not relevant here
+                    })
                 });
 
                 debug!("write_method_call: user_substs = {:?}", user_substs);
@@ -2163,7 +2167,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// This should be invoked **before any unifications have
     /// occurred**, so that annotations like `Vec<_>` are preserved
     /// properly.
-    pub fn write_user_substs_from_substs(&self, hir_id: hir::HirId, substs: &'tcx Substs<'tcx>) {
+    pub fn write_user_substs_from_substs(
+        &self,
+        hir_id: hir::HirId,
+        substs: &'tcx Substs<'tcx>,
+        user_self_ty: Option<UserSelfTy<'tcx>>,
+    ) {
         debug!(
             "write_user_substs_from_substs({:?}, {:?}) in fcx {}",
             hir_id,
@@ -2172,13 +2181,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         );
 
         if !substs.is_noop() {
-            let user_substs = self.infcx.canonicalize_response(&substs);
+            let user_substs = self.infcx.canonicalize_response(&UserSubsts {
+                substs,
+                user_self_ty,
+            });
             debug!("instantiate_value_path: user_substs = {:?}", user_substs);
             self.write_user_substs(hir_id, user_substs);
         }
     }
 
-    pub fn write_user_substs(&self, hir_id: hir::HirId, substs: CanonicalSubsts<'tcx>) {
+    pub fn write_user_substs(&self, hir_id: hir::HirId, substs: CanonicalUserSubsts<'tcx>) {
         debug!(
             "write_user_substs({:?}, {:?}) in fcx {}",
             hir_id,
@@ -3617,7 +3629,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let Some((variant, did, substs)) = variant {
             debug!("check_struct_path: did={:?} substs={:?}", did, substs);
             let hir_id = self.tcx.hir.node_to_hir_id(node_id);
-            self.write_user_substs_from_substs(hir_id, substs);
+            self.write_user_substs_from_substs(hir_id, substs, None);
 
             // Check bounds on type arguments used in the path.
             let bounds = self.instantiate_bounds(path_span, did, substs);
@@ -5005,7 +5017,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let path_segs = self.def_ids_for_path_segments(segments, def);
 
-        let mut ufcs_associated = None;
+        let mut user_self_ty = None;
         match def {
             Def::Method(def_id) |
             Def::AssociatedConst(def_id) => {
@@ -5014,12 +5026,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     ty::TraitContainer(trait_did) => {
                         callee::check_legal_trait_for_method_call(self.tcx, span, trait_did)
                     }
-                    ty::ImplContainer(_) => {}
-                }
-                if segments.len() == 1 {
-                    // `<T>::assoc` will end up here, and so can `T::assoc`.
-                    let self_ty = self_ty.expect("UFCS sugared assoc missing Self");
-                    ufcs_associated = Some((container, self_ty));
+                    ty::ImplContainer(impl_def_id) => {
+                        if segments.len() == 1 {
+                            // `<T>::assoc` will end up here, and so
+                            // can `T::assoc`. It this came from an
+                            // inherent impl, we need to record the
+                            // `T` for posterity (see `UserSelfTy` for
+                            // details).
+                            let self_ty = self_ty.expect("UFCS sugared assoc missing Self");
+                            user_self_ty = Some(UserSelfTy {
+                                impl_def_id,
+                                self_ty,
+                            });
+                        }
+                    }
                 }
             }
             _ => {}
@@ -5173,6 +5193,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         assert!(!substs.has_escaping_regions());
         assert!(!ty.has_escaping_regions());
 
+        // Write the "user substs" down first thing for later.
+        let hir_id = self.tcx.hir.node_to_hir_id(node_id);
+        self.write_user_substs_from_substs(hir_id, substs, user_self_ty);
+
         // Add all the obligations that are required, substituting and
         // normalized appropriately.
         let bounds = self.instantiate_bounds(span, def_id, &substs);
@@ -5184,7 +5208,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // the referenced item.
         let ty_substituted = self.instantiate_type_scheme(span, &substs, &ty);
 
-        if let Some((ty::ImplContainer(impl_def_id), self_ty)) = ufcs_associated {
+        if let Some(UserSelfTy { impl_def_id, self_ty }) = user_self_ty {
             // In the case of `Foo<T>::method` and `<Foo<T>>::method`, if `method`
             // is inherent, there is no `Self` parameter, instead, the impl needs
             // type parameters, which we can infer by unifying the provided `Self`
@@ -5208,15 +5232,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         debug!("instantiate_value_path: type of {:?} is {:?}",
                node_id,
                ty_substituted);
-        let hir_id = self.tcx.hir.node_to_hir_id(node_id);
         self.write_substs(hir_id, substs);
-
-        debug!(
-            "instantiate_value_path: id={:?} substs={:?}",
-            node_id,
-            substs,
-        );
-        self.write_user_substs_from_substs(hir_id, substs);
 
         (ty_substituted, new_def)
     }

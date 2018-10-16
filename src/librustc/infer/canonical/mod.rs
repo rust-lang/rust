@@ -241,7 +241,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// canonicalized) then represents the values that you computed
     /// for each of the canonical inputs to your query.
 
-    pub(in infer) fn instantiate_canonical_with_fresh_inference_vars<T>(
+    pub fn instantiate_canonical_with_fresh_inference_vars<T>(
         &self,
         span: Span,
         canonical: &Canonical<'tcx, T>,
@@ -249,9 +249,6 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        assert_eq!(self.universe(), ty::UniverseIndex::ROOT, "infcx not newly created");
-        assert_eq!(self.type_variables.borrow().num_vars(), 0, "infcx not newly created");
-
         let canonical_inference_vars =
             self.fresh_inference_vars_for_canonical_vars(span, canonical.variables);
         let result = canonical.substitute(self.tcx, &canonical_inference_vars);

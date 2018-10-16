@@ -323,33 +323,6 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx Substs<'tcx> {
     }
 }
 
-pub type CanonicalSubsts<'gcx> = Canonical<'gcx, &'gcx Substs<'gcx>>;
-
-impl<'gcx> CanonicalSubsts<'gcx> {
-    /// True if this represents a substitution like
-    ///
-    /// ```text
-    /// [?0, ?1, ?2]
-    /// ```
-    ///
-    /// i.e., each thing is mapped to a canonical variable with the same index.
-    pub fn is_identity(&self) -> bool {
-        self.value.iter().zip(CanonicalVar::new(0)..).all(|(kind, cvar)| {
-            match kind.unpack() {
-                UnpackedKind::Type(ty) => match ty.sty {
-                    ty::Infer(ty::CanonicalTy(cvar1)) => cvar == cvar1,
-                    _ => false,
-                },
-
-                UnpackedKind::Lifetime(r) => match r {
-                    ty::ReCanonical(cvar1) => cvar == *cvar1,
-                    _ => false,
-                },
-            }
-        })
-    }
-}
-
 impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Substs<'tcx> {}
 
 ///////////////////////////////////////////////////////////////////////////
@@ -562,5 +535,100 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
             return region;
         }
         self.tcx().mk_region(ty::fold::shift_region(*region, self.region_binders_passed))
+    }
+}
+
+pub type CanonicalUserSubsts<'tcx> = Canonical<'tcx, UserSubsts<'tcx>>;
+
+impl CanonicalUserSubsts<'tcx> {
+    /// True if this represents a substitution like
+    ///
+    /// ```text
+    /// [?0, ?1, ?2]
+    /// ```
+    ///
+    /// i.e., each thing is mapped to a canonical variable with the same index.
+    pub fn is_identity(&self) -> bool {
+        if self.value.user_self_ty.is_some() {
+            return false;
+        }
+
+        self.value.substs.iter().zip(CanonicalVar::new(0)..).all(|(kind, cvar)| {
+            match kind.unpack() {
+                UnpackedKind::Type(ty) => match ty.sty {
+                    ty::Infer(ty::CanonicalTy(cvar1)) => cvar == cvar1,
+                    _ => false,
+                },
+
+                UnpackedKind::Lifetime(r) => match r {
+                    ty::ReCanonical(cvar1) => cvar == *cvar1,
+                    _ => false,
+                },
+            }
+        })
+    }
+}
+
+/// Stores the user-given substs to reach some fully qualified path
+/// (e.g., `<T>::Item` or `<T as Trait>::Item`).
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub struct UserSubsts<'tcx> {
+    /// The substitutions for the item as given by the user.
+    pub substs: &'tcx Substs<'tcx>,
+
+    /// The self-type, in the case of a `<T>::Item` path (when applied
+    /// to an inherent impl). See `UserSelfTy` below.
+    pub user_self_ty: Option<UserSelfTy<'tcx>>,
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for UserSubsts<'tcx> {
+        substs,
+        user_self_ty,
+    }
+}
+
+BraceStructLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for UserSubsts<'a> {
+        type Lifted = UserSubsts<'tcx>;
+        substs,
+        user_self_ty,
+    }
+}
+
+/// Specifies the user-given self-type. In the case of a path that
+/// refers to a member in an inherent impl, this self-type is
+/// sometimes needed to constrain the type parameters on the impl. For
+/// example, in this code:
+///
+/// ```
+/// struct Foo<T> { }
+/// impl<A> Foo<A> { fn method() { } }
+/// ```
+///
+/// when you then have a path like `<Foo<&'static u32>>::method`,
+/// this struct would carry the def-id of the impl along with the
+/// self-type `Foo<u32>`. Then we can instantiate the parameters of
+/// the impl (with the substs from `UserSubsts`) and apply those to
+/// the self-type, giving `Foo<?A>`. Finally, we unify that with
+/// the self-type here, which contains `?A` to be `&'static u32`
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub struct UserSelfTy<'tcx> {
+    pub impl_def_id: DefId,
+    pub self_ty: Ty<'tcx>,
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for UserSelfTy<'tcx> {
+        impl_def_id,
+        self_ty,
+    }
+}
+
+BraceStructLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for UserSelfTy<'a> {
+        type Lifted = UserSelfTy<'tcx>;
+        impl_def_id,
+        self_ty,
     }
 }

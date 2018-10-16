@@ -18,9 +18,10 @@ use rustc::mir::visit::TyContext;
 use rustc::mir::visit::Visitor;
 use rustc::mir::{BasicBlock, BasicBlockData, Location, Mir, Place, Rvalue};
 use rustc::mir::{Statement, Terminator};
+use rustc::mir::UserTypeAnnotation;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, CanonicalTy, ClosureSubsts, GeneratorSubsts, RegionVid};
+use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, RegionVid};
 
 pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
@@ -179,7 +180,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
         &mut self,
         _place: &Place<'tcx>,
         _variance: &ty::Variance,
-        _c_ty: &CanonicalTy<'tcx>,
+        _user_ty: &UserTypeAnnotation<'tcx>,
         _location: Location,
     ) {
     }
