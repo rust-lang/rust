@@ -169,10 +169,18 @@ impl Ord for Interned<String> {
     }
 }
 
-#[derive(Default)]
 struct TyIntern<T: Hash + Clone + Eq> {
     items: Vec<T>,
     set: HashMap<T, Interned<T>>,
+}
+
+impl<T: Hash + Clone + Eq> Default for TyIntern<T> {
+    fn default() -> Self {
+        TyIntern {
+            items: Vec::new(),
+            set: Default::default(),
+        }
+    }
 }
 
 impl<T: Hash + Clone + Eq> TyIntern<T> {
