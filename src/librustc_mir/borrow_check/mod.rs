@@ -36,9 +36,8 @@ use std::collections::BTreeMap;
 
 use syntax_pos::Span;
 
-use dataflow::indexes::BorrowIndex;
-use dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MoveError, MovePathIndex};
-use dataflow::move_paths::indexes::MoveOutIndex;
+use dataflow::indexes::{BorrowIndex, InitIndex, MoveOutIndex, MovePathIndex};
+use dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MoveError};
 use dataflow::Borrows;
 use dataflow::DataflowResultsConsumer;
 use dataflow::FlowAtLocation;
@@ -1442,10 +1441,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         debug!("check_if_reassignment_to_immutable_state({:?})", local);
 
         // Check if any of the initializiations of `local` have happened yet:
-        let mpi = self.move_data.rev_lookup.find_local(local);
-        let init_indices = &self.move_data.init_path_map[mpi];
-        let first_init_index = init_indices.iter().find(|&ii| flow_state.ever_inits.contains(*ii));
-        if let Some(&init_index) = first_init_index {
+        if let Some(init_index) = self.is_local_ever_initialized(local, flow_state) {
             // And, if so, report an error.
             let init = &self.move_data.inits[init_index];
             let span = init.span(&self.mir);
@@ -1889,6 +1885,21 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         return true;
     }
 
+    fn is_local_ever_initialized(&self,
+                                 local: Local,
+                                 flow_state: &Flows<'cx, 'gcx, 'tcx>)
+                                 -> Option<InitIndex>
+    {
+        let mpi = self.move_data.rev_lookup.find_local(local);
+        let ii = &self.move_data.init_path_map[mpi];
+        for &index in ii {
+            if flow_state.ever_inits.contains(index) {
+                return Some(index);
+            }
+        }
+        return None;
+    }
+
     /// Adds the place into the used mutable variables set
     fn add_used_mut<'d>(
         &mut self,
@@ -1900,18 +1911,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 place: Place::Local(local),
                 is_local_mutation_allowed,
             } => {
-                if is_local_mutation_allowed != LocalMutationIsAllowed::Yes {
-                    // If the local may be initialized, and it is now currently being
-                    // mutated, then it is justified to be annotated with the `mut`
-                    // keyword, since the mutation may be a possible reassignment.
-                    let mpi = self.move_data.rev_lookup.find_local(*local);
-                    let ii = &self.move_data.init_path_map[mpi];
-                    for &index in ii {
-                        if flow_state.ever_inits.contains(index) {
-                            self.used_mut.insert(*local);
-                            break;
-                        }
-                    }
+                // If the local may have been initialized, and it is now currently being
+                // mutated, then it is justified to be annotated with the `mut`
+                // keyword, since the mutation may be a possible reassignment.
+                if is_local_mutation_allowed != LocalMutationIsAllowed::Yes &&
+                    self.is_local_ever_initialized(*local, flow_state).is_some()
+                {
+                    self.used_mut.insert(*local);
                 }
             }
             RootPlace {
