@@ -77,7 +77,7 @@ pub fn update(path: &Path, contents: &str, verify: bool) -> Result<()> {
     Ok(())
 }
 
-pub fn render_template(template: PathBuf) -> Result<String> {
+pub fn render_template(template: &Path) -> Result<String> {
     let grammar: ron::value::Value = {
         let text = fs::read_to_string(project_root().join(GRAMMAR))?;
         ron::de::from_str(&text)?

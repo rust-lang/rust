@@ -40,8 +40,8 @@ fn main() -> Result<()> {
 fn run_gen_command(name: &str, verify: bool) -> Result<()> {
     match name {
         "gen-kinds" => {
-            update(&project_root().join(SYNTAX_KINDS), &render_template(project_root().join(SYNTAX_KINDS_TEMPLATE))?, verify)?;
-            update(&project_root().join(AST), &render_template(project_root().join(AST_TEMPLATE))?, verify)?;
+            update(&project_root().join(SYNTAX_KINDS), &render_template(&project_root().join(SYNTAX_KINDS_TEMPLATE))?, verify)?;
+            update(&project_root().join(AST), &render_template(&project_root().join(AST_TEMPLATE))?, verify)?;
         },
         "gen-tests" => {
             gen_tests(verify)?
