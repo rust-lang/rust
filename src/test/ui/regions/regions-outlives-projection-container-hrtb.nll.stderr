@@ -1,9 +1,0 @@
-error: compilation successful
-  --> $DIR/regions-outlives-projection-container-hrtb.rs:68:1
-   |
-LL | / fn main() {
-LL | | }
-   | |_^
-
-error: aborting due to previous error
-

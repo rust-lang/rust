@@ -24,6 +24,42 @@ LL |                   num2) => (),
 LL |         Foo::Foo2(num) => (),
    |                   ^^^
 
+error[E0507]: cannot move out of `f.0` which is behind a `&` reference
+  --> $DIR/borrowck-move-error-with-note.rs:23:19
+   |
+LL |     let f = &Foo::Foo1(box 1, box 2);
+   |             ------------------------ help: consider changing this to be a mutable reference: `&mut Foo::Foo1(box 1, box 2)`
+...
+LL |         Foo::Foo1(num1,
+   |                   ^^^^
+   |                   |
+   |                   cannot move out of `f.0` which is behind a `&` reference
+   |                   `f` is a `&` reference, so the data it refers to cannot be moved
+
+error[E0507]: cannot move out of `f.1` which is behind a `&` reference
+  --> $DIR/borrowck-move-error-with-note.rs:24:19
+   |
+LL |     let f = &Foo::Foo1(box 1, box 2);
+   |             ------------------------ help: consider changing this to be a mutable reference: `&mut Foo::Foo1(box 1, box 2)`
+...
+LL |                   num2) => (),
+   |                   ^^^^
+   |                   |
+   |                   cannot move out of `f.1` which is behind a `&` reference
+   |                   `f` is a `&` reference, so the data it refers to cannot be moved
+
+error[E0507]: cannot move out of `f.0` which is behind a `&` reference
+  --> $DIR/borrowck-move-error-with-note.rs:25:19
+   |
+LL |     let f = &Foo::Foo1(box 1, box 2);
+   |             ------------------------ help: consider changing this to be a mutable reference: `&mut Foo::Foo1(box 1, box 2)`
+...
+LL |         Foo::Foo2(num) => (),
+   |                   ^^^
+   |                   |
+   |                   cannot move out of `f.0` which is behind a `&` reference
+   |                   `f` is a `&` reference, so the data it refers to cannot be moved
+
 error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
   --> $DIR/borrowck-move-error-with-note.rs:39:11
    |
@@ -61,7 +97,19 @@ note: move occurs because `n` has type `std::boxed::Box<isize>`, which does not 
 LL |         n => {
    |         ^
 
-error: aborting due to 3 previous errors
+error[E0507]: cannot move out of `a.a` which is behind a `&` reference
+  --> $DIR/borrowck-move-error-with-note.rs:59:9
+   |
+LL |     let a = &A { a: box 1 };
+   |             --------------- help: consider changing this to be a mutable reference: `&mut A { a: box 1 }`
+...
+LL |         n => {
+   |         ^
+   |         |
+   |         cannot move out of `a.a` which is behind a `&` reference
+   |         `a` is a `&` reference, so the data it refers to cannot be moved
+
+error: aborting due to 7 previous errors
 
 Some errors occurred: E0507, E0509.
 For more information about an error, try `rustc --explain E0507`.

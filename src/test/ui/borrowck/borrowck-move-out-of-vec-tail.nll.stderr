@@ -26,6 +26,31 @@ LL |                 //~| to prevent move
 LL |                   Foo { string: b }] => {
    |
 
-error: aborting due to previous error
+error[E0507]: cannot move out of `tail[..].string` which is behind a `&` reference
+  --> $DIR/borrowck-move-out-of-vec-tail.rs:30:33
+   |
+LL |         [_, ref tail..] => {
+   |             -------- help: consider changing this to be a mutable reference: `ref mut tail`
+LL |             match tail {
+LL |                 &[Foo { string: a },
+   |                                 ^
+   |                                 |
+   |                                 cannot move out of `tail[..].string` which is behind a `&` reference
+   |                                 `tail` is a `&` reference, so the data it refers to cannot be moved
 
-For more information about this error, try `rustc --explain E0508`.
+error[E0507]: cannot move out of `tail[..].string` which is behind a `&` reference
+  --> $DIR/borrowck-move-out-of-vec-tail.rs:34:33
+   |
+LL |         [_, ref tail..] => {
+   |             -------- help: consider changing this to be a mutable reference: `ref mut tail`
+...
+LL |                   Foo { string: b }] => {
+   |                                 ^
+   |                                 |
+   |                                 cannot move out of `tail[..].string` which is behind a `&` reference
+   |                                 `tail` is a `&` reference, so the data it refers to cannot be moved
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0507, E0508.
+For more information about an error, try `rustc --explain E0507`.

@@ -1,0 +1,18 @@
+error[E0507]: cannot move out of static item
+  --> $DIR/borrowck-move-out-of-static-item.rs:28:10
+   |
+LL |     test(BAR); //[ast]~ ERROR cannot move out of static item [E0507]
+   |          ^^^ cannot move out of static item
+
+error[E0507]: cannot move out of immutable static item `BAR`
+  --> $DIR/borrowck-move-out-of-static-item.rs:28:10
+   |
+LL |     test(BAR); //[ast]~ ERROR cannot move out of static item [E0507]
+   |          ^^^
+   |          |
+   |          cannot move out of immutable static item `BAR`
+   |          cannot move
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

@@ -1,0 +1,20 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/trivial-bounds-leak-copy.rs:19:5
+   |
+LL |     *t //~ ERROR
+   |     ^^ cannot move out of borrowed content
+
+error[E0507]: cannot move out of `*t` which is behind a `&` reference
+  --> $DIR/trivial-bounds-leak-copy.rs:19:5
+   |
+LL | fn move_out_string(t: &String) -> String {
+   |                       ------- help: consider changing this to be a mutable reference: `&mut std::string::String`
+LL |     *t //~ ERROR
+   |     ^^
+   |     |
+   |     cannot move out of `*t` which is behind a `&` reference
+   |     `t` is a `&` reference, so the data it refers to cannot be moved
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

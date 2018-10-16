@@ -10,7 +10,7 @@ error: trait bounds other than `Sized` on const fn parameters are unstable
 LL | const fn no_inner_dyn_trait_ret() -> Hide { Hide(HasDyn { field: &0 }) }
    |                                                                  ^^
 
-error[E0716]: temporary value dropped while borrowed
+warning[E0716]: temporary value dropped while borrowed
   --> $DIR/min_const_fn_dyn.rs:22:67
    |
 LL | const fn no_inner_dyn_trait_ret() -> Hide { Hide(HasDyn { field: &0 }) }
@@ -19,7 +19,10 @@ LL | const fn no_inner_dyn_trait_ret() -> Hide { Hide(HasDyn { field: &0 }) }
    |                                                                   creates a temporary which is freed while still in use
    |
    = note: borrowed value must be valid for the static lifetime...
+   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
+           It represents potential unsoundness in your code.
+           This warning will become a hard error in the future.
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0716`.

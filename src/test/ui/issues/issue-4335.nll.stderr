@@ -6,6 +6,15 @@ LL | fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
 LL |     id(Box::new(|| *v))
    |                    ^^ cannot move out of captured variable in an `FnMut` closure
 
+error[E0507]: cannot move out of `*v` which is behind a `&` reference
+  --> $DIR/issue-4335.rs:16:20
+   |
+LL |     id(Box::new(|| *v))
+   |                    ^^
+   |                    |
+   |                    cannot move out of `*v` which is behind a `&` reference
+   |                    cannot move
+
 error[E0597]: `v` does not live long enough
   --> $DIR/issue-4335.rs:16:21
    |
@@ -23,7 +32,7 @@ note: borrowed value must be valid for the lifetime 'r as defined on the functio
 LL | fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
    |      ^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 Some errors occurred: E0507, E0597.
 For more information about an error, try `rustc --explain E0507`.
