@@ -275,7 +275,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 exit_block.unit()
             }
             ExprKind::Call { ty, fun, args, from_hir_call } => {
-                let diverges = expr.ty.conservative_is_uninhabited();
                 let intrinsic = match ty.sty {
                     ty::FnDef(def_id, _) => {
                         let f = ty.fn_sig(this.hir.tcx());
