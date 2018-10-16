@@ -37,8 +37,10 @@ fn main() {
 }
 
 fn print_lints() {
-    let lint_list = gather_all().collect::<Vec<Lint>>();
-    let grouped_by_lint_group = Lint::by_lint_group(&lint_list);
+    let lint_list = gather_all();
+    let usable_lints: Vec<Lint> = Lint::usable_lints(lint_list).collect();
+    let lint_count = usable_lints.len();
+    let grouped_by_lint_group = Lint::by_lint_group(&usable_lints);
 
     for (lint_group, mut lints) in grouped_by_lint_group {
         if lint_group == "Deprecated" { continue; }
@@ -51,5 +53,5 @@ fn print_lints() {
         }
     }
 
-    println!("there are {} lints", Lint::active_lints(lint_list.into_iter()).count());
+    println!("there are {} lints", lint_count);
 }

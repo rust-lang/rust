@@ -57,9 +57,9 @@ impl Lint {
         }
     }
 
-    /// Returns all non-deprecated lints
-    pub fn active_lints(lints: impl Iterator<Item=Self>) -> impl Iterator<Item=Self> {
-        lints.filter(|l| l.deprecation.is_none())
+    /// Returns all non-deprecated lints and non-internal lints
+    pub fn usable_lints(lints: impl Iterator<Item=Self>) -> impl Iterator<Item=Self> {
+        lints.filter(|l| l.deprecation.is_none() && !l.group.starts_with("internal"))
     }
 
     /// Returns the lints in a HashMap, grouped by the different lint groups
@@ -141,15 +141,17 @@ declare_deprecated_lint! {
 }
 
 #[test]
-fn test_active_lints() {
+fn test_usable_lints() {
     let lints = vec![
         Lint::new("should_assert_eq", "Deprecated", "abc", Some("Reason"), "module_name"),
-        Lint::new("should_assert_eq2", "Not Deprecated", "abc", None, "module_name")
+        Lint::new("should_assert_eq2", "Not Deprecated", "abc", None, "module_name"),
+        Lint::new("should_assert_eq2", "internal", "abc", None, "module_name"),
+        Lint::new("should_assert_eq2", "internal_style", "abc", None, "module_name")
     ];
     let expected = vec![
         Lint::new("should_assert_eq2", "Not Deprecated", "abc", None, "module_name")
     ];
-    assert_eq!(expected, Lint::active_lints(lints.into_iter()).collect::<Vec<Lint>>());
+    assert_eq!(expected, Lint::usable_lints(lints.into_iter()).collect::<Vec<Lint>>());
 }
 
 #[test]
