@@ -3,10 +3,9 @@ use rustc::ty::layout::{self, LayoutOf, Size};
 use rustc::ty;
 
 use rustc::mir::interpret::{EvalResult, PointerArithmetic};
-use rustc_mir::interpret::{EvalContext, PlaceTy, OpTy};
 
 use super::{
-    Value, Scalar, ScalarMaybeUndef, Borrow,
+    PlaceTy, OpTy, Value, Scalar, ScalarMaybeUndef, Borrow,
     FalibleScalarExt, OperatorEvalContextExt
 };
 
@@ -19,7 +18,7 @@ pub trait EvalContextExt<'tcx> {
     ) -> EvalResult<'tcx>;
 }
 
-impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super::Evaluator<'tcx>> {
+impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, 'tcx> {
     fn call_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,

@@ -16,7 +16,7 @@ extern crate syntax;
 use std::collections::HashMap;
 use std::borrow::Cow;
 
-use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
+use rustc::ty::{self, Ty, TyCtxt, query::TyCtxtAt};
 use rustc::ty::layout::{TyLayout, LayoutOf, Size};
 use rustc::hir::def_id::DefId;
 use rustc::mir;
@@ -43,7 +43,7 @@ use tls::{EvalContextExt as TlsEvalContextExt, TlsData};
 use range_map::RangeMap;
 use helpers::FalibleScalarExt;
 use mono_hash_map::MonoHashMap;
-use stacked_borrows::Borrow;
+use stacked_borrows::{EvalContextExt as StackedBorEvalContextExt, Borrow};
 
 pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -232,7 +232,6 @@ impl MayLeak for MiriMemoryKind {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
 pub struct Evaluator<'tcx> {
     /// Environment variables set by `setenv`
     /// Miri does not expose env vars from the host to the emulated program
@@ -243,6 +242,9 @@ pub struct Evaluator<'tcx> {
 
     /// Whether to enforce the validity invariant
     pub(crate) validate: bool,
+
+    /// Stacked Borrows state
+    pub(crate) stacked_borrows: stacked_borrows::State,
 }
 
 impl<'tcx> Evaluator<'tcx> {
@@ -251,13 +253,18 @@ impl<'tcx> Evaluator<'tcx> {
             env_vars: HashMap::default(),
             tls: TlsData::default(),
             validate,
+            stacked_borrows: stacked_borrows::State::new(),
         }
     }
 }
 
+#[allow(dead_code)] // FIXME https://github.com/rust-lang/rust/issues/47131
+type MiriEvalContext<'a, 'mir, 'tcx> = EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>;
+
+
 impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     type MemoryKinds = MiriMemoryKind;
-    type AllocExtra = ();
+    type AllocExtra = stacked_borrows::Stacks;
     type PointerTag = Borrow;
 
     type MemoryMap = MonoHashMap<AllocId, (MemoryKind<MiriMemoryKind>, Allocation<Borrow, Self::AllocExtra>)>;
@@ -288,6 +295,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     /// Returns Ok() when the function was handled, fail otherwise
+    #[inline(always)]
     fn find_fn(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
@@ -298,6 +306,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         ecx.find_fn(instance, args, dest, ret)
     }
 
+    #[inline(always)]
     fn call_intrinsic(
         ecx: &mut rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
@@ -307,6 +316,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         ecx.call_intrinsic(instance, args, dest)
     }
 
+    #[inline(always)]
     fn ptr_op(
         ecx: &rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
@@ -380,6 +390,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         Ok(Cow::Owned(alloc))
     }
 
+    #[inline(always)]
     fn before_terminator(_ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx>
     {
         // We are not interested in detecting loops
@@ -402,5 +413,35 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
             extra: Self::AllocExtra::default(),
         };
         Cow::Owned(alloc)
+    }
+
+    #[inline(always)]
+    fn tag_reference(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ptr: Pointer<Self::PointerTag>,
+        pointee_ty: Ty<'tcx>,
+        pointee_size: Size,
+        borrow_kind: mir::BorrowKind,
+    ) -> EvalResult<'tcx, Self::PointerTag> {
+        if !ecx.machine.validate {
+            // No tracking
+            Ok(Borrow::default())
+        } else {
+            ecx.tag_reference(ptr, pointee_ty, pointee_size, borrow_kind)
+        }
+    }
+
+    #[inline(always)]
+    fn tag_dereference(
+        ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
+        ptr: Pointer<Self::PointerTag>,
+        ptr_ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx, Self::PointerTag> {
+        if !ecx.machine.validate {
+            // No tracking
+            Ok(Borrow::default())
+        } else {
+            ecx.tag_dereference(ptr, ptr_ty)
+        }
     }
 }

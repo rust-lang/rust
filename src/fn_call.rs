@@ -44,7 +44,7 @@ pub trait EvalContextExt<'tcx, 'mir> {
     fn write_null(&mut self, dest: PlaceTy<'tcx, Borrow>) -> EvalResult<'tcx>;
 }
 
-impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, 'mir, 'tcx, super::Evaluator<'tcx>> {
+impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalContext<'a, 'mir, 'tcx> {
     fn find_fn(
         &mut self,
         instance: ty::Instance<'tcx>,

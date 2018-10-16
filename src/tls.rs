@@ -4,19 +4,19 @@ use rustc_target::abi::LayoutOf;
 use rustc::{ty, ty::layout::HasDataLayout, mir};
 
 use super::{
-    EvalResult, EvalErrorKind, StackPopCleanup, EvalContext, Evaluator,
+    EvalResult, EvalErrorKind, StackPopCleanup,
     MPlaceTy, Scalar, Borrow,
 };
 
 pub type TlsKey = u128;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug)]
 pub struct TlsEntry<'tcx> {
     pub(crate) data: Scalar<Borrow>, // Will eventually become a map from thread IDs to `Scalar`s, if we ever support more than one thread.
     pub(crate) dtor: Option<ty::Instance<'tcx>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct TlsData<'tcx> {
     /// The Key to use for the next thread-local allocation.
     pub(crate) next_key: TlsKey,
@@ -133,7 +133,7 @@ impl<'tcx> TlsData<'tcx> {
     }
 }
 
-impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>> {
+impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, 'tcx> {
     fn run_tls_dtors(&mut self) -> EvalResult<'tcx> {
         let mut dtor = self.machine.tls.fetch_tls_dtor(None, *self.tcx);
         // FIXME: replace loop by some structure that works with stepping

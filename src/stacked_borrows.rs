@@ -1,4 +1,12 @@
-use super::RangeMap;
+use std::cell::RefCell;
+
+use rustc::ty::{Ty, layout::Size};
+use rustc::mir;
+
+use super::{
+    RangeMap, EvalResult,
+    Pointer,
+};
 
 pub type Timestamp = u64;
 
@@ -11,6 +19,24 @@ pub enum Mut {
   Raw,
 }
 
+impl Mut {
+    #[inline(always)]
+    fn is_raw(self) -> bool {
+        match self {
+            Mut::Raw => true,
+            _ => false,
+        }
+    }
+
+    #[inline(always)]
+    fn is_uniq(self) -> bool {
+        match self {
+            Mut::Uniq(_) => true,
+            _ => false,
+        }
+    }
+}
+
 /// Information about any kind of borrow
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Borrow {
@@ -18,6 +44,24 @@ pub enum Borrow {
   Mut(Mut),
   /// A shared borrow without interior mutability
   Frz(Timestamp)
+}
+
+impl Borrow {
+    #[inline(always)]
+    fn is_mut(self) -> bool {
+        match self {
+            Borrow::Mut(_) => true,
+            _ => false,
+        }
+    }
+
+    #[inline(always)]
+    fn is_uniq(self) -> bool {
+        match self {
+            Borrow::Mut(Mut::Uniq(_)) => true,
+            _ => false,
+        }
+    }
 }
 
 /// An item in the borrow stack
@@ -32,5 +76,197 @@ pub enum BorStackItem {
 impl Default for Borrow {
     fn default() -> Self {
         Borrow::Mut(Mut::Raw)
+    }
+}
+
+/// Extra global machine state
+#[derive(Clone, Debug)]
+pub struct State {
+    clock: Timestamp
+}
+
+impl State {
+    pub fn new() -> State {
+        State { clock: 0 }
+    }
+}
+
+/// Extra per-location state
+#[derive(Clone, Debug)]
+struct Stack {
+    borrows: Vec<BorStackItem>, // used as a stack
+    frozen_since: Option<Timestamp>,
+}
+
+impl Default for Stack {
+    fn default() -> Self {
+        Stack {
+            borrows: Vec::new(),
+            frozen_since: None,
+        }
+    }
+}
+
+/// Extra per-allocation state
+#[derive(Clone, Debug, Default)]
+pub struct Stacks {
+    stacks: RefCell<RangeMap<Stack>>,
+}
+
+/// Core operations
+impl<'tcx> Stack {
+    fn check(&self, bor: Borrow) -> bool {
+        match bor {
+            Borrow::Frz(acc_t) =>
+                // Must be frozen at least as long as the `acc_t` says.
+                self.frozen_since.map_or(false, |loc_t| loc_t <= acc_t),
+            Borrow::Mut(acc_m) =>
+                // Raw pointers are fine with frozen locations. This is important because &Cell is raw!
+                if self.frozen_since.is_some() {
+                    acc_m.is_raw()
+                } else {
+                    self.borrows.last().map_or(false, |&loc_itm| loc_itm == BorStackItem::Mut(acc_m))
+                }
+        }
+    }
+
+    /// Reactive `bor` for this stack.  If `force_mut` is set, we want to aggressively
+    /// unfreeze this location (because we are about to push a `Uniq`).
+    fn reactivate(&mut self, bor: Borrow, force_mut: bool) -> EvalResult<'tcx> {
+        assert!(!force_mut || bor.is_mut()); // if `force_mut` is set, this must be a mutable borrow
+        // Do NOT change anything if `bor` is already active -- in particular, if
+        // it is a `Mut(Raw)` and we are frozen.
+        if !force_mut && self.check(bor) {
+            return Ok(());
+        }
+
+        let acc_m = match bor {
+            Borrow::Frz(_) => return err!(MachineError(format!("Location should be frozen but it is not"))),
+            Borrow::Mut(acc_m) => acc_m,
+        };
+        // We definitely have to unfreeze this, even if we use the topmost item.
+        self.frozen_since = None;
+        // Pop until we see the one we are looking for.
+        while let Some(&itm) = self.borrows.last() {
+            match itm {
+                BorStackItem::FnBarrier(_) => {
+                    return err!(MachineError(format!("Trying to reactivate a borrow that lives behind a barrier")));
+                }
+                BorStackItem::Mut(loc_m) => {
+                    if loc_m == acc_m { return Ok(()); }
+                    self.borrows.pop();
+                }
+            }
+        }
+        // Nothing to be found.  Simulate a "virtual raw" element at the bottom of the stack.
+        if acc_m.is_raw() {
+            Ok(())
+        } else {
+            err!(MachineError(format!("Borrow-to-reactivate does not exist on the stack")))
+        }
+    }
+
+    fn initiate(&mut self, bor: Borrow) -> EvalResult<'tcx> {
+        match bor {
+            Borrow::Frz(t) => {
+                match self.frozen_since {
+                    None => self.frozen_since = Some(t),
+                    Some(since) => assert!(since <= t),
+                }
+            }
+            Borrow::Mut(m) => {
+                match self.frozen_since {
+                    None => self.borrows.push(BorStackItem::Mut(m)),
+                    Some(_) =>
+                        // FIXME: Do we want an exception for raw borrows?
+                        return err!(MachineError(format!("Trying to mutate frozen location")))
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl State {
+    fn increment_clock(&mut self) -> Timestamp {
+        self.clock += 1;
+        self.clock
+    }
+}
+
+/// Machine hooks
+pub trait EvalContextExt<'tcx> {
+    fn tag_reference(
+        &mut self,
+        ptr: Pointer<Borrow>,
+        pointee_ty: Ty<'tcx>,
+        size: Size,
+        borrow_kind: mir::BorrowKind,
+    ) -> EvalResult<'tcx, Borrow>;
+
+    fn tag_dereference(
+        &self,
+        ptr: Pointer<Borrow>,
+        ptr_ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx, Borrow>;
+}
+
+impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, 'tcx> {
+    fn tag_reference(
+        &mut self,
+        ptr: Pointer<Borrow>,
+        pointee_ty: Ty<'tcx>,
+        size: Size,
+        borrow_kind: mir::BorrowKind,
+    ) -> EvalResult<'tcx, Borrow> {
+        let old_bor = ptr.tag;
+        let time = self.machine.stacked_borrows.increment_clock();
+        // FIXME This does not do enough checking when only part of the data lacks
+        // interior mutability.
+        let new_bor = match borrow_kind {
+            mir::BorrowKind::Mut { .. } => Borrow::Mut(Mut::Uniq(time)),
+            _ =>
+                if self.type_is_freeze(pointee_ty) {
+                    Borrow::Frz(time)
+                } else {
+                    Borrow::Mut(Mut::Raw)
+                }
+        };
+        trace!("tag_reference: Creating new tag for {:?} (pointee {}, size {}): {:?}", ptr, pointee_ty, size.bytes(), new_bor);
+
+        // Make sure this reference is not dangling or so
+        self.memory.check_bounds(ptr, size, false)?;
+
+        // Update the stacks.  We cannot use `get_mut` becuse this might be immutable
+        // memory.
+        let alloc = self.memory.get(ptr.alloc_id).expect("We checked that the ptr is fine!");
+        let mut stacks = alloc.extra.stacks.borrow_mut();
+        for stack in stacks.iter_mut(ptr.offset, size) {
+            if stack.check(new_bor) {
+                // The new borrow is already active!  This can happen when creating multiple
+                // shared references from the same mutable reference.  Do nothing.
+            } else {
+                // FIXME: The blog post says we should `reset` if this is a local.
+                stack.reactivate(old_bor, /*force_mut*/new_bor.is_uniq())?;
+                stack.initiate(new_bor)?;
+            }
+        }
+
+        Ok(new_bor)
+    }
+
+    fn tag_dereference(
+        &self,
+        ptr: Pointer<Borrow>,
+        ptr_ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx, Borrow> {
+        // If this is a raw ptr, forget about the tag.
+        Ok(if ptr_ty.is_unsafe_ptr() {
+            trace!("tag_dereference: Erasing tag for {:?} ({})", ptr, ptr_ty);
+            Borrow::Mut(Mut::Raw)
+        } else {
+            // FIXME: Do we want to adjust the tag if it does not match the type?
+            ptr.tag
+        })
     }
 }

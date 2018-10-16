@@ -36,7 +36,7 @@ pub trait EvalContextExt<'tcx> {
     ) -> EvalResult<'tcx, Scalar<Borrow>>;
 }
 
-impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super::Evaluator<'tcx>> {
+impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, 'tcx> {
     fn ptr_op(
         &self,
         bin_op: mir::BinOp,
