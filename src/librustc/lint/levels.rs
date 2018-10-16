@@ -216,8 +216,13 @@ impl<'a> LintLevelsBuilder<'a> {
             } else {
                 let mut err = bad_attr(meta.span);
                 err.emit();
-                continue
+                continue;
             };
+
+            if metas.is_empty() {
+                // FIXME (#55112): issue unused-attributes lint for `#[level()]`
+                continue;
+            }
 
             // Before processing the lint names, look for a reason (RFC 2383)
             // at the end.
@@ -231,6 +236,8 @@ impl<'a> LintLevelsBuilder<'a> {
                         if item.ident == "reason" {
                             // found reason, reslice meta list to exclude it
                             metas = &metas[0..metas.len()-1];
+                            // FIXME (#55112): issue unused-attributes lint if we thereby
+                            // don't have any lint names (`#[level(reason = "foo")]`)
                             if let ast::LitKind::Str(rationale, _) = name_value.node {
                                 if gate_reasons {
                                     feature_gate::emit_feature_err(
