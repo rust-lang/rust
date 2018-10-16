@@ -213,7 +213,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             param_env,
             memory: Memory::new(tcx, memory_data),
             stack: Vec::new(),
-            vtables: FxHashMap(),
+            vtables: FxHashMap::default(),
         }
     }
 
