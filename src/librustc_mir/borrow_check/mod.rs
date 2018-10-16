@@ -1776,12 +1776,22 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         location: Location,
     ) -> bool {
         debug!(
-            "check_access_permissions({:?}, {:?}, {:?})",
+            "check_access_permissions({:?}, {:?}, is_local_mutation_allowed: {:?})",
             place, kind, is_local_mutation_allowed
         );
 
         let error_access;
         let the_place_err;
+
+        // rust-lang/rust#21232, #54986: during period where we reject
+        // partial initialization, do not complain about mutability
+        // errors except for actual mutation (as opposed to an attempt
+        // to do a partial initialization).
+        let previously_initialized = if let Some(local) = place.base_local() {
+            self.is_local_ever_initialized(local, flow_state).is_some()
+        } else {
+            true
+        };
 
         match kind {
             Reservation(WriteKind::MutableBorrow(borrow_kind @ BorrowKind::Unique))
@@ -1875,14 +1885,18 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
 
         // at this point, we have set up the error reporting state.
-        self.report_mutability_error(
-            place,
-            span,
-            the_place_err,
-            error_access,
-            location,
-        );
-        return true;
+        if previously_initialized {
+            self.report_mutability_error(
+                place,
+                span,
+                the_place_err,
+                error_access,
+                location,
+            );
+            return true;
+        } else {
+            return false;
+        }
     }
 
     fn is_local_ever_initialized(&self,
