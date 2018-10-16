@@ -8,7 +8,7 @@ LL | struct Iter;
    | ^^^^^^^^^^^^ `Iter` redefined here
    |
    = note: `Iter` must be defined only once in the type namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | use std::slice::Iter as OtherIter;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

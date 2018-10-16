@@ -8,7 +8,7 @@ LL | fn foo() {} //~ ERROR E0255
    | ^^^^^^^^ `foo` redefined here
    |
    = note: `foo` must be defined only once in the value namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | use bar::foo as other_foo;
    |     ^^^^^^^^^^^^^^^^^^^^^

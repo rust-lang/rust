@@ -7,7 +7,7 @@ LL | use bar::baz; //~ ERROR the name `baz` is defined multiple times
    |     ^^^^^^^^ `baz` reimported here
    |
    = note: `baz` must be defined only once in the type namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | use bar::baz as other_baz; //~ ERROR the name `baz` is defined multiple times
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -21,7 +21,7 @@ LL | use bar::Quux; //~ ERROR the name `Quux` is defined multiple times
    |     ^^^^^^^^^ `Quux` reimported here
    |
    = note: `Quux` must be defined only once in the type namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | use bar::Quux as OtherQuux; //~ ERROR the name `Quux` is defined multiple times
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ LL | use bar::blah; //~ ERROR the name `blah` is defined multiple times
    |     ^^^^^^^^^ `blah` reimported here
    |
    = note: `blah` must be defined only once in the type namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | use bar::blah as other_blah; //~ ERROR the name `blah` is defined multiple times
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL | use bar::WOMP; //~ ERROR the name `WOMP` is defined multiple times
    |     ^^^^^^^^^ `WOMP` reimported here
    |
    = note: `WOMP` must be defined only once in the value namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | use bar::WOMP as OtherWOMP; //~ ERROR the name `WOMP` is defined multiple times
    |     ^^^^^^^^^^^^^^^^^^^^^^

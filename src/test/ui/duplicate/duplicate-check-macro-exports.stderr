@@ -8,7 +8,7 @@ LL | macro_rules! panic { () => {} } //~ ERROR the name `panic` is defined multi
    | ^^^^^^^^^^^^^^^^^^ `panic` redefined here
    |
    = note: `panic` must be defined only once in the macro namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | pub use std::panic as other_panic;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^

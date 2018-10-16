@@ -15,7 +15,7 @@ LL | use std::fmt::{self, self}; //~ ERROR E0430
    |                previous import of the module `fmt` here
    |
    = note: `fmt` must be defined only once in the type namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | use std::fmt::{self, self as other_fmt}; //~ ERROR E0430
    |                      ^^^^^^^^^^^^^^^^^
