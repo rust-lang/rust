@@ -4796,10 +4796,18 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 err.span_suggestion_with_applicability(
                     binding.span,
                     rename_msg,
-                    if snippet.ends_with(';') {
-                        format!("{} as {};", &snippet[..snippet.len() - 1], suggested_name)
+                    if snippet.contains(" as ") {
+                        format!(
+                            "{} as {}",
+                            &snippet[..snippet.find(" as ").unwrap()],
+                            suggested_name,
+                        )
                     } else {
-                        format!("{} as {}", snippet, suggested_name)
+                        if snippet.ends_with(';') {
+                            format!("{} as {};", &snippet[..snippet.len() - 1], suggested_name)
+                        } else {
+                            format!("{} as {}", snippet, suggested_name)
+                        }
                     },
                     Applicability::MachineApplicable,
                 );

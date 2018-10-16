@@ -1,0 +1,27 @@
+error[E0259]: the name `std` is defined multiple times
+  --> $DIR/rename-extern-vs-use.rs:14:1
+   |
+LL | extern crate issue_45829_b as std;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | `std` reimported here
+   | You can use `as` to change the binding name of the import
+   |
+   = note: `std` must be defined only once in the type namespace of this module
+
+error[E0254]: the name `std` is defined multiple times
+  --> $DIR/rename-extern-vs-use.rs:13:5
+   |
+LL | use std;
+   |     ^^^ `std` reimported here
+   |
+   = note: `std` must be defined only once in the type namespace of this module
+help: You can use `as` to change the binding name of the import
+   |
+LL | use std as other_std;
+   |     ^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0254, E0259.
+For more information about an error, try `rustc --explain E0254`.
