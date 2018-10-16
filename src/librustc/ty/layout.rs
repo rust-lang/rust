@@ -191,7 +191,14 @@ fn layout_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         ty::tls::enter_context(&icx, |_| {
             let cx = LayoutCx { tcx, param_env };
-            cx.layout_raw_uncached(ty)
+            let layout = cx.layout_raw_uncached(ty);
+            // Type-level uninhabitedness should always imply ABI uninhabitedness.
+            if let Ok(layout) = layout {
+                if ty.conservative_is_uninhabited(tcx) {
+                    assert!(layout.abi.is_uninhabited());
+                }
+            }
+            layout
         })
     })
 }
@@ -205,12 +212,11 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
 
 pub struct LayoutCx<'tcx, C> {
     pub tcx: C,
-    pub param_env: ty::ParamEnv<'tcx>
+    pub param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
-    fn layout_raw_uncached(&self, ty: Ty<'tcx>)
-                           -> Result<&'tcx LayoutDetails, LayoutError<'tcx>> {
+    fn layout_raw_uncached(&self, ty: Ty<'tcx>) -> Result<&'tcx LayoutDetails, LayoutError<'tcx>> {
         let tcx = self.tcx;
         let param_env = self.param_env;
         let dl = self.data_layout();
