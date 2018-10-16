@@ -482,22 +482,34 @@ error: it looks like you're manually copying between slices
     |              ^^^^^^^^^^^^^^^^ help: try replacing the loop by: `dst_vec[..src_vec.len()].clone_from_slice(&src_vec[..])`
 
 error: it looks like you're manually copying between slices
-   --> $DIR/for_loop.rs:557:14
+   --> $DIR/for_loop.rs:559:14
     |
-557 |     for i in 0..src.len() {
+559 |     for i in from..from + src.len() {
+    |              ^^^^^^^^^^^^^^^^^^^^^^ help: try replacing the loop by: `dst[from..from + src.len()].clone_from_slice(&src[0..(from + src.len() - from)])`
+
+error: it looks like you're manually copying between slices
+   --> $DIR/for_loop.rs:563:14
+    |
+563 |     for i in from..from + 3 {
+    |              ^^^^^^^^^^^^^^ help: try replacing the loop by: `dst[from..from + 3].clone_from_slice(&src[0..(from + 3 - from)])`
+
+error: it looks like you're manually copying between slices
+   --> $DIR/for_loop.rs:570:14
+    |
+570 |     for i in 0..src.len() {
     |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[..])`
 
 error: the variable `count` is used as a loop counter. Consider using `for (count, item) in text.chars().enumerate()` or similar iterators
-   --> $DIR/for_loop.rs:618:19
+   --> $DIR/for_loop.rs:631:19
     |
-618 |         for ch in text.chars() {
+631 |         for ch in text.chars() {
     |                   ^^^^^^^^^^^^
 
 error: the variable `count` is used as a loop counter. Consider using `for (count, item) in text.chars().enumerate()` or similar iterators
-   --> $DIR/for_loop.rs:629:19
+   --> $DIR/for_loop.rs:642:19
     |
-629 |         for ch in text.chars() {
+642 |         for ch in text.chars() {
     |                   ^^^^^^^^^^^^
 
-error: aborting due to 61 previous errors
+error: aborting due to 63 previous errors
 
