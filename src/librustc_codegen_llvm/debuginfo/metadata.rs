@@ -164,7 +164,7 @@ impl TypeMap<'ll, 'tcx> {
                                       type_: Ty<'tcx>) -> UniqueTypeId {
         // Let's see if we already have something in the cache
         if let Some(unique_type_id) = self.type_to_unique_id.get(&type_).cloned() {
-            return unique_type_id
+            return unique_type_id;
         }
         // if not, generate one
 
@@ -290,7 +290,7 @@ macro_rules! return_if_metadata_created_in_meantime {
             .borrow()
             .find_metadata_for_unique_id($unique_type_id)
         {
-            return MetadataCreationResult::new(metadata, true)
+            return MetadataCreationResult::new(metadata, true);
         }
     )
 }
@@ -552,7 +552,7 @@ pub fn type_metadata(
                     .borrow()
                     .find_metadata_for_unique_id(unique_type_id)
                 {
-                    return Err(metadata)
+                    return Err(metadata);
                 }
 
                 Ok(MetadataCreationResult::new(pointer_type_metadata(cx, t, pointee_metadata),
@@ -612,7 +612,7 @@ pub fn type_metadata(
                .borrow()
                .find_metadata_for_unique_id(unique_type_id)
             {
-                return metadata
+                return metadata;
             }
 
             // This is actually a function pointer, so wrap it in pointer DI
@@ -1477,7 +1477,7 @@ fn prepare_enum_metadata(
     };
 
     if let (&layout::Abi::Scalar(_), Some(discr)) = (&layout.abi, discriminant_type_metadata) {
-        return FinalMetadata(discr)
+        return FinalMetadata(discr);
     }
 
     let (enum_type_size, enum_type_align) = layout.size_and_align();

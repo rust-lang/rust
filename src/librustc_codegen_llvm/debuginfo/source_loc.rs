@@ -57,7 +57,7 @@ pub fn set_source_location(
 /// first real statement/expression of the function is codegened.
 pub fn start_emitting_source_locations(dbg_context: &FunctionDebugContext<'ll>) {
     if let FunctionDebugContext::RegularContext(ref data) = *dbg_context {
-        data.source_locations_enabled.set(true)
+        data.source_locations_enabled.set(true);
     }
 }
 
