@@ -284,7 +284,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     let temporary_used_locals: FxHashSet<Local> = mbcx
         .used_mut
         .iter()
-        .filter(|&local| !mbcx.mir.local_decls[*local].is_user_variable.is_some())
+        .filter(|&local| mbcx.mir.local_decls[*local].is_user_variable.is_none())
         .cloned()
         .collect();
     mbcx.gather_used_muts(temporary_used_locals);
@@ -342,7 +342,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         diag.buffer(&mut mbcx.errors_buffer);
     }
 
-    if mbcx.errors_buffer.len() > 0 {
+    if !mbcx.errors_buffer.is_empty() {
         mbcx.errors_buffer.sort_by_key(|diag| diag.span.primary_span());
 
         if tcx.migrate_borrowck() {
@@ -2171,7 +2171,7 @@ impl ContextKind {
     fn new(self, loc: Location) -> Context {
         Context {
             kind: self,
-            loc: loc,
+            loc,
         }
     }
 }

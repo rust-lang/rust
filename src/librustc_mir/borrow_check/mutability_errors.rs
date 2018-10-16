@@ -408,7 +408,6 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                             .map(|replacement| (pattern_span, replacement))
                     }
 
-                    //
                     ClearCrossCrate::Set(mir::BindingForm::RefForGuard) => unreachable!(),
 
                     ClearCrossCrate::Clear => bug!("saw cleared local state"),
@@ -573,7 +572,7 @@ fn suggest_ampmut<'cx, 'gcx, 'tcx>(
     opt_ty_info: Option<Span>,
 ) -> (Span, String) {
     let locations = mir.find_assignments(local);
-    if locations.len() > 0 {
+    if !locations.is_empty() {
         let assignment_rhs_span = mir.source_info(locations[0]).span;
         if let Ok(src) = tcx.sess.source_map().span_to_snippet(assignment_rhs_span) {
             if let (true, Some(ws_pos)) = (
