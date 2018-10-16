@@ -22,17 +22,16 @@ use std::borrow::Cow;
 
 use rustc::ty::{self, Instance, ParamEnv, query::TyCtxtAt};
 use rustc::ty::layout::{self, Align, TargetDataLayout, Size, HasDataLayout};
-use rustc::mir::interpret::{
-    Pointer, AllocId, Allocation, ConstValue, GlobalId,
-    EvalResult, Scalar, EvalErrorKind, AllocType, PointerArithmetic,
-    truncate
-};
-pub use rustc::mir::interpret::{write_target_uint, read_target_uint};
+pub use rustc::mir::interpret::{truncate, write_target_uint, read_target_uint};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 
 use syntax::ast::Mutability;
 
-use super::{Machine, AllocMap, MayLeak, ScalarMaybeUndef};
+use super::{
+    Pointer, AllocId, Allocation, ConstValue, GlobalId,
+    EvalResult, Scalar, EvalErrorKind, AllocType, PointerArithmetic,
+    Machine, MemoryAccess, AllocMap, MayLeak, ScalarMaybeUndef,
+};
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub enum MemoryKind<T> {
@@ -197,7 +196,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             return err!(DeallocateNonBasePtr);
         }
 
-        let (alloc_kind, alloc) = match self.alloc_map.remove(&ptr.alloc_id) {
+        let (alloc_kind, mut alloc) = match self.alloc_map.remove(&ptr.alloc_id) {
             Some(alloc) => alloc,
             None => {
                 // Deallocating static memory -- always an error
@@ -231,6 +230,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                                                            alloc.align));
             }
         }
+
+        // Let the machine take some extra action
+        M::memory_deallocated(&mut alloc, ptr.alloc_id)?;
 
         // Don't forget to remember size and align of this now-dead allocation
         let old = self.dead_alloc_map.insert(
@@ -632,6 +634,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
 
         let alloc = self.get(ptr.alloc_id)?;
+        M::memory_accessed(alloc, ptr, size, MemoryAccess::Read)?;
+
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         assert_eq!(size.bytes() as usize as u64, size.bytes());
         let offset = ptr.offset.bytes() as usize;
@@ -676,6 +680,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         self.clear_relocations(ptr, size)?;
 
         let alloc = self.get_mut(ptr.alloc_id)?;
+        M::memory_accessed(alloc, ptr, size, MemoryAccess::Write)?;
+
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         assert_eq!(size.bytes() as usize as u64, size.bytes());
         let offset = ptr.offset.bytes() as usize;

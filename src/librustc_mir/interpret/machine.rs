@@ -16,11 +16,19 @@ use std::borrow::{Borrow, Cow};
 use std::hash::Hash;
 
 use rustc::hir::def_id::DefId;
-use rustc::mir::interpret::{Allocation, AllocId, EvalResult, Scalar};
 use rustc::mir;
-use rustc::ty::{self, layout::TyLayout, query::TyCtxtAt};
+use rustc::ty::{self, layout::{Size, TyLayout}, query::TyCtxtAt};
 
-use super::{EvalContext, PlaceTy, OpTy, MemoryKind};
+use super::{
+    Allocation, AllocId, EvalResult, Scalar,
+    EvalContext, PlaceTy, OpTy, MPlaceTy, Pointer, MemoryKind,
+};
+
+/// Classifying memory accesses
+pub enum MemoryAccess {
+    Read,
+    Write,
+}
 
 /// Whether this kind of memory is allowed to leak
 pub trait MayLeak: Copy {
@@ -160,15 +168,47 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         right_layout: TyLayout<'tcx>,
     ) -> EvalResult<'tcx, (Scalar<Self::PointerTag>, bool)>;
 
-    /// Heap allocations via the `box` keyword
-    ///
-    /// Returns a pointer to the allocated memory
+    /// Heap allocations via the `box` keyword.
     fn box_alloc(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         dest: PlaceTy<'tcx, Self::PointerTag>,
     ) -> EvalResult<'tcx>;
 
+    /// Hook for performing extra checks on a memory access.
+    ///
+    /// Takes read-only access to the allocation so we can keep all the memory read
+    /// operations take `&self`.  Use a `RefCell` in `AllocExtra` if you
+    /// need to mutate.
+    #[inline]
+    fn memory_accessed(
+        _alloc: &Allocation<Self::PointerTag, Self::AllocExtra>,
+        _ptr: Pointer<Self::PointerTag>,
+        _size: Size,
+        _access: MemoryAccess,
+    ) -> EvalResult<'tcx> {
+        Ok(())
+    }
+
+    /// Hook for performing extra checks when memory gets deallocated.
+    #[inline]
+    fn memory_deallocated(
+        _alloc: &mut Allocation<Self::PointerTag, Self::AllocExtra>,
+        _id: AllocId,
+    ) -> EvalResult<'tcx> {
+        Ok(())
+    }
+
+    /// Executed when evaluating the `&` operator: Creating a new reference.
+    /// This has the chance to adjust the tag.  It is only ever called if the
+    /// pointer in `place` is really a pointer, not another scalar.
+    fn tag_reference(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        place: MPlaceTy<'tcx, Self::PointerTag>,
+        borrow_kind: mir::BorrowKind,
+    ) -> EvalResult<'tcx, Self::PointerTag>;
+
     /// Execute a validation operation
+    #[inline]
     fn validation_op(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         _op: ::rustc::mir::ValidationOp,

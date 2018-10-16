@@ -144,17 +144,6 @@ impl<Tag> MemPlace<Tag> {
         // it now must be aligned.
         self.to_scalar_ptr_align().0.to_ptr()
     }
-
-    /// Turn a mplace into a (thin or fat) pointer, as a reference, pointing to the same space.
-    /// This is the inverse of `ref_to_mplace`.
-    pub fn to_ref(self) -> Value<Tag> {
-        // We ignore the alignment of the place here -- special handling for packed structs ends
-        // at the `&` operator.
-        match self.meta {
-            None => Value::Scalar(self.ptr.into()),
-            Some(meta) => Value::ScalarPair(self.ptr.into(), meta.into()),
-        }
-    }
 }
 
 impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
@@ -270,9 +259,10 @@ where
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<Tag, M::AllocExtra>)>,
 {
     /// Take a value, which represents a (thin or fat) reference, and make it a place.
-    /// Alignment is just based on the type.  This is the inverse of `MemPlace::to_ref`.
+    /// Alignment is just based on the type.  This is the inverse of `create_ref`.
     pub fn ref_to_mplace(
-        &self, val: ValTy<'tcx, M::PointerTag>
+        &self,
+        val: ValTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let pointee_type = val.layout.ty.builtin_deref(true).unwrap().ty;
         let layout = self.layout_of(pointee_type)?;
@@ -284,6 +274,26 @@ where
                 MemPlace { ptr: ptr.not_undef()?, align, meta: Some(meta.not_undef()?) },
         };
         Ok(MPlaceTy { mplace, layout })
+    }
+
+    /// Turn a mplace into a (thin or fat) pointer, as a reference, pointing to the same space.
+    /// This is the inverse of `ref_to_mplace`.
+    pub fn create_ref(
+        &mut self,
+        place: MPlaceTy<'tcx, M::PointerTag>,
+        borrow_kind: mir::BorrowKind,
+    ) -> EvalResult<'tcx, Value<M::PointerTag>> {
+        let ptr = match place.ptr {
+            Scalar::Ptr(ptr) => {
+                let tag = M::tag_reference(self, place, borrow_kind)?;
+                Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag))
+            },
+            scalar @ Scalar::Bits { .. } => scalar,
+        };
+        Ok(match place.meta {
+            None => Value::Scalar(ptr.into()),
+            Some(meta) => Value::ScalarPair(ptr.into(), meta.into()),
+        })
     }
 
     /// Offset a pointer to project to a field. Unlike place_field, this is always

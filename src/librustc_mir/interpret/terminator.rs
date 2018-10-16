@@ -446,7 +446,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         };
 
         let arg = OpTy {
-            op: Operand::Immediate(place.to_ref()),
+            op: Operand::Immediate(self.create_ref(
+                place,
+                mir::BorrowKind::Mut { allow_two_phase_borrow: false }
+            )?),
             layout: self.layout_of(self.tcx.mk_mut_ptr(place.layout.ty))?,
         };
 

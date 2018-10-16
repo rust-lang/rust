@@ -33,7 +33,7 @@ use rustc::mir::interpret::{
     Scalar, Allocation, AllocId, ConstValue,
 };
 use interpret::{self,
-    PlaceTy, MemPlace, OpTy, Operand, Value,
+    PlaceTy, MPlaceTy, MemPlace, OpTy, Operand, Value,
     EvalContext, StackPopCleanup, MemoryKind,
     snapshot,
 };
@@ -463,6 +463,15 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
             &ecx.memory,
             &ecx.stack[..],
         )
+    }
+
+    #[inline(always)]
+    fn tag_reference(
+        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        _place: MPlaceTy<'tcx, Self::PointerTag>,
+        _borrow_kind: mir::BorrowKind,
+    ) -> EvalResult<'tcx, Self::PointerTag> {
+        Ok(())
     }
 }
 
