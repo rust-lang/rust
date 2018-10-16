@@ -215,11 +215,22 @@ pub enum MiriMemoryKind {
 }
 
 impl Into<MemoryKind<MiriMemoryKind>> for MiriMemoryKind {
+    #[inline(always)]
     fn into(self) -> MemoryKind<MiriMemoryKind> {
         MemoryKind::Machine(self)
     }
 }
 
+impl MayLeak for MiriMemoryKind {
+    #[inline(always)]
+    fn may_leak(self) -> bool {
+        use MiriMemoryKind::*;
+        match self {
+            Rust | C => false,
+            Env | MutStatic => true,
+        }
+    }
+}
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Evaluator<'tcx> {
