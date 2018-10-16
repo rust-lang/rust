@@ -1,4 +1,4 @@
-error[E0382]: use of moved value: `*x.b`
+error[E0382]: use of moved value: `x.b`
   --> $DIR/borrowck-field-sensitivity.rs:18:10
    |
 LL |     drop(x.b);
@@ -6,7 +6,7 @@ LL |     drop(x.b);
 LL |     drop(*x.b); //~ ERROR use of moved value: `*x.b`
    |          ^^^^ value used here after move
 
-error[E0382]: use of moved value: `*x.b`
+error[E0382]: use of moved value: `x.b`
   --> $DIR/borrowck-field-sensitivity.rs:24:10
    |
 LL |     let y = A { a: 3, .. x };
@@ -104,7 +104,25 @@ LL |     let _z = A { a: 4, .. x };  //~ ERROR use of moved value: `x.b`
    |
    = note: move occurs because `x.b` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
-error: aborting due to 11 previous errors
+error[E0381]: assign to part of possibly uninitialized variable: `x`
+  --> $DIR/borrowck-field-sensitivity.rs:91:5
+   |
+LL |     x.a = 1;
+   |     ^^^^^^^ use of possibly uninitialized `x`
 
-Some errors occurred: E0382, E0499, E0505.
-For more information about an error, try `rustc --explain E0382`.
+error[E0381]: assign to part of possibly uninitialized variable: `x`
+  --> $DIR/borrowck-field-sensitivity.rs:97:5
+   |
+LL |     x.a = 1;
+   |     ^^^^^^^ use of possibly uninitialized `x`
+
+error[E0381]: assign to part of possibly uninitialized variable: `x`
+  --> $DIR/borrowck-field-sensitivity.rs:104:5
+   |
+LL |     x.b = box 1;
+   |     ^^^ use of possibly uninitialized `x`
+
+error: aborting due to 14 previous errors
+
+Some errors occurred: E0381, E0382, E0499, E0505.
+For more information about an error, try `rustc --explain E0381`.

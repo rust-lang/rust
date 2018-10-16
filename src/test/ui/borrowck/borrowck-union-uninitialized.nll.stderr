@@ -1,9 +1,15 @@
-error[E0381]: use of possibly uninitialized variable: `u.a`
-  --> $DIR/borrowck-union-uninitialized.rs:26:18
+error[E0381]: assign to part of possibly uninitialized variable: `s`
+  --> $DIR/borrowck-union-uninitialized.rs:23:9
    |
-LL |         let ua = u.a; //~ ERROR use of possibly uninitialized variable: `u.a`
-   |                  ^^^ use of possibly uninitialized `u.a`
+LL |         s.a = 0;
+   |         ^^^^^^^ use of possibly uninitialized `s`
 
-error: aborting due to previous error
+error[E0381]: assign to part of possibly uninitialized variable: `u`
+  --> $DIR/borrowck-union-uninitialized.rs:24:9
+   |
+LL |         u.a = 0;
+   |         ^^^^^^^ use of possibly uninitialized `u`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0381`.
