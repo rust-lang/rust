@@ -388,7 +388,7 @@ impl AnalysisImpl {
                                     .text()
                                     .slice(range_search)
                                     .to_string()
-                                    .matches(",")
+                                    .matches(',')
                                     .count();
 
                                 // If we have a method call eat the first param since it's just self.

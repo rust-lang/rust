@@ -160,8 +160,8 @@ pub fn handle_workspace_symbol(
     params: req::WorkspaceSymbolParams,
     token: JobToken,
 ) -> Result<Option<Vec<SymbolInformation>>> {
-    let all_symbols = params.query.contains("#");
-    let libs = params.query.contains("*");
+    let all_symbols = params.query.contains('#');
+    let libs = params.query.contains('*');
     let query = {
         let query: String = params
             .query
