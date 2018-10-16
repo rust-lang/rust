@@ -25,6 +25,7 @@ use super::{
 };
 
 /// Classifying memory accesses
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MemoryAccess {
     Read,
     Write,
