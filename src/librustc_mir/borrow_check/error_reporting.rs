@@ -1133,32 +1133,25 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                      closure,
                 );
 
-                if let ty::TyKind::Closure(did, substs) = self.mir.local_decls[closure].ty.sty {
-                    let upvar_tys = substs.upvar_tys(did, self.infcx.tcx);
+                if let ty::TyKind::Closure(did, _substs) = self.mir.local_decls[closure].ty.sty {
                     let node_id = match self.infcx.tcx.hir.as_local_node_id(did) {
                         Some(node_id) => node_id,
                         _ => return,
                     };
+                    let hir_id = self.infcx.tcx.hir.node_to_hir_id(node_id);
 
-                    self.infcx.tcx.with_freevars(node_id, |freevars| {
-                        for (freevar, upvar_ty) in freevars.iter().zip(upvar_tys) {
-                            debug!(
-                                "add_closure_invoked_twice_with_moved_variable_suggestion: \
-                                 freevar={:?} upvar_ty={:?}",
-                                freevar, upvar_ty,
-                            );
-                            if !upvar_ty.is_region_ptr() {
-                                diag.span_note(
-                                    freevar.span,
-                                    &format!(
-                                        "closure cannot be invoked more than once because it \
-                                         moves the variable `{}` out of its environment",
-                                         self.infcx.tcx.hir.name(freevar.var_id()),
-                                    ),
-                                );
-                            }
-                        }
-                    });
+                    if let Some((
+                        span, name
+                    )) = self.infcx.tcx.typeck_tables_of(did).closure_kind_origins().get(hir_id) {
+                        diag.span_note(
+                            *span,
+                            &format!(
+                                "closure cannot be invoked more than once because it \
+                                 moves the variable `{}` out of its environment",
+                                 name,
+                            ),
+                        );
+                    }
                 }
             }
         }
