@@ -868,6 +868,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         r
     }
 
+    pub fn region_constraints_added_in_snapshot(
+        &self,
+        snapshot: &CombinedSnapshot<'a, 'tcx>,
+    ) -> bool {
+        self.borrow_region_constraints().region_constraints_added_in_snapshot(
+            &snapshot.region_constraints_snapshot,
+        )
+    }
+
     pub fn add_given(&self, sub: ty::Region<'tcx>, sup: ty::RegionVid) {
         self.borrow_region_constraints().add_given(sub, sup);
     }

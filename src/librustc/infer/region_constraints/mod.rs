@@ -854,6 +854,15 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         debug!("tainted: result={:?}", taint_set);
         return taint_set.into_set();
     }
+
+    pub fn region_constraints_added_in_snapshot(&self, mark: &RegionSnapshot) -> bool {
+        self.undo_log[mark.length..]
+            .iter()
+            .any(|&elt| match elt {
+                AddConstraint(_) => true,
+                _ => false,
+            })
+    }
 }
 
 impl fmt::Debug for RegionSnapshot {
