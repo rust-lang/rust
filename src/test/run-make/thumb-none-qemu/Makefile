@@ -14,14 +14,14 @@ export WORK_DIR := $(TMPDIR)
 export HERE := $(shell pwd)
 
 ## clean up unused env variables which might cause harm.
-# unexport RUSTC_LINKER
-# unexport RUSTC_BOOTSTRAP
-# unexport RUST_BUILD_STAGE
-# unexport RUST_TEST_THREADS
-# unexport RUST_TEST_TMPDIR
-# unexport AR
-# unexport CC
-# unexport CXX
+unexport RUSTC_LINKER
+unexport RUSTC_BOOTSTRAP
+unexport RUST_BUILD_STAGE
+unexport RUST_TEST_THREADS
+unexport RUST_TEST_TMPDIR
+unexport AR
+unexport CC
+unexport CXX
 
 all:
 	bash script.sh
