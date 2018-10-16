@@ -7,12 +7,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #![feature(box_syntax)]
 
-#![allow(warnings, clippy)]
-
-#![warn(boxed_local)]
+#![allow(clippy::borrowed_box, clippy::needless_pass_by_value, clippy::unused_unit)]
+#![warn(clippy::boxed_local)]
 
 #[derive(Clone)]
 struct A;
@@ -70,8 +68,7 @@ fn warn_pass() {
 }
 
 fn nowarn_return() -> Box<A> {
-    let fx = box A;
-    fx // moved out, "escapes"
+    box A // moved out, "escapes"
 }
 
 fn nowarn_move() {
@@ -138,4 +135,29 @@ pub struct PeekableSeekable<I: Foo> {
 }
 
 pub fn new(_needs_name: Box<PeekableSeekable<&()>>) -> () {
+}
+
+/// Regression for #916, #1123
+///
+/// This shouldn't warn for `boxed_local`as the implementation of a trait
+/// can't change much about the trait definition.
+trait BoxedAction {
+    fn do_sth(self: Box<Self>);
+}
+
+impl BoxedAction for u64 {
+    fn do_sth(self: Box<Self>) {
+        println!("{}", *self)
+    }
+}
+
+/// Regression for #1478
+///
+/// This shouldn't warn for `boxed_local`as self itself is a box type.
+trait MyTrait {
+    fn do_sth(self);
+}
+
+impl<T> MyTrait for Box<T> {
+    fn do_sth(self) {}
 }
