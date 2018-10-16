@@ -17,11 +17,11 @@ use std::hash::Hash;
 
 use rustc::hir::def_id::DefId;
 use rustc::mir;
-use rustc::ty::{self, layout::{Size, TyLayout}, query::TyCtxtAt};
+use rustc::ty::{self, Ty, layout::{Size, TyLayout}, query::TyCtxtAt};
 
 use super::{
     Allocation, AllocId, EvalResult, Scalar,
-    EvalContext, PlaceTy, OpTy, MPlaceTy, Pointer, MemoryKind,
+    EvalContext, PlaceTy, OpTy, Pointer, MemoryKind,
 };
 
 /// Classifying memory accesses
@@ -199,12 +199,21 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     }
 
     /// Executed when evaluating the `&` operator: Creating a new reference.
-    /// This has the chance to adjust the tag.  It is only ever called if the
-    /// pointer in `place` is really a pointer, not another scalar.
+    /// This has the chance to adjust the tag.
     fn tag_reference(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        place: MPlaceTy<'tcx, Self::PointerTag>,
+        ptr: Pointer<Self::PointerTag>,
+        pointee_ty: Ty<'tcx>,
+        pointee_size: Size,
         borrow_kind: mir::BorrowKind,
+    ) -> EvalResult<'tcx, Self::PointerTag>;
+
+    /// Executed when evaluating the `*` operator: Following a reference.
+    /// This has the change to adjust the tag.
+    fn tag_dereference(
+        ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
+        ptr: Pointer<Self::PointerTag>,
+        ptr_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Self::PointerTag>;
 
     /// Execute a validation operation

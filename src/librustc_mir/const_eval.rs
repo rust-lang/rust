@@ -19,8 +19,8 @@ use std::collections::hash_map::Entry;
 use rustc::hir::{self, def_id::DefId};
 use rustc::mir::interpret::ConstEvalErr;
 use rustc::mir;
-use rustc::ty::{self, TyCtxt, Instance, query::TyCtxtAt};
-use rustc::ty::layout::{self, LayoutOf, TyLayout};
+use rustc::ty::{self, Ty, TyCtxt, Instance, query::TyCtxtAt};
+use rustc::ty::layout::{self, Size, LayoutOf, TyLayout};
 use rustc::ty::subst::Subst;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashMap;
@@ -28,13 +28,10 @@ use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::Mutability;
 use syntax::source_map::{Span, DUMMY_SP};
 
-use rustc::mir::interpret::{
-    EvalResult, EvalError, EvalErrorKind, GlobalId,
-    Scalar, Allocation, AllocId, ConstValue,
-};
 use interpret::{self,
-    PlaceTy, MPlaceTy, MemPlace, OpTy, Operand, Value,
-    EvalContext, StackPopCleanup, MemoryKind,
+    PlaceTy, MemPlace, OpTy, Operand, Value, Pointer, Scalar, ConstValue,
+    EvalResult, EvalError, EvalErrorKind, GlobalId, EvalContext, StackPopCleanup,
+    Allocation, AllocId, MemoryKind,
     snapshot,
 };
 
@@ -468,8 +465,19 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     #[inline(always)]
     fn tag_reference(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        _place: MPlaceTy<'tcx, Self::PointerTag>,
+        _ptr: Pointer<Self::PointerTag>,
+        _pointee_ty: Ty<'tcx>,
+        _pointee_size: Size,
         _borrow_kind: mir::BorrowKind,
+    ) -> EvalResult<'tcx, Self::PointerTag> {
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn tag_dereference(
+        _ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
+        _ptr: Pointer<Self::PointerTag>,
+        _ptr_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Self::PointerTag> {
         Ok(())
     }
