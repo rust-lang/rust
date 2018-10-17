@@ -201,12 +201,13 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
 
     /// Executed when evaluating the `&` operator: Creating a new reference.
     /// This has the chance to adjust the tag.
+    /// `borrow_kind` can be `None` in case a raw ptr is being created.
     fn tag_reference(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         ptr: Pointer<Self::PointerTag>,
         pointee_ty: Ty<'tcx>,
         pointee_size: Size,
-        borrow_kind: mir::BorrowKind,
+        borrow_kind: Option<mir::BorrowKind>,
     ) -> EvalResult<'tcx, Self::PointerTag>;
 
     /// Executed when evaluating the `*` operator: Following a reference.

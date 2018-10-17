@@ -468,7 +468,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         _ptr: Pointer<Self::PointerTag>,
         _pointee_ty: Ty<'tcx>,
         _pointee_size: Size,
-        _borrow_kind: mir::BorrowKind,
+        _borrow_kind: Option<mir::BorrowKind>,
     ) -> EvalResult<'tcx, Self::PointerTag> {
         Ok(())
     }

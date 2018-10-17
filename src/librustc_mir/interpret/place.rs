@@ -291,7 +291,7 @@ where
     pub fn create_ref(
         &mut self,
         place: MPlaceTy<'tcx, M::PointerTag>,
-        borrow_kind: mir::BorrowKind,
+        borrow_kind: Option<mir::BorrowKind>,
     ) -> EvalResult<'tcx, Value<M::PointerTag>> {
         let ptr = match place.ptr {
             Scalar::Ptr(ptr) => {
