@@ -771,12 +771,10 @@ fn user_substs_applied_to_def(
         Def::Fn(_) |
         Def::Method(_) |
         Def::StructCtor(_, CtorKind::Fn) |
-        Def::VariantCtor(_, CtorKind::Fn) =>
+        Def::VariantCtor(_, CtorKind::Fn) |
+        Def::Const(_) |
+        Def::AssociatedConst(_) =>
             Some(UserTypeAnnotation::TypeOf(def.def_id(), cx.tables().user_substs(hir_id)?)),
-
-        Def::Const(_def_id) |
-        Def::AssociatedConst(_def_id) =>
-            bug!("unimplemented"),
 
         // A unit struct/variant which is used as a value (e.g.,
         // `None`). This has the type of the enum/struct that defines
@@ -889,14 +887,17 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         },
 
         Def::Const(def_id) |
-        Def::AssociatedConst(def_id) => ExprKind::Literal {
-            literal: ty::Const::unevaluated(
-                cx.tcx,
-                def_id,
-                substs,
-                cx.tables().node_id_to_type(expr.hir_id),
-            ),
-            user_ty: None, // FIXME(#47184) -- user given type annot on constants
+        Def::AssociatedConst(def_id) => {
+            let user_ty = user_substs_applied_to_def(cx, expr.hir_id, &def);
+            ExprKind::Literal {
+                literal: ty::Const::unevaluated(
+                    cx.tcx,
+                    def_id,
+                    substs,
+                    cx.tables().node_id_to_type(expr.hir_id),
+                ),
+                user_ty,
+            }
         },
 
         Def::StructCtor(def_id, CtorKind::Const) |
