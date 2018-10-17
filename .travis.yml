@@ -17,7 +17,7 @@ matrix:
   include:
     # Images used in testing PR and try-build should be run first.
     - env: IMAGE=x86_64-gnu-llvm-6.0 RUST_BACKTRACE=1
-      if: type = pull_request OR branch = auto
+      if: branch = auto
 
     - env: IMAGE=dist-x86_64-linux DEPLOY=1
       if: branch = try OR branch = auto
@@ -159,7 +159,7 @@ matrix:
     - env: IMAGE=dist-x86_64-freebsd DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-x86_64-musl DEPLOY=1
-      if: branch = auto
+#      if: branch = auto
     - env: IMAGE=dist-x86_64-netbsd DEPLOY=1
       if: branch = auto
     - env: IMAGE=asmjs
@@ -185,7 +185,7 @@ matrix:
     - env: IMAGE=x86_64-gnu-distcheck
       if: branch = auto
     - env: IMAGE=mingw-check
-      if: type = pull_request OR branch = auto
+      if: branch = auto
 
     - stage: publish toolstate
       if: branch = master AND type = push
