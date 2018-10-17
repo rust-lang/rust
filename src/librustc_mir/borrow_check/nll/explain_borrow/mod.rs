@@ -439,17 +439,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             Operand::Move(Place::Local(from)) if *from == target => {
                                 debug!("was_captured_by_trait_object: ty={:?}", ty);
                                 // Check the type for a trait object.
-                                match ty.sty {
+                                return match ty.sty {
                                     // `&dyn Trait`
-                                    ty::TyKind::Ref(_, ty, _) if ty.is_trait() => return true,
+                                    ty::TyKind::Ref(_, ty, _) if ty.is_trait() => true,
                                     // `Box<dyn Trait>`
                                     _ if ty.is_box() && ty.boxed_ty().is_trait() =>
-                                        return true,
+                                        true,
                                     // `dyn Trait`
-                                    _ if ty.is_trait() => return true,
+                                    _ if ty.is_trait() => true,
                                     // Anything else.
-                                    _ => return false,
-                                }
+                                    _ => false,
+                                };
                             },
                             _ => return false,
                         },
@@ -464,32 +464,29 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 let terminator = block.terminator();
                 debug!("was_captured_by_trait_object: terminator={:?}", terminator);
 
-                match &terminator.kind {
-                    TerminatorKind::Call {
-                        destination: Some((Place::Local(dest), block)),
-                        args,
-                        ..
-                    } => {
-                        debug!(
-                            "was_captured_by_trait_object: target={:?} dest={:?} args={:?}",
-                            target, dest, args
-                        );
-                        // Check if one of the arguments to this function is the target place.
-                        let found_target = args.iter().any(|arg| {
-                            if let Operand::Move(Place::Local(potential)) = arg {
-                                *potential == target
-                            } else {
-                                false
-                            }
-                        });
-
-                        // If it is, follow this to the next block and update the target.
-                        if found_target {
-                            target = *dest;
-                            queue.push(block.start_location());
+                if let TerminatorKind::Call {
+                    destination: Some((Place::Local(dest), block)),
+                    args,
+                    ..
+                } = &terminator.kind {
+                    debug!(
+                        "was_captured_by_trait_object: target={:?} dest={:?} args={:?}",
+                        target, dest, args
+                    );
+                    // Check if one of the arguments to this function is the target place.
+                    let found_target = args.iter().any(|arg| {
+                        if let Operand::Move(Place::Local(potential)) = arg {
+                            *potential == target
+                        } else {
+                            false
                         }
-                    },
-                    _ => {},
+                    });
+
+                    // If it is, follow this to the next block and update the target.
+                    if found_target {
+                        target = *dest;
+                        queue.push(block.start_location());
+                    }
                 }
             }
 

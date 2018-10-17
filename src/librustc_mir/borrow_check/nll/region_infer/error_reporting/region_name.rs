@@ -566,10 +566,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             | hir::LifetimeName::Underscore => {
                 let region_name = self.synthesize_region_name(counter);
                 let ampersand_span = lifetime.span;
-                return Some(RegionName {
+                Some(RegionName {
                     name: region_name,
                     source: RegionNameSource::MatchedAdtAndSegment(ampersand_span),
-                });
+                })
             }
 
             hir::LifetimeName::Implicit => {
@@ -584,7 +584,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // T>`. We don't consider this a match; instead we let
                 // the "fully elaborated" type fallback above handle
                 // it.
-                return None;
+                None
             }
         }
     }
