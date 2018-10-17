@@ -17,6 +17,7 @@ use rustc::mir::{
     CastKind, FakeReadCause, Local, Location, Mir, Operand, Place, Projection, ProjectionElem,
     Rvalue, Statement, StatementKind, TerminatorKind
 };
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagnosticBuilder;
 use syntax_pos::Span;
 
@@ -254,7 +255,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         &self,
         borrow_location: Location,
     ) -> bool {
-        let mut visited_locations = Vec::new();
+        let mut visited_locations = FxHashSet::default();
         let mut pending_locations = vec![ borrow_location ];
         debug!("is_in_loop: borrow_location={:?}", borrow_location);
 
@@ -315,7 +316,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
 
             // Keep track of where we have visited.
-            visited_locations.push(location);
+            visited_locations.insert(location);
         }
 
         false
