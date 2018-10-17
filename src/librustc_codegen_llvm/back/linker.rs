@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use rustc_data_structures::fx::FxHashMap;
+use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
 use std::io::prelude::*;
@@ -85,6 +86,9 @@ impl LinkerInfo {
                 }) as Box<dyn Linker>
             }
 
+            LinkerFlavor::L4Bender => {
+                Box::new(L4Bender::new(cmd, sess)) as Box<dyn Linker>
+            },
             LinkerFlavor::Lld(LldFlavor::Wasm) => {
                 Box::new(WasmLd {
                     cmd,
@@ -1091,5 +1095,169 @@ impl<'a> Linker for WasmLd<'a> {
 
     fn cross_lang_lto(&mut self) {
         // Do nothing for now
+    }
+}
+
+/// Linker shepherd script for L4Re (Fiasco)
+pub struct L4Bender<'a> {
+    cmd: Command,
+    sess: &'a Session,
+    hinted_static: bool,
+}
+
+impl<'a> Linker for L4Bender<'a> {
+    fn link_dylib(&mut self, lib: &str) {
+        self.link_staticlib(lib); // do not support dynamic linking for now
+    }
+    fn link_staticlib(&mut self, lib: &str) {
+        self.hint_static();
+        self.cmd.arg(format!("-PC{}", lib));
+    }
+    fn link_rlib(&mut self, lib: &Path) {
+        self.hint_static();
+        self.cmd.arg(lib);
+    }
+    fn include_path(&mut self, path: &Path) {
+        self.cmd.arg("-L").arg(path);
+    }
+    fn framework_path(&mut self, _: &Path) {
+        bug!("Frameworks are not supported on L4Re!");
+    }
+    fn output_filename(&mut self, path: &Path) { self.cmd.arg("-o").arg(path); }
+    fn add_object(&mut self, path: &Path) { self.cmd.arg(path); }
+    // not sure about pie on L4Re
+    fn position_independent_executable(&mut self) { }
+    fn no_position_independent_executable(&mut self) { }
+    fn full_relro(&mut self) { self.cmd.arg("-z,relro,-z,now"); }
+    fn partial_relro(&mut self) { self.cmd.arg("-z,relro"); }
+    fn no_relro(&mut self) { self.cmd.arg("-z,norelro"); }
+    fn build_static_executable(&mut self) { self.cmd.arg("-static"); }
+    fn args(&mut self, args: &[String]) { self.cmd.args(args); }
+
+    fn link_rust_dylib(&mut self, lib: &str, _path: &Path) { self.link_dylib(lib); }
+
+    fn link_framework(&mut self, _: &str) {
+        bug!("Frameworks not supported on L4Re.");
+    }
+
+    // Here we explicitly ask that the entire archive is included into the
+    // result artifact. For more details see #15460, but the gist is that
+    // the linker will strip away any unused objects in the archive if we
+    // don't otherwise explicitly reference them. This can occur for
+    // libraries which are just providing bindings, libraries with generic
+    // functions, etc.
+    fn link_whole_staticlib(&mut self, lib: &str, _: &[PathBuf]) {
+        self.hint_static();
+        self.cmd.arg("--whole-archive");
+        self.cmd.arg("-l").arg(lib);
+        self.cmd.arg("--no-whole-archive");
+    }
+
+    fn link_whole_rlib(&mut self, lib: &Path) {
+        self.hint_static();
+        self.cmd.arg("--whole-archive").arg(lib).arg("--no-whole-archive");
+    }
+
+    fn gc_sections(&mut self, keep_metadata: bool) {
+        if !keep_metadata {
+            self.cmd.arg("--gc-sections");
+        }
+    }
+
+    fn optimize(&mut self) {
+        self.cmd.arg("-O2");
+    }
+
+    fn pgo_gen(&mut self) { }
+
+    fn debuginfo(&mut self) {
+        match self.sess.opts.debuginfo {
+            DebugInfo::None => {
+                // If we are building without debuginfo enabled and we were called with
+                // `-Zstrip-debuginfo-if-disabled=yes`, tell the linker to strip any debuginfo
+                // found when linking to get rid of symbols from libstd.
+                match self.sess.opts.debugging_opts.strip_debuginfo_if_disabled {
+                    Some(true) => { self.cmd.arg("-S"); },
+                    _ => {},
+                }
+            },
+            _ => {},
+        };
+    }
+
+    fn no_default_libraries(&mut self) {
+        self.cmd.arg("-nostdlib");
+    }
+
+    fn build_dylib(&mut self, _: &Path) {
+        bug!("not implemented");
+    }
+
+    fn export_symbols(&mut self, _: &Path, _: CrateType) {
+        bug!("Not implemented");
+    }
+
+    fn subsystem(&mut self, subsystem: &str) {
+        self.cmd.arg(&format!("--subsystem,{}", subsystem));
+    }
+
+    fn finalize(&mut self) -> Command {
+        self.hint_static(); // Reset to default before returning the composed command line.
+        let mut cmd = Command::new("");
+        ::std::mem::swap(&mut cmd, &mut self.cmd);
+        cmd
+    }
+
+    fn group_start(&mut self) { self.cmd.arg("--start-group"); }
+    fn group_end(&mut self) { self.cmd.arg("--end-group"); }
+    fn cross_lang_lto(&mut self) {
+        // do nothing
+    }
+}
+
+impl<'a> L4Bender<'a> {
+    pub fn new(mut cmd: Command, sess: &'a Session) -> L4Bender<'a> {
+        if let Ok(l4bender_args) = env::var("L4_BENDER_ARGS") {
+            L4Bender::split_cmd_args(&mut cmd, &l4bender_args);
+        }
+
+        cmd.arg("--"); // separate direct l4-bender args from linker args
+
+        L4Bender {
+            cmd: cmd,
+            sess: sess,
+            hinted_static: false,
+        }
+    }
+
+    /// This parses a shell-escaped string and unquotes the arguments. It doesn't attempt to
+    /// completely understand shell, but should instead allow passing arguments like
+    /// `-Dlinker="ld -m x86_64"`, and a copy without quotes, but spaces preserved, is added as an
+    /// argument to the given Command. This means that constructs as \" are not understood, so
+    /// quote wisely.
+    fn split_cmd_args(cmd: &mut Command, shell_args: &str) {
+        let mut arg = String::new();
+        let mut quoted = false;
+        for character in shell_args.chars() {
+            match character {
+                ' ' if !quoted => {
+                    cmd.arg(&arg);
+                    arg.clear();
+                },
+                '"' | '\'' => quoted = !quoted,
+                _ => arg.push(character),
+            };
+        }
+        if arg.len() > 0 {
+            cmd.arg(&arg);
+            arg.clear();
+        }
+    }
+
+    fn hint_static(&mut self) {
+        if !self.hinted_static {
+            self.cmd.arg("-static");
+            self.hinted_static = true;
+        }
     }
 }
