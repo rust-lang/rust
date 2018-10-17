@@ -164,13 +164,10 @@ fn check_rvalue(
             }
         }
         Rvalue::Cast(CastKind::UnsafeFnPointer, _, _) |
+        Rvalue::Cast(CastKind::ClosureFnPointer, _, _) |
         Rvalue::Cast(CastKind::ReifyFnPointer, _, _) => Err((
             span,
             "function pointer casts are not allowed in const fn".into(),
-        )),
-        Rvalue::Cast(CastKind::ClosureFnPointer, _, _) => Err((
-            span,
-            "closures are not allowed in const fn".into(),
         )),
         Rvalue::Cast(CastKind::Unsize, _, _) => Err((
             span,
