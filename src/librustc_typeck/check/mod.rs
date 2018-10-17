@@ -2357,6 +2357,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         t
     }
 
+    pub fn to_ty_saving_user_provided_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
+        let ty = self.to_ty(ast_ty);
+        let c_ty = self.infcx.canonicalize_response(&ty);
+        self.tables.borrow_mut().user_provided_tys_mut().insert(ast_ty.hir_id, c_ty);
+        ty
+    }
+
     pub fn node_ty(&self, id: hir::HirId) -> Ty<'tcx> {
         match self.tables.borrow().node_types().get(id) {
             Some(&t) => t,
@@ -4153,7 +4160,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             hir::ExprKind::Cast(ref e, ref t) => {
                 // Find the type of `e`. Supply hints based on the type we are casting to,
                 // if appropriate.
-                let t_cast = self.to_ty(t);
+                let t_cast = self.to_ty_saving_user_provided_ty(t);
                 let t_cast = self.resolve_type_vars_if_possible(&t_cast);
                 let t_expr = self.check_expr_with_expectation(e, ExpectCastableToType(t_cast));
                 let t_cast = self.resolve_type_vars_if_possible(&t_cast);
@@ -4166,8 +4173,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
                     match cast::CastCheck::new(self, e, t_expr, t_cast, t.span, expr.span) {
                         Ok(cast_check) => {
-                            let c_ty = self.infcx.canonicalize_response(&t_cast);
-                            self.tables.borrow_mut().user_provided_tys_mut().insert(t.hir_id, c_ty);
                             deferred_cast_checks.push(cast_check);
                             t_cast
                         }
@@ -4178,10 +4183,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             hir::ExprKind::Type(ref e, ref t) => {
-                let ty = self.to_ty(&t);
+                let ty = self.to_ty_saving_user_provided_ty(&t);
                 self.check_expr_eq_type(&e, ty);
-                let c_ty = self.infcx.canonicalize_response(&ty);
-                self.tables.borrow_mut().user_provided_tys_mut().insert(t.hir_id, c_ty);
                 ty
             }
             hir::ExprKind::Array(ref args) => {
