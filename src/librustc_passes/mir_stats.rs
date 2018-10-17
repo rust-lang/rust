@@ -211,7 +211,6 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
 
     fn visit_projection_elem(&mut self,
                              place: &PlaceElem<'tcx>,
-                             context: mir_visit::PlaceContext<'tcx>,
                              location: Location) {
         self.record("PlaceElem", place);
         self.record(match *place {
@@ -222,7 +221,7 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
             ProjectionElem::ConstantIndex { .. } => "PlaceElem::ConstantIndex",
             ProjectionElem::Downcast(..) => "PlaceElem::Downcast",
         }, place);
-        self.super_projection_elem(place, context, location);
+        self.super_projection_elem(place, location);
     }
 
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
