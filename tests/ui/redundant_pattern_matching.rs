@@ -12,7 +12,7 @@
 
 
 #![warn(clippy::all)]
-#![warn(clippy::if_let_redundant_pattern_matching)]
+#![warn(clippy::redundant_pattern_matching)]
 
 
 fn main() {
@@ -42,4 +42,34 @@ fn main() {
     if let Ok(x) = Ok::<i32,i32>(42) {
         println!("{}", x);
     }
+
+    match Ok::<i32, i32>(42) {
+        Ok(_) => true,
+        Err(_) => false,
+    };
+
+    match Ok::<i32, i32>(42) {
+        Ok(_) => false,
+        Err(_) => true,
+    };
+
+    match Err::<i32, i32>(42) {
+        Ok(_) => false,
+        Err(_) => true,
+    };
+
+    match Err::<i32, i32>(42) {
+        Ok(_) => true,
+        Err(_) => false,
+    };
+
+    match Some(42) {
+        Some(_) => true,
+        None => false,
+    };
+
+    match None::<()> {
+        Some(_) => false,
+        None => true,
+    };
 }

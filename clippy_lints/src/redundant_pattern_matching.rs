@@ -1,0 +1,228 @@
+// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::*;
+use crate::syntax::ptr::P;
+use crate::syntax::ast::LitKind;
+use crate::utils::{match_qpath, paths, snippet, span_lint_and_then};
+use crate::rustc_errors::Applicability;
+
+/// **What it does:** Lint for redundant pattern matching over `Result` or
+/// `Option`
+///
+/// **Why is this bad?** It's more concise and clear to just use the proper
+/// utility function
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+///
+/// ```rust
+/// if let Ok(_) = Ok::<i32, i32>(42) {}
+/// if let Err(_) = Err::<i32, i32>(42) {}
+/// if let None = None::<()> {}
+/// if let Some(_) = Some(42) {}
+/// match Ok::<i32, i32>(42) {
+///     Ok(_) => true,
+///     Err(_) => false,
+/// };
+/// ```
+///
+/// The more idiomatic use would be:
+///
+/// ```rust
+/// if Ok::<i32, i32>(42).is_ok() {}
+/// if Err::<i32, i32>(42).is_err() {}
+/// if None::<()>.is_none() {}
+/// if Some(42).is_some() {}
+/// Ok::<i32, i32>(42).is_ok();
+/// ```
+///
+declare_clippy_lint! {
+    pub REDUNDANT_PATTERN_MATCHING,
+    style,
+    "use the proper utility function avoiding an `if let`"
+}
+
+#[derive(Copy, Clone)]
+pub struct Pass;
+
+impl LintPass for Pass {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(REDUNDANT_PATTERN_MATCHING)
+    }
+}
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    #[allow(clippy::similar_names)]
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+        if let ExprKind::Match(ref op, ref arms, ref match_source) = expr.node {
+            match match_source {
+                MatchSource::Normal => find_sugg_for_match(cx, expr, op, arms),
+                MatchSource::IfLetDesugar { .. } => find_sugg_for_if_let(cx, expr, op, arms),
+                _ => return,
+            }
+        }
+    }
+}
+
+fn find_sugg_for_if_let<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    expr: &'tcx Expr,
+    op: &P<Expr>,
+    arms: &HirVec<Arm>
+) {
+    if arms[0].pats.len() == 1 {
+        let good_method = match arms[0].pats[0].node {
+            PatKind::TupleStruct(ref path, ref pats, _) if pats.len() == 1 => {
+                if let PatKind::Wild = pats[0].node {
+                    if match_qpath(path, &paths::RESULT_OK) {
+                        "is_ok()"
+                    } else if match_qpath(path, &paths::RESULT_ERR) {
+                        "is_err()"
+                    } else if match_qpath(path, &paths::OPTION_SOME) {
+                        "is_some()"
+                    } else {
+                        return;
+                    }
+                } else {
+                    return;
+                }
+            },
+
+            PatKind::Path(ref path) if match_qpath(path, &paths::OPTION_NONE) => "is_none()",
+
+            _ => return,
+        };
+
+        span_lint_and_then(
+            cx,
+            REDUNDANT_PATTERN_MATCHING,
+            arms[0].pats[0].span,
+            &format!("redundant pattern matching, consider using `{}`", good_method),
+            |db| {
+                let span = expr.span.to(op.span);
+                db.span_suggestion_with_applicability(
+                    span,
+                    "try this",
+                    format!("if {}.{}", snippet(cx, op.span, "_"), good_method),
+                    Applicability::MachineApplicable, // snippet
+                );
+            },
+        );
+    } else {
+        return;
+    }
+}
+
+fn find_sugg_for_match<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    expr: &'tcx Expr,
+    op: &P<Expr>,
+    arms: &HirVec<Arm>
+) {
+    if arms.len() == 2 {
+        let node_pair = (&arms[0].pats[0].node, &arms[1].pats[0].node);
+
+        let found_good_method = match node_pair {
+            (
+                PatKind::TupleStruct(ref path_left, ref pats_left, _),
+                PatKind::TupleStruct(ref path_right, ref pats_right, _)
+            ) if pats_left.len() == 1 && pats_right.len() == 1 => {
+                if let (PatKind::Wild, PatKind::Wild) = (&pats_left[0].node, &pats_right[0].node) {
+                    find_good_method_for_match(
+                        arms,
+                        path_left,
+                        path_right,
+                        &paths::RESULT_OK,
+                        &paths::RESULT_ERR,
+                        "is_ok()",
+                        "is_err()"
+                    )
+                } else {
+                    None
+                }
+            },
+            (
+                PatKind::TupleStruct(ref path_left, ref pats, _),
+                PatKind::Path(ref path_right)
+            ) | (
+                PatKind::Path(ref path_left),
+                PatKind::TupleStruct(ref path_right, ref pats, _)
+            ) if pats.len() == 1 => {
+                if let PatKind::Wild = pats[0].node {
+                    find_good_method_for_match(
+                        arms,
+                        path_left,
+                        path_right,
+                        &paths::OPTION_SOME,
+                        &paths::OPTION_NONE,
+                        "is_some()",
+                        "is_none()"
+                    )
+                } else {
+                    None
+                }
+            },
+            _ => None,
+        };
+
+        if let Some(good_method) = found_good_method {
+            span_lint_and_then(
+                cx,
+                REDUNDANT_PATTERN_MATCHING,
+                expr.span,
+                &format!("redundant pattern matching, consider using `{}`", good_method),
+                |db| {
+                    let span = expr.span.to(op.span);
+                    db.span_suggestion_with_applicability(
+                        span,
+                        "try this",
+                        format!("{}.{}", snippet(cx, op.span, "_"), good_method),
+                        Applicability::MachineApplicable, // snippet
+                    );
+                },
+            );
+        }
+    } else {
+        return;
+    }
+}
+
+fn find_good_method_for_match<'a>(
+    arms: &HirVec<Arm>,
+    path_left: &QPath,
+    path_right: &QPath,
+    expected_left: &[&str],
+    expected_right: &[&str],
+    should_be_left: &'a str,
+    should_be_right: &'a str
+) -> Option<&'a str> {
+    let body_node_pair = if match_qpath(path_left, expected_left) && match_qpath(path_right, expected_right) {
+        (&(*arms[0].body).node, &(*arms[1].body).node)
+    } else if match_qpath(path_right, expected_left) && match_qpath(path_left, expected_right) {
+        (&(*arms[1].body).node, &(*arms[0].body).node)
+    } else {
+        return None;
+    };
+
+    match body_node_pair {
+        (ExprKind::Lit(ref lit_left), ExprKind::Lit(ref lit_right)) => {
+            match (&lit_left.node, &lit_right.node) {
+                (LitKind::Bool(true), LitKind::Bool(false)) => Some(should_be_left),
+                (LitKind::Bool(false), LitKind::Bool(true)) => Some(should_be_right),
+                _ => None,
+            }
+        },
+        _ => None,
+    }
+}
