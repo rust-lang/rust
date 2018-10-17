@@ -59,13 +59,29 @@ impl Lint {
 
     /// Returns all non-deprecated lints and non-internal lints
     pub fn usable_lints(lints: impl Iterator<Item=Self>) -> impl Iterator<Item=Self> {
-        lints.filter(|l| l.deprecation.is_none() && !l.group.starts_with("internal"))
+        lints.filter(|l| l.deprecation.is_none() && !l.is_internal())
     }
 
     /// Returns the lints in a HashMap, grouped by the different lint groups
     pub fn by_lint_group(lints: &[Self]) -> HashMap<String, Vec<Self>> {
         lints.iter().map(|lint| (lint.group.to_string(), lint.clone())).into_group_map()
     }
+
+    pub fn is_internal(&self) -> bool {
+        self.group.starts_with("internal")
+    }
+}
+
+pub fn gen_changelog_lint_list(lints: Vec<Lint>) -> Vec<String> {
+    let mut lint_list_sorted: Vec<Lint> = lints;
+    lint_list_sorted.sort_by_key(|l| l.name.clone());
+    lint_list_sorted
+        .iter()
+        .filter(|l| !l.is_internal())
+        .map(|l| {
+            format!("[`{}`]: {}#{}", l.name, DOCS_LINK.clone(), l.name)
+        })
+        .collect()
 }
 
 /// Gathers all files in `src/clippy_lints` and gathers all lints inside
@@ -290,4 +306,18 @@ fn test_by_lint_group() {
         Lint::new("should_assert_eq2", "group2", "abc", None, "module_name")
     ]);
     assert_eq!(expected, Lint::by_lint_group(&lints));
+}
+
+#[test]
+fn test_gen_changelog_lint_list() {
+    let lints = vec![
+        Lint::new("should_assert_eq", "group1", "abc", None, "module_name"),
+        Lint::new("should_assert_eq2", "group2", "abc", None, "module_name"),
+        Lint::new("incorrect_internal", "internal_style", "abc", None, "module_name"),
+    ];
+    let expected = vec![
+        format!("[`should_assert_eq`]: {}#should_assert_eq", DOCS_LINK.to_string()),
+        format!("[`should_assert_eq2`]: {}#should_assert_eq2", DOCS_LINK.to_string())
+    ];
+    assert_eq!(expected, gen_changelog_lint_list(lints));
 }
