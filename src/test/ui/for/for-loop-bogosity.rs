@@ -24,7 +24,8 @@ pub fn main() {
         x: 1,
         y: 2,
     };
-    for x in bogus { //~ ERROR `MyStruct: std::iter::Iterator` is not satisfied
+    for x in bogus {
+    //~^ ERROR `MyStruct` is not an iterator
         drop(x);
     }
 }

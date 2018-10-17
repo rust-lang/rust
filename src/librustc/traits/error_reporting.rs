@@ -349,9 +349,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn on_unimplemented_note(
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
-        obligation: &PredicateObligation<'tcx>) ->
-        OnUnimplementedNote
-    {
+        obligation: &PredicateObligation<'tcx>,
+    ) -> OnUnimplementedNote {
         let def_id = self.impl_similar_to(trait_ref, obligation)
             .unwrap_or(trait_ref.def_id());
         let trait_ref = *trait_ref.skip_binder();
@@ -408,6 +407,38 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         if let Some(true) = self_ty.ty_adt_def().map(|def| def.did.is_local()) {
             flags.push(("crate_local".to_owned(), None));
+        }
+
+        // Allow targetting all integers using `{integral}`, even if the exact type was resolved
+        if self_ty.is_integral() {
+            flags.push(("_Self".to_owned(), Some("{integral}".to_owned())));
+        }
+
+        if let ty::Array(aty, len) = self_ty.sty {
+            flags.push(("_Self".to_owned(), Some("[]".to_owned())));
+            flags.push(("_Self".to_owned(), Some(format!("[{}]", aty))));
+            if let Some(def) = aty.ty_adt_def() {
+                // We also want to be able to select the array's type's original
+                // signature with no type arguments resolved
+                flags.push((
+                    "_Self".to_owned(),
+                    Some(format!("[{}]", self.tcx.type_of(def.did).to_string())),
+                ));
+                let tcx = self.tcx;
+                if let Some(len) = len.val.try_to_scalar().and_then(|scalar| {
+                    scalar.to_usize(tcx).ok()
+                }) {
+                    flags.push((
+                        "_Self".to_owned(),
+                        Some(format!("[{}; {}]", self.tcx.type_of(def.did).to_string(), len)),
+                    ));
+                } else {
+                    flags.push((
+                        "_Self".to_owned(),
+                        Some(format!("[{}; _]", self.tcx.type_of(def.did).to_string())),
+                    ));
+                }
+            }
         }
 
         if let Ok(Some(command)) = OnUnimplementedDirective::of_item(

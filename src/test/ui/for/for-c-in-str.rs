@@ -12,7 +12,7 @@
 
 fn main() {
     for c in "asdf" {
-    //~^ ERROR the trait bound `&str: std::iter::Iterator` is not satisfied
+    //~^ ERROR `&str` is not an iterator
     //~| NOTE `&str` is not an iterator
     //~| HELP the trait `std::iter::Iterator` is not implemented for `&str`
     //~| NOTE required by `std::iter::IntoIterator::into_iter`

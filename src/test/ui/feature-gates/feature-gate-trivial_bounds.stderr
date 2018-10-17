@@ -75,15 +75,16 @@ LL | | }
    = help: see issue #48214
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
-error[E0277]: the trait bound `i32: std::iter::Iterator` is not satisfied
+error[E0277]: `i32` is not an iterator
   --> $DIR/feature-gate-trivial_bounds.rs:50:1
    |
 LL | / fn use_for() where i32: Iterator { //~ ERROR
 LL | |     for _ in 2i32 {}
 LL | | }
-   | |_^ `i32` is not an iterator; maybe try calling `.iter()` or a similar method
+   | |_^ `i32` is not an iterator
    |
    = help: the trait `std::iter::Iterator` is not implemented for `i32`
+   = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
    = help: see issue #48214
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
