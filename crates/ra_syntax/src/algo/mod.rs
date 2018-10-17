@@ -1,5 +1,5 @@
 pub mod visit;
-pub mod walk;
+// pub mod walk;
 
 use crate::{
     text_utils::{contains_offset_nonstrict, is_subrange},

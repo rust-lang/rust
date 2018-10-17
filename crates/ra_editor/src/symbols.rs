@@ -3,10 +3,10 @@ use crate::TextRange;
 use ra_syntax::{
     algo::{
         visit::{visitor, Visitor},
-        walk::{walk, WalkEvent},
     },
     ast::{self, NameOwner},
     AstNode, File, SmolStr, SyntaxKind, SyntaxNodeRef,
+    WalkEvent,
 };
 
 #[derive(Debug, Clone)]
@@ -54,7 +54,7 @@ pub fn file_structure(file: &File) -> Vec<StructureNode> {
     let mut res = Vec::new();
     let mut stack = Vec::new();
 
-    for event in walk(file.syntax()) {
+    for event in file.syntax().preorder() {
         match event {
             WalkEvent::Enter(node) => match structure_node(node) {
                 Some(mut symbol) => {
@@ -64,7 +64,7 @@ pub fn file_structure(file: &File) -> Vec<StructureNode> {
                 }
                 None => (),
             },
-            WalkEvent::Exit(node) => {
+            WalkEvent::Leave(node) => {
                 if structure_node(node).is_some() {
                     stack.pop().unwrap();
                 }
