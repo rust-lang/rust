@@ -212,7 +212,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
 
             self.insert_as_pending_if_two_phase(location, &assigned_place, kind, idx);
 
-            if let Some(local) = borrowed_place.root_local() {
+            let neo_place = self.tcx.as_new_place(borrowed_place);
+            if let mir::PlaceBase::Local(local) = neo_place.base {
                 self.local_map.entry(local).or_default().insert(idx);
             }
         }
