@@ -614,6 +614,12 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             return tcx.types.never;
         }
 
+        if self.diverges.get().always() {
+            for arm in arms {
+                self.warn_if_unreachable(arm.body.id, arm.body.span, "arm");
+            }
+        }
+
         // Otherwise, we have to union together the types that the
         // arms produce and so forth.
         let discrim_diverges = self.diverges.get();
