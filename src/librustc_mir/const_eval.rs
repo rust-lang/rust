@@ -662,6 +662,10 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
             match tcx.describe_def(def_id) {
                 // constants never produce a hard error at the definition site. Anything else is
                 // a backwards compatibility hazard (and will break old versions of winapi for sure)
+                //
+                // note that validation may still cause a hard error on this very same constant,
+                // because any code that existed before validation could not have failed validation
+                // thus preventing such a hard error from being a backwards compatibility hazard
                 Some(Def::Const(_)) | Some(Def::AssociatedConst(_)) => {
                     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
                     err.report_as_lint(
