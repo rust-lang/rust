@@ -488,6 +488,290 @@ impl ItemizedBlock {
     }
 }
 
+struct CommentRewrite<'a> {
+    result: String,
+    code_block_buffer: String,
+    is_prev_line_multi_line: bool,
+    code_block_attr: Option<CodeBlockAttribute>,
+    item_block_buffer: String,
+    item_block: Option<ItemizedBlock>,
+    comment_line_separator: String,
+    indent_str: String,
+    max_chars: usize,
+    fmt_indent: Indent,
+    fmt: StringFormat<'a>,
+
+    opener: String,
+    closer: String,
+    line_start: String,
+}
+
+impl<'a> CommentRewrite<'a> {
+    fn new(
+        orig: &'a str,
+        block_style: bool,
+        shape: Shape,
+        config: &'a Config,
+    ) -> CommentRewrite<'a> {
+        let (opener, closer, line_start) = if block_style {
+            CommentStyle::SingleBullet.to_str_tuplet()
+        } else {
+            comment_style(orig, config.normalize_comments()).to_str_tuplet()
+        };
+
+        let max_chars = shape
+            .width
+            .checked_sub(closer.len() + opener.len())
+            .unwrap_or(1);
+        let indent_str = shape.indent.to_string_with_newline(config).to_string();
+        let fmt_indent = shape.indent + (opener.len() - line_start.len());
+
+        let mut cr = CommentRewrite {
+            result: String::with_capacity(orig.len() * 2),
+            code_block_buffer: String::with_capacity(128),
+            is_prev_line_multi_line: false,
+            code_block_attr: None,
+            item_block_buffer: String::with_capacity(128),
+            item_block: None,
+            comment_line_separator: format!("{}{}", indent_str, line_start),
+            max_chars,
+            indent_str,
+            fmt_indent,
+
+            fmt: StringFormat {
+                opener: "",
+                closer: "",
+                line_start,
+                line_end: "",
+                shape: Shape::legacy(max_chars, fmt_indent),
+                trim_end: true,
+                config,
+            },
+
+            opener: opener.to_owned(),
+            closer: closer.to_owned(),
+            line_start: line_start.to_owned(),
+        };
+        cr.result.push_str(opener);
+        cr
+    }
+
+    fn join_block(s: &str, sep: &str) -> String {
+        let mut result = String::with_capacity(s.len() + 128);
+        let mut iter = s.lines().peekable();
+        while let Some(line) = iter.next() {
+            result.push_str(line);
+            result.push_str(match iter.peek() {
+                Some(next_line) if next_line.is_empty() => sep.trim_right(),
+                Some(..) => &sep,
+                None => "",
+            });
+        }
+        result
+    }
+
+    fn finish(mut self) -> String {
+        if !self.code_block_buffer.is_empty() {
+            // There is a code block that is not properly enclosed by backticks.
+            // We will leave them untouched.
+            self.result.push_str(&self.comment_line_separator);
+            self.result.push_str(&Self::join_block(
+                &trim_custom_comment_prefix(&self.code_block_buffer),
+                &self.comment_line_separator,
+            ));
+        }
+
+        if !self.item_block_buffer.is_empty() {
+            // the last few lines are part of an itemized block
+            self.fmt.shape = Shape::legacy(self.max_chars, self.fmt_indent);
+            let mut ib = None;
+            ::std::mem::swap(&mut ib, &mut self.item_block);
+            let ib = ib.unwrap();
+            let item_fmt = ib.create_string_format(&self.fmt);
+            self.result.push_str(&self.comment_line_separator);
+            self.result.push_str(&ib.opener);
+            match rewrite_string(
+                &self.item_block_buffer.replace("\n", " "),
+                &item_fmt,
+                self.max_chars.saturating_sub(ib.indent),
+            ) {
+                Some(s) => self.result.push_str(&Self::join_block(
+                    &s,
+                    &format!("{}{}", &self.comment_line_separator, ib.line_start),
+                )),
+                None => self.result.push_str(&Self::join_block(
+                    &self.item_block_buffer,
+                    &self.comment_line_separator,
+                )),
+            };
+        }
+
+        self.result.push_str(&self.closer);
+        if self.result.ends_with(&self.opener) && self.opener.ends_with(' ') {
+            // Trailing space.
+            self.result.pop();
+        }
+
+        self.result
+    }
+
+    fn handle_line(
+        &mut self,
+        orig: &'a str,
+        i: usize,
+        line: &'a str,
+        has_leading_whitespace: bool,
+    ) -> bool {
+        let is_last = i == count_newlines(orig);
+
+        if let Some(ref ib) = self.item_block {
+            if ib.in_block(&line) {
+                self.item_block_buffer.push_str(&line);
+                self.item_block_buffer.push('\n');
+                return false;
+            }
+            self.is_prev_line_multi_line = false;
+            self.fmt.shape = Shape::legacy(self.max_chars, self.fmt_indent);
+            let item_fmt = ib.create_string_format(&self.fmt);
+            self.result.push_str(&self.comment_line_separator);
+            self.result.push_str(&ib.opener);
+            match rewrite_string(
+                &self.item_block_buffer.replace("\n", " "),
+                &item_fmt,
+                self.max_chars.saturating_sub(ib.indent),
+            ) {
+                Some(s) => self.result.push_str(&Self::join_block(
+                    &s,
+                    &format!("{}{}", &self.comment_line_separator, ib.line_start),
+                )),
+                None => self.result.push_str(&Self::join_block(
+                    &self.item_block_buffer,
+                    &self.comment_line_separator,
+                )),
+            };
+            self.item_block_buffer.clear();
+        } else if self.code_block_attr.is_some() {
+            if line.starts_with("```") {
+                let code_block = match self.code_block_attr.as_ref().unwrap() {
+                    CodeBlockAttribute::Ignore | CodeBlockAttribute::Text => {
+                        trim_custom_comment_prefix(&self.code_block_buffer)
+                    }
+                    _ if self.code_block_buffer.is_empty() => String::new(),
+                    _ => {
+                        let mut config = self.fmt.config.clone();
+                        config.set().format_doc_comments(false);
+                        match ::format_code_block(&self.code_block_buffer, &config) {
+                            Some(ref s) => trim_custom_comment_prefix(s),
+                            None => trim_custom_comment_prefix(&self.code_block_buffer),
+                        }
+                    }
+                };
+                if !code_block.is_empty() {
+                    self.result.push_str(&self.comment_line_separator);
+                    self.result
+                        .push_str(&Self::join_block(&code_block, &self.comment_line_separator));
+                }
+                self.code_block_buffer.clear();
+                self.result.push_str(&self.comment_line_separator);
+                self.result.push_str(line);
+                self.code_block_attr = None;
+            } else {
+                self.code_block_buffer
+                    .push_str(&hide_sharp_behind_comment(line));
+                self.code_block_buffer.push('\n');
+            }
+            return false;
+        }
+
+        self.code_block_attr = None;
+        self.item_block = None;
+        if line.starts_with("```") {
+            self.code_block_attr = Some(CodeBlockAttribute::new(&line[3..]))
+        } else if self.fmt.config.wrap_comments() && ItemizedBlock::is_itemized_line(&line) {
+            let ib = ItemizedBlock::new(&line);
+            self.item_block_buffer.push_str(&line[ib.indent..]);
+            self.item_block_buffer.push('\n');
+            self.item_block = Some(ib);
+            return false;
+        }
+
+        if self.result == self.opener {
+            let force_leading_whitespace = &self.opener == "/* " && count_newlines(orig) == 0;
+            if !has_leading_whitespace && !force_leading_whitespace && self.result.ends_with(' ') {
+                self.result.pop();
+            }
+            if line.is_empty() {
+                return false;
+            }
+        } else if self.is_prev_line_multi_line && !line.is_empty() {
+            self.result.push(' ')
+        } else if is_last && line.is_empty() {
+            // trailing blank lines are unwanted
+            if !self.closer.is_empty() {
+                self.result.push_str(&self.indent_str);
+            }
+            return true;
+        } else {
+            self.result.push_str(&self.comment_line_separator);
+            if !has_leading_whitespace && self.result.ends_with(' ') {
+                self.result.pop();
+            }
+        }
+
+        if self.fmt.config.wrap_comments() && line.len() > self.fmt.shape.width && !has_url(line) {
+            match rewrite_string(line, &self.fmt, self.max_chars) {
+                Some(ref s) => {
+                    self.is_prev_line_multi_line = s.contains('\n');
+                    self.result.push_str(s);
+                }
+                None if self.is_prev_line_multi_line => {
+                    // We failed to put the current `line` next to the previous `line`.
+                    // Remove the trailing space, then start rewrite on the next line.
+                    self.result.pop();
+                    self.result.push_str(&self.comment_line_separator);
+                    self.fmt.shape = Shape::legacy(self.max_chars, self.fmt_indent);
+                    match rewrite_string(line, &self.fmt, self.max_chars) {
+                        Some(ref s) => {
+                            self.is_prev_line_multi_line = s.contains('\n');
+                            self.result.push_str(s);
+                        }
+                        None => {
+                            self.is_prev_line_multi_line = false;
+                            self.result.push_str(line);
+                        }
+                    }
+                }
+                None => {
+                    self.is_prev_line_multi_line = false;
+                    self.result.push_str(line);
+                }
+            }
+
+            self.fmt.shape = if self.is_prev_line_multi_line {
+                // 1 = " "
+                let offset = 1 + last_line_width(&self.result) - self.line_start.len();
+                Shape {
+                    width: self.max_chars.saturating_sub(offset),
+                    indent: self.fmt_indent,
+                    offset: self.fmt.shape.offset + offset,
+                }
+            } else {
+                Shape::legacy(self.max_chars, self.fmt_indent)
+            };
+        } else {
+            if line.is_empty() && self.result.ends_with(' ') && !is_last {
+                // Remove space if this is an empty comment or a doc comment.
+                self.result.pop();
+            }
+            self.result.push_str(line);
+            self.fmt.shape = Shape::legacy(self.max_chars, self.fmt_indent);
+            self.is_prev_line_multi_line = false;
+        }
+
+        false
+    }
+}
+
 fn rewrite_comment_inner(
     orig: &str,
     block_style: bool,
@@ -496,27 +780,7 @@ fn rewrite_comment_inner(
     config: &Config,
     is_doc_comment: bool,
 ) -> Option<String> {
-    let (opener, closer, line_start) = if block_style {
-        CommentStyle::SingleBullet.to_str_tuplet()
-    } else {
-        comment_style(orig, config.normalize_comments()).to_str_tuplet()
-    };
-
-    let max_chars = shape
-        .width
-        .checked_sub(closer.len() + opener.len())
-        .unwrap_or(1);
-    let indent_str = shape.indent.to_string_with_newline(config);
-    let fmt_indent = shape.indent + (opener.len() - line_start.len());
-    let mut fmt = StringFormat {
-        opener: "",
-        closer: "",
-        line_start,
-        line_end: "",
-        shape: Shape::legacy(max_chars, fmt_indent),
-        trim_end: true,
-        config,
-    };
+    let mut rewriter = CommentRewrite::new(orig, block_style, shape, config);
 
     let line_breaks = count_newlines(orig.trim_right());
     let lines = orig
@@ -543,206 +807,13 @@ fn rewrite_comment_inner(
             }
         });
 
-    let mut result = String::with_capacity(orig.len() * 2);
-    result.push_str(opener);
-    let mut code_block_buffer = String::with_capacity(128);
-    let mut is_prev_line_multi_line = false;
-    let mut code_block_attr = None;
-    let mut item_block_buffer = String::with_capacity(128);
-    let mut item_block: Option<ItemizedBlock> = None;
-    let comment_line_separator = format!("{}{}", indent_str, line_start);
-    let join_block = |s: &str, sep: &str| {
-        let mut result = String::with_capacity(s.len() + 128);
-        let mut iter = s.lines().peekable();
-        while let Some(line) = iter.next() {
-            result.push_str(line);
-            result.push_str(match iter.peek() {
-                Some(next_line) if next_line.is_empty() => sep.trim_right(),
-                Some(..) => &sep,
-                None => "",
-            });
-        }
-        result
-    };
-
     for (i, (line, has_leading_whitespace)) in lines.enumerate() {
-        let is_last = i == count_newlines(orig);
-
-        if let Some(ref ib) = item_block {
-            if ib.in_block(&line) {
-                item_block_buffer.push_str(&line);
-                item_block_buffer.push('\n');
-                continue;
-            }
-            is_prev_line_multi_line = false;
-            fmt.shape = Shape::legacy(max_chars, fmt_indent);
-            let item_fmt = ib.create_string_format(&fmt);
-            result.push_str(&comment_line_separator);
-            result.push_str(&ib.opener);
-            match rewrite_string(
-                &item_block_buffer.replace("\n", " "),
-                &item_fmt,
-                max_chars.saturating_sub(ib.indent),
-            ) {
-                Some(s) => result.push_str(&join_block(
-                    &s,
-                    &format!("{}{}", &comment_line_separator, ib.line_start),
-                )),
-                None => result.push_str(&join_block(&item_block_buffer, &comment_line_separator)),
-            };
-            item_block_buffer.clear();
-        } else if let Some(ref attr) = code_block_attr {
-            if line.starts_with("```") {
-                let code_block = match attr {
-                    CodeBlockAttribute::Ignore | CodeBlockAttribute::Text => {
-                        trim_custom_comment_prefix(&code_block_buffer)
-                    }
-                    _ if code_block_buffer.is_empty() => String::new(),
-                    _ => {
-                        let mut config = config.clone();
-                        config.set().format_doc_comments(false);
-                        match ::format_code_block(&code_block_buffer, &config) {
-                            Some(ref s) => trim_custom_comment_prefix(s),
-                            None => trim_custom_comment_prefix(&code_block_buffer),
-                        }
-                    }
-                };
-                if !code_block.is_empty() {
-                    result.push_str(&comment_line_separator);
-                    result.push_str(&join_block(&code_block, &comment_line_separator));
-                }
-                code_block_buffer.clear();
-                result.push_str(&comment_line_separator);
-                result.push_str(line);
-                code_block_attr = None;
-            } else {
-                code_block_buffer.push_str(&hide_sharp_behind_comment(line));
-                code_block_buffer.push('\n');
-            }
-            continue;
-        }
-
-        code_block_attr = None;
-        item_block = None;
-        if line.starts_with("```") {
-            code_block_attr = Some(CodeBlockAttribute::new(&line[3..]))
-        } else if config.wrap_comments() && ItemizedBlock::is_itemized_line(&line) {
-            let ib = ItemizedBlock::new(&line);
-            item_block_buffer.push_str(&line[ib.indent..]);
-            item_block_buffer.push('\n');
-            item_block = Some(ib);
-            continue;
-        }
-
-        if result == opener {
-            let force_leading_whitespace = opener == "/* " && count_newlines(orig) == 0;
-            if !has_leading_whitespace && !force_leading_whitespace && result.ends_with(' ') {
-                result.pop();
-            }
-            if line.is_empty() {
-                continue;
-            }
-        } else if is_prev_line_multi_line && !line.is_empty() {
-            result.push(' ')
-        } else if is_last && line.is_empty() {
-            // trailing blank lines are unwanted
-            if !closer.is_empty() {
-                result.push_str(&indent_str);
-            }
+        if rewriter.handle_line(orig, i, line, has_leading_whitespace) {
             break;
-        } else {
-            result.push_str(&comment_line_separator);
-            if !has_leading_whitespace && result.ends_with(' ') {
-                result.pop();
-            }
-        }
-
-        if config.wrap_comments() && line.len() > fmt.shape.width && !has_url(line) {
-            match rewrite_string(line, &fmt, max_chars) {
-                Some(ref s) => {
-                    is_prev_line_multi_line = s.contains('\n');
-                    result.push_str(s);
-                }
-                None if is_prev_line_multi_line => {
-                    // We failed to put the current `line` next to the previous `line`.
-                    // Remove the trailing space, then start rewrite on the next line.
-                    result.pop();
-                    result.push_str(&comment_line_separator);
-                    fmt.shape = Shape::legacy(max_chars, fmt_indent);
-                    match rewrite_string(line, &fmt, max_chars) {
-                        Some(ref s) => {
-                            is_prev_line_multi_line = s.contains('\n');
-                            result.push_str(s);
-                        }
-                        None => {
-                            is_prev_line_multi_line = false;
-                            result.push_str(line);
-                        }
-                    }
-                }
-                None => {
-                    is_prev_line_multi_line = false;
-                    result.push_str(line);
-                }
-            }
-
-            fmt.shape = if is_prev_line_multi_line {
-                // 1 = " "
-                let offset = 1 + last_line_width(&result) - line_start.len();
-                Shape {
-                    width: max_chars.saturating_sub(offset),
-                    indent: fmt_indent,
-                    offset: fmt.shape.offset + offset,
-                }
-            } else {
-                Shape::legacy(max_chars, fmt_indent)
-            };
-        } else {
-            if line.is_empty() && result.ends_with(' ') && !is_last {
-                // Remove space if this is an empty comment or a doc comment.
-                result.pop();
-            }
-            result.push_str(line);
-            fmt.shape = Shape::legacy(max_chars, fmt_indent);
-            is_prev_line_multi_line = false;
         }
     }
-    if !code_block_buffer.is_empty() {
-        // There is a code block that is not properly enclosed by backticks.
-        // We will leave them untouched.
-        result.push_str(&comment_line_separator);
-        result.push_str(&join_block(
-            &trim_custom_comment_prefix(&code_block_buffer),
-            &comment_line_separator,
-        ));
-    }
-    if !item_block_buffer.is_empty() {
-        // the last few lines are part of an itemized block
-        let ib = item_block.unwrap();
-        fmt.shape = Shape::legacy(max_chars, fmt_indent);
-        let item_fmt = ib.create_string_format(&fmt);
-        result.push_str(&comment_line_separator);
-        result.push_str(&ib.opener);
-        match rewrite_string(
-            &item_block_buffer.replace("\n", " "),
-            &item_fmt,
-            max_chars.saturating_sub(ib.indent),
-        ) {
-            Some(s) => result.push_str(&join_block(
-                &s,
-                &format!("{}{}", &comment_line_separator, ib.line_start),
-            )),
-            None => result.push_str(&join_block(&item_block_buffer, &comment_line_separator)),
-        };
-    }
 
-    result.push_str(closer);
-    if result.ends_with(opener) && opener.ends_with(' ') {
-        // Trailing space.
-        result.pop();
-    }
-
-    Some(result)
+    Some(rewriter.finish())
 }
 
 const RUSTFMT_CUSTOM_COMMENT_PREFIX: &str = "//#### ";
@@ -955,35 +1026,6 @@ pub fn find_comment_end(s: &str) -> Option<usize> {
 /// Returns true if text contains any comment.
 pub fn contains_comment(text: &str) -> bool {
     CharClasses::new(text.chars()).any(|(kind, _)| kind.is_comment())
-}
-
-/// Remove trailing spaces from the specified snippet. We do not remove spaces
-/// inside strings or comments.
-pub fn remove_trailing_white_spaces(text: &str) -> String {
-    let mut buffer = String::with_capacity(text.len());
-    let mut space_buffer = String::with_capacity(128);
-    for (char_kind, c) in CharClasses::new(text.chars()) {
-        match c {
-            '\n' => {
-                if char_kind == FullCodeCharKind::InString {
-                    buffer.push_str(&space_buffer);
-                }
-                space_buffer.clear();
-                buffer.push('\n');
-            }
-            _ if c.is_whitespace() => {
-                space_buffer.push(c);
-            }
-            _ => {
-                if !space_buffer.is_empty() {
-                    buffer.push_str(&space_buffer);
-                    space_buffer.clear();
-                }
-                buffer.push(c);
-            }
-        }
-    }
-    buffer
 }
 
 pub struct CharClasses<T>
@@ -1778,12 +1820,6 @@ mod test {
         check("/**/abc/* */", "abc", Some(4));
         check("\"/* abc */\"", "abc", Some(4));
         check("\"/* abc", "abc", Some(4));
-    }
-
-    #[test]
-    fn test_remove_trailing_white_spaces() {
-        let s = "    r#\"\n        test\n    \"#";
-        assert_eq!(remove_trailing_white_spaces(&s), s);
     }
 
     #[test]

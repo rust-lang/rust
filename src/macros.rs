@@ -32,10 +32,7 @@ use syntax::tokenstream::{Cursor, ThinTokenStream, TokenStream, TokenTree};
 use syntax::ThinVec;
 use syntax::{ast, ptr};
 
-use comment::{
-    contains_comment, remove_trailing_white_spaces, CharClasses, FindUncommented, FullCodeCharKind,
-    LineClasses,
-};
+use comment::{contains_comment, CharClasses, FindUncommented, FullCodeCharKind, LineClasses};
 use expr::rewrite_array;
 use lists::{itemize_list, write_list, ListFormatting};
 use overflow;
@@ -43,7 +40,7 @@ use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
 use source_map::SpanUtils;
 use spanned::Spanned;
-use utils::{format_visibility, mk_sp, rewrite_ident, wrap_str};
+use utils::{format_visibility, mk_sp, remove_trailing_white_spaces, rewrite_ident, wrap_str};
 use visitor::FmtVisitor;
 
 const FORCED_BRACKET_MACROS: &[&str] = &["vec!"];

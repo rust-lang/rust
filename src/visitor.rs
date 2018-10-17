@@ -791,9 +791,15 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     where
         F: Fn(&RewriteContext) -> Option<String>,
     {
-        let context = self.get_context();
-        let result = f(&context);
-        self.macro_rewrite_failure |= *context.macro_rewrite_failure.borrow();
+        // FIXME borrow checker fighting - can be simplified a lot with NLL.
+        let (result, mrf) = {
+            let context = self.get_context();
+            let result = f(&context);
+            let mrf = &context.macro_rewrite_failure.borrow();
+            (result, *std::ops::Deref::deref(mrf))
+        };
+
+        self.macro_rewrite_failure |= mrf;
         result
     }
 

@@ -528,7 +528,8 @@ impl<'a> FormatLines<'a> {
                 && !self.is_skipped_line()
                 && self.should_report_error(kind, &error_kind)
             {
-                self.push_err(error_kind, kind.is_comment(), self.is_string);
+                let is_string = self.is_string;
+                self.push_err(error_kind, kind.is_comment(), is_string);
             }
         }
 

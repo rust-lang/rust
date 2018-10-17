@@ -20,7 +20,7 @@ use syntax::ast::{
 use syntax::ptr;
 use syntax::source_map::{BytePos, Span, NO_EXPANSION};
 
-use comment::filter_normal_code;
+use comment::{filter_normal_code, CharClasses, FullCodeCharKind};
 use rewrite::RewriteContext;
 use shape::Shape;
 
@@ -451,4 +451,39 @@ pub fn is_block_expr(context: &RewriteContext, expr: &ast::Expr, repr: &str) -> 
         }
         _ => false,
     }
+}
+
+/// Remove trailing spaces from the specified snippet. We do not remove spaces
+/// inside strings or comments.
+pub fn remove_trailing_white_spaces(text: &str) -> String {
+    let mut buffer = String::with_capacity(text.len());
+    let mut space_buffer = String::with_capacity(128);
+    for (char_kind, c) in CharClasses::new(text.chars()) {
+        match c {
+            '\n' => {
+                if char_kind == FullCodeCharKind::InString {
+                    buffer.push_str(&space_buffer);
+                }
+                space_buffer.clear();
+                buffer.push('\n');
+            }
+            _ if c.is_whitespace() => {
+                space_buffer.push(c);
+            }
+            _ => {
+                if !space_buffer.is_empty() {
+                    buffer.push_str(&space_buffer);
+                    space_buffer.clear();
+                }
+                buffer.push(c);
+            }
+        }
+    }
+    buffer
+}
+
+#[test]
+fn test_remove_trailing_white_spaces() {
+    let s = "    r#\"\n        test\n    \"#";
+    assert_eq!(remove_trailing_white_spaces(&s), s);
 }

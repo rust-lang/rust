@@ -281,7 +281,7 @@ fn stdin_formatting_smoke_test() {
         session.format(input).unwrap();
         assert!(session.has_no_errors());
     }
-    //eprintln!("{:?}", );
+
     #[cfg(not(windows))]
     assert_eq!(buf, "fn main() {}\n".as_bytes());
     #[cfg(windows)]
