@@ -42,6 +42,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::io::{self, Write};
 use std::mem;
+use std::panic;
 use std::path::PathBuf;
 use std::rc::Rc;
 use syntax::ast;
@@ -355,21 +356,28 @@ impl fmt::Display for FormatReport {
 /// Format the given snippet. The snippet is expected to be *complete* code.
 /// When we cannot parse the given snippet, this function returns `None`.
 fn format_snippet(snippet: &str, config: &Config) -> Option<String> {
-    let mut out: Vec<u8> = Vec::with_capacity(snippet.len() * 2);
-    let input = Input::Text(snippet.into());
     let mut config = config.clone();
-    config.set().emit_mode(config::EmitMode::Stdout);
-    config.set().verbose(Verbosity::Quiet);
-    config.set().hide_parse_errors(true);
-    {
-        let mut session = Session::new(config, Some(&mut out));
-        let result = session.format(input);
-        let formatting_error = session.errors.has_macro_format_failure
-            || session.out.as_ref().unwrap().is_empty() && !snippet.is_empty();
-        if formatting_error || result.is_err() {
-            return None;
+    let out = panic::catch_unwind(|| {
+        let mut out: Vec<u8> = Vec::with_capacity(snippet.len() * 2);
+        config.set().emit_mode(config::EmitMode::Stdout);
+        config.set().verbose(Verbosity::Quiet);
+        config.set().hide_parse_errors(true);
+        let formatting_error = {
+            let input = Input::Text(snippet.into());
+            let mut session = Session::new(config, Some(&mut out));
+            let result = session.format(input);
+            session.errors.has_macro_format_failure
+                || session.out.as_ref().unwrap().is_empty() && !snippet.is_empty()
+                || result.is_err()
+        };
+        if formatting_error {
+            None
+        } else {
+            Some(out)
         }
-    }
+    })
+    .ok()??; // The first try operator handles the error from catch_unwind,
+             // whereas the second one handles None from the closure.
     String::from_utf8(out).ok()
 }
 
