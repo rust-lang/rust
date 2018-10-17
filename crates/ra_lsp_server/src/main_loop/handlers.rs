@@ -289,8 +289,8 @@ pub fn handle_runnables(
                 .filter_map(|ws| {
                     let tgt = ws.target_by_root(path)?;
                     Some((
-                        tgt.package(ws).name(ws).clone(),
-                        tgt.name(ws).clone(),
+                        tgt.package(ws).name(ws),
+                        tgt.name(ws),
                         tgt.kind(ws),
                     ))
                 })

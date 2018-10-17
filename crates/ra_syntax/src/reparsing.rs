@@ -135,7 +135,7 @@ fn find_reparsable_node(
 }
 
 fn is_balanced(tokens: &[Token]) -> bool {
-    if tokens.len() == 0
+    if tokens.is_empty()
         || tokens.first().unwrap().kind != L_CURLY
         || tokens.last().unwrap().kind != R_CURLY
     {

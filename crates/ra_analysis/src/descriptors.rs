@@ -183,8 +183,7 @@ impl Link {
         root: ast::Root<'a>,
     ) -> ast::Module<'a> {
         modules(root)
-            .filter(|(name, _)| name == &tree.link(self).name)
-            .next()
+            .find(|(name, _)| name == &tree.link(self).name)
             .unwrap()
             .1
     }

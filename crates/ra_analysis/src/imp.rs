@@ -393,7 +393,7 @@ impl AnalysisImpl {
 
                                 // If we have a method call eat the first param since it's just self.
                                 if has_self {
-                                    commas = commas + 1;
+                                    commas += 1;
                                 }
 
                                 current_parameter = Some(commas);

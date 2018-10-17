@@ -24,7 +24,6 @@ pub fn roots_loader() -> (Worker<PathBuf, (PathBuf, Vec<FileEvent>)>, ThreadWatc
         128,
         |input_receiver, output_sender| {
             input_receiver
-                .into_iter()
                 .map(|path| {
                     debug!("loading {} ...", path.as_path().display());
                     let events = load_root(path.as_path());

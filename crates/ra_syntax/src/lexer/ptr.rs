@@ -31,7 +31,7 @@ impl<'s> Ptr<'s> {
     /// For example, 0 will return the current token, 1 will return the next, etc.
     pub fn nth(&self, n: u32) -> Option<char> {
         let mut chars = self.chars().peekable();
-        chars.by_ref().skip(n as usize).next()
+        chars.by_ref().nth(n as usize)
     }
 
     /// Checks whether the current character is `c`.
