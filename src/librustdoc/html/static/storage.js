@@ -26,21 +26,6 @@ function onEach(arr, func) {
     return false;
 }
 
-function updateLocalStorage(name, value) {
-    if (usableLocalStorage()) {
-        localStorage[name] = value;
-    } else {
-        // No Web Storage support so we do nothing
-    }
-}
-
-function getCurrentValue(name) {
-    if (usableLocalStorage() && localStorage[name] !== undefined) {
-        return localStorage[name];
-    }
-    return null;
-}
-
 function usableLocalStorage() {
     // Check if the browser supports localStorage at all:
     if (typeof(Storage) === "undefined") {
@@ -57,6 +42,21 @@ function usableLocalStorage() {
     }
 
     return true;
+}
+
+function updateLocalStorage(name, value) {
+    if (usableLocalStorage()) {
+        localStorage[name] = value;
+    } else {
+        // No Web Storage support so we do nothing
+    }
+}
+
+function getCurrentValue(name) {
+    if (usableLocalStorage() && localStorage[name] !== undefined) {
+        return localStorage[name];
+    }
+    return null;
 }
 
 function switchTheme(styleElem, mainStyleElem, newTheme) {
