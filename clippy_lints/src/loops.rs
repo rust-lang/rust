@@ -31,7 +31,7 @@ use std::mem;
 use crate::syntax::ast;
 use crate::syntax::source_map::Span;
 use crate::syntax_pos::BytePos;
-use crate::utils::{sugg, sext};
+use crate::utils::{in_macro, sugg, sext};
 use crate::utils::usage::mutated_variables;
 use crate::consts::{constant, Constant};
 
@@ -1030,6 +1030,10 @@ fn check_for_loop_range<'a, 'tcx>(
     body: &'tcx Expr,
     expr: &'tcx Expr,
 ) {
+    if in_macro(expr.span) {
+        return;
+    }
+
     if let Some(higher::Range {
         start: Some(start),
         ref end,
