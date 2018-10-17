@@ -175,9 +175,8 @@ macro_rules! make_mir_visitor {
 
             fn visit_projection_elem(&mut self,
                                      place: & $($mutability)* PlaceElem<'tcx>,
-                                     context: PlaceContext<'tcx>,
                                      location: Location) {
-                self.super_projection_elem(place, context, location);
+                self.super_projection_elem(place, location);
             }
 
             fn visit_branch(&mut self,
@@ -692,12 +691,11 @@ macro_rules! make_mir_visitor {
                     PlaceContext::Projection(Mutability::Not)
                 };
                 self.visit_place(base, context, location);
-                self.visit_projection_elem(elem, context, location);
+                self.visit_projection_elem(elem, location);
             }
 
             fn super_projection_elem(&mut self,
                                      proj: & $($mutability)* PlaceElem<'tcx>,
-                                     _context: PlaceContext<'tcx>,
                                      location: Location) {
                 match *proj {
                     ProjectionElem::Deref => {
