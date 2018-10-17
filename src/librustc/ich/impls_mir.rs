@@ -601,10 +601,6 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::UserTypeAnnotation<
                 def_id.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
             }
-            mir::UserTypeAnnotation::AdtDef(ref def_id, ref substs) => {
-                def_id.hash_stable(hcx, hasher);
-                substs.hash_stable(hcx, hasher);
-            }
         }
     }
 }

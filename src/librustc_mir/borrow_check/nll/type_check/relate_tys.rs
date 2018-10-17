@@ -132,22 +132,6 @@ pub(super) fn relate_type_and_user_type<'tcx>(
 
             Ok(ty)
         }
-        UserTypeAnnotation::AdtDef(adt_def, canonical_substs) => {
-            let (
-                UserSubsts {
-                    substs,
-                    user_self_ty,
-                },
-                _,
-            ) = infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_substs);
-
-            // We don't extract adt-defs with a self-type.
-            assert!(user_self_ty.is_none());
-
-            let ty = infcx.tcx.mk_adt(adt_def, substs);
-            type_relating.relate(&ty, &a)?;
-            Ok(ty)
-        }
     }
 }
 

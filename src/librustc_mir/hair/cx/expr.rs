@@ -295,7 +295,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     let substs = cx.tables().node_substs(fun.hir_id);
 
                     let user_ty = cx.tables().user_substs(fun.hir_id)
-                        .map(|user_substs| UserTypeAnnotation::AdtDef(adt_def, user_substs));
+                        .map(|user_substs| UserTypeAnnotation::TypeOf(adt_def.did, user_substs));
 
                     let field_refs = args.iter()
                         .enumerate()
