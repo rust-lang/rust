@@ -19,7 +19,7 @@
 
 use infer::canonical::substitute::substitute_value;
 use infer::canonical::{
-    Canonical, CanonicalVarKind, CanonicalVarValues, CanonicalizedQueryResponse, Certainty,
+    Canonical, CanonicalVarValues, CanonicalizedQueryResponse, Certainty,
     OriginalQueryValues, QueryRegionConstraint, QueryResponse,
 };
 use infer::region_constraints::{Constraint, RegionConstraintData};
@@ -262,13 +262,6 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     where
         R: Debug + TypeFoldable<'tcx>,
     {
-        // In an NLL query, there should be no type variables in the
-        // query, only region variables.
-        debug_assert!(query_response.variables.iter().all(|v| match v.kind {
-            CanonicalVarKind::Ty(_) => false,
-            CanonicalVarKind::Region => true,
-        }));
-
         let result_subst =
             self.query_response_substitution_guess(cause, original_values, query_response);
 
