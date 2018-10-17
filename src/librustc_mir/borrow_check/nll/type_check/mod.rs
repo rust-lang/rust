@@ -42,7 +42,7 @@ use rustc::traits::query::type_op::custom::CustomTypeOp;
 use rustc::traits::query::{Fallible, NoSolution};
 use rustc::traits::{ObligationCause, PredicateObligations};
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::{Subst, Substs, UnpackedKind};
+use rustc::ty::subst::{Subst, Substs, UnpackedKind, UserSubsts, UserSelfTy};
 use rustc::ty::{self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind};
 use std::rc::Rc;
 use std::{fmt, iter};
@@ -901,6 +901,27 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
     }
 
+    /// Convenient wrapper around `relate_tys::relate_types` -- see
+    /// that fn for docs.
+    fn relate_types(
+        &mut self,
+        a: Ty<'tcx>,
+        v: ty::Variance,
+        b: Ty<'tcx>,
+        locations: Locations,
+        category: ConstraintCategory,
+    ) -> Fallible<()> {
+        relate_tys::relate_types(
+            self.infcx,
+            a,
+            v,
+            b,
+            locations,
+            category,
+            self.borrowck_context.as_mut().map(|x| &mut **x),
+        )
+    }
+
     fn sub_types(
         &mut self,
         sub: Ty<'tcx>,
@@ -908,14 +929,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         locations: Locations,
         category: ConstraintCategory,
     ) -> Fallible<()> {
-        relate_tys::sub_types(
-            self.infcx,
-            sub,
-            sup,
-            locations,
-            category,
-            self.borrowck_context.as_mut().map(|x| &mut **x),
-        )
+        self.relate_types(sub, ty::Variance::Covariant, sup, locations, category)
     }
 
     /// Try to relate `sub <: sup`; if this fails, instantiate opaque
@@ -950,34 +964,79 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         locations: Locations,
         category: ConstraintCategory,
     ) -> Fallible<()> {
-        relate_tys::eq_types(
-            self.infcx,
-            a,
-            b,
-            locations,
-            category,
-            self.borrowck_context.as_mut().map(|x| &mut **x),
-        )
+        self.relate_types(a, ty::Variance::Invariant, b, locations, category)
     }
 
     fn relate_type_and_user_type(
         &mut self,
         a: Ty<'tcx>,
         v: ty::Variance,
-        b: UserTypeAnnotation<'tcx>,
+        user_ty: UserTypeAnnotation<'tcx>,
         locations: Locations,
         category: ConstraintCategory,
     ) -> Fallible<()> {
-        let ty = relate_tys::relate_type_and_user_type(
-            self.infcx,
-            a,
-            v,
-            b,
-            locations,
-            category,
-            self.borrowck_context.as_mut().map(|x| &mut **x),
-        )?;
-        self.prove_predicate(ty::Predicate::WellFormed(ty), locations, category);
+        let tcx = self.tcx();
+
+        debug!(
+            "relate_type_and_user_type(a={:?}, v={:?}, b={:?}, locations={:?})",
+            a, v, user_ty, locations
+        );
+
+        // The `TypeRelating` code assumes that "unresolved inference
+        // variables" appear in the "a" side, so flip `Contravariant`
+        // ambient variance to get the right relationship.
+        let v1 = ty::Contravariant.xform(v);
+
+        match user_ty {
+            UserTypeAnnotation::Ty(canonical_ty) => {
+                let (ty, _) = self.infcx
+                    .instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_ty);
+
+                self.relate_types(ty, v1, a, locations, category)?;
+
+                self.prove_predicate(ty::Predicate::WellFormed(ty), locations, category);
+            }
+            UserTypeAnnotation::TypeOf(def_id, canonical_substs) => {
+                let (
+                    UserSubsts {
+                        substs,
+                        user_self_ty,
+                    },
+                    _,
+                ) = self.infcx
+                    .instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_substs);
+
+                let ty = self.tcx().type_of(def_id);
+                let ty = ty.subst(tcx, substs);
+
+                self.relate_types(ty, v1, a, locations, category)?;
+
+                if let Some(UserSelfTy {
+                    impl_def_id,
+                    self_ty,
+                }) = user_self_ty
+                {
+                    let impl_self_ty = tcx.type_of(impl_def_id);
+                    let impl_self_ty = impl_self_ty.subst(tcx, &substs);
+
+                    // There may be type variables in `substs` and hence
+                    // in `impl_self_ty`, but they should all have been
+                    // resolved to some fixed value during the first call
+                    // to `relate`, above. Therefore, if we use
+                    // `resolve_type_vars_if_possible` we should get to
+                    // something without type variables. This is important
+                    // because the `b` type in `relate_with_variance`
+                    // below is not permitted to have inference variables.
+                    let impl_self_ty = self.infcx.resolve_type_vars_if_possible(&impl_self_ty);
+                    assert!(!impl_self_ty.has_infer_types());
+
+                    self.eq_types(self_ty, impl_self_ty, locations, category)?;
+                }
+
+                self.prove_predicate(ty::Predicate::WellFormed(ty), locations, category);
+            }
+        }
+
         Ok(())
     }
 
