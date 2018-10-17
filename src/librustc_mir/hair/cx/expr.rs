@@ -637,12 +637,25 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 name: Field::new(cx.tcx.field_index(expr.id, cx.tables)),
             }
         }
-        hir::ExprKind::Cast(ref source, ref ty) => {
+        hir::ExprKind::Cast(ref source, ref cast_ty) => {
+            // Check for a user-given type annotation on this `cast`
+            let user_ty = cx.tables.user_provided_tys().get(cast_ty.hir_id)
+                .map(|&t| UserTypeAnnotation::Ty(t));
+
+            debug!(
+                "cast({:?}) has ty w/ hir_id {:?} and user provided ty {:?}",
+                expr,
+                cast_ty.hir_id,
+                user_ty,
+            );
+
             // Check to see if this cast is a "coercion cast", where the cast is actually done
             // using a coercion (or is a no-op).
-            if let Some(&TyCastKind::CoercionCast) = cx.tables()
-                                                    .cast_kinds()
-                                                    .get(source.hir_id) {
+            let cast = if let Some(&TyCastKind::CoercionCast) =
+                cx.tables()
+                .cast_kinds()
+                .get(source.hir_id)
+            {
                 // Convert the lexpr to a vexpr.
                 ExprKind::Use { source: source.to_ref() }
             } else {
@@ -679,24 +692,25 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 } else {
                     None
                 };
-                let source = if let Some((did, offset, ty)) = var {
+
+                let source = if let Some((did, offset, var_ty)) = var {
                     let mk_const = |literal| Expr {
                         temp_lifetime,
-                        ty,
+                        ty: var_ty,
                         span: expr.span,
                         kind: ExprKind::Literal { literal, user_ty: None },
                     }.to_ref();
                     let offset = mk_const(ty::Const::from_bits(
                         cx.tcx,
                         offset as u128,
-                        cx.param_env.and(ty),
+                        cx.param_env.and(var_ty),
                     ));
                     match did {
                         Some(did) => {
                             // in case we are offsetting from a computed discriminant
                             // and not the beginning of discriminants (which is always `0`)
                             let substs = Substs::identity_for_item(cx.tcx(), did);
-                            let lhs = mk_const(ty::Const::unevaluated(cx.tcx(), did, substs, ty));
+                            let lhs = mk_const(ty::Const::unevaluated(cx.tcx(), did, substs, var_ty));
                             let bin = ExprKind::Binary {
                                 op: BinOp::Add,
                                 lhs,
@@ -704,7 +718,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                             };
                             Expr {
                                 temp_lifetime,
-                                ty,
+                                ty: var_ty,
                                 span: expr.span,
                                 kind: bin,
                             }.to_ref()
@@ -715,25 +729,25 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     source.to_ref()
                 };
 
-                let cast = ExprKind::Cast { source };
+                ExprKind::Cast { source }
+            };
 
-                if let Some(user_ty) = cx.tables.user_provided_tys().get(ty.hir_id) {
-                    // NOTE: Creating a new Expr and wrapping a Cast inside of it may be
-                    //       inefficient, revisit this when performance becomes an issue.
-                    let cast_expr = Expr {
-                        temp_lifetime,
-                        ty: expr_ty,
-                        span: expr.span,
-                        kind: cast,
-                    };
+            if let Some(user_ty) = user_ty {
+                // NOTE: Creating a new Expr and wrapping a Cast inside of it may be
+                //       inefficient, revisit this when performance becomes an issue.
+                let cast_expr = Expr {
+                    temp_lifetime,
+                    ty: expr_ty,
+                    span: expr.span,
+                    kind: cast,
+                };
 
-                    ExprKind::ValueTypeAscription {
-                        source: cast_expr.to_ref(),
-                        user_ty: UserTypeAnnotation::Ty(*user_ty),
-                    }
-                } else {
-                    cast
+                ExprKind::ValueTypeAscription {
+                    source: cast_expr.to_ref(),
+                    user_ty: user_ty,
                 }
+            } else {
+                cast
             }
         }
         hir::ExprKind::Type(ref source, ref ty) => {
