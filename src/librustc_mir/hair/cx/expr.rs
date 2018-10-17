@@ -710,7 +710,12 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                             // in case we are offsetting from a computed discriminant
                             // and not the beginning of discriminants (which is always `0`)
                             let substs = Substs::identity_for_item(cx.tcx(), did);
-                            let lhs = mk_const(ty::Const::unevaluated(cx.tcx(), did, substs, var_ty));
+                            let lhs = mk_const(ty::Const::unevaluated(
+                                cx.tcx(),
+                                did,
+                                substs,
+                                var_ty,
+                            ));
                             let bin = ExprKind::Binary {
                                 op: BinOp::Add,
                                 lhs,
