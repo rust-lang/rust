@@ -139,7 +139,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
         let prefix_iter = || parent_prefix.iter().cloned()
             .chain(use_tree.prefix.segments.iter().map(|seg| seg.ident));
-        let prefix_start = prefix_iter().nth(0);
+        let prefix_start = prefix_iter().next();
         let starts_with_non_keyword = prefix_start.map_or(false, |ident| {
             !ident.is_path_segment_keyword()
         });
@@ -1048,13 +1048,10 @@ impl<'a, 'b, 'cl> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b, 'cl> {
 
     fn visit_token(&mut self, t: Token) {
         if let Token::Interpolated(nt) = t {
-            match nt.0 {
-                token::NtExpr(ref expr) => {
-                    if let ast::ExprKind::Mac(..) = expr.node {
-                        self.visit_invoc(expr.id);
-                    }
+            if let token::NtExpr(ref expr) = nt.0 {
+                if let ast::ExprKind::Mac(..) = expr.node {
+                    self.visit_invoc(expr.id);
                 }
-                _ => {}
             }
         }
     }
