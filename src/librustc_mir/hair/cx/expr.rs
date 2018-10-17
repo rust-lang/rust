@@ -772,7 +772,7 @@ fn user_substs_applied_to_def(
         Def::Method(_) |
         Def::StructCtor(_, CtorKind::Fn) |
         Def::VariantCtor(_, CtorKind::Fn) =>
-            Some(UserTypeAnnotation::FnDef(def.def_id(), cx.tables().user_substs(hir_id)?)),
+            Some(UserTypeAnnotation::TypeOf(def.def_id(), cx.tables().user_substs(hir_id)?)),
 
         Def::Const(_def_id) |
         Def::AssociatedConst(_def_id) =>

@@ -36,7 +36,7 @@ crate trait UserAnnotatedTyHelpers<'gcx: 'tcx, 'tcx> {
         let user_substs = self.tables().user_substs(hir_id)?;
         match &self.tables().node_id_to_type(hir_id).sty {
             ty::Adt(adt_def, _) => Some(UserTypeAnnotation::AdtDef(adt_def, user_substs)),
-            ty::FnDef(def_id, _) => Some(UserTypeAnnotation::FnDef(*def_id, user_substs)),
+            ty::FnDef(def_id, _) => Some(UserTypeAnnotation::TypeOf(*def_id, user_substs)),
             sty => bug!(
                 "sty: {:?} should not have user-substs {:?} recorded ",
                 sty,

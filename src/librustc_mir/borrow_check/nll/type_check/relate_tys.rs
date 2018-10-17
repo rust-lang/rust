@@ -90,7 +90,7 @@ pub(super) fn relate_type_and_user_type<'tcx>(
             type_relating.relate(&ty, &a)?;
             Ok(ty)
         }
-        UserTypeAnnotation::FnDef(def_id, canonical_substs) => {
+        UserTypeAnnotation::TypeOf(def_id, canonical_substs) => {
             let (
                 UserSubsts {
                     substs,
@@ -98,7 +98,9 @@ pub(super) fn relate_type_and_user_type<'tcx>(
                 },
                 _,
             ) = infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_substs);
-            let ty = infcx.tcx.mk_fn_def(def_id, substs);
+
+            let ty = infcx.tcx.type_of(def_id);
+            let ty = ty.subst(infcx.tcx, substs);
 
             type_relating.relate(&ty, &a)?;
 
