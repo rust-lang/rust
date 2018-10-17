@@ -200,7 +200,7 @@ impl<'a, T: 'a + IntoOverflowableItem<'a>> IntoOverflowableItem<'a> for ptr::P<T
     }
 }
 
-macro impl_into_overflowable_item_for_ast_node {
+macro_rules! impl_into_overflowable_item_for_ast_node {
     ($($ast_node:ident),*) => {
         $(
             impl<'a> IntoOverflowableItem<'a> for ast::$ast_node {
@@ -212,7 +212,7 @@ macro impl_into_overflowable_item_for_ast_node {
     }
 }
 
-macro impl_into_overflowable_item_for_rustfmt_types {
+macro_rules! impl_into_overflowable_item_for_rustfmt_types {
     ([$($ty:ident),*], [$($ty_with_lifetime:ident),*]) => {
         $(
             impl<'a> IntoOverflowableItem<'a> for $ty {

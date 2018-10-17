@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(decl_macro)]
-#![allow(unused_attributes)]
-#![feature(type_ascription)]
-#![feature(unicode_internals)]
 #![feature(nll)]
 
 #[macro_use]

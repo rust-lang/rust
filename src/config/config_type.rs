@@ -243,7 +243,7 @@ macro_rules! create_config {
                         if !err.is_empty() {
                             eprint!("{}", err);
                         }
-                        Ok(Config::default().fill_from_parsed_config(parsed_config, dir: &Path))
+                        Ok(Config::default().fill_from_parsed_config(parsed_config, dir))
                     }
                     Err(e) => {
                         err.push_str("Error: Decoding config file failed:\n");

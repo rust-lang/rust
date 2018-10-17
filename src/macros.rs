@@ -867,7 +867,8 @@ impl MacroArgParser {
 
     /// Returns a collection of parsed macro def's arguments.
     pub fn parse(mut self, tokens: ThinTokenStream) -> Option<Vec<ParsedMacroArg>> {
-        let mut iter = (tokens.into(): TokenStream).trees();
+        let stream: TokenStream = tokens.into();
+        let mut iter = stream.trees();
 
         while let Some(ref tok) = iter.next() {
             match tok {
@@ -1398,20 +1399,22 @@ fn format_lazy_static(context: &RewriteContext, shape: Shape, ts: &TokenStream) 
     result.push_str("lazy_static! {");
     result.push_str(&nested_shape.indent.to_string_with_newline(context.config));
 
-    macro parse_or($method:ident $(,)* $($arg:expr),* $(,)*) {
-        match parser.$method($($arg,)*) {
-            Ok(val) => {
-                if parser.sess.span_diagnostic.has_errors() {
+    macro_rules! parse_or {
+        ($method:ident $(,)* $($arg:expr),* $(,)*) => {
+            match parser.$method($($arg,)*) {
+                Ok(val) => {
+                    if parser.sess.span_diagnostic.has_errors() {
+                        parser.sess.span_diagnostic.reset_err_count();
+                        return None;
+                    } else {
+                        val
+                    }
+                }
+                Err(mut err) => {
+                    err.cancel();
                     parser.sess.span_diagnostic.reset_err_count();
                     return None;
-                } else {
-                    val
                 }
-            }
-            Err(mut err) => {
-                err.cancel();
-                parser.sess.span_diagnostic.reset_err_count();
-                return None;
             }
         }
     }
