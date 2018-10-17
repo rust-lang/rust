@@ -63,6 +63,7 @@ fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, need_fullm
     flags.push(format!("--sysroot {}", sysroot.display()));
     flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
     config.src_base = PathBuf::from(path.to_string());
+    flags.push("-Zmir-opt-level=0".to_owned()); // optimization circumvents some stacked borrow checks
     flags.push("-Zmir-emit-validate=1".to_owned());
     config.target_rustcflags = Some(flags.join(" "));
     config.target = target.to_owned();

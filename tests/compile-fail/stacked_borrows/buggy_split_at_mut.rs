@@ -1,5 +1,3 @@
-// ignore-test validation_op is disabled
-
 #![allow(unused_variables)]
 
 mod safe {
@@ -20,5 +18,7 @@ mod safe {
 
 fn main() {
     let mut array = [1,2,3,4];
-    let _x = safe::split_at_mut(&mut array, 0); //~ ERROR: in conflict with lock WriteLock
+    let (a, b) = safe::split_at_mut(&mut array, 0);
+    a[1] = 5; //~ ERROR does not exist on the stack
+    b[1] = 6;
 }
