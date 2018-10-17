@@ -505,7 +505,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             self.frame_mut().locals = locals;
         }
 
-        if self.stack.len() > 1 { // FIXME no check should be needed, but printing topmost frame crashes rustc...
+        if self.stack.len() > 1 { // FIXME no check should be needed, but some instances ICE
             debug!("ENTERING({}) {}", self.cur_frame(), self.frame().instance);
         }
 
@@ -517,7 +517,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     }
 
     pub(super) fn pop_stack_frame(&mut self) -> EvalResult<'tcx> {
-        if self.stack.len() > 1 { // FIXME no check should be needed, but printing topmost frame crashes rustc...
+        if self.stack.len() > 1 { // FIXME no check should be needed, but some instances ICE
             debug!("LEAVING({}) {}", self.cur_frame(), self.frame().instance);
         }
         ::log_settings::settings().indentation -= 1;
