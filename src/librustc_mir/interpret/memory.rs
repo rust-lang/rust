@@ -190,7 +190,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         size_and_align: Option<(Size, Align)>,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> EvalResult<'tcx> {
-        debug!("deallocating: {}", ptr.alloc_id);
+        trace!("deallocating: {}", ptr.alloc_id);
 
         if ptr.offset.bytes() != 0 {
             return err!(DeallocateNonBasePtr);
@@ -232,7 +232,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
 
         // Let the machine take some extra action
-        M::memory_deallocated(&mut alloc, ptr.alloc_id)?;
+        M::memory_deallocated(&mut alloc, ptr)?;
 
         // Don't forget to remember size and align of this now-dead allocation
         let old = self.dead_alloc_map.insert(

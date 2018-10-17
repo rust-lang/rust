@@ -358,11 +358,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                 // and it also rounds up to alignment, which we want to avoid,
                 // as the unsized field's alignment could be smaller.
                 assert!(!layout.ty.is_simd());
-                debug!("DST layout: {:?}", layout);
+                trace!("DST layout: {:?}", layout);
 
                 let sized_size = layout.fields.offset(layout.fields.count() - 1);
                 let sized_align = layout.align;
-                debug!(
+                trace!(
                     "DST {} statically sized prefix size: {:?} align: {:?}",
                     layout.ty,
                     sized_size,

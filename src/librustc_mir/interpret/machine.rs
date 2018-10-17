@@ -194,7 +194,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     #[inline]
     fn memory_deallocated(
         _alloc: &mut Allocation<Self::PointerTag, Self::AllocExtra>,
-        _id: AllocId,
+        _ptr: Pointer<Self::PointerTag>,
     ) -> EvalResult<'tcx> {
         Ok(())
     }
