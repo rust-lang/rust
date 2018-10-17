@@ -26,7 +26,7 @@ fn main() {
         _ if { (|| { let bar = b; *bar = false; })();
                      false } => { },
         &mut true => { println!("You might think we should get here"); },
-        //~^ ERROR use of moved value: `*b` [E0382]
+        //~^ ERROR use of moved value: `b` [E0382]
         _ => panic!("surely we could never get here, since rustc warns it is unreachable."),
     }
 }

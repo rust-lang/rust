@@ -1,4 +1,4 @@
-error[E0382]: use of moved value: `foo.0`
+error[E0382]: use of moved value: `foo`
   --> $DIR/issue-17385.rs:29:11
    |
 LL |     drop(foo);

@@ -9,6 +9,22 @@
 // except according to those terms.
 
 // run-pass
+
+// This test is bogus (i.e. should be compile-fail) during the period
+// where #54986 is implemented and #54987 is *not* implemented. For
+// now: just ignore it under nll
+//
+// ignore-compare-mode-nll
+
+// These are variants of issue-26996.rs. In all cases we are writing
+// into a record field that has been moved out of, and ensuring that
+// such a write won't overwrite the state of the thing it was moved
+// into.
+//
+// That's a fine thing to test when this code is accepted by the
+// compiler, and this code is being transcribed accordingly into
+// the ui test issue-21232-partial-init-and-use.rs
+
 fn main() {
     let mut c = (1, (1, "".to_owned()));
     match c {

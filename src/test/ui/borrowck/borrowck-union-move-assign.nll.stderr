@@ -1,4 +1,4 @@
-error[E0382]: use of moved value: `u.a`
+error[E0382]: use of moved value: `u`
   --> $DIR/borrowck-union-move-assign.rs:27:21
    |
 LL |             let a = u.a;
@@ -8,7 +8,7 @@ LL |             let a = u.a; //~ ERROR use of moved value: `u.a`
    |
    = note: move occurs because `u` has type `U`, which does not implement the `Copy` trait
 
-error[E0382]: use of moved value: `u.a`
+error[E0382]: use of moved value: `u`
   --> $DIR/borrowck-union-move-assign.rs:33:21
    |
 LL |             let a = u.a;
@@ -19,7 +19,7 @@ LL |             let a = u.a; // OK
    |
    = note: move occurs because `u` has type `U`, which does not implement the `Copy` trait
 
-error[E0382]: use of moved value: `u.a`
+error[E0382]: use of moved value: `u`
   --> $DIR/borrowck-union-move-assign.rs:39:21
    |
 LL |             let a = u.a;

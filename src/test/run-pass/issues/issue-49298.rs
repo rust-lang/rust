@@ -12,6 +12,22 @@
 #![feature(test)]
 #![allow(unused_mut)] // under NLL we get warning about `x` below: rust-lang/rust#54499
 
+// This test is bogus (i.e. should be compile-fail) during the period
+// where #54986 is implemented and #54987 is *not* implemented. For
+// now: just ignore it under nll
+//
+// ignore-compare-mode-nll
+
+// This test is checking that the space allocated for `x.1` does not
+// overlap with `y`. (The reason why such a thing happened at one
+// point was because `x.0: Void` and thus the whole type of `x` was
+// uninhabited, and so the compiler thought it was safe to use the
+// space of `x.1` to hold `y`.)
+//
+// That's a fine thing to test when this code is accepted by the
+// compiler, and this code is being transcribed accordingly into
+// the ui test issue-21232-partial-init-and-use.rs
+
 extern crate test;
 
 enum Void {}

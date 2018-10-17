@@ -1,4 +1,4 @@
-error[E0381]: use of possibly uninitialized variable: `origin.y`
+error[E0381]: use of possibly uninitialized variable: `origin`
   --> $DIR/borrowck-init-in-fru.rs:22:5
    |
 LL |     origin = point {x: 10,.. origin};

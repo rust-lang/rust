@@ -1,4 +1,4 @@
-error[E0382]: use of moved value: `range.start`
+error[E0382]: use of moved value: `range`
   --> $DIR/issue-51512.rs:17:13
    |
 LL |     let r = range;
