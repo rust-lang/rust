@@ -220,7 +220,6 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         output_types: outputs,
         externs,
         cg: config::CodegenOptions {
-            prefer_dynamic: true,
             linker,
             ..cg
         },
