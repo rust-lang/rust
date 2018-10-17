@@ -401,6 +401,7 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
 
             Categorization::Deref(_, mc::UnsafePtr(..)) |
             Categorization::StaticItem |
+            Categorization::ThreadLocal(..) |
             Categorization::Rvalue(..) |
             Categorization::Local(_) |
             Categorization::Upvar(..) => {
@@ -431,6 +432,7 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
 
             Categorization::Deref(_, mc::UnsafePtr(..)) |
             Categorization::StaticItem |
+            Categorization::ThreadLocal(..) |
             Categorization::Rvalue(..) |
             Categorization::Local(_) |
             Categorization::Upvar(..) => {}

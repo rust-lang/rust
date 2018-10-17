@@ -70,6 +70,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
 
         match cmt.cat {
             Categorization::Rvalue(..) |
+            Categorization::ThreadLocal(..) |
             Categorization::Local(..) |                     // L-Local
             Categorization::Upvar(..) |
             Categorization::Deref(_, mc::BorrowedPtr(..)) | // L-Deref-Borrowed
@@ -105,6 +106,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
         //! rooting etc, and presuming `cmt` is not mutated.
 
         match cmt.cat {
+            Categorization::ThreadLocal(temp_scope) |
             Categorization::Rvalue(temp_scope) => {
                 temp_scope
             }
