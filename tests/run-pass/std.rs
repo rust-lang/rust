@@ -12,8 +12,9 @@ fn rc_cell() -> Rc<Cell<i32>> {
 fn rc_refcell() -> i32 {
     let r = Rc::new(RefCell::new(42));
     *r.borrow_mut() += 10;
-    let x = *r.borrow();
-    x
+    let x = r.borrow();
+    let y = r.borrow();
+    (*x + *y)/2
 }
 
 fn arc() -> Arc<i32> {

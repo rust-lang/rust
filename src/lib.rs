@@ -416,13 +416,47 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     #[inline(always)]
+    fn memory_accessed(
+        alloc: &Allocation<Borrow, Self::AllocExtra>,
+        ptr: Pointer<Borrow>,
+        size: Size,
+        access: MemoryAccess,
+    ) -> EvalResult<'tcx> {
+        alloc.extra.memory_accessed(ptr, size, access)
+    }
+
+    #[inline(always)]
+    fn memory_deallocated(
+        alloc: &mut Allocation<Self::PointerTag, Self::AllocExtra>,
+        ptr: Pointer<Borrow>,
+    ) -> EvalResult<'tcx> {
+        alloc.extra.memory_deallocated(ptr)
+    }
+
+    /*/// Hook for when a reference is cast to a raw pointer
+    #[inline(always)]
+    fn ref_to_raw_cast(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ptr: Pointer<Borrow>,
+        ptr_ty: Ty<'tcx>,
+        size: Size,
+    ) -> EvalResult<'tcx> {
+        if !ecx.machine.validate {
+            // No tracking.
+            Ok(())
+        } else {
+            ecx.ref_to_raw_cast(ptr, ptr_ty, size)
+        }
+    }*/
+
+    #[inline(always)]
     fn tag_reference(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        ptr: Pointer<Self::PointerTag>,
+        ptr: Pointer<Borrow>,
         pointee_ty: Ty<'tcx>,
         pointee_size: Size,
-        borrow_kind: mir::BorrowKind,
-    ) -> EvalResult<'tcx, Self::PointerTag> {
+        borrow_kind: Option<mir::BorrowKind>,
+    ) -> EvalResult<'tcx, Borrow> {
         if !ecx.machine.validate {
             // No tracking
             Ok(Borrow::default())
@@ -434,9 +468,9 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     #[inline(always)]
     fn tag_dereference(
         ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
-        ptr: Pointer<Self::PointerTag>,
+        ptr: Pointer<Borrow>,
         ptr_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, Self::PointerTag> {
+    ) -> EvalResult<'tcx, Borrow> {
         if !ecx.machine.validate {
             // No tracking
             Ok(Borrow::default())

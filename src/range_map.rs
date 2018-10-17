@@ -99,6 +99,10 @@ impl<T> RangeMap<T> {
         self.iter_with_range(offset.bytes(), len.bytes()).map(|(_, data)| data)
     }
 
+    pub fn iter_mut_all<'a>(&'a mut self) -> impl Iterator<Item = &'a mut T> + 'a {
+        self.map.values_mut()
+    }
+
     fn split_entry_at(&mut self, offset: u64)
     where
         T: Clone,
