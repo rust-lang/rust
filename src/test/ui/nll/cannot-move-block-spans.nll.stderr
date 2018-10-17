@@ -7,6 +7,17 @@ LL |     let x = { *r }; //~ ERROR
    |               cannot move out of borrowed content
    |               help: consider removing the `*`: `r`
 
+error[E0507]: cannot move out of `*r` which is behind a `&` reference
+  --> $DIR/cannot-move-block-spans.rs:15:15
+   |
+LL | pub fn deref(r: &String) {
+   |                 ------- help: consider changing this to be a mutable reference: `&mut std::string::String`
+LL |     let x = { *r }; //~ ERROR
+   |               ^^
+   |               |
+   |               cannot move out of `*r` which is behind a `&` reference
+   |               `r` is a `&` reference, so the data it refers to cannot be moved
+
 error[E0507]: cannot move out of borrowed content
   --> $DIR/cannot-move-block-spans.rs:16:22
    |
@@ -16,6 +27,18 @@ LL |     let y = unsafe { *r }; //~ ERROR
    |                      cannot move out of borrowed content
    |                      help: consider removing the `*`: `r`
 
+error[E0507]: cannot move out of `*r` which is behind a `&` reference
+  --> $DIR/cannot-move-block-spans.rs:16:22
+   |
+LL | pub fn deref(r: &String) {
+   |                 ------- help: consider changing this to be a mutable reference: `&mut std::string::String`
+LL |     let x = { *r }; //~ ERROR
+LL |     let y = unsafe { *r }; //~ ERROR
+   |                      ^^
+   |                      |
+   |                      cannot move out of `*r` which is behind a `&` reference
+   |                      `r` is a `&` reference, so the data it refers to cannot be moved
+
 error[E0507]: cannot move out of borrowed content
   --> $DIR/cannot-move-block-spans.rs:17:26
    |
@@ -24,6 +47,18 @@ LL |     let z = loop { break *r; }; //~ ERROR
    |                          |
    |                          cannot move out of borrowed content
    |                          help: consider removing the `*`: `r`
+
+error[E0507]: cannot move out of `*r` which is behind a `&` reference
+  --> $DIR/cannot-move-block-spans.rs:17:26
+   |
+LL | pub fn deref(r: &String) {
+   |                 ------- help: consider changing this to be a mutable reference: `&mut std::string::String`
+...
+LL |     let z = loop { break *r; }; //~ ERROR
+   |                          ^^
+   |                          |
+   |                          cannot move out of `*r` which is behind a `&` reference
+   |                          `r` is a `&` reference, so the data it refers to cannot be moved
 
 error[E0508]: cannot move out of type `[std::string::String; 2]`, a non-copy array
   --> $DIR/cannot-move-block-spans.rs:21:15
@@ -61,6 +96,17 @@ LL |     let x = { let mut u = 0; u += 1; *r }; //~ ERROR
    |                                      cannot move out of borrowed content
    |                                      help: consider removing the `*`: `r`
 
+error[E0507]: cannot move out of `*r` which is behind a `&` reference
+  --> $DIR/cannot-move-block-spans.rs:27:38
+   |
+LL | pub fn additional_statement_cases(r: &String) {
+   |                                      ------- help: consider changing this to be a mutable reference: `&mut std::string::String`
+LL |     let x = { let mut u = 0; u += 1; *r }; //~ ERROR
+   |                                      ^^
+   |                                      |
+   |                                      cannot move out of `*r` which is behind a `&` reference
+   |                                      `r` is a `&` reference, so the data it refers to cannot be moved
+
 error[E0507]: cannot move out of borrowed content
   --> $DIR/cannot-move-block-spans.rs:28:45
    |
@@ -69,6 +115,18 @@ LL |     let y = unsafe { let mut u = 0; u += 1; *r }; //~ ERROR
    |                                             |
    |                                             cannot move out of borrowed content
    |                                             help: consider removing the `*`: `r`
+
+error[E0507]: cannot move out of `*r` which is behind a `&` reference
+  --> $DIR/cannot-move-block-spans.rs:28:45
+   |
+LL | pub fn additional_statement_cases(r: &String) {
+   |                                      ------- help: consider changing this to be a mutable reference: `&mut std::string::String`
+LL |     let x = { let mut u = 0; u += 1; *r }; //~ ERROR
+LL |     let y = unsafe { let mut u = 0; u += 1; *r }; //~ ERROR
+   |                                             ^^
+   |                                             |
+   |                                             cannot move out of `*r` which is behind a `&` reference
+   |                                             `r` is a `&` reference, so the data it refers to cannot be moved
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/cannot-move-block-spans.rs:29:49
@@ -79,7 +137,19 @@ LL |     let z = loop { let mut u = 0; u += 1; break *r; u += 2; }; //~ ERROR
    |                                                 cannot move out of borrowed content
    |                                                 help: consider removing the `*`: `r`
 
-error: aborting due to 9 previous errors
+error[E0507]: cannot move out of `*r` which is behind a `&` reference
+  --> $DIR/cannot-move-block-spans.rs:29:49
+   |
+LL | pub fn additional_statement_cases(r: &String) {
+   |                                      ------- help: consider changing this to be a mutable reference: `&mut std::string::String`
+...
+LL |     let z = loop { let mut u = 0; u += 1; break *r; u += 2; }; //~ ERROR
+   |                                                 ^^
+   |                                                 |
+   |                                                 cannot move out of `*r` which is behind a `&` reference
+   |                                                 `r` is a `&` reference, so the data it refers to cannot be moved
+
+error: aborting due to 15 previous errors
 
 Some errors occurred: E0507, E0508.
 For more information about an error, try `rustc --explain E0507`.

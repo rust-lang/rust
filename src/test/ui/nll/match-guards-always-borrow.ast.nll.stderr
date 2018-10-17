@@ -1,8 +1,36 @@
-error[E0507]: cannot move out of borrowed content
+warning[E0507]: cannot move out of borrowed content
   --> $DIR/match-guards-always-borrow.rs:23:13
    |
 LL |             (|| { let bar = foo; bar.take() })();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |
+   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
+           It represents potential unsoundness in your code.
+           This warning will become a hard error in the future.
+
+warning[E0507]: cannot move out of `foo`, as it is immutable for the pattern guard
+  --> $DIR/match-guards-always-borrow.rs:23:13
+   |
+LL |             (|| { let bar = foo; bar.take() })();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             |
+   |             cannot move out of `foo`, as it is immutable for the pattern guard
+   |             cannot move
+   |
+   = note: variables bound in patterns are immutable until the end of the pattern guard
+   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
+           It represents potential unsoundness in your code.
+           This warning will become a hard error in the future.
+
+error: compilation successful
+  --> $DIR/match-guards-always-borrow.rs:57:1
+   |
+LL | / fn main() { //[ast]~ ERROR compilation successful
+LL | |     should_reject_destructive_mutate_in_guard();
+LL | |     allow_mutate_in_arm_body();
+LL | |     allow_move_into_arm_body();
+LL | | }
+   | |_^
 
 error: aborting due to previous error
 

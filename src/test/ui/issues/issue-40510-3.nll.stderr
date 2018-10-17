@@ -1,4 +1,4 @@
-error: captured variable cannot escape `FnMut` closure body
+warning: captured variable cannot escape `FnMut` closure body
   --> $DIR/issue-40510-3.rs:18:9
    |
 LL |       || {
@@ -10,6 +10,15 @@ LL | |         }
    |
    = note: `FnMut` closures only have access to their captured variables while they are executing...
    = note: ...therefore, they cannot allow references to captured variables to escape
+   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
+           It represents potential unsoundness in your code.
+           This warning will become a hard error in the future.
+
+error: compilation successful
+  --> $DIR/issue-40510-3.rs:25:1
+   |
+LL | fn main() {} //~ ERROR compilation successful
+   | ^^^^^^^^^^^^
 
 error: aborting due to previous error
 

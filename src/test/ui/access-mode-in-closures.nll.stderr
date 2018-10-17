@@ -13,6 +13,18 @@ note: move occurs because `v` has type `std::vec::Vec<isize>`, which does not im
 LL |         match *s { sty(v) => v } //~ ERROR cannot move out
    |                        ^
 
-error: aborting due to previous error
+error[E0507]: cannot move out of `s.0` which is behind a `&` reference
+  --> $DIR/access-mode-in-closures.rs:19:24
+   |
+LL |     let _foo = unpack(|s| {
+   |                        - help: consider changing this to be a mutable reference: `&mut sty`
+LL |         // Test that `s` is moved here.
+LL |         match *s { sty(v) => v } //~ ERROR cannot move out
+   |                        ^
+   |                        |
+   |                        cannot move out of `s.0` which is behind a `&` reference
+   |                        `s` is a `&` reference, so the data it refers to cannot be moved
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0507`.

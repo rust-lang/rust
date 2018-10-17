@@ -277,7 +277,7 @@ LL |     &mut x; //~ ERROR
 LL |     &mut x.0; //~ ERROR
    |     ^^^^^^^^ cannot borrow as mutable
 
-error[E0594]: cannot assign to `x`, as it is not declared as mutable
+warning[E0594]: cannot assign to `x`, as it is not declared as mutable
   --> $DIR/mutability-errors.rs:70:9
    |
 LL | fn imm_capture(x: (i32,)) {
@@ -285,8 +285,12 @@ LL | fn imm_capture(x: (i32,)) {
 LL |     || { //~ ERROR
 LL |         x = (1,);
    |         ^^^^^^^^ cannot assign
+   |
+   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
+           It represents potential unsoundness in your code.
+           This warning will become a hard error in the future.
 
-error[E0594]: cannot assign to `x.0`, as `x` is not declared as mutable
+warning[E0594]: cannot assign to `x.0`, as `x` is not declared as mutable
   --> $DIR/mutability-errors.rs:71:9
    |
 LL | fn imm_capture(x: (i32,)) {
@@ -294,8 +298,12 @@ LL | fn imm_capture(x: (i32,)) {
 ...
 LL |         x.0 = 1;
    |         ^^^^^^^ cannot assign
+   |
+   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
+           It represents potential unsoundness in your code.
+           This warning will become a hard error in the future.
 
-error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+warning[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/mutability-errors.rs:72:9
    |
 LL | fn imm_capture(x: (i32,)) {
@@ -303,8 +311,12 @@ LL | fn imm_capture(x: (i32,)) {
 ...
 LL |         &mut x;
    |         ^^^^^^ cannot borrow as mutable
+   |
+   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
+           It represents potential unsoundness in your code.
+           This warning will become a hard error in the future.
 
-error[E0596]: cannot borrow `x.0` as mutable, as `x` is not declared as mutable
+warning[E0596]: cannot borrow `x.0` as mutable, as `x` is not declared as mutable
   --> $DIR/mutability-errors.rs:73:9
    |
 LL | fn imm_capture(x: (i32,)) {
@@ -312,6 +324,10 @@ LL | fn imm_capture(x: (i32,)) {
 ...
 LL |         &mut x.0;
    |         ^^^^^^^^ cannot borrow as mutable
+   |
+   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
+           It represents potential unsoundness in your code.
+           This warning will become a hard error in the future.
 
 error[E0594]: cannot assign to `x`, as it is not declared as mutable
   --> $DIR/mutability-errors.rs:76:9
@@ -373,7 +389,7 @@ error[E0596]: cannot borrow `X.0` as mutable, as `X` is an immutable static item
 LL |     &mut X.0; //~ ERROR
    |     ^^^^^^^^ cannot borrow as mutable
 
-error: aborting due to 38 previous errors
+error: aborting due to 34 previous errors
 
 Some errors occurred: E0594, E0596.
 For more information about an error, try `rustc --explain E0594`.

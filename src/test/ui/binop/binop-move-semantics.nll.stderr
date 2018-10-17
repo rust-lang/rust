@@ -32,6 +32,18 @@ error[E0507]: cannot move out of borrowed content
 LL |     *n;  //~ ERROR: cannot move out of borrowed content
    |     ^^ cannot move out of borrowed content
 
+error[E0507]: cannot move out of `*n` which is behind a `&` reference
+  --> $DIR/binop-move-semantics.rs:42:5
+   |
+LL |     let n = &y;
+   |             -- help: consider changing this to be a mutable reference: `&mut y`
+...
+LL |     *n;  //~ ERROR: cannot move out of borrowed content
+   |     ^^
+   |     |
+   |     cannot move out of `*n` which is behind a `&` reference
+   |     `n` is a `&` reference, so the data it refers to cannot be moved
+
 error[E0502]: cannot borrow `f` as immutable because it is also borrowed as mutable
   --> $DIR/binop-move-semantics.rs:64:5
    |
@@ -62,7 +74,7 @@ LL | |     &mut f;  //~ ERROR: cannot borrow `f` as mutable because it is also b
    |       |    immutable borrow later used here
    |       mutable borrow occurs here
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
 Some errors occurred: E0382, E0502, E0507.
 For more information about an error, try `rustc --explain E0382`.

@@ -1,0 +1,33 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/move-in-static-initializer-issue-38520.rs:25:23
+   |
+LL | static Y: usize = get(*&X); //[ast]~ ERROR E0507
+   |                       ^^^ cannot move out of borrowed content
+
+error[E0507]: cannot move out of data in a `&` reference
+  --> $DIR/move-in-static-initializer-issue-38520.rs:25:23
+   |
+LL | static Y: usize = get(*&X); //[ast]~ ERROR E0507
+   |                       ^^^
+   |                       |
+   |                       cannot move out of data in a `&` reference
+   |                       cannot move
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/move-in-static-initializer-issue-38520.rs:27:22
+   |
+LL | const Z: usize = get(*&X); //[ast]~ ERROR E0507
+   |                      ^^^ cannot move out of borrowed content
+
+error[E0507]: cannot move out of data in a `&` reference
+  --> $DIR/move-in-static-initializer-issue-38520.rs:27:22
+   |
+LL | const Z: usize = get(*&X); //[ast]~ ERROR E0507
+   |                      ^^^
+   |                      |
+   |                      cannot move out of data in a `&` reference
+   |                      cannot move
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

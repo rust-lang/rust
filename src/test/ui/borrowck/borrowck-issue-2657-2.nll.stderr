@@ -7,6 +7,17 @@ LL |         let _b = *y; //~ ERROR cannot move out
    |                  cannot move out of borrowed content
    |                  help: consider removing the `*`: `y`
 
-error: aborting due to previous error
+error[E0507]: cannot move out of `*y` which is behind a `&` reference
+  --> $DIR/borrowck-issue-2657-2.rs:17:18
+   |
+LL |       Some(ref y) => {
+   |            ----- help: consider changing this to be a mutable reference: `ref mut y`
+LL |         let _b = *y; //~ ERROR cannot move out
+   |                  ^^
+   |                  |
+   |                  cannot move out of `*y` which is behind a `&` reference
+   |                  `y` is a `&` reference, so the data it refers to cannot be moved
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0507`.

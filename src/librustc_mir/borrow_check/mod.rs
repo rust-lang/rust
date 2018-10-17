@@ -320,20 +320,20 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
                 continue;
             }
 
-            let mut err = tcx.struct_span_lint_node(
+            let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
+            tcx.struct_span_lint_node(
                 UNUSED_MUT,
                 vsi[local_decl.source_info.scope].lint_root,
                 span,
                 "variable does not need to be mutable",
-            );
-            let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
-            err.span_suggestion_short_with_applicability(
+            )
+            .span_suggestion_short_with_applicability(
                 mut_span,
                 "remove this `mut`",
                 String::new(),
-                Applicability::MachineApplicable);
-
-            err.buffer(&mut mbcx.errors_buffer);
+                Applicability::MachineApplicable,
+            )
+            .emit();
         }
     }
 

@@ -1,3 +1,21 @@
+error[E0507]: cannot move out of data in a `&` reference
+  --> $DIR/issue-40402-2.rs:15:10
+   |
+LL |     let (a, b) = x[0]; //~ ERROR cannot move out of indexed content
+   |          ^
+   |          |
+   |          cannot move out of data in a `&` reference
+   |          cannot move
+
+error[E0507]: cannot move out of data in a `&` reference
+  --> $DIR/issue-40402-2.rs:15:13
+   |
+LL |     let (a, b) = x[0]; //~ ERROR cannot move out of indexed content
+   |             ^
+   |             |
+   |             cannot move out of data in a `&` reference
+   |             cannot move
+
 error[E0507]: cannot move out of borrowed content
   --> $DIR/issue-40402-2.rs:15:18
    |
@@ -15,6 +33,6 @@ note: move occurs because these variables have types that don't implement the `C
 LL |     let (a, b) = x[0]; //~ ERROR cannot move out of indexed content
    |          ^  ^
 
-error: aborting due to previous error
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0507`.

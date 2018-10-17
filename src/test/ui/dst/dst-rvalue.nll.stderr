@@ -16,13 +16,33 @@ error[E0507]: cannot move out of borrowed content
 LL |     let _x: Box<str> = box *"hello world";
    |                            ^^^^^^^^^^^^^^ cannot move out of borrowed content
 
+error[E0507]: cannot move out of data in a `&` reference
+  --> $DIR/dst-rvalue.rs:16:28
+   |
+LL |     let _x: Box<str> = box *"hello world";
+   |                            ^^^^^^^^^^^^^^
+   |                            |
+   |                            cannot move out of data in a `&` reference
+   |                            cannot move
+
 error[E0508]: cannot move out of type `[isize]`, a non-copy slice
   --> $DIR/dst-rvalue.rs:21:32
    |
 LL |     let _x: Box<[isize]> = box *array;
    |                                ^^^^^^ cannot move out of here
 
-error: aborting due to 4 previous errors
+error[E0507]: cannot move out of `*array` which is behind a `&` reference
+  --> $DIR/dst-rvalue.rs:21:32
+   |
+LL |     let array: &[isize] = &[1, 2, 3];
+   |                           ---------- help: consider changing this to be a mutable reference: `&mut [1, 2, 3]`
+LL |     let _x: Box<[isize]> = box *array;
+   |                                ^^^^^^
+   |                                |
+   |                                cannot move out of `*array` which is behind a `&` reference
+   |                                `array` is a `&` reference, so the data it refers to cannot be moved
+
+error: aborting due to 6 previous errors
 
 Some errors occurred: E0161, E0507, E0508.
 For more information about an error, try `rustc --explain E0161`.

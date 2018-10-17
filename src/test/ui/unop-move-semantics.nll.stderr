@@ -21,7 +21,19 @@ error[E0507]: cannot move out of borrowed content
 LL |     !*n;  //~ ERROR: cannot move out of borrowed content
    |      ^^ cannot move out of borrowed content
 
-error: aborting due to 3 previous errors
+error[E0507]: cannot move out of `*n` which is behind a `&` reference
+  --> $DIR/unop-move-semantics.rs:36:6
+   |
+LL |     let n = &y;
+   |             -- help: consider changing this to be a mutable reference: `&mut y`
+...
+LL |     !*n;  //~ ERROR: cannot move out of borrowed content
+   |      ^^
+   |      |
+   |      cannot move out of `*n` which is behind a `&` reference
+   |      `n` is a `&` reference, so the data it refers to cannot be moved
+
+error: aborting due to 4 previous errors
 
 Some errors occurred: E0382, E0507.
 For more information about an error, try `rustc --explain E0382`.

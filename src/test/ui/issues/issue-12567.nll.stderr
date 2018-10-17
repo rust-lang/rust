@@ -40,6 +40,43 @@ LL |         (&[], &[hd, ..]) | (&[hd, ..], &[])
 LL |         (&[hd1, ..], &[hd2, ..])
    |            ^^^
 
-error: aborting due to 2 previous errors
+error[E0507]: cannot move out of data in a `&` reference
+  --> $DIR/issue-12567.rs:16:17
+   |
+LL |         (&[], &[hd, ..]) | (&[hd, ..], &[])
+   |                 ^^
+   |                 |
+   |                 cannot move out of data in a `&` reference
+   |                 cannot move
 
-For more information about this error, try `rustc --explain E0508`.
+error[E0507]: cannot move out of data in a `&` reference
+  --> $DIR/issue-12567.rs:16:31
+   |
+LL |         (&[], &[hd, ..]) | (&[hd, ..], &[])
+   |                               ^^
+   |                               |
+   |                               cannot move out of data in a `&` reference
+   |                               cannot move
+
+error[E0507]: cannot move out of data in a `&` reference
+  --> $DIR/issue-12567.rs:20:12
+   |
+LL |         (&[hd1, ..], &[hd2, ..])
+   |            ^^^
+   |            |
+   |            cannot move out of data in a `&` reference
+   |            cannot move
+
+error[E0507]: cannot move out of data in a `&` reference
+  --> $DIR/issue-12567.rs:20:24
+   |
+LL |         (&[hd1, ..], &[hd2, ..])
+   |                        ^^^
+   |                        |
+   |                        cannot move out of data in a `&` reference
+   |                        cannot move
+
+error: aborting due to 6 previous errors
+
+Some errors occurred: E0507, E0508.
+For more information about an error, try `rustc --explain E0507`.
