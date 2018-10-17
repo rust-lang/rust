@@ -10,7 +10,7 @@ use std::{
 };
 
 pub(crate) use self::builder::GreenBuilder;
-pub use rowan::TreeRoot;
+pub use rowan::{TreeRoot, WalkEvent};
 
 #[derive(Debug, Clone, Copy)]
 pub enum RaTypes {}
@@ -71,15 +71,21 @@ impl<'a> SyntaxNodeRef<'a> {
         crate::algo::generate(Some(self), |&node| node.parent())
     }
     pub fn descendants(self) -> impl Iterator<Item = SyntaxNodeRef<'a>> {
-        crate::algo::walk::walk(self).filter_map(|event| match event {
-            crate::algo::walk::WalkEvent::Enter(node) => Some(node),
-            crate::algo::walk::WalkEvent::Exit(_) => None,
+        self.preorder().filter_map(|event| match event {
+            WalkEvent::Enter(node) => Some(node),
+            WalkEvent::Leave(_) => None,
         })
     }
     pub fn siblings(self, direction: Direction) -> impl Iterator<Item = SyntaxNodeRef<'a>> {
         crate::algo::generate(Some(self), move |&node| match direction {
             Direction::Next => node.next_sibling(),
             Direction::Prev => node.prev_sibling(),
+        })
+    }
+    pub fn preorder(self) -> impl Iterator<Item = WalkEvent<SyntaxNodeRef<'a>>> {
+        self.0.preorder().map(|event| match event {
+            WalkEvent::Enter(n) => WalkEvent::Enter(SyntaxNode(n)),
+            WalkEvent::Leave(n) => WalkEvent::Leave(SyntaxNode(n)),
         })
     }
 }

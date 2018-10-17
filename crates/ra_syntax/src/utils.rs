@@ -1,6 +1,5 @@
 use crate::{
-    algo::walk::{walk, WalkEvent},
-    File, SyntaxKind, SyntaxNodeRef,
+    File, SyntaxKind, SyntaxNodeRef, WalkEvent
 };
 use std::fmt::Write;
 
@@ -19,7 +18,7 @@ pub fn dump_tree(syntax: SyntaxNodeRef) -> String {
         };
     }
 
-    for event in walk(syntax) {
+    for event in syntax.preorder() {
         match event {
             WalkEvent::Enter(node) => {
                 indent!();
@@ -34,7 +33,7 @@ pub fn dump_tree(syntax: SyntaxNodeRef) -> String {
                 }
                 level += 1;
             }
-            WalkEvent::Exit(_) => level -= 1,
+            WalkEvent::Leave(_) => level -= 1,
         }
     }
 
