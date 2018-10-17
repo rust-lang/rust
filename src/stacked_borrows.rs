@@ -253,13 +253,6 @@ pub trait EvalContextExt<'tcx> {
         ptr: Pointer<Borrow>,
         ptr_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Borrow>;
-
-    fn ref_to_raw_cast(
-        &mut self,
-        ptr: Pointer<Borrow>,
-        ptr_ty: Ty<'tcx>,
-        size: Size,
-    ) -> EvalResult<'tcx>;
 }
 
 impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, 'tcx> {
@@ -310,24 +303,5 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
             // FIXME: Do we want to adjust the tag if it does not match the type?
             ptr.tag
         })
-    }
-
-    fn ref_to_raw_cast(
-        &mut self,
-        ptr: Pointer<Borrow>,
-        _ptr_ty: Ty<'tcx>,
-        size: Size,
-    ) -> EvalResult<'tcx> {
-        trace!("ref_to_raw_cast: Escaping {:?}", ptr);
-
-        // Make sure this reference is not dangling or so
-        self.memory.check_bounds(ptr, size, false)?;
-
-        // Update the stacks.  We cannot use `get_mut` becuse this might be immutable
-        // memory.
-        let alloc = self.memory.get(ptr.alloc_id).expect("We checked that the ptr is fine!");
-        alloc.extra.reborrow(ptr, size, Borrow::Mut(Mut::Raw))?;
-
-        Ok(())
     }
 }

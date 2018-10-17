@@ -264,8 +264,10 @@ type MiriEvalContext<'a, 'mir, 'tcx> = EvalContext<'a, 'mir, 'tcx, Evaluator<'tc
 
 impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     type MemoryKinds = MiriMemoryKind;
+
     type AllocExtra = stacked_borrows::Stacks;
     type PointerTag = Borrow;
+    const ENABLE_PTR_TRACKING_HOOKS: bool = true;
 
     type MemoryMap = MonoHashMap<AllocId, (MemoryKind<MiriMemoryKind>, Allocation<Borrow, Self::AllocExtra>)>;
 
@@ -432,22 +434,6 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     ) -> EvalResult<'tcx> {
         alloc.extra.memory_deallocated(ptr)
     }
-
-    /*/// Hook for when a reference is cast to a raw pointer
-    #[inline(always)]
-    fn ref_to_raw_cast(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        ptr: Pointer<Borrow>,
-        ptr_ty: Ty<'tcx>,
-        size: Size,
-    ) -> EvalResult<'tcx> {
-        if !ecx.machine.validate {
-            // No tracking.
-            Ok(())
-        } else {
-            ecx.ref_to_raw_cast(ptr, ptr_ty, size)
-        }
-    }*/
 
     #[inline(always)]
     fn tag_reference(
