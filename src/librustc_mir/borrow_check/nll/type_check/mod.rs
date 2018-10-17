@@ -42,7 +42,7 @@ use rustc::traits::query::type_op::custom::CustomTypeOp;
 use rustc::traits::query::{Fallible, NoSolution};
 use rustc::traits::{ObligationCause, PredicateObligations};
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::{Subst, Substs, UnpackedKind, UserSubsts, UserSelfTy};
+use rustc::ty::subst::{Subst, Substs, UnpackedKind, UserSelfTy, UserSubsts};
 use rustc::ty::{self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind};
 use std::rc::Rc;
 use std::{fmt, iter};
@@ -1034,11 +1034,60 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     self.eq_types(self_ty, impl_self_ty, locations, category)?;
                 }
 
+                // Prove the predicates coming along with `def_id`.
+                //
+                // Also, normalize the `instantiated_predicates`
+                // because otherwise we wind up with duplicate "type
+                // outlives" error messages.
+                let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, substs);
+                let instantiated_predicates = self.fold_to_region_vid(instantiated_predicates);
+                self.normalize_and_prove_instantiated_predicates(
+                    instantiated_predicates,
+                    locations,
+                );
+
+                // In addition to proving the predicates, we have to
+                // prove that `ty` is well-formed -- this is because
+                // the WF of `ty` is predicated on the substs being
+                // well-formed, and we haven't proven *that*. We don't
+                // want to prove the WF of types from  `substs` directly because they
+                // haven't been normalized.
+                //
+                // FIXME(nmatsakis): Well, perhaps we should normalize
+                // them?  This would only be relevant if some input
+                // type were ill-formed but did not appear in `ty`,
+                // which...could happen with normalization...
                 self.prove_predicate(ty::Predicate::WellFormed(ty), locations, category);
             }
         }
 
         Ok(())
+    }
+
+    /// Replace all free regions in `value` with their NLL `RegionVid`
+    /// equivalents; if not in NLL, does nothing. This is never
+    /// particularly necessary -- we'll do it lazilly as we process
+    /// the value anyway -- but in some specific cases it is useful to
+    /// normalize so we can suppress duplicate error messages.
+    fn fold_to_region_vid<T>(
+        &self,
+        value: T
+    ) -> T
+    where T: TypeFoldable<'tcx>
+    {
+        if let Some(borrowck_context) = &self.borrowck_context {
+            self.tcx().fold_regions(&value, &mut false, |r, _debruijn| {
+                if r.has_free_regions() {
+                    self.tcx().mk_region(ty::RegionKind::ReVar(
+                        borrowck_context.universal_regions.to_region_vid(r),
+                    ))
+                } else {
+                    r
+                }
+            })
+        } else {
+            value
+        }
     }
 
     fn eq_opaque_type_and_type(
