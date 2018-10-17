@@ -749,7 +749,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
                 ExprKind::ValueTypeAscription {
                     source: cast_expr.to_ref(),
-                    user_ty: user_ty,
+                    user_ty: Some(user_ty),
                 }
             } else {
                 cast
@@ -757,15 +757,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
         hir::ExprKind::Type(ref source, ref ty) => {
             let user_provided_tys = cx.tables.user_provided_tys();
-            let user_ty = UserTypeAnnotation::Ty(
-                *user_provided_tys
-                    .get(ty.hir_id)
-                    .expect(&format!(
-                        "{:?} not found in user_provided_tys, source: {:?}",
-                        ty,
-                        source,
-                    ))
-            );
+            let user_ty = user_provided_tys.get(ty.hir_id).map(|&c_ty| UserTypeAnnotation::Ty(c_ty));
             if source.is_place_expr() {
                 ExprKind::PlaceTypeAscription {
                     source: source.to_ref(),

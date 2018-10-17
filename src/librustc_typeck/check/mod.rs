@@ -2359,8 +2359,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     pub fn to_ty_saving_user_provided_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
         let ty = self.to_ty(ast_ty);
-        let c_ty = self.infcx.canonicalize_response(&ty);
-        self.tables.borrow_mut().user_provided_tys_mut().insert(ast_ty.hir_id, c_ty);
+
+        // If the type given by the user has free regions, save it for
+        // later, since NLL would like to enforce those. Other sorts
+        // of things are already sufficiently enforced. =)
+        if ty.has_free_regions() {
+            let c_ty = self.infcx.canonicalize_response(&ty);
+            self.tables.borrow_mut().user_provided_tys_mut().insert(ast_ty.hir_id, c_ty);
+        }
+
         ty
     }
 
