@@ -3021,10 +3021,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             let mut err = this.session.struct_span_err_with_code(base_span, &base_msg, code);
 
             // Emit help message for fake-self from other languages like `this`(javascript)
-            let fake_self: Vec<Ident> = ["this", "my"].iter().map(
-                |s| Ident::from_str(*s)
-            ).collect();
-            if fake_self.contains(&item_str)
+            if ["this", "my"].contains(&&*item_str.as_str())
                 && this.self_value_is_available(path[0].span, span) {
                 err.span_suggestion_with_applicability(
                     span,
@@ -4377,10 +4374,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         where FilterFn: Fn(Def) -> bool
     {
         let mut candidates = Vec::new();
-        let mut worklist = Vec::new();
         let mut seen_modules = FxHashSet();
         let not_local_module = crate_name != keywords::Crate.ident();
-        worklist.push((start_module, Vec::<ast::PathSegment>::new(), not_local_module));
+        let mut worklist = vec![(start_module, Vec::<ast::PathSegment>::new(), not_local_module)];
 
         while let Some((in_module,
                         path_segments,
@@ -4467,13 +4463,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                           -> Vec<ImportSuggestion>
         where FilterFn: Fn(Def) -> bool
     {
-        let mut suggestions = vec![];
-
-        suggestions.extend(
-            self.lookup_import_candidates_from_module(
-                lookup_name, namespace, self.graph_root, keywords::Crate.ident(), &filter_fn
-            )
-        );
+        let mut suggestions = self.lookup_import_candidates_from_module(
+            lookup_name, namespace, self.graph_root, keywords::Crate.ident(), &filter_fn);
 
         if self.session.rust_2018() {
             let extern_prelude_names = self.extern_prelude.clone();
@@ -4502,9 +4493,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                    -> Option<(Module<'a>, ImportSuggestion)>
     {
         let mut result = None;
-        let mut worklist = Vec::new();
         let mut seen_modules = FxHashSet();
-        worklist.push((self.graph_root, Vec::new()));
+        let mut worklist = vec![(self.graph_root, Vec::new())];
 
         while let Some((in_module, path_segments)) = worklist.pop() {
             // abort if the module is already found
