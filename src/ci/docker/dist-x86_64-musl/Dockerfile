@@ -41,6 +41,8 @@ ENV RUST_CONFIGURE_ARGS \
 # See: https://github.com/rust-lang/rust/issues/34978
 ENV CFLAGS_x86_64_unknown_linux_musl=-Wa,-mrelax-relocations=no
 
+ENV HOSTS=x86_64-unknown-linux-musl
+
 ENV SCRIPT \
-      python2.7 ../x.py test --target x86_64-unknown-linux-musl && \
-      python2.7 ../x.py dist --target x86_64-unknown-linux-musl
+      python2.7 ../x.py test --host $HOSTS --target $HOSTS && \
+      python2.7 ../x.py dist --host $HOSTS --target $HOSTS
