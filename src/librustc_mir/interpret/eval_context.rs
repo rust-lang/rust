@@ -438,6 +438,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         return_place: Option<PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,
     ) -> EvalResult<'tcx> {
+        if self.stack.len() > 1 { // FIXME should be "> 0", printing topmost frame crashes rustc...
+            debug!("PAUSING({}) {}", self.cur_frame(), self.frame().instance);
+        }
         ::log_settings::settings().indentation += 1;
 
         // first push a stack frame so we have access to the local substs
@@ -502,6 +505,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             self.frame_mut().locals = locals;
         }
 
+        if self.stack.len() > 1 { // FIXME no check should be needed, but printing topmost frame crashes rustc...
+            debug!("ENTERING({}) {}", self.cur_frame(), self.frame().instance);
+        }
+
         if self.stack.len() > self.tcx.sess.const_eval_stack_frame_limit {
             err!(StackFrameLimitReached)
         } else {
@@ -510,6 +517,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     }
 
     pub(super) fn pop_stack_frame(&mut self) -> EvalResult<'tcx> {
+        if self.stack.len() > 1 { // FIXME no check should be needed, but printing topmost frame crashes rustc...
+            debug!("LEAVING({}) {}", self.cur_frame(), self.frame().instance);
+        }
         ::log_settings::settings().indentation -= 1;
         let frame = self.stack.pop().expect(
             "tried to pop a stack frame, but there were none",
@@ -551,6 +561,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         } else {
             // Uh, that shouln't happen... the function did not intend to return
             return err!(Unreachable);
+        }
+
+        if self.stack.len() > 1 { // FIXME should be "> 0", printing topmost frame crashes rustc...
+            debug!("CONTINUING({}) {}", self.cur_frame(), self.frame().instance);
         }
 
         Ok(())
