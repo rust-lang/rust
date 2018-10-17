@@ -462,9 +462,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         argument_hir_ty: &hir::Ty,
         counter: &mut usize,
     ) -> Option<RegionName> {
-        let search_stack: &mut Vec<(Ty<'tcx>, &hir::Ty)> = &mut Vec::new();
-
-        search_stack.push((argument_ty, argument_hir_ty));
+        let search_stack: &mut Vec<(Ty<'tcx>, &hir::Ty)> =
+            &mut vec![(argument_ty, argument_hir_ty)];
 
         while let Some((ty, hir_ty)) = search_stack.pop() {
             match (&ty.sty, &hir_ty.node) {

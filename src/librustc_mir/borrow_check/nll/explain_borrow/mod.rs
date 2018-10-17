@@ -279,9 +279,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         pending_locations.push(target.start_location());
                     },
                     TerminatorKind::SwitchInt { ref targets, .. } => {
-                        for target in targets {
-                            pending_locations.push(target.start_location());
-                        }
+                        pending_locations.extend(
+                            targets.into_iter().map(|target| target.start_location()));
                     },
                     TerminatorKind::Drop { target, unwind, .. } |
                     TerminatorKind::DropAndReplace { target, unwind, .. } |
@@ -303,9 +302,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     },
                     TerminatorKind::FalseEdges { real_target, ref imaginary_targets, .. } => {
                         pending_locations.push(real_target.start_location());
-                        for target in imaginary_targets {
-                            pending_locations.push(target.start_location());
-                        }
+                        pending_locations.extend(
+                            imaginary_targets.into_iter().map(|target| target.start_location()));
                     },
                     _ => {},
                 }
