@@ -35,7 +35,6 @@ use syntax::edition::Edition;
 use syntax::feature_gate::{self, AttributeType};
 use syntax::json::JsonEmitter;
 use syntax::source_map;
-use syntax::symbol::Symbol;
 use syntax::parse::{self, ParseSess};
 use syntax_pos::{MultiSpan, Span};
 use util::profiling::SelfProfiler;
@@ -166,10 +165,6 @@ pub struct Session {
 
     /// Cap lint level specified by a driver specifically.
     pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
-
-    /// All the crate names specified with `--extern`, and the builtin ones.
-    /// Starting with the Rust 2018 edition, absolute paths resolve in this set.
-    pub extern_prelude: FxHashSet<Symbol>,
 }
 
 pub struct PerfStats {
@@ -1137,18 +1132,6 @@ pub fn build_session_(
         CguReuseTracker::new_disabled()
     };
 
-
-    let mut extern_prelude: FxHashSet<Symbol> =
-        sopts.externs.iter().map(|kv| Symbol::intern(kv.0)).collect();
-
-    // HACK(eddyb) this ignores the `no_{core,std}` attributes.
-    // FIXME(eddyb) warn (somewhere) if core/std is used with `no_{core,std}`.
-    // if !attr::contains_name(&krate.attrs, "no_core") {
-    // if !attr::contains_name(&krate.attrs, "no_std") {
-    extern_prelude.insert(Symbol::intern("core"));
-    extern_prelude.insert(Symbol::intern("std"));
-    extern_prelude.insert(Symbol::intern("meta"));
-
     let sess = Session {
         target: target_cfg,
         host,
@@ -1224,7 +1207,6 @@ pub fn build_session_(
         has_global_allocator: Once::new(),
         has_panic_handler: Once::new(),
         driver_lint_caps: FxHashMap(),
-        extern_prelude,
     };
 
     validate_commandline_args_with_session_available(&sess);

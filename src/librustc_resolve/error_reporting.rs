@@ -136,7 +136,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         // Need to clone else we can't call `resolve_path` without a borrow error. We also store
         // into a `BTreeMap` so we can get consistent ordering (and therefore the same diagnostic)
         // each time.
-        let external_crate_names: BTreeSet<Symbol> = self.resolver.session.extern_prelude
+        let external_crate_names: BTreeSet<Symbol> = self.resolver.extern_prelude
             .clone().drain().collect();
 
         // Insert a new path segment that we can replace.

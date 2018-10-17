@@ -1360,6 +1360,7 @@ pub struct Resolver<'a, 'b: 'a> {
     graph_root: Module<'a>,
 
     prelude: Option<Module<'a>>,
+    pub extern_prelude: FxHashSet<Name>,
 
     /// n.b. This is used only for better diagnostics, not name resolution itself.
     has_self: FxHashSet<DefId>,
@@ -1676,6 +1677,19 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         DefCollector::new(&mut definitions, Mark::root())
             .collect_root(crate_name, session.local_crate_disambiguator());
 
+        let mut extern_prelude: FxHashSet<Name> =
+            session.opts.externs.iter().map(|kv| Symbol::intern(kv.0)).collect();
+
+        if !attr::contains_name(&krate.attrs, "no_core") {
+            extern_prelude.insert(Symbol::intern("core"));
+            if !attr::contains_name(&krate.attrs, "no_std") {
+                extern_prelude.insert(Symbol::intern("std"));
+                if session.rust_2018() {
+                    extern_prelude.insert(Symbol::intern("meta"));
+                }
+            }
+        }
+
         let mut invocations = FxHashMap();
         invocations.insert(Mark::root(),
                            arenas.alloc_invocation_data(InvocationData::root(graph_root)));
@@ -1694,6 +1708,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             // AST.
             graph_root,
             prelude: None,
+            extern_prelude,
 
             has_self: FxHashSet(),
             field_names: FxHashMap(),
@@ -1966,7 +1981,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
         if !module.no_implicit_prelude {
             // `record_used` means that we don't try to load crates during speculative resolution
-            if record_used && ns == TypeNS && self.session.extern_prelude.contains(&ident.name) {
+            if record_used && ns == TypeNS && self.extern_prelude.contains(&ident.name) {
                 let crate_id = self.crate_loader.process_path_extern(ident.name, ident.span);
                 let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
                 self.populate_module_if_necessary(&crate_root);
@@ -4018,7 +4033,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     } else {
                         // Items from the prelude
                         if !module.no_implicit_prelude {
-                            names.extend(self.session.extern_prelude.iter().cloned());
+                            names.extend(self.extern_prelude.iter().cloned());
                             if let Some(prelude) = self.prelude {
                                 add_module_candidates(prelude, &mut names);
                             }
@@ -4464,7 +4479,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         );
 
         if self.session.rust_2018() {
-            for &name in &self.session.extern_prelude {
+            let extern_prelude_names = self.extern_prelude.clone();
+            for &name in extern_prelude_names.iter() {
                 let ident = Ident::with_empty_ctxt(name);
                 match self.crate_loader.maybe_process_path_extern(name, ident.span) {
                     Some(crate_id) => {

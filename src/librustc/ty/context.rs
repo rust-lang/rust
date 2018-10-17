@@ -936,8 +936,8 @@ pub struct GlobalCtxt<'tcx> {
     freevars: FxHashMap<DefId, Lrc<Vec<hir::Freevar>>>,
 
     maybe_unused_trait_imports: FxHashSet<DefId>,
-
     maybe_unused_extern_crates: Vec<(DefId, Span)>,
+    pub extern_prelude: FxHashSet<ast::Name>,
 
     // Internal cache for metadata decoding. No need to track deps on this.
     pub rcache: Lock<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
@@ -1223,6 +1223,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     .into_iter()
                     .map(|(id, sp)| (hir.local_def_id(id), sp))
                     .collect(),
+            extern_prelude: resolutions.extern_prelude,
             hir,
             def_path_hash_to_def_id,
             queries: query::Queries::new(

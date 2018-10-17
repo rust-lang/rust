@@ -289,7 +289,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 // printing the `CrateRoot` so we don't prepend a `crate::` to paths.
                 let mut is_prelude_crate = false;
                 if let DefPathData::CrateRoot = self.def_key(parent_did).disambiguated_data.data {
-                    if self.sess.extern_prelude.contains(&data.as_interned_str().as_symbol()) {
+                    if self.extern_prelude.contains(&data.as_interned_str().as_symbol()) {
                         is_prelude_crate = true;
                     }
                 }
