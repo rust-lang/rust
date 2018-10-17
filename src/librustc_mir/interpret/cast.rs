@@ -47,7 +47,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             Misc => {
                 let src = self.read_value(src)?;
 
-                if src.layout.ty.is_region_ptr() && dest.layout.ty.is_unsafe_ptr() {
+                if M::ENABLE_PTR_TRACKING_HOOKS &&
+                    src.layout.ty.is_region_ptr() && dest.layout.ty.is_unsafe_ptr()
+                {
                     // For the purpose of the "ptr tag hooks", treat this as creating
                     // a new, raw reference.
                     let place = self.ref_to_mplace(src)?;

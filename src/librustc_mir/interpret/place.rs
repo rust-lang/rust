@@ -265,12 +265,12 @@ where
         val: ValTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let ptr = match val.to_scalar_ptr()? {
-            Scalar::Ptr(ptr) => {
+            Scalar::Ptr(ptr) if M::ENABLE_PTR_TRACKING_HOOKS => {
                 // Machine might want to track the `*` operator
                 let tag = M::tag_dereference(self, ptr, val.layout.ty)?;
                 Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag))
             }
-            scalar @ Scalar::Bits { .. } => scalar,
+            other => other,
         };
 
         let pointee_type = val.layout.ty.builtin_deref(true).unwrap().ty;
@@ -294,14 +294,14 @@ where
         borrow_kind: Option<mir::BorrowKind>,
     ) -> EvalResult<'tcx, Value<M::PointerTag>> {
         let ptr = match place.ptr {
-            Scalar::Ptr(ptr) => {
+            Scalar::Ptr(ptr) if M::ENABLE_PTR_TRACKING_HOOKS => {
                 // Machine might want to track the `&` operator
                 let (size, _) = self.size_and_align_of_mplace(place)?
                     .expect("create_ref cannot determine size");
                 let tag = M::tag_reference(self, ptr, place.layout.ty, size, borrow_kind)?;
                 Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag))
             },
-            scalar @ Scalar::Bits { .. } => scalar,
+            other => other,
         };
         Ok(match place.meta {
             None => Value::Scalar(ptr.into()),
