@@ -2238,7 +2238,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
         if let Some(params) = error {
             if lifetime_refs.len() == 1 {
-                self.report_elision_failure(&mut err, params);
+                self.report_elision_failure(&mut err, params, span);
             }
         }
 
@@ -2249,6 +2249,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         &mut self,
         db: &mut DiagnosticBuilder<'_>,
         params: &[ElisionFailureInfo],
+        span: Span,
     ) {
         let mut m = String::new();
         let len = params.len();
@@ -2304,7 +2305,29 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 "this function's return type contains a borrowed value, but \
                  there is no value for it to be borrowed from"
             );
-            help!(db, "consider giving it a 'static lifetime");
+            let msg = "consider giving it a 'static lifetime";
+            match self.tcx.sess.source_map().span_to_snippet(span) {
+                Ok(ref snippet) if snippet == "&" => db.span_suggestion_with_applicability(
+                    span,
+                    msg,
+                    "&'static ".to_owned(),
+                    Applicability::MachineApplicable,
+                ),
+                Ok(ref snippet)
+                if snippet == "'_" => db.span_suggestion_with_applicability(
+                    span,
+                    msg,
+                    "'static".to_owned(),
+                    Applicability::MachineApplicable,
+                ),
+                Ok(ref snippet) => db.span_suggestion_with_applicability(
+                    span,
+                    msg,
+                    format!("{} + 'static", snippet),
+                    Applicability::MaybeIncorrect,
+                ),
+                Err(_) => db.help(msg),
+            };
         } else if elided_len == 0 {
             help!(
                 db,
@@ -2312,11 +2335,29 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                  an elided lifetime, but the lifetime cannot be derived from \
                  the arguments"
             );
-            help!(
-                db,
-                "consider giving it an explicit bounded or 'static \
-                 lifetime"
-            );
+            let msg = "consider giving it an explicit bounded or 'static lifetime";
+            match self.tcx.sess.source_map().span_to_snippet(span) {
+                Ok(ref snippet) if snippet == "&" => db.span_suggestion_with_applicability(
+                    span,
+                    msg,
+                     "&'static ".to_owned(),
+                    Applicability::MachineApplicable,
+                ),
+                Ok(ref snippet)
+                if snippet == "'_" => db.span_suggestion_with_applicability(
+                    span,
+                    msg,
+                    "'static".to_owned(),
+                    Applicability::MachineApplicable,
+                ),
+                Ok(ref snippet) => db.span_suggestion_with_applicability(
+                    span,
+                    msg,
+                    format!("{} + 'static", snippet),
+                    Applicability::MaybeIncorrect,
+                ),
+                Err(_) => db.help(msg),
+            };
         } else if elided_len == 1 {
             help!(
                 db,
