@@ -37,4 +37,36 @@ fn main() {
     f / 2.0;
     f - 2.0 * 4.2;
     -f;
+
+    // No errors for the following items because they are constant expressions
+    enum Foo {
+        Bar = -2,
+    }
+    struct Baz([i32; 1 + 1]);
+    union Qux {
+        field: [i32; 1 + 1],
+    }
+    type Alias = [i32; 1 + 1];
+
+    const FOO: i32 = -2;
+    static BAR: i32 = -2;
+
+    let _: [i32; 1 + 1] = [0, 0];
+
+    let _: [i32; 1 + 1] = {
+        let a: [i32; 1 + 1] = [0, 0];
+        a
+    };
+
+    trait Trait {
+        const ASSOC: i32 = 1 + 1;
+    }
+
+    impl Trait for Foo {
+        const ASSOC: i32 = {
+            let _: [i32; 1 + 1];
+            fn foo() {}
+            1 + 1
+        };
+    }
 }
