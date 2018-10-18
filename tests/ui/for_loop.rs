@@ -550,6 +550,19 @@ pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
     for i in 0..10 {
         dst_vec[i] = src[i];
     }
+
+    // Simplify suggestion (issue #3004)
+    let src = [0, 1, 2, 3, 4];
+    let mut dst = [0, 0, 0, 0, 0, 0];
+    let from = 1;
+
+    for i in from..from + src.len() {
+        dst[i] = src[i - from];
+    }
+
+    for i in from..from + 3 {
+        dst[i] = src[i - from];
+    }
 }
 
 #[warn(clippy::needless_range_loop)]

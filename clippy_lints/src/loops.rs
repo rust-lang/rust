@@ -950,8 +950,20 @@ fn detect_manual_memcpy<'a, 'tcx>(
                     ("0", _, x, false) | (x, false, "0", false) => x.into(),
                     ("0", _, x, true) | (x, false, "0", true) => format!("-{}", x),
                     (x, false, y, false) => format!("({} + {})", x, y),
-                    (x, false, y, true) => format!("({} - {})", x, y),
-                    (x, true, y, false) => format!("({} - {})", y, x),
+                    (x, false, y, true) => {
+                        if x == y {
+                            "0".into()
+                        } else {
+                            format!("({} - {})", x, y)
+                        }
+                    },
+                    (x, true, y, false) => {
+                        if x == y {
+                            "0".into()
+                        } else {
+                            format!("({} - {})", y, x)
+                        }
+                    },
                     (x, true, y, true) => format!("-({} + {})", x, y),
                 }
             };
