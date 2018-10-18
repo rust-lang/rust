@@ -707,7 +707,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                         }
                     }
                 });
-            } else if let Some((span, err)) = error {
+            } else if let Some((span, err, note)) = error {
                 errors = true;
 
                 if let SingleImport { source, ref result, .. } = import.subclass {
@@ -737,7 +737,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                         &import.subclass,
                         span,
                     );
-                    error_vec.push((span, path, err));
+                    error_vec.push((span, path, err, note));
                     seen_spans.insert(span);
                     prev_root_id = import.root_id;
                 }
@@ -829,26 +829,44 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         }
     }
 
-    fn throw_unresolved_import_error(&self, error_vec: Vec<(Span, String, String)>,
-                                     span: Option<MultiSpan>) {
+    fn throw_unresolved_import_error(
+        &self,
+        error_vec: Vec<(Span, String, String, Option<String>)>,
+        span: Option<MultiSpan>,
+    ) {
         let max_span_label_msg_count = 10;  // upper limit on number of span_label message.
-        let (span, msg) = if error_vec.is_empty() {
-            (span.unwrap(), "unresolved import".to_string())
+        let (span, msg, note) = if error_vec.is_empty() {
+            (span.unwrap(), "unresolved import".to_string(), None)
         } else {
-            let span = MultiSpan::from_spans(error_vec.clone().into_iter()
-                .map(|elem: (Span, String, String)| { elem.0 })
-                .collect());
+            let span = MultiSpan::from_spans(
+                error_vec.clone().into_iter()
+                .map(|elem: (Span, String, String, Option<String>)| elem.0)
+                .collect()
+            );
+
+            let note: Option<String> = error_vec.clone().into_iter()
+                .filter_map(|elem: (Span, String, String, Option<String>)| elem.3)
+                .last();
+
             let path_vec: Vec<String> = error_vec.clone().into_iter()
-                .map(|elem: (Span, String, String)| { format!("`{}`", elem.1) })
+                .map(|elem: (Span, String, String, Option<String>)| format!("`{}`", elem.1))
                 .collect();
             let path = path_vec.join(", ");
-            let msg = format!("unresolved import{} {}",
-                if path_vec.len() > 1 { "s" } else { "" }, path);
-            (span, msg)
+            let msg = format!(
+                "unresolved import{} {}",
+                if path_vec.len() > 1 { "s" } else { "" },
+                path
+            );
+
+            (span, msg, note)
         };
+
         let mut err = struct_span_err!(self.resolver.session, span, E0432, "{}", &msg);
         for span_error in error_vec.into_iter().take(max_span_label_msg_count) {
             err.span_label(span_error.0, span_error.2);
+        }
+        if let Some(note) = note {
+            err.note(&note);
         }
         err.emit();
     }
@@ -945,7 +963,10 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     }
 
     // If appropriate, returns an error to report.
-    fn finalize_import(&mut self, directive: &'b ImportDirective<'b>) -> Option<(Span, String)> {
+    fn finalize_import(
+        &mut self,
+        directive: &'b ImportDirective<'b>
+    ) -> Option<(Span, String, Option<String>)> {
         self.current_module = directive.parent_scope.module;
         let ImportDirective { ref module_path, span, .. } = *directive;
 
@@ -969,15 +990,16 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 return None;
             }
             PathResult::Failed(span, msg, true) => {
-                return if let Some(suggested_path) = self.make_path_suggestion(
+                return if let Some((suggested_path, note)) = self.make_path_suggestion(
                     span, module_path.clone(), &directive.parent_scope
                 ) {
                     Some((
                         span,
-                        format!("Did you mean `{}`?", Segment::names_to_string(&suggested_path))
+                        format!("Did you mean `{}`?", Segment::names_to_string(&suggested_path)),
+                        note,
                     ))
                 } else {
-                    Some((span, msg))
+                    Some((span, msg, None))
                 };
             },
             _ => return None,
@@ -1002,8 +1024,11 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 if let ModuleOrUniformRoot::Module(module) = module {
                     if module.def_id() == directive.parent_scope.module.def_id() {
                         // Importing a module into itself is not allowed.
-                        return Some((directive.span,
-                            "Cannot glob-import a module into itself.".to_string()));
+                        return Some((
+                            directive.span,
+                            "Cannot glob-import a module into itself.".to_string(),
+                            None,
+                        ));
                     }
                 }
                 if !is_prelude &&
@@ -1101,7 +1126,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                         }
                     }
                 };
-                Some((span, msg))
+                Some((span, msg, None))
             } else {
                 // `resolve_ident_in_module` reported a privacy error.
                 self.import_dummy_binding(directive);
