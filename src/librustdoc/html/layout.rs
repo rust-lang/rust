@@ -83,6 +83,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
             <div class=\"search-container\">\
                 <input class=\"search-input\" name=\"search\" \
                        autocomplete=\"off\" \
+                       spellcheck=\"false\" \
                        placeholder=\"Click or press ‘S’ to search, ‘?’ for more options…\" \
                        type=\"search\">\
                 <a id=\"settings-menu\" href=\"{root_path}settings.html\">\
