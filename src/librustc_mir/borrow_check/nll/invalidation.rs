@@ -35,7 +35,7 @@ pub(super) fn generate_invalidates<'cx, 'gcx, 'tcx>(
     mir: &Mir<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) {
-    if !all_facts.is_some() {
+    if all_facts.is_none() {
         // Nothing to do if we don't have any facts
         return;
     }

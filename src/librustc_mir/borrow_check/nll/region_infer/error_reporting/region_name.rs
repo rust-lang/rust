@@ -462,9 +462,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         argument_hir_ty: &hir::Ty,
         counter: &mut usize,
     ) -> Option<RegionName> {
-        let search_stack: &mut Vec<(Ty<'tcx>, &hir::Ty)> = &mut Vec::new();
-
-        search_stack.push((argument_ty, argument_hir_ty));
+        let search_stack: &mut Vec<(Ty<'tcx>, &hir::Ty)> =
+            &mut vec![(argument_ty, argument_hir_ty)];
 
         while let Some((ty, hir_ty)) = search_stack.pop() {
             match (&ty.sty, &hir_ty.node) {
@@ -567,10 +566,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             | hir::LifetimeName::Underscore => {
                 let region_name = self.synthesize_region_name(counter);
                 let ampersand_span = lifetime.span;
-                return Some(RegionName {
+                Some(RegionName {
                     name: region_name,
                     source: RegionNameSource::MatchedAdtAndSegment(ampersand_span),
-                });
+                })
             }
 
             hir::LifetimeName::Implicit => {
@@ -585,7 +584,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // T>`. We don't consider this a match; instead we let
                 // the "fully elaborated" type fallback above handle
                 // it.
-                return None;
+                None
             }
         }
     }

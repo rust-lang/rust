@@ -550,7 +550,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     let span = infcx.tcx.def_span(*did);
                     if let Ok(snippet) = infcx.tcx.sess.source_map().span_to_snippet(span) {
                         let suggestable_fr_name = if fr_name.was_named() {
-                            format!("{}", fr_name)
+                            fr_name.to_string()
                         } else {
                             "'_".to_string()
                         };
