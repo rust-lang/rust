@@ -1019,6 +1019,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 {
                     let impl_self_ty = tcx.type_of(impl_def_id);
                     let impl_self_ty = impl_self_ty.subst(tcx, &substs);
+                    let impl_self_ty = self.normalize(impl_self_ty, locations);
 
                     // There may be type variables in `substs` and hence
                     // in `impl_self_ty`, but they should all have been
