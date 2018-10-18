@@ -221,7 +221,7 @@ impl f32 {
     /// assert!(f32::NAN.copysign(1.0).is_nan());
     /// ```
     #[inline]
-    #[unstable(feature="copysign", issue="0")]
+    #[unstable(feature="copysign", issue="55169")]
     pub fn copysign(self, y: f32) -> f32 {
         unsafe { intrinsics::copysignf32(self, y) }
     }

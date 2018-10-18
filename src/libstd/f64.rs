@@ -177,10 +177,11 @@ impl f64 {
     }
 
     /// Returns a number composed of the magnitude of one number and the sign of
-    /// another, or `NAN` if the number is `NAN`.
+    /// another.
     ///
     /// Equal to `self` if the sign of `self` and `y` are the same, otherwise
-    /// equal to `-y`.
+    /// equal to `-y`. If `self` is a `NAN`, then a `NAN` with the sign of `y`
+    /// is returned.
     ///
     /// # Examples
     ///
@@ -198,7 +199,7 @@ impl f64 {
     /// assert!(f64::NAN.copysign(1.0).is_nan());
     /// ```
     #[inline]
-    #[unstable(feature="copysign", issue="0")]
+    #[unstable(feature="copysign", issue="55169")]
     pub fn copysign(self, y: f64) -> f64 {
         unsafe { intrinsics::copysignf64(self, y) }
     }
