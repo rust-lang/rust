@@ -117,7 +117,7 @@ pub enum ErrorKind {
     /// An io error during reading or writing.
     #[fail(display = "io error: {}", _0)]
     IoError(io::Error),
-    /// Parse error occured when parsing the Input.
+    /// Parse error occurred when parsing the input.
     #[fail(display = "parse error")]
     ParseError,
     /// The user mandated a version and the current version of Rustfmt does not
@@ -407,7 +407,7 @@ fn format_code_block(code_snippet: &str, config: &Config) -> Option<String> {
     // While formatting the code, ignore the config's newline style setting and always use "\n"
     // instead of "\r\n" for the newline characters. This is okay because the output here is
     // not directly outputted by rustfmt command, but used by the comment formatter's input.
-    // We have output-file-wide "\n" ==> "\r\n" conversion proccess after here if it's necessary.
+    // We have output-file-wide "\n" ==> "\r\n" conversion process after here if it's necessary.
     let mut config_with_unix_newline = config.clone();
     config_with_unix_newline
         .set()

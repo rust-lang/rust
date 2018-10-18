@@ -97,7 +97,7 @@
 
 ### Changed
 
-- Warn when unkown configuration option is used.
+- Warn when unknown configuration option is used.
 
 ### Fixed
 
