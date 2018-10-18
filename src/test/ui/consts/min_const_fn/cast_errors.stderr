@@ -1,0 +1,32 @@
+error: unsizing casts are not allowed in const fn
+  --> $DIR/cast_errors.rs:3:41
+   |
+LL | const fn unsize(x: &[u8; 3]) -> &[u8] { x }
+   |                                         ^
+
+error: function pointers in const fn are unstable
+  --> $DIR/cast_errors.rs:5:23
+   |
+LL | const fn closure() -> fn() { || {} }
+   |                       ^^^^
+
+error: function pointers in const fn are unstable
+  --> $DIR/cast_errors.rs:8:5
+   |
+LL |     (|| {}) as fn();
+   |     ^^^^^^^^^^^^^^^
+
+error: function pointers in const fn are unstable
+  --> $DIR/cast_errors.rs:11:28
+   |
+LL | const fn reify(f: fn()) -> unsafe fn() { f }
+   |                            ^^^^^^^^^^^
+
+error: function pointers in const fn are unstable
+  --> $DIR/cast_errors.rs:13:21
+   |
+LL | const fn reify2() { main as unsafe fn(); }
+   |                     ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
