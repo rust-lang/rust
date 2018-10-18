@@ -196,4 +196,17 @@ fn main() {
             println!("world!")
         }
     }
+
+    if x == "hello" {
+        /* Not collapsible */
+        if y == "world" {
+            println!("Hello world!");
+        }
+    }
+
+    if x == "hello" { /* Not collapsible */
+        if y == "world" {
+            println!("Hello world!");
+        }
+    }
 }
