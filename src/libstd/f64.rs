@@ -176,6 +176,33 @@ impl f64 {
         }
     }
 
+    /// Returns a number composed of the magnitude of one number and the sign of
+    /// another, or `NAN` if the number is `NAN`.
+    ///
+    /// Equal to `self` if the sign of `self` and `y` are the same, otherwise
+    /// equal to `-y`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(copysign)]
+    /// use std::f64;
+    ///
+    /// let f = 3.5_f64;
+    ///
+    /// assert_eq!(f.copysign(0.42), 3.5_f64);
+    /// assert_eq!(f.copysign(-0.42), -3.5_f64);
+    /// assert_eq!((-f).copysign(0.42), 3.5_f64);
+    /// assert_eq!((-f).copysign(-0.42), -3.5_f64);
+    ///
+    /// assert!(f64::NAN.copysign(1.0).is_nan());
+    /// ```
+    #[inline]
+    #[unstable(feature="copysign", issue="0")]
+    pub fn copysign(self, y: f64) -> f64 {
+        unsafe { intrinsics::copysignf64(self, y) }
+    }
+
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
     /// error, yielding a more accurate result than an unfused multiply-add.
     ///
