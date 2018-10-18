@@ -1,5 +1,5 @@
 error: attempt to add with overflow
-  --> $DIR/const-eval-overflow-4.rs:24:13
+  --> $DIR/const-eval-overflow-4.rs:23:13
    |
 LL |     : [u32; (i8::MAX as i8 + 1i8) as usize]
    |             ^^^^^^^^^^^^^^^^^^^^^
@@ -7,15 +7,12 @@ LL |     : [u32; (i8::MAX as i8 + 1i8) as usize]
    = note: #[deny(const_err)] on by default
 
 error[E0080]: could not evaluate constant expression
-  --> $DIR/const-eval-overflow-4.rs:22:1
+  --> $DIR/const-eval-overflow-4.rs:23:7
    |
-LL | / const A_I8_T
-LL | |     //~^ ERROR could not evaluate constant expression
-LL | |     : [u32; (i8::MAX as i8 + 1i8) as usize]
-   | |             --------------------- attempt to add with overflow
-LL | |     //~^ ERROR attempt to add with overflow
-LL | |     = [0; (i8::MAX as usize) + 1];
-   | |__________________________________^
+LL |     : [u32; (i8::MAX as i8 + 1i8) as usize]
+   |       ^^^^^^---------------------^^^^^^^^^^
+   |             |
+   |             attempt to add with overflow
 
 error: aborting due to 2 previous errors
 
