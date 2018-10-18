@@ -1,12 +1,10 @@
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-uninhabit.rs:19:1
    |
-LL | const BAD_BAD_BAD: Bar = unsafe { mem::transmute(()) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------------------^^^
-   |                                   |
-   |                                   entered unreachable code
+LL | const BAD_BAD_BAD: Bar = unsafe { (TransmuteUnion::<(), Bar> { a: () }).b };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of an uninhabited type
    |
-   = note: #[deny(const_err)] on by default
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-uninhabit.rs:22:1
@@ -19,10 +17,10 @@ LL | const BAD_BAD_REF: &Bar = unsafe { mem::transmute(1usize) };
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-uninhabit.rs:25:1
    |
-LL | const BAD_BAD_ARRAY: [Bar; 1] = unsafe { mem::transmute(()) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------------------^^^
-   |                                          |
-   |                                          entered unreachable code
+LL | const BAD_BAD_ARRAY: [Bar; 1] = unsafe { (TransmuteUnion::<(), [Bar; 1]> { a: () }).b };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of an uninhabited type
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error: aborting due to 3 previous errors
 

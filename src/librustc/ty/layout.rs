@@ -557,7 +557,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 let size = element.size.checked_mul(count, dl)
                     .ok_or(LayoutError::SizeOverflow(ty))?;
 
-                let abi = if size != Size::ZERO && ty.conservative_is_uninhabited(tcx) {
+                let abi = if count != 0 && ty.conservative_is_uninhabited(tcx) {
                     Abi::Uninhabited
                 } else {
                     Abi::Aggregate { sized: true }
