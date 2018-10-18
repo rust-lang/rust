@@ -21,8 +21,9 @@ use syntax::ptr;
 use syntax::source_map::{BytePos, Span, NO_EXPANSION};
 
 use comment::{filter_normal_code, CharClasses, FullCodeCharKind};
+use config::Config;
 use rewrite::RewriteContext;
-use shape::Shape;
+use shape::{Indent, Shape};
 
 pub const DEPR_SKIP_ANNOTATION: &str = "rustfmt_skip";
 pub const SKIP_ANNOTATION: &str = "rustfmt::skip";
@@ -480,6 +481,44 @@ pub fn remove_trailing_white_spaces(text: &str) -> String {
         }
     }
     buffer
+}
+
+/// Trims a minimum of leading whitespaces so that the content layout is kept and aligns to indent.
+pub fn trim_left_preserve_layout(orig: &str, indent: &Indent, config: &Config) -> String {
+    let prefix_whitespace_min = orig
+        .lines()
+        // skip the line with the starting sigil since the leading whitespace is removed
+        // otherwise, the minimum would always be zero
+        .skip(1)
+        .filter(|line| !line.is_empty())
+        .map(|line| {
+            let mut width = 0;
+            for c in line.chars() {
+                match c {
+                    ' ' => width += 1,
+                    '\t' => width += config.tab_spaces(),
+                    _ => break,
+                }
+            }
+            width
+        })
+        .min()
+        .unwrap_or(0);
+
+    let indent_str = indent.to_string(config);
+    let mut lines = orig.lines();
+    let first_line = lines.next().unwrap();
+    let rest = lines
+        .map(|line| {
+            if line.is_empty() {
+                String::from("\n")
+            } else {
+                format!("\n{}{}", indent_str, &line[prefix_whitespace_min..])
+            }
+        })
+        .collect::<Vec<String>>()
+        .concat();
+    format!("{}{}", first_line, rest)
 }
 
 #[test]

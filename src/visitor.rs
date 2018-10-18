@@ -29,7 +29,7 @@ use source_map::{LineRangeUtils, SpanUtils};
 use spanned::Spanned;
 use utils::{
     self, contains_skip, count_newlines, inner_attributes, mk_sp, ptr_vec_to_ref_vec,
-    rewrite_ident, DEPR_SKIP_ANNOTATION,
+    rewrite_ident, trim_left_preserve_layout, DEPR_SKIP_ANNOTATION,
 };
 use {ErrorKind, FormatReport, FormattingError};
 
@@ -574,9 +574,16 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     }
 
     #[allow(clippy::needless_pass_by_value)]
-    fn push_rewrite_inner(&mut self, span: Span, rewrite: Option<String>) {
+    fn push_rewrite_inner(&mut self, span: Span, rewrite: Option<String>, is_skipped: bool) {
         if let Some(ref s) = rewrite {
             self.push_str(s);
+        } else if is_skipped {
+            // in case the code block (e.g., inside a macro or a doc) is skipped a minimum of
+            // leading whitespaces is trimmed so that the code layout is kept but allows it to
+            // be indented as necessary
+            let snippet =
+                trim_left_preserve_layout(self.snippet(span), &self.block_indent, self.config);
+            self.push_str(&snippet);
         } else {
             let snippet = self.snippet(span);
             self.push_str(snippet);
@@ -586,13 +593,13 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
     pub fn push_rewrite(&mut self, span: Span, rewrite: Option<String>) {
         self.format_missing_with_indent(source!(self, span).lo());
-        self.push_rewrite_inner(span, rewrite);
+        self.push_rewrite_inner(span, rewrite, false);
     }
 
     pub fn push_skipped_with_span(&mut self, span: Span) {
         self.format_missing_with_indent(source!(self, span).lo());
         let lo = self.line_number + 1;
-        self.push_rewrite_inner(span, None);
+        self.push_rewrite_inner(span, None, true);
         let hi = self.line_number + 1;
         self.skipped_range.push((lo, hi));
     }

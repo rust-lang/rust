@@ -19,7 +19,7 @@ use config::Config;
 use rewrite::RewriteContext;
 use shape::{Indent, Shape};
 use string::{rewrite_string, StringFormat};
-use utils::{count_newlines, first_line_width, last_line_width};
+use utils::{count_newlines, first_line_width, last_line_width, trim_left_preserve_layout};
 use {ErrorKind, FormattingError};
 
 fn is_custom_comment(comment: &str) -> bool {
@@ -332,12 +332,12 @@ fn identify_comment(
     let (first_group, rest) = orig.split_at(first_group_ending);
     let rewritten_first_group =
         if !config.normalize_comments() && has_bare_lines && style.is_block_comment() {
-            light_rewrite_block_comment_with_bare_lines(first_group, shape, config)?
+            trim_left_preserve_layout(first_group, &shape.indent, config)
         } else if !config.normalize_comments()
             && !config.wrap_comments()
             && !config.format_doc_comments()
         {
-            light_rewrite_comment(first_group, shape.indent, config, is_doc_comment)?
+            light_rewrite_comment(first_group, shape.indent, config, is_doc_comment)
         } else {
             rewrite_comment_inner(
                 first_group,
@@ -368,47 +368,6 @@ fn identify_comment(
             },
         )
     }
-}
-
-/// Trims a minimum of leading whitespaces so that the content layout is kept and aligns to indent.
-fn light_rewrite_block_comment_with_bare_lines(
-    orig: &str,
-    shape: Shape,
-    config: &Config,
-) -> Option<String> {
-    let prefix_whitespace_min = orig
-        .lines()
-        // skip the line with the starting sigil since the leading whitespace is removed
-        // otherwise, the minimum would always be zero
-        .skip(1)
-        .filter(|line| !line.is_empty())
-        .map(|line| {
-            let mut width = 0;
-            for c in line.chars() {
-                match c {
-                    ' ' => width += 1,
-                    '\t' => width += config.tab_spaces(),
-                    _ => break,
-                }
-            }
-            width
-        })
-        .min()?;
-
-    let indent_str = shape.indent.to_string(config);
-    let mut lines = orig.lines();
-    let first_line = lines.next()?;
-    let rest = lines
-        .map(|line| {
-            if line.is_empty() {
-                line
-            } else {
-                &line[prefix_whitespace_min..]
-            }
-        })
-        .collect::<Vec<&str>>()
-        .join(&format!("\n{}", indent_str));
-    Some(format!("{}\n{}{}", first_line, indent_str, rest))
 }
 
 /// Attributes for code blocks in rustdoc.
@@ -912,7 +871,7 @@ fn light_rewrite_comment(
     offset: Indent,
     config: &Config,
     is_doc_comment: bool,
-) -> Option<String> {
+) -> String {
     let lines: Vec<&str> = orig
         .lines()
         .map(|l| {
@@ -933,7 +892,7 @@ fn light_rewrite_comment(
             trim_right_unless_two_whitespaces(left_trimmed, is_doc_comment)
         })
         .collect();
-    Some(lines.join(&format!("\n{}", offset.to_string(config))))
+    lines.join(&format!("\n{}", offset.to_string(config)))
 }
 
 /// Trims comment characters and possibly a single space from the left of a string.
