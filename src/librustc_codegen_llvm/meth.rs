@@ -94,6 +94,10 @@ pub fn get_vtable(
     });
 
     let (size, align) = cx.size_and_align_of(ty);
+    // /////////////////////////////////////////////////////////////////////////////////////////////
+    // If you touch this code, be sure to also make the corresponding changes to
+    // `get_vtable` in rust_mir/interpret/traits.rs
+    // /////////////////////////////////////////////////////////////////////////////////////////////
     let components: Vec<_> = [
         callee::get_fn(cx, monomorphize::resolve_drop_in_place(cx.tcx, ty)),
         C_usize(cx, size.bytes()),
