@@ -37,7 +37,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         kind: CastKind,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
-        let src_layout = src.layout;
         use rustc::mir::CastKind::*;
         match kind {
             Unsize => {
@@ -45,29 +44,28 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             }
 
             Misc => {
+                let src_layout = src.layout;
                 let src = self.read_value(src)?;
 
-                if M::ENABLE_PTR_TRACKING_HOOKS &&
-                    src.layout.ty.is_region_ptr() && dest.layout.ty.is_unsafe_ptr()
-                {
+                let src = if M::ENABLE_PTR_TRACKING_HOOKS && src_layout.ty.is_region_ptr() {
+                    // The only `Misc` casts on references are those creating raw pointers.
+                    assert!(dest.layout.ty.is_unsafe_ptr());
                     // For the purpose of the "ptr tag hooks", treat this as creating
                     // a new, raw reference.
                     let place = self.ref_to_mplace(src)?;
-                    let _val = self.create_ref(place, None)?;
-                    // FIXME: The blog post said we should now also erase the tag.
-                    // That would amount to using `_val` instead of `src` from here on.
-                    // However, do we really want to do that?  `transmute` doesn't
-                    // do it either and we have to support that, somehow.
-                }
+                    self.create_ref(place, None)?
+                } else {
+                    *src
+                };
 
-                if self.type_is_fat_ptr(src.layout.ty) {
-                    match (*src, self.type_is_fat_ptr(dest.layout.ty)) {
+                if self.type_is_fat_ptr(src_layout.ty) {
+                    match (src, self.type_is_fat_ptr(dest.layout.ty)) {
                         // pointers to extern types
                         (Value::Scalar(_),_) |
                         // slices and trait objects to other slices/trait objects
                         (Value::ScalarPair(..), true) => {
                             // No change to value
-                            self.write_value(*src, dest)?;
+                            self.write_value(src, dest)?;
                         }
                         // slices and trait objects to thin pointers (dropping the metadata)
                         (Value::ScalarPair(data, _), false) => {
@@ -79,7 +77,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         layout::Variants::Single { index } => {
                             if let Some(def) = src_layout.ty.ty_adt_def() {
                                 // Cast from a univariant enum
-                                assert!(src.layout.is_zst());
+                                assert!(src_layout.is_zst());
                                 let discr_val = def
                                     .discriminant_for_variant(*self.tcx, index)
                                     .val;
