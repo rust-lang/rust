@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // run-pass
-// compile-flags: --extern LooksLikeExternCrate=/path/to/nowhere
+// compile-flags: --extern LooksLikeExternCrate
 
 mod m {
     pub struct LooksLikeExternCrate;
