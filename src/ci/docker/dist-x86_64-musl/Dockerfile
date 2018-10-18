@@ -43,6 +43,8 @@ ENV CFLAGS_x86_64_unknown_linux_musl=-Wa,-mrelax-relocations=no
 
 ENV HOSTS=x86_64-unknown-linux-musl
 
+ENV RUSTFLAGS="-C target-feature=-crt-static"
+
 ENV SCRIPT \
       python2.7 ../x.py test --host $HOSTS --target $HOSTS && \
       python2.7 ../x.py dist --host $HOSTS --target $HOSTS
