@@ -2235,14 +2235,38 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         };
 
         let mut err = report_missing_lifetime_specifiers(self.tcx.sess, span, lifetime_refs.len());
+        let mut add_label = true;
 
         if let Some(params) = error {
             if lifetime_refs.len() == 1 {
-                self.report_elision_failure(&mut err, params, span);
+                add_label = add_label && self.report_elision_failure(&mut err, params, span);
             }
+        }
+        if add_label {
+            add_missing_lifetime_specifiers_label(&mut err, span, lifetime_refs.len());
         }
 
         err.emit();
+    }
+
+    fn suggest_lifetime(&self, db: &mut DiagnosticBuilder<'_>, span: Span, msg: &str) -> bool {
+        match self.tcx.sess.source_map().span_to_snippet(span) {
+            Ok(ref snippet) => {
+                let (sugg, applicability) = if &snippet[..] == "&" {
+                    ("&'static ".to_owned(), Applicability::MachineApplicable)
+                } else if snippet == "'_" {
+                    ("'static".to_owned(), Applicability::MachineApplicable)
+                } else {
+                    (format!("{} + 'static", snippet), Applicability::MaybeIncorrect)
+                };
+                db.span_suggestion_with_applicability(span, msg, sugg, applicability);
+                false
+            }
+            Err(_) => {
+                db.help(msg);
+                true
+            }
+        }
     }
 
     fn report_elision_failure(
@@ -2250,7 +2274,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         db: &mut DiagnosticBuilder<'_>,
         params: &[ElisionFailureInfo],
         span: Span,
-    ) {
+    ) -> bool {
         let mut m = String::new();
         let len = params.len();
 
@@ -2305,29 +2329,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 "this function's return type contains a borrowed value, but \
                  there is no value for it to be borrowed from"
             );
-            let msg = "consider giving it a 'static lifetime";
-            match self.tcx.sess.source_map().span_to_snippet(span) {
-                Ok(ref snippet) if snippet == "&" => db.span_suggestion_with_applicability(
-                    span,
-                    msg,
-                    "&'static ".to_owned(),
-                    Applicability::MachineApplicable,
-                ),
-                Ok(ref snippet)
-                if snippet == "'_" => db.span_suggestion_with_applicability(
-                    span,
-                    msg,
-                    "'static".to_owned(),
-                    Applicability::MachineApplicable,
-                ),
-                Ok(ref snippet) => db.span_suggestion_with_applicability(
-                    span,
-                    msg,
-                    format!("{} + 'static", snippet),
-                    Applicability::MaybeIncorrect,
-                ),
-                Err(_) => db.help(msg),
-            };
+            self.suggest_lifetime(db, span, "consider giving it a 'static lifetime")
         } else if elided_len == 0 {
             help!(
                 db,
@@ -2336,28 +2338,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                  the arguments"
             );
             let msg = "consider giving it an explicit bounded or 'static lifetime";
-            match self.tcx.sess.source_map().span_to_snippet(span) {
-                Ok(ref snippet) if snippet == "&" => db.span_suggestion_with_applicability(
-                    span,
-                    msg,
-                     "&'static ".to_owned(),
-                    Applicability::MachineApplicable,
-                ),
-                Ok(ref snippet)
-                if snippet == "'_" => db.span_suggestion_with_applicability(
-                    span,
-                    msg,
-                    "'static".to_owned(),
-                    Applicability::MachineApplicable,
-                ),
-                Ok(ref snippet) => db.span_suggestion_with_applicability(
-                    span,
-                    msg,
-                    format!("{} + 'static", snippet),
-                    Applicability::MaybeIncorrect,
-                ),
-                Err(_) => db.help(msg),
-            };
+            self.suggest_lifetime(db, span, msg)
         } else if elided_len == 1 {
             help!(
                 db,
@@ -2365,6 +2346,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                  the signature does not say which {} it is borrowed from",
                 m
             );
+            true
         } else {
             help!(
                 db,
@@ -2372,6 +2354,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                  the signature does not say whether it is borrowed from {}",
                 m
             );
+            true
         }
     }
 
@@ -2785,26 +2768,28 @@ fn insert_late_bound_lifetimes(
     }
 }
 
-pub fn report_missing_lifetime_specifiers(
+fn report_missing_lifetime_specifiers(
     sess: &Session,
     span: Span,
     count: usize,
 ) -> DiagnosticBuilder<'_> {
-    let mut err = struct_span_err!(
+    struct_span_err!(
         sess,
         span,
         E0106,
         "missing lifetime specifier{}",
         if count > 1 { "s" } else { "" }
-    );
+    )
+}
 
-    let msg: Cow<'static, str> = if count > 1 {
-        format!("expected {} lifetime parameters", count).into()
+fn add_missing_lifetime_specifiers_label(
+    err: &mut DiagnosticBuilder<'_>,
+    span: Span,
+    count: usize,
+) {
+    if count > 1 {
+        err.span_label(span, format!("expected {} lifetime parameters", count));
     } else {
-        "expected lifetime parameter".into()
+        err.span_label(span, "expected lifetime parameter");
     };
-
-    err.span_label(span, msg);
-
-    err
 }
