@@ -199,6 +199,7 @@ impl f64 {
     /// assert!(f64::NAN.copysign(1.0).is_nan());
     /// ```
     #[inline]
+    #[must_use]
     #[unstable(feature="copysign", issue="55169")]
     pub fn copysign(self, y: f64) -> f64 {
         unsafe { intrinsics::copysignf64(self, y) }
