@@ -2361,9 +2361,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let ty = self.to_ty(ast_ty);
 
         // If the type given by the user has free regions, save it for
-        // later, since NLL would like to enforce those. Other sorts
-        // of things are already sufficiently enforced. =)
-        if ty.has_free_regions() {
+        // later, since NLL would like to enforce those. Also pass in
+        // types that involve projections, since those can resolve to
+        // `'static` bounds (modulo #54940, which hopefully will be
+        // fixed by the time you see this comment, dear reader,
+        // although I have my doubts). Other sorts of things are
+        // already sufficiently enforced with erased regions. =)
+        if ty.has_free_regions() || ty.has_projections() {
             let c_ty = self.infcx.canonicalize_response(&ty);
             self.tables.borrow_mut().user_provided_tys_mut().insert(ast_ty.hir_id, c_ty);
         }
