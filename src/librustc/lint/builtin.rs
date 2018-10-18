@@ -313,6 +313,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub MISSING_DOC_CODE_EXAMPLES,
+    Allow,
+    "warn about missing code example in an item's documentation"
+}
+
+declare_lint! {
     pub WHERE_CLAUSES_OBJECT_SAFETY,
     Warn,
     "checks the object safety of where clauses"
@@ -408,6 +414,7 @@ impl LintPass for HardwiredLints {
             DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
             DUPLICATE_MACRO_EXPORTS,
             INTRA_DOC_LINK_RESOLUTION_FAILURE,
+            MISSING_DOC_CODE_EXAMPLES,
             WHERE_CLAUSES_OBJECT_SAFETY,
             PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
             MACRO_USE_EXTERN_CRATE,

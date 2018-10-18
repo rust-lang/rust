@@ -24,7 +24,8 @@ use std::ops::Range;
 
 use core::DocContext;
 use fold::DocFolder;
-use html::markdown::markdown_links;
+use html::markdown::{find_testable_code, markdown_links, ErrorCodes, LangString};
+
 use passes::Pass;
 
 pub const COLLECT_INTRA_DOC_LINKS: Pass =
@@ -56,6 +57,7 @@ enum PathKind {
 struct LinkCollector<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
     cx: &'a DocContext<'a, 'tcx, 'rcx, 'cstore>,
     mod_ids: Vec<NodeId>,
+    is_nightly_build: bool,
 }
 
 impl<'a, 'tcx, 'rcx, 'cstore> LinkCollector<'a, 'tcx, 'rcx, 'cstore> {
@@ -63,6 +65,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> LinkCollector<'a, 'tcx, 'rcx, 'cstore> {
         LinkCollector {
             cx,
             mod_ids: Vec::new(),
+            is_nightly_build: UnstableFeatures::from_environment().is_nightly_build(),
         }
     }
 
@@ -211,6 +214,43 @@ impl<'a, 'tcx, 'rcx, 'cstore> LinkCollector<'a, 'tcx, 'rcx, 'cstore> {
     }
 }
 
+fn look_for_tests<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx>(
+    cx: &'a DocContext<'a, 'tcx, 'rcx, 'cstore>,
+    dox: &str,
+    item: &Item,
+) {
+    if (item.is_mod() && cx.tcx.hir.as_local_node_id(item.def_id).is_none()) ||
+       cx.as_local_node_id(item.def_id).is_none() {
+        // If non-local, no need to check anything.
+        return;
+    }
+
+    struct Tests {
+        found_tests: usize,
+    }
+
+    impl ::test::Tester for Tests {
+        fn add_test(&mut self, _: String, _: LangString, _: usize) {
+            self.found_tests += 1;
+        }
+    }
+
+    let mut tests = Tests {
+        found_tests: 0,
+    };
+
+    if find_testable_code(&dox, &mut tests, ErrorCodes::No).is_ok() {
+        if tests.found_tests == 0 {
+            let mut diag = cx.tcx.struct_span_lint_node(
+                lint::builtin::MISSING_DOC_CODE_EXAMPLES,
+                NodeId::new(0),
+                span_of_attrs(&item.attrs),
+                "Missing code example in this documentation");
+            diag.emit();
+        }
+    }
+}
+
 impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstore> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
         let item_node_id = if item.is_mod() {
@@ -272,6 +312,12 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
 
         let cx = self.cx;
         let dox = item.attrs.collapsed_doc_value().unwrap_or_else(String::new);
+
+        look_for_tests(&cx, &dox, &item);
+
+        if !self.is_nightly_build {
+            return None;
+        }
 
         for (ori_link, link_range) in markdown_links(&dox) {
             // bail early for real links
