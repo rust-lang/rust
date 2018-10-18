@@ -257,6 +257,38 @@ impl AnalysisImpl {
         vec![]
     }
 
+    pub fn find_all_refs(&self, file_id: FileId, offset: TextUnit, _token: &JobToken) -> Vec<(FileId, TextRange)> {
+        let root = self.root(file_id);
+        let file = root.syntax(file_id);
+        let syntax = file.syntax();
+
+        let mut ret = vec![];
+
+        // Find the symbol we are looking for
+        if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, offset) {
+
+            // We are only handing local references for now
+            if let Some(resolved) = resolve_local_name(&file, offset, name_ref) {
+
+                ret.push((file_id, resolved.1));
+
+                if let Some(fn_def) = find_node_at_offset::<ast::FnDef>(syntax, offset) {
+
+                    let refs : Vec<_> = fn_def.syntax().descendants()
+                        .filter_map(ast::NameRef::cast)
+                        .filter(|n: &ast::NameRef| resolve_local_name(&file, n.syntax().range().start(), *n) == Some(resolved.clone()))
+                        .collect();
+
+                    for r in refs {
+                        ret.push((file_id, r.syntax().range()));
+                    }
+                }
+            }
+        }
+
+        ret
+    }
+
     pub fn diagnostics(&self, file_id: FileId) -> Vec<Diagnostic> {
         let root = self.root(file_id);
         let module_tree = root.module_tree();

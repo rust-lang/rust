@@ -10,6 +10,8 @@ use std::sync::Arc;
 use ra_analysis::{
     Analysis, AnalysisHost, CrateGraph, CrateId, FileId, FileResolver, FnDescriptor, JobHandle,
 };
+use ra_syntax::TextRange;
+
 use relative_path::{RelativePath, RelativePathBuf};
 use rustc_hash::FxHashMap;
 use test_utils::{assert_eq_dbg, extract_offset};
@@ -224,4 +226,44 @@ fn bar() {
     assert_eq!(desc.params, vec!["&self".to_string(), "x".to_string()]);
     assert_eq!(desc.ret_type, None);
     assert_eq!(param, Some(1));
+}
+
+fn get_all_refs(text: &str) -> Vec<(FileId, TextRange)> {
+    let (offset, code) = extract_offset(text);
+    let code = code.as_str();
+
+    let (_handle, token) = JobHandle::new();
+    let snap = analysis(&[("/lib.rs", code)]);
+
+    snap.find_all_refs(FileId(1), offset, &token)
+}
+
+#[test]
+fn test_find_all_refs_for_local() {
+    let code = r#"
+    fn main() {
+        let mut i = 1;
+        let j = 1;
+        i = i<|> + j;
+
+        {
+            i = 0;
+        }
+
+        i = 5;
+    }"#;
+
+    let refs = get_all_refs(code);
+    assert_eq!(refs.len(), 5);
+}
+
+#[test]
+fn test_find_all_refs_for_param_inside() {
+    let code = r#"
+    fn foo(i : u32) -> u32 {
+        i<|>
+    }"#;
+
+    let refs = get_all_refs(code);
+    assert_eq!(refs.len(), 2);
 }

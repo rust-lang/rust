@@ -460,6 +460,22 @@ pub fn handle_signature_help(
     }
 }
 
+pub fn handle_references(
+    world: ServerWorld,
+    params: req::ReferenceParams,
+    token: JobToken,
+) -> Result<Option<Vec<Location>>> {
+    let file_id = params.text_document.try_conv_with(&world)?;
+    let line_index = world.analysis().file_line_index(file_id);
+    let offset = params.position.conv_with(&line_index);
+
+    let refs = world.analysis().find_all_refs(file_id, offset, &token);
+
+    Ok(Some(refs.into_iter()
+        .filter_map(|r| to_location(r.0, r.1, &world, &line_index).ok())
+        .collect()))
+}
+
 pub fn handle_code_action(
     world: ServerWorld,
     params: req::CodeActionParams,

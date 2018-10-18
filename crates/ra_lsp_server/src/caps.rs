@@ -27,7 +27,7 @@ pub fn server_capabilities() -> ServerCapabilities {
         definition_provider: Some(true),
         type_definition_provider: None,
         implementation_provider: None,
-        references_provider: None,
+        references_provider: Some(true),
         document_highlight_provider: None,
         document_symbol_provider: Some(true),
         workspace_symbol_provider: Some(true),
