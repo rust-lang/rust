@@ -41,7 +41,7 @@ use std::fmt;
 declare_clippy_lint! {
     pub PTR_OFFSET_WITH_CAST,
     complexity,
-    "uneeded pointer offset cast"
+    "unneeded pointer offset cast"
 }
 
 #[derive(Copy, Clone, Debug)]
