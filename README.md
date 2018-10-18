@@ -9,7 +9,7 @@ We are currently in the process of discussing Clippy 1.0 via the RFC process in 
 
 A collection of lints to catch common mistakes and improve your [Rust](https://github.com/rust-lang/rust) code.
 
-[There are 279 lints included in this crate!](https://rust-lang-nursery.github.io/rust-clippy/master/index.html)
+[There are 280 lints included in this crate!](https://rust-lang-nursery.github.io/rust-clippy/master/index.html)
 
 We have a bunch of lint categories to allow you to choose how much Clippy is supposed to ~~annoy~~ help you:
 
@@ -23,6 +23,15 @@ We have a bunch of lint categories to allow you to choose how much Clippy is sup
 * **`clippy::correctness`** (code that is just outright wrong or very very useless)
 
 More to come, please [file an issue](https://github.com/rust-lang-nursery/rust-clippy/issues) if you have ideas!
+
+Only the following of those categories are enabled by default:
+
+* `clippy::style`
+* `clippy::correctness`
+* `clippy::complexity`
+* `clippy::perf`
+
+Other categories need to be enabled in order for their lints to be executed.
 
 Table of contents:
 

@@ -11,7 +11,7 @@
 use crate::rustc::hir;
 use crate::rustc::hir::def::Def;
 use crate::rustc::lint::{in_external_macro, LateContext, LateLintPass, Lint, LintArray, LintContext, LintPass};
-use crate::rustc::ty::{self, Ty};
+use crate::rustc::ty::{self, Ty, TyKind, Predicate};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
 use crate::syntax::ast;
@@ -688,7 +688,8 @@ declare_clippy_lint! {
 ///
 /// **Why is this bad?** Readability.
 ///
-/// **Known problems:** None.
+/// **Known problems:** False positive in pattern guards. Will be resolved once
+/// non-lexical lifetimes are stable.
 ///
 /// **Example:**
 /// ```rust
@@ -878,6 +879,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         let name = implitem.ident.name;
         let parent = cx.tcx.hir.get_parent(implitem.id);
         let item = cx.tcx.hir.expect_item(parent);
+        let def_id = cx.tcx.hir.local_def_id(item.id);
+        let ty = cx.tcx.type_of(def_id);
         if_chain! {
             if let hir::ImplItemKind::Method(ref sig, id) = implitem.node;
             if let Some(first_arg_ty) = sig.decl.inputs.get(0);
@@ -899,8 +902,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 }
 
                 // check conventions w.r.t. conversion method names and predicates
-                let def_id = cx.tcx.hir.local_def_id(item.id);
-                let ty = cx.tcx.type_of(def_id);
                 let is_copy = is_copy(cx, ty);
                 for &(ref conv, self_kinds) in &CONVENTIONS {
                     if conv.check(&name.as_str()) {
@@ -928,15 +929,36 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         break;
                     }
                 }
+            }
+        }
 
-                let ret_ty = return_ty(cx, implitem.id);
-                if name == "new" &&
-                   !ret_ty.walk().any(|t| same_tys(cx, t, ty)) {
-                    span_lint(cx,
-                              NEW_RET_NO_SELF,
-                              implitem.span,
-                              "methods called `new` usually return `Self`");
+        if let hir::ImplItemKind::Method(_, _) = implitem.node {
+            let ret_ty = return_ty(cx, implitem.id);
+
+            // if return type is impl trait
+            if let TyKind::Opaque(def_id, _) = ret_ty.sty {
+
+                // then one of the associated types must be Self
+                for predicate in cx.tcx.predicates_of(def_id).predicates.iter() {
+                    match predicate {
+                        (Predicate::Projection(poly_projection_predicate), _) => {
+                            let binder = poly_projection_predicate.ty();
+                            let associated_type = binder.skip_binder();
+                            let associated_type_is_self_type = same_tys(cx, ty, associated_type);
+
+                            // if the associated type is self, early return and do not trigger lint
+                            if associated_type_is_self_type { return; }
+                        },
+                        (_, _) => {},
+                    }
                 }
+            }
+
+            if name == "new" && !same_tys(cx, ret_ty, ty) {
+                span_lint(cx,
+                          NEW_RET_NO_SELF,
+                          implitem.span,
+                          "methods called `new` usually return `Self`");
             }
         }
     }

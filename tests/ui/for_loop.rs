@@ -550,6 +550,19 @@ pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
     for i in 0..10 {
         dst_vec[i] = src[i];
     }
+
+    // Simplify suggestion (issue #3004)
+    let src = [0, 1, 2, 3, 4];
+    let mut dst = [0, 0, 0, 0, 0, 0];
+    let from = 1;
+
+    for i in from..from + src.len() {
+        dst[i] = src[i - from];
+    }
+
+    for i in from..from + 3 {
+        dst[i] = src[i - from];
+    }
 }
 
 #[warn(clippy::needless_range_loop)]
@@ -643,6 +656,41 @@ mod issue_1219 {
                 count += 1;
             }
             println!("{}", count);
+        }
+    }
+}
+
+mod issue_3308 {
+    #[warn(clippy::explicit_counter_loop)]
+    pub fn test() {
+        // should not trigger the lint because the count is incremented multiple times
+        let mut skips = 0;
+        let erasures = vec![];
+        for i in 0..10 {
+            while erasures.contains(&(i + skips)) {
+                skips += 1;
+            }
+            println!("{}", skips);
+        }
+
+        // should not trigger the lint because the count is incremented multiple times
+        let mut skips = 0;
+        for i in 0..10 {
+            let mut j = 0;
+            while j < 5 {
+                skips += 1;
+                j += 1;
+            }
+            println!("{}", skips);
+        }
+
+        // should not trigger the lint because the count is incremented multiple times
+        let mut skips = 0;
+        for i in 0..10 {
+            for j in 0..5 {
+                skips += 1;
+            }
+            println!("{}", skips);
         }
     }
 }

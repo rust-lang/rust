@@ -62,4 +62,18 @@ fn main() {
         g[i] = g[i+1..].iter().sum();
     }
     assert_eq!(g, vec![20, 18, 15, 11, 6, 0]);
+
+    let x = 5;
+    let mut vec = vec![0; 9];
+
+    for i in x..x + 4 {
+        vec[i] += 1;
+    }
+
+    let x = 5;
+    let mut vec = vec![0; 10];
+
+    for i in x..=x + 4 {
+        vec[i] += 1;
+    }
 }

@@ -40,15 +40,16 @@ declare_clippy_lint! {
     "unnecessary double comparisons that can be simplified"
 }
 
-pub struct DoubleComparisonPass;
+pub struct Pass;
 
-impl LintPass for DoubleComparisonPass {
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(DOUBLE_COMPARISONS)
     }
 }
 
-impl<'a, 'tcx> DoubleComparisonPass {
+impl<'a, 'tcx> Pass {
+    #[allow(clippy::similar_names)]
     fn check_binop(
         &self,
         cx: &LateContext<'a, 'tcx>,
@@ -87,7 +88,7 @@ impl<'a, 'tcx> DoubleComparisonPass {
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DoubleComparisonPass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprKind::Binary(ref kind, ref lhs, ref rhs) = expr.node {
             self.check_binop(cx, kind.node, lhs, rhs, expr.span);

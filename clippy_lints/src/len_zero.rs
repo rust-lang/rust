@@ -240,7 +240,7 @@ fn check_len(cx: &LateContext<'_, '_>, span: Span, method_name: Name, args: &[Ex
                 LEN_ZERO,
                 span,
                 &format!("length comparison to {}", if compare_to == 0 { "zero" } else { "one" }),
-                "using `is_empty` is more concise",
+                "using `is_empty` is clearer and more explicit",
                 format!("{}{}.is_empty()", op, snippet(cx, args[0].span, "_")),
             );
         }
@@ -276,7 +276,7 @@ fn has_is_empty(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     let ty = &walk_ptrs_ty(cx.tables.expr_ty(expr));
     match ty.sty {
         ty::Dynamic(ref tt, ..) => cx.tcx
-            .associated_items(tt.principal().expect("trait impl not found").def_id())
+            .associated_items(tt.principal().def_id())
             .any(|item| is_is_empty(cx, &item)),
         ty::Projection(ref proj) => has_is_empty_impl(cx, proj.item_def_id),
         ty::Adt(id, _) => has_is_empty_impl(cx, id.did),

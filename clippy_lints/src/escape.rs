@@ -65,6 +65,7 @@ impl LintPass for Pass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+
     fn check_fn(
         &mut self,
         cx: &LateContext<'a, 'tcx>,
@@ -74,13 +75,23 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         _: Span,
         node_id: NodeId,
     ) {
-        let fn_def_id = cx.tcx.hir.local_def_id(node_id);
+        // If the method is an impl for a trait, don't warn
+        let parent_id = cx.tcx.hir.get_parent(node_id);
+        let parent_node = cx.tcx.hir.find(parent_id);
+
+        if let Some(Node::Item(item)) = parent_node {
+            if let ItemKind::Impl(_, _, _, _, Some(..), _, _) = item.node {
+                return;
+            }
+        }
+
         let mut v = EscapeDelegate {
             cx,
             set: NodeSet(),
             too_large_for_stack: self.too_large_for_stack,
         };
 
+        let fn_def_id = cx.tcx.hir.local_def_id(node_id);
         let region_scope_tree = &cx.tcx.region_scope_tree(fn_def_id);
         ExprUseVisitor::new(&mut v, cx.tcx, cx.param_env, region_scope_tree, cx.tables, None).consume_body(body);
 

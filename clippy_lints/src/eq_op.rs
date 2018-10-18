@@ -63,6 +63,7 @@ impl LintPass for EqOp {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
+    #[allow(clippy::similar_names)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprKind::Binary(op, ref left, ref right) = e.node {
             if in_macro(e.span) {

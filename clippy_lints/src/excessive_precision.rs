@@ -108,6 +108,7 @@ impl ExcessivePrecision {
     }
 }
 
+#[allow(clippy::doc_markdown)]
 /// Should we exclude the float because it has a `.0` or `.` suffix
 /// Ex 1_000_000_000.0
 /// Ex 1_000_000_000.

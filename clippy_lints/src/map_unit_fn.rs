@@ -179,7 +179,7 @@ fn unit_closure<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'a hir::Expr) -> Op
     None
 }
 
-/// Builds a name for the let binding variable (var_arg)
+/// Builds a name for the let binding variable (`var_arg`)
 ///
 /// `x.field` => `x_field`
 /// `y` => `_y`

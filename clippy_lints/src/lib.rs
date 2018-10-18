@@ -46,6 +46,8 @@ extern crate syntax_pos;
 
 use toml;
 
+// Currently, categories "style", "correctness", "complexity" and "perf" are enabled by default,
+// as said in the README.md of this repository. If this changes, please update README.md.
 macro_rules! declare_clippy_lint {
     { pub $name:tt, style, $description:tt } => {
         declare_tool_lint! { pub clippy::$name, Warn, $description, report_in_external_macro: true }
@@ -124,7 +126,6 @@ pub mod formatting;
 pub mod functions;
 pub mod identity_conversion;
 pub mod identity_op;
-pub mod if_let_redundant_pattern_matching;
 pub mod if_not_else;
 pub mod indexing_slicing;
 pub mod infallible_destructuring_match;
@@ -178,6 +179,7 @@ pub mod ptr_offset_with_cast;
 pub mod question_mark;
 pub mod ranges;
 pub mod redundant_field_names;
+pub mod redundant_pattern_matching;
 pub mod reference;
 pub mod regex;
 pub mod replace_consts;
@@ -301,6 +303,10 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         "assign_ops",
         "using compound assignment operators (e.g. `+=`) is harmless",
     );
+    store.register_removed(
+        "if_let_redundant_pattern_matching",
+        "this lint has been changed to redundant_pattern_matching",
+    );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     reg.register_late_lint_pass(box serde_api::Serde);
@@ -400,7 +406,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box missing_doc::MissingDoc::new());
     reg.register_late_lint_pass(box missing_inline::MissingInline);
     reg.register_late_lint_pass(box ok_if_let::Pass);
-    reg.register_late_lint_pass(box if_let_redundant_pattern_matching::Pass);
+    reg.register_late_lint_pass(box redundant_pattern_matching::Pass);
     reg.register_late_lint_pass(box partialeq_ne_impl::Pass);
     reg.register_early_lint_pass(box reference::Pass);
     reg.register_early_lint_pass(box reference::DerefPass);
@@ -428,8 +434,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box fallible_impl_from::FallibleImplFrom);
     reg.register_late_lint_pass(box replace_consts::ReplaceConsts);
     reg.register_late_lint_pass(box types::UnitArg);
-    reg.register_late_lint_pass(box double_comparison::DoubleComparisonPass);
-    reg.register_late_lint_pass(box question_mark::QuestionMarkPass);
+    reg.register_late_lint_pass(box double_comparison::Pass);
+    reg.register_late_lint_pass(box question_mark::Pass);
     reg.register_late_lint_pass(box suspicious_trait_impl::SuspiciousImpl);
     reg.register_early_lint_pass(box multiple_crate_versions::Pass);
     reg.register_late_lint_pass(box map_unit_fn::Pass);
@@ -563,7 +569,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         functions::TOO_MANY_ARGUMENTS,
         identity_conversion::IDENTITY_CONVERSION,
         identity_op::IDENTITY_OP,
-        if_let_redundant_pattern_matching::IF_LET_REDUNDANT_PATTERN_MATCHING,
         indexing_slicing::OUT_OF_BOUNDS_INDEXING,
         infallible_destructuring_match::INFALLIBLE_DESTRUCTURING_MATCH,
         infinite_iter::INFINITE_ITER,
@@ -678,6 +683,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         ranges::RANGE_PLUS_ONE,
         ranges::RANGE_ZIP_WITH_LEN,
         redundant_field_names::REDUNDANT_FIELD_NAMES,
+        redundant_pattern_matching::REDUNDANT_PATTERN_MATCHING,
         reference::DEREF_ADDROF,
         reference::REF_IN_DEREF,
         regex::INVALID_REGEX,
@@ -685,6 +691,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         regex::TRIVIAL_REGEX,
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,
+        returns::UNUSED_UNIT,
         serde_api::SERDE_API_MISUSE,
         strings::STRING_LIT_AS_BYTES,
         suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL,
@@ -746,7 +753,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         excessive_precision::EXCESSIVE_PRECISION,
         formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING,
         formatting::SUSPICIOUS_ELSE_FORMATTING,
-        if_let_redundant_pattern_matching::IF_LET_REDUNDANT_PATTERN_MATCHING,
         infallible_destructuring_match::INFALLIBLE_DESTRUCTURING_MATCH,
         len_zero::LEN_WITHOUT_IS_EMPTY,
         len_zero::LEN_ZERO,
@@ -797,10 +803,12 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         ptr::PTR_ARG,
         question_mark::QUESTION_MARK,
         redundant_field_names::REDUNDANT_FIELD_NAMES,
+        redundant_pattern_matching::REDUNDANT_PATTERN_MATCHING,
         regex::REGEX_MACRO,
         regex::TRIVIAL_REGEX,
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,
+        returns::UNUSED_UNIT,
         strings::STRING_LIT_AS_BYTES,
         types::FN_TO_NUMERIC_CAST,
         types::FN_TO_NUMERIC_CAST_WITH_TRUNCATION,

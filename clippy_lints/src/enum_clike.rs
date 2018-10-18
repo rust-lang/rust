@@ -63,16 +63,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
                 let variant = &var.node;
                 if let Some(ref anon_const) = variant.disr_expr {
                     let param_env = ty::ParamEnv::empty();
-                    let did = cx.tcx.hir.body_owner_def_id(anon_const.body);
-                    let substs = Substs::identity_for_item(cx.tcx.global_tcx(), did);
-                    let instance = ty::Instance::new(did, substs);
-                    let cid = GlobalId {
+                    let def_id = cx.tcx.hir.body_owner_def_id(anon_const.body);
+                    let substs = Substs::identity_for_item(cx.tcx.global_tcx(), def_id);
+                    let instance = ty::Instance::new(def_id, substs);
+                    let c_id = GlobalId {
                         instance,
                         promoted: None
                     };
-                    let constant = cx.tcx.const_eval(param_env.and(cid)).ok();
+                    let constant = cx.tcx.const_eval(param_env.and(c_id)).ok();
                     if let Some(Constant::Int(val)) = constant.and_then(|c| miri_to_const(cx.tcx, c)) {
-                        let mut ty = cx.tcx.type_of(did);
+                        let mut ty = cx.tcx.type_of(def_id);
                         if let ty::Adt(adt, _) = ty.sty {
                             if adt.is_enum() {
                                 ty = adt.repr.discr_type().to_ty(cx.tcx);
