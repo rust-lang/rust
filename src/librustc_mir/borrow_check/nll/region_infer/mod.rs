@@ -67,10 +67,8 @@ pub struct RegionInferenceContext<'tcx> {
     constraint_sccs: Rc<Sccs<RegionVid, ConstraintSccIndex>>,
 
     /// Map closure bounds to a `Span` that should be used for error reporting.
-    closure_bounds_mapping: FxHashMap<
-        Location,
-        FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>,
-    >,
+    closure_bounds_mapping:
+        FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>>,
 
     /// Contains the minimum universe of any variable within the same
     /// SCC. We will ensure that no SCC contains values that are not
@@ -618,16 +616,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // Skip duplicate-ish errors.
             let type_test_span = type_test.locations.span(mir);
             let erased_generic_kind = tcx.erase_regions(&type_test.generic_kind);
-            if !deduplicate_errors.insert((erased_generic_kind, lower_bound_region, type_test.locations)) {
+            if !deduplicate_errors.insert((
+                erased_generic_kind,
+                lower_bound_region,
+                type_test.locations,
+            )) {
                 continue;
             } else {
                 debug!(
                     "check_type_test: reporting error for erased_generic_kind={:?}, \
                      lower_bound_region={:?}, \
                      type_test.locations={:?}",
-                    erased_generic_kind,
-                    lower_bound_region,
-                    type_test.locations,
+                    erased_generic_kind, lower_bound_region, type_test.locations,
                 );
             }
 
