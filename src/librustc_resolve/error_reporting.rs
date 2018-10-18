@@ -26,7 +26,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         span: Span,
         path: Vec<Ident>
         parent_scope: &ParentScope<'b>,
-    ) -> Option<Vec<Ident>> {
+    ) -> Option<(Vec<Ident>, Option<String>)> {
         debug!("make_path_suggestion: span={:?} path={:?}", span, path);
         // If we don't have a path to suggest changes to, then return.
         if path.is_empty() {
@@ -65,13 +65,13 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         span: Span,
         mut path: Vec<Ident>
         parent_scope: &ParentScope<'b>,
-    ) -> Option<Vec<Ident>> {
+    ) -> Option<(Vec<Ident>, Option<String>)> {
         // Replace first ident with `self` and check if that is valid.
-        path[0].name = keywords::SelfValue.name();
+        path[0] = keywords::SelfValue.name();
         let result = self.resolve_path(None, &path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
-            Some(path)
+            Some((path, None))
         } else {
             None
         }
@@ -89,13 +89,20 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         span: Span,
         mut path: Vec<Ident>
         parent_scope: &ParentScope<'b>,
-    ) -> Option<Vec<Ident>> {
+    ) -> Option<(Vec<Ident>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
-        path[0].name = keywords::Crate.name();
+        path[0] = keywords::Crate.name();
         let result = self.resolve_path(None, &path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_crate_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
-            Some(path)
+            Some((
+                path,
+                Some(
+                    "`use` statements changed in Rust 2018; read more at \
+                     <https://doc.rust-lang.org/edition-guide/rust-2018/module-system/path-\
+                     clarity.html>".to_string()
+                ),
+            ))
         } else {
             None
         }
@@ -113,14 +120,14 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         span: Span,
         mut path: Vec<Ident>
         parent_scope: &ParentScope<'b>,
-    ) -> Option<Vec<Ident>> {
+    ) -> Option<(Vec<Ident>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
-        path[0].name = keywords::Super.name();
+        path[0] = keywords::Super.name();
         let result = self.resolve_path(None, &path, None, false, span, CrateLint::No);
         let result = self.resolve_path(None, &path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
-            Some(path)
+            Some((path, None))
         } else {
             None
         }
@@ -141,7 +148,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         span: Span,
         mut path: Vec<Ident>
         parent_scope: &ParentScope<'b>,
-    ) -> Option<Vec<Ident>> {
+    ) -> Option<(Vec<Ident>, Option<String>)> {
         // Need to clone else we can't call `resolve_path` without a borrow error. We also store
         // into a `BTreeMap` so we can get consistent ordering (and therefore the same diagnostic)
         // each time.
@@ -163,7 +170,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             debug!("make_external_crate_suggestion: name={:?} path={:?} result={:?}",
                     name, path, result);
             if let PathResult::Module(..) = result {
-                return Some(path)
+                return Some((path, None));
             }
         }
 
