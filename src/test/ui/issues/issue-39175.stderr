@@ -1,0 +1,15 @@
+error[E0599]: no method named `exec` found for type `&mut std::process::Command` in the current scope
+  --> $DIR/issue-39175.rs:15:39
+   |
+LL |     Command::new("echo").arg("hello").exec();
+   |                                       ^^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: the following trait is implemented but not in scope, perhaps add a `use` for it:
+   |
+LL | use std::os::unix::process::CommandExt;
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.
