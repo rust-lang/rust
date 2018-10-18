@@ -284,7 +284,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     let temporary_used_locals: FxHashSet<Local> = mbcx
         .used_mut
         .iter()
-        .filter(|&local| !mbcx.mir.local_decls[*local].is_user_variable.is_some())
+        .filter(|&local| mbcx.mir.local_decls[*local].is_user_variable.is_none())
         .cloned()
         .collect();
     mbcx.gather_used_muts(temporary_used_locals);
@@ -342,7 +342,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         diag.buffer(&mut mbcx.errors_buffer);
     }
 
-    if mbcx.errors_buffer.len() > 0 {
+    if !mbcx.errors_buffer.is_empty() {
         mbcx.errors_buffer.sort_by_key(|diag| diag.span.primary_span());
 
         if tcx.migrate_borrowck() {
@@ -1009,13 +1009,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         return Control::Continue;
                     }
 
+                    error_reported = true;
                     match kind {
                         ReadKind::Copy  => {
-                            error_reported = true;
                             this.report_use_while_mutably_borrowed(context, place_span, borrow)
                         }
                         ReadKind::Borrow(bk) => {
-                            error_reported = true;
                             this.report_conflicting_borrow(context, place_span, bk, &borrow)
                         }
                     }
@@ -1045,13 +1044,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         Read(..) | Write(..) => {}
                     }
 
+                    error_reported = true;
                     match kind {
                         WriteKind::MutableBorrow(bk) => {
-                            error_reported = true;
                             this.report_conflicting_borrow(context, place_span, bk, &borrow)
                         }
                         WriteKind::StorageDeadOrDrop => {
-                            error_reported = true;
                             this.report_borrowed_value_does_not_live_long_enough(
                                 context,
                                 borrow,
@@ -1059,11 +1057,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                 Some(kind))
                         }
                         WriteKind::Mutate => {
-                            error_reported = true;
                             this.report_illegal_mutation_of_borrowed(context, place_span, borrow)
                         }
                         WriteKind::Move => {
-                            error_reported = true;
                             this.report_move_out_while_borrowed(context, place_span, &borrow)
                         }
                     }
@@ -1593,7 +1589,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Place::Local(_) => panic!("should have move path for every Local"),
             Place::Projection(_) => panic!("PrefixSet::All meant don't stop for Projection"),
             Place::Promoted(_) |
-            Place::Static(_) => return Err(NoMovePathFound::ReachedStatic),
+            Place::Static(_) => Err(NoMovePathFound::ReachedStatic),
         }
     }
 
@@ -1885,7 +1881,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
 
         // at this point, we have set up the error reporting state.
-        if previously_initialized {
+        return if previously_initialized {
             self.report_mutability_error(
                 place,
                 span,
@@ -1893,10 +1889,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 error_access,
                 location,
             );
-            return true;
+            true
         } else {
-            return false;
-        }
+            false
+        };
     }
 
     fn is_local_ever_initialized(&self,
@@ -1911,7 +1907,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 return Some(index);
             }
         }
-        return None;
+        None
     }
 
     /// Adds the place into the used mutable variables set
@@ -2171,7 +2167,7 @@ impl ContextKind {
     fn new(self, loc: Location) -> Context {
         Context {
             kind: self,
-            loc: loc,
+            loc,
         }
     }
 }
