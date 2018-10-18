@@ -1,3 +1,124 @@
+Version 1.30.0 (2018-10-25)
+==========================
+
+Language
+--------
+- [Procedural macros are now available.][52081] These kinds of macros allow for
+  more powerful code generation, there is a [new chapter available][proc-macros]
+  in Rust Programming Language book that goes further in depth.
+- [You can now use keywords as identifiers using the raw identifiers
+  syntax (`r#`).][53236] e.g. `let r#bool = true;`
+- [Using anonymous parameters in traits is now deprecated with a warning and
+  will be a hard error in the 2018 edition.][53272]
+- [You can now use `crate` in paths.][54404] This allows you to refer to the
+  crate root in the path. e.g. `use crate::foo;` refers to `foo` in `src/lib.rs`.
+- [Using a external crate now no longer requires being prefixed with `::`.][54404]
+  e.g. previously using a external crate in a module without a use statement
+  required `let json = ::serde_json::from_str(foo);` can now be written
+  as `let json = serde_json::from_str(foo);`.
+- [You can now apply the `#[used]` attribute to static items to prevent the
+  compiler from optimising them away even if they appear to be unused.][51363]
+  e.g. `#[used] static FOO: u32 = 1;`
+- [You can now import and reexport macros from other crates with the `use`
+  syntax.][50911] Macros exported with `#[macro_export]` are now placed into
+  the root module of the crate. If your macro relies on calling other local
+  macros it is recommended to export with the
+  `#[macro_export(local_inner_macros)]` attribute so that users won't have to
+  import those macros.
+- [`mod.rs` files are now optional.][54146] Previously if you had a `foo` module
+  with a `bar` submodule, you would have `src/foo/mod.rs` and `src/foo/bar.rs`.
+  Now you can have `src/foo.rs` and `src/foo/bar.rs` to achieve the same effect.
+- [You can now catch visibility keywords (e.g. `pub`, `pub(crate)`) in macros
+  using the `vis` specifier.][53370]
+- [Non-macro attributes now allow all forms of literals not just
+  strings.][53044] e.g. Previously you would write `#[attr("true")]` you can now
+  write `#[attr(true)]`.
+- [You can now specify a function to handle a panic in the Rust runtime with the
+  `#[panic_handler]` attribute.][51366]
+
+Compiler
+--------
+- [Added the `riscv32imc-unknown-none-elf` target.][53822]
+- [Added the `aarch64-unknown-netbsd` target][53165]
+
+Libraries
+---------
+- [`ManuallyDrop` now allows the inner type to be unsized.][53033]
+
+Stabilized APIs
+---------------
+- [`Ipv4Addr::BROADCAST`]
+- [`Ipv4Addr::LOCALHOST`]
+- [`Ipv4Addr::UNSPECIFIED`]
+- [`Ipv6Addr::LOCALHOST`]
+- [`Ipv6Addr::UNSPECIFIED`]
+- [`Iterator::find_map`]
+
+  The following methods are a replacement methods for `trim_left`, `trim_right`,
+  `trim_left_matches`, and `trim_right_matches`. Which will be deprecated
+  in 1.33.0.
+- [`str::trim_end_matches`]
+- [`str::trim_end`]
+- [`str::trim_start_matches`]
+- [`str::trim_start`]
+
+Cargo
+----
+- [`cargo run` doesn't require specifying a package in workspaces.][cargo/5877]
+- [`cargo doc` now supports `--message-format=json`.][cargo/5878] This is
+  equivalent to calling `rustdoc --error-format=json`.
+- [You can specify which edition to create a project in cargo
+  with `cargo new --edition`.][cargo/5984] Currently only `2015` is a
+  valid option.
+- [Cargo will now provide a progress bar for builds.][cargo/5995]
+
+Misc
+----
+- [`rustdoc` allows you to specify what edition to treat your code as with the
+  `--edition` option.][54057]
+- [`rustdoc` now has the `--color` (Specify whether to output color) and
+  `--error-format` (Specify error format e.g. `json`) options.][53003]
+- [We now distribute a `rust-gdbgui` script that invokes `gdbgui` with Rust
+  debug symbols.][53774]
+- [Attributes from Rust tools such as `rustfmt` or `clippy` are now
+  available.][53459] e.g. `#[rustfmt::skip]` will skip formatting the next item.
+
+[50911]: https://github.com/rust-lang/rust/pull/50911/
+[51363]: https://github.com/rust-lang/rust/pull/51363/
+[51366]: https://github.com/rust-lang/rust/pull/51366/
+[52081]: https://github.com/rust-lang/rust/pull/52081/
+[53003]: https://github.com/rust-lang/rust/pull/53003/
+[53033]: https://github.com/rust-lang/rust/pull/53033/
+[53044]: https://github.com/rust-lang/rust/pull/53044/
+[53165]: https://github.com/rust-lang/rust/pull/53165/
+[53213]: https://github.com/rust-lang/rust/pull/53213/
+[53236]: https://github.com/rust-lang/rust/pull/53236/
+[53272]: https://github.com/rust-lang/rust/pull/53272/
+[53370]: https://github.com/rust-lang/rust/pull/53370/
+[53459]: https://github.com/rust-lang/rust/pull/53459/
+[53774]: https://github.com/rust-lang/rust/pull/53774/
+[53822]: https://github.com/rust-lang/rust/pull/53822/
+[54057]: https://github.com/rust-lang/rust/pull/54057/
+[54146]: https://github.com/rust-lang/rust/pull/54146/
+[54404]: https://github.com/rust-lang/rust/pull/54404/
+[cargo/5877]: https://github.com/rust-lang/cargo/pull/5877/
+[cargo/5878]: https://github.com/rust-lang/cargo/pull/5878/
+[cargo/5984]: https://github.com/rust-lang/cargo/pull/5984/
+[cargo/5995]: https://github.com/rust-lang/cargo/pull/5995/
+[proc-macros]: https://doc.rust-lang.org/book/2018-edition/ch19-06-macros.html
+
+[`Ipv4Addr::BROADCAST`]: https://doc.rust-lang.org/nightly/std/net/struct.Ipv4Addr.html#associatedconstant.BROADCAST
+[`Ipv4Addr::LOCALHOST`]: https://doc.rust-lang.org/nightly/std/net/struct.Ipv4Addr.html#associatedconstant.LOCALHOST
+[`Ipv4Addr::UNSPECIFIED`]: https://doc.rust-lang.org/nightly/std/net/struct.Ipv4Addr.html#associatedconstant.UNSPECIFIED
+[`Ipv6Addr::LOCALHOST`]: https://doc.rust-lang.org/nightly/std/net/struct.Ipv6Addr.html#associatedconstant.LOCALHOST
+[`Ipv6Addr::UNSPECIFIED`]: https://doc.rust-lang.org/nightly/std/net/struct.Ipv6Addr.html#associatedconstant.UNSPECIFIED
+[`Iterator::find_map`]: https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.find_map
+[`str::trim_end_matches`]: https://doc.rust-lang.org/nightly/std/primitive.str.html#method.trim_end_matches
+[`str::trim_end`]: https://doc.rust-lang.org/nightly/std/primitive.str.html#method.trim_end
+[`str::trim_start_matches`]: https://doc.rust-lang.org/nightly/std/primitive.str.html#method.trim_start_matches
+[`str::trim_start`]: https://doc.rust-lang.org/nightly/std/primitive.str.html#method.trim_start
+
+
 Version 1.29.2 (2018-10-11)
 ===========================
 
@@ -5,6 +126,7 @@ Version 1.29.2 (2018-10-11)
 - The `rls-preview` component on the windows-gnu targets has been restored.
 
 [54639]: https://github.com/rust-lang/rust/pull/54639
+
 
 Version 1.29.1 (2018-09-25)
 ===========================
@@ -18,6 +140,7 @@ Security Notes
 
   Thank you to Scott McMurray for responsibily disclosing this vulnerability to
   us.
+
 
 Version 1.29.0 (2018-09-13)
 ==========================
@@ -73,7 +196,10 @@ Compatibility Notes
   Consider using the `home_dir` function from
   https://crates.io/crates/dirs instead.
 - [`rustc` will no longer silently ignore invalid data in target spec.][52330]
+- [`cfg` attributes and `--cfg` command line flags are now more
+  strictly validated.][53893]
 
+[53893]: https://github.com/rust-lang/rust/pull/53893/
 [52861]: https://github.com/rust-lang/rust/pull/52861/
 [52656]: https://github.com/rust-lang/rust/pull/52656/
 [52239]: https://github.com/rust-lang/rust/pull/52239/
