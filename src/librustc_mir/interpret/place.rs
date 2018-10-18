@@ -15,6 +15,7 @@
 use std::convert::TryFrom;
 use std::hash::Hash;
 
+use rustc::hir;
 use rustc::mir;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout};
@@ -270,26 +271,31 @@ where
         &self,
         val: ValTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        let pointee_type = val.layout.ty.builtin_deref(true).unwrap().ty;
+        let layout = self.layout_of(pointee_type)?;
+
+        let align = layout.align;
+        let meta = val.to_meta()?;
+
         let ptr = match val.to_scalar_ptr()? {
             Scalar::Ptr(ptr) if M::ENABLE_PTR_TRACKING_HOOKS => {
                 // Machine might want to track the `*` operator
-                let tag = M::tag_dereference(self, ptr, val.layout.ty)?;
+                let (size, _) = self.size_and_align_of(meta, layout)?
+                    .expect("ref_to_mplace cannot determine size");
+                let mutbl = match val.layout.ty.sty {
+                    // `builtin_deref` considers boxes immutable, that's useless for our purposes
+                    ty::Ref(_, _, mutbl) => Some(mutbl),
+                    ty::Adt(def, _) if def.is_box() => Some(hir::MutMutable),
+                    ty::RawPtr(_) => None,
+                    _ => bug!("Unexpected pointer type {}", val.layout.ty.sty),
+                };
+                let tag = M::tag_dereference(self, ptr, pointee_type, size, mutbl)?;
                 Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag))
             }
             other => other,
         };
 
-        let pointee_type = val.layout.ty.builtin_deref(true).unwrap().ty;
-        let layout = self.layout_of(pointee_type)?;
-        let align = layout.align;
-
-        let mplace = match *val {
-            Value::Scalar(_) =>
-                MemPlace { ptr, align, meta: None },
-            Value::ScalarPair(_, meta) =>
-                MemPlace { ptr, align, meta: Some(meta.not_undef()?) },
-        };
-        Ok(MPlaceTy { mplace, layout })
+        Ok(MPlaceTy { mplace: MemPlace { ptr, align, meta }, layout })
     }
 
     /// Turn a mplace into a (thin or fat) pointer, as a reference, pointing to the same space.
@@ -304,7 +310,12 @@ where
                 // Machine might want to track the `&` operator
                 let (size, _) = self.size_and_align_of_mplace(place)?
                     .expect("create_ref cannot determine size");
-                let tag = M::tag_reference(self, ptr, place.layout.ty, size, borrow_kind)?;
+                let mutbl = match borrow_kind {
+                    Some(mir::BorrowKind::Mut { .. }) => Some(hir::MutMutable),
+                    Some(_) => Some(hir::MutImmutable),
+                    None => None,
+                };
+                let tag = M::tag_reference(self, ptr, place.layout.ty, size, mutbl)?;
                 Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag))
             },
             other => other,

@@ -15,7 +15,7 @@
 use std::borrow::{Borrow, Cow};
 use std::hash::Hash;
 
-use rustc::hir::def_id::DefId;
+use rustc::hir::{self, def_id::DefId};
 use rustc::mir;
 use rustc::ty::{self, Ty, layout::{Size, TyLayout}, query::TyCtxtAt};
 
@@ -206,21 +206,24 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
 
     /// Executed when evaluating the `&` operator: Creating a new reference.
     /// This has the chance to adjust the tag.
-    /// `borrow_kind` can be `None` in case a raw ptr is being created.
+    /// `mutability` can be `None` in case a raw ptr is being created.
     fn tag_reference(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         ptr: Pointer<Self::PointerTag>,
         pointee_ty: Ty<'tcx>,
         pointee_size: Size,
-        borrow_kind: Option<mir::BorrowKind>,
+        mutability: Option<hir::Mutability>,
     ) -> EvalResult<'tcx, Self::PointerTag>;
 
     /// Executed when evaluating the `*` operator: Following a reference.
     /// This has the change to adjust the tag.
+    /// `mutability` can be `None` in case a raw ptr is being dereferenced.
     fn tag_dereference(
         ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
         ptr: Pointer<Self::PointerTag>,
-        ptr_ty: Ty<'tcx>,
+        pointee_ty: Ty<'tcx>,
+        pointee_size: Size,
+        mutability: Option<hir::Mutability>,
     ) -> EvalResult<'tcx, Self::PointerTag>;
 
     /// Execute a validation operation

@@ -472,7 +472,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         _ptr: Pointer<Self::PointerTag>,
         _pointee_ty: Ty<'tcx>,
         _pointee_size: Size,
-        _borrow_kind: Option<mir::BorrowKind>,
+        _borrow_kind: Option<hir::Mutability>,
     ) -> EvalResult<'tcx, Self::PointerTag> {
         Ok(())
     }
@@ -481,7 +481,9 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     fn tag_dereference(
         _ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
         _ptr: Pointer<Self::PointerTag>,
-        _ptr_ty: Ty<'tcx>,
+        _pointee_ty: Ty<'tcx>,
+        _pointee_size: Size,
+        _borrow_kind: Option<hir::Mutability>,
     ) -> EvalResult<'tcx, Self::PointerTag> {
         Ok(())
     }
