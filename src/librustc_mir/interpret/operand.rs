@@ -291,7 +291,7 @@ impl<Tag> Operand<Tag> {
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct OpTy<'tcx, Tag=()> {
-    crate op: Operand<Tag>, // ideally we'd make this private, but const_prop needs this
+    pub op: Operand<Tag>, // This is used by [priroda](https://github.com/oli-obk/priroda)
     pub layout: TyLayout<'tcx>,
 }
 
