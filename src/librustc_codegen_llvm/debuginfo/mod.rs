@@ -271,16 +271,14 @@ pub fn create_function_debug_context(
     let mut flags = DIFlags::FlagPrototyped;
 
     let local_id = cx.tcx.hir.as_local_node_id(def_id);
-    match *cx.sess().entry_fn.borrow() {
-        Some((id, _, _)) => {
-            if local_id == Some(id) {
-                flags = flags | DIFlags::FlagMainSubprogram;
-            }
+    if let Some((id, _, _)) = *cx.sess().entry_fn.borrow() {
+        if local_id == Some(id) {
+            flags |= DIFlags::FlagMainSubprogram;
         }
-        None => {}
-    };
+    }
+
     if cx.layout_of(sig.output()).abi.is_uninhabited() {
-        flags = flags | DIFlags::FlagNoReturn;
+        flags |= DIFlags::FlagNoReturn;
     }
 
     let fn_metadata = unsafe {
@@ -371,7 +369,7 @@ pub fn create_function_debug_context(
             }
         }
 
-        return create_DIArray(DIB(cx), &signature[..]);
+        create_DIArray(DIB(cx), &signature[..])
     }
 
     fn get_template_parameters(
@@ -428,7 +426,7 @@ pub fn create_function_debug_context(
             vec![]
         };
 
-        return create_DIArray(DIB(cx), &template_params[..]);
+        create_DIArray(DIB(cx), &template_params[..])
     }
 
     fn get_parameter_names(cx: &CodegenCx,

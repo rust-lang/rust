@@ -92,12 +92,12 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
             mir::BorrowKind::Mut { .. } => "mut ",
         };
         let region = self.region.to_string();
-        let region = if region.len() > 0 {
-            format!("{} ", region)
+        let separator = if !region.is_empty() {
+            " "
         } else {
-            region
+            ""
         };
-        write!(w, "&{}{}{:?}", region, kind, self.borrowed_place)
+        write!(w, "&{}{}{}{:?}", region, separator, kind, self.borrowed_place)
     }
 }
 
@@ -244,7 +244,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
             K: Clone + Eq + Hash,
             V: Eq + Hash,
         {
-            map.entry(k.clone()).or_insert(FxHashSet()).insert(v);
+            map.entry(k.clone()).or_default().insert(v);
         }
     }
 
@@ -261,57 +261,53 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
             // ... check whether we (earlier) saw a 2-phase borrow like
             //
             //     TMP = &mut place
-            match self.pending_activations.get(temp) {
-                Some(&borrow_index) => {
-                    let borrow_data = &mut self.idx_vec[borrow_index];
+            if let Some(&borrow_index) = self.pending_activations.get(temp) {
+                let borrow_data = &mut self.idx_vec[borrow_index];
 
-                    // Watch out: the use of TMP in the borrow itself
-                    // doesn't count as an activation. =)
-                    if borrow_data.reserve_location == location && context == PlaceContext::Store {
-                        return;
-                    }
-
-                    if let TwoPhaseActivation::ActivatedAt(other_location) =
-                            borrow_data.activation_location {
-                        span_bug!(
-                            self.mir.source_info(location).span,
-                            "found two uses for 2-phase borrow temporary {:?}: \
-                             {:?} and {:?}",
-                            temp,
-                            location,
-                            other_location,
-                        );
-                    }
-
-                    // Otherwise, this is the unique later use
-                    // that we expect.
-                    borrow_data.activation_location = match context {
-                        // The use of TMP in a shared borrow does not
-                        // count as an actual activation.
-                        PlaceContext::Borrow { kind: mir::BorrowKind::Shared, .. }
-                        | PlaceContext::Borrow { kind: mir::BorrowKind::Shallow, .. } => {
-                            TwoPhaseActivation::NotActivated
-                        }
-                        _ => {
-                            // Double check: This borrow is indeed a two-phase borrow (that is,
-                            // we are 'transitioning' from `NotActivated` to `ActivatedAt`) and
-                            // we've not found any other activations (checked above).
-                            assert_eq!(
-                                borrow_data.activation_location,
-                                TwoPhaseActivation::NotActivated,
-                                "never found an activation for this borrow!",
-                            );
-
-                            self.activation_map
-                                .entry(location)
-                                .or_default()
-                                .push(borrow_index);
-                            TwoPhaseActivation::ActivatedAt(location)
-                        }
-                    };
+                // Watch out: the use of TMP in the borrow itself
+                // doesn't count as an activation. =)
+                if borrow_data.reserve_location == location && context == PlaceContext::Store {
+                    return;
                 }
 
-                None => {}
+                if let TwoPhaseActivation::ActivatedAt(other_location) =
+                        borrow_data.activation_location {
+                    span_bug!(
+                        self.mir.source_info(location).span,
+                        "found two uses for 2-phase borrow temporary {:?}: \
+                         {:?} and {:?}",
+                        temp,
+                        location,
+                        other_location,
+                    );
+                }
+
+                // Otherwise, this is the unique later use
+                // that we expect.
+                borrow_data.activation_location = match context {
+                    // The use of TMP in a shared borrow does not
+                    // count as an actual activation.
+                    PlaceContext::Borrow { kind: mir::BorrowKind::Shared, .. }
+                    | PlaceContext::Borrow { kind: mir::BorrowKind::Shallow, .. } => {
+                        TwoPhaseActivation::NotActivated
+                    }
+                    _ => {
+                        // Double check: This borrow is indeed a two-phase borrow (that is,
+                        // we are 'transitioning' from `NotActivated` to `ActivatedAt`) and
+                        // we've not found any other activations (checked above).
+                        assert_eq!(
+                            borrow_data.activation_location,
+                            TwoPhaseActivation::NotActivated,
+                            "never found an activation for this borrow!",
+                        );
+
+                        self.activation_map
+                            .entry(location)
+                            .or_default()
+                            .push(borrow_index);
+                        TwoPhaseActivation::ActivatedAt(location)
+                    }
+                };
             }
         }
     }

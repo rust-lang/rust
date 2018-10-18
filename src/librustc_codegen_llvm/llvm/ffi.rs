@@ -1212,8 +1212,8 @@ extern "C" {
                              Dialect: AsmDialect)
                              -> &Value;
     pub fn LLVMRustInlineAsmVerify(Ty: &Type,
-                             Constraints: *const c_char)
-                             -> Bool;
+                                   Constraints: *const c_char)
+                                   -> bool;
 
     pub fn LLVMRustDebugMetadataVersion() -> u32;
     pub fn LLVMRustVersionMajor() -> u32;

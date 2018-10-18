@@ -163,10 +163,10 @@ impl TypeMap<'ll, 'tcx> {
     fn get_unique_type_id_of_type<'a>(&mut self, cx: &CodegenCx<'a, 'tcx>,
                                       type_: Ty<'tcx>) -> UniqueTypeId {
         // Let's see if we already have something in the cache
-        match self.type_to_unique_id.get(&type_).cloned() {
-            Some(unique_type_id) => return unique_type_id,
-            None => { /* generate one */}
-        };
+        if let Some(unique_type_id) = self.type_to_unique_id.get(&type_).cloned() {
+            return unique_type_id;
+        }
+        // if not, generate one
 
         // The hasher we are using to generate the UniqueTypeId. We want
         // something that provides more than the 64 bits of the DefaultHasher.
@@ -286,11 +286,11 @@ impl RecursiveTypeDescription<'ll, 'tcx> {
 // unique id can be found in the type map
 macro_rules! return_if_metadata_created_in_meantime {
     ($cx: expr, $unique_type_id: expr) => (
-        match debug_context($cx).type_map
-                                .borrow()
-                                .find_metadata_for_unique_id($unique_type_id) {
-            Some(metadata) => return MetadataCreationResult::new(metadata, true),
-            None => { /* proceed normally */ }
+        if let Some(metadata) = debug_context($cx).type_map
+            .borrow()
+            .find_metadata_for_unique_id($unique_type_id)
+        {
+            return MetadataCreationResult::new(metadata, true);
         }
     )
 }
@@ -352,7 +352,7 @@ fn vec_slice_metadata(
 
     let member_descriptions = vec![
         MemberDescription {
-            name: "data_ptr".to_string(),
+            name: "data_ptr".to_owned(),
             type_metadata: data_ptr_metadata,
             offset: Size::ZERO,
             size: pointer_size,
@@ -360,7 +360,7 @@ fn vec_slice_metadata(
             flags: DIFlags::FlagZero,
         },
         MemberDescription {
-            name: "length".to_string(),
+            name: "length".to_owned(),
             type_metadata: type_metadata(cx, cx.tcx.types.usize, span),
             offset: pointer_size,
             size: usize_size,
@@ -458,7 +458,7 @@ fn trait_pointer_metadata(
     let vtable_field = layout.field(cx, 1);
     let member_descriptions = vec![
         MemberDescription {
-            name: "pointer".to_string(),
+            name: "pointer".to_owned(),
             type_metadata: type_metadata(cx,
                 cx.tcx.mk_mut_ptr(cx.tcx.types.u8),
                 syntax_pos::DUMMY_SP),
@@ -468,7 +468,7 @@ fn trait_pointer_metadata(
             flags: DIFlags::FlagArtificial,
         },
         MemberDescription {
-            name: "vtable".to_string(),
+            name: "vtable".to_owned(),
             type_metadata: type_metadata(cx, vtable_field.ty, syntax_pos::DUMMY_SP),
             offset: layout.fields.offset(1),
             size: vtable_field.size,
@@ -543,12 +543,12 @@ pub fn type_metadata(
             _ => {
                 let pointee_metadata = type_metadata(cx, ty, usage_site_span);
 
-                match debug_context(cx).type_map
-                                        .borrow()
-                                        .find_metadata_for_unique_id(unique_type_id) {
-                    Some(metadata) => return Err(metadata),
-                    None => { /* proceed normally */ }
-                };
+                if let Some(metadata) = debug_context(cx).type_map
+                    .borrow()
+                    .find_metadata_for_unique_id(unique_type_id)
+                {
+                    return Err(metadata);
+                }
 
                 Ok(MetadataCreationResult::new(pointer_type_metadata(cx, t, pointee_metadata),
                    false))
@@ -577,12 +577,12 @@ pub fn type_metadata(
         }
         ty::Dynamic(..) => {
             MetadataCreationResult::new(
-                        trait_pointer_metadata(cx, t, None, unique_type_id),
-            false)
+                trait_pointer_metadata(cx, t, None, unique_type_id),
+                false)
         }
         ty::Foreign(..) => {
             MetadataCreationResult::new(
-                        foreign_type_metadata(cx, t, unique_type_id),
+            foreign_type_metadata(cx, t, unique_type_id),
             false)
         }
         ty::RawPtr(ty::TypeAndMut{ty, ..}) |
@@ -603,12 +603,12 @@ pub fn type_metadata(
                                                        unique_type_id,
                                                        t.fn_sig(cx.tcx),
                                                        usage_site_span).metadata;
-            match debug_context(cx).type_map
-                                   .borrow()
-                                   .find_metadata_for_unique_id(unique_type_id) {
-                Some(metadata) => return metadata,
-                None => { /* proceed normally */ }
-            };
+            if let Some(metadata) = debug_context(cx).type_map
+               .borrow()
+               .find_metadata_for_unique_id(unique_type_id)
+            {
+                return metadata;
+            }
 
             // This is actually a function pointer, so wrap it in pointer DI
             MetadataCreationResult::new(pointer_type_metadata(cx, t, fn_metadata), false)
@@ -641,16 +641,16 @@ pub fn type_metadata(
             }
             AdtKind::Union => {
                 prepare_union_metadata(cx,
-                                    t,
-                                    unique_type_id,
-                                    usage_site_span).finalize(cx)
+                                       t,
+                                       unique_type_id,
+                                       usage_site_span).finalize(cx)
             }
             AdtKind::Enum => {
                 prepare_enum_metadata(cx,
-                                    t,
-                                    def.did,
-                                    unique_type_id,
-                                    usage_site_span).finalize(cx)
+                                      t,
+                                      def.did,
+                                      unique_type_id,
+                                      usage_site_span).finalize(cx)
             }
         },
         ty::Tuple(ref elements) => {
@@ -938,7 +938,7 @@ enum MemberDescriptionFactory<'ll, 'tcx> {
 
 impl MemberDescriptionFactory<'ll, 'tcx> {
     fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>)
-                                      -> Vec<MemberDescription<'ll>> {
+                                  -> Vec<MemberDescription<'ll>> {
         match *self {
             StructMDF(ref this) => {
                 this.create_member_descriptions(cx)
@@ -972,7 +972,7 @@ struct StructMemberDescriptionFactory<'tcx> {
 
 impl<'tcx> StructMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>)
-                                      -> Vec<MemberDescription<'ll>> {
+                                  -> Vec<MemberDescription<'ll>> {
         let layout = cx.layout_of(self.ty);
         self.variant.fields.iter().enumerate().map(|(i, f)| {
             let name = if self.variant.ctor_kind == CtorKind::Fn {
@@ -1042,7 +1042,7 @@ struct TupleMemberDescriptionFactory<'tcx> {
 
 impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>)
-                                      -> Vec<MemberDescription<'ll>> {
+                                  -> Vec<MemberDescription<'ll>> {
         let layout = cx.layout_of(self.ty);
         self.component_types.iter().enumerate().map(|(i, &component_type)| {
             let (size, align) = cx.size_and_align_of(component_type);
@@ -1096,7 +1096,7 @@ struct UnionMemberDescriptionFactory<'tcx> {
 
 impl<'tcx> UnionMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>)
-                                      -> Vec<MemberDescription<'ll>> {
+                                  -> Vec<MemberDescription<'ll>> {
         self.variant.fields.iter().enumerate().map(|(i, f)| {
             let field = self.layout.field(cx, i);
             let (size, align) = field.size_and_align();
@@ -1165,7 +1165,7 @@ struct EnumMemberDescriptionFactory<'ll, 'tcx> {
 
 impl EnumMemberDescriptionFactory<'ll, 'tcx> {
     fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>)
-                                      -> Vec<MemberDescription<'ll>> {
+                                  -> Vec<MemberDescription<'ll>> {
         let adt = &self.enum_type.ty_adt_def().unwrap();
         match self.layout.variants {
             layout::Variants::Single { .. } if adt.variants.is_empty() => vec![],
@@ -1357,7 +1357,7 @@ fn describe_enum_variant(
             // We have the layout of an enum variant, we need the layout of the outer enum
             let enum_layout = cx.layout_of(layout.ty);
             (Some(enum_layout.fields.offset(0)),
-             Some(("RUST$ENUM$DISR".to_string(), enum_layout.field(cx, 0).ty)))
+             Some(("RUST$ENUM$DISR".to_owned(), enum_layout.field(cx, 0).ty)))
         }
         _ => (None, None),
     };
@@ -1471,9 +1471,8 @@ fn prepare_enum_metadata(
         }
     };
 
-    match (&layout.abi, discriminant_type_metadata) {
-        (&layout::Abi::Scalar(_), Some(discr)) => return FinalMetadata(discr),
-        _ => {}
+    if let (&layout::Abi::Scalar(_), Some(discr)) = (&layout.abi, discriminant_type_metadata) {
+        return FinalMetadata(discr);
     }
 
     let (enum_type_size, enum_type_align) = layout.size_and_align();
@@ -1546,7 +1545,7 @@ fn composite_type_metadata(
                                   composite_type_metadata,
                                   member_descriptions);
 
-    return composite_type_metadata;
+    composite_type_metadata
 }
 
 fn set_members_of_composite_type(cx: &CodegenCx<'ll, '_>,
@@ -1634,7 +1633,7 @@ fn create_struct_stub(
             unique_type_id.as_ptr())
     };
 
-    return metadata_stub;
+    metadata_stub
 }
 
 fn create_union_stub(
@@ -1670,7 +1669,7 @@ fn create_union_stub(
             unique_type_id.as_ptr())
     };
 
-    return metadata_stub;
+    metadata_stub
 }
 
 /// Creates debug information for the given global variable.

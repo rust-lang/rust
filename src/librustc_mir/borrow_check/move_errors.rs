@@ -331,7 +331,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                             _ => {
                                 let source = self.borrowed_content_source(place);
                                 self.infcx.tcx.cannot_move_out_of(
-                                    span, &format!("{}", source), origin
+                                    span, &source.to_string(), origin
                                 )
                             },
                         }
@@ -469,9 +469,9 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             let binding_span = bind_to.source_info.span;
 
             if j == 0 {
-                err.span_label(binding_span, format!("data moved here"));
+                err.span_label(binding_span, "data moved here");
             } else {
-                err.span_label(binding_span, format!("...and here"));
+                err.span_label(binding_span, "...and here");
             }
 
             if binds_to.len() == 1 {

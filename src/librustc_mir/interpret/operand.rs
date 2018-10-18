@@ -688,9 +688,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         rval: OpTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, (u128, usize)> {
         trace!("read_discriminant_value {:#?}", rval.layout);
-        if rval.layout.abi.is_uninhabited() {
-            return err!(Unreachable);
-        }
 
         match rval.layout.variants {
             layout::Variants::Single { index } => {

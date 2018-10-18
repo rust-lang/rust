@@ -27,6 +27,7 @@ use rustc::mir::interpret::{
     EvalResult, EvalErrorKind,
     truncate, sign_extend,
 };
+use rustc_data_structures::fx::FxHashMap;
 
 use syntax::source_map::{self, Span};
 
@@ -50,6 +51,9 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
 
     /// The virtual call stack.
     pub(crate) stack: Vec<Frame<'mir, 'tcx, M::PointerTag>>,
+
+    /// A cache for deduplicating vtables
+    pub(super) vtables: FxHashMap<(Ty<'tcx>, ty::PolyExistentialTraitRef<'tcx>), AllocId>,
 }
 
 /// A stack frame.
@@ -209,6 +213,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             param_env,
             memory: Memory::new(tcx, memory_data),
             stack: Vec::new(),
+            vtables: FxHashMap::default(),
         }
     }
 

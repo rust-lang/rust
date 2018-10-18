@@ -37,7 +37,7 @@ pub struct MirDebugScope<'ll> {
 
 impl MirDebugScope<'ll> {
     pub fn is_valid(&self) -> bool {
-        !self.scope_metadata.is_none()
+        self.scope_metadata.is_some()
     }
 }
 

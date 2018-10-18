@@ -24,20 +24,32 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     pub fn get_vtable(
         &mut self,
         ty: Ty<'tcx>,
-        trait_ref: ty::PolyTraitRef<'tcx>,
+        poly_trait_ref: ty::PolyExistentialTraitRef<'tcx>,
     ) -> EvalResult<'tcx, Pointer<M::PointerTag>> {
-        debug!("get_vtable(trait_ref={:?})", trait_ref);
+        debug!("get_vtable(trait_ref={:?})", poly_trait_ref);
 
-        // FIXME: Cache this!
+        let (ty, poly_trait_ref) = self.tcx.erase_regions(&(ty, poly_trait_ref));
 
-        let layout = self.layout_of(trait_ref.self_ty())?;
+        if let Some(&vtable) = self.vtables.get(&(ty, poly_trait_ref)) {
+            return Ok(Pointer::from(vtable).with_default_tag());
+        }
+
+        let trait_ref = poly_trait_ref.with_self_ty(*self.tcx, ty);
+        let trait_ref = self.tcx.erase_regions(&trait_ref);
+
+        let methods = self.tcx.vtable_methods(trait_ref);
+
+        let layout = self.layout_of(ty)?;
         assert!(!layout.is_unsized(), "can't create a vtable for an unsized type");
         let size = layout.size.bytes();
         let align = layout.align.abi();
 
         let ptr_size = self.pointer_size();
         let ptr_align = self.tcx.data_layout.pointer_align;
-        let methods = self.tcx.vtable_methods(trait_ref);
+        // /////////////////////////////////////////////////////////////////////////////////////////
+        // If you touch this code, be sure to also make the corresponding changes to
+        // `get_vtable` in rust_codegen_llvm/meth.rs
+        // /////////////////////////////////////////////////////////////////////////////////////////
         let vtable = self.memory.allocate(
             ptr_size * (3 + methods.len() as u64),
             ptr_align,
@@ -64,6 +76,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         }
 
         self.memory.mark_immutable(vtable.alloc_id)?;
+        assert!(self.vtables.insert((ty, poly_trait_ref), vtable.alloc_id).is_none());
 
         Ok(vtable)
     }

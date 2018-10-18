@@ -56,11 +56,8 @@ pub fn set_source_location(
 /// switches source location emitting on and must therefore be called before the
 /// first real statement/expression of the function is codegened.
 pub fn start_emitting_source_locations(dbg_context: &FunctionDebugContext<'ll>) {
-    match *dbg_context {
-        FunctionDebugContext::RegularContext(ref data) => {
-            data.source_locations_enabled.set(true)
-        },
-        _ => { /* safe to ignore */ }
+    if let FunctionDebugContext::RegularContext(ref data) = *dbg_context {
+        data.source_locations_enabled.set(true);
     }
 }
 

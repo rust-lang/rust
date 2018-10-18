@@ -32,7 +32,7 @@ extern crate rustfix;
 use common::CompareMode;
 use common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
 use common::{Config, TestPaths};
-use common::{DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
+use common::{DebugInfoBoth, DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
 use filetime::FileTime;
 use getopts::Options;
 use std::env;
@@ -44,7 +44,7 @@ use std::process::Command;
 use test::ColorConfig;
 use util::logv;
 
-use self::header::EarlyProps;
+use self::header::{EarlyProps, Ignore};
 
 pub mod common;
 pub mod errors;
@@ -425,7 +425,7 @@ pub fn opt_str2(maybestr: Option<String>) -> String {
 
 pub fn run_tests(config: &Config) {
     if config.target.contains("android") {
-        if let DebugInfoGdb = config.mode {
+        if config.mode == DebugInfoGdb || config.mode == DebugInfoBoth {
             println!(
                 "{} debug-info test uses tcp 5039 port.\
                  please reserve it",
@@ -443,7 +443,9 @@ pub fn run_tests(config: &Config) {
     }
 
     match config.mode {
-        DebugInfoLldb => {
+        // Note that we don't need to emit the gdb warning when
+        // DebugInfoBoth, so it is ok to list that here.
+        DebugInfoBoth | DebugInfoLldb => {
             if let Some(lldb_version) = config.lldb_version.as_ref() {
                 if is_blacklisted_lldb_version(&lldb_version[..]) {
                     println!(
@@ -647,15 +649,18 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> Vec<test::TestDescAn
         .into_iter()
         .map(|revision| {
             // Debugging emscripten code doesn't make sense today
-            let ignore = early_props.ignore
+            let ignore = early_props.ignore == Ignore::Ignore
                 || !up_to_date(
                     config,
                     testpaths,
                     &early_props,
                     revision.map(|s| s.as_str()),
                 )
-                || (config.mode == DebugInfoGdb || config.mode == DebugInfoLldb)
-                    && config.target.contains("emscripten");
+                || ((config.mode == DebugInfoBoth ||
+                     config.mode == DebugInfoGdb || config.mode == DebugInfoLldb)
+                    && config.target.contains("emscripten"))
+                || (config.mode == DebugInfoGdb && !early_props.ignore.can_run_gdb())
+                || (config.mode == DebugInfoLldb && !early_props.ignore.can_run_lldb());
             test::TestDescAndFn {
                 desc: test::TestDesc {
                     name: make_test_name(config, testpaths, revision),
@@ -663,7 +668,7 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> Vec<test::TestDescAn
                     should_panic,
                     allow_fail: false,
                 },
-                testfn: make_test_closure(config, testpaths, revision),
+                testfn: make_test_closure(config, early_props.ignore, testpaths, revision),
             }
         })
         .collect()
@@ -774,10 +779,21 @@ fn make_test_name(
 
 fn make_test_closure(
     config: &Config,
+    ignore: Ignore,
     testpaths: &TestPaths,
     revision: Option<&String>,
 ) -> test::TestFn {
-    let config = config.clone();
+    let mut config = config.clone();
+    if config.mode == DebugInfoBoth {
+        // If both gdb and lldb were ignored, then the test as a whole
+        // would be ignored.
+        if !ignore.can_run_gdb() {
+            config.mode = DebugInfoLldb;
+        } else if !ignore.can_run_lldb() {
+            config.mode = DebugInfoGdb;
+        }
+    }
+
     let testpaths = testpaths.clone();
     let revision = revision.cloned();
     test::DynTestFn(Box::new(move || {
