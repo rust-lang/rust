@@ -220,6 +220,27 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::Place<'gcx> {
     }
 }
 
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::PlaceBase<'gcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match self {
+            mir::PlaceBase::Local(local) => {
+                local.hash_stable(hcx, hasher);
+            }
+            mir::PlaceBase::Static(statik) => {
+                statik.hash_stable(hcx, hasher);
+            }
+            mir::PlaceBase::Promoted(promoted) => {
+                promoted.hash_stable(hcx, hasher);
+            }
+        }
+    }
+}
+
+impl_stable_hash_for!(struct mir::NeoPlace<'tcx> { base, elems });
+
 impl<'a, 'gcx, B, V, T> HashStable<StableHashingContext<'a>>
 for mir::Projection<'gcx, B, V, T>
     where B: HashStable<StableHashingContext<'a>>,
@@ -322,45 +343,45 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::Rvalue<'gcx> {
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
 
-        match *self {
-            mir::Rvalue::Use(ref operand) => {
+        match self {
+            mir::Rvalue::Use(operand) => {
                 operand.hash_stable(hcx, hasher);
             }
-            mir::Rvalue::Repeat(ref operand, ref val) => {
+            mir::Rvalue::Repeat(operand, val) => {
                 operand.hash_stable(hcx, hasher);
                 val.hash_stable(hcx, hasher);
             }
-            mir::Rvalue::Ref(region, borrow_kind, ref place) => {
+            mir::Rvalue::Ref(region, borrow_kind, place) => {
                 region.hash_stable(hcx, hasher);
                 borrow_kind.hash_stable(hcx, hasher);
                 place.hash_stable(hcx, hasher);
             }
-            mir::Rvalue::Len(ref place) => {
+            mir::Rvalue::Len(place) => {
                 place.hash_stable(hcx, hasher);
             }
-            mir::Rvalue::Cast(cast_kind, ref operand, ty) => {
+            mir::Rvalue::Cast(cast_kind, operand, ty) => {
                 cast_kind.hash_stable(hcx, hasher);
                 operand.hash_stable(hcx, hasher);
                 ty.hash_stable(hcx, hasher);
             }
-            mir::Rvalue::BinaryOp(op, ref operand1, ref operand2) |
-            mir::Rvalue::CheckedBinaryOp(op, ref operand1, ref operand2) => {
+            mir::Rvalue::BinaryOp(op, operand1, operand2) |
+            mir::Rvalue::CheckedBinaryOp(op, operand1, operand2) => {
                 op.hash_stable(hcx, hasher);
                 operand1.hash_stable(hcx, hasher);
                 operand2.hash_stable(hcx, hasher);
             }
-            mir::Rvalue::UnaryOp(op, ref operand) => {
+            mir::Rvalue::UnaryOp(op, operand) => {
                 op.hash_stable(hcx, hasher);
                 operand.hash_stable(hcx, hasher);
             }
-            mir::Rvalue::Discriminant(ref place) => {
+            mir::Rvalue::Discriminant(place) => {
                 place.hash_stable(hcx, hasher);
             }
             mir::Rvalue::NullaryOp(op, ty) => {
                 op.hash_stable(hcx, hasher);
                 ty.hash_stable(hcx, hasher);
             }
-            mir::Rvalue::Aggregate(ref kind, ref operands) => {
+            mir::Rvalue::Aggregate(kind, operands) => {
                 kind.hash_stable(hcx, hasher);
                 operands.hash_stable(hcx, hasher);
             }
