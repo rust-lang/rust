@@ -4,6 +4,7 @@ use languageserver_types::{
     CodeActionResponse, Command, CompletionItem, CompletionItemKind, Diagnostic,
     DiagnosticSeverity, DocumentSymbol, FoldingRange, FoldingRangeKind, FoldingRangeParams,
     InsertTextFormat, Location, Position, SymbolInformation, TextDocumentIdentifier, TextEdit,
+    RenameParams, WorkspaceEdit
 };
 use ra_analysis::{FileId, FoldKind, JobToken, Query, RunnableKind};
 use ra_syntax::text_utils::contains_offset_nonstrict;
@@ -16,6 +17,8 @@ use crate::{
     server_world::ServerWorld,
     Result,
 };
+
+use std::collections::HashMap;
 
 pub fn handle_syntax_tree(
     world: ServerWorld,
@@ -458,6 +461,43 @@ pub fn handle_signature_help(
     } else {
         Ok(None)
     }
+}
+
+pub fn handle_rename(
+    world: ServerWorld,
+    params: RenameParams,
+    token: JobToken,
+) -> Result<Option<WorkspaceEdit>> {
+    let file_id = params.text_document.try_conv_with(&world)?;
+    let line_index = world.analysis().file_line_index(file_id);
+    let offset = params.position.conv_with(&line_index);
+
+    if params.new_name.is_empty() {
+        return Ok(None);
+    }
+
+    let refs = world.analysis().find_all_refs(file_id, offset, &token);
+    if refs.is_empty() {
+        return Ok(None);
+    }
+
+    let mut changes = HashMap::new();
+    for r in refs {
+        if let Ok(loc) = to_location(r.0, r.1, &world, &line_index) {
+            changes.entry(loc.uri).or_insert(Vec::new()).push(
+                TextEdit {
+                    range: loc.range,
+                    new_text: params.new_name.clone()
+                });
+        }
+    }
+
+    Ok(Some(WorkspaceEdit {
+        changes: Some(changes),
+
+        // TODO: return this instead if client/server support it. See #144
+        document_changes : None,
+    }))
 }
 
 pub fn handle_references(

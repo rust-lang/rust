@@ -2,7 +2,7 @@ use languageserver_types::{
     CodeActionProviderCapability, CompletionOptions, DocumentOnTypeFormattingOptions,
     ExecuteCommandOptions, FoldingRangeProviderCapability, ServerCapabilities,
     SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
-    TextDocumentSyncOptions,
+    TextDocumentSyncOptions, RenameProviderCapability, RenameOptions
 };
 
 pub fn server_capabilities() -> ServerCapabilities {
@@ -40,7 +40,9 @@ pub fn server_capabilities() -> ServerCapabilities {
             more_trigger_character: None,
         }),
         folding_range_provider: Some(FoldingRangeProviderCapability::Simple(true)),
-        rename_provider: None,
+        rename_provider: Some(RenameProviderCapability::Options(RenameOptions{
+            prepare_provider: Some(true)
+        })),
         color_provider: None,
         execute_command_provider: Some(ExecuteCommandOptions {
             commands: vec!["apply_code_action".to_string()],
