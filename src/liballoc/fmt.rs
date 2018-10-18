@@ -335,8 +335,7 @@
 //!
 //! Each argument being formatted can be transformed by a number of formatting
 //! parameters (corresponding to `format_spec` in the syntax above). These
-//! parameters affect the string representation of what's being formatted. This
-//! syntax draws heavily from Python's, so it may seem a bit familiar.
+//! parameters affect the string representation of what's being formatted.
 //!
 //! ## Fill/Alignment
 //!
