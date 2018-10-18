@@ -10,16 +10,11 @@
 
 use env::{split_paths};
 use ffi::{CStr, OsStr};
-use fs::File;
-use os::unix::ffi::OsStrExt;
 use fmt;
-<<<<<<< HEAD
-use io::{self, Error, ErrorKind};
-use iter;
-=======
+use fs::File;
 use io::{self, prelude::*, BufReader, Error, ErrorKind, SeekFrom};
->>>>>>> b7b1d416a1... Interpret shebangs on redox
 use libc::{EXIT_SUCCESS, EXIT_FAILURE};
+use os::unix::ffi::OsStrExt;
 use path::{Path, PathBuf};
 use ptr;
 use sys::ext::fs::MetadataExt;
