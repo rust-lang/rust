@@ -688,7 +688,8 @@ declare_clippy_lint! {
 ///
 /// **Why is this bad?** Readability.
 ///
-/// **Known problems:** None.
+/// **Known problems:** False positive in pattern guards. Will be resolved once
+/// non-lexical lifetimes are stable.
 ///
 /// **Example:**
 /// ```rust
