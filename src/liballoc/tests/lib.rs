@@ -19,7 +19,6 @@
 #![feature(str_escape)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
-#![feature(rchunks)]
 #![feature(repeat_generic_slice)]
 
 extern crate alloc_system;

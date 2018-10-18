@@ -125,7 +125,7 @@ pub use core::slice::{from_ref, from_mut};
 pub use core::slice::SliceIndex;
 #[stable(feature = "chunks_exact", since = "1.31.0")]
 pub use core::slice::{ChunksExact, ChunksExactMut};
-#[unstable(feature = "rchunks", issue = "55177")]
+#[stable(feature = "rchunks", since = "1.31.0")]
 pub use core::slice::{RChunks, RChunksMut, RChunksExact, RChunksExactMut};
 
 ////////////////////////////////////////////////////////////////////////////////
