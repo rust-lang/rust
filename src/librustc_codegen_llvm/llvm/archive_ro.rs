@@ -40,7 +40,7 @@ impl ArchiveRO {
         return unsafe {
             let s = path2cstr(dst);
             let ar = super::LLVMRustOpenArchive(s.as_ptr()).ok_or_else(|| {
-                super::last_error().unwrap_or("failed to open archive".to_string())
+                super::last_error().unwrap_or("failed to open archive".to_owned())
             })?;
             Ok(ArchiveRO { raw: ar })
         };

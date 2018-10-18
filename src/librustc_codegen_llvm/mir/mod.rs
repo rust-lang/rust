@@ -162,16 +162,16 @@ impl FunctionCx<'a, 'll, 'tcx> {
     // corresponding to span's containing source scope.  If so, we need to create a DIScope
     // "extension" into that file.
     fn scope_metadata_for_loc(&self, scope_id: mir::SourceScope, pos: BytePos)
-                               -> Option<&'ll DIScope> {
+                              -> Option<&'ll DIScope> {
         let scope_metadata = self.scopes[scope_id].scope_metadata;
         if pos < self.scopes[scope_id].file_start_pos ||
            pos >= self.scopes[scope_id].file_end_pos {
             let cm = self.cx.sess().source_map();
             let defining_crate = self.debug_context.get_ref(DUMMY_SP).defining_crate;
             Some(debuginfo::extend_scope_to_file(self.cx,
-                                            scope_metadata.unwrap(),
-                                            &cm.lookup_char_pos(pos).file,
-                                            defining_crate))
+                                                 scope_metadata.unwrap(),
+                                                 &cm.lookup_char_pos(pos).file,
+                                                 defining_crate))
         } else {
             scope_metadata
         }
