@@ -9,17 +9,15 @@ LL |             yield();
 error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
   --> $DIR/yield-while-iterating.rs:67:20
    |
-LL |       let mut b = || {
-   |  _________________-
-LL | |         for p in &mut x {
-LL | |             yield p;
-LL | |         }
-LL | |     };
-   | |_____- mutable borrow occurs here
-LL |       println!("{}", x[0]); //~ ERROR
-   |                      ^ immutable borrow occurs here
-LL |       b.resume();
-   |       - mutable borrow later used here
+LL |     let mut b = || {
+   |                 -- mutable borrow occurs here
+LL |         for p in &mut x {
+   |                       - first borrow occurs due to use of `x` in generator
+...
+LL |     println!("{}", x[0]); //~ ERROR
+   |                    ^ immutable borrow occurs here
+LL |     b.resume();
+   |     - mutable borrow later used here
 
 error: aborting due to 2 previous errors
 

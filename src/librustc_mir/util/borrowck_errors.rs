@@ -221,6 +221,7 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
     fn cannot_uniquely_borrow_by_one_closure(
         self,
         new_loan_span: Span,
+        container_name: &str,
         desc_new: &str,
         opt_via: &str,
         old_loan_span: Span,
@@ -241,7 +242,7 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         );
         err.span_label(
             new_loan_span,
-            format!("closure construction occurs here{}", opt_via),
+            format!("{} construction occurs here{}", container_name, opt_via),
         );
         err.span_label(old_loan_span, format!("borrow occurs here{}", old_opt_via));
         if let Some(previous_end_span) = previous_end_span {
@@ -253,6 +254,7 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
     fn cannot_reborrow_already_uniquely_borrowed(
         self,
         new_loan_span: Span,
+        container_name: &str,
         desc_new: &str,
         opt_via: &str,
         kind_new: &str,
@@ -275,7 +277,7 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         err.span_label(new_loan_span, format!("borrow occurs here{}", opt_via));
         err.span_label(
             old_loan_span,
-            format!("closure construction occurs here{}", old_opt_via),
+            format!("{} construction occurs here{}", container_name, old_opt_via),
         );
         if let Some(previous_end_span) = previous_end_span {
             err.span_label(previous_end_span, "borrow from closure ends here");

@@ -15,11 +15,11 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::region::ScopeTree;
 use rustc::mir::{
-    self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, Field, Local,
+    self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, Constant, Field, Local,
     LocalDecl, LocalKind, Location, Operand, Place, PlaceProjection, ProjectionElem,
     Rvalue, Statement, StatementKind, TerminatorKind, VarBindingForm,
 };
-use rustc::ty;
+use rustc::ty::{self, DefIdTree};
 use rustc::util::ppaux::with_highlight_region_for_bound_region;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
@@ -103,7 +103,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             use_spans.var_span_label(
                 &mut err,
-                format!("{} occurs due to use in closure", desired_action.as_noun()),
+                format!("{} occurs due to use{}", desired_action.as_noun(), use_spans.describe()),
             );
 
             err.buffer(&mut self.errors_buffer);
@@ -129,6 +129,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 msg,
                 self.describe_place_with_options(&moved_place, IncludingDowncast(true)),
                 Origin::Mir,
+            );
+
+            self.add_closure_invoked_twice_with_moved_variable_suggestion(
+                context.loc,
+                used_place,
+                &mut err,
             );
 
             let mut is_loop_move = false;
@@ -161,13 +167,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     );
                 } else {
                     err.span_label(move_span, format!("value moved{} here", move_msg));
-                    move_spans.var_span_label(&mut err, "variable moved due to use in closure");
+                    move_spans.var_span_label(
+                        &mut err,
+                        format!("variable moved due to use{}", move_spans.describe()),
+                    );
                 };
             }
 
             use_spans.var_span_label(
                 &mut err,
-                format!("{} occurs due to use in closure", desired_action.as_noun()),
+                format!("{} occurs due to use{}", desired_action.as_noun(), use_spans.describe()),
             );
 
             if !is_loop_move {
@@ -226,9 +235,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     pub(super) fn report_move_out_while_borrowed(
         &mut self,
         context: Context,
-        (place, _span): (&Place<'tcx>, Span),
+        (place, span): (&Place<'tcx>, Span),
         borrow: &BorrowData<'tcx>,
     ) {
+        debug!(
+            "report_move_out_while_borrowed: context={:?} place={:?} span={:?} borrow={:?}",
+            context, place, span, borrow
+        );
         let tcx = self.infcx.tcx;
         let value_msg = match self.describe_place(place) {
             Some(name) => format!("`{}`", name),
@@ -253,9 +266,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         err.span_label(borrow_span, format!("borrow of {} occurs here", borrow_msg));
         err.span_label(span, format!("move out of {} occurs here", value_msg));
 
-        borrow_spans.var_span_label(&mut err, "borrow occurs due to use in closure");
+        borrow_spans.var_span_label(
+            &mut err,
+            format!("borrow occurs due to use{}", borrow_spans.describe())
+        );
 
-        move_spans.var_span_label(&mut err, "move occurs due to use in closure");
+        move_spans.var_span_label(
+            &mut err,
+            format!("move occurs due to use{}", move_spans.describe())
+        );
 
         self.explain_why_borrow_contains_point(context, borrow, None)
             .add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "");
@@ -291,7 +310,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             let place = &borrow.borrowed_place;
             let desc_place = self.describe_place(place).unwrap_or("_".to_owned());
 
-            format!("borrow occurs due to use of `{}` in closure", desc_place)
+            format!("borrow occurs due to use of `{}`{}", desc_place, borrow_spans.describe())
         });
 
         self.explain_why_borrow_contains_point(context, borrow, None)
@@ -311,6 +330,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let borrow_spans = self.borrow_spans(span, context.loc);
         let span = borrow_spans.args_or_use();
+
+        let container_name = if issued_spans.for_generator() || borrow_spans.for_generator() {
+            "generator"
+        } else {
+            "closure"
+        };
 
         let desc_place = self.describe_place(place).unwrap_or("_".to_owned());
         let tcx = self.infcx.tcx;
@@ -392,7 +417,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 );
                 borrow_spans.var_span_label(
                     &mut err,
-                    format!("borrow occurs due to use of `{}` in closure", desc_place),
+                    format!(
+                        "borrow occurs due to use of `{}`{}", desc_place, borrow_spans.describe()
+                    ),
                 );
                 err.buffer(&mut self.errors_buffer);
 
@@ -403,6 +430,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 first_borrow_desc = "first ";
                 tcx.cannot_uniquely_borrow_by_one_closure(
                     span,
+                    container_name,
                     &desc_place,
                     "",
                     issued_span,
@@ -417,6 +445,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 first_borrow_desc = "first ";
                 tcx.cannot_reborrow_already_uniquely_borrowed(
                     span,
+                    container_name,
                     &desc_place,
                     "",
                     lft,
@@ -431,6 +460,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 first_borrow_desc = "first ";
                 tcx.cannot_reborrow_already_uniquely_borrowed(
                     span,
+                    container_name,
                     &desc_place,
                     "",
                     lft,
@@ -456,7 +486,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         if issued_spans == borrow_spans {
             borrow_spans.var_span_label(
                 &mut err,
-                format!("borrows occur due to use of `{}` in closure", desc_place),
+                format!("borrows occur due to use of `{}`{}", desc_place, borrow_spans.describe()),
             );
         } else {
             let borrow_place = &issued_borrow.borrowed_place;
@@ -464,16 +494,18 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             issued_spans.var_span_label(
                 &mut err,
                 format!(
-                    "first borrow occurs due to use of `{}` in closure",
-                    borrow_place_desc
+                    "first borrow occurs due to use of `{}`{}",
+                    borrow_place_desc,
+                    issued_spans.describe(),
                 ),
             );
 
             borrow_spans.var_span_label(
                 &mut err,
                 format!(
-                    "second borrow occurs due to use of `{}` in closure",
-                    desc_place
+                    "second borrow occurs due to use of `{}`{}",
+                    desc_place,
+                    borrow_spans.describe(),
                 ),
             );
         }
@@ -643,7 +675,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 format!("`{}` dropped here while still borrowed", name),
             );
 
-            borrow_spans.args_span_label(&mut err, "value captured here");
+            let within = if borrow_spans.for_generator() {
+                " by generator"
+            } else {
+                ""
+            };
+
+            borrow_spans.args_span_label(
+                &mut err,
+                format!("value captured here{}", within),
+            );
 
             explanation.add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "");
         }
@@ -774,7 +815,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
         explanation.add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "");
 
-        borrow_spans.args_span_label(&mut err, "value captured here");
+        let within = if borrow_spans.for_generator() {
+            " by generator"
+        } else {
+            ""
+        };
+
+        borrow_spans.args_span_label(
+            &mut err,
+            format!("value captured here{}", within),
+        );
 
         err
     }
@@ -906,7 +956,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             )
         };
 
-        loan_spans.var_span_label(&mut err, "borrow occurs due to use in closure");
+        loan_spans.var_span_label(
+            &mut err,
+            format!("borrow occurs due to use{}", loan_spans.describe()),
+        );
 
         self.explain_why_borrow_contains_point(context, loan, None)
             .add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "");
@@ -1009,16 +1062,111 @@ enum StorageDeadOrDrop<'tcx> {
 }
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
-    // End-user visible description of `place` if one can be found. If the
-    // place is a temporary for instance, None will be returned.
+
+    /// Adds a suggestion when a closure is invoked twice with a moved variable.
+    ///
+    /// ```text
+    /// note: closure cannot be invoked more than once because it moves the variable `dict` out of
+    ///       its environment
+    ///   --> $DIR/issue-42065.rs:16:29
+    ///    |
+    /// LL |         for (key, value) in dict {
+    ///    |                             ^^^^
+    /// ```
+    pub(super) fn add_closure_invoked_twice_with_moved_variable_suggestion(
+        &self,
+        location: Location,
+        place: &Place<'tcx>,
+        diag: &mut DiagnosticBuilder<'_>,
+    ) {
+        let mut target = place.local();
+        debug!(
+            "add_closure_invoked_twice_with_moved_variable_suggestion: location={:?} place={:?} \
+             target={:?}",
+             location, place, target,
+        );
+        for stmt in &self.mir[location.block].statements[location.statement_index..] {
+            debug!(
+                "add_closure_invoked_twice_with_moved_variable_suggestion: stmt={:?} \
+                 target={:?}",
+                 stmt, target,
+            );
+            if let StatementKind::Assign(into, box Rvalue::Use(from)) = &stmt.kind {
+                debug!(
+                    "add_closure_invoked_twice_with_moved_variable_suggestion: into={:?} \
+                     from={:?}",
+                     into, from,
+                );
+                match from {
+                    Operand::Copy(ref place) |
+                    Operand::Move(ref place) if target == place.local() =>
+                        target = into.local(),
+                    _ => {},
+                }
+            }
+        }
+
+
+        let terminator = self.mir[location.block].terminator();
+        debug!(
+            "add_closure_invoked_twice_with_moved_variable_suggestion: terminator={:?}",
+            terminator,
+        );
+        if let TerminatorKind::Call {
+            func: Operand::Constant(box Constant {
+                literal: ty::Const { ty: &ty::TyS { sty: ty::TyKind::FnDef(id, _), ..  }, ..  },
+                ..
+            }),
+            args,
+            ..
+        } = &terminator.kind {
+            debug!("add_closure_invoked_twice_with_moved_variable_suggestion: id={:?}", id);
+            if self.infcx.tcx.parent(id) == self.infcx.tcx.lang_items().fn_once_trait() {
+                let closure = match args.first() {
+                    Some(Operand::Copy(ref place)) |
+                    Some(Operand::Move(ref place)) if target == place.local() =>
+                        place.local().unwrap(),
+                    _ => return,
+                };
+                debug!(
+                    "add_closure_invoked_twice_with_moved_variable_suggestion: closure={:?}",
+                     closure,
+                );
+
+                if let ty::TyKind::Closure(did, _substs) = self.mir.local_decls[closure].ty.sty {
+                    let node_id = match self.infcx.tcx.hir.as_local_node_id(did) {
+                        Some(node_id) => node_id,
+                        _ => return,
+                    };
+                    let hir_id = self.infcx.tcx.hir.node_to_hir_id(node_id);
+
+                    if let Some((
+                        span, name
+                    )) = self.infcx.tcx.typeck_tables_of(did).closure_kind_origins().get(hir_id) {
+                        diag.span_note(
+                            *span,
+                            &format!(
+                                "closure cannot be invoked more than once because it \
+                                 moves the variable `{}` out of its environment",
+                                 name,
+                            ),
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// End-user visible description of `place` if one can be found. If the
+    /// place is a temporary for instance, None will be returned.
     pub(super) fn describe_place(&self, place: &Place<'tcx>) -> Option<String> {
         self.describe_place_with_options(place, IncludingDowncast(false))
     }
 
-    // End-user visible description of `place` if one can be found. If the
-    // place is a temporary for instance, None will be returned.
-    // `IncludingDowncast` parameter makes the function return `Err` if `ProjectionElem` is
-    // `Downcast` and `IncludingDowncast` is true
+    /// End-user visible description of `place` if one can be found. If the
+    /// place is a temporary for instance, None will be returned.
+    /// `IncludingDowncast` parameter makes the function return `Err` if `ProjectionElem` is
+    /// `Downcast` and `IncludingDowncast` is true
     pub(super) fn describe_place_with_options(
         &self,
         place: &Place<'tcx>,
@@ -1031,7 +1179,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
     }
 
-    // Appends end-user visible description of `place` to `buf`.
+    /// Appends end-user visible description of `place` to `buf`.
     fn append_place_to_string(
         &self,
         place: &Place<'tcx>,
@@ -1166,8 +1314,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         Ok(())
     }
 
-    // Appends end-user visible description of the `local` place to `buf`. If `local` doesn't have
-    // a name, then `Err` is returned
+    /// Appends end-user visible description of the `local` place to `buf`. If `local` doesn't have
+    /// a name, then `Err` is returned
     fn append_local_to_string(&self, local_index: Local, buf: &mut String) -> Result<(), ()> {
         let local = &self.mir.local_decls[local_index];
         match local.name {
@@ -1179,7 +1327,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
     }
 
-    // End-user visible description of the `field`nth field of `base`
+    /// End-user visible description of the `field`nth field of `base`
     fn describe_field(&self, base: &Place, field: Field) -> String {
         match *base {
             Place::Local(local) => {
@@ -1204,7 +1352,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
     }
 
-    // End-user visible description of the `field_index`nth field of `ty`
+    /// End-user visible description of the `field_index`nth field of `ty`
     fn describe_field_from_ty(&self, ty: &ty::Ty, field: Field) -> String {
         if ty.is_box() {
             // If the type is a box, the field is described from the boxed type
@@ -1247,7 +1395,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
     }
 
-    // Retrieve type of a place for the current MIR representation
+    /// Retrieve type of a place for the current MIR representation
     fn retrieve_type_for_place(&self, place: &Place<'tcx>) -> Option<ty::Ty> {
         match place {
             Place::Local(local) => {
@@ -1805,6 +1953,8 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
 pub(super) enum UseSpans {
     // The access is caused by capturing a variable for a closure.
     ClosureUse {
+        // This is true if the captured variable was from a generator.
+        is_generator: bool,
         // The span of the args of the closure, including the `move` keyword if
         // it's present.
         args_span: Span,
@@ -1845,10 +1995,31 @@ impl UseSpans {
         }
     }
 
-    pub(super) fn for_closure(self) -> bool {
-        match self {
-            UseSpans::ClosureUse { .. } => true,
-            UseSpans::OtherUse(_) => false,
+    /// Return `false` if this place is not used in a closure.
+    fn for_closure(&self) -> bool {
+        match *self {
+            UseSpans::ClosureUse { is_generator, .. } => !is_generator,
+            _ => false,
+        }
+    }
+
+    /// Return `false` if this place is not used in a generator.
+    fn for_generator(&self) -> bool {
+        match *self {
+            UseSpans::ClosureUse { is_generator, .. } => is_generator,
+            _ => false,
+        }
+    }
+
+    /// Describe the span associated with a use of a place.
+    fn describe(&self) -> String {
+        match *self {
+            UseSpans::ClosureUse { is_generator, .. } => if is_generator {
+                " in generator".to_string()
+            } else {
+                " in closure".to_string()
+            },
+            _ => "".to_string(),
         }
     }
 
@@ -1871,53 +2042,37 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         location: Location,
     ) -> UseSpans {
         use self::UseSpans::*;
-        use rustc::hir::ExprKind::Closure;
-        use rustc::mir::AggregateKind;
 
-        let stmt = match self.mir[location.block]
-            .statements
-            .get(location.statement_index)
-        {
+        let stmt = match self.mir[location.block].statements.get(location.statement_index) {
             Some(stmt) => stmt,
             None => return OtherUse(self.mir.source_info(location).span),
         };
 
-        if let StatementKind::Assign(_, box Rvalue::Aggregate(ref kind, ref places)) = stmt.kind {
-            if let AggregateKind::Closure(def_id, _) = **kind {
-                debug!("find_closure_move_span: found closure {:?}", places);
+        debug!("move_spans: moved_place={:?} location={:?} stmt={:?}", moved_place, location, stmt);
+        if let  StatementKind::Assign(
+            _,
+            box Rvalue::Aggregate(ref kind, ref places)
+        ) = stmt.kind {
+            let (def_id, is_generator) = match kind {
+                box AggregateKind::Closure(def_id, _) => (def_id, false),
+                box AggregateKind::Generator(def_id, _, _) => (def_id, true),
+                _ => return OtherUse(stmt.source_info.span),
+            };
 
-                if let Some(node_id) = self.infcx.tcx.hir.as_local_node_id(def_id) {
-                    if let Closure(_, _, _, args_span, _) =
-                        self.infcx.tcx.hir.expect_expr(node_id).node
-                    {
-                        if let Some(var_span) = self.infcx.tcx.with_freevars(node_id, |freevars| {
-                            for (v, place) in freevars.iter().zip(places) {
-                                match place {
-                                    Operand::Copy(place) | Operand::Move(place)
-                                        if moved_place == place =>
-                                    {
-                                        debug!(
-                                            "find_closure_move_span: found captured local {:?}",
-                                            place
-                                        );
-                                        return Some(v.span);
-                                    }
-                                    _ => {}
-                                }
-                            }
-                            None
-                        }) {
-                            return ClosureUse {
-                                args_span,
-                                var_span,
-                            };
-                        }
-                    }
-                }
+            debug!(
+                "move_spans: def_id={:?} is_generator={:?} places={:?}",
+                def_id, is_generator, places
+            );
+            if let Some((args_span, var_span)) = self.closure_span(*def_id, moved_place, places) {
+                return ClosureUse {
+                    is_generator,
+                    args_span,
+                    var_span,
+                };
             }
         }
 
-        return OtherUse(stmt.source_info.span);
+        OtherUse(stmt.source_info.span)
     }
 
     /// Finds the span of arguments of a closure (within `maybe_closure_span`)
@@ -1926,9 +2081,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// and originating from `maybe_closure_span`.
     pub(super) fn borrow_spans(&self, use_span: Span, location: Location) -> UseSpans {
         use self::UseSpans::*;
-        use rustc::hir::ExprKind::Closure;
+        debug!("borrow_spans: use_span={:?} location={:?}", use_span, location);
 
-        let local = match self.mir[location.block]
+        let target = match self.mir[location.block]
             .statements
             .get(location.statement_index)
         {
@@ -1939,54 +2094,35 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             _ => return OtherUse(use_span),
         };
 
-        if self.mir.local_kind(local) != LocalKind::Temp {
+        if self.mir.local_kind(target) != LocalKind::Temp {
             // operands are always temporaries.
             return OtherUse(use_span);
         }
 
         for stmt in &self.mir[location.block].statements[location.statement_index + 1..] {
-            if let StatementKind::Assign(_, box Rvalue::Aggregate(ref kind, ref places)) = stmt.kind
-            {
-                if let AggregateKind::Closure(def_id, _) = **kind {
-                    debug!("find_closure_borrow_span: found closure {:?}", places);
+            if let StatementKind::Assign(
+                _, box Rvalue::Aggregate(ref kind, ref places)
+            ) = stmt.kind {
+                let (def_id, is_generator) = match kind {
+                    box AggregateKind::Closure(def_id, _) => (def_id, false),
+                    box AggregateKind::Generator(def_id, _, _) => (def_id, true),
+                    _ => continue,
+                };
 
-                    return if let Some(node_id) = self.infcx.tcx.hir.as_local_node_id(def_id) {
-                        let args_span = if let Closure(_, _, _, span, _) =
-                            self.infcx.tcx.hir.expect_expr(node_id).node
-                        {
-                            span
-                        } else {
-                            return OtherUse(use_span);
-                        };
-
-                        self.infcx
-                            .tcx
-                            .with_freevars(node_id, |freevars| {
-                                for (v, place) in freevars.iter().zip(places) {
-                                    match *place {
-                                        Operand::Copy(Place::Local(l))
-                                        | Operand::Move(Place::Local(l)) if local == l =>
-                                        {
-                                            debug!(
-                                                "find_closure_borrow_span: found captured local \
-                                                 {:?}",
-                                                l
-                                            );
-                                            return Some(v.span);
-                                        }
-                                        _ => {}
-                                    }
-                                }
-                                None
-                            })
-                            .map(|var_span| ClosureUse {
-                                args_span,
-                                var_span,
-                            })
-                            .unwrap_or(OtherUse(use_span))
-                    } else {
-                        OtherUse(use_span)
+                debug!(
+                    "borrow_spans: def_id={:?} is_generator={:?} places={:?}",
+                    def_id, is_generator, places
+                );
+                if let Some((args_span, var_span)) = self.closure_span(
+                    *def_id, &Place::Local(target), places
+                ) {
+                    return ClosureUse {
+                        is_generator,
+                        args_span,
+                        var_span,
                     };
+                } else {
+                    return OtherUse(use_span);
                 }
             }
 
@@ -1996,6 +2132,47 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
 
         OtherUse(use_span)
+    }
+
+    /// Finds the span of a captured variable within a closure or generator.
+    fn closure_span(
+        &self,
+        def_id: DefId,
+        target_place: &Place<'tcx>,
+        places: &Vec<Operand<'tcx>>,
+    ) -> Option<(Span, Span)> {
+        debug!(
+            "closure_span: def_id={:?} target_place={:?} places={:?}",
+            def_id, target_place, places
+        );
+        let node_id = self.infcx.tcx.hir.as_local_node_id(def_id)?;
+        let expr = &self.infcx.tcx.hir.expect_expr(node_id).node;
+        debug!("closure_span: node_id={:?} expr={:?}", node_id, expr);
+        if let hir::ExprKind::Closure(
+            .., args_span, _
+        ) = expr {
+            let var_span = self.infcx.tcx.with_freevars(
+                node_id,
+                |freevars| {
+                    for (v, place) in freevars.iter().zip(places) {
+                        match place {
+                            Operand::Copy(place) |
+                            Operand::Move(place) if target_place == place => {
+                                debug!("closure_span: found captured local {:?}", place);
+                                return Some(v.span);
+                            },
+                            _ => {}
+                        }
+                    }
+
+                    None
+                },
+            )?;
+
+            Some((*args_span, var_span))
+        } else {
+            None
+        }
     }
 
     /// Helper to retrieve span(s) of given borrow from the current MIR
