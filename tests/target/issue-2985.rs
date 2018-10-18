@@ -27,7 +27,8 @@ fn foo() {
                                                           .map(String::as_ref)
                                                           .unwrap_or("")
                                                           .is_empty()
-                                                    }) {
+                                                    })
+            {
                 do_something();
             }
         }

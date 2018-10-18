@@ -801,6 +801,20 @@ impl<'a> ControlFlow<'a> {
     }
 }
 
+/// Returns true if the last line of pat_str has leading whitespace and it is wider than the
+/// shape's indent.
+fn last_line_offsetted(start_column: usize, pat_str: &str) -> bool {
+    let mut leading_whitespaces = 0;
+    for c in pat_str.chars().rev() {
+        match c {
+            '\n' => break,
+            _ if c.is_whitespace() => leading_whitespaces += 1,
+            _ => leading_whitespaces = 0,
+        }
+    }
+    leading_whitespaces > start_column
+}
+
 impl<'a> ControlFlow<'a> {
     fn rewrite_pat_expr(
         &self,
@@ -885,7 +899,8 @@ impl<'a> ControlFlow<'a> {
             .saturating_sub(constr_shape.used_width() + offset + brace_overhead);
         let force_newline_brace = (pat_expr_string.contains('\n')
             || pat_expr_string.len() > one_line_budget)
-            && !last_line_extendable(&pat_expr_string);
+            && (!last_line_extendable(&pat_expr_string)
+                || last_line_offsetted(shape.used_width(), &pat_expr_string));
 
         // Try to format if-else on single line.
         if self.allow_single_line
@@ -1975,5 +1990,31 @@ pub fn is_method_call(expr: &ast::Expr) -> bool {
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Unary(_, ref expr) => is_method_call(expr),
         _ => false,
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::last_line_offsetted;
+
+    #[test]
+    fn test_last_line_offsetted() {
+        let lines = "one\n    two";
+        assert_eq!(last_line_offsetted(2, lines), true);
+        assert_eq!(last_line_offsetted(4, lines), false);
+        assert_eq!(last_line_offsetted(6, lines), false);
+
+        let lines = "one    two";
+        assert_eq!(last_line_offsetted(2, lines), false);
+        assert_eq!(last_line_offsetted(0, lines), false);
+
+        let lines = "\ntwo";
+        assert_eq!(last_line_offsetted(2, lines), false);
+        assert_eq!(last_line_offsetted(0, lines), false);
+
+        let lines = "one\n    two      three";
+        assert_eq!(last_line_offsetted(2, lines), true);
+        let lines = "one\n two      three";
+        assert_eq!(last_line_offsetted(2, lines), false);
     }
 }
