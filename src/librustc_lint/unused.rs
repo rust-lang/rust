@@ -276,10 +276,13 @@ impl UnusedParens {
                                 cx: &EarlyContext,
                                 value: &ast::Expr,
                                 msg: &str,
-                                struct_lit_needs_parens: bool) {
+                                followed_by_block: bool) {
         if let ast::ExprKind::Paren(ref inner) = value.node {
-            let necessary = struct_lit_needs_parens &&
-                            parser::contains_exterior_struct_lit(&inner);
+            let necessary = followed_by_block && if let ast::ExprKind::Ret(_) = inner.node {
+                true
+            } else {
+                parser::contains_exterior_struct_lit(&inner)
+            };
             if !necessary {
                 let pattern = pprust::expr_to_string(value);
                 Self::remove_outer_parens(cx, value.span, &pattern, msg);
@@ -343,7 +346,7 @@ impl LintPass for UnusedParens {
 impl EarlyLintPass for UnusedParens {
     fn check_expr(&mut self, cx: &EarlyContext, e: &ast::Expr) {
         use syntax::ast::ExprKind::*;
-        let (value, msg, struct_lit_needs_parens) = match e.node {
+        let (value, msg, followed_by_block) = match e.node {
             If(ref cond, ..) => (cond, "`if` condition", true),
             While(ref cond, ..) => (cond, "`while` condition", true),
             IfLet(_, ref cond, ..) => (cond, "`if let` head expression", true),
@@ -380,7 +383,7 @@ impl EarlyLintPass for UnusedParens {
                 return;
             }
         };
-        self.check_unused_parens_expr(cx, &value, msg, struct_lit_needs_parens);
+        self.check_unused_parens_expr(cx, &value, msg, followed_by_block);
     }
 
     fn check_pat(&mut self, cx: &EarlyContext, p: &ast::Pat) {
