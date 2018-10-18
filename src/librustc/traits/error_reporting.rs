@@ -378,6 +378,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 flags.push(("from_method".to_owned(), Some(method.to_string())));
             }
         }
+        if let Some(t) = self.get_parent_trait_ref(&obligation.cause.code) {
+            flags.push(("parent_trait".to_owned(), Some(t.to_string())));
+        }
 
         if let Some(k) = obligation.cause.span.compiler_desugaring_kind() {
             flags.push(("from_desugaring".to_owned(), None));
