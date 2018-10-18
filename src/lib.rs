@@ -18,7 +18,7 @@ use std::borrow::Cow;
 
 use rustc::ty::{self, Ty, TyCtxt, query::TyCtxtAt};
 use rustc::ty::layout::{TyLayout, LayoutOf, Size};
-use rustc::hir::def_id::DefId;
+use rustc::hir::{self, def_id::DefId};
 use rustc::mir;
 
 use syntax::attr;
@@ -446,13 +446,13 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         ptr: Pointer<Borrow>,
         pointee_ty: Ty<'tcx>,
         pointee_size: Size,
-        borrow_kind: Option<mir::BorrowKind>,
+        mutability: Option<hir::Mutability>,
     ) -> EvalResult<'tcx, Borrow> {
         if !ecx.machine.validate {
             // No tracking
             Ok(Borrow::default())
         } else {
-            ecx.tag_reference(ptr, pointee_ty, pointee_size, borrow_kind)
+            ecx.tag_reference(ptr, pointee_ty, pointee_size, mutability)
         }
     }
 
@@ -460,13 +460,15 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     fn tag_dereference(
         ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
         ptr: Pointer<Borrow>,
-        ptr_ty: Ty<'tcx>,
+        pointee_ty: Ty<'tcx>,
+        pointee_size: Size,
+        mutability: Option<hir::Mutability>,
     ) -> EvalResult<'tcx, Borrow> {
         if !ecx.machine.validate {
             // No tracking
             Ok(Borrow::default())
         } else {
-            ecx.tag_dereference(ptr, ptr_ty)
+            ecx.tag_dereference(ptr, pointee_ty, pointee_size, mutability)
         }
     }
 }

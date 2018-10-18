@@ -1,7 +1,8 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 
-use rustc::ty::{Ty, layout::Size};
+use rustc::ty::{self, Ty, layout::Size};
 use rustc::mir;
+use rustc::hir;
 
 use super::{
     MemoryAccess, RangeMap, EvalResult,
@@ -67,12 +68,12 @@ impl Default for Borrow {
 /// Extra global machine state
 #[derive(Clone, Debug)]
 pub struct State {
-    clock: Timestamp
+    clock: Cell<Timestamp>
 }
 
 impl State {
     pub fn new() -> State {
-        State { clock: 0 }
+        State { clock: Cell::new(0) }
     }
 }
 
@@ -180,9 +181,10 @@ impl<'tcx> Stack {
 }
 
 impl State {
-    fn increment_clock(&mut self) -> Timestamp {
-        self.clock += 1;
-        self.clock
+    fn increment_clock(&self) -> Timestamp {
+        let val = self.clock.get();
+        self.clock.set(val+1);
+        val
     }
 }
 
@@ -238,47 +240,64 @@ impl<'tcx> Stacks {
     }
 }
 
-/// Machine hooks
 pub trait EvalContextExt<'tcx> {
     fn tag_reference(
         &mut self,
         ptr: Pointer<Borrow>,
         pointee_ty: Ty<'tcx>,
         size: Size,
-        borrow_kind: Option<mir::BorrowKind>,
+        mutability: Option<hir::Mutability>,
     ) -> EvalResult<'tcx, Borrow>;
 
     fn tag_dereference(
         &self,
         ptr: Pointer<Borrow>,
-        ptr_ty: Ty<'tcx>,
+        pointee_ty: Ty<'tcx>,
+        size: Size,
+        mutability: Option<hir::Mutability>,
     ) -> EvalResult<'tcx, Borrow>;
+
+    fn tag_for_pointee(
+        &self,
+        pointee_ty: Ty<'tcx>,
+        borrow_kind: Option<hir::Mutability>,
+    ) -> Borrow;
 }
 
 impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, 'tcx> {
-    fn tag_reference(
-        &mut self,
-        ptr: Pointer<Borrow>,
+    fn tag_for_pointee(
+        &self,
         pointee_ty: Ty<'tcx>,
-        size: Size,
-        borrow_kind: Option<mir::BorrowKind>,
-    ) -> EvalResult<'tcx, Borrow> {
+        borrow_kind: Option<hir::Mutability>,
+    ) -> Borrow {
         let time = self.machine.stacked_borrows.increment_clock();
-        let new_bor = match borrow_kind {
-            Some(mir::BorrowKind::Mut { .. }) => Borrow::Mut(Mut::Uniq(time)),
-            Some(_) =>
+        match borrow_kind {
+            Some(hir::MutMutable) => Borrow::Mut(Mut::Uniq(time)),
+            Some(hir::MutImmutable) =>
                 // FIXME This does not do enough checking when only part of the data has
                 // interior mutability. When the type is `(i32, Cell<i32>)`, we want the
                 // first field to be frozen but not the second.
                 if self.type_is_freeze(pointee_ty) {
                     Borrow::Frz(time)
                 } else {
+                    // Shared reference with interior mutability.
                     Borrow::Mut(Mut::Raw)
                 },
             None => Borrow::Mut(Mut::Raw),
-        };
+        }
+    }
+
+    /// Called for place-to-value conversion.
+    fn tag_reference(
+        &mut self,
+        ptr: Pointer<Borrow>,
+        pointee_ty: Ty<'tcx>,
+        size: Size,
+        mutability: Option<hir::Mutability>,
+    ) -> EvalResult<'tcx, Borrow> {
+        let new_bor = self.tag_for_pointee(pointee_ty, mutability);
         trace!("tag_reference: Creating new reference ({:?}) for {:?} (pointee {}, size {}): {:?}",
-            borrow_kind, ptr, pointee_ty, size.bytes(), new_bor);
+            mutability, ptr, pointee_ty, size.bytes(), new_bor);
 
         // Make sure this reference is not dangling or so
         self.memory.check_bounds(ptr, size, false)?;
@@ -291,14 +310,17 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         Ok(new_bor)
     }
 
+    /// Called for value-to-place conversion.
     fn tag_dereference(
         &self,
         ptr: Pointer<Borrow>,
-        ptr_ty: Ty<'tcx>,
+        pointee_ty: Ty<'tcx>,
+        size: Size,
+        mutability: Option<hir::Mutability>,
     ) -> EvalResult<'tcx, Borrow> {
-        // If this is a raw ptr, forget about the tag.
-        Ok(if ptr_ty.is_unsafe_ptr() {
-            trace!("tag_dereference: Erasing tag for {:?} ({})", ptr, ptr_ty);
+        // If this is a raw situation, forget about the tag.
+        Ok(if mutability.is_none() {
+            trace!("tag_dereference: Erasing tag for {:?} (pointee {})", ptr, pointee_ty);
             Borrow::Mut(Mut::Raw)
         } else {
             // FIXME: Do we want to adjust the tag if it does not match the type?
