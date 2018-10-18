@@ -54,7 +54,7 @@ pub(crate) fn rewrite_all_pairs(
     // necessarily need one line per sub-expression, but we don't do anything
     // too funny wrt precedence.
     expr.flatten(true)
-        .and_then(|list| rewrite_pairs_multiline(list, shape, context))
+        .and_then(|list| rewrite_pairs_multiline(&list, shape, context))
 }
 
 // This may return a multi-line result since we allow the last expression to go
@@ -105,7 +105,7 @@ fn rewrite_pairs_one_line<T: Rewrite>(
 }
 
 fn rewrite_pairs_multiline<T: Rewrite>(
-    list: PairList<T>,
+    list: &PairList<T>,
     shape: Shape,
     context: &RewriteContext,
 ) -> Option<String> {

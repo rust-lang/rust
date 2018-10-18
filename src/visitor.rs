@@ -573,7 +573,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         self.buffer.push_str(s);
     }
 
-    #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
+    #[allow(clippy::needless_pass_by_value)]
     fn push_rewrite_inner(&mut self, span: Span, rewrite: Option<String>) {
         if let Some(ref s) = rewrite {
             self.push_str(s);
