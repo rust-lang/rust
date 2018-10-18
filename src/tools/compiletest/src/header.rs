@@ -19,10 +19,62 @@ use util;
 
 use extract_gdb_version;
 
+/// Whether to ignore the test.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Ignore {
+    /// Run it.
+    Run,
+    /// Ignore it totally.
+    Ignore,
+    /// Ignore only the gdb test, but run the lldb test.
+    IgnoreGdb,
+    /// Ignore only the lldb test, but run the gdb test.
+    IgnoreLldb,
+}
+
+impl Ignore {
+    pub fn can_run_gdb(&self) -> bool {
+        *self == Ignore::Run || *self == Ignore::IgnoreLldb
+    }
+
+    pub fn can_run_lldb(&self) -> bool {
+        *self == Ignore::Run || *self == Ignore::IgnoreGdb
+    }
+
+    pub fn no_gdb(&self) -> Ignore {
+        match *self {
+            Ignore::Run => Ignore::IgnoreGdb,
+            Ignore::IgnoreGdb => Ignore::IgnoreGdb,
+            _ => Ignore::Ignore,
+        }
+    }
+
+    pub fn no_lldb(&self) -> Ignore {
+        match *self {
+            Ignore::Run => Ignore::IgnoreLldb,
+            Ignore::IgnoreLldb => Ignore::IgnoreLldb,
+            _ => Ignore::Ignore,
+        }
+    }
+}
+
+/// The result of parse_cfg_name_directive.
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum ParsedNameDirective {
+    /// No match.
+    NoMatch,
+    /// Match.
+    Match,
+    /// Mode was DebugInfoBoth and this matched gdb.
+    MatchGdb,
+    /// Mode was DebugInfoBoth and this matched lldb.
+    MatchLldb,
+}
+
 /// Properties which must be known very early, before actually running
 /// the test.
 pub struct EarlyProps {
-    pub ignore: bool,
+    pub ignore: Ignore,
     pub should_fail: bool,
     pub aux: Vec<String>,
     pub revisions: Vec<String>,
@@ -31,20 +83,55 @@ pub struct EarlyProps {
 impl EarlyProps {
     pub fn from_file(config: &Config, testfile: &Path) -> Self {
         let mut props = EarlyProps {
-            ignore: false,
+            ignore: Ignore::Run,
             should_fail: false,
             aux: Vec::new(),
             revisions: vec![],
         };
 
+        if config.mode == common::DebugInfoBoth {
+            if config.lldb_python_dir.is_none() {
+                props.ignore = props.ignore.no_lldb();
+            }
+            if config.gdb_version.is_none() {
+                props.ignore = props.ignore.no_gdb();
+            }
+        }
+
         iter_header(testfile, None, &mut |ln| {
             // we should check if any only-<platform> exists and if it exists
             // and does not matches the current platform, skip the test
-            props.ignore = props.ignore || config.parse_cfg_name_directive(ln, "ignore")
-                || (config.has_cfg_prefix(ln, "only")
-                    && !config.parse_cfg_name_directive(ln, "only"))
-                || ignore_gdb(config, ln) || ignore_lldb(config, ln)
-                || ignore_llvm(config, ln);
+            if props.ignore != Ignore::Ignore {
+                props.ignore = match config.parse_cfg_name_directive(ln, "ignore") {
+                    ParsedNameDirective::Match => Ignore::Ignore,
+                    ParsedNameDirective::NoMatch => props.ignore,
+                    ParsedNameDirective::MatchGdb => props.ignore.no_gdb(),
+                    ParsedNameDirective::MatchLldb => props.ignore.no_lldb(),
+                };
+
+                if config.has_cfg_prefix(ln, "only") {
+                    props.ignore = match config.parse_cfg_name_directive(ln, "only") {
+                        ParsedNameDirective::Match => props.ignore,
+                        ParsedNameDirective::NoMatch => Ignore::Ignore,
+                        ParsedNameDirective::MatchLldb => props.ignore.no_gdb(),
+                        ParsedNameDirective::MatchGdb => props.ignore.no_lldb(),
+                    };
+                }
+
+                if ignore_llvm(config, ln) {
+                    props.ignore = Ignore::Ignore;
+                }
+            }
+
+            if (config.mode == common::DebugInfoGdb || config.mode == common::DebugInfoBoth) &&
+                props.ignore.can_run_gdb() && ignore_gdb(config, ln) {
+                props.ignore = props.ignore.no_gdb();
+            }
+
+            if (config.mode == common::DebugInfoLldb || config.mode == common::DebugInfoBoth) &&
+                props.ignore.can_run_lldb() && ignore_lldb(config, ln) {
+                props.ignore = props.ignore.no_lldb();
+            }
 
             if let Some(s) = config.parse_aux_build(ln) {
                 props.aux.push(s);
@@ -60,10 +147,6 @@ impl EarlyProps {
         return props;
 
         fn ignore_gdb(config: &Config, line: &str) -> bool {
-            if config.mode != common::DebugInfoGdb {
-                return false;
-            }
-
             if let Some(actual_version) = config.gdb_version {
                 if line.starts_with("min-gdb-version") {
                     let (start_ver, end_ver) = extract_gdb_version_range(line);
@@ -120,10 +203,6 @@ impl EarlyProps {
         }
 
         fn ignore_lldb(config: &Config, line: &str) -> bool {
-            if config.mode != common::DebugInfoLldb {
-                return false;
-            }
-
             if let Some(ref actual_version) = config.lldb_version {
                 if line.starts_with("min-lldb-version") {
                     let min_version = line.trim_right()
@@ -604,7 +683,7 @@ impl Config {
     }
 
     fn parse_custom_normalization(&self, mut line: &str, prefix: &str) -> Option<(String, String)> {
-        if self.parse_cfg_name_directive(line, prefix) {
+        if self.parse_cfg_name_directive(line, prefix) == ParsedNameDirective::Match {
             let from = match parse_normalization_string(&mut line) {
                 Some(s) => s,
                 None => return None,
@@ -620,35 +699,59 @@ impl Config {
     }
 
     /// Parses a name-value directive which contains config-specific information, e.g. `ignore-x86`
-    /// or `normalize-stderr-32bit`. Returns `true` if the line matches it.
-    fn parse_cfg_name_directive(&self, line: &str, prefix: &str) -> bool {
+    /// or `normalize-stderr-32bit`.
+    fn parse_cfg_name_directive(&self, line: &str, prefix: &str) -> ParsedNameDirective {
         if line.starts_with(prefix) && line.as_bytes().get(prefix.len()) == Some(&b'-') {
             let name = line[prefix.len() + 1..]
                 .split(&[':', ' '][..])
                 .next()
                 .unwrap();
 
-            name == "test" ||
+            if name == "test" ||
                 util::matches_os(&self.target, name) ||             // target
                 name == util::get_arch(&self.target) ||             // architecture
                 name == util::get_pointer_width(&self.target) ||    // pointer width
                 name == self.stage_id.split('-').next().unwrap() || // stage
                 Some(name) == util::get_env(&self.target) ||        // env
-                match self.mode {
-                    common::DebugInfoGdb => name == "gdb",
-                    common::DebugInfoLldb => name == "lldb",
-                    common::Pretty => name == "pretty",
-                    _ => false,
-                } ||
                 (self.target != self.host && name == "cross-compile") ||
                 match self.compare_mode {
                     Some(CompareMode::Nll) => name == "compare-mode-nll",
                     Some(CompareMode::Polonius) => name == "compare-mode-polonius",
                     None => false,
                 } ||
-                (cfg!(debug_assertions) && name == "debug")
+                (cfg!(debug_assertions) && name == "debug") {
+                ParsedNameDirective::Match
+            } else {
+                match self.mode {
+                    common::DebugInfoBoth => {
+                        if name == "gdb" {
+                            ParsedNameDirective::MatchGdb
+                        } else if name == "lldb" {
+                            ParsedNameDirective::MatchLldb
+                        } else {
+                            ParsedNameDirective::NoMatch
+                        }
+                    },
+                    common::DebugInfoGdb => if name == "gdb" {
+                        ParsedNameDirective::Match
+                    } else {
+                        ParsedNameDirective::NoMatch
+                    },
+                    common::DebugInfoLldb => if name == "lldb" {
+                        ParsedNameDirective::Match
+                    } else {
+                        ParsedNameDirective::NoMatch
+                    },
+                    common::Pretty => if name == "pretty" {
+                        ParsedNameDirective::Match
+                    } else {
+                        ParsedNameDirective::NoMatch
+                    },
+                    _ => ParsedNameDirective::NoMatch,
+                }
+            }
         } else {
-            false
+            ParsedNameDirective::NoMatch
         }
     }
 
