@@ -1,7 +1,7 @@
 [package]
 
 name = "rustfmt-nightly"
-version = "0.99.5"
+version = "0.99.6"
 authors = ["Nicholas Cameron <ncameron@mozilla.com>", "The Rustfmt developers"]
 description = "Tool to find and fix Rust formatting issues"
 repository = "https://github.com/rust-lang-nursery/rustfmt"
@@ -47,9 +47,9 @@ env_logger = "0.5"
 getopts = "0.2"
 derive-new = "0.5"
 cargo_metadata = "0.6"
-rustc-ap-rustc_target = "272.0.0"
-rustc-ap-syntax = "272.0.0"
-rustc-ap-syntax_pos = "272.0.0"
+rustc-ap-rustc_target = "274.0.0"
+rustc-ap-syntax = "274.0.0"
+rustc-ap-syntax_pos = "274.0.0"
 failure = "0.1.1"
 bytecount = { version = "0.3", features = ["simd-accel"] }
 
