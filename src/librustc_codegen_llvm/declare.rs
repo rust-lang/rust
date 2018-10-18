@@ -24,6 +24,7 @@ use context::CodegenCx;
 use type_::Type;
 use rustc_codegen_ssa::traits::*;
 use value::Value;
+use common::val_ty;
 
 /// Declare a function.
 ///
@@ -40,6 +41,7 @@ fn declare_raw_fn(
     let llfn = unsafe {
         llvm::LLVMRustGetOrInsertFunction(cx.llmod, namebuf.as_ptr(), ty)
     };
+    assert_eq!(val_ty(llfn).address_space(), cx.inst_addr_space());
 
     llvm::SetFunctionCallConv(llfn, callconv);
     // Function addresses in Rust are never significant, allowing functions to

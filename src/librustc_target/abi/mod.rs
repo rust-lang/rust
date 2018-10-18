@@ -31,8 +31,7 @@ pub struct TargetDataLayout {
     pub vector_align: Vec<(Size, AbiAndPrefAlign)>,
 
     pub alloca_address_space: AddrSpaceIdx,
-
-    pub instruction_address_space: u32,
+    pub instruction_address_space: AddrSpaceIdx,
 }
 
 impl Default for TargetDataLayout {
@@ -54,11 +53,11 @@ impl Default for TargetDataLayout {
             pointer_align: AbiAndPrefAlign::new(align(64)),
             aggregate_align: AbiAndPrefAlign { abi: align(0), pref: align(64) },
             alloca_address_space: Default::default(),
+            instruction_address_space: Default::default(),
             vector_align: vec![
                 (Size::from_bits(64), AbiAndPrefAlign::new(align(64))),
                 (Size::from_bits(128), AbiAndPrefAlign::new(align(128))),
             ],
-            instruction_address_space: 0,
         }
     }
 }
@@ -128,6 +127,11 @@ impl TargetDataLayout {
                   let align = align(a, p)?;
                   resize_and_set(&mut dl.pointers, idx, Some((size, align)));
                 },
+                [ref p] if p.starts_with("P") => {
+                    let idx = parse_bits(&p[1..], "u32",
+                                         "instruction address space")? as u32;
+                    dl.instruction_address_space = AddrSpaceIdx(idx);
+                }
                [s, ref a..] if s.starts_with("i") => {
                     let bits = match s[1..].parse::<u64>() {
                         Ok(bits) => bits,

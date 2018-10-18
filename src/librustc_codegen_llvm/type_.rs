@@ -337,7 +337,8 @@ impl LayoutTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         ty.llvm_type(self)
     }
     fn fn_ptr_backend_type(&self, ty: &FnType<'tcx, Ty<'tcx>>) -> &'ll Type {
-        ty.ptr_to_llvm_type(self)
+        self.type_as_ptr_to(ty.llvm_type(self), self.inst_addr_space())
+
     }
     fn reg_backend_type(&self, ty: &Reg) -> &'ll Type {
         ty.llvm_type(self)

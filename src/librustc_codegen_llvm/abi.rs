@@ -11,7 +11,7 @@ use rustc_target::abi::call::ArgType;
 
 use rustc_codegen_ssa::traits::*;
 
-use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TyLayout, Abi as LayoutAbi};
+use rustc_target::abi::{LayoutOf, Size, TyLayout, Abi as LayoutAbi};
 use rustc::ty::{self, Ty, Instance};
 use rustc::ty::layout;
 
@@ -311,7 +311,6 @@ pub trait FnTypeExt<'tcx> {
                       cx: &CodegenCx<'ll, 'tcx>,
                       abi: Abi);
     fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
-    fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn llvm_cconv(&self) -> llvm::CallConv;
     fn apply_attrs_llfn(&self, llfn: &'ll Value);
     fn apply_attrs_callsite(&self, bx: &mut Builder<'a, 'll, 'tcx>, callsite: &'ll Value);
@@ -692,13 +691,6 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             cx.type_variadic_func(&llargument_tys, llreturn_ty)
         } else {
             cx.type_func(&llargument_tys, llreturn_ty)
-        }
-    }
-
-    fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
-        unsafe {
-            llvm::LLVMPointerType(self.llvm_type(cx),
-                                  cx.data_layout().instruction_address_space as c_uint)
         }
     }
 

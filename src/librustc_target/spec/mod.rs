@@ -288,6 +288,8 @@ pub enum AddrSpaceKind {
     ReadOnly,
     /// aka global
     ReadWrite,
+    /// For Harvard architectures, the program instruction's address space
+    Instruction,
     Named(String),
 }
 
@@ -299,6 +301,7 @@ impl FromStr for AddrSpaceKind {
             "alloca" => AddrSpaceKind::Alloca,
             "readonly" => AddrSpaceKind::ReadOnly,
             "readwrite" => AddrSpaceKind::ReadWrite,
+            "instruction" => AddrSpaceKind::Instruction,
             named => AddrSpaceKind::Named(named.into()),
         })
     }
@@ -310,6 +313,7 @@ impl fmt::Display for AddrSpaceKind {
             &AddrSpaceKind::Alloca => "alloca",
             &AddrSpaceKind::ReadOnly => "readonly",
             &AddrSpaceKind::ReadWrite => "readwrite",
+            &AddrSpaceKind::Instruction => "instruction",
             &AddrSpaceKind::Named(ref s) => s,
         })
     }
@@ -389,10 +393,13 @@ impl Default for AddrSpaces {
     fn default() -> Self {
         let mut asp = BTreeMap::new();
 
-        let kinds = vec![AddrSpaceKind::ReadOnly,
-                         AddrSpaceKind::ReadWrite,
-                         AddrSpaceKind::Alloca,
-                         AddrSpaceKind::Flat, ];
+        let kinds = vec![
+            AddrSpaceKind::ReadOnly,
+            AddrSpaceKind::ReadWrite,
+            AddrSpaceKind::Alloca,
+            AddrSpaceKind::Flat,
+            AddrSpaceKind::Instruction,
+        ];
 
         let insert = |asp: &mut BTreeMap<_, _>, kind, idx| {
             let props = AddrSpaceProps {

@@ -89,6 +89,7 @@ pub struct CodegenCx<'ll, 'tcx: 'll> {
     const_addr_space: AddrSpaceIdx,
     mutable_addr_space: AddrSpaceIdx,
     flat_addr_space: AddrSpaceIdx,
+    instruction_addr_space: AddrSpaceIdx,
 
     pub dbg_cx: Option<debuginfo::CrateDebugContext<'ll, 'tcx>>,
 
@@ -299,6 +300,11 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
               .get(&AddrSpaceKind::Flat)
               .map(|v| v.index )
               .unwrap_or_default();
+        let instruction_addr_space =
+            tcx.sess.target.target.options.addr_spaces
+              .get(&AddrSpaceKind::Instruction)
+              .map(|v| v.index )
+              .unwrap_or_default();
 
         CodegenCx {
             tcx,
@@ -325,6 +331,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             const_addr_space,
             mutable_addr_space,
             flat_addr_space,
+            instruction_addr_space,
 
             dbg_cx,
             eh_personality: Cell::new(None),
@@ -496,6 +503,9 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
           .unwrap_or_else(&bug);
 
         from_props.shared_with.contains(&to_kind)
+    }
+    fn inst_addr_space(&self) -> AddrSpaceIdx {
+        self.instruction_addr_space
     }
     fn alloca_addr_space(&self) -> AddrSpaceIdx {
         self.alloca_addr_space

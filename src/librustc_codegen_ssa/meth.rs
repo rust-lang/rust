@@ -81,7 +81,7 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     }
 
     // Not in the cache. Build it.
-    let nullptr = cx.const_null(cx.type_i8p());
+    let nullptr = cx.const_null(cx.type_inst_i8p());
 
     let methods_root;
     let methods = if let Some(trait_ref) = trait_ref {

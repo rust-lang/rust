@@ -29,6 +29,7 @@ pub trait MiscMethods<'tcx>: BackendTypes {
     fn create_used_variable(&self);
 
     fn can_cast_addr_space(&self, _from: AddrSpaceIdx, _to: AddrSpaceIdx) -> bool { true }
+    fn inst_addr_space(&self) -> AddrSpaceIdx { Default::default() }
     fn alloca_addr_space(&self) -> AddrSpaceIdx { Default::default() }
     fn const_addr_space(&self) -> AddrSpaceIdx { Default::default() }
     fn mutable_addr_space(&self) -> AddrSpaceIdx { Default::default() }

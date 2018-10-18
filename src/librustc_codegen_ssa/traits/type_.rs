@@ -84,6 +84,9 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
     fn type_i8p_as(&self, addr_space: AddrSpaceIdx) -> Self::Type {
         self.type_as_ptr_to(self.type_i8(), addr_space)
     }
+    fn type_inst_i8p(&self) -> Self::Type {
+        self.type_i8p_as(self.inst_addr_space())
+    }
     fn type_alloca_i8p(&self) -> Self::Type {
         self.type_i8p_as(self.alloca_addr_space())
     }
@@ -213,6 +216,9 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
             },
             _ => { },
         }
+    }
+    fn type_ptr_to_inst(&self, ty: Self::Type) -> Self::Type {
+        self.type_as_ptr_to(ty, self.inst_addr_space())
     }
     fn type_ptr_to_alloca(&self, ty: Self::Type) -> Self::Type {
         self.type_as_ptr_to(ty, self.alloca_addr_space())
