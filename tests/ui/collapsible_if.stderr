@@ -240,5 +240,21 @@ help: try
 122 | }
     |
 
-error: aborting due to 13 previous errors
+error: this if statement can be collapsed
+   --> $DIR/collapsible_if.rs:176:5
+    |
+176 | /     if x == "hello" {
+177 | |         if y == "world" { // Collapsible
+178 | |             println!("Hello world!");
+179 | |         }
+180 | |     }
+    | |_____^
+help: try
+    |
+176 |     if x == "hello" && y == "world" { // Collapsible
+177 |     println!("Hello world!");
+178 | }
+    |
+
+error: aborting due to 14 previous errors
 
