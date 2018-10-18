@@ -3379,10 +3379,10 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 let variant_id = cx.derive_id(format!("{}.{}.fields",
                                                    ItemType::Variant,
                                                    variant.name.as_ref().unwrap()));
-                write!(w, "<span class='docblock autohide sub-variant' id='{id}'>",
+                write!(w, "<span class='autohide sub-variant' id='{id}'>",
                        id = variant_id)?;
-                write!(w, "<h3 class='fields'>Fields of <code>{name}</code></h3>\n
-                           <table>", name = variant.name.as_ref().unwrap())?;
+                write!(w, "<h3>Fields of <b>{name}</b></h3><div>",
+                       name = variant.name.as_ref().unwrap())?;
                 for field in &s.fields {
                     use clean::StructFieldItem;
                     if let StructFieldItem(ref ty) = field.inner {
@@ -3394,19 +3394,18 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                                                       ItemType::Variant.name_space(),
                                                       field.name.as_ref().unwrap(),
                                                       ItemType::StructField.name_space()));
-                        write!(w, "<tr><td \
-                                   id='{id}'>\
-                                   <span id='{ns_id}' class='invisible'>\
-                                   <code>{f}:&nbsp;{t}</code></span></td><td>",
+                        write!(w, "<span id=\"{id}\" class=\"variant small-section-header\">\
+                                   <a href=\"#{id}\" class=\"anchor field\"></a>\
+                                   <span id='{ns_id}' class='invisible'><code>{f}:&nbsp;{t}\
+                                   </code></span></span>",
                                id = id,
                                ns_id = ns_id,
                                f = field.name.as_ref().unwrap(),
                                t = *ty)?;
                         document(w, cx, field)?;
-                        write!(w, "</td></tr>")?;
                     }
                 }
-                write!(w, "</table></span>")?;
+                write!(w, "</div></span>")?;
             }
             render_stability_since(w, variant, it)?;
         }

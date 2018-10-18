@@ -1886,7 +1886,7 @@
             if (hasClass(relatedDoc, "stability")) {
                 relatedDoc = relatedDoc.nextElementSibling;
             }
-            if (hasClass(relatedDoc, "docblock")) {
+            if (hasClass(relatedDoc, "docblock") || hasClass(relatedDoc, "sub-variant")) {
                 var action = mode;
                 if (action === "toggle") {
                     if (hasClass(relatedDoc, "hidden-by-usual-hider")) {
@@ -2094,15 +2094,13 @@
     }
 
     var hideItemDeclarations = getCurrentValue('rustdoc-item-declarations') === "false";
-    onEach(document.getElementsByClassName('docblock'), function(e) {
+    function buildToggleWrapper(e) {
         if (hasClass(e, 'autohide')) {
             var wrap = e.previousElementSibling;
             if (wrap && hasClass(wrap, 'toggle-wrapper')) {
                 var toggle = wrap.childNodes[0];
-                var extra = false;
-                if (e.childNodes[0].tagName === 'H3') {
-                    extra = true;
-                }
+                var extra = e.childNodes[0].tagName === 'H3';
+
                 e.style.display = 'none';
                 addClass(wrap, 'collapsed');
                 onEach(toggle.getElementsByClassName('inner'), function(e) {
@@ -2127,6 +2125,8 @@
                 if (hideItemDeclarations === false) {
                     extraClass = 'collapsed';
                 }
+            } else if (hasClass(e, "sub-variant")) {
+                otherMessage = '&nbsp;Show&nbsp;fields';
             } else if (hasClass(e, "non-exhaustive")) {
                 otherMessage = '&nbsp;This&nbsp;';
                 if (hasClass(e, "non-exhaustive-struct")) {
@@ -2150,7 +2150,10 @@
                 collapseDocs(e.previousSibling.childNodes[0], "toggle");
             }
         }
-    });
+    }
+
+    onEach(document.getElementsByClassName('docblock'), buildToggleWrapper);
+    onEach(document.getElementsByClassName('sub-variant'), buildToggleWrapper);
 
     function createToggleWrapper(tog) {
         var span = document.createElement('span');
