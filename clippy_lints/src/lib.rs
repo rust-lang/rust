@@ -190,6 +190,7 @@ pub mod replace_consts;
 pub mod returns;
 pub mod serde_api;
 pub mod shadow;
+pub mod slow_vector_initialization;
 pub mod strings;
 pub mod suspicious_trait_impl;
 pub mod swap;
@@ -459,6 +460,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box non_copy_const::NonCopyConst);
     reg.register_late_lint_pass(box ptr_offset_with_cast::Pass);
     reg.register_late_lint_pass(box redundant_clone::RedundantClone);
+    reg.register_late_lint_pass(box slow_vector_initialization::Pass);
 
     reg.register_lint_group("clippy::restriction", Some("clippy_restriction"), vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -980,6 +982,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         methods::SINGLE_CHAR_PATTERN,
         misc::CMP_OWNED,
         mutex_atomic::MUTEX_ATOMIC,
+        slow_vector_initialization::SLOW_VECTOR_INITIALIZATION,
         trivially_copy_pass_by_ref::TRIVIALLY_COPY_PASS_BY_REF,
         types::BOX_VEC,
         vec::USELESS_VEC,
