@@ -20,6 +20,7 @@
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
 #![feature(chunks_exact)]
+#![feature(rchunks)]
 #![feature(repeat_generic_slice)]
 
 extern crate alloc_system;
