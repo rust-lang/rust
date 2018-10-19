@@ -1633,19 +1633,17 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                 *def = module.def().unwrap(),
             PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 =>
                 *def = path_res.base_def(),
-            PathResult::NonModule(..) => match self.resolve_path(
-                None,
-                &path,
-                None,
-                true,
-                span,
-                CrateLint::No,
-            ) {
-                PathResult::Failed(span, msg, _) => {
+            PathResult::NonModule(..) =>
+                if let PathResult::Failed(span, msg, _) = self.resolve_path(
+                    None,
+                    &path,
+                    None,
+                    true,
+                    span,
+                    CrateLint::No,
+                ) {
                     error_callback(self, span, ResolutionError::FailedToResolve(&msg));
-                }
-                _ => {}
-            },
+                },
             PathResult::Module(ModuleOrUniformRoot::UniformRoot(_)) |
             PathResult::Indeterminate => unreachable!(),
             PathResult::Failed(span, msg, _) => {
@@ -2357,7 +2355,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     span: prefix.span.to(use_tree.prefix.span),
                 };
 
-                if items.len() == 0 {
+                if items.is_empty() {
                     // Resolve prefix of an import with empty braces (issue #28388).
                     self.smart_resolve_path_with_crate_lint(
                         id,
@@ -2696,7 +2694,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
                 let map_j = self.binding_mode_map(&q);
                 for (&key, &binding_i) in &map_i {
-                    if map_j.len() == 0 {                   // Account for missing bindings when
+                    if map_j.is_empty() {                   // Account for missing bindings when
                         let binding_error = missing_vars    // map_j has none.
                             .entry(key.name)
                             .or_insert(BindingError {
@@ -2757,9 +2755,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         // This has to happen *after* we determine which pat_idents are variants
         self.check_consistent_bindings(&arm.pats);
 
-        match arm.guard {
-            Some(ast::Guard::If(ref expr)) => self.visit_expr(expr),
-            _ => {}
+        if let Some(ast::Guard::If(ref expr)) = arm.guard {
+            self.visit_expr(expr)
         }
         self.visit_expr(&arm.body);
 
@@ -3000,14 +2997,14 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             // Make the base error.
             let expected = source.descr_expected();
             let path_str = names_to_string(path);
-            let item_str = path[path.len() - 1];
+            let item_str = path.last().unwrap();
             let code = source.error_code(def.is_some());
             let (base_msg, fallback_label, base_span) = if let Some(def) = def {
                 (format!("expected {}, found {} `{}`", expected, def.kind_name(), path_str),
                  format!("not a {}", expected),
                  span)
             } else {
-                let item_span = path[path.len() - 1].span;
+                let item_span = path.last().unwrap().span;
                 let (mod_prefix, mod_str) = if path.len() == 1 {
                     (String::new(), "this scope".to_string())
                 } else if path.len() == 2 && path[0].name == keywords::CrateRoot.name() {
@@ -3030,10 +3027,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             let mut err = this.session.struct_span_err_with_code(base_span, &base_msg, code);
 
             // Emit help message for fake-self from other languages like `this`(javascript)
-            let fake_self: Vec<Ident> = ["this", "my"].iter().map(
-                |s| Ident::from_str(*s)
-            ).collect();
-            if fake_self.contains(&item_str)
+            if ["this", "my"].contains(&&*item_str.as_str())
                 && this.self_value_is_available(path[0].span, span) {
                 err.span_suggestion_with_applicability(
                     span,
@@ -3374,7 +3368,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             );
                         }
                         break;
-                    } else if snippet.trim().len() != 0  {
+                    } else if !snippet.trim().is_empty() {
                         debug!("tried to find type ascription `:` token, couldn't find it");
                         break;
                     }
@@ -3936,7 +3930,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             }
             _ => {}
         }
-        return def;
+        def
     }
 
     fn lookup_assoc_candidate<FilterFn>(&mut self,
@@ -4386,10 +4380,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         where FilterFn: Fn(Def) -> bool
     {
         let mut candidates = Vec::new();
-        let mut worklist = Vec::new();
         let mut seen_modules = FxHashSet();
         let not_local_module = crate_name != keywords::Crate.ident();
-        worklist.push((start_module, Vec::<ast::PathSegment>::new(), not_local_module));
+        let mut worklist = vec![(start_module, Vec::<ast::PathSegment>::new(), not_local_module)];
 
         while let Some((in_module,
                         path_segments,
@@ -4476,33 +4469,24 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                           -> Vec<ImportSuggestion>
         where FilterFn: Fn(Def) -> bool
     {
-        let mut suggestions = vec![];
-
-        suggestions.extend(
-            self.lookup_import_candidates_from_module(
-                lookup_name, namespace, self.graph_root, keywords::Crate.ident(), &filter_fn
-            )
-        );
+        let mut suggestions = self.lookup_import_candidates_from_module(
+            lookup_name, namespace, self.graph_root, keywords::Crate.ident(), &filter_fn);
 
         if self.session.rust_2018() {
             let extern_prelude_names = self.extern_prelude.clone();
             for &name in extern_prelude_names.iter() {
                 let ident = Ident::with_empty_ctxt(name);
-                match self.crate_loader.maybe_process_path_extern(name, ident.span) {
-                    Some(crate_id) => {
-                        let crate_root = self.get_module(DefId {
-                            krate: crate_id,
-                            index: CRATE_DEF_INDEX,
-                        });
-                        self.populate_module_if_necessary(&crate_root);
+                if let Some(crate_id) = self.crate_loader.maybe_process_path_extern(name,
+                                                                                    ident.span)
+                {
+                    let crate_root = self.get_module(DefId {
+                        krate: crate_id,
+                        index: CRATE_DEF_INDEX,
+                    });
+                    self.populate_module_if_necessary(&crate_root);
 
-                        suggestions.extend(
-                            self.lookup_import_candidates_from_module(
-                                lookup_name, namespace, crate_root, ident, &filter_fn
-                            )
-                        );
-                    }
-                    None => {}
+                    suggestions.extend(self.lookup_import_candidates_from_module(
+                        lookup_name, namespace, crate_root, ident, &filter_fn));
                 }
             }
         }
@@ -4515,9 +4499,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                    -> Option<(Module<'a>, ImportSuggestion)>
     {
         let mut result = None;
-        let mut worklist = Vec::new();
         let mut seen_modules = FxHashSet();
-        worklist.push((self.graph_root, Vec::new()));
+        let mut worklist = vec![(self.graph_root, Vec::new())];
 
         while let Some((in_module, path_segments)) = worklist.pop() {
             // abort if the module is already found
