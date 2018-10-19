@@ -21,7 +21,7 @@ use rustc::ty::{self, Ty, layout::{Size, TyLayout}, query::TyCtxtAt};
 
 use super::{
     Allocation, AllocId, EvalResult, Scalar,
-    EvalContext, PlaceTy, OpTy, Pointer, MemoryKind,
+    EvalContext, PlaceTy, OpTy, Pointer, MemPlace, MemoryKind,
 };
 
 /// Classifying memory accesses
@@ -205,26 +205,32 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     }
 
     /// Executed when evaluating the `&` operator: Creating a new reference.
-    /// This has the chance to adjust the tag.
+    /// This has the chance to adjust the tag.  It should not change anything else!
     /// `mutability` can be `None` in case a raw ptr is being created.
+    #[inline]
     fn tag_reference(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        ptr: Pointer<Self::PointerTag>,
-        pointee_ty: Ty<'tcx>,
-        pointee_size: Size,
-        mutability: Option<hir::Mutability>,
-    ) -> EvalResult<'tcx, Self::PointerTag>;
+        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        place: MemPlace<Self::PointerTag>,
+        _ty: Ty<'tcx>,
+        _size: Size,
+        _mutability: Option<hir::Mutability>,
+    ) -> EvalResult<'tcx, MemPlace<Self::PointerTag>> {
+        Ok(place)
+    }
 
     /// Executed when evaluating the `*` operator: Following a reference.
-    /// This has the change to adjust the tag.
+    /// This has the change to adjust the tag.  It should not change anything else!
     /// `mutability` can be `None` in case a raw ptr is being dereferenced.
+    #[inline]
     fn tag_dereference(
-        ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
-        ptr: Pointer<Self::PointerTag>,
-        pointee_ty: Ty<'tcx>,
-        pointee_size: Size,
-        mutability: Option<hir::Mutability>,
-    ) -> EvalResult<'tcx, Self::PointerTag>;
+        _ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
+        place: MemPlace<Self::PointerTag>,
+        _ty: Ty<'tcx>,
+        _size: Size,
+        _mutability: Option<hir::Mutability>,
+    ) -> EvalResult<'tcx, MemPlace<Self::PointerTag>> {
+        Ok(place)
+    }
 
     /// Execute a validation operation
     #[inline]

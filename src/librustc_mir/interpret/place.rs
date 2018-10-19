@@ -276,26 +276,25 @@ where
 
         let align = layout.align;
         let meta = val.to_meta()?;
-
-        let ptr = match val.to_scalar_ptr()? {
-            Scalar::Ptr(ptr) if M::ENABLE_PTR_TRACKING_HOOKS => {
-                // Machine might want to track the `*` operator
-                let (size, _) = self.size_and_align_of(meta, layout)?
-                    .expect("ref_to_mplace cannot determine size");
-                let mutbl = match val.layout.ty.sty {
-                    // `builtin_deref` considers boxes immutable, that's useless for our purposes
-                    ty::Ref(_, _, mutbl) => Some(mutbl),
-                    ty::Adt(def, _) if def.is_box() => Some(hir::MutMutable),
-                    ty::RawPtr(_) => None,
-                    _ => bug!("Unexpected pointer type {}", val.layout.ty.sty),
-                };
-                let tag = M::tag_dereference(self, ptr, pointee_type, size, mutbl)?;
-                Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag))
-            }
-            other => other,
+        let ptr = val.to_scalar_ptr()?;
+        let mplace = MemPlace { ptr, align, meta };
+        // Pointer tag tracking might want to adjust the tag.
+        let mplace = if M::ENABLE_PTR_TRACKING_HOOKS {
+            let (size, _) = self.size_and_align_of(meta, layout)?
+                // for extern types, just cover what we can
+                .unwrap_or_else(|| layout.size_and_align());
+            let mutbl = match val.layout.ty.sty {
+                // `builtin_deref` considers boxes immutable, that's useless for our purposes
+                ty::Ref(_, _, mutbl) => Some(mutbl),
+                ty::Adt(def, _) if def.is_box() => Some(hir::MutMutable),
+                ty::RawPtr(_) => None,
+                _ => bug!("Unexpected pointer type {}", val.layout.ty.sty),
+            };
+            M::tag_dereference(self, mplace, pointee_type, size, mutbl)?
+        } else {
+            mplace
         };
-
-        Ok(MPlaceTy { mplace: MemPlace { ptr, align, meta }, layout })
+        Ok(MPlaceTy { mplace, layout })
     }
 
     /// Turn a mplace into a (thin or fat) pointer, as a reference, pointing to the same space.
@@ -305,24 +304,25 @@ where
         place: MPlaceTy<'tcx, M::PointerTag>,
         borrow_kind: Option<mir::BorrowKind>,
     ) -> EvalResult<'tcx, Value<M::PointerTag>> {
-        let ptr = match place.ptr {
-            Scalar::Ptr(ptr) if M::ENABLE_PTR_TRACKING_HOOKS => {
-                // Machine might want to track the `&` operator
-                let (size, _) = self.size_and_align_of_mplace(place)?
-                    .expect("create_ref cannot determine size");
-                let mutbl = match borrow_kind {
-                    Some(mir::BorrowKind::Mut { .. }) => Some(hir::MutMutable),
-                    Some(_) => Some(hir::MutImmutable),
-                    None => None,
-                };
-                let tag = M::tag_reference(self, ptr, place.layout.ty, size, mutbl)?;
-                Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag))
-            },
-            other => other,
+        // Pointer tag tracking might want to adjust the tag
+        let place = if M::ENABLE_PTR_TRACKING_HOOKS {
+            let (size, _) = self.size_and_align_of_mplace(place)?
+                // for extern types, just cover what we can
+                .unwrap_or_else(|| place.layout.size_and_align());
+            let mutbl = match borrow_kind {
+                Some(mir::BorrowKind::Mut { .. }) |
+                Some(mir::BorrowKind::Unique) =>
+                    Some(hir::MutMutable),
+                Some(_) => Some(hir::MutImmutable),
+                None => None,
+            };
+            M::tag_reference(self, *place, place.layout.ty, size, mutbl)?
+        } else {
+            *place
         };
         Ok(match place.meta {
-            None => Value::Scalar(ptr.into()),
-            Some(meta) => Value::ScalarPair(ptr.into(), meta.into()),
+            None => Value::Scalar(place.ptr.into()),
+            Some(meta) => Value::ScalarPair(place.ptr.into(), meta.into()),
         })
     }
 
