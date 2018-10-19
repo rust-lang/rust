@@ -50,6 +50,7 @@ use ty::query;
 use ty::steal::Steal;
 use ty::BindingMode;
 use ty::CanonicalTy;
+use ty::CanonicalPolyFnSig;
 use util::nodemap::{DefIdSet, ItemLocalMap};
 use util::nodemap::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
@@ -344,10 +345,6 @@ pub struct TypeckTables<'tcx> {
     /// belongs, but it may not exist if it's a tuple field (`tuple.0`).
     field_indices: ItemLocalMap<usize>,
 
-    /// Stores the canonicalized types provided by the user. See also
-    /// `AscribeUserType` statement in MIR.
-    user_provided_tys: ItemLocalMap<CanonicalTy<'tcx>>,
-
     /// Stores the types for various nodes in the AST.  Note that this table
     /// is not guaranteed to be populated until after typeck.  See
     /// typeck::check::fn_ctxt for details.
@@ -358,6 +355,14 @@ pub struct TypeckTables<'tcx> {
     /// parameterized by type parameters, such as generic fns, types, or
     /// other items.
     node_substs: ItemLocalMap<&'tcx Substs<'tcx>>,
+
+    /// Stores the canonicalized types provided by the user. See also
+    /// `AscribeUserType` statement in MIR.
+    user_provided_tys: ItemLocalMap<CanonicalTy<'tcx>>,
+
+    /// Stores the canonicalized types provided by the user. See also
+    /// `AscribeUserType` statement in MIR.
+    user_provided_sigs: ItemLocalMap<CanonicalPolyFnSig<'tcx>>,
 
     /// Stores the substitutions that the user explicitly gave (if any)
     /// attached to `id`. These will not include any inferred
@@ -442,6 +447,7 @@ impl<'tcx> TypeckTables<'tcx> {
             type_dependent_defs: ItemLocalMap(),
             field_indices: ItemLocalMap(),
             user_provided_tys: ItemLocalMap(),
+            user_provided_sigs: Default::default(),
             node_types: ItemLocalMap(),
             node_substs: ItemLocalMap(),
             user_substs: ItemLocalMap(),
@@ -510,6 +516,20 @@ impl<'tcx> TypeckTables<'tcx> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.user_provided_tys
+        }
+    }
+
+    pub fn user_provided_sigs(&self) -> LocalTableInContext<'_, CanonicalPolyFnSig<'tcx>> {
+        LocalTableInContext {
+            local_id_root: self.local_id_root,
+            data: &self.user_provided_sigs
+        }
+    }
+
+    pub fn user_provided_sigs_mut(&mut self) -> LocalTableInContextMut<'_, CanonicalPolyFnSig<'tcx>> {
+        LocalTableInContextMut {
+            local_id_root: self.local_id_root,
+            data: &mut self.user_provided_sigs
         }
     }
 
@@ -748,6 +768,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
             ref type_dependent_defs,
             ref field_indices,
             ref user_provided_tys,
+            ref user_provided_sigs,
             ref node_types,
             ref node_substs,
             ref user_substs,
@@ -771,6 +792,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
             type_dependent_defs.hash_stable(hcx, hasher);
             field_indices.hash_stable(hcx, hasher);
             user_provided_tys.hash_stable(hcx, hasher);
+            user_provided_sigs.hash_stable(hcx, hasher);
             node_types.hash_stable(hcx, hasher);
             node_substs.hash_stable(hcx, hasher);
             user_substs.hash_stable(hcx, hasher);
