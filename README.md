@@ -71,6 +71,10 @@ with the date replaced as appropriate.
 2. Run `xargo/build.sh` as `rustup run nightly-2018-10-15 build.sh`.
 3. When running tests, use `MIRI_SYSROOT=~/.xargo/HOST cargo +nightly-2018-10-15 miri test`.
 
+You may prefer to do this rather than depending on the rustup default toolchain,
+if you routinely update the default, since **it is essential that `xargo/build.sh`
+is run with the same toolchain as `cargo miri`.**
+
 ## Miri `-Z` flags
 
 Miri adds some extra `-Z` flags to control its behavior:
