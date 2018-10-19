@@ -1,14 +1,14 @@
-error: expected `:`, found `(`
-  --> $DIR/in-struct.rs:20:12
-   |
-LL |     Variant(&'_ u32), //~ ERROR
-   |            ^ expected `:`
-
 error[E0106]: missing lifetime specifier
   --> $DIR/in-struct.rs:16:9
    |
 LL |     x: &'_ u32, //~ ERROR
    |         ^^ expected lifetime parameter
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/in-struct.rs:20:14
+   |
+LL |     Variant(&'_ u32), //~ ERROR
+   |              ^^ expected lifetime parameter
 
 error: aborting due to 2 previous errors
 

@@ -16,7 +16,7 @@ struct Foo {
     x: &'_ u32, //~ ERROR
 }
 
-struct Bar {
+enum Bar {
     Variant(&'_ u32), //~ ERROR
 }
 
