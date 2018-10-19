@@ -1512,6 +1512,18 @@ impl<T: ?Sized> UnsafeCell<T> {
     }
 }
 
+// TODO: correct stable attribute
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: Clone> Clone for UnsafeCell<T> {
+    fn clone(&self) -> UnsafeCell<T> {
+        UnsafeCell::new(self.value.clone())
+    }
+}
+
+// TODO: correct stable attribute
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: Copy> Copy for UnsafeCell<T> {}
+
 #[stable(feature = "unsafe_cell_default", since = "1.10.0")]
 impl<T: Default> Default for UnsafeCell<T> {
     /// Creates an `UnsafeCell`, with the `Default` value for T.
