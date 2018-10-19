@@ -775,11 +775,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     /// This is used by [priroda](https://github.com/oli-obk/priroda) to get an OpTy from a local
     pub fn read_local_of_frame(
         &self,
-        frame: &super::Frame,
+        frame: &super::Frame<'mir, 'tcx>,
         local: mir::Local
     ) -> EvalResult<'tcx, OpTy<'tcx>> {
-        let op = frame.locals[local].access()?;
-        let layout = self.layout_of_local(frame, local)?;
-        OpTy { op, layout }
+        let op = *frame.locals[local].access()?;
+        let local_ty = frame.mir.local_decls[local].ty;
+        let local_ty = self.monomorphize(local_ty, frame.instance.substs);
+        let layout = self.layout_of(local_ty)?;
+        Ok(OpTy { op, layout })
     }
 }
