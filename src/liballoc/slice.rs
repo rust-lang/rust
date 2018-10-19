@@ -123,9 +123,9 @@ pub use core::slice::{from_raw_parts, from_raw_parts_mut};
 pub use core::slice::{from_ref, from_mut};
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use core::slice::SliceIndex;
-#[unstable(feature = "chunks_exact", issue = "47115")]
+#[stable(feature = "chunks_exact", since = "1.31.0")]
 pub use core::slice::{ChunksExact, ChunksExactMut};
-#[unstable(feature = "rchunks", issue = "55177")]
+#[stable(feature = "rchunks", since = "1.31.0")]
 pub use core::slice::{RChunks, RChunksMut, RChunksExact, RChunksExactMut};
 
 ////////////////////////////////////////////////////////////////////////////////
