@@ -50,9 +50,9 @@ script:
   # test `cargo miri`
   cd cargo-miri-test &&
   if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-    cargo miri -q -- -Zmiri-start-fn
+    cargo miri -q
   else
-    cargo miri -q -- -Zmiri-start-fn >stdout.real 2>stderr.real &&
+    cargo miri -q >stdout.real 2>stderr.real &&
     cat stdout.real stderr.real &&
     # Test `cargo miri` output. Not on mac because output redirecting doesn't
     # work. There is no error. It just stops CI.
