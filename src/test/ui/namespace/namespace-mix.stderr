@@ -144,11 +144,11 @@ note: required by `check`
 LL | fn check<T: Impossible>(_: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `fn() -> c::TS {c::TS::{{constructor}}}: Impossible` is not satisfied
+error[E0277]: the trait bound `fn() -> c::TS {c::TS}: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:66:5
    |
 LL |     check(m3::TS); //~ ERROR c::TS
-   |     ^^^^^ the trait `Impossible` is not implemented for `fn() -> c::TS {c::TS::{{constructor}}}`
+   |     ^^^^^ the trait `Impossible` is not implemented for `fn() -> c::TS {c::TS}`
    |
 note: required by `check`
   --> $DIR/namespace-mix.rs:31:1
@@ -192,11 +192,11 @@ note: required by `check`
 LL | fn check<T: Impossible>(_: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `fn() -> namespace_mix::c::TS {namespace_mix::c::TS::{{constructor}}}: Impossible` is not satisfied
+error[E0277]: the trait bound `fn() -> namespace_mix::c::TS {namespace_mix::c::TS}: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:72:5
    |
 LL |     check(xm3::TS); //~ ERROR c::TS
-   |     ^^^^^ the trait `Impossible` is not implemented for `fn() -> namespace_mix::c::TS {namespace_mix::c::TS::{{constructor}}}`
+   |     ^^^^^ the trait `Impossible` is not implemented for `fn() -> namespace_mix::c::TS {namespace_mix::c::TS}`
    |
 note: required by `check`
   --> $DIR/namespace-mix.rs:31:1

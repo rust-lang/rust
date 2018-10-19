@@ -115,7 +115,7 @@ LL |         <u8 as PrivTrait>::method; //~ ERROR type `fn() {<u8 as m::PrivTrai
 LL |     m::m!();
    |     -------- in this macro invocation
 
-error: type `fn(u8) -> m::PrivTupleStruct {m::PrivTupleStruct::{{constructor}}}` is private
+error: type `fn(u8) -> m::PrivTupleStruct {m::PrivTupleStruct}` is private
   --> $DIR/private-inferred-type.rs:55:9
    |
 LL |         PrivTupleStruct;
@@ -124,7 +124,7 @@ LL |         PrivTupleStruct;
 LL |     m::m!();
    |     -------- in this macro invocation
 
-error: type `fn(u8) -> m::PubTupleStruct {m::PubTupleStruct::{{constructor}}}` is private
+error: type `fn(u8) -> m::PubTupleStruct {m::PubTupleStruct}` is private
   --> $DIR/private-inferred-type.rs:57:9
    |
 LL |         PubTupleStruct;
